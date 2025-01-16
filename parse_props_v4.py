@@ -197,67 +197,98 @@ def process_file(file_path, conn):
                 })
 
             # 2. Shared DisplayName (LORComment), Single Grid, No MasterPropId
-            # 2. Shared DisplayName, Single Grid, No MasterPropId
+            # 2. Shared LORComment, Single Grid, No MasterPropId
             elif device_type == "LOR" and channel_grid and not attributes.get('MasterPropId') and len(channel_grid.split(';')) == 1:
                 grouped_props = defaultdict(list)
-                grouped_props[LORComment].append(attributes)  # Group by display name (LORComment)
 
-                # Process grouped props
-                for LORComment, group in grouped_props.items():
-                    # Find the master prop (lowest StartChannel)
-                    master_prop = min(
+                # Group props by their LORComment
+                for prop in props:
+                    grouped_props[prop['LORComment']].append(prop)
+
+                # Debugging: Verify grouping
+                for comment, group in grouped_props.items():
+                    print(f"Grouped LORComment '{comment}': {len(group)} props")
+
+                # Process each group
+                for comment, group in grouped_props.items():
+                    if not group:
+                        continue
+
+                    # Sort group by StartChannel
+                    group_sorted = sorted(
                         group,
                         key=lambda x: int(x.get('StartChannel', 0)) if x.get('StartChannel') and x['StartChannel'].isdigit() else float('inf')
                     )
-                    master_prop_id = master_prop["id"]
 
-                    # Add master prop to the props table
+                    # Identify the master prop (first in the sorted list)
+                    master_prop = group_sorted[0]
+                    master_prop_id = master_prop['PropID']
+
+                    # Debugging: Verify master prop
+                    print(f"Master prop for LORComment '{comment}': {master_prop['Name']} (StartChannel={master_prop.get('StartChannel')})")
+
+                    # Parse grid parts for the master prop
+                    grid_parts = master_prop.get('ChannelGrid', '').split(',')
+                    network = grid_parts[0] if len(grid_parts) > 0 else None
+                    uid = grid_parts[1] if len(grid_parts) > 1 else None
+                    start_channel = grid_parts[2] if len(grid_parts) > 2 else None
+                    end_channel = grid_parts[3] if len(grid_parts) > 3 else None
+                    color = grid_parts[5] if len(grid_parts) > 5 else None
+
+                    # Add the master prop to the props table
                     props.append({
                         "PropID": master_prop_id,
-                        "Name": master_prop["Name"],
-                        "LORComment": LORComment,
+                        "Name": master_prop['Name'],
+                        "LORComment": comment,
                         "DeviceType": device_type,
-                        "PreviewId": prop_preview_id,
-                        "Network": master_prop.get("Network"),
-                        "UID": master_prop.get("UID"),
-                        "StartChannel": master_prop.get("StartChannel"),
-                        "EndChannel": master_prop.get("EndChannel"),
-                        "Unknown": master_prop.get("Unknown"),
-                        "Color": master_prop.get("Color"),
-                        "MaxChannels": int(master_prop.get("MaxChannels", 0)),
-                        "Tag": master_prop.get("Tag"),
-                        "Lights": int(master_prop.get("Parm2", 0)),
-                        "DimmingCurveName": master_prop.get("DimmingCurveName"),
-                        "Segments": int(master_prop.get("Parm1", 0)),
-                        "Opacity": float(master_prop.get("Opacity", 0.0)),
-                        "MasterDimmable": master_prop.get("MasterDimmable", 'false') == 'true',
-                        "PreviewBulbSize": float(master_prop.get("PreviewBulbSize", 0.0)),
-                        "BulbShape": master_prop.get("BulbShape"),
-                        "CustomBulbColor": master_prop.get("CustomBulbColor"),
-                        "StartLocation": master_prop.get("StartLocation"),
-                        "StringType": master_prop.get("StringType"),
-                        "TraditionalColors": master_prop.get("TraditionalColors"),
-                        "TraditionalType": master_prop.get("TraditionalType"),
-                        "RgbOrder": master_prop.get("RgbOrder"),
-                        "SeparateIds": master_prop.get("SeparateIds"),
-                        "EffectBulbSize": float(master_prop.get("EffectBulbSize", 0.0)),
-                        "IndividualChannels": master_prop.get("IndividualChannels", '').strip().lower() == 'true',
-                        "LegacySequenceMethod": master_prop.get("LegacySequenceMethod"),
+                        "PreviewId": master_prop.get('PreviewId', None),
+                        "Network": network,
+                        "UID": uid,
+                        "StartChannel": start_channel,
+                        "EndChannel": end_channel,
+                        "Color": color,
+                        "MaxChannels": int(master_prop.get('MaxChannels', 0)),
+                        "Tag": master_prop.get('Tag', None),
+                        "Lights": int(master_prop.get('Parm2', 0)),
+                        "DimmingCurveName": master_prop.get('DimmingCurveName', None),
+                        "Segments": int(master_prop.get('Parm1', 0)),
+                        "Opacity": float(master_prop.get('Opacity', 0.0)),
+                        "MasterDimmable": master_prop.get('MasterDimmable', 'false') == 'true',
+                        "PreviewBulbSize": float(master_prop.get('PreviewBulbSize', 0.0)),
+                        "BulbShape": master_prop.get('BulbShape', None),
+                        "CustomBulbColor": master_prop.get('CustomBulbColor', None),
+                        "StartLocation": master_prop.get('StartLocation', None),
+                        "StringType": master_prop.get('StringType', None),
+                        "TraditionalColors": master_prop.get('TraditionalColors', None),
+                        "TraditionalType": master_prop.get('TraditionalType', None),
+                        "RgbOrder": master_prop.get('RgbOrder', None),
+                        "SeparateIds": master_prop.get('SeparateIds', None),
+                        "EffectBulbSize": float(master_prop.get('EffectBulbSize', 0.0)),
+                        "IndividualChannels": master_prop.get('IndividualChannels', '').strip().lower() == 'true',
+                        "LegacySequenceMethod": master_prop.get('LegacySequenceMethod', None),
                     })
 
-                    # Create subprops for the remaining props
-                    for prop in group:
-                        if prop["id"] != master_prop_id:
-                            sub_props.append({
-                                "SubPropID": prop["id"],
-                                "Name": prop["Name"],
-                                "LORComment": f"{LORComment} - {prop['StartChannel']}",
-                                "MasterPropId": master_prop_id,
-                                "PreviewId": prop_preview_id,
-                                "UID": prop.get("UID"),
-                                "Channel": prop.get("StartChannel"),
-                                "Color": prop.get("Color"),
-                            })
+                    # Add remaining props in the group to the subProps table
+                    for prop in group_sorted[1:]:
+                        # Parse grid parts for the subprop
+                        grid_parts = prop.get('ChannelGrid', '').split(',')
+                        start_channel = grid_parts[2] if len(grid_parts) > 2 else None
+                        color = grid_parts[5] if len(grid_parts) > 5 else None
+
+                        sub_props.append({
+                            "SubPropID": prop['PropID'],
+                            "Name": prop['Name'],
+                            "LORComment": comment,
+                            "MasterPropId": master_prop_id,
+                            "PreviewId": prop.get('PreviewId', None),
+                            "UID": prop.get('UID'),
+                            "Channel": start_channel,
+                            "Color": color,
+                        })
+
+                        # Debugging: Verify subprop
+                        print(f"Subprop for LORComment '{comment}': {prop['Name']} (StartChannel={start_channel})")
+
 
 
             # 3. LOR Props with Multiple Grids

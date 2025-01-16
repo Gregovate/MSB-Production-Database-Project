@@ -11,6 +11,7 @@ The logic you've outlined for processing the LOR preview files provides a compre
 ---
 
 ### **Processing Logic Summary**
+The every prop in the xml file is in a separate record. Every record has the Comment field that we change to LORComment. Some props will have a single ChannelGrid. Also there are prop records in the same xml file that have multiple ChannelGrids separated by ; also with a Comment field changed to LORComment. The ChannelGrid contains the Network, UID, StartChannel, EndChannel, Unknown, Color. These fields are critical to extract.  Every record with the same LORComment needs to be grouped before processing. The "Who Panel x" represents one of these records. The records are not in order.
 
 1. **SubProps Definition**:
    - Process props with:
