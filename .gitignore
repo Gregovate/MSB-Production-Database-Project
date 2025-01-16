@@ -1,0 +1,4 @@
+*.db
+*.pyc
+__pycache__/
+*.xlsx

@@ -1,0 +1,6 @@
+for elem in root.iter():
+    if elem.tag == "PropClass":
+        attributes = elem.attrib
+        
+        # Log all attributes to inspect available fields
+        print(f"PropClass Attributes: {attributes}")
