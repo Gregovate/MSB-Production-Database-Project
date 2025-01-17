@@ -1,3 +1,13 @@
+Outline actions needed to process xml file to extract prop data and format prop file to provide a one to one link to the display table. We also need to build Create separate tables based on processing rules.
+
+all required data is in the preview file.
+
+need to extract PropClass records and split data into separate tables based on rules.
+
+
+
+we also need to retain UID and channel information in the xml file for instructions dor display setup. There could be one prop per display. There could be props with subprops in a display. there can be shared props on one display. there could be shared props that are on different displays. There can be multiple props on one display, there can be  prop file. since one display can contain multiple props
+
 **Previews Table**
         CREATE TABLE previews 
             id TEXT PRIMARY KEY,
@@ -77,7 +87,7 @@
     - `MasterPropId` exists
   - Action:  
     - Separate ChannelGrid fields: Network, UID, Channel, EndChannel, Unknown, Color
-    - These props are subprops and should be placed in the `subprops` table, linked to the `id` prop.
+    - These props are subprops and should be placed in the `subprops` table, linked to the `id` of the prop.
 
   <PropClass id="182b09f0-e5c8-48f8-89bb-577a38f2d3d4" BulbShape="Square" ChannelGrid="Aux I,BB,1,1,0,Green;Aux I,BB,2,2,0,Green;Aux I,BB,3,3,0,Green;Aux I,BB,4,4,0,Green;Aux I,BB,5,5,0,Green;Aux I,BB,6,6,0,Green;Aux I,BB,7,7,0,Green;Aux I,BB,8,8,0,Green" Comment="Spiral Tree Grn" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="512" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="Bottom Left" StringType="Traditional" TraditionalColors="Green" TraditionalType="Channel_per_color" EffectBulbSize="1" Tag="03.01 AC Light Curtain (8 Strands) - Group A" Name="Who Tree Grn 01-08 Group A" Parm1="8" Parm2="100" Parm3="0" Parm4="0"> </PropClass>
 
