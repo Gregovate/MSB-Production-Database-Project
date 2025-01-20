@@ -158,6 +158,13 @@ CREATE TABLE subProps (
         - Insert these props into the `subProps` table.
         - Include all parsed grid parts.
 
+4. **Special Case for Props with Name Containing 'Spare':**
+    - Props with `Name` containing the substring "spare" (case-insensitive):
+        - Insert directly into the `props` table.
+        - Parse the `ChannelGrid` field to extract grid parts (`Network`, `UID`, `StartChannel`, etc.).
+        - Save the parsed grid data in the `props` table.
+        - Skip further processing for these props.
+
 ### Rule for `DeviceType == LOR` with `ChannelGrids` Groups (> 1) Separated by `;`
 1. **Process Props with Multiple `ChannelGrid` Groups:**
     - Parse the `ChannelGrid` field into individual groups separated by `;`.
