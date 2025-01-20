@@ -197,4 +197,13 @@ CREATE TABLE subProps (
    ```
 3. Verify all tables include the expected number of records and fields.
 
+# Remaining Tasks
+1. Determine method to deal with props that are members of multi-channel prop groups with specifiv tags used for programming.
+  - Tag="03.01 AC Light Curtain (8 Strands) - Group A"
+  - Tag="03.09 AC Light Curtain (8 Strands) - Group B
+
+2. Determine methond to deal with prop components making up a larger display
+  - Mega Star
+  - Lollipop trailer
+
 This document reflects the latest changes and ensures all processing rules and database updates are synchronized with the script logic.
