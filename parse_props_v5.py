@@ -334,6 +334,7 @@ def process_lor_props(preview_id, root):
     - Identify the master prop as the prop with the lowest StartChannel among props with the same Comment.
     - Insert the master prop into the props table, including its grid parts.
     - Insert remaining props into the subProps table, linking them to the master prop and including their grid parts.
+    - If the Name contains 'spare', place the prop directly into the props table and save grid parts.
     """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -402,6 +403,44 @@ def process_lor_props(preview_id, root):
             else:
                 prop_data["GridData"] = []
                 prop_data["StartChannel"] = None
+
+            # Special case: If Name contains 'spare', place directly into props table
+            if "spare" in prop_data["Name"].lower():
+                grid = prop_data["GridData"][0] if prop_data["GridData"] else {
+                    "Network": None,
+                    "UID": None,
+                    "StartChannel": None,
+                    "EndChannel": None,
+                    "Unknown": None,
+                    "Color": None
+                }
+                cursor.execute("""
+                INSERT OR REPLACE INTO props (
+                    PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                    CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                    PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
+                    Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    prop_data["PropID"], prop_data["Name"], prop_data["LORComment"], prop_data["DeviceType"],
+                    prop_data["BulbShape"], prop_data["DimmingCurveName"], prop_data["MaxChannels"],
+                    prop_data["CustomBulbColor"], prop_data["IndividualChannels"], prop_data["LegacySequenceMethod"],
+                    prop_data["Opacity"], prop_data["MasterDimmable"], prop_data["PreviewBulbSize"],
+                    prop_data["SeparateIds"], prop_data["StartLocation"], prop_data["StringType"],
+                    prop_data["TraditionalColors"], prop_data["TraditionalType"], prop_data["EffectBulbSize"],
+                    prop_data["Tag"], prop_data["Parm1"], prop_data["Parm2"], prop_data["Parm3"], prop_data["Parm4"],
+                    prop_data["Parm5"], prop_data["Parm6"], prop_data["Parm7"], prop_data["Parm8"],
+                    prop_data["Lights"], grid["Network"], grid["UID"], grid["StartChannel"], grid["EndChannel"],
+                    grid["Unknown"], grid["Color"], prop_data["PreviewId"]
+                ))
+                if DEBUG:
+                    print(f"[DEBUG] Inserted Spare Prop: {prop_data['PropID']} with Grid Parts")
+                continue  # Skip further processing for this prop
+
+            # Add to grouped props for further processing
+
+
 
             if prop_data["LORComment"] not in props_grouped_by_comment:
                 props_grouped_by_comment[prop_data["LORComment"]] = []
