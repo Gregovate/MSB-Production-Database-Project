@@ -1,93 +1,39 @@
 # Project Title
+The logic outlined in this project is for processing the LOR v6.3.10 Pro preview file and provides a comprehensive approach to organizing props, subprops, and displays required to manage a large light show utilizing the Light O Rama sequencing software. 
 
-A brief description of what this project does and who it's for.
+# Objective
+Outline actions needed to process *.lorprev files in a specified folder to extract xml keys found for PreviewClass and PropClass. Parse and data and format prop file to provide the structure necessay to create a one to one link to the between the props table and external displays table. This will be accpomplished by utilizing the comment field to assign the display name. We will create separate tables using the keys found in previewsClass and propClass records. All requisite data is in the preview file. 
+
+# Goal
+Create props table that contains one record per display. Use the subprops and dmx channel tables to store the information needed to setup the displays. This is needed to manage the physical displays we design, build, inventory, and set up the light show. 
+
+# Background Information:
+The propClass is designed to sequence a light show but is not friendly to manage the inventory and documentation to set it up. The propClass is very consistant and provides all the information needed by utilizing the comment field to set the key for displays. There could be one prop per display. There could be props with subprops in a display. there can be shared props on one display. there could be shared props that are on different displays. There can be multiple props on one display, there can be  prop file. since one display can contain multiple props
+
+# Definitions:
+  - Preview: A collection of props in a designated stage. This can be a collection of props sequenced to music or a background animation.
+  - LOR: Abbreviation for Light O Rama
+  - Stage: An area set to a theme containing displays that are either background animations or displays sequenced to music.
+  - Prop: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical objext.
+  - Subprop: A prop that responds to the same commands as a prop. This must be expicitly assigned in the preview.
+  - Display: A display as a single physical object that we design, build, setup, and inventory. A display can be a single prop or can be a combination of props and/or subprops.
+  - UID: The hexadecimal number assigned to a controller
+  - id: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure 
+
 
 ## Features
 
-- Light O Rama (LOR) integration for large light show management
-- Dynamic updates and customization
-The logic you've outlined for processing the LOR preview files provides a comprehensive approach to organizing props, subprops, and displays. Below is a breakdown and clarification of your current processing logic, as well as the outstanding issue with #2:
+- Light O Rama (LOR) v6.3.10 Pro integration for large light show management
+- Dynamic updates and customization using exported *.lorprev files 
+- Reads the prop data and links to a table containing Display information using a sqlite database
+- The datafiles are untouched as not to affect the sequencing software.
+
 
 ---
 
 ### **Processing Logic Summary**
-The every prop in the xml file is in a separate record. Every record has the Comment field that we change to LORComment. Some props will have a single ChannelGrid. Also there are prop records in the same xml file that have multiple ChannelGrids separated by ; also with a Comment field changed to LORComment. The ChannelGrid contains the Network, UID, StartChannel, EndChannel, Unknown, Color. These fields are critical to extract.  Every record with the same LORComment needs to be grouped before processing. The "Who Panel x" represents one of these records. The records are not in order.
 
-1. **SubProps Definition**:
-   - Process props with:
-     - Same `LORComment`
-     - `devicetype == LOR`
-     - Single channel grid group
-     - `masterpropID` exists
-   - Action:
-     - These props are subprops and should be placed in the `subprops` table, linked to the `masterID` prop.
 
-2. **Grouped Props with Repeating `LORComment`** (**Current Issue**):
-   - Process props with:
-     - Repeating `LORComment`
-     - `devicetype == LOR`
-     - Single channel grid
-     - No `masterpropID`
-   - Action:
-     - Group props by `LORComment`.
-     - Create a derived master prop using the lowest channel number in the group.
-     - Place the master prop in the `props` table.
-     - Move remaining props in the group to the `subprops` table, linking them to the master prop.
-
-3. **Multi-Channel Props**:
-   - Process props with:
-     - Single `LORComment`
-     - `devicetype == LOR`
-     - More than one channel grid
-     - No `masterpropID`
-   - Action:
-     - Lowest channel becomes the master prop (remains in the `props` table).
-     - Assign display names to remaining props for display purposes.
-     - Handle complex display types (e.g., Light Curtain motion tags).
-
-4. **DMX Props with Multi-Channel Groups**:
-   - Process props with:
-     - Same `LORComment`
-     - `devicetype == DMX`
-     - Multiple channel groups
-     - No `masterpropID`
-   - Action:
-     - Lowest channel number prop is placed in the `props` table.
-     - Create a link using the `propID` and move remaining data to the `dmxchannels` table.
-
-5. **Non-LOR Controlled Props**:
-   - Process props with:
-     - `devicetype == none`
-   - Action:
-     - Store directly in the `props` table.
-
----
-
-### **Current Issue with #2**
-- **Problem**: For props with repeating `LORComment` and no `masterpropID`, only one display ends up in the `props` table, and the rest are not correctly moved to the `subprops` table.
-- **Examples**:
-  - Singing Trees: 8 displays (4 version 1, 4 version 2). Each group of face props with the same `LORComment` needs to be grouped as one display.
-  - Who Panel: Multiple props on the same panel comprise one display, but each plug must be accounted for setup.
-
----
-
-### **Recommendations**
-1. **Ensure Correct Grouping and Relocation**:
-   - Use a query or data processing step to:
-     - Identify groups by `LORComment`.
-     - Determine the lowest channel as the master prop.
-     - Explicitly move remaining props in the group to the `subprops` table, ensuring links are created.
-
-2. **Data Validation**:
-   - Validate after processing:
-     - All props with the same `LORComment` are either part of the master prop or in the `subprops` table.
-     - No duplicate entries or missed groupings.
-
-3. **Testing with Edge Cases**:
-   - Use provided examples like the Singing Trees and Who Panel to validate that the logic is working as expected.
-   - Extend tests to handle scenarios like mismatched displays in previews (e.g., Church RGB preview).
-
----
 
 ### **Additional Notes**
 - **Fancy Queries or Joins**:

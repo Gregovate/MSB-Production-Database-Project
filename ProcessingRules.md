@@ -1,23 +1,5 @@
 # Processing Rule Document for LOR Props Parsing
-
-# Objective
-Outline actions needed to process *.lorprev files in a specified folder to extract xml keys found for PreviewClass and PropClass. Parse and data and format prop file to provide the structure necessay to create a one to one link to the between the props table and external displays table. This will be accpomplished by utilizing the comment field to assign the display name. we will create separate tables using the keys found in previewsClass and propClass records. All requisite data is in the preview file. 
-
-# Goal
-Create props table that contains one record per display. Use the subprops and dmx channel tables to store the information needed to setup the displays. This is needed to manage the physical displays we design, build, inventory, and setthe light show. 
-
-# Background Information:
-The propClass is designed to sequence a light show but is not friendly to manage the inventory and documentation to set it up. The propClass is very consistant and provides all the information needed by utilizing the comment field to set the key for displays. There could be one prop per display. There could be props with subprops in a display. there can be shared props on one display. there could be shared props that are on different displays. There can be multiple props on one display, there can be  prop file. since one display can contain multiple props
-
-# Definitions:
-  - Preview: A collection of props in a designated stage. This can be a collection of props sequenced to music or a background animation.
-  - LOR: Abbreviation for Light O Rama
-  - Stage: An area set to a theme containing displays that are either background animations or displays sequenced to music.
-  - Prop: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical objext.
-  - Subprop: A prop that responds to the same commands as a prop. This must be expicitly assigned in the preview.
-  - Display: A display as a single physical object that we design, build, setup, and inventory. A display can be a single prop or can be a combination of props and/or subprops.
-  - UID: The hexadecimal number assigned to a controller
-  - id: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure 
+The every prop in the xml file is in a separate record. Every record has the Comment field that we change to LORComment. Some props will have a single ChannelGrid. Also there are prop records in the same xml file that have multiple ChannelGrids separated by ; also with a Comment field changed to LORComment. The ChannelGrid contains the Network, UID, StartChannel, EndChannel, Unknown, Color. These fields are critical to extract.  Every record with the same LORComment needs to be grouped before processing. 
 
 ## Database Schema
 ### Previews Table
@@ -205,5 +187,9 @@ CREATE TABLE subProps (
 2. Determine methond to deal with prop components making up a larger display
   - Mega Star
   - Lollipop trailer
+
+3. Create link to Displays Table containing remaining attibutes needed to manage the show
+
+# Future Enhancements
 
 This document reflects the latest changes and ensures all processing rules and database updates are synchronized with the script logic.

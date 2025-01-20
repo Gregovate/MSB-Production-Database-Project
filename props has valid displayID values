@@ -1,1 +1,0 @@
-SELECT * FROM props WHERE displayID IS NOT NULL;

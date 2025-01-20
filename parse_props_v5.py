@@ -1,3 +1,8 @@
+# Initial Release: 2022-01-20 V0.1.0
+# Written by: Greg Liebig, Engineering Innovations, LLC.
+# Description: This script parses LOR .lorprev files and extracts prop data into a SQLite database.
+
+
 import os
 import xml.etree.ElementTree as ET
 import sqlite3
