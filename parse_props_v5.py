@@ -4,6 +4,7 @@ import sqlite3
 from collections import defaultdict
 import uuid
 
+DEBUG = False  # Global debug flag
 DB_FILE = "lor_workflow_v5.db"
 
 def setup_database():
@@ -191,7 +192,8 @@ def insert_preview_data(preview_data):
 
     conn.commit()
     conn.close()
-    print(f"[DEBUG] Inserted Preview into database: {preview_data}")
+    if DEBUG:
+        print(f"[DEBUG] Inserted Preview into database: {preview_data}")
 
 def process_none_props(preview_id, root):
     """
@@ -231,6 +233,7 @@ def process_none_props(preview_id, root):
             prop_data["Lights"],
             preview_id
         ))
+    if DEBUG:        
         print(f"[DEBUG] Inserted Prop into database: {prop_data}")
 
     conn.commit()
@@ -295,7 +298,8 @@ def process_dmx_props(preview_id, root):
                 string_type, traditional_colors, traditional_type, effect_bulb_size, tag,
                 parm1, parm2, parm3, parm4, parm5, parm6, parm7, parm8, lights, preview_id
             ))
-            print(f"[DEBUG] Inserted Master Prop: {master_prop_id}")
+            if DEBUG:
+                print(f"[DEBUG] Inserted Master Prop: {master_prop_id}")
 
             # Process ChannelGrid for dmxChannels table
             if channel_grid:
@@ -317,7 +321,8 @@ def process_dmx_props(preview_id, root):
                         """, (
                             master_prop_id, network, start_universe, start_channel, end_channel, unknown, preview_id
                         ))
-                        print(f"[DEBUG] Inserted DMX Channel: Network={network}, Universe={start_universe}, Start={start_channel}, End={end_channel}")
+                        if DEBUG:
+                            print(f"[DEBUG] Inserted DMX Channel: Network={network}, Universe={start_universe}, Start={start_channel}, End={end_channel}")
 
     conn.commit()
     conn.close()
@@ -440,7 +445,8 @@ def process_lor_props(preview_id, root):
             master_grid["EndChannel"], master_grid["Unknown"], master_grid["Color"], master_prop["PreviewId"]
         ))
 
-        print(f"[DEBUG] Inserted Master Prop: {master_prop['PropID']} with Grid Parts")
+        if DEBUG:
+            print(f"[DEBUG] Inserted Master Prop: {master_prop['PropID']} with Grid Parts")
 
         # Process remaining props as subprops
         for subprop in props:
@@ -466,10 +472,13 @@ def process_lor_props(preview_id, root):
                         subprop["Parm3"], subprop["Parm4"], subprop["Parm5"], subprop["Parm6"], subprop["Parm7"],
                         subprop["Parm8"], subprop["Lights"], subprop["PreviewId"]
                     ))
-                    print(f"[DEBUG] Inserted SubProp: {subprop['PropID']} with MasterPropID: {master_prop['PropID']} and GridData: {grid}")
+                    if DEBUG:
+                        print(f"[DEBUG] Inserted SubProp: {subprop['PropID']} with MasterPropID: {master_prop['PropID']} and GridData: {grid}")
 
     conn.commit()
     conn.close()
+
+
 
 def process_lor_multiple_channel_grids(preview_id, root):
     """
@@ -490,7 +499,9 @@ def process_lor_multiple_channel_grids(preview_id, root):
             LORComment = prop.get("Comment")
             channel_grid = prop.get("ChannelGrid")
             grid_groups = channel_grid.split(";")
-            print(f"[DEBUG] Processing Master Prop: {master_prop_id} with ChannelGrid Groups: {len(grid_groups)}")
+
+            if DEBUG:
+                print(f"[DEBUG] Processing Master Prop: {master_prop_id} with ChannelGrid Groups: {len(grid_groups)}")
 
             # Insert master prop into props table
             cursor.execute("""
@@ -510,7 +521,8 @@ def process_lor_multiple_channel_grids(preview_id, root):
                 prop.get("Parm3"), prop.get("Parm4"), prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"),
                 prop.get("Parm8"), int(prop.get("Parm2") or 0), preview_id
             ))
-            print(f"[DEBUG] Inserted Master Prop: {master_prop_id}")
+            if DEBUG:
+                print(f"[DEBUG] Inserted Master Prop: {master_prop_id}")
 
             # Process ChannelGrid Groups
             for grid in grid_groups:
@@ -518,7 +530,13 @@ def process_lor_multiple_channel_grids(preview_id, root):
                 start_channel = int(grid_parts[2]) if len(grid_parts) > 2 and grid_parts[2].isdigit() else 0
                 subprop_id_suffix = f"{start_channel:02d}"  # Format StartChannel as two digits
                 subprop_id = f"{master_prop_id}-{subprop_id_suffix}"
-                subprop_name = f"{name} - CH {start_channel:02d}"
+
+                # Extract the first part of LORComment
+                lor_comment_first_part = LORComment.split(" ")[0] if LORComment else ""
+
+                # Subprop Name: 1st part of LOR Comment, Color, UID, StartChannel padded to 2 places
+                subprop_name = f"{lor_comment_first_part} {grid_parts[5] if len(grid_parts) > 5 else ''} " \
+                               f"{grid_parts[1] if len(grid_parts) > 1 else ''} CH{start_channel:02d}".strip()
 
                 subprop_data = {
                     "Network": grid_parts[0] if len(grid_parts) > 0 else None,
@@ -551,10 +569,12 @@ def process_lor_multiple_channel_grids(preview_id, root):
                     prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"), prop.get("Parm8"),
                     int(prop.get("Parm2") or 0), preview_id
                 ))
-                print(f"[DEBUG] Inserted SubProp: {subprop_id} for MasterProp: {master_prop_id}")
+                if DEBUG:
+                    print(f"[DEBUG] Inserted SubProp: {subprop_id} with Name: {subprop_name}")
 
     conn.commit()
     conn.close()
+
 
 
 
