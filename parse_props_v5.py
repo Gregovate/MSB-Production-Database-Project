@@ -471,6 +471,91 @@ def process_lor_props(preview_id, root):
     conn.commit()
     conn.close()
 
+def process_lor_multiple_channel_grids(preview_id, root):
+    """
+    Process props with DeviceType == LOR and multiple ChannelGrid groups.
+    - Retains the original master prop in the props table.
+    - Parses each ChannelGrid group and creates subprops.
+    - Inserts subprops into the subProps table with grid data and links to the master prop.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    for prop in root.findall(".//PropClass"):
+        device_type = prop.get("DeviceType")
+        master_prop_id = prop.get("id")
+        if device_type == "LOR" and prop.get("MasterPropId", "") == "" and ";" in prop.get("ChannelGrid", ""):
+            # Master Prop
+            name = prop.get("Name")
+            LORComment = prop.get("Comment")
+            channel_grid = prop.get("ChannelGrid")
+            grid_groups = channel_grid.split(";")
+            print(f"[DEBUG] Processing Master Prop: {master_prop_id} with ChannelGrid Groups: {len(grid_groups)}")
+
+            # Insert master prop into props table
+            cursor.execute("""
+            INSERT OR REPLACE INTO props (
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                master_prop_id, name, LORComment, device_type, prop.get("BulbShape"), prop.get("DimmingCurveName"),
+                prop.get("MaxChannels"), prop.get("CustomBulbColor"), prop.get("IndividualChannels"),
+                prop.get("LegacySequenceMethod"), prop.get("Opacity"), prop.get("MasterDimmable"),
+                prop.get("PreviewBulbSize"), prop.get("SeparateIds"), prop.get("StartLocation"),
+                prop.get("StringType"), prop.get("TraditionalColors"), prop.get("TraditionalType"),
+                prop.get("EffectBulbSize"), prop.get("Tag"), prop.get("Parm1"), prop.get("Parm2"),
+                prop.get("Parm3"), prop.get("Parm4"), prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"),
+                prop.get("Parm8"), int(prop.get("Parm2") or 0), preview_id
+            ))
+            print(f"[DEBUG] Inserted Master Prop: {master_prop_id}")
+
+            # Process ChannelGrid Groups
+            for grid in grid_groups:
+                grid_parts = grid.split(",")
+                start_channel = int(grid_parts[2]) if len(grid_parts) > 2 and grid_parts[2].isdigit() else 0
+                subprop_id_suffix = f"{start_channel:02d}"  # Format StartChannel as two digits
+                subprop_id = f"{master_prop_id}-{subprop_id_suffix}"
+                subprop_name = f"{name} - CH {start_channel:02d}"
+
+                subprop_data = {
+                    "Network": grid_parts[0] if len(grid_parts) > 0 else None,
+                    "UID": grid_parts[1] if len(grid_parts) > 1 else None,
+                    "StartChannel": start_channel,
+                    "EndChannel": int(grid_parts[3]) if len(grid_parts) > 3 and grid_parts[3].isdigit() else None,
+                    "Unknown": grid_parts[4] if len(grid_parts) > 4 else None,
+                    "Color": grid_parts[5] if len(grid_parts) > 5 else None
+                }
+
+                # Insert subprop into the subProps table
+                cursor.execute("""
+                INSERT OR REPLACE INTO subProps (
+                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                    EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                    LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                    MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    subprop_id, subprop_name, LORComment, device_type, prop.get("BulbShape"),
+                    subprop_data["Network"], subprop_data["UID"], subprop_data["StartChannel"],
+                    subprop_data["EndChannel"], subprop_data["Unknown"], subprop_data["Color"],
+                    prop.get("CustomBulbColor"), prop.get("DimmingCurveName"), prop.get("IndividualChannels"),
+                    prop.get("LegacySequenceMethod"), prop.get("MaxChannels"), prop.get("Opacity"),
+                    prop.get("MasterDimmable"), prop.get("PreviewBulbSize"), None, master_prop_id,
+                    prop.get("SeparateIds"), prop.get("StartLocation"), prop.get("StringType"),
+                    prop.get("TraditionalColors"), prop.get("TraditionalType"), prop.get("EffectBulbSize"),
+                    prop.get("Tag"), prop.get("Parm1"), prop.get("Parm2"), prop.get("Parm3"), prop.get("Parm4"),
+                    prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"), prop.get("Parm8"),
+                    int(prop.get("Parm2") or 0), preview_id
+                ))
+                print(f"[DEBUG] Inserted SubProp: {subprop_id} for MasterProp: {master_prop_id}")
+
+    conn.commit()
+    conn.close()
+
 
 
 
@@ -493,6 +578,7 @@ def process_file(file_path):
         process_none_props(preview_data["id"], root)
         process_dmx_props(preview_data["id"], root)
         process_lor_props(preview_data["id"], root)
+        process_lor_multiple_channel_grids(preview_data["id"], root)
     else:
         print(f"[WARNING] No <PreviewClass> found in {file_path}")
 
