@@ -1,4 +1,4 @@
-# Project Title
+# MSB Production Database
 The logic outlined in this project is for processing the LOR v6.3.10 Pro preview file and provides a comprehensive approach to organizing props, subprops, and displays required to manage a large light show utilizing the Light O Rama sequencing software. 
 
 # Objective
