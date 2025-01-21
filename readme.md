@@ -32,8 +32,7 @@ The propClass is designed to sequence a light show but is not friendly to manage
 ---
 
 ### **Processing Logic Summary**
-
-
+- [Procesing Rules](ProcessingRules.md)
 
 ### **Additional Notes**
 - **Fancy Queries or Joins**:
