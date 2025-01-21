@@ -10,7 +10,7 @@ from collections import defaultdict
 import uuid
 
 DEBUG = False  # Global debug flag
-DB_FILE = "lor_workflow_v5.db"
+DB_FILE = "G:\Shared drives\MSB Database\database\lor_output_v5.db"
 
 def setup_database():
     """Initialize the database schema, dropping tables if they already exist."""
