@@ -8,15 +8,15 @@ Outline actions needed to process *.lorprev files in a specified folder to extra
 Create props table that contains one record per display. Use the subprops and dmx channel tables to store the information needed to setup the displays. This is needed to manage the physical displays we design, build, inventory, and set up the light show. 
 
 # Background Information:
-The propClass is designed to sequence a light show but is not friendly to manage the inventory and documentation to set it up. The propClass is very consistant and provides all the information needed by utilizing the comment field to set the key for displays. There could be one prop per display. There could be props with subprops in a display. there can be shared props on one display. there could be shared props that are on different displays. There can be multiple props on one display, there can be  prop file. since one display can contain multiple props
+The propClass is designed to sequence a light show but is not friendly to manage the inventory and documentation to set it up. The propClass is very consistent and provides all the information needed by utilizing the comment field to set the key for displays. There could be one prop per display. There could be props with SubProps in a display. there can be shared props on one display. there could be shared props that are on different displays. There can be multiple props on one display, there can be  prop file. since one display can contain multiple props
 
 # Definitions:
   - Preview: A collection of props in a designated stage. This can be a collection of props sequenced to music or a background animation.
   - LOR: Abbreviation for Light O Rama
   - Stage: An area set to a theme containing displays that are either background animations or displays sequenced to music.
-  - Prop: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical objext.
-  - Subprop: A prop that responds to the same commands as a prop. This must be expicitly assigned in the preview.
-  - Display: A display as a single physical object that we design, build, setup, and inventory. A display can be a single prop or can be a combination of props and/or subprops.
+  - Prop: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical object.
+  - SubProp: A prop that responds to the same commands as a prop. This must be explicitly assigned in the preview.
+  - Display: A display as a single physical object that we design, build, setup, and inventory. A display can be a single prop or can be a combination of props and/or SubProp.
   - UID: The hexadecimal number assigned to a controller
   - id: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure 
 
@@ -62,13 +62,13 @@ Let me know if you'd like me to refine the explanation further or help troublesh
    
 ## Usage
 
-  - Create a folder to store the exported previews you want to include for processing. If you want to include all previews, just use the ImportExport folder under your Light O Rama installation.
+  1. Create a folder to store the exported previews you want to include for processing. If you want to include all previews, just use the ImportExport folder under your Light O Rama installation.
 
-  - Using the Light O Rama Sequencing Software, Navigate to the Preview Panel and Right Click in the preview or previews you want to include in the database and save them to the folder of your choice.
+  2. Using the Light O Rama Sequencing Software, Navigate to the Preview Panel and Right Click in the preview or previews you want to include in the database and save them to the folder of your choice.
 
-  - Open a Terminal Window and run the parse_props_vx.py script. When prompted, enter the path to the folder containing the preview(s) you want to process.
+  3. Open a Terminal Window and run the parse_props_vx.py script. When prompted, enter the path to the folder containing the preview(s) you want to process.
 
-  - The location for the database is currently hard coded at the top of the script. This can be changed to put the database in the location of your choosing.
+  4. The location for the database is currently hard coded at the top of the script. This can be changed to put the database in the location of your choosing.
 
 
 ## Contributing
