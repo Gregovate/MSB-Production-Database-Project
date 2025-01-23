@@ -57,22 +57,19 @@ Let me know if you'd like me to refine the explanation further or help troublesh
    ```
 
 3. Install dependencies:
-   ```bash
-   npm install
-   # or
-   pip install -r requirements.txt
-   ```
-
+   - Python is required on required on the machine you are running this script.
+   - SQLite browser required to open the database created.
+   
 ## Usage
 
-Explain how to use the project with code examples:
+  - Create a folder to store the exported previews you want to include for processing. If you want to include all previews, just use the ImportExport folder under your Light O Rama installation.
 
-```bash
-# Run the project
-npm start
-# or
-python main.py
-```
+  - Using the Light O Rama Sequencing Software, Navigate to the Preview Panel and Right Click in the preview or previews you want to include in the database and save them to the folder of your choice.
+
+  - Open a Terminal Window and run the parse_props_vx.py script. When prompted, enter the path to the folder containing the preview(s) you want to process.
+
+  - The location for the database is currently hard coded at the top of the script. This can be changed to put the database in the location of your choosing.
+
 
 ## Contributing
 
