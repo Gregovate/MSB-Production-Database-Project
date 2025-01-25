@@ -144,6 +144,20 @@ def setup_database():
     )
     """)
 
+    # Create DMX Channels Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS duplicateProps (
+        PropID TEXT PRIMARY KEY,
+        Name TEXT,
+        LORComment TEXT,
+        DeviceType TEXT,
+        PreviewId TEXT,
+        Reason TEXT
+    )
+    """)
+
+
+
     conn.commit()
     conn.close()
     print("[DEBUG] Database setup complete, all tables created.")
@@ -249,6 +263,36 @@ def insert_dmx_channels(dmx_channels):
     conn.commit()
     conn.close()
 
+# Function to check for duplicate PropID and log it to the duplicateProps table if found
+def handle_duplicate_prop(cursor, prop_id, name, lor_comment, device_type, preview_id, reason):
+    """
+    Check for duplicate PropID and log it to the duplicateProps table if found.
+
+    Args:
+        cursor (sqlite3.Cursor): Database cursor.
+        prop_id (str): The PropID being checked.
+        name (str): The Name of the prop.
+        lor_comment (str): The LORComment of the prop.
+        device_type (str): The DeviceType of the prop.
+        preview_id (str): The PreviewId of the prop.
+        reason (str): The reason for logging as duplicate.
+
+    Returns:
+        bool: True if duplicate, False otherwise.
+    """
+    # Check if PropID already exists in the props table
+    cursor.execute("SELECT COUNT(*) FROM props WHERE PropID = ?", (prop_id,))
+    count = cursor.fetchone()[0]
+
+    if count > 0:
+        # Log the duplicate in duplicateProps table
+        cursor.execute("""
+        INSERT OR REPLACE INTO duplicateProps (PropID, Name, LORComment, DeviceType, PreviewId, Reason)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (prop_id, name, lor_comment, device_type, preview_id, reason))
+        print(f"[INFO] Logged duplicate PropID: {prop_id} (Reason: {reason})")
+        return True  # Duplicate detected
+    return False  # No duplicate
 
 
 
