@@ -23,6 +23,7 @@ def setup_database():
     cursor.execute("DROP TABLE IF EXISTS props")
     cursor.execute("DROP TABLE IF EXISTS subProps")
     cursor.execute("DROP TABLE IF EXISTS dmxChannels")
+    cursor.execute("DROP TABLE IF EXISTS duplicateProps")
 
     # Create Previews Table
     cursor.execute("""
