@@ -585,15 +585,6 @@ def process_lor_multiple_channel_grids(preview_id, root):
     conn.commit()
     conn.close()
 
-
-
-
-
-
-
-
-
-
 def process_file(file_path):
     """Process a single .lorprev file."""
     print(f"[DEBUG] Processing file: {file_path}")
@@ -639,7 +630,7 @@ def main():
 
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
-    
+
     print("Processing complete. Check the database.")
 
 # === Wiring views for V6 (map + sorted) GAL 25-08-23 ===

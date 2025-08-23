@@ -1,4 +1,6 @@
 # DEBUG Guide – MSB Production Database Project
+## Project TODOs
+- [Light Curtain Special-Case](./TODO_LightCurtain.md) — scope, plan, acceptance criteria, and audit queries.
 
 ---
 
