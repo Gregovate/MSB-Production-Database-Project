@@ -10,7 +10,7 @@ Create props table that contains one record per display. Use the subprops and dm
 
 ## Developer Quick Links
 
-- [DEBUG Guide](./DEBUG.md) — step-by-step instructions for running the parsers in VS Code,
+- [DEBUG Guide](./debug.md) — step-by-step instructions for running the parsers in VS Code,
   required Python setup, **previews folder location**, and troubleshooting tips.
 
 ### Previews Location (Team Standard)
