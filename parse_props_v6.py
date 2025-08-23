@@ -636,7 +636,104 @@ def main():
 
     # Process all files in the folder
     process_folder(folder_path)
+
+    # ✅ Build the wiring views in the SAME DB file the parser just wrote
+    create_wiring_views_v6(DB_FILE)
+    
     print("Processing complete. Check the database.")
+
+# === Wiring views for V6 (map + sorted) GAL 25-08-23 ===
+def create_wiring_views_v6(db_file: str):
+    import sqlite3
+
+    ddl = """
+    DROP VIEW IF EXISTS preview_wiring_map_v6;
+    CREATE VIEW preview_wiring_map_v6 AS
+        -- Master props (single-grid legs on props)
+        SELECT
+            pv.Name             AS PreviewName,
+            TRIM(p.LORComment)  AS DisplayName,   -- LOR Comment (Display)
+            p.Name              AS LORName,       -- LOR Name
+            p.Network           AS Network,
+            p.UID               AS Controller,
+            p.StartChannel      AS StartChannel,
+            p.EndChannel        AS EndChannel,
+            p.DeviceType        AS DeviceType,
+            'PROP'              AS Source,
+            p.Tag               AS LORTag
+        FROM props p
+        JOIN previews pv ON pv.id = p.PreviewId
+        WHERE p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
+
+        UNION ALL
+        -- Materialized multi-grid legs + LOR cross-reuse (subProps)
+        -- If a subProp comment is blank, fall back to the master's comment
+        SELECT
+            pv.Name,
+            TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)) AS DisplayName,
+            sp.Name,
+            sp.Network,
+            sp.UID,
+            sp.StartChannel,
+            sp.EndChannel,
+            COALESCE(sp.DeviceType,'LOR') AS DeviceType,
+            'SUBPROP' AS Source,
+            sp.Tag
+        FROM subProps sp
+        JOIN props p  ON p.PropID = sp.MasterPropId
+        JOIN previews pv ON pv.id = sp.PreviewId
+
+        UNION ALL
+        -- DMX universes (controller shown as Universe)
+        SELECT
+            pv.Name,
+            TRIM(p.LORComment),
+            p.Name,
+            dc.Network,
+            CAST(dc.StartUniverse AS TEXT),
+            dc.StartChannel,
+            dc.EndChannel,
+            'DMX',
+            'DMX',
+            p.Tag
+        FROM dmxChannels dc
+        JOIN props p  ON p.PropID = dc.PropId
+        JOIN previews pv ON pv.id = p.PreviewId;
+
+    DROP VIEW IF EXISTS preview_wiring_sorted_v6;
+    CREATE VIEW preview_wiring_sorted_v6 AS
+    SELECT
+      PreviewName,
+      DisplayName,
+      LORName,
+      Network,
+      Controller,
+      StartChannel,
+      EndChannel,
+      DeviceType,
+      Source,
+      LORTag
+    FROM preview_wiring_map_v6
+    ORDER BY
+      PreviewName  COLLATE NOCASE ASC,
+      DisplayName  COLLATE NOCASE ASC,
+      Controller   ASC,
+      StartChannel ASC;
+
+    -- Helpful indexes for speed when filtering/sorting
+    CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
+    CREATE INDEX IF NOT EXISTS idx_subprops_preview  ON subProps(PreviewId);
+    CREATE INDEX IF NOT EXISTS idx_dmx_prop          ON dmxChannels(PropId);
+    """
+
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.executescript(ddl)
+        conn.commit()
+        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6.")
+    finally:
+        conn.close()
+
 
 if __name__ == "__main__":
     main()
