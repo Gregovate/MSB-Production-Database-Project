@@ -585,6 +585,11 @@ def process_lor_multiple_channel_grids(preview_id, root):
     conn.commit()
     conn.close()
 
+
+
+
+
+
 def process_file(file_path):
     """Process a single .lorprev file."""
     print(f"[DEBUG] Processing file: {file_path}")
@@ -643,7 +648,8 @@ def create_wiring_views_v6(db_file: str):
         -- Master props (single-grid legs on props)
         SELECT
             pv.Name             AS PreviewName,
-            TRIM(p.LORComment)  AS DisplayName,   -- LOR Comment (Display)
+            -- TRIM(p.LORComment)  AS DisplayName,   -- LOR Comment (Display)
+            REPLACE(TRIM(p.LORComment), ' ', '-')            AS DisplayName,  -- hyphenated
             p.Name              AS LORName,       -- LOR Name
             p.Network           AS Network,
             p.UID               AS Controller,
@@ -661,7 +667,8 @@ def create_wiring_views_v6(db_file: str):
         -- If a subProp comment is blank, fall back to the master's comment
         SELECT
             pv.Name,
-            TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)) AS DisplayName,
+            -- TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)) AS DisplayName,
+            REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName, -- hyphenated
             sp.Name,
             sp.Network,
             sp.UID,
@@ -678,7 +685,8 @@ def create_wiring_views_v6(db_file: str):
         -- DMX universes (controller shown as Universe)
         SELECT
             pv.Name,
-            TRIM(p.LORComment),
+            -- TRIM(p.LORComment),
+            REPLACE(TRIM(p.LORComment), ' ', '-')            AS DisplayName,  -- hyphenated
             p.Name,
             dc.Network,
             CAST(dc.StartUniverse AS TEXT),
