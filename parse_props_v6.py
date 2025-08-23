@@ -648,9 +648,8 @@ def create_wiring_views_v6(db_file: str):
         -- Master props (single-grid legs on props)
         SELECT
             pv.Name             AS PreviewName,
-            -- TRIM(p.LORComment)  AS DisplayName,   -- LOR Comment (Display)
-            REPLACE(TRIM(p.LORComment), ' ', '-')            AS DisplayName,  -- hyphenated
-            p.Name              AS LORName,       -- LOR Name
+            REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,   -- dashified comment
+            p.Name              AS LORName,                          -- raw LOR name (unchanged)
             p.Network           AS Network,
             p.UID               AS Controller,
             p.StartChannel      AS StartChannel,
@@ -664,12 +663,11 @@ def create_wiring_views_v6(db_file: str):
 
         UNION ALL
         -- Materialized multi-grid legs + LOR cross-reuse (subProps)
-        -- If a subProp comment is blank, fall back to the master's comment
+        -- Use MASTER LOR name to avoid reconstruction drift in sp.Name
         SELECT
             pv.Name,
-            -- TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)) AS DisplayName,
-            REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName, -- hyphenated
-            sp.Name,
+            REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName,
+            p.Name              AS LORName,   -- <-- was sp.Name; force master LOR Name here
             sp.Network,
             sp.UID,
             sp.StartChannel,
@@ -685,9 +683,8 @@ def create_wiring_views_v6(db_file: str):
         -- DMX universes (controller shown as Universe)
         SELECT
             pv.Name,
-            -- TRIM(p.LORComment),
-            REPLACE(TRIM(p.LORComment), ' ', '-')            AS DisplayName,  -- hyphenated
-            p.Name,
+            REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,
+            p.Name              AS LORName,
             dc.Network,
             CAST(dc.StartUniverse AS TEXT),
             dc.StartChannel,
@@ -702,22 +699,15 @@ def create_wiring_views_v6(db_file: str):
     DROP VIEW IF EXISTS preview_wiring_sorted_v6;
     CREATE VIEW preview_wiring_sorted_v6 AS
     SELECT
-      PreviewName,
-      DisplayName,
-      LORName,
-      Network,
-      Controller,
-      StartChannel,
-      EndChannel,
-      DeviceType,
-      Source,
-      LORTag
+    PreviewName, DisplayName, LORName, Network, Controller,
+    StartChannel, EndChannel, DeviceType, Source, LORTag
     FROM preview_wiring_map_v6
     ORDER BY
-      PreviewName  COLLATE NOCASE ASC,
-      DisplayName  COLLATE NOCASE ASC,
-      Controller   ASC,
-      StartChannel ASC;
+    PreviewName  COLLATE NOCASE ASC,
+    DisplayName  COLLATE NOCASE ASC,
+    Controller   ASC,
+    StartChannel ASC;
+
 
     -- Helpful indexes for speed when filtering/sorting
     CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
