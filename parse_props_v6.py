@@ -9,8 +9,27 @@ import sqlite3
 from collections import defaultdict
 import uuid
 
+# ---- Global flags & defaults (must be defined before functions) ----
 DEBUG = False  # Global debug flag
-DB_FILE = "G:\Shared drives\MSB Database\database\lor_output_v6.db"
+
+DEFAULT_DB_FILE = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
+DEFAULT_PREVIEW_PATH = r"G:\Shared drives\MSB Database\Database Previews"
+
+# Globals that existing functions use; will be set in main()
+DB_FILE = DEFAULT_DB_FILE
+PREVIEW_PATH = DEFAULT_PREVIEW_PATH
+
+def get_path(prompt: str, default_path: str) -> str:
+    """Prompt for a path, using a default if user just hits Enter."""
+    user_input = input(f"{prompt} [{default_path}]: ").strip()
+    if user_input:
+        return os.path.normpath(user_input)
+    return default_path
+
+def dprint(msg: str):
+    """Safe debug print that won't crash if DEBUG isn't bound elsewhere."""
+    if DEBUG:
+        print(msg)
 
 def setup_database():
     """Initialize the database schema, dropping tables if they already exist."""
@@ -621,17 +640,23 @@ def process_folder(folder_path):
 
 def main():
     """Main entry point for the script."""
-    folder_path = input("Enter the folder path containing .lorprev files: ").strip()
+    global DB_FILE, PREVIEW_PATH  # keep other functions happy
 
-    if not os.path.isdir(folder_path):
-        print(f"[ERROR] '{folder_path}' is not a valid directory.")
+    DB_FILE = get_path("Enter database path", DEFAULT_DB_FILE)
+    PREVIEW_PATH = get_path("Enter the folder path containing .lorprev files", DEFAULT_PREVIEW_PATH)
+
+    print(f"[INFO] Using database: {DB_FILE}")
+    print(f"[INFO] Using preview folder: {PREVIEW_PATH}")
+
+    if not os.path.isdir(PREVIEW_PATH):
+        print(f"[ERROR] '{PREVIEW_PATH}' is not a valid directory.")
         return
 
     # Set up the database
     setup_database()
 
     # Process all files in the folder
-    process_folder(folder_path)
+    process_folder(PREVIEW_PATH)
 
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
@@ -643,70 +668,70 @@ def create_wiring_views_v6(db_file: str):
     import sqlite3
 
     ddl = """
-    DROP VIEW IF EXISTS preview_wiring_map_v6;
-    CREATE VIEW preview_wiring_map_v6 AS
-        -- Master props (single-grid legs on props)
-        SELECT
-            pv.Name             AS PreviewName,
-            REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,   -- dashified comment
-            p.Name              AS LORName,                          -- raw LOR name (unchanged)
-            p.Network           AS Network,
-            p.UID               AS Controller,
-            p.StartChannel      AS StartChannel,
-            p.EndChannel        AS EndChannel,
-            p.DeviceType        AS DeviceType,
-            'PROP'              AS Source,
-            p.Tag               AS LORTag
-        FROM props p
-        JOIN previews pv ON pv.id = p.PreviewId
-        WHERE p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
-
-        UNION ALL
-        -- Materialized multi-grid legs + LOR cross-reuse (subProps)
-        -- Use MASTER LOR name to avoid reconstruction drift in sp.Name
-        SELECT
-            pv.Name,
-            REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName,
-            p.Name              AS LORName,   -- <-- was sp.Name; force master LOR Name here
-            sp.Network,
-            sp.UID,
-            sp.StartChannel,
-            sp.EndChannel,
-            COALESCE(sp.DeviceType,'LOR') AS DeviceType,
-            'SUBPROP' AS Source,
-            sp.Tag
-        FROM subProps sp
-        JOIN props p  ON p.PropID = sp.MasterPropId
-        JOIN previews pv ON pv.id = sp.PreviewId
-
-        UNION ALL
-        -- DMX universes (controller shown as Universe)
-        SELECT
-            pv.Name,
-            REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,
-            p.Name              AS LORName,
-            dc.Network,
-            CAST(dc.StartUniverse AS TEXT),
-            dc.StartChannel,
-            dc.EndChannel,
-            'DMX',
-            'DMX',
-            p.Tag
-        FROM dmxChannels dc
-        JOIN props p  ON p.PropID = dc.PropId
-        JOIN previews pv ON pv.id = p.PreviewId;
-
-    DROP VIEW IF EXISTS preview_wiring_sorted_v6;
-    CREATE VIEW preview_wiring_sorted_v6 AS
+DROP VIEW IF EXISTS preview_wiring_map_v6;
+CREATE VIEW preview_wiring_map_v6 AS
+    -- Master props (single-grid legs on props)
     SELECT
-    PreviewName, DisplayName, LORName, Network, Controller,
-    StartChannel, EndChannel, DeviceType, Source, LORTag
-    FROM preview_wiring_map_v6
-    ORDER BY
-    PreviewName  COLLATE NOCASE ASC,
-    DisplayName  COLLATE NOCASE ASC,
-    Controller   ASC,
-    StartChannel ASC;
+        pv.Name             AS PreviewName,
+        REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,   -- dashified comment
+        p.Name              AS LORName,                          -- raw LOR name (unchanged)
+        p.Network           AS Network,
+        p.UID               AS Controller,
+        p.StartChannel      AS StartChannel,
+        p.EndChannel        AS EndChannel,
+        p.DeviceType        AS DeviceType,
+        'PROP'              AS Source,
+        p.Tag               AS LORTag
+    FROM props p
+    JOIN previews pv ON pv.id = p.PreviewId
+    WHERE p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
+
+    UNION ALL
+    -- Materialized multi-grid legs + LOR cross-reuse (subProps)
+    -- Use MASTER LOR name to avoid reconstruction drift in sp.Name
+    SELECT
+        pv.Name,
+        REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName,
+        p.Name              AS LORName,   -- <-- was sp.Name; force master LOR Name here
+        sp.Network,
+        sp.UID,
+        sp.StartChannel,
+        sp.EndChannel,
+        COALESCE(sp.DeviceType,'LOR') AS DeviceType,
+        'SUBPROP' AS Source,
+        sp.Tag
+    FROM subProps sp
+    JOIN props p  ON p.PropID = sp.MasterPropId
+    JOIN previews pv ON pv.id = sp.PreviewId
+
+    UNION ALL
+    -- DMX universes (controller shown as Universe)
+    SELECT
+        pv.Name,
+        REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,
+        p.Name              AS LORName,
+        dc.Network,
+        CAST(dc.StartUniverse AS TEXT),
+        dc.StartChannel,
+        dc.EndChannel,
+        'DMX',
+        'DMX',
+        p.Tag
+    FROM dmxChannels dc
+    JOIN props p  ON p.PropID = dc.PropId
+    JOIN previews pv ON pv.id = p.PreviewId;
+
+DROP VIEW IF EXISTS preview_wiring_sorted_v6;
+CREATE VIEW preview_wiring_sorted_v6 AS
+SELECT
+  PreviewName, DisplayName, LORName, Network, Controller,
+  StartChannel, EndChannel, DeviceType, Source, LORTag
+FROM preview_wiring_map_v6
+ORDER BY
+  PreviewName  COLLATE NOCASE ASC,
+  DisplayName  COLLATE NOCASE ASC,
+  Controller   ASC,
+  StartChannel ASC;
 
 
     -- Helpful indexes for speed when filtering/sorting
