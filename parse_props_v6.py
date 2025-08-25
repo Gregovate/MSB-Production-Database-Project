@@ -472,49 +472,53 @@ def process_dmx_props(preview_id, root):
 def process_lor_props(preview_id, root):
     """
     Process props with DeviceType == LOR (SINGLE ChannelGrid ONLY):
-    - Skip multi-grid props (handled by process_lor_multiple_channel_grids).
-    - Group by LORComment.
-    - Identify the master prop as the prop whose (single) grid has the lowest StartChannel.
-    - Insert the master into the props table, including its grid fields.
-    - Insert remaining props into the subProps table, linking them to the master and including their grid fields.
-    - If Name contains 'spare' (case-insensitive), place that prop directly into props (with its grid fields) and do not group it.
+
+    RULES
+    -----
+    - Skip multi-grid props here (handled by process_lor_multiple_channel_grids).
+    - 'Spare' (Name contains 'spare', case-insensitive) goes directly to props (keep its grid).
+    - If MasterPropId != "" => this XML record is a MANUAL SUBPROP:
+        * Write to subProps using THIS record's own grid (if missing, copy master's grid).
+        * Keep Name (Channel Name) and LORComment (Display Name) EXACTLY as in XML.
+    - Else (MasterPropId == "") => AUTO GROUP by LORComment (Display Name):
+        * Choose lowest StartChannel as master -> write to props with its grid.
+        * Remaining rows become subProps under that master.
+        * SubPropID is derived: "<master_id>-<UID or NA>-<Start:02d>" (deterministic).
+        * Keep Name and LORComment EXACTLY as in XML.
 
     IMPORTANT: ID SCOPING
-    ---------------------
-    Visualizer reuses PropClass.id across different previews. To prevent cross-preview
-    overwrites, every id we store must be scoped by PreviewId:
-
-        scoped_id = f"{preview_id}:{raw_id}"
-
-    We must use the SAME scoped value for:
-      - props.PropID
-      - subProps.MasterPropId
-      - subProps.SubPropID (we also add UID + StartChannel to make each sub-prop unique)
+    - Visualizer reuses PropClass.id across previews. Always scope ids by preview:
+        scoped = f"{preview_id}:{raw_id}"
+      Use the scoped value for:
+        - props.PropID
+        - subProps.MasterPropId
+        - subProps.SubPropID (for manual subprops use child's own scoped id;
+                              for auto subprops use the derived "<master>-<UID>-<Start:02d>").
     """
+
+    import sqlite3
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
+    # --- helper: parse single-grid "Network,UID,Start,End,Unknown[,Color]" ---
     def parse_single_grid(channel_grid_text):
-        """
-        Parse a single-grid ChannelGrid string into a dict:
-          {Network, UID, StartChannel, EndChannel, Unknown, Color}
-        Returns None if the text is empty or malformed.
-        """
         if not channel_grid_text:
             return None
         parts = [p.strip() for p in channel_grid_text.split(",")]
-        if len(parts) < 5:  # need at least Network, UID, Start, End, Unknown
+        if len(parts) < 5:
             return None
         return {
             "Network":      parts[0],
             "UID":          parts[1] if len(parts) > 1 else None,
-            "StartChannel": safe_int(parts[2] if len(parts) > 2 else None),
-            "EndChannel":   safe_int(parts[3] if len(parts) > 3 else None),
-            "Unknown":      parts[4] if len(parts) > 4 else None,
+            "StartChannel": safe_int(parts[2]),
+            "EndChannel":   safe_int(parts[3]),
+            "Unknown":      parts[4],
             "Color":        parts[5] if len(parts) > 5 else None,
         }
 
-    # --- PASS 0: handle 'spare' directly into props, skip grouping ------------
+    # -----------------------------------------------------------------------
+    # PASS 0: SPARE rows (single-grid) -> props as-is, no grouping
+    # -----------------------------------------------------------------------
     for prop in root.findall(".//PropClass"):
         if prop.get("DeviceType") != "LOR":
             continue
@@ -522,7 +526,7 @@ def process_lor_props(preview_id, root):
         name = (prop.get("Name") or "")
         ch_raw = (prop.get("ChannelGrid") or "").strip()
 
-        # Only process single-grid here; multi-grid is handled elsewhere
+        # Single-grid only in this function
         if ";" in ch_raw:
             continue
 
@@ -540,7 +544,7 @@ def process_lor_props(preview_id, root):
                     Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                prop_id_scoped, name, prop.get("Comment"), "LOR", prop.get("BulbShape"), prop.get("DimmingCurveName"),
+                prop_id_scoped, name, prop.get("Comment", ""), "LOR", prop.get("BulbShape"), prop.get("DimmingCurveName"),
                 prop.get("MaxChannels"), prop.get("CustomBulbColor"), prop.get("IndividualChannels"),
                 prop.get("LegacySequenceMethod"), prop.get("Opacity"), prop.get("MasterDimmable"),
                 prop.get("PreviewBulbSize"), prop.get("SeparateIds"), prop.get("StartLocation"),
@@ -549,44 +553,97 @@ def process_lor_props(preview_id, root):
                 prop.get("Parm3"), prop.get("Parm4"), prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"),
                 prop.get("Parm8"),
                 int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
-                grid["Network"] if grid else None,
-                grid["UID"] if grid else None,
-                grid["StartChannel"] if grid else None,
-                grid["EndChannel"] if grid else None,
-                grid["Unknown"] if grid else None,
-                grid["Color"] if grid else None,
+                (grid or {}).get("Network"), (grid or {}).get("UID"), (grid or {}).get("StartChannel"),
+                (grid or {}).get("EndChannel"), (grid or {}).get("Unknown"), (grid or {}).get("Color"),
                 preview_id
             ))
             if DEBUG:
-                print(f"[DEBUG] (LOR single) Inserted SPARE Prop: raw_id={raw_id} scoped_id={prop_id_scoped} Name={name}")
-    # --------------------------------------------------------------------------
+                print(f"[DEBUG] (LOR single) SPARE -> props: scoped_id={prop_id_scoped} Name='{name}'")
 
-    # Collect single-grid (non-spare) LOR props grouped by LORComment
+    # -----------------------------------------------------------------------
+    # PASS 0B: MANUAL SUBPROPS (MasterPropId set) -> subProps
+    # Keep Name/LORComment exactly. Use child's grid, else copy master's grid.
+    # -----------------------------------------------------------------------
+    manual_child_ids = set()  # raw ids of manual subprops (to exclude from auto grouping)
+    for prop in root.findall(".//PropClass"):
+        if prop.get("DeviceType") != "LOR":
+            continue
+
+        ch_raw = (prop.get("ChannelGrid") or "").strip()
+        if ";" in ch_raw:
+            continue  # single-grid only here
+
+        master_raw = (prop.get("MasterPropId") or "").strip()
+        if not master_raw:
+            continue
+
+        child_raw = prop.get("id") or ""
+        manual_child_ids.add(child_raw)
+
+        sub_id    = scoped_id(preview_id, child_raw)    # child's own identity
+        master_id = scoped_id(preview_id, master_raw)
+
+        # Use child's grid if present; otherwise copy master's grid (reuse channels)
+        grid = parse_single_grid(ch_raw)
+        if grid is None:
+            master_node = root.find(f".//PropClass[@id='{master_raw}']")
+            grid = parse_single_grid(master_node.get("ChannelGrid") or "") if master_node is not None else None
+        if grid is None:
+            grid = {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
+
+        cursor.execute("""
+            INSERT OR REPLACE INTO subProps (
+                SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            sub_id, prop.get("Name", ""), prop.get("Comment", ""), "LOR", prop.get("BulbShape", ""),
+            grid["Network"], grid["UID"], grid["StartChannel"], grid["EndChannel"], grid["Unknown"], grid["Color"],
+            prop.get("CustomBulbColor", ""), prop.get("DimmingCurveName", ""), prop.get("IndividualChannels", False),
+            prop.get("LegacySequenceMethod", ""), prop.get("MaxChannels"), prop.get("Opacity"),
+            prop.get("MasterDimmable", False), prop.get("PreviewBulbSize"), None,   # RgbOrder = NULL
+            master_id, prop.get("SeparateIds", False), prop.get("StartLocation", ""), prop.get("StringType", ""),
+            prop.get("TraditionalColors", ""), prop.get("TraditionalType", ""), prop.get("EffectBulbSize"),
+            prop.get("Tag", ""), prop.get("Parm1", ""), prop.get("Parm2", ""), prop.get("Parm3", ""), prop.get("Parm4", ""),
+            prop.get("Parm5", ""), prop.get("Parm6", ""), prop.get("Parm7", ""), prop.get("Parm8", ""),
+            int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
+            preview_id
+        ))
+        if DEBUG:
+            print(f"[DEBUG] (LOR single) MANUAL -> subProps: child={child_raw} sub_id={sub_id} master={master_id} UID={grid['UID']} Start={grid['StartChannel']}")
+
+    # -----------------------------------------------------------------------
+    # PASS 1: AUTO GROUP by LORComment (exclude SPARE and MANUAL)
+    # -----------------------------------------------------------------------
     props_grouped_by_comment = {}
 
     for prop in root.findall(".//PropClass"):
         if prop.get("DeviceType") != "LOR":
             continue
 
+        # Skip already-handled cases
         name = (prop.get("Name") or "")
         if "spare" in name.lower():
-            continue  # already handled above
-
-        ch_raw = (prop.get("ChannelGrid") or "").strip()
-
-        # Only single-grid goes through this path
-        if ";" in ch_raw:
+            continue
+        if (prop.get("MasterPropId") or "").strip():  # manual subprop handled above
             continue
 
+        ch_raw = (prop.get("ChannelGrid") or "").strip()
+        if ";" in ch_raw:
+            continue  # single-grid only in this function
+
         grid = parse_single_grid(ch_raw)
-        # Prepare per-prop record
         raw_id = prop.get("id") or ""
+
         rec = {
-            "PropID_raw":         raw_id,  # keep raw for logs
-            "PropID_scoped":      scoped_id(preview_id, raw_id),  # << use this when inserting
-            "Name":               name,
+            "PropID_raw":         raw_id,
+            "PropID_scoped":      scoped_id(preview_id, raw_id),
+            "Name":               name,                          # Channel Name (unchanged)
             "DeviceType":         "LOR",
-            "LORComment":         prop.get("Comment", "") or "",
+            "LORComment":         prop.get("Comment", "") or "", # Display Name (unchanged)
             "BulbShape":          prop.get("BulbShape", ""),
             "DimmingCurveName":   prop.get("DimmingCurveName", ""),
             "MaxChannels":        prop.get("MaxChannels"),
@@ -612,28 +669,25 @@ def process_lor_props(preview_id, root):
             "Parm7":              prop.get("Parm7", ""),
             "Parm8":              prop.get("Parm8", ""),
             "Lights":             int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
-            "Grid":               grid,   # dict or None
-            "StartChannel":       grid["StartChannel"] if grid else None,
+            "Grid":               grid,
+            "StartChannel":       (grid or {}).get("StartChannel"),
             "PreviewId":          preview_id,
         }
 
         key = rec["LORComment"]
         props_grouped_by_comment.setdefault(key, []).append(rec)
 
-    # Process each comment group (choose master by lowest StartChannel)
+    # Process each comment group
     for LORComment, group in props_grouped_by_comment.items():
         if not group:
             continue
 
-        # Pick master: lowest StartChannel (None treated as +inf)
+        # Master = lowest StartChannel (None => +inf)
         master = min(group, key=lambda r: r["StartChannel"] if r["StartChannel"] is not None else float("inf"))
+        m_grid = master["Grid"] or {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
+        master_id = master["PropID_scoped"]
 
-        m_grid = master["Grid"] or {
-            "Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None
-        }
-        master_id = master["PropID_scoped"]  # << scoped id
-
-        # --- MASTER → props ---------------------------------------------------
+        # MASTER -> props (names/comments unchanged)
         cursor.execute("""
             INSERT OR REPLACE INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
@@ -655,27 +709,19 @@ def process_lor_props(preview_id, root):
             master["PreviewId"]
         ))
         if DEBUG:
-            print(f"[DEBUG] (LOR single) Inserted Master Prop: raw_id={master['PropID_raw']} scoped_id={master_id}  LORComment={LORComment} Start={m_grid['StartChannel']}")
+            print(f"[DEBUG] (LOR single) MASTER -> props: scoped_id={master_id} LORComment='{LORComment}' Start={m_grid['StartChannel']}")
 
-        # --- REMAINING → subProps -------------------------------------------
-        lor_first = (LORComment or "").split(" ")[0]
+        # REMAINING -> subProps (auto materialization; names/comments unchanged)
         for rec in group:
             if rec["PropID_scoped"] == master_id:
-                continue  # skip master itself
+                continue
+
             g = rec["Grid"] or {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
-
-            # Unique subprop id under this preview & master
-            uid   = g["UID"]
+            uid   = g["UID"] or "NA"
             start = g["StartChannel"] if g["StartChannel"] is not None else 0
-            sub_id = f"{master_id}-{uid}-{start:02d}"
 
-            # Name pattern: "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
-            name_parts = [lor_first]
-            if g["Color"]:
-                name_parts.append(g["Color"])
-            if uid is not None:
-                name_parts.append(f"{uid}-{start:02d}")
-            sub_name = " ".join(name_parts).strip()
+            # Deterministic key under master: "<master_id>-<UID>-<Start:02d>"
+            sub_id = f"{master_id}-{uid}-{start:02d}"
 
             cursor.execute("""
                 INSERT OR REPLACE INTO subProps (
@@ -686,8 +732,8 @@ def process_lor_props(preview_id, root):
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                sub_id, sub_name, LORComment, rec["DeviceType"], rec["BulbShape"],
-                g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                sub_id, rec["Name"], rec["LORComment"], rec["DeviceType"], rec["BulbShape"],
+                g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                 rec["CustomBulbColor"], rec["DimmingCurveName"], rec["IndividualChannels"], rec["LegacySequenceMethod"],
                 rec["MaxChannels"], rec["Opacity"], rec["MasterDimmable"], rec["PreviewBulbSize"], None,  # RgbOrder=NULL
                 master_id, rec["SeparateIds"], rec["StartLocation"], rec["StringType"], rec["TraditionalColors"],
@@ -695,10 +741,11 @@ def process_lor_props(preview_id, root):
                 rec["Parm4"], rec["Parm5"], rec["Parm6"], rec["Parm7"], rec["Parm8"], rec["Lights"], rec["PreviewId"]
             ))
             if DEBUG:
-                print(f"[DEBUG] (LOR single) Inserted SubProp: parent={master_id} sub_id={sub_id} -> UID={uid} Start={g['StartChannel']}")
+                print(f"[DEBUG] (LOR single) AUTO -> subProps: parent={master_id} sub_id={sub_id} UID={uid} Start={start}")
 
     conn.commit()
     conn.close()
+
 
 
 
@@ -973,80 +1020,114 @@ def main():
 # === Wiring views for V6 (map + sorted) GAL 25-08-23 ===
 def create_wiring_views_v6(db_file: str):
     import sqlite3
+    ddl = r"""
+    DROP VIEW IF EXISTS preview_wiring_map_v6;
+    DROP VIEW IF EXISTS preview_wiring_sorted_v6;
 
-    ddl = """
-DROP VIEW IF EXISTS preview_wiring_map_v6;
-CREATE VIEW preview_wiring_map_v6 AS
-    -- Master props (single-grid legs on props)
+    -- LOR masters (props)
+    CREATE VIEW preview_wiring_map_v6 AS
     SELECT
-        pv.Name             AS PreviewName,
-        REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,   -- dashified comment
-        p.Name              AS LORName,                          -- raw LOR name (unchanged)
-        p.Network           AS Network,
-        p.UID               AS Controller,
-        p.StartChannel      AS StartChannel,
-        p.EndChannel        AS EndChannel,
-        p.DeviceType        AS DeviceType,
-        'PROP'              AS Source,
-        p.Tag               AS LORTag
+    pv.Name AS PreviewName,
+    p.Name AS Channel_Name,              -- RAW channel name
+    p.LORComment AS Display_Name,        -- RAW display name (inventory key)
+    REPLACE(TRIM(
+        COALESCE(NULLIF(p.LORComment,''), p.Name)
+        || CASE
+            WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
+            WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
+            WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
+            WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
+            ELSE ''
+        END
+        || CASE
+            WHEN INSTR(p.Tag,'Group ')>0
+                AND SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1) BETWEEN 'A' AND 'Z'
+            THEN '-'||SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1)
+            ELSE ''
+        END
+        || CASE WHEN p.UID IS NOT NULL AND p.StartChannel IS NOT NULL
+                THEN '-'||p.UID||'-'||printf('%02d', p.StartChannel)
+                ELSE '' END
+    ), ' ','-') AS Suggested_Name,
+    p.Network AS Network,
+    p.UID     AS Controller,
+    p.StartChannel, p.EndChannel,
+    p.DeviceType, 'PROP' AS Source, p.Tag AS LORTag
     FROM props p
     JOIN previews pv ON pv.id = p.PreviewId
-    WHERE p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
+    WHERE p.DeviceType='LOR' AND p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
 
     UNION ALL
-    -- Materialized multi-grid legs + LOR cross-reuse (subProps)
-    -- Use MASTER LOR name to avoid reconstruction drift in sp.Name
+
+    -- LOR subprops
     SELECT
-        pv.Name,
-        REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName,
-        p.Name              AS LORName,   -- <-- was sp.Name; force master LOR Name here
-        sp.Network,
-        sp.UID,
-        sp.StartChannel,
-        sp.EndChannel,
-        COALESCE(sp.DeviceType,'LOR') AS DeviceType,
-        'SUBPROP' AS Source,
-        sp.Tag
+    pv.Name,
+    sp.Name       AS Channel_Name,      -- RAW subprop channel name
+    sp.LORComment AS Display_Name,      -- RAW subprop display name
+    REPLACE(TRIM(
+        COALESCE(NULLIF(sp.LORComment,''), p.LORComment)
+        || CASE
+            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% DS%' OR UPPER(sp.Tag) LIKE '% DS%' THEN '-DS'
+            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% PS%' OR UPPER(sp.Tag) LIKE '% PS%' THEN '-PS'
+            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% LH%' OR UPPER(sp.Tag) LIKE '% LH%' THEN '-LH'
+            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% RH%' OR UPPER(sp.Tag) LIKE '% RH%' THEN '-RH'
+            ELSE ''
+            END
+        || CASE
+            WHEN INSTR(sp.Tag,'Group ')>0
+                    AND SUBSTR(sp.Tag, INSTR(sp.Tag,'Group ')+6, 1) BETWEEN 'A' AND 'Z'
+                THEN '-'||SUBSTR(sp.Tag, INSTR(sp.Tag,'Group ')+6, 1)
+            ELSE ''
+            END
+        || CASE WHEN sp.UID IS NOT NULL AND sp.StartChannel IS NOT NULL
+                THEN '-'||sp.UID||'-'||printf('%02d', sp.StartChannel)
+                ELSE '' END
+    ), ' ','-') AS Suggested_Name,
+    sp.Network, sp.UID AS Controller, sp.StartChannel, sp.EndChannel,
+    COALESCE(sp.DeviceType,'LOR') AS DeviceType, 'SUBPROP' AS Source, sp.Tag AS LORTag
     FROM subProps sp
-    JOIN props p  ON p.PropID = sp.MasterPropId
+    JOIN props p   ON p.PropID = sp.MasterPropId AND p.PreviewId = sp.PreviewId
     JOIN previews pv ON pv.id = sp.PreviewId
 
+
     UNION ALL
-    -- DMX universes (controller shown as Universe)
+
+    -- DMX channels (Controller = Universe)
     SELECT
-        pv.Name,
-        REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,
-        p.Name              AS LORName,
-        dc.Network,
-        CAST(dc.StartUniverse AS TEXT),
-        dc.StartChannel,
-        dc.EndChannel,
-        'DMX',
-        'DMX',
-        p.Tag
+    pv.Name,
+    p.Name AS Channel_Name,
+    p.LORComment AS Display_Name,
+    REPLACE(TRIM(
+        COALESCE(NULLIF(p.LORComment,''), p.Name)
+        || CASE
+            WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
+            WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
+            WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
+            WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
+            ELSE ''
+        END
+        || '-U'||dc.StartUniverse||':'||dc.StartChannel
+    ), ' ','-') AS Suggested_Name,
+    dc.Network, CAST(dc.StartUniverse AS TEXT) AS Controller,
+    dc.StartChannel, dc.EndChannel,
+    'DMX' AS DeviceType, 'DMX' AS Source, p.Tag AS LORTag
     FROM dmxChannels dc
-    JOIN props p  ON p.PropID = dc.PropId
+    JOIN props p   ON p.PropID = dc.PropId AND p.PreviewId = dc.PreviewId
     JOIN previews pv ON pv.id = p.PreviewId;
 
-DROP VIEW IF EXISTS preview_wiring_sorted_v6;
-CREATE VIEW preview_wiring_sorted_v6 AS
-SELECT
-  PreviewName, DisplayName, LORName, Network, Controller,
-  StartChannel, EndChannel, DeviceType, Source, LORTag
-FROM preview_wiring_map_v6
-ORDER BY
-  PreviewName  COLLATE NOCASE ASC,
-  DisplayName  COLLATE NOCASE ASC,
-  Controller   ASC,
-  StartChannel ASC;
+    -- Sorted convenience view
+    CREATE VIEW preview_wiring_sorted_v6 AS
+    SELECT
+    PreviewName, Channel_Name, Display_Name, Suggested_Name,
+    Network, Controller, StartChannel, EndChannel, DeviceType, Source, LORTag
+    FROM preview_wiring_map_v6
+    ORDER BY PreviewName COLLATE NOCASE, Display_Name COLLATE NOCASE, Controller, StartChannel;
 
-
-    -- Helpful indexes for speed when filtering/sorting
+    -- helpful indexes
     CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview  ON subProps(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_dmx_prop          ON dmxChannels(PropId);
     """
-
     conn = sqlite3.connect(db_file)
     try:
         conn.executescript(ddl)
@@ -1054,6 +1135,8 @@ ORDER BY
         print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6.")
     finally:
         conn.close()
+
+
 
 
 if __name__ == "__main__":
