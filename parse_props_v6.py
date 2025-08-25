@@ -31,6 +31,28 @@ def dprint(msg: str):
     if DEBUG:
         print(msg)
 
+# --- ID scoping: prevent cross-preview overwrites --------------------------
+def scoped_id(preview_id: str, raw_id: str) -> str:
+    """
+    Visualizer reuses PropClass.id across previews. Scope every ID by PreviewId
+    so (props, subProps, dmx, etc.) never collide between different previews.
+    """
+    return f"{preview_id}:{raw_id}"
+# --- helpers ---------------------------------------------------------------
+def safe_int(s, default=None):
+    """
+    Return int(s) if s is a clean digit string; else `default`.
+    Examples:
+      safe_int("12") -> 12
+      safe_int(" 07 ") -> 7
+      safe_int(None) -> default
+      safe_int("5F") -> default
+    """
+    if s is None:
+        return default
+    s = str(s).strip()
+    return int(s) if s.isdigit() else default
+
 def setup_database():
     """Initialize the database schema, dropping tables if they already exist."""
     conn = sqlite3.connect(DB_FILE)
@@ -224,47 +246,108 @@ def insert_preview_data(preview_data):
 
 def process_none_props(preview_id, root):
     """
-    Process props with DeviceType == None:
+    Process props with DeviceType == "None":
     - Aggregate lights (Parm2) by LORComment.
-    - Ensure one entry per LORComment in the props table.
+    - Ensure exactly ONE props row per LORComment for THIS preview.
+    - Use a PREVIEW-SCOPED, GROUP-LEVEL PropID so cross-preview collisions are impossible.
+
+    WHY A GROUP-LEVEL ID?
+    ---------------------
+    Visualizer may reuse PropClass.id across previews, and even within a preview
+    you can have multiple raw ids sharing the same LORComment. Since we collapse
+    these into one row per LORComment, we should NOT pick one raw id; instead we
+    synthesize a stable, preview-scoped group id:
+
+        group_prop_id = f"{preview_id}:none:{LORComment}"
+
+    That way:
+      • Importing another preview won’t overwrite these rows.
+      • Re-runs for the same preview produce the same key.
     """
+    import sqlite3
+    from collections import defaultdict
+
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    props_summary = defaultdict(lambda: {"Lights": 0, "Name": None, "PropID": None, "DeviceType": None})
+    # ----------------------------- helpers -----------------------------------
+    def safe_lights(parm2):
+        """Return int(Parm2) if it's a clean digit string; else 0."""
+        if parm2 is None:
+            return 0
+        s = str(parm2).strip()
+        return int(s) if s.isdigit() else 0
 
-    # Collect and aggregate data for props with DeviceType == "None"
+    def group_prop_id(preview_id_str, lor_comment):
+        """
+        Build a stable, preview-scoped id for the aggregated row.
+        We keep the raw comment text; SQLite TEXT keys are fine with spaces.
+        """
+        lc = (lor_comment or "")
+        return f"{preview_id_str}:none:{lc}"
+
+    # -------------------------------------------------------------------------
+    # Aggregate all DeviceType == "None" by LORComment
+    #
+    # We keep:
+    #   Lights: total Parm2 across the group
+    #   Name:   first non-empty Name encountered in the group (for display)
+    #   RawIDs: set of raw PropClass ids (debug only)
+    # -------------------------------------------------------------------------
+    props_summary = defaultdict(lambda: {
+        "Lights": 0,
+        "Name":   None,
+        "RawIDs": set(),
+    })
+
     for prop in root.findall(".//PropClass"):
-        device_type = prop.get("DeviceType")
-        if device_type == "None":
-            LORComment = prop.get("Comment")
-            Parm2 = prop.get("Parm2")
-            lights = int(Parm2) if Parm2 and Parm2.isdigit() else 0
+        if prop.get("DeviceType") != "None":
+            continue
 
-            # Aggregate lights by LORComment
-            props_summary[LORComment]["Lights"] += lights
-            props_summary[LORComment]["Name"] = prop.get("Name")
-            props_summary[LORComment]["PropID"] = prop.get("id")
-            props_summary[LORComment]["DeviceType"] = device_type
+        lor_comment = prop.get("Comment")
+        lights = safe_lights(prop.get("Parm2"))
 
-    # Insert aggregated props into the database
-    for LORComment, prop_data in props_summary.items():
+        g = props_summary[lor_comment]
+        g["Lights"] += lights
+        if not g["Name"]:
+            nm = prop.get("Name")
+            if nm:
+                g["Name"] = nm
+        raw_id = prop.get("id")
+        if raw_id:
+            g["RawIDs"].add(raw_id)
+
+    # -------------------------------------------------------------------------
+    # Write one row per LORComment to props, using the preview-scoped group id
+    # -------------------------------------------------------------------------
+    for lor_comment, g in props_summary.items():
+        # Choose a display name: first non-empty Name, else fall back to comment
+        display_name = g["Name"] or (lor_comment or "(no name)")
+
+        scoped_group_id = group_prop_id(preview_id, lor_comment)
+
         cursor.execute("""
-        INSERT OR REPLACE INTO props (PropID, Name, LORComment, DeviceType, Lights, PreviewId)
-        VALUES (?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO props (
+                PropID, Name, LORComment, DeviceType, Lights, PreviewId
+            ) VALUES (?, ?, ?, ?, ?, ?)
         """, (
-            prop_data["PropID"],
-            prop_data["Name"],
-            LORComment,
-            prop_data["DeviceType"],
-            prop_data["Lights"],
+            scoped_group_id,             # << preview-scoped, group-level id
+            display_name,
+            lor_comment,
+            "None",                      # DeviceType for this handler
+            g["Lights"],
             preview_id
         ))
-    if DEBUG:        
-        print(f"[DEBUG] Inserted Prop into database: {prop_data}")
+
+        if DEBUG:
+            # Print a compact debug line showing the aggregation result
+            raw_ids_note = f"{len(g['RawIDs'])} raw ids" if g["RawIDs"] else "0 raw ids"
+            print(f"[DEBUG] (None) Upsert props: id={scoped_group_id} comment='{lor_comment}' "
+                  f"name='{display_name}' lights={g['Lights']} ({raw_ids_note})")
 
     conn.commit()
     conn.close()
+
 
 def process_dmx_props(preview_id, root):
     """
@@ -272,45 +355,67 @@ def process_dmx_props(preview_id, root):
     - Split ChannelGrid into groups.
     - Insert all relevant fields from PropClass into the props table.
     - Insert DMX channels into the dmxChannels table.
+
+    IMPORTANT: ID SCOPING
+    ---------------------
+    Visualizer reuses PropClass.id across *different* previews. If we store the raw
+    id, a later preview can overwrite an earlier one. To prevent cross-preview
+    clobbering, we scope every id we write using the current preview_id:
+
+        scoped_id = f"{preview_id}:{raw_id}"
+
+    We must use the SAME scoped id consistently for:
+      - props.PropID
+      - dmxChannels.PropId
+      - (and anywhere else we reference that prop)
     """
+
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
     for prop in root.findall(".//PropClass"):
         device_type = prop.get("DeviceType")
-        if device_type == "DMX":
-            master_prop_id = prop.get("id")  # Use the original PropID from XML
-            name = prop.get("Name")
-            LORComment = prop.get("Comment")
-            bulb_shape = prop.get("BulbShape")
-            dimming_curve_name = prop.get("DimmingCurveName")
-            max_channels = prop.get("MaxChannels")
-            custom_bulb_color = prop.get("CustomBulbColor")
-            individual_channels = prop.get("IndividualChannels")
-            legacy_sequence_method = prop.get("LegacySequenceMethod")
-            opacity = prop.get("Opacity")
-            master_dimmable = prop.get("MasterDimmable")
-            preview_bulb_size = prop.get("PreviewBulbSize")
-            separate_ids = prop.get("SeparateIds")
-            start_location = prop.get("StartLocation")
-            string_type = prop.get("StringType")
-            traditional_colors = prop.get("TraditionalColors")
-            traditional_type = prop.get("TraditionalType")
-            effect_bulb_size = prop.get("EffectBulbSize")
-            tag = prop.get("Tag")
-            parm1 = prop.get("Parm1")
-            parm2 = prop.get("Parm2")
-            parm3 = prop.get("Parm3")
-            parm4 = prop.get("Parm4")
-            parm5 = prop.get("Parm5")
-            parm6 = prop.get("Parm6")
-            parm7 = prop.get("Parm7")
-            parm8 = prop.get("Parm8")
-            lights = int(parm2) if parm2 and parm2.isdigit() else 0  # Assume Parm2 is light count
-            channel_grid = prop.get("ChannelGrid")
+        if device_type != "DMX":
+            continue
 
-            # Insert Master Prop into props table
-            cursor.execute("""
+        # RAW id from Visualizer; we DO NOT store this directly in the DB
+        raw_id = prop.get("id")
+        master_prop_id = scoped_id(preview_id, raw_id)   # << scoped id used everywhere below
+
+        # --- fields copied as-is from the PropClass --------------------------
+        name = prop.get("Name")
+        LORComment = prop.get("Comment")
+        bulb_shape = prop.get("BulbShape")
+        dimming_curve_name = prop.get("DimmingCurveName")
+        max_channels = prop.get("MaxChannels")
+        custom_bulb_color = prop.get("CustomBulbColor")
+        individual_channels = prop.get("IndividualChannels")
+        legacy_sequence_method = prop.get("LegacySequenceMethod")
+        opacity = prop.get("Opacity")
+        master_dimmable = prop.get("MasterDimmable")
+        preview_bulb_size = prop.get("PreviewBulbSize")
+        separate_ids = prop.get("SeparateIds")
+        start_location = prop.get("StartLocation")
+        string_type = prop.get("StringType")
+        traditional_colors = prop.get("TraditionalColors")
+        traditional_type = prop.get("TraditionalType")
+        effect_bulb_size = prop.get("EffectBulbSize")
+        tag = prop.get("Tag")
+        parm1 = prop.get("Parm1")
+        parm2 = prop.get("Parm2")
+        parm3 = prop.get("Parm3")
+        parm4 = prop.get("Parm4")
+        parm5 = prop.get("Parm5")
+        parm6 = prop.get("Parm6")
+        parm7 = prop.get("Parm7")
+        parm8 = prop.get("Parm8")
+        # Your original assumption: Parm2 holds light count for DMX
+        lights = int(parm2) if parm2 and str(parm2).isdigit() else 0
+
+        channel_grid = prop.get("ChannelGrid") or ""
+
+        # --- Master Prop -> props (scoped PropID) ----------------------------
+        cursor.execute("""
             INSERT OR REPLACE INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName,
                 MaxChannels, CustomBulbColor, IndividualChannels, LegacySequenceMethod,
@@ -318,266 +423,261 @@ def process_dmx_props(preview_id, root):
                 StringType, TraditionalColors, TraditionalType, EffectBulbSize, Tag,
                 Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                master_prop_id, name, LORComment, device_type, bulb_shape, dimming_curve_name,
-                max_channels, custom_bulb_color, individual_channels, legacy_sequence_method,
-                opacity, master_dimmable, preview_bulb_size, separate_ids, start_location,
-                string_type, traditional_colors, traditional_type, effect_bulb_size, tag,
-                parm1, parm2, parm3, parm4, parm5, parm6, parm7, parm8, lights, preview_id
-            ))
-            if DEBUG:
-                print(f"[DEBUG] Inserted Master Prop: {master_prop_id}")
+        """, (
+            master_prop_id, name, LORComment, device_type, bulb_shape, dimming_curve_name,
+            max_channels, custom_bulb_color, individual_channels, legacy_sequence_method,
+            opacity, master_dimmable, preview_bulb_size, separate_ids, start_location,
+            string_type, traditional_colors, traditional_type, effect_bulb_size, tag,
+            parm1, parm2, parm3, parm4, parm5, parm6, parm7, parm8, lights, preview_id
+        ))
+        if DEBUG:
+            print(f"[DEBUG] (DMX) Inserted Master Prop: raw_id={raw_id} scoped_id={master_prop_id}  Name={name}")
 
-            # Process ChannelGrid for dmxChannels table
-            if channel_grid:
-                grid_parts = channel_grid.split(";")
-                for grid in grid_parts:
-                    parts = grid.split(",")
-                    if len(parts) >= 5:
-                        network = parts[0]
-                        start_universe = int(parts[1])
-                        start_channel = int(parts[2])
-                        end_channel = int(parts[3])
-                        unknown = parts[4]
+        # --- ChannelGrid -> dmxChannels (one row per ';' group) --------------
+        # Expected DMX pattern per your data: "Network,StartUniverse,StartChannel,EndChannel,Unknown"
+        if channel_grid.strip():
+            for grid in channel_grid.split(";"):
+                grid = grid.strip()
+                if not grid:
+                    continue
+                parts = [p.strip() for p in grid.split(",")]
 
-                        # Insert into dmxChannels table
-                        cursor.execute("""
-                        INSERT OR REPLACE INTO dmxChannels (
-                            PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown, PreviewId
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            master_prop_id, network, start_universe, start_channel, end_channel, unknown, preview_id
-                        ))
-                        if DEBUG:
-                            print(f"[DEBUG] Inserted DMX Channel: Network={network}, Universe={start_universe}, Start={start_channel}, End={end_channel}")
+                # Be defensive: require at least the first 5 tokens
+                if len(parts) < 5:
+                    if DEBUG:
+                        print(f"[DEBUG] (DMX) Skipping malformed grid (len={len(parts)}): {grid}")
+                    continue
+
+                network        = parts[0]
+                start_universe = safe_int(parts[1], 0)
+                start_channel  = safe_int(parts[2], 0)
+                end_channel    = safe_int(parts[3], 0)
+                unknown        = parts[4]  # keep as string
+
+                cursor.execute("""
+                    INSERT OR REPLACE INTO dmxChannels (
+                        PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown, PreviewId
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    master_prop_id,   # << use the same scoped id we used for props.PropID
+                    network, start_universe, start_channel, end_channel, unknown, preview_id
+                ))
+                if DEBUG:
+                    print(f"[DEBUG] (DMX) Inserted Channel: PropId={master_prop_id} Net={network} Univ={start_universe} Start={start_channel} End={end_channel}")
 
     conn.commit()
     conn.close()
+
 
 def process_lor_props(preview_id, root):
     """
-    Process props with DeviceType == LOR:
-    - Single ChannelGrid
-    - Identify the master prop as the prop with the lowest StartChannel among props with the same Comment.
-    - Insert the master prop into the props table, including its grid parts.
-    - Insert remaining props into the subProps table, linking them to the master prop and including their grid parts.
-    - If the Name contains 'spare', place the prop directly into the props table and save grid parts.
+    Process props with DeviceType == LOR (SINGLE ChannelGrid ONLY):
+    - Skip multi-grid props (handled by process_lor_multiple_channel_grids).
+    - Group by LORComment.
+    - Identify the master prop as the prop whose (single) grid has the lowest StartChannel.
+    - Insert the master into the props table, including its grid fields.
+    - Insert remaining props into the subProps table, linking them to the master and including their grid fields.
+    - If Name contains 'spare' (case-insensitive), place that prop directly into props (with its grid fields) and do not group it.
+
+    IMPORTANT: ID SCOPING
+    ---------------------
+    Visualizer reuses PropClass.id across different previews. To prevent cross-preview
+    overwrites, every id we store must be scoped by PreviewId:
+
+        scoped_id = f"{preview_id}:{raw_id}"
+
+    We must use the SAME scoped value for:
+      - props.PropID
+      - subProps.MasterPropId
+      - subProps.SubPropID (we also add UID + StartChannel to make each sub-prop unique)
     """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    props_grouped_by_comment = {}
-
-    # Group props by Comment
-    for prop in root.findall(".//PropClass"):
-        device_type = prop.get("DeviceType")
-        if device_type == "LOR":
-            # Safely get attributes with defaults
-            prop_data = {
-                "PropID": prop.get("id", None),
-                "Name": prop.get("Name", ""),
-                "DeviceType": device_type,
-                "LORComment": prop.get("Comment", ""),  # Default to empty string
-                "MasterPropID": prop.get("MasterPropId", None),
-                "BulbShape": prop.get("BulbShape", ""),
-                "DimmingCurveName": prop.get("DimmingCurveName", ""),
-                "MaxChannels": prop.get("MaxChannels", None),
-                "CustomBulbColor": prop.get("CustomBulbColor", ""),
-                "IndividualChannels": prop.get("IndividualChannels", False),
-                "LegacySequenceMethod": prop.get("LegacySequenceMethod", ""),
-                "Opacity": prop.get("Opacity", None),
-                "MasterDimmable": prop.get("MasterDimmable", False),
-                "PreviewBulbSize": prop.get("PreviewBulbSize", None),
-                "SeparateIds": prop.get("SeparateIds", False),
-                "StartLocation": prop.get("StartLocation", ""),
-                "StringType": prop.get("StringType", ""),
-                "TraditionalColors": prop.get("TraditionalColors", ""),
-                "TraditionalType": prop.get("TraditionalType", ""),
-                "EffectBulbSize": prop.get("EffectBulbSize", None),
-                "Tag": prop.get("Tag", ""),
-                "Parm1": prop.get("Parm1", ""),
-                "Parm2": prop.get("Parm2", ""),
-                "Parm3": prop.get("Parm3", ""),
-                "Parm4": prop.get("Parm4", ""),
-                "Parm5": prop.get("Parm5", ""),
-                "Parm6": prop.get("Parm6", ""),
-                "Parm7": prop.get("Parm7", ""),
-                "Parm8": prop.get("Parm8", ""),
-                "Lights": int(prop.get("Parm2")) if prop.get("Parm2") and prop.get("Parm2").isdigit() else 0,
-                "ChannelGrid": prop.get("ChannelGrid", ""),
-                "PreviewId": preview_id
-            }
-
-            # Parse ChannelGrid for grid data
-            channel_grid = prop_data["ChannelGrid"]
-            if channel_grid:
-                grid_parts = channel_grid.split(";")
-                grid_data = []
-                for grid in grid_parts:
-                    parts = grid.split(",")
-                    grid_data.append({
-                        "Network": parts[0] if len(parts) > 0 else None,
-                        "UID": parts[1] if len(parts) > 1 else None,
-                        "StartChannel": int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else None,
-                        "EndChannel": int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else None,
-                        "Unknown": parts[4] if len(parts) > 4 else None,
-                        "Color": parts[5] if len(parts) > 5 else None
-                    })
-                prop_data["GridData"] = grid_data
-                prop_data["StartChannel"] = min(
-                    [g["StartChannel"] for g in grid_data if g["StartChannel"] is not None], default=None
-                )
-            else:
-                prop_data["GridData"] = []
-                prop_data["StartChannel"] = None
-
-
-            if prop_data["LORComment"] not in props_grouped_by_comment:
-                props_grouped_by_comment[prop_data["LORComment"]] = []
-            props_grouped_by_comment[prop_data["LORComment"]].append(prop_data)
-
-    # Process grouped props
-    for LORComment, props in props_grouped_by_comment.items():
-        # Identify the master prop (lowest StartChannel)
-        master_prop = min(props, key=lambda x: x["StartChannel"] or float("inf"))
-
-        # Extract the first grid part for the master prop
-        master_grid = master_prop["GridData"][0] if master_prop["GridData"] else {
-            "Network": None,
-            "UID": None,
-            "StartChannel": None,
-            "EndChannel": None,
-            "Unknown": None,
-            "Color": None
+    def parse_single_grid(channel_grid_text):
+        """
+        Parse a single-grid ChannelGrid string into a dict:
+          {Network, UID, StartChannel, EndChannel, Unknown, Color}
+        Returns None if the text is empty or malformed.
+        """
+        if not channel_grid_text:
+            return None
+        parts = [p.strip() for p in channel_grid_text.split(",")]
+        if len(parts) < 5:  # need at least Network, UID, Start, End, Unknown
+            return None
+        return {
+            "Network":      parts[0],
+            "UID":          parts[1] if len(parts) > 1 else None,
+            "StartChannel": safe_int(parts[2] if len(parts) > 2 else None),
+            "EndChannel":   safe_int(parts[3] if len(parts) > 3 else None),
+            "Unknown":      parts[4] if len(parts) > 4 else None,
+            "Color":        parts[5] if len(parts) > 5 else None,
         }
 
-        # Insert master prop into the props table
-        # Insert master prop into the props table
-        cursor.execute("""
-        INSERT OR REPLACE INTO props (
-            PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
-            CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
-            PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-            EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
-            Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            master_prop["PropID"], master_prop["Name"], master_prop["LORComment"], master_prop["DeviceType"],
-            master_prop["BulbShape"], master_prop["DimmingCurveName"], master_prop["MaxChannels"],
-            master_prop["CustomBulbColor"], master_prop["IndividualChannels"], master_prop["LegacySequenceMethod"],
-            master_prop["Opacity"], master_prop["MasterDimmable"], master_prop["PreviewBulbSize"],
-            master_prop["SeparateIds"], master_prop["StartLocation"], master_prop["StringType"],
-            master_prop["TraditionalColors"], master_prop["TraditionalType"], master_prop["EffectBulbSize"],
-            master_prop["Tag"], master_prop["Parm1"], master_prop["Parm2"], master_prop["Parm3"], master_prop["Parm4"],
-            master_prop["Parm5"], master_prop["Parm6"], master_prop["Parm7"], master_prop["Parm8"],
-            master_prop["Lights"], master_grid["Network"], master_grid["UID"], master_grid["StartChannel"],
-            master_grid["EndChannel"], master_grid["Unknown"], master_grid["Color"], master_prop["PreviewId"]
-        ))
-
-        if DEBUG:
-            print(f"[DEBUG] Inserted Master Prop: {master_prop['PropID']} with Grid Parts")
-
-        # Process remaining props as subprops
-        for subprop in props:
-            if subprop["PropID"] != master_prop["PropID"]:
-                for grid in subprop["GridData"]:
-                    cursor.execute("""
-                    INSERT OR REPLACE INTO subProps (
-                        SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
-                        EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
-                        LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
-                        MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                        EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        subprop["PropID"], subprop["Name"], subprop["LORComment"], subprop["DeviceType"],
-                        subprop["BulbShape"], grid["Network"], grid["UID"], grid["StartChannel"],
-                        grid["EndChannel"], grid["Unknown"], grid["Color"], subprop["CustomBulbColor"],
-                        subprop["DimmingCurveName"], subprop["IndividualChannels"], subprop["LegacySequenceMethod"],
-                        subprop["MaxChannels"], subprop["Opacity"], subprop["MasterDimmable"], subprop["PreviewBulbSize"],
-                        None, master_prop["PropID"], subprop["SeparateIds"], subprop["StartLocation"],
-                        subprop["StringType"], subprop["TraditionalColors"], subprop["TraditionalType"],
-                        subprop["EffectBulbSize"], subprop["Tag"], subprop["Parm1"], subprop["Parm2"],
-                        subprop["Parm3"], subprop["Parm4"], subprop["Parm5"], subprop["Parm6"], subprop["Parm7"],
-                        subprop["Parm8"], subprop["Lights"], subprop["PreviewId"]
-                    ))
-                    if DEBUG:
-                        print(f"[DEBUG] Inserted SubProp: {subprop['PropID']} with MasterPropID: {master_prop['PropID']} and GridData: {grid}")
-
-    conn.commit()
-    conn.close()
-
-
-
-def process_lor_multiple_channel_grids(preview_id, root):
-    """
-    Process props with DeviceType == LOR and multiple ChannelGrid groups.
-    - Retains the original master prop in the props table.
-    - Parses each ChannelGrid group and creates subprops.
-    - Inserts subprops into the subProps table with grid data and links to the master prop.
-    """
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
+    # --- PASS 0: handle 'spare' directly into props, skip grouping ------------
     for prop in root.findall(".//PropClass"):
-        device_type = prop.get("DeviceType")
-        master_prop_id = prop.get("id")
-        if device_type == "LOR" and prop.get("MasterPropId", "") == "" and ";" in prop.get("ChannelGrid", ""):
-            # Master Prop
-            name = prop.get("Name")
-            LORComment = prop.get("Comment")
-            channel_grid = prop.get("ChannelGrid")
-            grid_groups = channel_grid.split(";")
+        if prop.get("DeviceType") != "LOR":
+            continue
 
-            if DEBUG:
-                print(f"[DEBUG] Processing Master Prop: {master_prop_id} with ChannelGrid Groups: {len(grid_groups)}")
+        name = (prop.get("Name") or "")
+        ch_raw = (prop.get("ChannelGrid") or "").strip()
 
-            # Insert master prop into props table
+        # Only process single-grid here; multi-grid is handled elsewhere
+        if ";" in ch_raw:
+            continue
+
+        if "spare" in name.lower():
+            grid = parse_single_grid(ch_raw)
+            raw_id = prop.get("id") or ""
+            prop_id_scoped = scoped_id(preview_id, raw_id)
+
             cursor.execute("""
-            INSERT OR REPLACE INTO props (
-                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
-                CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
-                PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO props (
+                    PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                    CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                    PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
+                    Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                master_prop_id, name, LORComment, device_type, prop.get("BulbShape"), prop.get("DimmingCurveName"),
+                prop_id_scoped, name, prop.get("Comment"), "LOR", prop.get("BulbShape"), prop.get("DimmingCurveName"),
                 prop.get("MaxChannels"), prop.get("CustomBulbColor"), prop.get("IndividualChannels"),
                 prop.get("LegacySequenceMethod"), prop.get("Opacity"), prop.get("MasterDimmable"),
                 prop.get("PreviewBulbSize"), prop.get("SeparateIds"), prop.get("StartLocation"),
                 prop.get("StringType"), prop.get("TraditionalColors"), prop.get("TraditionalType"),
                 prop.get("EffectBulbSize"), prop.get("Tag"), prop.get("Parm1"), prop.get("Parm2"),
                 prop.get("Parm3"), prop.get("Parm4"), prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"),
-                prop.get("Parm8"), int(prop.get("Parm2") or 0), preview_id
+                prop.get("Parm8"),
+                int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
+                grid["Network"] if grid else None,
+                grid["UID"] if grid else None,
+                grid["StartChannel"] if grid else None,
+                grid["EndChannel"] if grid else None,
+                grid["Unknown"] if grid else None,
+                grid["Color"] if grid else None,
+                preview_id
             ))
             if DEBUG:
-                print(f"[DEBUG] Inserted Master Prop: {master_prop_id}")
+                print(f"[DEBUG] (LOR single) Inserted SPARE Prop: raw_id={raw_id} scoped_id={prop_id_scoped} Name={name}")
+    # --------------------------------------------------------------------------
 
-            # Process ChannelGrid Groups
-            for grid in grid_groups:
-                grid_parts = grid.split(",")
-                start_channel = int(grid_parts[2]) if len(grid_parts) > 2 and grid_parts[2].isdigit() else 0
-                subprop_id_suffix = f"{start_channel:02d}"  # Format StartChannel as two digits
-                subprop_id = f"{master_prop_id}-{subprop_id_suffix}"
+    # Collect single-grid (non-spare) LOR props grouped by LORComment
+    props_grouped_by_comment = {}
 
-                # Extract the first part of LORComment
-                lor_comment_first_part = LORComment.split(" ")[0] if LORComment else ""
+    for prop in root.findall(".//PropClass"):
+        if prop.get("DeviceType") != "LOR":
+            continue
 
-                # Subprop Name: 1st part of LOR Comment, Color, UID, StartChannel padded to 2 places
-                subprop_name = f"{lor_comment_first_part} {grid_parts[5] if len(grid_parts) > 5 else ''} " \
-                               f"{grid_parts[1] if len(grid_parts) > 1 else ''}-{start_channel:02d}".strip()
+        name = (prop.get("Name") or "")
+        if "spare" in name.lower():
+            continue  # already handled above
 
-                subprop_data = {
-                    "Network": grid_parts[0] if len(grid_parts) > 0 else None,
-                    "UID": grid_parts[1] if len(grid_parts) > 1 else None,
-                    "StartChannel": start_channel,
-                    "EndChannel": int(grid_parts[3]) if len(grid_parts) > 3 and grid_parts[3].isdigit() else None,
-                    "Unknown": grid_parts[4] if len(grid_parts) > 4 else None,
-                    "Color": grid_parts[5] if len(grid_parts) > 5 else None
-                }
+        ch_raw = (prop.get("ChannelGrid") or "").strip()
 
-                # Insert subprop into the subProps table
-                cursor.execute("""
+        # Only single-grid goes through this path
+        if ";" in ch_raw:
+            continue
+
+        grid = parse_single_grid(ch_raw)
+        # Prepare per-prop record
+        raw_id = prop.get("id") or ""
+        rec = {
+            "PropID_raw":         raw_id,  # keep raw for logs
+            "PropID_scoped":      scoped_id(preview_id, raw_id),  # << use this when inserting
+            "Name":               name,
+            "DeviceType":         "LOR",
+            "LORComment":         prop.get("Comment", "") or "",
+            "BulbShape":          prop.get("BulbShape", ""),
+            "DimmingCurveName":   prop.get("DimmingCurveName", ""),
+            "MaxChannels":        prop.get("MaxChannels"),
+            "CustomBulbColor":    prop.get("CustomBulbColor", ""),
+            "IndividualChannels": prop.get("IndividualChannels", False),
+            "LegacySequenceMethod":prop.get("LegacySequenceMethod", ""),
+            "Opacity":            prop.get("Opacity"),
+            "MasterDimmable":     prop.get("MasterDimmable", False),
+            "PreviewBulbSize":    prop.get("PreviewBulbSize"),
+            "SeparateIds":        prop.get("SeparateIds", False),
+            "StartLocation":      prop.get("StartLocation", ""),
+            "StringType":         prop.get("StringType", ""),
+            "TraditionalColors":  prop.get("TraditionalColors", ""),
+            "TraditionalType":    prop.get("TraditionalType", ""),
+            "EffectBulbSize":     prop.get("EffectBulbSize"),
+            "Tag":                prop.get("Tag", ""),
+            "Parm1":              prop.get("Parm1", ""),
+            "Parm2":              prop.get("Parm2", ""),
+            "Parm3":              prop.get("Parm3", ""),
+            "Parm4":              prop.get("Parm4", ""),
+            "Parm5":              prop.get("Parm5", ""),
+            "Parm6":              prop.get("Parm6", ""),
+            "Parm7":              prop.get("Parm7", ""),
+            "Parm8":              prop.get("Parm8", ""),
+            "Lights":             int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
+            "Grid":               grid,   # dict or None
+            "StartChannel":       grid["StartChannel"] if grid else None,
+            "PreviewId":          preview_id,
+        }
+
+        key = rec["LORComment"]
+        props_grouped_by_comment.setdefault(key, []).append(rec)
+
+    # Process each comment group (choose master by lowest StartChannel)
+    for LORComment, group in props_grouped_by_comment.items():
+        if not group:
+            continue
+
+        # Pick master: lowest StartChannel (None treated as +inf)
+        master = min(group, key=lambda r: r["StartChannel"] if r["StartChannel"] is not None else float("inf"))
+
+        m_grid = master["Grid"] or {
+            "Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None
+        }
+        master_id = master["PropID_scoped"]  # << scoped id
+
+        # --- MASTER → props ---------------------------------------------------
+        cursor.execute("""
+            INSERT OR REPLACE INTO props (
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
+                Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            master_id, master["Name"], LORComment, master["DeviceType"], master["BulbShape"],
+            master["DimmingCurveName"], master["MaxChannels"], master["CustomBulbColor"],
+            master["IndividualChannels"], master["LegacySequenceMethod"], master["Opacity"],
+            master["MasterDimmable"], master["PreviewBulbSize"], master["SeparateIds"],
+            master["StartLocation"], master["StringType"], master["TraditionalColors"],
+            master["TraditionalType"], master["EffectBulbSize"], master["Tag"], master["Parm1"],
+            master["Parm2"], master["Parm3"], master["Parm4"], master["Parm5"], master["Parm6"],
+            master["Parm7"], master["Parm8"], master["Lights"],
+            m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"], m_grid["Unknown"], m_grid["Color"],
+            master["PreviewId"]
+        ))
+        if DEBUG:
+            print(f"[DEBUG] (LOR single) Inserted Master Prop: raw_id={master['PropID_raw']} scoped_id={master_id}  LORComment={LORComment} Start={m_grid['StartChannel']}")
+
+        # --- REMAINING → subProps -------------------------------------------
+        lor_first = (LORComment or "").split(" ")[0]
+        for rec in group:
+            if rec["PropID_scoped"] == master_id:
+                continue  # skip master itself
+            g = rec["Grid"] or {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
+
+            # Unique subprop id under this preview & master
+            uid   = g["UID"]
+            start = g["StartChannel"] if g["StartChannel"] is not None else 0
+            sub_id = f"{master_id}-{uid}-{start:02d}"
+
+            # Name pattern: "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
+            name_parts = [lor_first]
+            if g["Color"]:
+                name_parts.append(g["Color"])
+            if uid is not None:
+                name_parts.append(f"{uid}-{start:02d}")
+            sub_name = " ".join(name_parts).strip()
+
+            cursor.execute("""
                 INSERT OR REPLACE INTO subProps (
                     SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                     EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
@@ -585,24 +685,231 @@ def process_lor_multiple_channel_grids(preview_id, root):
                     MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    subprop_id, subprop_name, LORComment, device_type, prop.get("BulbShape"),
-                    subprop_data["Network"], subprop_data["UID"], subprop_data["StartChannel"],
-                    subprop_data["EndChannel"], subprop_data["Unknown"], subprop_data["Color"],
-                    prop.get("CustomBulbColor"), prop.get("DimmingCurveName"), prop.get("IndividualChannels"),
-                    prop.get("LegacySequenceMethod"), prop.get("MaxChannels"), prop.get("Opacity"),
-                    prop.get("MasterDimmable"), prop.get("PreviewBulbSize"), None, master_prop_id,
-                    prop.get("SeparateIds"), prop.get("StartLocation"), prop.get("StringType"),
-                    prop.get("TraditionalColors"), prop.get("TraditionalType"), prop.get("EffectBulbSize"),
-                    prop.get("Tag"), prop.get("Parm1"), prop.get("Parm2"), prop.get("Parm3"), prop.get("Parm4"),
-                    prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"), prop.get("Parm8"),
-                    int(prop.get("Parm2") or 0), preview_id
-                ))
-                if DEBUG:
-                    print(f"[DEBUG] Inserted SubProp: {subprop_id} with Name: {subprop_name}")
+            """, (
+                sub_id, sub_name, LORComment, rec["DeviceType"], rec["BulbShape"],
+                g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                rec["CustomBulbColor"], rec["DimmingCurveName"], rec["IndividualChannels"], rec["LegacySequenceMethod"],
+                rec["MaxChannels"], rec["Opacity"], rec["MasterDimmable"], rec["PreviewBulbSize"], None,  # RgbOrder=NULL
+                master_id, rec["SeparateIds"], rec["StartLocation"], rec["StringType"], rec["TraditionalColors"],
+                rec["TraditionalType"], rec["EffectBulbSize"], rec["Tag"], rec["Parm1"], rec["Parm2"], rec["Parm3"],
+                rec["Parm4"], rec["Parm5"], rec["Parm6"], rec["Parm7"], rec["Parm8"], rec["Lights"], rec["PreviewId"]
+            ))
+            if DEBUG:
+                print(f"[DEBUG] (LOR single) Inserted SubProp: parent={master_id} sub_id={sub_id} -> UID={uid} Start={g['StartChannel']}")
 
     conn.commit()
     conn.close()
+
+
+
+
+def process_lor_multiple_channel_grids(preview_id, root):
+    """
+    Process props with DeviceType == LOR and multiple ChannelGrid groups.
+
+    WHAT THIS HANDLER DOES
+    ----------------------
+    • Targets ONLY multi-grid LOR props (ChannelGrid contains ';'). We intentionally
+      include BOTH "true masters" (MasterPropId == '') and "reuse-only" children.
+    • Groups all such props by LORComment and FLATTENS all of their grid entries.
+    • Picks the MASTER GRID for the group as the entry with the LOWEST StartChannel.
+    • Inserts a master row into props with full Network/UID/Start/End/Unknown/Color.
+    • Inserts every REMAINING grid entry for the group into subProps with a unique id:
+        SubPropID = "{<scoped master id>}-{UID}-{Start:02d}"
+      and links them via MasterPropId = <scoped master id>.
+
+    IMPORTANT: ID SCOPING
+    ---------------------
+    Visualizer reuses PropClass.id across different previews. To prevent cross-preview
+    overwrites, we scope every id we store using the current preview id:
+        scoped_id = f"{preview_id}:{raw_id}"
+    We must use the SAME scoped value consistently for:
+      - props.PropID
+      - subProps.MasterPropId
+      - subProps.SubPropID  (plus UID + Start to make it unique within the master)
+
+    NAMING (unchanged from your convention)
+    ---------------------------------------
+    SubProp Name = "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
+
+    SCHEMA NOTES
+    ------------
+    • props insert includes Network/UID/StartChannel/EndChannel/Unknown/Color (no RgbOrder).
+    • subProps insert includes RgbOrder (set to NULL); safe even if column exists.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    def parse_grid(seg):
+        """
+        Parse a single grid segment "Net,UID,Start,End,Unknown,Color?" → dict.
+        Handles both A/C (with Color) and RGB (Color may be empty).
+        """
+        parts = [p.strip() for p in (seg or "").split(",")]
+        return {
+            "Network":      parts[0] if len(parts) > 0 else None,
+            "UID":          parts[1] if len(parts) > 1 else None,
+            "StartChannel": safe_int(parts[2] if len(parts) > 2 else None),
+            "EndChannel":   safe_int(parts[3] if len(parts) > 3 else None),
+            "Unknown":      parts[4] if len(parts) > 4 else None,
+            "Color":        parts[5] if len(parts) > 5 else None,
+        }
+
+    def uid_sort_key(uid):
+        """
+        Deterministic ordering for UIDs that may be hex ('5F') or decimal.
+        We sort by StartChannel first (elsewhere), then use this as tiebreaker.
+        """
+        if uid is None:
+            return (2, 0)
+        u = uid.strip()
+        try:
+            return (0, int(u, 16))  # hex wins if parseable
+        except Exception:
+            try:
+                return (1, int(u))   # then decimal
+            except Exception:
+                return (2, u)        # then raw string
+
+    def first_token(s):
+        s = (s or "").strip()
+        return s.split(" ")[0] if s else ""
+
+    # --------------------- collect multi-grid by comment ---------------------
+    # We collect *all* LOR PropClass nodes whose ChannelGrid contains ';'
+    # (masters and reused children) and flatten every grid entry into a group.
+    groups = {}  # LORComment -> list of flat entries
+    for prop in root.findall(".//PropClass"):
+        if prop.get("DeviceType") != "LOR":
+            continue
+        ch_raw = (prop.get("ChannelGrid") or "").strip()
+        if ";" not in ch_raw:
+            continue  # single-grid handled by process_lor_props
+
+        comment = prop.get("Comment") or ""
+        raw_id  = prop.get("id") or ""
+        # flatten each grid segment
+        for seg in (s.strip() for s in ch_raw.split(";") if s.strip()):
+            g = parse_grid(seg)
+            entry = {
+                "prop":         prop,
+                "raw_id":       raw_id,
+                "Name":         prop.get("Name"),
+                "LORComment":   comment,
+                "BulbShape":    prop.get("BulbShape"),
+                "DimmingCurveName": prop.get("DimmingCurveName"),
+                "MaxChannels":  prop.get("MaxChannels"),
+                "CustomBulbColor": prop.get("CustomBulbColor"),
+                "IndividualChannels": prop.get("IndividualChannels"),
+                "LegacySequenceMethod": prop.get("LegacySequenceMethod"),
+                "Opacity":      prop.get("Opacity"),
+                "MasterDimmable": prop.get("MasterDimmable"),
+                "PreviewBulbSize": prop.get("PreviewBulbSize"),
+                "MasterPropId_attr": prop.get("MasterPropId"),  # original attribute for reference
+                "SeparateIds":  prop.get("SeparateIds"),
+                "StartLocation": prop.get("StartLocation"),
+                "StringType":   prop.get("StringType"),
+                "TraditionalColors": prop.get("TraditionalColors"),
+                "TraditionalType":   prop.get("TraditionalType"),
+                "EffectBulbSize": prop.get("EffectBulbSize"),
+                "Tag":          prop.get("Tag"),
+                "Parm1":        prop.get("Parm1"),
+                "Parm2":        prop.get("Parm2"),
+                "Parm3":        prop.get("Parm3"),
+                "Parm4":        prop.get("Parm4"),
+                "Parm5":        prop.get("Parm5"),
+                "Parm6":        prop.get("Parm6"),
+                "Parm7":        prop.get("Parm7"),
+                "Parm8":        prop.get("Parm8"),
+                "Lights":       int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
+                "Grid":         g,  # parsed grid dict
+            }
+            groups.setdefault(comment, []).append(entry)
+
+    # ---------------------- process each multi-grid group --------------------
+    for comment, items in groups.items():
+        if len(items) < 2:
+            continue  # true multi-grid groups only
+
+        # Choose master GRID by lowest StartChannel; tiebreaker: UID sorting
+        items_sorted = sorted(
+            items,
+            key=lambda d: ((d["Grid"]["StartChannel"] if d["Grid"]["StartChannel"] is not None else 1_000_000),
+                           uid_sort_key(d["Grid"]["UID"]))
+        )
+        master = items_sorted[0]
+
+        # Compose scoped master id from the PropClass that *owns* the master grid
+        master_raw_id = master["raw_id"]
+        master_id     = scoped_id(preview_id, master_raw_id)
+
+        # Fields for master props row
+        m_grid = master["Grid"]
+        props_row = (
+            master_id, master["Name"], comment, "LOR", master["BulbShape"], master["DimmingCurveName"],
+            master["MaxChannels"], master["CustomBulbColor"], master["IndividualChannels"],
+            master["LegacySequenceMethod"], master["Opacity"], master["MasterDimmable"], master["PreviewBulbSize"],
+            master["SeparateIds"], master["StartLocation"], master["StringType"], master["TraditionalColors"],
+            master["TraditionalType"], master["EffectBulbSize"], master["Tag"], master["Parm1"], master["Parm2"],
+            master["Parm3"], master["Parm4"], master["Parm5"], master["Parm6"], master["Parm7"], master["Parm8"],
+            master["Lights"],  # Lights
+            m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"], m_grid["Unknown"], m_grid["Color"],
+            preview_id
+        )
+
+        # Insert master into props (WITH full network/channel fields)
+        cursor.execute("""
+            INSERT OR REPLACE INTO props (
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
+                Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, props_row)
+
+        if DEBUG:
+            print(f"[DEBUG] (LOR multi) MASTER → props  id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
+
+        # Insert remaining grids into subProps
+        lor_first = first_token(comment)
+        for d in items_sorted[1:]:
+            g = d["Grid"]
+            uid   = g["UID"]
+            start = g["StartChannel"] if g["StartChannel"] is not None else 0
+            sub_id = f"{master_id}-{uid}-{start:02d}"   # unique under this master/preview
+
+            # Subprop name pattern: "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
+            name_parts = [lor_first]
+            if g["Color"]:
+                name_parts.append(g["Color"])
+            if uid is not None:
+                name_parts.append(f"{uid}-{start:02d}")
+            sub_name = " ".join(name_parts).strip()
+
+            cursor.execute("""
+                INSERT OR REPLACE INTO subProps (
+                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                    EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                    LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                    MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                sub_id, sub_name, comment, "LOR", d["BulbShape"],
+                g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                d["CustomBulbColor"], d["DimmingCurveName"], d["IndividualChannels"], d["LegacySequenceMethod"],
+                d["MaxChannels"], d["Opacity"], d["MasterDimmable"], d["PreviewBulbSize"], None,  # RgbOrder=NULL
+                master_id, d["SeparateIds"], d["StartLocation"], d["StringType"], d["TraditionalColors"],
+                d["TraditionalType"], d["EffectBulbSize"], d["Tag"], d["Parm1"], d["Parm2"], d["Parm3"],
+                d["Parm4"], d["Parm5"], d["Parm6"], d["Parm7"], d["Parm8"], d["Lights"], preview_id
+            ))
+            if DEBUG:
+                print(f"[DEBUG] (LOR multi) SUB  → subProps id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+
+    conn.commit()
+    conn.close()
+
 
 
 
