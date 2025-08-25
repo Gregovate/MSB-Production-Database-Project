@@ -1121,7 +1121,7 @@ def create_wiring_views_v6(db_file: str):
     PreviewName, Channel_Name, Display_Name, Suggested_Name,
     Network, Controller, StartChannel, EndChannel, DeviceType, Source, LORTag
     FROM preview_wiring_map_v6
-    ORDER BY PreviewName COLLATE NOCASE, Display_Name COLLATE NOCASE, Controller, StartChannel;
+    ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
 
     -- helpful indexes
     CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
