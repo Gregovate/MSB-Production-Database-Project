@@ -1027,32 +1027,34 @@ def create_wiring_views_v6(db_file: str):
     -- LOR masters (props)
     CREATE VIEW preview_wiring_map_v6 AS
     SELECT
-    pv.Name AS PreviewName,
-    p.Name AS Channel_Name,              -- RAW channel name
-    p.LORComment AS Display_Name,        -- RAW display name (inventory key)
-    REPLACE(TRIM(
-        COALESCE(NULLIF(p.LORComment,''), p.Name)
-        || CASE
-            WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
-            WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
-            WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
-            WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
-            ELSE ''
-        END
-        || CASE
-            WHEN INSTR(p.Tag,'Group ')>0
-                AND SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1) BETWEEN 'A' AND 'Z'
-            THEN '-'||SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1)
-            ELSE ''
-        END
-        || CASE WHEN p.UID IS NOT NULL AND p.StartChannel IS NOT NULL
-                THEN '-'||p.UID||'-'||printf('%02d', p.StartChannel)
-                ELSE '' END
-    ), ' ','-') AS Suggested_Name,
-    p.Network AS Network,
-    p.UID     AS Controller,
-    p.StartChannel, p.EndChannel,
-    p.DeviceType, 'PROP' AS Source, p.Tag AS LORTag
+      pv.Name AS PreviewName,
+      'PROP'  AS Source,
+      p.Name  AS Channel_Name,              -- RAW channel name
+      p.LORComment AS Display_Name,         -- RAW display name (inventory key)
+      REPLACE(TRIM(
+          COALESCE(NULLIF(p.LORComment,''), p.Name)
+          || CASE
+               WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
+               WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
+               WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
+               WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
+               ELSE ''
+             END
+          || CASE
+               WHEN INSTR(p.Tag,'Group ')>0
+                    AND SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1) BETWEEN 'A' AND 'Z'
+                 THEN '-'||SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1)
+               ELSE ''
+             END
+          || CASE WHEN p.UID IS NOT NULL AND p.StartChannel IS NOT NULL
+                  THEN '-'||p.UID||'-'||printf('%02d', p.StartChannel)
+                  ELSE '' END
+      ), ' ','-') AS Suggested_Name,
+      p.Network AS Network,
+      p.UID     AS Controller,
+      p.StartChannel, p.EndChannel,
+      p.Color   AS Color,
+      p.DeviceType, p.Tag AS LORTag
     FROM props p
     JOIN previews pv ON pv.id = p.PreviewId
     WHERE p.DeviceType='LOR' AND p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
@@ -1061,69 +1063,72 @@ def create_wiring_views_v6(db_file: str):
 
     -- LOR subprops
     SELECT
-    pv.Name,
-    sp.Name       AS Channel_Name,      -- RAW subprop channel name
-    sp.LORComment AS Display_Name,      -- RAW subprop display name
-    REPLACE(TRIM(
-        COALESCE(NULLIF(sp.LORComment,''), p.LORComment)
-        || CASE
-            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% DS%' OR UPPER(sp.Tag) LIKE '% DS%' THEN '-DS'
-            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% PS%' OR UPPER(sp.Tag) LIKE '% PS%' THEN '-PS'
-            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% LH%' OR UPPER(sp.Tag) LIKE '% LH%' THEN '-LH'
-            WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% RH%' OR UPPER(sp.Tag) LIKE '% RH%' THEN '-RH'
-            ELSE ''
-            END
-        || CASE
-            WHEN INSTR(sp.Tag,'Group ')>0
+      pv.Name,
+      'SUBPROP' AS Source,
+      sp.Name       AS Channel_Name,       -- RAW subprop channel name
+      sp.LORComment AS Display_Name,       -- RAW subprop display name
+      REPLACE(TRIM(
+          COALESCE(NULLIF(sp.LORComment,''), p.LORComment)
+          || CASE
+               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% DS%' OR UPPER(sp.Tag) LIKE '% DS%' THEN '-DS'
+               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% PS%' OR UPPER(sp.Tag) LIKE '% PS%' THEN '-PS'
+               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% LH%' OR UPPER(sp.Tag) LIKE '% LH%' THEN '-LH'
+               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% RH%' OR UPPER(sp.Tag) LIKE '% RH%' THEN '-RH'
+               ELSE ''
+             END
+          || CASE
+               WHEN INSTR(sp.Tag,'Group ')>0
                     AND SUBSTR(sp.Tag, INSTR(sp.Tag,'Group ')+6, 1) BETWEEN 'A' AND 'Z'
-                THEN '-'||SUBSTR(sp.Tag, INSTR(sp.Tag,'Group ')+6, 1)
-            ELSE ''
-            END
-        || CASE WHEN sp.UID IS NOT NULL AND sp.StartChannel IS NOT NULL
-                THEN '-'||sp.UID||'-'||printf('%02d', sp.StartChannel)
-                ELSE '' END
-    ), ' ','-') AS Suggested_Name,
-    sp.Network, sp.UID AS Controller, sp.StartChannel, sp.EndChannel,
-    COALESCE(sp.DeviceType,'LOR') AS DeviceType, 'SUBPROP' AS Source, sp.Tag AS LORTag
+                 THEN '-'||SUBSTR(sp.Tag, INSTR(sp.Tag,'Group ')+6, 1)
+               ELSE ''
+             END
+          || CASE WHEN sp.UID IS NOT NULL AND sp.StartChannel IS NOT NULL
+                  THEN '-'||sp.UID||'-'||printf('%02d', sp.StartChannel)
+                  ELSE '' END
+      ), ' ','-') AS Suggested_Name,
+      sp.Network, sp.UID AS Controller, sp.StartChannel, sp.EndChannel,
+      sp.Color   AS Color,
+      COALESCE(sp.DeviceType,'LOR') AS DeviceType, sp.Tag AS LORTag
     FROM subProps sp
     JOIN props p   ON p.PropID = sp.MasterPropId AND p.PreviewId = sp.PreviewId
     JOIN previews pv ON pv.id = sp.PreviewId
-
 
     UNION ALL
 
     -- DMX channels (Controller = Universe)
     SELECT
-    pv.Name,
-    p.Name AS Channel_Name,
-    p.LORComment AS Display_Name,
-    REPLACE(TRIM(
-        COALESCE(NULLIF(p.LORComment,''), p.Name)
-        || CASE
-            WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
-            WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
-            WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
-            WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
-            ELSE ''
-        END
-        || '-U'||dc.StartUniverse||':'||dc.StartChannel
-    ), ' ','-') AS Suggested_Name,
-    dc.Network, CAST(dc.StartUniverse AS TEXT) AS Controller,
-    dc.StartChannel, dc.EndChannel,
-    'DMX' AS DeviceType, 'DMX' AS Source, p.Tag AS LORTag
+      pv.Name,
+      'DMX' AS Source,
+      p.Name AS Channel_Name,
+      p.LORComment AS Display_Name,
+      REPLACE(TRIM(
+          COALESCE(NULLIF(p.LORComment,''), p.Name)
+          || CASE
+               WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
+               WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
+               WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
+               WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
+               ELSE ''
+             END
+          || '-U'||dc.StartUniverse||':'||dc.StartChannel
+      ), ' ','-') AS Suggested_Name,
+      dc.Network, CAST(dc.StartUniverse AS TEXT) AS Controller,
+      dc.StartChannel, dc.EndChannel,
+      'RGB' AS Color,
+      'DMX' AS DeviceType, p.Tag AS LORTag
     FROM dmxChannels dc
     JOIN props p   ON p.PropID = dc.PropId AND p.PreviewId = dc.PreviewId
     JOIN previews pv ON pv.id = p.PreviewId;
 
-    -- Sorted convenience view
+    -- Sorted convenience view (new order)
     CREATE VIEW preview_wiring_sorted_v6 AS
     SELECT
-    PreviewName, Channel_Name, Display_Name, Suggested_Name,
-    Network, Controller, StartChannel, EndChannel, DeviceType, Source, LORTag
+      PreviewName, Source, Channel_Name, Display_Name, Suggested_Name,
+      Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
     FROM preview_wiring_map_v6
     ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
 
-    -- helpful indexes
+    -- helpful indexes on base tables
     CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview  ON subProps(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_dmx_prop          ON dmxChannels(PropId);
@@ -1132,9 +1137,11 @@ def create_wiring_views_v6(db_file: str):
     try:
         conn.executescript(ddl)
         conn.commit()
-        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6.")
+        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (Source moved, new sort).")
     finally:
         conn.close()
+
+
 
 
 
