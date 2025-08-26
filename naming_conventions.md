@@ -1,4 +1,4 @@
-# Naming Conventions
+# Naming Conventions Updated 25-08-26
 
 We maintain **two distinct naming conventions** that must be followed consistently:
 
@@ -43,18 +43,50 @@ Every display we build, set up, maintain, and store must have a **unique identif
 - Is duplicated in the **Comment** field within the LOR sequencing software.  
 - Ensures every channel associated with a display can be traced back to the correct physical panel.  
 
-### 2.1 Displays and Sub-Props
+### 2.1 Displays and Device Types
 
-- **Display** = The complete physical panel (e.g., Conductor, Note, Elf).  
-- **Sub-Prop** = An individual channel/motion element within that display.  
-- All sub-props share the same **Display Name** in the comment field.  
+A **Display** is the complete physical panel or structure (e.g., Conductor, Elf, Note, Arch, Star).  
+Every display is assigned a **Device Type** in the Preview, which determines how it is handled in the database.
 
-**Example:**  
-- Display = `ElfConductor`  
-- Sub-props = Arm Left, Arm Right, Head, Hat …  
-- All channels use the same display name: `ElfConductor`  
+**Device Types:**
 
-### 2.2 Single-Channel Displays
+- **LOR**  
+  - Props with channel grids assigned to LOR controllers.  
+  - Master = lowest StartChannel, other legs become generated sub-props.  
+
+- **DMX**  
+  - Props controlled by DMX universes.  
+  - Master metadata goes into `props`, each universe leg goes into `dmxChannels`.  
+
+- **None (Undetermined)**  
+  - Physical-only props with no channels (e.g., FTString-01R, cutouts, scenery).  
+  - Stored in `props` with DeviceType="None".  
+  - `MaxChannels` can act as a multiplier (e.g., 16 strings).  
+  - Excluded from wiring views but included in inventory/labels.  
+
+---
+
+### 2.2 Sub-Props
+
+There are **two kinds of sub-props** we must distinguish:
+
+#### Generated Sub-Props (Database / Parser)
+- Created when a single physical display has multiple channels.  
+- Generated automatically by the parser.  
+- Always belong to one display and share its Display Name.  
+
+**Example:** `ElfConductor` → ArmLeft, ArmRight, Head, Hat.  
+
+#### Manual Sub-Props (Sequencing Software)
+- Created inside the LOR sequencing software by selecting **"Uses same channel as"**.  
+- Can span across multiple displays (aliases).  
+- Do not create new physical channels; they reference existing ones.  
+
+**Example:** A `HandWave` manual sub-prop may use the same channel as both `Elf-ArmLeft` and `Elf-ArmRight`.
+
+---
+
+### 2.3 Single-Channel Displays
 
 Some displays are a single channel (one lighting element). Each must have a unique identifier.
 
@@ -92,12 +124,14 @@ Some displays include multiple channels but remain a single physical panel. The 
   - **Location:** `DS`, `PS`, `LH`, `RH`, `Front`, `Rear`, `A/B/C`  
   - **Pattern:** `P1`, `P2`, `A`, `B` …  
   - **Section:** `A`, `B`, `C` …  
-- **Sequence** → Optional.  
-  - If <10 total, use `1..9` (must guarantee <10).  
-  - If ≥10, use padded `01, 02, … 10, 11`.  
+- **Sequence*** → The instance number (for duplicates) of that variation.  
+  - If fewer than 10 → single digit (`1, 2, 3, …`). Must guarantee there will NEVER be more than 9.  
+  - If 10 or more → pad with leading zero (`01, 02, …, 10, 11, …`).  
+  - ⚠️ *Do not use Sequence if Device Type is `None` (Undetermined). In that case, quantity is managed by **Max Circuits per Unit ID** instead.*  
+
 - **Color** → Optional.  
-  - Preferred: single-letter suffix (`R`, `G`, `B`, `W`, `Y`).  
-  - Alternate: full color names (e.g., `-Red`).  
+  - Preferred: single-letter suffix appended to the sequence (`R`, `G`, `B`, `W`, `Y`).  
+  - Alternate: full color names (e.g., `-Red`).
 
 **Examples:**  
 - Pattern-based: `Elf-P2-6`, `Note-B-1`  
