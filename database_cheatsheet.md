@@ -7,12 +7,12 @@ Here are some useful SQLite queries you can run against `lor_output_v6.db`.
 ### List all unique controllers and the networks they are used on
 ```sql
 SELECT DISTINCT
-    PreviewName,
     Controller,
     Network
 FROM preview_wiring_sorted_v6
 WHERE Controller IS NOT NULL
-ORDER BY PreviewName, Controller, Network;
+  AND DeviceType <> 'DMX'
+ORDER BY Network, Controller;
 ```
 
 ### Find all props with DeviceType=None (physical-only, no channels)
