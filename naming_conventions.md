@@ -1,5 +1,7 @@
 # Naming Conventions Updated 25-08-26
 
+# Naming Conventions
+
 We maintain **two distinct naming conventions** that must be followed consistently:
 
 1. **Channel Naming Conventions** (used in LOR sequencing)
@@ -50,6 +52,9 @@ Every display is assigned a **Device Type** in the Preview, which determines how
 
 **Device Types:**
 
+> **Terminology note:** In the LOR Sequencing UI this appears as **Undetermined**.  
+> In our parser and the SQLite database we record this as **DeviceType="None"**.
+
 - **LOR**  
   - Props with channel grids assigned to LOR controllers.  
   - Master = lowest StartChannel, other legs become generated sub-props.  
@@ -58,7 +63,7 @@ Every display is assigned a **Device Type** in the Preview, which determines how
   - Props controlled by DMX universes.  
   - Master metadata goes into `props`, each universe leg goes into `dmxChannels`.  
 
-- **None (Undetermined)**  
+- **None** *(shown as **Undetermined** in the LOR UI)*  
   - Physical-only props with no channels (e.g., FTString-01R, cutouts, scenery).  
   - Stored in `props` with DeviceType="None".  
   - `MaxChannels` can act as a multiplier (e.g., 16 strings).  
@@ -127,7 +132,7 @@ Some displays include multiple channels but remain a single physical panel. The 
 - **Sequence*** → The instance number (for duplicates) of that variation.  
   - If fewer than 10 → single digit (`1, 2, 3, …`). Must guarantee there will NEVER be more than 9.  
   - If 10 or more → pad with leading zero (`01, 02, …, 10, 11, …`).  
-  - ⚠️ *Do not use Sequence if Device Type is `None` (Undetermined). In that case, quantity is managed by **Max Circuits per Unit ID** instead.*  
+  - ⚠️ *Do not use Sequence if Device Type is `None` (shown as **Undetermined** in the LOR UI). In that case, quantity is managed by **Max Circuits per Unit ID** instead.*  
 
 - **Color** → Optional.  
   - Preferred: single-letter suffix appended to the sequence (`R`, `G`, `B`, `W`, `Y`).  
