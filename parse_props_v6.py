@@ -1,7 +1,72 @@
+# MSB Database — LOR Preview Parser (v6)
 # Initial Release: 2022-01-20 V0.1.0
-# Written by: Greg Liebig, Engineering Innovations, LLC.
-# Description: This script parses LOR .lorprev files and extracts prop data into a SQLite database.
-# Modified Schema as a test to create a new primary Key as an integer
+# Author: Greg Liebig, Engineering Innovations, LLC.
+#
+# Purpose
+# -------
+# Parse Light-O-Rama (.lorprev) previews and materialize a normalized SQLite DB:
+#   • previews
+#   • props
+#   • subProps
+#   • dmxChannels
+#   • wiring views (preview_wiring_map_v6 / preview_wiring_sorted_v6)
+#
+# Naming Convention
+# -----------------
+# Display names follow a consistent pattern:
+#     <Name>[-<Location>][-<Seq><Color?>]
+#
+# • Name: CamelCase (capitalize each word, no spaces).
+#         Stage/section or pattern may be embedded (e.g., DF_A, ElfP2, NoteB).
+# • Location (optional): DS, PS, LH, RH, Center, Front, Rear, A/B/C… (sections).
+# • Seq (optional): instance number.
+#       - Use 1..9 if guaranteed <10 total.
+#       - Use zero-padded 01, 02, …, 10, 11… if 10+ possible.
+# • Color (optional): single-letter suffix appended to Seq with no extra hyphen.
+#       R=Red, G=Green, B=Blue, W=White, Y=Yellow (e.g., -01R).
+#       If needed, full color names (e.g., -Red) may be used, but suffix is preferred.
+#
+# Device Types
+# ------------
+# • LOR   : Single- or multi-grid channel props.
+#           - Master prop = lowest StartChannel among items with the same LORComment.
+#           - Master goes to `props`.
+#           - Other legs go to `subProps` (linked via MasterPropId).
+#
+# • DMX   : Channel grids are split into universes.
+#           - Master metadata goes to `props`.
+#           - Each universe leg goes to `dmxChannels`.
+#
+# • None  : Props with no electronic channels (physical-only, e.g., static cutouts).
+#           - Saved in `props` with DeviceType="None".
+#           - Lights count pulled from Parm2 (if present) and aggregated by LORComment.
+#           - Present for labeling, inventory, storage.
+#           - Excluded from wiring views (since no channels).
+#
+# Wiring Views
+# ------------
+# • preview_wiring_map_v6 and preview_wiring_sorted_v6 present a channel map for wiring.
+# • Only channel-based items appear (LOR, DMX).
+# • DeviceType=None props are omitted (no wiring), but remain in `props`.
+# • DisplayName is derived by dashifying LORComment (spaces → '-').
+#
+# IMPORTANT: ID SCOPING 
+# -----------------------------------
+# LOR Visualizer can reuse PropClass.id across different previews. If you need
+# globally unique keys, scope every raw xml id by preview:
+#
+#     def scoped_id(preview_id: str, raw_id: str) -> str:
+#         return f"{preview_id}:{raw_id}"
+#
+# Use the scoped value consistently for:
+#   - props.PropID
+#   - subProps.MasterPropId
+#   - subProps.SubPropID (manual subprops can use their own scoped id; auto
+#     subprops may derive "<master>-<Start:02d>" or similar, prefixed with master).
+#
+# NOTE: The current script uses xml ids as-is. If collisions across previews are
+# observed, enable scoping and update inserts accordingly.
+
 
 import os
 import xml.etree.ElementTree as ET
@@ -246,15 +311,32 @@ def insert_preview_data(preview_data):
 
 def process_none_props(preview_id, root):
     """
-    DeviceType == "None" (unlit/inventory helpers):
-    - For EACH PropClass with DeviceType="None", create N instances where
-      N = max(1, int(MaxChannels)).
-    - Instance keys are preview-scoped and deterministic:
-        SubID = "{preview_id}:{raw_id}:{i:02d}"
-    - LORComment (Display_Name) becomes "<Comment>-<i:02d>"
-    - We KEEP the raw Name from the XML; the wiring view will hide it.
-    - No wiring: Network/UID/Start/End are NULL. Color from TraditionalColors.
+    RULES
+    -----
+    Purpose
+      - Persist physical-only props (DeviceType == "None") that have no channels.
+      - Keep them in `props` for labeling/inventory; they do NOT appear in wiring views.
+
+    Behavior
+      - Group by LORComment (the display name) and aggregate:
+          * Lights = SUM(int(Parm2) when present).
+      - Write exactly ONE row per LORComment to `props`.
+      - Store: PropID, Name, LORComment, DeviceType="None", Lights, PreviewId.
+      - Do NOT attempt to parse ChannelGrid (there is none).
+      - Do NOT expand quantities: if LOR UI uses MaxChannels as a quantity multiplier,
+        we still keep a single aggregated row per LORComment.
+
+    Inputs
+      - preview_id: string id of the <PreviewClass>.
+      - root: XML root (ElementTree).
+
+    Outputs
+      - Inserts rows into `props`.
+
+    Notes
+      - These items are intentionally excluded from wiring views because they have no channels.
     """
+
     import sqlite3
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
@@ -327,23 +409,28 @@ def process_none_props(preview_id, root):
 
 def process_dmx_props(preview_id, root):
     """
-    Process props with DeviceType == DMX:
-    - Split ChannelGrid into groups.
-    - Insert all relevant fields from PropClass into the props table.
-    - Insert DMX channels into the dmxChannels table.
+    RULES
+    -----
+    Purpose
+      - Persist DMX props and their universe/channel legs.
 
-    IMPORTANT: ID SCOPING
-    ---------------------
-    Visualizer reuses PropClass.id across *different* previews. If we store the raw
-    id, a later preview can overwrite an earlier one. To prevent cross-preview
-    clobbering, we scope every id we write using the current preview_id:
+    Behavior
+      - For each PropClass with DeviceType == "DMX":
+          * Write master metadata to `props` (PropID, Name, LORComment, etc.).
+          * Parse ChannelGrid; for each "network,universe,start,end,unknown" leg:
+              - Insert a row into `dmxChannels` with (PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown).
+      - Lights count:
+          * If Parm2 is numeric, treat as approximate light count; store in `props.Lights`.
 
-        scoped_id = f"{preview_id}:{raw_id}"
+    Inputs
+      - preview_id: string id of the <PreviewClass>.
+      - root: XML root (ElementTree).
 
-    We must use the SAME scoped id consistently for:
-      - props.PropID
-      - dmxChannels.PropId
-      - (and anywhere else we reference that prop)
+    Outputs
+      - Inserts into `props` and `dmxChannels`.
+
+    Notes
+      - Wiring views join `dmxChannels` back to `props` to show universes as Controllers.
     """
 
     conn = sqlite3.connect(DB_FILE)
@@ -447,29 +534,40 @@ def process_dmx_props(preview_id, root):
 
 def process_lor_props(preview_id, root):
     """
-    Process props with DeviceType == LOR (SINGLE ChannelGrid ONLY):
-
     RULES
     -----
-    - Skip multi-grid props here (handled by process_lor_multiple_channel_grids).
-    - 'Spare' (Name contains 'spare', case-insensitive) goes directly to props (keep its grid).
-    - If MasterPropId != "" => this XML record is a MANUAL SUBPROP:
-        * Write to subProps using THIS record's own grid (if missing, copy master's grid).
-        * Keep Name (Channel Name) and LORComment (Display Name) EXACTLY as in XML.
-    - Else (MasterPropId == "") => AUTO GROUP by LORComment (Display Name):
-        * Choose lowest StartChannel as master -> write to props with its grid.
-        * Remaining rows become subProps under that master.
-        * SubPropID is derived: "<master_id>-<UID or NA>-<Start:02d>" (deterministic).
-        * Keep Name and LORComment EXACTLY as in XML.
+    Purpose
+      - Persist LOR props that have a single ChannelGrid (one leg per prop entry).
+      - Produce one master prop per display and attach remaining legs as subProps.
 
-    IMPORTANT: ID SCOPING
-    - Visualizer reuses PropClass.id across previews. Always scope ids by preview:
-        scoped = f"{preview_id}:{raw_id}"
-      Use the scoped value for:
-        - props.PropID
-        - subProps.MasterPropId
-        - subProps.SubPropID (for manual subprops use child's own scoped id;
-                              for auto subprops use the derived "<master>-<UID>-<Start:02d>").
+    Skip
+      - Multi-grid props are handled in process_lor_multiple_channel_grids().
+
+    Grouping
+      - Group by LORComment (Display Name). Within each group:
+          * Master = row with lowest StartChannel.
+          * Master is written to `props` and carries the first grid part (Network, UID, Start/End, Unknown, Color).
+          * All remaining rows become `subProps`, each with its full grid data and MasterPropId pointing to the master.
+
+    Preserve
+      - Keep Name (channel name) and LORComment (display name) exactly as in XML.
+      - Lights = int(Parm2) when numeric; else 0.
+
+    Manual subprops
+      - If the XML row already represents a subprop (MasterPropId set) it is written directly to `subProps`
+        with its own grid (the current code does this implicitly by grouping; explicit manual subprop handling
+        can be added if needed).
+
+    Inputs
+      - preview_id: string id of the <PreviewClass>.
+      - root: XML root (ElementTree).
+
+    Outputs
+      - Inserts master row into `props`.
+      - Inserts other legs into `subProps`.
+
+    Views
+      - Wiring views dashify LORComment (spaces -> '-') into DisplayName for stable sort.
     """
 
     import sqlite3
@@ -728,38 +826,42 @@ def process_lor_props(preview_id, root):
 
 def process_lor_multiple_channel_grids(preview_id, root):
     """
-    Process props with DeviceType == LOR and multiple ChannelGrid groups.
+    RULES
+    -----
+    Purpose
+      - Handle a single LOR PropClass that contains MULTIPLE ChannelGrid groups (";"-separated).
+      - Keep the original prop as the master; materialize each grid group as its own subProp.
 
-    WHAT THIS HANDLER DOES
-    ----------------------
-    • Targets ONLY multi-grid LOR props (ChannelGrid contains ';'). We intentionally
-      include BOTH "true masters" (MasterPropId == '') and "reuse-only" children.
-    • Groups all such props by LORComment and FLATTENS all of their grid entries.
-    • Picks the MASTER GRID for the group as the entry with the LOWEST StartChannel.
-    • Inserts a master row into props with full Network/UID/Start/End/Unknown/Color.
-    • Inserts every REMAINING grid entry for the group into subProps with a unique id:
-        SubPropID = "{<scoped master id>}-{UID}-{Start:02d}"
-      and links them via MasterPropId = <scoped master id>.
+    Detection
+      - DeviceType == "LOR"
+      - MasterPropId is empty (it’s the top-level prop)
+      - ChannelGrid contains ';' => multiple groups
 
-    IMPORTANT: ID SCOPING
-    ---------------------
-    Visualizer reuses PropClass.id across different previews. To prevent cross-preview
-    overwrites, we scope every id we store using the current preview id:
-        scoped_id = f"{preview_id}:{raw_id}"
-    We must use the SAME scoped value consistently for:
-      - props.PropID
-      - subProps.MasterPropId
-      - subProps.SubPropID  (plus UID + Start to make it unique within the master)
+    Behavior
+      - Write the original prop to `props` (master).
+      - For each grid group:
+          * Build a deterministic SubPropID by suffixing the master's id with the two-digit StartChannel.
+          * Name each subprop using:
+              - first token of LORComment,
+              - Color (if present),
+              - UID,
+              - StartChannel zero-padded (NN).
+          * Insert into `subProps` with MasterPropId pointing to the master and full grid data.
 
-    NAMING (unchanged from your convention)
-    ---------------------------------------
-    SubProp Name = "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
+    Preserve
+      - Keep LORComment as-is; keep Name as used for the master.
 
-    SCHEMA NOTES
-    ------------
-    • props insert includes Network/UID/StartChannel/EndChannel/Unknown/Color (no RgbOrder).
-    • subProps insert includes RgbOrder (set to NULL); safe even if column exists.
+    Inputs
+      - preview_id: string id of the <PreviewClass>.
+      - root: XML root (ElementTree).
+
+    Outputs
+      - Inserts master into `props`; emits one `subProps` row per grid group.
+
+    Notes
+      - This complements process_lor_props(); only one of the two will handle a given prop.
     """
+
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -994,6 +1096,27 @@ def main():
     print("Processing complete. Check the database.")
 
 # === Wiring views for V6 (map + sorted) GAL 25-08-23 ===
+    """
+    RULES
+    -----
+    Purpose
+      - Build channel-centric views for wiring and QA.
+
+    Views
+      - preview_wiring_map_v6:
+          * LOR master rows from `props` that have channels.
+          * LOR legs from `subProps`.
+          * DMX legs from `dmxChannels` (Controller shows the Universe).
+          * DisplayName = dashified LORComment (spaces -> '-').
+      - preview_wiring_sorted_v6:
+          * Sorted projection of the map, ordered by PreviewName, DisplayName, Controller, StartChannel.
+
+    Exclusions
+      - DeviceType="None" items (no channels) are not included.
+
+    Indexes
+      - Adds supporting indexes on props/subProps/dmxChannels for faster filtering/sorting.
+    """
 def create_wiring_views_v6(db_file: str):
     import sqlite3
     ddl = r"""
