@@ -1,183 +1,187 @@
-# Processing Rule Document for LOR Props Parsing
+# Processing Rules for LOR Preview Parsing (v6)
 
 ## Objective
-Outline actions needed to process *.lorprev files in a specified folder to extract XML keys found for `PreviewClass` and `PropClass`. Parse and format the data to provide the structure necessary to create a one-to-one link between the `props` table and the external displays table. This will be accomplished by utilizing the `Comment` field to assign the display name. We will create separate tables using the keys found in `PreviewClass` and `PropClass` records. All requisite data is in the preview file.
+Parse `*.lorprev` files, extract `PreviewClass` and `PropClass`, and persist to SQLite so each physical **Display** has one master row in `props`, with any additional legs/channels represented in `subProps` / `dmxChannels`.
+- **Display Name** = XML `Comment`
+- **Channel Name** = XML `Name`
 
-## Goal
-Create a `props` table that contains one record per display. Use the `subProps` and `dmxChannels` tables to store the information needed to set up the displays. This is required to manage the physical displays we design, build, inventory, and configure for the light show.
-
-## Background Information
-The `PropClass` is designed to sequence a light show but is not ideal for managing inventory and documentation. The `PropClass` provides all necessary information by utilizing the `Comment` field to set the key for displays. Displays may consist of one or more props, and props may include subprops. These relationships must be parsed and stored appropriately.
+## Goals
+- One master row per Display in `props` when applicable.
+- Preserve **Channel Name** and **Display Name** exactly as in the XML.
+- Provide wiring (Network/Controller/Channels) via SQL views—no name mutation in storage.
 
 ## Definitions
-- **Preview**: A collection of props in a designated stage. This can be props sequenced to music or a background animation.
-- **LOR**: Abbreviation for Light O Rama.
-- **Stage**: An area set to a theme containing displays that are either background animations or sequenced to music.
-- **Prop**: Any device that responds to commands sent by the sequencer.
-- **Subprop**: A prop assigned explicitly as subordinate to another prop in the preview.
-- **Display**: A physical object designed, built, setup, and inventoried. Displays may consist of one or more props and/or subprops.
-- **UID**: A hexadecimal number assigned to a controller.
-- **id**: A UUID (Universally Unique Identifier) assigned by LOR software to a prop, preview, or subprop upon creation.
+- **Preview**: One stage per `.lorprev` (exactly one `PreviewClass` per file).
+- **Display**: Physical asset we build/store/maintain; keyed by **Display Name** (`LORComment`).
+- **Channel Name**: Sequencer label (`Name` in XML). **Never changed** by parser.
+- **UID**: LOR controller ID (hex). (DMX uses Universe separately.)
+- **id**: LOR-assigned UUID on each `PropClass`.
 
-## Database Schema
+---
 
-### Previews Table
-Stores metadata about each preview, ensuring the relationship between the stage and its associated props.
+## Database (existing tables)
+- `previews` — one per preview file.
+- `props` — master rows (LOR / DMX / None). Includes grid columns: `Network`, `UID`, `StartChannel`, `EndChannel`, `Unknown`, `Color`, etc.
+- `subProps` — subordinate rows linked to a master (`MasterPropId`).
+- `dmxChannels` — one row per DMX `ChannelGrid` leg linked to its parent prop (`PropId`).
+
+> No base-schema changes required by these rules.
+
+---
+
+## ID Scoping (preview-scoped keys)
+LOR can reuse `PropClass.id` across previews. All stored keys are **scoped by PreviewId** to avoid cross-preview overwrites and to keep re-runs idempotent:
+
+- **Scoped prop id:**  
+  `{PreviewId}:{RawPropId}`
+- **Scoped subprop id (auto materialized):**  
+  `{MasterScopedId}-{UID}-{Start:02d}`
+- **DeviceType=None instances:**  
+  `{PreviewId}:{RawPropId}:{i:02d}`
+
+Used consistently in:
+- `props.PropID`
+- `subProps.MasterPropId`, `subProps.SubPropID`
+- `dmxChannels.PropId`
+
+---
+
+## Processing Order & Rules
+
+### PASS 0 — SPARE (LOR single-grid)
+Scope: `DeviceType='LOR'` and **single** `ChannelGrid` leg (no `;`), and `Name` contains “spare” (case-insensitive).
+
+- Insert directly into `props` with its single grid.
+- **Do not** group by Display Name.
+- **Never** change `Name` or `Comment`.
+
+---
+
+### PASS 0B — Manual subprops (MasterPropId set)
+Scope: XML rows with `MasterPropId` (manually assigned subprops), **single-grid**.
+
+Rules:
+- Compare subprop `LORComment` vs. master `LORComment`.
+- **Promote the first** subprop per unique `LORComment` (that differs from master) to a full **`props`** row.
+- Any **subsequent** manual subprop with the **same** `LORComment` remains in **`subProps`** linked to that master.
+- If the subprop’s grid is empty, **inherit master’s grid** (“uses same channels”).
+- **Never** change `Name` or `Comment`.
+
+Result: physical items (e.g., `PO-RoofBallandPost`, `PO-IcicleLights`) get one PROP each; extra drawing legs stay as SUBPROP.
+
+---
+
+### PASS 1 — Auto group (LOR single-grid)
+Scope: Remaining LOR single-grid rows (not SPARE; not manual subprops).
+
+- **Group by `LORComment`** (Display Name).
+- **Master selection**: row with the lowest `StartChannel`.
+- **Master → `props`** (with its grid).
+- **Others → `subProps`** with full grid;  
+  `SubPropID = {master_id}-{UID}-{Start:02d}`.
+- **Names preserved**: `Name` and `LORComment` are stored exactly as in XML.
+
+---
+
+### LOR multi-grid (separate handler)
+Scope: `DeviceType='LOR'` and `ChannelGrid` contains `;` (multiple legs).
+
+- Retain the original prop in **`props`** (master).
+- Materialize **each leg** as a **`subProps`** row with its own `Network/UID/Start/End/Color`, linked via `MasterPropId`.
+- `SubPropID` follows `{master_id}-{UID}-{Start:02d}`.
+- **Names/Comments unchanged**.
+
+---
+
+### DMX
+- Insert one **`props`** row per DMX prop (scoped `PropID`).
+- Split `ChannelGrid` by `;` and insert each leg into **`dmxChannels`** with the same scoped `PropId`.
+- In wiring views, **Color = 'RGB'** for DMX.
+
+---
+
+### DeviceType = "None" (non-wired inventory)
+- For **each** such `PropClass`, create **N instances** where `N = max(1, int(MaxChannels))`.
+- **Instance `PropID`**: `{PreviewId}:{RawPropId}:{i:02d}`
+- **Instance `LORComment`** (Display Name): `"<Comment>-<i:02d>"`  
+  (e.g., `FTString-01-Red-01`, `-02`, …).
+- Carry attributes (e.g., `TraditionalColors` → `Color`); wiring fields are **NULL**.
+- Included in wiring views as `Source='PROP'` and `DeviceType='None'`.
+
+---
+
+## Naming Invariants
+- **Channel_Name** = XML `Name` (Sequencer label) → **never modified**.
+- **Display_Name** = XML `Comment` (inventory key) → **never modified**.
+- **Suggested_Name** (views only, not stored) is dashified and may append:
+  - Side/hand (DS/PS/LH/RH) inferred from `LORComment`/`Tag`
+  - Group letter (from `Tag`)
+  - Disambiguator (e.g., `-UID-Start` for LOR, `-U<Universe>:<Channel>` for DMX)  
+  DeviceType=None uses the suffixed `Display_Name`.
+
+---
+
+## Wiring Views (v6)
+
+We create two views:
+
+- **`preview_wiring_map_v6`** — unified map across `props`, `subProps`, `dmxChannels`, and `DeviceType=None`.
+- **`preview_wiring_sorted_v6`** — convenience ordering.
+
+**Columns (order):**
+- `PreviewName`, `Source` (`PROP`/`SUBPROP`/`DMX`)
+- `Channel_Name` (raw `Name`), `Display_Name` (raw `LORComment`), `Suggested_Name`
+- `Network`, `Controller` (UID for LOR, Universe for DMX), `StartChannel`, `EndChannel`
+- `Color` (`RGB` for DMX; pass-through otherwise), `DeviceType`, `LORTag`
+
+**Sort (final view):**
 ```sql
-CREATE TABLE previews (
-    id TEXT PRIMARY KEY,
-    StageID TEXT,
-    Name TEXT,
-    Revision TEXT,
-    Brightness REAL,
-    BackgroundFile TEXT
-);
+ORDER BY
+  PreviewName COLLATE NOCASE,
+  Network     COLLATE NOCASE,
+  Controller,
+  StartChannel;
 ```
 
-### Props Table
-Contains master props, storing parsed data from `ChannelGrid` fields to support display-specific requirements.
+**Row sources:**
+- LOR masters → `Source='PROP'`
+- LOR subprops → `Source='SUBPROP'`
+- DMX → `Source='DMX'`, `Color='RGB'`, `Controller=Universe`
+- DeviceType=None → `Source='PROP'`, no wiring values
+
+---
+
+## Debugging & Validation
+
+- Masters per display:
 ```sql
-CREATE TABLE props (
-    PropID TEXT PRIMARY KEY,
-    Name TEXT,
-    LORComment TEXT,
-    DeviceType TEXT,
-    BulbShape TEXT,
-    Network TEXT,
-    UID TEXT,
-    StartChannel INTEGER,
-    EndChannel INTEGER,
-    Unknown TEXT,
-    Color TEXT,
-    CustomBulbColor TEXT,
-    DimmingCurveName TEXT,
-    IndividualChannels BOOLEAN,
-    LegacySequenceMethod TEXT,
-    MaxChannels INTEGER,
-    Opacity REAL,
-    MasterDimmable BOOLEAN,
-    PreviewBulbSize REAL,
-    MasterPropId TEXT,
-    SeparateIds BOOLEAN,
-    StartLocation TEXT,
-    StringType TEXT,
-    TraditionalColors TEXT,
-    TraditionalType TEXT,
-    EffectBulbSize REAL,
-    Tag TEXT,
-    Parm1 TEXT,
-    Parm2 TEXT,
-    Parm3 TEXT,
-    Parm4 TEXT,
-    Parm5 TEXT,
-    Parm6 TEXT,
-    Parm7 TEXT,
-    Parm8 TEXT,
-    Lights INTEGER,
-    PreviewId TEXT,
-    FOREIGN KEY (PreviewId) REFERENCES previews (id)
-);
+SELECT PreviewId, LORComment, COUNT(*) AS rows
+FROM props
+GROUP BY PreviewId, LORComment
+ORDER BY rows DESC;
 ```
 
-### SubProps Table
-Stores subprops linked to master props, capturing subordinate elements of displays.
+- Manual subprop promotion check:
 ```sql
-CREATE TABLE subProps (
-    SubPropID TEXT PRIMARY KEY,
-    Name TEXT,
-    LORComment TEXT,
-    DeviceType TEXT,
-    BulbShape TEXT,
-    Network TEXT,
-    UID TEXT,
-    StartChannel INTEGER,
-    EndChannel INTEGER,
-    Unknown TEXT,
-    Color TEXT,
-    CustomBulbColor TEXT,
-    DimmingCurveName TEXT,
-    IndividualChannels BOOLEAN,
-    LegacySequenceMethod TEXT,
-    MaxChannels INTEGER,
-    Opacity REAL,
-    MasterDimmable BOOLEAN,
-    PreviewBulbSize REAL,
-    RgbOrder TEXT,
-    MasterPropId TEXT,
-    SeparateIds BOOLEAN,
-    StartLocation TEXT,
-    StringType TEXT,
-    TraditionalColors TEXT,
-    TraditionalType TEXT,
-    EffectBulbSize REAL,
-    Tag TEXT,
-    Parm1 TEXT,
-    Parm2 TEXT,
-    Parm3 TEXT,
-    Parm4 TEXT,
-    Parm5 TEXT,
-    Parm6 TEXT,
-    Parm7 TEXT,
-    Parm8 TEXT,
-    Lights INTEGER,
-    PreviewId TEXT,
-    FOREIGN KEY (MasterPropId) REFERENCES props (PropID),
-    FOREIGN KEY (PreviewId) REFERENCES previews (id)
-);
+SELECT LORComment, COUNT(*) FROM props    GROUP BY LORComment;
+SELECT LORComment, COUNT(*) FROM subProps GROUP BY LORComment;
 ```
 
-## Processing Rules
+- DMX legs per prop:
+```sql
+SELECT PropId, COUNT(*) FROM dmxChannels GROUP BY PropId;
+```
 
-### Rule 1: DeviceType == None
-- Parse props with `DeviceType == None`.
-- Sum the `Lights` values (`Parm2`) for props sharing the same `LORComment`.
-- Insert a single record into the `props` table for each unique `LORComment`.
-- Include parsed grid parts (`Network`, `UID`, `StartChannel`, etc.) if available.
+- DeviceType=None instances:
+```sql
+SELECT PropID, Name, LORComment, DeviceType, Color
+FROM props
+WHERE DeviceType='None'
+ORDER BY LORComment;
+```
 
-### Rule 2: DeviceType == DMX
-1. **Identify Groups by `Comment`**:
-    - Group props sharing the same `Comment`.
-2. **Master Prop Selection**:
-    - Choose the prop with the lowest `StartChannel` as the master prop.
-3. **Insert Master Prop**:
-    - Insert the master prop into the `props` table.
-4. **Insert Remaining Props as DMX Channels**:
-    - Insert remaining props with the same `Comment` into the `dmxChannels` table.
-    - Assign the `MasterPropId` to the `PropID` of the master prop.
+---
 
-### Rule 3: DeviceType == LOR
-#### Single `ChannelGrid`
-1. Parse the `ChannelGrid` into `Network`, `UID`, `StartChannel`, `EndChannel`, `Unknown`, and `Color`.
-2. Identify the prop with the lowest `StartChannel` as the master prop.
-3. Insert the master prop into the `props` table.
-4. Insert remaining props into the `subProps` table, linking them to the master prop and including their grid parts.
-
-#### Multiple `ChannelGrid` Groups (> 1) Separated by `;`
-1. **Group Props by `LORComment`**:
-    - All props sharing the same `LORComment` are grouped.
-2. **Master Prop Selection**:
-    - Identify the prop with the lowest `StartChannel` as the master prop.
-    - Insert this prop into the `props` table.
-3. **SubProps Creation**:
-    - Process all remaining props and their `ChannelGrid` groups.
-    - Insert each grid group as a subprop into the `subProps` table.
-4. **Special Case**:
-    - If the `Name` contains "spare", the prop is directly placed in the `props` table.
-
-### General Notes
-- Ensure all missing attributes are handled gracefully with default values.
-- Debugging logs confirm master and subprop identification.
-- Each `PropClass` is parsed, and results are committed to the database incrementally.
-
-## Debugging and Validation
-1. Verify data in the `props` table:
-   ```sql
-   SELECT * FROM props;
-   ```
-2. Verify data in the `subProps` table:
-   ```sql
-   SELECT * FROM subProps;
-   ```
-3. Verify all tables include the expected number of records and fields.
-
-This document reflects the latest changes, including grouping by `LORComment` and handling special cases like "spare" props, ensuring all processing rules and database updates are synchronized with the script logic.
+**Notes**
+- All inserts use preview-scoped IDs and `INSERT OR REPLACE`, so re-processing the same previews is safe and idempotent.
+- Base schema remains unchanged; views handle presentation/derivations.

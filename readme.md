@@ -12,7 +12,14 @@ Create props table that contains one record per display. Use the subprops and dm
 
 - [DEBUG Guide](./debug.md) — step-by-step instructions for running the parsers in VS Code,
   required Python setup, **previews folder location**, and troubleshooting tips.
+
 ## Documentation References
+
+- 📝 [CHANGELOG](CHANGELOG.md) — curated list of processing and schema changes by date.
+
+**Key Terms**
+- **Channel Name** → `Name` in LOR XML (used by sequencer). **Never modified by the parser.**
+- **Display Name** → `LORComment` in LOR XML (inventory key). Used for grouping and master/subprop promotion.
 
 - 📘 [Naming Conventions](naming_conventions.md)  
   Explains both **Channel Naming Conventions** (LOR sequencing) and **Prop/Display Naming Conventions** (labels, inventory, database).
