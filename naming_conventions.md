@@ -111,7 +111,7 @@ Some displays include multiple channels but remain a single physical panel. The 
 
 Some props do not have channels (DeviceType="None").
 
-![FTString Example](Docs/images/ftstring_example.png)
+![FTString Example](Docs/images/DisplayTypeNone.png)
 
 - **Purpose:** Exists in Preview for setup, labeling, and inventory; no channel mapping.  
 - **Examples:** `FTString-01R`, static cutouts, scenery.  
