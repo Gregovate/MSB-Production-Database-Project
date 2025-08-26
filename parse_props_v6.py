@@ -634,60 +634,109 @@ def process_lor_props(preview_id, root):
             if DEBUG:
                 print(f"[DEBUG] (LOR single) SPARE -> props: scoped_id={prop_id_scoped} Name='{name}'")
 
+
     # -----------------------------------------------------------------------
-    # PASS 0B: MANUAL SUBPROPS (MasterPropId set) -> subProps
-    # Keep Name/LORComment exactly. Use child's grid, else copy master's grid.
+    # PASS 0B: MANUAL SUBPROPS (MasterPropId set)
+    # Promote exactly ONE subprop per unique DisplayName (LORComment) to PROP.
+    # Any additional manual subprops with the same DisplayName remain SUBPROP.
+    #
+    # Rules:
+    #   • If subprop.LORComment != master.LORComment AND that DisplayName
+    #     has not yet been promoted in THIS preview -> write as PROP.
+    #   • Otherwise -> write as SUBPROP linked to master.
+    #   • Name and LORComment are NEVER changed.
+    #   • Use the subprop's own grid if present; else copy master’s grid.
     # -----------------------------------------------------------------------
-    manual_child_ids = set()  # raw ids of manual subprops (to exclude from auto grouping)
-    for prop in root.findall(".//PropClass"):
-        if prop.get("DeviceType") != "LOR":
+    # Seed with names already present in props for this preview to make
+    # re-runs idempotent and to avoid double-promotion.
+    existing_props = set(
+        name for (name,) in cursor.execute(
+            "SELECT DISTINCT LORComment FROM props WHERE PreviewId=?", (preview_id,)
+        ).fetchall()
+    )
+    promoted_names = set(existing_props)
+
+    # Quick lookup of masters by raw id
+    masters_by_id = {p.get("id"): p for p in root.findall(".//PropClass")}
+
+    for sp in root.findall(".//PropClass"):
+        if sp.get("DeviceType") != "LOR":
             continue
 
-        ch_raw = (prop.get("ChannelGrid") or "").strip()
+        # Only single-grid here
+        ch_raw = (sp.get("ChannelGrid") or "").strip()
         if ";" in ch_raw:
-            continue  # single-grid only here
-
-        master_raw = (prop.get("MasterPropId") or "").strip()
-        if not master_raw:
             continue
 
-        child_raw = prop.get("id") or ""
-        manual_child_ids.add(child_raw)
+        m_raw = (sp.get("MasterPropId") or "").strip()
+        if not m_raw:
+            continue  # not a manual subprop
 
-        sub_id    = scoped_id(preview_id, child_raw)    # child's own identity
-        master_id = scoped_id(preview_id, master_raw)
+        sub_id_scoped    = scoped_id(preview_id, sp.get("id") or "")
+        master_node      = masters_by_id.get(m_raw)
+        master_id_scoped = scoped_id(preview_id, m_raw)
 
-        # Use child's grid if present; otherwise copy master's grid (reuse channels)
-        grid = parse_single_grid(ch_raw)
-        if grid is None:
-            master_node = root.find(f".//PropClass[@id='{master_raw}']")
-            grid = parse_single_grid(master_node.get("ChannelGrid") or "") if master_node is not None else None
-        if grid is None:
-            grid = {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
+        # Prefer the subprop’s own grid; else master’s; else empty
+        g = parse_single_grid(ch_raw)
+        if g is None and master_node is not None:
+            g = parse_single_grid(master_node.get("ChannelGrid") or "")
+        if g is None:
+            g = {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
 
-        cursor.execute("""
-            INSERT OR REPLACE INTO subProps (
-                SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
-                EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
-                LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
-                MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            sub_id, prop.get("Name", ""), prop.get("Comment", ""), "LOR", prop.get("BulbShape", ""),
-            grid["Network"], grid["UID"], grid["StartChannel"], grid["EndChannel"], grid["Unknown"], grid["Color"],
-            prop.get("CustomBulbColor", ""), prop.get("DimmingCurveName", ""), prop.get("IndividualChannels", False),
-            prop.get("LegacySequenceMethod", ""), prop.get("MaxChannels"), prop.get("Opacity"),
-            prop.get("MasterDimmable", False), prop.get("PreviewBulbSize"), None,   # RgbOrder = NULL
-            master_id, prop.get("SeparateIds", False), prop.get("StartLocation", ""), prop.get("StringType", ""),
-            prop.get("TraditionalColors", ""), prop.get("TraditionalType", ""), prop.get("EffectBulbSize"),
-            prop.get("Tag", ""), prop.get("Parm1", ""), prop.get("Parm2", ""), prop.get("Parm3", ""), prop.get("Parm4", ""),
-            prop.get("Parm5", ""), prop.get("Parm6", ""), prop.get("Parm7", ""), prop.get("Parm8", ""),
-            int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
-            preview_id
-        ))
-        if DEBUG:
-            print(f"[DEBUG] (LOR single) MANUAL -> subProps: child={child_raw} sub_id={sub_id} master={master_id} UID={grid['UID']} Start={grid['StartChannel']}")
+        sub_name     = sp.get("Name", "")
+        sub_comment  = (sp.get("Comment") or "").strip()
+        master_comm  = ((master_node.get("Comment") or "").strip()) if master_node is not None else ""
+
+        # Promote only the FIRST unique DisplayName that differs from master’s
+        should_promote = (sub_comment != master_comm) and (sub_comment not in promoted_names)
+
+        if should_promote:
+            cursor.execute("""
+                INSERT OR REPLACE INTO props (
+                    PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                    CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                    PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
+                    Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                sub_id_scoped, sub_name, sub_comment, "LOR",
+                sp.get("BulbShape"), sp.get("DimmingCurveName"), sp.get("MaxChannels"),
+                sp.get("CustomBulbColor"), sp.get("IndividualChannels"), sp.get("LegacySequenceMethod"),
+                sp.get("Opacity"), sp.get("MasterDimmable"), sp.get("PreviewBulbSize"), sp.get("SeparateIds"),
+                sp.get("StartLocation"), sp.get("StringType"), sp.get("TraditionalColors"), sp.get("TraditionalType"),
+                sp.get("EffectBulbSize"), sp.get("Tag"), sp.get("Parm1"), sp.get("Parm2"), sp.get("Parm3"),
+                sp.get("Parm4"), sp.get("Parm5"), sp.get("Parm6"), sp.get("Parm7"), sp.get("Parm8"),
+                int(sp.get("Parm2")) if (sp.get("Parm2") and str(sp.get("Parm2")).isdigit()) else 0,
+                g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                preview_id
+            ))
+            promoted_names.add(sub_comment)
+            if DEBUG:
+                print(f"[DEBUG] (LOR manual) PROMOTE -> PROP: {sub_id_scoped}  Display='{sub_comment}'  master={master_id_scoped}")
+        else:
+            cursor.execute("""
+                INSERT OR REPLACE INTO subProps (
+                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                    EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                    LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                    MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                sub_id_scoped, sub_name, sub_comment, "LOR", sp.get("BulbShape"),
+                g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                sp.get("CustomBulbColor"), sp.get("DimmingCurveName"), sp.get("IndividualChannels"), sp.get("LegacySequenceMethod"),
+                sp.get("MaxChannels"), sp.get("Opacity"), sp.get("MasterDimmable"), sp.get("PreviewBulbSize"), None,
+                master_id_scoped, sp.get("SeparateIds"), sp.get("StartLocation"), sp.get("StringType"),
+                sp.get("TraditionalColors"), sp.get("TraditionalType"), sp.get("EffectBulbSize"), sp.get("Tag"),
+                sp.get("Parm1"), sp.get("Parm2"), sp.get("Parm3"), sp.get("Parm4"), sp.get("Parm5"), sp.get("Parm6"),
+                sp.get("Parm7"), sp.get("Parm8"),
+                int(sp.get("Parm2")) if (sp.get("Parm2") and str(sp.get("Parm2")).isdigit()) else 0,
+                preview_id
+            ))
+            if DEBUG:
+                print(f"[DEBUG] (LOR manual) keep SUBPROP: {sub_id_scoped}  Display='{sub_comment}'  master={master_id_scoped}")
 
     # -----------------------------------------------------------------------
     # PASS 1: AUTO GROUP by LORComment (exclude SPARE and MANUAL)
