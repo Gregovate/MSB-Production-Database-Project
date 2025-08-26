@@ -1,30 +1,24 @@
-# wiring_form.py
-# Simple read-only wiring viewer for lor_output_v6.db
-# - Dropdown to choose Preview
-# - Shows wiring rows from preview_wiring_map_v6
-# - Sorted by: PreviewName, Network, Controller, StartChannel
-# - Export to CSV
-# - Non-blocking, safe for a DB being written by your import script
-
-import sqlite3, csv, os, sys
+# wiring_form.py (no PreviewName column in the grid)
+import sqlite3, csv, os, sys, urllib.parse
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
+# Your default DB path
 DEFAULT_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
 
+# Columns to show in the table (no PreviewName)
 COLUMNS = [
-    ("PreviewName", 250),
-    ("Source",      90),
-    ("Channel_Name",260),
-    ("Display_Name",260),
+    ("Source",         90),
+    ("Channel_Name",  260),
+    ("Display_Name",  260),
     ("Suggested_Name",280),
-    ("Network",     90),
-    ("Controller",  90),
-    ("StartChannel",110),
-    ("EndChannel",  100),
-    ("Color",       80),
-    ("DeviceType",  90),
-    ("LORTag",      300),
+    ("Network",        90),
+    ("Controller",     90),
+    ("StartChannel",  110),
+    ("EndChannel",    100),
+    ("Color",          80),
+    ("DeviceType",     90),
+    ("LORTag",        300),
 ]
 
 SQL_PREVIEWS = "SELECT Name FROM previews ORDER BY Name COLLATE NOCASE;"
@@ -32,9 +26,11 @@ SQL_VIEW_EXISTS = """
 SELECT name FROM sqlite_master
 WHERE type IN ('view','table') AND name='preview_wiring_map_v6';
 """
+
+# We still filter by PreviewName, but we don't display it
 SQL_WIRING = """
 SELECT
-  PreviewName, Source, Channel_Name, Display_Name, Suggested_Name,
+  Source, Channel_Name, Display_Name, Suggested_Name,
   Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
 FROM preview_wiring_map_v6
 WHERE PreviewName = ?
@@ -42,18 +38,25 @@ ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartCh
 """
 
 def connect_ro(db_path):
-    # read-only + busy timeout so we don't crash if the writer has it open
-    return sqlite3.connect(f"file:{db_path}?mode=ro&immutable=0", uri=True, timeout=5.0)
+    """Open SQLite read-only, robust to Windows paths/spaces."""
+    try:
+        p = os.path.abspath(db_path).replace("\\", "/")
+        uri_path = urllib.parse.quote(p)
+        # file:///G:/path... works cross-platform enough for Windows drive paths
+        return sqlite3.connect(f"file:///{uri_path}?mode=ro&immutable=0", uri=True, timeout=5.0)
+    except Exception:
+        # Fallback writable open if URI fails
+        return sqlite3.connect(db_path, timeout=5.0)
 
 class WiringViewer(tk.Tk):
     def __init__(self, db_path=DEFAULT_DB):
         super().__init__()
         self.title("Wiring Viewer (v6)")
-        self.geometry("1300x700")
+        self.geometry("1200x700")
         self.db_path = db_path
         self.conn = None
 
-        # Top bar: DB chooser, Preview dropdown, buttons
+        # Top bar
         top = ttk.Frame(self, padding=6)
         top.pack(side=tk.TOP, fill=tk.X)
 
@@ -68,39 +71,35 @@ class WiringViewer(tk.Tk):
         self.preview_cbo.pack(side=tk.LEFT, padx=(2,6))
         self.preview_cbo.bind("<<ComboboxSelected>>", lambda e: self.refresh_rows())
 
-        ttk.Button(top, text="Refresh", command=self.refresh_rows).pack(side=tk.LEFT, padx=(0,6))
+        ttk.Button(top, text="Refresh",    command=self.refresh_rows).pack(side=tk.LEFT, padx=(0,6))
         ttk.Button(top, text="Export CSV…", command=self.export_csv).pack(side=tk.LEFT)
 
         self.count_var = tk.StringVar(value="Rows: 0")
         ttk.Label(top, textvariable=self.count_var).pack(side=tk.RIGHT)
 
-        # Treeview
+        # Table (Treeview)
         self.tree = ttk.Treeview(self, columns=[c for c,_ in COLUMNS], show="headings")
         self.tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        # Columns & headers
         for col, width in COLUMNS:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width, anchor=tk.W, stretch=True)
 
         # Scrollbars
-        ysb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+        ysb = ttk.Scrollbar(self, orient="vertical",   command=self.tree.yview)
         xsb = ttk.Scrollbar(self, orient="horizontal", command=self.tree.xview)
         self.tree.configure(yscroll=ysb.set, xscroll=xsb.set)
         ysb.pack(side=tk.RIGHT, fill=tk.Y)
         xsb.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Init DB and previews
+        # Init
         self.safe_connect()
         self.load_previews()
 
     def safe_connect(self):
-        # Close previous connection, if any
         if self.conn:
             try: self.conn.close()
             except: pass
             self.conn = None
-
         try:
             self.conn = connect_ro(self.db_path)
             self.conn.execute("PRAGMA busy_timeout=3000;")
@@ -109,7 +108,10 @@ class WiringViewer(tk.Tk):
             self.conn = None
 
     def choose_db(self):
-        path = filedialog.askopenfilename(title="Select SQLite DB", filetypes=[("SQLite DB","*.db *.sqlite *.sqlite3"), ("All files","*.*")])
+        path = filedialog.askopenfilename(
+            title="Select SQLite DB",
+            filetypes=[("SQLite DB","*.db *.sqlite *.sqlite3"), ("All files","*.*")]
+        )
         if not path: return
         self.db_path = path
         self.db_label_var.set(os.path.abspath(path))
@@ -120,7 +122,6 @@ class WiringViewer(tk.Tk):
         self.preview_cbo["values"] = []
         if not self.conn: return
         try:
-            # Ensure the view exists so we don't confuse the user
             cur = self.conn.execute(SQL_VIEW_EXISTS)
             if cur.fetchone() is None:
                 messagebox.showwarning(
@@ -128,14 +129,11 @@ class WiringViewer(tk.Tk):
                     "preview_wiring_map_v6 not found.\nRun your script to create wiring views before using this tool."
                 )
                 return
-
             cur = self.conn.execute(SQL_PREVIEWS)
             names = [row[0] for row in cur.fetchall()]
             self.preview_cbo["values"] = names
-            # Preselect first preview if available
             if names:
-                current = self.preview_var.get()
-                if current not in names:
+                if self.preview_var.get() not in names:
                     self.preview_var.set(names[0])
                 self.after(50, self.refresh_rows)
             else:
@@ -153,23 +151,19 @@ class WiringViewer(tk.Tk):
         self.clear_rows()
         if not self.conn: return
         preview = self.preview_var.get()
-        if not preview:
-            return
+        if not preview: return
         try:
             cur = self.conn.execute(SQL_WIRING, (preview,))
             rows = cur.fetchall()
             for row in rows:
-                # row is in same order as COLUMNS list
                 self.tree.insert("", "end", values=row)
             self.count_var.set(f"Rows: {len(rows)}")
         except sqlite3.OperationalError as e:
-            # Common if the DB is mid-write; suggest retry
             messagebox.showwarning("Busy/Locked", f"{e}\n\nIf your import script is running, try again after it finishes.")
         except Exception as e:
             messagebox.showerror("Query Error", str(e))
 
     def export_csv(self):
-        # Export currently displayed rows
         if not self.tree.get_children():
             messagebox.showinfo("Export", "Nothing to export.")
             return

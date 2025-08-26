@@ -246,107 +246,83 @@ def insert_preview_data(preview_data):
 
 def process_none_props(preview_id, root):
     """
-    Process props with DeviceType == "None":
-    - Aggregate lights (Parm2) by LORComment.
-    - Ensure exactly ONE props row per LORComment for THIS preview.
-    - Use a PREVIEW-SCOPED, GROUP-LEVEL PropID so cross-preview collisions are impossible.
-
-    WHY A GROUP-LEVEL ID?
-    ---------------------
-    Visualizer may reuse PropClass.id across previews, and even within a preview
-    you can have multiple raw ids sharing the same LORComment. Since we collapse
-    these into one row per LORComment, we should NOT pick one raw id; instead we
-    synthesize a stable, preview-scoped group id:
-
-        group_prop_id = f"{preview_id}:none:{LORComment}"
-
-    That way:
-      • Importing another preview won’t overwrite these rows.
-      • Re-runs for the same preview produce the same key.
+    DeviceType == "None" (unlit/inventory helpers):
+    - For EACH PropClass with DeviceType="None", create N instances where
+      N = max(1, int(MaxChannels)).
+    - Instance keys are preview-scoped and deterministic:
+        SubID = "{preview_id}:{raw_id}:{i:02d}"
+    - LORComment (Display_Name) becomes "<Comment>-<i:02d>"
+    - We KEEP the raw Name from the XML; the wiring view will hide it.
+    - No wiring: Network/UID/Start/End are NULL. Color from TraditionalColors.
     """
     import sqlite3
-    from collections import defaultdict
-
     conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
-    # ----------------------------- helpers -----------------------------------
-    def safe_lights(parm2):
-        """Return int(Parm2) if it's a clean digit string; else 0."""
-        if parm2 is None:
-            return 0
-        s = str(parm2).strip()
-        return int(s) if s.isdigit() else 0
-
-    def group_prop_id(preview_id_str, lor_comment):
-        """
-        Build a stable, preview-scoped id for the aggregated row.
-        We keep the raw comment text; SQLite TEXT keys are fine with spaces.
-        """
-        lc = (lor_comment or "")
-        return f"{preview_id_str}:none:{lc}"
-
-    # -------------------------------------------------------------------------
-    # Aggregate all DeviceType == "None" by LORComment
-    #
-    # We keep:
-    #   Lights: total Parm2 across the group
-    #   Name:   first non-empty Name encountered in the group (for display)
-    #   RawIDs: set of raw PropClass ids (debug only)
-    # -------------------------------------------------------------------------
-    props_summary = defaultdict(lambda: {
-        "Lights": 0,
-        "Name":   None,
-        "RawIDs": set(),
-    })
+    cur = conn.cursor()
 
     for prop in root.findall(".//PropClass"):
         if prop.get("DeviceType") != "None":
             continue
 
-        lor_comment = prop.get("Comment")
-        lights = safe_lights(prop.get("Parm2"))
+        raw_id      = prop.get("id") or ""
+        base_name   = prop.get("Name") or ""              # Channel name (kept, but not shown in view)
+        comment     = prop.get("Comment") or ""           # Base display name
+        max_ch      = safe_int(prop.get("MaxChannels"), 1)
+        count       = max(1, max_ch)                      # at least 1
 
-        g = props_summary[lor_comment]
-        g["Lights"] += lights
-        if not g["Name"]:
-            nm = prop.get("Name")
-            if nm:
-                g["Name"] = nm
-        raw_id = prop.get("id")
-        if raw_id:
-            g["RawIDs"].add(raw_id)
+        # common fields we can carry over
+        bulb_shape           = prop.get("BulbShape")
+        dimming_curve_name   = prop.get("DimmingCurveName")
+        max_channels         = prop.get("MaxChannels")
+        custom_bulb_color    = prop.get("CustomBulbColor")
+        individual_channels  = prop.get("IndividualChannels")
+        legacy_seq_method    = prop.get("LegacySequenceMethod")
+        opacity              = prop.get("Opacity")
+        master_dimmable      = prop.get("MasterDimmable")
+        preview_bulb_size    = prop.get("PreviewBulbSize")
+        separate_ids         = prop.get("SeparateIds")
+        start_location       = prop.get("StartLocation")
+        string_type          = prop.get("StringType")
+        traditional_colors   = prop.get("TraditionalColors")
+        traditional_type     = prop.get("TraditionalType")
+        effect_bulb_size     = prop.get("EffectBulbSize")
+        tag                  = prop.get("Tag")
+        parm1                = prop.get("Parm1")
+        parm2                = prop.get("Parm2")
+        parm3                = prop.get("Parm3")
+        parm4                = prop.get("Parm4")
+        parm5                = prop.get("Parm5")
+        parm6                = prop.get("Parm6")
+        parm7                = prop.get("Parm7")
+        parm8                = prop.get("Parm8")
+        lights               = int(parm2) if parm2 and str(parm2).isdigit() else 0
 
-    # -------------------------------------------------------------------------
-    # Write one row per LORComment to props, using the preview-scoped group id
-    # -------------------------------------------------------------------------
-    for lor_comment, g in props_summary.items():
-        # Choose a display name: first non-empty Name, else fall back to comment
-        display_name = g["Name"] or (lor_comment or "(no name)")
+        for i in range(1, count + 1):
+            inst_id   = scoped_id(preview_id, f"{raw_id}:{i:02d}")
+            disp_name = f"{comment}-{i:02d}" if comment else f"Unlabeled-{i:02d}"
 
-        scoped_group_id = group_prop_id(preview_id, lor_comment)
-
-        cursor.execute("""
-            INSERT OR REPLACE INTO props (
-                PropID, Name, LORComment, DeviceType, Lights, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            scoped_group_id,             # << preview-scoped, group-level id
-            display_name,
-            lor_comment,
-            "None",                      # DeviceType for this handler
-            g["Lights"],
-            preview_id
-        ))
-
-        if DEBUG:
-            # Print a compact debug line showing the aggregation result
-            raw_ids_note = f"{len(g['RawIDs'])} raw ids" if g["RawIDs"] else "0 raw ids"
-            print(f"[DEBUG] (None) Upsert props: id={scoped_group_id} comment='{lor_comment}' "
-                  f"name='{display_name}' lights={g['Lights']} ({raw_ids_note})")
+            cur.execute("""
+                INSERT OR REPLACE INTO props (
+                    PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                    CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                    PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
+                    Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                inst_id, base_name, disp_name, "None", bulb_shape, dimming_curve_name, max_channels,
+                custom_bulb_color, individual_channels, legacy_seq_method, opacity, master_dimmable,
+                preview_bulb_size, separate_ids, start_location, string_type, traditional_colors, traditional_type,
+                effect_bulb_size, tag, parm1, parm2, parm3, parm4, parm5, parm6, parm7, parm8, lights,
+                None, None, None, None, None,
+                (traditional_colors or None),   # store color for the view
+                preview_id
+            ))
+            if DEBUG:
+                print(f"[DEBUG] (None) +instance -> props: id={inst_id} Name='{base_name}' Display='{disp_name}' Color='{traditional_colors}'")
 
     conn.commit()
     conn.close()
+
 
 
 def process_dmx_props(preview_id, root):
@@ -1095,6 +1071,27 @@ def create_wiring_views_v6(db_file: str):
 
     UNION ALL
 
+    -- Inventory / unlit assets (DeviceType='None')
+    SELECT
+    pv.Name                    AS PreviewName,
+    'PROP'                     AS Source,
+    ''                         AS Channel_Name,           -- no channel name
+    p.LORComment               AS Display_Name,           -- already suffixed -01..-NN
+    REPLACE(TRIM(COALESCE(NULLIF(p.LORComment,''), p.Name)), ' ','-') AS Suggested_Name,
+    NULL                       AS Network,
+    NULL                       AS Controller,
+    NULL                       AS StartChannel,
+    NULL                       AS EndChannel,
+    p.Color                    AS Color,                  -- stored from TraditionalColors
+    'None'                     AS DeviceType,
+    p.Tag                      AS LORTag
+    FROM props p
+    JOIN previews pv ON pv.id = p.PreviewId
+    WHERE p.DeviceType = 'None'
+
+
+    UNION ALL
+
     -- DMX channels (Controller = Universe)
     SELECT
       pv.Name,
@@ -1126,7 +1123,7 @@ def create_wiring_views_v6(db_file: str):
       PreviewName, Source, Channel_Name, Display_Name, Suggested_Name,
       Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
     FROM preview_wiring_map_v6
-    ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
+    ORDER BY PreviewName COLLATE NOCASE, DeviceType COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
 
     -- helpful indexes on base tables
     CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
