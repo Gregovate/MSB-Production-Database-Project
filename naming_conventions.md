@@ -23,6 +23,8 @@ LL UID-Channel Name
 - **Name** → A brief description of the channel name  
 
 **Example:**  
+
+![Elf Patterns](Docs/images/ElfChoir.png)
 ```
 EC01-ArmLeft
 EC01-ArmRight
@@ -108,6 +110,8 @@ Some displays include multiple channels but remain a single physical panel. The 
 ### 2.5 Display Type = None
 
 Some props do not have channels (DeviceType="None").
+
+![FTString Example](Docs/images/ftstring_example.png)
 
 - **Purpose:** Exists in Preview for setup, labeling, and inventory; no channel mapping.  
 - **Examples:** `FTString-01R`, static cutouts, scenery.  
