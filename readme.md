@@ -12,9 +12,16 @@ Create props table that contains one record per display. Use the subprops and dm
 
 - [DEBUG Guide](./debug.md) — step-by-step instructions for running the parsers in VS Code,
   required Python setup, **previews folder location**, and troubleshooting tips.
+## Documentation References
+
+- 📘 [Naming Conventions](naming_conventions.md)  
+  Explains both **Channel Naming Conventions** (LOR sequencing) and **Prop/Display Naming Conventions** (labels, inventory, database).
+
+- 🗄️ [Database Cheat Sheet](database_cheatsheet.md)  
+  Quick SQL reference for querying `lor_output_v6.db`, including how to list controllers, find DeviceType=None props, and detect spare channels.
 
 ### Previews Location (Team Standard)
-All exported `.lorprev` preview files are stored in the shared Google Drive:
+All exported `.lorprev` preview files are stored in the shared Google Drive: G:\Shared drives\MSB Database\Database Previews
 
 
 # Background Information:
@@ -97,6 +104,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ## Acknowledgments
 
-- [Resource 1](https://example.com)
-- [Resource 2](https://example.com)
-- [Resource 3](https://example.com)
+
