@@ -28,11 +28,12 @@ Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc 
 **Example:**  
 
 ![Elf Patterns](Docs/images/ElfChoir.png)
-```
-EC01-ArmLeft
-EC01-ArmRight
-EC01-Head
-```
+
+`ELF-P1-01` Elf Pattern 1 1st Panel
+`ELF-P1-02` Elf Pattern 1 2nd Panel
+`ELF-P1-03` Elf Pattern 1 3rd Panel
+`ELF-P4-16` Elf Pattern 4 16th Panel
+
 
 ⚠️ **Note:** If the UID or channel of a prop changes, the preview and all labeling must be updated. This has historically caused issues when UIDs were reassigned. NO EXISTING CHANNEL NAMES CAN BE CHANGED WITHOUT AUTHORIZATION!
 
