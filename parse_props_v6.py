@@ -1172,11 +1172,32 @@ def create_wiring_views_v6(db_file: str):
     DROP VIEW IF EXISTS preview_wiring_map_v6;
     DROP VIEW IF EXISTS preview_wiring_sorted_v6;
 
-    -- LOR masters (props) — suppress any row that also appears as a subprop on the same UID/StartChannel
+    -- LOR masters (props) — classify later legs as SUBPROP; suppress rows that also exist as subprops
     CREATE VIEW preview_wiring_map_v6 AS
     SELECT
       pv.Name AS PreviewName,
-      'PROP'  AS Source,
+      CASE
+        -- explicit subprop at same address => treat as SUBPROP
+        WHEN EXISTS (
+          SELECT 1
+          FROM subProps spx
+          WHERE spx.PreviewId = p.PreviewId
+            AND COALESCE(spx.Network,'') = COALESCE(p.Network,'')
+            AND spx.UID = p.UID
+            AND CAST(spx.StartChannel AS INTEGER) = CAST(p.StartChannel AS INTEGER)
+        ) THEN 'SUBPROP'
+        -- otherwise, if there is an earlier leg in the same comment group, this is a SUBPROP
+        WHEN EXISTS (
+          SELECT 1
+          FROM props p2
+          WHERE p2.PreviewId = p.PreviewId
+            AND COALESCE(p2.LORComment,'') = COALESCE(p.LORComment,'') COLLATE NOCASE
+            AND COALESCE(p2.Network,'')    = COALESCE(p.Network,'')
+            AND p2.UID = p.UID
+            AND CAST(p2.StartChannel AS INTEGER) < CAST(p.StartChannel AS INTEGER)
+        ) THEN 'SUBPROP'
+        ELSE 'PROP'
+      END AS Source,
       p.Name  AS Channel_Name,              -- RAW channel name
       p.LORComment AS Display_Name,         -- RAW display name (inventory key)
       REPLACE(TRIM(
@@ -1208,12 +1229,13 @@ def create_wiring_views_v6(db_file: str):
     WHERE p.DeviceType='LOR'
       AND p.Network IS NOT NULL
       AND p.StartChannel IS NOT NULL
-      AND NOT EXISTS (
+      AND NOT EXISTS (               -- anti-join: don't double-emit if an explicit subprop exists
             SELECT 1
             FROM subProps spx
-            WHERE spx.PreviewId    = p.PreviewId
-              AND spx.UID          = p.UID
-              AND spx.StartChannel = p.StartChannel
+            WHERE spx.PreviewId = p.PreviewId
+              AND COALESCE(spx.Network,'') = COALESCE(p.Network,'')
+              AND spx.UID = p.UID
+              AND CAST(spx.StartChannel AS INTEGER) = CAST(p.StartChannel AS INTEGER)
       )
 
     UNION ALL
@@ -1319,9 +1341,10 @@ def create_wiring_views_v6(db_file: str):
     try:
         conn.executescript(ddl)
         conn.commit()
-        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (anti-join for SUBPROPs; simplified sort).")
+        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (CASE-based Source + hardened anti-join).")
     finally:
         conn.close()
+
 
 
 
