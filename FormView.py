@@ -36,7 +36,7 @@ SELECT
 FROM preview_wiring_map_v6
 WHERE PreviewName = ?
 {props_filter}
-ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
+ORDER BY Display_Name COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
 """
 
 def connect_ro(db_path: str) -> sqlite3.Connection:
