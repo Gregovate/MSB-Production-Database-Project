@@ -1172,7 +1172,7 @@ def create_wiring_views_v6(db_file: str):
     DROP VIEW IF EXISTS preview_wiring_map_v6;
     DROP VIEW IF EXISTS preview_wiring_sorted_v6;
 
-    -- LOR masters (props)
+    -- LOR masters (props) — suppress any row that also appears as a subprop on the same UID/StartChannel
     CREATE VIEW preview_wiring_map_v6 AS
     SELECT
       pv.Name AS PreviewName,
@@ -1205,7 +1205,16 @@ def create_wiring_views_v6(db_file: str):
       p.DeviceType, p.Tag AS LORTag
     FROM props p
     JOIN previews pv ON pv.id = p.PreviewId
-    WHERE p.DeviceType='LOR' AND p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
+    WHERE p.DeviceType='LOR'
+      AND p.Network IS NOT NULL
+      AND p.StartChannel IS NOT NULL
+      AND NOT EXISTS (
+            SELECT 1
+            FROM subProps spx
+            WHERE spx.PreviewId    = p.PreviewId
+              AND spx.UID          = p.UID
+              AND spx.StartChannel = p.StartChannel
+      )
 
     UNION ALL
 
@@ -1238,29 +1247,28 @@ def create_wiring_views_v6(db_file: str):
       sp.Color   AS Color,
       COALESCE(sp.DeviceType,'LOR') AS DeviceType, sp.Tag AS LORTag
     FROM subProps sp
-    JOIN props p   ON p.PropID = sp.MasterPropId AND p.PreviewId = sp.PreviewId
-    JOIN previews pv ON pv.id = sp.PreviewId
+    JOIN props p     ON p.PropID = sp.MasterPropId AND p.PreviewId = sp.PreviewId
+    JOIN previews pv ON pv.id    = sp.PreviewId
 
     UNION ALL
 
     -- Inventory / unlit assets (DeviceType='None')
     SELECT
-    pv.Name                    AS PreviewName,
-    'PROP'                     AS Source,
-    ''                         AS Channel_Name,           -- no channel name
-    p.LORComment               AS Display_Name,           -- already suffixed -01..-NN
-    REPLACE(TRIM(COALESCE(NULLIF(p.LORComment,''), p.Name)), ' ','-') AS Suggested_Name,
-    NULL                       AS Network,
-    NULL                       AS Controller,
-    NULL                       AS StartChannel,
-    NULL                       AS EndChannel,
-    p.Color                    AS Color,                  -- stored from TraditionalColors
-    'None'                     AS DeviceType,
-    p.Tag                      AS LORTag
+      pv.Name                    AS PreviewName,
+      'PROP'                     AS Source,
+      ''                         AS Channel_Name,           -- no channel name
+      p.LORComment               AS Display_Name,           -- already suffixed -01..-NN
+      REPLACE(TRIM(COALESCE(NULLIF(p.LORComment,''), p.Name)), ' ','-') AS Suggested_Name,
+      NULL                       AS Network,
+      NULL                       AS Controller,
+      NULL                       AS StartChannel,
+      NULL                       AS EndChannel,
+      p.Color                    AS Color,                  -- stored from TraditionalColors
+      'None'                     AS DeviceType,
+      p.Tag                      AS LORTag
     FROM props p
     JOIN previews pv ON pv.id = p.PreviewId
     WHERE p.DeviceType = 'None'
-
 
     UNION ALL
 
@@ -1286,8 +1294,8 @@ def create_wiring_views_v6(db_file: str):
       'RGB' AS Color,
       'DMX' AS DeviceType, p.Tag AS LORTag
     FROM dmxChannels dc
-    JOIN props p   ON p.PropID = dc.PropId AND p.PreviewId = dc.PreviewId
-    JOIN previews pv ON pv.id = p.PreviewId;
+    JOIN props p     ON p.PropID   = dc.PropId AND p.PreviewId = dc.PreviewId
+    JOIN previews pv ON pv.id      = p.PreviewId;
 
     -- Sorted convenience view (new order)
     CREATE VIEW preview_wiring_sorted_v6 AS
@@ -1295,20 +1303,26 @@ def create_wiring_views_v6(db_file: str):
       PreviewName, Source, Channel_Name, Display_Name, Suggested_Name,
       Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
     FROM preview_wiring_map_v6
-    ORDER BY PreviewName COLLATE NOCASE, DeviceType COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
+    ORDER BY
+      PreviewName COLLATE NOCASE,
+      Network     COLLATE NOCASE,
+      Controller,
+      StartChannel;
 
     -- helpful indexes on base tables
-    CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
-    CREATE INDEX IF NOT EXISTS idx_subprops_preview  ON subProps(PreviewId);
-    CREATE INDEX IF NOT EXISTS idx_dmx_prop          ON dmxChannels(PropId);
+    CREATE INDEX IF NOT EXISTS idx_props_preview                  ON props(PreviewId);
+    CREATE INDEX IF NOT EXISTS idx_subprops_preview               ON subProps(PreviewId);
+    CREATE INDEX IF NOT EXISTS idx_subprops_preview_uid_ch        ON subProps(PreviewId, UID, StartChannel);
+    CREATE INDEX IF NOT EXISTS idx_dmx_prop                       ON dmxChannels(PropId);
     """
     conn = sqlite3.connect(db_file)
     try:
         conn.executescript(ddl)
         conn.commit()
-        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (Source moved, new sort).")
+        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (anti-join for SUBPROPs; simplified sort).")
     finally:
         conn.close()
+
 
 
 
