@@ -15,6 +15,36 @@ WHERE Controller IS NOT NULL
 ORDER BY Network, Controller;
 ```
 
+### Props only (all previews)
+```sql
+SELECT *
+FROM preview_wiring_sorted_v6
+WHERE Source = 'PROP';
+```
+
+### Optional: exclude non-wired inventory (DeviceType='None')
+```sql
+SELECT *
+FROM preview_wiring_sorted_v6
+WHERE Source = 'PROP' AND DeviceType <> 'None' AND PreviewName = :preview_name;
+```
+
+### Show only master props (includes DeviceType='None') for one preview
+```sql
+SELECT *
+FROM preview_wiring_sorted_v6
+WHERE Source = 'PROP' AND PreviewName = :preview_name;
+```
+
+### Optional: count of props per preview
+```sql
+SELECT PreviewName, COUNT(*) AS PropCount
+FROM preview_wiring_sorted_v6
+WHERE Source = 'PROP'
+GROUP BY PreviewName
+ORDER BY PreviewName COLLATE NOCASE;
+```
+
 ### Find all props with DeviceType=None (physical-only, no channels)
 ```sql
 SELECT PreviewId, PropID, Name, LORComment, Lights
