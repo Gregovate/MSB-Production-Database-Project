@@ -536,16 +536,23 @@ def process_lor_props(preview_id, root):
     """
     RULES
     -----
-    Purpose
-      - Persist LOR props that have a single ChannelGrid (one leg per prop entry).
-      - Produce one master prop per display and attach remaining legs as subProps.
+    - Group by Display Name (LORComment).
+    - There must be exactly one PROP (master).
+    - The master is the lowest (ControllerUID, StartChannel) pair.
+    - All other legs in that Display_Name group become subProps under that master.
+    - ControllerUID is a 2-digit hex string, so plain text sort works (because everything is zero-padded hex).
+    - If an XML row has MasterPropId but its Display_Name differs from its master's, that *new* Display_Name
+      forms its own group: pick the *lowest StartChannel in that group* as the new master; all others -> subProps.
+    - SPARE rows (single-grid) are copied to props as-is and excluded from grouping.
 
     Skip
       - Multi-grid props are handled in process_lor_multiple_channel_grids().
 
     Grouping
       - Group by LORComment (Display Name). Within each group:
-          * Master = row with lowest StartChannel.
+          * Within each (PreviewId, Display_Name/LORComment) group:
+
+    Ties break by the smallest ID (stable/deterministic).
           * Master is written to `props` and carries the first grid part (Network, UID, Start/End, Unknown, Color).
           * All remaining rows become `subProps`, each with its full grid data and MasterPropId pointing to the master.
 
@@ -570,11 +577,11 @@ def process_lor_props(preview_id, root):
       - Wiring views dashify LORComment (spaces -> '-') into DisplayName for stable sort.
     """
 
-    import sqlite3
+    import sqlite3, re
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    # --- helper: parse single-grid "Network,UID,Start,End,Unknown[,Color]" ---
+    # --- helpers -------------------------------------------------------------
     def parse_single_grid(channel_grid_text):
         if not channel_grid_text:
             return None
@@ -584,31 +591,26 @@ def process_lor_props(preview_id, root):
         return {
             "Network":      parts[0],
             "UID":          parts[1] if len(parts) > 1 else None,
-            "StartChannel": safe_int(parts[2]),
-            "EndChannel":   safe_int(parts[3]),
-            "Unknown":      parts[4],
+            "StartChannel": safe_int(parts[2]) if len(parts) > 2 else None,
+            "EndChannel":   safe_int(parts[3]) if len(parts) > 3 else None,
+            "Unknown":      parts[4] if len(parts) > 4 else None,
             "Color":        parts[5] if len(parts) > 5 else None,
         }
 
     # -----------------------------------------------------------------------
-    # PASS 0: SPARE rows (single-grid) -> props as-is, no grouping
+    # PASS 0: SPARE rows (single-grid) -> props as-is
     # -----------------------------------------------------------------------
     for prop in root.findall(".//PropClass"):
         if prop.get("DeviceType") != "LOR":
             continue
-
         name = (prop.get("Name") or "")
         ch_raw = (prop.get("ChannelGrid") or "").strip()
-
-        # Single-grid only in this function
         if ";" in ch_raw:
-            continue
-
+            continue  # multi-grid handled elsewhere
         if "spare" in name.lower():
-            grid = parse_single_grid(ch_raw)
+            grid = parse_single_grid(ch_raw) or {}
             raw_id = prop.get("id") or ""
             prop_id_scoped = scoped_id(preview_id, raw_id)
-
             cursor.execute("""
                 INSERT OR REPLACE INTO props (
                     PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
@@ -618,199 +620,109 @@ def process_lor_props(preview_id, root):
                     Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                prop_id_scoped, name, prop.get("Comment", ""), "LOR", prop.get("BulbShape"), prop.get("DimmingCurveName"),
-                prop.get("MaxChannels"), prop.get("CustomBulbColor"), prop.get("IndividualChannels"),
-                prop.get("LegacySequenceMethod"), prop.get("Opacity"), prop.get("MasterDimmable"),
-                prop.get("PreviewBulbSize"), prop.get("SeparateIds"), prop.get("StartLocation"),
-                prop.get("StringType"), prop.get("TraditionalColors"), prop.get("TraditionalType"),
-                prop.get("EffectBulbSize"), prop.get("Tag"), prop.get("Parm1"), prop.get("Parm2"),
-                prop.get("Parm3"), prop.get("Parm4"), prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"),
-                prop.get("Parm8"),
+                prop_id_scoped, name, prop.get("Comment", ""), "LOR",
+                prop.get("BulbShape"), prop.get("DimmingCurveName"), prop.get("MaxChannels"),
+                prop.get("CustomBulbColor"), prop.get("IndividualChannels"), prop.get("LegacySequenceMethod"),
+                prop.get("Opacity"), prop.get("MasterDimmable"), prop.get("PreviewBulbSize"),
+                prop.get("SeparateIds"), prop.get("StartLocation"), prop.get("StringType"),
+                prop.get("TraditionalColors"), prop.get("TraditionalType"), prop.get("EffectBulbSize"),
+                prop.get("Tag"), prop.get("Parm1"), prop.get("Parm2"), prop.get("Parm3"), prop.get("Parm4"),
+                prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"), prop.get("Parm8"),
                 int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
-                (grid or {}).get("Network"), (grid or {}).get("UID"), (grid or {}).get("StartChannel"),
-                (grid or {}).get("EndChannel"), (grid or {}).get("Unknown"), (grid or {}).get("Color"),
-                preview_id
+                grid.get("Network"), grid.get("UID"), grid.get("StartChannel"), grid.get("EndChannel"),
+                grid.get("Unknown"), grid.get("Color"), preview_id
             ))
             if DEBUG:
-                print(f"[DEBUG] (LOR single) SPARE -> props: scoped_id={prop_id_scoped} Name='{name}'")
-
+                print(f"[DEBUG] (LOR single) SPARE -> props: {prop_id_scoped} '{name}'")
 
     # -----------------------------------------------------------------------
     # PASS 0B: MANUAL SUBPROPS (MasterPropId set)
-    # Promote exactly ONE subprop per unique DisplayName (LORComment) to PROP.
-    # Any additional manual subprops with the same DisplayName remain SUBPROP.
-    #
-    # Rules:
-    #   • If subprop.LORComment != master.LORComment AND that DisplayName
-    #     has not yet been promoted in THIS preview -> write as PROP.
-    #   • Otherwise -> write as SUBPROP linked to master.
-    #   • Name and LORComment are NEVER changed.
-    #   • Use the subprop's own grid if present; else copy master’s grid.
+    # Materialize full groups when a manual has a *changed* Display_Name.
     # -----------------------------------------------------------------------
-    # Seed with names already present in props for this preview to make
-    # re-runs idempotent and to avoid double-promotion.
-    existing_props = set(
-        name for (name,) in cursor.execute(
-            "SELECT DISTINCT LORComment FROM props WHERE PreviewId=?", (preview_id,)
-        ).fetchall()
-    )
-    promoted_names = set(existing_props)
+    xml_by_id = {p.get("id"): p for p in root.findall(".//PropClass")}
 
-    # Quick lookup of masters by raw id
-    masters_by_id = {p.get("id"): p for p in root.findall(".//PropClass")}
+    def grid_or(node, fallback=None):
+        g = parse_single_grid((node.get("ChannelGrid") or "").strip())
+        return g if g else (fallback if fallback else {"Network":None,"UID":None,"StartChannel":None,"EndChannel":None,"Unknown":None,"Color":None})
+
+    manuals_same = []              # [(sp_node, master_node)]
+    changed_by_comment = {}        # { new_display_name: [manual_sp_nodes...] }
 
     for sp in root.findall(".//PropClass"):
         if sp.get("DeviceType") != "LOR":
             continue
-
-        # Only single-grid here
         ch_raw = (sp.get("ChannelGrid") or "").strip()
         if ";" in ch_raw:
-            continue
-
+            continue  # single-grid only here
         m_raw = (sp.get("MasterPropId") or "").strip()
         if not m_raw:
-            continue  # not a manual subprop
-
-        sub_id_scoped    = scoped_id(preview_id, sp.get("id") or "")
-        master_node      = masters_by_id.get(m_raw)
-        master_id_scoped = scoped_id(preview_id, m_raw)
-
-        # Prefer the subprop’s own grid; else master’s; else empty
-        g = parse_single_grid(ch_raw)
-        if g is None and master_node is not None:
-            g = parse_single_grid(master_node.get("ChannelGrid") or "")
-        if g is None:
-            g = {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
-
-        sub_name     = sp.get("Name", "")
-        sub_comment  = (sp.get("Comment") or "").strip()
-        master_comm  = ((master_node.get("Comment") or "").strip()) if master_node is not None else ""
-
-        # Promote only the FIRST unique DisplayName that differs from master’s
-        should_promote = (sub_comment != master_comm) and (sub_comment not in promoted_names)
-
-        if should_promote:
-            cursor.execute("""
-                INSERT OR REPLACE INTO props (
-                    PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
-                    CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
-                    PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
-                    Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                sub_id_scoped, sub_name, sub_comment, "LOR",
-                sp.get("BulbShape"), sp.get("DimmingCurveName"), sp.get("MaxChannels"),
-                sp.get("CustomBulbColor"), sp.get("IndividualChannels"), sp.get("LegacySequenceMethod"),
-                sp.get("Opacity"), sp.get("MasterDimmable"), sp.get("PreviewBulbSize"), sp.get("SeparateIds"),
-                sp.get("StartLocation"), sp.get("StringType"), sp.get("TraditionalColors"), sp.get("TraditionalType"),
-                sp.get("EffectBulbSize"), sp.get("Tag"), sp.get("Parm1"), sp.get("Parm2"), sp.get("Parm3"),
-                sp.get("Parm4"), sp.get("Parm5"), sp.get("Parm6"), sp.get("Parm7"), sp.get("Parm8"),
-                int(sp.get("Parm2")) if (sp.get("Parm2") and str(sp.get("Parm2")).isdigit()) else 0,
-                g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
-                preview_id
-            ))
-            promoted_names.add(sub_comment)
-            if DEBUG:
-                print(f"[DEBUG] (LOR manual) PROMOTE -> PROP: {sub_id_scoped}  Display='{sub_comment}'  master={master_id_scoped}")
+            continue
+        master = xml_by_id.get(m_raw)
+        sub_comment    = (sp.get("Comment") or "").strip()
+        master_comment = (master.get("Comment") or "").strip() if master is not None else ""
+        if sub_comment == master_comment:
+            manuals_same.append((sp, master))
         else:
-            cursor.execute("""
-                INSERT OR REPLACE INTO subProps (
-                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
-                    EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
-                    LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
-                    MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                sub_id_scoped, sub_name, sub_comment, "LOR", sp.get("BulbShape"),
-                g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
-                sp.get("CustomBulbColor"), sp.get("DimmingCurveName"), sp.get("IndividualChannels"), sp.get("LegacySequenceMethod"),
-                sp.get("MaxChannels"), sp.get("Opacity"), sp.get("MasterDimmable"), sp.get("PreviewBulbSize"), None,
-                master_id_scoped, sp.get("SeparateIds"), sp.get("StartLocation"), sp.get("StringType"),
-                sp.get("TraditionalColors"), sp.get("TraditionalType"), sp.get("EffectBulbSize"), sp.get("Tag"),
-                sp.get("Parm1"), sp.get("Parm2"), sp.get("Parm3"), sp.get("Parm4"), sp.get("Parm5"), sp.get("Parm6"),
-                sp.get("Parm7"), sp.get("Parm8"),
-                int(sp.get("Parm2")) if (sp.get("Parm2") and str(sp.get("Parm2")).isdigit()) else 0,
-                preview_id
-            ))
-            if DEBUG:
-                print(f"[DEBUG] (LOR manual) keep SUBPROP: {sub_id_scoped}  Display='{sub_comment}'  master={master_id_scoped}")
+            changed_by_comment.setdefault(sub_comment, []).append(sp)
 
-    # -----------------------------------------------------------------------
-    # PASS 1: AUTO GROUP by LORComment (exclude SPARE and MANUAL)
-    # -----------------------------------------------------------------------
-    props_grouped_by_comment = {}
+    # Keep manuals with same comment under original master
+    for sp, master in manuals_same:
+        sub_id_scoped    = scoped_id(preview_id, sp.get("id") or "")
+        master_id_scoped = scoped_id(preview_id, master.get("id") or "") if master is not None else None
+        g = grid_or(sp, grid_or(master))
+        cursor.execute("""
+            INSERT OR REPLACE INTO subProps (
+                SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            sub_id_scoped, sp.get("Name",""), sp.get("Comment",""), "LOR", sp.get("BulbShape"),
+            g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+            sp.get("CustomBulbColor"), sp.get("DimmingCurveName"), sp.get("IndividualChannels"),
+            sp.get("LegacySequenceMethod"), sp.get("MaxChannels"), sp.get("Opacity"),
+            sp.get("MasterDimmable"), sp.get("PreviewBulbSize"), None,
+            master_id_scoped, sp.get("SeparateIds"), sp.get("StartLocation"), sp.get("StringType"),
+            sp.get("TraditionalColors"), sp.get("TraditionalType"), sp.get("EffectBulbSize"), sp.get("Tag"),
+            sp.get("Parm1"), sp.get("Parm2"), sp.get("Parm3"), sp.get("Parm4"), sp.get("Parm5"), sp.get("Parm6"),
+            sp.get("Parm7"), sp.get("Parm8"),
+            int(sp.get("Parm2")) if (sp.get("Parm2") and str(sp.get("Parm2")).isdigit()) else 0,
+            preview_id
+        ))
 
-    for prop in root.findall(".//PropClass"):
-        if prop.get("DeviceType") != "LOR":
+    # For manuals whose Display_Name changed: build FULL group (manual + non-manual) for that Display_Name
+    materialized_comments = set()
+
+    # Pre-index non-manual, single-grid, non-spare rows by Display_Name
+    nonmanual_by_comment = {}
+    for node in root.findall(".//PropClass"):
+        if node.get("DeviceType") != "LOR":
             continue
-
-        # Skip already-handled cases
-        name = (prop.get("Name") or "")
-        if "spare" in name.lower():
+        if ";" in (node.get("ChannelGrid") or ""):
             continue
-        if (prop.get("MasterPropId") or "").strip():  # manual subprop handled above
+        if (node.get("MasterPropId") or "").strip():
             continue
-
-        ch_raw = (prop.get("ChannelGrid") or "").strip()
-        if ";" in ch_raw:
-            continue  # single-grid only in this function
-
-        grid = parse_single_grid(ch_raw)
-        raw_id = prop.get("id") or ""
-
-        rec = {
-            "PropID_raw":         raw_id,
-            "PropID_scoped":      scoped_id(preview_id, raw_id),
-            "Name":               name,                          # Channel Name (unchanged)
-            "DeviceType":         "LOR",
-            "LORComment":         prop.get("Comment", "") or "", # Display Name (unchanged)
-            "BulbShape":          prop.get("BulbShape", ""),
-            "DimmingCurveName":   prop.get("DimmingCurveName", ""),
-            "MaxChannels":        prop.get("MaxChannels"),
-            "CustomBulbColor":    prop.get("CustomBulbColor", ""),
-            "IndividualChannels": prop.get("IndividualChannels", False),
-            "LegacySequenceMethod":prop.get("LegacySequenceMethod", ""),
-            "Opacity":            prop.get("Opacity"),
-            "MasterDimmable":     prop.get("MasterDimmable", False),
-            "PreviewBulbSize":    prop.get("PreviewBulbSize"),
-            "SeparateIds":        prop.get("SeparateIds", False),
-            "StartLocation":      prop.get("StartLocation", ""),
-            "StringType":         prop.get("StringType", ""),
-            "TraditionalColors":  prop.get("TraditionalColors", ""),
-            "TraditionalType":    prop.get("TraditionalType", ""),
-            "EffectBulbSize":     prop.get("EffectBulbSize"),
-            "Tag":                prop.get("Tag", ""),
-            "Parm1":              prop.get("Parm1", ""),
-            "Parm2":              prop.get("Parm2", ""),
-            "Parm3":              prop.get("Parm3", ""),
-            "Parm4":              prop.get("Parm4", ""),
-            "Parm5":              prop.get("Parm5", ""),
-            "Parm6":              prop.get("Parm6", ""),
-            "Parm7":              prop.get("Parm7", ""),
-            "Parm8":              prop.get("Parm8", ""),
-            "Lights":             int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
-            "Grid":               grid,
-            "StartChannel":       (grid or {}).get("StartChannel"),
-            "PreviewId":          preview_id,
-        }
-
-        key = rec["LORComment"]
-        props_grouped_by_comment.setdefault(key, []).append(rec)
-
-    # Process each comment group
-    for LORComment, group in props_grouped_by_comment.items():
-        if not group:
+        if "spare" in (node.get("Name") or "").lower():
             continue
+        key = (node.get("Comment") or "").strip()
+        nonmanual_by_comment.setdefault(key, []).append(node)
 
-        # Master = lowest StartChannel (None => +inf)
-        master = min(group, key=lambda r: r["StartChannel"] if r["StartChannel"] is not None else float("inf"))
-        m_grid = master["Grid"] or {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
-        master_id = master["PropID_scoped"]
+    for new_comment, manual_nodes in changed_by_comment.items():
+        # full group = manuals + any non-manuals with same Display_Name
+        full_group = list(manual_nodes) + nonmanual_by_comment.get(new_comment, [])
 
-        # MASTER -> props (names/comments unchanged)
+        def start_of(node):
+            g = parse_single_grid(node.get("ChannelGrid") or "")
+            sc = g.get("StartChannel") if g else None
+            return sc if sc is not None else 10**9
+
+        new_master = min(full_group, key=start_of)
+        g_master = grid_or(new_master)
+        new_master_id = scoped_id(preview_id, new_master.get("id") or "")
+
+        # Insert new master
         cursor.execute("""
             INSERT OR REPLACE INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
@@ -820,7 +732,137 @@ def process_lor_props(preview_id, root):
                 Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            master_id, master["Name"], LORComment, master["DeviceType"], master["BulbShape"],
+            new_master_id, new_master.get("Name",""), new_comment, "LOR",
+            new_master.get("BulbShape"), new_master.get("DimmingCurveName"), new_master.get("MaxChannels"),
+            new_master.get("CustomBulbColor"), new_master.get("IndividualChannels"),
+            new_master.get("LegacySequenceMethod"), new_master.get("Opacity"), new_master.get("MasterDimmable"),
+            new_master.get("PreviewBulbSize"), new_master.get("SeparateIds"), new_master.get("StartLocation"),
+            new_master.get("StringType"), new_master.get("TraditionalColors"), new_master.get("TraditionalType"),
+            new_master.get("EffectBulbSize"), new_master.get("Tag"), new_master.get("Parm1"), new_master.get("Parm2"),
+            new_master.get("Parm3"), new_master.get("Parm4"), new_master.get("Parm5"), new_master.get("Parm6"),
+            new_master.get("Parm7"), new_master.get("Parm8"),
+            int(new_master.get("Parm2")) if (new_master.get("Parm2") and str(new_master.get("Parm2")).isdigit()) else 0,
+            g_master["Network"], g_master["UID"], g_master["StartChannel"], g_master["EndChannel"],
+            g_master["Unknown"], g_master["Color"], preview_id
+        ))
+
+        # Everyone else in the group -> subProps under new master
+        for node in full_group:
+            if node is new_master: 
+                continue
+            g = grid_or(node)
+            sub_id = scoped_id(preview_id, node.get("id") or "")
+            cursor.execute("""
+                INSERT OR REPLACE INTO subProps (
+                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                    EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                    LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                    MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                sub_id, node.get("Name",""), new_comment, "LOR", node.get("BulbShape"),
+                g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                node.get("CustomBulbColor"), node.get("DimmingCurveName"), node.get("IndividualChannels"),
+                node.get("LegacySequenceMethod"), node.get("MaxChannels"), node.get("Opacity"), node.get("MasterDimmable"),
+                node.get("PreviewBulbSize"), None, new_master_id, node.get("SeparateIds"), node.get("StartLocation"),
+                node.get("StringType"), node.get("TraditionalColors"), node.get("TraditionalType"), node.get("EffectBulbSize"),
+                node.get("Tag"), node.get("Parm1"), node.get("Parm2"), node.get("Parm3"), node.get("Parm4"), node.get("Parm5"),
+                node.get("Parm6"), node.get("Parm7"), node.get("Parm8"),
+                int(node.get("Parm2")) if (node.get("Parm2") and str(node.get("Parm2")).isdigit()) else 0,
+                preview_id
+            ))
+        materialized_comments.add(new_comment)
+
+    # -----------------------------------------------------------------------
+    # PASS 1: AUTO GROUP by LORComment (exclude SPARE, MANUALS, and any
+    #         Display_Names already materialized in PASS 0B)
+    # -----------------------------------------------------------------------
+    props_grouped_by_comment = {}
+    for prop in root.findall(".//PropClass"):
+        if prop.get("DeviceType") != "LOR":
+            continue
+        name = (prop.get("Name") or "")
+        if "spare" in name.lower():
+            continue
+        if (prop.get("MasterPropId") or "").strip():
+            continue  # manuals handled in 0B
+        lor_comment = (prop.get("Comment", "") or "").strip()
+        if lor_comment in materialized_comments:
+            continue  # already got a master in 0B
+        ch_raw = (prop.get("ChannelGrid") or "").strip()
+        if ";" in ch_raw:
+            continue  # single-grid only
+
+        grid = parse_single_grid(ch_raw)
+        raw_id = prop.get("id") or ""
+        rec = {
+            "PropID_raw":    raw_id,
+            "PropID_scoped": scoped_id(preview_id, raw_id),
+            "Name":          name,
+            "DeviceType":    "LOR",
+            "LORComment":    lor_comment,
+            "BulbShape":     prop.get("BulbShape", ""),
+            "DimmingCurveName": prop.get("DimmingCurveName", ""),
+            "MaxChannels":   prop.get("MaxChannels"),
+            "CustomBulbColor": prop.get("CustomBulbColor", ""),
+            "IndividualChannels": prop.get("IndividualChannels"),
+            "LegacySequenceMethod": prop.get("LegacySequenceMethod", ""),
+            "Opacity":       prop.get("Opacity"),
+            "MasterDimmable": prop.get("MasterDimmable"),
+            "PreviewBulbSize": prop.get("PreviewBulbSize"),
+            "SeparateIds":   prop.get("SeparateIds"),
+            "StartLocation": prop.get("StartLocation", ""),
+            "StringType":    prop.get("StringType", ""),
+            "TraditionalColors": prop.get("TraditionalColors", ""),
+            "TraditionalType":   prop.get("TraditionalType", ""),
+            "EffectBulbSize":    prop.get("EffectBulbSize"),
+            "Tag":           prop.get("Tag",""),
+            "Parm1":         prop.get("Parm1",""),
+            "Parm2":         prop.get("Parm2",""),
+            "Parm3":         prop.get("Parm3",""),
+            "Parm4":         prop.get("Parm4",""),
+            "Parm5":         prop.get("Parm5",""),
+            "Parm6":         prop.get("Parm6",""),
+            "Parm7":         prop.get("Parm7",""),
+            "Parm8":         prop.get("Parm8",""),
+            "Lights":        int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
+            "Grid":          grid or {},
+            "StartChannel":  (grid or {}).get("StartChannel"),
+            "PreviewId":     preview_id,
+        }
+        props_grouped_by_comment.setdefault(lor_comment, []).append(rec)
+
+        # helper: choose by (UID, StartChannel), with Nones sorted last; deterministic tie-break on PropID GAL 25-08-27
+        def _pair_key(rec):
+            g = rec.get("Grid") or {}
+            uid = (g.get("UID") or "").strip().upper()       # 2-digit hex like '0A', '0B'
+            uid_key = uid if uid else "ZZ"                   # missing UID sorts last
+            sc = rec.get("StartChannel")
+            sc_key = sc if sc is not None else 10**9         # missing channel sorts last
+            pid = rec.get("PropID_scoped") or "~"            # deterministic tie-break
+            return (uid_key, sc_key, pid)
+
+
+    for display_name, group in props_grouped_by_comment.items():
+        if not group:
+            continue
+        # master = min(group, key=lambda r: r["StartChannel"] if r["StartChannel"] is not None else float("inf"))
+        master = min(group, key=_pair_key)
+        m_grid = master["Grid"] or {"Network":None,"UID":None,"StartChannel":None,"EndChannel":None,"Unknown":None,"Color":None}
+        master_id = master["PropID_scoped"]
+
+        # MASTER -> props
+        cursor.execute("""
+            INSERT OR REPLACE INTO props (
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
+                PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
+                Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            master_id, master["Name"], display_name, master["DeviceType"], master["BulbShape"],
             master["DimmingCurveName"], master["MaxChannels"], master["CustomBulbColor"],
             master["IndividualChannels"], master["LegacySequenceMethod"], master["Opacity"],
             master["MasterDimmable"], master["PreviewBulbSize"], master["SeparateIds"],
@@ -828,24 +870,18 @@ def process_lor_props(preview_id, root):
             master["TraditionalType"], master["EffectBulbSize"], master["Tag"], master["Parm1"],
             master["Parm2"], master["Parm3"], master["Parm4"], master["Parm5"], master["Parm6"],
             master["Parm7"], master["Parm8"], master["Lights"],
-            m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"], m_grid["Unknown"], m_grid["Color"],
-            master["PreviewId"]
+            m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"],
+            m_grid["Unknown"], m_grid["Color"], master["PreviewId"]
         ))
         if DEBUG:
-            print(f"[DEBUG] (LOR single) MASTER -> props: scoped_id={master_id} LORComment='{LORComment}' Start={m_grid['StartChannel']}")
+            print(f"[DEBUG] (LOR single) MASTER -> props: {master_id} '{display_name}' Start={m_grid['StartChannel']}")
 
-        # REMAINING -> subProps (auto materialization; names/comments unchanged)
+        # REMAINING -> subProps
         for rec in group:
             if rec["PropID_scoped"] == master_id:
                 continue
-
-            g = rec["Grid"] or {"Network": None, "UID": None, "StartChannel": None, "EndChannel": None, "Unknown": None, "Color": None}
-            uid   = g["UID"] or "NA"
-            start = g["StartChannel"] if g["StartChannel"] is not None else 0
-
-            # Deterministic key under master: "<master_id>-<UID>-<Start:02d>"
-            sub_id = f"{master_id}-{uid}-{start:02d}"
-
+            g = rec["Grid"] or {"Network":None,"UID":None,"StartChannel":None,"EndChannel":None,"Unknown":None,"Color":None}
+            sub_id = scoped_id(preview_id, rec["PropID_raw"])
             cursor.execute("""
                 INSERT OR REPLACE INTO subProps (
                     SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
@@ -858,13 +894,13 @@ def process_lor_props(preview_id, root):
                 sub_id, rec["Name"], rec["LORComment"], rec["DeviceType"], rec["BulbShape"],
                 g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                 rec["CustomBulbColor"], rec["DimmingCurveName"], rec["IndividualChannels"], rec["LegacySequenceMethod"],
-                rec["MaxChannels"], rec["Opacity"], rec["MasterDimmable"], rec["PreviewBulbSize"], None,  # RgbOrder=NULL
+                rec["MaxChannels"], rec["Opacity"], rec["MasterDimmable"], rec["PreviewBulbSize"], None,
                 master_id, rec["SeparateIds"], rec["StartLocation"], rec["StringType"], rec["TraditionalColors"],
                 rec["TraditionalType"], rec["EffectBulbSize"], rec["Tag"], rec["Parm1"], rec["Parm2"], rec["Parm3"],
                 rec["Parm4"], rec["Parm5"], rec["Parm6"], rec["Parm7"], rec["Parm8"], rec["Lights"], rec["PreviewId"]
             ))
             if DEBUG:
-                print(f"[DEBUG] (LOR single) AUTO -> subProps: parent={master_id} sub_id={sub_id} UID={uid} Start={start}")
+                print(f"[DEBUG] (LOR single) AUTO -> subProps: parent={master_id} sub={sub_id} Start={g['StartChannel']}")
 
     conn.commit()
     conn.close()
@@ -1001,16 +1037,28 @@ def process_lor_multiple_channel_grids(preview_id, root):
             groups.setdefault(comment, []).append(entry)
 
     # ---------------------- process each multi-grid group --------------------
+    # Choose master GRID by lowest (UID, StartChannel)  [controller wins]
+    def _pair_key_grid(d):
+        g = d.get("Grid") or {}
+        uid = (g.get("UID") or "").strip().upper()      # e.g. '0A', '0B'
+        uid_key = uid if uid else "ZZ"                  # missing UID sorts last
+        sc = g.get("StartChannel")
+        sc_key = sc if sc is not None else 10**9        # missing channel sorts last
+        # deterministic tie-breaker (if needed)
+        rid = d.get("PropID_scoped") or d.get("id") or d.get("Name") or ""
+        return (uid_key, sc_key, rid)
+    
     for comment, items in groups.items():
         if len(items) < 2:
             continue  # true multi-grid groups only
 
         # Choose master GRID by lowest StartChannel; tiebreaker: UID sorting
-        items_sorted = sorted(
-            items,
-            key=lambda d: ((d["Grid"]["StartChannel"] if d["Grid"]["StartChannel"] is not None else 1_000_000),
-                           uid_sort_key(d["Grid"]["UID"]))
-        )
+        # items_sorted = sorted(
+        #     items,
+        #     key=lambda d: ((d["Grid"]["StartChannel"] if d["Grid"]["StartChannel"] is not None else 1_000_000),
+        #                    uid_sort_key(d["Grid"]["UID"]))
+        # )
+        items_sorted = sorted(items, key=_pair_key_grid)
         master = items_sorted[0]
 
         # Compose scoped master id from the PropClass that *owns* the master grid
@@ -1084,7 +1132,135 @@ def process_lor_multiple_channel_grids(preview_id, root):
     conn.commit()
     conn.close()
 
+# This makes the DB self-healing: for every (PreviewId, Display_Name) that still has orphaned subprops,
+#  it promotes the lowest StartChannel subprop to the one master and rebinds the rest.
+def repair_orphan_subprops(db_file: str):
+    import sqlite3
+    sql = r"""
+    -- Normalize unscoped MasterPropId when resolvable
+    UPDATE subProps
+       SET MasterPropId = (PreviewId || ':' || MasterPropId)
+     WHERE MasterPropId IS NOT NULL
+       AND INSTR(MasterPropId, ':') = 0
+       AND EXISTS (
+            SELECT 1
+              FROM props p
+             WHERE p.PropID = subProps.PreviewId || ':' || subProps.MasterPropId
+       );
 
+    -- Orphaned groups (there are subProps pointing at a non-existent master)
+    CREATE TEMP TABLE IF NOT EXISTS _orphan_groups AS
+    SELECT sp.PreviewId, sp.LORComment AS Display_Name
+      FROM subProps sp
+ LEFT JOIN props p ON p.PropID = sp.MasterPropId
+     WHERE p.PropID IS NULL
+  GROUP BY sp.PreviewId, sp.LORComment;
+
+    -- If a proper master already exists for a group, prefer the one with the lowest StartChannel
+    CREATE TEMP TABLE IF NOT EXISTS _ex_min AS
+    SELECT p.PreviewId, p.LORComment AS Display_Name,
+           MIN(COALESCE(p.StartChannel,1000000000)) AS min_sc
+      FROM props p
+      JOIN _orphan_groups og
+        ON og.PreviewId    = p.PreviewId
+       AND og.Display_Name = p.LORComment
+  GROUP BY p.PreviewId, p.LORComment;
+
+    CREATE TEMP TABLE IF NOT EXISTS _existing_choice AS
+    SELECT p.PreviewId, p.LORComment AS Display_Name,
+           MIN(p.PropID) AS existing_prop_id
+      FROM props p
+      JOIN _ex_min m
+        ON m.PreviewId    = p.PreviewId
+       AND m.Display_Name = p.LORComment
+     WHERE COALESCE(p.StartChannel,1000000000) = m.min_sc
+  GROUP BY p.PreviewId, p.LORComment;
+
+    -- Otherwise pick a winner from the orphan subProps (lowest StartChannel, tie-breaker lowest SubPropID)
+    CREATE TEMP TABLE IF NOT EXISTS _sp_min AS
+    SELECT sp.PreviewId, sp.LORComment AS Display_Name,
+           MIN(COALESCE(sp.StartChannel,1000000000)) AS min_sc
+      FROM subProps sp
+      JOIN _orphan_groups og
+        ON og.PreviewId    = sp.PreviewId
+       AND og.Display_Name = sp.LORComment
+  GROUP BY sp.PreviewId, sp.LORComment;
+
+    CREATE TEMP TABLE IF NOT EXISTS _sp_min_id AS
+    SELECT sp.PreviewId, sp.LORComment AS Display_Name,
+           MIN(sp.SubPropID) AS min_sub_id
+      FROM subProps sp
+      JOIN _sp_min m
+        ON m.PreviewId    = sp.PreviewId
+       AND m.Display_Name = sp.LORComment
+     WHERE COALESCE(sp.StartChannel,1000000000) = m.min_sc
+  GROUP BY sp.PreviewId, sp.LORComment;
+
+    CREATE TEMP TABLE IF NOT EXISTS _orphan_choice AS
+    SELECT sp.*
+      FROM subProps sp
+      JOIN _sp_min_id mi
+        ON mi.PreviewId    = sp.PreviewId
+       AND mi.Display_Name = sp.LORComment
+       AND mi.min_sub_id   = sp.SubPropID;
+
+    -- Insert a master ONLY for groups that don't already have one
+    INSERT OR IGNORE INTO props (
+      PropID, Name, LORComment, DeviceType, BulbShape,
+      DimmingCurveName, MaxChannels, CustomBulbColor, IndividualChannels, LegacySequenceMethod,
+      Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation, StringType,
+      TraditionalColors, TraditionalType, EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4,
+      Parm5, Parm6, Parm7, Parm8, Lights, Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
+    )
+    SELECT oc.SubPropID, oc.Name, oc.LORComment, COALESCE(oc.DeviceType,'LOR'), oc.BulbShape,
+           oc.DimmingCurveName, oc.MaxChannels, oc.CustomBulbColor, oc.IndividualChannels, oc.LegacySequenceMethod,
+           oc.Opacity, oc.MasterDimmable, oc.PreviewBulbSize, oc.SeparateIds, oc.StartLocation, oc.StringType,
+           oc.TraditionalColors, oc.TraditionalType, oc.EffectBulbSize, oc.Tag, oc.Parm1, oc.Parm2, oc.Parm3, oc.Parm4,
+           oc.Parm5, oc.Parm6, oc.Parm7, oc.Parm8, oc.Lights, oc.Network, oc.UID, oc.StartChannel, oc.EndChannel, oc.Unknown, oc.Color, oc.PreviewId
+      FROM _orphan_choice oc
+ LEFT JOIN _existing_choice ec
+        ON ec.PreviewId    = oc.PreviewId
+       AND ec.Display_Name = oc.LORComment
+     WHERE ec.existing_prop_id IS NULL;
+
+    -- Rebind all subProps in the group to the correct master:
+    --   existing master if present; otherwise the orphan-choice we just inserted.
+    UPDATE subProps
+       SET MasterPropId = COALESCE(
+         (SELECT ec.existing_prop_id
+            FROM _existing_choice ec
+           WHERE ec.PreviewId   = subProps.PreviewId
+             AND ec.Display_Name= subProps.LORComment),
+         (SELECT oc.SubPropID
+            FROM _orphan_choice oc
+       LEFT JOIN _existing_choice ec
+              ON ec.PreviewId    = oc.PreviewId
+             AND ec.Display_Name = oc.LORComment
+           WHERE oc.PreviewId    = subProps.PreviewId
+             AND oc.LORComment   = subProps.LORComment
+             AND ec.existing_prop_id IS NULL)
+       )
+     WHERE EXISTS (
+           SELECT 1
+             FROM _orphan_groups og
+            WHERE og.PreviewId    = subProps.PreviewId
+              AND og.Display_Name = subProps.LORComment
+       );
+
+    DROP TABLE IF EXISTS _orphan_choice;
+    DROP TABLE IF EXISTS _sp_min_id;
+    DROP TABLE IF EXISTS _sp_min;
+    DROP TABLE IF EXISTS _existing_choice;
+    DROP TABLE IF EXISTS _ex_min;
+    DROP TABLE IF EXISTS _orphan_groups;
+    """
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.executescript(sql)
+        conn.commit()
+        print("[INFO] Orphan subProps reconciled (prefers existing masters).")
+    finally:
+        conn.close()
 
 
 
@@ -1139,6 +1315,9 @@ def main():
     # Process all files in the folder
     process_folder(PREVIEW_PATH)
 
+    # Reconciler
+    #repair_orphan_subprops(DB_FILE)
+
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
 
@@ -1172,34 +1351,13 @@ def create_wiring_views_v6(db_file: str):
     DROP VIEW IF EXISTS preview_wiring_map_v6;
     DROP VIEW IF EXISTS preview_wiring_sorted_v6;
 
-    -- LOR masters (props) — classify later legs as SUBPROP; suppress rows that also exist as subprops
+    -- LOR masters (props) — KEEP masters even if a subprop shares the same address
     CREATE VIEW preview_wiring_map_v6 AS
     SELECT
       pv.Name AS PreviewName,
-      CASE
-        -- explicit subprop at same address => treat as SUBPROP
-        WHEN EXISTS (
-          SELECT 1
-          FROM subProps spx
-          WHERE spx.PreviewId = p.PreviewId
-            AND COALESCE(spx.Network,'') = COALESCE(p.Network,'')
-            AND spx.UID = p.UID
-            AND CAST(spx.StartChannel AS INTEGER) = CAST(p.StartChannel AS INTEGER)
-        ) THEN 'SUBPROP'
-        -- otherwise, if there is an earlier leg in the same comment group, this is a SUBPROP
-        WHEN EXISTS (
-          SELECT 1
-          FROM props p2
-          WHERE p2.PreviewId = p.PreviewId
-            AND COALESCE(p2.LORComment,'') = COALESCE(p.LORComment,'') COLLATE NOCASE
-            AND COALESCE(p2.Network,'')    = COALESCE(p.Network,'')
-            AND p2.UID = p.UID
-            AND CAST(p2.StartChannel AS INTEGER) < CAST(p.StartChannel AS INTEGER)
-        ) THEN 'SUBPROP'
-        ELSE 'PROP'
-      END AS Source,
-      p.Name  AS Channel_Name,              -- RAW channel name
-      p.LORComment AS Display_Name,         -- RAW display name (inventory key)
+      'PROP'  AS Source,
+      p.Name  AS Channel_Name,
+      p.LORComment AS Display_Name,
       REPLACE(TRIM(
           COALESCE(NULLIF(p.LORComment,''), p.Name)
           || CASE
@@ -1229,23 +1387,15 @@ def create_wiring_views_v6(db_file: str):
     WHERE p.DeviceType='LOR'
       AND p.Network IS NOT NULL
       AND p.StartChannel IS NOT NULL
-      AND NOT EXISTS (               -- anti-join: don't double-emit if an explicit subprop exists
-            SELECT 1
-            FROM subProps spx
-            WHERE spx.PreviewId = p.PreviewId
-              AND COALESCE(spx.Network,'') = COALESCE(p.Network,'')
-              AND spx.UID = p.UID
-              AND CAST(spx.StartChannel AS INTEGER) = CAST(p.StartChannel AS INTEGER)
-      )
 
     UNION ALL
 
-    -- LOR subprops
+    -- LOR subprops — SHOW all, EXCEPT the one that shares the master's address (to avoid dup line)
     SELECT
       pv.Name,
       'SUBPROP' AS Source,
-      sp.Name       AS Channel_Name,       -- RAW subprop channel name
-      sp.LORComment AS Display_Name,       -- RAW subprop display name
+      sp.Name       AS Channel_Name,
+      sp.LORComment AS Display_Name,
       REPLACE(TRIM(
           COALESCE(NULLIF(sp.LORComment,''), p.LORComment)
           || CASE
@@ -1269,37 +1419,30 @@ def create_wiring_views_v6(db_file: str):
       sp.Color   AS Color,
       COALESCE(sp.DeviceType,'LOR') AS DeviceType, sp.Tag AS LORTag
     FROM subProps sp
-    JOIN props p     ON p.PropID = sp.MasterPropId AND p.PreviewId = sp.PreviewId
-    JOIN previews pv ON pv.id    = sp.PreviewId
+    JOIN props p     ON p.PropID    = sp.MasterPropId AND p.PreviewId = sp.PreviewId
+    JOIN previews pv ON pv.id       = sp.PreviewId
+    WHERE NOT (sp.UID = p.UID AND sp.StartChannel = p.StartChannel)
 
     UNION ALL
 
-    -- Inventory / unlit assets (DeviceType='None')
+    -- Inventory / unlit assets
     SELECT
-      pv.Name                    AS PreviewName,
-      'PROP'                     AS Source,
-      ''                         AS Channel_Name,           -- no channel name
-      p.LORComment               AS Display_Name,           -- already suffixed -01..-NN
-      REPLACE(TRIM(COALESCE(NULLIF(p.LORComment,''), p.Name)), ' ','-') AS Suggested_Name,
-      NULL                       AS Network,
-      NULL                       AS Controller,
-      NULL                       AS StartChannel,
-      NULL                       AS EndChannel,
-      p.Color                    AS Color,                  -- stored from TraditionalColors
-      'None'                     AS DeviceType,
-      p.Tag                      AS LORTag
+      pv.Name, 'PROP', '', p.LORComment,
+      REPLACE(TRIM(COALESCE(NULLIF(p.LORComment,''), p.Name)), ' ','-'),
+      NULL, NULL, NULL, NULL,
+      p.Color, 'None', p.Tag
     FROM props p
     JOIN previews pv ON pv.id = p.PreviewId
     WHERE p.DeviceType = 'None'
 
     UNION ALL
 
-    -- DMX channels (Controller = Universe)
+    -- DMX channels
     SELECT
       pv.Name,
-      'DMX' AS Source,
-      p.Name AS Channel_Name,
-      p.LORComment AS Display_Name,
+      'DMX',
+      p.Name,
+      p.LORComment,
       REPLACE(TRIM(
           COALESCE(NULLIF(p.LORComment,''), p.Name)
           || CASE
@@ -1310,28 +1453,23 @@ def create_wiring_views_v6(db_file: str):
                ELSE ''
              END
           || '-U'||dc.StartUniverse||':'||dc.StartChannel
-      ), ' ','-') AS Suggested_Name,
-      dc.Network, CAST(dc.StartUniverse AS TEXT) AS Controller,
+      ), ' ','-'),
+      dc.Network, CAST(dc.StartUniverse AS TEXT),
       dc.StartChannel, dc.EndChannel,
-      'RGB' AS Color,
-      'DMX' AS DeviceType, p.Tag AS LORTag
+      'RGB', 'DMX', p.Tag
     FROM dmxChannels dc
     JOIN props p     ON p.PropID   = dc.PropId AND p.PreviewId = dc.PreviewId
     JOIN previews pv ON pv.id      = p.PreviewId;
 
-    -- Sorted convenience view (new order)
+    -- Sorted convenience view
     CREATE VIEW preview_wiring_sorted_v6 AS
     SELECT
       PreviewName, Source, Channel_Name, Display_Name, Suggested_Name,
       Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
     FROM preview_wiring_map_v6
-    ORDER BY
-      PreviewName COLLATE NOCASE,
-      Network     COLLATE NOCASE,
-      Controller,
-      StartChannel;
+    ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
 
-    -- helpful indexes on base tables
+    -- helpful indexes
     CREATE INDEX IF NOT EXISTS idx_props_preview                  ON props(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview               ON subProps(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview_uid_ch        ON subProps(PreviewId, UID, StartChannel);
@@ -1341,15 +1479,9 @@ def create_wiring_views_v6(db_file: str):
     try:
         conn.executescript(ddl)
         conn.commit()
-        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (CASE-based Source + hardened anti-join).")
+        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (keep masters; hide only duplicate sub at same address).")
     finally:
         conn.close()
-
-
-
-
-
-
 
 
 if __name__ == "__main__":
