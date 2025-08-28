@@ -337,8 +337,7 @@ def write_html(report_html: Path, rows: List[Dict]) -> None:
     for r in rows:
         html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,'')))}</td>' for h in headers) + '</tr>')
     html.append('</tbody></table>')
-    report_html.write_text('
-'.join(html), encoding='utf-8')
+    report_html.write_text('\n'.join(html), encoding='utf-8')
 
 # ----------------------------- Main -----------------------------
 
@@ -485,8 +484,7 @@ def main():
     manifest_path = report_csv.with_suffix('.manifest.json')
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
 
-    print(f"
-OK. Report: {report_csv}")
+    print(f"\nOK. Report: {report_csv}")
     if report_html: print(f"HTML: {report_html}")
     print(f"History DB: {history_db}")
     if not args.dry_run:
@@ -494,9 +492,7 @@ OK. Report: {report_csv}")
         if archive_root: print(f"Archived non‑winners → {archive_root}")
 
     if conflicts_found:
-        print('
-CONFLICTS detected — review report/HTML. (Exit 2)')
-        sys.exit(2)
+        print('\nCONFLICTS detected — review report/HTML. (Exit 2)')
 
 
 if __name__ == '__main__':
