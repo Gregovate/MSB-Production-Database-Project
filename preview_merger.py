@@ -37,7 +37,7 @@ Usage (dry‑run first)
      --report-html "G:/Shared drives/MSB Database/_reports/lorprev_compare.html" \
      --policy prefer-revision-then-mtime \
      --ensure-users "adam,rich,greg,showpc,officepc" \
-     --email-domain "sungunners.com" \
+     --email-domain "sheboyganlights.org" \
      --dry-run
 
 Then run **without** --dry-run to stage winners and archive non‑winners.
