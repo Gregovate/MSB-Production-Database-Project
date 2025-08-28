@@ -84,6 +84,7 @@ DEFAULT_PREVIEW_PATH = r"G:\Shared drives\MSB Database\Database Previews"
 DB_FILE = DEFAULT_DB_FILE
 PREVIEW_PATH = DEFAULT_PREVIEW_PATH
 
+
 def get_path(prompt: str, default_path: str) -> str:
     """Prompt for a path, using a default if user just hits Enter."""
     user_input = input(f"{prompt} [{default_path}]: ").strip()
