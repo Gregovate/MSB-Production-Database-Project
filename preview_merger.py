@@ -77,13 +77,17 @@ class Candidate:
     path: str
     size: int
     mtime: float
-    sha256: str
+    sha256: Optional[str] = None   # was str
 
 # ============================= Utilities ============================= #
 
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
+def ensure_hash(c: Candidate) -> str:
+    if c.sha256 is None:
+        c.sha256 = sha256_file(Path(c.path))
+    return c.sha256
 
 def ymd_hms(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S%z')
@@ -225,26 +229,18 @@ def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optiona
                     path=str(path),
                     size=stat.st_size,
                     mtime=stat.st_mtime,
-                    sha256=sha256_file(path),
+                    sha256=None #sha256_file(path),
                 )
             )
     return candidates
 
 
-def group_by_key(candidates: List[Candidate]) -> Dict[str, List[Candidate]]:
-    groups: Dict[str, List[Candidate]] = {}
-    for c in candidates:
-        groups.setdefault(c.key, []).append(c)
-    return groups
-
-
 def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[Candidate], str, bool]:
-    # Single candidate
     if len(group) == 1:
         return group[0], [], 'single candidate', False
 
     def latest_by_mtime(items: List[Candidate]) -> Candidate:
-        return sorted(items, key=lambda c: c.mtime, reverse=True)[0]
+        return max(items, key=lambda c: c.mtime)
 
     reason = ''
     conflict = False
@@ -257,15 +253,16 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
         max_rev = None
         for c in group:
             if c.identity.revision_num is not None:
-                if (max_rev is None) or (c.identity.revision_num > max_rev):
-                    max_rev = c.identity.revision_num
+                max_rev = c.identity.revision_num if max_rev is None else max(max_rev, c.identity.revision_num)
+
         if max_rev is not None:
             rev_max_set = [c for c in group if c.identity.revision_num == max_rev]
             if len(rev_max_set) == 1:
                 winner = rev_max_set[0]
                 reason = f'highest numeric Revision={max_rev}'
             else:
-                hashes = {c.sha256 for c in rev_max_set}
+                # Hash ONLY on ties at highest revision
+                hashes = {ensure_hash(x) for x in rev_max_set}
                 if len(hashes) == 1:
                     winner = latest_by_mtime(rev_max_set)
                     reason = f'same Revision={max_rev}, identical content; picked latest mtime'
@@ -321,14 +318,13 @@ def write_html(report_html: Path, rows: List[Dict]) -> None:
         '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
         '<style>body{font:14px system-ui,Segoe UI,Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px}th{background:#f4f6f8;text-align:left}tr:nth-child(even){background:#fafafa}</style>',
         '<h2>LOR Preview Compare</h2>',
-        f"<p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>",
+        f"<p>Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</p>",
         '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
     ]
     for r in rows:
         html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,'')))}</td>' for h in headers) + '</tr>')
     html.append('</tbody></table>')
-    report_html.write_text('
-'.join(html), encoding='utf-8')
+    report_html.write_text('\n'.join(html), encoding='utf-8')
 
 # ============================= Config & Args ============================= #
 
@@ -410,7 +406,11 @@ def main():
     # History DB: start run
     conn = history_connect(history_db)
     run_id = hashlib.sha256(os.urandom(16)).hexdigest()
-    conn.execute('INSERT INTO runs(run_id, started_utc, policy) VALUES (?,?,?)', (run_id, datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'), args.policy))
+    started_utc = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    conn.execute(
+        'INSERT INTO runs(run_id, started_utc, policy) VALUES (?,?,?)',
+        (run_id, started_utc, args.policy)
+    )
     conn.commit()
 
     # Scan candidates (root only)
@@ -510,8 +510,7 @@ def main():
     manifest_path = report_csv.with_suffix('.manifest.json')
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
 
-    print(f"
-OK. Report: {report_csv}")
+    print(f"\nOK. Report: {report_csv}")
     if report_html: print(f"HTML: {report_html}")
     print(f"History DB: {history_db}")
     if not args.dry_run:
@@ -519,8 +518,7 @@ OK. Report: {report_csv}")
         if archive_root: print(f"Archived non‑winners → {archive_root}")
 
     if conflicts_found:
-        print('
-CONFLICTS detected — review report/HTML. (Exit 2)')
+        print('\nCONFLICTS detected — review report/HTML. (Exit 2)')
         sys.exit(2)
 
 
