@@ -3,54 +3,27 @@
 preview_merger.py — Windows‑friendly, per‑user .lorprev collector with conflict detection,
 safe staging, and a history SQLite database for audit/reporting.
 
-Paths (example)
----------------
-Input (per‑user, **scan only the ROOT of each user folder**):
-  G:/Shared drives/MSB Database/UserPreviewStaging/
-    abiebel/*.lorprev
-    rneerhof/*.lorprev
-    gliebig/*.lorprev
-    showpc/*.lorprev
-    officepc/*.lorprev
+Now with **GLOBAL DEFAULTS** and optional **JSON config** so you can just run:
 
-Staging ("secret" — parser reads from here):
-  G:/Shared drives/MSB Database/_secret_staging/
+  py preview_merger.py --dry-run
 
-Archive for non‑winners (optional):
-  G:/Shared drives/MSB Database/_staging_archive/
+Override via CLI when needed. Precedence: CLI > JSON config > GLOBAL_DEFAULTS.
 
-History DB (auto‑created):
-  G:/Shared drives/MSB Database/_history/preview_history.db
+JSON config (optional):
+  Same folder as this script, named `preview_merger.config.json`, e.g.:
+  {
+    "input_root": "G:/Shared drives/MSB Database/UserPreviewStaging",
+    "staging_root": "G:/Shared drives/MSB Database/Database Previews",
+    "archive_root": "G:/Shared drives/MSB Database/database/merger/archive",
+    "history_db": "G:/Shared drives/MSB Database/database/merger/preview_history.db",
+    "report_csv": "G:/Shared drives/MSB Database/database/merger/reports/lorprev_compare.csv",
+    "report_html": "G:/Shared drives/MSB Database/database/merger/reports/lorprev_compare.html",
+    "policy": "prefer-revision-then-mtime",
+    "ensure_users": "abiebel,rneerhof,gliebig,showpc,officepc",
+    "email_domain": "sheboyganlights.org"
+  }
 
-Reports (CSV + HTML):
-  G:/Shared drives/MSB Database/_reports/lorprev_compare.csv
-  G:/Shared drives/MSB Database/_reports/lorprev_compare.html
-
-Usage (dry‑run first)
----------------------
-  py preview_merger.py \
-     --input-root "G:/Shared drives/MSB Database/UserPreviewStaging" \
-     --staging-root "G:/Shared drives/MSB Database/_secret_staging" \
-     --archive-root "G:/Shared drives/MSB Database/_staging_archive" \
-     --history-db  "G:/Shared drives/MSB Database/_history/preview_history.db" \
-     --report      "G:/Shared drives/MSB Database/_reports/lorprev_compare.csv" \
-     --report-html "G:/Shared drives/MSB Database/_reports/lorprev_compare.html" \
-     --policy prefer-revision-then-mtime \
-     --ensure-users "adam,rich,greg,showpc,officepc" \
-     --email-domain "sheboyganlights.org" \
-     --dry-run
-
-Then run **without** --dry-run to stage winners and archive non‑winners.
-
-What’s new vs prior draft
--------------------------
-• Creates any **missing folders** (input root, per‑user folders, staging, archive, reports, history).  
-• **Scans only the ROOT** of each user folder (no recursion).  
-• Writes a **history SQLite DB** recording every file seen (user, size, mtime, hash, revision) and every decision.  
-• **Folder names = usernames:** pass `--email-domain yourdomain.com` and emails auto‑map as `<username>@yourdomain.com` (you can still override with `--user-map` / `--user-map-json`).  
-• Generates both **CSV and HTML** reports suitable for emailing.
-
-Exit codes: 0 OK; 2 conflicts detected (requires review unless overridden with --force-winner).
+(You can point to another file with --config <path>.)
 """
 from __future__ import annotations
 
@@ -68,7 +41,25 @@ import xml.etree.ElementTree as ET
 import shutil
 import sys
 
-# ----------------------------- Data models -----------------------------
+# ============================= GLOBAL DEFAULTS ============================= #
+GLOBAL_DEFAULTS = {
+    # Folders
+    "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
+    # "Secret" location used by LOR parser today
+    "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
+    # Keep merger artifacts under /database/merger
+    "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
+    "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
+    "report_csv":   r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.csv",
+    "report_html":  r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html",
+    # Behavior
+    "policy": "prefer-revision-then-mtime",
+    # Users and email
+    "ensure_users": "abiebel,rneerhof,gliebig,showpc,officepc",
+    "email_domain": "sheboyganlights.org",
+}
+
+# ============================= Data models ============================= #
 
 @dataclass
 class PreviewIdentity:
@@ -88,7 +79,7 @@ class Candidate:
     mtime: float
     sha256: str
 
-# ----------------------------- Utilities -----------------------------
+# ============================= Utilities ============================= #
 
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
@@ -139,7 +130,7 @@ def identity_key(idy: PreviewIdentity) -> Optional[str]:
         return f"NAME:{idy.name.strip().lower()}"
     return None
 
-# ----------------------------- History DB -----------------------------
+# ============================= History DB ============================= #
 
 DDL_HISTORY = """
 PRAGMA journal_mode=WAL;
@@ -173,8 +164,7 @@ CREATE TABLE IF NOT EXISTS staging_decisions (
   staged_as       TEXT,
   decision_reason TEXT,
   conflict        INTEGER DEFAULT 0,
-  action          TEXT,  -- staged | skipped | conflict | archived
-  FOREIGN KEY(run_id) REFERENCES runs(run_id)
+  action          TEXT  -- staged | skipped | conflict | archived
 );
 """
 
@@ -185,7 +175,7 @@ def history_connect(db_path: Path) -> sqlite3.Connection:
     conn.executescript(DDL_HISTORY)
     return conn
 
-# ----------------------------- Core logic -----------------------------
+# ============================= Core logic ============================= #
 
 def load_user_map(arg_map: Optional[str], json_path: Optional[str]) -> Dict[str, str]:
     out: Dict[str, str] = {}
@@ -309,7 +299,7 @@ def stage_copy(src: Path, dst: Path) -> None:
     ensure_dir(dst.parent)
     shutil.copy2(src, dst)
 
-# ----------------------------- Reporting -----------------------------
+# ============================= Reporting ============================= #
 
 def write_csv(report_csv: Path, rows: List[Dict]) -> None:
     ensure_dir(report_csv.parent)
@@ -337,25 +327,61 @@ def write_html(report_html: Path, rows: List[Dict]) -> None:
     for r in rows:
         html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,'')))}</td>' for h in headers) + '</tr>')
     html.append('</tbody></table>')
-    report_html.write_text('\n'.join(html), encoding='utf-8')
+    report_html.write_text('
+'.join(html), encoding='utf-8')
+
+# ============================= Config & Args ============================= #
+
+def _preparse_config_path(argv: List[str]) -> Optional[str]:
+    # allow --config PATH or --config=PATH
+    for i, a in enumerate(argv):
+        if a == '--config' and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith('--config='):
+            return a.split('=', 1)[1]
+    return None
+
+
+def _load_config_json(path: Optional[str]) -> Dict[str, str]:
+    if not path:
+        # default next to script
+        default = Path(__file__).with_suffix('.config.json')
+        path = str(default)
+    p = Path(path)
+    if p.is_file():
+        try:
+            data = json.loads(p.read_text(encoding='utf-8'))
+            if isinstance(data, dict):
+                # only accept known keys
+                return {k: str(v) for k, v in data.items() if k in GLOBAL_DEFAULTS}
+        except Exception:
+            pass
+    return {}
+
 
 # ----------------------------- Main -----------------------------
 
 def main():
-    ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files from per-user folders with conflict detection and history DB.')
-    ap.add_argument('--input-root', required=True)
-    ap.add_argument('--staging-root', required=True)
-    ap.add_argument('--archive-root')
-    ap.add_argument('--history-db', required=True)
-    ap.add_argument('--report', required=True)
-    ap.add_argument('--report-html')
-    ap.add_argument('--policy', choices=['prefer-revision-then-mtime','prefer-mtime'], default='prefer-revision-then-mtime')
+    # Merge defaults ← config ← CLI
+    cfg_path = _preparse_config_path(sys.argv)
+    cfg = _load_config_json(cfg_path)
+    defaults = {**GLOBAL_DEFAULTS, **cfg}
+
+    ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files with conflict detection and history DB.', fromfile_prefix_chars='@')
+    ap.add_argument('--config', help='Path to JSON config file (optional)')
+    ap.add_argument('--input-root', default=defaults['input_root'])
+    ap.add_argument('--staging-root', default=defaults['staging_root'])
+    ap.add_argument('--archive-root', default=defaults['archive_root'])
+    ap.add_argument('--history-db', default=defaults['history_db'])
+    ap.add_argument('--report', default=defaults['report_csv'])
+    ap.add_argument('--report-html', default=defaults['report_html'])
+    ap.add_argument('--policy', choices=['prefer-revision-then-mtime','prefer-mtime'], default=defaults['policy'])
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--force-winner', action='append', default=[])
-    ap.add_argument('--ensure-users', help='Comma-separated list to ensure folders exist under input-root (e.g., usernames)')
-    ap.add_argument('--user-map', help='Semicolon-separated username=email pairs, e.g. "greg=greg@x;rich=rich@x"')
-    ap.add_argument('--user-map-json', help='Path to JSON mapping {"greg":"greg@x"}')
-    ap.add_argument('--email-domain', help='If set, any username without an explicit mapping gets username@<domain>')
+    ap.add_argument('--ensure-users', default=defaults['ensure_users'], help='Comma-separated list to ensure folders exist under input-root (e.g., usernames)')
+    ap.add_argument('--user-map', help='Semicolon-separated username=email pairs, e.g. "gliebig=greg@sheboyganlights.org"')
+    ap.add_argument('--user-map-json', help='Path to JSON mapping {"gliebig":"greg@sheboyganlights.org"}')
+    ap.add_argument('--email-domain', default=defaults['email_domain'], help='If set, any username without a mapping gets username@<domain>')
 
     args = ap.parse_args()
 
@@ -484,7 +510,8 @@ def main():
     manifest_path = report_csv.with_suffix('.manifest.json')
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
 
-    print(f"\nOK. Report: {report_csv}")
+    print(f"
+OK. Report: {report_csv}")
     if report_html: print(f"HTML: {report_html}")
     print(f"History DB: {history_db}")
     if not args.dry_run:
@@ -492,7 +519,9 @@ def main():
         if archive_root: print(f"Archived non‑winners → {archive_root}")
 
     if conflicts_found:
-        print('\nCONFLICTS detected — review report/HTML. (Exit 2)')
+        print('
+CONFLICTS detected — review report/HTML. (Exit 2)')
+        sys.exit(2)
 
 
 if __name__ == '__main__':
