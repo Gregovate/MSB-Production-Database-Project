@@ -1,54 +1,56 @@
 #!/usr/bin/env python3
 """
-lorprev_merger.py — Collect Light‑O‑Rama .lorprev files from per‑user folders,
-compare by Preview identity (GUID id + Name + Revision), detect conflicts, and
-safely stage the chosen versions into a private staging folder used to build the DB.
+preview_merger.py — Windows‑friendly, per‑user .lorprev collector with conflict detection,
+safe staging, and a history SQLite database for audit/reporting.
 
-Windows‑friendly; pure Python 3.9+ (no 3rd‑party packages).
-
-Typical layout (you choose the actual paths):
-
+Paths (example)
+---------------
+Input (per‑user, **scan only the ROOT of each user folder**):
   G:/Shared drives/MSB Database/UserPreviewStaging/
-    Adam/*.lorprev
-    Rich/*.lorprev
-    Greg/*.lorprev
-    ShowPC/*.lorprev
-    OfficePC/*.lorprev
+    abiebel/*.lorprev
+    rneerhof/*.lorprev
+    gliebig/*.lorprev
+    showpc/*.lorprev
+    officepc/*.lorprev
 
-  Staging ("secret" location — do not edit here manually):
+Staging ("secret" — parser reads from here):
   G:/Shared drives/MSB Database/_secret_staging/
 
-Usage (dry‑run first):
+Archive for non‑winners (optional):
+  G:/Shared drives/MSB Database/_staging_archive/
+
+History DB (auto‑created):
+  G:/Shared drives/MSB Database/_history/preview_history.db
+
+Reports (CSV + HTML):
+  G:/Shared drives/MSB Database/_reports/lorprev_compare.csv
+  G:/Shared drives/MSB Database/_reports/lorprev_compare.html
+
+Usage (dry‑run first)
+---------------------
   py preview_merger.py \
-     --input-root "G:/Shared drives/MSB Database/UserPreviewStaging/" \
+     --input-root "G:/Shared drives/MSB Database/UserPreviewStaging" \
      --staging-root "G:/Shared drives/MSB Database/_secret_staging" \
      --archive-root "G:/Shared drives/MSB Database/_staging_archive" \
-     --report "G:/Shared drives/MSB Database/_reports/lorprev_compare.csv" \
+     --history-db  "G:/Shared drives/MSB Database/_history/preview_history.db" \
+     --report      "G:/Shared drives/MSB Database/_reports/lorprev_compare.csv" \
+     --report-html "G:/Shared drives/MSB Database/_reports/lorprev_compare.html" \
      --policy prefer-revision-then-mtime \
+     --ensure-users "adam,rich,greg,showpc,officepc" \
+     --email-domain "sungunners.com" \
      --dry-run
 
-Perform moves after you review the report:
-  py lorprev_merger.py --input-root "..." --staging-root "..." --archive-root "..." --report "..." --policy prefer-revision-then-mtime
+Then run **without** --dry-run to stage winners and archive non‑winners.
 
-Then point parse_props_v6.py at STAGING_ROOT for the "Database Previews" folder.
+What’s new vs prior draft
+-------------------------
+• Creates any **missing folders** (input root, per‑user folders, staging, archive, reports, history).  
+• **Scans only the ROOT** of each user folder (no recursion).  
+• Writes a **history SQLite DB** recording every file seen (user, size, mtime, hash, revision) and every decision.  
+• **Folder names = usernames:** pass `--email-domain yourdomain.com` and emails auto‑map as `<username>@yourdomain.com` (you can still override with `--user-map` / `--user-map-json`).  
+• Generates both **CSV and HTML** reports suitable for emailing.
 
-Selection policy:
-  prefer-revision-then-mtime (default)
-    • If numeric Revisions differ, pick higher numeric.
-    • Else pick latest file modified time (mtime).
-  prefer-mtime
-    • Always pick latest mtime; Revision only shown in report.
-
-Conflicts:
-  • If different file content exists with *same* Revision from multiple users,
-    this is flagged as a CONFLICT. The script exits with code 2 and does not move files
-    (unless you pass --force-winner <fullpath> for specific preview id/Name).
-
-Outputs:
-  • CSV report of all candidates and the chosen winner
-  • JSON manifest in staging (manifest.json) with provenance and checksums
-  • Optional archival of non‑winners into archive folder (with dated subfolders)
-
+Exit codes: 0 OK; 2 conflicts detected (requires review unless overridden with --force-winner).
 """
 from __future__ import annotations
 
@@ -57,54 +59,47 @@ import csv
 import hashlib
 import json
 import os
+import sqlite3
+from dataclasses import dataclass, asdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
 import shutil
 import sys
 
-# -------------- Data models --------------
+# ----------------------------- Data models -----------------------------
 
 @dataclass
 class PreviewIdentity:
     guid: Optional[str]
     name: Optional[str]
     revision_raw: Optional[str]
-    revision_num: Optional[float]  # parsed numeric revision if possible
+    revision_num: Optional[float]
 
 @dataclass
 class Candidate:
-    key: str  # stable identity key (guid if present else sanitized name)
+    key: str                    # "GUID:<guid>" or "NAME:<name>"
     identity: PreviewIdentity
-    user: str  # top-level folder name beneath input_root
+    user: str                   # top‑level folder name beneath input_root
+    user_email: Optional[str]   # from mapping or domain
     path: str
     size: int
     mtime: float
     sha256: str
 
-# -------------- Helpers --------------
+# ----------------------------- Utilities -----------------------------
 
-def parse_preview_identity(file_path: Path) -> Optional[PreviewIdentity]:
-    try:
-        tree = ET.parse(file_path)
-        root = tree.getroot()
-        for el in root.iter():
-            if el.tag.endswith("PreviewClass"):
-                guid = el.get("id") or None
-                name = el.get("Name") or None
-                rev = el.get("Revision") or None
-                rev_num = None
-                if rev is not None:
-                    try:
-                        rev_num = float(rev)
-                    except Exception:
-                        rev_num = None
-                return PreviewIdentity(guid=guid, name=name, revision_raw=rev, revision_num=rev_num)
-        return None
-    except Exception:
-        return None
+def ensure_dir(p: Path) -> None:
+    p.mkdir(parents=True, exist_ok=True)
+
+
+def ymd_hms(ts: float) -> str:
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S%z')
+
+
+def sanitize_name(s: str) -> str:
+    return ''.join(ch if ch.isalnum() or ch in (' ', '-', '_', '.') else '_' for ch in s).strip()
 
 
 def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
@@ -118,8 +113,23 @@ def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
-def sanitize_name(s: str) -> str:
-    return ''.join(ch if ch.isalnum() or ch in (' ', '-', '_', '.') else '_' for ch in s).strip()
+def parse_preview_identity(file_path: Path) -> Optional[PreviewIdentity]:
+    try:
+        tree = ET.parse(file_path)
+        root = tree.getroot()
+        for el in root.iter():
+            if el.tag.endswith('PreviewClass'):
+                guid = el.get('id') or None
+                name = el.get('Name') or None
+                rev  = el.get('Revision') or None
+                try:
+                    rev_num = float(rev) if rev is not None else None
+                except Exception:
+                    rev_num = None
+                return PreviewIdentity(guid=guid, name=name, revision_raw=rev, revision_num=rev_num)
+        return None
+    except Exception:
+        return None
 
 
 def identity_key(idy: PreviewIdentity) -> Optional[str]:
@@ -129,19 +139,83 @@ def identity_key(idy: PreviewIdentity) -> Optional[str]:
         return f"NAME:{idy.name.strip().lower()}"
     return None
 
+# ----------------------------- History DB -----------------------------
 
-def ymd_hms(ts: float) -> str:
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S%z')
+DDL_HISTORY = """
+PRAGMA journal_mode=WAL;
+CREATE TABLE IF NOT EXISTS runs (
+  run_id      TEXT PRIMARY KEY,
+  started_utc TEXT NOT NULL,
+  policy      TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS file_observations (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id        TEXT NOT NULL,
+  user          TEXT,
+  user_email    TEXT,
+  path          TEXT,
+  file_name     TEXT,
+  preview_key   TEXT,
+  preview_guid  TEXT,
+  preview_name  TEXT,
+  revision_raw  TEXT,
+  revision_num  REAL,
+  file_size     INTEGER,
+  mtime_utc     TEXT,
+  sha256        TEXT,
+  FOREIGN KEY(run_id) REFERENCES runs(run_id)
+);
+CREATE TABLE IF NOT EXISTS staging_decisions (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id          TEXT NOT NULL,
+  preview_key     TEXT NOT NULL,
+  winner_path     TEXT,
+  staged_as       TEXT,
+  decision_reason TEXT,
+  conflict        INTEGER DEFAULT 0,
+  action          TEXT,  -- staged | skipped | conflict | archived
+  FOREIGN KEY(run_id) REFERENCES runs(run_id)
+);
+"""
 
-# -------------- Core logic --------------
+def history_connect(db_path: Path) -> sqlite3.Connection:
+    ensure_dir(db_path.parent)
+    conn = sqlite3.connect(str(db_path))
+    conn.execute('PRAGMA foreign_keys=ON')
+    conn.executescript(DDL_HISTORY)
+    return conn
 
-def scan_input(input_root: Path) -> List[Candidate]:
+# ----------------------------- Core logic -----------------------------
+
+def load_user_map(arg_map: Optional[str], json_path: Optional[str]) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    if json_path:
+        p = Path(json_path)
+        if p.is_file():
+            try:
+                data = json.loads(p.read_text(encoding='utf-8'))
+                if isinstance(data, dict):
+                    out.update({str(k): str(v) for k, v in data.items()})
+            except Exception:
+                pass
+    if arg_map:
+        # Format: "greg=greg@x;rich=rich@x"
+        pairs = [s for s in arg_map.split(';') if s.strip()]
+        for pair in pairs:
+            if '=' in pair:
+                k, v = pair.split('=', 1)
+                out[k.strip()] = v.strip()
+    return out
+
+
+def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optional[str]) -> List[Candidate]:
     candidates: List[Candidate] = []
-    for user_dir in input_root.iterdir():
-        if not user_dir.is_dir():
-            continue
+    ensure_dir(input_root)
+
+    for user_dir in sorted([d for d in input_root.iterdir() if d.is_dir()]):
         user = user_dir.name
-        for path in user_dir.rglob('*.lorprev'):
+        # Only scan the ROOT of each user folder (no recursion)
+        for path in user_dir.glob('*.lorprev'):
             idy = parse_preview_identity(path)
             if not idy:
                 continue
@@ -149,11 +223,15 @@ def scan_input(input_root: Path) -> List[Candidate]:
             if not key:
                 continue
             stat = path.stat()
+            email = user_map.get(user)
+            if not email and email_domain:
+                email = f"{user}@{email_domain}"
             candidates.append(
                 Candidate(
                     key=key,
                     identity=idy,
                     user=user,
+                    user_email=email,
                     path=str(path),
                     size=stat.st_size,
                     mtime=stat.st_mtime,
@@ -170,30 +248,25 @@ def group_by_key(candidates: List[Candidate]) -> Dict[str, List[Candidate]]:
     return groups
 
 
-def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[Candidate], Optional[str], bool]:
-    """Return (winner, losers, reason, conflict)"""
-    # If only one, it's the winner
+def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[Candidate], str, bool]:
+    # Single candidate
     if len(group) == 1:
         return group[0], [], 'single candidate', False
 
-    # Policy: prefer numeric revision if available and not all equal/None
-    reason = ''
-    conflict = False
-
     def latest_by_mtime(items: List[Candidate]) -> Candidate:
         return sorted(items, key=lambda c: c.mtime, reverse=True)[0]
+
+    reason = ''
+    conflict = False
 
     if policy == 'prefer-mtime':
         winner = latest_by_mtime(group)
         reason = 'latest mtime'
     else:
         # prefer-revision-then-mtime
-        # Gather numeric revisions (None treated as -inf)
         max_rev = None
-        with_rev = []
         for c in group:
             if c.identity.revision_num is not None:
-                with_rev.append(c)
                 if (max_rev is None) or (c.identity.revision_num > max_rev):
                     max_rev = c.identity.revision_num
         if max_rev is not None:
@@ -202,18 +275,15 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
                 winner = rev_max_set[0]
                 reason = f'highest numeric Revision={max_rev}'
             else:
-                # Multiple with same highest revision — compare content hashes
                 hashes = {c.sha256 for c in rev_max_set}
                 if len(hashes) == 1:
                     winner = latest_by_mtime(rev_max_set)
                     reason = f'same Revision={max_rev}, identical content; picked latest mtime'
                 else:
-                    # same revision but different content => conflict
                     winner = latest_by_mtime(rev_max_set)
-                    reason = f'CONFLICT: same Revision={max_rev} but different content; picked latest mtime (requires human review)'
+                    reason = f'CONFLICT: same Revision={max_rev} but different content; picked latest mtime (needs review)'
                     conflict = True
         else:
-            # no numeric revisions — fall back to mtime
             winner = latest_by_mtime(group)
             reason = 'no numeric Revision; picked latest mtime'
 
@@ -221,12 +291,14 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
     return winner, losers, reason, conflict
 
 
-def ensure_dir(p: Path) -> None:
-    p.mkdir(parents=True, exist_ok=True)
+def default_stage_name(idy: PreviewIdentity, src: Path) -> str:
+    base = sanitize_name(idy.name) if idy.name else (f'preview_{idy.guid[:8]}' if idy.guid else src.stem)
+    tag = f"__{idy.guid[:8]}" if idy.guid else ''
+    return f"{base}{tag}.lorprev"
 
 
 def stage_copy(src: Path, dst: Path) -> None:
-    # If destination exists with different content, create timestamped backup
+    # backup existing different content
     if dst.exists():
         try:
             if sha256_file(dst) != sha256_file(src):
@@ -237,34 +309,12 @@ def stage_copy(src: Path, dst: Path) -> None:
     ensure_dir(dst.parent)
     shutil.copy2(src, dst)
 
+# ----------------------------- Reporting -----------------------------
 
-def default_stage_name(idy: PreviewIdentity, winner_src: Path) -> str:
-    # Prefer human readable: <sanitized Name>__<GUIDprefix>.lorprev
-    base = 'preview'
-    if idy.name:
-        base = sanitize_name(idy.name)
-    elif idy.guid:
-        base = f'preview_{idy.guid[:8]}'
-    else:
-        base = winner_src.stem
-    suffix = '.lorprev'
-    tag = ''
-    if idy.guid:
-        tag = f"__{idy.guid[:8]}"
-    return f"{base}{tag}{suffix}"
-
-
-def write_manifest(manifest_path: Path, records: List[Dict]) -> None:
-    tmp = manifest_path.with_suffix('.json.tmp')
-    with tmp.open('w', encoding='utf-8') as f:
-        json.dump(records, f, indent=2)
-    tmp.replace(manifest_path)
-
-
-def write_report(report_csv: Path, rows: List[Dict]) -> None:
+def write_csv(report_csv: Path, rows: List[Dict]) -> None:
     ensure_dir(report_csv.parent)
     fieldnames = list(rows[0].keys()) if rows else [
-        'Key','PreviewName','GUID','Revision','User','Path','Size','MTimeUtc','SHA256','Role','WinnerReason','StagedAs']
+        'Key','PreviewName','GUID','Revision','User','UserEmail','Path','Size','MTimeUtc','SHA256','Role','WinnerReason','StagedAs']
     with report_csv.open('w', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
@@ -272,39 +322,96 @@ def write_report(report_csv: Path, rows: List[Dict]) -> None:
             w.writerow(r)
 
 
+def write_html(report_html: Path, rows: List[Dict]) -> None:
+    ensure_dir(report_html.parent)
+    def esc(s: str) -> str:
+        return (s or '').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+    headers = ['Key','PreviewName','GUID','Revision','User','UserEmail','Size','MTimeUtc','Role','WinnerReason','StagedAs','Path']
+    html = [
+        '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
+        '<style>body{font:14px system-ui,Segoe UI,Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px}th{background:#f4f6f8;text-align:left}tr:nth-child(even){background:#fafafa}</style>',
+        '<h2>LOR Preview Compare</h2>',
+        f"<p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>",
+        '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
+    ]
+    for r in rows:
+        html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,'')))}</td>' for h in headers) + '</tr>')
+    html.append('</tbody></table>')
+    report_html.write_text('
+'.join(html), encoding='utf-8')
+
+# ----------------------------- Main -----------------------------
+
 def main():
-    ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files from per-user folders with conflict detection.')
-    ap.add_argument('--input-root', required=True, help='Folder containing per-user subfolders of .lorprev files')
-    ap.add_argument('--staging-root', required=True, help='Private staging destination (used by DB builder)')
-    ap.add_argument('--archive-root', required=False, help='Optional archive for non-winners')
-    ap.add_argument('--report', required=True, help='CSV report path to write comparison results')
+    ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files from per-user folders with conflict detection and history DB.')
+    ap.add_argument('--input-root', required=True)
+    ap.add_argument('--staging-root', required=True)
+    ap.add_argument('--archive-root')
+    ap.add_argument('--history-db', required=True)
+    ap.add_argument('--report', required=True)
+    ap.add_argument('--report-html')
     ap.add_argument('--policy', choices=['prefer-revision-then-mtime','prefer-mtime'], default='prefer-revision-then-mtime')
-    ap.add_argument('--dry-run', action='store_true', help='Only generate report; do not copy files')
-    ap.add_argument('--force-winner', action='append', default=[], help='Full path(s) of files to force as winner for their identity')
+    ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--force-winner', action='append', default=[])
+    ap.add_argument('--ensure-users', help='Comma-separated list to ensure folders exist under input-root (e.g., usernames)')
+    ap.add_argument('--user-map', help='Semicolon-separated username=email pairs, e.g. "greg=greg@x;rich=rich@x"')
+    ap.add_argument('--user-map-json', help='Path to JSON mapping {"greg":"greg@x"}')
+    ap.add_argument('--email-domain', help='If set, any username without an explicit mapping gets username@<domain>')
+
     args = ap.parse_args()
 
-    input_root = Path(args.input_root)
+    input_root   = Path(args.input_root)
     staging_root = Path(args.staging_root)
     archive_root = Path(args.archive_root) if args.archive_root else None
-    report_csv = Path(args.report)
+    report_csv   = Path(args.report)
+    report_html  = Path(args.report_html) if args.report_html else None
+    history_db   = Path(args.history_db)
 
-    if not input_root.is_dir():
-        print(f"ERROR: input-root does not exist: {input_root}")
-        sys.exit(1)
+    # Ensure required folders
+    ensure_dir(input_root)
+    ensure_dir(staging_root)
+    if archive_root: ensure_dir(archive_root)
+    ensure_dir(report_csv.parent)
+    ensure_dir(history_db.parent)
 
-    candidates = scan_input(input_root)
+    # Optionally ensure user subfolders
+    if args.ensure_users:
+        for u in [s.strip() for s in args.ensure_users.split(',') if s.strip()]:
+            ensure_dir(input_root / u)
+
+    # Build user→email map
+    user_map = load_user_map(args.user_map, args.user_map_json)
+
+    # History DB: start run
+    conn = history_connect(history_db)
+    run_id = hashlib.sha256(os.urandom(16)).hexdigest()
+    conn.execute('INSERT INTO runs(run_id, started_utc, policy) VALUES (?,?,?)', (run_id, datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'), args.policy))
+    conn.commit()
+
+    # Scan candidates (root only)
+    candidates = scan_input(input_root, user_map, args.email_domain)
+
+    # Record file observations
+    with conn:
+        for c in candidates:
+            conn.execute(
+                'INSERT INTO file_observations(run_id,user,user_email,path,file_name,preview_key,preview_guid,preview_name,revision_raw,revision_num,file_size,mtime_utc,sha256) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                (
+                    run_id, c.user, c.user_email, c.path, Path(c.path).name, c.key,
+                    c.identity.guid, c.identity.name, c.identity.revision_raw, c.identity.revision_num,
+                    c.size, ymd_hms(c.mtime), c.sha256
+                )
+            )
+
     groups = group_by_key(candidates)
 
     rows: List[Dict] = []
     manifest: List[Dict] = []
-
     conflicts_found = False
-
-    # Index forced winners by real path for quick lookup
     force_set = {str(Path(p).resolve()) for p in args.force_winner}
 
     for key, group in sorted(groups.items(), key=lambda kv: kv[0]):
-        # If any forced winner belongs to this group, pick it
         forced = None
         for c in group:
             if str(Path(c.path).resolve()) in force_set:
@@ -325,7 +432,7 @@ def main():
         staged_filename = default_stage_name(winner.identity, Path(winner.path))
         staged_dest = staging_root / staged_filename
 
-        # Report rows for all candidates
+        # Report rows
         for c in sorted(group, key=lambda x: (x.identity.revision_num if x.identity.revision_num is not None else -1, x.mtime), reverse=True):
             rows.append({
                 'Key': key,
@@ -333,6 +440,7 @@ def main():
                 'GUID': c.identity.guid or '',
                 'Revision': c.identity.revision_raw or '',
                 'User': c.user,
+                'UserEmail': c.user_email or '',
                 'Path': c.path,
                 'Size': c.size,
                 'MTimeUtc': ymd_hms(c.mtime),
@@ -342,46 +450,72 @@ def main():
                 'StagedAs': str(staged_dest) if c is winner else ''
             })
 
-        # Copy winner (and optionally archive losers) if not dry-run
+        # Stage/Archive/Record decisions (unless dry‑run)
         if not args.dry_run:
-            ensure_dir(staging_root)
             stage_copy(Path(winner.path), staged_dest)
+            with conn:
+                conn.execute('INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
+                             (run_id, key, winner.path, str(staged_dest), reason, int(conflict), 'staged'))
 
             if archive_root and losers:
-                # Subfolder by date key
                 day = datetime.utcnow().strftime('%Y-%m-%d')
                 for l in losers:
                     arch_dest = archive_root / day / sanitize_name(l.user) / (default_stage_name(l.identity, Path(l.path)).replace('.lorprev', f"__from_{sanitize_name(l.user)}.lorprev"))
                     ensure_dir(arch_dest.parent)
                     stage_copy(Path(l.path), arch_dest)
+                    with conn:
+                        conn.execute('INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
+                                     (run_id, key, winner.path, str(arch_dest), 'archived non‑winner', 0, 'archived'))
 
-            manifest.append({
-                'key': key,
-                'staged_as': str(staged_dest),
-                'winner': asdict(winner),
-                'losers': [asdict(l) for l in losers],
-                'reason': reason,
-                'conflict': conflict,
-            })
+        manifest.append({
+            'key': key,
+            'staged_as': str(staged_dest),
+            'winner': asdict(winner),
+            'losers': [asdict(l) for l in losers],
+            'reason': reason,
+            'conflict': conflict,
+        })
 
-    # Write outputs
-    write_report(report_csv, rows)
+    # Write CSV/HTML
+    write_csv(report_csv, rows)
+    if report_html:
+        write_html(report_html, rows)
 
+    # Optional manifest JSON next to CSV
+    manifest_path = report_csv.with_suffix('.manifest.json')
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+
+    print(f"
+OK. Report: {report_csv}")
+    if report_html: print(f"HTML: {report_html}")
+    print(f"History DB: {history_db}")
     if not args.dry_run:
-        ensure_dir(staging_root)
-        write_manifest(staging_root / 'manifest.json', manifest)
+        print(f"Staged → {staging_root}")
+        if archive_root: print(f"Archived non‑winners → {archive_root}")
 
     if conflicts_found:
-        print('\nCONFLICTS detected. See report for details. No action taken where human review is advised.' )
-        # Non-zero so CI or scripts can react
+        print('
+CONFLICTS detected — review report/HTML. (Exit 2)')
         sys.exit(2)
-
-    print(f"\nOK. Report written to: {report_csv}")
-    if not args.dry_run:
-        print(f"Staged previews -> {staging_root}")
-        if args.archive_root:
-            print(f"Archived non-winners -> {archive_root}")
 
 
 if __name__ == '__main__':
     main()
+
+
+# ----------------------------- OPTIONAL: PowerShell email helper -----------------------------
+# Save as Send-LorprevReport.ps1 (requires Outlook installed & logged‑in)
+#
+# param(
+#   [string]$HtmlPath = "G:/Shared drives/MSB Database/_reports/lorprev_compare.html",
+#   [string]$CsvPath  = "G:/Shared drives/MSB Database/_reports/lorprev_compare.csv",
+#   [string]$To       = "msb-sequencers@yourdomain.com",
+#   [string]$Subject  = "MSB LOR Preview Compare Report"
+# )
+# $outlook = New-Object -ComObject Outlook.Application
+# $mail = $outlook.CreateItem(0)
+# $mail.To = $To
+# $mail.Subject = $Subject
+# $mail.HTMLBody = Get-Content -Raw -Path $HtmlPath
+# $mail.Attachments.Add($CsvPath) | Out-Null
+# $mail.Display()  # or $mail.Send()
