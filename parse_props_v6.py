@@ -309,6 +309,81 @@ def insert_preview_data(preview_data):
     if DEBUG:
         print(f"[DEBUG] Inserted Preview into database: {preview_data}")
 
+def reconcile_subprops_to_canonical_master(db_file: str):
+    """
+    Snap all subProps.MasterPropId to the canonical PROP for each
+    (PreviewId, Display_Name/LORComment) group.
+
+    Choose ONE of the two SQL blocks below (A or B) and keep only that one.
+    """
+    import sqlite3
+    conn = sqlite3.connect(db_file)
+    try:
+        sql = r"""
+        -- === OPTION B (matches Python's (UID, StartChannel) ordering) ===
+        WITH canon AS (
+          SELECT p.PreviewId,
+                 p.LORComment AS Display_Name,
+                 COALESCE(p.UID,'ZZ') AS uid,
+                 COALESCE(p.StartChannel,1000000000) AS sc,
+                 p.PropID
+          FROM props p
+          WHERE p.DeviceType='LOR'
+            AND TRIM(IFNULL(p.LORComment,'')) <> ''
+            AND UPPER(p.LORComment) <> 'SPARE'
+        ),
+        min_uid AS (
+          SELECT PreviewId, Display_Name, MIN(uid) AS min_uid
+          FROM canon GROUP BY PreviewId, Display_Name
+        ),
+        min_pair AS (
+          SELECT c.PreviewId, c.Display_Name, mu.min_uid,
+                 MIN(c.sc) AS min_sc
+          FROM canon c
+          JOIN min_uid mu
+            ON mu.PreviewId=c.PreviewId AND mu.Display_Name=c.Display_Name
+           AND c.uid=mu.min_uid
+          GROUP BY c.PreviewId, c.Display_Name
+        ),
+        canon_pick AS (
+          SELECT c.PreviewId, c.Display_Name,
+                 MIN(c.PropID) AS CanonPropID
+          FROM canon c
+          JOIN min_pair mp
+            ON mp.PreviewId=c.PreviewId AND mp.Display_Name=c.Display_Name
+           AND c.uid=mp.min_uid AND c.sc=mp.min_sc
+          GROUP BY c.PreviewId, c.Display_Name
+        )
+        UPDATE subProps
+        SET MasterPropId = (
+          SELECT cp.CanonPropID
+          FROM canon_pick cp
+          WHERE cp.PreviewId    = subProps.PreviewId
+            AND cp.Display_Name = subProps.LORComment
+        )
+        WHERE EXISTS (
+          SELECT 1 FROM canon_pick cp
+          WHERE cp.PreviewId    = subProps.PreviewId
+            AND cp.Display_Name = subProps.LORComment
+        )
+        AND (
+              MasterPropId IS NULL
+           OR NOT EXISTS (SELECT 1 FROM props p WHERE p.PropID = subProps.MasterPropId)
+           OR MasterPropId <> (SELECT cp.CanonPropID
+                               FROM canon_pick cp
+                               WHERE cp.PreviewId=subProps.PreviewId
+                                 AND cp.Display_Name=subProps.LORComment)
+        );
+        """
+        # If you truly want StartChannel-first then UID (your original), replace the sql above
+        # with the "Option A" block you pasted.
+        conn.executescript(sql)
+        conn.commit()
+        print("[INFO] Reconciled subProps → canonical masters.")
+    finally:
+        conn.close()
+
+
 def process_none_props(preview_id, root):
     """
     RULES
@@ -713,14 +788,34 @@ def process_lor_props(preview_id, root):
         # full group = manuals + any non-manuals with same Display_Name
         full_group = list(manual_nodes) + nonmanual_by_comment.get(new_comment, [])
 
+        # pick master by (UID, StartChannel) — NODE version to match your helpers
+        def _pair_key_node(node):
+            g = parse_single_grid(node.get("ChannelGrid") or "")
+            uid = ((g or {}).get("UID") or "").strip().upper()     # '0A','0B',...
+            uid_key = uid if uid else "ZZ"                          # missing UID last
+            sc = (g or {}).get("StartChannel")
+            sc_key = int(sc) if sc is not None else 10**9           # missing channel last
+            rid = node.get("id") or node.get("Name") or "~"         # deterministic tie-break
+            return (uid_key, sc_key, rid)
+
+        # def start_of(node):
+        #     g = parse_single_grid(node.get("ChannelGrid") or "")
+        #     sc = g.get("StartChannel") if g else None
+        #     return sc if sc is not None else 10**9
         def start_of(node):
             g = parse_single_grid(node.get("ChannelGrid") or "")
             sc = g.get("StartChannel") if g else None
             return sc if sc is not None else 10**9
 
-        new_master = min(full_group, key=start_of)
+
+        # new_master = min(full_group, key=start_of)
+        # g_master = grid_or(new_master)
+        # new_master_id = scoped_id(preview_id, new_master.get("id") or "")
+        new_master = min(full_group, key=start_of)   # lowest StartChannel in that group
         g_master = grid_or(new_master)
         new_master_id = scoped_id(preview_id, new_master.get("id") or "")
+
+
 
         # Insert new master
         cursor.execute("""
@@ -844,15 +939,19 @@ def process_lor_props(preview_id, root):
             return (uid_key, sc_key, pid)
 
 
+    # for display_name, group in props_grouped_by_comment.items():
+    #     if not group:
+    #         continue
+    #     # master = min(group, key=lambda r: r["StartChannel"] if r["StartChannel"] is not None else float("inf"))
+    #     master = min(group, key=_pair_key)
+    #     m_grid = master["Grid"] or {"Network":None,"UID":None,"StartChannel":None,"EndChannel":None,"Unknown":None,"Color":None}
+    #     master_id = master["PropID_scoped"]
     for display_name, group in props_grouped_by_comment.items():
-        if not group:
-            continue
-        # master = min(group, key=lambda r: r["StartChannel"] if r["StartChannel"] is not None else float("inf"))
-        master = min(group, key=_pair_key)
-        m_grid = master["Grid"] or {"Network":None,"UID":None,"StartChannel":None,"EndChannel":None,"Unknown":None,"Color":None}
+        # master = min(... by StartChannel)
+        master = min(group, key=_pair_key)           # ← uses (UID, StartChannel)
+        m_grid = master["Grid"] or {...}
         master_id = master["PropID_scoped"]
-
-        # MASTER -> props
+            # MASTER -> props
         cursor.execute("""
             INSERT OR REPLACE INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
@@ -1132,137 +1231,6 @@ def process_lor_multiple_channel_grids(preview_id, root):
     conn.commit()
     conn.close()
 
-# This makes the DB self-healing: for every (PreviewId, Display_Name) that still has orphaned subprops,
-#  it promotes the lowest StartChannel subprop to the one master and rebinds the rest.
-def repair_orphan_subprops(db_file: str):
-    import sqlite3
-    sql = r"""
-    -- Normalize unscoped MasterPropId when resolvable
-    UPDATE subProps
-       SET MasterPropId = (PreviewId || ':' || MasterPropId)
-     WHERE MasterPropId IS NOT NULL
-       AND INSTR(MasterPropId, ':') = 0
-       AND EXISTS (
-            SELECT 1
-              FROM props p
-             WHERE p.PropID = subProps.PreviewId || ':' || subProps.MasterPropId
-       );
-
-    -- Orphaned groups (there are subProps pointing at a non-existent master)
-    CREATE TEMP TABLE IF NOT EXISTS _orphan_groups AS
-    SELECT sp.PreviewId, sp.LORComment AS Display_Name
-      FROM subProps sp
- LEFT JOIN props p ON p.PropID = sp.MasterPropId
-     WHERE p.PropID IS NULL
-  GROUP BY sp.PreviewId, sp.LORComment;
-
-    -- If a proper master already exists for a group, prefer the one with the lowest StartChannel
-    CREATE TEMP TABLE IF NOT EXISTS _ex_min AS
-    SELECT p.PreviewId, p.LORComment AS Display_Name,
-           MIN(COALESCE(p.StartChannel,1000000000)) AS min_sc
-      FROM props p
-      JOIN _orphan_groups og
-        ON og.PreviewId    = p.PreviewId
-       AND og.Display_Name = p.LORComment
-  GROUP BY p.PreviewId, p.LORComment;
-
-    CREATE TEMP TABLE IF NOT EXISTS _existing_choice AS
-    SELECT p.PreviewId, p.LORComment AS Display_Name,
-           MIN(p.PropID) AS existing_prop_id
-      FROM props p
-      JOIN _ex_min m
-        ON m.PreviewId    = p.PreviewId
-       AND m.Display_Name = p.LORComment
-     WHERE COALESCE(p.StartChannel,1000000000) = m.min_sc
-  GROUP BY p.PreviewId, p.LORComment;
-
-    -- Otherwise pick a winner from the orphan subProps (lowest StartChannel, tie-breaker lowest SubPropID)
-    CREATE TEMP TABLE IF NOT EXISTS _sp_min AS
-    SELECT sp.PreviewId, sp.LORComment AS Display_Name,
-           MIN(COALESCE(sp.StartChannel,1000000000)) AS min_sc
-      FROM subProps sp
-      JOIN _orphan_groups og
-        ON og.PreviewId    = sp.PreviewId
-       AND og.Display_Name = sp.LORComment
-  GROUP BY sp.PreviewId, sp.LORComment;
-
-    CREATE TEMP TABLE IF NOT EXISTS _sp_min_id AS
-    SELECT sp.PreviewId, sp.LORComment AS Display_Name,
-           MIN(sp.SubPropID) AS min_sub_id
-      FROM subProps sp
-      JOIN _sp_min m
-        ON m.PreviewId    = sp.PreviewId
-       AND m.Display_Name = sp.LORComment
-     WHERE COALESCE(sp.StartChannel,1000000000) = m.min_sc
-  GROUP BY sp.PreviewId, sp.LORComment;
-
-    CREATE TEMP TABLE IF NOT EXISTS _orphan_choice AS
-    SELECT sp.*
-      FROM subProps sp
-      JOIN _sp_min_id mi
-        ON mi.PreviewId    = sp.PreviewId
-       AND mi.Display_Name = sp.LORComment
-       AND mi.min_sub_id   = sp.SubPropID;
-
-    -- Insert a master ONLY for groups that don't already have one
-    INSERT OR IGNORE INTO props (
-      PropID, Name, LORComment, DeviceType, BulbShape,
-      DimmingCurveName, MaxChannels, CustomBulbColor, IndividualChannels, LegacySequenceMethod,
-      Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation, StringType,
-      TraditionalColors, TraditionalType, EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4,
-      Parm5, Parm6, Parm7, Parm8, Lights, Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-    )
-    SELECT oc.SubPropID, oc.Name, oc.LORComment, COALESCE(oc.DeviceType,'LOR'), oc.BulbShape,
-           oc.DimmingCurveName, oc.MaxChannels, oc.CustomBulbColor, oc.IndividualChannels, oc.LegacySequenceMethod,
-           oc.Opacity, oc.MasterDimmable, oc.PreviewBulbSize, oc.SeparateIds, oc.StartLocation, oc.StringType,
-           oc.TraditionalColors, oc.TraditionalType, oc.EffectBulbSize, oc.Tag, oc.Parm1, oc.Parm2, oc.Parm3, oc.Parm4,
-           oc.Parm5, oc.Parm6, oc.Parm7, oc.Parm8, oc.Lights, oc.Network, oc.UID, oc.StartChannel, oc.EndChannel, oc.Unknown, oc.Color, oc.PreviewId
-      FROM _orphan_choice oc
- LEFT JOIN _existing_choice ec
-        ON ec.PreviewId    = oc.PreviewId
-       AND ec.Display_Name = oc.LORComment
-     WHERE ec.existing_prop_id IS NULL;
-
-    -- Rebind all subProps in the group to the correct master:
-    --   existing master if present; otherwise the orphan-choice we just inserted.
-    UPDATE subProps
-       SET MasterPropId = COALESCE(
-         (SELECT ec.existing_prop_id
-            FROM _existing_choice ec
-           WHERE ec.PreviewId   = subProps.PreviewId
-             AND ec.Display_Name= subProps.LORComment),
-         (SELECT oc.SubPropID
-            FROM _orphan_choice oc
-       LEFT JOIN _existing_choice ec
-              ON ec.PreviewId    = oc.PreviewId
-             AND ec.Display_Name = oc.LORComment
-           WHERE oc.PreviewId    = subProps.PreviewId
-             AND oc.LORComment   = subProps.LORComment
-             AND ec.existing_prop_id IS NULL)
-       )
-     WHERE EXISTS (
-           SELECT 1
-             FROM _orphan_groups og
-            WHERE og.PreviewId    = subProps.PreviewId
-              AND og.Display_Name = subProps.LORComment
-       );
-
-    DROP TABLE IF EXISTS _orphan_choice;
-    DROP TABLE IF EXISTS _sp_min_id;
-    DROP TABLE IF EXISTS _sp_min;
-    DROP TABLE IF EXISTS _existing_choice;
-    DROP TABLE IF EXISTS _ex_min;
-    DROP TABLE IF EXISTS _orphan_groups;
-    """
-    conn = sqlite3.connect(db_file)
-    try:
-        conn.executescript(sql)
-        conn.commit()
-        print("[INFO] Orphan subProps reconciled (prefers existing masters).")
-    finally:
-        conn.close()
-
-
 
 
 
@@ -1295,6 +1263,127 @@ def process_folder(folder_path):
             file_path = os.path.join(folder_path, file_name)
             process_file(file_path)
 
+def collapse_duplicate_masters(db_file: str):
+    """
+    For each (PreviewId, Display_Name/LORComment):
+      - keep one canonical PROP (min UID, then min StartChannel; tie-break on PropID)
+      - demote all other PROPs in that group to subProps under the canonical master
+    """
+    import sqlite3
+    conn = sqlite3.connect(db_file)
+    try:
+        sql = r"""
+        -- Build canon from PROPs (exclude blank/SPARE)
+        DROP TABLE IF EXISTS _canon;
+        CREATE TEMP TABLE _canon AS
+        SELECT p.PreviewId,
+               p.LORComment AS Display_Name,
+               COALESCE(p.UID,'ZZ')                AS uid,
+               COALESCE(p.StartChannel,1000000000) AS sc,
+               p.PropID
+        FROM props p
+        WHERE p.DeviceType='LOR'
+          AND TRIM(COALESCE(p.LORComment,'')) <> ''
+          AND UPPER(p.LORComment) <> 'SPARE';
+
+        -- Choose by (UID, StartChannel) — UID first, then StartChannel
+        DROP TABLE IF EXISTS _min_uid;
+        CREATE TEMP TABLE _min_uid AS
+        SELECT PreviewId, Display_Name, MIN(uid) AS min_uid
+        FROM _canon
+        GROUP BY PreviewId, Display_Name;
+
+        DROP TABLE IF EXISTS _min_pair;
+        CREATE TEMP TABLE _min_pair AS
+        SELECT c.PreviewId, c.Display_Name, mu.min_uid AS uid, MIN(c.sc) AS min_sc
+        FROM _canon c
+        JOIN _min_uid mu
+          ON mu.PreviewId=c.PreviewId AND mu.Display_Name=c.Display_Name
+         AND c.uid=mu.min_uid
+        GROUP BY c.PreviewId, c.Display_Name;
+
+        -- Deterministic canonical master within the min pair
+        DROP TABLE IF EXISTS _canon_pick;
+        CREATE TEMP TABLE _canon_pick AS
+        SELECT c.PreviewId, c.Display_Name, MIN(c.PropID) AS CanonPropID
+        FROM _canon c
+        JOIN _min_pair mp
+          ON mp.PreviewId=c.PreviewId AND mp.Display_Name=c.Display_Name
+         AND c.uid=mp.uid AND c.sc=mp.min_sc
+        GROUP BY c.PreviewId, c.Display_Name;
+
+        -- Demote extra PROPs -> subProps under the canonical master
+        INSERT OR REPLACE INTO subProps (
+            SubPropID, Name, LORComment, DeviceType, BulbShape,
+            Network, UID, StartChannel, EndChannel, Unknown, Color,
+            CustomBulbColor, DimmingCurveName, IndividualChannels, LegacySequenceMethod,
+            MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+            MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+            EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+        )
+        SELECT
+            p.PropID, p.Name, p.LORComment, p.DeviceType, p.BulbShape,
+            p.Network, p.UID, p.StartChannel, p.EndChannel, p.Unknown, p.Color,
+            p.CustomBulbColor, p.DimmingCurveName, p.IndividualChannels, p.LegacySequenceMethod,
+            p.MaxChannels, p.Opacity, p.MasterDimmable, p.PreviewBulbSize, NULL,
+            cp.CanonPropID,
+            p.SeparateIds, p.StartLocation, p.StringType, p.TraditionalColors, p.TraditionalType,
+            p.EffectBulbSize, p.Tag, p.Parm1, p.Parm2, p.Parm3, p.Parm4, p.Parm5, p.Parm6, p.Parm7, p.Parm8,
+            p.Lights, p.PreviewId
+        FROM props p
+        JOIN _canon_pick cp
+          ON cp.PreviewId=p.PreviewId AND cp.Display_Name=p.LORComment
+        WHERE p.DeviceType='LOR'
+          AND TRIM(COALESCE(p.LORComment,'')) <> ''
+          AND UPPER(p.LORComment) <> 'SPARE'
+          AND p.PropID <> cp.CanonPropID;
+
+        -- Delete the demoted PROPs
+        DELETE FROM props
+        WHERE DeviceType='LOR'
+          AND TRIM(COALESCE(LORComment,'')) <> ''
+          AND UPPER(LORComment) <> 'SPARE'
+          AND EXISTS (
+                SELECT 1 FROM _canon_pick cp
+                WHERE cp.PreviewId = props.PreviewId
+                  AND cp.Display_Name = props.LORComment
+                  AND props.PropID <> cp.CanonPropID
+          );
+
+        -- Ensure existing subProps point to the canonical master
+        UPDATE subProps
+        SET MasterPropId = (
+          SELECT cp.CanonPropID FROM _canon_pick cp
+          WHERE cp.PreviewId=subProps.PreviewId
+            AND cp.Display_Name=subProps.LORComment
+        )
+        WHERE EXISTS (
+          SELECT 1 FROM _canon_pick cp
+          WHERE cp.PreviewId=subProps.PreviewId
+            AND cp.Display_Name=subProps.LORComment
+        )
+        AND (
+              MasterPropId IS NULL
+           OR NOT EXISTS (SELECT 1 FROM props p WHERE p.PropID = subProps.MasterPropId)
+           OR MasterPropId <> (SELECT cp.CanonPropID FROM _canon_pick cp
+                               WHERE cp.PreviewId=subProps.PreviewId
+                                 AND cp.Display_Name=subProps.LORComment)
+        );
+
+        -- Clean up
+        DROP TABLE IF EXISTS _canon;
+        DROP TABLE IF EXISTS _min_uid;
+        DROP TABLE IF EXISTS _min_pair;
+        DROP TABLE IF EXISTS _canon_pick;
+        """
+        conn.executescript(sql)
+        conn.commit()
+        print("[INFO] Collapsed duplicate masters → kept canonical, demoted others to subProps.")
+    finally:
+        conn.close()
+
+
+
 def main():
     """Main entry point for the script."""
     global DB_FILE, PREVIEW_PATH  # keep other functions happy
@@ -1315,8 +1404,11 @@ def main():
     # Process all files in the folder
     process_folder(PREVIEW_PATH)
 
-    # Reconciler
-    #repair_orphan_subprops(DB_FILE)
+    # Collapse any duplicate masters first (this fixes the CarCounterDS/PS case)
+    collapse_duplicate_masters(DB_FILE)
+
+    # Reconciler (canon master snap)
+    reconcile_subprops_to_canonical_master(DB_FILE)
 
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
@@ -1469,11 +1561,20 @@ def create_wiring_views_v6(db_file: str):
     FROM preview_wiring_map_v6
     ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
 
+    -- Exactly one LOR master per (PreviewId, Display_Name), excluding SPARE/blank
+    CREATE UNIQUE INDEX IF NOT EXISTS uniq_master_per_preview_name
+    ON props(PreviewId, LORComment)
+    WHERE DeviceType='LOR'
+    AND TRIM(COALESCE(LORComment,'')) <> ''
+    AND UPPER(LORComment) <> 'SPARE';
+
     -- helpful indexes
     CREATE INDEX IF NOT EXISTS idx_props_preview                  ON props(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview               ON subProps(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview_uid_ch        ON subProps(PreviewId, UID, StartChannel);
     CREATE INDEX IF NOT EXISTS idx_dmx_prop                       ON dmxChannels(PropId);
+    CREATE INDEX IF NOT EXISTS idx_props_preview_comment   ON props(PreviewId, LORComment);
+    CREATE INDEX IF NOT EXISTS idx_subprops_preview_comment ON subProps(PreviewId, LORComment);
     """
     conn = sqlite3.connect(db_file)
     try:
