@@ -123,7 +123,7 @@ Many displays are a single channel (one lighting element). Each must have a uniq
   - Pattern 1: `Elf-P1-01` … `Elf-P1-08`  
   - Pattern 2: `Elf-P2-01` … `Elf-P2-08`  
   - Pattern 3: `Elf-P3-01` … `Elf-P3-08`  
-  - Pattern 4: `Elf-P4-01` … `Elf-P4-0`  
+  - Pattern 4: `Elf-P4-01` … `Elf-P4-08`  
 
 - **Notes (8 total, 4 patterns):**  
   - `Note-A-01`, `Note-A-02`  
