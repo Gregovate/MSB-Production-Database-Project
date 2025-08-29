@@ -8,7 +8,7 @@ We maintain **two distinct naming conventions** that must be followed consistent
    - Channel names are independent names used for sequencing and have no relevance to the Display Name (See Below)
 3. **Prop/Display Naming Conventions** (used for physical panels, database, and labels)
    - These are stored in the Comment field within the sequencing software.
-> **Terminology note:**  References to Comment, Display_Name, Display Name are all interchangeable.
+> **Terminology note:**  References to Prop, Comment, Display Name are all interchangeable.
 
 ---
 
@@ -179,10 +179,12 @@ Some props do not have channels (DeviceType="None").
 ![FTString Example](Docs/images/DisplayTypeNone.png)
 
 - **Purpose:** Exists in Preview for setup, labeling, and inventory; no channel mapping.  
-- **Examples:** `FTString-01R`, static cutouts, scenery.  
+- **Examples:** `FTStringPS-01`, static cutouts, scenery, support structures, harnesses, Unsequenced lights, etc.  
 - **Database Handling:**  
   - Still follow the naming convention.  
-  - `MaxChannels` may act as a multiplier (e.g., 16 strings).  
+  - `MaxChannels` act as a multiplier (e.g., 16 strings).
+  - If there is only 1 item, be sure to change `Max Channels` to 1
+  - Every manually created Prop will always be appended by `- MaxChannels` sequence number 
   - Stored in `props` with metadata (Name, Comment, Lights).  
 
 ### 2.7 Inventory Data (Metadata)
