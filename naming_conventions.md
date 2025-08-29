@@ -19,11 +19,16 @@ The sequencing program sorts channels alphabetically. Therefore, it is imperativ
 **Format:**
 
 ```
-LL UID-Channel Name
+LL <variation> UID-Channel
 ```
 
 - **LL** → Character abbreviation of the display or stage  
 Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc indicate stage abbreviation for grouping/location
+- **Variations:**
+Used to order the channel in the channel grid to make seqencing more efficient
+  - Keep channels grouped in the grid to keep all stages together
+  - Order the channels to make chases work visually
+**Controller:**
 - **UID** → Assigned to the controller used  
 - **Channel** → The channel/port of the controller  
 - **Name** → A brief description of the channel name/function  
@@ -32,11 +37,12 @@ Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc 
 
 ![Elf Patterns](Docs/images/ElfChoir.png)
 
-Channel Name without UID:
-`ELF-P1-01` Elf Pattern 1 1st Panel
-`ELF-P1-02` Elf Pattern 1 2nd Panel
-`ELF-P1-03` Elf Pattern 1 3rd Panel
-`ELF-P4-16` Elf Pattern 4 16th Panel
+Channel Name with positions:
+- `EC TR01 P1-1 L26-01` ElfChoir Top Row Position 01 Pattern 1 Sequence(1) UID L26 Channel 1
+- `EC TR02 P1-2 L26-02` ElfChoir Top Row Position 02 Pattern 1 Sequence(2) UID L26 Channel 2
+- `EC TR03 P1-3 L26-03` ElfChoir Top Row Position 03 Pattern 1 Sequence(3) UID L26 Channel 3
+- `EC TR16 P4-4 L27-08` ElfChoir Top Row Position 16 Pattern 4 Sequence(4) UID L76 Channel 8
+
 
 Channel Name with UID:
 `0E-01 Fred Star`, `0E-02 Fred Star`, `0E-03 Fred Star`, ... , `0E-16 Fred Star`
