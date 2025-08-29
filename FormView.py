@@ -1,4 +1,20 @@
-# FormView.py — Wiring Viewer (v6)
+# Wiring Viewer (v6) – MSB Database
+# Initial Release: 2025-08-28 V0.1.3
+# Written by: Greg Liebig, Engineering Innovations, LLC.
+#
+# Description:
+#   Tkinter GUI to inspect preview_wiring_map_v6 data from lor_output_v6.db.
+#   Features:
+#     • Toggle: Props only
+#     • Toggle: Hide SPAREs
+#     • Toggle: Show/Hide Suggested column
+#     • Clickable column headers for sort
+#     • CSV export of visible data
+#
+# Revision History:
+#   2025-08-28  V0.1.0  Added Hide SPAREs toggle, sortable columns,
+#                       Suggested column toggle.
+
 import sqlite3, csv, os, urllib.parse
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -29,14 +45,14 @@ WHERE type IN ('view','table') AND name='preview_wiring_map_v6';
 """
 
 # We still filter by PreviewName, but we don't display it
-SQL_WIRING = """
+SQL_WIRING_BASE = """
 SELECT
   Source, Channel_Name, Display_Name, Suggested_Name,
   Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
 FROM preview_wiring_map_v6
 WHERE PreviewName = ?
-{props_filter}
-ORDER BY Display_Name COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
+{extra_filters}
+ORDER BY {order_by};
 """
 
 def connect_ro(db_path: str) -> sqlite3.Connection:
@@ -52,10 +68,14 @@ def connect_ro(db_path: str) -> sqlite3.Connection:
 class WiringViewer(tk.Tk):
     def __init__(self, db_path=DEFAULT_DB):
         super().__init__()
-        self.title("Wiring Viewer (v6)")
-        self.geometry("1200x700")
+        self.title("Wiring Viewer (v6) v0.1.3")
+        self.geometry("1200x740")
         self.db_path = db_path
         self.conn: sqlite3.Connection | None = None
+
+        # current sort
+        self.sort_col = "Display_Name"
+        self.sort_asc = True
 
         # --- Top bar
         top = ttk.Frame(self, padding=6)
@@ -70,26 +90,42 @@ class WiringViewer(tk.Tk):
         self.preview_var = tk.StringVar()
         self.preview_cbo = ttk.Combobox(top, textvariable=self.preview_var, width=55, state="readonly")
         self.preview_cbo.pack(side=tk.LEFT, padx=(2,6))
-        # Bind to the method directly; method accepts *args
         self.preview_cbo.bind("<<ComboboxSelected>>", self.refresh_rows)
 
         ttk.Button(top, text="Refresh", command=self.refresh_rows).pack(side=tk.LEFT, padx=(0,6))
         ttk.Button(top, text="Export CSV…", command=self.export_csv).pack(side=tk.LEFT)
 
-        # Props-only toggle
+        # Filters
+        filt = ttk.Frame(self, padding=(6,0,6,6))
+        filt.pack(side=tk.TOP, fill=tk.X)
+
         self.props_only = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            top, text="Props only", variable=self.props_only, command=self.refresh_rows
-        ).pack(side=tk.LEFT, padx=(8,0))
+            filt, text="Props only", variable=self.props_only, command=self.refresh_rows
+        ).pack(side=tk.LEFT, padx=(0,12))
+
+        self.hide_spares = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            filt, text="Hide SPAREs", variable=self.hide_spares, command=self.refresh_rows,
+            takefocus=False
+        ).pack(side=tk.LEFT, padx=(0,12))
+
+        self.show_suggested = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            filt, text="Show Suggested", variable=self.show_suggested, command=self.update_display_columns,
+            takefocus=False
+        ).pack(side=tk.LEFT, padx=(0,12))
 
         self.count_var = tk.StringVar(value="Rows: 0")
-        ttk.Label(top, textvariable=self.count_var).pack(side=tk.RIGHT)
+        ttk.Label(filt, textvariable=self.count_var).pack(side=tk.RIGHT)
 
         # --- Table
         self.tree = ttk.Treeview(self, columns=[c for c,_ in COLUMNS], show="headings")
         self.tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # headings with click-to-sort
         for col, width in COLUMNS:
-            self.tree.heading(col, text=col)
+            self.tree.heading(col, text=col, command=lambda c=col: self.on_sort(c))
             self.tree.column(col, width=width, anchor=tk.W, stretch=True)
 
         # Scrollbars
@@ -102,6 +138,7 @@ class WiringViewer(tk.Tk):
         # Init DB + data
         self.safe_connect()
         self.load_previews()
+        self.update_display_columns()
 
     # ------------------------ DB helpers ------------------------
     def safe_connect(self):
@@ -146,7 +183,6 @@ class WiringViewer(tk.Tk):
             if names:
                 if self.preview_var.get() not in names:
                     self.preview_var.set(names[0])
-                # schedule refresh after UI settles
                 self.after(50, self.refresh_rows)
             else:
                 self.preview_var.set("")
@@ -160,6 +196,33 @@ class WiringViewer(tk.Tk):
             self.tree.delete(iid)
         self.count_var.set("Rows: 0")
 
+    def _order_by_clause(self):
+        # Map visible column → SQL expression with type-aware sorting
+        col = self.sort_col
+        dirn = "ASC" if self.sort_asc else "DESC"
+
+        text_cols = {
+            "Source": "Source COLLATE NOCASE",
+            "Channel_Name": "Channel_Name COLLATE NOCASE",
+            "Display_Name": "Display_Name COLLATE NOCASE",
+            "Suggested_Name": "Suggested_Name COLLATE NOCASE",
+            "Network": "Network COLLATE NOCASE",
+            "Color": "Color COLLATE NOCASE",
+            "DeviceType": "DeviceType COLLATE NOCASE",
+            "LORTag": "LORTag COLLATE NOCASE",
+        }
+        int_cols = {"Controller": "CAST(Controller AS INTEGER)",
+                    "StartChannel": "CAST(StartChannel AS INTEGER)",
+                    "EndChannel": "CAST(EndChannel AS INTEGER)"}
+
+        if col in text_cols:
+            primary = text_cols[col]
+        else:
+            primary = int_cols.get(col, "Display_Name COLLATE NOCASE")
+
+        # Add secondary keys for stable sort
+        return f"{primary} {dirn}, Network COLLATE NOCASE, Controller, StartChannel"
+
     def refresh_rows(self, *_):
         self.clear_rows()
         if not self.conn:
@@ -168,8 +231,22 @@ class WiringViewer(tk.Tk):
         if not preview:
             return
         try:
-            props_filter = " AND Source = 'PROP'" if self.props_only.get() else ""
-            sql = SQL_WIRING.format(props_filter=props_filter)
+            filters = []
+            if self.props_only.get():
+                filters.append("Source = 'PROP'")
+            if self.hide_spares.get():
+                # Suppress rows whose Channel_Name or Display_Name contains 'SPARE' (case-insensitive)
+                filters.append("UPPER(Display_Name) NOT LIKE '%SPARE%'")
+                filters.append("UPPER(Channel_Name) NOT LIKE '%SPARE%'")
+
+            extra_filters = ""
+            if filters:
+                extra_filters = " AND " + " AND ".join(filters)
+
+            sql = SQL_WIRING_BASE.format(
+                extra_filters=extra_filters,
+                order_by=self._order_by_clause()
+            )
             rows = self.conn.execute(sql, (preview,)).fetchall()
             for row in rows:
                 self.tree.insert("", "end", values=row)
@@ -181,6 +258,21 @@ class WiringViewer(tk.Tk):
             )
         except Exception as e:
             messagebox.showerror("Query Error", str(e))
+
+    def on_sort(self, column_name: str):
+        # toggle if same col, otherwise set new col asc
+        if column_name == self.sort_col:
+            self.sort_asc = not self.sort_asc
+        else:
+            self.sort_col = column_name
+            self.sort_asc = True
+        self.refresh_rows()
+
+    def update_display_columns(self):
+        cols = [c for c,_ in COLUMNS]
+        if not self.show_suggested.get():
+            cols = [c for c in cols if c != "Suggested_Name"]
+        self.tree["displaycolumns"] = cols
 
     def export_csv(self):
         if not self.tree.get_children():
@@ -195,12 +287,16 @@ class WiringViewer(tk.Tk):
         if not path:
             return
         try:
-            headers = [c for c,_ in COLUMNS]
+            headers = list(self.tree["displaycolumns"])
             with open(path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(headers)
                 for iid in self.tree.get_children():
-                    writer.writerow(self.tree.item(iid, "values"))
+                    vals = self.tree.item(iid, "values")
+                    # map full row to displayed subset by index
+                    full_headers = [c for c,_ in COLUMNS]
+                    idxs = [full_headers.index(h) for h in headers]
+                    writer.writerow([vals[i] for i in idxs])
             messagebox.showinfo("Export", f"Saved: {path}")
         except Exception as e:
             messagebox.showerror("Export Error", str(e))
