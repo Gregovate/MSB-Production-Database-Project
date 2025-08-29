@@ -76,7 +76,7 @@ Every display is assigned a **Device Type** in the Preview, which determines how
 ### 2.2 Display Naming Format
 
 ```
-<LL> <DisplayName>-<Variation1-Variation2-etc.>-<Sequence>-<Color>
+<LL><DisplayName>-<Variation1-Variation2-etc.>-<Sequence>-<Color>
 ```
 Variations are optional and used ONLY when needed to create Unique Display Names for tracking additional meta-data
 - **LL** → Character abbreviation of the display or stage optional. Useful when we have multiples used across different stages. 
