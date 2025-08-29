@@ -166,9 +166,9 @@ There are **two kinds of sub-props** we must distinguish:
 
 **Examples:** 
 - Sub-Props within the same Panel to create more detail needed to describe the display
-`TC 7B 01-06 Hippo` uses the base channel `TC 7B-04 Body Mid`→ and adds these to it: TC 7B-04 Mid Body Eyes, TC 7B-04 Mid Body Nose, TC 7B-04 Mid Body Lid, TC 7B-04 Mid Body Bow, TC 7B-03 Lid Open Bow Top, TC 7B-03 Lid Open Bow Bot
+`TC 7B 01-06 Hippo` uses the base channel `TC 7B-04 Body Mid`→ and adds these to it: `TC 7B-04 Mid Body Eyes`, `TC 7B-04 Mid Body Nose`, `TC 7B-04 Mid Body Lid`, `TC 7B-04 Mid Body Bow`, `TC 7B-03 Lid Open Bow Top`, `TC 7B-03 Lid Open Bow Bot`
 - Sub-Props across multiple displays to share the same channels and effects.
-`Pigpen` PN PP 79-09 Body → PN SL 79-09 Schroeder Body, PN SL 79-09 Lucy Head, PN SL 79-01 Lucy Body Leg, PN SL 79-01 Lucy Body Dress
+`Pigpen` `PN PP 79-09 Body` → `PN SL 79-09 Schroeder Body`, `PN SL 79-09 Lucy Head`, `PN SL 79-01 Lucy Body Leg`, `PN SL 79-01 Lucy Body Dress`
 
 ---
 
