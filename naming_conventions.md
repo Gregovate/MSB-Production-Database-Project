@@ -5,7 +5,10 @@
 We maintain **two distinct naming conventions** that must be followed consistently:
 
 1. **Channel Naming Conventions** (used in LOR sequencing)
-2. **Prop/Display Naming Conventions** (used for physical panels, database, and labels)
+   - Channel names are independent names used for sequencing and have no relevance to the Display Name (See Below)
+3. **Prop/Display Naming Conventions** (used for physical panels, database, and labels)
+   - These are stored in the Comment field within the sequencing software.
+   - References to Comment, Display_Name, Display Name are all interchangeable.
 
 ---
 
@@ -23,17 +26,20 @@ LL UID-Channel Name
 Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc indicate stage abbreviation for grouping/location
 - **UID** → Assigned to the controller used  
 - **Channel** → The channel/port of the controller  
-- **Name** → A brief description of the channel name  
+- **Name** → A brief description of the channel name/function  
 
 **Example:**  
 
 ![Elf Patterns](Docs/images/ElfChoir.png)
 
+Channel Name without UID:
 `ELF-P1-01` Elf Pattern 1 1st Panel
 `ELF-P1-02` Elf Pattern 1 2nd Panel
 `ELF-P1-03` Elf Pattern 1 3rd Panel
 `ELF-P4-16` Elf Pattern 4 16th Panel
 
+Channel Name with UID:
+`0E-01 Fred Star`, `0E-02 Fred Star`, `0E-03 Fred Star`, ... , `0E-16 Fred Star`
 
 ⚠️ **Note:** If the UID or channel of a prop changes, the preview and all labeling must be updated. This has historically caused issues when UIDs were reassigned. NO EXISTING CHANNEL NAMES CAN BE CHANGED WITHOUT AUTHORIZATION!
 
@@ -78,17 +84,19 @@ Every display is assigned a **Device Type** in the Preview, which determines how
 ```
 <LL><DisplayName>-<Variation1-Variation2-etc.>-<Sequence>-<Color>
 ```
-Variations are optional and used ONLY when needed to create Unique Display Names for tracking additional meta-data
-- **LL** → Character abbreviation of the display or stage optional. Useful when we have multiples used across different stages. 
+
+**LL** → OPTIONAL Character abbreviation of the display or stage optional. Useful when we have multiples used across different stages. 
 Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc indicate stage abbreviation for grouping/location
-- **DisplayName** → CamelCase (no spaces). Examples: `Elf`, `Note`, `CandyCane`, `MiniTree`.  
+**DisplayName** → CamelCase (no spaces). Examples: `Elf`, `Note`, `CandyCane`, `MiniTree`.
+
+Variations are optional and used ONLY when needed to create Unique Display Names for tracking additional meta-data
 - **Variations** → Optional. Defines differences between props:  
   - **Pattern:** `P1`, `P2`, `A`, `B` …  When there are different patterns used to create each display like Elves in Elf Choir
   - **Location:** `DS`, `PS`, `LH`, `RH`, `Front`, `Rear`, `Section`, `Male`, `Female` 
   - **Section:** `A`, `B`, `C` …  When displays are setup in sections like Dancing Forest
 - **Sequence*** → The instance number (for duplicates) of that variation.   
   - Always Pad single digits with leading zero (`01, 02, …, 10, 11, …`).  
-  - ⚠️ *Do not use Sequence if Device Type is `None` (shown as **Undetermined** in the LOR UI). In that case, quantity is managed by **Max Circuits per Unit ID** instead.*  
+  - ⚠️ *Do not use Sequence if Device Type is `None` (shown as **Undetermined** in the LOR UI). In that case, quantity is managed by **Max Circuits per Unit ID** instead. These will automatically be generated when the script runs and added to the Display_Name-xx*  
 
 - **Color** → Optional.  
   - Preferred: single-letter suffix appended to the sequence (`R`, `G`, `B`, `W`, `Y`).  
