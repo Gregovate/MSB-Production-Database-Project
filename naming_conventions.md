@@ -76,9 +76,11 @@ Every display is assigned a **Device Type** in the Preview, which determines how
 ### 2.2 Display Naming Format
 
 ```
-<DisplayName>-<Variation1-Variation2-etc.>-<Sequence>-<Color>
+<LL> <DisplayName>-<Variation1-Variation2-etc.>-<Sequence>-<Color>
 ```
 Variations are optional and used ONLY when needed to create Unique Display Names for tracking additional meta-data
+- **LL** → Character abbreviation of the display or stage optional. Useful when we have multiples used across different stages. 
+Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc indicate stage abbreviation for grouping/location
 - **DisplayName** → CamelCase (no spaces). Examples: `Elf`, `Note`, `CandyCane`, `MiniTree`.  
 - **Variations** → Optional. Defines differences between props:  
   - **Pattern:** `P1`, `P2`, `A`, `B` …  When there are different patterns used to create each display like Elves in Elf Choir
@@ -95,10 +97,10 @@ Variations are optional and used ONLY when needed to create Unique Display Names
 **Examples:**  
 - Pattern-based: `Elf-P2-06`, `Note-B-01`  
 - Color-based: `Star-Red-01`, `MiniTree-Green-04`  
-- Location-based: `Arch-DS-01`, `Arch-PS-01`  
-- Single-panel: `ElfConductor`  
-- Stage/Section: `DFWrap-DS-A-01R`  
-- Handed props: `SledPoof-LH-04`  
+- Location-based: `Arch-DS-01`, `Arch-PS-01`, `CH-RGBCandyCane-06`
+- Single-panel: `ElfConductor`, `PeaceOnEarth`  
+- Stage/Section: `DFWrap-DS-A-01R`, `FTWrap-PS16-Green`  
+- Handed props: `PO-LeftColumn`, `PO-RightColumn`, `ChurchSteeple-Base-RH`,`ChurchSteeple-Base-LH`
 ---
 ### 2.3 Single-Channel Displays
 
