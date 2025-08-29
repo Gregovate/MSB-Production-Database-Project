@@ -8,7 +8,7 @@ We maintain **two distinct naming conventions** that must be followed consistent
    - Channel names are independent names used for sequencing and have no relevance to the Display Name (See Below)
 3. **Prop/Display Naming Conventions** (used for physical panels, database, and labels)
    - These are stored in the Comment field within the sequencing software.
-   - References to Comment, Display_Name, Display Name are all interchangeable.
+> **Terminology note:**  References to Comment, Display_Name, Display Name are all interchangeable.
 
 ---
 
@@ -74,12 +74,12 @@ Every display is assigned a **Device Type** in the Preview, which determines how
 - **DMX**  
   - Props controlled by DMX universes.  
   - Master metadata goes into `props`, each universe leg goes into `dmxChannels`.  
-- **None** *(shown as **Undetermined** in the LOR UI)*  
+- **None**   
   - Physical-only props with no channels (e.g., FTString-01R, cutouts, scenery).  
   - Stored in `props` with DeviceType="None".  
   - `MaxChannels` can act as a multiplier (e.g., 16 strings).  
   - Excluded from wiring views but included in inventory/labels.  
-
+> **Terminology note:** Setting display type in the Sequencer to **Undetermined** changes the DisplayType field in the XML to **None**
 ---
 
 ### 2.2 Display Naming Format
@@ -188,7 +188,6 @@ Some props do not have channels (DeviceType="None").
 ### 2.7 Inventory Data (Metadata)
 
 This information is currently stored in a spreadsheet that will be migrated to an inventory table. This is needed information that is not provided by the LOR sequencing software. Some of the metadata includes: 
-
 - Designer  
 - Year Built  
 - Number of Lights  
