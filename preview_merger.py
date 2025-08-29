@@ -33,6 +33,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import time
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -92,10 +93,14 @@ def ensure_hash(c: Candidate) -> str:
 def ymd_hms(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S%z')
 
+def group_by_key(candidates: List[Candidate]) -> Dict[str, List[Candidate]]:
+    groups: Dict[str, List[Candidate]] = {}
+    for c in candidates:
+        groups.setdefault(c.key, []).append(c)
+    return groups
 
 def sanitize_name(s: str) -> str:
     return ''.join(ch if ch.isalnum() or ch in (' ', '-', '_', '.') else '_' for ch in s).strip()
-
 
 def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
     h = hashlib.sha256()
@@ -279,9 +284,7 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
 
 
 def default_stage_name(idy: PreviewIdentity, src: Path) -> str:
-    base = sanitize_name(idy.name) if idy.name else (f'preview_{idy.guid[:8]}' if idy.guid else src.stem)
-    tag = f"__{idy.guid[:8]}" if idy.guid else ''
-    return f"{base}{tag}.lorprev"
+    return src.name  # preserve original .lorprev filename
 
 
 def stage_copy(src: Path, dst: Path) -> None:
@@ -300,19 +303,42 @@ def stage_copy(src: Path, dst: Path) -> None:
 
 def write_csv(report_csv: Path, rows: List[Dict]) -> None:
     ensure_dir(report_csv.parent)
+    fn = report_csv
+    tmp = fn.with_suffix(fn.suffix + '.tmp')
+
     fieldnames = list(rows[0].keys()) if rows else [
-        'Key','PreviewName','GUID','Revision','User','UserEmail','Path','Size','MTimeUtc','SHA256','Role','WinnerReason','StagedAs']
-    with report_csv.open('w', newline='', encoding='utf-8') as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
-        w.writeheader()
-        for r in rows:
-            w.writerow(r)
+        'Key','PreviewName','GUID','Revision','User','UserEmail','Path','Size','MTimeUtc','SHA256','Role','WinnerReason','StagedAs'
+    ]
+
+    def _write(to_path: Path):
+        with to_path.open('w', newline='', encoding='utf-8') as f:
+            w = csv.DictWriter(f, fieldnames=fieldnames)
+            w.writeheader()
+            for r in rows:
+                w.writerow(r)
+
+    # try temp→replace a few times (handles brief locks)
+    for _ in range(3):
+        try:
+            _write(tmp)
+            tmp.replace(fn)
+            return
+        except PermissionError:
+            time.sleep(1)
+
+    # fallback: timestamped file so the run still succeeds
+    alt = fn.with_name(fn.stem + '_' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S') + fn.suffix)
+    _write(alt)
+    print(f"WARNING: {fn} was locked; wrote {alt}")
+
 
 
 def write_html(report_html: Path, rows: List[Dict]) -> None:
     ensure_dir(report_html.parent)
+
     def esc(s: str) -> str:
         return (s or '').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+
     headers = ['Key','PreviewName','GUID','Revision','User','UserEmail','Size','MTimeUtc','Role','WinnerReason','StagedAs','Path']
     html = [
         '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
@@ -322,9 +348,24 @@ def write_html(report_html: Path, rows: List[Dict]) -> None:
         '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
     ]
     for r in rows:
-        html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,'')))}</td>' for h in headers) + '</tr>')
+        html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,"")))}</td>' for h in headers) + '</tr>')
     html.append('</tbody></table>')
-    report_html.write_text('\n'.join(html), encoding='utf-8')
+
+    content = '\n'.join(html)
+    tmp = report_html.with_suffix(report_html.suffix + '.tmp')
+
+    for _ in range(5):
+        try:
+            tmp.write_text(content, encoding='utf-8')
+            tmp.replace(report_html)
+            return
+        except PermissionError:
+            time.sleep(1)
+
+    alt = report_html.with_name(report_html.stem + '_' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S') + report_html.suffix)
+    alt.write_text(content, encoding='utf-8')
+    print(f"WARNING: {report_html} was locked; wrote {alt}")
+
 
 # ============================= Config & Args ============================= #
 
@@ -435,7 +476,6 @@ def main():
     manifest: List[Dict] = []
     conflicts_found = False
     force_set = {str(Path(p).resolve()) for p in args.force_winner}
-
     for key, group in sorted(groups.items(), key=lambda kv: kv[0]):
         forced = None
         for c in group:
@@ -451,11 +491,21 @@ def main():
         else:
             winner, losers, reason, conflict = choose_winner(group, args.policy)
 
+        # ✅ ensure hash for the chosen winner (both paths)
+        _ = ensure_hash(winner)
+        with conn:
+            conn.execute(
+                "UPDATE file_observations SET sha256=? WHERE run_id=? AND path=?",
+                (winner.sha256, run_id, winner.path)
+            )
+
         if conflict:
             conflicts_found = True
 
         staged_filename = default_stage_name(winner.identity, Path(winner.path))
         staged_dest = staging_root / staged_filename
+
+
 
         # Report rows
         for c in sorted(group, key=lambda x: (x.identity.revision_num if x.identity.revision_num is not None else -1, x.mtime), reverse=True):
@@ -483,7 +533,7 @@ def main():
                              (run_id, key, winner.path, str(staged_dest), reason, int(conflict), 'staged'))
 
             if archive_root and losers:
-                day = datetime.utcnow().strftime('%Y-%m-%d')
+                day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
                 for l in losers:
                     arch_dest = archive_root / day / sanitize_name(l.user) / (default_stage_name(l.identity, Path(l.path)).replace('.lorprev', f"__from_{sanitize_name(l.user)}.lorprev"))
                     ensure_dir(arch_dest.parent)
