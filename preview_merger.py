@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
 """
 preview_merger.py — Windows‑friendly, per‑user .lorprev collector with conflict detection,
 safe staging, and a history SQLite database for audit/reporting.
 
 Now with **GLOBAL DEFAULTS** and optional **JSON config** so you can just run:
 
-  py preview_merger.py --dry-run
+  py preview_merger.py
 
 Override via CLI when needed. Precedence: CLI > JSON config > GLOBAL_DEFAULTS.
 
@@ -46,8 +45,7 @@ GLOBAL_DEFAULTS = {
     # Folders
     "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
     # "Secret" location used by LOR parser today
-    #"staging_root": r"G:\Shared drives\MSB Database\Database Previews",
-    "staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
+    "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
     # Keep merger artifacts under /database/merger
     "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
     "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
@@ -304,14 +302,30 @@ def stage_copy(src: Path, dst: Path) -> None:
 
 def write_csv(report_csv: Path, rows: List[Dict]) -> None:
     ensure_dir(report_csv.parent)
-    fieldnames = list(rows[0].keys()) if rows else [
-        'Key','PreviewName','GUID','Revision','User','UserEmail','Path','Size','MTimeUtc','SHA256','Role','WinnerReason','StagedAs']
+    fieldnames = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','input_root','staged_root']
     with report_csv.open('w', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for r in rows:
-            w.writerow(r)
+            w.writerow({k: r.get(k, '') for k in fieldnames})
 
+
+def write_html(report_html: Path, rows: List[Dict]) -> None:
+    ensure_dir(report_html.parent)
+    def esc(s: str) -> str:
+        return (s or '').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+    headers = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','input_root','staged_root']
+    html = [
+        '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
+        '<style>body{font:14px system-ui,Segoe UI,Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px}th{background:#f4f6f8;text-align:left}tr:nth-child(even){background:#fafafa}</style>',
+        '<h2>LOR Preview Compare</h2>',
+        f"<p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>",
+        '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
+    ]
+    for r in rows:
+        html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h, "")))}</td>' for h in headers) + '</tr>')
+    html.append('</tbody></table>')
+    report_html.write_text('\n'.join(html), encoding='utf-8')
 
 def write_html(report_html: Path, rows: List[Dict]) -> None:
     ensure_dir(report_html.parent)
@@ -327,7 +341,6 @@ def write_html(report_html: Path, rows: List[Dict]) -> None:
     ]
     for r in rows:
         html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,'')))}</td>' for h in headers) + '</tr>')
-    html.append('</tbody></table>')
     report_html.write_text('\n'.join(html), encoding='utf-8')
 
 # ============================= Config & Args ============================= #
@@ -376,8 +389,8 @@ def main():
     ap.add_argument('--report', default=defaults['report_csv'])
     ap.add_argument('--report-html', default=defaults['report_html'])
     ap.add_argument('--policy', choices=['prefer-revision-then-mtime','prefer-mtime'], default=defaults['policy'])
-    #ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--apply', action='store_true', help='Stage/archive changes (default is dry-run)')
+    #ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--force-winner', action='append', default=[])
     ap.add_argument('--ensure-users', default=defaults['ensure_users'], help='Comma-separated list to ensure folders exist under input-root (e.g., usernames)')
     ap.add_argument('--user-map', help='Semicolon-separated username=email pairs, e.g. "gliebig=greg@sheboyganlights.org"')
@@ -458,26 +471,26 @@ def main():
         staged_filename = default_stage_name(winner.identity, Path(winner.path))
         staged_dest = staging_root / staged_filename
 
-        # Report rows
+        # Report rows (fixed order + renamed columns)
         for c in sorted(group, key=lambda x: (x.identity.revision_num if x.identity.revision_num is not None else -1, x.mtime), reverse=True):
             rows.append({
                 'Key': key,
                 'PreviewName': c.identity.name or '',
-                'GUID': c.identity.guid or '',
                 'Revision': c.identity.revision_raw or '',
                 'User': c.user,
-                'UserEmail': c.user_email or '',
-                'Path': c.path,
                 'Size': c.size,
                 'MTimeUtc': ymd_hms(c.mtime),
-                'SHA256': c.sha256,
                 'Role': 'WINNER' if c is winner else 'CANDIDATE',
                 'WinnerReason': reason if c is winner else '',
-                'StagedAs': str(staged_dest) if c is winner else ''
+                'GUID': c.identity.guid or '',
+                'SHA256': c.sha256,
+                'UserEmail': c.user_email or '',
+                'input_root': c.path,
+                'staged_root': str(staged_dest) if c is winner else ''
             })
 
         # Stage/Archive/Record decisions (unless dry‑run)
-        if not args.dry_run:
+        if args.apply:
             stage_copy(Path(winner.path), staged_dest)
             with conn:
                 conn.execute('INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
@@ -510,17 +523,21 @@ def main():
     # Optional manifest JSON next to CSV
     manifest_path = report_csv.with_suffix('.manifest.json')
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
-
     print(f"\nOK. Report: {report_csv}")
     if report_html: print(f"HTML: {report_html}")
     print(f"History DB: {history_db}")
-    if not args.dry_run:
+    if args.apply:
         print(f"Staged → {staging_root}")
         if archive_root: print(f"Archived non‑winners → {archive_root}")
 
     if conflicts_found:
         print('\nCONFLICTS detected — review report/HTML. (Exit 2)')
         sys.exit(2)
+
+
+if __name__ == '__main__':
+    main()
+
 
 
 if __name__ == '__main__':
