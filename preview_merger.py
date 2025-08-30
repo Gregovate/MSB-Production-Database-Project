@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import hashlib
 import json
 import os
@@ -46,7 +47,8 @@ GLOBAL_DEFAULTS = {
     # Folders
     "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
     # "Secret" location used by LOR parser today
-    "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
+    #"staging_root": r"G:\Shared drives\MSB Database\Database Previews",
+    "staging_root": r"G:\Shared drives\MSB Database\_secret_staging",
     # Keep merger artifacts under /database/merger
     "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
     "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",

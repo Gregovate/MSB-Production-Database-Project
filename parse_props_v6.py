@@ -392,6 +392,8 @@ def process_none_props(preview_id, root):
     Purpose
       - Persist physical-only props (DeviceType == "None") that have no channels.
       - Keep them in `props` for labeling/inventory; they do NOT appear in wiring views.
+      - Do not process any record with Blank Comments 25-08-30 GAL
+      - Use Channel name as a description for parsed Props
 
     Behavior
       - Group by LORComment (the display name) and aggregate:
@@ -421,42 +423,25 @@ def process_none_props(preview_id, root):
         if prop.get("DeviceType") != "None":
             continue
 
-        raw_id      = prop.get("id") or ""
-        base_name   = prop.get("Name") or ""              # Channel name (kept, but not shown in view)
-        comment     = prop.get("Comment") or ""           # Base display name
-        max_ch      = safe_int(prop.get("MaxChannels"), 1)
-        count       = max(1, max_ch)                      # at least 1
+        comment = (prop.get("Comment") or "").strip()
+        if not comment:   # 🚫 Skip blank comments
+            if DEBUG:
+                print(f"[DEBUG] (None) skipped blank comment id={prop.get('id')}")
+            continue
 
-        # common fields we can carry over
-        bulb_shape           = prop.get("BulbShape")
-        dimming_curve_name   = prop.get("DimmingCurveName")
-        max_channels         = prop.get("MaxChannels")
-        custom_bulb_color    = prop.get("CustomBulbColor")
-        individual_channels  = prop.get("IndividualChannels")
-        legacy_seq_method    = prop.get("LegacySequenceMethod")
-        opacity              = prop.get("Opacity")
-        master_dimmable      = prop.get("MasterDimmable")
-        preview_bulb_size    = prop.get("PreviewBulbSize")
-        separate_ids         = prop.get("SeparateIds")
-        start_location       = prop.get("StartLocation")
-        string_type          = prop.get("StringType")
-        traditional_colors   = prop.get("TraditionalColors")
-        traditional_type     = prop.get("TraditionalType")
-        effect_bulb_size     = prop.get("EffectBulbSize")
-        tag                  = prop.get("Tag")
-        parm1                = prop.get("Parm1")
-        parm2                = prop.get("Parm2")
-        parm3                = prop.get("Parm3")
-        parm4                = prop.get("Parm4")
-        parm5                = prop.get("Parm5")
-        parm6                = prop.get("Parm6")
-        parm7                = prop.get("Parm7")
-        parm8                = prop.get("Parm8")
-        lights               = int(parm2) if parm2 and str(parm2).isdigit() else 0
+        raw_id    = prop.get("id") or ""
+        base_name = prop.get("Name") or ""
+        max_ch    = safe_int(prop.get("MaxChannels"), 1)
+        count     = max(1, max_ch)
+
+        # … (rest of your existing field copies: bulb_shape, dimming_curve_name, etc.) …
+
+        parm2  = prop.get("Parm2")
+        lights = int(parm2) if parm2 and str(parm2).isdigit() else 0
 
         for i in range(1, count + 1):
             inst_id   = scoped_id(preview_id, f"{raw_id}:{i:02d}")
-            disp_name = f"{comment}-{i:02d}" if comment else f"Unlabeled-{i:02d}"
+            disp_name = f"{comment}-{i:02d}"
 
             cur.execute("""
                 INSERT OR REPLACE INTO props (
@@ -467,16 +452,18 @@ def process_none_props(preview_id, root):
                     Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                inst_id, base_name, disp_name, "None", bulb_shape, dimming_curve_name, max_channels,
-                custom_bulb_color, individual_channels, legacy_seq_method, opacity, master_dimmable,
-                preview_bulb_size, separate_ids, start_location, string_type, traditional_colors, traditional_type,
-                effect_bulb_size, tag, parm1, parm2, parm3, parm4, parm5, parm6, parm7, parm8, lights,
-                None, None, None, None, None,
-                (traditional_colors or None),   # store color for the view
-                preview_id
+                inst_id, base_name, disp_name, "None",
+                prop.get("BulbShape"), prop.get("DimmingCurveName"), prop.get("MaxChannels"),
+                prop.get("CustomBulbColor"), prop.get("IndividualChannels"), prop.get("LegacySequenceMethod"),
+                prop.get("Opacity"), prop.get("MasterDimmable"), prop.get("PreviewBulbSize"),
+                prop.get("SeparateIds"), prop.get("StartLocation"), prop.get("StringType"),
+                prop.get("TraditionalColors"), prop.get("TraditionalType"), prop.get("EffectBulbSize"),
+                prop.get("Tag"), prop.get("Parm1"), prop.get("Parm2"), prop.get("Parm3"), prop.get("Parm4"),
+                prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"), prop.get("Parm8"), lights,
+                None, None, None, None, None, (prop.get("TraditionalColors") or None), preview_id
             ))
             if DEBUG:
-                print(f"[DEBUG] (None) +instance -> props: id={inst_id} Name='{base_name}' Display='{disp_name}' Color='{traditional_colors}'")
+                print(f"[DEBUG] (None) +instance -> props: id={inst_id} Name='{base_name}' Display='{disp_name}'")
 
     conn.commit()
     conn.close()
