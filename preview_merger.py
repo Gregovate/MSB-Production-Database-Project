@@ -80,6 +80,9 @@ class Candidate:
     size: int
     mtime: float
     sha256: str
+    c_total: int = 0
+    c_filled: int = 0
+    c_nospace: int = 0
 
 # ============================= Utilities ============================= #
 
@@ -131,6 +134,35 @@ def identity_key(idy: PreviewIdentity) -> Optional[str]:
     if idy.name:
         return f"NAME:{idy.name.strip().lower()}"
     return None
+
+def comment_stats(path: Path) -> tuple[int,int,int]:
+    """(total, filled, no_space_hits) across comment-like attrs/tags."""
+    try:
+        tree = ET.parse(path); root = tree.getroot()
+    except Exception:
+        return (0, 0, 0)
+    total = filled = no_space = 0
+    attrs = ('Comment','LORComment','Comments')
+    for el in root.iter():
+        for a in attrs:
+            if a in el.attrib:
+                total += 1
+                val = (el.attrib.get(a) or '').strip()
+                if val:
+                    filled += 1
+                    if ' ' not in val:
+                        no_space += 1
+        tag = el.tag.split('}')[-1]
+        if tag in ('Comment','Comments'):
+            total += 1
+            val = (el.text or '').strip()
+            if val:
+                filled += 1
+                if ' ' not in val:
+                    no_space += 1
+    return total, filled, no_space
+
+
 
 # ============================= History DB ============================= #
 
@@ -218,9 +250,10 @@ def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optiona
             email = user_map.get(user)
             if not email and email_domain:
                 email = f"{user}@{email_domain}"
+            ct, cf, cn = comment_stats(path)    
             candidates.append(
                 Candidate(
-                    key=key,
+                    key=key,                     # ← add this line
                     identity=idy,
                     user=user,
                     user_email=email,
@@ -228,7 +261,10 @@ def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optiona
                     size=stat.st_size,
                     mtime=stat.st_mtime,
                     sha256=sha256_file(path),
-                )
+                    c_total=ct,
+                    c_filled=cf,
+                    c_nospace=cn,
+                 )
             )
     return candidates
 
@@ -238,7 +274,6 @@ def group_by_key(candidates: List[Candidate]) -> Dict[str, List[Candidate]]:
     for c in candidates:
         groups.setdefault(c.key, []).append(c)
     return groups
-
 
 def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[Candidate], str, bool]:
     # Single candidate
@@ -267,14 +302,31 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
                 winner = rev_max_set[0]
                 reason = f'highest numeric Revision={max_rev}'
             else:
-                hashes = {c.sha256 for c in rev_max_set}
-                if len(hashes) == 1:
-                    winner = latest_by_mtime(rev_max_set)
-                    reason = f'same Revision={max_rev}, identical content; picked latest mtime'
+                # prefer more no-space comments, then higher fill ratio
+                def score(c: Candidate):
+                    fill_ratio = (c.c_filled / c.c_total) if c.c_total else 0.0
+                    return (c.c_nospace, fill_ratio)
+
+                ranked = sorted(rev_max_set, key=score, reverse=True)
+                top = [c for c in rev_max_set if score(c) == score(ranked[0])]
+
+                if len(top) == 1:
+                    winner = ranked[0]
+                    reason = (f'same Revision={max_rev}; best comments '
+                            f'(no-space {winner.c_nospace}/{winner.c_total}, filled {winner.c_filled}/{winner.c_total})')
+                    conflict = False
                 else:
-                    winner = latest_by_mtime(rev_max_set)
-                    reason = f'CONFLICT: same Revision={max_rev} but different content; picked latest mtime (needs review)'
-                    conflict = True
+                    raw_hashes = {c.sha256 for c in top}
+                    if len(raw_hashes) == 1:
+                        # comments tied, identical content → pick deterministically (by path)
+                        winner = sorted(top, key=lambda x: x.path)[0]
+                        reason = f'same Revision={max_rev}; comments tied; identical content'
+                        conflict = False
+                    else:
+                        # real content difference at same revision
+                        winner = sorted(top, key=lambda x: x.path)[0]
+                        reason = f'CONFLICT: same Revision={max_rev}; comments tied; different content'
+                        conflict = True
         else:
             winner = latest_by_mtime(group)
             reason = 'no numeric Revision; picked latest mtime'
