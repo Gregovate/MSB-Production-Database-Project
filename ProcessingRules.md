@@ -204,7 +204,7 @@ ORDER BY LORComment;
 
 ---
 
-**Notes**
+## Notes
 
 - All inserts use preview-scoped IDs and `INSERT OR REPLACE`, so re-processing the same previews is safe and idempotent.
 - Base schema remains unchanged; views handle presentation/derivations.
