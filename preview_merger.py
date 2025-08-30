@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 preview_merger.py — Windows‑friendly, per‑user .lorprev collector with conflict detection,
 safe staging, and a history SQLite database for audit/reporting.
@@ -300,47 +301,35 @@ def stage_copy(src: Path, dst: Path) -> None:
 
 # ============================= Reporting ============================= #
 
-def write_csv(report_csv: Path, rows: List[Dict]) -> None:
+def write_csv(report_csv: Path, rows: List[Dict], input_root: str, staging_root: str) -> None:
     ensure_dir(report_csv.parent)
-    fieldnames = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','input_root','staged_root']
+    fieldnames = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail']
     with report_csv.open('w', newline='', encoding='utf-8') as f:
+        f.write(f"Input root,{input_root}\n")
+        f.write(f"Staging root,{staging_root}\n\n")
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for r in rows:
             w.writerow({k: r.get(k, '') for k in fieldnames})
 
 
-def write_html(report_html: Path, rows: List[Dict]) -> None:
+def write_html(report_html: Path, rows: List[Dict], input_root: str, staging_root: str) -> None:
     ensure_dir(report_html.parent)
     def esc(s: str) -> str:
         return (s or '').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
-    headers = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','input_root','staged_root']
+    headers = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail']
     html = [
         '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
         '<style>body{font:14px system-ui,Segoe UI,Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px}th{background:#f4f6f8;text-align:left}tr:nth-child(even){background:#fafafa}</style>',
         '<h2>LOR Preview Compare</h2>',
+        f"<p><b>Input root:</b> {esc(input_root)}</p>",
+        f"<p><b>Staging root:</b> {esc(staging_root)}</p>",
         f"<p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>",
         '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
     ]
     for r in rows:
         html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h, "")))}</td>' for h in headers) + '</tr>')
     html.append('</tbody></table>')
-    report_html.write_text('\n'.join(html), encoding='utf-8')
-
-def write_html(report_html: Path, rows: List[Dict]) -> None:
-    ensure_dir(report_html.parent)
-    def esc(s: str) -> str:
-        return (s or '').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
-    headers = ['Key','PreviewName','GUID','Revision','User','UserEmail','Size','MTimeUtc','Role','WinnerReason','StagedAs','Path']
-    html = [
-        '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
-        '<style>body{font:14px system-ui,Segoe UI,Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px}th{background:#f4f6f8;text-align:left}tr:nth-child(even){background:#fafafa}</style>',
-        '<h2>LOR Preview Compare</h2>',
-        f"<p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>",
-        '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
-    ]
-    for r in rows:
-        html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h,'')))}</td>' for h in headers) + '</tr>')
     report_html.write_text('\n'.join(html), encoding='utf-8')
 
 # ============================= Config & Args ============================= #
@@ -484,9 +473,7 @@ def main():
                 'WinnerReason': reason if c is winner else '',
                 'GUID': c.identity.guid or '',
                 'SHA256': c.sha256,
-                'UserEmail': c.user_email or '',
-                'input_root': c.path,
-                'staged_root': str(staged_dest) if c is winner else ''
+                'UserEmail': c.user_email or ''
             })
 
         # Stage/Archive/Record decisions (unless dry‑run)
@@ -515,10 +502,18 @@ def main():
             'conflict': conflict,
         })
 
-    # Write CSV/HTML
-    write_csv(report_csv, rows)
+   # Sort rows by PreviewName (case-insensitive), then Revision (desc)
+    def _revnum(v):
+        try:
+            return float(v or '')
+        except Exception:
+            return -1.0
+    rows.sort(key=lambda r: (r.get('PreviewName','').lower(), -_revnum(r.get('Revision'))))
+
+# Write CSV/HTML
+    write_csv(report_csv, rows, str(input_root), str(staging_root))
     if report_html:
-        write_html(report_html, rows)
+        write_html(report_html, rows, str(input_root), str(staging_root))
 
     # Optional manifest JSON next to CSV
     manifest_path = report_csv.with_suffix('.manifest.json')
@@ -533,11 +528,6 @@ def main():
     if conflicts_found:
         print('\nCONFLICTS detected — review report/HTML. (Exit 2)')
         sys.exit(2)
-
-
-if __name__ == '__main__':
-    main()
-
 
 
 if __name__ == '__main__':
