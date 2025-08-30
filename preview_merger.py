@@ -46,7 +46,8 @@ GLOBAL_DEFAULTS = {
     # Folders
     "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
     # "Secret" location used by LOR parser today
-    "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
+    #"staging_root": r"G:\Shared drives\MSB Database\Database Previews",
+    "staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
     # Keep merger artifacts under /database/merger
     "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
     "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
@@ -375,7 +376,8 @@ def main():
     ap.add_argument('--report', default=defaults['report_csv'])
     ap.add_argument('--report-html', default=defaults['report_html'])
     ap.add_argument('--policy', choices=['prefer-revision-then-mtime','prefer-mtime'], default=defaults['policy'])
-    ap.add_argument('--dry-run', action='store_true')
+    #ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--apply', action='store_true', help='Stage/archive changes (default is dry-run)')
     ap.add_argument('--force-winner', action='append', default=[])
     ap.add_argument('--ensure-users', default=defaults['ensure_users'], help='Comma-separated list to ensure folders exist under input-root (e.g., usernames)')
     ap.add_argument('--user-map', help='Semicolon-separated username=email pairs, e.g. "gliebig=greg@sheboyganlights.org"')
