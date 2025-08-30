@@ -68,17 +68,21 @@ Every display is assigned a **Device Type** in the Preview, which determines how
 
 > **Terminology note:** In the LOR Sequencing UI this appears as **Undetermined**.  
 > In our parser and the SQLite database we record this as **DeviceType="None"**.
+
 - **LOR**  
   - Props with channel grids assigned to LOR controllers.  
   - Master = lowest StartChannel, other legs become generated sub-props.  
 - **DMX**  
   - Props controlled by DMX universes.  
   - Master metadata goes into `props`, each universe leg goes into `dmxChannels`.  
-- **None**   
+- **None**
+  
   - Physical-only props with no channels (e.g., FTString-01R, cutouts, scenery).  
+  - If Comment is `blank` then the entire entry is ignored and not added to DB.
   - Stored in `props` with DeviceType="None".  
   - `MaxChannels` can act as a multiplier (e.g., 16 strings).  
   - Excluded from wiring views but included in inventory/labels.  
+
 > **Terminology note:** Setting display type in the Sequencer to **Undetermined** changes the DisplayType field in the XML to **None**
 ---
 
