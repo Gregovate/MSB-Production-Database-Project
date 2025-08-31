@@ -1,98 +1,136 @@
+
 # Preview Merger — Runbook & Reference
 
-This script scans user preview exports (`*.lorprev`), groups candidates by **preview key**, chooses a **WINNER**, compares it to the current **STAGED** copy, and writes CSV/HTML reports. Optionally stages files when `--apply` is used.
+This tool scans user preview exports (`*.lorprev`), groups them by **preview key**, chooses a **WINNER**, compares it to the current **STAGED** copy, and writes CSV/HTML reports. With `--apply`, it will stage/copy files.
 
-**Time:** All times shown are **local tz-aware** with offset. Report column `Exported` replaces the old `MTimeUtc`.  
-**Policies:** default is `prefer-revision-then-exported`. Legacy `*-mtime` names are accepted and remapped.
+**Time**: All times shown are **local tz‑aware** with offset. The report column `Exported` replaces the old `MTimeUtc`.  
+**Default policy**: `prefer-revision-then-exported` (details below). Legacy `*-mtime` names are accepted and remapped.
 
 ---
 
-## Quick Start
-1. Confirm config or defaults.
-2. Dry run:
+## Where to find the reports
+
+- **CSV**: `G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.csv`  
+- **HTML**: `G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html`  
+- **Missing comments CSV**: `G:\Shared drives\MSB Database\database\merger\reports\lorprev_missing_comments.csv`
+
+> Run without `--apply` to do a dry run. The report reflects the state *at evaluation time* only. Run again after `--apply` to confirm most WINNER rows show `Action=noop`.
+
+---
+
+## How to read the report
+
+Each **preview key** has up to three kinds of rows: one **WINNER** (chosen user copy), zero/one **STAGED** (current staged copy for that key, top‑level only), and other **CANDIDATE** rows (non‑winners). A tail section may contain **STAGED‑ONLY** rows (staged files with no matching winner this run).
+
+### Column reference (what each field means)
+
+| Column | Meaning | Tips |
+|---|---|---|
+| **Key** | Stable identity for the preview (usually `GUID:<guid>`) | Drives grouping and staged matching |
+| **PreviewName** | Human name parsed from the preview | Report sorted by this (case‑insensitive), then Revision desc |
+| **Revision** | *Raw* Revision string from the file | Policies compare the **numeric** part when present |
+| **User** | Source owner (`gliebig`, `ShowPC`, etc.) or `_staging_` | `_staging_` rows describe the current staged copy |
+| **Size** | File size in bytes | From filesystem |
+| **Exported** | Local time the file was last written | Replaces `MTimeUtc` |
+| **Change** | What changed vs the last run for this Key | `name`, `rev`, `content`, or `none` |
+| **CommentsFilled** | Count of non‑empty comment entries | Before trimming spaces |
+| **CommentsTotal** | Total possible comment entries | Denominator for coverage |
+| **CommentNoSpace** | Count of comments still non‑empty **after trimming spaces** | Best “real comments” signal; **higher is better** |
+| **Role** | `WINNER`, `CANDIDATE`, `STAGED` | One WINNER per Key; zero/one STAGED |
+| **WinnerFrom** | Provenance of the winner (`USER:<name>`) | Only set on WINNER rows |
+| **WinnerReason** | Why it won | e.g., `highest numeric Revision=57.0` or a tie‑breaker explanation |
+| **Action** | What would happen (or did happen) | See mapping below |
+| **WinnerPolicy** | Which policy chose the winner | Defaults to `prefer-revision-then-exported` |
+| **Sha8** | Short hash of **this row’s** file | 8 hex chars |
+| **WinnerSha8** | Short hash of the WINNER file | Helps compare at a glance |
+| **StagedSha8** | Short hash of the staged file for this Key | On WINNER + STAGED rows |
+| **GUID** | Parsed GUID | — |
+| **SHA256** | Full content hash | — |
+| **UserEmail** | Derived from user or mapping | Optional convenience |
+
+### Interpreting **Action**
+
+- On **WINNER** rows:  
+  - `noop` — staged file exists and is byte‑identical to the winner.  
+  - `update-staging` — staged exists but differs; applying will overwrite.  
+  - `stage-new` — nothing matching is staged; applying will copy it in.
+
+- On **STAGED** rows:  
+  - `current` — matches the winner’s content.  
+  - `out-of-date` — differs from the winner.  
+  - `staged-only` — staged file with no matching winner this run (top‑level scan only).
+
+> Tip: On the WINNER row, compare **WinnerSha8** and **StagedSha8**. If equal → `noop`. The STAGED row for the same Key should show `current` with the same `Sha8` value.
+
+---
+
+## Policies (`--policy`)
+
+### Default: `prefer-revision-then-exported`
+1) Choose the highest **numeric** Revision among candidates.  
+2) If multiple share that highest Revision, prefer **better comments**: higher `CommentNoSpace`, then higher `CommentsFilled/CommentsTotal`.  
+3) If no numeric Revision is present at all, pick the **latest Exported** time.
+
+### Other options
+- `prefer-exported` — newest **Exported** time wins outright.  
+- `prefer-comments-then-revision` — prioritize comment quality first, then Revision.
+
+*Legacy names `prefer-revision-then-mtime` and `prefer-mtime` are accepted and remapped.*
+
+---
+
+## How staged files are matched (non‑recursive by design)
+
+- Only the **top level** of `staging_root` is scanned (no subfolders).
+- Staged file is resolved by **Key**, then **GUID**, then the canonical filename (`default_stage_name(...)`).
+- If bytes are identical: WINNER gets `Action=noop`, STAGED shows `current`.
+
+---
+
+## Typical seasonal workflow
+
+1. **Dry‑run & review**
    ```bash
-   py preview_merger.py --progress --debug --show-actions
+   py preview_merger.py --progress --show-actions
    ```
-3. Review `lorprev_compare.csv/.html` and console `[summary]`/`[actions]`.
-4. Apply:
+   - Check console `[summary]` and `[actions]`.
+   - Open the HTML report for scanning; use CSV to filter/sort.
+
+2. **Apply** (stage copies)
    ```bash
    py preview_merger.py --apply --progress
    ```
-5. Confirm (expect mostly `noop`):
+
+3. **Confirm** (expect mostly `noop`)
    ```bash
    py preview_merger.py --progress
    ```
 
 ---
 
-## Report Rows & Columns
-Per **preview key** you’ll see:
-- **WINNER** — chosen user copy.
-- **STAGED** — current staged copy for the same key (top-level only).
-- **CANDIDATE** — other user copies.
-- **STAGED-ONLY** (tail) — staged files with no matching winner this run.
+## Flags recap
 
-Key columns:
-- `Exported` — local exported time (fs mtime).
-- `CommentsFilled`, `CommentsTotal`, `CommentNoSpace` — comment metrics.
-- `Action`:
-  - WINNER: `noop | update-staging | stage-new`
-  - STAGED: `current | out-of-date | staged-only`
-- Hash helpers: `Sha8` (row), `WinnerSha8`, `StagedSha8`.
-- `WinnerFrom`: `USER:<name>`.
+- Paths: `--config`, `--input-root`, `--staging-root`, `--archive-root`, `--history-db`, `--report`, `--report-html`  
+- Behavior: `--policy`, `--apply`, `--force-winner KEY=PATH` (repeatable)  
+- Users: `--ensure-users`, `--user-map`, `--user-map-json`, `--email-domain`  
+- QoL: `--debug`, `--progress`, `--show-actions`
 
 ---
 
-## Policies (`--policy`)
-- `prefer-revision-then-exported` (default): highest numeric **Revision**, tie → better **comments**; if no numeric revision, pick latest **Exported** time.
-- `prefer-exported`: latest **Exported** time wins.
-- `prefer-comments-then-revision`: prefer comment coverage first, then revision.
+## Troubleshooting
 
-Legacy aliases are remapped:
-- `prefer-revision-then-mtime` → `prefer-revision-then-exported`
-- `prefer-mtime` → `prefer-exported`
+- **No STAGED rows / all winners `stage-new`** → ensure the staged file is at the **top level** of `staging_root`. Subfolders are ignored.  
+- **Indent after paste** → in VS Code: *Reindent Lines* and *Format Document*. Use spaces only.  
+- **Old field names** → the report now uses `Exported`, `CommentsFilled`, `CommentsTotal`, `CommentNoSpace`.  
+- **UTC warnings** → resolved; script uses local tz via `datetime.now().astimezone()`.
 
 ---
 
-## Staging Resolution (non‑recursive)
-- Scans **top level** of `staging_root` only.
-- Match staged by **Key**, then **GUID**, then canonical filename.
-- Identical bytes → WINNER `Action=noop`, STAGED `current`.
+## Locations (for reference)
+
+- Reports: `G:\Shared drives\MSB Database\database\merger\reports\`  
+  - `lorprev_compare.csv`, `lorprev_compare.html`, `lorprev_missing_comments.csv`
 
 ---
 
-## Flags
-- `--config FILE` — optional JSON config.
-- `--input-root`, `--staging-root`, `--archive-root`
-- `--history-db`, `--report`, `--report-html`
-- `--policy` (see above); `--apply` (perform file ops)
-- `--force-winner KEY=PATH` (repeatable)
-- `--ensure-users`, `--user-map`, `--user-map-json`, `--email-domain`
-- `--debug` — diagnostics to stderr
-- `--progress` — shows “Building report: n/N (xx%)”
-- `--show-actions` — prints compact list of items needing work
-
----
-
-## Summary Output
-Console `[summary]` shows totals for winners and staged (linked vs staged-only).  
-With `--show-actions`, it prints per-key details (name, action, reason, sha8s, exported).
-
----
-
-## DB schema (history)
-- `runs(run_id, started, policy)`
-- `file_observations(..., exported, sha256)`
-- `staging_decisions(run_id, preview_key, winner_path, staged_as, decision_reason, conflict, action)`
-- `preview_state(preview_key, ..., sha256, staged_as, last_run_id, last_seen)`
-
-All timestamps are stored as local tz-aware ISO (`YYYY-MM-DDTHH:MM:SS±HH:MM`).
-
----
-
-## Yearly Workflow
-1) Dry-run audit → fix issues.  
-2) `--apply` to stage.  
-3) Re-run (mostly `noop`).
-
-Non-recursive design keeps the report predictable.
+*Use this README during the annual month‑long window; it’s designed so you can step back in without re‑learning internals.*
