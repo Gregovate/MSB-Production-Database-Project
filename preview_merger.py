@@ -74,15 +74,15 @@ class PreviewIdentity:
 class Candidate:
     key: str                    # "GUID:<guid>" or "NAME:<name>"
     identity: PreviewIdentity
-    user: str                   # top‑level folder name beneath input_root
+    user: str                   # top-level folder name beneath input_root
     user_email: Optional[str]   # from mapping or domain
     path: str
     size: int
     mtime: float
     sha256: str
-    c_total: int = 0
-    c_filled: int = 0
-    c_nospace: int = 0
+    c_total: int = 0            # total comment fields found
+    c_filled: int = 0           # comment fields with non-empty value
+    c_nospace: int = 0          # comment fields with no spaces
 
 # ============================= Utilities ============================= #
 
@@ -138,7 +138,7 @@ def identity_key(idy: PreviewIdentity) -> Optional[str]:
 def comment_stats(path: Path) -> tuple[int,int,int]:
     """(total, filled, no_space_hits) across comment-like attrs/tags."""
     try:
-        tree = ET.parse(path); root = tree.getroot()
+        root = ET.parse(path).getroot()
     except Exception:
         return (0, 0, 0)
     total = filled = no_space = 0
@@ -262,10 +262,10 @@ def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optiona
             email = user_map.get(user)
             if not email and email_domain:
                 email = f"{user}@{email_domain}"
-            ct, cf, cn = comment_stats(path)    
+            ct, cf, cn = comment_stats(path)
             candidates.append(
                 Candidate(
-                    key=key,                     # ← add this line
+                    key=key,
                     identity=idy,
                     user=user,
                     user_email=email,
@@ -276,7 +276,7 @@ def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optiona
                     c_total=ct,
                     c_filled=cf,
                     c_nospace=cn,
-                 )
+                )
             )
     return candidates
 
@@ -303,18 +303,22 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
         reason = 'latest mtime'
     else:
         # prefer-revision-then-mtime
-        max_rev = None
-        for c in group:
-            if c.identity.revision_num is not None:
-                if (max_rev is None) or (c.identity.revision_num > max_rev):
-                    max_rev = c.identity.revision_num
-        if max_rev is not None:
+        max_rev: Optional[float] = None
+        for cand in group:
+            rv = cand.identity.revision_num
+            if rv is not None and (max_rev is None or rv > max_rev):
+                max_rev = rv
+
+        if max_rev is None:
+            winner = latest_by_mtime(group)
+            reason = 'no numeric Revision; picked latest mtime'
+        else:
             rev_max_set = [c for c in group if c.identity.revision_num == max_rev]
             if len(rev_max_set) == 1:
                 winner = rev_max_set[0]
                 reason = f'highest numeric Revision={max_rev}'
             else:
-                # prefer more no-space comments, then higher fill ratio
+                # same highest Revision → prefer better comments, then coverage
                 def score(c: Candidate):
                     fill_ratio = (c.c_filled / c.c_total) if c.c_total else 0.0
                     return (c.c_nospace, fill_ratio)
@@ -324,27 +328,25 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
 
                 if len(top) == 1:
                     winner = ranked[0]
-                    reason = (f'same Revision={max_rev}; best comments '
-                            f'(no-space {winner.c_nospace}/{winner.c_total}, filled {winner.c_filled}/{winner.c_total})')
+                    reason = (
+                        f'same Revision={max_rev}; best comments '
+                        f'(no-space {winner.c_nospace}/{winner.c_total}, '
+                        f'filled {winner.c_filled}/{winner.c_total})'
+                    )
                     conflict = False
                 else:
                     raw_hashes = {c.sha256 for c in top}
-                    if len(raw_hashes) == 1:
-                        # comments tied, identical content → pick deterministically (by path)
-                        winner = sorted(top, key=lambda x: x.path)[0]
-                        reason = f'same Revision={max_rev}; comments tied; identical content'
-                        conflict = False
-                    else:
-                        # real content difference at same revision
-                        winner = sorted(top, key=lambda x: x.path)[0]
-                        reason = f'CONFLICT: same Revision={max_rev}; comments tied; different content'
-                        conflict = True
-        else:
-            winner = latest_by_mtime(group)
-            reason = 'no numeric Revision; picked latest mtime'
+                    # comments tied → deterministic pick by path (case-insensitive)
+                    winner = sorted(top, key=lambda x: x.path.lower())[0]
+                    conflict = len(raw_hashes) > 1
+                    reason = (
+                        f'same Revision={max_rev}; comments tied; '
+                        + ('different content' if conflict else 'identical content')
+                    )
 
     losers = [c for c in group if c is not winner]
     return winner, losers, reason, conflict
+
 
 
 def default_stage_name(idy: PreviewIdentity, src: Path) -> str:
@@ -369,7 +371,7 @@ def stage_copy(src: Path, dst: Path) -> None:
 
 def write_csv(report_csv: Path, rows: List[Dict], input_root: str, staging_root: str) -> None:
     ensure_dir(report_csv.parent)
-    fieldnames = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','Change']
+    fieldnames = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','CommentFilled','CommentTotal','NoSpace']
     with report_csv.open('w', newline='', encoding='utf-8') as f:
         f.write(f"Input root,{input_root}\n")
         f.write(f"Staging root,{staging_root}\n\n")
@@ -383,7 +385,7 @@ def write_html(report_html: Path, rows: List[Dict], input_root: str, staging_roo
     ensure_dir(report_html.parent)
     def esc(s: str) -> str:
         return (s or '').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
-    headers = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','Change']
+    headers = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','CommentFilled','CommentTotal','NoSpace']
     html = [
         '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
         '<style>body{font:14px system-ui,Segoe UI,Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px}th{background:#f4f6f8;text-align:left}tr:nth-child(even){background:#fafafa}</style>',
@@ -515,6 +517,7 @@ def main():
     manifest: List[Dict] = []
     conflicts_found = False
     force_set = {str(Path(p).resolve()) for p in args.force_winner}
+    winners: Dict[str, Candidate] = {}
 
     for key, group in sorted(groups.items(), key=lambda kv: kv[0]):
         forced = None
@@ -534,6 +537,7 @@ def main():
         if conflict:
             conflicts_found = True
 
+        winners[key] = winner
         staged_filename = default_stage_name(winner.identity, Path(winner.path))
         staged_dest = staging_root / staged_filename
 
@@ -551,6 +555,10 @@ def main():
                 chg.append("content")
             change = "+".join(chg) if chg else "none"
 
+
+
+
+
         # Report rows (fixed order + renamed columns)
         for c in sorted(group, key=lambda x: (x.identity.revision_num if x.identity.revision_num is not None else -1, x.mtime), reverse=True):
             rows.append({
@@ -565,7 +573,10 @@ def main():
                 'GUID': c.identity.guid or '',
                 'SHA256': c.sha256,
                 'UserEmail': c.user_email or '',
-                'Change': change if c is winner else ''   # ← add this
+                'Change': change if c is winner else '',   # ← comma here
+                'CommentFilled': c.c_filled,
+                'CommentTotal':  c.c_total,
+                'NoSpace':       c.c_nospace,
             })
 
 
@@ -594,6 +605,29 @@ def main():
             'reason': reason,
             'conflict': conflict,
         })
+
+    # Winners with missing comments → extra CSV
+    missing: List[Dict] = []
+    for k, win in winners.items():
+        if getattr(win, 'c_total', 0) > 0 and getattr(win, 'c_filled', 0) < getattr(win, 'c_total', 0):
+            missing.append({
+                'Key': k,
+                'PreviewName': win.identity.name or '',
+                'Revision': win.identity.revision_raw or '',
+                'User': win.user,
+                'CommentFilled': win.c_filled,
+                'CommentTotal': win.c_total,
+                'Path': win.path,
+            })
+    if missing:
+        miss_csv = report_csv.with_name('lorprev_missing_comments.csv')
+        ensure_dir(miss_csv.parent)
+        with miss_csv.open('w', newline='', encoding='utf-8') as f:
+            w = csv.DictWriter(f, fieldnames=['Key','PreviewName','Revision','User','CommentFilled','CommentTotal','Path'])
+            w.writeheader()
+            for r in sorted(missing, key=lambda r: (r['PreviewName'].lower(), r['Key'])):
+                w.writerow(r)
+        print(f"Missing-comments CSV: {miss_csv}")
 
    # Sort rows by PreviewName (case-insensitive), then Revision (desc)
     # Sort rows by PreviewName (case-insensitive), then Revision (desc)
