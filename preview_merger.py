@@ -198,9 +198,21 @@ CREATE TABLE IF NOT EXISTS staging_decisions (
   staged_as       TEXT,
   decision_reason TEXT,
   conflict        INTEGER DEFAULT 0,
-  action          TEXT  -- staged | skipped | conflict | archived
+  action          TEXT
+);
+-- NEW: persists last winner so we can compute Change on the next run
+CREATE TABLE IF NOT EXISTS preview_state (
+  preview_key   TEXT PRIMARY KEY,
+  preview_guid  TEXT,
+  preview_name  TEXT,
+  revision_num  REAL,
+  sha256        TEXT,
+  staged_as     TEXT,
+  last_run_id   TEXT,
+  last_seen_utc TEXT
 );
 """
+
 
 def history_connect(db_path: Path) -> sqlite3.Connection:
     ensure_dir(db_path.parent)
@@ -357,7 +369,7 @@ def stage_copy(src: Path, dst: Path) -> None:
 
 def write_csv(report_csv: Path, rows: List[Dict], input_root: str, staging_root: str) -> None:
     ensure_dir(report_csv.parent)
-    fieldnames = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail']
+    fieldnames = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','Change']
     with report_csv.open('w', newline='', encoding='utf-8') as f:
         f.write(f"Input root,{input_root}\n")
         f.write(f"Staging root,{staging_root}\n\n")
@@ -371,7 +383,7 @@ def write_html(report_html: Path, rows: List[Dict], input_root: str, staging_roo
     ensure_dir(report_html.parent)
     def esc(s: str) -> str:
         return (s or '').replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
-    headers = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail']
+    headers = ['Key','PreviewName','Revision','User','Size','MTimeUtc','Role','WinnerReason','GUID','SHA256','UserEmail','Change']
     html = [
         '<!doctype html><meta charset="utf-8"><title>LOR Preview Compare</title>',
         '<style>body{font:14px system-ui,Segoe UI,Arial}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px}th{background:#f4f6f8;text-align:left}tr:nth-child(even){background:#fafafa}</style>',
@@ -470,6 +482,17 @@ def main():
     conn.execute('INSERT INTO runs(run_id, started_utc, policy) VALUES (?,?,?)', (run_id, datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'), args.policy))
     conn.commit()
 
+    # Load prior state for cross-run change detection
+    prior: Dict[str, Dict] = {}
+    for row in conn.execute(
+        "SELECT preview_key, preview_name, revision_num, sha256 FROM preview_state"
+    ):
+        prior[row[0]] = {
+            "preview_name": row[1],
+            "revision_num": row[2],
+            "sha256": row[3],
+        }
+        
     # Scan candidates (root only)
     candidates = scan_input(input_root, user_map, args.email_domain)
 
@@ -514,6 +537,20 @@ def main():
         staged_filename = default_stage_name(winner.identity, Path(winner.path))
         staged_dest = staging_root / staged_filename
 
+        # Compute cross-run change label for the WINNER vs prior state
+        prev = prior.get(key)
+        if not prev:
+            change = "new"
+        else:
+            chg = []
+            if (winner.identity.name or "") != (prev.get("preview_name") or ""):
+                chg.append("name")
+            if (winner.identity.revision_num or -1) != (prev.get("revision_num") or -1):
+                chg.append("rev")
+            if winner.sha256 != (prev.get("sha256") or ""):
+                chg.append("content")
+            change = "+".join(chg) if chg else "none"
+
         # Report rows (fixed order + renamed columns)
         for c in sorted(group, key=lambda x: (x.identity.revision_num if x.identity.revision_num is not None else -1, x.mtime), reverse=True):
             rows.append({
@@ -527,8 +564,10 @@ def main():
                 'WinnerReason': reason if c is winner else '',
                 'GUID': c.identity.guid or '',
                 'SHA256': c.sha256,
-                'UserEmail': c.user_email or ''
+                'UserEmail': c.user_email or '',
+                'Change': change if c is winner else ''   # ← add this
             })
+
 
         # Stage/Archive/Record decisions (unless dry‑run)
         if args.apply:
@@ -557,6 +596,7 @@ def main():
         })
 
    # Sort rows by PreviewName (case-insensitive), then Revision (desc)
+    # Sort rows by PreviewName (case-insensitive), then Revision (desc)
     def _revnum(v):
         try:
             return float(v or '')
@@ -564,7 +604,7 @@ def main():
             return -1.0
     rows.sort(key=lambda r: (r.get('PreviewName','').lower(), -_revnum(r.get('Revision'))))
 
-# Write CSV/HTML
+    # Write CSV/HTML
     write_csv(report_csv, rows, str(input_root), str(staging_root))
     if report_html:
         write_html(report_html, rows, str(input_root), str(staging_root))
