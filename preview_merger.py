@@ -55,7 +55,7 @@ GLOBAL_DEFAULTS = {
     "report_csv":   r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.csv",
     "report_html":  r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html",
     # Behavior
-    "policy": "prefer-revision-then-mtime",
+    "policy": "prefer-revision-then-exported",
     # Users and email
     "ensure_users": "abiebel,rneerhof,gliebig,showpc,officepc",
     "email_domain": "sheboyganlights.org",
@@ -462,10 +462,10 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
     reason = ''
     conflict = False
 
-    # ------------------ policy: prefer latest mtime ------------------
-    if policy == 'prefer-mtime':
+    # ------------------ policy: prefer latest Exported time ------------------
+    if policy == 'prefer-exported':
         winner = latest_by_mtime(group)
-        reason = 'latest mtime'
+        reason = 'latest Exported time'
 
     # --------- NEW policy: comments first, then revision, etc. -------
     elif policy == 'prefer-comments-then-revision':
@@ -491,15 +491,15 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
                     reason = (f'most no-space={max_ns}; Revision={max_rev}; '
                               f'best fill {getattr(winner,"c_filled",0)}/{getattr(winner,"c_total",0)}')
                 else:
-                    # 4) Still tied → latest mtime
+                    # 4) Still tied → latest Exported time
                     winner = latest_by_mtime(fill_best)
-                    reason = (f'most no-space={max_ns}; Revision={max_rev}; fill tied; latest mtime')
+                    reason = (f'most no-space={max_ns}; Revision={max_rev}; fill tied; latest Exported time')
         # mark conflict if other contenders differ in content bytes
         conflict = len({c.sha256 for c in group if c is not winner}) > 1
 
     # --------------- existing default: revision then mtime ------------
     else:
-        # prefer-revision-then-mtime (your current logic)
+        # prefer-revision-then-exported (your current logic)
         max_rev: Optional[float] = None
         for cand in group:
             rv = cand.identity.revision_num
@@ -508,7 +508,7 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
 
         if max_rev is None:
             winner = latest_by_mtime(group)
-            reason = 'no numeric Revision; picked latest mtime'
+            reason = 'no numeric Revision; picked latest Exported time'
         else:
             rev_max_set = [c for c in group if c.identity.revision_num == max_rev]
             if len(rev_max_set) == 1:
@@ -651,7 +651,7 @@ def main():
     ap.add_argument('--history-db', default=defaults['history_db'])
     ap.add_argument('--report', default=defaults['report_csv'])
     ap.add_argument('--report-html', default=defaults['report_html'])
-    ap.add_argument('--policy',choices=['prefer-revision-then-mtime','prefer-mtime','prefer-comments-then-revision'],default=defaults['policy'])
+    ap.add_argument('--policy',choices=['prefer-revision-then-exported','prefer-exported','prefer-comments-then-revision'],default=defaults['policy'])
     ap.add_argument('--apply', action='store_true', help='Stage/archive changes (default is dry-run)')
     #ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--force-winner', action='append', default=[])
@@ -765,9 +765,9 @@ def main():
     _now_local = datetime.now().astimezone()
     started_local = _now_local.isoformat(timespec='seconds')  # e.g. 2025-08-31T08:25:33-05:00
 
-    # Keeping the column name started_utc for now, but storing local ISO with offset
+    # Keeping the column name started for now, but storing local ISO with offset
     conn.execute(
-        'INSERT INTO runs(run_id, started_utc, policy) VALUES (?,?,?)',
+        'INSERT INTO runs(run_id, started, policy) VALUES (?,?,?)',
         (run_id, started_local, args.policy)
     )
     conn.commit()
@@ -945,7 +945,7 @@ def main():
                     'Role': 'STAGED',
                     'WinnerFrom': '',
                     'WinnerReason': '',
-                    'Action': ('current' if sha256_file(staged_dest) == (winner.sha256 or '') else 'out-of-date'),
+                    'Action': ('current' if staged_sha == winner_sha else 'out-of-date'),
                     'WinnerPolicy': args.policy,
 
                     # hashes (short + long)
@@ -1089,7 +1089,7 @@ def main():
                     'Role': 'STAGED',
                     'WinnerFrom': '',
                     'WinnerReason': '',
-                    'Action': 'current',          # no winner to compare; treat as present
+                    'Action': 'staged-only',      # listed in staging but no matching winner this run
                     'WinnerPolicy': args.policy,
 
                     'Sha8': st_sha8,
@@ -1139,6 +1139,40 @@ def main():
         except Exception:
             return -1.0
     rows.sort(key=lambda r: (r.get('PreviewName','').lower(), -_revnum(r.get('Revision'))))
+
+    # ---- quick stderr summary (linked vs staged-only)
+    try:
+        # Winners
+        winner_rows   = [r for r in rows if r.get('Role') == 'WINNER']
+        winners_total = len({r.get('Key') for r in winner_rows})
+        noop = sum(1 for r in winner_rows if r.get('Action') == 'noop')
+        upd  = sum(1 for r in winner_rows if r.get('Action') == 'update-staging')
+        new  = sum(1 for r in winner_rows if r.get('Action') == 'stage-new')
+
+        # Staged
+        staged_rows   = [r for r in rows if r.get('Role') == 'STAGED']
+        staged_only   = [r for r in staged_rows if r.get('Action') == 'staged-only']
+        staged_linked = [r for r in staged_rows if r.get('Action') in ('current', 'out-of-date')]
+
+        staged_cur = sum(1 for r in staged_linked if r.get('Action') == 'current')
+        staged_out = sum(1 for r in staged_linked if r.get('Action') == 'out-of-date')
+
+        print(
+            f"[summary] previews={winners_total} "
+            f"winners: noop={noop} update={upd} stage-new={new} | "
+            f"staged(linked): current={staged_cur} out-of-date={staged_out} | "
+            f"staged-only={len(staged_only)}",
+            file=sys.stderr
+        )
+
+        # Optional: list previews that need attention (update or stage-new)
+        needs = [r for r in winner_rows if r.get('Action') in ('update-staging','stage-new')]
+        if needs:
+            needing_keys = sorted({r.get('Key') for r in needs})
+            print(f"[summary] needs action: {len(needs)} rows across {len(needing_keys)} previews: {', '.join(needing_keys)}", file=sys.stderr)
+    except Exception as e:
+        print(f"[summary] failed: {e}", file=sys.stderr)
+
 
     # Write CSV/HTML
     write_csv(report_csv, rows, str(input_root), str(staging_root))
