@@ -41,14 +41,14 @@ from typing import Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 import shutil
 import sys
-
+import traceback  # (optional, if you print tracebacks elsewhere)
 # ============================= GLOBAL DEFAULTS ============================= #
 GLOBAL_DEFAULTS = {
     # Folders
     "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
     # "Secret" location used by LOR parser today
     #"staging_root": r"G:\Shared drives\MSB Database\Database Previews",
-    "staging_root": r"G:\Shared drives\MSB Database\_secret_staging",
+    "staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
     # Keep merger artifacts under /database/merger
     "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
     "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
@@ -84,6 +84,40 @@ class Candidate:
     c_filled: int = 0           # comment fields with non-empty value
     c_nospace: int = 0          # comment fields with no spaces
 # ============================= Utilities ============================= #
+
+import sys  # make sure this is top-level (not inside a function)
+
+class Progress:
+    def __init__(self, enabled: bool):
+        self.enabled = enabled
+        self.total = 1
+        self.cur = 0
+        self.label = ""
+
+    def start(self, total: int, label: str):
+        self.total = max(1, int(total or 1))
+        self.cur = 0
+        self.label = label
+        if self.enabled:
+            sys.stderr.write(f"{label}: 0/{self.total} (0%)\r")
+            sys.stderr.flush()
+
+    def tick(self, step: int = 1):
+        if not self.enabled:
+            return
+        self.cur += step
+        if self.cur > self.total:
+            self.cur = self.total
+        pct = int(self.cur * 100 / self.total)
+        sys.stderr.write(f"{self.label}: {self.cur}/{self.total} ({pct:3d}%)\r")
+        sys.stderr.flush()
+
+    def done(self):
+        if not self.enabled:
+            return
+        sys.stderr.write(" " * 80 + "\r")  # clear line
+        sys.stderr.write(f"{self.label}: {self.total}/{self.total} (100%)\n")
+        sys.stderr.flush()
 
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
@@ -625,6 +659,9 @@ def main():
     ap.add_argument('--user-map', help='Semicolon-separated username=email pairs, e.g. "gliebig=greg@sheboyganlights.org"')
     ap.add_argument('--user-map-json', help='Path to JSON mapping {"gliebig":"greg@sheboyganlights.org"}')
     ap.add_argument('--email-domain', default=defaults['email_domain'], help='If set, any username without a mapping gets username@<domain>')
+    ap.add_argument('--debug', action='store_true', help='Print debug info to stderr')
+    ap.add_argument('--progress', action='store_true', help='Show progress to stderr while processing')
+
 
     args = ap.parse_args()
 
@@ -635,12 +672,54 @@ def main():
     report_html  = Path(args.report_html) if args.report_html else None
     history_db   = Path(args.history_db)
 
+    if args.debug:
+        def dprint(*a, **k): print(*a, file=sys.stderr, flush=True, **k)
+    else:
+        def dprint(*a, **k): pass
+
     # Ensure required folders
     ensure_dir(input_root)
     ensure_dir(staging_root)
     if archive_root: ensure_dir(archive_root)
     ensure_dir(report_csv.parent)
     ensure_dir(history_db.parent)
+
+
+    # --- DEBUG: what is actually in the top level of staging? (no recursion)
+    dprint(f"[debug] staging_root = {staging_root}", file=sys.stderr)
+    _staged_top = sorted([p for p in Path(staging_root).glob('*.lorprev') if p.is_file()])
+    dprint(f"[debug] top-level staged *.lorprev files = {len(_staged_top)}", file=sys.stderr)
+    for p in _staged_top[:10]:
+        dprint(f"[debug] staged(top): {p.name}", file=sys.stderr)
+
+    # --- Build a top-level index to resolve staged files by identity (Key → Path, GUID → Path)
+    staged_by_key: dict[str, Path] = {}
+    staged_by_guid: dict[str, Path] = {}
+    try:
+        for p in _staged_top:  # NON-RECURSIVE on purpose
+            try:
+                idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
+                k = identity_key(idy)
+                st = p.stat().st_mtime
+                if k:
+                    prev = staged_by_key.get(k)
+                    if (prev is None) or (st > prev.stat().st_mtime):
+                        staged_by_key[k] = p
+                if idy.guid:
+                    prev = staged_by_guid.get(idy.guid)
+                    if (prev is None) or (st > prev.stat().st_mtime):
+                        staged_by_guid[idy.guid] = p
+            except Exception as e:
+                print(f"[warn] index staged failed for {p}: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"[warn] scanning staging_root failed: {e}", file=sys.stderr)
+        staged_by_key = {}
+        staged_by_guid = {}
+
+
+
+
+
 
     # Optionally ensure user subfolders
     if args.ensure_users:
@@ -857,19 +936,64 @@ def main():
                     'User': '_staging_',
                     'Size': st_stat.st_size,
                     'Exported': ymd_hms(st_stat.st_mtime),
-                    'Change': change if c is winner else '',
-                    'CommentFilled': st_cf,
-                    'CommentTotal':  st_ct,
-                    'NoSpace':       st_cn,
+                    'Change': change,  # group-level label (no 'c' here)
+
+                    'CommentFilled':  st_cf,
+                    'CommentTotal':   st_ct,
+                    'CommentNoSpace': st_cn,  # match your CSV header
+
                     'Role': 'STAGED',
-                    'Sha8': sha256_file(staged_dest)[:8],
+                    'WinnerFrom': '',
                     'WinnerReason': '',
+                    'Action': ('current' if sha256_file(staged_dest) == (winner.sha256 or '') else 'out-of-date'),
+                    'WinnerPolicy': args.policy,
+
+                    # hashes (short + long)
+                    'Sha8': sha256_file(staged_dest)[:8],  # this row’s file
+                    'WinnerSha8': '',                     # blank on staged row
+                    'StagedSha8': sha256_file(staged_dest)[:8],
+
                     'GUID': st_idy.guid or (winner.identity.guid or ''),
                     'SHA256': sha256_file(staged_dest),
                     'UserEmail': '',
                 })
-            except Exception:
-                pass  # if staged unreadable, just skip
+
+            except Exception as e:
+                # Emit a minimal STAGED placeholder so the row is visible in the report
+                try:
+                    # sys is imported at module level
+                    print("...", file=sys.stderr)
+                    traceback.print_exc()
+                except Exception:
+                    pass
+
+                rows.append({
+                    'Key': key,
+                    'PreviewName': winner.identity.name or '',
+                    'Revision': '',
+                    'User': '_staging_',
+                    'Size': '',
+                    'Exported': '',           # unknown since we couldn't stat()
+                    'Change': '',
+
+                    'CommentFilled':  '',
+                    'CommentTotal':   '',
+                    'CommentNoSpace': '',     # <- matches your header
+
+                    'Role': 'STAGED',
+                    'WinnerFrom': '',
+                    'WinnerReason': 'staged unreadable',  # clear reason
+                    'Action': 'out-of-date',              # conservative default
+                    'WinnerPolicy': args.policy,
+
+                    'Sha8': '',
+                    'WinnerSha8': '',
+                    'StagedSha8': '',
+
+                    'GUID': winner.identity.guid or '',
+                    'SHA256': '',
+                    'UserEmail': '',
+                })
 
         # 2) candidate rows (winner + others)
         for c in sorted(group,
