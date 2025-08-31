@@ -42,13 +42,14 @@ import xml.etree.ElementTree as ET
 import shutil
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
+
 # ============================= GLOBAL DEFAULTS ============================= #
 GLOBAL_DEFAULTS = {
     # Folders
     "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
     # "Secret" location used by LOR parser today
-    #"staging_root": r"G:\Shared drives\MSB Database\Database Previews",
-    "staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
+    "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
+    #"staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
     # Keep merger artifacts under /database/merger
     "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
     "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
@@ -83,9 +84,9 @@ class Candidate:
     c_total: int = 0            # total comment fields found
     c_filled: int = 0           # comment fields with non-empty value
     c_nospace: int = 0          # comment fields with no spaces
+
 # ============================= Utilities ============================= #
 
-import sys  # make sure this is top-level (not inside a function)
 
 class Progress:
     def __init__(self, enabled: bool):
@@ -122,6 +123,27 @@ class Progress:
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
+
+def _fail_if_locked(paths: Iterable[Optional[Path]]) -> None:
+    """Exit early if any *existing* report file is write-locked (e.g., open in Excel)."""
+    locked = []
+    for p in paths:
+        if not p:
+            continue
+        p = Path(p)
+        if not p.exists():
+            continue  # only test existing files
+        try:
+            with p.open('a', encoding='utf-8'):
+                pass
+        except PermissionError:
+            locked.append(p)
+    if locked:
+        print("\n[locked] The following report files are open in another program:", file=sys.stderr)
+        for p in locked:
+            print(f"  - {p}", file=sys.stderr)
+        print("[locked] Close them and run preview_merger.py again.", file=sys.stderr)
+        sys.exit(4)  # distinct code: report outputs locked
 
 def now_local():
     """Return a timezone-aware local datetime."""
@@ -660,17 +682,32 @@ def main():
     ap.add_argument('--user-map-json', help='Path to JSON mapping {"gliebig":"greg@sheboyganlights.org"}')
     ap.add_argument('--email-domain', default=defaults['email_domain'], help='If set, any username without a mapping gets username@<domain>')
     ap.add_argument('--debug', action='store_true', help='Print debug info to stderr')
-    ap.add_argument('--progress', action='store_true', help='Show progress to stderr while processing')
+    # Progress is ON by default; use --no-progress to turn it off
+    ap.add_argument('--progress', dest='progress', action='store_true', default=True,
+                    help='Show progress while building report (default: on)')
+    ap.add_argument('--no-progress', dest='progress', action='store_false',
+                    help='Disable progress output')
 
 
     args = ap.parse_args()
 
+    # ---- compute report paths EARLY
     input_root   = Path(args.input_root)
     staging_root = Path(args.staging_root)
     archive_root = Path(args.archive_root) if args.archive_root else None
+    history_db   = Path(args.history_db)
+
     report_csv   = Path(args.report)
     report_html  = Path(args.report_html) if args.report_html else None
-    history_db   = Path(args.history_db)
+    ensure_dir(report_csv.parent)  # safe if already exists
+
+    # Canonical companion files (define ONCE here)
+    miss_csv      = report_csv.with_name('lorprev_missing_comments.csv')
+    manifest_path = report_csv.with_suffix('.manifest.json')
+
+    # ---- FAIL FAST if any existing outputs are open (Excel etc.)
+    _fail_if_locked([report_csv, report_html, miss_csv, manifest_path])
+
 
     if args.debug:
         def dprint(*a, **k): print(*a, file=sys.stderr, flush=True, **k)
@@ -807,7 +844,15 @@ def main():
     force_set = {str(Path(p).resolve()) for p in args.force_winner}
     winners: Dict[str, Candidate] = {}
 
-    for key, group in sorted(groups.items(), key=lambda kv: kv[0]):
+    items = sorted(groups.items(), key=lambda kv: kv[0])  # preserve your ordering
+    prog = Progress(args.progress)
+    prog.start(len(items), "Building report")
+
+    for key, group in items:
+
+
+
+    #for key, group in sorted(groups.items(), key=lambda kv: kv[0]):
         forced = None
         for c in group:
             if str(Path(c.path).resolve()) in force_set:
@@ -1060,6 +1105,10 @@ def main():
                         (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'skipped')
                     )
 
+        # progress: one tick per preview key
+        prog.tick()
+    # after the loop, before the “include staged-only” pass
+    prog.done()
     # include staged files that didn’t appear as winners/candidates this run
     seen_staged = {(staging_root / default_stage_name(w.identity, Path(w.path))).resolve()
                 for w in winners.values()} if 'winners' in locals() else set()
@@ -1122,7 +1171,7 @@ def main():
                 'Path': win.path,
             })
     if missing:
-        miss_csv = report_csv.with_name('lorprev_missing_comments.csv')
+        #miss_csv = report_csv.with_name('lorprev_missing_comments.csv')
         ensure_dir(miss_csv.parent)
         with miss_csv.open('w', newline='', encoding='utf-8') as f:
             w = csv.DictWriter(f,fieldnames=['Key','PreviewName','Revision','User','CommentFilled','CommentTotal','Path'])
@@ -1180,7 +1229,7 @@ def main():
         write_html(report_html, rows, str(input_root), str(staging_root))
 
     # Optional manifest JSON next to CSV
-    manifest_path = report_csv.with_suffix('.manifest.json')
+    # manifest_path = report_csv.with_suffix('.manifest.json')
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print(f"\nOK. Report: {report_csv}")
     if report_html: print(f"HTML: {report_html}")
