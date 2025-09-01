@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
 """
+File: preview_merger.py
+Purpose: Merge .lorprev updates into primary DB with full audit logging.
+Owner: Greg Liebig • Team: MSB Database
+Revision: 2025‑09‑01 (v6.1)
+
+
+Key Paths
+- Primary DB: G:\\Shared drives\\MSB Database\\database\\lor_output_v6.db
+- History DB: G:\\Shared drives\\MSB Database\\database\\merger\\preview_history.db
+
+
+Notes
+- Do not process records with blank comments.
+- Use channel name as description for parsed props where appropriate.
+
 preview_merger.py — Windows‑friendly, per‑user .lorprev collector with conflict detection,
 safe staging, and a history SQLite database for audit/reporting.
 
