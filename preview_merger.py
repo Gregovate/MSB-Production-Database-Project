@@ -56,7 +56,7 @@ GLOBAL_DEFAULTS = {
     "report_csv":   r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.csv",
     "report_html":  r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html",
     # Behavior
-    "policy": "prefer-revision-then-exported",
+    "policy": "prefer-comments-then-revision",
     # Users and email
     "ensure_users": "abiebel,rneerhof,gliebig,showpc,officepc",
     "email_domain": "sheboyganlights.org",
@@ -504,76 +504,73 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
 
     # --------- NEW policy: comments first, then revision, etc. -------
     elif policy == 'prefer-comments-then-revision':
-        # 1) Most "NoSpace" wins (i.e., fewest spaces overall)
+        # 1) Most non-empty-after-trim comments wins
         max_ns = max(getattr(c, 'c_nospace', 0) for c in group)
         ns_best = [c for c in group if getattr(c, 'c_nospace', 0) == max_ns]
         if len(ns_best) == 1:
             winner = ns_best[0]
             reason = f'most no-space comments={max_ns}'
+            conflict = False
         else:
-            # 2) Tie → highest numeric Revision
-            max_rev = max(_revnum(c) for c in ns_best)
-            rev_best = [c for c in ns_best if _revnum(c) == max_rev]
-            if len(rev_best) == 1:
-                winner = rev_best[0]
-                reason = f'most no-space={max_ns}; highest Revision={max_rev}'
-            else:
-                # 3) Tie → best comment fill-ratio
-                best_fill = max(_fill_ratio(c) for c in rev_best)
-                fill_best = [c for c in rev_best if _fill_ratio(c) == best_fill]
-                if len(fill_best) == 1:
-                    winner = fill_best[0]
-                    reason = (f'most no-space={max_ns}; Revision={max_rev}; '
-                              f'best fill {getattr(winner,"c_filled",0)}/{getattr(winner,"c_total",0)}')
-                else:
-                    # 4) Still tied → latest Exported time
-                    winner = latest_by_mtime(fill_best)
-                    reason = (f'most no-space={max_ns}; Revision={max_rev}; fill tied; latest Exported time')
-        # mark conflict if other contenders differ in content bytes
-        conflict = len({c.sha256 for c in group if c is not winner}) > 1
-
-    # --------------- existing default: revision then mtime ------------
-    else:
-        # prefer-revision-then-exported (your current logic)
-        max_rev: Optional[float] = None
-        for cand in group:
-            rv = cand.identity.revision_num
-            if rv is not None and (max_rev is None or rv > max_rev):
-                max_rev = rv
-
-        if max_rev is None:
-            winner = latest_by_mtime(group)
-            reason = 'no numeric Revision; picked latest Exported time'
-        else:
-            rev_max_set = [c for c in group if c.identity.revision_num == max_rev]
-            if len(rev_max_set) == 1:
-                winner = rev_max_set[0]
-                reason = f'highest numeric Revision={max_rev}'
-            else:
-                # same highest Revision → prefer better comments, then coverage
-                def score(c: Candidate):
-                    fill_ratio = (c.c_filled / c.c_total) if c.c_total else 0.0
-                    return (c.c_nospace, fill_ratio)
-
-                ranked = sorted(rev_max_set, key=score, reverse=True)
-                top = [c for c in rev_max_set if score(c) == score(ranked[0])]
-
-                if len(top) == 1:
-                    winner = ranked[0]
-                    reason = (
-                        f'same Revision={max_rev}; best comments '
-                        f'(no-space {winner.c_nospace}/{winner.c_total}, '
-                        f'filled {winner.c_filled}/{winner.c_total})'
-                    )
+            # 2) Tie → highest numeric Revision (if any exist)
+            nums = [c.identity.revision_num for c in ns_best if c.identity.revision_num is not None]
+            if nums:
+                max_rev = max(nums)
+                rev_best = [c for c in ns_best if c.identity.revision_num == max_rev]
+                if len(rev_best) == 1:
+                    winner = rev_best[0]
+                    reason = f'most no-space={max_ns}; highest Revision={max_rev}'
                     conflict = False
                 else:
-                    raw_hashes = {c.sha256 for c in top}
-                    winner = sorted(top, key=lambda x: x.path.lower())[0]  # deterministic
-                    conflict = len(raw_hashes) > 1
-                    reason = (
-                        f'same Revision={max_rev}; comments tied; '
-                        + ('different content' if conflict else 'identical content')
-                    )
+                    # 3) Tie → best fill ratio
+                    def _fill_ratio(c):
+                        t = getattr(c, 'c_total', 0)
+                        return (getattr(c, 'c_filled', 0) / t) if t else 0.0
+                    best_fill = max(_fill_ratio(c) for c in rev_best)
+                    fill_best = [c for c in rev_best if _fill_ratio(c) == best_fill]
+                    if len(fill_best) == 1:
+                        winner = fill_best[0]
+                        reason = (f'most no-space={max_ns}; Revision={max_rev}; '
+                                f'best fill {getattr(winner,"c_filled",0)}/{getattr(winner,"c_total",0)}')
+                        conflict = False
+                    else:
+                        # 4) Still tied → latest Exported time, then deterministic path
+                        time_best = sorted(fill_best, key=lambda c: c.mtime, reverse=True)
+                        top_time = [c for c in fill_best if c.mtime == time_best[0].mtime]
+                        if len(top_time) == 1:
+                            winner = top_time[0]
+                            reason = (f'most no-space={max_ns}; Revision={max_rev}; fill tied; latest Exported time')
+                            conflict = len({c.sha256 for c in top_time}) > 1
+                        else:
+                            # final tie → pick by path (stable), flag conflict if bytes differ
+                            winner = sorted(top_time, key=lambda x: x.path.lower())[0]
+                            conflict = len({c.sha256 for c in top_time}) > 1
+                            reason = (f"most no-space={max_ns}; Revision={max_rev}; fill & time tied; "
+                                f"{'different content' if conflict else 'identical content'}")
+            else:
+                # No numeric revisions at all → tie on ns; go fill → time → path
+                def _fill_ratio(c):
+                    t = getattr(c, 'c_total', 0)
+                    return (getattr(c, 'c_filled', 0) / t) if t else 0.0
+                best_fill = max(_fill_ratio(c) for c in ns_best)
+                fill_best = [c for c in ns_best if _fill_ratio(c) == best_fill]
+                if len(fill_best) == 1:
+                    winner = fill_best[0]
+                    reason = f'most no-space={max_ns}; no numeric Revision; best fill'
+                    conflict = False
+                else:
+                    time_best = sorted(fill_best, key=lambda c: c.mtime, reverse=True)
+                    top_time = [c for c in fill_best if c.mtime == time_best[0].mtime]
+                    if len(top_time) == 1:
+                        winner = top_time[0]
+                        reason = 'most no-space; no numeric Revision; fill tied; latest Exported time'
+                        conflict = len({c.sha256 for c in top_time}) > 1
+                    else:
+                        winner = sorted(top_time, key=lambda x: x.path.lower())[0]
+                        conflict = len({c.sha256 for c in top_time}) > 1
+                        reason = ('most no-space; no numeric Revision; fill & time tied; ' +
+                                ('different content' if conflict else 'identical content'))
+
 
     losers = [c for c in group if c is not winner]
     return winner, losers, reason, conflict
@@ -736,6 +733,30 @@ def main():
     ensure_dir(report_csv.parent)
     ensure_dir(history_db.parent)
 
+    # ---- forced winners (from --force-winner) -------------------------------
+    # Accept PATH or KEY=PATH. We always keep a set of resolved PATHs for quick checks.
+    force_set: set[str] = set()
+    force_by_key: dict[str, str] = {}
+
+    for spec in (args.force_winner or []):
+        s = spec.strip()
+        if not s:
+            continue
+        if '=' in s:
+            k, p = s.split('=', 1)
+            rp = str(Path(p.strip()).resolve())
+            force_by_key[k.strip()] = rp
+            force_set.add(rp)
+        else:
+            force_set.add(str(Path(s).resolve()))
+
+    dprint(f"[debug] forced paths: {len(force_set)} "
+        f"({', '.join(list(force_set)[:3])}{' ...' if len(force_set) > 3 else ''})")
+    if force_by_key:
+        dprint(f"[debug] forced by key: {', '.join(force_by_key.keys())}")
+    # ------------------------------------------------------------------------
+
+
 
     # --- DEBUG: what is actually in the top level of staging? (no recursion)
     dprint(f"[debug] staging_root = {staging_root}", file=sys.stderr)
@@ -856,10 +877,12 @@ def main():
     rows: List[Dict] = []
     manifest: List[Dict] = []
     conflicts_found = False
-    force_set = {str(Path(p).resolve()) for p in args.force_winner}
     winners: Dict[str, Candidate] = {}
 
-    items = sorted(groups.items(), key=lambda kv: kv[0])  # preserve your ordering
+    # NEW: track which keys already had a STAGED row emitted
+    emitted_staged_keys: set[str] = set()
+
+    items = sorted(groups.items(), key=lambda kv: kv[0])
     prog = Progress(args.progress)
     prog.start(len(items), "Building report")
 
@@ -1018,6 +1041,9 @@ def main():
                     'UserEmail': '',
                 })
 
+                # NEW: remember we already emitted STAGED for this key
+                emitted_staged_keys.add(key)
+
             except Exception as e:
                 # Emit a minimal STAGED placeholder so the row is visible in the report
                 try:
@@ -1054,6 +1080,9 @@ def main():
                     'SHA256': '',
                     'UserEmail': '',
                 })
+
+                # NEW: even unreadable staged → count as emitted so we don't duplicate in tail
+                emitted_staged_keys.add(key)
 
         # 2) candidate rows (winner + others)
         for c in sorted(group,
@@ -1125,75 +1154,94 @@ def main():
     # after the loop, before the “include staged-only” pass
     prog.done()
     # include staged files that didn’t appear as winners/candidates this run
-    seen_staged = {(staging_root / default_stage_name(w.identity, Path(w.path))).resolve()
-                for w in winners.values()} if 'winners' in locals() else set()
-    try:
-        for p in sorted([p for p in staging_root.glob('*.lorprev') if p.is_file()]):
-            if p.resolve() in seen_staged:
+    for p in sorted(Path(staging_root).glob('*.lorprev')):  # top-level only
+        try:
+            idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
+            key = identity_key(idy) or f"PATH:{p.name.lower()}"
+
+            # skip if we already printed a STAGED row for this key
+            if key in emitted_staged_keys:
                 continue
-            try:
-                st_idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
-                st_stat = p.stat()
-                st_ct, st_cf, st_cn = comment_stats(p)
-                st_sha = sha256_file(p)
-                st_sha8 = st_sha[:8]
-                rows.append({
-                    'Key': identity_key(st_idy) or f"PATH:{p.name.lower()}",
-                    'PreviewName': st_idy.name or '',
-                    'Revision': st_idy.revision_raw or '',
-                    'User': 'Staging root',
-                    'Size': st_stat.st_size,
-                    'Exported': ymd_hms(st_stat.st_mtime),
-                    'Change': '',
 
-                    'CommentFilled': st_cf,
-                    'CommentTotal':  st_ct,
-                    'CommentNoSpace': st_cn,
+            st = p.stat()
+            ct, cf, cn = comment_stats(p)
+            sha = sha256_file(p); sha8 = sha[:8]
 
-                    'Role': 'STAGED',
-                    'WinnerFrom': '',
-                    'WinnerReason': '',
-                    'Action': 'staged-only',      # listed in staging but no matching winner this run
-                    'WinnerPolicy': args.policy,
+            rows.append({
+                'Key': key,
+                'PreviewName': idy.name or '',
+                'Revision': idy.revision_raw or '',
+                'User': 'Staging root',
+                'Size': st.st_size,
+                'Exported': ymd_hms(st.st_mtime),
+                'Change': '',
 
-                    'Sha8': st_sha8,
-                    'WinnerSha8': '',
-                    'StagedSha8': st_sha8,
+                'CommentFilled':  cf,
+                'CommentTotal':   ct,
+                'CommentNoSpace': cn,
 
-                    'GUID': st_idy.guid or '',
-                    'SHA256': st_sha,
-                    'UserEmail': '',
-                })
-            except Exception:
-                pass
-    except Exception:
-        pass
+                'Role': 'STAGED',
+                'WinnerFrom': '',
+                'WinnerReason': '',
+                'Action': 'staged-only',           # explicit tail marker
+                'WinnerPolicy': args.policy,
 
+                'Sha8': sha8,
+                'WinnerSha8': '',
+                'StagedSha8': sha8,
 
-
-
-    # Winners with missing comments → extra CSV
-    missing: List[Dict] = []
-    for k, win in winners.items():
-        if getattr(win, 'c_total', 0) > 0 and getattr(win, 'c_filled', 0) < getattr(win, 'c_total', 0):
-            missing.append({
-                'Key': k,
-                'PreviewName': win.identity.name or '',
-                'Revision': win.identity.revision_raw or '',
-                'User': win.user,
-                'CommentFilled': win.c_filled,
-                'CommentTotal': win.c_total,
-                'Path': win.path,
+                'GUID': idy.guid or '',
+                'SHA256': sha,
+                'UserEmail': '',
             })
-    if missing:
-        #miss_csv = report_csv.with_name('lorprev_missing_comments.csv')
+        except Exception:
+            continue
+
+
+    # ---- Missing comments report (STAGING ONLY; top-level; skip DeviceType="None")
+    # We no longer look at winners/candidates — only what is currently in staging_root.
+    try:
         ensure_dir(miss_csv.parent)
         with miss_csv.open('w', newline='', encoding='utf-8') as f:
-            w = csv.DictWriter(f,fieldnames=['Key','PreviewName','Revision','User','CommentFilled','CommentTotal','Path'])
+            w = csv.DictWriter(f, fieldnames=[
+                'Key','PreviewName','Revision','User','CommentFilled','CommentNoSpace','CommentTotal','Path'
+            ])
+
             w.writeheader()
-            for r in sorted(missing, key=lambda r: (r['PreviewName'].lower(), r['Key'])):
-                w.writerow(r)
+
+            for p in sorted(Path(staging_root).glob('*.lorprev')):  # non-recursive by design
+                try:
+                    # Allowed to have sparse comments? Skip entirely.
+                    if device_type_is_none(p):
+                        continue
+
+                    ct, cf, cn = comment_stats(p)
+                    # Keep your original semantics: flag when filled < total
+                    # Note: If you’d rather treat “missing” as CommentNoSpace < CommentTotal
+                    #  (stricter, since it trims blanks), just change cf to cn in the 
+                    # if ct > 0 and cf < ct: line and in the w.writerow({... 'CommentFilled': cf, ...}) 
+                    # assignment (rename or add a CommentNoSpace column if you want it visible).
+                    if ct > 0 and cn < ct:
+                        idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
+                        w.writerow({
+                            'Key': identity_key(idy) or f"PATH:{p.name.lower()}",
+                            'PreviewName': idy.name or '',
+                            'Revision': idy.revision_raw or '',
+                            'User': 'Staging root',
+                            'CommentFilled':  cf,   # before trimming
+                            'CommentNoSpace': cn,   # after trimming (new column)
+                            'CommentTotal':   ct,
+                            'Path': str(p),
+                        })
+                except Exception:
+                    # unreadable staged file? just skip from missing-comments view
+                    continue
+
         print(f"Missing-comments CSV: {miss_csv}")
+    except PermissionError:
+        print(f"\n[locked] {miss_csv} is open in another program. Close it and re-run.", file=sys.stderr)
+        sys.exit(4)
+
 
     # Sort rows by PreviewName (case-insensitive), then Revision (desc)
     # Sort rows by PreviewName (case-insensitive), then Revision (desc)
