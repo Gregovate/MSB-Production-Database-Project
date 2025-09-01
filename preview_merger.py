@@ -85,7 +85,7 @@ class Candidate:
     c_filled: int = 0           # comment fields with non-empty value
     c_nospace: int = 0          # comment fields with no spaces
 
-# ============================= Utilities ============================= #
+# ====================== Utilities / Helpers ============================ #
 
 
 class Progress:
@@ -145,6 +145,19 @@ def _fail_if_locked(paths: Iterable[Optional[Path]]) -> None:
         print("[locked] Close them and run preview_merger.py again.", file=sys.stderr)
         sys.exit(4)  # distinct code: report outputs locked
 
+# Ignore Device type = None for staged previews 25-09-01 GAL
+from pathlib import Path
+def device_type_is_none(p: Path) -> bool:
+    """Best-effort check for DeviceType='None' inside a .lorprev (XML-ish) file."""
+    try:
+        with p.open('rb') as f:
+            chunk = f.read(131072)  # 128KB is plenty for headers
+        txt = chunk.decode('utf-8', errors='ignore')
+        return ('DeviceType="None"' in txt) or ('deviceType="None"' in txt)
+    except Exception:
+        return False
+
+# Time utilities
 def now_local():
     """Return a timezone-aware local datetime."""
     # Use OS local time with offset (handles DST)
@@ -250,7 +263,7 @@ def _in_dir(p: Path, root: Path) -> bool:
 #             'Key': identity_key(st_idy) or f'PATH:{staged_path.name}',
 #             'PreviewName': (st_idy.name if st_idy else '') or '',
 #             'Revision': (st_idy.revision_raw if st_idy else '') or '',
-#             'User': '_staging_',
+#             'User': 'Staging root',
 #             'Size': st_stat.st_size,
 #             'Exported': ymd_hms(st_stat.st_mtime),
 #             'Role': 'STAGED',
@@ -279,7 +292,7 @@ def append_staged_row(key: str, staged_path: Path, winner: Candidate, rows: List
             'Key': key,
             'PreviewName': st_idy.name or (winner.identity.name or ''),
             'Revision': st_idy.revision_raw or '',
-            'User': '_staging_',
+            'User': 'Staging root',
             'Size': st_stat.st_size,
             'Exported': ymd_hms(st_stat.st_mtime),
             'Change': '',
@@ -309,7 +322,7 @@ def append_staged_row(key: str, staged_path: Path, winner: Candidate, rows: List
             'Key': key,
             'PreviewName': winner.identity.name or '',
             'Revision': '',
-            'User': '_staging_',
+            'User': 'Staging root',
             'Size': '',
             'Exported': '',
             'Change': '',
@@ -708,6 +721,8 @@ def main():
     # ---- FAIL FAST if any existing outputs are open (Excel etc.)
     _fail_if_locked([report_csv, report_html, miss_csv, manifest_path])
 
+    # Always show which staging root we’re using (helps when testing different folders)
+    print(f"Staging root: {staging_root}")
 
     if args.debug:
         def dprint(*a, **k): print(*a, file=sys.stderr, flush=True, **k)
@@ -978,7 +993,7 @@ def main():
                     'Key': key,
                     'PreviewName': st_idy.name or (winner.identity.name or ''),
                     'Revision': st_idy.revision_raw or '',
-                    'User': '_staging_',
+                    'User': 'Staging root',
                     'Size': st_stat.st_size,
                     'Exported': ymd_hms(st_stat.st_mtime),
                     'Change': change,  # group-level label (no 'c' here)
@@ -1016,7 +1031,7 @@ def main():
                     'Key': key,
                     'PreviewName': winner.identity.name or '',
                     'Revision': '',
-                    'User': '_staging_',
+                    'User': 'Staging root',
                     'Size': '',
                     'Exported': '',           # unknown since we couldn't stat()
                     'Change': '',
@@ -1126,7 +1141,7 @@ def main():
                     'Key': identity_key(st_idy) or f"PATH:{p.name.lower()}",
                     'PreviewName': st_idy.name or '',
                     'Revision': st_idy.revision_raw or '',
-                    'User': '_staging_',
+                    'User': 'Staging root',
                     'Size': st_stat.st_size,
                     'Exported': ymd_hms(st_stat.st_mtime),
                     'Change': '',
