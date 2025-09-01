@@ -52,7 +52,11 @@ The propClass is designed to sequence a light show but is not friendly to manage
 - Reads the prop data and links to a table containing Display information using a sqlite database
 - The datafiles are untouched as not to affect the sequencing software.
 
-
+## Docs (start here)
+- [Operator Quickstart](docs/quickstart_operator.md)
+- [Preview Merger — Reference](docs/preview_merger_reference.md)
+- [Reporting & History](docs/reporting_history.md)
+- Archived docs live in [/archive/docs](archive/docs/)
 ---
 
 ### **Processing Logic Summary**
