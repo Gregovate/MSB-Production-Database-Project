@@ -1,3 +1,17 @@
+## [v6.1] – 2025‑09‑01
+
+### Added
+- History DB schema (batches, changes) and writer in preview_merger.py
+- HTML/CSV reporting via --report (tools/report_preview_history.py)
+- Documentation pack (user guide, reporting, code comments)
+
+### Changed
+- Dry‑run output now saves to tmp/preview_merger_dryrun.csv
+
+### Fixed
+
+- Respect 'do not process blank comment' rule consistently in merger path
+
 ## 2025-08-25
 
 ### Added

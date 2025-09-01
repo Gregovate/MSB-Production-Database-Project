@@ -1,77 +1,79 @@
 #!/usr/bin/env python3
-import sqlite3, csv, os, sys, datetime, json
+import sqlite3, csv, sys, datetime
 from pathlib import Path
 
+# Shared-drive defaults (change only if your paths differ)
+DEF_DB  = r"G:\Shared drives\MSB Database\database\merger\preview_history.db"
+DEF_OUT = r"G:\Shared drives\MSB Database\database\merger\reports"
 
-DEF_OUT = Path(r"G:\\Shared drives\\MSB Database\\database\\merger\\reports")
-
-
+# CSVs to generate (add more queries as needed)
 QUERIES = {
-'batches': "SELECT * FROM v_batches;",
-'daily_7d': "SELECT DATE(ts_utc) AS day, COUNT(*) AS changes FROM changes WHERE ts_utc >= datetime('now','-7 days') GROUP BY day ORDER BY day DESC;",
-'top_churn': "SELECT * FROM v_prop_churn ORDER BY change_events DESC LIMIT 200;",
+    "runs_summary":      "SELECT * FROM v_runs_summary;",
+    "contributors_last": "SELECT * FROM v_run_contributors;",
+    "staged_last":       "SELECT * FROM v_staged_in_run;",
 }
 
-
-HTML_BLOCK = """
-<!doctype html><meta charset="utf-8"><title>Preview History Report</title>
-<h1>Preview History – {stamp}</h1>
+HTML = """<!doctype html><meta charset="utf-8"><title>Preview History</title>
+<h1>Preview History – {ts}</h1>
 <ul>
-<li><a href="batches.csv">batches.csv</a></li>
-<li><a href="daily_7d.csv">daily_7d.csv</a></li>
-<li><a href="top_churn.csv">top_churn.csv</a></li>
+  <li><a href="runs_summary.csv">runs_summary.csv</a></li>
+  <li><a href="contributors_last.csv">contributors_last.csv</a></li>
+  <li><a href="staged_last.csv">staged_last.csv</a></li>
 </ul>
-<p>Source: {db}</p>
-"""
+<p>DB: {db}</p>"""
 
+def export_csv(cur, sql, path: Path) -> None:
+    """Run a SELECT and write results to CSV."""
+    cur.execute(sql)
+    cols = [d[0] for d in cur.description]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(cols)
+        w.writerows(cur.fetchall())
 
-def export_csv(cur, sql, path):
-cur.execute(sql)
-cols = [d[0] for d in cur.description]
-with open(path, 'w', newline='', encoding='utf-8') as f:
-w = csv.writer(f)
-w.writerow(cols)
-for row in cur.fetchall():
-w.writerow(row)
+def main(db: str = DEF_DB, out_root: str = DEF_OUT) -> None:
+    out_dir = Path(out_root) / datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    out_dir.mkdir(parents=True, exist_ok=True)
 
+    con = sqlite3.connect(db)
+    cur = con.cursor()
 
+    # Ensure the views we rely on exist (safe to run repeatedly)
+    cur.executescript("""
+      CREATE VIEW IF NOT EXISTS v_runs_summary AS
+      SELECT r.run_id, r.started, r.policy,
+        (SELECT COUNT(*) FROM file_observations fo WHERE fo.run_id=r.run_id) AS observed,
+        (SELECT COUNT(*) FROM staging_decisions sd WHERE sd.run_id=r.run_id AND sd.action='staged')   AS staged,
+        (SELECT COUNT(*) FROM staging_decisions sd WHERE sd.run_id=r.run_id AND sd.action='skipped')  AS skipped,
+        (SELECT COUNT(*) FROM staging_decisions sd WHERE sd.run_id=r.run_id AND sd.action='archived') AS archived
+      FROM runs r
+      ORDER BY r.started DESC;
 
+      CREATE VIEW IF NOT EXISTS v_run_contributors AS
+      SELECT fo.run_id, fo.user, COUNT(*) AS files, SUM(fo.file_size) AS bytes
+      FROM file_observations fo
+      GROUP BY fo.run_id, fo.user
+      ORDER BY fo.run_id DESC, files DESC;
 
-def main(db_path, out_dir=None):
-out = Path(out_dir or DEF_OUT) / datetime.datetime.utcnow().strftime('%Y%m%d-%H%M')
-out.mkdir(parents=True, exist_ok=True)
-con = sqlite3.connect(db_path)
-cur = con.cursor()
-# Ensure views exist (no‑ops if created by the tool already)
-cur.executescript('''
-CREATE VIEW IF NOT EXISTS v_batches AS
-SELECT b.batch_id, b.started_utc, b.finished_utc, b.run_mode, b.user_name,
-(SELECT COUNT(*) FROM changes c WHERE c.batch_id=b.batch_id) AS rowcount
-FROM batches b ORDER BY b.started_utc DESC;
+      CREATE VIEW IF NOT EXISTS v_staged_in_run AS
+      SELECT sd.run_id, sd.preview_key, sd.staged_as, sd.decision_reason, sd.conflict
+      FROM staging_decisions sd
+      WHERE sd.action='staged'
+      ORDER BY sd.run_id DESC;
+    """)
+    con.commit()
 
+    for name, sql in QUERIES.items():
+        export_csv(cur, sql, out_dir / f"{name}.csv")
 
-CREATE VIEW IF NOT EXISTS v_prop_churn AS
-SELECT preview_id, key, COUNT(*) AS change_events,
-SUM(CASE WHEN field='Name' AND old_value<>new_value THEN 1 ELSE 0 END) AS renames,
-SUM(CASE WHEN field IN ('Network','Controller','StartChannel') AND old_value<>new_value THEN 1 ELSE 0 END) AS rewires
-FROM changes GROUP BY preview_id, key ORDER BY change_events DESC;
-''')
-con.commit()
+    (out_dir / "index.html").write_text(
+        HTML.format(ts=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), db=db),
+        encoding="utf-8"
+    )
 
+    print(f"Report written to: {out_dir}")
 
-for name, sql in QUERIES.items():
-export_csv(cur, sql, out / f"{name}.csv")
-
-
-(out / 'index.html').write_text(HTML_BLOCK.format(
-stamp=datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'), db=db_path
-), encoding='utf-8')
-
-
-print(f"Report written to: {out}")
-
-
-if __name__ == '__main__':
-db = sys.argv[1] if len(sys.argv) > 1 else r"G:\\Shared drives\\MSB Database\\database\\merger\\preview_history.db"
-out = sys.argv[2] if len(sys.argv) > 2 else None
-main(db, out)
+if __name__ == "__main__":
+    db  = sys.argv[1] if len(sys.argv) > 1 else DEF_DB
+    out = sys.argv[2] if len(sys.argv) > 2 else DEF_OUT
+    main(db, out)
