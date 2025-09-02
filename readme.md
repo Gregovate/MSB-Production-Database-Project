@@ -29,22 +29,55 @@ Create props table that contains one record per display. Use the subprops and dm
   - **UID**: The hexadecimal number assigned to a controller
   - **id**: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure
 
-# Preview types (what we build and why)
+## Preview Types (what we build and why)
 
-Previews for Props (panel authoring previews; source of truth)
-Where we design an individual panel/component and set correct Channel Name + Display Name. We then Export as Props from here.
-Path: G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps\
+### 1) Previews for Props *(panel authoring; source of truth)*
+Where we design an individual panel/component and set correct **Channel Name** (`Name`) and **Display Name** (`Comment`).  
+We then **Export as Props** from here.
 
-  - Master Previews for sequencing (where we import props and sequence)
-  - RGB Plus Prop Stage xx — primary sequencing canvas per stage
-  - Show Background Stage yy — background/static elements per stage
-  - Show Animation zz — shared/global animation elements
+**Authoring path**
+~~~
+G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps\
+~~~
 
-When we import exported props into these masters, the RawPropID is preserved, but the original PreviewID is not (that’s OK—our checks use RawPropID).
+---
 
-Staged Previews (for the database build)
-The curated set of previews the parser consumes to build the database (v6).
-Path: G:\Shared drives\MSB Database\Database Previews\
+### 2) Master Previews *(sequencing targets)*
+Where we **import props** and do the actual sequencing.
+
+- **RGB Plus Prop Stage `xx`** — primary sequencing canvas per stage  
+- **Show Background Stage `yy`** — background/static elements per stage  
+- **Show Animation `zz`** — shared/global animation elements
+
+> When we import exported props into these masters, the **RawPropID** is preserved, but the original **PreviewID** is not. That’s OK—our checks use **RawPropID**.
+
+---
+
+### 3) Staged Previews *(for the database build)*
+The curated set of previews the parser consumes to build the database (v6).  
+These copies are produced by the **preview_merger** (do **not** copy into this folder by hand).
+
+**Staging path**
+~~~
+G:\Shared drives\MSB Database\Database Previews\
+~~~
+
+**Typical contents**
+~~~
+G:\Shared drives\MSB Database\
+  Database\
+    lor_output_v6.db
+    master_musical_preview_keys.csv        (optional: last-year snapshot for drift checks)
+  Database Previews\                        <-- Staged previews used to build the DB
+    RGB Plus Prop Stage 01 ....lorprev
+    Show Background Stage 07 ....lorprev
+    Show Animation 03 ....lorprev
+  UserPreviewStaging\
+    <username>\
+      PreviewsForProps\                     <-- Panel authoring previews (export to props)
+        1st Panel Animation - <Panel>.lorprev
+        1st Panel Animation - <Another>.lorprev
+~~~
 
 ## Authoring → Build Master → Validate & Stage → Parse (the workflow)
 
