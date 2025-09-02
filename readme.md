@@ -145,9 +145,9 @@ G:\Shared drives\MSB Database\
 
 ## Docs (start here)
 
-- [Operator Quickstart](docs/quickstart_operator.md)
-- [Preview Merger — Reference](docs/preview_merger_reference.md)
-- [Reporting & History](docs/reporting_history.md)
+- [Operator Quickstart](Docs/quickstart_operator.md)
+- [Preview Merger — Reference](Docs/preview_merger_reference.md)
+- [Reporting & History](Docs/reporting_history.md)
 - Archived docs live in [/archive/docs](archive/docs/)
 - 📝 [CHANGELOG](CHANGELOG.md) — curated list of processing and schema changes by date.
 - 📘 [Naming Conventions](naming_conventions.md)  
