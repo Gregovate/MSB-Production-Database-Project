@@ -54,8 +54,8 @@ G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps\
 Where we **import props** and do the actual sequencing.
 
 - **RGB Plus Prop Stage `xx`** — primary sequencing canvas per stage  
-- **Show Background Stage `yy`** — background/static elements per stage  
-- **Show Animation `zz`** — shared/global animation elements
+- **Show Background Stage `yy`** — background/static elements per stage (e.g. Peanuts, Goal Sign, Sledder, etc.)
+- **Show Animation `zz`** — shared/global animation elements (Elf on Shelf)
 
 > When we import exported props into these masters, the **RawPropID** is preserved, but the original **PreviewID** is not. That’s OK—our checks use **RawPropID**.
 
