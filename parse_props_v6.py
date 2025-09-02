@@ -79,6 +79,7 @@ DEBUG = False  # Global debug flag
 
 DEFAULT_DB_FILE = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
 DEFAULT_PREVIEW_PATH = r"G:\Shared drives\MSB Database\Database Previews"
+#DEFAULT_PREVIEW_PATH = r"G:\Shared drives\MSB Database\Database Previews\2024MasterPreviews"
 
 # Globals that existing functions use; will be set in main()
 DB_FILE = DEFAULT_DB_FILE
