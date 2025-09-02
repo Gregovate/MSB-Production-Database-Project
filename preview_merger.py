@@ -79,6 +79,8 @@ GLOBAL_DEFAULTS = {
 
 # ============================= Data models ============================= #
 
+BLOCKED_ACTION = 'needs-DisplayName Fixes'
+
 @dataclass
 class PreviewIdentity:
     guid: Optional[str]
@@ -149,7 +151,7 @@ def _fail_if_locked(paths: Iterable[Optional[Path]]) -> None:
         if not p.exists():
             continue  # only test existing files
         try:
-            with p.open('a', encoding='utf-8'):
+            with p.open('a', encoding='utf-8-sig'):
                 pass
         except PermissionError:
             locked.append(p)
@@ -289,6 +291,32 @@ def _in_dir(p: Path, root: Path) -> bool:
 #         })
 #     except Exception:
 #         pass
+def scan_staged_for_comments(staging_root: Path) -> Dict[str, Dict]:
+    """Return comment stats for every .lorprev currently staged, keyed by identity."""
+    out: Dict[str, Dict] = {}
+    if not staging_root.exists():
+        return out
+    for p in sorted(staging_root.glob('*.lorprev')):
+        idy = parse_preview_identity(p)
+        # If identity is unreadable, fall back to name-based key so it still shows up
+        key = identity_key(idy) if idy else f"NAME:{p.stem.lower()}"
+        if not key:
+            key = f"NAME:{p.stem.lower()}"
+        ct, cf, cn = comment_stats(p)
+        stat = p.stat()
+        out[key] = {
+            'PreviewName': (idy.name if idy and idy.name else p.stem),
+            'Revision': (idy.revision_raw if idy and idy.revision_raw else ''),
+            'GUID': (idy.guid if idy and idy.guid else ''),
+            'Size': stat.st_size,
+            'MTimeUtc': ymd_hms(stat.st_mtime),
+            'CommentTotal': ct,
+            'CommentFilled': cf,
+            'NoSpace': cn,
+            'SHA256': sha256_file(p),
+            'Path': str(p),
+        }
+    return out
 
 def append_staged_row(key: str, staged_path: Path, winner: Candidate, rows: List[Dict]) -> None:
     """Append a STAGED row (with comment stats) using the new report columns."""
@@ -436,7 +464,7 @@ def load_user_map(arg_map: Optional[str], json_path: Optional[str]) -> Dict[str,
         p = Path(json_path)
         if p.is_file():
             try:
-                data = json.loads(p.read_text(encoding='utf-8'))
+                data = json.loads(p.read_text(encoding='utf-8-sig'))
                 if isinstance(data, dict):
                     out.update({str(k): str(v) for k, v in data.items()})
             except Exception:
@@ -494,6 +522,15 @@ def group_by_key(candidates: List[Candidate]) -> Dict[str, List[Candidate]]:
     return groups
 
 def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[Candidate], str, bool]:
+    # --- NEW: Disqualify any candidate that has comment fields but commentsNoSpace == 0 25-09-02 GAL
+    eligible = [c for c in group if not (getattr(c, 'c_total', 0) > 0 and getattr(c, 'c_nospace', 0) == 0)]
+    if not eligible:
+        # Everyone disqualified → pick latest purely for reporting, mark conflict
+        winner = sorted(group, key=lambda c: c.mtime, reverse=True)[0]
+        losers = [c for c in group if c is not winner]
+        return winner, losers, 'all candidates disqualified (commentsNoSpace=0) — reporting only', True
+    group = eligible
+    
     # Single candidate fast-path
     if len(group) == 1:
         return group[0], [], 'single candidate', False
@@ -620,7 +657,7 @@ def write_csv(report_csv: Path, rows: List[Dict], input_root: str, staging_root:
         'Role','WinnerFrom','WinnerReason','Action','WinnerPolicy',
         'Sha8','WinnerSha8','StagedSha8','GUID','SHA256','UserEmail'
     ]
-    with report_csv.open('w', newline='', encoding='utf-8') as f:
+    with report_csv.open('w', newline='', encoding='utf-8-sig') as f:
         f.write(f"Input root,{input_root}\n")
         f.write(f"Staging root,{staging_root}\n\n")
         w = csv.DictWriter(f, fieldnames=fieldnames)
@@ -651,7 +688,7 @@ def write_html(report_html: Path, rows: List[Dict], input_root: str, staging_roo
     for r in rows:
         html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h, "")))}</td>' for h in headers) + '</tr>')
     html.append('</tbody></table>')
-    report_html.write_text('\n'.join(html), encoding='utf-8')
+    report_html.write_text('\n'.join(html), encoding='utf-8-sig')
 
 # ============================= Config & Args ============================= #
 
@@ -673,7 +710,7 @@ def _load_config_json(path: Optional[str]) -> Dict[str, str]:
     p = Path(path)
     if p.is_file():
         try:
-            data = json.loads(p.read_text(encoding='utf-8'))
+            data = json.loads(p.read_text(encoding='utf-8-sig'))
             if isinstance(data, dict):
                 # only accept known keys
                 return {k: str(v) for k, v in data.items() if k in GLOBAL_DEFAULTS}
@@ -689,6 +726,8 @@ def main():
     cfg_path = _preparse_config_path(sys.argv)
     cfg = _load_config_json(cfg_path)
     defaults = {**GLOBAL_DEFAULTS, **cfg}
+
+
 
     ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files with conflict detection and history DB.', fromfile_prefix_chars='@')
     ap.add_argument('--config', help='Path to JSON config file (optional)')
@@ -960,6 +999,13 @@ def main():
         else:
             action = 'update-staging'
 
+        # NEW: compute once for this key 25-09-02 GAL
+        blocked_no_space = (getattr(winner, 'c_total', 0) > 0 and getattr(winner, 'c_nospace', 0) == 0)
+
+        # Override: a blocked winner cannot be staged
+        if blocked_no_space:
+            action = BLOCKED_ACTION  # 'needs-DisplayName Fixes'
+
         winner_policy = args.policy
 
 
@@ -973,6 +1019,11 @@ def main():
         should_stage = True
         stage_reason = reason  # from choose_winner()
 
+        # If there are problems with missing/bad display names don't stage 25-09-02 GAL
+        if blocked_no_space:
+            should_stage = False
+            stage_reason = (stage_reason + '; ' if stage_reason else '') + f'blocked: {BLOCKED_ACTION} (commentsNoSpace=0)'
+     
         if staged_dest.exists():
             try:
                 st_idy = parse_preview_identity(staged_dest)
@@ -1104,7 +1155,10 @@ def main():
             key=lambda x: ((x.identity.revision_num or -1), x.mtime),
             reverse=True
         ):
+
             # ---- Winner/Candidate rows for this preview key ----
+            is_winner_row  = (c is winner)
+            is_report_only = (is_winner_row and action == BLOCKED_ACTION)
             rows.append({
                 'Key': key,
                 'PreviewName': c.identity.name or '',
@@ -1118,7 +1172,8 @@ def main():
                 'CommentTotal':  getattr(c, 'c_total', 0),
                 'CommentNoSpace': getattr(c, 'c_nospace', 0),
 
-                'Role': 'WINNER' if c is winner else 'CANDIDATE',
+                #'Role': 'WINNER' if c is winner else 'CANDIDATE',
+                'Role': ('REPORT-ONLY' if is_report_only else ('WINNER' if is_winner_row else 'CANDIDATE')),
                 'WinnerFrom':   (winner_from   if c is winner else ''),
                 'WinnerReason': (reason        if c is winner else ''),
                 'Action':       (action        if c is winner else ''),
@@ -1217,7 +1272,7 @@ def main():
     # We no longer look at winners/candidates — only what is currently in staging_root.
     try:
         ensure_dir(miss_csv.parent)
-        with miss_csv.open('w', newline='', encoding='utf-8') as f:
+        with miss_csv.open('w', newline='', encoding='utf-8-sig') as f:
             w = csv.DictWriter(f, fieldnames=[
                 'Key','PreviewName','Revision','User','CommentFilled','CommentNoSpace','CommentTotal','Path'
             ])
@@ -1257,8 +1312,38 @@ def main():
         print(f"\n[locked] {miss_csv} is open in another program. Close it and re-run.", file=sys.stderr)
         sys.exit(4)
 
+    # ---- All-staged comment audit (top-level staging; includes compliant)
+    all_csv = miss_csv.with_name('lorprev_all_staged_comments.csv')
+    ensure_dir(all_csv.parent)
+    with all_csv.open('w', newline='', encoding='utf-8-sig') as f:
+        w = csv.DictWriter(f, fieldnames=[
+            'Key','PreviewName','Revision','User',
+            'CommentFilled','CommentNoSpace','CommentTotal','Path'
+        ])
+        w.writeheader()
+        for p in sorted(Path(staging_root).glob('*.lorprev')):  # non-recursive
+            try:
+                idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
+                ct, cf, cn = comment_stats(p)
+                w.writerow({
+                    'Key': identity_key(idy) or f"PATH:{p.name.lower()}",
+                    'PreviewName': idy.name or '',
+                    'Revision': idy.revision_raw or '',
+                    'User': 'Staging root',
+                    'CommentFilled':  cf,
+                    'CommentNoSpace': cn,
+                    'CommentTotal':   ct,
+                    'Path': str(p),
+                })
+            except Exception:
+                continue
+    print(f"All-staged comment audit: {all_csv}")
 
-    # Sort rows by PreviewName (case-insensitive), then Revision (desc)
+
+
+
+
+
     # Sort rows by PreviewName (case-insensitive), then Revision (desc)
     def _revnum(v):
         try:
@@ -1308,7 +1393,7 @@ def main():
 
     # Optional manifest JSON next to CSV
     # manifest_path = report_csv.with_suffix('.manifest.json')
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8-sig')
     print(f"\nOK. Report: {report_csv}")
     if report_html: print(f"HTML: {report_html}")
     print(f"History DB: {history_db}")
