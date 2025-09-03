@@ -1,3 +1,27 @@
+##[v6.2] – 2025-09-03
+
+### Added
+
+- Per-run ledger artifacts on --apply: current_previews_ledger.csv and .html (grouped by Author, sorted by PreviewName) with Status, DisplayNamesFilledPct, ApplyDate, AppliedBy.
+- Run ledger file: append-only apply_events.csv capturing Key, PreviewName, Author, Revision, Size, Exported, ApplyDate, AppliedBy.
+- “Applied this run” export: applied_this_run.csv is written when any winners are staged in the current run (easy email attachment for teammates).
+- Console breadcrumbs: [script] running: … (path of the script in use) and [ledger] … lines after emits.
+
+### Changed
+
+- ApplyDate format unified to match Exported (uses ymd_hms(...)), including for backfilled rows.
+- Ledger emission order: ledger/backfill now run before the conflicts exit so artifacts are produced even when conflicts are detected.
+
+### Fixed
+
+- Blocked winners (comment fields present but commentsNoSpace == 0) are prevented from staging and clearly labeled via Action = needs-DisplayName Fixes; these rows surface under “Work Needed” in reports.
+
+### Notes
+
+- Backfill helper backfill_apply_events(...) populates missing ApplyDate/AppliedBy for current winners using preview_history.db (runs→staging_decisions) or staged file mtimes; idempotent and safe.
+
+- Artifacts are written under the standard reports/ directory next to lorprev_compare.*.
+
 ## [v6.1] – 2025‑09‑01
 
 ### Added
