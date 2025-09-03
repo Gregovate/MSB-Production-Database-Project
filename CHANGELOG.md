@@ -19,7 +19,6 @@
 ### Notes
 
 - Backfill helper backfill_apply_events(...) populates missing ApplyDate/AppliedBy for current winners using preview_history.db (runs→staging_decisions) or staged file mtimes; idempotent and safe.
-
 - Artifacts are written under the standard reports/ directory next to lorprev_compare.*.
 
 ## [v6.1] – 2025‑09‑01
