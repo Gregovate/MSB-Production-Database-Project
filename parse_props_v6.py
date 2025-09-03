@@ -385,7 +385,7 @@ def reconcile_subprops_to_canonical_master(db_file: str):
     finally:
         conn.close()
 
-
+# ============================ Parsing Modules ===========================================
 def process_none_props(preview_id, root):
     """
     RULES
@@ -468,8 +468,6 @@ def process_none_props(preview_id, root):
 
     conn.commit()
     conn.close()
-
-
 
 def process_dmx_props(preview_id, root):
     """
