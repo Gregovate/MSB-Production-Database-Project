@@ -1682,7 +1682,6 @@ def main():
 
         # 3) NEW: export only what changed in this run
         if applied_this_run:
-            import csv
             applied_csv = report_csv.parent / 'applied_this_run.csv'
             cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
             with applied_csv.open('w', encoding='utf-8-sig', newline='') as f:
