@@ -120,6 +120,8 @@ def safe_int(s, default=None):
     s = str(s).strip()
     return int(s) if s.isdigit() else default
 
+
+
 def setup_database():
     """Initialize the database schema, dropping tables if they already exist."""
     conn = sqlite3.connect(DB_FILE)

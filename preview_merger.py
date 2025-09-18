@@ -671,6 +671,37 @@ def write_current_manifest(staging_root: Path, out_csv: Path):
                 "Exported": info.get("MTimeUtc",""),
             })
 
+# a dry-run (“would-be”) manifest from preview_merger.py without changing any files GAL 25-09-18
+def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str = "current_previews_manifest_preview.csv"):
+    """
+    Create a 'would-be' manifest (no filesystem changes) listing the winners that
+    WOULD remain in staging if --apply were used.
+    Columns: FileName, PreviewName, Revision, Action
+    """
+    path = Path(staging_root) / out_name
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Build unique per preview key (you’re already de-duping elsewhere)
+    seen = set()
+    rows = []
+    for r in winner_rows:
+        key = r.get('Key')
+        if key in seen: 
+            continue
+        seen.add(key)
+        pn   = (r.get('PreviewName') or '').strip()
+        rev  = r.get('Revision') or ''
+        act  = r.get('Action') or ''
+        # filename we’d expect to keep in staging
+        fname = pn and (pn + ".lorprev") or ""
+        rows.append({"FileName": fname, "PreviewName": pn, "Revision": rev, "Action": act})
+
+    with path.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Revision","Action"])
+        w.writeheader()
+        w.writerows(sorted(rows, key=lambda x: (x["PreviewName"].lower(), -float(x["Revision"] or 0) if (x["Revision"] or "").replace('.','',1).isdigit() else 0)))
+
+    print(f"[dry-run] wrote preview manifest (no changes made): {path}")
 # ==================== Preview_History DB (LOCAL time, tz-aware) ==================== #
 
 DDL_HISTORY = """
@@ -1697,6 +1728,13 @@ def main():
     manifest_path = report_csv.with_suffix('.manifest.json')
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8-sig')
     print(f"\nOK. Report: {report_csv}")
+    if report_html:
+        print(f"HTML: {report_html}")
+    print(f"History DB: {history_db}")
+
+    # Common: cache winner rows once
+    winner_rows = [r for r in rows if r.get('Role') == 'WINNER']
+
     if args.apply:
         print(f"Staged → {staging_root}")
         if archive_root:
@@ -1712,7 +1750,7 @@ def main():
         # 2) Emit the per-run ledger (CSV/HTML). Use in-memory rows if available; else re-read the CSV.
         try:
             try:
-                _ = rows  # raises NameError if not defined here
+                _ = rows
                 compare_rows = rows
                 print(f"[ledger] using in-memory rows ({len(compare_rows)})")
             except NameError:
@@ -1728,7 +1766,7 @@ def main():
         except Exception as e:
             print(f"[ledger] failed: {e}")
 
-        # 3) NEW: export only what changed in this run
+        # 3) Export only what changed in this run (optional)
         if applied_this_run:
             applied_csv = report_csv.parent / 'applied_this_run.csv'
             cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
@@ -1738,27 +1776,21 @@ def main():
                 for r in applied_this_run:
                     w.writerow({c: r.get(c, '') for c in cols})
             print(f"[ledger] Applied this run: {applied_csv}")
-    # -------------------- INSERT: sweep/archive + STAGING manifest --------------------
-    if args.apply:
-        print(f"Staged → {staging_root}")
-        if archive_root: print(f"Archived non-winners → {archive_root}")
 
-        # Build the set of filenames that MUST remain in staging (winners only)
+        # 4) Sweep/archive non-winners + write the REAL manifest in Database Previews
         def _sanitize_name(s: str) -> str:
-            # simple filename-safe sanitizer
             bad = '<>:"/\\|?*'
             s = (s or '').strip()
-            for ch in bad: s = s.replace(ch, '-')
+            for ch in bad:
+                s = s.replace(ch, '-')
             return s.strip().rstrip('.')
 
-        winner_rows   = [r for r in rows if r.get('Role') == 'WINNER']
-        keep_files = set()
-        for r in winner_rows:
-            pn = r.get('PreviewName') or ''
-            if pn:
-                keep_files.add(f"{_sanitize_name(pn)}.lorprev".lower())
+        keep_files = {
+            f"{_sanitize_name((r.get('PreviewName') or ''))}.lorprev".lower()
+            for r in winner_rows
+            if r.get('PreviewName')
+        }
 
-        # Move any non-winner .lorprev out of staging into archive\YYYY-MM-DD\
         moved, kept = sweep_staging_archive(
             staging_root=Path(staging_root),
             archive_root=Path(archive_root) if archive_root else Path(staging_root) / "archive",
@@ -1766,11 +1798,17 @@ def main():
         )
         print(f"[sweep] kept={kept} moved_to_archive={moved}")
 
-        # Write a simple, filesystem-level manifest right in the staging folder
-        # (G:\Shared drives\MSB Database\Database Previews\current_previews_manifest.csv)
+        # Write the on-disk manifest of what's actually in staging now
         manifest_csv_path = Path(staging_root) / "current_previews_manifest.csv"
         write_current_manifest(Path(staging_root), manifest_csv_path)
         print(f"[sweep] staging manifest → {manifest_csv_path}")
+
+    else:
+        # DRY RUN: do not move files — write a 'would-be' manifest for clarity
+        # Helper lives near your other small utilities.
+        write_dryrun_manifest(Path(staging_root), winner_rows, out_name="current_previews_manifest_preview.csv")
+        print(f"[dry-run] wrote preview manifest (no changes made).")
+
     # ------------------------------------------------------------------------------
 
     if conflicts_found:
