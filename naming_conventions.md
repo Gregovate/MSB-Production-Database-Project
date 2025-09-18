@@ -1,4 +1,4 @@
-# Naming Conventions Updated 25-08-29
+# Naming Conventions Updated 25-09-04
 
 # Naming Conventions
 
@@ -14,24 +14,28 @@ We maintain **two distinct naming conventions** that must be followed consistent
 
 ## 1. Channel Naming Conventions
 
-The sequencing program sorts channels alphabetically. Therefore, it is imperative that props have **channel naming conventions** so they stay grouped in a predictable order in the preview. This is especially important for props with motion, where the order of channels must match the intended motion.
+The sequencing program sorts channels **alphabetically**. Therefore, it is imperative that props have **channel naming conventions** so they stay grouped in a predictable order in the preview. This is especially important for props with motion, where the order of channels must be sequenced to match the intended motion. Light O Rama considers every channel as a prop when actually is a controller port.
 
 **Format:**
 
 ```
-LL <variation> UID-Channel
+LL <variation> UID-Channel Name/Purpose
 ```
 
 - **LL** → Character abbreviation of the display or stage  
-Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc indicate stage abbreviation for grouping/location
+   - Prefixes like `EC` (Elf Choir), `WW` (Winter Wonderland), `PB` Polar Bears, etc indicate stage abbreviation for grouping/location
 - **Variations:**
-Used to order the channel in the channel grid to make seqencing more efficient
-  - Keep channels grouped in the grid to keep all stages together
-  - Order the channels to make chases work visually
+Used to order the channel in the channel grid to make seqencing most efficient.
+  - Keep channels grouped in the grid to keep all stages together.
+  -    e.g. TC Hippo 7B-04 Body Mid Head Eyes, TC Kingsbury 7C-04 Mugs
+  - Order the channels to make sequencing the most efficient.
+  - Order the channels to keep `Use same channel as` channels together.
+  - It's OK to use part of the display name as part of the channel name especially when there are multiple displays in a preview.
+    
 **Controller:**
 - **UID** → Assigned to the controller used  
-- **Channel** → The channel/port of the controller  
-- **Name** → A brief description of the channel name/function  
+- **Channel** → The channel/port of the controller always pad single digit channels with a leading 0 
+- **Name** → A brief description of the channel name/function of the prop
 
 **Example:**  
 

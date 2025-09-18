@@ -50,6 +50,8 @@ import hashlib
 import json
 import os
 import sqlite3
+import time
+import socket  # used for ledger 25-09-03 GAL
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -273,26 +275,7 @@ def _in_dir(p: Path, root: Path) -> bool:
         return True
     except Exception:
         return False
-# def add_staged_row(staged_path: Path, rows: List[Dict]) -> None:
-#     try:
-#         st_idy = parse_preview_identity(staged_path)
-#         st_sha = sha256_file(staged_path)
-#         st_stat = staged_path.stat()
-#         rows.append({
-#             'Key': identity_key(st_idy) or f'PATH:{staged_path.name}',
-#             'PreviewName': (st_idy.name if st_idy else '') or '',
-#             'Revision': (st_idy.revision_raw if st_idy else '') or '',
-#             'User': 'Staging root',
-#             'Size': st_stat.st_size,
-#             'Exported': ymd_hms(st_stat.st_mtime),
-#             'Role': 'STAGED',
-#             'WinnerReason': '',
-#             'GUID': (st_idy.guid if st_idy else '') or '',
-#             'SHA256': st_sha,
-#             'UserEmail': ''
-#         })
-#     except Exception:
-#         pass
+
 def scan_staged_for_comments(staging_root: Path) -> Dict[str, Dict]:
     """Return comment stats for every .lorprev currently staged, keyed by identity."""
     out: Dict[str, Dict] = {}
@@ -386,6 +369,260 @@ def append_staged_row(key: str, staged_path: Path, winner: Candidate, rows: List
             'SHA256': '',
             'UserEmail': '',
         })
+# ============================ Modules to Build Ledger 25-09-03 GAL ==================== #
+RUN_LEDGER_NAME = 'apply_events.csv'
+LEDGER_BASENAME = 'current_previews_ledger'
+
+def _parse_author(winner_from: str) -> str:
+    s = (winner_from or '').strip()
+    return s.split(':', 1)[1].strip() if s.upper().startswith('USER:') else s
+
+def _pct_display_names(total: str|int, nospace: str|int) -> int:
+    try:
+        t = int(total or 0)
+        n = int(nospace or 0)
+    except Exception:
+        return 0
+    if t <= 0:
+        return 100
+    return round(100 * n / t)
+
+def _status_for_row(action: str, total: int, nospace: int) -> str:
+    act = (action or '').lower()
+    clean = (total == 0) or (nospace == total)
+    if act in ('stage-new', 'update-staging') and clean:
+        return 'Ready to Apply'
+    if act == 'noop':
+        return 'Already Applied'
+    # includes REPORT-ONLY / needs-* / partial / blocked
+    return 'Work Needed'
+
+def emit_run_ledger(
+    report_csv: Path,
+    rows: list[dict],
+    applied_this_run: list[dict],
+) -> tuple[Path, Path, Path]:
+    """
+    Build a complete 'current previews' ledger for this apply run:
+      - One row per current preview (WINNER or REPORT-ONLY)
+      - Status + DisplayNamesFilledPct
+      - ApplyDate/AppliedBy from this run if applied; otherwise last known from run ledger CSV
+    Also appends per-item apply events to RUN_LEDGER_NAME for future runs.
+    """
+    out_dir = report_csv.parent
+    ledger_csv = out_dir / f'{LEDGER_BASENAME}.csv'
+    ledger_html = out_dir / f'{LEDGER_BASENAME}.html'
+    run_ledger = out_dir / RUN_LEDGER_NAME
+
+    # Append this run’s apply events to the small run ledger
+    if applied_this_run:
+        write_header = not run_ledger.exists()
+        with run_ledger.open('a', encoding='utf-8-sig', newline='') as f:
+            import csv
+            cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
+            w = csv.DictWriter(f, fieldnames=cols)
+            if write_header:
+                w.writeheader()
+            for r in applied_this_run:
+                w.writerow({c: r.get(c, '') for c in cols})
+
+    # Build a Key -> (ApplyDate, AppliedBy) map from the accumulated run ledger
+    last_apply = {}
+    if run_ledger.exists():
+        import csv
+        with run_ledger.open('r', encoding='utf-8-sig', newline='') as f:
+            for r in csv.DictReader(f):
+                k = r.get('Key') or ''
+                ad = r.get('ApplyDate') or ''
+                ab = r.get('AppliedBy') or ''
+                # keep the latest ApplyDate per key
+                prev = last_apply.get(k)
+                if not prev or (ad > prev[0]):
+                    last_apply[k] = (ad, ab)
+
+    # Filter the in-memory compare rows to the single “current” row per key
+    current = [r for r in rows if r.get('Role') in ('WINNER', 'REPORT-ONLY')]
+
+    # Normalize and compute display %
+    for r in current:
+        r['Author'] = _parse_author(r.get('WinnerFrom', ''))
+        t = int(r.get('CommentTotal') or 0)
+        n = int(r.get('CommentNoSpace') or 0)
+        r['DisplayNamesFilledPct'] = _pct_display_names(t, n)
+        r['Status'] = _status_for_row(r.get('Action',''), t, n)
+
+        k = r.get('Key') or ''
+        ad, ab = last_apply.get(k, ('', ''))
+        r['ApplyDate'] = ad
+        r['AppliedBy'] = ab
+
+    # If this run applied some items, stamp those ApplyDate/AppliedBy now
+    if applied_this_run:
+        apply_now = {r['Key']: (r['ApplyDate'], r['AppliedBy']) for r in applied_this_run}
+        for r in current:
+            k = r.get('Key') or ''
+            if k in apply_now:
+                r['ApplyDate'], r['AppliedBy'] = apply_now[k]
+
+    # Sort and write CSV
+    import csv, html
+    current.sort(key=lambda r: (r.get('Author') or '', r.get('PreviewName') or '', r.get('Revision') or ''))
+    cols = ['PreviewName','Size','Revision','Author','Exported','ApplyDate','AppliedBy','Status','DisplayNamesFilledPct','Key']
+    with ledger_csv.open('w', encoding='utf-8-sig', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        for r in current:
+            w.writerow({c: r.get(c, '') for c in cols})
+
+    # Simple grouped HTML
+    def _table(rows_, cols_):
+        if not rows_: return '<em>None</em>'
+        thead = ''.join(f'<th>{html.escape(c)}</th>' for c in cols_)
+        trs = []
+        for r in rows_:
+            tds = ''.join(f'<td>{html.escape(str(r.get(c,"") or ""))}</td>' for c in cols_)
+            trs.append(f'<tr>{tds}</tr>')
+        return f'<table><thead><tr>{thead}</tr></thead><tbody>{"".join(trs)}</tbody></table>'
+
+    style = """
+    <style>
+      body { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin:24px; }
+      h1 { font-size:22px; margin:0 0 8px 0; }
+      h2 { font-size:18px; margin:20px 0 8px 0; }
+      .meta { color:#666; margin-bottom:16px; }
+      table { border-collapse: collapse; width:100%; font-size:13px; }
+      th, td { padding:6px 8px; border-bottom:1px solid #eee; text-align:left; }
+    </style>
+    """.strip()
+
+    html_parts = [f"<!doctype html><meta charset='utf-8'><title>Current Previews Ledger</title>{style}"]
+    html_parts.append("<h1>Current Previews Ledger (grouped by Author)</h1>")
+    html_parts.append(f"<div class='meta'>Generated {datetime.now().astimezone().isoformat(timespec='seconds')}</div>")
+
+    # Grouped by Author
+    from itertools import groupby
+    for author, group in groupby(current, key=lambda r: r.get('Author') or ''):
+        rows_ = list(group)
+        html_parts.append(f"<h2>{(author or '(unknown)')}</h2>")
+        html_parts.append(_table(rows_, ['PreviewName','Size','Revision','Exported','ApplyDate','AppliedBy','Status','DisplayNamesFilledPct']))
+
+    ledger_html.write_text('\n'.join(html_parts), encoding='utf-8')
+    return ledger_csv, ledger_html, run_ledger
+
+# ---- Backfill Apply Events from history DB / staged files ----
+def backfill_apply_events(report_csv: Path, history_db: Path, staging_root: Path, overwrite: bool=False) -> tuple[Path, int]:
+    """
+    Populate apply_events.csv for current winners using preview_history.db (if available),
+    falling back to filesystem mtimes for staged files. Returns (events_path, rows_written).
+    """
+    import csv, os, sqlite3
+
+    # Read the current compare rows
+    with open(report_csv, 'r', encoding='utf-8-sig', newline='') as f:
+        compare_rows = list(csv.DictReader(f))
+
+    # Winners only (current "latest-and-greatest")
+    winners = [r for r in compare_rows if r.get('Role') in ('WINNER','REPORT-ONLY')]
+    by_key = {r.get('Key',''): r for r in winners if r.get('Key')}
+
+    events_path = Path(report_csv).parent / RUN_LEDGER_NAME
+
+    # Read existing events to avoid duplicate/older inserts
+    existing = {}
+    if events_path.exists() and not overwrite:
+        with open(events_path, 'r', encoding='utf-8-sig', newline='') as f:
+            for r in csv.DictReader(f):
+                k = r.get('Key') or ''
+                if k:
+                    existing[k] = (r.get('ApplyDate','') or '', r.get('AppliedBy','') or '')
+
+    # Query DB for staged decisions (latest per key)
+    latest = {}  # key -> (staged_as, apply_date_from_run, applied_by)
+    applied_by_field_names = ('host','hostname','machine','applied_by')
+    run_time_field_names   = ('started_at','created_at','run_started_at','run_time')
+
+    try:
+        import sqlite3
+        conn = sqlite3.connect(str(history_db))
+        cur  = conn.cursor()
+        # Try to join runs → staging_decisions for timestamps & host/user
+        q = f"""
+            SELECT sd.preview_key,
+                   sd.staged_as,
+                   { "COALESCE(" + ",".join("r."+c for c in run_time_field_names) + ")" } AS run_started,
+                   { "COALESCE(" + ",".join("r."+c for c in applied_by_field_names) + ")" } AS applied_by
+            FROM staging_decisions sd
+            LEFT JOIN runs r ON r.id = sd.run_id
+            WHERE sd.action='staged'
+            ORDER BY run_started DESC, sd.rowid DESC
+        """
+        cur.execute(q)
+        for key, staged_as, run_started, applied_by in cur.fetchall():
+            if key not in by_key:   # only fill for current winners
+                continue
+            if key in latest:       # keep newest only
+                continue
+            latest[key] = (staged_as, run_started or '', applied_by or '')
+    except Exception:
+        # Fallback: no runs table; get latest staged_as per key by rowid
+        try:
+            cur.execute("SELECT preview_key, staged_as FROM staging_decisions WHERE action='staged' ORDER BY rowid DESC")
+            for key, staged_as in cur.fetchall():
+                if key not in by_key:
+                    continue
+                if key in latest:
+                    continue
+                latest[key] = (staged_as, '', '')
+        except Exception:
+            pass
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    # Build rows to append
+    rows_to_write = []
+    for key, r in by_key.items():
+        staged_as, run_started, applied_by = latest.get(key, ('', '', ''))
+        apply_date = run_started
+        if not apply_date and staged_as:
+            try:
+                ts = os.path.getmtime(staged_as)
+                apply_date = datetime.fromtimestamp(ts).astimezone().isoformat(timespec='seconds')
+            except Exception:
+                apply_date = ''
+        # Skip if we already have an equal/newer ApplyDate recorded
+        if key in existing and existing[key][0] >= (apply_date or ''):
+            continue
+
+        # Author from WinnerFrom (USER:xyz → xyz)
+        wf = (r.get('WinnerFrom','') or '').strip()
+        author = wf.split(':',1)[1].strip() if wf.upper().startswith('USER:') else wf
+
+        rows_to_write.append({
+            'Key':         key,
+            'PreviewName': r.get('PreviewName',''),
+            'Author':      author,
+            'Revision':    r.get('Revision',''),
+            'Size':        r.get('Size',''),
+            'Exported':    r.get('Exported',''),
+            'ApplyDate':   apply_date,
+            'AppliedBy':   applied_by or '',
+        })
+
+    # Write/append
+    write_header = overwrite or not events_path.exists()
+    mode = 'w' if overwrite else 'a'
+    with open(events_path, mode, encoding='utf-8-sig', newline='') as f:
+        cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
+        w = csv.DictWriter(f, fieldnames=cols)
+        if write_header:
+            w.writeheader()
+        for row in rows_to_write:
+            w.writerow(row)
+
+    return events_path, len(rows_to_write)
 
 #Builds a manifest of current previews and archives old previews
 def sweep_staging_archive(staging_root: Path, archive_root: Path, keep_files: set[str]) -> tuple[int,int]:
@@ -775,7 +1012,11 @@ def main():
     cfg = _load_config_json(cfg_path)
     defaults = {**GLOBAL_DEFAULTS, **cfg}
 
-
+    # --------------- Added for ledger 25-09-03 GAL -------------
+    # … inside main(), before processing any previews:
+    applied_this_run: list[dict] = []
+    run_started_local = datetime.now().astimezone().isoformat(timespec='seconds')
+    applied_by = socket.gethostname()  # or os.getlogin()
 
     ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files with conflict detection and history DB.', fromfile_prefix_chars='@')
     ap.add_argument('--config', help='Path to JSON config file (optional)')
@@ -819,6 +1060,7 @@ def main():
 
     # ---- FAIL FAST if any existing outputs are open (Excel etc.)
     _fail_if_locked([report_csv, report_html, miss_csv, manifest_path])
+    print(f"[script] running: {__file__}")
 
     # Always show which staging root we’re using (helps when testing different folders)
     print(f"Staging root: {staging_root}")
@@ -1247,6 +1489,18 @@ def main():
                         'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
                         (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'staged')
                     )
+                # >>> NEW: record this apply event for the run ledger 25-09-03 GAL
+                applied_this_run.append({
+                    'Key':         key,
+                    'PreviewName': winner.identity.name or '',
+                    'Author':      winner.user or '',
+                    'Revision':    winner.identity.revision_raw or '',
+                    'Size':        winner.size,
+                    'Exported':    ymd_hms(winner.mtime),
+                    'ApplyDate':   ymd_hms(time.time()),
+                    'AppliedBy':   applied_by,
+                })
+                # <<<
                 if archive_root and losers:
                     day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
                     for l in losers:
@@ -1440,15 +1694,50 @@ def main():
         write_html(report_html, rows, str(input_root), str(staging_root))
 
     # Optional manifest JSON next to CSV
-    # manifest_path = report_csv.with_suffix('.manifest.json')
+    manifest_path = report_csv.with_suffix('.manifest.json')
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8-sig')
     print(f"\nOK. Report: {report_csv}")
-    if report_html: print(f"HTML: {report_html}")
-    print(f"History DB: {history_db}")
     if args.apply:
         print(f"Staged → {staging_root}")
-        if archive_root: print(f"Archived non‑winners → {archive_root}")
+        if archive_root:
+            print(f"Archived non-winners → {archive_root}")
 
+        # 1) Top up apply_events.csv so older applies get ApplyDate/AppliedBy
+        try:
+            ep, wrote = backfill_apply_events(report_csv, history_db, staging_root, overwrite=False)
+            print(f"[ledger/backfill] wrote {wrote} event(s) → {ep}")
+        except Exception as e:
+            print(f"[ledger/backfill] failed: {e}")
+
+        # 2) Emit the per-run ledger (CSV/HTML). Use in-memory rows if available; else re-read the CSV.
+        try:
+            try:
+                _ = rows  # raises NameError if not defined here
+                compare_rows = rows
+                print(f"[ledger] using in-memory rows ({len(compare_rows)})")
+            except NameError:
+                from csv import DictReader
+                with open(report_csv, 'r', encoding='utf-8-sig', newline='') as f:
+                    compare_rows = list(DictReader(f))
+                print(f"[ledger] re-read rows from {report_csv} ({len(compare_rows)})")
+
+            ledger_csv, ledger_html, run_ledger = emit_run_ledger(report_csv, compare_rows, applied_this_run)
+            print(f"[ledger] CSV : {ledger_csv}")
+            print(f"[ledger] HTML: {ledger_html}")
+            print(f"[ledger] Run events appended to: {run_ledger}")
+        except Exception as e:
+            print(f"[ledger] failed: {e}")
+
+        # 3) NEW: export only what changed in this run
+        if applied_this_run:
+            applied_csv = report_csv.parent / 'applied_this_run.csv'
+            cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
+            with applied_csv.open('w', encoding='utf-8-sig', newline='') as f:
+                w = csv.DictWriter(f, fieldnames=cols)
+                w.writeheader()
+                for r in applied_this_run:
+                    w.writerow({c: r.get(c, '') for c in cols})
+            print(f"[ledger] Applied this run: {applied_csv}")
     # -------------------- INSERT: sweep/archive + STAGING manifest --------------------
     if args.apply:
         print(f"Staged → {staging_root}")

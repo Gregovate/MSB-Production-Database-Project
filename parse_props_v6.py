@@ -385,7 +385,7 @@ def reconcile_subprops_to_canonical_master(db_file: str):
     finally:
         conn.close()
 
-
+# ============================ Parsing Modules ===========================================
 def process_none_props(preview_id, root):
     """
     RULES
@@ -468,8 +468,6 @@ def process_none_props(preview_id, root):
 
     conn.commit()
     conn.close()
-
-
 
 def process_dmx_props(preview_id, root):
     """
@@ -1572,6 +1570,56 @@ def create_wiring_views_v6(db_file: str):
         print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (keep masters; hide only duplicate sub at same address).")
     finally:
         conn.close()
+
+    # use last year's Master musical preview to see where changes have occurred (OPTIONAL)
+    def load_master_keys_csv(conn, csv_path):
+        import csv
+        c = conn.cursor()
+        c.execute("DROP TABLE IF EXISTS master_musical_prev_keys")
+
+        with open(csv_path, newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+
+            col_defs = ", ".join([f'"{h}" TEXT' for h in headers])
+            c.execute(f"CREATE TABLE master_musical_prev_keys ({col_defs});")
+
+            f.seek(0)
+            reader = csv.DictReader(f)
+            rows = [tuple(row[h] for h in headers) for row in reader]
+
+        placeholders = ", ".join(["?"] * len(headers))
+        c.executemany(
+            f'INSERT INTO master_musical_prev_keys ({",".join(headers)}) VALUES ({placeholders})',
+            rows
+        )
+        conn.commit()
+        print(f"[INFO] Imported {len(rows)} rows into master_musical_prev_keys")
+
+
+    def create_breaking_check_view(conn):
+        ddl = """
+        DROP VIEW IF EXISTS breaking_check_v6;
+        CREATE VIEW breaking_check_v6 AS
+        SELECT
+            m.RawPropID,
+            m.ChannelName   AS ChannelName_2024,
+            m.DisplayName   AS DisplayName_2024,
+            p.Name          AS ChannelName_Now,
+            p.LORComment    AS DisplayName_Now,
+            CASE WHEN p.PropID IS NULL THEN 1 ELSE 0 END AS Missing_Now,
+            CASE WHEN p.PropID IS NOT NULL
+                AND m.ChannelName != IFNULL(p.Name,'') THEN 1 ELSE 0 END AS ChannelName_Changed,
+            CASE WHEN p.PropID IS NOT NULL
+                AND m.DisplayName != IFNULL(p.LORComment,'') THEN 1 ELSE 0 END AS DisplayName_Changed
+        FROM master_musical_prev_keys m
+        LEFT JOIN props p ON p.PropID = m.RawPropID;
+        """
+        conn.executescript(ddl)
+        conn.commit()
+        print("[INFO] Created breaking_check_v6 view")
+
+    
 
 
 if __name__ == "__main__":
