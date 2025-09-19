@@ -166,6 +166,19 @@ def _fail_if_locked(paths: Iterable[Optional[Path]]) -> None:
         print("[locked] Close them and run preview_merger.py again.", file=sys.stderr)
         sys.exit(4)  # distinct code: report outputs locked
 
+# ---- Allowed staging families (update when you add a new one)
+_ALLOWED_PREFIXES = [
+    "RGB Plus Prop Stage ",
+    "Show Background Stage ",
+    "Show Animation ",
+]
+
+def is_staging_candidate(preview_name: str) -> bool:
+    """Allow only known staging families."""
+    n = (preview_name or "").strip()
+    return bool(n) and any(n.startswith(p) for p in _ALLOWED_PREFIXES)
+
+
 # Ignore Device type = None for staged previews 25-09-01 GAL
 from pathlib import Path
 def device_type_is_none(p: Path) -> bool:
@@ -418,7 +431,7 @@ def emit_run_ledger(
     if applied_this_run:
         write_header = not run_ledger.exists()
         with run_ledger.open('a', encoding='utf-8-sig', newline='') as f:
-            import csv
+            #import csv
             cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
             w = csv.DictWriter(f, fieldnames=cols)
             if write_header:
@@ -429,7 +442,7 @@ def emit_run_ledger(
     # Build a Key -> (ApplyDate, AppliedBy) map from the accumulated run ledger
     last_apply = {}
     if run_ledger.exists():
-        import csv
+        #import csv
         with run_ledger.open('r', encoding='utf-8-sig', newline='') as f:
             for r in csv.DictReader(f):
                 k = r.get('Key') or ''
@@ -465,7 +478,7 @@ def emit_run_ledger(
                 r['ApplyDate'], r['AppliedBy'] = apply_now[k]
 
     # Sort and write CSV
-    import csv, html
+    #import csv, html
     current.sort(key=lambda r: (r.get('Author') or '', r.get('PreviewName') or '', r.get('Revision') or ''))
     cols = ['PreviewName','Size','Revision','Author','Exported','ApplyDate','AppliedBy','Status','DisplayNamesFilledPct','Key']
     with ledger_csv.open('w', encoding='utf-8-sig', newline='') as f:
@@ -515,7 +528,7 @@ def backfill_apply_events(report_csv: Path, history_db: Path, staging_root: Path
     Populate apply_events.csv for current winners using preview_history.db (if available),
     falling back to filesystem mtimes for staged files. Returns (events_path, rows_written).
     """
-    import csv, os, sqlite3
+    #import csv, os, sqlite3
 
     # Read the current compare rows
     with open(report_csv, 'r', encoding='utf-8-sig', newline='') as f:
@@ -624,9 +637,9 @@ def backfill_apply_events(report_csv: Path, history_db: Path, staging_root: Path
 
     return events_path, len(rows_to_write)
 
-#Builds a manifest of current previews and archives old previews
+# Builds a manifest of current previews and archives old previews
 def sweep_staging_archive(staging_root: Path, archive_root: Path, keep_files: set[str]) -> tuple[int,int]:
-    """
+    r"""
     Move any *.lorprev in staging_root that is not in keep_files into
     archive_root\YYYY-MM-DD\ (preserves filename).
     Returns (moved, kept).
@@ -673,35 +686,176 @@ def write_current_manifest(staging_root: Path, out_csv: Path):
 
 # a dry-run (“would-be”) manifest from preview_merger.py without changing any files GAL 25-09-18
 def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str = "current_previews_manifest_preview.csv"):
-    """
+    r"""
     Create a 'would-be' manifest (no filesystem changes) listing the winners that
     WOULD remain in staging if --apply were used.
-    Columns: FileName, PreviewName, Revision, Action
+    Columns: FileName, PreviewName, Revision, Action, Present
+    - Present = "Yes" if FileName currently exists in the staging_root (ignores .bak/subfolders)
+              = "No"  if it would be newly added/updated by --apply
     """
     path = Path(staging_root) / out_name
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    # What actually exists right now (only .lorprev in root, ignore .bak & subfolders)
+    existing = {p.name.lower() for p in Path(staging_root).glob("*.lorprev")}
 
     # Build unique per preview key (you’re already de-duping elsewhere)
     seen = set()
     rows = []
     for r in winner_rows:
         key = r.get('Key')
-        if key in seen: 
+        if key in seen:
             continue
         seen.add(key)
-        pn   = (r.get('PreviewName') or '').strip()
-        rev  = r.get('Revision') or ''
-        act  = r.get('Action') or ''
-        # filename we’d expect to keep in staging
-        fname = pn and (pn + ".lorprev") or ""
-        rows.append({"FileName": fname, "PreviewName": pn, "Revision": rev, "Action": act})
+
+        pn  = (r.get('PreviewName') or '').strip()
+        rev = r.get('Revision') or ''
+        act = r.get('Action')   or ''
+        fname = f"{pn}.lorprev" if pn else ""
+
+        present = "Yes" if fname.lower() in existing else "No"
+        rows.append({
+            "FileName": fname,
+            "PreviewName": pn,
+            "Revision": rev,
+            "Action": act,
+            "Present": present,
+        })
+
+    def _revnum(v: str) -> float:
+        try:
+            return float(v or '')
+        except Exception:
+            return -1.0
+
+    rows.sort(key=lambda x: (x["PreviewName"].lower(), -_revnum(x["Revision"])))
 
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Revision","Action"])
+        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Revision","Action","Present"])
         w.writeheader()
-        w.writerows(sorted(rows, key=lambda x: (x["PreviewName"].lower(), -float(x["Revision"] or 0) if (x["Revision"] or "").replace('.','',1).isdigit() else 0)))
+        w.writerows(rows)
 
     print(f"[dry-run] wrote preview manifest (no changes made): {path}")
+
+
+# Writes Manifest in HTML format GAL 25-09-19
+def write_current_manifest_html(staging_root: Path, out_html: Path):
+    rows = []
+    for p in sorted(staging_root.glob("*.lorprev")):
+        st = p.stat()
+        rows.append((p.name, st.st_size, datetime.utcfromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")))
+    _emit_manifest_html(rows, out_html, headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text")], context_path=str(out_html.parent))
+
+def write_dryrun_manifest_html(winner_rows: list, out_html: Path):
+    seen, rows = set(), []
+    def _revnum(v):
+        try: return float(v or '')
+        except Exception: return -1.0
+    for r in winner_rows:
+        key = r.get('Key')
+        if key in seen: continue
+        seen.add(key)
+        pn  = (r.get('PreviewName') or '').strip()
+        rev = r.get('Revision') or ''
+        act = r.get('Action') or ''
+        fname = f"{pn}.lorprev" if pn else ""
+        rows.append((fname, pn, rev, act))
+    rows.sort(key=lambda x: (x[1].lower(), -_revnum(x[2])))
+    # Use the *staging* path as context so it’s obvious where the winners would live
+    _emit_manifest_html(rows, out_html, headers=["FileName","PreviewName","Revision","Action"], context_path=str(out_html.parent))
+
+
+def _emit_manifest_html(rows, out_html: Path, headers, context_path: str | None = None):
+    """Emit a minimal, sortable HTML table with run timestamp + optional folder path."""
+    out_html.parent.mkdir(parents=True, exist_ok=True)
+    # If caller passed plain strings for headers, infer all text
+    if headers and isinstance(headers[0], str):
+        hdrs = [(h, "text") for h in headers]
+    else:
+        # Allow headers like [("FileName","text"), ("Revision","number"), ...]
+        hdrs = headers
+
+    th = "".join(
+        f"<th data-col='{i}' data-type='{_esc(t)}' title='Click to sort'>{_esc(h)}</th>"
+        for i, (h, t) in enumerate(hdrs)
+    )
+    tr = "\n".join("<tr>" + "".join(f"<td>{_esc(c)}</td>" for c in row) + "</tr>" for row in rows)
+    run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ctx = _esc(context_path or "")
+
+    html = f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{out_html.name} – Generated {run_ts}{' – ' + ctx if ctx else ''}</title>
+<style>
+ body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:20px}}
+ table{{border-collapse:collapse;width:100%}}
+ th,td{{border:1px solid #ddd;padding:8px}}
+ th{{background:#f3f3f3;cursor:pointer;position:sticky;top:0}}
+ tr:nth-child(even){{background:#fafafa}}
+ .hint{{color:#666;margin:.5rem 0 1rem;white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<h2>{out_html.name}</h2>
+<div class="hint">Generated on {run_ts}{('<br>Folder: ' + ctx) if ctx else ''}\nTip: click a column header to sort.</div>
+<table id="m">
+  <thead><tr>{th}</tr></thead>
+  <tbody>
+{tr}
+  </tbody>
+</table>
+<script>
+(function(){{
+  const table = document.getElementById("m");
+  const thead = table.tHead;
+  const tbody = table.tBodies[0];
+
+  const get = (tr,n)=> (tr.children[n]?.innerText || tr.children[n]?.textContent || "").trim();
+
+  function sortTable(col) {{
+    const hdr = thead.rows[0].children[col];
+    const type = (hdr.getAttribute("data-type") || "text").toLowerCase();
+    const dir  = hdr.getAttribute("data-dir")==="asc" ? "desc" : "asc";
+    [...thead.rows[0].children].forEach(th=>th.removeAttribute("data-dir"));
+    hdr.setAttribute("data-dir", dir);
+
+    const rows = Array.from(tbody.rows);
+    rows.sort((a,b) => {{
+      const av=get(a,col), bv=get(b,col);
+      let cmp=0;
+      if(type==="number"){{
+        const an=parseFloat(av), bn=parseFloat(bv);
+        if(!isNaN(an) && !isNaN(bn)) cmp = an - bn;
+        else cmp = av.localeCompare(bv, undefined, {{numeric:true, sensitivity:'base'}});
+      }} else if (type==="date") {{
+        cmp = new Date(av) - new Date(bv);
+      }} else {{
+        cmp = av.localeCompare(bv, undefined, {{numeric:true, sensitivity:'base'}});
+      }}
+      return dir==="asc" ? cmp : -cmp;
+    }});
+    rows.forEach(r => tbody.appendChild(r));
+  }}
+
+  thead.addEventListener("click", (e) => {{
+    const th = e.target.closest("th");
+    if (!th) return;
+    const col = parseInt(th.getAttribute("data-col"), 10);
+    if (!isNaN(col)) sortTable(col);
+  }});
+}})();
+</script>
+</body></html>"""
+    out_html.write_text(html, encoding="utf-8")
+
+
+def _esc(v):
+    s = "" if v is None else str(v)
+    return (s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+             .replace('"',"&quot;").replace("'","&#39;"))
+   
 # ==================== Preview_History DB (LOCAL time, tz-aware) ==================== #
 
 DDL_HISTORY = """
@@ -1735,6 +1889,23 @@ def main():
     # Common: cache winner rows once
     winner_rows = [r for r in rows if r.get('Role') == 'WINNER']
 
+    # Keep only the previews that belong in Database Previews (allowlist)
+    allowed_winner_rows = [r for r in winner_rows if is_staging_candidate(r.get('PreviewName'))]
+
+    # (Optional but handy) log what was excluded so teammates can fix/move them
+    excluded = [r for r in winner_rows if r not in allowed_winner_rows]
+    if excluded:
+        excl_csv = Path(report_csv).parent / "excluded_winners.csv"
+        with excl_csv.open("w", encoding="utf-8-sig", newline="") as f:
+            #import csv
+            cols = ["Key","PreviewName","Revision","Action","User"]
+            w = csv.DictWriter(f, fieldnames=cols)
+            w.writeheader()
+            for r in excluded:
+                w.writerow({c: r.get(c, "") for c in cols})
+        print(f"[filter] excluded {len(excluded)} previews not matching allowed families → {excl_csv}")
+
+
     if args.apply:
         print(f"Staged → {staging_root}")
         if archive_root:
@@ -1787,7 +1958,7 @@ def main():
 
         keep_files = {
             f"{_sanitize_name((r.get('PreviewName') or ''))}.lorprev".lower()
-            for r in winner_rows
+            for r in allowed_winner_rows
             if r.get('PreviewName')
         }
 
@@ -1798,16 +1969,74 @@ def main():
         )
         print(f"[sweep] kept={kept} moved_to_archive={moved}")
 
+
         # Write the on-disk manifest of what's actually in staging now
         manifest_csv_path = Path(staging_root) / "current_previews_manifest.csv"
         write_current_manifest(Path(staging_root), manifest_csv_path)
+
+        # HTML version too 25-09-19
+        manifest_html_path = Path(staging_root) / "current_previews_manifest.html"
+        write_current_manifest_html(Path(staging_root), manifest_html_path)
         print(f"[sweep] staging manifest → {manifest_csv_path}")
+        print(f"[sweep] staging manifest (HTML) → {manifest_html_path}")
 
     else:
         # DRY RUN: do not move files — write a 'would-be' manifest for clarity
-        # Helper lives near your other small utilities.
-        write_dryrun_manifest(Path(staging_root), winner_rows, out_name="current_previews_manifest_preview.csv")
+
+        # 1) CSV preview manifest (adds Present column)
+        #    Only include previews from allowed staging families
+        write_dryrun_manifest(Path(staging_root), allowed_winner_rows,
+                              out_name="current_previews_manifest_preview.csv")
         print(f"[dry-run] wrote preview manifest (no changes made).")
+
+        # 2) HTML preview manifest (build rows locally; don't rely on compare 'rows')
+        #    Present = "Yes" if FileName exists in staging right now; "No" otherwise
+        existing = {p.name.lower() for p in Path(staging_root).glob("*.lorprev")}
+        html_rows = []
+
+        def _revnum(v: str) -> float:
+            try:
+                return float(v or '')
+            except Exception:
+                return -1.0
+
+        # de-dupe by preview Key (same rule as CSV writer)
+        seen = set()
+        for r in allowed_winner_rows:
+            k = r.get('Key')
+            if k in seen:
+                continue
+            seen.add(k)
+
+            pn  = (r.get('PreviewName') or '').strip()
+            rev = r.get('Revision') or ''
+            act = r.get('Action')   or ''
+            fname = f"{pn}.lorprev" if pn else ""
+            present = "Yes" if fname.lower() in existing else "No"
+
+            html_rows.append((fname, pn, rev, act, present))
+
+        # sort: PreviewName (A→Z), then Revision (numeric DESC)
+        html_rows.sort(key=lambda x: (x[1].lower(), -_revnum(x[2])))
+
+        # Write the HTML preview manifest with sortable headers
+        preview_html = Path(staging_root) / "current_previews_manifest_preview.html"
+        _emit_manifest_html(
+            html_rows,
+            preview_html,
+            headers=[
+                ("FileName", "text"),
+                ("PreviewName", "text"),
+                ("Revision", "number"),
+                ("Action", "text"),
+                ("Present", "text"),
+            ],
+            context_path=str(staging_root),
+        )
+        print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
+
+
+
 
     # ------------------------------------------------------------------------------
 
