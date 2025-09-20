@@ -576,13 +576,19 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
     conn.commit()
     conn.close()
 
-    
+
 def process_dmx_props(preview_id, root):
     """
     RULES
     -----
     Purpose
       - Persist DMX props and their universe/channel legs.
+    
+    DMX grouping rules:
+      • Group by LORComment (display name).
+      • Write exactly ONE master props row per group.
+      • Attach ALL DMX ChannelGrid legs from every row in the group to that master (dmxChannels.PropId = master).
+      • Choose master by the smallest (StartUniverse, StartChannel); tie-break by PropID for determinism.
 
     Behavior
       - For each PropClass with DeviceType == "DMX":
@@ -603,52 +609,95 @@ def process_dmx_props(preview_id, root):
       - Wiring views join `dmxChannels` back to `props` to show universes as Controllers.
     """
 
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+    import sqlite3
+    from collections import defaultdict
 
+    def norm(s): return (s or "").strip()
+    def safe_int(v, d=0):
+        try: return int(v)
+        except: return d
+
+    conn = sqlite3.connect(DB_FILE)
+    cur  = conn.cursor()
+
+    # 1) Collect DMX rows and parse ChannelGrid
+    groups = defaultdict(list)  # comment -> [row, ...]
     for prop in root.findall(".//PropClass"):
-        device_type = prop.get("DeviceType")
-        if device_type != "DMX":
+        if (prop.get("DeviceType") or "").strip().upper() != "DMX":
             continue
 
-        # RAW id from Visualizer; we DO NOT store this directly in the DB
-        raw_id = prop.get("id")
-        master_prop_id = scoped_id(preview_id, raw_id)   # << scoped id used everywhere below
+        comment = norm(prop.get("Comment"))
+        if not comment:
+            continue
 
-        # --- fields copied as-is from the PropClass --------------------------
-        name = prop.get("Name")
-        LORComment = prop.get("Comment")
-        bulb_shape = prop.get("BulbShape")
-        dimming_curve_name = prop.get("DimmingCurveName")
-        max_channels = prop.get("MaxChannels")
-        custom_bulb_color = prop.get("CustomBulbColor")
-        individual_channels = prop.get("IndividualChannels")
-        legacy_sequence_method = prop.get("LegacySequenceMethod")
-        opacity = prop.get("Opacity")
-        master_dimmable = prop.get("MasterDimmable")
-        preview_bulb_size = prop.get("PreviewBulbSize")
-        separate_ids = prop.get("SeparateIds")
-        start_location = prop.get("StartLocation")
-        string_type = prop.get("StringType")
-        traditional_colors = prop.get("TraditionalColors")
-        traditional_type = prop.get("TraditionalType")
-        effect_bulb_size = prop.get("EffectBulbSize")
-        tag = prop.get("Tag")
-        parm1 = prop.get("Parm1")
-        parm2 = prop.get("Parm2")
-        parm3 = prop.get("Parm3")
-        parm4 = prop.get("Parm4")
-        parm5 = prop.get("Parm5")
-        parm6 = prop.get("Parm6")
-        parm7 = prop.get("Parm7")
-        parm8 = prop.get("Parm8")
-        # Your original assumption: Parm2 holds light count for DMX
-        lights = int(parm2) if parm2 and str(parm2).isdigit() else 0
+        raw_id = prop.get("id") or ""
+        scoped = scoped_id(preview_id, raw_id)  # keep consistent with the rest of the parser
 
-        channel_grid = prop.get("ChannelGrid") or ""
+        # Parse ChannelGrid into legs
+        legs = []
+        cg = norm(prop.get("ChannelGrid"))
+        if cg:
+            for seg in cg.split(";"):
+                seg = seg.strip()
+                if not seg:
+                    continue
+                parts = [p.strip() for p in seg.split(",")]
+                if len(parts) >= 5:
+                    legs.append({
+                        "Network": parts[0],
+                        "StartUniverse": safe_int(parts[1], 0),
+                        "StartChannel":  safe_int(parts[2], 0),
+                        "EndChannel":    safe_int(parts[3], 0),
+                        "Unknown":       parts[4],
+                    })
 
-        # --- Master Prop -> props (scoped PropID) ----------------------------
-        cursor.execute("""
+        # Decide sort key (lowest universe, then channel; default high if missing)
+        min_uni = min([l["StartUniverse"] for l in legs], default=10**9)
+        min_ch  = min([l["StartChannel"]  for l in legs], default=10**9)
+
+        row = {
+            "PropID": scoped,
+            "RawID": raw_id,
+            "Name": prop.get("Name"),
+            "LORComment": comment,
+            "DeviceType": "DMX",
+            "BulbShape": prop.get("BulbShape"),
+            "DimmingCurveName": prop.get("DimmingCurveName"),
+            "MaxChannels": prop.get("MaxChannels"),
+            "CustomBulbColor": prop.get("CustomBulbColor"),
+            "IndividualChannels": prop.get("IndividualChannels"),
+            "LegacySequenceMethod": prop.get("LegacySequenceMethod"),
+            "Opacity": prop.get("Opacity"),
+            "MasterDimmable": prop.get("MasterDimmable"),
+            "PreviewBulbSize": prop.get("PreviewBulbSize"),
+            "SeparateIds": prop.get("SeparateIds"),
+            "StartLocation": prop.get("StartLocation"),
+            "StringType": prop.get("StringType"),
+            "TraditionalColors": prop.get("TraditionalColors"),
+            "TraditionalType": prop.get("TraditionalType"),
+            "EffectBulbSize": prop.get("EffectBulbSize"),
+            "Tag": prop.get("Tag"),
+            "Parm1": prop.get("Parm1"),
+            "Parm2": prop.get("Parm2"),
+            "Parm3": prop.get("Parm3"),
+            "Parm4": prop.get("Parm4"),
+            "Parm5": prop.get("Parm5"),
+            "Parm6": prop.get("Parm6"),
+            "Parm7": prop.get("Parm7"),
+            "Parm8": prop.get("Parm8"),
+            "Lights": int(prop.get("Parm2")) if prop.get("Parm2") and str(prop.get("Parm2")).isdigit() else 0,
+            "Legs": legs,
+            "SortKey": (min_uni, min_ch, scoped)  # stable tie-break
+        }
+        groups[comment].append(row)
+
+    # 2) Emit one master `props` row per comment; attach all legs to that master in `dmxChannels`
+    for comment, arr in groups.items():
+        arr.sort(key=lambda r: r["SortKey"])
+        master = arr[0]
+
+        # Master props row (single row per comment)
+        cur.execute("""
             INSERT OR REPLACE INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName,
                 MaxChannels, CustomBulbColor, IndividualChannels, LegacySequenceMethod,
@@ -657,50 +706,33 @@ def process_dmx_props(preview_id, root):
                 Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            master_prop_id, name, LORComment, device_type, bulb_shape, dimming_curve_name,
-            max_channels, custom_bulb_color, individual_channels, legacy_sequence_method,
-            opacity, master_dimmable, preview_bulb_size, separate_ids, start_location,
-            string_type, traditional_colors, traditional_type, effect_bulb_size, tag,
-            parm1, parm2, parm3, parm4, parm5, parm6, parm7, parm8, lights, preview_id
+            master["PropID"], master["Name"], master["LORComment"], "DMX",
+            master["BulbShape"], master["DimmingCurveName"], master["MaxChannels"],
+            master["CustomBulbColor"], master["IndividualChannels"], master["LegacySequenceMethod"],
+            master["Opacity"], master["MasterDimmable"], master["PreviewBulbSize"], master["SeparateIds"],
+            master["StartLocation"], master["StringType"], master["TraditionalColors"], master["TraditionalType"],
+            master["EffectBulbSize"], master["Tag"], master["Parm1"], master["Parm2"], master["Parm3"],
+            master["Parm4"], master["Parm5"], master["Parm6"], master["Parm7"], master["Parm8"],
+            master["Lights"], preview_id
         ))
         if DEBUG:
-            print(f"[DEBUG] (DMX) Inserted Master Prop: raw_id={raw_id} scoped_id={master_prop_id}  Name={name}")
+            print(f"[DEBUG] (DMX) master → props: {master['PropID']}  Display='{comment}'")
 
-        # --- ChannelGrid -> dmxChannels (one row per ';' group) --------------
-        # Expected DMX pattern per your data: "Network,StartUniverse,StartChannel,EndChannel,Unknown"
-        if channel_grid.strip():
-            for grid in channel_grid.split(";"):
-                grid = grid.strip()
-                if not grid:
-                    continue
-                parts = [p.strip() for p in grid.split(",")]
-
-                # Be defensive: require at least the first 5 tokens
-                if len(parts) < 5:
-                    if DEBUG:
-                        print(f"[DEBUG] (DMX) Skipping malformed grid (len={len(parts)}): {grid}")
-                    continue
-
-                network        = parts[0]
-                start_universe = safe_int(parts[1], 0)
-                start_channel  = safe_int(parts[2], 0)
-                end_channel    = safe_int(parts[3], 0)
-                unknown        = parts[4]  # keep as string
-
-                cursor.execute("""
+        # All legs from every member of the group get attached to the master
+        for r in arr:
+            for leg in r["Legs"]:
+                cur.execute("""
                     INSERT OR REPLACE INTO dmxChannels (
                         PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown, PreviewId
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    master_prop_id,   # << use the same scoped id we used for props.PropID
-                    network, start_universe, start_channel, end_channel, unknown, preview_id
+                    master["PropID"], leg["Network"], leg["StartUniverse"],
+                    leg["StartChannel"], leg["EndChannel"], leg["Unknown"], preview_id
                 ))
                 if DEBUG:
-                    print(f"[DEBUG] (DMX) Inserted Channel: PropId={master_prop_id} Net={network} Univ={start_universe} Start={start_channel} End={end_channel}")
-
+                    print(f"[DEBUG] (DMX) +leg master={master['PropID']} U={leg['StartUniverse']} S={leg['StartChannel']} E={leg['EndChannel']}")
     conn.commit()
     conn.close()
-
 
 def process_lor_props(preview_id, root):
     """
