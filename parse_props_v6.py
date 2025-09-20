@@ -71,6 +71,7 @@
 import os
 import xml.etree.ElementTree as ET
 import sqlite3
+import pathlib
 from collections import defaultdict
 import uuid
 
@@ -165,6 +166,31 @@ def collect_channel_display_names(xml_root) -> set[str]:
                 break
 
     return channelish
+
+# ---------- Notification when DB Updated 25-09-20 GAL -----------------------------
+from pathlib import Path
+from datetime import datetime
+
+def _notice_text(preview_path: str | Path, db_file: str | Path) -> str:
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return (
+        "MSB Database rebuild complete\n"
+        f"Timestamp : {ts}\n"
+        f"Database  : {Path(db_file)}\n"
+        f"Previews  : {Path(preview_path)}\n"
+        "Artifacts :\n"
+        "  - Wiring views created (v6)\n"
+        "  - Preview manifest written\n"
+    )
+
+def write_notice_file(preview_path: str | Path, text: str) -> Path:
+    outdir = Path(preview_path) / "_notifications"
+    outdir.mkdir(parents=True, exist_ok=True)
+    fname = f"db-rebuild-{datetime.now().strftime('%Y%m%d-%H%M%S')}.txt"
+    outpath = outdir / fname
+    outpath.write_text(text, encoding="utf-8")
+    return outpath
+# -----------------------------------------------------------------------------
 
 
 def setup_database():
@@ -1551,6 +1577,15 @@ def main():
     create_wiring_views_v6(DB_FILE)
 
     print("Processing complete. Check the database.")
+
+    # === Notice breadcrumb (FILE ONLY; no webhook required) ===
+    try:
+        text = _notice_text(PREVIEW_PATH, DB_FILE)  # you said this helper exists
+        notice_path = write_notice_file(PREVIEW_PATH, text)  # and this one too
+        print(f"[notify] Wrote notice file → {notice_path}")
+    except Exception as e:
+        print(f"[notify] failed: {e}")
+        import traceback; traceback.print_exc()
 
 # === Wiring views for V6 (map + sorted) GAL 25-08-23 ===
     """
