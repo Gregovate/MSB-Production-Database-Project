@@ -743,9 +743,19 @@ def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str =
 def write_current_manifest_html(staging_root: Path, out_html: Path):
     rows = []
     for p in sorted(staging_root.glob("*.lorprev")):
-        st = p.stat()
-        rows.append((p.name, st.st_size, datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")))
-    _emit_manifest_html(rows, out_html, headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text")], context_path=str(out_html.parent))
+        st  = p.stat()
+        idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
+        exported = datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        # FileName, PreviewName, Revision, Action, Exported
+        rows.append((p.name, idy.name or p.stem, idy.revision_raw or '', '', exported))
+    _emit_manifest_html(
+        rows,
+        out_html,
+        headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text"),("Exported","date")],
+        context_path=str(out_html.parent),
+        extra_title="(APPLY RUN)"   # <-- label
+    )
+
 
 def write_dryrun_manifest_html(winner_rows: list, out_html: Path):
     seen, rows = set(), []
@@ -760,35 +770,59 @@ def write_dryrun_manifest_html(winner_rows: list, out_html: Path):
         rev = r.get('Revision') or ''
         act = r.get('Action') or ''
         fname = f"{pn}.lorprev" if pn else ""
+        # FileName, PreviewName, Revision, Action
         rows.append((fname, pn, rev, act))
     rows.sort(key=lambda x: (x[1].lower(), -_revnum(x[2])))
-    # Use the *staging* path as context so it’s obvious where the winners would live
-    _emit_manifest_html(rows, out_html, headers=["FileName","PreviewName","Revision","Action"], context_path=str(out_html.parent))
 
+    _emit_manifest_html(
+        rows,
+        out_html,
+        headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text")],
+        context_path=str(out_html.parent),
+        extra_title="(DRY RUN)"     # <-- label
+    )
 
-def _emit_manifest_html(rows, out_html: Path, headers, context_path: str | None = None):
-    """Emit a minimal, sortable HTML table with run timestamp + optional folder path."""
+def _emit_manifest_html(
+    rows,
+    out_html: Path,
+    headers,
+    context_path: str | None = None,
+    extra_title: str | None = None,   # <-- NEW
+):
+    """Emit a minimal, sortable HTML table with run timestamp + optional folder path + mode label."""
     out_html.parent.mkdir(parents=True, exist_ok=True)
-    # If caller passed plain strings for headers, infer all text
+
+    # Normalize headers
     if headers and isinstance(headers[0], str):
         hdrs = [(h, "text") for h in headers]
     else:
-        # Allow headers like [("FileName","text"), ("Revision","number"), ...]
         hdrs = headers
+
+    # Optional safety: normalize row lengths to headers (pad/truncate)
+    ncols = len(hdrs)
+    norm_rows = []
+    for row in rows:
+        row = tuple("" if i >= len(row) else row[i] for i in range(ncols))  # pad if short
+        if len(row) > ncols: row = row[:ncols]                              # trim if long
+        norm_rows.append(row)
 
     th = "".join(
         f"<th data-col='{i}' data-type='{_esc(t)}' title='Click to sort'>{_esc(h)}</th>"
         for i, (h, t) in enumerate(hdrs)
     )
-    tr = "\n".join("<tr>" + "".join(f"<td>{_esc(c)}</td>" for c in row) + "</tr>" for row in rows)
+    tr = "\n".join("<tr>" + "".join(f"<td>{_esc(c)}</td>" for c in row) + "</tr>" for row in norm_rows)
+
     run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ctx = _esc(context_path or "")
+    xt = f" {extra_title.strip()}" if extra_title else ""  # leading space
+
+    title_text = f"{out_html.name}{xt} – Generated {run_ts}{' – ' + ctx if ctx else ''}"
 
     html = f"""<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>{out_html.name} – Generated {run_ts}{' – ' + ctx if ctx else ''}</title>
+<title>{_esc(title_text)}</title>
 <style>
  body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:20px}}
  table{{border-collapse:collapse;width:100%}}
@@ -799,7 +833,7 @@ def _emit_manifest_html(rows, out_html: Path, headers, context_path: str | None 
 </style>
 </head>
 <body>
-<h2>{out_html.name}</h2>
+<h2>{_esc(out_html.name)}{_esc(xt)}</h2>
 <div class="hint">Generated on {run_ts}{('<br>Folder: ' + ctx) if ctx else ''}\nTip: click a column header to sort.</div>
 <table id="m">
   <thead><tr>{th}</tr></thead>
@@ -812,16 +846,13 @@ def _emit_manifest_html(rows, out_html: Path, headers, context_path: str | None 
   const table = document.getElementById("m");
   const thead = table.tHead;
   const tbody = table.tBodies[0];
-
   const get = (tr,n)=> (tr.children[n]?.innerText || tr.children[n]?.textContent || "").trim();
-
   function sortTable(col) {{
     const hdr = thead.rows[0].children[col];
     const type = (hdr.getAttribute("data-type") || "text").toLowerCase();
     const dir  = hdr.getAttribute("data-dir")==="asc" ? "desc" : "asc";
     [...thead.rows[0].children].forEach(th=>th.removeAttribute("data-dir"));
     hdr.setAttribute("data-dir", dir);
-
     const rows = Array.from(tbody.rows);
     rows.sort((a,b) => {{
       const av=get(a,col), bv=get(b,col);
@@ -839,7 +870,6 @@ def _emit_manifest_html(rows, out_html: Path, headers, context_path: str | None 
     }});
     rows.forEach(r => tbody.appendChild(r));
   }}
-
   thead.addEventListener("click", (e) => {{
     const th = e.target.closest("th");
     if (!th) return;
@@ -2033,6 +2063,7 @@ def main():
                 ("Present", "text"),
             ],
             context_path=str(staging_root),
+            extra_title="(DRY RUN)"  # <-- add the label
         )
         print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
 
