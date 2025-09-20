@@ -44,7 +44,8 @@ JSON config (optional):
 from __future__ import annotations
 
 import argparse
-import csv
+import csv 
+import html
 import re
 import hashlib
 import json
@@ -743,7 +744,7 @@ def write_current_manifest_html(staging_root: Path, out_html: Path):
     rows = []
     for p in sorted(staging_root.glob("*.lorprev")):
         st = p.stat()
-        rows.append((p.name, st.st_size, datetime.utcfromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")))
+        rows.append((p.name, st.st_size, datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")))
     _emit_manifest_html(rows, out_html, headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text")], context_path=str(out_html.parent))
 
 def write_dryrun_manifest_html(winner_rows: list, out_html: Path):
