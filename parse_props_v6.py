@@ -1804,7 +1804,17 @@ def create_wiring_views_v6(db_file: str):
         conn.commit()
         print("[INFO] Created breaking_check_v6 view")
 
-    
+    # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
+    try:
+        import subprocess, sys
+        compare_script = r"G:\Shared drives\MSB Database\Spreadsheet\compare_displays_vs_db.py"
+        if os.path.exists(compare_script):
+            print("[INFO] Running compare_displays_vs_db.py …")
+            subprocess.run([sys.executable, compare_script], check=False)
+        else:
+            print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
+    except Exception as e:
+        print(f"[WARN] Could not run compare script: {e}")
 
 
 if __name__ == "__main__":
