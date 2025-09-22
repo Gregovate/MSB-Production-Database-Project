@@ -107,6 +107,14 @@ def scoped_id(preview_id: str, raw_id: str) -> str:
     """
     return f"{preview_id}:{raw_id}"
 # --- helpers ---------------------------------------------------------------
+# --- Device Type = NONE  ---
+def safe_int(x, default=0):
+    try:
+        return int(str(x).strip())
+    except Exception:
+        return default
+
+
 def safe_int(s, default=None):
     """
     Return int(s) if s is a clean digit string; else `default`.
@@ -461,143 +469,133 @@ def reconcile_subprops_to_canonical_master(db_file: str):
 # ============================ Parsing Modules ===========================================
 # def process_none_props(preview_id, root):
 def process_none_props(preview_id, root, skip_display_names: set[str] | None = None):
-    """
-    RULES
-    -----
+    r"""
+    RULES (DeviceType == "None")
+    ----------------------------
     Purpose
-      - Persist physical-only props (DeviceType == "None") that have no channels.
-      - Keep them in `props` for labeling/inventory; they do NOT appear in wiring views.
-      - Do not process any record with Blank Comments 25-08-30 GAL
-      - Use Channel name as a description for parsed Props
+      - Persist physical-only props that have **no channels** (inventory/BOM only).
+      - Keep them in `props` so they do NOT appear in wiring views (no Network/UID/StartChannel).
+      - Skip any record with a **blank Comment** (display name).  [25-08-30 GAL]
 
-    Behavior
-      - Group by LORComment (the display name) and aggregate:
-          * Lights = SUM(int(Parm2) when present).
-      - Write exactly ONE row per LORComment to `props`.
-      - Store: PropID, Name, LORComment, DeviceType="None", Lights, PreviewId.
-      - Do NOT attempt to parse ChannelGrid (there is none).
-      - Do NOT expand quantities: if LOR UI uses MaxChannels as a quantity multiplier,
-        we still keep a single aggregated row per LORComment.
-      - Changes to account for manually assigned subprops 25-09-20 GAL
-      - Physical/inventory only (no ChannelGrid), keep in props, excluded from wiring.
-      - One row per display name (Comment), NO MaxChannels fan-out.
-      - If a name is “channel-bearing” or has manual “same channel as …”, skip here
-        (it will be materialized under LOR/DMX logic as subprops/legs).
+    Behavior (current, clarified 25-09-22)
+      - **Fan-out instances**: materialize N instances per record using:
+            N = MaxChannels if > 0
+                else Parm2 if numeric and > 0
+                else 1
+        Each instance gets a stable suffix: `PropID-01, -02, …, -NN`.
+      - **Use Same Channel As** (a/k/a Master link):
+            * If blank/null  → just fan-out into `props` rows (no linkage).
+            * If present     → still fan-out, and set `MasterPropId` on each `props` row
+                               to the referenced PropID (linkage only; still no channels).
+      - **No grouping/aggregation by LORComment**: we write per-instance rows (one row per
+        physical unit) rather than a single aggregated row. This keeps counts/BOM accurate.
+      - **No ChannelGrid parsing** here (these are channel-less by design).
+      - **No `subProps` writes** from this function. These inventory-only items remain in `props`
+        and wiring views naturally exclude them because they lack Network/StartChannel.
+      - **Manual sub-prop assignments** are respected by the `MasterPropId` linkage; they do not
+        create channels and do not leak into wiring.  [25-09-20 GAL]
 
     Inputs
-      - preview_id: string id of the <PreviewClass>.
-      - root: XML root (ElementTree).
+      - preview_id: id of the <PreviewClass>.
+      - root: ElementTree root of the preview XML.
+      - skip_display_names: optional set of LORComment strings to ignore (case-sensitive).
 
     Outputs
-      - Inserts rows into `props`.
+      - Inserts N rows per qualifying record into `props`:
+            PropID (with -NN), Name, LORComment, DeviceType="None",
+            MaxChannels, Parm1..Parm8, Lights (from Parm2 if present),
+            PreviewId, MasterPropId (if “Use Same Channel As” provided),
+            plus descriptive fields (BulbShape, DimmingCurveName, Tag, etc.).
 
     Notes
-      - These items are intentionally excluded from wiring views because they have no channels.
+      - Wiring views remain clean because these rows have no Network/UID/StartChannel.
+      - “Blank Comment” items are skipped to avoid inventory churn.
+      - If future audits need visibility in `subProps`, add a separate writer and
+        harden the wiring view to exclude DeviceType='None' on the sub-prop leg.
     """
 
-    import sqlite3
     conn = sqlite3.connect(DB_FILE)
-    cur  = conn.cursor()
-
-    def norm(s): return (s or "").strip()
-    same_as_fields = ("SameAsProp","SameAsPreview","SameAsSubprop","SameAsChannel","UsesSameChannelAs")
-
-    # Group by display name and pick ONE representative (prefer non-aliased)
-    groups = {}  # comment -> {"rep": prop_elem, "lights": int}
+    cursor = conn.cursor()
 
     for prop in root.findall(".//PropClass"):
-        if (prop.get("DeviceType") or "").strip().upper() != "NONE":
+        if (prop.get("DeviceType") or "").strip() != "None":
             continue
 
-        comment = norm(prop.get("Comment"))
+        comment = (prop.get("Comment") or "").strip()
         if not comment:
-            if DEBUG: print(f"[DEBUG] (None) skipped blank comment id={prop.get('id')}")
+            # skip blanks; they cause churn in inventory
             continue
 
-        # Is THIS record an alias ("use same channel as")?
-        is_alias = any(norm(prop.get(f)) for f in same_as_fields)
+        raw_id    = prop.get("id") or ""
+        base_name = prop.get("Name") or ""
+        max_ch    = safe_int(prop.get("MaxChannels"), 0)
+        parm2     = prop.get("Parm2")
+        lights    = safe_int(parm2, 0)
 
-        # lights aggregation (Parm2 when present)
-        lights = 0
-        p2 = prop.get("Parm2")
-        if p2 and norm(p2).isdigit():
-            lights = int(p2)
+        # Determine how many instances to materialize
+        count = max(1, max_ch if max_ch > 0 else (lights if lights > 0 else 1))
 
-        g = groups.get(comment)
-        if not g:
-            groups[comment] = {"rep": None, "lights": lights}
-        else:
-            g["lights"] += lights
+        # "Use same channel as" can come through under different attribute names;
+        # check both common variants.
+        same_as = (
+            (prop.get("UseSameChannelAs") or "").strip()
+            or (prop.get("MasterPropId") or "").strip()
+        )
+        if same_as.lower() in ("", "none", "null"):
+            same_as = ""
 
-        # choose representative: prefer first non-alias; only take alias if we have no rep yet
-        if groups[comment]["rep"] is None or (not is_alias and any(norm(groups[comment]["rep"].get(f)) for f in same_as_fields)):
-            if not is_alias:
-                groups[comment]["rep"] = prop
-            elif groups[comment]["rep"] is None:
-                groups[comment]["rep"] = prop  # fallback if no base exists
+        # Copy over other descriptive fields you want to retain on NONE records
+        dimming_curve_name = prop.get("DimmingCurveName")
+        bulb_shape         = prop.get("BulbShape")
+        traditional_type   = prop.get("TraditionalType")
+        traditional_colors = prop.get("TraditionalColors")
+        string_type        = prop.get("StringType")
+        effect_bulb_size   = prop.get("EffectBulbSize")
+        custom_bulb_color  = prop.get("CustomBulbColor")
+        tag                = prop.get("Tag")
+        opacity            = prop.get("Opacity")
+        preview_bulb_size  = prop.get("PreviewBulbSize")
+        separate_ids       = prop.get("SeparateIds")
+        start_location     = prop.get("StartLocation")
+        legacy_method      = prop.get("LegacySequenceMethod")
+        individual_ch      = prop.get("IndividualChannels")
 
-    # Emit exactly one row per comment, but if the representative is an alias and a base exists, we already preferred the base above.
-    for comment, g in groups.items():
-        rep = g["rep"]
-        if rep is None:
-            # Shouldn't happen, but be safe
-            continue
+        # Materialize count instances: PropID-01, PropID-02, ...
+        for i in range(1, count + 1):
+            inst_id = f"{raw_id}-{i:02d}"
 
-        # If the chosen rep is still an alias and you want to drop groups that have ONLY aliases, uncomment:
-        # if any(norm(rep.get(f)) for f in same_as_fields):
-        #     if DEBUG: print(f"[DEBUG] (None) drop '{comment}' — only alias records found")
-        #     continue
+            # only suffix when we actually fan-out to multiple rows
+            if count > 1:
+                inst_comment = f"{comment}-{i:02d}"
+            else:
+                inst_comment = comment
 
-        # Build a deterministic ID per preview+comment (no -01/-02 suffixes)
-        slug = comment.lower().replace(" ", "-")
-        inst_id = f"{preview_id}:none:{slug}"
+            cursor.execute("""
+                INSERT OR REPLACE INTO props (
+                    PropID, Name, LORComment, DeviceType,
+                    BulbShape, DimmingCurveName, MaxChannels,
+                    CustomBulbColor, IndividualChannels, LegacySequenceMethod,
+                    Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation,
+                    StringType, TraditionalColors, TraditionalType, EffectBulbSize, Tag,
+                    Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8,
+                    Lights, PreviewId, MasterPropId
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                inst_id, base_name, inst_comment, "None",     # ← here
+                bulb_shape, dimming_curve_name, max_ch,
+                custom_bulb_color, individual_ch, legacy_method,
+                opacity, prop.get("MasterDimmable"), preview_bulb_size, separate_ids, start_location,
+                string_type, traditional_colors, traditional_type, effect_bulb_size, tag,
+                prop.get("Parm1"), prop.get("Parm2"), prop.get("Parm3"), prop.get("Parm4"),
+                prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"), prop.get("Parm8"),
+                lights, preview_id, same_as or None
+            ))
 
-        # Copy a few harmless descriptive fields for inventory; no channels for None
-        cur.execute("""
-            INSERT OR REPLACE INTO props (
-                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
-                CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
-                PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
-                Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            inst_id,
-            norm(rep.get("Name")),          # channel name as description
-            comment,
-            "None",
-            rep.get("BulbShape"),
-            rep.get("DimmingCurveName"),
-            rep.get("MaxChannels"),
-            rep.get("CustomBulbColor"),
-            rep.get("IndividualChannels"),
-            rep.get("LegacySequenceMethod"),
-            rep.get("Opacity"),
-            rep.get("MasterDimmable"),
-            rep.get("PreviewBulbSize"),
-            rep.get("SeparateIds"),
-            rep.get("StartLocation"),
-            rep.get("StringType"),
-            rep.get("TraditionalColors"),
-            rep.get("TraditionalType"),
-            rep.get("EffectBulbSize"),
-            rep.get("Tag"),
-            rep.get("Parm1"),
-            rep.get("Parm2"),
-            rep.get("Parm3"),
-            rep.get("Parm4"),
-            rep.get("Parm5"),
-            rep.get("Parm6"),
-            rep.get("Parm7"),
-            rep.get("Parm8"),
-            int(g["lights"] or 0),          # aggregated lights
-            None, None, None, None, None,
-            (rep.get("TraditionalColors") or None),
-            preview_id
-        ))
-        if DEBUG:
-            alias_flag = " alias" if any(norm(rep.get(f)) for f in same_as_fields) else ""
-            print(f"[DEBUG] (None){alias_flag} → props: id={inst_id} display='{comment}' lights={g['lights']}")
+            if DEBUG:
+                mode = "EXPAND+LINK" if same_as else "EXPAND"
+                print(f"[NONE->{mode}] {inst_id}  name='{base_name}'  comment='{inst_comment}'")
+
 
     conn.commit()
     conn.close()
