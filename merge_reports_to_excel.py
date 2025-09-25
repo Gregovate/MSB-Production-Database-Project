@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-merge_reports_to_excel_CLEAN.py
+merge_reports_to_excel.py
 --------------------------------
 Baseline, self-contained script to combine merger CSVs into a single Excel file
 with multiple tabs, frozen headers, filters, auto-width, and simple coloring.
@@ -16,6 +16,9 @@ from pathlib import Path
 from datetime import datetime
 import warnings
 import pandas as pd
+import getpass
+import platform
+
 from pandas.errors import ParserWarning
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import PatternFill
@@ -76,53 +79,89 @@ def autosize_and_filter(ws):
                 max_len = len(val)
         ws.column_dimensions[col_letter].width = min(max(10, max_len + 2), 80)
 
+def _choose_action_like_column(ws, header_row=1):
+    """Return (column_letter, header_text) most suitable for status/action coloring."""
+    headers = [(cell.column_letter, str(cell.value).strip())
+               for cell in ws[header_row] if cell.value]
+    # Normalize + exclude obvious date/time columns
+    norm = [(col, txt, txt.lower()) for col, txt in headers]
+    candidates = [(c, t, tl) for c, t, tl in norm if "date" not in tl and "time" not in tl]
+
+    # Priority headers to prefer
+    priority = ("status", "action", "result", "decision", "outcome", "operation")
+
+    # Quick content score based on expected keywords
+    green_terms  = ("applied", "update-staging", "allow", "allowed", "pass", "passed")
+    red_terms    = ("blocked", "error", "fail", "failed", "exclude", "excluded", "work needed")
+    gray_terms   = ("skip", "identical", "no-op", "not needed", "unchanged")
+    yellow_terms = ("ready to apply",)
+
+    def score_col(letter):
+        hits = 0
+        max_row = min(ws.max_row, 400)
+        for r in range(2, max_row + 1):
+            v = ws[f"{letter}{r}"].value
+            if not v:
+                continue
+            s = str(v).lower()
+            if any(t in s for t in green_terms + red_terms + gray_terms + yellow_terms):
+                hits += 1
+        return hits
+
+    # Prefer priority headers if present
+    for key in priority:
+        for col, txt, tl in candidates:
+            if key in tl:
+                return col, txt
+
+    # Otherwise, choose the column whose cells look most like status/action
+    scored = [(score_col(col), col, txt) for col, txt, _ in candidates]
+    if scored:
+        scored.sort(reverse=True)
+        if scored[0][0] > 0:
+            return scored[0][1], scored[0][2]
+
+    return None, None
+
+
 def add_action_colors(ws, header_row=1):
+    """Apply conditional colors to the most action/status-like column on this sheet."""
     from openpyxl.formatting.rule import FormulaRule
     from openpyxl.styles import PatternFill
 
-    # Find a column whose header contains "action"
-    action_col_letter = None
-    for cell in ws[header_row]:
-        if cell.value and "action" in str(cell.value).strip().lower():
-            action_col_letter = cell.column_letter
-            break
-    if not action_col_letter or ws.max_row <= header_row:
+    col_letter, header_text = _choose_action_like_column(ws, header_row=header_row)
+    if not col_letter or ws.max_row <= header_row:
         return
 
-    top_left = f"{action_col_letter}{header_row+1}"       # e.g. A2 (no $)
-    rng = f"${action_col_letter}${header_row+1}:${action_col_letter}${ws.max_row}"
+    rng = f"${col_letter}${header_row+1}:${col_letter}${ws.max_row}"
+    top_left = f"{col_letter}{header_row+1}"  # e.g., D2 (row-relative)
 
-    # green for update-staging / applied
-    ws.conditional_formatting.add(
-        rng,
-        FormulaRule(
-            formula=[f'ISNUMBER(SEARCH("update-staging",{top_left}))'],
-            fill=PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    def any_of(cell_ref, terms):
+        parts = [f'ISNUMBER(SEARCH("{t}",{cell_ref}))' for t in terms]
+        return f"OR({','.join(parts)})"
+
+    # Rules
+    green  = any_of(top_left, ("applied", "update-staging", "allow", "allowed", "pass", "passed"))
+    yellow = any_of(top_left, ("ready to apply",))
+    red    = any_of(top_left, ("blocked", "error", "fail", "failed", "exclude", "excluded", "work needed"))
+    gray   = any_of(top_left, ("skip", "identical", "no-op", "not needed", "unchanged"))
+
+    for formula, color in (
+        (green,  "C6EFCE"),   # light green
+        (yellow, "FFF2CC"),   # light yellow
+        (red,    "FFC7CE"),   # light red
+        (gray,   "E7E6E6"),   # light gray
+    ):
+        ws.conditional_formatting.add(
+            rng,
+            FormulaRule(
+                formula=[formula],
+                fill=PatternFill(start_color=color, end_color=color, fill_type="solid"),
+            ),
         )
-    )
-    ws.conditional_formatting.add(
-        rng,
-        FormulaRule(
-            formula=[f'ISNUMBER(SEARCH("applied",{top_left}))'],
-            fill=PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-        )
-    )
-    # red for blocked
-    ws.conditional_formatting.add(
-        rng,
-        FormulaRule(
-            formula=[f'ISNUMBER(SEARCH("blocked",{top_left}))'],
-            fill=PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-        )
-    )
-    # gray for skip / identical / no-op
-    ws.conditional_formatting.add(
-        rng,
-        FormulaRule(
-            formula=[f'OR(ISNUMBER(SEARCH("skip",{top_left})),ISNUMBER(SEARCH("identical",{top_left})),ISNUMBER(SEARCH("no-op",{top_left})))'],
-            fill=PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
-        )
-    )
+
+    # Optional: keep this if you like the console hint
+    print(f"[format] {ws.title}: using '{header_text}' column for color rules")
 
 def add_missing_comments_colors(ws, header_row=1):
     """
@@ -163,6 +202,50 @@ def add_missing_comments_colors(ws, header_row=1):
             )
         )
 
+STATUS_LIKE = ("status","action","result","decision","outcome","operation")  # not dates
+
+def pick_status_column(df: pd.DataFrame) -> str | None:
+    if df is None or df.empty:
+        return None
+    cols = [c for c in df.columns if c]
+    # avoid columns that look like dates
+    def ok(name: str) -> bool:
+        l = name.lower()
+        return any(k in l for k in STATUS_LIKE) and "date" not in l and "time" not in l
+    for c in cols:
+        if ok(c):
+            return c
+    return None
+
+def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    rows = []
+    for sheet, df in tables.items():
+        col = pick_status_column(df)
+        if not col:
+            continue
+        vc = (
+            df[col].astype(str)
+                  .str.strip()
+                  .replace({"": "(blank)"})
+                  .str.lower()
+                  .value_counts(dropna=False)
+        )
+        for value, count in vc.items():
+            rows.append({"Sheet": sheet, "StatusColumn": col, "Value": value, "Count": int(count)})
+    if not rows:
+        return pd.DataFrame({"Info": ["No status-like columns found to summarize."]})
+    return (pd.DataFrame(rows)
+              .sort_values(["Sheet","Count"], ascending=[True, False], ignore_index=True))
+
+def write_info_tab(writer):
+    import datetime as _dt  # ensure we get the module regardless of outer imports
+    info = pd.DataFrame([{
+        "Generated": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "User": getpass.getuser(),
+        "Machine": platform.node(),
+    }])
+    info.to_excel(writer, index=False, sheet_name="Info")
+
 def main():
     tables = {}
     for filename, sheet in FILES:
@@ -179,15 +262,26 @@ def main():
         for sheet_name, df in tables.items():
             df.to_excel(writer, index=False, sheet_name=sheet_name)
 
+        # Add Overview + Info tabs
+        overview = build_overview(tables)
+        overview.to_excel(writer, index=False, sheet_name="Overview")
+        write_info_tab(writer)
+
         # Post-format all sheets
         wb = writer.book
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
             autosize_and_filter(ws)
-            if sheet_name in ("Compare", "Applied_This_Run", "Apply_Events"):
-                add_action_colors(ws)
+            add_action_colors(ws)   
+
+            # keep the special Missing_Comments highlighter if you added it
             if sheet_name == "Missing_Comments":
                 add_missing_comments_colors(ws)
+        
+        # Reorder sheets: put Overview and Info first if they exist
+        front = [s for s in ("Overview", "Info") if s in wb.sheetnames]
+        rest  = [s for s in wb.sheetnames if s not in front]
+        wb._sheets = [wb[s] for s in front + rest]  # openpyxl internal but reliable
 
     print(f"[OK] Wrote Excel (timestamped): {OUT_XLSX_STAMPED}")
 
