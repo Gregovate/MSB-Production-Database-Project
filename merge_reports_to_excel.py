@@ -6,7 +6,7 @@ Baseline, self-contained script to combine merger CSVs into a single Excel file
 with multiple tabs, frozen headers, filters, auto-width, and simple coloring.
 
 Usage (Windows PowerShell):
-    python merge_reports_to_excel_CLEAN.py
+    python merge_reports_to_excel.py
 
 Dependencies:
     pip install pandas openpyxl
@@ -18,6 +18,7 @@ import warnings
 import pandas as pd
 import getpass
 import platform
+import argparse
 
 from pandas.errors import ParserWarning
 from openpyxl.formatting.rule import FormulaRule
@@ -27,9 +28,28 @@ from openpyxl.styles import PatternFill
 warnings.simplefilter("ignore", ParserWarning)
 
 # ================== CONFIG ==================
-# Edit ROOT if your reports folder is different
-ROOT = Path(r"G:\Shared drives\MSB Database\database\merger\reports")
+import argparse
+from pathlib import Path
+from datetime import datetime
 
+parser = argparse.ArgumentParser(description="Merge CSV reports to a single Excel.")
+parser.add_argument(
+    "--root",
+    default=r"G:\Shared drives\MSB Database\database\merger\reports",  # CSV input folder
+    help="Folder containing the input CSVs (compare, ledger, etc.).",
+)
+parser.add_argument(
+    "-o", "--out",
+    default=r"G:\Shared drives\MSB Database\Database Previews",        # Excel output folder
+    help="Folder to write the Excel into.",
+)
+args = parser.parse_args()
+
+ROOT = Path(args.root)                 # where CSVs are read from
+OUT_DIR = Path(args.out)               # where Excel is written
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Which CSVs → which sheet names
 FILES = [
     ("lorprev_compare.csv", "Compare"),
     ("lorprev_missing_comments.csv", "Missing_Comments"),
@@ -41,9 +61,16 @@ FILES = [
 ]
 
 STAMP = datetime.now().strftime("%Y%m%d-%H%M")
-OUT_XLSX_STAMPED = ROOT / f"lorprev_reports-{STAMP}.xlsx"
-OUT_XLSX_FIXED   = ROOT / "lorprev_reports.xlsx"
+OUT_XLSX_STAMPED = OUT_DIR / f"lorprev_reports-{STAMP}.xlsx"
+OUT_XLSX_FIXED   = OUT_DIR / "lorprev_reports.xlsx"
+
+print(f"[cfg] CSV root: {ROOT}")
+print(f"[cfg] Excel out: {OUT_DIR}")
 # ============================================
+
+
+
+
 
 def read_csv_safe(path: Path) -> pd.DataFrame:
     """
@@ -258,30 +285,29 @@ def main():
         return
 
     with pd.ExcelWriter(OUT_XLSX_STAMPED, engine="openpyxl") as writer:
-        # Write each DataFrame to its own sheet
-        for sheet_name, df in tables.items():
-            df.to_excel(writer, index=False, sheet_name=sheet_name)
-
-        # Add Overview + Info tabs
+        # ---- Write Overview + Info FIRST so they appear at the front ----
         overview = build_overview(tables)
         overview.to_excel(writer, index=False, sheet_name="Overview")
         write_info_tab(writer)
 
-        # Post-format all sheets
+        # ---- Now write the normal report tabs ----
+        for sheet_name, df in tables.items():
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+
+        # ---- Post-format all sheets (keep your existing helpers/calls) ----
         wb = writer.book
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
             autosize_and_filter(ws)
-            add_action_colors(ws)   
-
-            # keep the special Missing_Comments highlighter if you added it
+            if sheet_name not in ("Overview", "Info"):
+                add_action_colors(ws)
             if sheet_name == "Missing_Comments":
                 add_missing_comments_colors(ws)
-        
-        # Reorder sheets: put Overview and Info first if they exist
-        front = [s for s in ("Overview", "Info") if s in wb.sheetnames]
-        rest  = [s for s in wb.sheetnames if s not in front]
-        wb._sheets = [wb[s] for s in front + rest]  # openpyxl internal but reliable
+
+        # Make Overview the active sheet when the workbook opens
+        if "Overview" in wb.sheetnames:
+            wb.active = wb.sheetnames.index("Overview")
+
 
     print(f"[OK] Wrote Excel (timestamped): {OUT_XLSX_STAMPED}")
 
