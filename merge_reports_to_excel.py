@@ -77,12 +77,9 @@ def autosize_and_filter(ws):
         ws.column_dimensions[col_letter].width = min(max(10, max_len + 2), 80)
 
 def add_action_colors(ws, header_row=1):
-    """
-    Color rows in sheets that have an Action-like column ('action' in header).
-    - Green: update-staging / applied
-    - Red: blocked
-    - Gray: skip / identical / no-op
-    """
+    from openpyxl.formatting.rule import FormulaRule
+    from openpyxl.styles import PatternFill
+
     # Find a column whose header contains "action"
     action_col_letter = None
     for cell in ws[header_row]:
@@ -92,20 +89,21 @@ def add_action_colors(ws, header_row=1):
     if not action_col_letter or ws.max_row <= header_row:
         return
 
+    top_left = f"{action_col_letter}{header_row+1}"       # e.g. A2 (no $)
     rng = f"${action_col_letter}${header_row+1}:${action_col_letter}${ws.max_row}"
 
     # green for update-staging / applied
     ws.conditional_formatting.add(
         rng,
         FormulaRule(
-            formula=[f'ISNUMBER(SEARCH("update-staging",$${action_col_letter}{header_row+1}))'.replace("$$","$")],
+            formula=[f'ISNUMBER(SEARCH("update-staging",{top_left}))'],
             fill=PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
         )
     )
     ws.conditional_formatting.add(
         rng,
         FormulaRule(
-            formula=[f'ISNUMBER(SEARCH("applied",$${action_col_letter}{header_row+1}))'.replace("$$","$")],
+            formula=[f'ISNUMBER(SEARCH("applied",{top_left}))'],
             fill=PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
         )
     )
@@ -113,7 +111,7 @@ def add_action_colors(ws, header_row=1):
     ws.conditional_formatting.add(
         rng,
         FormulaRule(
-            formula=[f'ISNUMBER(SEARCH("blocked",$${action_col_letter}{header_row+1}))'.replace("$$","$")],
+            formula=[f'ISNUMBER(SEARCH("blocked",{top_left}))'],
             fill=PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
         )
     )
@@ -121,7 +119,7 @@ def add_action_colors(ws, header_row=1):
     ws.conditional_formatting.add(
         rng,
         FormulaRule(
-            formula=[f'OR(ISNUMBER(SEARCH("skip",$${action_col_letter}{header_row+1})),ISNUMBER(SEARCH("identical",$${action_col_letter}{header_row+1})),ISNUMBER(SEARCH("no-op",$${action_col_letter}{header_row+1})))'.replace("$$","$")],
+            formula=[f'OR(ISNUMBER(SEARCH("skip",{top_left})),ISNUMBER(SEARCH("identical",{top_left})),ISNUMBER(SEARCH("no-op",{top_left})))'],
             fill=PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
         )
     )
