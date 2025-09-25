@@ -59,6 +59,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 import shutil
+import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
 
@@ -2067,7 +2068,12 @@ def main():
         )
         print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
 
-
+        subprocess.run(
+            [sys.executable, "merge_reports_to_excel.py",
+            "--root", r"G:\Shared drives\MSB Database\database\merger\reports",
+            "--out",  r"G:\Shared drives\MSB Database\Database Previews"],
+            check=True
+        )
 
 
     # ------------------------------------------------------------------------------
