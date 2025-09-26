@@ -1731,28 +1731,105 @@ def create_wiring_views_v6(db_file: str):
     FROM preview_wiring_map_v6
     ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
 
+    --------------------------------------------------------------------
+    -- NEW helper views
+    --------------------------------------------------------------------
+
+    -- Props-only (exclude DMX and inventory/None)
+    DROP VIEW IF EXISTS preview_wiring_map_v6_props;
+    CREATE VIEW preview_wiring_map_v6_props AS
+    SELECT *
+    FROM preview_wiring_map_v6
+    WHERE DeviceType <> 'DMX'
+      AND DeviceType <> 'None';
+
+    -- Frequently-used distinct controller/network slice (ordered)
+    DROP VIEW IF EXISTS controller_networks_v6;
+    CREATE VIEW controller_networks_v6 AS
+    SELECT DISTINCT
+        Controller,
+        Network
+    FROM preview_wiring_sorted_v6
+    WHERE Controller IS NOT NULL
+    AND DeviceType <> 'DMX'
+    ORDER BY Network COLLATE NOCASE, Controller COLLATE NOCASE;
+
+    -- QA checks for wiring data
+    DROP VIEW IF EXISTS breaking_check_v6;
+    CREATE VIEW breaking_check_v6 AS
+    -- 1) StartChannel > EndChannel
+    SELECT
+      'StartGreaterThanEnd' AS Issue,
+      PreviewName, Source, Channel_Name, Display_Name,
+      Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
+    FROM preview_wiring_map_v6
+    WHERE StartChannel IS NOT NULL AND EndChannel IS NOT NULL
+      AND StartChannel > EndChannel
+
+    UNION ALL
+    -- 2) Missing Controller for non-DMX rows
+    SELECT
+      'MissingController' AS Issue,
+      PreviewName, Source, Channel_Name, Display_Name,
+      Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
+    FROM preview_wiring_map_v6
+    WHERE DeviceType <> 'DMX'
+      AND (Controller IS NULL OR TRIM(Controller) = '')
+
+    UNION ALL
+    -- 3) Missing channel range
+    SELECT
+      'MissingChannels' AS Issue,
+      PreviewName, Source, Channel_Name, Display_Name,
+      Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
+    FROM preview_wiring_map_v6
+    WHERE StartChannel IS NULL OR EndChannel IS NULL
+
+    UNION ALL
+    -- 4) Exact duplicate legs per (Preview, Network, Controller, Start, End, Source)
+    SELECT
+      'ExactDuplicateLeg' AS Issue,
+      t.PreviewName, t.Source, t.Channel_Name, t.Display_Name,
+      t.Network, t.Controller, t.StartChannel, t.EndChannel, t.DeviceType, t.LORTag
+    FROM (
+      SELECT
+        PreviewName, Source, Channel_Name, Display_Name,
+        Network, Controller, StartChannel, EndChannel, DeviceType, LORTag,
+        COUNT(*) AS cnt
+      FROM preview_wiring_map_v6
+      GROUP BY
+        PreviewName, Source, Channel_Name, Display_Name,
+        Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
+    ) t
+    WHERE t.cnt > 1;
+
+    --------------------------------------------------------------------
+    -- Indexes
+    --------------------------------------------------------------------
+
     -- Exactly one LOR master per (PreviewId, Display_Name), excluding SPARE/blank
     CREATE UNIQUE INDEX IF NOT EXISTS uniq_master_per_preview_name
     ON props(PreviewId, LORComment)
     WHERE DeviceType='LOR'
-    AND TRIM(COALESCE(LORComment,'')) <> ''
-    AND UPPER(LORComment) <> 'SPARE';
+      AND TRIM(COALESCE(LORComment,'')) <> ''
+      AND UPPER(LORComment) <> 'SPARE';
 
     -- helpful indexes
     CREATE INDEX IF NOT EXISTS idx_props_preview                  ON props(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview               ON subProps(PreviewId);
     CREATE INDEX IF NOT EXISTS idx_subprops_preview_uid_ch        ON subProps(PreviewId, UID, StartChannel);
     CREATE INDEX IF NOT EXISTS idx_dmx_prop                       ON dmxChannels(PropId);
-    CREATE INDEX IF NOT EXISTS idx_props_preview_comment   ON props(PreviewId, LORComment);
-    CREATE INDEX IF NOT EXISTS idx_subprops_preview_comment ON subProps(PreviewId, LORComment);
+    CREATE INDEX IF NOT EXISTS idx_props_preview_comment          ON props(PreviewId, LORComment);
+    CREATE INDEX IF NOT EXISTS idx_subprops_preview_comment       ON subProps(PreviewId, LORComment);
     """
     conn = sqlite3.connect(db_file)
     try:
         conn.executescript(ddl)
         conn.commit()
-        print("[INFO] Created preview_wiring_map_v6 and preview_wiring_sorted_v6 (keep masters; hide only duplicate sub at same address).")
+        print("[INFO] Created wiring views + helpers (props slice, controller_networks_v6, breaking_check_v6).")
     finally:
         conn.close()
+
 
     # use last year's Master musical preview to see where changes have occurred (OPTIONAL)
     def load_master_keys_csv(conn, csv_path):
@@ -1780,27 +1857,27 @@ def create_wiring_views_v6(db_file: str):
         print(f"[INFO] Imported {len(rows)} rows into master_musical_prev_keys")
 
 
-    def create_breaking_check_view(conn):
-        ddl = """
-        DROP VIEW IF EXISTS breaking_check_v6;
-        CREATE VIEW breaking_check_v6 AS
-        SELECT
-            m.RawPropID,
-            m.ChannelName   AS ChannelName_2024,
-            m.DisplayName   AS DisplayName_2024,
-            p.Name          AS ChannelName_Now,
-            p.LORComment    AS DisplayName_Now,
-            CASE WHEN p.PropID IS NULL THEN 1 ELSE 0 END AS Missing_Now,
-            CASE WHEN p.PropID IS NOT NULL
-                AND m.ChannelName != IFNULL(p.Name,'') THEN 1 ELSE 0 END AS ChannelName_Changed,
-            CASE WHEN p.PropID IS NOT NULL
-                AND m.DisplayName != IFNULL(p.LORComment,'') THEN 1 ELSE 0 END AS DisplayName_Changed
-        FROM master_musical_prev_keys m
-        LEFT JOIN props p ON p.PropID = m.RawPropID;
-        """
-        conn.executescript(ddl)
-        conn.commit()
-        print("[INFO] Created breaking_check_v6 view")
+    # def create_breaking_check_view(conn):
+    #     ddl = """
+    #     DROP VIEW IF EXISTS breaking_check_v6;
+    #     CREATE VIEW breaking_check_v6 AS
+    #     SELECT
+    #         m.RawPropID,
+    #         m.ChannelName   AS ChannelName_2024,
+    #         m.DisplayName   AS DisplayName_2024,
+    #         p.Name          AS ChannelName_Now,
+    #         p.LORComment    AS DisplayName_Now,
+    #         CASE WHEN p.PropID IS NULL THEN 1 ELSE 0 END AS Missing_Now,
+    #         CASE WHEN p.PropID IS NOT NULL
+    #             AND m.ChannelName != IFNULL(p.Name,'') THEN 1 ELSE 0 END AS ChannelName_Changed,
+    #         CASE WHEN p.PropID IS NOT NULL
+    #             AND m.DisplayName != IFNULL(p.LORComment,'') THEN 1 ELSE 0 END AS DisplayName_Changed
+    #     FROM master_musical_prev_keys m
+    #     LEFT JOIN props p ON p.PropID = m.RawPropID;
+    #     """
+    #     conn.executescript(ddl)
+    #     conn.commit()
+    #     print("[INFO] Created breaking_check_v6 view")
 
     # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
     try:
