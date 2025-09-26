@@ -1,15 +1,15 @@
 # Preview Import Workflow
 
-All current **show previews** are stored in:
+All current **show previews** are stored in: G:\Shared drives\MSB Database\Database Previews
 
 
 ⚠️ At this time, there is **no automatic sync** between your local LOR system and this shared folder. Each user must ensure they are working with the **current version**.
- ![Manifest](images/manifest_apply.png) 
+
 ---
 
 ## Step 1 – Check the Current Manifest
 Before importing, open or print the manifest file:
-
+ ![Manifest](images/manifest_apply.png) 
 
 This lists all previews, their names, and revision numbers.
 
