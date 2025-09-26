@@ -58,6 +58,7 @@ FILES = [
     ("applied_this_run.csv", "Applied_This_Run"),
     ("apply_events.csv", "Apply_Events"),
     ("current_previews_ledger.csv", "Current_Previews_Ledger"),
+    ("revision_mismatches.csv", "Revision_Mismatches"),
 ]
 
 STAMP = datetime.now().strftime("%Y%m%d-%H%M")
@@ -231,6 +232,17 @@ def add_missing_comments_colors(ws, header_row=1):
 
 STATUS_LIKE = ("status","action","result","decision","outcome","operation")  # not dates
 
+def _number_format_int(ws, headers):
+    # Map header text -> column index
+    header_map = {ws.cell(1, c).value: c for c in range(1, ws.max_column + 1)}
+    for h in headers:
+        col = header_map.get(h)
+        if not col:
+            continue
+        for r in range(2, ws.max_row + 1):
+            ws.cell(r, col).number_format = "0"  # integer, no decimals
+
+
 def pick_status_column(df: pd.DataFrame) -> str | None:
     if df is None or df.empty:
         return None
@@ -277,6 +289,10 @@ def main():
     tables = {}
     for filename, sheet in FILES:
         df = read_csv_safe(ROOT / filename)
+        if sheet == "Revision_Mismatches":
+            for col in ("UsedRevision", "DiskLatestRevision"):
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")  # nullable int, no decimals
         if df is not None and not df.empty:
             tables[sheet] = df
 
@@ -303,6 +319,9 @@ def main():
                 add_action_colors(ws)
             if sheet_name == "Missing_Comments":
                 add_missing_comments_colors(ws)
+        
+            if sheet_name == "Revision_Mismatches":
+                _number_format_int(ws, ["UsedRevision", "DiskLatestRevision"])
 
         # Make Overview the active sheet when the workbook opens
         if "Overview" in wb.sheetnames:
