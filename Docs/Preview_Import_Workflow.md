@@ -4,7 +4,7 @@ All current **show previews** are stored in:
 
 
 ⚠️ At this time, there is **no automatic sync** between your local LOR system and this shared folder. Each user must ensure they are working with the **current version**.
-
+ ![Manifest](images/manifest_apply.png) 
 ---
 
 ## Step 1 – Check the Current Manifest
