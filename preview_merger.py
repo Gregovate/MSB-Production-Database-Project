@@ -55,13 +55,15 @@ import time
 import socket  # used for ledger 25-09-03 GAL
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
-from pathlib import Path
+import pathlib   
 from typing import Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 import shutil
 import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
+
+Path = pathlib.Path   # define once, globally
 
 # ============================= GLOBAL DEFAULTS ============================= #
 GLOBAL_DEFAULTS = {
@@ -182,8 +184,7 @@ def is_staging_candidate(preview_name: str) -> bool:
 
 
 # Ignore Device type = None for staged previews 25-09-01 GAL
-from pathlib import Path
-def device_type_is_none(p: Path) -> bool:
+def device_type_is_none(p: pathlib.Path) -> bool:
     """Best-effort check for DeviceType='None' inside a .lorprev (XML-ish) file."""
     try:
         with p.open('rb') as f:
@@ -283,10 +284,11 @@ def comment_stats(path: Path) -> tuple[int, int, int]:
                     nospace += 1
     return total, filled, nospace
 
-from pathlib import Path
-def _in_dir(p: Path, root: Path) -> bool:
+def _in_dir(p: pathlib.Path, root: pathlib.Path) -> bool:
     try:
-        Path(p).resolve().relative_to(Path(root).resolve())
+        rp = pathlib.Path(p).resolve()
+        rr = pathlib.Path(root).resolve()
+        rp.relative_to(rr)  # raises ValueError if rp not under rr
         return True
     except Exception:
         return False
@@ -1130,7 +1132,6 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
     return winner, losers, reason, conflict
 
 
-
 def default_stage_name(idy: PreviewIdentity, src: Path) -> str:
     base = sanitize_name(idy.name) if idy.name else (f'preview_{idy.guid[:8]}' if idy.guid else src.stem)
     tag = f"__{idy.guid[:8]}" if idy.guid else ''
@@ -1148,6 +1149,112 @@ def stage_copy(src: Path, dst: Path) -> None:
             pass
     ensure_dir(dst.parent)
     shutil.copy2(src, dst)
+
+
+
+
+# ============================= Debug Trace ============================= #
+
+def _read_report_csv(dir_path: pathlib.Path, name: str):
+    """
+    Robust CSV reader for our reports:
+    - Handles BOMs/newlines
+    - Detects and skips metadata lines above the true header
+    - Sniffs delimiter
+    - Skips malformed lines (doesn't crash tracing)
+    """
+    import pandas as pd, io
+    p = pathlib.Path(dir_path) / name
+    if not p.exists():
+        return pd.DataFrame()
+
+    raw = p.read_text(encoding="utf-8-sig", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+    lines = raw.split("\n")
+
+    # Look for the *real* header row: contains typical columns and has many fields
+    header_idx = None
+    best_delim = ","
+    wanted = {"previewname", "key", "action", "status", "author", "exported"}
+    delims = [",", "\t", ";", "|"]
+
+    for i, ln in enumerate(lines[:50]):  # search first ~50 lines
+        for d in delims:
+            parts = [c.strip() for c in ln.split(d)]
+            if len(parts) >= 5:
+                lower = {c.lower() for c in parts}
+                if lower & wanted:
+                    header_idx = i
+                    best_delim = d
+                    break
+        if header_idx is not None:
+            break
+
+    if header_idx is not None:
+        text = "\n".join(lines[header_idx:])
+        try:
+            return pd.read_csv(io.StringIO(text), sep=best_delim, engine="python",
+                               dtype=str, keep_default_na=False, on_bad_lines="skip")
+        except Exception:
+            pass  # fall through to sniffing
+
+    # Fallback: let pandas sniff the delimiter
+    try:
+        return pd.read_csv(io.StringIO(raw), sep=None, engine="python",
+                           dtype=str, keep_default_na=False, on_bad_lines="skip")
+    except Exception:
+        try:
+            return pd.read_csv(io.StringIO(raw), sep=",", engine="python",
+                               dtype=str, keep_default_na=False, on_bad_lines="skip")
+        except Exception:
+            return pd.DataFrame()
+
+
+
+
+def _trace_preview(reports_dir: Path, trace_key=None, trace_name=None):
+    import pandas as pd
+
+    compare  = _read_report_csv(reports_dir, "lorprev_compare.csv")
+    excluded = _read_report_csv(reports_dir, "excluded_winners.csv")
+    ledger   = _read_report_csv(reports_dir, "current_previews_ledger.csv")
+
+    def _name_col(df: pd.DataFrame):
+        for c in df.columns:
+            if c.lower() in ("previewname","preview","displayname","name","title"):
+                return c
+        return None
+
+    def _show(df: pd.DataFrame, label: str):
+        if df.empty:
+            print(f"[trace] {label}: <no file or rows>"); return
+        if trace_key and "Key" in df.columns:
+            hit = df["Key"] == trace_key
+        else:
+            c = _name_col(df)
+            if not c or not trace_name:
+                print(f"[trace] {label}: not found (missing Key or name column)"); return
+            hit = df[c].str.contains(trace_name, case=False, na=False)
+        sel = df[hit]
+        if sel.empty:
+            print(f"[trace] {label}: not found"); return
+        cols = [x for x in (
+            "PreviewName","Preview","DisplayName","Name","Title",
+            "Key","Revision","Author","Exported","ApplyDate","AppliedBy",
+            "Status","Action","Family","Reason","ExcludeReason","SourcePath"
+        ) if x in sel.columns]
+        print(f"[trace] {label}: {len(sel)} row(s)")
+        print(sel[cols].to_string(index=False, max_colwidth=120))
+
+    _show(compare,  "COMPARE")
+    _show(excluded, "EXCLUDED")
+    _show(ledger,   "LEDGER")
+
+
+# ============================ END Debug Trace ========================== #
+
+
+
+
 
 # ============================= Reporting ============================= #
 
@@ -1253,6 +1360,11 @@ def main():
     ap.add_argument('--email-domain', default=defaults['email_domain'], help='If set, any username without a mapping gets username@<domain>')
     ap.add_argument('--debug', action='store_true', help='Print debug info to stderr')
     # Progress is ON by default; use --no-progress to turn it off
+    ap.add_argument('--trace-key',  default=None, help='Trace by Key/GUID, e.g. GUID:6e8a166f-... (prints where it shows up)')
+    ap.add_argument('--trace-name', default=None, help='Trace by PreviewName substring (case-insensitive)')
+    ap.add_argument('--excel-out',  default=r"G:\Shared drives\MSB Database\Database Previews",
+                    help='Folder to write the merged Excel (defaults to Database Previews)')
+
     ap.add_argument('--progress', dest='progress', action='store_true', default=True,
                     help='Show progress while building report (default: on)')
     ap.add_argument('--no-progress', dest='progress', action='store_false',
@@ -1262,22 +1374,34 @@ def main():
     args = ap.parse_args()
 
     # ---- compute report paths EARLY
-    input_root   = Path(args.input_root)
-    staging_root = Path(args.staging_root)
-    archive_root = Path(args.archive_root) if args.archive_root else None
-    history_db   = Path(args.history_db)
+    input_root   = pathlib.Path(args.input_root)
+    staging_root = pathlib.Path(args.staging_root)
+    archive_root = pathlib.Path(args.archive_root) if args.archive_root else None
+    history_db   = pathlib.Path(args.history_db)
 
-    report_csv   = Path(args.report)
-    report_html  = Path(args.report_html) if args.report_html else None
-    ensure_dir(report_csv.parent)  # safe if already exists
+    report_csv   = pathlib.Path(args.report)
+    report_html  = pathlib.Path(args.report_html) if args.report_html else None
+    ensure_dir(report_csv.parent)                     # safe if exists
 
     # Canonical companion files (define ONCE here)
-    miss_csv      = report_csv.with_name('lorprev_missing_comments.csv')
+    reports_dir   = report_csv.parent                    # << single source of truth for CSV outputs
+    miss_csv      = reports_dir / 'lorprev_missing_comments.csv'
     manifest_path = report_csv.with_suffix('.manifest.json')
+
+    # Excel output location:
+    #   1) --excel-out if provided
+    #   2) otherwise, if report_html is set → put Excel next to the HTML
+    #   3) fallback to reports_dir
+    excel_out = Path(args.excel_out) if args.excel_out else (report_html.parent if report_html else reports_dir)
+    ensure_dir(excel_out)
 
     # ---- FAIL FAST if any existing outputs are open (Excel etc.)
     _fail_if_locked([report_csv, report_html, miss_csv, manifest_path])
     print(f"[script] running: {__file__}")
+    print(f"Staging root: {staging_root}")
+    print(f"[cfg] CSV reports → {reports_dir}")
+    print(f"[cfg] Excel out   → {excel_out}")
+
 
     # Always show which staging root we’re using (helps when testing different folders)
     print(f"Staging root: {staging_root}")
@@ -2068,12 +2192,99 @@ def main():
         )
         print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
 
+    # ---------- REVISION CHECK: newest on disk vs what compare/excluded used ----------
+    import pandas as pd
+
+    compare_df  = _read_report_csv(reports_dir, "lorprev_compare.csv")
+    excluded_df = _read_report_csv(reports_dir, "excluded_winners.csv")
+    ledger_df   = _read_report_csv(reports_dir, "current_previews_ledger.csv")
+
+    if not ledger_df.empty:
+        ledger_df["Revision_num"] = pd.to_numeric(ledger_df.get("Revision",""), errors="coerce").fillna(-1).astype(int)
+        ledger_df["Exported_ts"]  = pd.to_datetime(ledger_df.get("Exported",""), errors="coerce")
+
+        # newest row per GUID: max(Revision), then newest Exported
+        latest_by_guid = (
+            ledger_df
+            .sort_values(["Key","Revision_num","Exported_ts"], ascending=[True, False, False])
+            .drop_duplicates(subset=["Key"], keep="first")
+        )
+
+        used = pd.concat([df for df in (compare_df, excluded_df) if not df.empty], ignore_index=True)
+        if not used.empty:
+            used["UsedRevision_num"] = pd.to_numeric(used.get("Revision",""), errors="coerce").fillna(-1).astype(int)
+
+            # carry selected columns from the ledger if present
+            path_cols  = [c for c in ("SourcePath","FilePath","FullPath","Path") if c in latest_by_guid.columns]
+            carry_cols = ["Key","Revision_num","Author","Exported","PreviewName","FileName"] + path_cols
+            carry_cols = [c for c in carry_cols if c in latest_by_guid.columns]  # only keep those that exist
+
+            latest = latest_by_guid[carry_cols].rename(columns={
+                "Revision_num":"DiskLatestRevision",
+                "Author":"DiskLatestAuthor",
+                "Exported":"DiskLatestExported",
+            })
+
+            merged = used.merge(latest, on="Key", how="left")
+
+            # ---- Fill human-friendly filename (no filesystem probing) ----
+            if "PreviewFile" not in merged.columns:
+                merged["PreviewFile"] = ""
+
+            # Try FileName first (handle possible _x/_y suffixes after merge), then PreviewName
+            name_sources = [c for c in ("FileName","FileName_x","FileName_y",
+                                        "PreviewName","PreviewName_x","PreviewName_y")
+                            if c in merged.columns]
+            for col in name_sources:
+                m = merged["PreviewFile"].eq("") & merged[col].astype(str).ne("")
+                if m.any():
+                    merged.loc[m, "PreviewFile"] = merged.loc[m, col].astype(str)
+
+            # Optional: ensure .lorprev suffix is shown
+            # merged["PreviewFile"] = merged["PreviewFile"].astype(str).apply(
+            #     lambda s: s if not s or s.lower().endswith(".lorprev") else s + ".lorprev"
+            # )
+
+            mismatches = merged[merged["DiskLatestRevision"] > merged["UsedRevision_num"]].copy()
+
+            # final output columns (order tuned for humans)
+            show_cols = [c for c in (
+                "PreviewName","PreviewFile","Key",
+                "UsedRevision_num","DiskLatestRevision",
+                "DiskLatestAuthor","DiskLatestExported"
+            ) if c in mismatches.columns]
+            mismatches = mismatches[show_cols].rename(columns={"UsedRevision_num":"UsedRevision"})
+
+            out_csv = reports_dir / "revision_mismatches.csv"
+            mismatches.to_csv(out_csv, index=False, encoding="utf-8-sig")
+            print(f"[revcheck] wrote {out_csv} (rows={len(mismatches)})")
+        else:
+            print("[revcheck] no compare/excluded to check; skipped.")
+    else:
+        print("[revcheck] ledger empty; cannot compute latest-by-GUID.")
+
+
+
+
+
+    # >>> add this block
+    if args.trace_key or args.trace_name:
+        try:
+            _trace_preview(reports_dir=report_csv.parent,
+                           trace_key=args.trace_key,
+                           trace_name=args.trace_name)
+        except Exception as e:
+            print(f"[trace] failed: {e}")
+    # <<<
+    try:
         subprocess.run(
             [sys.executable, "merge_reports_to_excel.py",
-            "--root", r"G:\Shared drives\MSB Database\database\merger\reports",
-            "--out",  r"G:\Shared drives\MSB Database\Database Previews"],
+            "--root", str(reports_dir),
+            "--out",  str(excel_out)],
             check=True
         )
+    except Exception as e:
+        print(f"[warn] Excel merge step failed: {e}")
 
 
     # ------------------------------------------------------------------------------
