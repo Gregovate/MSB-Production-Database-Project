@@ -689,7 +689,8 @@ def write_current_manifest(staging_root: Path, out_csv: Path):
             })
 
 # a dry-run (“would-be”) manifest from preview_merger.py without changing any files GAL 25-09-18
-def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str = "current_previews_manifest_preview.csv"):
+def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: str = "current_previews_manifest_preview.csv",
+                              author_by_name: dict[str, str] | None = None):
     r"""
     Create a 'would-be' manifest (no filesystem changes) listing the winners that
     WOULD remain in staging if --apply were used.
@@ -716,11 +717,12 @@ def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str =
         rev = r.get('Revision') or ''
         act = r.get('Action')   or ''
         fname = f"{pn}.lorprev" if pn else ""
-
         present = "Yes" if fname.lower() in existing else "No"
+        author = (author_by_name or {}).get(pn, "")
         rows.append({
             "FileName": fname,
             "PreviewName": pn,
+            "Author": author,
             "Revision": rev,
             "Action": act,
             "Present": present,
@@ -735,7 +737,7 @@ def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str =
     rows.sort(key=lambda x: (x["PreviewName"].lower(), -_revnum(x["Revision"])))
 
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Revision","Action","Present"])
+        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Author","Revision","Action","Present"])
         w.writeheader()
         w.writerows(rows)
 
@@ -743,46 +745,55 @@ def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str =
 
 
 # Writes Manifest in HTML format GAL 25-09-19
-def write_current_manifest_html(staging_root: Path, out_html: Path):
+def write_current_manifest_html(staging_root: Path, out_html: Path, author_by_name: dict[str, str] | None = None):
     rows = []
     for p in sorted(staging_root.glob("*.lorprev")):
         st  = p.stat()
         idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
         exported = datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        # FileName, PreviewName, Revision, Action, Exported
-        rows.append((p.name, idy.name or p.stem, idy.revision_raw or '', '', exported))
+        pn = (idy.name or p.stem) or ""
+        author = (author_by_name or {}).get(pn, "")
+        # FileName, Author, Revision, Action, Exported   (drop PreviewName)
+        rows.append((p.name, author, idy.revision_raw or '', '', exported))
+
     _emit_manifest_html(
         rows,
         out_html,
-        headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text"),("Exported","date")],
+        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text"),("Exported","date")],
         context_path=str(out_html.parent),
-        extra_title="(APPLY RUN)"   # <-- label
+        extra_title="(APPLY RUN)"
     )
 
 
-def write_dryrun_manifest_html(winner_rows: list, out_html: Path):
+def write_dryrun_manifest_html(winner_rows: list, out_html: Path, author_by_name: dict[str, str] | None = None):
     seen, rows = set(), []
     def _revnum(v):
         try: return float(v or '')
         except Exception: return -1.0
+
     for r in winner_rows:
         key = r.get('Key')
-        if key in seen: continue
+        if key in seen: 
+            continue
         seen.add(key)
-        pn  = (r.get('PreviewName') or '').strip()
-        rev = r.get('Revision') or ''
-        act = r.get('Action') or ''
-        fname = f"{pn}.lorprev" if pn else ""
-        # FileName, PreviewName, Revision, Action
-        rows.append((fname, pn, rev, act))
-    rows.sort(key=lambda x: (x[1].lower(), -_revnum(x[2])))
+
+        pn     = (r.get('PreviewName') or '').strip()
+        rev    = r.get('Revision') or ''
+        act    = r.get('Action') or ''
+        author = (r.get('Author') or (author_by_name or {}).get(pn, '') or '')
+        fname  = f"{pn}.lorprev" if pn else ""
+
+        # FileName, Author, Revision, Action   (drop PreviewName)
+        rows.append((fname, author, rev, act))
+
+    rows.sort(key=lambda x: ( (x[0] or "").lower(), -_revnum(x[2]) ))
 
     _emit_manifest_html(
         rows,
         out_html,
-        headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text")],
+        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text")],
         context_path=str(out_html.parent),
-        extra_title="(DRY RUN)"     # <-- label
+        extra_title="(DRY RUN)"
     )
 
 def _emit_manifest_html(
@@ -1387,6 +1398,22 @@ def main():
     reports_dir   = report_csv.parent                    # << single source of truth for CSV outputs
     miss_csv      = reports_dir / 'lorprev_missing_comments.csv'
     manifest_path = report_csv.with_suffix('.manifest.json')
+
+    # --- Build PreviewName -> Author map once from the ledger CSV ---
+    author_by_name: dict[str, str] = {}
+    ledger_csv = reports_dir / "current_previews_ledger.csv"
+
+    try:
+        with ledger_csv.open(encoding="utf-8-sig", newline="") as f:
+            for row in csv.DictReader(f):
+                name = (row.get("PreviewName") or "").strip()
+                auth = (row.get("Author") or "").strip()
+                if name and auth and name not in author_by_name:
+                    author_by_name[name] = auth
+    except FileNotFoundError:
+        # No ledger yet — manifests will still render, Authors will be blank
+        pass
+
 
     # Excel output location:
     #   1) --excel-out if provided
@@ -2132,7 +2159,7 @@ def main():
 
         # HTML version too 25-09-19
         manifest_html_path = Path(staging_root) / "current_previews_manifest.html"
-        write_current_manifest_html(Path(staging_root), manifest_html_path)
+        write_current_manifest_html(Path(staging_root), manifest_html_path, author_by_name=author_by_name)
         print(f"[sweep] staging manifest → {manifest_csv_path}")
         print(f"[sweep] staging manifest (HTML) → {manifest_html_path}")
 
@@ -2141,8 +2168,9 @@ def main():
 
         # 1) CSV preview manifest (adds Present column)
         #    Only include previews from allowed staging families
-        write_dryrun_manifest(Path(staging_root), allowed_winner_rows,
-                              out_name="current_previews_manifest_preview.csv")
+        write_dryrun_manifest_csv(Path(staging_root), allowed_winner_rows,
+                          out_name="current_previews_manifest_preview.csv",
+                          author_by_name=author_by_name)
         print(f"[dry-run] wrote preview manifest (no changes made).")
 
         # 2) HTML preview manifest (build rows locally; don't rely on compare 'rows')
@@ -2176,20 +2204,11 @@ def main():
         html_rows.sort(key=lambda x: (x[1].lower(), -_revnum(x[2])))
 
         # Write the HTML preview manifest with sortable headers
+        # Build once, earlier in main():
+        # author_by_name = {...}  # from current_previews_ledger.csv
+
         preview_html = Path(staging_root) / "current_previews_manifest_preview.html"
-        _emit_manifest_html(
-            html_rows,
-            preview_html,
-            headers=[
-                ("FileName", "text"),
-                ("PreviewName", "text"),
-                ("Revision", "number"),
-                ("Action", "text"),
-                ("Present", "text"),
-            ],
-            context_path=str(staging_root),
-            extra_title="(DRY RUN)"  # <-- add the label
-        )
+        write_dryrun_manifest_html(allowed_winner_rows, preview_html, author_by_name=author_by_name)
         print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
 
     # ---------- REVISION CHECK: newest on disk vs what compare/excluded used ----------
