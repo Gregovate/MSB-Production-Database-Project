@@ -65,42 +65,34 @@ def levenshtein(a: str, b: str) -> int:
         prev, curr = curr, prev
     return prev[-1]
 
-def load_db_names(db_path: Path) -> pd.DataFrame:
-    con = sqlite3.connect(str(db_path))
-    cur = con.cursor()
-    # Ensure props + column exist
-    cur.execute("PRAGMA table_info(props)")
-    cols = [r[1] for r in cur.fetchall()]
-    if DB_DISPLAY_COL not in cols:
-        con.close()
-        raise RuntimeError(f"Column '{DB_DISPLAY_COL}' not found in 'props'. Found: {cols}")
+# --------------- Loaders ---------------
 
-    # Pull display name + its preview name/revision; dedupe on display name
-    df = pd.read_sql_query(
-        f"""
-        WITH base AS (
-          SELECT
-            TRIM(p.{DB_DISPLAY_COL})      AS display_name,
-            TRIM(COALESCE(pv.Name,''))    AS Preview,
-            TRIM(COALESCE(pv.Revision,'')) AS Revision
-          FROM props p
-          LEFT JOIN previews pv ON pv.id = p.PreviewId
-          WHERE p.{DB_DISPLAY_COL} IS NOT NULL
-            AND TRIM(p.{DB_DISPLAY_COL}) <> ''
-        )
-        SELECT display_name, MIN(Preview) AS Preview, MIN(Revision) AS Revision
-        FROM base
-        GROUP BY display_name
-        """,
-        con,
-    )
-    con.close()
+def load_db_names(db_path: Path) -> pd.DataFrame:
+    conn = sqlite3.connect(db_path)
+    try:
+        q = f"""
+            SELECT
+                p.{DB_DISPLAY_COL} AS display_name,
+                pv.Name            AS Preview,
+                pv.Revision        AS Revision
+            FROM props p
+            JOIN previews pv ON pv.id = p.PreviewId
+            WHERE TRIM(COALESCE(p.{DB_DISPLAY_COL}, '')) <> ''
+        """
+        df = pd.read_sql_query(q, conn)
+    finally:
+        conn.close()
+
+    # Normalize + unique by normalized key
+    df["display_name"] = df["display_name"].astype(str)
     df["display_name_norm"] = df["display_name"].map(norm)
-    df.drop_duplicates(subset=["display_name_norm"], inplace=True)
+    df = df[df["display_name_norm"] != ""].drop_duplicates(subset=["display_name_norm"], inplace=False)
     return df
 
 
 def load_sheet_names(csv_path: Path) -> pd.DataFrame:
+
+    print(f"[INFO] Reading sheet CSV from: {csv_path}")  # NEW
     # Keep strings as-is, no NA coercion
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
 
@@ -112,6 +104,8 @@ def load_sheet_names(csv_path: Path) -> pd.DataFrame:
             break
     if disp_col is None:
         disp_col = df.columns[0]  # last resort
+
+    print(f"[INFO] Using column for display name: '{disp_col}'")  # NEW
 
     df = df[[disp_col]].rename(columns={disp_col: "display_name"})
     df["display_name"] = df["display_name"].astype(str)
@@ -131,16 +125,21 @@ def fuzzy_suggestions(missing_df: pd.DataFrame, universe_df: pd.DataFrame, k=3) 
 
     rows = []
     for key in miss:
-        best = sorted(uni, key=lambda u: levenshtein(key, u))[:k]
-        for cand in best:
-            rows.append((key, cand, levenshtein(key, cand)))
+        best = []
+        for u in uni:
+            d = levenshtein(key, u)
+            best.append((d, u))
+        best.sort(key=lambda x: x[0])
+        best = best[:k]
+        for d, u in best:
+            rows.append((key, u, d))
 
-    out = pd.DataFrame(rows, columns=["From_Key", "To_Key", "Distance"])
-    # Map back to original (unnormalized) labels for readability
+    out = pd.DataFrame(rows, columns=["From_Key","To_Key","Distance"])
+    # map keys -> original names for nicer output
     key_to_name = pd.concat([
-        missing_df[["display_name_norm", "display_name"]].rename(columns={"display_name_norm":"k","display_name":"v"}),
-        universe_df[["display_name_norm", "display_name"]].rename(columns={"display_name_norm":"k","display_name":"v"})
-    ], ignore_index=True).drop_duplicates("k").set_index("k")["v"].to_dict()
+        missing_df[["display_name_norm","display_name"]],
+        universe_df[["display_name_norm","display_name"]],
+    ]).drop_duplicates(subset=["display_name_norm"]).set_index("display_name_norm")["display_name"].to_dict()
 
     out["From_Name"] = out["From_Key"].map(lambda k: key_to_name.get(k, k))
     out["Suggested_Match"] = out["To_Key"].map(lambda k: key_to_name.get(k, k))
@@ -158,6 +157,11 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
 
     db_df = load_db_names(db_path)
     sh_df = load_sheet_names(csv_path)
+    # Sanity probes for common rename checks
+    for probe in ["ClarksWagon","WallyWagon"]:
+        in_sheet = (sh_df["display_name"].str.contains(probe, case=False, na=False)).any()
+        in_db    = (db_df["display_name"].str.contains(probe, case=False, na=False)).any()
+        print(f"[CHECK] {probe}: sheet={in_sheet} db={in_db}")
 
     # Exact matches (on normalized key)
     matches = db_df.merge(sh_df, on="display_name_norm", suffixes=("_db","_sheet"))
@@ -188,7 +192,7 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
     sheet_only = sheet_only[["Sheet_Display_Name", "Normalized_Key"]] \
                         .sort_values("Sheet_Display_Name")
 
-    # Fuzzy (optional) — unchanged
+    # Fuzzy (optional)
     near_matches = pd.DataFrame(columns=["Missing_Side","From_Name","Suggested_Match","Distance"])
     if USE_FUZZY:
         sug_db  = fuzzy_suggestions(
@@ -211,14 +215,14 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
 
         near_matches = pd.concat([sug_db, sug_sh], ignore_index=True)
 
-        summary = pd.DataFrame([{
-            "As of": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "DB total (unique)": len(db_df),
-            "Sheet total (unique)": len(sh_df),
-            "Exact matches": len(matches),
-            "DB-only": len(db_only),
-            "Sheet-only": len(sheet_only),
-        }])
+    summary = pd.DataFrame([{
+        "As of": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "DB total (unique)": len(db_df),
+        "Sheet total (unique)": len(sh_df),
+        "Exact matches": len(matches),
+        "DB-only": len(db_only),
+        "Sheet-only": len(sheet_only),
+    }])
 
     return {
         "summary": summary,
@@ -229,15 +233,18 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
     }
 
 
-# --------------- Excel writer ---------------
+# --------------- Formatting ---------------
 
 def autosize_and_filter(ws):
-    # Freeze top row and add filters if data exists
+    # Add filters
+    ws.auto_filter.ref = ws.dimensions
+
+    # Freeze header
     ws.freeze_panes = "A2"
-    if ws.max_row >= 1 and ws.max_column >= 1:
-        ws.auto_filter.ref = ws.dimensions
-    # Auto-width (simple heuristic)
-    for col in ws.columns:
+
+    # Autosize columns
+    from openpyxl.utils import get_column_letter
+    for col in ws.iter_cols(min_row=1, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
         max_len = 0
         col_letter = col[0].column_letter
         for cell in col:
@@ -272,9 +279,26 @@ def write_excel(out_path: Path, tables: dict):
 # --------------- Entrypoint ---------------
 
 def main():
+    # Allow optional CLI overrides:
+    #   python compare_displays_vs_db.py [DB_PATH] [CSV_PATH] [XLSX_PATH]
+    db_path = DB_PATH
+    csv_path = CSV_PATH
+    xlsx_path = XLSX_PATH
+    args = sys.argv[1:]
+    if len(args) >= 1:
+        db_path = Path(args[0])
+    if len(args) >= 2:
+        csv_path = Path(args[1])
+    if len(args) >= 3:
+        xlsx_path = Path(args[2])
+
+    print(f"[INFO] Using database: {db_path}")
+    print(f"[INFO] Using sheet CSV: {csv_path}")
+    print(f"[INFO] Will write Excel: {xlsx_path}")
+
     try:
-        tables = run_compare(DB_PATH, CSV_PATH)
-        write_excel(XLSX_PATH, tables)
+        tables = run_compare(db_path, csv_path)
+        write_excel(xlsx_path, tables)
     except Exception as e:
         print(f"[ERROR] {e}")
         sys.exit(1)
