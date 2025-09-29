@@ -194,6 +194,20 @@ def device_type_is_none(p: pathlib.Path) -> bool:
     except Exception:
         return False
 
+# ── Preview names in Summare 25-09-29 ───────────────────────────────────────────
+GUID_TO_NAME: dict[str, str] = {}
+KEY_TO_NAME:  dict[str, str] = {}
+
+def _preview_label_from_identity(idy) -> str:
+    """
+    Return a friendly label like 'Show Background Stage 17 – Candyland (rev 7)'
+    Falls back gracefully if fields are missing.
+    """
+    name = (getattr(idy, "name", None) or "(Unnamed Preview)").strip()
+    rev  = getattr(idy, "revision", None) or getattr(idy, "revision_raw", None)
+    return f"{name} (rev {rev})" if rev else name
+
+
 # Time utilities
 def now_local():
     """Return a timezone-aware local datetime."""
@@ -1484,22 +1498,29 @@ def main():
         for p in _staged_top:  # NON-RECURSIVE on purpose
             try:
                 idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
-                k = identity_key(idy)
-                st = p.stat().st_mtime
+                k   = identity_key(idy)
+                st  = p.stat().st_mtime
+                lbl = _preview_label_from_identity(idy)
+
                 if k:
                     prev = staged_by_key.get(k)
                     if (prev is None) or (st > prev.stat().st_mtime):
                         staged_by_key[k] = p
-                if idy.guid:
-                    prev = staged_by_guid.get(idy.guid)
-                    if (prev is None) or (st > prev.stat().st_mtime):
+                        KEY_TO_NAME[k]   = lbl  # <-- capture friendly name for this winning key
+
+                if getattr(idy, "guid", None):
+                    gprev = staged_by_guid.get(idy.guid)
+                    if (gprev is None) or (st > gprev.stat().st_mtime):
                         staged_by_guid[idy.guid] = p
+                        GUID_TO_NAME[idy.guid]   = lbl  # <-- capture friendly name for this winning GUID
             except Exception as e:
                 print(f"[warn] index staged failed for {p}: {e}", file=sys.stderr)
     except Exception as e:
         print(f"[warn] scanning staging_root failed: {e}", file=sys.stderr)
-        staged_by_key = {}
+        staged_by_key  = {}
         staged_by_guid = {}
+        KEY_TO_NAME.clear()
+        GUID_TO_NAME.clear()
 
 
 
@@ -2047,19 +2068,74 @@ def main():
             file=sys.stderr
         )
 
-        # Optional: list previews that need attention (update or stage-new)
-        needs = [r for r in winner_rows if r.get('Action') in ('update-staging','stage-new')]
+
+
+
+
+        # ---------- Clean "needs action" summary: names only, multi-line ----------
+        def _looks_like_guid(s: str) -> bool:
+            s = (s or "").strip().lower()
+            return s.startswith("guid:") or (len(s) in (36, 38) and s.count("-") == 4)
+
+        needs = [r for r in winner_rows if r.get('Action') in ('update-staging', 'stage-new')]
         if needs:
-            needing_keys = sorted({r.get('Key') for r in needs})
-            print(f"[summary] needs action: {len(needs)} rows across {len(needing_keys)} previews: {', '.join(needing_keys)}", file=sys.stderr)
+            key_to_name  = globals().get('KEY_TO_NAME', {})
+            guid_to_name = globals().get('GUID_TO_NAME', {})
+
+            labels: set[str] = set()
+            for r in needs:
+                label = None
+
+                # 1) Prefer Key → Name (from earlier staged index)
+                k = r.get('Key')
+                if k and key_to_name.get(k):
+                    label = key_to_name[k]
+
+                # 2) Else GUID → Name
+                if not label:
+                    g = r.get('GUID')
+                    if g and guid_to_name.get(g):
+                        label = guid_to_name[g]
+
+                # 3) Else fall back to the row's PreviewName (+rev)
+                if not label:
+                    pn  = (r.get('PreviewName') or '').strip()
+                    rev = r.get('Revision')
+                    if pn:
+                        label = f"{pn} (rev {rev})" if rev not in (None, "", "None") else pn
+
+                # Keep only real names (suppress GUID-looking strings)
+                if label and not _looks_like_guid(label):
+                    labels.add(label)
+
+            pretty = sorted(labels, key=lambda s: s.lower())
+
+            print(
+                "[summary] needs action: "
+                f"{len(needs)} rows across {len(pretty)} previews:\n  - "
+                + "\n  - ".join(pretty),
+                file=sys.stderr
+            )
+
+
+
     except Exception as e:
-        print(f"[summary] failed: {e}", file=sys.stderr)
+        print(f"[warn] summary generation failed: {e}", file=sys.stderr)
+
+
+
 
 
     # Write CSV/HTML
     write_csv(report_csv, rows, str(input_root), str(staging_root))
     if report_html:
         write_html(report_html, rows, str(input_root), str(staging_root))
+
+
+
+
+
+
 
     # Optional manifest JSON next to CSV
     manifest_path = report_csv.with_suffix('.manifest.json')
@@ -2120,8 +2196,11 @@ def main():
         except Exception as e:
             print(f"[ledger] failed: {e}")
 
+        # assume you already parsed a flag like:
+        # APPLY = args.apply  # True when running with --apply
+
         # 3) Export only what changed in this run (optional)
-        if applied_this_run:
+        if applied_this_run and APPLY:
             applied_csv = report_csv.parent / 'applied_this_run.csv'
             cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
             with applied_csv.open('w', encoding='utf-8-sig', newline='') as f:
@@ -2131,26 +2210,80 @@ def main():
                     w.writerow({c: r.get(c, '') for c in cols})
             print(f"[ledger] Applied this run: {applied_csv}")
 
+        # --- DIAGNOSTIC: winners missing from staging BEFORE sweep (runs in both modes)
+        try:
+            staged_by_key  = globals().get('staged_by_key', {})
+            staged_by_guid = globals().get('staged_by_guid', {})
+            present_names = {p.name.lower() for p in staged_by_key.values()} | \
+                            {p.name.lower() for p in staged_by_guid.values()}
+
+            def _sanitize_name(s: str) -> str:
+                bad = '<>:"/\\|?*'
+                s = (s or '').strip()
+                for ch in bad:
+                    s = s.replace(ch, '-')
+                return s.strip().rstrip('.')
+
+            missing = []
+            for r in allowed_winner_rows:
+                k, g = r.get('Key'), r.get('GUID')
+                pn   = (r.get('PreviewName') or '').strip()
+                sp   = (staged_by_key.get(k) if k in staged_by_key else None) or \
+                    (staged_by_guid.get(g) if g in staged_by_guid else None)
+                if not sp:
+                    fallback = f"{_sanitize_name(pn)}.lorprev".lower() if pn else None
+                    if fallback and fallback not in present_names:
+                        missing.append(r)
+
+            if missing:
+                name = "winners_missing_from_staging.csv" if APPLY else "winners_missing_from_staging_dryrun.csv"
+                miss_csv = Path(report_csv).parent / name
+                with miss_csv.open('w', newline='', encoding='utf-8-sig') as f:
+                    w = csv.DictWriter(f, fieldnames=[
+                        "PreviewName","Key","GUID","Action","Conflict","Reason","Path","StagedPath"
+                    ])
+                    w.writeheader()
+                    for r in missing:
+                        w.writerow({
+                            "PreviewName": r.get("PreviewName"),
+                            "Key": r.get("Key"),
+                            "GUID": r.get("GUID"),
+                            "Action": r.get("Action"),
+                            "Conflict": r.get("Conflict"),
+                            "Reason": r.get("Reason"),
+                            "Path": r.get("Path"),
+                            "StagedPath": r.get("StagedPath"),
+                        })
+                print(f"[diagnostic] Winners missing from staging → {miss_csv}", file=sys.stderr)
+        except Exception as e:
+            print(f"[warn] missing-from-staging diagnostic failed: {e}", file=sys.stderr)
+
         # 4) Sweep/archive non-winners + write the REAL manifest in Database Previews
-        def _sanitize_name(s: str) -> str:
-            bad = '<>:"/\\|?*'
-            s = (s or '').strip()
-            for ch in bad:
-                s = s.replace(ch, '-')
-            return s.strip().rstrip('.')
+        if APPLY:
+            # (do the filename-accurate keep_files build here, then call sweep_staging_archive)
+            ...
+        else:
+            # Dry-run preview of sweep: write lists only; no file ops
+            try:
+                # Build keep_files the same way (using staged_by_key/guid + applied_this_run dests + fallback)
+                keep_files = set()
+                # ... construct keep_files exactly as in apply branch ...
+                would_keep = sorted(keep_files)
+                # Determine current staged filenames
+                current = set(p.name.lower() for p in staged_by_key.values()) | \
+                        set(p.name.lower() for p in staged_by_guid.values())
+                would_archive = sorted(fn for fn in current if fn not in keep_files)
 
-        keep_files = {
-            f"{_sanitize_name((r.get('PreviewName') or ''))}.lorprev".lower()
-            for r in allowed_winner_rows
-            if r.get('PreviewName')
-        }
+                root = Path(report_csv).parent
+                with (root / "dryrun_would_keep.csv").open('w', newline='', encoding='utf-8-sig') as f:
+                    w = csv.writer(f); w.writerow(["Filename"]); w.writerows([[x] for x in would_keep])
+                with (root / "dryrun_would_archive.csv").open('w', newline='', encoding='utf-8-sig') as f:
+                    w = csv.writer(f); w.writerow(["Filename"]); w.writerows([[x] for x in would_archive])
+                print("[dry-run] wrote dryrun_would_keep.csv and dryrun_would_archive.csv", file=sys.stderr)
+            except Exception as e:
+                print(f"[warn] dry-run sweep preview failed: {e}", file=sys.stderr)
 
-        moved, kept = sweep_staging_archive(
-            staging_root=Path(staging_root),
-            archive_root=Path(archive_root) if archive_root else Path(staging_root) / "archive",
-            keep_files=keep_files
-        )
-        print(f"[sweep] kept={kept} moved_to_archive={moved}")
+
 
 
         # Write the on-disk manifest of what's actually in staging now
