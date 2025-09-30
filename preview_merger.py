@@ -84,6 +84,97 @@ GLOBAL_DEFAULTS = {
     "email_domain": "sheboyganlights.org",
 }
 
+# --- Paths config (repo-aware with env + shared-drive fallback) ---
+
+def get_repo_root() -> Path:
+    env_root = os.environ.get("MSB_REPO_ROOT")
+    if env_root and (Path(env_root) / ".git").exists():
+        return Path(env_root).resolve()
+    try:
+        top = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL, text=True
+        ).strip()
+        if top:
+            return Path(top).resolve()
+    except Exception:
+        pass
+    here = Path(__file__).resolve()
+    for parent in [here] + list(here.parents):
+        if (parent / ".git").exists():
+            return parent
+    return Path.cwd().resolve()
+
+REPO_ROOT = get_repo_root()
+
+# Allow operator to override on each machine without editing code
+PREVIEWS_ROOT = Path(os.environ.get("MSB_PREVIEWS_ROOT", REPO_ROOT / "Database Previews"))
+USER_STAGING  = Path(os.environ.get("MSB_USER_STAGING",  REPO_ROOT / "UserPreviewStaging"))
+
+# Shared-drive fallbacks (only used if local paths don’t exist)
+SHARED_PREVIEWS = Path(r"G:\Shared drives\MSB Database\Database Previews")
+SHARED_STAGING  = Path(r"G:\Shared drives\MSB Database\UserPreviewStaging")
+
+def prefer_existing(primary: Path, fallback: Path) -> Path:
+    return primary if primary.exists() or not fallback.exists() else fallback
+
+PREVIEWS_ROOT = prefer_existing(PREVIEWS_ROOT, SHARED_PREVIEWS)
+USER_STAGING  = prefer_existing(USER_STAGING,  SHARED_STAGING)
+
+print(f"[INFO] PREVIEWS_ROOT: {PREVIEWS_ROOT}")
+print(f"[INFO] USER_STAGING : {USER_STAGING}")
+
+# ---------- Config resolution: CLI > JSON > repo/env > GLOBAL_DEFAULTS ----------
+def build_repo_defaults(repo_root: Path) -> dict:
+    """Repo-relative defaults for everything, so the tool runs from any clone."""
+    return {
+        "input_root":   str(USER_STAGING),                   # repo/env aware
+        "staging_root": str(PREVIEWS_ROOT),                  # repo/env aware
+        "archive_root": str(repo_root / "database" / "merger" / "archive"),
+        "history_db":   str(repo_root / "database" / "merger" / "preview_history.db"),
+        "report_csv":   str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.csv"),
+        "report_html":  str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.html"),
+        # behavior/users carry over from GLOBAL_DEFAULTS unless overridden
+        "policy":       GLOBAL_DEFAULTS.get("policy", "prefer-comments-then-revision"),
+        "ensure_users": GLOBAL_DEFAULTS.get("ensure_users", ""),
+        "email_domain": GLOBAL_DEFAULTS.get("email_domain", "sheboyganlights.org"),
+    }
+
+def load_json_config(path: Optional[str]) -> dict:
+    if not path:
+        # default: same folder as script
+        path = str(Path(__file__).with_name("preview_merger.config.json"))
+    p = Path(path)
+    if p.exists():
+        with p.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def resolve_config(cli_args: dict, json_path: Optional[str]=None) -> dict:
+    repo_defaults = build_repo_defaults(REPO_ROOT)
+    json_cfg      = load_json_config(json_path)
+
+    # Start from GLOBAL_DEFAULTS, update with repo defaults, then JSON, then CLI.
+    cfg = dict(GLOBAL_DEFAULTS)
+    cfg.update(repo_defaults)
+    cfg.update(json_cfg)
+
+    # CLI args (only set keys that are provided)
+    for k, v in cli_args.items():
+        if v is not None:
+            cfg[k] = v
+
+    # Final: normalize/resolve to paths and ensure directories
+    for key in ["input_root", "staging_root", "archive_root"]:
+        cfg[key] = os.path.normpath(cfg[key])
+
+    # Ensure report and archive parents exist
+    for key in ["report_csv", "report_html", "history_db"]:
+        parent = Path(cfg[key]).parent
+        parent.mkdir(parents=True, exist_ok=True)
+
+    return cfg
+
 # ============================= Data models ============================= #
 
 BLOCKED_ACTION = 'needs-DisplayName Fixes'
@@ -1360,21 +1451,77 @@ def _load_config_json(path: Optional[str]) -> Dict[str, str]:
 
 
 # ----------------------------- Main -----------------------------
+def parse_cli() -> dict:
+    # Minimal CLI (all optional). Safe even if you never pass flags.
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument("--config")
+    ap.add_argument("--input_root")
+    ap.add_argument("--staging_root")
+    ap.add_argument("--archive_root")
+    ap.add_argument("--history_db")
+    ap.add_argument("--report_csv")
+    ap.add_argument("--report_html")
+    ap.add_argument("--policy")
+    ap.add_argument("--ensure_users")
+    ap.add_argument("--email_domain")
+    try:
+        args, _ = ap.parse_known_args()
+        return vars(args)
+    except SystemExit:
+        return {}
+
+def build_repo_defaults(repo_root: Path) -> dict:
+    # Use the PREVIEWS_ROOT / USER_STAGING you already resolved above
+    return {
+        "input_root":   str(USER_STAGING),
+        "staging_root": str(PREVIEWS_ROOT),
+        "archive_root": str(repo_root / "database" / "merger" / "archive"),
+        "history_db":   str(repo_root / "database" / "merger" / "preview_history.db"),
+        "report_csv":   str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.csv"),
+        "report_html":  str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.html"),
+        "policy":       GLOBAL_DEFAULTS.get("policy", "prefer-comments-then-revision"),
+        "ensure_users": GLOBAL_DEFAULTS.get("ensure_users", ""),
+        "email_domain": GLOBAL_DEFAULTS.get("email_domain", "sheboyganlights.org"),
+    }
 
 def main():
-    # Merge defaults ← config ← CLI
-    cfg_path = _preparse_config_path(sys.argv)
-    cfg = _load_config_json(cfg_path)
-    defaults = {**GLOBAL_DEFAULTS, **cfg}
+    # --------- 1) Collect configs: CLI > JSON > repo/env > GLOBAL_DEFAULTS
+    cli = parse_cli()
+    cfg_path = _preparse_config_path(sys.argv)         # your existing helper
+    json_cfg = _load_config_json(cfg_path)             # your existing helper
+    repo_defs = build_repo_defaults(REPO_ROOT)
 
-    # --------------- Added for ledger 25-09-03 GAL -------------
-    # … inside main(), before processing any previews:
-    # --------------- Run-scoped accumulators -------------
-    applied_this_run: list[dict] = []      # (you already had this)
-    excluded_detailed: list[dict] = []     # <-- NEW: used by apply + excluded_winners.csv writer
-    allowed_winner_rows: list[dict] = []   # <-- NEW: what feeds manifests + apply
+    # precedence: start with globals, overlay repo-aware, then JSON, then CLI
+    defaults = dict(GLOBAL_DEFAULTS)
+    defaults.update(repo_defs)
+    defaults.update(json_cfg)
+    for k, v in cli.items():
+        if v is not None:
+            defaults[k] = v
+
+    # Normalize some paths and ensure parent dirs exist
+    for key in ["input_root", "staging_root", "archive_root", "history_db", "report_csv", "report_html"]:
+        defaults[key] = os.path.normpath(defaults[key])
+    Path(defaults["archive_root"]).mkdir(parents=True, exist_ok=True)
+    Path(defaults["history_db"]).parent.mkdir(parents=True, exist_ok=True)
+    Path(defaults["report_csv"]).parent.mkdir(parents=True, exist_ok=True)
+    Path(defaults["report_html"]).parent.mkdir(parents=True, exist_ok=True)
+
+    print("[INFO] Effective config:")
+    for k in ["input_root","staging_root","archive_root","history_db","report_csv","report_html","policy"]:
+        print(f"  {k}: {defaults[k]}")
+
+    # --------- 2) Run-scoped accumulators (keep exactly as you had)
+    applied_this_run: list[dict] = []      # you already had this
+    excluded_detailed: list[dict] = []     # used by apply + excluded_winners.csv writer
+    allowed_winner_rows: list[dict] = []   # feeds manifests + apply
     run_started_local = datetime.now().astimezone().isoformat(timespec='seconds')
-    applied_by = socket.gethostname()  # or os.getlogin()
+    applied_by = socket.gethostname()      # or os.getlogin()
+
+    # --------- 3) Pass `defaults` (cfg) into the rest of your merger logic
+    # e.g., process_previews(defaults, applied_this_run, excluded_detailed, ...)
+    # ... your existing code continues here ...
+ # or os.getlogin()
 
     ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files with conflict detection and history DB.', fromfile_prefix_chars='@')
     ap.add_argument('--config', help='Path to JSON config file (optional)')
