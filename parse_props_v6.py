@@ -74,13 +74,63 @@ import sqlite3
 import pathlib
 from collections import defaultdict
 import uuid
+# --- Repo-aware defaults + env overrides (OfficePC-safe) ---------------------
+from pathlib import Path
+import subprocess
+
+def get_repo_root() -> Path:
+    env_root = os.environ.get("MSB_REPO_ROOT")
+    if env_root and (Path(env_root) / ".git").exists():
+        return Path(env_root).resolve()
+    try:
+        top = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL, text=True
+        ).strip()
+        if top:
+            return Path(top).resolve()
+    except Exception:
+        pass
+    here = Path(__file__).resolve()
+    for p in [here] + list(here.parents):
+        if (p / ".git").exists():
+            return p
+    return Path.cwd().resolve()
+
+def prefer_existing(primary: Path, fallback: Path) -> Path:
+    # Use primary if it exists (or fallback doesn't); else fallback (e.g., G:\ on OfficePC)
+    return primary if primary.exists() or not fallback.exists() else fallback
+
+REPO_ROOT = get_repo_root()
+
+# Repo-relative candidates
+REPO_DB_FILE      = REPO_ROOT / "database" / "lor_output_v6.db"
+REPO_PREVIEWS_DIR = REPO_ROOT / "Database Previews"
+
+# Shared-drive fallbacks (OfficePC)
+SHARED_DB_FILE      = Path(r"G:\Shared drives\MSB Database\database\lor_output_v6.db")
+SHARED_PREVIEWS_DIR = Path(r"G:\Shared drives\MSB Database\Database Previews")
+
+# Env overrides (optional per-machine)
+ENV_DB      = os.environ.get("MSB_DB_PATH")
+ENV_PREV    = os.environ.get("MSB_PREVIEWS_ROOT")
+
+# Final defaults (repo > env > shared-drive)
+DEFAULT_DB_FILE = prefer_existing(
+    Path(ENV_DB) if ENV_DB else REPO_DB_FILE, SHARED_DB_FILE
+)
+DEFAULT_PREVIEW_PATH = prefer_existing(
+    Path(ENV_PREV) if ENV_PREV else REPO_PREVIEWS_DIR, SHARED_PREVIEWS_DIR
+)
+
+print(f"[INFO] REPO_ROOT           : {REPO_ROOT}")
+print(f"[INFO] DEFAULT_DB_FILE     : {DEFAULT_DB_FILE}")
+print(f"[INFO] DEFAULT_PREVIEW_PATH: {DEFAULT_PREVIEW_PATH}")
 
 # ---- Global flags & defaults (must be defined before functions) ----
 DEBUG = False  # Global debug flag
 
-DEFAULT_DB_FILE = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
-DEFAULT_PREVIEW_PATH = r"G:\Shared drives\MSB Database\Database Previews"
-#DEFAULT_PREVIEW_PATH = r"G:\Shared drives\MSB Database\Database Previews\2024MasterPreviews"
+
 
 # Globals that existing functions use; will be set in main()
 DB_FILE = DEFAULT_DB_FILE
