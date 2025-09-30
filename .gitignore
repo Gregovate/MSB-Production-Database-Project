@@ -3,3 +3,26 @@
 __pycache__/
 *.xlsx
 Data/
+# ---- generated artifacts (we don't track) ----
+*.csv
+*.html
+*.json
+*.log
+
+# SQLite sidecars
+*.db-wal
+*.db-shm
+
+# Whole working dirs that are data, not code
+/database/**
+/Spreadsheet/**
+/Database Previews/**
+/UserPreviewStaging/**
+/docs/output/**
+/tmp/**
+/.venv/**
+
+# Keep placeholders if you want empty dirs in tree
+!database/.gitkeep
+!Spreadsheet/.gitkeep
+!database/merger/.gitkeep
