@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import csv 
+import csv as _csv
 import html
 import re
 import hashlib
@@ -170,18 +171,108 @@ def _fail_if_locked(paths: Iterable[Optional[Path]]) -> None:
         print("[locked] Close them and run preview_merger.py again.", file=sys.stderr)
         sys.exit(4)  # distinct code: report outputs locked
 
-# ---- Allowed staging families (update when you add a new one)
-_ALLOWED_PREFIXES = [
-    "RGB Plus Prop Stage ",
-    "Show Background Stage ",
-    "Show Animation ",
+
+# ===== Allowed families (helpers) ============================================
+
+# flexible patterns (space or hyphen after “Stage”, any stage number)
+# Use (pattern, human label) tuples
+_ALLOWED_PATTERNS = [
+    (re.compile(r"^RGB Plus Prop Stage\s+\d+\b", re.I),         "RGB Plus Prop Stage <num> …"),
+    (re.compile(r"^Show Background Stage(?:\s+|-)\d+\b", re.I), "Show Background Stage <num> …"),
+    (re.compile(r"^Show Animation\s+\d+\b", re.I),              "Show Animation <num> …"),
 ]
 
-def is_staging_candidate(preview_name: str) -> bool:
-    """Allow only known staging families."""
-    n = (preview_name or "").strip()
-    return bool(n) and any(n.startswith(p) for p in _ALLOWED_PREFIXES)
+# Keep legacy prefixes (compat with any old calls)
+_ALLOWED_PREFIXES = (
+    "RGB Plus Prop Stage ",
+    "Show Background Stage ",
+    "Show Background Stage-",   # allow hyphenated form
+    "Show Animation ",
+    "1st Panel Animation ",
+)
 
+# ===== Allowed families (helpers) ============================================
+
+_ALLOWED_PREFIXES = (
+    "RGB Plus Prop Stage ",
+    "Show Background Stage ",
+    "Show Background Stage-",
+    "Show Animation ",
+    "1st Panel Animation ",
+)
+
+_RX_RGB_PLUS      = re.compile(r"^RGB Plus Prop Stage\s+\d+\b", re.I)
+_RX_SHOW_BG_STAGE = re.compile(r"^Show Background Stage(?:\s+|-)\d+\b", re.I)
+
+def _parts_lower(p: str | Path) -> list[str]:
+    try:
+        return [x.lower() for x in Path(p).parts]
+    except Exception:
+        return []
+
+def _is_in_user_previews_for_props(p: str | Path, user: str | None) -> bool:
+    r"""
+    True iff path looks like:
+        ...\UserPreviewStaging\<user>\PreviewsForProps\...
+    user may be None/empty; in that case we still require the folder pattern.
+    """
+    parts = _parts_lower(p)
+    if not parts or "userpreviewstaging" not in parts:
+        return False
+    i = parts.index("userpreviewstaging")
+    if i + 1 >= len(parts):
+        return False
+    uname = parts[i + 1]
+    if user and uname.lower() != str(user).lower():
+        return False
+    if i + 2 >= len(parts):
+        return False
+    return parts[i + 2] == "previewsforprops"
+
+def _classify_family(name: str | None,
+                     path: str | None = None,
+                     user: str | None = None) -> tuple[bool, str]:
+    """Return (is_allowed, matched_rule_or_reason)."""
+    n = (name or "").strip()
+    if not n:
+        return False, "empty name"
+
+    if n.lower().startswith("show animation "):
+        return True, "Show Animation … (any suffix)"
+
+    if _RX_RGB_PLUS.match(n):
+        return True, "RGB Plus Prop Stage <num> …"
+
+    if _RX_SHOW_BG_STAGE.match(n):
+        return True, "Show Background Stage <num> …"
+
+    # 1st Panel Animation … must be under UserPreviewStaging\<user>\PreviewsForProps\
+    if n.lower().startswith("1st panel animation "):
+        if _is_in_user_previews_for_props(path or "", user):
+            return True, "1st Panel Animation (valid folder)"
+        target = (fr"G:\Shared drives\MSB Database\UserPreviewStaging\{user}\PreviewsForProps"
+                  if user else r"G:\Shared drives\MSB Database\UserPreviewStaging\<user>\PreviewsForProps")
+        return False, f"wrong folder; move to: {target}"
+
+    return False, "no allowed prefix match"
+
+def _suggest_prefix(name: str) -> str | None:
+    """Human suggestion for excluded report (keeps it simple)."""
+    if not name:
+        return None
+    n = name.lower()
+    if n.startswith("show anim"):
+        return "Show Animation … (any suffix)"
+    if n.startswith("rgb plus"):
+        return "RGB Plus Prop Stage <num> …"
+    if n.startswith("show background stage"):
+        return "Show Background Stage <num> …"
+    if n.startswith("1st panel animation"):
+        return r"Move to UserPreviewStaging\<user>\PreviewsForProps"
+    return None
+
+
+# ===== End allowed families (helpers) =======================================
 
 # Ignore Device type = None for staged previews 25-09-01 GAL
 def device_type_is_none(p: pathlib.Path) -> bool:
@@ -2068,6 +2159,7 @@ def main():
             file=sys.stderr
         )
 
+<<<<<<< HEAD
 
 
 
@@ -2124,7 +2216,71 @@ def main():
 
 
 
+=======
+        # ---------- Clean "needs action" summary: names only, multi-line (no GUIDs) ----------
+        def _looks_like_guid(s: str) -> bool:
+            s = (s or "").strip().lower()
+            return s.startswith("guid:") or (len(s) in (36, 38) and s.count("-") == 4)
+>>>>>>> 85045dd (preview_merger:)
 
+        def _label_from_identity(idy):
+            if not idy: return None
+            nm  = getattr(idy, "name", None) or ""
+            rev = getattr(idy, "revision", None)
+            if not nm: return None
+            return f"{nm} (rev {rev})" if rev not in (None, "", "None") else nm
+
+        def _label_for_row(r: dict) -> str | None:
+            # 1) Prefer the row's PreviewName (+rev)
+            pn  = (r.get("PreviewName") or "").strip()
+            rev = r.get("Revision")
+            if pn and not _looks_like_guid(pn):
+                return f"{pn} (rev {rev})" if rev not in (None, "", "None") else pn
+
+            # 2) Resolve from staged file by GUID/Key → parse identity
+            k = r.get("Key"); g = r.get("GUID")
+            sbk = globals().get("staged_by_key", {})
+            sbg = globals().get("staged_by_guid", {})
+            from pathlib import Path
+            p = sbg.get(g) if g and sbg else None
+            if not p and k and sbk:
+                p = sbk.get(k)
+            if p:
+                try:
+                    idy = parse_preview_identity(Path(p))
+                    lbl = _label_from_identity(idy)
+                    if lbl:
+                        return lbl
+                except Exception:
+                    pass
+
+            # 3) Fallback to filename stem from any known path
+            for guess_path in (r.get("StagedPath"), r.get("Path")):
+                if guess_path:
+                    stem = Path(guess_path).stem.strip()
+                    if stem and not _looks_like_guid(stem):
+                        return stem
+            return None
+
+        needs = [r for r in winner_rows if r.get("Action") in ("update-staging", "stage-new")]
+        if needs:
+            labels, seen = [], set()
+            for r in needs:
+                lbl = _label_for_row(r)
+                if lbl and lbl not in seen:
+                    seen.add(lbl)
+                    labels.append(lbl)
+            labels.sort(key=str.lower)
+            print(
+                "[summary] needs action: "
+                f"{len(needs)} rows across {len(labels)} previews:\n" +
+                ("\n".join(f"  - {x}" for x in labels) if labels else "  (no human-readable names found)"),
+                file=sys.stderr
+            )
+
+    except Exception as e:
+        # keep going even if summary formatting fails
+        print(f"[summary] failed: {e}", file=sys.stderr)
 
     # Write CSV/HTML
     write_csv(report_csv, rows, str(input_root), str(staging_root))
@@ -2148,21 +2304,49 @@ def main():
     # Common: cache winner rows once
     winner_rows = [r for r in rows if r.get('Role') == 'WINNER']
 
-    # Keep only the previews that belong in Database Previews (allowlist)
-    allowed_winner_rows = [r for r in winner_rows if is_staging_candidate(r.get('PreviewName'))]
+    # Keep only the previews that belong in Database Previews (allowlist) — with detail
+    allowed_winner_rows: list[dict] = []
+    excluded_detailed:   list[dict] = []
 
-    # (Optional but handy) log what was excluded so teammates can fix/move them
-    excluded = [r for r in winner_rows if r not in allowed_winner_rows]
-    if excluded:
+    for r in winner_rows:
+        name = r.get('PreviewName') or ""
+        ok, detail = _classify_family(name)
+        if ok:
+            r['FamilyRule'] = detail  # record which rule matched (helpful context)
+            allowed_winner_rows.append(r)
+        else:
+            excluded_detailed.append({
+                "PreviewName":  name,
+                "Key":          r.get("Key"),
+                "GUID":         r.get("GUID"),
+                "Revision":     r.get("Revision"),
+                "Action":       r.get("Action"),
+                "User":         r.get("User"),
+                "Reason":       "Family filter",
+                "Failure":      detail,  # e.g., empty name / no allowed prefix match
+                "RuleNeeded":   " | ".join(lbl for _, lbl in _ALLOWED_PATTERNS),
+                "SuggestedFix": (f"Rename to start with: {_suggest_prefix(name)}"
+                                if _suggest_prefix(name) else "Rename to match an allowed family"),
+                "Path":         r.get("Path"),
+                "StagedPath":   r.get("StagedPath"),
+            })
+
+    # (Optional) log what was excluded so teammates can fix/move them
+    if excluded_detailed:
         excl_csv = Path(report_csv).parent / "excluded_winners.csv"
+        cols = ["PreviewName","Key","GUID","Revision","Action","User",
+                "Reason","Failure","RuleNeeded","SuggestedFix","Path","StagedPath"]
         with excl_csv.open("w", encoding="utf-8-sig", newline="") as f:
-            #import csv
-            cols = ["Key","PreviewName","Revision","Action","User"]
-            w = csv.DictWriter(f, fieldnames=cols)
+            w = _csv.DictWriter(f, fieldnames=cols)
             w.writeheader()
-            for r in excluded:
-                w.writerow({c: r.get(c, "") for c in cols})
-        print(f"[filter] excluded {len(excluded)} previews not matching allowed families → {excl_csv}")
+            for row in excluded_detailed:
+                w.writerow({c: row.get(c, "") for c in cols})
+        print(f"[filter] excluded {len(excluded_detailed)} previews not matching allowed families → {excl_csv}", file=sys.stderr)
+        # quick console roll-up
+        for row in excluded_detailed:
+            print(f"  - {row['PreviewName']}: {row['Failure']} | {row['SuggestedFix']}", file=sys.stderr)
+    else:
+        print("[filter] excluded 0 previews; all winners match allowed families", file=sys.stderr)
 
 
     if args.apply:
@@ -2437,6 +2621,88 @@ def main():
         )
     except Exception as e:
         print(f"[warn] Excel merge step failed: {e}")
+
+    # ---------- Conflicts detail (names, reasons, paths) ----------
+    try:
+        def _looks_like_guid(s: str) -> bool:
+            s = (s or "").strip().lower()
+            return s.startswith("guid:") or (len(s) in (36, 38) and s.count("-") == 4)
+
+        # Best-effort label for a row (name > staged identity > filename > key)
+        def _nice_label(r: dict) -> str:
+            nm  = (r.get("PreviewName") or "").strip()
+            rev = r.get("Revision")
+            if nm and not _looks_like_guid(nm):
+                return f"{nm} (rev {rev})" if rev not in (None, "", "None") else nm
+
+            # Try to parse identity from the staged file
+            sbk = globals().get("staged_by_key", {})
+            sbg = globals().get("staged_by_guid", {})
+            k   = r.get("Key"); g = r.get("GUID")
+            pth = (sbg.get(g) if g and sbg else None) or (sbk.get(k) if k and sbk else None)
+            if pth:
+                try:
+                    from pathlib import Path
+                    idy = parse_preview_identity(Path(pth))
+                    if idy and getattr(idy, "name", None):
+                        rev2 = getattr(idy, "revision", None)
+                        lbl  = idy.name
+                        return f"{lbl} (rev {rev2})" if rev2 not in (None, "", "None") else lbl
+                except Exception:
+                    pass
+
+            for gp in (r.get("StagedPath"), r.get("Path")):
+                if gp:
+                    from pathlib import Path
+                    stem = Path(gp).stem.strip()
+                    if stem and not _looks_like_guid(stem):
+                        return stem
+
+            return r.get("Key") or r.get("GUID") or "(unknown)"
+
+        conflict_rows = [r for r in rows if str(r.get("Conflict", "")).upper() == "YES"]
+        if conflict_rows:
+            # bucket by Reason
+            from collections import defaultdict
+            buckets = defaultdict(list)
+            for r in conflict_rows:
+                reason = (r.get("Reason") or "conflict").strip()
+                label  = _nice_label(r)
+                path   = r.get("Path") or r.get("StagedPath") or ""
+                buckets[reason].append((label, path))
+
+            # Console summary
+            total = len({ _nice_label(r) for r in conflict_rows })
+            print(f"[conflicts] {total} preview(s) blocked by {len(buckets)} reason(s):", file=sys.stderr)
+            for reason in sorted(buckets.keys(), key=str.lower):
+                items = buckets[reason]
+                # de-dup per reason
+                seen  = set()
+                uniq  = []
+                for lbl, p in items:
+                    if lbl not in seen:
+                        seen.add(lbl)
+                        uniq.append((lbl, p))
+                print(f"  • {reason}: {len(uniq)}", file=sys.stderr)
+                for lbl, p in sorted(uniq, key=lambda t: t[0].lower()):
+                    if p:
+                        print(f"    - {lbl}\n      {p}", file=sys.stderr)
+                    else:
+                        print(f"    - {lbl}", file=sys.stderr)
+
+            # CSV detail (same folder as other reports)
+            conflicts_csv = Path(report_csv).parent / "conflicts_detailed.csv"
+            with conflicts_csv.open("w", newline="", encoding="utf-8-sig") as f:
+                cols = ["PreviewName","Key","GUID","Action","Reason","Conflict",
+                        "Path","StagedPath","Revision","User","Author"]
+                w = _csv.DictWriter(f, fieldnames=cols)
+                w.writeheader()
+                for r in conflict_rows:
+                    w.writerow({c: r.get(c, "") for c in cols})
+            print(f"[conflicts] Wrote details → {conflicts_csv}", file=sys.stderr)
+    except Exception as e:
+        print(f"[conflicts] summary failed: {e}", file=sys.stderr)
+
 
 
     # ------------------------------------------------------------------------------
