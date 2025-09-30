@@ -63,6 +63,30 @@ def levenshtein(a: str, b: str) -> int:
         prev, curr = curr, prev
     return prev[-1]
 
+def norm_key(s: str) -> str:
+    s = (s or "").strip().lower().replace('\u00a0', ' ')
+    s = re.sub(r'\b(left|lh)\b', 'l', s)
+    s = re.sub(r'\b(right|rh)\b', 'r', s)
+    s = re.sub(r'[^a-z0-9]+', '', s)          # remove dashes/spaces/etc.
+    s = re.sub(r'\d+', lambda m: str(int(m.group())), s)  # 01 -> 1
+    return s
+
+# Clean but preserve exact spelling/case (only trim NBSP and outer spaces)
+def exact_clean(s: str) -> str:
+    return (s or "").replace('\u00a0', ' ').strip()
+
+_reason_tests = [
+    ("dash_vs_space",      lambda a,b: ("-" in a) ^ ("-" in b) or (" " in a) ^ (" " in b)),
+    ("zero_pad_diff",      lambda a,b: re.sub(r'\d+', lambda m: str(int(m.group())), a) == re.sub(r'\d+', lambda m: str(int(m.group())), b) and a != b),
+    ("lh_rh_vs_l_r",       lambda a,b: re.sub(r'\b(lh|rh)\b', lambda m: m.group(0)[0], a.lower()) == re.sub(r'\b(lh|rh)\b', lambda m: m.group(0)[0], b.lower()) and a != b),
+    ("case_only",          lambda a,b: a.lower() == b.lower() and a != b),
+]
+
+def diff_reason(a: str, b: str) -> str:
+    a = a or ""; b = b or ""
+    hits = [name for name,fn in _reason_tests if fn(a,b)]
+    return ", ".join(hits) if hits else ""
+
 
 # --------- loaders ---------
 def load_db_names(db_path: Path) -> pd.DataFrame:
@@ -81,34 +105,33 @@ def load_db_names(db_path: Path) -> pd.DataFrame:
     finally:
         conn.close()
 
-    df["display_name"] = df["display_name"].astype(str)
-    df["display_name_norm"] = df["display_name"].map(norm)
-    df = df[df["display_name_norm"] != ""].drop_duplicates(subset=["display_name_norm"], inplace=False)
+    df["display_name"]      = df["display_name"].astype(str)
+    df["display_name_clean"] = df["display_name"].map(exact_clean)
+    df["display_name_norm"]  = df["display_name"].map(norm_key)
+    df = df[df["display_name_norm"] != ""].drop_duplicates(subset=["display_name_clean"])
     return df
-
 
 def load_sheet_names(csv_path: Path) -> pd.DataFrame:
     print(f"[INFO] Reading sheet CSV from: {csv_path}")
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
 
-    # locate likely display-name column (case-insensitive; common variants)
+    # locate likely display-name column
     disp_col = None
     for c in df.columns:
         key = c.strip().lower().replace("_", " ")
         if key in ("display name", "display", "lor comment"):
-            disp_col = c
-            break
+            disp_col = c; break
     if disp_col is None:
         disp_col = df.columns[0]
 
     print(f"[INFO] Using column for display name: '{disp_col}'")
 
     df = df[[disp_col]].rename(columns={disp_col: "display_name"})
-    df["display_name"] = df["display_name"].astype(str)
-    df["display_name_norm"] = df["display_name"].map(norm)
-    df = df[df["display_name_norm"] != ""].drop_duplicates(subset=["display_name_norm"])
+    df["display_name"]       = df["display_name"].astype(str)
+    df["display_name_clean"] = df["display_name"].map(exact_clean)
+    df["display_name_norm"]  = df["display_name"].map(norm_key)
+    df = df[df["display_name_norm"] != ""].drop_duplicates(subset=["display_name_clean"])
     return df
-
 
 def fuzzy_suggestions(missing_df: pd.DataFrame, universe_df: pd.DataFrame, k=3) -> pd.DataFrame:
     if missing_df.empty or universe_df.empty:
@@ -146,47 +169,78 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
     db_df = load_db_names(db_path)
     sh_df = load_sheet_names(csv_path)
 
-    # Rename sanity probes (helps catch stale exports)
+    # Sanity probes
     for probe in ["ClarksWagon","WallyWagon"]:
         in_sheet = (sh_df["display_name"].str.contains(probe, case=False, na=False)).any()
         in_db    = (db_df["display_name"].str.contains(probe, case=False, na=False)).any()
         print(f"[CHECK] {probe}: sheet={in_sheet} db={in_db}")
 
-    matches = db_df.merge(sh_df, on="display_name_norm", suffixes=("_db","_sheet"))
-    matches = matches.rename(columns={
+    # 1) EXACT matches (contract) — strict equality after only NBSP/trim cleanup
+    matches = db_df.merge(
+        sh_df,
+        left_on="display_name_clean",
+        right_on="display_name_clean",
+        suffixes=("_db","_sheet")
+    ).rename(columns={
         "display_name_db": "DB_Display_Name",
         "display_name_sheet": "Sheet_Display_Name",
-        "display_name_norm": "Normalized_Key",
-    })
-    matches = matches[["DB_Display_Name","Sheet_Display_Name","Normalized_Key","Preview","Revision"]] \
-                     .sort_values("Normalized_Key")
+        "display_name_clean":"Exact_Key",
+        "display_name_norm_db":"DB_Normalized",
+        "display_name_norm_sheet":"Sheet_Normalized",
+    })[["DB_Display_Name","Sheet_Display_Name","Exact_Key","Preview","Revision"]].sort_values("Exact_Key")
 
-    db_only = db_df[~db_df["display_name_norm"].isin(sh_df["display_name_norm"])] \
+    # 2) DB_only / Sheet_only (still strict)
+    db_only = db_df[~db_df["display_name_clean"].isin(matches["Exact_Key"])] \
               .rename(columns={"display_name":"DB_Display_Name","display_name_norm":"Normalized_Key"}) \
-              [["DB_Display_Name","Normalized_Key","Preview","Revision"]] \
-              .sort_values("DB_Display_Name")
+              [["DB_Display_Name","display_name_clean","Normalized_Key","Preview","Revision"]] \
+              .sort_values("DB_Display_Name").rename(columns={"display_name_clean":"Exact_Key"})
 
-    sheet_only = sh_df[~sh_df["display_name_norm"].isin(db_df["display_name_norm"])] \
+    sheet_only = sh_df[~sh_df["display_name_clean"].isin(matches["Exact_Key"])] \
                 .rename(columns={"display_name":"Sheet_Display_Name","display_name_norm":"Normalized_Key"}) \
-                [["Sheet_Display_Name","Normalized_Key"]] \
-                .sort_values("Sheet_Display_Name")
+                [["Sheet_Display_Name","display_name_clean","Normalized_Key"]] \
+                .sort_values("Sheet_Display_Name").rename(columns={"display_name_clean":"Exact_Key"})
 
+    # 3) NEEDS_FIX — “intended pairs” that don’t match exactly (same norm_key, different strings)
+    fix_pairs = db_only.merge(
+        sheet_only,
+        on="Normalized_Key",
+        how="inner",
+        suffixes=("_DBonly","_Sheetonly")
+    )
+
+    if not fix_pairs.empty:
+        fix_pairs["Reason"] = fix_pairs.apply(
+            lambda r: diff_reason(r["DB_Display_Name"], r["Sheet_Display_Name"]),
+            axis=1
+        )
+        # Choose your canonical side here (Sheet or DB). Default: SHEET as authority.
+        fix_pairs.insert(0, "Edit_Side", "Preview_Comment")  # or "Sheet"
+        fix_pairs.insert(1, "Target_Name", fix_pairs["Sheet_Display_Name"])
+        needs_fix = fix_pairs[[
+            "Edit_Side","DB_Display_Name","Sheet_Display_Name","Target_Name","Reason","Normalized_Key"
+        ]].sort_values(["Reason","Normalized_Key","Target_Name"])
+    else:
+        needs_fix = pd.DataFrame(columns=[
+            "Edit_Side","DB_Display_Name","Sheet_Display_Name","Target_Name","Reason","Normalized_Key"
+        ])
+
+    # 4) Optional fuzzy suggestions (unchanged)
     near_matches = pd.DataFrame(columns=["Missing_Side","From_Name","Suggested_Match","Distance"])
     if USE_FUZZY:
         sug_db = fuzzy_suggestions(
-            db_only.rename(columns={"DB_Display_Name":"display_name","Normalized_Key":"display_name_norm"}),
+            db_only.rename(columns={"DB_Display_Name":"display_name","Exact_Key":"display_name_norm"}),
             pd.concat([
-                sheet_only.rename(columns={"Sheet_Display_Name":"display_name","Normalized_Key":"display_name_norm"}),
-                matches.rename(columns={"DB_Display_Name":"display_name","Normalized_Key":"display_name_norm"})[["display_name","display_name_norm"]],
+                sheet_only.rename(columns={"Sheet_Display_Name":"display_name","Exact_Key":"display_name_norm"}),
+                matches.rename(columns={"Sheet_Display_Name":"display_name","Exact_Key":"display_name_norm"})[["display_name","display_name_norm"]],
             ], ignore_index=True),
         )
         sug_db.insert(0, "Missing_Side", "DB_only")
 
         sug_sh = fuzzy_suggestions(
-            sheet_only.rename(columns={"Sheet_Display_Name":"display_name","Normalized_Key":"display_name_norm"}),
+            sheet_only.rename(columns={"Sheet_Display_Name":"display_name","Exact_Key":"display_name_norm"}),
             pd.concat([
-                db_only.rename(columns={"DB_Display_Name":"display_name","Normalized_Key":"display_name_norm"}),
-                matches.rename(columns={"Sheet_Display_Name":"display_name","Normalized_Key":"display_name_norm"})[["display_name","display_name_norm"]],
+                db_only.rename(columns={"DB_Display_Name":"display_name","Exact_Key":"display_name_norm"}),
+                matches.rename(columns={"DB_Display_Name":"display_name","Exact_Key":"display_name_norm"})[["display_name","display_name_norm"]],
             ], ignore_index=True),
         )
         sug_sh.insert(0, "Missing_Side", "Sheet_only")
@@ -198,8 +252,9 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
         "DB total (unique)": len(db_df),
         "Sheet total (unique)": len(sh_df),
         "Exact matches": len(matches),
-        "DB-only": len(db_only),
-        "Sheet-only": len(sheet_only),
+        "DB-only (strict)": len(db_only),
+        "Sheet-only (strict)": len(sheet_only),
+        "Needs_Fix (same intent, not exact)": len(needs_fix),
     }])
 
     return {
@@ -207,6 +262,7 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
         "matches": matches,
         "db_only": db_only,
         "sheet_only": sheet_only,
+        "needs_fix": needs_fix,
         "near_matches": near_matches,
     }
 
@@ -228,14 +284,14 @@ def autosize_and_filter(ws):
 
 def write_excel(out_path: Path, tables: dict):
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
-        for name in ["Summary","Matches","DB_only","Sheet_only","Near_matches"]:
+        for name in ["Summary","Matches","DB_only","Sheet_only","Needs_Fix","Near_matches"]:
             tables[name.lower()].to_excel(writer, sheet_name=name, index=False)
 
         wb = writer.book
         for sheet in wb.sheetnames:
             autosize_and_filter(wb[sheet])
-
     print(f"[OK] Wrote Excel report: {out_path}")
+
 
 
 # --------- entrypoint ---------
