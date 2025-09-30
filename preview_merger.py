@@ -188,15 +188,6 @@ _ALLOWED_PREFIXES = (
     "1st Panel Animation ",
 )
 
-# ===== Allowed families (helpers) ============================================
-
-_ALLOWED_PREFIXES = (
-    "RGB Plus Prop Stage ",
-    "Show Background Stage ",
-    "Show Animation ",
-    "1st Panel Animation ",
-)
-
 # --- regexes (keep only one copy of each) ---
 _RX_RGB_PLUS       = re.compile(r"^RGB Plus Prop Stage\s+\d+\b", re.I)
 _RX_SHOW_BG_STAGE  = re.compile(r"^Show Background Stage\s+\d+\b", re.I)   # GOOD: space
@@ -290,6 +281,13 @@ def _excluded_row(row: dict, *, reason: str, suggested: str = "", rule_needed: s
         "StagedPath":  row.get("StagedPath",""),
     }
 
+def stage_base_name(s: str) -> str:
+    """Filesystem-safe base for staged .lorprev filenames; keeps spaces."""
+    s = (s or "").strip()
+    s = re.sub(r'[\\/:*?"<>|]+', '_', s)  # replace illegal path chars
+    s = re.sub(r'\s+', ' ', s).strip()    # collapse whitespace
+    return s
+
 # ===== End allowed families (helpers) =======================================
 
 # Ignore Device type = None for staged previews 25-09-01 GAL
@@ -304,7 +302,7 @@ def device_type_is_none(p: Path) -> bool:
     except Exception:
         return False
 
-# Time utilities
+# ============= Date/Time utilities helpers
 def now_local():
     """Return a timezone-aware local datetime."""
     # Use OS local time with offset (handles DST)
@@ -325,6 +323,24 @@ def ymd_hms(ts: float) -> str:
         return dt.strftime('%Y-%m-%d %H:%M:%S%z')
     except Exception:
         return ''
+
+def parse_any_local(s: str):
+    """Parse our two formats; return aware datetime or None."""
+    if not s: return None
+    for fmt in ("%Y-%m-%d %H:%M:%S%z", "%Y-%m-%dT%H:%M:%S%z"):
+        try:
+            return datetime.strptime(s, fmt)
+        except Exception:
+            pass
+    return None
+
+def newer(a: str, b: str) -> bool:
+    """True if a is a newer timestamp string than b (handles both formats)."""
+    da, db = parse_any_local(a), parse_any_local(b)
+    if not da: return False
+    if not db: return True
+    return da > db
+# ----------------------------------------------------------------------------
 
 def sanitize_name(s: str) -> str:
     return ''.join(ch if ch.isalnum() or ch in (' ', '-', '_', '.') else '_' for ch in s).strip()
@@ -563,7 +579,7 @@ def emit_run_ledger(
                 ab = r.get('AppliedBy') or ''
                 # keep the latest ApplyDate per key
                 prev = last_apply.get(k)
-                if not prev or (ad > prev[0]):
+                if not prev or newer(ad, prev[0]):
                     last_apply[k] = (ad, ab)
 
     # Filter the in-memory compare rows to the single “current” row per key
@@ -719,7 +735,7 @@ def backfill_apply_events(report_csv: Path, history_db: Path, staging_root: Path
             except Exception:
                 apply_date = ''
         # Skip if we already have an equal/newer ApplyDate recorded
-        if key in existing and existing[key][0] >= (apply_date or ''):
+        if key in existing and not newer(apply_date, existing[key][0]):
             continue
 
         # Author from WinnerFrom (USER:xyz → xyz)
@@ -1353,7 +1369,10 @@ def main():
 
     # --------------- Added for ledger 25-09-03 GAL -------------
     # … inside main(), before processing any previews:
-    applied_this_run: list[dict] = []
+    # --------------- Run-scoped accumulators -------------
+    applied_this_run: list[dict] = []      # (you already had this)
+    excluded_detailed: list[dict] = []     # <-- NEW: used by apply + excluded_winners.csv writer
+    allowed_winner_rows: list[dict] = []   # <-- NEW: what feeds manifests + apply
     run_started_local = datetime.now().astimezone().isoformat(timespec='seconds')
     applied_by = socket.gethostname()  # or os.getlogin()
 
@@ -1381,7 +1400,6 @@ def main():
                     help='Disable progress output')
     ap.add_argument('--excel-out', default=defaults.get('excel_out'), 
                     help="Directory to write the Excel report. If omitted, uses report_html's folder; otherwise reports_dir.")
-
 
     args = ap.parse_args()
 
@@ -1422,14 +1440,17 @@ def main():
 
     # Excel output location:
     #   1) --excel-out if provided
-    #   2) otherwise, if report_html is set → put Excel next to the HTML
-    #   3) fallback to reports_dir
-    excel_out = Path(args.excel_out) if args.excel_out else (report_html.parent if report_html else reports_dir)
-    ensure_dir(excel_out)
+    #   2) otherwise, put it in the STAGING folder (Database Previews)
+    excel_out = Path(args.excel_out) if getattr(args, "excel_out", None) else Path(staging_root)
+    excel_out.mkdir(parents=True, exist_ok=True)
 
-    # ---- FAIL FAST if any existing outputs are open (Excel etc.)
-    _fail_if_locked([report_csv, report_html, miss_csv, manifest_path])
-    print(f"[script] running: {__file__}")
+    # Excel targets
+    _ts = datetime.now().strftime("%Y%m%d-%H%M")
+    xlsx_latest = excel_out / "lorprev_reports.xlsx"
+    xlsx_ts     = excel_out / f"lorprev_reports-{_ts}.xlsx"
+
+    # Include Excel files in the lock check
+    _fail_if_locked([report_csv, report_html, miss_csv, manifest_path, xlsx_latest, xlsx_ts])
 
     # Always show which staging root we’re using (helps when testing different folders)
     print(f"Staging root: {staging_root}")
@@ -1621,23 +1642,26 @@ def main():
         if conflict:
             conflicts_found = True
 
-        staged_filename = default_stage_name(winner.identity, Path(winner.path))
+                # ---------------- Winner destination & pre-apply decisions ----------------
 
-        # Resolve the staged file for this preview by identity (no recursion)
+        # Resolve the staged file for this preview (winner):
+        #   1) If this preview already exists in staging, KEEP ITS CURRENT FILENAME.
+        #   2) Else, stage to canonical "<PreviewName>.lorprev" (no GUID in filename).
+        staged_dest = None
+
         # 1) exact Key match (preferred)
         staged_dest = staged_by_key.get(key)
 
-        # 2) fallback to GUID match
+        # 2) fallback to GUID match (same preview identity, different name)
         if staged_dest is None:
             gid = getattr(winner.identity, 'guid', None)
             if gid:
                 staged_dest = staged_by_guid.get(gid)
 
-        # 3) final fallback: canonical filename (legacy behavior)
+        # 3) final fallback: canonical filename (no GUID suffix)
         if staged_dest is None:
-            staged_filename = default_stage_name(winner.identity, Path(winner.path))
-            staged_dest = Path(staging_root) / staged_filename
-
+            name_for_dest = (getattr(winner.identity, "name", None) or Path(winner.path).stem or "").strip()
+            staged_dest = Path(staging_root) / f"{stage_base_name(name_for_dest)}.lorprev"
 
         # Record winner for post-run reporting
         winners[key] = winner
@@ -1651,6 +1675,7 @@ def main():
         staged_sha    = sha256_file(staged_dest) if staged_exists else ''
         staged_sha8   = (staged_sha[:8] if staged_sha else '')
 
+        # Proposed action based on bytes-only comparison
         if not staged_exists:
             action = 'stage-new'
         elif staged_sha == winner_sha:
@@ -1658,35 +1683,40 @@ def main():
         else:
             action = 'update-staging'
 
-        # NEW: compute once for this key 25-09-02 GAL
-        blocked_no_space = (getattr(winner, 'c_total', 0) > 0 and getattr(winner, 'c_nospace', 0) == 0)
+        # --- Policy/quality checks that can override staging ---
 
-        # Override: a blocked winner cannot be staged
+        # 1) Blocked due to comments: if total>0 and nospace==0 we block
+        blocked_no_space = (getattr(winner, 'c_total', 0) > 0 and getattr(winner, 'c_nospace', 0) == 0)
         if blocked_no_space:
-            action = BLOCKED_ACTION  # 'needs-DisplayName Fixes'
+            action = BLOCKED_ACTION  # e.g., 'needs-DisplayName Fixes'
 
         winner_policy = args.policy
 
-
-
-
-        # ---- pre-stage compare vs existing staged ----
-        def _score(total: int, filled: int, nospace: int) -> tuple[float, float]:
-            fill_ratio = (filled / total) if total else 0.0
-            return (nospace, fill_ratio)
-
+        # 2) Start with default: stage unless we discover a specific reason not to
         should_stage = True
-        stage_reason = reason  # from choose_winner()
+        stage_reason = reason  # from choose_winner() or forced
 
-        # If there are problems with missing/bad display names don't stage 25-09-02 GAL
+        # 3) Enforce family allowlist (reject hyphenated "Show Background Stage-## …")
+        name_for_checks = (getattr(winner.identity, "name", None) or "").strip()
+        fam_ok, fam_reason = _classify_family(
+            name_for_checks,
+            path=winner.path,
+            user=winner.user,
+        )
+        if not fam_ok:
+            should_stage = False
+            stage_reason = (stage_reason + '; ' if stage_reason else '') + f"skip: disallowed family ({fam_reason})"
+
+        # 4) Block if display-name rules failed
         if blocked_no_space:
             should_stage = False
             stage_reason = (stage_reason + '; ' if stage_reason else '') + f'blocked: {BLOCKED_ACTION} (commentsNoSpace=0)'
-     
-        if staged_dest.exists():
+
+        # 5) Compare against currently staged file to avoid regressions
+        if should_stage and staged_exists:
             try:
                 st_idy = parse_preview_identity(staged_dest)
-                st_sha = sha256_file(staged_dest)
+                st_sha = staged_sha  # already computed
                 st_ct, st_cf, st_cn = comment_stats(staged_dest)
 
                 if st_sha == winner.sha256:
@@ -1695,6 +1725,7 @@ def main():
                 else:
                     w_rev = winner.identity.revision_num or -1
                     s_rev = (st_idy.revision_num if st_idy and st_idy.revision_num is not None else -1)
+
                     if s_rev > w_rev:
                         should_stage = False
                         stage_reason += f'; skip: staged has higher Revision={s_rev}'
@@ -1702,6 +1733,10 @@ def main():
                         should_stage = True
                         stage_reason += f'; replace: higher Revision {w_rev}>{s_rev}'
                     else:
+                        # Same revision: prefer better comment fill / fewer "no-space"
+                        def _score(total: int, filled: int, nospace: int) -> tuple[float, float]:
+                            fill_ratio = (filled / total) if total else 0.0
+                            return (nospace, fill_ratio)
                         w_score = _score(getattr(winner,'c_total',0), getattr(winner,'c_filled',0), getattr(winner,'c_nospace',0))
                         s_score = _score(st_ct, st_cf, st_cn)
                         if w_score > s_score:
@@ -1711,10 +1746,13 @@ def main():
                             should_stage = False
                             stage_reason += '; skip: same Revision; staged comments ≥ winner'
             except Exception:
+                # If the staged file is unreadable, allow replacement
                 should_stage = True
                 stage_reason += '; replace: staged unreadable'
-        else:
+
+        elif should_stage and not staged_exists:
             stage_reason += '; stage: not previously staged'
+
 
         # ---- change label vs prior (for report) ----
         prev = prior.get(key)
@@ -1851,44 +1889,136 @@ def main():
 
         # Stage/Archive/Record decisions (unless dry-run)
         if args.apply:
-            if should_stage:
-                stage_copy(Path(winner.path), staged_dest)
-                with conn:
-                    conn.execute(
-                        'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
-                        (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'staged')
-                    )
-                # >>> NEW: record this apply event for the run ledger 25-09-03 GAL
-                applied_this_run.append({
-                    'Key':         key,
-                    'PreviewName': winner.identity.name or '',
-                    'Author':      winner.user or '',
-                    'Revision':    winner.identity.revision_raw or '',
-                    'Size':        winner.size,
-                    'Exported':    ymd_hms(winner.mtime),
-                    'ApplyDate':   ymd_hms(time.time()),
-                    'AppliedBy':   applied_by,
+            # Do NOT recompute staged_dest here; we resolved it above.
+            name = (getattr(winner.identity, "name", None) or Path(winner.path).stem or "").strip()
+            winner_guid = (getattr(winner.identity, "guid", None) or "").strip()
+
+            # Final allowlist gate (reject "Show Background Stage-## …")
+            fam_ok, fam_reason = _classify_family(name, path=winner.path, user=winner.user)
+            if not fam_ok:
+                should_stage = False
+                stage_reason = (stage_reason + '; ' if stage_reason else '') + f"skip: disallowed family ({fam_reason})"
+                suggested = f"Rename to: {name.replace('Stage-','Stage ',1)}" if fam_reason.startswith("invalid stage format") else ""
+                excluded_detailed.append({
+                    "PreviewName":  name,
+                    "Key":          key,
+                    "GUID":         winner_guid,
+                    "Revision":     winner.identity.revision_raw or "",
+                    "Action":       action,
+                    "User":         winner.user or "",
+                    "Reason":       fam_reason,
+                    "Failure":      fam_reason,
+                    "RuleNeeded":   "Show Background Stage <num> …" if fam_reason.startswith("invalid stage format") else "",
+                    "SuggestedFix": suggested,
+                    "Path":         winner.path,
+                    "StagedPath":   str(staged_dest),
                 })
-                # <<<
-                if archive_root and losers:
-                    day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-                    for l in losers:
-                        arch_dest = archive_root / day / sanitize_name(l.user) / (
-                            default_stage_name(l.identity, Path(l.path)).replace('.lorprev', f"__from_{sanitize_name(l.user)}.lorprev")
+
+            # GUID safety: don’t overwrite a different preview with same name
+            dest_guid = None
+            if should_stage and staged_dest.exists():
+                try:
+                    dest_idy = parse_preview_identity(staged_dest)
+                    dest_guid = getattr(dest_idy, "guid", None)
+                except Exception:
+                    dest_guid = None
+
+            if should_stage and dest_guid and winner_guid and dest_guid != winner_guid:
+                should_stage = False
+                stage_reason = (stage_reason + '; ' if stage_reason else '') + "skip: GUID mismatch vs staged"
+                excluded_detailed.append({
+                    "PreviewName":  name,
+                    "Key":          key,
+                    "GUID":         winner_guid,
+                    "Revision":     winner.identity.revision_raw or "",
+                    "Action":       action,
+                    "User":         winner.user or "",
+                    "Reason":       f"GUID mismatch (staged={dest_guid} vs winner={winner_guid})",
+                    "Failure":      "GUID mismatch",
+                    "SuggestedFix": "Investigate source; do not overwrite a different preview with the same name",
+                    "Path":         winner.path,
+                    "StagedPath":   str(staged_dest),
+                })
+
+            if should_stage:
+                copy_ok = False
+                try:
+                    ensure_dir(staged_dest.parent)
+                    stage_copy(Path(winner.path), staged_dest)   # actual copy
+                    copy_ok = True
+                except Exception as e:
+                    excluded_detailed.append({
+                        "PreviewName":  name,
+                        "Key":          key,
+                        "GUID":         winner_guid,
+                        "Revision":     winner.identity.revision_raw or "",
+                        "Action":       action,
+                        "User":         winner.user or "",
+                        "Reason":       "apply failed",
+                        "Failure":      str(e),
+                        "RuleNeeded":   "",
+                        "SuggestedFix": "",
+                        "Path":         winner.path,
+                        "StagedPath":   str(staged_dest),
+                    })
+
+                if copy_ok:
+                    with conn:
+                        conn.execute(
+                            'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
+                            (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'staged')
                         )
-                        ensure_dir(arch_dest.parent)
-                        stage_copy(Path(l.path), arch_dest)
-                        with conn:
-                            conn.execute(
-                                'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
-                                (run_id, key, winner.path, str(arch_dest), 'archived non-winner', 0, 'archived')
+                    applied_this_run.append({
+                        'Key':         key,
+                        'PreviewName': name,
+                        'Author':      winner.user or '',
+                        'Revision':    winner.identity.revision_raw or '',
+                        'Size':        winner.size,
+                        'Exported':    ymd_hms(winner.mtime),
+                        'ApplyDate':   ymd_hms(time.time()),
+                        'AppliedBy':   applied_by,
+                    })
+
+                    # Archive losers (ok to keep default_stage_name here)
+                    if archive_root and losers:
+                        day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                        for l in losers:
+                            arch_dest = archive_root / day / sanitize_name(l.user) / (
+                                default_stage_name(l.identity, Path(l.path)).replace(
+                                    '.lorprev', f"__from_{sanitize_name(l.user)}.lorprev"
+                                )
                             )
+                            try:
+                                ensure_dir(arch_dest.parent)
+                                stage_copy(Path(l.path), arch_dest)
+                                with conn:
+                                    conn.execute(
+                                        'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
+                                        (run_id, key, winner.path, str(arch_dest), 'archived non-winner', 0, 'archived')
+                                    )
+                            except Exception as e:
+                                excluded_detailed.append({
+                                    "PreviewName":  l.identity.name or "",
+                                    "Key":          key,
+                                    "GUID":         l.identity.guid or "",
+                                    "Revision":     l.identity.revision_raw or "",
+                                    "Action":       "archive",
+                                    "User":         l.user or "",
+                                    "Reason":       "archive failed",
+                                    "Failure":      str(e),
+                                    "RuleNeeded":   "",
+                                    "SuggestedFix": "",
+                                    "Path":         l.path,
+                                    "StagedPath":   str(arch_dest),
+                                })
             else:
+                # explicitly record the skip
                 with conn:
                     conn.execute(
                         'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
                         (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'skipped')
                     )
+
 
         # progress: one tick per preview key
         prog.tick()
@@ -2255,6 +2385,8 @@ def main():
                 s = s.replace(ch, '-')
             return s.strip().rstrip('.')
 
+        # Keep ONLY the canonical "<PreviewName>.lorprev" in staging.
+        # Any old GUID-suffixed files (…__xxxxxxxx.lorprev) should be swept to archive.
         keep_files = {
             f"{_sanitize_name((r.get('PreviewName') or ''))}.lorprev".lower()
             for r in allowed_winner_rows
@@ -2267,6 +2399,66 @@ def main():
             keep_files=keep_files
         )
         print(f"[sweep] kept={kept} moved_to_archive={moved}")
+
+        # --- Build "applied this run" index by Key (what actually succeeded) ---
+        applied_by_key = {}
+        for _row in applied_this_run:
+            _k = (_row.get('Key') or '').strip()
+            if _k and _k not in applied_by_key:
+                applied_by_key[_k] = _row
+
+        # --- Write CURRENT PREVIEWS LEDGER (drives Author map & Excel tab) ---
+        ledger_csv = reports_dir / "current_previews_ledger.csv"
+        with ledger_csv.open("w", newline="", encoding="utf-8-sig") as _f:
+            _headers = [
+                "PreviewName", "Size", "Revision", "Author", "Exported",
+                "ApplyDate", "AppliedBy", "Status", "DisplayNamesFilledPct", "Key", "GUID"
+            ]
+            _w = _csv.DictWriter(_f, fieldnames=_headers)
+            _w.writeheader()
+
+            # Source rows: only the filtered winners from this run
+            for r in allowed_winner_rows:
+                pn   = (r.get("PreviewName") or "").strip()
+                key  = (r.get("Key") or "").strip()
+                guid = (r.get("GUID") or "").strip()
+                act  = (r.get("Action") or "").strip()  # 'noop' | 'stage-new' | 'update-staging' | ...
+
+                # Default status from planned action (pre-apply)
+                if   act == "noop":                           status = "Current"
+                elif act in ("stage-new", "update-staging"):  status = "Ready to Apply"
+                else:                                         status = (act or "Unknown")
+
+                # If we actually applied it this run, override to Applied
+                applied = applied_by_key.get(key)
+                if applied:
+                    status     = "Applied"
+                    apply_date = applied.get("ApplyDate") or ""
+                    applied_by = applied.get("AppliedBy") or ""
+                    exported   = applied.get("Exported") or (r.get("Exported") or "")
+                else:
+                    apply_date = r.get("ApplyDate") or ""
+                    applied_by = r.get("AppliedBy") or ""
+                    exported   = r.get("Exported") or ""
+
+                author = r.get("Author") or r.get("User") or ""
+                display_pct = r.get("DisplayNamesFilledPct") or ""
+
+                _w.writerow({
+                    "PreviewName": pn,
+                    "Size":        r.get("Size") or "",
+                    "Revision":    r.get("Revision") or "",
+                    "Author":      author,
+                    "Exported":    exported,
+                    "ApplyDate":   apply_date,
+                    "AppliedBy":   applied_by,
+                    "Status":      status,
+                    "DisplayNamesFilledPct": display_pct,
+                    "Key":         key,
+                    "GUID":        guid,
+                })
+
+        print(f"[ledger] wrote: {ledger_csv}")
 
 
         # Write the on-disk manifest of what's actually in staging now
@@ -2326,14 +2518,29 @@ def main():
         write_dryrun_manifest_html(allowed_winner_rows, preview_html, author_by_name=author_by_name)
         print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
 
-        subprocess.run(
-            [sys.executable, "merge_reports_to_excel.py",
-            "--root", r"G:\Shared drives\MSB Database\database\merger\reports",
-            "--out",  r"G:\Shared drives\MSB Database\Database Previews"],
-            check=True
-        )
+        # subprocess.run(
+        #     [sys.executable, "merge_reports_to_excel.py",
+        #     "--root", r"G:\Shared drives\MSB Database\database\merger\reports",
+        #     "--out",  r"G:\Shared drives\MSB Database\Database Previews"],
+        #     check=True
+        # )
+
+    # ------------------------------------------------------------------------------
+    # --- Excel: merge reports into a formatted workbook (runs for DRY RUN and APPLY) ---
 
 
+    # ------------------------------------------------------------------------------
+    # Excel: merge reports into a formatted workbook (runs for DRY RUN and APPLY)
+    excel_script = Path(__file__).with_name("merge_reports_to_excel.py")
+    subprocess.run(
+        [sys.executable, str(excel_script),
+        "--root", str(reports_dir),
+        "--out",  str(excel_out)],
+        check=True
+    )
+    print(f"[cfg] CSV root: {reports_dir}")
+    print(f"[cfg] Excel out: {excel_out}")
+    print("[OK] Excel workbook(s) written by merge_reports_to_excel.py")
 
     # ------------------------------------------------------------------------------
 
