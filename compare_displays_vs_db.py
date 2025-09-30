@@ -20,13 +20,62 @@ import sys
 import sqlite3
 import datetime
 from pathlib import Path
-
+import subprocess
 import pandas as pd
 
-# === Default paths (same convention as parse_props_v6.py) ===
-DEFAULT_DB_PATH   = Path(r"G:\Shared drives\MSB Database\database\lor_output_v6.db")
-DEFAULT_CSV_PATH  = Path(r"G:\Shared drives\MSB Database\Spreadsheet\displays_export.csv")
-DEFAULT_XLSX_PATH = Path(r"G:\Shared drives\MSB Database\Spreadsheet\lor_display_compare.xlsx")
+# --- Repo-aware path defaults + env overrides --------------------------------
+from pathlib import Path
+import os, subprocess
+
+def get_repo_root() -> Path:
+    env_root = os.environ.get("MSB_REPO_ROOT")
+    if env_root and (Path(env_root) / ".git").exists():
+        return Path(env_root).resolve()
+    try:
+        top = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL, text=True
+        ).strip()
+        if top:
+            return Path(top).resolve()
+    except Exception:
+        pass
+    here = Path(__file__).resolve()
+    for parent in [here] + list(here.parents):
+        if (parent / ".git").exists():
+            return parent
+    return Path.cwd().resolve()
+
+REPO_ROOT = get_repo_root()
+
+# Repo-relative defaults
+REPO_DB_PATH   = REPO_ROOT / "database"    / "lor_output_v6.db"
+REPO_CSV_PATH  = REPO_ROOT / "Spreadsheet" / "displays_export.csv"
+REPO_XLSX_PATH = REPO_ROOT / "Spreadsheet" / "lor_display_compare.xlsx"
+
+# Shared-drive fallbacks (only used if repo paths don't exist)
+SHARED_DB_PATH   = Path(r"G:\Shared drives\MSB Database\database\lor_output_v6.db")
+SHARED_CSV_PATH  = Path(r"G:\Shared drives\MSB Database\Spreadsheet\displays_export.csv")
+SHARED_XLSX_PATH = Path(r"G:\Shared drives\MSB Database\Spreadsheet\lor_display_compare.xlsx")
+
+def prefer_existing(primary: Path, fallback: Path) -> Path:
+    # if primary exists (or fallback doesn't), use primary; else use fallback
+    return primary if primary.exists() or not fallback.exists() else fallback
+
+# Allow per-machine overrides via env (optional)
+ENV_DB   = os.environ.get("MSB_DB_PATH")
+ENV_CSV  = os.environ.get("MSB_SHEET_CSV")
+ENV_XLSX = os.environ.get("MSB_COMPARE_XLSX")
+
+DEFAULT_DB_PATH   = prefer_existing(Path(ENV_DB)   if ENV_DB   else REPO_DB_PATH,   SHARED_DB_PATH)
+DEFAULT_CSV_PATH  = prefer_existing(Path(ENV_CSV)  if ENV_CSV  else REPO_CSV_PATH,  SHARED_CSV_PATH)
+DEFAULT_XLSX_PATH = prefer_existing(Path(ENV_XLSX) if ENV_XLSX else REPO_XLSX_PATH, SHARED_XLSX_PATH)
+
+print(f"[INFO] REPO_ROOT: {REPO_ROOT}")
+print(f"[INFO] Default DB   : {DEFAULT_DB_PATH}")
+print(f"[INFO] Default CSV  : {DEFAULT_CSV_PATH}")
+print(f"[INFO] Default XLSX : {DEFAULT_XLSX_PATH}")
+
 
 DB_DISPLAY_COL = "LORComment"
 USE_FUZZY = True
