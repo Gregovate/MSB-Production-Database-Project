@@ -56,15 +56,13 @@ import time
 import socket  # used for ledger 25-09-03 GAL
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
-import pathlib   
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 import shutil
 import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
-
-Path = pathlib.Path   # define once, globally
 
 # ============================= GLOBAL DEFAULTS ============================= #
 GLOBAL_DEFAULTS = {
@@ -275,7 +273,8 @@ def _suggest_prefix(name: str) -> str | None:
 # ===== End allowed families (helpers) =======================================
 
 # Ignore Device type = None for staged previews 25-09-01 GAL
-def device_type_is_none(p: pathlib.Path) -> bool:
+from pathlib import Path
+def device_type_is_none(p: Path) -> bool:
     """Best-effort check for DeviceType='None' inside a .lorprev (XML-ish) file."""
     try:
         with p.open('rb') as f:
@@ -284,20 +283,6 @@ def device_type_is_none(p: pathlib.Path) -> bool:
         return ('DeviceType="None"' in txt) or ('deviceType="None"' in txt)
     except Exception:
         return False
-
-# ── Preview names in Summare 25-09-29 ───────────────────────────────────────────
-GUID_TO_NAME: dict[str, str] = {}
-KEY_TO_NAME:  dict[str, str] = {}
-
-def _preview_label_from_identity(idy) -> str:
-    """
-    Return a friendly label like 'Show Background Stage 17 – Candyland (rev 7)'
-    Falls back gracefully if fields are missing.
-    """
-    name = (getattr(idy, "name", None) or "(Unnamed Preview)").strip()
-    rev  = getattr(idy, "revision", None) or getattr(idy, "revision_raw", None)
-    return f"{name} (rev {rev})" if rev else name
-
 
 # Time utilities
 def now_local():
@@ -389,11 +374,10 @@ def comment_stats(path: Path) -> tuple[int, int, int]:
                     nospace += 1
     return total, filled, nospace
 
-def _in_dir(p: pathlib.Path, root: pathlib.Path) -> bool:
+from pathlib import Path
+def _in_dir(p: Path, root: Path) -> bool:
     try:
-        rp = pathlib.Path(p).resolve()
-        rr = pathlib.Path(root).resolve()
-        rp.relative_to(rr)  # raises ValueError if rp not under rr
+        Path(p).resolve().relative_to(Path(root).resolve())
         return True
     except Exception:
         return False
@@ -794,8 +778,7 @@ def write_current_manifest(staging_root: Path, out_csv: Path):
             })
 
 # a dry-run (“would-be”) manifest from preview_merger.py without changing any files GAL 25-09-18
-def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: str = "current_previews_manifest_preview.csv",
-                              author_by_name: dict[str, str] | None = None):
+def write_dryrun_manifest(staging_root: Path, winner_rows: list, out_name: str = "current_previews_manifest_preview.csv"):
     r"""
     Create a 'would-be' manifest (no filesystem changes) listing the winners that
     WOULD remain in staging if --apply were used.
@@ -822,12 +805,11 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
         rev = r.get('Revision') or ''
         act = r.get('Action')   or ''
         fname = f"{pn}.lorprev" if pn else ""
+
         present = "Yes" if fname.lower() in existing else "No"
-        author = (author_by_name or {}).get(pn, "")
         rows.append({
             "FileName": fname,
             "PreviewName": pn,
-            "Author": author,
             "Revision": rev,
             "Action": act,
             "Present": present,
@@ -842,7 +824,7 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
     rows.sort(key=lambda x: (x["PreviewName"].lower(), -_revnum(x["Revision"])))
 
     with path.open("w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Author","Revision","Action","Present"])
+        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Revision","Action","Present"])
         w.writeheader()
         w.writerows(rows)
 
@@ -850,55 +832,46 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
 
 
 # Writes Manifest in HTML format GAL 25-09-19
-def write_current_manifest_html(staging_root: Path, out_html: Path, author_by_name: dict[str, str] | None = None):
+def write_current_manifest_html(staging_root: Path, out_html: Path):
     rows = []
     for p in sorted(staging_root.glob("*.lorprev")):
         st  = p.stat()
         idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
         exported = datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        pn = (idy.name or p.stem) or ""
-        author = (author_by_name or {}).get(pn, "")
-        # FileName, Author, Revision, Action, Exported   (drop PreviewName)
-        rows.append((p.name, author, idy.revision_raw or '', '', exported))
-
+        # FileName, PreviewName, Revision, Action, Exported
+        rows.append((p.name, idy.name or p.stem, idy.revision_raw or '', '', exported))
     _emit_manifest_html(
         rows,
         out_html,
-        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text"),("Exported","date")],
+        headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text"),("Exported","date")],
         context_path=str(out_html.parent),
-        extra_title="(APPLY RUN)"
+        extra_title="(APPLY RUN)"   # <-- label
     )
 
 
-def write_dryrun_manifest_html(winner_rows: list, out_html: Path, author_by_name: dict[str, str] | None = None):
+def write_dryrun_manifest_html(winner_rows: list, out_html: Path):
     seen, rows = set(), []
     def _revnum(v):
         try: return float(v or '')
         except Exception: return -1.0
-
     for r in winner_rows:
         key = r.get('Key')
-        if key in seen: 
-            continue
+        if key in seen: continue
         seen.add(key)
-
-        pn     = (r.get('PreviewName') or '').strip()
-        rev    = r.get('Revision') or ''
-        act    = r.get('Action') or ''
-        author = (r.get('Author') or (author_by_name or {}).get(pn, '') or '')
-        fname  = f"{pn}.lorprev" if pn else ""
-
-        # FileName, Author, Revision, Action   (drop PreviewName)
-        rows.append((fname, author, rev, act))
-
-    rows.sort(key=lambda x: ( (x[0] or "").lower(), -_revnum(x[2]) ))
+        pn  = (r.get('PreviewName') or '').strip()
+        rev = r.get('Revision') or ''
+        act = r.get('Action') or ''
+        fname = f"{pn}.lorprev" if pn else ""
+        # FileName, PreviewName, Revision, Action
+        rows.append((fname, pn, rev, act))
+    rows.sort(key=lambda x: (x[1].lower(), -_revnum(x[2])))
 
     _emit_manifest_html(
         rows,
         out_html,
-        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text")],
+        headers=[("FileName","text"),("PreviewName","text"),("Revision","number"),("Action","text")],
         context_path=str(out_html.parent),
-        extra_title="(DRY RUN)"
+        extra_title="(DRY RUN)"     # <-- label
     )
 
 def _emit_manifest_html(
@@ -1248,6 +1221,7 @@ def choose_winner(group: List[Candidate], policy: str) -> Tuple[Candidate, List[
     return winner, losers, reason, conflict
 
 
+
 def default_stage_name(idy: PreviewIdentity, src: Path) -> str:
     base = sanitize_name(idy.name) if idy.name else (f'preview_{idy.guid[:8]}' if idy.guid else src.stem)
     tag = f"__{idy.guid[:8]}" if idy.guid else ''
@@ -1265,112 +1239,6 @@ def stage_copy(src: Path, dst: Path) -> None:
             pass
     ensure_dir(dst.parent)
     shutil.copy2(src, dst)
-
-
-
-
-# ============================= Debug Trace ============================= #
-
-def _read_report_csv(dir_path: pathlib.Path, name: str):
-    """
-    Robust CSV reader for our reports:
-    - Handles BOMs/newlines
-    - Detects and skips metadata lines above the true header
-    - Sniffs delimiter
-    - Skips malformed lines (doesn't crash tracing)
-    """
-    import pandas as pd, io
-    p = pathlib.Path(dir_path) / name
-    if not p.exists():
-        return pd.DataFrame()
-
-    raw = p.read_text(encoding="utf-8-sig", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
-    lines = raw.split("\n")
-
-    # Look for the *real* header row: contains typical columns and has many fields
-    header_idx = None
-    best_delim = ","
-    wanted = {"previewname", "key", "action", "status", "author", "exported"}
-    delims = [",", "\t", ";", "|"]
-
-    for i, ln in enumerate(lines[:50]):  # search first ~50 lines
-        for d in delims:
-            parts = [c.strip() for c in ln.split(d)]
-            if len(parts) >= 5:
-                lower = {c.lower() for c in parts}
-                if lower & wanted:
-                    header_idx = i
-                    best_delim = d
-                    break
-        if header_idx is not None:
-            break
-
-    if header_idx is not None:
-        text = "\n".join(lines[header_idx:])
-        try:
-            return pd.read_csv(io.StringIO(text), sep=best_delim, engine="python",
-                               dtype=str, keep_default_na=False, on_bad_lines="skip")
-        except Exception:
-            pass  # fall through to sniffing
-
-    # Fallback: let pandas sniff the delimiter
-    try:
-        return pd.read_csv(io.StringIO(raw), sep=None, engine="python",
-                           dtype=str, keep_default_na=False, on_bad_lines="skip")
-    except Exception:
-        try:
-            return pd.read_csv(io.StringIO(raw), sep=",", engine="python",
-                               dtype=str, keep_default_na=False, on_bad_lines="skip")
-        except Exception:
-            return pd.DataFrame()
-
-
-
-
-def _trace_preview(reports_dir: Path, trace_key=None, trace_name=None):
-    import pandas as pd
-
-    compare  = _read_report_csv(reports_dir, "lorprev_compare.csv")
-    excluded = _read_report_csv(reports_dir, "excluded_winners.csv")
-    ledger   = _read_report_csv(reports_dir, "current_previews_ledger.csv")
-
-    def _name_col(df: pd.DataFrame):
-        for c in df.columns:
-            if c.lower() in ("previewname","preview","displayname","name","title"):
-                return c
-        return None
-
-    def _show(df: pd.DataFrame, label: str):
-        if df.empty:
-            print(f"[trace] {label}: <no file or rows>"); return
-        if trace_key and "Key" in df.columns:
-            hit = df["Key"] == trace_key
-        else:
-            c = _name_col(df)
-            if not c or not trace_name:
-                print(f"[trace] {label}: not found (missing Key or name column)"); return
-            hit = df[c].str.contains(trace_name, case=False, na=False)
-        sel = df[hit]
-        if sel.empty:
-            print(f"[trace] {label}: not found"); return
-        cols = [x for x in (
-            "PreviewName","Preview","DisplayName","Name","Title",
-            "Key","Revision","Author","Exported","ApplyDate","AppliedBy",
-            "Status","Action","Family","Reason","ExcludeReason","SourcePath"
-        ) if x in sel.columns]
-        print(f"[trace] {label}: {len(sel)} row(s)")
-        print(sel[cols].to_string(index=False, max_colwidth=120))
-
-    _show(compare,  "COMPARE")
-    _show(excluded, "EXCLUDED")
-    _show(ledger,   "LEDGER")
-
-
-# ============================ END Debug Trace ========================== #
-
-
-
-
 
 # ============================= Reporting ============================= #
 
@@ -1476,11 +1344,6 @@ def main():
     ap.add_argument('--email-domain', default=defaults['email_domain'], help='If set, any username without a mapping gets username@<domain>')
     ap.add_argument('--debug', action='store_true', help='Print debug info to stderr')
     # Progress is ON by default; use --no-progress to turn it off
-    ap.add_argument('--trace-key',  default=None, help='Trace by Key/GUID, e.g. GUID:6e8a166f-... (prints where it shows up)')
-    ap.add_argument('--trace-name', default=None, help='Trace by PreviewName substring (case-insensitive)')
-    ap.add_argument('--excel-out',  default=r"G:\Shared drives\MSB Database\Database Previews",
-                    help='Folder to write the merged Excel (defaults to Database Previews)')
-
     ap.add_argument('--progress', dest='progress', action='store_true', default=True,
                     help='Show progress while building report (default: on)')
     ap.add_argument('--no-progress', dest='progress', action='store_false',
@@ -1490,50 +1353,22 @@ def main():
     args = ap.parse_args()
 
     # ---- compute report paths EARLY
-    input_root   = pathlib.Path(args.input_root)
-    staging_root = pathlib.Path(args.staging_root)
-    archive_root = pathlib.Path(args.archive_root) if args.archive_root else None
-    history_db   = pathlib.Path(args.history_db)
+    input_root   = Path(args.input_root)
+    staging_root = Path(args.staging_root)
+    archive_root = Path(args.archive_root) if args.archive_root else None
+    history_db   = Path(args.history_db)
 
-    report_csv   = pathlib.Path(args.report)
-    report_html  = pathlib.Path(args.report_html) if args.report_html else None
-    ensure_dir(report_csv.parent)                     # safe if exists
+    report_csv   = Path(args.report)
+    report_html  = Path(args.report_html) if args.report_html else None
+    ensure_dir(report_csv.parent)  # safe if already exists
 
     # Canonical companion files (define ONCE here)
-    reports_dir   = report_csv.parent                    # << single source of truth for CSV outputs
-    miss_csv      = reports_dir / 'lorprev_missing_comments.csv'
+    miss_csv      = report_csv.with_name('lorprev_missing_comments.csv')
     manifest_path = report_csv.with_suffix('.manifest.json')
-
-    # --- Build PreviewName -> Author map once from the ledger CSV ---
-    author_by_name: dict[str, str] = {}
-    ledger_csv = reports_dir / "current_previews_ledger.csv"
-
-    try:
-        with ledger_csv.open(encoding="utf-8-sig", newline="") as f:
-            for row in csv.DictReader(f):
-                name = (row.get("PreviewName") or "").strip()
-                auth = (row.get("Author") or "").strip()
-                if name and auth and name not in author_by_name:
-                    author_by_name[name] = auth
-    except FileNotFoundError:
-        # No ledger yet — manifests will still render, Authors will be blank
-        pass
-
-
-    # Excel output location:
-    #   1) --excel-out if provided
-    #   2) otherwise, if report_html is set → put Excel next to the HTML
-    #   3) fallback to reports_dir
-    excel_out = Path(args.excel_out) if args.excel_out else (report_html.parent if report_html else reports_dir)
-    ensure_dir(excel_out)
 
     # ---- FAIL FAST if any existing outputs are open (Excel etc.)
     _fail_if_locked([report_csv, report_html, miss_csv, manifest_path])
     print(f"[script] running: {__file__}")
-    print(f"Staging root: {staging_root}")
-    print(f"[cfg] CSV reports → {reports_dir}")
-    print(f"[cfg] Excel out   → {excel_out}")
-
 
     # Always show which staging root we’re using (helps when testing different folders)
     print(f"Staging root: {staging_root}")
@@ -1589,29 +1424,22 @@ def main():
         for p in _staged_top:  # NON-RECURSIVE on purpose
             try:
                 idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
-                k   = identity_key(idy)
-                st  = p.stat().st_mtime
-                lbl = _preview_label_from_identity(idy)
-
+                k = identity_key(idy)
+                st = p.stat().st_mtime
                 if k:
                     prev = staged_by_key.get(k)
                     if (prev is None) or (st > prev.stat().st_mtime):
                         staged_by_key[k] = p
-                        KEY_TO_NAME[k]   = lbl  # <-- capture friendly name for this winning key
-
-                if getattr(idy, "guid", None):
-                    gprev = staged_by_guid.get(idy.guid)
-                    if (gprev is None) or (st > gprev.stat().st_mtime):
+                if idy.guid:
+                    prev = staged_by_guid.get(idy.guid)
+                    if (prev is None) or (st > prev.stat().st_mtime):
                         staged_by_guid[idy.guid] = p
-                        GUID_TO_NAME[idy.guid]   = lbl  # <-- capture friendly name for this winning GUID
             except Exception as e:
                 print(f"[warn] index staged failed for {p}: {e}", file=sys.stderr)
     except Exception as e:
         print(f"[warn] scanning staging_root failed: {e}", file=sys.stderr)
-        staged_by_key  = {}
+        staged_by_key = {}
         staged_by_guid = {}
-        KEY_TO_NAME.clear()
-        GUID_TO_NAME.clear()
 
 
 
@@ -2159,69 +1987,10 @@ def main():
             file=sys.stderr
         )
 
-<<<<<<< HEAD
-
-
-
-
-        # ---------- Clean "needs action" summary: names only, multi-line ----------
-        def _looks_like_guid(s: str) -> bool:
-            s = (s or "").strip().lower()
-            return s.startswith("guid:") or (len(s) in (36, 38) and s.count("-") == 4)
-
-        needs = [r for r in winner_rows if r.get('Action') in ('update-staging', 'stage-new')]
-        if needs:
-            key_to_name  = globals().get('KEY_TO_NAME', {})
-            guid_to_name = globals().get('GUID_TO_NAME', {})
-
-            labels: set[str] = set()
-            for r in needs:
-                label = None
-
-                # 1) Prefer Key → Name (from earlier staged index)
-                k = r.get('Key')
-                if k and key_to_name.get(k):
-                    label = key_to_name[k]
-
-                # 2) Else GUID → Name
-                if not label:
-                    g = r.get('GUID')
-                    if g and guid_to_name.get(g):
-                        label = guid_to_name[g]
-
-                # 3) Else fall back to the row's PreviewName (+rev)
-                if not label:
-                    pn  = (r.get('PreviewName') or '').strip()
-                    rev = r.get('Revision')
-                    if pn:
-                        label = f"{pn} (rev {rev})" if rev not in (None, "", "None") else pn
-
-                # Keep only real names (suppress GUID-looking strings)
-                if label and not _looks_like_guid(label):
-                    labels.add(label)
-
-            pretty = sorted(labels, key=lambda s: s.lower())
-
-            print(
-                "[summary] needs action: "
-                f"{len(needs)} rows across {len(pretty)} previews:\n  - "
-                + "\n  - ".join(pretty),
-                file=sys.stderr
-            )
-
-
-
-    except Exception as e:
-        print(f"[warn] summary generation failed: {e}", file=sys.stderr)
-
-
-
-=======
         # ---------- Clean "needs action" summary: names only, multi-line (no GUIDs) ----------
         def _looks_like_guid(s: str) -> bool:
             s = (s or "").strip().lower()
             return s.startswith("guid:") or (len(s) in (36, 38) and s.count("-") == 4)
->>>>>>> 85045dd (preview_merger:)
 
         def _label_from_identity(idy):
             if not idy: return None
@@ -2286,12 +2055,6 @@ def main():
     write_csv(report_csv, rows, str(input_root), str(staging_root))
     if report_html:
         write_html(report_html, rows, str(input_root), str(staging_root))
-
-
-
-
-
-
 
     # Optional manifest JSON next to CSV
     manifest_path = report_csv.with_suffix('.manifest.json')
@@ -2380,11 +2143,8 @@ def main():
         except Exception as e:
             print(f"[ledger] failed: {e}")
 
-        # assume you already parsed a flag like:
-        # APPLY = args.apply  # True when running with --apply
-
         # 3) Export only what changed in this run (optional)
-        if applied_this_run and APPLY:
+        if applied_this_run:
             applied_csv = report_csv.parent / 'applied_this_run.csv'
             cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
             with applied_csv.open('w', encoding='utf-8-sig', newline='') as f:
@@ -2394,80 +2154,26 @@ def main():
                     w.writerow({c: r.get(c, '') for c in cols})
             print(f"[ledger] Applied this run: {applied_csv}")
 
-        # --- DIAGNOSTIC: winners missing from staging BEFORE sweep (runs in both modes)
-        try:
-            staged_by_key  = globals().get('staged_by_key', {})
-            staged_by_guid = globals().get('staged_by_guid', {})
-            present_names = {p.name.lower() for p in staged_by_key.values()} | \
-                            {p.name.lower() for p in staged_by_guid.values()}
-
-            def _sanitize_name(s: str) -> str:
-                bad = '<>:"/\\|?*'
-                s = (s or '').strip()
-                for ch in bad:
-                    s = s.replace(ch, '-')
-                return s.strip().rstrip('.')
-
-            missing = []
-            for r in allowed_winner_rows:
-                k, g = r.get('Key'), r.get('GUID')
-                pn   = (r.get('PreviewName') or '').strip()
-                sp   = (staged_by_key.get(k) if k in staged_by_key else None) or \
-                    (staged_by_guid.get(g) if g in staged_by_guid else None)
-                if not sp:
-                    fallback = f"{_sanitize_name(pn)}.lorprev".lower() if pn else None
-                    if fallback and fallback not in present_names:
-                        missing.append(r)
-
-            if missing:
-                name = "winners_missing_from_staging.csv" if APPLY else "winners_missing_from_staging_dryrun.csv"
-                miss_csv = Path(report_csv).parent / name
-                with miss_csv.open('w', newline='', encoding='utf-8-sig') as f:
-                    w = csv.DictWriter(f, fieldnames=[
-                        "PreviewName","Key","GUID","Action","Conflict","Reason","Path","StagedPath"
-                    ])
-                    w.writeheader()
-                    for r in missing:
-                        w.writerow({
-                            "PreviewName": r.get("PreviewName"),
-                            "Key": r.get("Key"),
-                            "GUID": r.get("GUID"),
-                            "Action": r.get("Action"),
-                            "Conflict": r.get("Conflict"),
-                            "Reason": r.get("Reason"),
-                            "Path": r.get("Path"),
-                            "StagedPath": r.get("StagedPath"),
-                        })
-                print(f"[diagnostic] Winners missing from staging → {miss_csv}", file=sys.stderr)
-        except Exception as e:
-            print(f"[warn] missing-from-staging diagnostic failed: {e}", file=sys.stderr)
-
         # 4) Sweep/archive non-winners + write the REAL manifest in Database Previews
-        if APPLY:
-            # (do the filename-accurate keep_files build here, then call sweep_staging_archive)
-            ...
-        else:
-            # Dry-run preview of sweep: write lists only; no file ops
-            try:
-                # Build keep_files the same way (using staged_by_key/guid + applied_this_run dests + fallback)
-                keep_files = set()
-                # ... construct keep_files exactly as in apply branch ...
-                would_keep = sorted(keep_files)
-                # Determine current staged filenames
-                current = set(p.name.lower() for p in staged_by_key.values()) | \
-                        set(p.name.lower() for p in staged_by_guid.values())
-                would_archive = sorted(fn for fn in current if fn not in keep_files)
+        def _sanitize_name(s: str) -> str:
+            bad = '<>:"/\\|?*'
+            s = (s or '').strip()
+            for ch in bad:
+                s = s.replace(ch, '-')
+            return s.strip().rstrip('.')
 
-                root = Path(report_csv).parent
-                with (root / "dryrun_would_keep.csv").open('w', newline='', encoding='utf-8-sig') as f:
-                    w = csv.writer(f); w.writerow(["Filename"]); w.writerows([[x] for x in would_keep])
-                with (root / "dryrun_would_archive.csv").open('w', newline='', encoding='utf-8-sig') as f:
-                    w = csv.writer(f); w.writerow(["Filename"]); w.writerows([[x] for x in would_archive])
-                print("[dry-run] wrote dryrun_would_keep.csv and dryrun_would_archive.csv", file=sys.stderr)
-            except Exception as e:
-                print(f"[warn] dry-run sweep preview failed: {e}", file=sys.stderr)
+        keep_files = {
+            f"{_sanitize_name((r.get('PreviewName') or ''))}.lorprev".lower()
+            for r in allowed_winner_rows
+            if r.get('PreviewName')
+        }
 
-
+        moved, kept = sweep_staging_archive(
+            staging_root=Path(staging_root),
+            archive_root=Path(archive_root) if archive_root else Path(staging_root) / "archive",
+            keep_files=keep_files
+        )
+        print(f"[sweep] kept={kept} moved_to_archive={moved}")
 
 
         # Write the on-disk manifest of what's actually in staging now
@@ -2476,7 +2182,7 @@ def main():
 
         # HTML version too 25-09-19
         manifest_html_path = Path(staging_root) / "current_previews_manifest.html"
-        write_current_manifest_html(Path(staging_root), manifest_html_path, author_by_name=author_by_name)
+        write_current_manifest_html(Path(staging_root), manifest_html_path)
         print(f"[sweep] staging manifest → {manifest_csv_path}")
         print(f"[sweep] staging manifest (HTML) → {manifest_html_path}")
 
@@ -2485,9 +2191,8 @@ def main():
 
         # 1) CSV preview manifest (adds Present column)
         #    Only include previews from allowed staging families
-        write_dryrun_manifest_csv(Path(staging_root), allowed_winner_rows,
-                          out_name="current_previews_manifest_preview.csv",
-                          author_by_name=author_by_name)
+        write_dryrun_manifest(Path(staging_root), allowed_winner_rows,
+                              out_name="current_previews_manifest_preview.csv")
         print(f"[dry-run] wrote preview manifest (no changes made).")
 
         # 2) HTML preview manifest (build rows locally; don't rely on compare 'rows')
@@ -2521,187 +2226,28 @@ def main():
         html_rows.sort(key=lambda x: (x[1].lower(), -_revnum(x[2])))
 
         # Write the HTML preview manifest with sortable headers
-        # Build once, earlier in main():
-        # author_by_name = {...}  # from current_previews_ledger.csv
-
         preview_html = Path(staging_root) / "current_previews_manifest_preview.html"
-        write_dryrun_manifest_html(allowed_winner_rows, preview_html, author_by_name=author_by_name)
+        _emit_manifest_html(
+            html_rows,
+            preview_html,
+            headers=[
+                ("FileName", "text"),
+                ("PreviewName", "text"),
+                ("Revision", "number"),
+                ("Action", "text"),
+                ("Present", "text"),
+            ],
+            context_path=str(staging_root),
+            extra_title="(DRY RUN)"  # <-- add the label
+        )
         print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
 
-    # ---------- REVISION CHECK: newest on disk vs what compare/excluded used ----------
-    import pandas as pd
-
-    compare_df  = _read_report_csv(reports_dir, "lorprev_compare.csv")
-    excluded_df = _read_report_csv(reports_dir, "excluded_winners.csv")
-    ledger_df   = _read_report_csv(reports_dir, "current_previews_ledger.csv")
-
-    if not ledger_df.empty:
-        ledger_df["Revision_num"] = pd.to_numeric(ledger_df.get("Revision",""), errors="coerce").fillna(-1).astype(int)
-        ledger_df["Exported_ts"]  = pd.to_datetime(ledger_df.get("Exported",""), errors="coerce")
-
-        # newest row per GUID: max(Revision), then newest Exported
-        latest_by_guid = (
-            ledger_df
-            .sort_values(["Key","Revision_num","Exported_ts"], ascending=[True, False, False])
-            .drop_duplicates(subset=["Key"], keep="first")
-        )
-
-        used = pd.concat([df for df in (compare_df, excluded_df) if not df.empty], ignore_index=True)
-        if not used.empty:
-            used["UsedRevision_num"] = pd.to_numeric(used.get("Revision",""), errors="coerce").fillna(-1).astype(int)
-
-            # carry selected columns from the ledger if present
-            path_cols  = [c for c in ("SourcePath","FilePath","FullPath","Path") if c in latest_by_guid.columns]
-            carry_cols = ["Key","Revision_num","Author","Exported","PreviewName","FileName"] + path_cols
-            carry_cols = [c for c in carry_cols if c in latest_by_guid.columns]  # only keep those that exist
-
-            latest = latest_by_guid[carry_cols].rename(columns={
-                "Revision_num":"DiskLatestRevision",
-                "Author":"DiskLatestAuthor",
-                "Exported":"DiskLatestExported",
-            })
-
-            merged = used.merge(latest, on="Key", how="left")
-
-            # ---- Fill human-friendly filename (no filesystem probing) ----
-            if "PreviewFile" not in merged.columns:
-                merged["PreviewFile"] = ""
-
-            # Try FileName first (handle possible _x/_y suffixes after merge), then PreviewName
-            name_sources = [c for c in ("FileName","FileName_x","FileName_y",
-                                        "PreviewName","PreviewName_x","PreviewName_y")
-                            if c in merged.columns]
-            for col in name_sources:
-                m = merged["PreviewFile"].eq("") & merged[col].astype(str).ne("")
-                if m.any():
-                    merged.loc[m, "PreviewFile"] = merged.loc[m, col].astype(str)
-
-            # Optional: ensure .lorprev suffix is shown
-            # merged["PreviewFile"] = merged["PreviewFile"].astype(str).apply(
-            #     lambda s: s if not s or s.lower().endswith(".lorprev") else s + ".lorprev"
-            # )
-
-            mismatches = merged[merged["DiskLatestRevision"] > merged["UsedRevision_num"]].copy()
-
-            # final output columns (order tuned for humans)
-            show_cols = [c for c in (
-                "PreviewName","PreviewFile","Key",
-                "UsedRevision_num","DiskLatestRevision",
-                "DiskLatestAuthor","DiskLatestExported"
-            ) if c in mismatches.columns]
-            mismatches = mismatches[show_cols].rename(columns={"UsedRevision_num":"UsedRevision"})
-
-            out_csv = reports_dir / "revision_mismatches.csv"
-            mismatches.to_csv(out_csv, index=False, encoding="utf-8-sig")
-            print(f"[revcheck] wrote {out_csv} (rows={len(mismatches)})")
-        else:
-            print("[revcheck] no compare/excluded to check; skipped.")
-    else:
-        print("[revcheck] ledger empty; cannot compute latest-by-GUID.")
-
-
-
-
-
-    # >>> add this block
-    if args.trace_key or args.trace_name:
-        try:
-            _trace_preview(reports_dir=report_csv.parent,
-                           trace_key=args.trace_key,
-                           trace_name=args.trace_name)
-        except Exception as e:
-            print(f"[trace] failed: {e}")
-    # <<<
-    try:
         subprocess.run(
             [sys.executable, "merge_reports_to_excel.py",
-            "--root", str(reports_dir),
-            "--out",  str(excel_out)],
+            "--root", r"G:\Shared drives\MSB Database\database\merger\reports",
+            "--out",  r"G:\Shared drives\MSB Database\Database Previews"],
             check=True
         )
-    except Exception as e:
-        print(f"[warn] Excel merge step failed: {e}")
-
-    # ---------- Conflicts detail (names, reasons, paths) ----------
-    try:
-        def _looks_like_guid(s: str) -> bool:
-            s = (s or "").strip().lower()
-            return s.startswith("guid:") or (len(s) in (36, 38) and s.count("-") == 4)
-
-        # Best-effort label for a row (name > staged identity > filename > key)
-        def _nice_label(r: dict) -> str:
-            nm  = (r.get("PreviewName") or "").strip()
-            rev = r.get("Revision")
-            if nm and not _looks_like_guid(nm):
-                return f"{nm} (rev {rev})" if rev not in (None, "", "None") else nm
-
-            # Try to parse identity from the staged file
-            sbk = globals().get("staged_by_key", {})
-            sbg = globals().get("staged_by_guid", {})
-            k   = r.get("Key"); g = r.get("GUID")
-            pth = (sbg.get(g) if g and sbg else None) or (sbk.get(k) if k and sbk else None)
-            if pth:
-                try:
-                    from pathlib import Path
-                    idy = parse_preview_identity(Path(pth))
-                    if idy and getattr(idy, "name", None):
-                        rev2 = getattr(idy, "revision", None)
-                        lbl  = idy.name
-                        return f"{lbl} (rev {rev2})" if rev2 not in (None, "", "None") else lbl
-                except Exception:
-                    pass
-
-            for gp in (r.get("StagedPath"), r.get("Path")):
-                if gp:
-                    from pathlib import Path
-                    stem = Path(gp).stem.strip()
-                    if stem and not _looks_like_guid(stem):
-                        return stem
-
-            return r.get("Key") or r.get("GUID") or "(unknown)"
-
-        conflict_rows = [r for r in rows if str(r.get("Conflict", "")).upper() == "YES"]
-        if conflict_rows:
-            # bucket by Reason
-            from collections import defaultdict
-            buckets = defaultdict(list)
-            for r in conflict_rows:
-                reason = (r.get("Reason") or "conflict").strip()
-                label  = _nice_label(r)
-                path   = r.get("Path") or r.get("StagedPath") or ""
-                buckets[reason].append((label, path))
-
-            # Console summary
-            total = len({ _nice_label(r) for r in conflict_rows })
-            print(f"[conflicts] {total} preview(s) blocked by {len(buckets)} reason(s):", file=sys.stderr)
-            for reason in sorted(buckets.keys(), key=str.lower):
-                items = buckets[reason]
-                # de-dup per reason
-                seen  = set()
-                uniq  = []
-                for lbl, p in items:
-                    if lbl not in seen:
-                        seen.add(lbl)
-                        uniq.append((lbl, p))
-                print(f"  • {reason}: {len(uniq)}", file=sys.stderr)
-                for lbl, p in sorted(uniq, key=lambda t: t[0].lower()):
-                    if p:
-                        print(f"    - {lbl}\n      {p}", file=sys.stderr)
-                    else:
-                        print(f"    - {lbl}", file=sys.stderr)
-
-            # CSV detail (same folder as other reports)
-            conflicts_csv = Path(report_csv).parent / "conflicts_detailed.csv"
-            with conflicts_csv.open("w", newline="", encoding="utf-8-sig") as f:
-                cols = ["PreviewName","Key","GUID","Action","Reason","Conflict",
-                        "Path","StagedPath","Revision","User","Author"]
-                w = _csv.DictWriter(f, fieldnames=cols)
-                w.writeheader()
-                for r in conflict_rows:
-                    w.writerow({c: r.get(c, "") for c in cols})
-            print(f"[conflicts] Wrote details → {conflicts_csv}", file=sys.stderr)
-    except Exception as e:
-        print(f"[conflicts] summary failed: {e}", file=sys.stderr)
 
 
 
