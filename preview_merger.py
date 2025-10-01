@@ -64,7 +64,16 @@ import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
 
+
 # ============================= GLOBAL DEFAULTS ============================= #
+G = Path(r"G:\Shared drives\MSB Database")
+
+def require_g():
+    if not G.exists():
+        print("[FATAL] G: drive not available. All data lives on the shared drive.")
+        print("        Mount the shared drive and try again.")
+        sys.exit(2)
+
 GLOBAL_DEFAULTS = {
     # Folders
     "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
@@ -431,6 +440,27 @@ def newer(a: str, b: str) -> bool:
     if not da: return False
     if not db: return True
     return da > db
+
+
+
+def file_hash(p: Path) -> str:
+    h = hashlib.sha1()
+    with open(p, "rb", buffering=1024*1024) as f:
+        for chunk in iter(lambda: f.read(1024*1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def file_mtime_local(p: Path) -> datetime:
+    # local, timezone-aware
+    return datetime.fromtimestamp(p.stat().st_mtime).astimezone()
+
+def file_mtime_utc(p: Path) -> datetime:
+    # UTC, timezone-aware
+    return datetime.utcfromtimestamp(p.stat().st_mtime).replace(tzinfo=timezone.utc)
+
+def fmt_local(ts: datetime) -> str:
+    # pretty local string for reports/manifest
+    return ts.astimezone().strftime("%Y-%m-%d %H:%M:%S")
 # ----------------------------------------------------------------------------
 
 def sanitize_name(s: str) -> str:
@@ -966,19 +996,25 @@ def write_current_manifest_html(staging_root: Path, out_html: Path, author_by_na
     for p in sorted(staging_root.glob("*.lorprev")):
         st  = p.stat()
         idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
-        exported = datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        pn = (idy.name or p.stem) or ""
+
+        # Local file time EXACTLY as Windows shows it
+        exported_local_str = datetime.fromtimestamp(st.st_mtime).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
+        pn     = (idy.name or p.stem) or ""
         author = (author_by_name or {}).get(pn, "")
-        # FileName, Author, Revision, Action, Exported   (drop PreviewName)
-        rows.append((p.name, author, idy.revision_raw or '', '', exported))
+
+        # FileName, Author, Revision, Action, Exported (local file time)
+        rows.append((p.name, author, idy.revision_raw or '', '', exported_local_str))
 
     _emit_manifest_html(
         rows,
         out_html,
-        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text"),("Exported","date")],
+        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text"),
+                 ("Exported","text")],  # keep the name simple; it IS local file time now
         context_path=str(out_html.parent),
         extra_title="(APPLY RUN)"
     )
+
 
 
 def write_dryrun_manifest_html(winner_rows: list, out_html: Path, author_by_name: dict[str, str] | None = None):
@@ -1394,7 +1430,22 @@ def write_csv(report_csv: Path, rows: List[Dict], input_root: str, staging_root:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for r in rows:
-            w.writerow({k: r.get(k, '') for k in fieldnames})
+            # Force Exported to the preview file's local mtime
+            rr = dict(r)  # avoid mutating caller
+            p = None
+            fp = (rr.get("FullPath") or "").strip()
+            if fp:
+                p = Path(fp)
+            else:
+                pn = (rr.get("PreviewName") or "").strip()
+                if pn:
+                    cand = Path(staging_root) / f"{pn}.lorprev"
+                    p = cand if cand.exists() else (Path(input_root) / f"{pn}.lorprev")
+
+            if p and p.exists():
+                rr["Exported"] = fmt_local(file_mtime_local(p))
+
+            w.writerow({k: rr.get(k, '') for k in fieldnames})
 
 
 def write_html(report_html: Path, rows: List[Dict], input_root: str, staging_root: str) -> None:
@@ -1417,9 +1468,23 @@ def write_html(report_html: Path, rows: List[Dict], input_root: str, staging_roo
         '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
     ]
     for r in rows:
-        html.append('<tr>' + ''.join(f'<td>{esc(str(r.get(h, "")))}</td>' for h in headers) + '</tr>')
-    html.append('</tbody></table>')
-    report_html.write_text('\n'.join(html), encoding='utf-8-sig')
+        # Force Exported to the preview file's local mtime
+        rr = dict(r)
+        p = None
+        fp = (rr.get("FullPath") or "").strip()
+        if fp:
+            p = Path(fp)
+        else:
+            pn = (rr.get("PreviewName") or "").strip()
+            if pn:
+                cand = Path(staging_root) / f"{pn}.lorprev"
+                p = cand if cand.exists() else (Path(input_root) / f"{pn}.lorprev")
+
+        if p and p.exists():
+            rr["Exported"] = fmt_local(file_mtime_local(p))
+
+        html.append('<tr>' + ''.join(f'<td>{esc(str(rr.get(h, "")))}</td>' for h in headers) + '</tr>')
+
 
 # ============================= Config & Args ============================= #
 
@@ -1499,9 +1564,30 @@ def main():
         if v is not None:
             defaults[k] = v
 
-    # Normalize some paths and ensure parent dirs exist
+    # --------- Pin critical outputs to G:\ regardless of repo/json ---------
+    G = Path(r"G:\Shared drives\MSB Database")
+
+    def _is_on_g(p: str | Path) -> bool:
+        s = str(p or "").strip()
+        return s[:2].upper() == "G:"
+
+    def _gpath(*parts: str) -> str:
+        return str(G.joinpath(*parts))
+
+    # Force these four onto G:\ if they came in as C:\ (or anything else)
+    for key, rel in [
+        ("archive_root", ("database", "merger", "archive")),
+        ("history_db",   ("database", "merger", "preview_history.db")),
+        ("report_csv",   ("database", "merger", "reports", "lorprev_compare.csv")),
+        ("report_html",  ("database", "merger", "reports", "lorprev_compare.html")),
+    ]:
+        if not _is_on_g(defaults.get(key, "")):
+            defaults[key] = _gpath(*rel)
+
+    # --------- Normalize and ensure dirs (AFTER coercion) ---------
     for key in ["input_root", "staging_root", "archive_root", "history_db", "report_csv", "report_html"]:
         defaults[key] = os.path.normpath(defaults[key])
+
     Path(defaults["archive_root"]).mkdir(parents=True, exist_ok=True)
     Path(defaults["history_db"]).parent.mkdir(parents=True, exist_ok=True)
     Path(defaults["report_csv"]).parent.mkdir(parents=True, exist_ok=True)
@@ -1512,16 +1598,14 @@ def main():
         print(f"  {k}: {defaults[k]}")
 
     # --------- 2) Run-scoped accumulators (keep exactly as you had)
-    applied_this_run: list[dict] = []      # you already had this
-    excluded_detailed: list[dict] = []     # used by apply + excluded_winners.csv writer
-    allowed_winner_rows: list[dict] = []   # feeds manifests + apply
+    applied_this_run: list[dict] = []
+    excluded_detailed: list[dict] = []
+    allowed_winner_rows: list[dict] = []
     run_started_local = datetime.now().astimezone().isoformat(timespec='seconds')
     applied_by = socket.gethostname()      # or os.getlogin()
 
-    # --------- 3) Pass `defaults` (cfg) into the rest of your merger logic
-    # e.g., process_previews(defaults, applied_this_run, excluded_detailed, ...)
-    # ... your existing code continues here ...
- # or os.getlogin()
+    # --------- 3) Pass `defaults` into the rest of your merger logic
+    # ...
 
     ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files with conflict detection and history DB.', fromfile_prefix_chars='@')
     ap.add_argument('--config', help='Path to JSON config file (optional)')
@@ -1558,16 +1642,63 @@ def main():
 
     report_csv   = Path(args.report)
     report_html  = Path(args.report_html) if args.report_html else None
-    ensure_dir(report_csv.parent)  # safe if already exists
+
+    # --- helpers: keep everything on G:\ (no Path.resolve() here)
+    G = Path(r"G:\Shared drives\MSB Database")
+
+    def _is_on_g(p: Path | None) -> bool:
+        if p is None:
+            return True
+        # Use the raw drive/prefix; do NOT call .resolve() (can flip to UNC)
+        drv = getattr(p, "drive", "")  # '' for UNC or relative
+        if drv.upper() == "G:":
+            return True
+        s = str(p)
+        return s[:2].upper() == "G:"
+
+    def _gpath(*parts: str) -> Path:
+        return G.joinpath(*parts)
+
+    # --- Coerce critical outputs to G:\ as a final safety net
+    if not _is_on_g(archive_root):
+        archive_root = _gpath("database", "merger", "archive")
+    if not _is_on_g(history_db):
+        history_db   = _gpath("database", "merger", "preview_history.db")
+    if not _is_on_g(report_csv):
+        report_csv   = _gpath("database", "merger", "reports", "lorprev_compare.csv")
+    if report_html and not _is_on_g(report_html):
+        report_html  = _gpath("database", "merger", "reports", "lorprev_compare.html")
+
+    # --- Hard requirement: all data lives on G:\
+    def _must_be_on_g(label: str, p: Path | None) -> None:
+        if not _is_on_g(p):
+            print(f"[FATAL] {label} must be on G:\\ — got: {p}")
+            sys.exit(2)
+
+    for label, p in [
+        ("input_root",   input_root),
+        ("staging_root", staging_root),
+        ("archive_root", archive_root),
+        ("history_db",   history_db),
+        ("report_csv",   report_csv),
+        ("report_html",  report_html),
+    ]:
+        _must_be_on_g(label, p)
+
+    # Directories (create AFTER coercion)
+    ensure_dir(report_csv.parent)
+    if report_html:
+        ensure_dir(report_html.parent)
+    if archive_root:
+        ensure_dir(archive_root)
+    ensure_dir(history_db.parent)
 
     # NEW: define reports_dir once and reuse it everywhere
     reports_dir = report_csv.parent
-    ensure_dir(reports_dir)
 
     # Canonical companion files (define ONCE here)
     miss_csv      = report_csv.with_name('lorprev_missing_comments.csv')
     manifest_path = report_csv.with_suffix('.manifest.json')
-
     # --- Build PreviewName -> Author map once from the ledger CSV ---
     author_by_name: dict[str, str] = {}
     ledger_csv = reports_dir / "current_previews_ledger.csv"
