@@ -20,12 +20,9 @@ import sys
 import sqlite3
 import datetime
 from pathlib import Path
-import subprocess
 import pandas as pd
 
-# --- Repo-aware path defaults + env overrides --------------------------------
-from pathlib import Path
-import os, subprocess
+# ============================= G: ONLY ============================= #
 G = Path(r"G:\Shared drives\MSB Database")
 
 def require_g():
@@ -33,52 +30,12 @@ def require_g():
         print("[FATAL] G: drive not available. All data lives on the shared drive.")
         print("        Mount the shared drive and try again.")
         sys.exit(2)
-        
-def get_repo_root() -> Path:
-    env_root = os.environ.get("MSB_REPO_ROOT")
-    if env_root and (Path(env_root) / ".git").exists():
-        return Path(env_root).resolve()
-    try:
-        top = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, text=True
-        ).strip()
-        if top:
-            return Path(top).resolve()
-    except Exception:
-        pass
-    here = Path(__file__).resolve()
-    for parent in [here] + list(here.parents):
-        if (parent / ".git").exists():
-            return parent
-    return Path.cwd().resolve()
 
-REPO_ROOT = get_repo_root()
+# Hard-set defaults (always on G:\)
+DEFAULT_DB_PATH   = G / "database"    / "lor_output_v6.db"
+DEFAULT_CSV_PATH  = G / "Spreadsheet" / "displays_export.csv"
+DEFAULT_XLSX_PATH = G / "Spreadsheet" / "lor_display_compare.xlsx"
 
-# Repo-relative defaults
-REPO_DB_PATH   = REPO_ROOT / "database"    / "lor_output_v6.db"
-REPO_CSV_PATH  = REPO_ROOT / "Spreadsheet" / "displays_export.csv"
-REPO_XLSX_PATH = REPO_ROOT / "Spreadsheet" / "lor_display_compare.xlsx"
-
-# Shared-drive fallbacks (only used if repo paths don't exist)
-SHARED_DB_PATH   = Path(r"G:\Shared drives\MSB Database\database\lor_output_v6.db")
-SHARED_CSV_PATH  = Path(r"G:\Shared drives\MSB Database\Spreadsheet\displays_export.csv")
-SHARED_XLSX_PATH = Path(r"G:\Shared drives\MSB Database\Spreadsheet\lor_display_compare.xlsx")
-
-def prefer_existing(primary: Path, fallback: Path) -> Path:
-    # if primary exists (or fallback doesn't), use primary; else use fallback
-    return primary if primary.exists() or not fallback.exists() else fallback
-
-# Allow per-machine overrides via env (optional)
-ENV_DB   = os.environ.get("MSB_DB_PATH")
-ENV_CSV  = os.environ.get("MSB_SHEET_CSV")
-ENV_XLSX = os.environ.get("MSB_COMPARE_XLSX")
-
-DEFAULT_DB_PATH   = prefer_existing(Path(ENV_DB)   if ENV_DB   else REPO_DB_PATH,   SHARED_DB_PATH)
-DEFAULT_CSV_PATH  = prefer_existing(Path(ENV_CSV)  if ENV_CSV  else REPO_CSV_PATH,  SHARED_CSV_PATH)
-DEFAULT_XLSX_PATH = prefer_existing(Path(ENV_XLSX) if ENV_XLSX else REPO_XLSX_PATH, SHARED_XLSX_PATH)
-
-print(f"[INFO] REPO_ROOT: {REPO_ROOT}")
 print(f"[INFO] Default DB   : {DEFAULT_DB_PATH}")
 print(f"[INFO] Default CSV  : {DEFAULT_CSV_PATH}")
 print(f"[INFO] Default XLSX : {DEFAULT_XLSX_PATH}")
@@ -352,7 +309,9 @@ def write_excel(out_path: Path, tables: dict):
 
 # --------- entrypoint ---------
 def main():
-    # CLI overrides take precedence; otherwise prompt with defaults like parse_props_v6.py
+    require_g()  # fail fast if shared drive isn't mounted
+
+    # CLI overrides take precedence; otherwise prompt with G:\ defaults
     args = sys.argv[1:]
     if len(args) >= 1:
         db_path = Path(args[0])
@@ -368,6 +327,16 @@ def main():
         xlsx_path = Path(args[2])
     else:
         xlsx_path = get_path("Enter output Excel path", DEFAULT_XLSX_PATH)
+
+    # Enforce G:\ for all 3
+    def _is_on_g(p: Path) -> bool:
+        drv = getattr(p, "drive", "")
+        return (drv.upper() == "G:") or str(p)[:2].upper() == "G:"
+
+    for label, p in [("DB path", db_path), ("CSV path", csv_path), ("XLSX path", xlsx_path)]:
+        if not _is_on_g(p):
+            print(f"[FATAL] {label} must be on G:\\ — got: {p}")
+            sys.exit(2)
 
     print(f"[INFO] Using database: {db_path}")
     print(f"[INFO] Using sheet CSV: {csv_path}")
