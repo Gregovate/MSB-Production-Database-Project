@@ -266,15 +266,3 @@ When prompted:
 
 ---
 
-## Suggested commit message (use this as-is)
-
-```
-docs: end-to-end v6 workflow README — Merger → Parser → Sheet Export → DB Compare
-
-- Clarify purpose of MANIFEST (inventory snapshot) vs LEDGER (action log)
-- Document canonical G:\ paths for staging, archives, reports, and DB
-- Explain merger policy (prefer-comments-then-revision) and block rules
-- Add how-to-read for lorprev_compare and current_previews_ledger
-- Include dry-run vs apply flow, common pitfalls, and FAQ
-```
-
