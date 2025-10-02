@@ -150,13 +150,15 @@ G:\Shared drives\MSB Database\
 - [Reporting & History](Docs/reporting_history.md)
 - [Workflow v6 — End-to-End Pipeline](Docs/workflow_v6_readme.md)  
   Step-by-step process from preview merger to DB compare, including where reports live and how to read ledgers vs manifests.
-  Complete guide: merger → parser → sheet export → DB compare. Explains where ledgers/manifests live and how to read them.
+- [Building a Preview (Operator How-To)](Docs/building_preview_howto.md)  
+  Guide for creating, editing, and exporting previews in LOR, with prerequisites, naming conventions, and export locations.
 - Archived docs live in [/archive/docs](archive/docs/)
 - 📝 [CHANGELOG](CHANGELOG.md) — curated list of processing and schema changes by date.
 - 📘 [Naming Conventions](naming_conventions.md)  
   Explains both **Channel Naming Conventions** (LOR sequencing) and **Prop/Display Naming Conventions** (labels, inventory, database).
 - 🗄️ [Database Cheat Sheet](database_cheatsheet.md)  
   Quick SQL reference for querying `lor_output_v6.db`, including how to list controllers, find DeviceType=None props, and detect spare channels.
+
 
 
 ### **Processing Logic Summary**
