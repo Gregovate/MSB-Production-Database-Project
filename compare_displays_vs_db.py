@@ -26,7 +26,14 @@ import pandas as pd
 # --- Repo-aware path defaults + env overrides --------------------------------
 from pathlib import Path
 import os, subprocess
+G = Path(r"G:\Shared drives\MSB Database")
 
+def require_g():
+    if not G.exists():
+        print("[FATAL] G: drive not available. All data lives on the shared drive.")
+        print("        Mount the shared drive and try again.")
+        sys.exit(2)
+        
 def get_repo_root() -> Path:
     env_root = os.environ.get("MSB_REPO_ROOT")
     if env_root and (Path(env_root) / ".git").exists():

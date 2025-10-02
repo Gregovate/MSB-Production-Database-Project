@@ -69,70 +69,31 @@
 
 
 import os
+import sys
 import xml.etree.ElementTree as ET
 import sqlite3
 import pathlib
 from collections import defaultdict
 import uuid
-# --- Repo-aware defaults + env overrides (OfficePC-safe) ---------------------
 from pathlib import Path
-import subprocess
 
-def get_repo_root() -> Path:
-    env_root = os.environ.get("MSB_REPO_ROOT")
-    if env_root and (Path(env_root) / ".git").exists():
-        return Path(env_root).resolve()
-    try:
-        top = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, text=True
-        ).strip()
-        if top:
-            return Path(top).resolve()
-    except Exception:
-        pass
-    here = Path(__file__).resolve()
-    for p in [here] + list(here.parents):
-        if (p / ".git").exists():
-            return p
-    return Path.cwd().resolve()
+# ============================= G: ONLY ============================= #
+G = Path(r"G:\Shared drives\MSB Database")
 
-def prefer_existing(primary: Path, fallback: Path) -> Path:
-    # Use primary if it exists (or fallback doesn't); else fallback (e.g., G:\ on OfficePC)
-    return primary if primary.exists() or not fallback.exists() else fallback
-
-REPO_ROOT = get_repo_root()
-
-# Repo-relative candidates
-REPO_DB_FILE      = REPO_ROOT / "database" / "lor_output_v6.db"
-REPO_PREVIEWS_DIR = REPO_ROOT / "Database Previews"
-
-# Shared-drive fallbacks (OfficePC)
-SHARED_DB_FILE      = Path(r"G:\Shared drives\MSB Database\database\lor_output_v6.db")
-SHARED_PREVIEWS_DIR = Path(r"G:\Shared drives\MSB Database\Database Previews")
-
-# Env overrides (optional per-machine)
-ENV_DB      = os.environ.get("MSB_DB_PATH")
-ENV_PREV    = os.environ.get("MSB_PREVIEWS_ROOT")
-
-# Final defaults (repo > env > shared-drive)
-DEFAULT_DB_FILE = prefer_existing(
-    Path(ENV_DB) if ENV_DB else REPO_DB_FILE, SHARED_DB_FILE
-)
-DEFAULT_PREVIEW_PATH = prefer_existing(
-    Path(ENV_PREV) if ENV_PREV else REPO_PREVIEWS_DIR, SHARED_PREVIEWS_DIR
-)
-
-print(f"[INFO] REPO_ROOT           : {REPO_ROOT}")
-print(f"[INFO] DEFAULT_DB_FILE     : {DEFAULT_DB_FILE}")
-print(f"[INFO] DEFAULT_PREVIEW_PATH: {DEFAULT_PREVIEW_PATH}")
+def require_g():
+    if not G.exists():
+        print("[FATAL] G: drive not available. All data lives on the shared drive.")
+        print("        Mount the shared drive and try again.")
+        sys.exit(2)
 
 # ---- Global flags & defaults (must be defined before functions) ----
 DEBUG = False  # Global debug flag
 
+# Hard-set G:\ defaults
+DEFAULT_DB_FILE      = G / "database" / "lor_output_v6.db"
+DEFAULT_PREVIEW_PATH = G / "Database Previews"
 
-
-# Globals that existing functions use; will be set in main()
+# Globals that existing functions use; will be set/confirmed in main()
 DB_FILE = DEFAULT_DB_FILE
 PREVIEW_PATH = DEFAULT_PREVIEW_PATH
 
@@ -1597,15 +1558,31 @@ def collapse_duplicate_masters(db_file: str):
 
 def main():
     """Main entry point for the script."""
+    require_g()  # fail fast if G:\ isn’t mounted
+
     global DB_FILE, PREVIEW_PATH  # keep other functions happy
 
-    DB_FILE = get_path("Enter database path", DEFAULT_DB_FILE)
-    PREVIEW_PATH = get_path("Enter the folder path containing .lorprev files", DEFAULT_PREVIEW_PATH)
+    # Prompt, but default always to G:\ paths
+    db_in = input(f"Enter database path [{DEFAULT_DB_FILE}]: ").strip()
+    prev_in = input(f"Enter the folder path containing .lorprev files [{DEFAULT_PREVIEW_PATH}]: ").strip()
+
+    DB_FILE = Path(db_in) if db_in else DEFAULT_DB_FILE
+    PREVIEW_PATH = Path(prev_in) if prev_in else DEFAULT_PREVIEW_PATH
+
+    # Enforce both on G:\
+    def _is_on_g(p: Path) -> bool:
+        drv = getattr(p, "drive", "")
+        return (drv.upper() == "G:") or str(p)[:2].upper() == "G:"
+
+    for label, p in [("DB_FILE", DB_FILE), ("PREVIEW_PATH", PREVIEW_PATH)]:
+        if not _is_on_g(p):
+            print(f"[FATAL] {label} must be on G:\\ — got: {p}")
+            sys.exit(2)
 
     print(f"[INFO] Using database: {DB_FILE}")
     print(f"[INFO] Using preview folder: {PREVIEW_PATH}")
 
-    if not os.path.isdir(PREVIEW_PATH):
+    if not PREVIEW_PATH.is_dir():
         print(f"[ERROR] '{PREVIEW_PATH}' is not a valid directory.")
         return
 
