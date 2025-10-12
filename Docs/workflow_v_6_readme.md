@@ -12,8 +12,37 @@ This guide explains the **four-stage pipeline** for maintaining the Making Spiri
 It also defines **where artifacts live**, what each report means, and how to interpret the **ledger** vs the **manifest**.
 
 ---
+# Quick Database Update Workflow
 
-## 0) Quick Summary (what to run)
+If you’ve cloned the repository  
+👉 [https://github.com/Gregovate/MSB-Production-Database-Project](https://github.com/Gregovate/MSB-Production-Database-Project)  
+and have **Python 3.13** (Microsoft Store version) installed, you only need to run **three scripts** to update the database.
+
+> ⚠️ You must be signed in to Google Workspace and have the shared **G:** drive mapped to your local system.
+
+```bash
+python preview_merger.py --apply
+python parse_props_v6.py
+python compare_displays_vs_db.py
+```
+
+---
+
+## Outputs and Reports
+
+### 📁 G:\Shared drives\MSB Database\Database Previews
+- **lorprev_reports.xlsx** – Complete summary of all applied changes (multiple tabs).  
+- **current_previews_manifest.html** – List of all current previews, authors, and revision levels.  
+  *Use this to verify your local previews match the shared versions.*
+
+### 📁 G:\Shared drives\MSB Database\Spreadsheet
+- **lor_display_compare.xlsx** – Compares database records to the legacy spreadsheet.  
+  *(Temporary report until full conversion is complete.)*  
+  🔹 **Important:** Each time the spreadsheet is updated, run **Export Displays CSV** from the **DB Tools** toolbar before generating this report.
+
+
+
+## 0) Detailed Summary (what to run)
 
 - **Dry-run (safe):**
   ```bat
