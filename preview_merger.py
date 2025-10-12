@@ -1081,6 +1081,11 @@ def _emit_manifest_html(
     run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ctx = _esc(context_path or "")
     xt = f" {extra_title.strip()}" if extra_title else ""  # leading space
+    # User@Host GAL 25-10-14
+    import getpass, socket
+    user = getpass.getuser()
+    host = socket.gethostname()
+    user_label = f"{user}@{host}"
 
     title_text = f"{out_html.name}{xt} – Generated {run_ts}{' – ' + ctx if ctx else ''}"
 
@@ -1100,7 +1105,7 @@ def _emit_manifest_html(
 </head>
 <body>
 <h2>{_esc(out_html.name)}{_esc(xt)}</h2>
-<div class="hint">Generated on {run_ts}{('<br>Folder: ' + ctx) if ctx else ''}\nTip: click a column header to sort.</div>
+<div class="hint">Generated on {run_ts} by {user_label}{('<br>Folder: ' + ctx) if ctx else ''}\nTip: click a column header to sort.</div>
 <table id="m">
   <thead><tr>{th}</tr></thead>
   <tbody>
