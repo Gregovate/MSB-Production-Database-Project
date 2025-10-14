@@ -21,6 +21,7 @@ import sqlite3
 import datetime
 from pathlib import Path
 import pandas as pd
+import csv
 
 # ============================= G: ONLY ============================= #
 G = Path(r"G:\Shared drives\MSB Database")
@@ -100,6 +101,121 @@ def diff_reason(a: str, b: str) -> str:
     hits = [name for name,fn in _reason_tests if fn(a,b)]
     return ", ".join(hits) if hits else ""
 
+# ------ Cleanup Duplicate Headers ------ 25/10/14 GAL
+
+CSV_BASENAME = "displays_export.csv"
+
+def normalize_csv_path(p: Path) -> Path:
+    """
+    If the user passes a folder instead of a file, point to ...\\displays_export.csv.
+    Accepts paths with a trailing backslash.
+    """
+    try:
+        # If it's an existing directory, use default basename inside it
+        if p.exists() and p.is_dir():
+            return p / CSV_BASENAME
+        # Handle trailing slash case that still resolves to a directory
+        s = str(p).rstrip()
+        if s.endswith(os.sep):
+            pp = Path(s)
+            if pp.exists() and pp.is_dir():
+                return pp / CSV_BASENAME
+    except Exception:
+        pass
+    return p
+
+def _normalize_header_names(header_cells):
+    """Preserve given names; synthesize placeholders for blank headers to keep positions."""
+    out, used = [], set()
+    for i, raw in enumerate(header_cells):
+        name = (raw or "").strip()
+        if not name:
+            name = f"__col{i+1}"
+        base = name
+        n = 2
+        while name in used:
+            name = f"{base}__{n}"
+            n += 1
+        used.add(name)
+        out.append(name)
+    return out
+
+def _find_year_idx(headers):
+    # accept "YearBuilt" or "Year Built"
+    norm = [re.sub(r"\s+", "", h or "").lower() for h in headers]
+    for want in ("yearbuilt", "year"):
+        if want in norm:
+            return norm.index(want)
+    return None
+
+def _looks_int(s: str) -> bool:
+    s = (s or "").strip()
+    return bool(re.fullmatch(r"-?\d{1,6}", s))
+
+
+
+def clean_duplicate_header_inplace(csv_path: Path) -> None:
+    """
+    If row 2 repeats the header (or there are blank lines before the header),
+    rewrite the CSV so there's a single header on row 1 and data starts on row 2.
+    Safe for UTF-8 with BOM and Windows newlines.
+    """
+    if not csv_path.exists():
+        return
+
+    with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
+        rows = list(csv.reader(f))
+
+    # Find the first non-empty row as the header
+    i = 0
+    while i < len(rows) and not any((c or "").strip() for c in rows[i]):
+        i += 1
+    if i >= len(rows):
+        return  # empty file, nothing to do
+
+    header = [(c or "").strip() for c in rows[i]]
+
+    # Advance to the first candidate data row
+    j = i + 1
+    # Skip blank lines
+    while j < len(rows) and not any((c or "").strip() for c in rows[j]):
+        j += 1
+    # If the very next non-blank row equals the header, skip it
+    if j < len(rows) and [(c or "").strip() for c in rows[j]] == header:
+        j += 1
+
+    cleaned = [header]
+    for r in rows[j:]:
+        if not r or not any((c or "").strip() for c in r):
+            continue
+        cleaned.append(r)
+
+    with open(csv_path, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerows(cleaned)
+
+# ------ Wait for Sync to finish ------ 25/10/14 GAL
+# add just below your other small helpers / before wait_until_stable
+from pathlib import Path
+import time, hashlib
+
+def wait_until_stable(path: Path, stable_secs=3, timeout=120):
+    start = time.time()
+    last = None; last_change = time.time()
+    while True:
+        if path.exists():
+            try:
+                sig = (path.stat().st_size, hashlib.sha256(path.read_bytes()).hexdigest())
+            except Exception:
+                sig = None
+            if sig and sig == last:
+                if time.time() - last_change >= stable_secs:
+                    return
+            else:
+                last = sig; last_change = time.time()
+        if time.time() - start > timeout:
+            raise TimeoutError(f"{path} not stable after {timeout}s")
+        time.sleep(0.75)
 
 # --------- loaders ---------
 def load_db_names(db_path: Path) -> pd.DataFrame:
@@ -125,26 +241,75 @@ def load_db_names(db_path: Path) -> pd.DataFrame:
     return df
 
 def load_sheet_names(csv_path: Path) -> pd.DataFrame:
+    """
+    Robust loader for the Displays export:
+      - UTF-8 BOM safe
+      - First non-blank row is header (blank header cells allowed)
+      - Second row is skipped if YearBuilt isn't numeric (human labels row)
+      - '#N/A' normalized to ''
+    Returns DataFrame with columns: display_name, display_name_clean, display_name_norm
+    """
     print(f"[INFO] Reading sheet CSV from: {csv_path}")
-    df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
 
-    # locate likely display-name column
-    disp_col = None
-    for c in df.columns:
-        key = c.strip().lower().replace("_", " ")
-        if key in ("display name", "display", "lor comment"):
-            disp_col = c; break
-    if disp_col is None:
-        disp_col = df.columns[0]
+    # Parse with csv module (more tolerant than pandas for ragged rows)
+    with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
+        r = csv.reader(f, delimiter=",")
 
-    print(f"[INFO] Using column for display name: '{disp_col}'")
+        # Find header
+        for row in r:
+            if row and any((c or "").strip() for c in row):
+                raw_header = [ (c or "").strip() for c in row ]
+                break
+        else:
+            return pd.DataFrame(columns=["display_name","display_name_clean","display_name_norm"])
 
-    df = df[[disp_col]].rename(columns={disp_col: "display_name"})
+        headers = _normalize_header_names(raw_header)
+        year_idx = _find_year_idx(headers)
+
+        # Identify display-name column by header
+        # Accept 'DisplayName', 'Display Name', 'Display', or 'LOR Comment'
+        disp_idx = None
+        norm_hdrs = [ (h or "").strip().lower().replace("_"," ") for h in headers ]
+        for want in ("display name", "displayname", "display", "lor comment", "lorcomment"):
+            if want in norm_hdrs:
+                disp_idx = norm_hdrs.index(want)
+                break
+        if disp_idx is None:
+            disp_idx = 0  # fallback to first column
+
+        # Consume rows
+        disp_values = []
+        checked_second = False
+        for row in r:
+            if not row or not any((c or "").strip() for c in row):
+                continue
+            cells = [ (c or "").strip() for c in row ]
+            # pad/truncate to header length
+            if len(cells) < len(headers):
+                cells += [""] * (len(headers) - len(cells))
+            elif len(cells) > len(headers):
+                cells = cells[:len(headers)]
+
+            # Skip labels row if YearBuilt not numeric
+            if not checked_second:
+                checked_second = True
+                if year_idx is not None and not _looks_int(cells[year_idx]):
+                    continue
+
+            v = cells[disp_idx]
+            if v.upper() == "#N/A":
+                v = ""
+            disp_values.append(v)
+
+    df = pd.DataFrame({"display_name": disp_values})
     df["display_name"]       = df["display_name"].astype(str)
     df["display_name_clean"] = df["display_name"].map(exact_clean)
     df["display_name_norm"]  = df["display_name"].map(norm_key)
     df = df[df["display_name_norm"] != ""].drop_duplicates(subset=["display_name_clean"])
+
+    print(f"[INFO] Using column for display name: '{headers[disp_idx]}'")
     return df
+
 
 def fuzzy_suggestions(missing_df: pd.DataFrame, universe_df: pd.DataFrame, k=3) -> pd.DataFrame:
     if missing_df.empty or universe_df.empty:
@@ -319,9 +484,12 @@ def main():
         db_path = get_path("Enter database path", DEFAULT_DB_PATH)
 
     if len(args) >= 2:
-        csv_path = Path(args[1])
+        # user might paste the folder; normalize to ...\displays_export.csv
+        csv_path = normalize_csv_path(Path(args[1]))
     else:
-        csv_path = get_path("Enter the folder path to the Displays CSV (displays_export.csv)", DEFAULT_CSV_PATH)
+        # wording fix: we want the FILE, not just folder; still accept folder via normalize
+        csv_input = get_path("Enter the path to Displays CSV (or its folder)", DEFAULT_CSV_PATH)
+        csv_path = normalize_csv_path(Path(csv_input))
 
     if len(args) >= 3:
         xlsx_path = Path(args[2])
@@ -341,6 +509,16 @@ def main():
     print(f"[INFO] Using database: {db_path}")
     print(f"[INFO] Using sheet CSV: {csv_path}")
     print(f"[INFO] Will write Excel: {xlsx_path}")
+
+    # --- NEW: wait for Drive to finish and normalize the CSV header ---
+    try:
+        print(f"[WAIT] Ensuring CSV is present/stable: {csv_path}")
+        wait_until_stable(csv_path, stable_secs=3, timeout=180)
+        clean_duplicate_header_inplace(csv_path)
+        print("[OK] CSV ready.")
+    except Exception as e:
+        print(f"[ERROR] CSV not ready: {e}")
+        sys.exit(1)
 
     try:
         tables = run_compare(db_path, csv_path)
