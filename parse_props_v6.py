@@ -1667,219 +1667,222 @@ def main():
     """
 def create_wiring_views_v6(db_file: str):
     import sqlite3
-    ddl = r"""
-    DROP VIEW IF EXISTS preview_wiring_map_v6;
-    DROP VIEW IF EXISTS preview_wiring_sorted_v6;
 
-    -- LOR masters (props) — KEEP masters even if a subprop shares the same address
-    CREATE VIEW preview_wiring_map_v6 AS
+    ddl = """
+DROP VIEW IF EXISTS preview_wiring_map_v6;
+CREATE VIEW preview_wiring_map_v6 AS
+    -- Master props (single-grid legs on props)
     SELECT
-      pv.Name AS PreviewName,
-      'PROP'  AS Source,
-      p.Name  AS Channel_Name,
-      p.LORComment AS Display_Name,
-      REPLACE(TRIM(
-          COALESCE(NULLIF(p.LORComment,''), p.Name)
-          || CASE
-               WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
-               WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
-               WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
-               WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
-               ELSE ''
-             END
-          || CASE
-               WHEN INSTR(p.Tag,'Group ')>0
-                    AND SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1) BETWEEN 'A' AND 'Z'
-                 THEN '-'||SUBSTR(p.Tag, INSTR(p.Tag,'Group ')+6, 1)
-               ELSE ''
-             END
-          || CASE WHEN p.UID IS NOT NULL AND p.StartChannel IS NOT NULL
-                  THEN '-'||p.UID||'-'||printf('%02d', p.StartChannel)
-                  ELSE '' END
-      ), ' ','-') AS Suggested_Name,
-      p.Network AS Network,
-      p.UID     AS Controller,
-      p.StartChannel, p.EndChannel,
-      p.Color   AS Color,
-      p.DeviceType, p.Tag AS LORTag
+        pv.Name             AS PreviewName,
+        REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,
+        p.Name              AS LORName,
+        p.Network           AS Network,
+        p.UID               AS Controller,
+        p.StartChannel      AS StartChannel,
+        p.EndChannel        AS EndChannel,
+        p.DeviceType        AS DeviceType,
+        'PROP'              AS Source,
+        p.Tag               AS LORTag
     FROM props p
     JOIN previews pv ON pv.id = p.PreviewId
-    WHERE p.DeviceType='LOR'
-      AND p.Network IS NOT NULL
-      AND p.StartChannel IS NOT NULL
+    WHERE p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
 
     UNION ALL
-
-    -- LOR subprops — SHOW all, EXCEPT the one that shares the master's address (to avoid dup line)
     SELECT
-      pv.Name,
-      'SUBPROP' AS Source,
-      sp.Name       AS Channel_Name,
-      sp.LORComment AS Display_Name,
-      REPLACE(TRIM(
-          COALESCE(NULLIF(sp.LORComment,''), p.LORComment)
-          || CASE
-               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% DS%' OR UPPER(sp.Tag) LIKE '% DS%' THEN '-DS'
-               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% PS%' OR UPPER(sp.Tag) LIKE '% PS%' THEN '-PS'
-               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% LH%' OR UPPER(sp.Tag) LIKE '% LH%' THEN '-LH'
-               WHEN UPPER(COALESCE(sp.LORComment,p.LORComment)) LIKE '% RH%' OR UPPER(sp.Tag) LIKE '% RH%' THEN '-RH'
-               ELSE ''
-             END
-          || CASE
-               WHEN INSTR(sp.Tag,'Group ')>0
-                    AND SUBSTR(sp.Tag, INSTR(sp.Tag,'Group ')+6, 1) BETWEEN 'A' AND 'Z'
-                 THEN '-'||SUBSTR(sp.Tag, INSTR(sp.Tag,'Group ')+6, 1)
-               ELSE ''
-             END
-          || CASE WHEN sp.UID IS NOT NULL AND sp.StartChannel IS NOT NULL
-                  THEN '-'||sp.UID||'-'||printf('%02d', sp.StartChannel)
-                  ELSE '' END
-      ), ' ','-') AS Suggested_Name,
-      sp.Network, sp.UID AS Controller, sp.StartChannel, sp.EndChannel,
-      sp.Color   AS Color,
-      COALESCE(sp.DeviceType,'LOR') AS DeviceType, sp.Tag AS LORTag
+        pv.Name,
+        REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName,
+        sp.Name              AS LORName,  -- ✅ subprop’s own channel name
+        sp.Network,
+        sp.UID,
+        sp.StartChannel,
+        sp.EndChannel,
+        COALESCE(sp.DeviceType,'LOR') AS DeviceType,
+        'SUBPROP' AS Source,
+        sp.Tag
     FROM subProps sp
-    JOIN props p     ON p.PropID    = sp.MasterPropId AND p.PreviewId = sp.PreviewId
-    JOIN previews pv ON pv.id       = sp.PreviewId
-    WHERE NOT (sp.UID = p.UID AND sp.StartChannel = p.StartChannel)
+    JOIN props p  ON p.PropID = sp.MasterPropId
+    JOIN previews pv ON pv.id = sp.PreviewId
 
     UNION ALL
-
-    -- Inventory / unlit assets
     SELECT
-      pv.Name, 'PROP', '', p.LORComment,
-      REPLACE(TRIM(COALESCE(NULLIF(p.LORComment,''), p.Name)), ' ','-'),
-      NULL, NULL, NULL, NULL,
-      p.Color, 'None', p.Tag
-    FROM props p
-    JOIN previews pv ON pv.id = p.PreviewId
-    WHERE p.DeviceType = 'None'
-
-    UNION ALL
-
-    -- DMX channels
-    SELECT
-      pv.Name,
-      'DMX',
-      p.Name,
-      p.LORComment,
-      REPLACE(TRIM(
-          COALESCE(NULLIF(p.LORComment,''), p.Name)
-          || CASE
-               WHEN UPPER(p.LORComment) LIKE '% DS%' OR UPPER(p.Tag) LIKE '% DS%' THEN '-DS'
-               WHEN UPPER(p.LORComment) LIKE '% PS%' OR UPPER(p.Tag) LIKE '% PS%' THEN '-PS'
-               WHEN UPPER(p.LORComment) LIKE '% LH%' OR UPPER(p.Tag) LIKE '% LH%' THEN '-LH'
-               WHEN UPPER(p.LORComment) LIKE '% RH%' OR UPPER(p.Tag) LIKE '% RH%' THEN '-RH'
-               ELSE ''
-             END
-          || '-U'||dc.StartUniverse||':'||dc.StartChannel
-      ), ' ','-'),
-      dc.Network, CAST(dc.StartUniverse AS TEXT),
-      dc.StartChannel, dc.EndChannel,
-      'RGB', 'DMX', p.Tag
+        pv.Name,
+        REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,
+        p.Name              AS LORName,
+        dc.Network,
+        CAST(dc.StartUniverse AS TEXT),
+        dc.StartChannel,
+        dc.EndChannel,
+        'DMX',
+        'DMX',
+        p.Tag
     FROM dmxChannels dc
-    JOIN props p     ON p.PropID   = dc.PropId AND p.PreviewId = dc.PreviewId
-    JOIN previews pv ON pv.id      = p.PreviewId;
+    JOIN props p  ON p.PropID = dc.PropId
+    JOIN previews pv ON pv.id = p.PreviewId;
 
-    -- Sorted convenience view
-    CREATE VIEW preview_wiring_sorted_v6 AS
-    SELECT
-      PreviewName, Source, Channel_Name, Display_Name, Suggested_Name,
-      Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
-    FROM preview_wiring_map_v6
-    ORDER BY PreviewName COLLATE NOCASE, Network COLLATE NOCASE, Controller, StartChannel;
+DROP VIEW IF EXISTS preview_wiring_sorted_v6;
+CREATE VIEW preview_wiring_sorted_v6 AS
+SELECT
+  PreviewName, DisplayName, LORName, Network, Controller,
+  StartChannel, EndChannel, DeviceType, Source, LORTag
+FROM preview_wiring_map_v6
+ORDER BY
+  PreviewName  COLLATE NOCASE ASC,
+  DisplayName  COLLATE NOCASE ASC,
+  Controller   ASC,
+  StartChannel ASC;
 
-    --------------------------------------------------------------------
-    -- NEW helper views
-    --------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_props_preview     ON props(PreviewId);
+CREATE INDEX IF NOT EXISTS idx_subprops_preview  ON subProps(PreviewId);
+CREATE INDEX IF NOT EXISTS idx_dmx_prop          ON dmxChannels(PropId);
+"""
 
-    -- Props-only (exclude DMX and inventory/None)
-    DROP VIEW IF EXISTS preview_wiring_map_v6_props;
-    CREATE VIEW preview_wiring_map_v6_props AS
-    SELECT *
-    FROM preview_wiring_map_v6
-    WHERE DeviceType <> 'DMX'
-      AND DeviceType <> 'None';
+    fieldmap = r"""
+DROP VIEW IF EXISTS preview_wiring_fieldmap_v6;
+CREATE VIEW preview_wiring_fieldmap_v6 AS
+WITH map AS (
+  SELECT
+    m.Source,
+    m.LORName            AS Channel_Name,
+    m.DisplayName        AS Display_Name,
+    m.Network,
+    m.Controller,
+    m.StartChannel,
+    m.EndChannel,
+    CASE WHEN m.DeviceType='DMX' THEN 'RGB' ELSE NULL END AS Color,
+    m.DeviceType         AS DeviceType,
+    m.LORTag,
+    m.PreviewName
+  FROM preview_wiring_sorted_v6 m
+  WHERE m.Controller IS NOT NULL
+    AND m.StartChannel IS NOT NULL
+    AND m.DeviceType <> 'None'
+),
+ranked AS (
+  SELECT
+    map.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY PreviewName, Network, Controller, StartChannel, Display_Name
+      ORDER BY (Source='PROP') DESC, Channel_Name COLLATE NOCASE
+    ) AS lead_rank
+  FROM map
+),
+span AS (
+  SELECT
+    ranked.*,
+    SUM(CASE WHEN lead_rank = 1 THEN 1 ELSE 0 END)
+      OVER (PARTITION BY PreviewName, Network, Controller, StartChannel) AS display_span
+  FROM ranked
+)
+SELECT
+  PreviewName, Source, Channel_Name, Display_Name,
+  Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag,
+  CASE WHEN lead_rank = 1 THEN 'FIELD' ELSE 'INTERNAL' END AS ConnectionType,
+  CASE WHEN display_span > 1 THEN 1 ELSE 0 END            AS CrossDisplay
+FROM span;
 
-    -- Frequently-used distinct controller/network slice (ordered)
-    DROP VIEW IF EXISTS controller_networks_v6;
-    CREATE VIEW controller_networks_v6 AS
-    SELECT DISTINCT
-        Controller,
-        Network
-    FROM preview_wiring_sorted_v6
-    WHERE Controller IS NOT NULL
-    AND DeviceType <> 'DMX'
-    ORDER BY Network COLLATE NOCASE, Controller COLLATE NOCASE;
+DROP VIEW IF EXISTS preview_wiring_fieldonly_v6;
+CREATE VIEW preview_wiring_fieldonly_v6 AS
+SELECT *
+FROM preview_wiring_fieldmap_v6
+WHERE ConnectionType = 'FIELD';
 
-    -- QA checks for wiring data
-    DROP VIEW IF EXISTS breaking_check_v6;
-    CREATE VIEW breaking_check_v6 AS
-    -- 1) StartChannel > EndChannel
-    SELECT
-      'StartGreaterThanEnd' AS Issue,
-      PreviewName, Source, Channel_Name, Display_Name,
-      Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
-    FROM preview_wiring_map_v6
-    WHERE StartChannel IS NOT NULL AND EndChannel IS NOT NULL
-      AND StartChannel > EndChannel
 
-    UNION ALL
-    -- 2) Missing Controller for non-DMX rows
-    SELECT
-      'MissingController' AS Issue,
-      PreviewName, Source, Channel_Name, Display_Name,
-      Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
-    FROM preview_wiring_map_v6
-    WHERE DeviceType <> 'DMX'
-      AND (Controller IS NULL OR TRIM(Controller) = '')
+--------------------------------------------------------------------
+-- FIELD WIRING HELPERS (Stage/Preview-focused)
+-- Paste this block AFTER preview_wiring_map_v6 / preview_wiring_sorted_v6 are created
+--------------------------------------------------------------------
 
-    UNION ALL
-    -- 3) Missing channel range
-    SELECT
-      'MissingChannels' AS Issue,
-      PreviewName, Source, Channel_Name, Display_Name,
-      Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
-    FROM preview_wiring_map_v6
-    WHERE StartChannel IS NULL OR EndChannel IS NULL
+-- Field/Internal mapping without COUNT(DISTINCT) window functions
+DROP VIEW IF EXISTS preview_wiring_fieldmap_v6;
+CREATE VIEW preview_wiring_fieldmap_v6 AS
+WITH map AS (
+  SELECT
+    m.PreviewName,
+    m.Source,
+    m.LORName            AS Channel_Name,
+    m.DisplayName        AS Display_Name,
+    m.Network,
+    m.Controller,
+    m.StartChannel,
+    m.EndChannel,
+    CASE WHEN m.DeviceType='DMX' THEN 'RGB' ELSE NULL END AS Color,
+    m.DeviceType         AS DeviceType,
+    m.LORTag
+  FROM preview_wiring_sorted_v6 m
+  WHERE m.Controller IS NOT NULL
+    AND m.StartChannel IS NOT NULL
+    AND m.DeviceType <> 'None'
+),
+ranked AS (
+  SELECT
+    map.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY PreviewName, Network, Controller, StartChannel, Display_Name
+      ORDER BY (Source='PROP') DESC, Channel_Name COLLATE NOCASE
+    ) AS lead_rank
+  FROM map
+),
+span AS (
+  SELECT
+    ranked.*,
+    SUM(CASE WHEN lead_rank = 1 THEN 1 ELSE 0 END)
+      OVER (PARTITION BY PreviewName, Network, Controller, StartChannel) AS display_span
+  FROM ranked
+)
+SELECT
+  PreviewName, Source, Channel_Name, Display_Name,
+  Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag,
+  CASE WHEN lead_rank = 1 THEN 'FIELD' ELSE 'INTERNAL' END AS ConnectionType,
+  CASE WHEN display_span > 1 THEN 1 ELSE 0 END            AS CrossDisplay
+FROM span;
 
-    UNION ALL
-    -- 4) Exact duplicate legs per (Preview, Network, Controller, Start, End, Source)
-    SELECT
-      'ExactDuplicateLeg' AS Issue,
-      t.PreviewName, t.Source, t.Channel_Name, t.Display_Name,
-      t.Network, t.Controller, t.StartChannel, t.EndChannel, t.DeviceType, t.LORTag
-    FROM (
-      SELECT
-        PreviewName, Source, Channel_Name, Display_Name,
-        Network, Controller, StartChannel, EndChannel, DeviceType, LORTag,
-        COUNT(*) AS cnt
-      FROM preview_wiring_map_v6
-      GROUP BY
-        PreviewName, Source, Channel_Name, Display_Name,
-        Network, Controller, StartChannel, EndChannel, DeviceType, LORTag
-    ) t
-    WHERE t.cnt > 1;
+-- Exactly one lead row per display per circuit (what to wire in the field)
+DROP VIEW IF EXISTS preview_wiring_fieldlead_v6;
+CREATE VIEW preview_wiring_fieldlead_v6 AS
+WITH ranked AS (
+  SELECT
+    f.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY f.PreviewName, f.Network, f.Controller, f.StartChannel, f.Display_Name
+      ORDER BY (f.Source='PROP') DESC, f.Channel_Name COLLATE NOCASE
+    ) AS lead_rank
+  FROM preview_wiring_fieldmap_v6 f
+)
+SELECT *
+FROM ranked
+WHERE lead_rank = 1;
 
-    --------------------------------------------------------------------
-    -- Indexes
-    --------------------------------------------------------------------
+-- Per-circuit rollup for auditing shared circuits
+DROP VIEW IF EXISTS preview_wiring_circuit_rollup_v6;
+CREATE VIEW preview_wiring_circuit_rollup_v6 AS
+SELECT
+  PreviewName,
+  Network,
+  Controller,
+  StartChannel,
+  COUNT(*) AS display_count,
+  GROUP_CONCAT(Display_Name, ' | ') AS displays
+FROM preview_wiring_fieldlead_v6
+GROUP BY PreviewName, Network, Controller, StartChannel
+ORDER BY Network, CAST(Controller AS INTEGER), StartChannel;
 
-    -- Exactly one LOR master per (PreviewId, Display_Name), excluding SPARE/blank
-    CREATE UNIQUE INDEX IF NOT EXISTS uniq_master_per_preview_name
-    ON props(PreviewId, LORComment)
-    WHERE DeviceType='LOR'
-      AND TRIM(COALESCE(LORComment,'')) <> ''
-      AND UPPER(LORComment) <> 'SPARE';
+-- Convenience slice: field-only rows for a given stage/preview
+DROP VIEW IF EXISTS preview_wiring_fieldonly_v6;
+CREATE VIEW preview_wiring_fieldonly_v6 AS
+SELECT *
+FROM preview_wiring_fieldmap_v6
+WHERE ConnectionType = 'FIELD';
+"""
 
-    -- helpful indexes
-    CREATE INDEX IF NOT EXISTS idx_props_preview                  ON props(PreviewId);
-    CREATE INDEX IF NOT EXISTS idx_subprops_preview               ON subProps(PreviewId);
-    CREATE INDEX IF NOT EXISTS idx_subprops_preview_uid_ch        ON subProps(PreviewId, UID, StartChannel);
-    CREATE INDEX IF NOT EXISTS idx_dmx_prop                       ON dmxChannels(PropId);
-    CREATE INDEX IF NOT EXISTS idx_props_preview_comment          ON props(PreviewId, LORComment);
-    CREATE INDEX IF NOT EXISTS idx_subprops_preview_comment       ON subProps(PreviewId, LORComment);
-    """
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.executescript(ddl)
+        conn.executescript(fieldmap)
+        conn.commit()
+        print("[INFO] Created preview_wiring_map_v6, preview_wiring_sorted_v6, and FIELD/INTERNAL views.")
+    finally:
+        conn.close()
+
     conn = sqlite3.connect(db_file)
     try:
         conn.executescript(ddl)
