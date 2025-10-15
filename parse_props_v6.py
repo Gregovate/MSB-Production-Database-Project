@@ -190,18 +190,48 @@ def collect_channel_display_names(xml_root) -> set[str]:
 from pathlib import Path
 from datetime import datetime
 
-def _notice_text(preview_path: str | Path, db_file: str | Path) -> str:
+def _who_ran() -> str:
+    """
+    Return a friendly 'User on Host' string.
+    Works on Windows and *nix without throwing in services.
+    """
+    # user
+    user = (
+        os.environ.get("USERNAME")
+        or os.environ.get("USER")
+        or getpass.getuser()
+        or "unknown"
+    )
+
+    # host
+    host = (
+        os.environ.get("COMPUTERNAME")
+        or socket.gethostname()
+        or platform.node()
+        or "unknown-host"
+    )
+
+    # normalize to avoid whitespace surprises
+    user = str(user).strip() or "unknown"
+    host = str(host).strip() or "unknown-host"
+
+    return f"{user} on {host}"
+
+
+def _notice_text(preview_path: str | Path, db_file: str | Path, actor: str | None = None) -> str:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    actor = actor or _who_ran()
     return (
         "MSB Database rebuild complete\n"
         f"Timestamp : {ts}\n"
+        f"Actor     : {actor}\n"          # <-- NEW
         f"Database  : {Path(db_file)}\n"
         f"Previews  : {Path(preview_path)}\n"
         "Artifacts :\n"
         "  - Wiring views created (v6)\n"
-        "  - Preview manifest written\n"
+        "  - Preview manifest written G:\Shared drives\MSB Database\Database Previews\current_previews_manifest.html\n"
+        "  - Spreadsheet Log written G:\Shared drives\MSB Database\Database Previews\lorprev_reports.xlsx\n"
     )
-
 def write_notice_file(preview_path: str | Path, text: str) -> Path:
     outdir = Path(preview_path) / "_notifications"
     outdir.mkdir(parents=True, exist_ok=True)
@@ -1605,6 +1635,7 @@ def main():
 
     # === Notice breadcrumb (FILE ONLY; no webhook required) ===
     try:
+        actor = _who_ran()
         text = _notice_text(PREVIEW_PATH, DB_FILE)  # you said this helper exists
         notice_path = write_notice_file(PREVIEW_PATH, text)  # and this one too
         print(f"[notify] Wrote notice file → {notice_path}")
