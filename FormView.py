@@ -7,13 +7,14 @@
 #   Features:
 #     • Toggle: Props only
 #     • Toggle: Hide SPAREs
-#     • Toggle: Show/Hide Suggested column
 #     • Clickable column headers for sort
 #     • CSV export of visible data
 #
 # Revision History:
 #   2025-08-28  V0.1.0  Added Hide SPAREs toggle, sortable columns,
 #                       Suggested column toggle.
+#   2025-10-15  V0.1.4  Removed "Show Suggested" checkbox and all Suggested_Name column logic.
+#                       Simplified columns and SQL accordingly.
 
 import sqlite3, csv, os, urllib.parse
 import tkinter as tk
@@ -27,7 +28,6 @@ COLUMNS = [
     ("Source",         90),
     ("Channel_Name",  260),
     ("Display_Name",  260),
-    ("Suggested_Name",280),
     ("Network",        90),
     ("Controller",     90),
     ("StartChannel",  110),
@@ -47,7 +47,7 @@ WHERE type IN ('view','table') AND name='preview_wiring_map_v6';
 # We still filter by PreviewName, but we don't display it
 SQL_WIRING_BASE = """
 SELECT
-  Source, Channel_Name, Display_Name, Suggested_Name,
+  Source, Channel_Name, Display_Name,
   Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag
 FROM preview_wiring_map_v6
 WHERE PreviewName = ?
@@ -68,7 +68,7 @@ def connect_ro(db_path: str) -> sqlite3.Connection:
 class WiringViewer(tk.Tk):
     def __init__(self, db_path=DEFAULT_DB):
         super().__init__()
-        self.title("Wiring Viewer (v6) v0.1.3")
+        self.title("Wiring Viewer (v6) v0.1.4")
         self.geometry("1200x740")
         self.db_path = db_path
         self.conn: sqlite3.Connection | None = None
@@ -110,12 +110,6 @@ class WiringViewer(tk.Tk):
             takefocus=False
         ).pack(side=tk.LEFT, padx=(0,12))
 
-        self.show_suggested = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            filt, text="Show Suggested", variable=self.show_suggested, command=self.update_display_columns,
-            takefocus=False
-        ).pack(side=tk.LEFT, padx=(0,12))
-
         self.count_var = tk.StringVar(value="Rows: 0")
         ttk.Label(filt, textvariable=self.count_var).pack(side=tk.RIGHT)
 
@@ -138,7 +132,6 @@ class WiringViewer(tk.Tk):
         # Init DB + data
         self.safe_connect()
         self.load_previews()
-        self.update_display_columns()
 
     # ------------------------ DB helpers ------------------------
     def safe_connect(self):
@@ -205,7 +198,6 @@ class WiringViewer(tk.Tk):
             "Source": "Source COLLATE NOCASE",
             "Channel_Name": "Channel_Name COLLATE NOCASE",
             "Display_Name": "Display_Name COLLATE NOCASE",
-            "Suggested_Name": "Suggested_Name COLLATE NOCASE",
             "Network": "Network COLLATE NOCASE",
             "Color": "Color COLLATE NOCASE",
             "DeviceType": "DeviceType COLLATE NOCASE",
@@ -268,12 +260,6 @@ class WiringViewer(tk.Tk):
             self.sort_asc = True
         self.refresh_rows()
 
-    def update_display_columns(self):
-        cols = [c for c,_ in COLUMNS]
-        if not self.show_suggested.get():
-            cols = [c for c in cols if c != "Suggested_Name"]
-        self.tree["displaycolumns"] = cols
-
     def export_csv(self):
         if not self.tree.get_children():
             messagebox.showinfo("Export", "Nothing to export.")
@@ -287,16 +273,14 @@ class WiringViewer(tk.Tk):
         if not path:
             return
         try:
-            headers = list(self.tree["displaycolumns"])
+            # Export all visible columns (same as defined COLUMNS since we no longer toggle columns)
+            headers = [c for c,_ in COLUMNS]
             with open(path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(headers)
                 for iid in self.tree.get_children():
                     vals = self.tree.item(iid, "values")
-                    # map full row to displayed subset by index
-                    full_headers = [c for c,_ in COLUMNS]
-                    idxs = [full_headers.index(h) for h in headers]
-                    writer.writerow([vals[i] for i in idxs])
+                    writer.writerow(vals)
             messagebox.showinfo("Export", f"Saved: {path}")
         except Exception as e:
             messagebox.showerror("Export Error", str(e))
