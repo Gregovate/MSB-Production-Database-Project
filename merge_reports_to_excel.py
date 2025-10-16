@@ -19,6 +19,8 @@ import pandas as pd
 import getpass
 import platform
 import argparse
+# GAL 25-10-15: needed for regex in _contains_any
+import re
 
 from pandas.errors import ParserWarning
 from openpyxl.formatting.rule import FormulaRule
@@ -93,6 +95,311 @@ def read_csv_safe(path: Path) -> pd.DataFrame:
         quoting=0            # QUOTE_MINIMAL
     )
 
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Robust NeedsAction builder + ledger annotation
+# ---------------------------------------------------------------------------
+NEEDS_TOKENS = {
+    # Any of these words appearing in action/status/reason should qualify
+    "any": (
+        "update-staging", "stage-new", "ready to apply",
+        "out-of-date", "replace", "apply", "needs action",
+        "winner newer", "newer export", "semantic different",
+        "not staged", "missing in staging",
+    )
+}
+
+def _norm(s):  return "" if s is None else str(s).strip()
+def _low(s):   return _norm(s).lower()
+
+def _pick_key_cols(df):
+    key_col  = "Key" if "Key" in df.columns else None
+    name_col = "PreviewName" if "PreviewName" in df.columns else None
+    return key_col, name_col
+
+def _contains_any(series: pd.Series, needles: tuple[str, ...]) -> pd.Series:
+    if series is None:
+        return pd.Series(False, index=[])
+    s = series.astype(str).str.lower()
+    # use regex OR of all needles, escape spaces with \s* around hyphens
+    pattern = "|".join([re.escape(x) for x in needles])
+    return s.str.contains(pattern, regex=True, na=False)
+
+def _describe_action(row: dict) -> str:
+    a = _low(row.get("Action"))
+    r = _low(row.get("Reason"))
+    st = _low(row.get("Status") or row.get("Result") or row.get("Decision") or row.get("Outcome") or row.get("Comment"))
+
+    if "stage-new" in a or "not staged" in r or "missing in staging" in r:
+        return "Stage new"
+    if "update-staging" in a or "replace" in a or "winner newer" in r or "newer export" in r:
+        return "Replace staged (winner newer)"
+    if "out-of-date" in a or "out-of-date" in st:
+        return "Staged out-of-date"
+    if "ready to apply" in a or "ready to apply" in st:
+        return "Apply to staging"
+    if "semantic different" in r:
+        return "Replace staged (content changed)"
+    # fallbacks
+    if a:
+        return a
+    if st:
+        return st
+    return (row.get("Reason") or "Needs action").strip()
+
+def _slice_common_cols(df, extra_cols=()):
+    cols = ["PreviewName","Key","Revision","Exported","User","Action","Reason","Comment","Status","Path","StagedPath"]
+    cols = [c for c in cols + list(extra_cols) if c in df.columns]
+    return df.loc[:, cols].copy()
+
+def build_needs_action_df(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    rows = []
+
+    # 1) Compare: usually has the clearest apply actions
+    cmp_df = tables.get("Compare")
+    if cmp_df is not None and not cmp_df.empty:
+        act = cmp_df["Action"] if "Action" in cmp_df.columns else None
+        reas = cmp_df["Reason"] if "Reason" in cmp_df.columns else None
+        mask = _contains_any(act, NEEDS_TOKENS["any"]) | _contains_any(reas, NEEDS_TOKENS["any"])
+        if mask.any():
+            part = _slice_common_cols(cmp_df.loc[mask])
+            rows.append(part)
+
+    # 2) Staged (linked): pick out-of-date
+    staged = tables.get("Staged")
+    if staged is not None and not staged.empty:
+        act = staged["Action"] if "Action" in staged.columns else None
+        mask = _contains_any(act, ("out-of-date",))
+        if mask.any():
+            part = _slice_common_cols(staged.loc[mask])
+            rows.append(part)
+
+    # 3) Manifest (if exported): some pipelines write a manifest with Role/Action
+    for key in ("Manifest", "Current_Previews_Manifest", "current_previews_manifest"):
+        mf = tables.get(key)
+        if mf is not None and not mf.empty:
+            # look across Role/Action/Reason
+            mask = pd.Series(False, index=mf.index)
+            for col in ("Role","Action","Reason","WinnerReason"):
+                if col in mf.columns:
+                    mask = mask | _contains_any(mf[col], NEEDS_TOKENS["any"])
+            if mask.any():
+                part = _slice_common_cols(mf.loc[mask])
+                rows.append(part)
+            break
+
+    # 4) Current_Previews_Ledger: scan status/comment style columns
+    led = tables.get("Current_Previews_Ledger")
+    if led is not None and not led.empty:
+        # choose any column with status-ish naming
+        cand_cols = [c for c in led.columns if any(t in c.lower() for t in ("status","action","result","decision","outcome","comment","reason"))]
+        mask = pd.Series(False, index=led.index)
+        for c in cand_cols:
+            mask = mask | _contains_any(led[c], NEEDS_TOKENS["any"])
+        if mask.any():
+            part = _slice_common_cols(led.loc[mask], extra_cols=tuple(cand_cols))
+            rows.append(part)
+
+    if not rows:
+        return pd.DataFrame()
+
+    needs = pd.concat(rows, ignore_index=True)
+
+    # Normalize and synthesize ActionNeeded
+    for c in ("PreviewName","Key","Revision","Exported","User","Action","Reason","Comment","Status","Path","StagedPath"):
+        if c in needs.columns:
+            needs[c] = needs[c].map(_norm)
+
+    needs["ActionNeeded"] = needs.apply(lambda r: _describe_action(r.to_dict()), axis=1)
+
+    # Deduplicate by Key then PreviewName
+    key_col, name_col = _pick_key_cols(needs)
+    id_col = key_col or name_col
+    if id_col:
+        # prefer higher Revision, then newer Exported if present
+        def _rev_int(x):
+            try: return int(str(x).strip())
+            except: return -1
+        def _to_dt(x):
+            from datetime import datetime
+            s = str(x)
+            for fmt in ("%Y-%m-%d %H:%M:%S","%Y-%m-%d %H:%M","%m/%d/%Y %H:%M","%Y-%m-%d"):
+                try: return datetime.strptime(s, fmt)
+                except: pass
+            return None
+        needs["_rev"] = needs.get("Revision", "").map(_rev_int) if "Revision" in needs.columns else -1
+        needs["_exp"] = needs.get("Exported", "").map(_to_dt) if "Exported" in needs.columns else None
+        needs = (
+            needs.sort_values(by=[id_col, "_rev", "_exp"], ascending=[True, False, False], na_position="last")
+                 .drop_duplicates(subset=[id_col], keep="first")
+        )
+        if "_rev" in needs.columns: needs.drop(columns=["_rev"], inplace=True)
+        if "_exp" in needs.columns: needs.drop(columns=["_exp"], inplace=True)
+
+    # Final column order
+    ordered = [c for c in ("PreviewName","Key","Revision","Exported","User","ActionNeeded","Action","Reason","Comment","Path","StagedPath") if c in needs.columns]
+    needs = needs[ordered].reset_index(drop=True)
+    return needs
+
+def annotate_ledger_with_needs_action(tables: dict[str, pd.DataFrame], needs: pd.DataFrame) -> None:
+    df = tables.get("Current_Previews_Ledger")
+    if df is None or df.empty or needs is None or needs.empty:
+        return
+    ledger = df.copy()
+    key_col, name_col = _pick_key_cols(ledger)
+    if not key_col and not name_col:
+        tables["Current_Previews_Ledger"] = ledger
+        return
+
+    # Map id -> ActionNeeded
+    by_id = {}
+    if key_col and key_col in needs.columns:
+        for i, row in needs.iterrows():
+            by_id[_norm(row[key_col])] = row.get("ActionNeeded","Needs action")
+    elif name_col and name_col in needs.columns:
+        for i, row in needs.iterrows():
+            by_id[_norm(row[name_col])] = row.get("ActionNeeded","Needs action")
+
+    # Ensure Comment column exists
+    if "Comment" not in ledger.columns:
+        ledger["Comment"] = ""
+
+    # Apply annotations
+    if key_col and key_col in ledger.columns:
+        ids = ledger[key_col].map(_norm)
+    else:
+        ids = ledger[name_col].map(_norm)
+
+    def _merge_comment(idx, old):
+        aid = by_id.get(_norm(ids.iloc[idx]))
+        if not aid:
+            return old
+        if not old:
+            return f"Needs action — {aid}"
+        low = old.lower()
+        if "needs action" in low:
+            return old  # don't duplicate
+        return f"{old}; Needs action — {aid}"
+
+    ledger["Comment"] = [ _merge_comment(i, _norm(v)) for i, v in enumerate(ledger["Comment"]) ]
+    tables["Current_Previews_Ledger"] = ledger
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Excel formatting helpers (openpyxl)
+# ---------------------------------------------------------------------------
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
+
+def _header_map(ws, header_row: int = 1) -> dict[str, str]:
+    """Map normalized header text -> column letter."""
+    m = {}
+    for cell in ws[header_row]:
+        if cell.value:
+            m[str(cell.value).strip().lower()] = cell.column_letter
+    return m
+
+def _col_letter_for(ws, header_name: str, header_row: int = 1) -> str | None:
+    """Find column letter by header (case-insensitive)."""
+    hmap = _header_map(ws, header_row)
+    return hmap.get(str(header_name).strip().lower())
+
+def _number_format_int(ws, headers: list[str], header_row: int = 1) -> None:
+    """
+    GAL 25-10-15
+    Format given header columns as integers (format '0').
+    Ignores missing columns gracefully.
+    """
+    for h in headers:
+        col = _col_letter_for(ws, h, header_row)
+        if not col:
+            continue
+        for r in range(header_row + 1, ws.max_row + 1):
+            c = ws[f"{col}{r}"]
+            # only set format if the cell looks numeric
+            try:
+                if c.value is None:
+                    continue
+                # coerce strings like "42" to number visually
+                if isinstance(c.value, str) and c.value.isdigit():
+                    c.value = int(c.value)
+                if isinstance(c.value, (int, float)):
+                    c.number_format = "0"
+                    c.alignment = Alignment(horizontal="right")
+            except Exception:
+                pass
+
+def _number_format_float(ws, headers: list[str], header_row: int = 1, decimals: int = 2) -> None:
+    """Format columns as floats with a fixed number of decimals."""
+    fmt = "0." + "0" * max(0, decimals)
+    for h in headers:
+        col = _col_letter_for(ws, h, header_row)
+        if not col:
+            continue
+        for r in range(header_row + 1, ws.max_row + 1):
+            c = ws[f"{col}{r}"]
+            try:
+                if c.value is None:
+                    continue
+                if isinstance(c.value, str):
+                    try:
+                        c.value = float(c.value)
+                    except Exception:
+                        continue
+                if isinstance(c.value, (int, float)):
+                    c.number_format = fmt
+                    c.alignment = Alignment(horizontal="right")
+            except Exception:
+                pass
+
+def _number_format_datetime(ws, headers: list[str], header_row: int = 1) -> None:
+    """
+    Format date/time looking columns as 'yyyy-mm-dd hh:mm'.
+    Leaves text that can’t be parsed.
+    """
+    fmt = "yyyy-mm-dd hh:mm"
+    # quick parser without external deps
+    from datetime import datetime
+    fmts_try = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M",
+                "%m/%d/%Y %H:%M", "%Y-%m-%d")
+    for h in headers:
+        col = _col_letter_for(ws, h, header_row)
+        if not col:
+            continue
+        for r in range(header_row + 1, ws.max_row + 1):
+            c = ws[f"{col}{r}"]
+            v = c.value
+            try:
+                if v is None:
+                    continue
+                if isinstance(v, str):
+                    dt = None
+                    for f in fmts_try:
+                        try:
+                            dt = datetime.strptime(v.strip(), f)
+                            break
+                        except Exception:
+                            pass
+                    if dt is None:
+                        continue
+                    c.value = dt
+                # openpyxl will handle python datetime types
+                c.number_format = fmt
+                c.alignment = Alignment(horizontal="left")
+            except Exception:
+                pass
+
+def _auto_width(ws, header_row: int = 1, max_width: int = 60) -> None:
+    """Autosize columns based on header + cell content length."""
+    for col_cells in ws.columns:
+        col_letter = get_column_letter(col_cells[0].column)
+        try:
+            lengths = [len(str(c.value)) if c.value is not None else 0 for c in col_cells]
+            width = min(max_width, max(lengths + [10]) + 2)
+            ws.column_dimensions[col_letter].width = width
+        except Exception:
+            pass
+
+
 def autosize_and_filter(ws):
     """Freeze header, add autofilter, and auto-fit columns (capped width)."""
     ws.freeze_panes = "A2"
@@ -108,21 +415,26 @@ def autosize_and_filter(ws):
         ws.column_dimensions[col_letter].width = min(max(10, max_len + 2), 80)
 
 def _choose_action_like_column(ws, header_row=1):
-    """Return (column_letter, header_text) most suitable for status/action coloring."""
+    """
+    GAL 25-10-15: Prefer deterministic columns; fall back to heuristic.
+    """
+    title = ws.title
+    # Prefer the mapped column if present
+    preferred = STATUS_COLUMN_MAP.get(title)
+    if preferred:
+        # Find exact header match (case-insensitive)
+        for cell in ws[header_row]:
+            if cell.value and str(cell.value).strip().lower() == preferred.lower():
+                return cell.column_letter, str(cell.value).strip()
+
+    # Heuristic fallback (previous behavior)
     headers = [(cell.column_letter, str(cell.value).strip())
                for cell in ws[header_row] if cell.value]
-    # Normalize + exclude obvious date/time columns
     norm = [(col, txt, txt.lower()) for col, txt in headers]
     candidates = [(c, t, tl) for c, t, tl in norm if "date" not in tl and "time" not in tl]
 
-    # Priority headers to prefer
-    priority = ("status", "action", "result", "decision", "outcome", "operation")
-
-    # Quick content score based on expected keywords
-    green_terms  = ("applied", "update-staging", "allow", "allowed", "pass", "passed")
-    red_terms    = ("blocked", "error", "fail", "failed", "exclude", "excluded", "work needed")
-    gray_terms   = ("skip", "identical", "no-op", "not needed", "unchanged")
-    yellow_terms = ("ready to apply",)
+    # Upgrade priority to include ActionNeeded
+    priority = ("actionneeded", "status", "action", "result", "decision", "outcome", "operation", "comment")
 
     def score_col(letter):
         hits = 0
@@ -132,17 +444,16 @@ def _choose_action_like_column(ws, header_row=1):
             if not v:
                 continue
             s = str(v).lower()
-            if any(t in s for t in green_terms + red_terms + gray_terms + yellow_terms):
+            if any(t in s for t in ("applied", "update-staging", "stage-new", "ready to apply", "out-of-date",
+                                     "blocked", "error", "fail", "excluded", "skip", "identical", "no-op")):
                 hits += 1
         return hits
 
-    # Prefer priority headers if present
     for key in priority:
         for col, txt, tl in candidates:
             if key in tl:
                 return col, txt
 
-    # Otherwise, choose the column whose cells look most like status/action
     scored = [(score_col(col), col, txt) for col, txt, _ in candidates]
     if scored:
         scored.sort(reverse=True)
@@ -230,51 +541,84 @@ def add_missing_comments_colors(ws, header_row=1):
             )
         )
 
-STATUS_LIKE = ("status","action","result","decision","outcome","operation")  # not dates
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Deterministic Overview — fixed status columns per sheet
+# ---------------------------------------------------------------------------
 
-def _number_format_int(ws, headers):
-    # Map header text -> column index
-    header_map = {ws.cell(1, c).value: c for c in range(1, ws.max_column + 1)}
-    for h in headers:
-        col = header_map.get(h)
-        if not col:
-            continue
-        for r in range(2, ws.max_row + 1):
-            ws.cell(r, col).number_format = "0"  # integer, no decimals
+# Which column to summarize per sheet (skip if sheet not present or column missing)
+STATUS_COLUMN_MAP = {
+    "Compare": "Action",
+    "Staged": "Action",
+    "Applied_This_Run": "Action",
+    "Excluded_Winners": "Reason",
+    "Missing_Comments": "Comment",
+    "Current_Previews_Ledger": "Comment",
+    "Revision_Mismatches": None,          # no status roll-up
+    "All_Staged_Comments": None,          # very verbose
+    "NeedsAction": "ActionNeeded",        # synthesized action we created
+}
 
+def _normalize_status_value(raw: str) -> str:
+    """GAL 25-10-15: collapse noisy text into consistent buckets for Overview."""
+    s = ("" if raw is None else str(raw)).strip().lower()
+    if not s or s == "(blank)":
+        return "(blank)"
 
-def pick_status_column(df: pd.DataFrame) -> str | None:
-    if df is None or df.empty:
-        return None
-    cols = [c for c in df.columns if c]
-    # avoid columns that look like dates
-    def ok(name: str) -> bool:
-        l = name.lower()
-        return any(k in l for k in STATUS_LIKE) and "date" not in l and "time" not in l
-    for c in cols:
-        if ok(c):
-            return c
-    return None
+    # common buckets
+    if any(t in s for t in ("applied", "applies ok")):
+        return "applied"
+    if any(t in s for t in ("update-staging", "replace staged", "winner newer", "semantic different")):
+        return "update-staging"
+    if "stage-new" in s or "not staged" in s or "missing in staging" in s:
+        return "stage-new"
+    if "ready to apply" in s:
+        return "ready to apply"
+    if "out-of-date" in s:
+        return "out-of-date"
+    if any(t in s for t in ("blocked", "error", "fail", "failed", "exclude", "excluded", "work needed")):
+        return "blocked/error"
+    if any(t in s for t in ("skip", "identical", "no-op", "unchanged", "not needed")):
+        return "skip/identical"
+    # otherwise keep a short form (first 40 chars) so we don’t flood the overview
+    return s[:40]
 
 def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """
+    GAL 25-10-15
+    Build a compact overview by counting normalized status values in a
+    deterministic column per sheet (see STATUS_COLUMN_MAP).
+    """
     rows = []
     for sheet, df in tables.items():
-        col = pick_status_column(df)
+        col = STATUS_COLUMN_MAP.get(sheet)
         if not col:
             continue
-        vc = (
-            df[col].astype(str)
-                  .str.strip()
-                  .replace({"": "(blank)"})
-                  .str.lower()
+        if col not in df.columns or df.empty:
+            continue
+
+        series = df[col].astype(str).replace({"": "(blank)"})
+        counts = (
+            series.map(_normalize_status_value)
                   .value_counts(dropna=False)
+                  .rename_axis("Value")
+                  .reset_index(name="Count")
         )
-        for value, count in vc.items():
-            rows.append({"Sheet": sheet, "StatusColumn": col, "Value": value, "Count": int(count)})
+        for _, r in counts.iterrows():
+            rows.append({
+                "Sheet": sheet,
+                "StatusColumn": col,
+                "Value": str(r["Value"]),
+                "Count": int(r["Count"]),
+            })
+
     if not rows:
-        return pd.DataFrame({"Info": ["No status-like columns found to summarize."]})
-    return (pd.DataFrame(rows)
-              .sort_values(["Sheet","Count"], ascending=[True, False], ignore_index=True))
+        return pd.DataFrame({"Info": ["No status columns found to summarize."]})
+
+    return (
+        pd.DataFrame(rows)
+          .sort_values(["Sheet", "Count", "Value"], ascending=[True, False, True], ignore_index=True)
+    )
+
 
 def write_info_tab(writer):
     import datetime as _dt  # ensure we get the module regardless of outer imports
@@ -299,6 +643,18 @@ def main():
     if not tables:
         print("[ERROR] No report CSVs found in:", ROOT)
         return
+
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Build NeedsAction sheet and annotate the ledger
+    # -----------------------------------------------------------------------
+    needs = build_needs_action_df(tables)
+    if needs is not None and not needs.empty:
+        tables["NeedsAction"] = needs
+        annotate_ledger_with_needs_action(tables, needs)
+        print(f"[info][GAL 25-10-15] NeedsAction rows: {len(needs)}")
+    else:
+        print("[info][GAL 25-10-15] No NeedsAction rows found")
+
 
     with pd.ExcelWriter(OUT_XLSX_STAMPED, engine="openpyxl") as writer:
         # ---- Write Overview + Info FIRST so they appear at the front ----
