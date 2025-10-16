@@ -74,24 +74,47 @@ def require_g():
         print("        Mount the shared drive and try again.")
         sys.exit(2)
 
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Default configuration values for preview_merger
+# ---------------------------------------------------------------------------
+# Notes:
+#   • Paths point to the shared MSB Database drive structure.
+#   • Policy switched to "prefer-exported" to ensure the newest preview
+#     always wins over comment completeness.
+#   • Author discovery is now automatic (see discover_authors()).
+# ---------------------------------------------------------------------------
+
 GLOBAL_DEFAULTS = {
     # Folders
     "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
     # "Secret" location used by LOR parser today
     "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
-    #"staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
+    # "staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
     # Keep merger artifacts under /database/merger
     # Put archived previews directly under Database Previews\archive\YYYY-MM-DD
     "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
     "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
     "report_csv":   r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.csv",
     "report_html":  r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html",
-    # Behavior
-    "policy": "prefer-comments-then-revision",
-    # Users and email
+
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Behavior
+    # -----------------------------------------------------------------------
+    # Previously: "prefer-comments-then-revision"
+    # Now:        "prefer-exported" ensures the newest Exported timestamp
+    #             takes priority even if comment fields are incomplete.
+    # Comment completeness is still checked and logged as a warning.
+    "policy": "prefer-exported",  # GAL 25-10-15 change
+
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Users and email
+    # -----------------------------------------------------------------------
+    # Hard-coded ensure_users is now legacy. Author folders are auto-
+    # discovered from the directory names under input_root.
     "ensure_users": "abiebel,rneerhof,gliebig,showpc,officepc",
     "email_domain": "sheboyganlights.org",
 }
+
 
 # --- Paths config (repo-aware with env + shared-drive fallback) ---
 
@@ -195,6 +218,7 @@ class PreviewIdentity:
     revision_raw: Optional[str]
     revision_num: Optional[float]
 
+# GAL 25-10-15: added core_sig (must be before any defaulted fields)
 @dataclass
 class Candidate:
     key: str                    # "GUID:<guid>" or "NAME:<name>"
@@ -205,9 +229,12 @@ class Candidate:
     size: int
     mtime: float
     sha256: str
+    semantic_sha256: str        # GAL 25-10-15
+    core_sig: str               # GAL 25-10-15
     c_total: int = 0            # total comment fields found
     c_filled: int = 0           # comment fields with non-empty value
     c_nospace: int = 0          # comment fields with no spaces
+
 
 # ====================== Utilities / Helpers ============================ #
 
@@ -349,7 +376,6 @@ def _classify_family(name: str | None,
 
     return False, "no allowed prefix match"
 
-
 def _suggest_prefix(name: str) -> str | None:
     """Human suggestion for excluded report (keeps it simple)."""
     if not name:
@@ -442,6 +468,39 @@ def newer(a: str, b: str) -> bool:
     return da > db
 
 
+def _normalized_bytes(raw: bytes) -> bytes:
+    # GAL 25-10-15: remove volatile tags/fields out of the file content
+    out = raw
+    for pat in _VOLATILE_PATTERNS:
+        out = re.sub(pat, b"", out)
+    # compact whitespace sequences introduced by removals
+    out = re.sub(rb"\s{2,}", b" ", out)
+    return out
+
+def hash_file(p: Path, chunk=1024 * 1024) -> str:
+    # unchanged raw hash (kept for diagnostics)
+    h = hashlib.sha1()
+    with p.open("rb") as f:
+        while True:
+            b = f.read(chunk)
+            if not b:
+                break
+            h.update(b)
+    return h.hexdigest()
+
+def hash_file_semantic(p: Path) -> tuple[str, str]:
+    """
+    GAL 25-10-15
+    Returns (semantic_hash, raw_hash).
+    - semantic_hash ignores common volatile metadata so 'open & save' without
+      functional edits won’t force an APPLY.
+    """
+    with p.open("rb") as f:
+        raw = f.read()
+    raw_hash = hashlib.sha1(raw).hexdigest()
+    sem_hash = hashlib.sha1(_normalized_bytes(raw)).hexdigest()
+    return sem_hash, raw_hash
+
 
 def file_hash(p: Path) -> str:
     h = hashlib.sha1()
@@ -449,6 +508,27 @@ def file_hash(p: Path) -> str:
         for chunk in iter(lambda: f.read(1024*1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+# ----------------------------------------------------------------
+# GAL 25-10-15: semantic hash for .lorprev
+# Ignores volatile metadata (Revision/SavedOn/etc.) so that an
+# open/save that only bumps Revision does NOT force a re-stage.
+# ----------------------------------------------------------------
+def semantic_sha256_file(path: Path) -> str:
+    patt = [
+        rb"<Revision>\s*\d+\s*</Revision>",       rb'"Revision"\s*:\s*\d+',
+        rb"<SavedOn>[^<]+</SavedOn>",             rb'"SavedOn"\s*:\s*"[^"]+"',
+        rb"<SavedBy>[^<]+</SavedBy>",             rb'"SavedBy"\s*:\s*"[^"]+"',
+        rb"<Exported>[^<]+</Exported>",           rb'"Exported"\s*:\s*"[^"]+"',
+        rb"<FileVersion>[^<]+</FileVersion>",     rb'"FileVersion"\s*:\s*"[^"]+"',
+    ]
+    raw = path.read_bytes()
+    for p in patt:
+        raw = _re.sub(p, b"", raw)
+    # collapse big whitespace gaps that removals can create
+    raw = _re.sub(rb"\s{2,}", b" ", raw)
+    import hashlib as _hashlib
+    return _hashlib.sha256(raw).hexdigest()
 
 def file_mtime_local(p: Path) -> datetime:
     # local, timezone-aware
@@ -463,19 +543,34 @@ def fmt_local(ts: datetime) -> str:
     return ts.astimezone().strftime("%Y-%m-%d %H:%M:%S")
 # ----------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Auto-discover author folders
+# ---------------------------------------------------------------------------
+def discover_authors(input_root: Path) -> list[str]:
+    """
+    GAL 25-10-15
+    Automatically discover author names by scanning the top-level folders
+    under the shared UserPreviewStaging path. Each author has their own folder.
+
+    Args:
+        input_root (Path): Root path such as
+            G:/Shared drives/MSB Database/UserPreviewStaging
+
+    Returns:
+        list[str]: Sorted list of author folder names.
+    """
+    try:
+        return sorted([
+            d.name for d in Path(input_root).iterdir()
+            if d.is_dir() and not d.name.startswith("_")
+        ])
+    except Exception as e:
+        print(f"[WARN][GAL 25-10-15] Could not scan authors: {e}")
+        return []
+
 def sanitize_name(s: str) -> str:
     return ''.join(ch if ch.isalnum() or ch in (' ', '-', '_', '.') else '_' for ch in s).strip()
 
-
-def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
-    h = hashlib.sha256()
-    with path.open('rb') as f:
-        while True:
-            b = f.read(chunk)
-            if not b:
-                break
-            h.update(b)
-    return h.hexdigest()
 
 
 def parse_preview_identity(file_path: Path) -> Optional[PreviewIdentity]:
@@ -672,16 +767,42 @@ def emit_run_ledger(
       - ApplyDate/AppliedBy from this run if applied; otherwise last known from run ledger CSV
     Also appends per-item apply events to RUN_LEDGER_NAME for future runs.
     """
+    import csv, html  # GAL 25-10-15: ensure local import available
+
     out_dir = report_csv.parent
     ledger_csv = out_dir / f'{LEDGER_BASENAME}.csv'
     ledger_html = out_dir / f'{LEDGER_BASENAME}.html'
     run_ledger = out_dir / RUN_LEDGER_NAME
 
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: helper — describe what needs to happen (for Comment)
+    # -----------------------------------------------------------------------
+    def _action_needed_for_row(r: dict) -> str | None:
+        a = (r.get('Action') or '').lower().strip()
+        s = (r.get('Status') or '').lower().strip()
+        reason = (r.get('Reason') or r.get('WinnerReason') or '').lower().strip()
+
+        if a in ('stage-new',):
+            return "Stage new"
+        if a in ('update-staging',) or 'replace' in a:
+            return "Replace staged (winner newer)"
+        if 'ready to apply' in a or 'ready to apply' in s:
+            return "Apply to staging"
+        if 'out-of-date' in a or 'out-of-date' in s:
+            return "Staged out-of-date"
+        if 'semantic' in reason and 'different' in reason:
+            return "Replace staged (content changed)"
+        # fallbacks — show trimmed action or status if it looks meaningful
+        if a and a not in ('noop', 'current'):
+            return a.capitalize()
+        if s and s not in ('current',):
+            return s.capitalize()
+        return None
+
     # Append this run’s apply events to the small run ledger
     if applied_this_run:
         write_header = not run_ledger.exists()
         with run_ledger.open('a', encoding='utf-8-sig', newline='') as f:
-            #import csv
             cols = ['Key','PreviewName','Author','Revision','Size','Exported','ApplyDate','AppliedBy']
             w = csv.DictWriter(f, fieldnames=cols)
             if write_header:
@@ -692,7 +813,6 @@ def emit_run_ledger(
     # Build a Key -> (ApplyDate, AppliedBy) map from the accumulated run ledger
     last_apply = {}
     if run_ledger.exists():
-        #import csv
         with run_ledger.open('r', encoding='utf-8-sig', newline='') as f:
             for r in csv.DictReader(f):
                 k = r.get('Key') or ''
@@ -714,6 +834,13 @@ def emit_run_ledger(
         r['DisplayNamesFilledPct'] = _pct_display_names(t, n)
         r['Status'] = _status_for_row(r.get('Action',''), t, n)
 
+        # GAL 25-10-15: synthesize Comment if action is needed
+        action_needed = _action_needed_for_row(r)
+        if action_needed:
+            # If a comment already exists, append; else write fresh text
+            existing = (r.get('Comment') or '').strip()
+            r['Comment'] = (existing + ('; ' if existing else '') + f"Needs action — {action_needed}")
+
         k = r.get('Key') or ''
         ad, ab = last_apply.get(k, ('', ''))
         r['ApplyDate'] = ad
@@ -721,16 +848,18 @@ def emit_run_ledger(
 
     # If this run applied some items, stamp those ApplyDate/AppliedBy now
     if applied_this_run:
-        apply_now = {r['Key']: (r['ApplyDate'], r['AppliedBy']) for r in applied_this_run}
+        # GAL 25-10-15: ensure mapping by Key (skip missing)
+        apply_now = {rr['Key']: (rr.get('ApplyDate',''), rr.get('AppliedBy','')) for rr in applied_this_run if rr.get('Key')}
         for r in current:
             k = r.get('Key') or ''
             if k in apply_now:
                 r['ApplyDate'], r['AppliedBy'] = apply_now[k]
 
     # Sort and write CSV
-    #import csv, html
     current.sort(key=lambda r: (r.get('Author') or '', r.get('PreviewName') or '', r.get('Revision') or ''))
-    cols = ['PreviewName','Size','Revision','Author','Exported','ApplyDate','AppliedBy','Status','DisplayNamesFilledPct','Key']
+
+    # GAL 25-10-15: include Comment in the ledger CSV (for filtering)
+    cols = ['PreviewName','Size','Revision','Author','Exported','ApplyDate','AppliedBy','Status','DisplayNamesFilledPct','Comment','Key']
     with ledger_csv.open('w', encoding='utf-8-sig', newline='') as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
@@ -767,7 +896,8 @@ def emit_run_ledger(
     for author, group in groupby(current, key=lambda r: r.get('Author') or ''):
         rows_ = list(group)
         html_parts.append(f"<h2>{(author or '(unknown)')}</h2>")
-        html_parts.append(_table(rows_, ['PreviewName','Size','Revision','Exported','ApplyDate','AppliedBy','Status','DisplayNamesFilledPct']))
+        # GAL 25-10-15: include Comment column in HTML
+        html_parts.append(_table(rows_, ['PreviewName','Size','Revision','Exported','ApplyDate','AppliedBy','Status','DisplayNamesFilledPct','Comment']))
 
     ledger_html.write_text('\n'.join(html_parts), encoding='utf-8')
     return ledger_csv, ledger_html, run_ledger
@@ -1250,6 +1380,131 @@ def load_user_map(arg_map: Optional[str], json_path: Optional[str]) -> Dict[str,
                 out[k.strip()] = v.strip()
     return out
 
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: File hashing utilities
+# ---------------------------------------------------------------------------
+
+def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
+    """
+    GAL 25-10-15
+    Compute the SHA-256 digest of a file in chunks (1 MB default).
+    Used as the base hash for change detection and for semantic hashing.
+    """
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(chunk), b""):
+            h.update(block)
+    return h.hexdigest()
+
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Semantic SHA-256 hash
+# Purpose:
+#   Ignore volatile metadata fields in .lorprev files (Revision, SavedOn, etc.)
+#   so a simple save without content change does not trigger a restage.
+# ---------------------------------------------------------------------------
+_VOLATILE_PATTERNS = [
+    rb"<Revision>\s*\d+\s*</Revision>",       rb'"Revision"\s*:\s*\d+',
+    rb"<SavedOn>[^<]+</SavedOn>",             rb'"SavedOn"\s*:\s*"[^"]+"',
+    rb"<SavedBy>[^<]+</SavedBy>",             rb'"SavedBy"\s*:\s*"[^"]+"',
+    rb"<Exported>[^<]+</Exported>",           rb'"Exported"\s*:\s*"[^"]+"',
+    rb"<FileVersion>[^<]+</FileVersion>",     rb'"FileVersion"\s*:\s*"[^"]+"',
+]
+
+def semantic_sha256_file(path: Path) -> str:
+    """
+    GAL 25-10-15
+    Compute a SHA-256 hash after removing volatile metadata patterns.
+    Returns a content-stable hash for use in semantic comparison.
+    """
+    raw = path.read_bytes()
+    for pat in _VOLATILE_PATTERNS:
+        raw = re.sub(pat, b"", raw)
+    raw = re.sub(rb"\s{2,}", b" ", raw)  # compact whitespace
+    return hashlib.sha256(raw).hexdigest()
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Core-field extractor + signature for .lorprev
+# DB-meaningful fields ONLY (maps to Props table):
+#   Channel Name -> Name
+#   Display Name -> LORComment
+#   Controller (UID hex) -> UID
+#   Start Channel -> StartChannel
+#   Network -> Network
+#   Lights -> Lights
+#   PropID -> PropID
+# ---------------------------------------------------------------------------
+import json as _json, re as _re, hashlib as _hashlib
+
+_CORE_KEYS = [
+    "Channel Name",
+    "Display Name",
+    "Controller",     # normalized to UID hex
+    "Start Channel",
+    "Network",
+    "Lights",
+    "PropID",
+]
+
+# regexes that match either XML tags or JSON keys (case-insensitive)
+_RX_PATTERNS = [
+    (k, _re.compile(fr"<{_re.escape(k).replace(' ','\s*')}>([^<]*)</{_re.escape(k).replace(' ','\s*')}>", _re.I))
+    for k in _CORE_KEYS
+] + [
+    (k, _re.compile(fr'"{_re.escape(k)}"\s*:\s*"([^"]*)"', _re.I))
+    for k in _CORE_KEYS
+] + [
+    ("Start Channel", _re.compile(r'"Start Channel"\s*:\s*([0-9]+)', _re.I)),
+    ("Lights",        _re.compile(r'"Lights"\s*:\s*([0-9]+)', _re.I)),
+]
+
+def _norm_uid_hex(s: str) -> str:
+    t = (s or "").strip()
+    if not t:
+        return ""
+    if t.startswith("{") and t.endswith("}"):
+        t = t[1:-1]
+    t = t.replace("0x", "").replace("0X", "").strip()
+    return t.upper()
+
+def _normalize_core_value(k: str, v: str) -> str:
+    s = (v or "").strip()
+    if k in ("Start Channel", "Lights"):
+        try: return str(int(s))
+        except Exception: return s
+    if k == "PropID":
+        t = s.lower()
+        if t.startswith("{") and t.endswith("}"): t = t[1:-1]
+        return t
+    if k == "Controller":
+        return _norm_uid_hex(s)
+    return " ".join(s.split())
+
+def extract_core_fields(path: Path) -> dict[str, str]:
+    raw = path.read_bytes()
+    try: s = raw.decode("utf-8", errors="ignore")
+    except Exception: s = raw.decode("latin-1", errors="ignore")
+    result: dict[str, str] = {k: "" for k in _CORE_KEYS}
+    for key, rx in _RX_PATTERNS:
+        m = rx.search(s)
+        if m:
+            result[key] = _normalize_core_value(key, m.group(1))
+    return result
+
+def core_signature(path: Path) -> str:
+    fields = extract_core_fields(path)
+    payload = _json.dumps({k: fields.get(k, "") for k in _CORE_KEYS}, ensure_ascii=False, sort_keys=True)
+    return _hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+def diff_core_fields(src: Path, dst: Path) -> tuple[bool, list[str]]:
+    """
+    Returns (is_same, changed_keys). If dst doesn't exist, treat as different.
+    """
+    if not dst.exists():
+        return (False, _CORE_KEYS[:])
+    a = extract_core_fields(src)
+    b = extract_core_fields(dst)
+    changed = [k for k in _CORE_KEYS if (a.get(k, "") != b.get(k, ""))]
+    return (len(changed) == 0, changed)
+
 
 def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optional[str]) -> List[Candidate]:
     candidates: List[Candidate] = []
@@ -1269,21 +1524,23 @@ def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optiona
             email = user_map.get(user) or (f"{user}@{email_domain}" if email_domain else None)
             ct, cf, cn = comment_stats(path)
 
-            candidates.append(
-                Candidate(
-                    key=key,
-                    identity=idy,
-                    user=user,
-                    user_email=email,
-                    path=str(path),
-                    size=stat.st_size,
-                    mtime=stat.st_mtime,
-                    sha256=sha256_file(path),
-                    c_total=ct,
-                    c_filled=cf,
-                    c_nospace=cn,
-                )
-            )
+            raw_sha         = sha256_file(path)
+            semantic_sha256 = semantic_sha256_file(path)   # you already have this
+            core_sig        = core_signature(path)         # GAL 25-10-15
+
+            candidates.append(Candidate(
+                key=key,
+                identity=idy,
+                user=user,
+                user_email=email,
+                path=str(path),
+                size=stat.st_size,
+                mtime=stat.st_mtime,
+                sha256=raw_sha,
+                semantic_sha256=semantic_sha256,
+                core_sig=core_sig,                         # GAL 25-10-15
+                c_total=ct, c_filled=cf, c_nospace=cn,
+            ))
     return candidates
 
 
@@ -1407,17 +1664,33 @@ def default_stage_name(idy: PreviewIdentity, src: Path) -> str:
     return f"{base}{tag}.lorprev"
 
 
-def stage_copy(src: Path, dst: Path) -> None:
-    # backup existing different content
-    if dst.exists():
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: Controlled copy with optional backup (no writes in dry-run)
+# ---------------------------------------------------------------------------
+def stage_copy(src: Path, dst: Path, apply_mode: bool, make_backup: bool, *, semantic_different: bool) -> None:
+    """
+    Copy src -> dst.
+    - If apply_mode is False, do nothing (dry-run safeguard).
+    - If make_backup and semantic_different and dst exists, write a .bak timestamped copy.
+    """
+    if not apply_mode:
+        return  # GAL 25-10-15: dry-run produces ZERO filesystem writes
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+
+    # Only back up if content actually changed (semantic), and backups are enabled
+    if make_backup and dst.exists() and semantic_different:
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup = dst.with_suffix(dst.suffix + f".bak.{ts}")
         try:
-            if sha256_file(dst) != sha256_file(src):
-                backup = dst.with_suffix(dst.suffix + f".bak.{datetime.now().strftime('%Y%m%d-%H%M%S')}")
-                shutil.copy2(dst, backup)
-        except Exception:
-            pass
-    ensure_dir(dst.parent)
-    shutil.copy2(src, dst)
+            shutil.copy2(dst, backup)
+        except Exception as e:
+            print(f"[WARN][GAL 25-10-15] Could not write backup for {dst.name}: {e}", file=sys.stderr)
+
+    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    shutil.copy2(src, tmp)
+    tmp.replace(dst)
+
 
 # ============================= Reporting ============================= #
 
@@ -1555,11 +1828,13 @@ def build_repo_defaults(repo_root: Path) -> dict:
     }
 
 def main():
-    # --------- 1) Collect configs: CLI > JSON > repo/env > GLOBAL_DEFAULTS
-    cli = parse_cli()
-    cfg_path = _preparse_config_path(sys.argv)         # your existing helper
-    json_cfg = _load_config_json(cfg_path)             # your existing helper
-    repo_defs = build_repo_defaults(REPO_ROOT)
+    # -----------------------------------------------------------------------
+    # 1) Collect configs: CLI(pre-parse) > JSON > repo/env > GLOBAL_DEFAULTS
+    # -----------------------------------------------------------------------
+    cli       = parse_cli()
+    cfg_path  = _preparse_config_path(sys.argv)          # existing helper
+    json_cfg  = _load_config_json(cfg_path)              # existing helper
+    repo_defs = build_repo_defaults(REPO_ROOT)           # existing helper
 
     # precedence: start with globals, overlay repo-aware, then JSON, then CLI
     defaults = dict(GLOBAL_DEFAULTS)
@@ -1569,27 +1844,55 @@ def main():
         if v is not None:
             defaults[k] = v
 
-    # --------- Pin critical outputs to G:\ regardless of repo/json ---------
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Pin critical outputs to G:\ regardless of repo/json/CLI
+    # -----------------------------------------------------------------------
     G = Path(r"G:\Shared drives\MSB Database")
 
-    def _is_on_g(p: str | Path) -> bool:
+    def _is_on_g_str(p: str | Path) -> bool:
         s = str(p or "").strip()
         return s[:2].upper() == "G:"
 
-    def _gpath(*parts: str) -> str:
+    def _gpath_str(*parts: str) -> str:
         return str(G.joinpath(*parts))
 
-    # Force these four onto G:\ if they came in as C:\ (or anything else)
+    # Force these onto G:\ if they arrived as another drive/UNC
     for key, rel in [
         ("archive_root", ("database", "merger", "archive")),
         ("history_db",   ("database", "merger", "preview_history.db")),
         ("report_csv",   ("database", "merger", "reports", "lorprev_compare.csv")),
         ("report_html",  ("database", "merger", "reports", "lorprev_compare.html")),
     ]:
-        if not _is_on_g(defaults.get(key, "")):
-            defaults[key] = _gpath(*rel)
+        if not _is_on_g_str(defaults.get(key, "")):
+            defaults[key] = _gpath_str(*rel)
 
-    # --------- Normalize and ensure dirs (AFTER coercion) ---------
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Resolve roots from defaults BEFORE author discovery
+    #               (prevents UnboundLocalError & pre-args usage)
+    # -----------------------------------------------------------------------
+    input_root   = Path(defaults["input_root"])
+    staging_root = Path(defaults["staging_root"])
+
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Dynamic author discovery (no args.* here yet).
+    #               Write results back to defaults so argparse inherits them.
+    # -----------------------------------------------------------------------
+    authors = discover_authors(input_root)
+    if authors:
+        for a in authors:
+            ensure_dir(input_root / a)
+        print(f"[INFO][GAL 25-10-15] Discovered authors: {', '.join(authors)}")
+        defaults["ensure_users"] = ",".join(authors)
+
+        # If no user_map provided via JSON/CLI, synthesize a default from domain
+        if defaults.get("email_domain") and not defaults.get("user_map") and not defaults.get("user_map_json"):
+            defaults["user_map"] = ";".join(f"{a}={a}@{defaults['email_domain']}" for a in authors)
+    else:
+        print("[WARN][GAL 25-10-15] No author folders found under input_root; keeping legacy defaults.")
+
+    # -----------------------------------------------------------------------
+    # Normalize & ensure dirs (still operating on defaults / strings)
+    # -----------------------------------------------------------------------
     for key in ["input_root", "staging_root", "archive_root", "history_db", "report_csv", "report_html"]:
         defaults[key] = os.path.normpath(defaults[key])
 
@@ -1598,64 +1901,66 @@ def main():
     Path(defaults["report_csv"]).parent.mkdir(parents=True, exist_ok=True)
     Path(defaults["report_html"]).parent.mkdir(parents=True, exist_ok=True)
 
-    print("[INFO] Effective config:")
+    print("[INFO] Effective config (pre-CLI):")
     for k in ["input_root","staging_root","archive_root","history_db","report_csv","report_html","policy"]:
         print(f"  {k}: {defaults[k]}")
 
-    # --------- 2) Run-scoped accumulators (keep exactly as you had)
-    applied_this_run: list[dict] = []
-    excluded_detailed: list[dict] = []
-    allowed_winner_rows: list[dict] = []
-    run_started_local = datetime.now().astimezone().isoformat(timespec='seconds')
-    applied_by = socket.gethostname()      # or os.getlogin()
-
-    # --------- 3) Pass `defaults` into the rest of your merger logic
-    # ...
-
-    ap = argparse.ArgumentParser(description='Collect and stage LOR .lorprev files with conflict detection and history DB.', fromfile_prefix_chars='@')
+    # -----------------------------------------------------------------------
+    # 2) Build argparse using UPDATED defaults (after author discovery)
+    # -----------------------------------------------------------------------
+    ap = argparse.ArgumentParser(
+        description='Collect and stage LOR .lorprev files with conflict detection and history DB.',
+        fromfile_prefix_chars='@'
+    )
     ap.add_argument('--config', help='Path to JSON config file (optional)')
-    ap.add_argument('--input-root', default=defaults['input_root'])
+    ap.add_argument('--input-root',   default=defaults['input_root'])
     ap.add_argument('--staging-root', default=defaults['staging_root'])
     ap.add_argument('--archive-root', default=defaults['archive_root'])
-    ap.add_argument('--history-db', default=defaults['history_db'])
-    ap.add_argument('--report', default=defaults['report_csv'])
-    ap.add_argument('--report-html', default=defaults['report_html'])
-    ap.add_argument('--policy',choices=['prefer-revision-then-exported','prefer-exported','prefer-comments-then-revision'],default=defaults['policy'])
+    ap.add_argument('--history-db',   default=defaults['history_db'])
+    ap.add_argument('--report',       default=defaults['report_csv'])
+    ap.add_argument('--report-html',  default=defaults['report_html'])
+    ap.add_argument('--policy',
+        choices=['prefer-revision-then-exported','prefer-exported','prefer-comments-then-revision'],
+        default=defaults['policy']
+    )
     ap.add_argument('--apply', action='store_true', help='Stage/archive changes (default is dry-run)')
-    #ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--force-winner', action='append', default=[])
-    ap.add_argument('--ensure-users', default=defaults['ensure_users'], help='Comma-separated list to ensure folders exist under input-root (e.g., usernames)')
+    ap.add_argument('--ensure-users', default=defaults['ensure_users'],
+                    help='Comma-separated list to ensure folders exist under input-root (e.g., usernames)')
     ap.add_argument('--user-map', help='Semicolon-separated username=email pairs, e.g. "gliebig=greg@sheboyganlights.org"')
     ap.add_argument('--user-map-json', help='Path to JSON mapping {"gliebig":"greg@sheboyganlights.org"}')
-    ap.add_argument('--email-domain', default=defaults['email_domain'], help='If set, any username without a mapping gets username@<domain>')
+    ap.add_argument('--email-domain', default=defaults['email_domain'],
+                    help='If set, any username without a mapping gets username@<domain>')
     ap.add_argument('--debug', action='store_true', help='Print debug info to stderr')
-    # Progress is ON by default; use --no-progress to turn it off
     ap.add_argument('--progress', dest='progress', action='store_true', default=True,
                     help='Show progress while building report (default: on)')
     ap.add_argument('--no-progress', dest='progress', action='store_false',
                     help='Disable progress output')
-    ap.add_argument('--excel-out', default=defaults.get('excel_out'), 
+    ap.add_argument('--excel-out', default=defaults.get('excel_out'),
                     help="Directory to write the Excel report. If omitted, uses report_html's folder; otherwise reports_dir.")
 
     args = ap.parse_args()
 
-    # ---- compute report paths EARLY
+    # -----------------------------------------------------------------------
+    # 3) Compute final paths AFTER parsing args (may override defaults)
+    # -----------------------------------------------------------------------
     input_root   = Path(args.input_root)
     staging_root = Path(args.staging_root)
     archive_root = Path(args.archive_root) if args.archive_root else None
     history_db   = Path(args.history_db)
-
     report_csv   = Path(args.report)
     report_html  = Path(args.report_html) if args.report_html else None
 
-    # --- helpers: keep everything on G:\ (no Path.resolve() here)
-    G = Path(r"G:\Shared drives\MSB Database")
+    print(f"[INFO] USER_STAGING : {input_root}")
+    print(f"[INFO] STAGING_ROOT : {staging_root}")
 
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Final safety — keep critical outputs on G:\ (no resolve)
+    # -----------------------------------------------------------------------
     def _is_on_g(p: Path | None) -> bool:
         if p is None:
             return True
-        # Use the raw drive/prefix; do NOT call .resolve() (can flip to UNC)
-        drv = getattr(p, "drive", "")  # '' for UNC or relative
+        drv = getattr(p, "drive", "")
         if drv.upper() == "G:":
             return True
         s = str(p)
@@ -1664,7 +1969,6 @@ def main():
     def _gpath(*parts: str) -> Path:
         return G.joinpath(*parts)
 
-    # --- Coerce critical outputs to G:\ as a final safety net
     if not _is_on_g(archive_root):
         archive_root = _gpath("database", "merger", "archive")
     if not _is_on_g(history_db):
@@ -1674,7 +1978,6 @@ def main():
     if report_html and not _is_on_g(report_html):
         report_html  = _gpath("database", "merger", "reports", "lorprev_compare.html")
 
-    # --- Hard requirement: all data lives on G:\
     def _must_be_on_g(label: str, p: Path | None) -> None:
         if not _is_on_g(p):
             print(f"[FATAL] {label} must be on G:\\ — got: {p}")
@@ -1690,6 +1993,17 @@ def main():
     ]:
         _must_be_on_g(label, p)
 
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Run-scoped accumulators (define BEFORE first use)
+    # -----------------------------------------------------------------------
+    applied_this_run: list[dict] = []
+    excluded_detailed: list[dict] = []   # for apply-time failures/skips/etc.
+    allowed_winner_rows_report: list[dict] = []  # optional: keep if you want
+
+    # Useful run metadata
+    run_started_local = datetime.now().astimezone().isoformat(timespec='seconds')
+    applied_by        = socket.gethostname()  # or os.getlogin()
+
     # Directories (create AFTER coercion)
     ensure_dir(report_csv.parent)
     if report_html:
@@ -1704,6 +2018,7 @@ def main():
     # Canonical companion files (define ONCE here)
     miss_csv      = report_csv.with_name('lorprev_missing_comments.csv')
     manifest_path = report_csv.with_suffix('.manifest.json')
+
     # --- Build PreviewName -> Author map once from the ledger CSV ---
     author_by_name: dict[str, str] = {}
     ledger_csv = reports_dir / "current_previews_ledger.csv"
@@ -1999,16 +2314,20 @@ def main():
         if should_stage and staged_exists:
             try:
                 st_idy = parse_preview_identity(staged_dest)
-                st_sha = staged_sha  # already computed
+                st_sha = staged_sha  # already computed elsewhere
                 st_ct, st_cf, st_cn = comment_stats(staged_dest)
 
-                if st_sha == winner.sha256:
+                # GAL 25-10-15: semantic equality = metadata-only; do not stage
+                st_sem = semantic_sha256_file(staged_dest)
+                if st_sem == winner.semantic_sha256:
                     should_stage = False
-                    stage_reason += '; skip: identical to staged'
+                    stage_reason += '; skip: semantic-identical (metadata-only changes)'
+                elif st_sha == winner.sha256:
+                    should_stage = False
+                    stage_reason += '; skip: identical to staged (raw hash)'
                 else:
                     w_rev = winner.identity.revision_num or -1
                     s_rev = (st_idy.revision_num if st_idy and st_idy.revision_num is not None else -1)
-
                     if s_rev > w_rev:
                         should_stage = False
                         stage_reason += f'; skip: staged has higher Revision={s_rev}'
@@ -2032,6 +2351,7 @@ def main():
                 # If the staged file is unreadable, allow replacement
                 should_stage = True
                 stage_reason += '; replace: staged unreadable'
+
 
         elif should_stage and not staged_exists:
             stage_reason += '; stage: not previously staged'
@@ -2225,10 +2545,42 @@ def main():
 
             if should_stage:
                 copy_ok = False
+                # -----------------------------------------------------------------------
+                # GAL 25-10-15: Stage winner using DB-core comparison (Name/LORComment/UID/
+                #               StartChannel/Network/Lights/PropID). Back up only if core changed.
+                # -----------------------------------------------------------------------
                 try:
                     ensure_dir(staged_dest.parent)
-                    stage_copy(Path(winner.path), staged_dest)   # actual copy
-                    copy_ok = True
+
+                    # Compare ONLY DB-meaningful fields (short-circuits rev/metadata noise)
+                    staged_exists = staged_dest.exists()
+                    if staged_exists:
+                        core_same, core_changed = diff_core_fields(Path(winner.path), staged_dest)
+                    else:
+                        core_same, core_changed = (False, _CORE_KEYS[:])  # dest missing → treat as different
+
+                    # Decide
+                    if core_same:
+                        should_stage = False
+                        stage_reason = (stage_reason + '; ' if stage_reason else '') + 'skip: core-identical (DB fields unchanged)  # GAL 25-10-15'
+                    else:
+                        should_stage = True
+                        stage_reason = (stage_reason + '; ' if stage_reason else '') + f"apply: core changed ({', '.join(core_changed)})  # GAL 25-10-15"
+
+                    # Do the copy (no writes in dry-run; backups only if **core** changed)
+                    core_different = not core_same
+                    if should_stage:
+                        stage_copy(
+                            Path(winner.path),
+                            staged_dest,
+                            apply_mode=args.apply,
+                            make_backup=True,                 # keep one backup when DB-core changed
+                            semantic_different=core_different # we reuse this flag for "meaningful change"
+                        )
+                        copy_ok = True
+                    else:
+                        copy_ok = True  # decision was to skip; still count as handled
+
                 except Exception as e:
                     excluded_detailed.append({
                         "PreviewName":  name,
@@ -2262,7 +2614,9 @@ def main():
                         'AppliedBy':   applied_by,
                     })
 
-                    # Archive losers (ok to keep default_stage_name here)
+                    # -----------------------------------------------------------------------
+                    # GAL 25-10-15: Archive losers (no backups; treat as different path)
+                    # -----------------------------------------------------------------------
                     if archive_root and losers:
                         day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
                         for l in losers:
@@ -2273,13 +2627,21 @@ def main():
                             )
                             try:
                                 ensure_dir(arch_dest.parent)
-                                stage_copy(Path(l.path), arch_dest)
+                                stage_copy(
+                                    Path(l.path),
+                                    arch_dest,
+                                    apply_mode=args.apply,
+                                    make_backup=False,      # archives don’t need backups
+                                    semantic_different=True # copying to a new file → always "different"
+                                )
                                 with conn:
                                     conn.execute(
                                         'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
                                         (run_id, key, winner.path, str(arch_dest), 'archived non-winner', 0, 'archived')
                                     )
                             except Exception as e:
+                                print(f"[WARN][GAL 25-10-15] Failed archiving loser {l.path} -> {arch_dest}: {e}", file=sys.stderr)
+
                                 excluded_detailed.append({
                                     "PreviewName":  l.identity.name or "",
                                     "Key":          key,
@@ -2437,9 +2799,14 @@ def main():
     rows.sort(key=lambda r: (r.get('PreviewName','').lower(), -_revnum(r.get('Revision'))))
 
     # ---- quick stderr summary (linked vs staged-only)
+    # -----------------------------------------------------------------------
+    # GAL 25-10-15: Build winner set, filter by allowed families,
+    #               add non-blocking QC warnings (comments/display names),
+    #               and compute summary counts.
+    # -----------------------------------------------------------------------
     try:
-        # Winners
-        winner_rows   = [r for r in rows if r.get('Role') == 'WINNER']
+        # Winners from comparison join
+        winner_rows = [r for r in rows if r.get('Role') == 'WINNER']
 
         # ---- Filter winners to only allowed families (log exclusions) ----
         allowed_winner_rows: list[dict] = []
@@ -2452,6 +2819,7 @@ def main():
 
             is_allowed, reason = _classify_family(pn, path=src_path, user=user)
             if not is_allowed:
+                # GAL 25-10-15: Helpful suggestion for common stage-name format issue
                 suggested = f"Rename to: {pn.replace('Stage-','Stage ',1)}" if reason.startswith("invalid stage format") else ""
                 excluded_detailed.append({
                     "PreviewName":  pn,
@@ -2469,15 +2837,50 @@ def main():
                 })
                 continue
 
+            # -------------------------------------------------------------------
+            # GAL 25-10-15: Add non-blocking QC warning about display-name/comments
+            # We do NOT block application anymore; we only annotate warnings.
+            # Common fields you may have upstream:
+            #   - c_total / c_nospace (counts)
+            #   - DisplayNamesFilledPct (0..100)
+            # We’ll check both patterns safely if present.
+            # -------------------------------------------------------------------
+            qc_warnings: list[str] = []
+
+            c_total   = r.get("c_total")
+            c_nospace = r.get("c_nospace")
+            try:
+                if c_total is not None and c_nospace is not None:
+                    if int(c_total) > 0 and int(c_nospace) == 0:
+                        qc_warnings.append("warning: blank/spaced display names")
+            except Exception:
+                pass
+
+            dn_pct = r.get("DisplayNamesFilledPct")
+            try:
+                if dn_pct is not None and float(dn_pct) < 100.0:
+                    qc_warnings.append(f"warning: display names {float(dn_pct):.0f}% filled")
+            except Exception:
+                pass
+
+            # Attach warnings (non-blocking); keep any existing reason text
+            if qc_warnings:
+                existing = (r.get("Reason") or "").strip()
+                r["Reason"] = (existing + ("; " if existing else "") + "; ".join(qc_warnings))
+
             allowed_winner_rows.append(r)
 
-        # use the filtered list for the summary numbers
-        winners_total = len({r.get('Key') for r in allowed_winner_rows})
+        # -----------------------------------------------------------------------
+        # GAL 25-10-15: Use the filtered list for the summary numbers
+        # Keep semantics identical to original, but be explicit.
+        # Actions expected in winners: 'noop' | 'update-staging' | 'stage-new'
+        # -----------------------------------------------------------------------
+        winners_total = len({(r.get('Key') or r.get('GUID') or r.get('PreviewName')) for r in allowed_winner_rows})
         noop = sum(1 for r in allowed_winner_rows if r.get('Action') == 'noop')
         upd  = sum(1 for r in allowed_winner_rows if r.get('Action') == 'update-staging')
         new  = sum(1 for r in allowed_winner_rows if r.get('Action') == 'stage-new')
 
-        # Staged
+        # Staged role rows
         staged_rows   = [r for r in rows if r.get('Role') == 'STAGED']
         staged_only   = [r for r in staged_rows if r.get('Action') == 'staged-only']
         staged_linked = [r for r in staged_rows if r.get('Action') in ('current', 'out-of-date')]
@@ -2492,6 +2895,7 @@ def main():
             f"staged-only={len(staged_only)}",
             file=sys.stderr
         )
+
 
         # ---------- Clean "needs action" summary: names only, multi-line (no GUIDs) ----------
         def _looks_like_guid(s: str) -> bool:
@@ -2575,7 +2979,8 @@ def main():
 
     # Keep only the previews that belong in Database Previews (allowlist) — with detail
     allowed_winner_rows: list[dict] = []
-    excluded_detailed:   list[dict] = []
+    excluded_by_family:   list[dict] = []   # GAL 25-10-15: renamed to avoid clobbering apply-time list
+
 
     for r in winner_rows:
         name = r.get('PreviewName') or ""
@@ -2601,21 +3006,22 @@ def main():
             })
 
     # (Optional) log what was excluded so teammates can fix/move them
-    if excluded_detailed:
+    # (Optional) log what was excluded so teammates can fix/move them
+    if excluded_by_family:
         excl_csv = Path(report_csv).parent / "excluded_winners.csv"
         cols = ["PreviewName","Key","GUID","Revision","Action","User",
                 "Reason","Failure","RuleNeeded","SuggestedFix","Path","StagedPath"]
         with excl_csv.open("w", encoding="utf-8-sig", newline="") as f:
             w = _csv.DictWriter(f, fieldnames=cols)
             w.writeheader()
-            for row in excluded_detailed:
+            for row in excluded_by_family:
                 w.writerow({c: row.get(c, "") for c in cols})
-        print(f"[filter] excluded {len(excluded_detailed)} previews not matching allowed families → {excl_csv}", file=sys.stderr)
-        # quick console roll-up
-        for row in excluded_detailed:
+        print(f"[filter] excluded {len(excluded_by_family)} previews not matching allowed families → {excl_csv}", file=sys.stderr)
+        for row in excluded_by_family:
             print(f"  - {row['PreviewName']}: {row['Failure']} | {row['SuggestedFix']}", file=sys.stderr)
     else:
         print("[filter] excluded 0 previews; all winners match allowed families", file=sys.stderr)
+
 
 
     if args.apply:
@@ -2808,8 +3214,113 @@ def main():
         #     check=True
         # )
 
-    # ------------------------------------------------------------------------------
-    # --- Excel: merge reports into a formatted workbook (runs for DRY RUN and APPLY) ---
+    # ---------------------------------------------------------------------------
+    # GAL 25-10-15: Keep the most recent manifest/report in STAGING.
+    #               Move older reports OUT of the staging folder.
+    # ---------------------------------------------------------------------------
+    from shutil import copy2, move
+
+    def _safe_exists(p: Path | None) -> bool:
+        try:
+            return bool(p and p.exists())
+        except Exception:
+            return False
+
+    def _copy_if_newer(src: Path, dst_dir: Path) -> Path | None:
+        """
+        GAL 25-10-15
+        Copy src -> dst_dir/src.name only if src exists and is newer or dst missing.
+        Returns destination path (or None if src didn't exist).
+        """
+        if not _safe_exists(src):
+            return None
+        dst = dst_dir / src.name
+        try:
+            if not dst.exists() or src.stat().st_mtime > dst.stat().st_mtime:
+                dst_dir.mkdir(parents=True, exist_ok=True)
+                copy2(src, dst)
+            return dst
+        except Exception as e:
+            print(f"[WARN][GAL 25-10-15] Failed copying {src.name} to staging: {e}", file=sys.stderr)
+            return None
+
+    def _collect_current_outputs(
+        report_csv: Path,
+        report_html: Path | None,
+        excel_path: Path | None,
+        manifest_csv: Path | None,
+        manifest_html: Path | None,
+        manifest_json: Path | None,
+    ) -> list[Path]:
+        files = []
+        for p in (report_csv, report_html, excel_path, manifest_csv, manifest_html, manifest_json):
+            if _safe_exists(p):
+                files.append(p)
+        return files
+
+    def _report_like(p: Path) -> bool:
+        """
+        GAL 25-10-15
+        Returns True if filename looks like one of our reports/manifest files that
+        we want to manage inside staging.
+        """
+        name = p.name.lower()
+        if name.startswith("lorprev_compare."):
+            return True
+        if name.startswith("current_previews_manifest."):
+            return True
+        if name in ("lorprev_reports.xlsx", "lorprev_missing_comments.csv"):
+            return True
+        if name.endswith(".manifest.json"):
+            return True
+        # add other fixed names here if needed
+        return False
+
+    def rotate_reports_in_staging(
+        staging_root: Path,
+        current_outputs: list[Path],
+        reports_dir: Path,
+    ) -> None:
+        """
+        GAL 25-10-15
+        1) Copy current outputs into staging_root (if newer).
+        2) Move older report-like files already in staging_root to
+        reports_dir / "archive" / YYYY-MM-DD.
+        """
+        # 1) Copy current run's outputs to staging (keep newest there)
+        staged_points: list[Path] = []
+        for src in current_outputs:
+            staged = _copy_if_newer(src, staging_root)
+            if staged:
+                staged_points.append(staged)
+
+        keep_names = {p.name for p in staged_points}
+
+        # 2) Move any *other* report-like files out of staging
+        archive_base = reports_dir / "archive" / datetime.now().strftime("%Y-%m-%d")
+        archive_base.mkdir(parents=True, exist_ok=True)
+
+        try:
+            for p in staging_root.iterdir():
+                if not p.is_file():
+                    continue
+                if not _report_like(p):
+                    continue
+                if p.name in keep_names:
+                    continue  # keep the latest one(s) we just placed
+                try:
+                    target = archive_base / p.name
+                    # If name collision in archive, add a timestamp suffix
+                    if target.exists():
+                        stem, suf = p.stem, p.suffix
+                        ts = datetime.now().strftime("%H%M%S")
+                        target = archive_base / f"{stem}.{ts}{suf}"
+                    move(str(p), str(target))
+                    print(f"[INFO][GAL 25-10-15] Archived old report from staging: {p.name} -> {target}")
+                except Exception as e:
+                    print(f"[WARN][GAL 25-10-15] Could not archive {p.name} from staging: {e}", file=sys.stderr)
+        except FileNotFoundError:
+            staging_root.mkdir(parents=True, exist_ok=True)
 
 
     # ------------------------------------------------------------------------------
