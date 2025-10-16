@@ -633,21 +633,30 @@ def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 
 # GAL 25-10-16 [Info]: expanded Info tab using run_meta.json with CSV fallbacks
-def write_info_tab(writer, reports_dir: Path):
-    import datetime as _dt
+def write_info_tab(writer):
+    import datetime as _dt  # ensure we get the module regardless of outer imports
 
-    meta = read_run_meta(Path(reports_dir))  # uses helper we added in Step 3B
+    # ROOT is already defined in this script as the CSV directory
+    meta_path = Path(ROOT) / "run_meta.json"
+    meta = {}
+    if meta_path.exists():
+        try:
+            with meta_path.open("r", encoding="utf-8") as f:
+                meta = json.load(f) or {}
+        except Exception:
+            meta = {}
+
     totals = meta.get("totals") or {}
 
-    # Prefer values from run_meta.json; fall back to local environment/CSV counts
-    run_mode   = meta.get("run_mode") or "dry-run"
-    merger_root= meta.get("csv_root") or str(reports_dir)
-    started_at = meta.get("started_at") or ""
-    actor      = meta.get("user") or getpass.getuser()
-    host       = meta.get("host") or platform.node()
+    # Prefer values from run_meta.json; fall back to environment/CSV counts
+    run_mode    = meta.get("run_mode")  or "dry-run"
+    merger_root = meta.get("csv_root")  or str(ROOT)
+    started_at  = meta.get("started_at") or ""
+    actor       = meta.get("user")      or getpass.getuser()
+    host        = meta.get("host")      or platform.node()
 
     def _count_csv(basename: str) -> int:
-        p = Path(reports_dir) / f"{basename}.csv"
+        p = Path(ROOT) / f"{basename}.csv"
         if not p.exists():
             return 0
         try:
