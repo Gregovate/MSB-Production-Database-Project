@@ -62,7 +62,7 @@ import socket  # used for ledger 25-09-03 GAL
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Iterable
 import xml.etree.ElementTree as ET
 import shutil
 import subprocess
@@ -3439,12 +3439,26 @@ def main():
     # Excel: merge reports into a formatted workbook (runs for DRY RUN and APPLY)
     excel_script = Path(__file__).with_name("merge_reports_to_excel.py")
     # GAL 25-10-16 [RunMeta]: minimal metadata (expand in Step 3+)
-    run_mode = "apply" if args.apply else "dry-run"
+    # Detect apply mode robustly (prefer argparse if present; fallback to argv)
+    apply_flag = False
+    _apply_ns = locals().get('args') or globals().get('args')
+    if _apply_ns is not None and hasattr(_apply_ns, 'apply'):
+        apply_flag = bool(getattr(_apply_ns, 'apply'))
+    else:
+        apply_flag = ('--apply' in sys.argv)
+
+    run_mode = "apply" if apply_flag else "dry-run"
+
+    # Tolerate missing variable
+    _applied = locals().get('applied_this_run') or globals().get('applied_this_run') or []
+    if _applied is None:
+        _applied = []
+
     basic_totals = {
-        "applied_this_run": len(applied_this_run or []),
-        # Fill in more when we wire categories (NeedsActionCount, RevisionMismatchesCount, etc.)
+        "applied_this_run": len(_applied),
     }
     write_run_meta_json(reports_dir, run_mode, basic_totals)
+
     subprocess.run(
         [sys.executable, str(excel_script),
         "--root", str(reports_dir),
