@@ -21,6 +21,8 @@ import platform
 import argparse
 # GAL 25-10-15: needed for regex in _contains_any
 import re
+# GAL 25-10-16: Core Model reporting updates
+import json
 
 from pandas.errors import ParserWarning
 from openpyxl.formatting.rule import FormulaRule
@@ -73,6 +75,16 @@ print(f"[cfg] Excel out: {OUT_DIR}")
 
 
 
+# GAL 25-10-16 [RunMeta]: reader for reports_dir/run_meta.json
+def read_run_meta(reports_dir: Path) -> dict:
+    try:
+        meta_path = Path(reports_dir) / "run_meta.json"
+        if meta_path.exists():
+            with meta_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
 
 
 def read_csv_safe(path: Path) -> pd.DataFrame:
@@ -620,14 +632,52 @@ def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
 
 
-def write_info_tab(writer):
-    import datetime as _dt  # ensure we get the module regardless of outer imports
+# GAL 25-10-16 [Info]: expanded Info tab using run_meta.json with CSV fallbacks
+def write_info_tab(writer, reports_dir: Path):
+    import datetime as _dt
+
+    meta = read_run_meta(Path(reports_dir))  # uses helper we added in Step 3B
+    totals = meta.get("totals") or {}
+
+    # Prefer values from run_meta.json; fall back to local environment/CSV counts
+    run_mode   = meta.get("run_mode") or "dry-run"
+    merger_root= meta.get("csv_root") or str(reports_dir)
+    started_at = meta.get("started_at") or ""
+    actor      = meta.get("user") or getpass.getuser()
+    host       = meta.get("host") or platform.node()
+
+    def _count_csv(basename: str) -> int:
+        p = Path(reports_dir) / f"{basename}.csv"
+        if not p.exists():
+            return 0
+        try:
+            return int(len(pd.read_csv(p)))
+        except Exception:
+            return 0
+
+    needs_action = totals.get("needs_action",        _count_csv("Needs_Action"))
+    applied_cnt  = totals.get("applied_this_run",    _count_csv("Applied_This_Run"))
+    rev_mismatch = totals.get("revision_mismatches", _count_csv("Revision_Mismatches"))
+    excluded_win = totals.get("excluded_winners",    _count_csv("Excluded_Winners"))
+    missing_comm = totals.get("missing_comments",    _count_csv("Missing_Comments"))
+    ledger_rows  = totals.get("ledger_rows",         _count_csv("Current_Previews_Ledger"))
+
     info = pd.DataFrame([{
         "Generated": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "User": getpass.getuser(),
-        "Machine": platform.node(),
+        "RunMode": run_mode,
+        "MergerRoot": merger_root,
+        "StartedAt": started_at,
+        "User": actor,
+        "Machine": host,
+        "NeedsActionCount": needs_action,
+        "AppliedThisRunCount": applied_cnt,
+        "RevisionMismatchesCount": rev_mismatch,
+        "ExcludedWinnersCount": excluded_win,
+        "MissingCommentsCount": missing_comm,
+        "LedgerRows": ledger_rows,
     }])
     info.to_excel(writer, index=False, sheet_name="Info")
+
 
 def main():
     tables = {}
@@ -660,7 +710,7 @@ def main():
         # ---- Write Overview + Info FIRST so they appear at the front ----
         overview = build_overview(tables)
         overview.to_excel(writer, index=False, sheet_name="Overview")
-        write_info_tab(writer)
+        write_info_tab(writer, ROOT)
 
         # ---- Now write the normal report tabs ----
         for sheet_name, df in tables.items():
