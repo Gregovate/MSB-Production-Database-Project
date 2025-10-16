@@ -61,7 +61,7 @@ MISSING_COLUMNS = [
 
 # Which CSVs → which sheet names
 FILES = [
-    ("lorprev_compare.csv", "Compare"),
+    #("lorprev_compare.csv", "Compare"),
     ("lorprev_missing_comments.csv", "Missing_Comments"),
     ("lorprev_all_staged_comments.csv", "All_Staged_Comments"),
     ("excluded_winners.csv", "Excluded_Winners"),
