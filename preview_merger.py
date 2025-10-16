@@ -107,19 +107,20 @@ def require_g():
 #   • Author discovery is now automatic (see discover_authors()).
 # ---------------------------------------------------------------------------
 
+# GAL 25-10-16: Unify outputs under Database Previews
 GLOBAL_DEFAULTS = {
     # Folders
-    "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
-    # "Secret" location used by LOR parser today
+    "input_root":  r"G:\Shared drives\MSB Database\UserPreviewStaging",
+    # Canonical STAGING root used by the LOR parser and where the final Excel goes
     "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
-    # "staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
-    # Keep merger artifacts under /database/merger
-    # Put archived previews directly under Database Previews\archive\YYYY-MM-DD
-    "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
-    "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
-    "report_csv":   r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.csv",
-    "report_html":  r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html",
-
+    # Put archived previews directly under: <staging_root>\archive\YYYY-MM-DD
+    # (merger will create subfolders per run date)
+    "archive_root": r"G:\Shared drives\MSB Database\Database Previews\archive",
+    # Keep ALL merger artifacts together under: <staging_root>\reports
+    # (CSV inputs for the Excel combiner + run_meta.json + history db + HTML)
+    "history_db":  r"G:\Shared drives\MSB Database\Database Previews\reports\preview_history.db",
+    "report_csv":  r"G:\Shared drives\MSB Database\Database Previews\reports\lorprev_compare.csv",
+    "report_html": r"G:\Shared drives\MSB Database\Database Previews\reports\lorprev_compare.html",
     # -----------------------------------------------------------------------
     # GAL 25-10-15: Behavior
     # -----------------------------------------------------------------------
@@ -128,7 +129,6 @@ GLOBAL_DEFAULTS = {
     #             takes priority even if comment fields are incomplete.
     # Comment completeness is still checked and logged as a warning.
     "policy": "prefer-exported",  # GAL 25-10-15 change
-
     # -----------------------------------------------------------------------
     # GAL 25-10-15: Users and email
     # -----------------------------------------------------------------------
@@ -1257,16 +1257,17 @@ def write_dryrun_manifest_html(winner_rows: list, out_html: Path, author_by_name
     )
 
 # GAL 25-10-16: run_meta.json writer (read by merge_reports_to_excel.py Info tab)
-def write_run_meta_json(reports_dir: Path, run_mode: str, totals: dict):
+def write_run_meta_json(reports_dir: Path, staging_root: Path, run_mode: str, totals: dict):
     """
     Writes reports_dir/run_meta.json with minimal run context.
     'totals' is a free-form dict we will expand in later steps.
     """
     try:
-        import getpass
+        import getpass, json, socket
         meta = {
-            "run_mode": run_mode,  # "dry-run" | "apply"
-            "csv_root": str(reports_dir),
+            "run_mode": run_mode,                  # "dry-run" | "apply"
+            "csv_root": str(reports_dir),          # where CSVs are stored
+            "staging_root": str(staging_root),     # canonical staging folder (for Info tab)
             "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "user": getpass.getuser(),
             "host": socket.gethostname(),
@@ -1548,7 +1549,7 @@ _CORE_KEYS = [
 
 # regexes that match either XML tags or JSON keys (case-insensitive)
 _RX_PATTERNS = [
-    (k, _re.compile(fr"<{_re.escape(k).replace(' ','\s*')}>([^<]*)</{_re.escape(k).replace(' ','\s*')}>", _re.I))
+    (k, _re.compile(fr"<{_re.escape(k).replace(' ', r'\s*')}>([^<]*)</{_re.escape(k).replace(' ', r'\s*')}>",_re.I))
     for k in _CORE_KEYS
 ] + [
     (k, _re.compile(fr'"{_re.escape(k)}"\s*:\s*"([^"]*)"', _re.I))
@@ -3434,6 +3435,12 @@ def main():
         except FileNotFoundError:
             staging_root.mkdir(parents=True, exist_ok=True)
 
+    # GAL 25-10-16: Unify outputs under STAGING root
+    reports_dir = Path(staging_root) / "reports"  # CSVs + run_meta.json live here
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    excel_out = Path(staging_root)                # final Excel goes at STAGING root
+    excel_out.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------------------
     # Excel: merge reports into a formatted workbook (runs for DRY RUN and APPLY)
@@ -3457,12 +3464,12 @@ def main():
     basic_totals = {
         "applied_this_run": len(_applied),
     }
-    write_run_meta_json(reports_dir, run_mode, basic_totals)
+    write_run_meta_json(reports_dir, staging_root, run_mode, basic_totals)
 
     subprocess.run(
         [sys.executable, str(excel_script),
-        "--root", str(reports_dir),
-        "--out",  str(excel_out)],
+        "--root", str(reports_dir),      # CSV input dir for combiner
+        "--out",  str(excel_out)],       # folder where lorprev_reports.xlsx is written
         check=True
     )
     print(f"[cfg] CSV root: {reports_dir}")
