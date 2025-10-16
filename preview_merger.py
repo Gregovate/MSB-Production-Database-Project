@@ -183,13 +183,9 @@ print(f"[INFO] USER_STAGING : {USER_STAGING}")
 def build_repo_defaults(repo_root: Path) -> dict:
     """Repo-relative defaults for everything, so the tool runs from any clone."""
     return {
-        "input_root":   str(USER_STAGING),                   # repo/env aware
-        "staging_root": str(PREVIEWS_ROOT),                  # repo/env aware
-        "archive_root": str(repo_root / "database" / "merger" / "archive"),
-        "history_db":   str(repo_root / "database" / "merger" / "preview_history.db"),
-        "report_csv":   str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.csv"),
-        "report_html":  str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.html"),
-        # behavior/users carry over from GLOBAL_DEFAULTS unless overridden
+        "input_root":   str(USER_STAGING),   # repo/env aware
+        "staging_root": str(PREVIEWS_ROOT),  # repo/env aware
+        # Do NOT set archive/report/history paths here; they will be derived from staging_root later
         "policy":       GLOBAL_DEFAULTS.get("policy", "prefer-comments-then-revision"),
         "ensure_users": GLOBAL_DEFAULTS.get("ensure_users", ""),
         "email_domain": GLOBAL_DEFAULTS.get("email_domain", "sheboyganlights.org"),
@@ -223,10 +219,17 @@ def resolve_config(cli_args: dict, json_path: Optional[str]=None) -> dict:
     for key in ["input_root", "staging_root", "archive_root"]:
         cfg[key] = os.path.normpath(cfg[key])
 
-    # Ensure report and archive parents exist
-    for key in ["report_csv", "report_html", "history_db"]:
-        parent = Path(cfg[key]).parent
-        parent.mkdir(parents=True, exist_ok=True)
+    # Derive all report artifacts from staging_root to avoid drift
+    reports_dir = Path(cfg["staging_root"]) / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    # Canonical filenames (simple names)
+    cfg["history_db"]  = str(reports_dir / "preview_history.db")
+    cfg["report_csv"]  = str(reports_dir / "compare.csv")   # (optional legacy compare; harmless)
+    cfg["report_html"] = str(reports_dir / "compare.html")
+
+    # Ensure archive root exists
+    Path(cfg["archive_root"]).mkdir(parents=True, exist_ok=True)
 
     return cfg
 
