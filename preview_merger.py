@@ -5,6 +5,11 @@ Purpose: Merge .lorprev updates into primary DB with full audit logging.
 Owner: Greg Liebig • Team: MSB Database
 Revision: 2025‑09‑01 (v6.1)
 
+# GAL 25-10-16: Begin integrating Core Model v1.0 (no logic swaps yet)
+ - Add lor_core import for shared field/signature helpers
+ - Add Author-folder scan for Missing_Comments (will be wired in next step)
+ - Add run_meta.json writer (filled as we implement categories)
+
 
 Key Paths
 - Primary DB: G:\\Shared drives\\MSB Database\\database\\lor_output_v6.db
@@ -57,13 +62,31 @@ import socket  # used for ledger 25-09-03 GAL
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Iterable
 import xml.etree.ElementTree as ET
 import shutil
 import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
 
+# GAL 25-10-16: Core Model v1.0 alignment (shared helpers; no behavior change yet)
+try:
+    from lor_core import (
+        preview_signature, lor_leg_signature, dmx_leg_signature,
+        lor_row_key, dmx_row_key,
+        categorize_lor_change, categorize_dmx_change, categorize_preview_change,
+        validate_display_name, device_type_flip, is_key_change_same_core,
+        PREVIEW_FIELDS, LOR_FIELDS, DMX_FIELDS,
+    )
+except Exception:
+    # Keep merger standalone if lor_core.py isn’t present yet
+    def validate_display_name(name):  # minimal shim used by Step 2C
+        if name is None: return False, "missing"
+        s = (name or "").strip()
+        if not s: return False, "blank"
+        if s != name: return False, "leading_or_trailing_space"
+        if "  " in s: return False, "double_spaces"
+        return True, "ok"
 
 # ============================= GLOBAL DEFAULTS ============================= #
 G = Path(r"G:\Shared drives\MSB Database")
@@ -84,19 +107,20 @@ def require_g():
 #   • Author discovery is now automatic (see discover_authors()).
 # ---------------------------------------------------------------------------
 
+# GAL 25-10-16: Unify outputs under Database Previews
 GLOBAL_DEFAULTS = {
     # Folders
-    "input_root": r"G:\Shared drives\MSB Database\UserPreviewStaging",
-    # "Secret" location used by LOR parser today
+    "input_root":  r"G:\Shared drives\MSB Database\UserPreviewStaging",
+    # Canonical STAGING root used by the LOR parser and where the final Excel goes
     "staging_root": r"G:\Shared drives\MSB Database\Database Previews",
-    # "staging_root": r"G:\Shared drives\MSB Database\database\_secret_staging",
-    # Keep merger artifacts under /database/merger
-    # Put archived previews directly under Database Previews\archive\YYYY-MM-DD
-    "archive_root": r"G:\Shared drives\MSB Database\database\merger\archive",
-    "history_db":   r"G:\Shared drives\MSB Database\database\merger\preview_history.db",
-    "report_csv":   r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.csv",
-    "report_html":  r"G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html",
-
+    # Put archived previews directly under: <staging_root>\archive\YYYY-MM-DD
+    # (merger will create subfolders per run date)
+    "archive_root": r"G:\Shared drives\MSB Database\Database Previews\archive",
+    # Keep ALL merger artifacts together under: <staging_root>\reports
+    # (CSV inputs for the Excel combiner + run_meta.json + history db + HTML)
+    "history_db":  r"G:\Shared drives\MSB Database\Database Previews\reports\preview_history.db",
+    "report_csv":  r"G:\Shared drives\MSB Database\Database Previews\reports\lorprev_compare.csv",
+    "report_html": r"G:\Shared drives\MSB Database\Database Previews\reports\lorprev_compare.html",
     # -----------------------------------------------------------------------
     # GAL 25-10-15: Behavior
     # -----------------------------------------------------------------------
@@ -105,7 +129,6 @@ GLOBAL_DEFAULTS = {
     #             takes priority even if comment fields are incomplete.
     # Comment completeness is still checked and logged as a warning.
     "policy": "prefer-exported",  # GAL 25-10-15 change
-
     # -----------------------------------------------------------------------
     # GAL 25-10-15: Users and email
     # -----------------------------------------------------------------------
@@ -160,13 +183,9 @@ print(f"[INFO] USER_STAGING : {USER_STAGING}")
 def build_repo_defaults(repo_root: Path) -> dict:
     """Repo-relative defaults for everything, so the tool runs from any clone."""
     return {
-        "input_root":   str(USER_STAGING),                   # repo/env aware
-        "staging_root": str(PREVIEWS_ROOT),                  # repo/env aware
-        "archive_root": str(repo_root / "database" / "merger" / "archive"),
-        "history_db":   str(repo_root / "database" / "merger" / "preview_history.db"),
-        "report_csv":   str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.csv"),
-        "report_html":  str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.html"),
-        # behavior/users carry over from GLOBAL_DEFAULTS unless overridden
+        "input_root":   str(USER_STAGING),   # repo/env aware
+        "staging_root": str(PREVIEWS_ROOT),  # repo/env aware
+        # Do NOT set archive/report/history paths here; they will be derived from staging_root later
         "policy":       GLOBAL_DEFAULTS.get("policy", "prefer-comments-then-revision"),
         "ensure_users": GLOBAL_DEFAULTS.get("ensure_users", ""),
         "email_domain": GLOBAL_DEFAULTS.get("email_domain", "sheboyganlights.org"),
@@ -200,10 +219,17 @@ def resolve_config(cli_args: dict, json_path: Optional[str]=None) -> dict:
     for key in ["input_root", "staging_root", "archive_root"]:
         cfg[key] = os.path.normpath(cfg[key])
 
-    # Ensure report and archive parents exist
-    for key in ["report_csv", "report_html", "history_db"]:
-        parent = Path(cfg[key]).parent
-        parent.mkdir(parents=True, exist_ok=True)
+    # Derive all report artifacts from staging_root to avoid drift
+    reports_dir = Path(cfg["staging_root"]) / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    # Canonical filenames (simple names)
+    cfg["history_db"]  = str(reports_dir / "preview_history.db")
+    cfg["report_csv"]  = str(reports_dir / "compare.csv")   # (optional legacy compare; harmless)
+    cfg["report_html"] = str(reports_dir / "compare.html")
+
+    # Ensure archive root exists
+    Path(cfg["archive_root"]).mkdir(parents=True, exist_ok=True)
 
     return cfg
 
@@ -660,6 +686,61 @@ def scan_staged_for_comments(staging_root: Path) -> Dict[str, Dict]:
             'Path': str(p),
         }
     return out
+
+# GAL 25-10-16: Scan AUTHOR folders for comment hygiene
+def scan_authors_for_comments(input_root: Path) -> list[dict]:
+    """
+    Returns list of rows describing comment hygiene issues found in AUTHOR folders.
+
+    Columns returned (no paths):
+      Author, PreviewName, CommentStatus, Reason, WhereFound, Revision, Size (optional), Exported (optional)
+    """
+    rows: list[dict] = []
+    if not input_root or not Path(input_root).exists():
+        return rows
+
+    for author_dir in sorted(Path(input_root).iterdir()):
+        if not author_dir.is_dir():
+            continue
+        author = author_dir.name
+        for p in sorted(author_dir.glob("*.lorprev")):
+            try:
+                # Minimal, resilient identity read
+                idy = parse_preview_identity(p)
+                preview_name = (idy.name or '').strip()
+                st = p.stat()
+                # Validate the LOR Comment (Display Name) by parsing XML quickly
+                ok, reason = True, "ok"
+                try:
+                    tree = ET.parse(p)
+                    root = tree.getroot()
+                    # find first Comment tag under a typical Prop (fast path)
+                    comment_text = None
+                    for el in root.iter():
+                        tag = (el.tag or '').split('}')[-1]
+                        if tag in ('Comment', 'Comments'):
+                            comment_text = el.text or ''
+                            break
+                    ok, reason = validate_display_name(comment_text)
+                except Exception:
+                    ok, reason = False, "unreadable"
+
+                if not ok:
+                    rows.append({
+                        "Author": author,
+                        "PreviewName": preview_name,
+                        "CommentStatus": "invalid",
+                        "Reason": reason,
+                        "WhereFound": "AuthorFolder",
+                        "Revision": idy.revision_raw or '',
+                        "Size": st.st_size,
+                        "Exported": ymd_hms(st.st_mtime),
+                    })
+            except Exception:
+                # unreadable file in author folder – skip but do not crash
+                continue
+    return rows
+
 
 def append_staged_row(key: str, staged_path: Path, winner: Candidate, rows: List[Dict]) -> None:
     """Append a STAGED row (with comment stats) using the new report columns."""
@@ -1178,6 +1259,31 @@ def write_dryrun_manifest_html(winner_rows: list, out_html: Path, author_by_name
         extra_title="(DRY RUN)"
     )
 
+# GAL 25-10-16: run_meta.json writer (read by merge_reports_to_excel.py Info tab)
+def write_run_meta_json(reports_dir: Path, staging_root: Path, run_mode: str, totals: dict):
+    """
+    Writes reports_dir/run_meta.json with minimal run context.
+    'totals' is a free-form dict we will expand in later steps.
+    """
+    try:
+        import getpass, json, socket
+        meta = {
+            "run_mode": run_mode,                  # "dry-run" | "apply"
+            "csv_root": str(reports_dir),          # where CSVs are stored
+            "staging_root": str(staging_root),     # canonical staging folder (for Info tab)
+            "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "user": getpass.getuser(),
+            "host": socket.gethostname(),
+            "totals": totals or {},
+        }
+        out = reports_dir / "run_meta.json"
+        ensure_dir(reports_dir)
+        with out.open("w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
+        print(f"[meta] wrote {out}")
+    except Exception as e:
+        print(f"[meta] failed to write run_meta.json: {e}")
+
 def _emit_manifest_html(
     rows,
     out_html: Path,
@@ -1446,7 +1552,7 @@ _CORE_KEYS = [
 
 # regexes that match either XML tags or JSON keys (case-insensitive)
 _RX_PATTERNS = [
-    (k, _re.compile(fr"<{_re.escape(k).replace(' ','\s*')}>([^<]*)</{_re.escape(k).replace(' ','\s*')}>", _re.I))
+    (k, _re.compile(fr"<{_re.escape(k).replace(' ', r'\s*')}>([^<]*)</{_re.escape(k).replace(' ', r'\s*')}>",_re.I))
     for k in _CORE_KEYS
 ] + [
     (k, _re.compile(fr'"{_re.escape(k)}"\s*:\s*"([^"]*)"', _re.I))
@@ -2714,16 +2820,26 @@ def main():
             continue
 
 
-    # ---- Missing comments report (STAGING ONLY; top-level; skip DeviceType="None")
+    # ---- Missing comments report (STAGING ONLY; top-level; skip DeviceType="None") REMOVE LINE AFTER DEBUG
+    # GAL 25-10-16: Missing comments report (AUTHOR + STAGING; no path in output)
     # We no longer look at winners/candidates — only what is currently in staging_root.
     try:
         ensure_dir(miss_csv.parent)
-        with miss_csv.open('w', newline='', encoding='utf-8-sig') as f:
-            w = csv.DictWriter(f, fieldnames=[
-                'Key','PreviewName','Revision','User','CommentFilled','CommentNoSpace','CommentTotal','Path'
-            ])
-
+        miss_cols = [
+            'Author', 'PreviewName', 'CommentStatus', 'Reason',
+            'WhereFound', 'Revision', 'Size', 'Exported'
+        ]
+        with miss_csv.open("w", encoding="utf-8-sig", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=miss_cols)
             w.writeheader()
+            # we will write author rows first, staged rows second
+            # GAL 25-10-16: Author-folder rows
+            author_rows = scan_authors_for_comments(input_root)
+            for r in author_rows:
+                w.writerow({k: r.get(k, '') for k in miss_cols})
+
+
+
 
             for p in sorted(Path(staging_root).glob('*.lorprev')):  # non-recursive by design
                 try:
@@ -2747,7 +2863,7 @@ def main():
                             'CommentFilled':  cf,   # before trimming
                             'CommentNoSpace': cn,   # after trimming (new column)
                             'CommentTotal':   ct,
-                            'Path': str(p),
+                            'WhereFound': 'Staging',
                         })
                 except Exception:
                     # unreadable staged file? just skip from missing-comments view
@@ -2779,7 +2895,7 @@ def main():
                     'CommentFilled':  cf,
                     'CommentNoSpace': cn,
                     'CommentTotal':   ct,
-                    'Path': str(p),
+                    'WhereFound': 'Staging',
                 })
             except Exception:
                 continue
@@ -3322,14 +3438,41 @@ def main():
         except FileNotFoundError:
             staging_root.mkdir(parents=True, exist_ok=True)
 
+    # GAL 25-10-16: Unify outputs under STAGING root
+    reports_dir = Path(staging_root) / "reports"  # CSVs + run_meta.json live here
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    excel_out = Path(staging_root)                # final Excel goes at STAGING root
+    excel_out.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------------------
     # Excel: merge reports into a formatted workbook (runs for DRY RUN and APPLY)
     excel_script = Path(__file__).with_name("merge_reports_to_excel.py")
+    # GAL 25-10-16 [RunMeta]: minimal metadata (expand in Step 3+)
+    # Detect apply mode robustly (prefer argparse if present; fallback to argv)
+    apply_flag = False
+    _apply_ns = locals().get('args') or globals().get('args')
+    if _apply_ns is not None and hasattr(_apply_ns, 'apply'):
+        apply_flag = bool(getattr(_apply_ns, 'apply'))
+    else:
+        apply_flag = ('--apply' in sys.argv)
+
+    run_mode = "apply" if apply_flag else "dry-run"
+
+    # Tolerate missing variable
+    _applied = locals().get('applied_this_run') or globals().get('applied_this_run') or []
+    if _applied is None:
+        _applied = []
+
+    basic_totals = {
+        "applied_this_run": len(_applied),
+    }
+    write_run_meta_json(reports_dir, staging_root, run_mode, basic_totals)
+
     subprocess.run(
         [sys.executable, str(excel_script),
-        "--root", str(reports_dir),
-        "--out",  str(excel_out)],
+        "--root", str(reports_dir),      # CSV input dir for combiner
+        "--out",  str(excel_out)],       # folder where lorprev_reports.xlsx is written
         check=True
     )
     print(f"[cfg] CSV root: {reports_dir}")
