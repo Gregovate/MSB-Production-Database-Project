@@ -5,6 +5,11 @@ Purpose: Merge .lorprev updates into primary DB with full audit logging.
 Owner: Greg Liebig • Team: MSB Database
 Revision: 2025‑09‑01 (v6.1)
 
+# GAL 25-10-16: Begin integrating Core Model v1.0 (no logic swaps yet)
+ - Add lor_core import for shared field/signature helpers
+ - Add Author-folder scan for Missing_Comments (will be wired in next step)
+ - Add run_meta.json writer (filled as we implement categories)
+
 
 Key Paths
 - Primary DB: G:\\Shared drives\\MSB Database\\database\\lor_output_v6.db
@@ -64,6 +69,24 @@ import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
 
+# GAL 25-10-16: Core Model v1.0 alignment (shared helpers; no behavior change yet)
+try:
+    from lor_core import (
+        preview_signature, lor_leg_signature, dmx_leg_signature,
+        lor_row_key, dmx_row_key,
+        categorize_lor_change, categorize_dmx_change, categorize_preview_change,
+        validate_display_name, device_type_flip, is_key_change_same_core,
+        PREVIEW_FIELDS, LOR_FIELDS, DMX_FIELDS,
+    )
+except Exception:
+    # Keep merger standalone if lor_core.py isn’t present yet
+    def validate_display_name(name):  # minimal shim used by Step 2C
+        if name is None: return False, "missing"
+        s = (name or "").strip()
+        if not s: return False, "blank"
+        if s != name: return False, "leading_or_trailing_space"
+        if "  " in s: return False, "double_spaces"
+        return True, "ok"
 
 # ============================= GLOBAL DEFAULTS ============================= #
 G = Path(r"G:\Shared drives\MSB Database")
@@ -661,6 +684,61 @@ def scan_staged_for_comments(staging_root: Path) -> Dict[str, Dict]:
         }
     return out
 
+# GAL 25-10-16: Scan AUTHOR folders for comment hygiene
+def scan_authors_for_comments(input_root: Path) -> list[dict]:
+    """
+    Returns list of rows describing comment hygiene issues found in AUTHOR folders.
+
+    Columns returned (no paths):
+      Author, PreviewName, CommentStatus, Reason, WhereFound, Revision, Size (optional), Exported (optional)
+    """
+    rows: list[dict] = []
+    if not input_root or not Path(input_root).exists():
+        return rows
+
+    for author_dir in sorted(Path(input_root).iterdir()):
+        if not author_dir.is_dir():
+            continue
+        author = author_dir.name
+        for p in sorted(author_dir.glob("*.lorprev")):
+            try:
+                # Minimal, resilient identity read
+                idy = parse_preview_identity(p)
+                preview_name = (idy.name or '').strip()
+                st = p.stat()
+                # Validate the LOR Comment (Display Name) by parsing XML quickly
+                ok, reason = True, "ok"
+                try:
+                    tree = ET.parse(p)
+                    root = tree.getroot()
+                    # find first Comment tag under a typical Prop (fast path)
+                    comment_text = None
+                    for el in root.iter():
+                        tag = (el.tag or '').split('}')[-1]
+                        if tag in ('Comment', 'Comments'):
+                            comment_text = el.text or ''
+                            break
+                    ok, reason = validate_display_name(comment_text)
+                except Exception:
+                    ok, reason = False, "unreadable"
+
+                if not ok:
+                    rows.append({
+                        "Author": author,
+                        "PreviewName": preview_name,
+                        "CommentStatus": "invalid",
+                        "Reason": reason,
+                        "WhereFound": "AuthorFolder",
+                        "Revision": idy.revision_raw or '',
+                        "Size": st.st_size,
+                        "Exported": ymd_hms(st.st_mtime),
+                    })
+            except Exception:
+                # unreadable file in author folder – skip but do not crash
+                continue
+    return rows
+
+
 def append_staged_row(key: str, staged_path: Path, winner: Candidate, rows: List[Dict]) -> None:
     """Append a STAGED row (with comment stats) using the new report columns."""
     try:
@@ -1177,6 +1255,30 @@ def write_dryrun_manifest_html(winner_rows: list, out_html: Path, author_by_name
         context_path=str(out_html.parent),
         extra_title="(DRY RUN)"
     )
+
+# GAL 25-10-16: run_meta.json writer (read by merge_reports_to_excel.py Info tab)
+def write_run_meta_json(reports_dir: Path, run_mode: str, totals: dict):
+    """
+    Writes reports_dir/run_meta.json with minimal run context.
+    'totals' is a free-form dict we will expand in later steps.
+    """
+    try:
+        import getpass
+        meta = {
+            "run_mode": run_mode,  # "dry-run" | "apply"
+            "csv_root": str(reports_dir),
+            "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "user": getpass.getuser(),
+            "host": socket.gethostname(),
+            "totals": totals or {},
+        }
+        out = reports_dir / "run_meta.json"
+        ensure_dir(reports_dir)
+        with out.open("w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
+        print(f"[meta] wrote {out}")
+    except Exception as e:
+        print(f"[meta] failed to write run_meta.json: {e}")
 
 def _emit_manifest_html(
     rows,
@@ -2714,16 +2816,26 @@ def main():
             continue
 
 
-    # ---- Missing comments report (STAGING ONLY; top-level; skip DeviceType="None")
+    # ---- Missing comments report (STAGING ONLY; top-level; skip DeviceType="None") REMOVE LINE AFTER DEBUG
+    # GAL 25-10-16: Missing comments report (AUTHOR + STAGING; no path in output)
     # We no longer look at winners/candidates — only what is currently in staging_root.
     try:
         ensure_dir(miss_csv.parent)
-        with miss_csv.open('w', newline='', encoding='utf-8-sig') as f:
-            w = csv.DictWriter(f, fieldnames=[
-                'Key','PreviewName','Revision','User','CommentFilled','CommentNoSpace','CommentTotal','Path'
-            ])
-
+        miss_cols = [
+            'Author', 'PreviewName', 'CommentStatus', 'Reason',
+            'WhereFound', 'Revision', 'Size', 'Exported'
+        ]
+        with miss_csv.open("w", encoding="utf-8-sig", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=miss_cols)
             w.writeheader()
+            # we will write author rows first, staged rows second
+            # GAL 25-10-16: Author-folder rows
+            author_rows = scan_authors_for_comments(input_root)
+            for r in author_rows:
+                w.writerow({k: r.get(k, '') for k in miss_cols})
+
+
+
 
             for p in sorted(Path(staging_root).glob('*.lorprev')):  # non-recursive by design
                 try:
@@ -2747,7 +2859,7 @@ def main():
                             'CommentFilled':  cf,   # before trimming
                             'CommentNoSpace': cn,   # after trimming (new column)
                             'CommentTotal':   ct,
-                            'Path': str(p),
+                            'WhereFound': 'Staging',
                         })
                 except Exception:
                     # unreadable staged file? just skip from missing-comments view
@@ -2779,7 +2891,7 @@ def main():
                     'CommentFilled':  cf,
                     'CommentNoSpace': cn,
                     'CommentTotal':   ct,
-                    'Path': str(p),
+                    'WhereFound': 'Staging',
                 })
             except Exception:
                 continue
@@ -3326,6 +3438,13 @@ def main():
     # ------------------------------------------------------------------------------
     # Excel: merge reports into a formatted workbook (runs for DRY RUN and APPLY)
     excel_script = Path(__file__).with_name("merge_reports_to_excel.py")
+    # GAL 25-10-16 [RunMeta]: minimal metadata (expand in Step 3+)
+    run_mode = "apply" if args.apply else "dry-run"
+    basic_totals = {
+        "applied_this_run": len(applied_this_run or []),
+        # Fill in more when we wire categories (NeedsActionCount, RevisionMismatchesCount, etc.)
+    }
+    write_run_meta_json(reports_dir, run_mode, basic_totals)
     subprocess.run(
         [sys.executable, str(excel_script),
         "--root", str(reports_dir),
