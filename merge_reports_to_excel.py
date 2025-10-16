@@ -53,6 +53,12 @@ ROOT = Path(args.root)                 # where CSVs are read from
 OUT_DIR = Path(args.out)               # where Excel is written
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# GAL 25-10-16 [Missing_Comments]: expected columns (no Path)
+MISSING_COLUMNS = [
+    "Author", "PreviewName", "CommentStatus", "Reason",
+    "WhereFound", "Revision", "Size", "Exported",
+]
+
 # Which CSVs → which sheet names
 FILES = [
     ("lorprev_compare.csv", "Compare"),
@@ -714,12 +720,36 @@ def main():
     else:
         print("[info][GAL 25-10-15] No NeedsAction rows found")
 
+    # -----------------------------------------------------------------------
+    # GAL 25-10-16: Normalize Missing_Comments (drop Path; ensure WhereFound)
+    # -----------------------------------------------------------------------
+    if "Missing_Comments" in tables:
+        mc = tables["Missing_Comments"].copy()
+
+        # Drop legacy 'Path' if present
+        if "Path" in mc.columns:
+            mc = mc.drop(columns=["Path"])
+
+        # Ensure required columns exist
+        required = [
+            "Author", "PreviewName", "CommentStatus", "Reason",
+            "WhereFound", "Revision", "Size", "Exported",
+        ]
+        for c in required:
+            if c not in mc.columns:
+                mc[c] = ""
+
+        # Enforce column order
+        mc = mc[required]
+
+        tables["Missing_Comments"] = mc
+
 
     with pd.ExcelWriter(OUT_XLSX_STAMPED, engine="openpyxl") as writer:
         # ---- Write Overview + Info FIRST so they appear at the front ----
         overview = build_overview(tables)
         overview.to_excel(writer, index=False, sheet_name="Overview")
-        write_info_tab(writer, ROOT)
+        write_info_tab(writer)
 
         # ---- Now write the normal report tabs ----
         for sheet_name, df in tables.items():
