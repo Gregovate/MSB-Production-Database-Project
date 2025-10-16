@@ -77,6 +77,30 @@ from collections import defaultdict
 import uuid
 from pathlib import Path
 
+# GAL 25-10-16: Align parser docs with Core Model v1.0 (no logic changes)
+# - Declares LOR→DB naming map inline for clarity (Comment→DisplayName, Name→ChannelName, etc.)
+# - Attempts to import field lists from lor_core for documentation parity only
+
+# LOR→DB field map (doc parity; see lor_core.py for canonical list):
+#   PreviewClass.id     → previews.id           (PreviewID; key)
+#   PreviewClass.Name   → previews.Name         (PreviewName; operator label)
+#   PreviewClass.BackgroundFile → previews.BackgroundFile  (QA/low)
+#   PropClass.id        → props.PropID / subProps.SubPropID   (key)
+#   PropClass.Comment   → props.LORComment / subProps.LORComment (Display Name)
+#   PropClass.Name      → props.Name / subProps.Name            (Channel Name)
+#   ChannelGrid         → props.Network, props.UID, props.StartChannel, props.EndChannel, props.Unknown, props.Color
+#   DimmingCurveName    → props.DimmingCurveName / subProps.DimmingCurveName
+#   DeviceType          → props.DeviceType / subProps.DeviceType ("LOR" | "DMX" | "None")
+#   DMX grid (universe) → dmxChannels.(Network, StartUniverse, StartChannel, EndChannel, Unknown)
+
+try:
+    # Documentation parity only; do not rely on these at runtime
+    from lor_core import PREVIEW_FIELDS, LOR_FIELDS, DMX_FIELDS  # noqa: F401
+except Exception:
+    # Keep parser standalone if lor_core.py isn’t present
+    PREVIEW_FIELDS = LOR_FIELDS = DMX_FIELDS = []
+
+
 # ============================= G: ONLY ============================= #
 G = Path(r"G:\Shared drives\MSB Database")
 
@@ -157,6 +181,7 @@ def collect_channel_display_names(xml_root) -> set[str]:
     for node in xml_root.findall(".//PropClass"):
         dev = (node.get("DeviceType") or "").strip().upper()
         # lorcomment = _t(node.get("LORComment")) GAL 25-09-20
+        # GAL 25-10-16: Comment→DisplayName hygiene should match lor_core.validate_display_name()
         lorcomment = _t(node.get("Comment"))
 
         if not lorcomment:
@@ -254,6 +279,7 @@ def setup_database():
     cursor.execute("DROP TABLE IF EXISTS dmxChannels")
 
     # Create Previews Table
+    # GAL 25-10-16: Table mirrors Core Model v1.0 preview fields (PreviewID/Name/BackgroundFile)
     cursor.execute("""
     CREATE TABLE previews (
         IntPreviewID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -267,6 +293,7 @@ def setup_database():
     """)
 
     # Create Props Table
+    # GAL 25-10-16: Table mirrors Core Model v1.0 for LOR/DMX master rows; Comment→LORComment, Name→ChannelName
     cursor.execute("""
     CREATE TABLE props (
         IntPropID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -312,6 +339,7 @@ def setup_database():
     """)
 
     # Create SubProps Table
+    # GAL 25-10-16: Subprops carry same naming map (Comment→LORComment, Name→ChannelName)
     cursor.execute("""
         CREATE TABLE subProps (
             IntSubPropID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -360,6 +388,7 @@ def setup_database():
     """)
 
     # Create DMX Channels Table
+    # GAL 25-10-16: DMX channels reflect universe-based wiring per Core Model v1.0
     cursor.execute("""
     CREATE TABLE dmxChannels (
         IntDMXChannelID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -562,6 +591,7 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
         if (prop.get("DeviceType") or "").strip() != "None":
             continue
 
+        # GAL 25-10-16: Comment→DisplayName hygiene should match lor_core.validate_display_name()
         comment = (prop.get("Comment") or "").strip()
         if not comment:
             # skip blanks; they cause churn in inventory
@@ -691,6 +721,7 @@ def process_dmx_props(preview_id, root):
         if (prop.get("DeviceType") or "").strip().upper() != "DMX":
             continue
 
+        # GAL 25-10-16: Comment→DisplayName hygiene should match lor_core.validate_display_name()
         comment = norm(prop.get("Comment"))
         if not comment:
             continue
@@ -1287,6 +1318,7 @@ def process_lor_multiple_channel_grids(preview_id, root):
         if ";" not in ch_raw:
             continue  # single-grid handled by process_lor_props
 
+        # GAL 25-10-16: Comment→DisplayName hygiene should match lor_core.validate_display_name()
         comment = prop.get("Comment") or ""
         raw_id  = prop.get("id") or ""
         # flatten each grid segment
