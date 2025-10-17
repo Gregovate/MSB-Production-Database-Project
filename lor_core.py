@@ -30,6 +30,7 @@ from __future__ import annotations
 from hashlib import sha256
 import json
 from typing import Dict, Tuple, Iterable, Optional
+from pathlib import Path
 
 # -----------------------------
 # Canonical field sets (DB-facing)
@@ -201,3 +202,33 @@ def is_key_change_same_core(old_row: Dict, new_row: Dict, device_type: str) -> b
         return (old_row.get("PropID") != new_row.get("PropID")) and \
                (dmx_leg_signature(old_row) == dmx_leg_signature(new_row))
     return False
+
+# ====================== GAL 25-10-18: Core comparison helper ======================
+
+
+
+def core_different(file_a: Path, file_b: Path) -> bool:
+    """
+    Return True if two .lorprev files differ in their wiring/core fields.
+    Ignores comments, revision, and minor metadata.
+
+    Steps:
+    - Each .lorprev is a JSON (or XML) file parsed upstream by parse_props_v6.py
+    - We look at both LOR and DMX legs and preview-level changes
+    """
+    try:
+        # assume each .lorprev can be loaded via json; adjust if it's XML later
+        a = json.loads(file_a.read_text(encoding="utf-8"))
+        b = json.loads(file_b.read_text(encoding="utf-8"))
+    except Exception:
+        # if unreadable, consider changed
+        return True
+
+    device_type = str(a.get("DeviceType") or b.get("DeviceType") or "").lower()
+    if "dmx" in device_type:
+        cats = categorize_dmx_change(a, b)
+    else:
+        cats = categorize_lor_change(a, b)
+    cats |= categorize_preview_change(a, b)
+    # any category at all means core difference
+    return bool(cats)

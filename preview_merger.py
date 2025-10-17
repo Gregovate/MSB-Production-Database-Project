@@ -625,7 +625,6 @@ def parse_preview_identity(file_path: Path) -> Optional[PreviewIdentity]:
     except Exception:
         return None
 
-
 def identity_key(idy: PreviewIdentity) -> Optional[str]:
     if idy.guid:
         return f"GUID:{idy.guid}"
@@ -659,6 +658,120 @@ def comment_stats(path: Path) -> tuple[int, int, int]:
                 if ' ' not in v:
                     nospace += 1
     return total, filled, nospace
+
+# ====================== GAL 25-10-17: Validator & Helpers (BEGIN) ======================
+
+def get_device_type(preview_path: Path) -> str:
+    """
+    Return device type string for a .lorprev file using existing logic.
+    Must match your existing device type values: 'LOR', 'DMX', 'NONE' (or similar).
+    """
+    try:
+        # If you already have a function, call that here instead.
+        # e.g., return read_device_type(preview_path)
+        dt_is_none = device_type_is_none(preview_path)
+        if dt_is_none:
+            return "NONE"
+        # If you track LOR/DMX more specifically, replace this stub:
+        # Prefer your existing logic; fallback: assume LOR if not none.
+        return "LOR"
+    except Exception:
+        return "NONE"
+
+def comments_required_for(dev_type: str) -> bool:
+    # Enforce comment completeness only for LOR/DMX (not for NONE)
+    return dev_type in ("LOR", "DMX")
+
+def check_display_name_rules(preview_path: Path) -> tuple[bool, str]:
+    """
+    Hook into your existing display-name/LOR comment hygiene rules.
+    Return (ok, reason_if_not_ok).
+    """
+    # TODO: GAL 25-10-17 — replace with your real rules; default OK for now
+    return True, ""
+
+def ymd_hms(epoch: float) -> str:
+    from datetime import datetime
+    return datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
+
+def find_winner_for(candidate_path: Path) -> Path | None:
+    """
+    Return the current staged/winner path (if any) for this candidate preview.
+    Tie into your existing mapping logic.
+    """
+    # TODO: GAL 25-10-17 — implement your real lookup here
+    return None
+
+def core_different(candidate_path: Path, winner_path: Path | None) -> bool:
+    """
+    Wrapper that calls lor_core.py’s core diff (your existing compare).
+    """
+    if not winner_path or not winner_path.exists():
+        return True
+    # TODO: GAL 25-10-17 — replace with your actual lor_core diff helper
+    try:
+        from lor_core import core_sha256_file
+        return core_sha256_file(candidate_path) != core_sha256_file(winner_path)
+    except Exception:
+        return True
+
+def evaluate_candidate(candidate_path: Path, winner_path: Path | None):
+    """
+    Compute core-diff and all validators for this candidate .lorprev.
+    - Enforce comment completeness only for DeviceType in {LOR, DMX}
+    - Block DeviceType NONE
+    - (Hook) Display-name hygiene rules
+    """
+    idy = parse_preview_identity(candidate_path) or PreviewIdentity(None, None, None, None)
+    key = identity_key(idy) or f"PATH:{candidate_path.name.lower()}"
+
+    dev_type = get_device_type(candidate_path)  # 'LOR', 'DMX', or 'NONE'
+    ct, cf, cn = comment_stats(candidate_path)  # total, filled, no-space
+
+    required = comments_required_for(dev_type)
+    comments_ok = (not required) or (ct > 0 and cf == ct and cn == ct)
+
+    naming_ok, naming_reason = check_display_name_rules(candidate_path)
+    device_ok = (dev_type != "NONE")
+
+    changed = core_different(candidate_path, winner_path)
+
+    blockers = []
+    if not comments_ok and required: blockers.append("comments")
+    if not naming_ok:                blockers.append(f"name:{naming_reason}")
+    if not device_ok:                blockers.append("device_type")
+
+    ready_to_apply = changed and not blockers
+
+    return {
+        "Key": key,
+        "PreviewName": idy.name or "",
+        "Revision": idy.revision_raw or "",
+        "DeviceType": dev_type,
+        "CommentTotal": ct,
+        "CommentFilled": cf,
+        "CommentNoSpace": cn,
+        "comments_required": required,
+        "comments_ok": comments_ok,
+        "naming_ok": naming_ok,
+        "device_ok": device_ok,
+        "blockers": ";".join(blockers),
+        "core_changed": changed,
+        "ready_to_apply": ready_to_apply,
+    }
+
+def iter_author_candidates(authors_root: Path):
+    """
+    Yield (author, .lorprev) pairs from each author folder.
+    Adjust the glob to match your layout (e.g., 'UserPreviewStaging/*.lorprev' if needed).
+    """
+    for author_dir in sorted(p for p in authors_root.iterdir() if p.is_dir()):
+        author = author_dir.name
+        for p in sorted(author_dir.glob("*.lorprev")):
+            yield author, p
+
+# ====================== GAL 25-10-17: Validator & Helpers (END) ======================
+
 
 from pathlib import Path
 def _in_dir(p: Path, root: Path) -> bool:
@@ -1163,6 +1276,7 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
     - Present = "Yes" if FileName currently exists in the staging_root (ignores .bak/subfolders)
               = "No"  if it would be newly added/updated by --apply
     """
+    global input_root   # GAL 25-10-18: expose global input_root for dry-run backfill
     path = Path(staging_root) / out_name
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1230,11 +1344,71 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
         # 2) Needs_Action CSV (what would change in this dry-run)
         #    Tweak the allowed actions below if your compare uses different labels.
         change_actions = {"Update", "Stage-New", "Change", "Apply"}
-        needs_rows = [r for r in rows if (r.get("Action") in change_actions) or (str(r.get("Present","")).strip().lower() == "no")]
+        needs_rows = []
+
+        for r in rows:
+            action = str(r.get("Action", "")).strip()
+            present = str(r.get("Present", "")).strip().lower()
+            author = r.get("Author") or ""
+            p_name = r.get("PreviewName") or ""
+            ready = False
+            blockers = []
+
+            # Skip if no action and already present
+            if not action and present == "yes":
+                continue
+
+            # --- GAL 25-10-18: resolve author if missing (search top-level of each user folder)
+            if not author:
+                try:
+                    for a_dir in Path(input_root).iterdir():
+                        if a_dir.is_dir():
+                            cand = a_dir / f"{p_name}.lorprev"
+                            if cand.exists():
+                                author = a_dir.name
+                                break
+                except Exception:
+                    pass
+
+            # File paths
+            author_file = Path(input_root) / author / f"{p_name}.lorprev"
+            staged_file = Path(staging_root) / f"{p_name}.lorprev"
+
+            # Basic inclusion by action
+            if action in change_actions or present == "no":
+                # --- GAL 25-10-18: verify real change using core_different ---
+                try:
+                    from lor_core import core_different
+                    if author_file.exists() and staged_file.exists():
+                        if core_different(author_file, staged_file):
+                            ready = True
+                        else:
+                            blockers.append("no core change")
+                    else:
+                        blockers.append("missing file(s)")
+                except Exception as e:
+                    blockers.append(f"core diff error: {e}")
+
+            # Record if something interesting
+            if ready or blockers:
+                needs_rows.append({
+                    "FileName":    r.get("FileName", ""),
+                    "PreviewName": p_name,
+                    "Author":      author,
+                    "Revision":    r.get("Revision", ""),
+                    "Action":      action,
+                    "Present":     present,
+                    "ReadyToApply": "yes" if ready else "no",
+                    "Blockers":    ", ".join(blockers),
+                    "WhereFound":  "AuthorFolder",
+                })
 
         needs_csv = reports_dir / "needs_action.csv"
         with needs_csv.open("w", newline="", encoding="utf-8-sig") as f_need:
-            need_fields = ["FileName", "PreviewName", "Author", "Revision", "Action", "Present"]
+            need_fields = [
+                "FileName","PreviewName","Author","Revision","Action","Present",
+                "ReadyToApply","Blockers","WhereFound"
+            ]
             w_need = csv.DictWriter(f_need, fieldnames=need_fields)
             w_need.writeheader()
             w_need.writerows(needs_rows)
@@ -1242,6 +1416,7 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
 
     except Exception as e:
         print(f"[backfill] failed to produce dry-run ledger/needs_action: {e}")
+
 
 
 
@@ -2868,48 +3043,125 @@ def main():
             w = csv.DictWriter(f, fieldnames=MC_COLS)
             w.writeheader()
 
-            # 1) Author-folder scan (these *won't* have keys/counts)
-            author_rows = scan_authors_for_comments(input_root)
-            for r in author_rows:
-                w.writerow({
-                    "Key": "",
-                    "PreviewName": r.get("PreviewName",""),
-                    "Revision":    r.get("Revision",""),
-                    "User":        "",                          # not staging
-                    "CommentFilled": "",
-                    "CommentNoSpace": "",
-                    "CommentTotal": "",
-                    "Author":      r.get("Author",""),
-                    "Reason":      r.get("Reason",""),
-                    "WhereFound":  r.get("WhereFound","AuthorFolder"),
-                    "Size":        r.get("Size",""),
-                    "Exported":    r.get("Exported",""),
-                })
+            # ========== GAL 25-10-17: REPLACEMENT START (after w.writeheader) ==========
+            # 1) Author-folder scan — parse .lorprev to get Key + counts (no Path)  # GAL 25-10-17
+            for author_dir in sorted(p for p in Path(input_root).iterdir() if p.is_dir()):  # GAL 25-10-17
+                author = author_dir.name  # GAL 25-10-17
+                for p in author_dir.glob("*.lorprev"):  # root-level only (no recursion)  # GAL 25-10-17
+                    try:  # GAL 25-10-17
+                        # Comments are required only when device type is not NONE (i.e., LOR/DMX)  # GAL 25-10-17
+                        if device_type_is_none(p):  # GAL 25-10-17
+                            continue  # GAL 25-10-17
 
-            # 2) Staging-root scan (only rows with *actual* missing comments)
-            for p in sorted(Path(staging_root).glob("*.lorprev")):  # non-recursive
-                try:
-                    if device_type_is_none(p):
-                        continue
-                    ct, cf, cn = comment_stats(p)
-                    if ct > 0 and (cf < ct or cn < ct):   # flag blanks OR spaced
+                        # Totals and counts  # GAL 25-10-17
+                        ct, cf, cn = comment_stats(p)  # GAL 25-10-17
+
+                        # GAL 25-10-17: tolerant rule for GAL (off-by-one is OK)
+                        try:
+                            ct_i = int(ct); cf_i = int(cf); cn_i = int(cn)
+                        except Exception:
+                            # if counts aren't numeric, don't flag
+                            continue
+
+                        # If everything matches, skip
+                        if (cf_i >= ct_i) or (cn_i >= ct_i):
+                            # counts meet or exceed total → no problem
+                            continue
+
+                        # Missing count (worst-case among the two validators)
+                        missing = ct_i - max(cf_i, cn_i)
+
+                        # TOLERATE exactly one mismatch (e.g., Northern Lights DMX GAL case)
+                        if missing == 1:
+                            continue
+
+                        # Determine precise reason (for real problems only)
+                        reason = ""
+                        if cf_i < ct_i and cn_i == ct_i:
+                            reason = "blank comments"
+                        elif cn_i < ct_i and cf_i == ct_i:
+                            reason = "comments with spaces"
+                        else:
+                            reason = "blank + spaced comments"
+
+                        # Write the row now that we have a real issue
                         idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
                         w.writerow({
                             "Key":            identity_key(idy) or f"PATH:{p.name.lower()}",
                             "PreviewName":    idy.name or "",
                             "Revision":       idy.revision_raw or "",
-                            "User":           "Staging root",
-                            "CommentFilled":  cf,
-                            "CommentNoSpace": cn,
-                            "CommentTotal":   ct,
-                            "Author":         "",            # staging rows don’t have an Author folder
-                            "Reason":         "missing/space in comments",
-                            "WhereFound":     "Staging",
+                            "User":           author if 'author' in locals() else "Staging root",
+                            "CommentFilled":  cf_i,
+                            "CommentNoSpace": cn_i,
+                            "CommentTotal":   ct_i,
+                            "Author":         author if 'author' in locals() else "",
+                            "Reason":         reason,
+                            "WhereFound":     "AuthorFolder" if 'author' in locals() else "Staging",
                             "Size":           p.stat().st_size,
                             "Exported":       ymd_hms(p.stat().st_mtime),
                         })
+
+                    except Exception:
+                        continue
+
+            # 2) Staging-root scan — same rule; include Key + counts (no Path)  # GAL 25-10-17
+            for p in sorted(Path(staging_root).glob("*.lorprev")):  # GAL 25-10-17
+                try:  # GAL 25-10-17
+                    if device_type_is_none(p):  # comments not required for NONE  # GAL 25-10-17
+                        continue  # GAL 25-10-17
+
+                        # Totals and counts  # GAL 25-10-17
+                        ct, cf, cn = comment_stats(p)  # GAL 25-10-17
+
+                        # GAL 25-10-17: tolerant rule for GAL (off-by-one is OK)
+                        try:
+                            ct_i = int(ct); cf_i = int(cf); cn_i = int(cn)
+                        except Exception:
+                            # if counts aren't numeric, don't flag
+                            continue
+
+                        # If everything matches, skip
+                        if (cf_i >= ct_i) or (cn_i >= ct_i):
+                            # counts meet or exceed total → no problem
+                            continue
+
+                        # Missing count (worst-case among the two validators)
+                        missing = ct_i - max(cf_i, cn_i)
+
+                        # TOLERATE exactly one mismatch (e.g., Northern Lights DMX GAL case)
+                        if missing == 1:
+                            continue
+
+                        # Determine precise reason (for real problems only)
+                        reason = ""
+                        if cf_i < ct_i and cn_i == ct_i:
+                            reason = "blank comments"
+                        elif cn_i < ct_i and cf_i == ct_i:
+                            reason = "comments with spaces"
+                        else:
+                            reason = "blank + spaced comments"
+
+                        # Write the row now that we have a real issue
+                        idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
+                        w.writerow({
+                            "Key":            identity_key(idy) or f"PATH:{p.name.lower()}",
+                            "PreviewName":    idy.name or "",
+                            "Revision":       idy.revision_raw or "",
+                            "User":           author if 'author' in locals() else "Staging root",
+                            "CommentFilled":  cf_i,
+                            "CommentNoSpace": cn_i,
+                            "CommentTotal":   ct_i,
+                            "Author":         author if 'author' in locals() else "",
+                            "Reason":         reason,
+                            "WhereFound":     "AuthorFolder" if 'author' in locals() else "Staging",
+                            "Size":           p.stat().st_size,
+                            "Exported":       ymd_hms(p.stat().st_mtime),
+                        })
+
                 except Exception:
                     continue
+
+            # ========== GAL 25-10-17: REPLACEMENT END ==================================
 
         print(f"Missing-comments CSV: {miss_csv}")
     except PermissionError:

@@ -53,7 +53,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Which CSVs → which sheet names
 FILES = [
-    ("compare.csv", "Compare"),
+    #("compare.csv", "Compare"),
     ("missing_comments.csv", "Missing_Comments"),
     ("all_staged_comments.csv", "All_Staged_Comments"),
     ("excluded_winners.csv", "Excluded_Winners"),
@@ -154,15 +154,15 @@ def _slice_common_cols(df, extra_cols=()):
 def build_needs_action_df(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     rows = []
 
-    # 1) Compare: usually has the clearest apply actions
-    cmp_df = tables.get("Compare")
-    if cmp_df is not None and not cmp_df.empty:
-        act = cmp_df["Action"] if "Action" in cmp_df.columns else None
-        reas = cmp_df["Reason"] if "Reason" in cmp_df.columns else None
-        mask = _contains_any(act, NEEDS_TOKENS["any"]) | _contains_any(reas, NEEDS_TOKENS["any"])
-        if mask.any():
-            part = _slice_common_cols(cmp_df.loc[mask])
-            rows.append(part)
+    # 1) Compare: usually has the clearest apply actions # GAL 25-10-18: Compare removed — no data from compare.csv
+    # cmp_df = tables.get("Compare")
+    # if cmp_df is not None and not cmp_df.empty:
+    #     act = cmp_df["Action"] if "Action" in cmp_df.columns else None
+    #     reas = cmp_df["Reason"] if "Reason" in cmp_df.columns else None
+    #     mask = _contains_any(act, NEEDS_TOKENS["any"]) | _contains_any(reas, NEEDS_TOKENS["any"])
+    #     if mask.any():
+    #         part = _slice_common_cols(cmp_df.loc[mask])
+    #         rows.append(part)
 
     # 2) Staged (linked): pick out-of-date
     staged = tables.get("Staged")
@@ -621,13 +621,65 @@ def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 
 def write_info_tab(writer):
-    import datetime as _dt  # ensure we get the module regardless of outer imports
-    info = pd.DataFrame([{
+    """GAL 25-10-18 — Expanded Info tab:
+    - adds RunMode (dry-run/apply)
+    - adds Actor (from run_meta.json or current user@machine)
+    - merges short summary from compare.csv
+    """
+    import datetime as _dt
+    import getpass, platform, json
+    import pandas as pd
+    from pathlib import Path
+
+    # Determine reports_root relative to this script
+    reports_root = Path(__file__).resolve().parent
+
+    # Load metadata (if present)
+    run_meta = {}
+    meta_path = reports_root / "run_meta.json"
+    if meta_path.exists():
+        try:
+            run_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    # Determine run mode and actor
+    run_mode = "apply" if run_meta.get("apply") else "dry-run"
+    actor = (
+        run_meta.get("actor")
+        or f"{getpass.getuser()}@{platform.node()}"
+    )
+
+    # Optional summary from compare.csv (two leading columns)
+    compare_csv = reports_root / "compare.csv"
+    compare_summary = {}
+    if compare_csv.exists():
+        try:
+            cmp = pd.read_csv(compare_csv, dtype=str, keep_default_na=False, encoding="utf-8-sig")
+            if not cmp.empty:
+                num_cols = [c for c in cmp.columns if pd.to_numeric(cmp[c], errors="coerce").notna().any()]
+                chosen = num_cols[:2] if len(num_cols) >= 2 else cmp.columns[:2]
+                for c in chosen:
+                    try:
+                        compare_summary[c] = pd.to_numeric(cmp[c], errors="coerce").sum()
+                    except Exception:
+                        compare_summary[c] = cmp[c].iloc[0]
+        except Exception:
+            pass
+
+    # Compose dataframe
+    info_data = [{
         "Generated": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "User": getpass.getuser(),
-        "Machine": platform.node(),
-    }])
+        "RunMode":   run_mode,
+        "Actor":     actor,
+    }]
+    if compare_summary:
+        info_data[0].update(compare_summary)
+
+    info = pd.DataFrame(info_data)
     info.to_excel(writer, index=False, sheet_name="Info")
+    print("[GAL 25-10-18] Info tab written with RunMode and Compare summary")
+
 
 def main():
     tables = {}
