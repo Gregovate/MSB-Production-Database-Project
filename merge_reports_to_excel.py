@@ -21,8 +21,6 @@ import platform
 import argparse
 # GAL 25-10-15: needed for regex in _contains_any
 import re
-# GAL 25-10-16: Core Model reporting updates
-import json
 
 from pandas.errors import ParserWarning
 from openpyxl.formatting.rule import FormulaRule
@@ -39,12 +37,12 @@ from datetime import datetime
 parser = argparse.ArgumentParser(description="Merge CSV reports to a single Excel.")
 parser.add_argument(
     "--root",
-    default=r"G:\Shared drives\MSB Database\database\merger\reports",  # CSV input folder
+    default=r"G:\Shared drives\MSB Database\Database Previews\reports",  # CSV input folder
     help="Folder containing the input CSVs (compare, ledger, etc.).",
 )
 parser.add_argument(
     "-o", "--out",
-    default=r"G:\Shared drives\MSB Database\Database Previews",        # Excel output folder
+    default=r"G:\Shared drives\MSB Database\Database Previews",          # Excel output folder
     help="Folder to write the Excel into.",
 )
 args = parser.parse_args()
@@ -53,15 +51,9 @@ ROOT = Path(args.root)                 # where CSVs are read from
 OUT_DIR = Path(args.out)               # where Excel is written
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# GAL 25-10-16 [Missing_Comments]: expected columns (no Path)
-MISSING_COLUMNS = [
-    "Author", "PreviewName", "CommentStatus", "Reason",
-    "WhereFound", "Revision", "Size", "Exported",
-]
-
 # Which CSVs → which sheet names
 FILES = [
-    #("lorprev_compare.csv", "Compare"),
+    ("lorprev_compare.csv", "Compare"),
     ("lorprev_missing_comments.csv", "Missing_Comments"),
     ("lorprev_all_staged_comments.csv", "All_Staged_Comments"),
     ("excluded_winners.csv", "Excluded_Winners"),
@@ -81,16 +73,6 @@ print(f"[cfg] Excel out: {OUT_DIR}")
 
 
 
-# GAL 25-10-16 [RunMeta]: reader for reports_dir/run_meta.json
-def read_run_meta(reports_dir: Path) -> dict:
-    try:
-        meta_path = Path(reports_dir) / "run_meta.json"
-        if meta_path.exists():
-            with meta_path.open("r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
 
 
 def read_csv_safe(path: Path) -> pd.DataFrame:
@@ -638,61 +620,14 @@ def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
 
 
-# GAL 25-10-16 [Info]: expanded Info tab using run_meta.json with CSV fallbacks
 def write_info_tab(writer):
     import datetime as _dt  # ensure we get the module regardless of outer imports
-
-    # ROOT is already defined in this script as the CSV directory
-    meta_path = Path(ROOT) / "run_meta.json"
-    meta = {}
-    if meta_path.exists():
-        try:
-            with meta_path.open("r", encoding="utf-8") as f:
-                meta = json.load(f) or {}
-        except Exception:
-            meta = {}
-
-    totals = meta.get("totals") or {}
-
-    # Prefer values from run_meta.json; fall back to environment/CSV counts
-    run_mode    = meta.get("run_mode")  or "dry-run"
-    merger_root = meta.get("csv_root")  or str(ROOT)
-    started_at  = meta.get("started_at") or ""
-    actor       = meta.get("user")      or getpass.getuser()
-    host        = meta.get("host")      or platform.node()
-
-    def _count_csv(basename: str) -> int:
-        p = Path(ROOT) / f"{basename}.csv"
-        if not p.exists():
-            return 0
-        try:
-            return int(len(pd.read_csv(p)))
-        except Exception:
-            return 0
-
-    needs_action = totals.get("needs_action",        _count_csv("Needs_Action"))
-    applied_cnt  = totals.get("applied_this_run",    _count_csv("Applied_This_Run"))
-    rev_mismatch = totals.get("revision_mismatches", _count_csv("Revision_Mismatches"))
-    excluded_win = totals.get("excluded_winners",    _count_csv("Excluded_Winners"))
-    missing_comm = totals.get("missing_comments",    _count_csv("Missing_Comments"))
-    ledger_rows  = totals.get("ledger_rows",         _count_csv("Current_Previews_Ledger"))
-
     info = pd.DataFrame([{
         "Generated": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "RunMode": run_mode,
-        "MergerRoot": merger_root,
-        "StartedAt": started_at,
-        "User": actor,
-        "Machine": host,
-        "NeedsActionCount": needs_action,
-        "AppliedThisRunCount": applied_cnt,
-        "RevisionMismatchesCount": rev_mismatch,
-        "ExcludedWinnersCount": excluded_win,
-        "MissingCommentsCount": missing_comm,
-        "LedgerRows": ledger_rows,
+        "User": getpass.getuser(),
+        "Machine": platform.node(),
     }])
     info.to_excel(writer, index=False, sheet_name="Info")
-
 
 def main():
     tables = {}
@@ -719,30 +654,6 @@ def main():
         print(f"[info][GAL 25-10-15] NeedsAction rows: {len(needs)}")
     else:
         print("[info][GAL 25-10-15] No NeedsAction rows found")
-
-    # -----------------------------------------------------------------------
-    # GAL 25-10-16: Normalize Missing_Comments (drop Path; ensure WhereFound)
-    # -----------------------------------------------------------------------
-    if "Missing_Comments" in tables:
-        mc = tables["Missing_Comments"].copy()
-
-        # Drop legacy 'Path' if present
-        if "Path" in mc.columns:
-            mc = mc.drop(columns=["Path"])
-
-        # Ensure required columns exist
-        required = [
-            "Author", "PreviewName", "CommentStatus", "Reason",
-            "WhereFound", "Revision", "Size", "Exported",
-        ]
-        for c in required:
-            if c not in mc.columns:
-                mc[c] = ""
-
-        # Enforce column order
-        mc = mc[required]
-
-        tables["Missing_Comments"] = mc
 
 
     with pd.ExcelWriter(OUT_XLSX_STAMPED, engine="openpyxl") as writer:
