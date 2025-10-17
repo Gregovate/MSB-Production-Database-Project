@@ -53,9 +53,9 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Which CSVs → which sheet names
 FILES = [
-    ("lorprev_compare.csv", "Compare"),
-    ("lorprev_missing_comments.csv", "Missing_Comments"),
-    ("lorprev_all_staged_comments.csv", "All_Staged_Comments"),
+    ("compare.csv", "Compare"),
+    ("missing_comments.csv", "Missing_Comments"),
+    ("all_staged_comments.csv", "All_Staged_Comments"),
     ("excluded_winners.csv", "Excluded_Winners"),
     ("applied_this_run.csv", "Applied_This_Run"),
     ("apply_events.csv", "Apply_Events"),

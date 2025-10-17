@@ -37,8 +37,8 @@ JSON config (optional):
 
     "archive_root": "G:/Shared drives/MSB Database/database/merger/archive",
     "history_db": "G:/Shared drives/MSB Database/database/merger/preview_history.db",
-    "report_csv": "G:/Shared drives/MSB Database/database/merger/reports/lorprev_compare.csv",
-    "report_html": "G:/Shared drives/MSB Database/database/merger/reports/lorprev_compare.html",
+    "report_csv": "G:/Shared drives/MSB Database/database/merger/reports/compare.csv",
+    "report_html": "G:/Shared drives/MSB Database/database/merger/reports/compare.html",
     "policy": "prefer-comments-then-revision"
     "ensure_users": "abiebel,rneerhof,gliebig,showpc,officepc",
     "email_domain": "sheboyganlights.org"
@@ -119,8 +119,8 @@ GLOBAL_DEFAULTS = {
     # Keep ALL merger artifacts together under: <staging_root>\reports
     # (CSV inputs for the Excel combiner + run_meta.json + history db + HTML)
     "history_db":  r"G:\Shared drives\MSB Database\Database Previews\reports\preview_history.db",
-    "report_csv":  r"G:\Shared drives\MSB Database\Database Previews\reports\lorprev_compare.csv",
-    "report_html": r"G:\Shared drives\MSB Database\Database Previews\reports\lorprev_compare.html",
+    "report_csv":  r"G:\Shared drives\MSB Database\Database Previews\reports\compare.csv",
+    "report_html": r"G:\Shared drives\MSB Database\Database Previews\reports\compare.html",
     # -----------------------------------------------------------------------
     # GAL 25-10-15: Behavior
     # -----------------------------------------------------------------------
@@ -219,17 +219,25 @@ def resolve_config(cli_args: dict, json_path: Optional[str]=None) -> dict:
     for key in ["input_root", "staging_root", "archive_root"]:
         cfg[key] = os.path.normpath(cfg[key])
 
-    # Derive all report artifacts from staging_root to avoid drift
+    # GAL 25-10-16: Derive report artifacts from staging_root to avoid drift
     reports_dir = Path(cfg["staging_root"]) / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
 
-    # Canonical filenames (simple names)
     cfg["history_db"]  = str(reports_dir / "preview_history.db")
-    cfg["report_csv"]  = str(reports_dir / "compare.csv")   # (optional legacy compare; harmless)
+    cfg["report_csv"]  = str(reports_dir / "compare.csv")    # harmless; for HTML/summary
     cfg["report_html"] = str(reports_dir / "compare.html")
 
     # Ensure archive root exists
     Path(cfg["archive_root"]).mkdir(parents=True, exist_ok=True)
+
+    # Optional: log after derivation so we can verify in the console
+    print("[INFO] Effective config (final):")
+    print(f"  input_root:  {cfg['input_root']}")
+    print(f"  staging_root:{cfg['staging_root']}")
+    print(f"  archive_root:{cfg['archive_root']}")
+    print(f"  history_db:  {cfg['history_db']}")
+    print(f"  report_csv:  {cfg['report_csv']}")
+    print(f"  report_html: {cfg['report_html']}")
 
     return cfg
 
@@ -1200,6 +1208,42 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
 
     print(f"[dry-run] wrote preview manifest (no changes made): {path}")
 
+    # ----------------------------------------------------------------------
+    # GAL 25-10-16: Backfill Excel inputs in DRY-RUN (no --apply required)
+    #   - current_previews_ledger.csv:  use the dry-run manifest rows
+    #   - needs_action.csv:             filter to rows that would change
+    # ----------------------------------------------------------------------
+    try:
+        # reports_dir lives under the staging root
+        reports_dir = Path(staging_root) / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+
+        # 1) Ledger CSV (what Excel expects to annotate)
+        ledger_csv = reports_dir / "current_previews_ledger.csv"
+        with ledger_csv.open("w", newline="", encoding="utf-8-sig") as f_led:
+            led_fields = ["FileName", "PreviewName", "Author", "Revision", "Action", "Present"]
+            w_led = csv.DictWriter(f_led, fieldnames=led_fields)
+            w_led.writeheader()
+            w_led.writerows(rows)
+        print(f"[backfill] Ledger CSV: {ledger_csv}")
+
+        # 2) Needs_Action CSV (what would change in this dry-run)
+        #    Tweak the allowed actions below if your compare uses different labels.
+        change_actions = {"Update", "Stage-New", "Change", "Apply"}
+        needs_rows = [r for r in rows if (r.get("Action") in change_actions) or (str(r.get("Present","")).strip().lower() == "no")]
+
+        needs_csv = reports_dir / "needs_action.csv"
+        with needs_csv.open("w", newline="", encoding="utf-8-sig") as f_need:
+            need_fields = ["FileName", "PreviewName", "Author", "Revision", "Action", "Present"]
+            w_need = csv.DictWriter(f_need, fieldnames=need_fields)
+            w_need.writeheader()
+            w_need.writerows(needs_rows)
+        print(f"[backfill] Needs_Action CSV: {needs_csv} (rows={len(needs_rows)})")
+
+    except Exception as e:
+        print(f"[backfill] failed to produce dry-run ledger/needs_action: {e}")
+
+
 
 # Writes Manifest in HTML format GAL 25-09-19
 def write_current_manifest_html(staging_root: Path, out_html: Path, author_by_name: dict[str, str] | None = None):
@@ -1919,20 +1963,6 @@ def parse_cli() -> dict:
     except SystemExit:
         return {}
 
-def build_repo_defaults(repo_root: Path) -> dict:
-    # Use the PREVIEWS_ROOT / USER_STAGING you already resolved above
-    return {
-        "input_root":   str(USER_STAGING),
-        "staging_root": str(PREVIEWS_ROOT),
-        "archive_root": str(repo_root / "database" / "merger" / "archive"),
-        "history_db":   str(repo_root / "database" / "merger" / "preview_history.db"),
-        "report_csv":   str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.csv"),
-        "report_html":  str(repo_root / "database" / "merger" / "reports" / "lorprev_compare.html"),
-        "policy":       GLOBAL_DEFAULTS.get("policy", "prefer-comments-then-revision"),
-        "ensure_users": GLOBAL_DEFAULTS.get("ensure_users", ""),
-        "email_domain": GLOBAL_DEFAULTS.get("email_domain", "sheboyganlights.org"),
-    }
-
 def main():
     # -----------------------------------------------------------------------
     # 1) Collect configs: CLI(pre-parse) > JSON > repo/env > GLOBAL_DEFAULTS
@@ -1966,8 +1996,8 @@ def main():
     for key, rel in [
         ("archive_root", ("database", "merger", "archive")),
         ("history_db",   ("database", "merger", "preview_history.db")),
-        ("report_csv",   ("database", "merger", "reports", "lorprev_compare.csv")),
-        ("report_html",  ("database", "merger", "reports", "lorprev_compare.html")),
+        ("report_csv",   ("database", "merger", "reports", "compare.csv")),
+        ("report_html",  ("database", "merger", "reports", "compare.html")),
     ]:
         if not _is_on_g_str(defaults.get(key, "")):
             defaults[key] = _gpath_str(*rel)
@@ -2080,9 +2110,9 @@ def main():
     if not _is_on_g(history_db):
         history_db   = _gpath("database", "merger", "preview_history.db")
     if not _is_on_g(report_csv):
-        report_csv   = _gpath("database", "merger", "reports", "lorprev_compare.csv")
+        report_csv   = _gpath("database", "merger", "reports", "compare.csv")
     if report_html and not _is_on_g(report_html):
-        report_html  = _gpath("database", "merger", "reports", "lorprev_compare.html")
+        report_html  = _gpath("database", "merger", "reports", "compare.html")
 
     def _must_be_on_g(label: str, p: Path | None) -> None:
         if not _is_on_g(p):
@@ -2122,7 +2152,7 @@ def main():
     reports_dir = report_csv.parent
 
     # Canonical companion files (define ONCE here)
-    miss_csv      = report_csv.with_name('lorprev_missing_comments.csv')
+    miss_csv      = report_csv.with_name('missing_comments.csv')
     manifest_path = report_csv.with_suffix('.manifest.json')
 
     # --- Build PreviewName -> Author map once from the ledger CSV ---
@@ -2150,8 +2180,8 @@ def main():
 
     # Excel targets
     _ts = datetime.now().strftime("%Y%m%d-%H%M")
-    xlsx_latest = excel_out / "lorprev_reports.xlsx"
-    xlsx_ts     = excel_out / f"lorprev_reports-{_ts}.xlsx"
+    xlsx_latest = excel_out / "reports.xlsx"
+    xlsx_ts     = excel_out / f"reports-{_ts}.xlsx"
 
     # Include Excel files in the lock check
     _fail_if_locked([report_csv, report_html, miss_csv, manifest_path, xlsx_latest, xlsx_ts])
@@ -2823,50 +2853,62 @@ def main():
     # ---- Missing comments report (STAGING ONLY; top-level; skip DeviceType="None") REMOVE LINE AFTER DEBUG
     # GAL 25-10-16: Missing comments report (AUTHOR + STAGING; no path in output)
     # We no longer look at winners/candidates — only what is currently in staging_root.
+# ---- Missing comments report (AUTHOR + STAGING; unified columns, NO Path) ----
     try:
         ensure_dir(miss_csv.parent)
-        miss_cols = [
-            'Author', 'PreviewName', 'CommentStatus', 'Reason',
-            'WhereFound', 'Revision', 'Size', 'Exported'
+
+        # Unified schema so DictWriter never drops columns:
+        MC_COLS = [
+            "Key","PreviewName","Revision","User",
+            "CommentFilled","CommentNoSpace","CommentTotal",
+            "Author","Reason","WhereFound","Size","Exported"
         ]
+
         with miss_csv.open("w", encoding="utf-8-sig", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=miss_cols)
+            w = csv.DictWriter(f, fieldnames=MC_COLS)
             w.writeheader()
-            # we will write author rows first, staged rows second
-            # GAL 25-10-16: Author-folder rows
+
+            # 1) Author-folder scan (these *won't* have keys/counts)
             author_rows = scan_authors_for_comments(input_root)
             for r in author_rows:
-                w.writerow({k: r.get(k, '') for k in miss_cols})
+                w.writerow({
+                    "Key": "",
+                    "PreviewName": r.get("PreviewName",""),
+                    "Revision":    r.get("Revision",""),
+                    "User":        "",                          # not staging
+                    "CommentFilled": "",
+                    "CommentNoSpace": "",
+                    "CommentTotal": "",
+                    "Author":      r.get("Author",""),
+                    "Reason":      r.get("Reason",""),
+                    "WhereFound":  r.get("WhereFound","AuthorFolder"),
+                    "Size":        r.get("Size",""),
+                    "Exported":    r.get("Exported",""),
+                })
 
-
-
-
-            for p in sorted(Path(staging_root).glob('*.lorprev')):  # non-recursive by design
+            # 2) Staging-root scan (only rows with *actual* missing comments)
+            for p in sorted(Path(staging_root).glob("*.lorprev")):  # non-recursive
                 try:
-                    # Allowed to have sparse comments? Skip entirely.
                     if device_type_is_none(p):
                         continue
-
                     ct, cf, cn = comment_stats(p)
-                    # Keep your original semantics: flag when filled < total
-                    # Note: If you’d rather treat “missing” as CommentNoSpace < CommentTotal
-                    #  (stricter, since it trims blanks), just change cf to cn in the 
-                    # if ct > 0 and cf < ct: line and in the w.writerow({... 'CommentFilled': cf, ...}) 
-                    # assignment (rename or add a CommentNoSpace column if you want it visible).
-                    if ct > 0 and cn < ct:
+                    if ct > 0 and (cf < ct or cn < ct):   # flag blanks OR spaced
                         idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
                         w.writerow({
-                            'Key': identity_key(idy) or f"PATH:{p.name.lower()}",
-                            'PreviewName': idy.name or '',
-                            'Revision': idy.revision_raw or '',
-                            'User': 'Staging root',
-                            'CommentFilled':  cf,   # before trimming
-                            'CommentNoSpace': cn,   # after trimming (new column)
-                            'CommentTotal':   ct,
-                            'WhereFound': 'Staging',
+                            "Key":            identity_key(idy) or f"PATH:{p.name.lower()}",
+                            "PreviewName":    idy.name or "",
+                            "Revision":       idy.revision_raw or "",
+                            "User":           "Staging root",
+                            "CommentFilled":  cf,
+                            "CommentNoSpace": cn,
+                            "CommentTotal":   ct,
+                            "Author":         "",            # staging rows don’t have an Author folder
+                            "Reason":         "missing/space in comments",
+                            "WhereFound":     "Staging",
+                            "Size":           p.stat().st_size,
+                            "Exported":       ymd_hms(p.stat().st_mtime),
                         })
                 except Exception:
-                    # unreadable staged file? just skip from missing-comments view
                     continue
 
         print(f"Missing-comments CSV: {miss_csv}")
@@ -2874,32 +2916,35 @@ def main():
         print(f"\n[locked] {miss_csv} is open in another program. Close it and re-run.", file=sys.stderr)
         sys.exit(4)
 
+
     # ---- All-staged comment audit (top-level staging; includes compliant)
-    all_csv = miss_csv.with_name('lorprev_all_staged_comments.csv')
+    # ---- All-staged comment audit (top-level staging; includes compliant, NO Path) ----
+    all_csv = miss_csv.with_name("all_staged_comments.csv")
     ensure_dir(all_csv.parent)
-    with all_csv.open('w', newline='', encoding='utf-8-sig') as f:
+    with all_csv.open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=[
-            'Key','PreviewName','Revision','User',
-            'CommentFilled','CommentNoSpace','CommentTotal','Path'
+            "Key","PreviewName","Revision","User",
+            "CommentFilled","CommentNoSpace","CommentTotal","WhereFound"
         ])
         w.writeheader()
-        for p in sorted(Path(staging_root).glob('*.lorprev')):  # non-recursive
+        for p in sorted(Path(staging_root).glob("*.lorprev")):  # non-recursive
             try:
                 idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
                 ct, cf, cn = comment_stats(p)
                 w.writerow({
-                    'Key': identity_key(idy) or f"PATH:{p.name.lower()}",
-                    'PreviewName': idy.name or '',
-                    'Revision': idy.revision_raw or '',
-                    'User': 'Staging root',
-                    'CommentFilled':  cf,
-                    'CommentNoSpace': cn,
-                    'CommentTotal':   ct,
-                    'WhereFound': 'Staging',
+                    "Key":            identity_key(idy) or f"PATH:{p.name.lower()}",
+                    "PreviewName":    idy.name or "",
+                    "Revision":       idy.revision_raw or "",
+                    "User":           "Staging root",
+                    "CommentFilled":  cf,
+                    "CommentNoSpace": cn,
+                    "CommentTotal":   ct,
+                    "WhereFound":     "Staging",
                 })
             except Exception:
                 continue
     print(f"All-staged comment audit: {all_csv}")
+
 
 
 
@@ -3381,11 +3426,11 @@ def main():
         we want to manage inside staging.
         """
         name = p.name.lower()
-        if name.startswith("lorprev_compare."):
+        if name.startswith("compare."):
             return True
         if name.startswith("current_previews_manifest."):
             return True
-        if name in ("lorprev_reports.xlsx", "lorprev_missing_comments.csv"):
+        if name in ("reports.xlsx", "missing_comments.csv"):
             return True
         if name.endswith(".manifest.json"):
             return True
@@ -3472,7 +3517,7 @@ def main():
     subprocess.run(
         [sys.executable, str(excel_script),
         "--root", str(reports_dir),      # CSV input dir for combiner
-        "--out",  str(excel_out)],       # folder where lorprev_reports.xlsx is written
+        "--out",  str(excel_out)],       # folder where reports.xlsx is written
         check=True
     )
     print(f"[cfg] CSV root: {reports_dir}")
