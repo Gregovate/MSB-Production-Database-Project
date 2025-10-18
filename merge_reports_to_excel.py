@@ -669,17 +669,23 @@ def write_info_tab(writer):
             pass
 
     # Compose dataframe
+    # GAL 25-10-18: Include final NeedsAction count from CSV-driven table
+    needs_df = tables.get("NeedsAction", None)
+    final_needs_count = len(needs_df) if isinstance(needs_df, pd.DataFrame) else 0
+
     info_data = [{
         "Generated": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "RunMode":   run_mode,
         "Actor":     actor,
+        "NeedsAction Rows (final)": final_needs_count,   # NEW
     }]
     if compare_summary:
         info_data[0].update(compare_summary)
 
     info = pd.DataFrame(info_data)
     info.to_excel(writer, index=False, sheet_name="Info")
-    print("[GAL 25-10-18] Info tab written with RunMode and Compare summary")
+    print(f"[GAL 25-10-18] Info tab written with RunMode, Compare summary, and NeedsAction={final_needs_count}")
+
 
 
 def main():
