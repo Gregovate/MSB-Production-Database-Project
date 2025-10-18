@@ -68,6 +68,7 @@ import shutil
 import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
+import tempfile # Required for _write_atomic
 
 # GAL 25-10-16: Core Model v1.0 alignment (shared helpers; no behavior change yet)
 try:
@@ -1266,39 +1267,147 @@ def write_current_manifest(staging_root: Path, out_csv: Path):
                 "Exported": info.get("MTimeUtc",""),
             })
 
-# a dry-run (“would-be”) manifest from preview_merger.py without changing any files GAL 25-09-18
-def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: str = "current_previews_manifest_preview.csv",
-                              author_by_name: dict[str, str] | None = None):
-    r"""
-    Create a 'would-be' manifest (no filesystem changes) listing the winners that
-    WOULD remain in staging if --apply were used.
-    Columns: FileName, PreviewName, Revision, Action, Present
-    - Present = "Yes" if FileName currently exists in the staging_root (ignores .bak/subfolders)
-              = "No"  if it would be newly added/updated by --apply
+def _write_csv_atomic(out_path: Path, fieldnames: list[str], rows: list[dict], *,
+                      attempts: int = 4, wait_sec: float = 0.6, allow_fallback: bool = True) -> Path:
     """
-    global input_root   # GAL 25-10-18: expose global input_root for dry-run backfill
-    path = Path(staging_root) / out_name
-    path.parent.mkdir(parents=True, exist_ok=True)
+    Write CSV atomically to shared drives with basic retry.
+    Returns the path actually written (out_path or a fallback path).
+    Never raises on PermissionError; falls back if locked.
+    """
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # What actually exists right now (only .lorprev in root, ignore .bak & subfolders)
-    existing = {p.name.lower() for p in Path(staging_root).glob("*.lorprev")}
+    # Try N times to write atomically: temp → replace
+    last_err = None
+    for i in range(attempts):
+        try:
+            # write to a temp file on same volume
+            with tempfile.NamedTemporaryFile("w", newline="", encoding="utf-8-sig",
+                                             delete=False, dir=str(out_path.parent)) as tmp:
+                tmp_path = Path(tmp.name)
+                w = csv.DictWriter(tmp, fieldnames=fieldnames)
+                w.writeheader()
+                w.writerows(rows)
+            # atomic replace (best effort on Windows network shares)
+            try:
+                os.replace(tmp_path, out_path)
+            finally:
+                if tmp_path.exists():
+                    try: tmp_path.unlink(missing_ok=True)
+                    except Exception: pass
+            return out_path
+        except PermissionError as e:
+            last_err = e
+            time.sleep(wait_sec)
+        except Exception as e:
+            # other errors: re-raise
+            raise
 
-    # Build unique per preview key (you’re already de-duping elsewhere)
-    seen = set()
-    rows = []
+    # Still locked? Write to a timestamped fallback to avoid blocking the run.
+    if allow_fallback:
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        fb = out_path.with_name(f"{out_path.stem}-{stamp}-locked.csv")
+        with fb.open("w", newline="", encoding="utf-8-sig") as f:
+            w = csv.DictWriter(f, fieldnames=fieldnames)
+            w.writeheader()
+            w.writerows(rows)
+        print(f"[warn] Could not write {out_path.name} (locked). Wrote fallback: {fb.name}")
+        return fb
+    else:
+        # propagate the last PermissionError
+        raise last_err if last_err else PermissionError(f"Failed to write {out_path}")
+
+import os, time  # (if not already imported)
+
+# Two Helpers for file metadata for the dry-run process GAL 25-10-18
+def _fmt_mtime(path: Path | None) -> str:
+    if not path or not path.exists():
+        return ""
+    try:
+        ts = os.path.getmtime(path)
+        # local time; matches what you see on the share in Explorer
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts))
+    except Exception:
+        return ""
+
+def _filesize(path: Path | None) -> int | str:
+    if not path or not path.exists():
+        return ""
+    try:
+        return os.path.getsize(path)
+    except Exception:
+        return ""
+
+
+# a dry-run (“would-be”) manifest from preview_merger.py without changing any files GAL 25-09-15
+# Added atomic_writer to prevent partial writes on network shares GAL 25-10-18
+def write_dryrun_manifest_csv(
+    staging_root: Path,
+    winner_rows: list,
+    out_name: str = "current_previews_manifest_preview.csv",
+    author_by_name: dict[str, str] | None = None,
+    input_root: Path | None = None,
+    all_rows: list | None = None,   # full compare rows (for NeedsAction)
+):
+    """
+    DRY-RUN:
+      - Writes a would-be manifest (winners only, de-duped by PreviewName highest Revision) in the staging root.
+      - Backfills reports/current_previews_ledger.csv from winners (same as manifest).
+      - Builds reports/needs_action.csv from all_rows (full compare) using STRICT inclusion and core_different() gating.
+        Also writes needs_action_debug.csv (debug write never blocks).
+    """
+    # ---- helpers ----
+    def _revnum(v: str) -> float:
+        try:
+            return float(v or "")
+        except Exception:
+            return -1.0
+
+    def _norm_action(s: str) -> str:
+        # lower; collapse spaces/_// into '-' for consistent matching
+        return re.sub(r"[\s_/]+", "-", (s or "").strip().lower())
+
+    def _author_from_winnerfrom(wf: str) -> str:
+        s = (wf or "").strip()
+        return s.split(":", 1)[1].strip() if s.upper().startswith("USER:") else s
+
+    def _dedupe_manifest(rows: list[dict]) -> list[dict]:
+        """Keep one row per PreviewName, preferring highest Revision."""
+        best: dict[str, dict] = {}
+        for r in rows:
+            pn = (r.get("PreviewName") or "").strip()
+            if not pn:
+                continue
+            key = pn.lower()
+            cur = best.get(key)
+            if cur is None or _revnum(r.get("Revision")) > _revnum(cur.get("Revision")):
+                best[key] = r
+        out = list(best.values())
+        out.sort(key=lambda x: (x["PreviewName"].lower(), -_revnum(x["Revision"])))
+        return out
+
+    staging_root = Path(staging_root)
+    reports_dir = staging_root / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    input_root_safe = Path(input_root) if input_root else None
+
+    # Current staged .lorprev files (root only)
+    staged_existing = {p.name.lower() for p in staging_root.glob("*.lorprev")}
+
+    # ------------------------------------------------------------------------------
+    # 1) Manifest (WINNERS ONLY, DE-DUPED)  +  Ledger (WINNERS ONLY, DE-DUPED)
+    # ------------------------------------------------------------------------------
+    manifest_rows_raw = []
     for r in winner_rows:
-        key = r.get('Key')
-        if key in seen:
+        pn = (r.get("PreviewName") or "").strip()
+        if not pn:
             continue
-        seen.add(key)
-
-        pn  = (r.get('PreviewName') or '').strip()
-        rev = r.get('Revision') or ''
-        act = r.get('Action')   or ''
-        fname = f"{pn}.lorprev" if pn else ""
-        present = "Yes" if fname.lower() in existing else "No"
-        author = (author_by_name or {}).get(pn, "")
-        rows.append({
+        fname   = f"{pn}.lorprev"
+        present = "Yes" if fname.lower() in staged_existing else "No"
+        rev     = r.get("Revision") or ""
+        act     = (r.get("Action") or "").strip()
+        author  = (author_by_name or {}).get(pn, "")
+        manifest_rows_raw.append({
             "FileName": fname,
             "PreviewName": pn,
             "Author": author,
@@ -1307,143 +1416,316 @@ def write_dryrun_manifest_csv(staging_root: Path, winner_rows: list, out_name: s
             "Present": present,
         })
 
-    def _revnum(v: str) -> float:
-        try:
-            return float(v or '')
-        except Exception:
-            return -1.0
+    manifest_rows = _dedupe_manifest(manifest_rows_raw)
 
-    rows.sort(key=lambda x: (x["PreviewName"].lower(), -_revnum(x["Revision"])))
-
-    with path.open("w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=["FileName","PreviewName","Author","Revision","Action","Present"])
-        w.writeheader()
-        w.writerows(rows)
-
-    print(f"[dry-run] wrote preview manifest (no changes made): {path}")
-
-    # ----------------------------------------------------------------------
-    # GAL 25-10-16: Backfill Excel inputs in DRY-RUN (no --apply required)
-    #   - current_previews_ledger.csv:  use the dry-run manifest rows
-    #   - needs_action.csv:             filter to rows that would change
-    # ----------------------------------------------------------------------
-    try:
-        # reports_dir lives under the staging root
-        reports_dir = Path(staging_root) / "reports"
-        reports_dir.mkdir(parents=True, exist_ok=True)
-
-        # 1) Ledger CSV (what Excel expects to annotate)
-        ledger_csv = reports_dir / "current_previews_ledger.csv"
-        with ledger_csv.open("w", newline="", encoding="utf-8-sig") as f_led:
-            led_fields = ["FileName", "PreviewName", "Author", "Revision", "Action", "Present"]
-            w_led = csv.DictWriter(f_led, fieldnames=led_fields)
-            w_led.writeheader()
-            w_led.writerows(rows)
-        print(f"[backfill] Ledger CSV: {ledger_csv}")
-
-        # 2) Needs_Action CSV (what would change in this dry-run)
-        #    Tweak the allowed actions below if your compare uses different labels.
-        change_actions = {"Update", "Stage-New", "Change", "Apply"}
-        needs_rows = []
-
-        for r in rows:
-            action = str(r.get("Action", "")).strip()
-            present = str(r.get("Present", "")).strip().lower()
-            author = r.get("Author") or ""
-            p_name = r.get("PreviewName") or ""
-            ready = False
-            blockers = []
-
-            # Skip if no action and already present
-            if not action and present == "yes":
-                continue
-
-            # --- GAL 25-10-18: resolve author if missing (search top-level of each user folder)
-            if not author:
-                try:
-                    for a_dir in Path(input_root).iterdir():
-                        if a_dir.is_dir():
-                            cand = a_dir / f"{p_name}.lorprev"
-                            if cand.exists():
-                                author = a_dir.name
-                                break
-                except Exception:
-                    pass
-
-            # File paths
-            author_file = Path(input_root) / author / f"{p_name}.lorprev"
-            staged_file = Path(staging_root) / f"{p_name}.lorprev"
-
-            # Basic inclusion by action
-            if action in change_actions or present == "no":
-                # --- GAL 25-10-18: verify real change using core_different ---
-                try:
-                    from lor_core import core_different
-                    if author_file.exists() and staged_file.exists():
-                        if core_different(author_file, staged_file):
-                            ready = True
-                        else:
-                            blockers.append("no core change")
-                    else:
-                        blockers.append("missing file(s)")
-                except Exception as e:
-                    blockers.append(f"core diff error: {e}")
-
-            # Record if something interesting
-            if ready or blockers:
-                needs_rows.append({
-                    "FileName":    r.get("FileName", ""),
-                    "PreviewName": p_name,
-                    "Author":      author,
-                    "Revision":    r.get("Revision", ""),
-                    "Action":      action,
-                    "Present":     present,
-                    "ReadyToApply": "yes" if ready else "no",
-                    "Blockers":    ", ".join(blockers),
-                    "WhereFound":  "AuthorFolder",
-                })
-
-        needs_csv = reports_dir / "needs_action.csv"
-        with needs_csv.open("w", newline="", encoding="utf-8-sig") as f_need:
-            need_fields = [
-                "FileName","PreviewName","Author","Revision","Action","Present",
-                "ReadyToApply","Blockers","WhereFound"
-            ]
-            w_need = csv.DictWriter(f_need, fieldnames=need_fields)
-            w_need.writeheader()
-            w_need.writerows(needs_rows)
-        print(f"[backfill] Needs_Action CSV: {needs_csv} (rows={len(needs_rows)})")
-
-    except Exception as e:
-        print(f"[backfill] failed to produce dry-run ledger/needs_action: {e}")
-
-
-
-
-# Writes Manifest in HTML format GAL 25-09-19
-def write_current_manifest_html(staging_root: Path, out_html: Path, author_by_name: dict[str, str] | None = None):
-    rows = []
-    for p in sorted(staging_root.glob("*.lorprev")):
-        st  = p.stat()
-        idy = parse_preview_identity(p) or PreviewIdentity(None, None, None, None)
-
-        # Local file time EXACTLY as Windows shows it
-        exported_local_str = datetime.fromtimestamp(st.st_mtime).astimezone().strftime("%Y-%m-%d %H:%M:%S")
-
-        pn     = (idy.name or p.stem) or ""
-        author = (author_by_name or {}).get(pn, "")
-
-        # FileName, Author, Revision, Action, Exported (local file time)
-        rows.append((p.name, author, idy.revision_raw or '', '', exported_local_str))
-
-    _emit_manifest_html(
-        rows,
-        out_html,
-        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text"),
-                 ("Exported","text")],  # keep the name simple; it IS local file time now
-        context_path=str(out_html.parent),
-        extra_title="(APPLY RUN)"
+    # Manifest file (staging root)
+    manifest_csv = staging_root / out_name
+    _write_csv_atomic(
+        manifest_csv,
+        ["FileName","PreviewName","Author","Revision","Action","Present"],
+        manifest_rows,
+        attempts=3
     )
+    print(f"[dry-run] wrote preview manifest (no changes made): {manifest_csv}")
+
+    # Ledger mirrors winners (de-duped)
+    ledger_csv = reports_dir / "current_previews_ledger.csv"
+    _write_csv_atomic(
+        ledger_csv,
+        ["FileName","PreviewName","Author","Revision","Action","Present"],
+        manifest_rows,
+        attempts=3
+    )
+    print(f"[backfill] Ledger CSV: {ledger_csv} (rows={len(manifest_rows)})")
+
+    # ------------------------------------------------------------------------------
+    # 2) Needs_Action (built from full compare rows) + Debug
+    # ------------------------------------------------------------------------------
+    # Build base rows from all_rows if available; fallback to manifest_rows
+    if all_rows is None:
+        base_rows = manifest_rows[:]
+    else:
+        base_rows = []
+        for r in all_rows:
+            pn = (r.get("PreviewName") or "").strip()
+            if not pn:
+                continue
+            fname   = f"{pn}.lorprev"
+            present = "Yes" if fname.lower() in staged_existing else "No"
+
+            # Preferred author: explicit map → WinnerFrom → unknown (scan later)
+            author = ""
+            if author_by_name and pn in author_by_name:
+                author = author_by_name[pn]
+            elif r.get("WinnerFrom"):
+                author = _author_from_winnerfrom(r.get("WinnerFrom"))
+
+            base_rows.append({
+                "FileName":    fname,
+                "PreviewName": pn,
+                "Author":      author,
+                "Revision":    r.get("Revision") or "",
+                "Action":      (r.get("Action") or "").strip(),
+                "Present":     present,
+                "Role":        (r.get("Role") or "").strip(),        # WINNER / STAGED / CANDIDATE / REPORT-ONLY
+                "WinnerFrom":  (r.get("WinnerFrom") or "").strip(),
+            })
+
+    IGNORE_ACTIONS = {"", "noop", "no-op", "ok", "current", "same", "skip", "none", "unchanged"}
+
+    # ---------- Pick ONE best candidate per PreviewName ----------
+    # Priority:
+    #   role_score: WINNER(2) > STAGED(1) > others(0, excluded anyway)
+    #   action_score: real change (2) > staged-out-of-date (1) > otherwise (0)
+    #   rev_score: numeric Revision (higher is better)
+    def _role_score(role: str) -> int:
+        r = (role or "").strip().upper()
+        if r == "WINNER": return 2
+        if r == "STAGED": return 1
+        return 0
+
+    def _action_score(norm_action: str, role_u: str) -> int:
+        if norm_action not in IGNORE_ACTIONS:
+            return 2
+        if role_u == "STAGED" and norm_action in {"out-of-date", "update-staging"}:
+            return 1
+        return 0
+
+    best_by_pn: dict[str, dict] = {}     # key = previewname lower -> chosen row
+    debug_rows: list[dict] = []          # write a debug row for every base row
+
+    for r in base_rows:
+        pn          = (r.get("PreviewName") or "").strip()
+        if not pn:
+            continue
+        rev_s       = (r.get("Revision") or "").strip()
+        rev_num     = _revnum(rev_s)
+        raw_action  = (r.get("Action") or "").strip()
+        norm_action = _norm_action(raw_action)
+        role_u      = (r.get("Role") or "").strip().upper()
+        present     = (r.get("Present") or "").strip().lower()
+
+        # STRICT inclusion by role, matching summary
+        if role_u not in {"WINNER", "STAGED"}:
+            include = False
+            include_reason = "excluded by role"
+        else:
+            include = (
+                (norm_action not in IGNORE_ACTIONS) or
+                (role_u == "STAGED" and norm_action in {"out-of-date", "update-staging"}) or
+                (role_u == "WINNER" and present == "no")
+            )
+            if not include:
+                include_reason = "no action and already present"
+            else:
+                if norm_action not in IGNORE_ACTIONS:
+                    include_reason = "non-empty change action"
+                elif role_u == "STAGED":
+                    include_reason = "staged is out-of-date"
+                else:
+                    include_reason = "not present in staging (winner)"
+
+        # Always record debug
+        debug_rows.append({
+            "PreviewName":   pn,
+            "RawAction":     raw_action,
+            "NormAction":    norm_action,
+            "Role":          r.get("Role",""),
+            "Present":       r.get("Present",""),
+            "Author":        r.get("Author",""),
+            "AuthorFile":    "",
+            "StagedFile":    str(staging_root / f"{pn}.lorprev"),
+            "Include":       "yes" if include else "no",
+            "IncludeReason": include_reason,
+            "ReadyToApply":  "no",
+            "Blockers":      "",
+        })
+
+        if not include:
+            continue
+
+        # Choose the single best candidate per PreviewName
+        score = (_role_score(role_u), _action_score(norm_action, role_u), rev_num)
+        key = pn.lower()
+        cur = best_by_pn.get(key)
+        if cur is None or score > cur.get("_score", (-1,-1,-1)):
+            r["_score"] = score
+            best_by_pn[key] = r
+
+    # ---------- Evaluate Ready/Blockers only for the chosen rows (root + PreviewsForProps only) ----------
+    def _find_author_and_file(pn: str, author_hint: str | None) -> tuple[str, Path | None, str]:
+        """
+        Return (author_name, author_file_path_or_None, where_found_tag)
+        Only checks top-level author root and PreviewsForProps subfolder. No recursion.
+        """
+        if not input_root_safe or not input_root_safe.exists():
+            return (author_hint or "", None, "Unknown")
+
+        def _check_paths(a_name: str):
+            a_dir = input_root_safe / a_name
+            if not a_dir.is_dir():
+                return None
+
+            # --- GAL 25-10-18: Only scan author ROOT for now ---
+            # Future enhancement:
+            #   also check a_dir / "PreviewsForProps" when
+            #   Database Previews\PreviewsForProps staging path is implemented.
+            p_root = a_dir / f"{pn}.lorprev"
+            if p_root.exists():
+                return (a_name, p_root, "AuthorRoot")
+
+            # Placeholder for future feature (disabled for now)
+            # p_props = a_dir / "PreviewsForProps" / f"{pn}.lorprev"
+            # if p_props.exists():
+            #     return (a_name, p_props, "PreviewsForProps")
+
+            return None
+
+        # 1) Try hinted author first (from map or WinnerFrom)
+        if author_hint:
+            hit = _check_paths(author_hint)
+            if hit:
+                return hit
+
+        # 2) Scan ONLY top-level author dirs (no deeper)
+        for a_dir in input_root_safe.iterdir():
+            if a_dir.is_dir():
+                hit = _check_paths(a_dir.name)
+                if hit:
+                    return hit
+
+        return (author_hint or "", None, "Unknown")
+
+    needs_rows: list[dict] = []
+
+    for key, r in best_by_pn.items():
+        pn          = r["PreviewName"]
+        present     = (r["Present"] or "").strip().lower()
+        raw_action  = r["Action"]
+
+        # Resolve author hint (explicit map -> WinnerFrom -> None)
+        author_hint = (r.get("Author") or "").strip()
+        if not author_hint:
+            wf = (r.get("WinnerFrom") or "").strip()
+            if wf:
+                author_hint = _author_from_winnerfrom(wf)
+
+        # Find author file in root or PreviewsForProps only
+        author, author_file, where_tag = _find_author_and_file(pn, author_hint)
+        staged_file = staging_root / f"{pn}.lorprev"
+
+        ready    = False
+        blockers = []
+        where    = where_tag if author else "Unknown"
+        
+        # Collect file stats for traceability
+        author_time = _fmt_mtime(author_file)
+        author_size = _filesize(author_file)
+        staged_time = _fmt_mtime(staged_file)
+        staged_size = _filesize(staged_file)
+
+        # Simple “is author newer than staged?” indicator
+        author_newer = ""
+        try:
+            if author_time and staged_time:
+                author_newer = "yes" if os.path.getmtime(author_file) > os.path.getmtime(staged_file) else "no"
+            elif author_time and not staged_time:
+                author_newer = "yes"  # no staged file, treat author as newer
+            else:
+                author_newer = ""
+        except Exception:
+            author_newer = ""
+
+
+        if present == "no":
+            # New: must have author file present
+            if author_file:
+                ready = True
+            else:
+                blockers.append("author file missing (root/PreviewsForProps)")
+        else:
+            # Update: require a real core change
+            try:
+                from lor_core import core_different
+                if author_file and staged_file.exists():
+                    if core_different(author_file, staged_file):
+                        ready = True
+                    else:
+                        blockers.append("no core change")
+                else:
+                    if not author_file:
+                        blockers.append("author file missing (root/PreviewsForProps)")
+                    if not staged_file.exists():
+                        blockers.append("staged file missing")
+            except Exception as e:
+                blockers.append(f"core diff error: {e}")
+
+        if not ready and not blockers:
+            blockers.append("not ready: unmet criteria")
+
+        needs_rows.append({
+            "FileName":     r.get("FileName",""),
+            "PreviewName":  pn,
+            "Author":       author,
+            "Revision":     r.get("Revision",""),
+            "Action":       raw_action,
+            "Present":      present,
+            "ReadyToApply": "yes" if ready else "no",
+            "Blockers":     ", ".join(blockers),
+            "WhereFound":   where,
+            "AuthorFileTime": author_time,
+            "AuthorFileSize": author_size,
+            "StagedFileTime": staged_time,
+            "StagedFileSize": staged_size,
+            "AuthorNewer":    author_newer,
+        })
+
+        # Upgrade the latest included debug row for this PN with final details
+        for d in reversed(debug_rows):
+            if d["PreviewName"] == pn and d["Include"] == "yes":
+                d["Author"]       = author
+                d["AuthorFile"]   = str(author_file) if author_file else ""
+                d["ReadyToApply"] = "yes" if ready else "no"
+                d["Blockers"]     = ", ".join(blockers)
+                d["AuthorFileTime"] = author_time
+                d["AuthorFileSize"] = author_size
+                d["StagedFileTime"] = staged_time
+                d["StagedFileSize"] = staged_size
+                d["AuthorNewer"]    = author_newer
+                break
+
+
+    # Write NeedsAction & Debug (atomic, retry; debug never blocks)
+    needs_csv = reports_dir / "needs_action.csv"
+    _write_csv_atomic(
+        needs_csv,
+        [
+            "FileName","PreviewName","Author","Revision","Action","Present",
+            "ReadyToApply","Blockers","WhereFound",
+            "AuthorFileTime","AuthorFileSize","StagedFileTime","StagedFileSize","AuthorNewer",
+        ],
+        needs_rows,
+        attempts=3
+    )
+    print(f"[backfill] Needs_Action CSV: {needs_csv} (rows={len(needs_rows)})")
+    print(f"[backfill] Needs_Action Columns: ['FileName','PreviewName','Author','Revision','Action','Present','ReadyToApply','Blockers','WhereFound']")
+
+    dbg_csv  = reports_dir / "needs_action_debug.csv"
+    try:
+        _write_csv_atomic(
+            dbg_csv,
+            [
+                "PreviewName","RawAction","NormAction","Role","Present","Author","AuthorFile",
+                "AuthorFileTime","AuthorFileSize","StagedFile","StagedFileTime","StagedFileSize",
+                "AuthorNewer","Include","IncludeReason","ReadyToApply","Blockers",
+            ],
+            debug_rows,
+            attempts=2
+        )
+        print(f"[backfill] Needs_Action DEBUG: {dbg_csv} (rows={len(debug_rows)})")
+    except Exception as e:
+        print(f"[warn] Could not write needs_action_debug.csv: {e}")
+
 
 
 
@@ -3578,9 +3860,15 @@ def main():
 
         # 1) CSV preview manifest (adds Present column)
         #    Only include previews from allowed staging families
-        write_dryrun_manifest_csv(Path(staging_root), allowed_winner_rows, 
-                                out_name="current_previews_manifest_preview.csv", author_by_name=author_by_name)
-        print(f"[dry-run] wrote preview manifest (no changes made).")
+        write_dryrun_manifest_csv(
+            staging_root=Path(staging_root),
+            winner_rows=allowed_winner_rows,           # keep passing winners (for manifest)
+            out_name="current_previews_manifest_preview.csv",
+            author_by_name=author_by_name,
+            input_root=Path(input_root),
+            all_rows=rows,                              # NEW: pass the full compare rows
+        )
+        print("[dry-run] wrote preview manifest (no changes made).")
 
         # 2) HTML preview manifest (build rows locally; don't rely on compare 'rows')
         #    Present = "Yes" if FileName exists in staging right now; "No" otherwise
