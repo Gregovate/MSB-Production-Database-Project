@@ -1344,7 +1344,7 @@ def _filesize(path: Path | None) -> int | str:
 def write_dryrun_manifest_csv(
     staging_root: Path,
     winner_rows: list,
-    out_name: str = "current_previews_manifest_preview.csv",
+    out_name: str = "current_previews_manifest_dry-run.csv",
     author_by_name: dict[str, str] | None = None,
     input_root: Path | None = None,
     all_rows: list | None = None,   # full compare rows (for NeedsAction)
@@ -1729,35 +1729,86 @@ def write_dryrun_manifest_csv(
 
 
 
-def write_dryrun_manifest_html(winner_rows: list, out_html: Path, author_by_name: dict[str, str] | None = None):
-    seen, rows = set(), []
-    def _revnum(v):
-        try: return float(v or '')
-        except Exception: return -1.0
+# GAL 25-10-18: Updated to mirror manifest CSV and include timestamps
+# --- DRY-RUN HTML manifest (adds Present + StagedTime) ---
+def write_dryrun_manifest_html(
+    winner_rows: list,
+    out_html: Path,
+    author_by_name: dict[str, str] | None = None,
+    staging_root: Path | None = None,   # NEW: allows Present + StagedTime
+):
+    """
+    Build a sortable HTML manifest of DRY-RUN winners.
+    Columns: FileName, Author, Revision, Action, Present, StagedTime
+    - Present: "Yes"/"No" if <PreviewName>.lorprev exists in the staging root.
+    - StagedTime: last modified time of the staged file if present (local time).
+    """
+    from datetime import datetime
+    import os
+
+    def _revnum(v: str) -> float:
+        try:
+            return float(v or "")
+        except Exception:
+            return -1.0
+
+    # Determine where to check for staged files; fall back to the HTML folder
+    if staging_root is None:
+        staging_root = out_html.parent
+    else:
+        staging_root = Path(staging_root)
+
+    # Map existing staged .lorprev => Path (root only)
+    staged_map = {p.name.lower(): p for p in staging_root.glob("*.lorprev")}
+
+    seen = set()
+    rows = []
 
     for r in winner_rows:
-        key = r.get('Key')
-        if key in seen: 
+        key = r.get("Key")
+        if key in seen:
             continue
         seen.add(key)
 
-        pn     = (r.get('PreviewName') or '').strip()
-        rev    = r.get('Revision') or ''
-        act    = r.get('Action') or ''
-        author = (r.get('Author') or (author_by_name or {}).get(pn, '') or '')
+        pn     = (r.get("PreviewName") or "").strip()
+        rev    = r.get("Revision") or ""
+        act    = r.get("Action") or ""
+        # prefer explicit Author in row, else map by preview name, else blank
+        author = (r.get("Author") or (author_by_name or {}).get(pn, "") or "")
         fname  = f"{pn}.lorprev" if pn else ""
 
-        # FileName, Author, Revision, Action   (drop PreviewName)
-        rows.append((fname, author, rev, act))
+        present = "No"
+        staged_time = ""
+        if fname:
+            p = staged_map.get(fname.lower())
+            if p and p.exists():
+                present = "Yes"
+                try:
+                    ts = os.path.getmtime(p)
+                    staged_time = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    staged_time = ""
 
-    rows.sort(key=lambda x: ( (x[0] or "").lower(), -_revnum(x[2]) ))
+        # FileName, Author, Revision, Action, Present, StagedTime
+        rows.append((fname, author, rev, act, present, staged_time))
+
+    # sort: PreviewName (A→Z), then Revision (numeric DESC)
+    # (PreviewName is derived from FileName without extension)
+    rows.sort(key=lambda x: ((x[0] or "").lower().removesuffix(".lorprev"), -_revnum(x[2])))
 
     _emit_manifest_html(
         rows,
         out_html,
-        headers=[("FileName","text"),("Author","text"),("Revision","number"),("Action","text")],
+        headers=[
+            ("FileName",   "text"),
+            ("Author",     "text"),
+            ("Revision",   "number"),
+            ("Action",     "text"),
+            ("Present",    "text"),
+            ("StagedTime", "text"),
+        ],
         context_path=str(out_html.parent),
-        extra_title="(DRY RUN)"
+        extra_title="(DRY RUN)",
     )
 
 # GAL 25-10-16: run_meta.json writer (read by merge_reports_to_excel.py Info tab)
@@ -3862,11 +3913,10 @@ def main():
         #    Only include previews from allowed staging families
         write_dryrun_manifest_csv(
             staging_root=Path(staging_root),
-            winner_rows=allowed_winner_rows,           # keep passing winners (for manifest)
-            out_name="current_previews_manifest_preview.csv",
+            winner_rows=allowed_winner_rows,
             author_by_name=author_by_name,
             input_root=Path(input_root),
-            all_rows=rows,                              # NEW: pass the full compare rows
+            all_rows=rows
         )
         print("[dry-run] wrote preview manifest (no changes made).")
 
@@ -3904,8 +3954,14 @@ def main():
         # Build once, earlier in main():
         # author_by_name = {...}  # from current_previews_ledger.csv
 
-        preview_html = Path(staging_root) / "current_previews_manifest_preview.html"
-        write_dryrun_manifest_html(allowed_winner_rows, preview_html, author_by_name=author_by_name)
+        # Write DRY-RUN manifest HTML (staged files only; sortable)
+        preview_html = Path(staging_root) / "current_previews_manifest_dry-run.html"
+        write_dryrun_manifest_html(
+            allowed_winner_rows,
+            preview_html,
+            author_by_name=author_by_name,
+            staging_root=Path(staging_root),   # enables Present + StagedTime
+        )
         print(f"[dry-run] wrote preview manifest (HTML): {preview_html}")
 
         # subprocess.run(
