@@ -1731,17 +1731,17 @@ def write_dryrun_manifest_csv(
 
 # GAL 25-10-18: Updated to mirror manifest CSV and include timestamps
 # --- DRY-RUN HTML manifest (adds Present + StagedTime) ---
+# --- DRY-RUN HTML manifest (de-dupe by PreviewName, keep highest Revision) ---
 def write_dryrun_manifest_html(
     winner_rows: list,
     out_html: Path,
     author_by_name: dict[str, str] | None = None,
-    staging_root: Path | None = None,   # NEW: allows Present + StagedTime
+    staging_root: Path | None = None,   # enables Present + StagedTime
 ):
     """
-    Build a sortable HTML manifest of DRY-RUN winners.
+    Build a sortable HTML manifest of DRY-RUN winners, de-duped by PreviewName.
+    For duplicates, keep the row with the highest numeric Revision.
     Columns: FileName, Author, Revision, Action, Present, StagedTime
-    - Present: "Yes"/"No" if <PreviewName>.lorprev exists in the staging root.
-    - StagedTime: last modified time of the staged file if present (local time).
     """
     from datetime import datetime
     import os
@@ -1752,28 +1752,49 @@ def write_dryrun_manifest_html(
         except Exception:
             return -1.0
 
-    # Determine where to check for staged files; fall back to the HTML folder
-    if staging_root is None:
-        staging_root = out_html.parent
-    else:
-        staging_root = Path(staging_root)
+    def _norm_action(s: str) -> str:
+        return re.sub(r"[\s_/]+", "-", (s or "").strip().lower())
 
-    # Map existing staged .lorprev => Path (root only)
+    # Prefer non-empty actions when revisions tie:
+    #   real change (2) > staged-out-of-date (1) > noop/empty (0)
+    IGNORE_ACTIONS = {"", "noop", "no-op", "ok", "current", "same", "skip", "none", "unchanged"}
+    def _action_score(act_norm: str) -> int:
+        if act_norm not in IGNORE_ACTIONS:
+            return 2
+        if act_norm in {"out-of-date", "update-staging"}:
+            return 1
+        return 0
+
+    # Determine where to check for staged files; fall back to the HTML folder
+    staging_root = Path(staging_root) if staging_root else out_html.parent
     staged_map = {p.name.lower(): p for p in staging_root.glob("*.lorprev")}
 
-    seen = set()
-    rows = []
-
+    # --------- de-dupe by PreviewName (highest Revision, then better action) ---------
+    best_by_pn: dict[str, dict] = {}
     for r in winner_rows:
-        key = r.get("Key")
-        if key in seen:
+        pn = (r.get("PreviewName") or "").strip()
+        if not pn:
             continue
-        seen.add(key)
+        rev = (r.get("Revision") or "").strip()
+        act_raw = (r.get("Action") or "").strip()
+        act_norm = _norm_action(act_raw)
+        score = (_revnum(rev), _action_score(act_norm))  # primary: revision, secondary: action quality
 
+        key = pn.lower()
+        cur = best_by_pn.get(key)
+        if cur is None:
+            best_by_pn[key] = {"row": r, "score": score}
+        else:
+            if score > cur["score"]:
+                best_by_pn[key] = {"row": r, "score": score}
+
+    # --------- build output rows (unique per PreviewName) ---------
+    rows = []
+    for item in best_by_pn.values():
+        r = item["row"]
         pn     = (r.get("PreviewName") or "").strip()
         rev    = r.get("Revision") or ""
-        act    = r.get("Action") or ""
-        # prefer explicit Author in row, else map by preview name, else blank
+        act    = (r.get("Action") or "").strip()
         author = (r.get("Author") or (author_by_name or {}).get(pn, "") or "")
         fname  = f"{pn}.lorprev" if pn else ""
 
@@ -1792,9 +1813,8 @@ def write_dryrun_manifest_html(
         # FileName, Author, Revision, Action, Present, StagedTime
         rows.append((fname, author, rev, act, present, staged_time))
 
-    # sort: PreviewName (A→Z), then Revision (numeric DESC)
-    # (PreviewName is derived from FileName without extension)
-    rows.sort(key=lambda x: ((x[0] or "").lower().removesuffix(".lorprev"), -_revnum(x[2])))
+    # Sort by FileName asc, Revision desc (same as CSV manifest intent)
+    rows.sort(key=lambda x: ((x[0] or "").lower(), -_revnum(x[2])))
 
     _emit_manifest_html(
         rows,
@@ -1810,6 +1830,7 @@ def write_dryrun_manifest_html(
         context_path=str(out_html.parent),
         extra_title="(DRY RUN)",
     )
+
 
 # GAL 25-10-16: run_meta.json writer (read by merge_reports_to_excel.py Info tab)
 def write_run_meta_json(reports_dir: Path, staging_root: Path, run_mode: str, totals: dict):
