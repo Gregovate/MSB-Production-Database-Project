@@ -1644,12 +1644,24 @@ def write_dryrun_manifest_csv(
             else:
                 blockers.append("author file missing (root/PreviewsForProps)")
         else:
-            # Update: require a real core change
+            # Update: require a real core change, AND author file must be newer than staged
             try:
                 from lor_core import core_different
                 if author_file and staged_file.exists():
+                    # First: verify core change
                     if core_different(author_file, staged_file):
-                        ready = True
+                        # Second: enforce recency (author must be strictly newer)
+                        try:
+                            t_author = os.path.getmtime(author_file)
+                            t_staged = os.path.getmtime(staged_file)
+                            if t_author > t_staged:
+                                ready = True
+                            else:
+                                # If core change but author's file isn't newer, block it
+                                blockers.append("author older than staged")
+                        except Exception:
+                            # If we can't read times, be safe and block
+                            blockers.append("timestamp check failed")
                     else:
                         blockers.append("no core change")
                 else:
@@ -1659,6 +1671,7 @@ def write_dryrun_manifest_csv(
                         blockers.append("staged file missing")
             except Exception as e:
                 blockers.append(f"core diff error: {e}")
+
 
         if not ready and not blockers:
             blockers.append("not ready: unmet criteria")
@@ -1709,6 +1722,12 @@ def write_dryrun_manifest_csv(
     )
     print(f"[backfill] Needs_Action CSV: {needs_csv} (rows={len(needs_rows)})")
     print(f"[backfill] Needs_Action Columns: ['FileName','PreviewName','Author','Revision','Action','Present','ReadyToApply','Blockers','WhereFound']")
+    # Final console summary that matches needs_action.csv exactly
+    print(f"[summary] needs action (final): {len(needs_rows)} previews selected for Needs_Action")
+    for r in needs_rows:
+        print(f"  - {r.get('PreviewName','')} (rev {r.get('Revision','')}) | Ready={r.get('ReadyToApply','')} | Blocks={r.get('Blockers','')}")
+
+
 
     dbg_csv  = reports_dir / "needs_action_debug.csv"
     try:
