@@ -61,6 +61,7 @@ FILES = [
     ("apply_events.csv", "Apply_Events"),
     ("current_previews_ledger.csv", "Current_Previews_Ledger"),
     ("revision_mismatches.csv", "Revision_Mismatches"),
+    ("needs_action.csv", "NeedsAction"),   # <<< NEW: prefer the CSV we generate in dry-run
 ]
 
 STAMP = datetime.now().strftime("%Y%m%d-%H%M")
@@ -697,15 +698,42 @@ def main():
         return
 
     # -----------------------------------------------------------------------
-    # GAL 25-10-15: Build NeedsAction sheet and annotate the ledger
+    # GAL 25-10-18: Prefer CSV NeedsAction (authoritative). If missing, fall back.
     # -----------------------------------------------------------------------
-    needs = build_needs_action_df(tables)
+    def _ensure_actionneeded(df: pd.DataFrame) -> pd.DataFrame:
+        if df is None or df.empty:
+            return df
+        if "ActionNeeded" not in df.columns:
+            # Synthesize from ReadyToApply / Blockers for Overview coloring
+            def _mk(row):
+                ready = str(row.get("ReadyToApply","")).strip().lower()
+                blocks = str(row.get("Blockers","")).strip().lower()
+                if ready == "yes":
+                    return "ready to apply"
+                if blocks:
+                    return "blocked"
+                return "needs action"
+            df = df.copy()
+            df["ActionNeeded"] = df.apply(_mk, axis=1)
+        return df
+
+    needs = None
+    if "NeedsAction" in tables and not tables["NeedsAction"].empty:
+        needs = _ensure_actionneeded(tables["NeedsAction"])
+    else:
+        # Very old behavior (heuristic) as fallback only
+        needs = build_needs_action_df(tables)
+        needs = _ensure_actionneeded(needs)
+        if needs is not None and not needs.empty:
+            tables["NeedsAction"] = needs
+
     if needs is not None and not needs.empty:
         tables["NeedsAction"] = needs
         annotate_ledger_with_needs_action(tables, needs)
-        print(f"[info][GAL 25-10-15] NeedsAction rows: {len(needs)}")
+        print(f"[info][GAL 25-10-18] NeedsAction rows: {len(needs)} (from needs_action.csv)")
     else:
-        print("[info][GAL 25-10-15] No NeedsAction rows found")
+        print("[info][GAL 25-10-18] No NeedsAction rows found")
+
 
 
     with pd.ExcelWriter(OUT_XLSX_STAMPED, engine="openpyxl") as writer:
@@ -730,6 +758,11 @@ def main():
         
             if sheet_name == "Revision_Mismatches":
                 _number_format_int(ws, ["UsedRevision", "DiskLatestRevision"])
+
+            # NeedsAction sheet: datetime + size formatting
+            if sheet_name == "NeedsAction":
+                _number_format_datetime(ws, ["AuthorFileTime", "StagedFileTime"])
+                _number_format_int(ws, ["AuthorFileSize", "StagedFileSize"])
 
         # Make Overview the active sheet when the workbook opens
         if "Overview" in wb.sheetnames:
