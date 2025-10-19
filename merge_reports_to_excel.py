@@ -621,70 +621,53 @@ def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
 
 
-def write_info_tab(writer):
-    """GAL 25-10-18 — Expanded Info tab:
-    - adds RunMode (dry-run/apply)
-    - adds Actor (from run_meta.json or current user@machine)
-    - merges short summary from compare.csv
+from datetime import datetime
+from pathlib import Path
+import pandas as pd
+
+def write_info_tab(
+    writer,
+    tables=None,                 # dict of DataFrames, optional
+    root=None,                   # path to CSV directory (e.g., --root), optional
+    compare_summary=None,        # dict with summary counts, optional
+    run_mode=None,               # "dry-run" / "--apply", optional
+    actor=None                   # machine/user label, optional
+):
     """
-    import datetime as _dt
-    import getpass, platform, json
-    import pandas as pd
-    from pathlib import Path
-
-    # Determine reports_root relative to this script
-    reports_root = Path(__file__).resolve().parent
-
-    # Load metadata (if present)
-    run_meta = {}
-    meta_path = reports_root / "run_meta.json"
-    if meta_path.exists():
-        try:
-            run_meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-
-    # Determine run mode and actor
-    run_mode = "apply" if run_meta.get("apply") else "dry-run"
-    actor = (
-        run_meta.get("actor")
-        or f"{getpass.getuser()}@{platform.node()}"
-    )
-
-    # Optional summary from compare.csv (two leading columns)
-    compare_csv = reports_root / "compare.csv"
-    compare_summary = {}
-    if compare_csv.exists():
-        try:
-            cmp = pd.read_csv(compare_csv, dtype=str, keep_default_na=False, encoding="utf-8-sig")
-            if not cmp.empty:
-                num_cols = [c for c in cmp.columns if pd.to_numeric(cmp[c], errors="coerce").notna().any()]
-                chosen = num_cols[:2] if len(num_cols) >= 2 else cmp.columns[:2]
-                for c in chosen:
-                    try:
-                        compare_summary[c] = pd.to_numeric(cmp[c], errors="coerce").sum()
-                    except Exception:
-                        compare_summary[c] = cmp[c].iloc[0]
-        except Exception:
-            pass
-
-    # Compose dataframe
-    # GAL 25-10-18: Include final NeedsAction count from CSV-driven table
-    needs_df = tables.get("NeedsAction", None)
-    final_needs_count = len(needs_df) if isinstance(needs_df, pd.DataFrame) else 0
-
+    Writes a small 'Info' sheet. Safe if `tables` isn't provided.
+    Falls back to reading needs_action.csv from `root` if available,
+    but only for summary (no hard dependency).
+    """
+    # Compose Info row
     info_data = [{
-        "Generated": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "RunMode":   run_mode,
-        "Actor":     actor,
-        "NeedsAction Rows (final)": final_needs_count,   # NEW
+        "Generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }]
+    if run_mode:
+        info_data[0]["RunMode"] = run_mode
+    if actor:
+        info_data[0]["Actor"] = actor
     if compare_summary:
+        # merge any pre-computed summary counts (if caller has them)
         info_data[0].update(compare_summary)
+
+    # Optional: count NeedsAction rows without requiring `tables`
+    try:
+        needs_df = None
+        if isinstance(tables, dict) and "NeedsAction" in tables:
+            needs_df = tables["NeedsAction"]
+        elif root:
+            p = Path(root) / "needs_action.csv"
+            if p.exists():
+                needs_df = pd.read_csv(p)
+        if needs_df is not None:
+            info_data[0]["NeedsActionRows"] = int(len(needs_df))
+    except Exception as e:
+        # Don’t fail report generation over a count; just log
+        print(f"[WARN] Info tab: could not read NeedsAction: {e}")
 
     info = pd.DataFrame(info_data)
     info.to_excel(writer, index=False, sheet_name="Info")
-    print(f"[GAL 25-10-18] Info tab written with RunMode, Compare summary, and NeedsAction={final_needs_count}")
+    print("[GAL 25-10-18] Info tab written with RunMode and Compare summary")
 
 
 
@@ -746,7 +729,15 @@ def main():
         # ---- Write Overview + Info FIRST so they appear at the front ----
         overview = build_overview(tables)
         overview.to_excel(writer, index=False, sheet_name="Overview")
-        write_info_tab(writer)
+        write_info_tab(
+            writer,
+            tables=tables,                 # your dict of DataFrames used for other sheets
+            root=args.root,                # the --root path you already parse
+            compare_summary=compare_summary if 'compare_summary' in locals() else None,
+            run_mode=run_mode if 'run_mode' in locals() else None,
+            actor=actor if 'actor' in locals() else None
+)
+
 
         # ---- Now write the normal report tabs ----
         for sheet_name, df in tables.items():
