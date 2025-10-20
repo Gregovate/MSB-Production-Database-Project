@@ -2176,85 +2176,6 @@ def write_dryrun_manifest_csv(
 
             if not ready and not blockers:
                 blockers.append("not ready: unmet criteria")
-        # ---------- GAL 25-10-20: APPLY hook — stage when the same 'ready' gate is true ----------
-        if args.apply and ready:
-            try:
-                # Resolve preview name safely for logs
-                _pn = pn if 'pn' in locals() else (r.get("PreviewName") if 'r' in locals() else "<unknown>")
-                _auth = author if author else (r.get("Author") if 'r' in locals() else "")
-
-                # Source (newest author export) and destination (staging) must exist
-                _src = author_file
-                _dst = staged_file
-
-                if not _src or not _src.exists():
-                    raise RuntimeError("author_file missing or does not exist")
-
-                # Ensure destination folder exists
-                _dst.parent.mkdir(parents=True, exist_ok=True)
-
-                # Copy atomically: temp file → replace
-                import tempfile, shutil, os
-                with tempfile.NamedTemporaryFile(dir=_dst.parent, delete=False) as _tmp:
-                    _tmp_path = Path(_tmp.name)
-                try:
-                    shutil.copy2(_src, _tmp_path)
-                    try:
-                        os.replace(_tmp_path, _dst)
-                    except Exception:
-                        if _dst.exists():
-                            _dst.unlink()
-                        _tmp_path.rename(_dst)
-                    print(f"[apply] Staged PREVIEW='{_pn}' from AUTHOR='{_auth}' ({where_tag}) → {_dst}")
-                except Exception as _e:
-                    try:
-                        if _tmp_path and _tmp_path.exists():
-                            _tmp_path.unlink(missing_ok=True)
-                    except Exception:
-                        pass
-                    raise
-
-                # Record a proper apply event (for apply_events.csv / applied_this_run.csv)
-                try:
-                    from uuid import uuid4
-                    _rev   = (r.get("Revision") if 'r' in locals() and isinstance(r, dict) else "")
-                    _size  = _dst.stat().st_size if _dst.exists() else ""
-                    _exported = author_time if 'author_time' in locals() and author_time else ""
-                    _applied_by = (os.environ.get("USERNAME") or os.environ.get("USER") or socket.gethostname())
-                    _apply_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                    _event = {
-                        "Key":         f"GUID:{uuid4()}",
-                        "PreviewName": _pn,
-                        "Author":      _auth,
-                        "Revision":    _rev,
-                        "Size":        _size,
-                        "Exported":    _exported,
-                        "ApplyDate":   _apply_date,
-                        "AppliedBy":   _applied_by,
-                    }
-
-                    # Append to in-memory buffers used later by the ledger writers
-                    try:
-                        apply_events_rows.append(_event)
-                    except NameError:
-                        apply_events_rows = [_event]
-                    except Exception:
-                        apply_events_rows = [_event]
-
-                    try:
-                        applied_this_run_rows.append(_event)
-                    except NameError:
-                        applied_this_run_rows = [_event]
-                    except Exception:
-                        applied_this_run_rows = [_event]
-
-                except Exception as _ee:
-                    print(f"[apply][WARN] Failed to record apply event for '{_pn}': {_ee}")
-
-            except Exception as _E:
-                print(f"[apply][ERROR] Staging failed for '{_pn}': {_E}")
-        # ------------------------------------------------------------------------------------------
 
 
         needs_rows.append({
@@ -4003,7 +3924,7 @@ def main():
                                            else ("no" if staged_exists else "unknown")
                         except Exception:
                             author_newer = "unknown"
-
+                            
                         if 'DEBUG_APPLY' in globals() and DEBUG_APPLY:
                             print(f"[apply][check] PREVIEW='{pn_str}' author_exists={author_exists} "
                                   f"staged_exists={staged_exists} author_newer={author_newer} "
