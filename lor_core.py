@@ -3,7 +3,6 @@
 # - Adds deterministic signatures and resilient row keys
 # - Documents LOR→DB field mapping (incl. Comment → DisplayName)
 # - Centralizes Display Name (Comment) validation
-
 """
 Core Model v1.0 — DB-facing field dictionary shared by preview_merger.py and parse_props_v6.py
 
@@ -26,11 +25,18 @@ Comment / Display Name hygiene used across Author + Staging scans:
 (Extend here with any show-specific rules; "SPARE" exceptions, suffix patterns, etc.)
 """
 
+# >>> this must appear immediately after the docstring <<<
 from __future__ import annotations
+# <<< end strict placement >>>
+
+# GAL 25-10-20: human-readable version string for merger logging
+CORE_MODEL_VERSION = "1.1 — LBLTXT enabled (Name+Comment included in core)"
+
 from hashlib import sha256
 import json
 from typing import Dict, Tuple, Iterable, Optional
 from pathlib import Path
+
 
 # -----------------------------
 # Canonical field sets (DB-facing)
@@ -380,4 +386,26 @@ def core_items_from_lorprev(path: _LCPath) -> tuple[set[tuple], dict]:
         for i in range(1, n + 1):
             items.add(("LBLMISS", dev, kind, i))
 
+    # --- GAL 2025-10-20: include non-blank label text for LOR/DMX so renames/additions stage ---
+    # We emit compact tokens for the actual text to avoid huge strings in the core set.
+    # Any change in Comment/Name text for LOR/DMX will now alter the core and trigger staging.
+    from hashlib import sha1 as _sha1
+    def _tok(s: str) -> str:
+        return _sha1(s.encode("utf-8")).hexdigest()[:16]  # short, deterministic
+
+    label_tokens = set()
+    for node in root.findall(".//PropClass"):
+        dev = _lc_norm(node.get("DeviceType")).upper() or "NONE"
+        if dev not in {"LOR", "DMX"}:
+            continue  # NONE already keyed by (comment,name); others handled above
+        display = _lc_norm(node.get("Comment")).lower()
+        channel = _lc_norm(node.get("Name")).lower()
+        if display:  # only non-blank changes matter here
+            label_tokens.add(("LBLTXT", dev, "COMMENT", _tok(display)))
+        if channel:
+            label_tokens.add(("LBLTXT", dev, "NAME", _tok(channel)))
+    items |= label_tokens
+    # --- end GAL 2025-10-20 ---
+
     return items, stats
+
