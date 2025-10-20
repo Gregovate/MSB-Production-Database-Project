@@ -77,6 +77,10 @@ import datetime as dt
 #DEBUG_CORE = True  # set False once you’re happy
 DEBUG_CORE = False
 DEBUG_APPLY = True  # set False once you’re happy
+# GAL 25-10-20 — knobs you can flip
+REQUIRE_CORE_DIFF = True       # if False, stage based only on the Action
+REQUIRE_AUTHOR_NEWER = True    # if False, ignore mtime and allow equal/older timestamps
+
 # DEBUG_APPLY = FALSE  
 
 # GAL 25-10-20: Force sibling lor_core import and log the actual path/version
@@ -4056,11 +4060,30 @@ def main():
                         should_stage = True
                         stage_reason = (stage_reason + '; ' if stage_reason else '') + f"apply: core changed ({', '.join(core_changed)})  # GAL 25-10-18"
 
-                    # === GAL 2025-10-19 11:00 === decision logger
+                    # === GAL 2025-10-20 === decision logger
                     # Safe locals for logging/ledger (Candidate/Winner doesn’t expose preview_name/author/revision at top level)
                     name       = winner.identity.name
+
+                    # Primary: use winner.user if present
                     author_s   = (winner.user or "")
+
+                    # Fallback: infer author from the source path:
+                    # .../<UserPreviewStaging>/<author>/PreviewsForProps/<PreviewName>.lorprev
+                    if not author_s:
+                        try:
+                            parts = Path(winner.path).parts
+                            # Prefer dynamic root if available; else default to the conventional folder name
+                            in_root_name = Path(input_root).name if 'input_root' in globals() else 'UserPreviewStaging'
+                            if in_root_name in parts:
+                                idx = parts.index(in_root_name)
+                                if idx + 1 < len(parts):
+                                    author_s = parts[idx + 1]
+                        except Exception:
+                            # keep author_s as "" if anything goes sideways
+                            pass
+
                     revision_s = (winner.identity.revision_raw or str(winner.identity.revision_num) or "")
+
 
                     reason_bits = ["core=DIFF" if not core_same else "core=SAME"]
                     try:
@@ -4742,24 +4765,154 @@ def main():
         except Exception as e:
             print(f"[ledger/backfill] failed: {e}")
 
-        # 2) Emit the per-run ledger (CSV/HTML). Use in-memory rows if available; else re-read the CSV.
-        try:
-            try:
-                _ = rows
-                compare_rows = rows
-                print(f"[ledger] using in-memory rows ({len(compare_rows)})")
-            except NameError:
-                from csv import DictReader
-                with open(report_csv, 'r', encoding='utf-8-sig', newline='') as f:
-                    compare_rows = list(DictReader(f))
-                print(f"[ledger] re-read rows from {report_csv} ({len(compare_rows)})")
+        # 2) APPLY winners (lor_core-driven) before emitting ledgers
+        # ------------------------------------------------------------------
+        # Helpers local to the apply path so dry-run stays untouched
+        #from pathlib import Path
+        #import csv, os, socket, datetime as _dt
 
-            ledger_csv, ledger_html, run_ledger = emit_run_ledger(report_csv, compare_rows, applied_this_run)
-            print(f"[ledger] CSV : {ledger_csv}")
-            print(f"[ledger] HTML: {ledger_html}")
-            print(f"[ledger] Run events appended to: {run_ledger}")
-        except Exception as e:
-            print(f"[ledger] failed: {e}")
+        def _core_changed_via_lc(author_file: Path, staged_file: Path | None) -> bool:
+            """Use lor_core.core_items_from_lorprev only; be conservative on errors/new files."""
+            try:
+                import lor_core as LC
+            except Exception:
+                return True
+            if not staged_file or not staged_file.exists():
+                return True
+            try:
+                a_items, _ = LC.core_items_from_lorprev(author_file)
+                s_items, _ = LC.core_items_from_lorprev(staged_file)
+                return a_items != s_items
+            except Exception:
+                return True
+
+        def _author_path_for(input_root: Path, pn: str, author_hint: str | None) -> Path | None:
+            """Find {UserPreviewStaging}/<author>/PreviewsForProps/<PreviewName>.lorprev,
+               or fall back to the first rglob match."""
+            if not pn:
+                return None
+            if author_hint:
+                p = Path(input_root) / author_hint / "PreviewsForProps" / f"{pn}.lorprev"
+                if p.exists():
+                    return p
+            for p in sorted(Path(input_root).rglob(f"{pn}.lorprev")):
+                if p.name.lower() == f"{pn.lower()}.lorprev":
+                    return p
+            return None
+
+        applied_this_run: list[dict] = []
+
+        # Only winners that actually require staging work
+        to_apply = [
+            r for r in allowed_winner_rows
+            if (r.get("Action") or "").strip().lower() in ("stage-new", "update-staging")
+        ]
+
+        if to_apply:
+            now_iso    = dt.datetime.now().astimezone().isoformat(timespec="seconds")
+            applied_by = (os.environ.get("USERNAME") or os.environ.get("USER") or socket.gethostname())
+            staged_root_path = Path(staging_root)
+            try:
+                staged_root_path.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
+
+            for r in to_apply:
+                pn    = (r.get("PreviewName") or "").strip()
+                auth  = (r.get("Author") or "").strip()
+                src   = _author_path_for(Path(input_root), pn, auth)
+                dst   = staged_root_path / f"{pn}.lorprev"
+
+                if not src or not Path(src).exists():
+                    # capture for NeedsAction/debug if available
+                    try:
+                        excluded_detailed.append({
+                            "PreviewName": pn, "Key": r.get("Key",""), "GUID": r.get("GUID",""),
+                            "Revision": r.get("Revision",""), "Action": r.get("Action",""),
+                            "User": auth, "Reason": "author file missing",
+                            "Path": r.get("Path",""), "StagedPath": str(dst),
+                        })
+                    except Exception:
+                        pass
+                    if DEBUG_APPLY:
+                        print(f"[apply][SKIP] Missing author file for '{pn}' (author='{auth}')")
+                    continue
+
+                # Single source of truth for change: lor_core
+                changed = _core_changed_via_lc(Path(src), Path(dst) if dst.exists() else None)
+
+                # If replacing, require the author export to be newer than staged
+                author_newer = True
+                if dst.exists():
+                    try:
+                        author_newer = os.path.getmtime(src) > os.path.getmtime(dst)
+                    except Exception:
+                        author_newer = True
+
+                if not (changed and author_newer):
+                    reason = []
+                    if not changed: reason.append("core-identical")
+                    if not author_newer: reason.append("author older/equal to staged")
+                    try:
+                        excluded_detailed.append({
+                            "PreviewName": pn, "Key": r.get("Key",""), "GUID": r.get("GUID",""),
+                            "Revision": r.get("Revision",""), "Action": r.get("Action",""),
+                            "User": auth, "Reason": "; ".join(reason) or "not ready",
+                            "Path": str(src), "StagedPath": str(dst),
+                        })
+                    except Exception:
+                        pass
+                    if DEBUG_APPLY:
+                        print(f"[apply][SKIP] '{pn}' → {', '.join(reason) or 'not ready'}")
+                    continue
+
+                # Archive existing staged file using your helper (respects apply_mode)
+                if dst.exists():
+                    try:
+                        archive_existing_staged_file(
+                            staged_path=dst,
+                            archive_root=Path(archive_root) if archive_root else (staged_root_path / "archive"),
+                            apply_mode=True
+                        )
+                    except Exception as e:
+                        print(f"[apply][WARN] archive_existing_staged_file failed for {dst}: {e}")
+
+                # Copy using your canonical helper to keep backup/semantics policy intact
+                stage_copy(
+                    src=Path(src),
+                    dst=dst,
+                    apply_mode=True,
+                    make_backup=True,
+                    semantic_different=True  # lor_core already confirmed a meaningful change
+                )
+
+                applied_this_run.append({
+                    "Key":         r.get("Key",""),
+                    "PreviewName": pn,
+                    "Author":      auth,
+                    "Revision":    r.get("Revision",""),
+                    "Size":        (dst.stat().st_size if dst.exists() else ""),
+                    "Exported":    r.get("Exported",""),
+                    "ApplyDate":   now_iso,
+                    "AppliedBy":   applied_by,
+                })
+
+            # Persist once; downstream ledger expects this filename
+            try:
+                _applied_csv = Path(report_csv).parent / "applied_this_run.csv"
+                with _applied_csv.open("w", encoding="utf-8-sig", newline="") as f:
+                    cols = ["Key","PreviewName","Author","Revision","Size","Exported","ApplyDate","AppliedBy"]
+                    w = csv.DictWriter(f, fieldnames=cols)
+                    w.writeheader()
+                    for row in applied_this_run:
+                        w.writerow({c: row.get(c, "") for c in cols})
+                print(f"[apply] wrote {len(applied_this_run)} row(s) → {_applied_csv}")
+            except Exception as e:
+                print(f"[apply][WARN] Could not write applied_this_run.csv: {e}")
+        else:
+            print("[apply] No winners require staging; nothing to apply.")
+        # ------------------------------------------------------------------
+
 
         # 3) Export only what changed in this run (optional)
         if applied_this_run:
