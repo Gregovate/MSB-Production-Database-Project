@@ -6,7 +6,10 @@
 	],
 	"settings": {
 		"cSpell.words": [
-			"lorprev"
+			"dedupe",
+			"dryrun",
+			"lorprev",
+			"winnerfrom"
 		]
 	}
 }
