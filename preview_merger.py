@@ -71,11 +71,30 @@ import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
 import tempfile # Required for _write_atomic
 import datetime as dt
-# GAL 25-10-19: unify core comparison with lor_core
+
+# GAL 25-10-20: toggleable debug flag (set False to silence core compare logs)
+# Pick one or the other here:
+#DEBUG_CORE = True  # set False once you’re happy
+DEBUG_CORE = False
+DEBUG_APPLY = True  # set False once you’re happy
+# DEBUG_APPLY = FALSE  
+
+# GAL 25-10-20: Force sibling lor_core import and log the actual path/version
+from pathlib import Path as _GALPath
+import sys as _GALsys, importlib as _GALimp
+
+_GAL_HERE = _GALPath(__file__).resolve().parent
+if str(_GAL_HERE) not in _GALsys.path:
+    _GALsys.path.insert(0, str(_GAL_HERE))  # GAL 25-10-20: ensure sibling wins on sys.path
+
 try:
-    import lor_core as LC
-except Exception:
+    LC = _GALimp.import_module("lor_core")
+    _ver = getattr(LC, "CORE_MODEL_VERSION", "unknown")
+    _src = getattr(LC, "__file__", "?")
+    print(f"[core] Using lor_core={_ver} at { _src }")
+except Exception as e:
     LC = None
+    print(f"[core] WARNING: lor_core import failed: {e}")
 
 
 # GAL 25-10-16: Core Model v1.0 alignment (shared helpers; no behavior change yet)
@@ -1065,10 +1084,12 @@ def _sig(rows: list[tuple]) -> tuple[str, int]:
         h.update(str(r).encode("utf-8"))
     return (h.hexdigest()[:16], len(rows))
 
+
+
 def diff_core_fields(src: Path, dst: Path) -> tuple[bool, list[str]]:
     """
     Compare two previews at DB-meaningful granularity using lor_core.core_items_from_lorprev():
-      - DeviceType None → (DisplayName=Comment, ChannelName=Name)
+      - DeviceType None → (DisplayName=Comment, ChannelName=Name) via LBLTXT tuples
       - LOR legs        → (LOR, Network, UID, Start, End, Color)
       - DMX legs        → (DMX, Network, Universe, Start, End)
     Returns (same, changed_fields[])
@@ -1081,17 +1102,39 @@ def diff_core_fields(src: Path, dst: Path) -> tuple[bool, list[str]]:
 
     # Fallback: in case lor_core couldn’t import for some reason
     if LC is None or not hasattr(LC, "core_items_from_lorprev"):
-        # Last-resort: try the local XML path we added earlier
         try:
             from xml.etree import ElementTree as ET  # noqa
         except Exception:
             return False, ["NoCoreExtractor"]
-
-        # Reuse the same semantics by delegating to lor_core if available
         raise RuntimeError("lor_core.core_items_from_lorprev not available; please add it per instructions.")
 
-    a_items, a_stats = LC.core_items_from_lorprev(Path(src))
-    b_items, b_stats = LC.core_items_from_lorprev(Path(dst))
+    # GAL 25-10-20: show which lor_core is active during this compare
+    if DEBUG_CORE:
+        try:
+            _core_ver = getattr(LC, "CORE_MODEL_VERSION", "unknown")
+            _core_src = getattr(LC, "__file__", "?")
+            print(f"[core] compare using lor_core={_core_ver}  source={_core_src}")
+        except Exception:
+            pass
+
+    # GAL 25-10-20: already Path objects, no need to rewrap
+    a_items, a_stats = LC.core_items_from_lorprev(src)
+    b_items, b_stats = LC.core_items_from_lorprev(dst)
+
+    # GAL 25-10-20: compute signatures first so we can always log them
+    a_sig = _sig(a_items)
+    b_sig = _sig(b_items)
+
+    # GAL 25-10-20: compact debug — sizes + sigs + first few tuples to catch label-only diffs
+    if DEBUG_CORE:
+        try:
+            _a_head = tuple(sorted(a_items))[:6]
+            _b_head = tuple(sorted(b_items))[:6]
+            print(f"[core] A(src) size={len(a_items)} sig={a_sig}  |  B(dst) size={len(b_items)} sig={b_sig}")
+            print(f"[core] A(src) head6={_a_head}")
+            print(f"[core] B(dst) head6={_b_head}")
+        except Exception:
+            pass
 
     same = (a_items == b_items)
     if same:
@@ -1100,12 +1143,10 @@ def diff_core_fields(src: Path, dst: Path) -> tuple[bool, list[str]]:
     changes: list[str] = []
     if a_stats.get("props_total") != b_stats.get("props_total"):
         changes.append(f"PropCount:{b_stats.get('props_total')}→{a_stats.get('props_total')}")
-    a_sig = _sig(a_items)
-    b_sig = _sig(b_items)
     if a_sig != b_sig:
         changes.append(f"CoreSetSig:{b_sig}→{a_sig}")
-    return False, changes
 
+    return False, changes
 
 
 
@@ -1957,37 +1998,60 @@ def write_dryrun_manifest_csv(
             r["_score"] = score
             best_by_pn[key] = r
 
-    # ---------- UPDATED GAL 25-10-19    ----------
-    # ---------- Evaluate Ready/Blockers only for the chosen rows (root + PreviewsForProps only) ----------
+    # ---------- UPDATED GAL 25-10-20 ----------
+    # Choose newest AuthorRoot export for this preview (latest-export wins).
+    # We ignore PreviewsForProps on purpose (future enhancement).
     def _find_author_and_file(pn: str, author_hint: str | None) -> tuple[str, Path | None, str]:
         """
         Return (author_name, author_file_path_or_None, where_found_tag)
-        Only checks top-level author root. (PreviewsForProps can be enabled later.)
+
+        Policy (GAL 25-10-20):
+        - Scan *all* AuthorRoot user folders for <pn>.lorprev
+        - Pick the newest by modification time (mtime)
+        - Tag as "AuthorRoot(latest)"
+        - If none exist, return (author_hint or "", None, "Unknown")
+
+        Rationale:
+        - Exports are deliberate actions by users; newest export is presumed intent.
+        - Ensures dry-run compares Staging vs most recent user work, regardless of "owner".
         """
         if not input_root_safe or not input_root_safe.exists():
             return (author_hint or "", None, "Unknown")
 
-        def _check_paths(a_name: str):
-            a_dir = input_root_safe / a_name
-            if not a_dir.is_dir():
-                return None
-            p_root = a_dir / f"{pn}.lorprev"
-            if p_root.exists():
-                return (a_name, p_root, "AuthorRoot")
-            return None
+        newest_author: str | None = None
+        newest_path:   Path | None = None
+        newest_mtime:  float | None = None
 
-        if author_hint:
-            hit = _check_paths(author_hint)
-            if hit:
-                return hit
+        try:
+            for a_dir in input_root_safe.iterdir():
+                if not a_dir.is_dir():
+                    continue
+                p_root = a_dir / f"{pn}.lorprev"
+                if p_root.exists():
+                    try:
+                        m = os.path.getmtime(p_root)
+                    except Exception:
+                        # If we cannot stat, skip
+                        continue
+                    if newest_mtime is None or m > newest_mtime:
+                        newest_author = a_dir.name
+                        newest_path   = p_root
+                        newest_mtime  = m
+        except Exception:
+            # Fall through to Unknown
+            pass
 
-        for a_dir in input_root_safe.iterdir():
-            if a_dir.is_dir():
-                hit = _check_paths(a_dir.name)
-                if hit:
-                    return hit
+        if newest_path is not None:
+            if DEBUG_CORE:
+                try:
+                    print(f"[core] PREVIEW={pn}  AUTHOR(selected)={newest_author}  src={newest_path}  where=AuthorRoot(latest)")
+                except Exception:
+                    pass
+            return (newest_author or "", newest_path, "AuthorRoot(latest)")
 
+        # No matching author export found
         return (author_hint or "", None, "Unknown")
+
 
     needs_rows: list[dict] = []
 
@@ -2044,6 +2108,27 @@ def write_dryrun_manifest_csv(
             core_different    = None
             core_diff_flag    = ""
             core_changed_list = []
+        # GAL 25-10-20: annotate where/how the author file was chosen, and compute AuthorNewer
+        # GAL 25-10-20: annotate where/how the author file was chosen, and compute AuthorNewer
+        row_where_found = where_tag  # e.g., "AuthorRoot(latest)"
+
+        try:
+            staged_mtime = staged_file.stat().st_mtime if staged_file and staged_file.exists() else 0
+            author_mtime = author_file.stat().st_mtime if author_file and author_file.exists() else 0
+            row_author_newer = "yes" if author_mtime > staged_mtime else ("no" if staged_mtime else "unknown")
+        except Exception:
+            row_author_newer = "unknown"
+
+        # Ensure this recomputed flag drives both blockers/ready and the row
+        author_newer = row_author_newer  # GAL 25-10-20
+
+        if DEBUG_CORE:
+            try:
+                print(f"[core] META PREVIEW={pn}  AUTHOR={author}  where={row_where_found}  author_newer={row_author_newer}")
+            except Exception:
+                pass
+
+
         # Extra debug: per-side counts & signatures (using same snapshotter)
         try:
             from pathlib import Path as _P
@@ -2091,6 +2176,85 @@ def write_dryrun_manifest_csv(
 
             if not ready and not blockers:
                 blockers.append("not ready: unmet criteria")
+        # ---------- GAL 25-10-20: APPLY hook — stage when the same 'ready' gate is true ----------
+        if args.apply and ready:
+            try:
+                # Resolve preview name safely for logs
+                _pn = pn if 'pn' in locals() else (r.get("PreviewName") if 'r' in locals() else "<unknown>")
+                _auth = author if author else (r.get("Author") if 'r' in locals() else "")
+
+                # Source (newest author export) and destination (staging) must exist
+                _src = author_file
+                _dst = staged_file
+
+                if not _src or not _src.exists():
+                    raise RuntimeError("author_file missing or does not exist")
+
+                # Ensure destination folder exists
+                _dst.parent.mkdir(parents=True, exist_ok=True)
+
+                # Copy atomically: temp file → replace
+                import tempfile, shutil, os
+                with tempfile.NamedTemporaryFile(dir=_dst.parent, delete=False) as _tmp:
+                    _tmp_path = Path(_tmp.name)
+                try:
+                    shutil.copy2(_src, _tmp_path)
+                    try:
+                        os.replace(_tmp_path, _dst)
+                    except Exception:
+                        if _dst.exists():
+                            _dst.unlink()
+                        _tmp_path.rename(_dst)
+                    print(f"[apply] Staged PREVIEW='{_pn}' from AUTHOR='{_auth}' ({where_tag}) → {_dst}")
+                except Exception as _e:
+                    try:
+                        if _tmp_path and _tmp_path.exists():
+                            _tmp_path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    raise
+
+                # Record a proper apply event (for apply_events.csv / applied_this_run.csv)
+                try:
+                    from uuid import uuid4
+                    _rev   = (r.get("Revision") if 'r' in locals() and isinstance(r, dict) else "")
+                    _size  = _dst.stat().st_size if _dst.exists() else ""
+                    _exported = author_time if 'author_time' in locals() and author_time else ""
+                    _applied_by = (os.environ.get("USERNAME") or os.environ.get("USER") or socket.gethostname())
+                    _apply_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    _event = {
+                        "Key":         f"GUID:{uuid4()}",
+                        "PreviewName": _pn,
+                        "Author":      _auth,
+                        "Revision":    _rev,
+                        "Size":        _size,
+                        "Exported":    _exported,
+                        "ApplyDate":   _apply_date,
+                        "AppliedBy":   _applied_by,
+                    }
+
+                    # Append to in-memory buffers used later by the ledger writers
+                    try:
+                        apply_events_rows.append(_event)
+                    except NameError:
+                        apply_events_rows = [_event]
+                    except Exception:
+                        apply_events_rows = [_event]
+
+                    try:
+                        applied_this_run_rows.append(_event)
+                    except NameError:
+                        applied_this_run_rows = [_event]
+                    except Exception:
+                        applied_this_run_rows = [_event]
+
+                except Exception as _ee:
+                    print(f"[apply][WARN] Failed to record apply event for '{_pn}': {_ee}")
+
+            except Exception as _E:
+                print(f"[apply][ERROR] Staging failed for '{_pn}': {_E}")
+        # ------------------------------------------------------------------------------------------
 
 
         needs_rows.append({
@@ -2169,26 +2333,45 @@ def write_dryrun_manifest_csv(
         if where:
             extra += f" [{where}]"
         print(f"   {i:>2}. {name} (rev {rev}){extra}")
+    # Also show previews that differ but are NOT ready, with the gating reason
+    not_ready = [
+        r for r in needs_rows
+        if (r.get("ReadyToApply", "").lower() != "yes")
+    ]
+    print(f"[dry-run] NOT READY: {len(not_ready)} preview(s)")
+    for i, r in enumerate(not_ready, 1):
+        name  = r.get("PreviewName") or r.get("FileName") or "?"
+        rev   = r.get("Revision") or "?"
+        auth  = r.get("Author") or r.get("WinnerAuthor") or "?"
+        where = r.get("WhereFound") or ""
+        blockers = r.get("Blockers") or r.get("ActionNeeded") or ""
+        extra = f" — {auth}" if auth != "?" else ""
+        if where:
+            extra += f" [{where}]"
+        if blockers:
+            extra += f"  (reason: {blockers})"
+        print(f"   {i:>2}. {name} (rev {rev}){extra}")
+
 
 
     # Persist a tiny summary so Excel/automation can use it
     # JSON with full list, and a human-readable TXT
+    # >>> GAL 2025-10-20: write would_stage summary safely
     try:
         import json as _json
-        ws_json = {
-            "count": len(ready_to_apply),
-            "previews": would_stage_names,
-        }
+        names = [(r.get("PreviewName") or r.get("FileName") or "?") for r in ready_to_apply]
+        ws_json = {"count": len(ready_to_apply), "previews": names}
         (reports_dir / "would_stage.json").write_text(
             _json.dumps(ws_json, ensure_ascii=False, indent=2),
             encoding="utf-8"
         )
         (reports_dir / "would_stage.txt").write_text(
-            f"{len(ready_to_apply)} preview(s) would stage:\n" + "\n".join(would_stage_names),
+            f"{len(ready_to_apply)} preview(s) would stage:\n" + "\n".join(names),
             encoding="utf-8"
         )
     except Exception as _e:
         print(f"[warn] failed writing would_stage summary: {_e}")
+    # <<< GAL 2025-10-20
 
 
 
@@ -3038,6 +3221,9 @@ def main():
     print("[INFO] Effective config (pre-CLI):")
     for k in ["input_root","staging_root","archive_root","history_db","report_csv","report_html","policy"]:
         print(f"  {k}: {defaults[k]}")
+    # GAL 25-10-20: announce author selection policy in console
+    print("[policy] Author selection: AuthorRoot(latest) — newest user export is compared to staging")
+
 
     # -----------------------------------------------------------------------
     # 2) Build argparse using UPDATED defaults (after author discovery)
@@ -3143,6 +3329,10 @@ def main():
     applied_this_run: list[dict] = []
     excluded_detailed: list[dict] = []   # for apply-time failures/skips/etc.
     allowed_winner_rows_report: list[dict] = []  # optional: keep if you want
+    # >>> GAL 2025-10-19: default so apply path never hits NameError
+    core_changed_fields = ""
+    # <<< GAL 2025-10-19
+
 
     # Useful run metadata
     run_started_local = dt.datetime.now().astimezone().isoformat(timespec='seconds')
@@ -3781,6 +3971,161 @@ def main():
                                 print(f"[INFO] Archived previous staged file → {archived_prior}")
                         except Exception as e:
                             print(f"[WARN] Failed to archive previous staged file: {e}")
+                    # GAL 25-10-20: APPLY → stage newest AuthorRoot export (policy: AuthorRoot(latest))
+                    # Preconditions mirror dry-run "Ready" gate:
+                    #   - author_file exists
+                    #   - core_different is True (DB-meaningful change)
+                    #   - author_newer == "yes" (newer than staged or no staged)
+                    try:
+                        # GAL 25-10-20: resolve preview name safely for logs
+                        pn_str = (pn if "pn" in locals() else (r.get("PreviewName") if "r" in locals() else "<unknown>"))
+                        # GAL 25-10-20: ensure author_file/author/where_tag exist in this scope
+                        if 'author_file' not in locals() or author_file is None:
+                            # Re-resolve newest AuthorRoot export for this preview
+                            # (Matches dry-run policy so apply uses the same source)
+                            author_hint_local = (author if 'author' in locals() else None)
+                            _a_name, _a_path, _where = _find_author_and_file(pn_str, author_hint_local)
+                            # Fill missing fields; keep any values already set upstream
+                            author = author if ('author' in locals() and author) else _a_name
+                            where_tag = where_tag if ('where_tag' in locals() and where_tag) else _where
+                            author_file = _a_path
+
+                        # ---- GAL 25-10-20: recompute readiness inside APPLY (self-contained) ----
+                        # Files exist?
+                        staged_exists = bool(staged_dest and staged_dest.exists())
+                        author_exists = bool(author_file and author_file.exists())
+
+                        # Recompute AuthorNewer using mtimes
+                        try:
+                            a_mtime = author_file.stat().st_mtime if author_exists else 0
+                            s_mtime = staged_dest.stat().st_mtime if staged_exists else 0
+                            author_newer = "yes" if (author_exists and (not staged_exists or a_mtime > s_mtime)) \
+                                           else ("no" if staged_exists else "unknown")
+                        except Exception:
+                            author_newer = "unknown"
+
+                        if 'DEBUG_APPLY' in globals() and DEBUG_APPLY:
+                            print(f"[apply][check] PREVIEW='{pn_str}' author_exists={author_exists} "
+                                  f"staged_exists={staged_exists} author_newer={author_newer} "
+                                  f"core_same={core_same} ready={_ready_to_stage}")
+
+
+
+                        # Recompute core diff (use same function as dry-run)
+                        core_same = None
+                        try:
+                            if author_exists and staged_exists:
+                                _same, _changes = diff_core_fields(author_file, staged_dest)
+                                core_same = True if _same else False
+                                core_changed_list = _changes or []
+                            elif author_exists and not staged_exists:
+                                core_same = False   # new stage → treat as different
+                                core_changed_list = ["NewStage"]
+                            else:
+                                core_same = None
+                                core_changed_list = []
+                        except Exception:
+                            core_same = None
+                            core_changed_list = []
+
+                        # Ready iff author exists, core is different, and author is newer
+                        _ready_to_stage = (author_exists and (core_same is False) and (author_newer == "yes"))
+                        # -------------------------------------------------------------------------
+
+
+                        if args.apply and _ready_to_stage:
+                            # Announce exactly what we’re doing (policy + provenance)
+                            print(f"[apply] Staging PREVIEW='{pn_str}' from AUTHOR='{author}' ({where_tag}) → {staged_dest}")
+
+                            # Ensure destination directory exists
+                            staged_dest.parent.mkdir(parents=True, exist_ok=True)
+
+                            # Copy with metadata; write to a temp file then replace, to be safe on Windows
+                            # import tempfile, shutil  # GAL 25-10-20: local import for clarity
+                            with tempfile.NamedTemporaryFile(dir=staged_dest.parent, delete=False) as _tmp:
+                                _tmp_path = Path(_tmp.name)
+                            try:
+                                shutil.copy2(author_file, _tmp_path)  # copy to temp first
+                                # On Windows, replace if exists; fall back to unlink+rename if needed
+                                try:
+                                    os.replace(_tmp_path, staged_dest)
+                                except Exception:
+                                    if staged_dest.exists():
+                                        staged_dest.unlink()
+                                    _tmp_path.rename(staged_dest)
+                                print(f"[apply] OK → staged: {staged_dest}")
+                            except Exception as _e:
+                                # Clean up temp on failure
+                                try:
+                                    if _tmp_path and _tmp_path.exists():
+                                        _tmp_path.unlink(missing_ok=True)
+                                except Exception:
+                                    pass
+                                raise
+                            # GAL 25-10-20: record a proper apply event for the ledger
+                            try:
+                                global apply_events_rows, applied_this_run_rows  # safe even if not previously set
+                                from uuid import uuid4
+                                _pn   = pn_str
+                                _auth = author if 'author' in locals() and author else ""
+                                _rev  = (r.get("Revision") if 'r' in locals() and isinstance(r, dict) else "")
+                                _size = (staged_dest.stat().st_size
+                                         if staged_dest and hasattr(staged_dest, "stat") and staged_dest.exists()
+                                         else "")
+                                _exported = (author_time if 'author_time' in locals() and author_time else "")
+                                _applied_by = (os.environ.get("USERNAME")
+                                               or os.environ.get("USER")
+                                               or socket.gethostname())
+                                _apply_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                                _event = {
+                                    "Key":         f"GUID:{uuid4()}",
+                                    "PreviewName": _pn,
+                                    "Author":      _auth,
+                                    "Revision":    _rev,
+                                    "Size":        _size,
+                                    "Exported":    _exported,
+                                    "ApplyDate":   _apply_date,
+                                    "AppliedBy":   _applied_by,
+                                }
+
+                                # Append to in-memory buffers (initialize if missing)
+                                try:
+                                    apply_events_rows.append(_event)
+                                except NameError:
+                                    apply_events_rows = [_event]
+                                except Exception:
+                                    apply_events_rows = [_event]
+
+                                try:
+                                    applied_this_run_rows.append(_event)
+                                except NameError:
+                                    applied_this_run_rows = [_event]
+                                except Exception:
+                                    applied_this_run_rows = [_event]
+
+                            except Exception as _ee:
+                                print(f"[apply][WARN] Failed to record apply event for '{pn_str}': {_ee}")
+
+                            # Optional: log a one-line audit similar to your dry-run summary
+                            try:
+                                print(f"[apply] CoreChangedFields: {', '.join(core_changed_list) if core_changed_list else '(none listed)'}")
+                            except Exception:
+                                pass
+
+                        elif args.apply and not _ready_to_stage:
+                            # Mirror the same blockers you used in dry-run
+                            why = []
+                            if author_file is None:
+                                why.append("author file missing")
+                            if _core_same is True:
+                                why.append("core-identical")
+                            if author_newer != "yes":
+                                why.append("author not newer")
+                            print(f"[apply] SKIP PREVIEW='{pn_str}' — not ready ({'; '.join(why) or 'unknown'})")
+                    except Exception as _e:
+                        print(f"[apply][ERROR] Failed to stage '{pn_str}': {_e}")
+
 
                     # Decide whether to stage the winner
                     if core_same:
@@ -3819,6 +4164,14 @@ def main():
                     copy_ok = True
 
                     if should_stage:
+                        # >>> GAL 2025-10-19: ensure core_changed_fields is set before any apply logging/ledger
+                        try:
+                            _same, _changed = diff_core_fields(Path(winner.path), Path(staged_dest))
+                            core_changed_fields = "; ".join(_changed) if _changed else ""
+                        except Exception as e:
+                            core_changed_fields = f"Exception during diff: {e}"
+                        # <<< GAL 2025-10-19
+
                         try:
                             stage_copy(
                                 Path(winner.path),
@@ -3830,7 +4183,8 @@ def main():
 
                             # === GAL 2025-10-19 11:00 ===
                             # Only now (success) do we record as applied
-                            ts_utc = dt.datetime.utcnow().isoformat(timespec="seconds")
+                            from datetime import datetime, timezone
+                            ts_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
                             action = "stage-new" if not staged_exists else "update-staging"
                             archived_str = str(archived_prior) if 'archived_prior' in locals() and archived_prior else ""
 
@@ -3843,11 +4197,11 @@ def main():
                                 "SrcPath":     str(Path(winner.path)),
                                 "DestPath":    str(staged_dest),
                                 "ArchivedPrior": archived_str,
+                                # >>> FIXED LINES (use core_different flag; don't join string chars)
+                                "CoreDifferent":     "yes" if core_different else "no",
+                                "CoreChangedFields": core_changed_fields,
+                                # <<< FIXED
                             }
-                            # >>> ADD THESE TWO LINES <<<
-                            event["CoreDifferent"] = "yes" if not core_same else "no"
-                            event["CoreChangedFields"] = ", ".join(core_changed_fields)
-                            # <<< END ADD >>>
                             applied_this_run.append(event)
                             # === GAL 2025-10-19 11:00 ===
 
@@ -3861,8 +4215,10 @@ def main():
                             write_header = not ledger_csv.exists()
                             with ledger_csv.open("a", newline="", encoding="utf-8-sig") as _f:
                                 _w = csv.DictWriter(_f, fieldnames=header)
-                                if write_header: _w.writeheader()
+                                if write_header:
+                                    _w.writeheader()
                                 _w.writerow({k: event.get(k, "") for k in header})
+
 
                             # === GAL 2025-10-19 11:00 ===
                             # Insert a staging decision into the history DB (APPLY ONLY)
