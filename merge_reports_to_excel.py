@@ -621,36 +621,62 @@ def build_overview(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     )
 
 
+# GAL 25-10-20: Restore User/Machine/Actor + optional Reason via run_meta.json
 from datetime import datetime
 from pathlib import Path
+import os, json, getpass, platform, socket
 import pandas as pd
+
+def _who_am_i():
+    user = os.getenv("USERNAME") or getpass.getuser() or "unknown"
+    host = os.getenv("COMPUTERNAME") or platform.node() or socket.gethostname() or "unknown"
+    return user, host, f"{user}@{host}"
+
+def _load_run_meta(candidates):
+    for base in candidates:
+        try:
+            if not base:
+                continue
+            meta_path = Path(base) / "run_meta.json"
+            if meta_path.exists():
+                return json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
 
 def write_info_tab(
     writer,
-    tables=None,                 # dict of DataFrames, optional
-    root=None,                   # path to CSV directory (e.g., --root), optional
-    compare_summary=None,        # dict with summary counts, optional
-    run_mode=None,               # "dry-run" / "--apply", optional
-    actor=None                   # machine/user label, optional
+    tables=None,
+    root=None,
+    compare_summary=None,
+    run_mode=None,
+    actor=None
 ):
-    """
-    Writes a small 'Info' sheet. Safe if `tables` isn't provided.
-    Falls back to reading needs_action.csv from `root` if available,
-    but only for summary (no hard dependency).
-    """
-    # Compose Info row
-    info_data = [{
-        "Generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    }]
-    if run_mode:
-        info_data[0]["RunMode"] = run_mode
-    if actor:
-        info_data[0]["Actor"] = actor
-    if compare_summary:
-        # merge any pre-computed summary counts (if caller has them)
-        info_data[0].update(compare_summary)
+    env_user, env_host, env_actor = _who_am_i()
 
-    # Optional: count NeedsAction rows without requiring `tables`
+    # Try run_meta.json in --root and CWD
+    run_meta = _load_run_meta([root, Path.cwd()])
+    meta_reason  = run_meta.get("reason") or ""
+    meta_runmode = run_meta.get("run_mode") or run_meta.get("runMode") or ""
+    meta_user    = run_meta.get("user") or env_user
+    meta_host    = run_meta.get("host") or env_host
+    meta_actor   = run_meta.get("actor") or f"{meta_user}@{meta_host}"
+
+    info_row = {
+        "Generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "RunMode":   (run_mode or meta_runmode or ""),
+        "Reason":    meta_reason,
+        "User":      meta_user,
+        "Machine":   meta_host,
+        "Actor":     (actor or meta_actor or env_actor),
+    }
+
+    if compare_summary:
+        for k, v in compare_summary.items():
+            if k not in info_row:
+                info_row[k] = v
+
+    # NeedsAction count
     try:
         needs_df = None
         if isinstance(tables, dict) and "NeedsAction" in tables:
@@ -660,16 +686,22 @@ def write_info_tab(
             if p.exists():
                 needs_df = pd.read_csv(p)
         if needs_df is not None:
-            info_data[0]["NeedsActionRows"] = int(len(needs_df))
+            info_row["NeedsActionRows"] = int(len(needs_df))
     except Exception as e:
-        # Don’t fail report generation over a count; just log
         print(f"[WARN] Info tab: could not read NeedsAction: {e}")
 
-    info = pd.DataFrame(info_data)
-    info.to_excel(writer, index=False, sheet_name="Info")
-    print("[GAL 25-10-18] Info tab written with RunMode and Compare summary")
+    # Optional: ledger count if provided in tables
+    try:
+        if isinstance(tables, dict):
+            for key in ("Current_Previews_Ledger", "Ledger", "current_ledger"):
+                if key in tables:
+                    info_row["LedgerRows"] = int(len(tables[key]))
+                    break
+    except Exception as e:
+        print(f"[WARN] Info tab: could not compute LedgerRows: {e}")
 
-
+    pd.DataFrame([info_row]).to_excel(writer, index=False, sheet_name="Info")
+    print("[GAL 25-10-20] Info tab written with RunMode/Reason/User/Machine/Actor")
 
 def main():
     tables = {}
