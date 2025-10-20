@@ -232,3 +232,152 @@ def core_different(file_a: Path, file_b: Path) -> bool:
     cats |= categorize_preview_change(a, b)
     # any category at all means core difference
     return bool(cats)
+
+# ====================== GAL 25-10-19: XML core extractor ======================
+from pathlib import Path as _LCPath
+
+def _lc_norm(s):
+    return (s or "").strip()
+
+def _lc_i(s, default=None):
+    s = (s or "").strip()
+    return int(s) if s.isdigit() else default
+
+def _lc_parse_channel_grid(grid_text: str) -> list[tuple]:
+    """
+    Returns list of channel legs as tuples. Accepts both LOR and DMX layouts.
+    LOR leg: ( "LOR", network, uid, start, end, color )
+    DMX leg: ( "DMX", network, universe, start, end )
+    """
+    legs = []
+    if not grid_text:
+        return legs
+    for seg in (p.strip() for p in grid_text.split(";") if p.strip()):
+        parts = [p.strip() for p in seg.split(",")]
+        if len(parts) >= 5:
+            # Heuristic: DMX puts Universe in slot 2; LOR puts UID in slot 2.
+            # We will let the caller decide which tuple shape to build.
+            legs.append(parts)
+    return legs
+
+def core_items_from_lorprev(path: _LCPath) -> tuple[set[tuple], dict]:
+    """
+    Build a normalized 'core' set for a .lorprev.
+
+    Rules (aligned with parse_props_v6) with multiplicity:
+      - DeviceType None  → compare by (DisplayName=Comment, ChannelName=Name) WITH COUNTS.
+      - LOR legs        → (LOR, Network, UID, Start, End, Color) WITH COUNTS.
+      - DMX legs        → (DMX, Network, Universe, Start, End) WITH COUNTS.
+    Plus label-health signals so fixes to blank labels trigger a stage:
+      - For every PropClass, we record multiplicity markers for:
+          ("LBLMISS", DeviceType, "COMMENT") when Comment is blank
+          ("LBLMISS", DeviceType, "NAME")    when Name    is blank
+    """
+    import xml.etree.ElementTree as ET
+    from collections import Counter
+
+    stats = {
+        "props_total": 0,
+        "props_none": 0,
+        "legs_lor": 0,
+        "legs_dmx": 0,
+        "missing_comment": 0,
+        "missing_name": 0,
+    }
+
+    # Multiplicity-preserving buckets
+    none_keys      = Counter()
+    lor_keys       = Counter()
+    dmx_keys       = Counter()
+    fallback_keys  = Counter()
+    # NEW: label-health counters (by device type)
+    miss_comment   = Counter()
+    miss_name      = Counter()
+
+    root = ET.parse(str(path)).getroot()
+    for node in root.findall(".//PropClass"):
+        stats["props_total"] += 1
+
+        dev = _lc_norm(node.get("DeviceType")).upper() or "NONE"
+        display = _lc_norm(node.get("Comment")).lower()
+        channel = _lc_norm(node.get("Name")).lower()
+
+        # Track blank label health
+        if not display:
+            miss_comment[(dev, "COMMENT")] += 1
+            stats["missing_comment"] += 1
+        if not channel:
+            miss_name[(dev, "NAME")] += 1
+            stats["missing_name"] += 1
+
+        if dev == "NONE":
+            # DeviceType=None → aggregate by (comment, name)
+            if display or channel:
+                none_keys[("NONE", display, channel)] += 1
+                stats["props_none"] += 1
+            continue
+
+        grid = _lc_norm(node.get("ChannelGrid"))
+        if not grid:
+            # No legs – keep a minimal, typed placeholder so empties are detectable
+            if dev == "LOR":
+                lor_keys[("LOR", "", "", None, None, "")] += 1
+            elif dev == "DMX":
+                dmx_keys[("DMX", "", None, None, None)] += 1
+            else:
+                fallback_keys[(dev, display, channel)] += 1
+            continue
+
+        parts_list = _lc_parse_channel_grid(grid)
+
+        if dev == "LOR":
+            for parts in parts_list:
+                net   = parts[0] if len(parts) > 0 else ""
+                uid   = parts[1] if len(parts) > 1 else ""
+                start = _lc_i(parts[2])
+                end   = _lc_i(parts[3])
+                color = parts[5] if len(parts) > 5 else ""
+                lor_keys[("LOR", net, uid, start, end, color)] += 1
+                stats["legs_lor"] += 1
+            continue
+
+        if dev == "DMX":
+            for parts in parts_list:
+                net   = parts[0] if len(parts) > 0 else ""
+                uni   = _lc_i(parts[1])
+                start = _lc_i(parts[2])
+                end   = _lc_i(parts[3])
+                dmx_keys[("DMX", net, uni, start, end)] += 1
+                stats["legs_dmx"] += 1
+            continue
+
+        # Unknown types: fall back to labels only (still preserve multiplicity)
+        fallback_keys[(dev, display, channel)] += 1
+
+    # Expand counters into a set that encodes multiplicity deterministically
+    def expand(counter: Counter) -> set[tuple]:
+        out = set()
+        for key, n in counter.items():
+            for i in range(1, n + 1):
+                out.add((*key, i))   # append ordinal
+        return out
+
+    items = set()
+    items |= expand(none_keys)
+    items |= expand(lor_keys)
+    items |= expand(dmx_keys)
+    items |= expand(fallback_keys)
+
+    # NEW: fold label-health into the core (so label fixes trigger staging)
+    # Example emitted items:
+    #   ("LBLMISS", "LOR", "COMMENT", 1), ("LBLMISS", "LOR", "COMMENT", 2), ...
+    for key, n in miss_comment.items():
+        dev, kind = key  # kind="COMMENT"
+        for i in range(1, n + 1):
+            items.add(("LBLMISS", dev, kind, i))
+    for key, n in miss_name.items():
+        dev, kind = key  # kind="NAME"
+        for i in range(1, n + 1):
+            items.add(("LBLMISS", dev, kind, i))
+
+    return items, stats
