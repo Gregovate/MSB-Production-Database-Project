@@ -58,6 +58,7 @@ import json
 import os
 import sqlite3
 import time
+#from datetime import datetime
 import socket  # used for ledger 25-09-03 GAL
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
@@ -69,6 +70,13 @@ import subprocess
 import sys
 import traceback  # (optional, if you print tracebacks elsewhere)
 import tempfile # Required for _write_atomic
+import datetime as dt
+# GAL 25-10-19: unify core comparison with lor_core
+try:
+    import lor_core as LC
+except Exception:
+    LC = None
+
 
 # GAL 25-10-16: Core Model v1.0 alignment (shared helpers; no behavior change yet)
 try:
@@ -242,7 +250,6 @@ def resolve_config(cli_args: dict, json_path: Optional[str]=None) -> dict:
 
     return cfg
 
-# ============================= Data models ============================= #
 
 BLOCKED_ACTION = 'needs-DisplayName Fixes'
 
@@ -464,33 +471,26 @@ def device_type_is_none(p: Path) -> bool:
         return False
 
 # ============= Date/Time utilities helpers
+# ============= Date/Time utilities helpers
 def now_local():
     """Return a timezone-aware local datetime."""
-    # Use OS local time with offset (handles DST)
-    return datetime.now().astimezone()
-    # If forcing a specific zone:
-    # return datetime.now(tz=LOCAL_TZ)
+    return dt.datetime.now().astimezone()
 
 def ymd_hms(ts: float) -> str:
-    """
-    Format an epoch seconds timestamp in LOCAL time with offset,
-    e.g. '2025-08-31 08:25:33-0500'
-    """
+    """Format an epoch seconds timestamp in LOCAL time with offset, e.g. '2025-08-31 08:25:33-0500'"""
     try:
-        # OS local:
-        dt = datetime.fromtimestamp(ts).astimezone()
-        # Or forced zone:
-        # dt = datetime.fromtimestamp(ts, tz=LOCAL_TZ)
-        return dt.strftime('%Y-%m-%d %H:%M:%S%z')
+        dlocal = dt.datetime.fromtimestamp(ts).astimezone()
+        return dlocal.strftime('%Y-%m-%d %H:%M:%S%z')
     except Exception:
         return ''
 
 def parse_any_local(s: str):
     """Parse our two formats; return aware datetime or None."""
-    if not s: return None
+    if not s:
+        return None
     for fmt in ("%Y-%m-%d %H:%M:%S%z", "%Y-%m-%dT%H:%M:%S%z"):
         try:
-            return datetime.strptime(s, fmt)
+            return dt.datetime.strptime(s, fmt)
         except Exception:
             pass
     return None
@@ -498,8 +498,10 @@ def parse_any_local(s: str):
 def newer(a: str, b: str) -> bool:
     """True if a is a newer timestamp string than b (handles both formats)."""
     da, db = parse_any_local(a), parse_any_local(b)
-    if not da: return False
-    if not db: return True
+    if not da:
+        return False
+    if not db:
+        return True
     return da > db
 
 
@@ -772,6 +774,26 @@ def iter_author_candidates(authors_root: Path):
             yield author, p
 
 # ====================== GAL 25-10-17: Validator & Helpers (END) ======================
+# GAL 25-10-19: pretty console list for would-stage previews
+def _log_stage_list(label: str, rows: list[dict]):
+    """
+    rows: dicts containing at least PreviewName, Revision, Author (if present).
+    """
+    n = len(rows)
+    if n == 0:
+        print(f"[{label}] WOULD STAGE: 0 preview(s)")
+        return
+    print(f"[{label}] WOULD STAGE: {n} preview(s)")
+    for i, r in enumerate(rows, 1):
+        name = r.get("PreviewName") or r.get("FileName") or "?"
+        rev  = r.get("Revision") or "?"
+        auth = r.get("Author") or r.get("WinnerAuthor") or "?"
+        where = r.get("WhereFound") or ""
+        # Include a little context if we have it
+        extra = f" — {auth}" if auth != "?" else ""
+        if where:
+            extra += f" [{where}]"
+        print(f"  {i:>2}. {name} (rev {rev}){extra}")
 
 
 from pathlib import Path
@@ -808,6 +830,302 @@ def scan_staged_for_comments(staging_root: Path) -> Dict[str, Dict]:
             'Path': str(p),
         }
     return out
+
+# ++++ GAL 25-10-19 Change core checking based on parse_props_v6 ++++
+# ---------------------------------------------------------------------------
+# GAL 25-10-15: File hashing utilities (restored)
+# ---------------------------------------------------------------------------
+
+import hashlib
+from pathlib import Path
+import re
+
+_VOLATILE_PATTERNS = [
+    rb"<Revision>\s*\d+\s*</Revision>",       rb'"Revision"\s*:\s*\d+',
+    rb"<SavedOn>[^<]+</SavedOn>",             rb'"SavedOn"\s*:\s*"[^"]+"',
+    rb"<SavedBy>[^<]+</SavedBy>",             rb'"SavedBy"\s*:\s*"[^"]+"',
+    rb"<Exported>[^<]+</Exported>",           rb'"Exported"\s*:\s*"[^"]+"',
+    rb"<FileVersion>[^<]+</FileVersion>",     rb'"FileVersion"\s*:\s*"[^"]+"',
+]
+
+def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
+    """Compute the SHA-256 digest of a file in chunks (1 MB default)."""
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(chunk), b""):
+            h.update(block)
+    return h.hexdigest()
+
+def semantic_sha256_file(path: Path) -> str:
+    """
+    Compute a SHA-256 hash after removing volatile metadata patterns.
+    Returns a content-stable hash for use in semantic comparison.
+    """
+    raw = path.read_bytes()
+    for pat in _VOLATILE_PATTERNS:
+        raw = re.sub(pat, b"", raw)
+    raw = re.sub(rb"\s{2,}", b" ", raw)  # compact whitespace
+    return hashlib.sha256(raw).hexdigest()
+
+
+# ===== CORE SNAPSHOT + DIFF using parse_props_v6 (no edits to that file) part 2 25-10-19==========
+import hashlib as _hsig
+from pathlib import Path
+
+def _nz(x):  # normalize string-ish
+    return ("" if x is None else str(x)).strip()
+
+def _as_int(x, default=0):
+    try:
+        return int(x)
+    except Exception:
+        return default
+
+def _get(obj, *keys):
+    """
+    Safe getter that works for:
+      - objects (attributes),
+      - dict-like,
+      - xml.etree.ElementTree.Element (attributes and child tags).
+    For ET.Element:
+      - If key matches an attribute, return that string.
+      - Else if child elements with that tag exist:
+          return list[Element] if multiple, or the Element if one.
+      - Else return None.
+    """
+    cur = obj
+    for k in keys:
+        if cur is None:
+            return None
+
+        # object attribute
+        if hasattr(cur, k):
+            cur = getattr(cur, k)
+            continue
+
+        # dict-like
+        if isinstance(cur, dict):
+            cur = cur.get(k)
+            continue
+
+        # ElementTree element
+        try:
+            import xml.etree.ElementTree as _ET  # local import to avoid top-level cycles
+        except Exception:
+            _ET = None
+
+        if _ET is not None and isinstance(cur, _ET.Element):
+            # attribute?
+            if k in cur.attrib:
+                cur = cur.attrib[k]
+                continue
+            # children with this tag?
+            kids = list(cur.findall(k))
+            if kids:
+                cur = kids if len(kids) > 1 else kids[0]
+                continue
+            return None
+
+        # unknown type
+        return None
+
+    return cur
+
+
+def _iter_grids(prop):
+    """
+    Yield all channel-grid-like rows for a prop.
+    Handles LOR grids and DMX grids; returns zero rows if DeviceType == 'None'.
+    Each yielded item is a dict with Network/UID/Start/End/Color/DimmingCurveName.
+    """
+    # Try the common shapes first
+    grids = []
+    # LOR style
+    for key in ("ChannelGrid", "channel_grid", "Grids", "grids"):
+        g = _get(prop, key)
+        if g:
+            try:
+                grids.extend(list(g))
+            except Exception:
+                pass
+    # DMX style (some parsers expose a distinct collection)
+    for key in ("DMXChannels", "dmxChannels", "dmx_channels"):
+        g = _get(prop, key)
+        if g:
+            try:
+                grids.extend(list(g))
+            except Exception:
+                pass
+
+    if not grids:
+        # No grids at all (e.g., DeviceType == "None")
+        yield {
+            "Network": "",
+            "UID": "",
+            "StartChannel": 0,
+            "EndChannel": 0,
+            "Color": "",
+            "DimmingCurveName": _nz(_get(prop, "DimmingCurveName")),
+        }
+        return
+
+    for row in grids:
+        yield {
+            "Network":          _nz(_get(row, "Network")),
+            "UID":              _nz(_get(row, "UID") or _get(prop, "UID") or _get(prop, "ControllerUID")),
+            "StartChannel":     _as_int(_get(row, "StartChannel")),
+            "EndChannel":       _as_int(_get(row, "EndChannel")),
+            "Color":            _nz(_get(row, "Color") or _get(row, "Lights")),
+            "DimmingCurveName": _nz(_get(prop, "DimmingCurveName") or _get(row, "DimmingCurveName")),
+        }
+
+def _iter_props_from_preview(path: Path):
+    """
+    Use parse_props_v6 to load a preview and iterate PropClass entries.
+    Defensive against slight API differences (object vs dict).
+    """
+    try:
+        import parse_props_v6 as pp
+    except Exception:
+        return []
+
+    props = []
+    try:
+        # common shape
+        if hasattr(pp, "load_preview"):
+            pv = pp.load_preview(str(path))
+            for key in ("props", "PropClass", "Props"):
+                arr = _get(pv, key)
+                if arr:
+                    props = list(arr)
+                    break
+        elif hasattr(pp, "iter_props"):
+            props = list(pp.iter_props(str(path)))
+    except Exception:
+        props = []
+
+    return props or []
+
+def _row_for_prop_and_grid(prop, gdict) -> tuple:
+    """
+    Canonical, hashable row representing ONE prop + ONE grid.
+    This is the DB-meaningful core we compare.
+    """
+    prop_id   = _nz(_get(prop, "id") or _get(prop, "PropID"))
+    name      = _nz(_get(prop, "Name")).lower()       # Channel Name (case-insensitive)
+    comment   = _nz(_get(prop, "Comment") or _get(prop, "LORComment")).lower()  # Display Name
+    devtype   = _nz(_get(prop, "DeviceType")).upper() # "LOR" | "DMX" | "NONE" | etc.
+
+    net       = _nz(gdict.get("Network")).upper()
+    uid_hex   = _nz(gdict.get("UID")).upper()
+    start_ch  = _as_int(gdict.get("StartChannel"))
+    end_ch    = _as_int(gdict.get("EndChannel"))
+    color     = _nz(gdict.get("Color")).upper()
+    curve     = _nz(gdict.get("DimmingCurveName")).lower()
+
+    # Sort-friendly, stable tuple
+    return (
+        prop_id,
+        name,
+        comment,
+        devtype,
+        net,
+        uid_hex,
+        start_ch,
+        end_ch,
+        color,
+        curve,
+    )
+
+def _snapshot_core(path: Path) -> list[tuple]:
+    """
+    Produce the full canonical core snapshot:
+      one row per (PropClass × ChannelGrid-or-DMX-grid). If no grids, a single
+      row with empty grid fields is emitted so "None" devices still participate.
+    """
+    out = []
+    for prop in _iter_props_from_preview(Path(path)):
+        emitted = False
+        for g in _iter_grids(prop):
+            out.append(_row_for_prop_and_grid(prop, g))
+            emitted = True
+        if not emitted:
+            # Extremely defensive fallback: synthesize one row even if _iter_grids missed.
+            out.append(_row_for_prop_and_grid(prop, {
+                "Network": "", "UID": "", "StartChannel": 0, "EndChannel": 0, "Color": "", "DimmingCurveName": _nz(_get(prop, "DimmingCurveName")),
+            }))
+    out.sort(key=lambda r: (r[0], r[3], r[4], r[5], r[6], r[7], r[1]))  # PropID, DevType, Network, UID, Start, End, Name
+    return out
+
+def _sig(rows: list[tuple]) -> tuple[str, int]:
+    if not rows:
+        return ("", 0)
+    h = _hsig.sha256()
+    for r in rows:
+        h.update(str(r).encode("utf-8"))
+    return (h.hexdigest()[:16], len(rows))
+
+def diff_core_fields(src: Path, dst: Path) -> tuple[bool, list[str]]:
+    """
+    Compare two previews at DB-meaningful granularity using lor_core.core_items_from_lorprev():
+      - DeviceType None → (DisplayName=Comment, ChannelName=Name)
+      - LOR legs        → (LOR, Network, UID, Start, End, Color)
+      - DMX legs        → (DMX, Network, Universe, Start, End)
+    Returns (same, changed_fields[])
+    """
+    import hashlib
+
+    def _sig(items: set[tuple]) -> str:
+        blob = "\n".join(repr(t) for t in sorted(items))
+        return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
+    # Fallback: in case lor_core couldn’t import for some reason
+    if LC is None or not hasattr(LC, "core_items_from_lorprev"):
+        # Last-resort: try the local XML path we added earlier
+        try:
+            from xml.etree import ElementTree as ET  # noqa
+        except Exception:
+            return False, ["NoCoreExtractor"]
+
+        # Reuse the same semantics by delegating to lor_core if available
+        raise RuntimeError("lor_core.core_items_from_lorprev not available; please add it per instructions.")
+
+    a_items, a_stats = LC.core_items_from_lorprev(Path(src))
+    b_items, b_stats = LC.core_items_from_lorprev(Path(dst))
+
+    same = (a_items == b_items)
+    if same:
+        return True, []
+
+    changes: list[str] = []
+    if a_stats.get("props_total") != b_stats.get("props_total"):
+        changes.append(f"PropCount:{b_stats.get('props_total')}→{a_stats.get('props_total')}")
+    a_sig = _sig(a_items)
+    b_sig = _sig(b_items)
+    if a_sig != b_sig:
+        changes.append(f"CoreSetSig:{b_sig}→{a_sig}")
+    return False, changes
+
+
+
+
+def core_signature(path: Path) -> str:
+    """
+    Content-stable signature based on the canonical core snapshot
+    (PropClass × grids). Uses the same rows as diff_core_fields().
+    """
+    rows = _snapshot_core(Path(path))
+    h = _hsig.sha256()
+    for r in rows:
+        h.update(str(r).encode("utf-8"))
+    return h.hexdigest()
+# ===== /CORE SNAPSHOT + DIFF part 2 25-10-19=====
+
+
+
+
+
+
 
 # GAL 25-10-16: Scan AUTHOR folders for comment hygiene
 def scan_authors_for_comments(input_root: Path) -> list[dict]:
@@ -1092,7 +1410,7 @@ def emit_run_ledger(
 
     html_parts = [f"<!doctype html><meta charset='utf-8'><title>Current Previews Ledger</title>{style}"]
     html_parts.append("<h1>Current Previews Ledger (grouped by Author)</h1>")
-    html_parts.append(f"<div class='meta'>Generated {datetime.now().astimezone().isoformat(timespec='seconds')}</div>")
+    html_parts.append(f"<div class='meta'>Generated {dt.datetime.now().astimezone().isoformat(timespec='seconds')}</div>")
 
     # Grouped by Author
     from itertools import groupby
@@ -1105,26 +1423,27 @@ def emit_run_ledger(
     ledger_html.write_text('\n'.join(html_parts), encoding='utf-8')
     return ledger_csv, ledger_html, run_ledger
 
-# ---- Backfill Apply Events from history DB / staged files ----
+# === GAL 2025-10-18 22:05 — backfill_apply_events fixed for current DB schema (RO, join on run_id) ===
 def backfill_apply_events(report_csv: Path, history_db: Path, staging_root: Path, overwrite: bool=False) -> tuple[Path, int]:
-    """
-    Populate apply_events.csv for current winners using preview_history.db (if available),
+    r"""
+    Populate apply_events.csv for current winners using preview_history.db (if available, READ-ONLY),
     falling back to filesystem mtimes for staged files. Returns (events_path, rows_written).
+    Schema expected:
+      runs(run_id TEXT PRIMARY KEY, started TEXT, policy TEXT)
+      staging_decisions(id INTEGER PK, run_id TEXT, preview_key TEXT, staged_as TEXT, action TEXT)
     """
-    #import csv, os, sqlite3
-
     # Read the current compare rows
     with open(report_csv, 'r', encoding='utf-8-sig', newline='') as f:
         compare_rows = list(csv.DictReader(f))
 
-    # Winners only (current "latest-and-greatest")
-    winners = [r for r in compare_rows if r.get('Role') in ('WINNER','REPORT-ONLY')]
+    # Winners only (keep REPORT-ONLY if you rely on it for summaries)
+    winners = [r for r in compare_rows if r.get('Role') in ('WINNER', 'REPORT-ONLY')]
     by_key = {r.get('Key',''): r for r in winners if r.get('Key')}
 
-    events_path = Path(report_csv).parent / RUN_LEDGER_NAME
+    events_path = Path(report_csv).parent / RUN_LEDGER_NAME  # e.g., apply_events.csv
 
     # Read existing events to avoid duplicate/older inserts
-    existing = {}
+    existing: dict[str, tuple[str,str]] = {}
     if events_path.exists() and not overwrite:
         with open(events_path, 'r', encoding='utf-8-sig', newline='') as f:
             for r in csv.DictReader(f):
@@ -1132,62 +1451,83 @@ def backfill_apply_events(report_csv: Path, history_db: Path, staging_root: Path
                 if k:
                     existing[k] = (r.get('ApplyDate','') or '', r.get('AppliedBy','') or '')
 
-    # Query DB for staged decisions (latest per key)
-    latest = {}  # key -> (staged_as, apply_date_from_run, applied_by)
-    applied_by_field_names = ('host','hostname','machine','applied_by')
-    run_time_field_names   = ('started_at','created_at','run_started_at','run_time')
-
+    # Query DB (READ ONLY) for staged decisions (latest per key), joined to runs.started
+    latest: dict[str, tuple[str,str,str]] = {}  # key -> (staged_as, run_started_iso, applied_by)
+    conn = None
+    cur = None
     try:
         import sqlite3
-        conn = sqlite3.connect(str(history_db))
+        uri = f"file:{Path(history_db).as_posix()}?mode=ro"
+        conn = sqlite3.connect(uri, uri=True)
         cur  = conn.cursor()
-        # Try to join runs → staging_decisions for timestamps & host/user
-        q = f"""
-            SELECT sd.preview_key,
-                   sd.staged_as,
-                   { "COALESCE(" + ",".join("r."+c for c in run_time_field_names) + ")" } AS run_started,
-                   { "COALESCE(" + ",".join("r."+c for c in applied_by_field_names) + ")" } AS applied_by
-            FROM staging_decisions sd
-            LEFT JOIN runs r ON r.id = sd.run_id
-            WHERE sd.action='staged'
-            ORDER BY run_started DESC, sd.rowid DESC
-        """
-        cur.execute(q)
-        for key, staged_as, run_started, applied_by in cur.fetchall():
-            if key not in by_key:   # only fill for current winners
-                continue
-            if key in latest:       # keep newest only
-                continue
-            latest[key] = (staged_as, run_started or '', applied_by or '')
+
+        # Be defensive: check if tables/columns exist
+        def _has_table(name: str) -> bool:
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,))
+            return cur.fetchone() is not None
+
+        if _has_table("staging_decisions"):
+            # Prefer join to runs.started if runs exists; otherwise just read decisions
+            join_runs = _has_table("runs")
+            if join_runs:
+                # Ensure 'started' column exists
+                cur.execute("PRAGMA table_info(runs)")
+                cols = {row[1] for row in cur.fetchall()}  # name in second column
+                has_started = "started" in cols
+            else:
+                has_started = False
+
+            if join_runs and has_started:
+                # Correct join for current schema (r.run_id = sd.run_id)
+                q = """
+                    SELECT sd.preview_key,
+                           sd.staged_as,
+                           r.started AS run_started
+                    FROM staging_decisions sd
+                    LEFT JOIN runs r ON r.run_id = sd.run_id
+                    WHERE sd.action='staged'
+                    ORDER BY COALESCE(r.started, '') DESC, sd.rowid DESC
+                """
+                cur.execute(q)
+                for key, staged_as, run_started in cur.fetchall():
+                    if key not in by_key or key in latest:
+                        continue
+                    latest[key] = (staged_as or '', run_started or '', '')  # AppliedBy unknown in this schema
+            else:
+                # Fallback: no runs.started; take latest by rowid
+                q = "SELECT preview_key, staged_as FROM staging_decisions WHERE action='staged' ORDER BY rowid DESC"
+                cur.execute(q)
+                for key, staged_as in cur.fetchall():
+                    if key not in by_key or key in latest:
+                        continue
+                    latest[key] = (staged_as or '', '', '')  # no run timestamp available
     except Exception:
-        # Fallback: no runs table; get latest staged_as per key by rowid
-        try:
-            cur.execute("SELECT preview_key, staged_as FROM staging_decisions WHERE action='staged' ORDER BY rowid DESC")
-            for key, staged_as in cur.fetchall():
-                if key not in by_key:
-                    continue
-                if key in latest:
-                    continue
-                latest[key] = (staged_as, '', '')
-        except Exception:
-            pass
+        # DB unavailable or schema mismatch: we'll fall back to file mtimes below
+        pass
     finally:
         try:
-            conn.close()
+            if cur is not None:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn is not None:
+                conn.close()
         except Exception:
             pass
 
-    # Build rows to append
-    rows_to_write = []
+    # Build rows to write (newer only)
+    rows_to_write: list[dict] = []
     for key, r in by_key.items():
         staged_as, run_started, applied_by = latest.get(key, ('', '', ''))
-        apply_date = run_started
+        apply_date = run_started  # prefer run's started if present
         if not apply_date and staged_as:
             try:
                 ts = os.path.getmtime(staged_as)
                 apply_date = datetime.fromtimestamp(ts).astimezone().isoformat(timespec='seconds')
             except Exception:
                 apply_date = ''
+
         # Skip if we already have an equal/newer ApplyDate recorded
         if key in existing and not newer(apply_date, existing[key][0]):
             continue
@@ -1219,6 +1559,8 @@ def backfill_apply_events(report_csv: Path, history_db: Path, staging_root: Path
             w.writerow(row)
 
     return events_path, len(rows_to_write)
+# === /GAL 2025-10-18 22:05 ===
+
 
 # Builds a manifest of current previews and archives old previews
 def sweep_staging_archive(staging_root: Path, archive_root: Path, keep_files: set[str]) -> tuple[int,int]:
@@ -1229,7 +1571,7 @@ def sweep_staging_archive(staging_root: Path, archive_root: Path, keep_files: se
     """
     moved = kept = 0
     ensure_dir(archive_root)
-    day_folder = archive_root / datetime.now().strftime("%Y-%m-%d")
+    day_folder = archive_root / dt.datetime.now().strftime("%Y-%m-%d")
     ensure_dir(day_folder)
 
     for p in sorted(staging_root.glob("*.lorprev")):
@@ -1245,7 +1587,8 @@ def sweep_staging_archive(staging_root: Path, archive_root: Path, keep_files: se
             pass
     return moved, kept
 
-def write_current_manifest(staging_root: Path, out_csv: Path):
+# GAL 25-10-18: Build CURRENT (apply) manifest CSV from staged files
+def write_current_manifest_csv(staging_root: Path, out_csv: Path):
     """
     Write a simple manifest of what is currently staged (one row per .lorprev).
     Columns: FileName, PreviewName, GUID, Revision, Size, SHA256, Exported
@@ -1266,6 +1609,68 @@ def write_current_manifest(staging_root: Path, out_csv: Path):
                 "SHA256": info.get("SHA256",""),
                 "Exported": info.get("MTimeUtc",""),
             })
+
+# GAL 25-10-18: Build CURRENT (apply) manifest HTML from staged files
+def write_current_manifest_html(staging_root: Path, out_html: Path, author_by_name: dict[str, str] | None = None):
+    """
+    Write a sortable HTML manifest for the CURRENTLY STAGED previews (.lorprev in staging_root).
+    Columns: FileName, Author, Revision, Present, StagedTime
+    Notes:
+      - Author is looked up via author_by_name map (keyed by PreviewName) if provided.
+      - Present is always "Yes" (we’re listing what’s actually staged).
+      - Uses existing scan_staged_for_comments() and _emit_manifest_html() helpers.
+    """
+
+    def _revnum(v: str) -> float:
+        try:
+            return float(v or "")
+        except Exception:
+            return -1.0
+
+    staging_root = Path(staging_root)
+    out_html = Path(out_html)
+    out_html.parent.mkdir(parents=True, exist_ok=True)
+
+    # Reuse your staged scanner (already in this file)
+    staged_map = scan_staged_for_comments(staging_root)
+
+    rows = []
+    for _, info in staged_map.items():
+        ppath   = Path(info.get("Path", ""))
+        fname   = ppath.name
+        pn      = (info.get("PreviewName") or "").strip()
+        rev     = (info.get("Revision") or "").strip()
+        author  = (author_by_name or {}).get(pn, "") if pn else ""
+        present = "Yes"
+        staged_time = ""
+        try:
+            ts = os.path.getmtime(ppath)
+            staged_time = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            pass
+
+        # Columns: FileName, Author, Revision, Present, StagedTime
+        rows.append((fname, author, rev, present, staged_time))
+
+    # Sort FileName asc, Revision desc
+    rows.sort(key=lambda x: ((x[0] or "").lower(), -_revnum(x[2])))
+
+    # Reuse your HTML renderer used by write_dryrun_manifest_html
+    _emit_manifest_html(
+        rows,
+        out_html,
+        headers=[
+            ("FileName",   "text"),
+            ("Author",     "text"),
+            ("Revision",   "number"),
+            ("Present",    "text"),
+            ("StagedTime", "text"),
+        ],
+        context_path=str(out_html.parent),
+        extra_title=""  # live/current (no DRY RUN tag)
+    )
+    print(f"[apply] wrote current manifest (HTML): {out_html}")
+
 
 def _write_csv_atomic(out_path: Path, fieldnames: list[str], rows: list[dict], *,
                       attempts: int = 4, wait_sec: float = 0.6, allow_fallback: bool = True) -> Path:
@@ -1317,7 +1722,7 @@ def _write_csv_atomic(out_path: Path, fieldnames: list[str], rows: list[dict], *
         # propagate the last PermissionError
         raise last_err if last_err else PermissionError(f"Failed to write {out_path}")
 
-import os, time  # (if not already imported)
+# import os, time  # (if not already imported)
 
 # Two Helpers for file metadata for the dry-run process GAL 25-10-18
 def _fmt_mtime(path: Path | None) -> str:
@@ -1552,11 +1957,12 @@ def write_dryrun_manifest_csv(
             r["_score"] = score
             best_by_pn[key] = r
 
+    # ---------- UPDATED GAL 25-10-19    ----------
     # ---------- Evaluate Ready/Blockers only for the chosen rows (root + PreviewsForProps only) ----------
     def _find_author_and_file(pn: str, author_hint: str | None) -> tuple[str, Path | None, str]:
         """
         Return (author_name, author_file_path_or_None, where_found_tag)
-        Only checks top-level author root and PreviewsForProps subfolder. No recursion.
+        Only checks top-level author root. (PreviewsForProps can be enabled later.)
         """
         if not input_root_safe or not input_root_safe.exists():
             return (author_hint or "", None, "Unknown")
@@ -1565,29 +1971,16 @@ def write_dryrun_manifest_csv(
             a_dir = input_root_safe / a_name
             if not a_dir.is_dir():
                 return None
-
-            # --- GAL 25-10-18: Only scan author ROOT for now ---
-            # Future enhancement:
-            #   also check a_dir / "PreviewsForProps" when
-            #   Database Previews\PreviewsForProps staging path is implemented.
             p_root = a_dir / f"{pn}.lorprev"
             if p_root.exists():
                 return (a_name, p_root, "AuthorRoot")
-
-            # Placeholder for future feature (disabled for now)
-            # p_props = a_dir / "PreviewsForProps" / f"{pn}.lorprev"
-            # if p_props.exists():
-            #     return (a_name, p_props, "PreviewsForProps")
-
             return None
 
-        # 1) Try hinted author first (from map or WinnerFrom)
         if author_hint:
             hit = _check_paths(author_hint)
             if hit:
                 return hit
 
-        # 2) Scan ONLY top-level author dirs (no deeper)
         for a_dir in input_root_safe.iterdir():
             if a_dir.is_dir():
                 hit = _check_paths(a_dir.name)
@@ -1600,7 +1993,7 @@ def write_dryrun_manifest_csv(
 
     for key, r in best_by_pn.items():
         pn          = r["PreviewName"]
-        present     = (r["Present"] or "").strip().lower()
+        present     = (r["Present"] or "").strip().lower()   # "yes"/"no"
         raw_action  = r["Action"]
 
         # Resolve author hint (explicit map -> WinnerFrom -> None)
@@ -1608,146 +2001,202 @@ def write_dryrun_manifest_csv(
         if not author_hint:
             wf = (r.get("WinnerFrom") or "").strip()
             if wf:
-                author_hint = _author_from_winnerfrom(wf)
+                author_hint = wf.split(":",1)[1].strip() if wf.upper().startswith("USER:") else wf
 
-        # Find author file in root or PreviewsForProps only
         author, author_file, where_tag = _find_author_and_file(pn, author_hint)
         staged_file = staging_root / f"{pn}.lorprev"
 
-        ready    = False
-        blockers = []
-        where    = where_tag if author else "Unknown"
-        
-        # Collect file stats for traceability
+        # Collect file stats
         author_time = _fmt_mtime(author_file)
         author_size = _filesize(author_file)
         staged_time = _fmt_mtime(staged_file)
         staged_size = _filesize(staged_file)
 
-        # Simple “is author newer than staged?” indicator
+        # author newer?
         author_newer = ""
         try:
-            if author_time and staged_time:
+            if author_file and staged_file.exists():
                 author_newer = "yes" if os.path.getmtime(author_file) > os.path.getmtime(staged_file) else "no"
-            elif author_time and not staged_time:
-                author_newer = "yes"  # no staged file, treat author as newer
-            else:
-                author_newer = ""
+            elif author_file and not staged_file.exists():
+                author_newer = "yes"  # new file
         except Exception:
             author_newer = ""
 
+        # ----- CORE DIFF (exactly what APPLY checks) -----
+        # ----- CORE DIFF (exactly what APPLY checks) --25-10-19- updated--
+        # ----- CORE DIFF (exactly what APPLY checks) -----
+        core_diff_flag = ""          # "yes" | "no" | "" (unknown)
+        core_changed_list: list[str] = []
+        core_different = None        # True | False | None(unknown)
+
+        try:
+            # Use our local diff_core_fields (parse_props_v6–backed)
+            if author_file and staged_file.exists():
+                same, changed_fields = diff_core_fields(author_file, staged_file)
+                core_different    = (not same)
+                core_diff_flag    = "yes" if core_different else "no"
+                core_changed_list = changed_fields or []
+            elif author_file and not staged_file.exists():
+                # no staged file yet → treat as different (a new stage)
+                core_different = True
+                core_diff_flag = "yes"
+        except Exception:
+            core_different    = None
+            core_diff_flag    = ""
+            core_changed_list = []
+        # Extra debug: per-side counts & signatures (using same snapshotter)
+        try:
+            from pathlib import Path as _P
+            _arows = _snapshot_core(_P(author_file)) if author_file else []
+            _srows = _snapshot_core(staged_file) if staged_file.exists() else []
+            _asig, _acnt = _sig(_arows)
+            _ssig, _scnt = _sig(_srows)
+        except Exception:
+            _acnt = _scnt = 0
+            _asig = _ssig = ""
+
+
+        # ----- Ready / Blockers (mirror APPLY gate) -----
+        ready    = False
+        blockers = []
 
         if present == "no":
-            # New: must have author file present
             if author_file:
                 ready = True
             else:
-                blockers.append("author file missing (root/PreviewsForProps)")
+                blockers.append("author file missing (root only)")
         else:
-            # Update: require a real core change, AND author file must be newer than staged
-            try:
-                from lor_core import core_different
-                if author_file and staged_file.exists():
-                    # First: verify core change
-                    if core_different(author_file, staged_file):
-                        # Second: enforce recency (author must be strictly newer)
-                        try:
-                            t_author = os.path.getmtime(author_file)
-                            t_staged = os.path.getmtime(staged_file)
-                            if t_author > t_staged:
-                                ready = True
-                            else:
-                                # If core change but author's file isn't newer, block it
-                                blockers.append("author older than staged")
-                        except Exception:
-                            # If we can't read times, be safe and block
-                            blockers.append("timestamp check failed")
-                    else:
-                        blockers.append("no core change")
-                else:
-                    if not author_file:
-                        blockers.append("author file missing (root/PreviewsForProps)")
-                    if not staged_file.exists():
-                        blockers.append("staged file missing")
-            except Exception as e:
-                blockers.append(f"core diff error: {e}")
+            # Present == yes → require core DIFFERENT AND author newer
+            # Present == yes → require core DIFFERENT AND author newer
+            if not author_file:
+                blockers.append("author file missing (root only)")
 
+            if author_file and staged_file.exists():
+                # Mirror APPLY: only stage when core_different is True
+                if core_different is False:
+                    blockers.append("core-identical (DB fields unchanged)")
+                # Only check recency when we have both files
+                try:
+                    if author_newer != "yes":
+                        blockers.append("author older than staged")
+                except Exception:
+                    blockers.append("timestamp check failed")
 
-        if not ready and not blockers:
-            blockers.append("not ready: unmet criteria")
+            # Ready iff both conditions satisfied
+            ready = (
+                (author_file is not None)
+                and (core_different is True)
+                and (author_newer == "yes")
+            )
+
+            if not ready and not blockers:
+                blockers.append("not ready: unmet criteria")
+
 
         needs_rows.append({
-            "FileName":     r.get("FileName",""),
-            "PreviewName":  pn,
-            "Author":       author,
-            "Revision":     r.get("Revision",""),
-            "Action":       raw_action,
-            "Present":      present,
-            "ReadyToApply": "yes" if ready else "no",
-            "Blockers":     ", ".join(blockers),
-            "WhereFound":   where,
+            "FileName":       r.get("FileName",""),
+            "PreviewName":    pn,
+            "Author":         author,
+            "Revision":       r.get("Revision",""),
+            "Action":         raw_action,
+            "Present":        present,
+            "ReadyToApply":   "yes" if ready else "no",
+            "Blockers":       ", ".join(blockers),
+            "WhereFound":     where_tag if author else "Unknown",
             "AuthorFileTime": author_time,
             "AuthorFileSize": author_size,
             "StagedFileTime": staged_time,
             "StagedFileSize": staged_size,
             "AuthorNewer":    author_newer,
+            "CoreDifferent":  core_diff_flag,
+            "CoreChangedFields": ", ".join(core_changed_list),
+            "PropCountAuthor": _acnt, # 25-10-19 GAL extra debug
+            "PropCountStaged": _scnt,
+            "CoreSigAuthor":   _asig,
+            "CoreSigStaged":   _ssig,
+
         })
 
-        # Upgrade the latest included debug row for this PN with final details
-        for d in reversed(debug_rows):
-            if d["PreviewName"] == pn and d["Include"] == "yes":
-                d["Author"]       = author
-                d["AuthorFile"]   = str(author_file) if author_file else ""
-                d["ReadyToApply"] = "yes" if ready else "no"
-                d["Blockers"]     = ", ".join(blockers)
-                d["AuthorFileTime"] = author_time
-                d["AuthorFileSize"] = author_size
-                d["StagedFileTime"] = staged_time
-                d["StagedFileSize"] = staged_size
-                d["AuthorNewer"]    = author_newer
-                break
-
-
-    # Write NeedsAction & Debug (atomic, retry; debug never blocks)
+    # --- WRITE Needs_Action (management) & Debug (diagnostics) CSVs ---
     needs_csv = reports_dir / "needs_action.csv"
     _write_csv_atomic(
         needs_csv,
         [
             "FileName","PreviewName","Author","Revision","Action","Present",
             "ReadyToApply","Blockers","WhereFound",
-            "AuthorFileTime","AuthorFileSize","StagedFileTime","StagedFileSize","AuthorNewer",
+            "AuthorFileTime","AuthorFileSize","StagedFileTime","StagedFileSize",
+            "AuthorNewer","CoreDifferent","CoreChangedFields",
+            # GAL 25-10-19: include debug columns (present in needs_rows)
+            "PropCountAuthor","PropCountStaged","CoreSigAuthor","CoreSigStaged",
         ],
         needs_rows,
         attempts=3
     )
     print(f"[backfill] Needs_Action CSV: {needs_csv} (rows={len(needs_rows)})")
-    print(f"[backfill] Needs_Action Columns: ['FileName','PreviewName','Author','Revision','Action','Present','ReadyToApply','Blockers','WhereFound']")
-    # Final console summary that matches needs_action.csv exactly
-    print(f"[summary] needs action (final): {len(needs_rows)} previews selected for Needs_Action")
-    for r in needs_rows:
-        print(f"  - {r.get('PreviewName','')} (rev {r.get('Revision','')}) | Ready={r.get('ReadyToApply','')} | Blocks={r.get('Blockers','')}")
+
+    for d in debug_rows:
+        d.setdefault("CoreDifferent", "")
+        d.setdefault("CoreChangedFields", "")
+
+    dbg_csv = reports_dir / "needs_action_debug.csv"
+    _write_csv_atomic(
+        dbg_csv,
+        [
+            "PreviewName","RawAction","NormAction","Role","Present","Author","AuthorFile",
+            "AuthorFileTime","AuthorFileSize","StagedFile","StagedFileTime","StagedFileSize",
+            "AuthorNewer","Include","IncludeReason","ReadyToApply","Blockers",
+            "CoreDifferent","CoreChangedFields"
+        ],
+        debug_rows,
+        attempts=2
+    )
+    print(f"[backfill] Needs_Action DEBUG: {dbg_csv} (rows={len(debug_rows)})")
+
+    # ---- DRY-RUN SUMMARY: how many WOULD stage if --apply ----
+    ready_to_apply = [
+        r for r in needs_rows
+        if (r.get("ReadyToApply", "").lower() == "yes")
+    ]
+
+    # Pretty console list (replaces single-line comma join)
+    print(f"[dry-run] WOULD STAGE: {len(ready_to_apply)} preview(s)")
+    for i, r in enumerate(ready_to_apply, 1):
+        name  = r.get("PreviewName") or r.get("FileName") or "?"
+        rev   = r.get("Revision") or "?"
+        auth  = r.get("Author") or r.get("WinnerAuthor") or "?"
+        where = r.get("WhereFound") or ""
+        extra = f" — {auth}" if auth != "?" else ""
+        if where:
+            extra += f" [{where}]"
+        print(f"   {i:>2}. {name} (rev {rev}){extra}")
 
 
-
-    dbg_csv  = reports_dir / "needs_action_debug.csv"
+    # Persist a tiny summary so Excel/automation can use it
+    # JSON with full list, and a human-readable TXT
     try:
-        _write_csv_atomic(
-            dbg_csv,
-            [
-                "PreviewName","RawAction","NormAction","Role","Present","Author","AuthorFile",
-                "AuthorFileTime","AuthorFileSize","StagedFile","StagedFileTime","StagedFileSize",
-                "AuthorNewer","Include","IncludeReason","ReadyToApply","Blockers",
-            ],
-            debug_rows,
-            attempts=2
+        import json as _json
+        ws_json = {
+            "count": len(ready_to_apply),
+            "previews": would_stage_names,
+        }
+        (reports_dir / "would_stage.json").write_text(
+            _json.dumps(ws_json, ensure_ascii=False, indent=2),
+            encoding="utf-8"
         )
-        print(f"[backfill] Needs_Action DEBUG: {dbg_csv} (rows={len(debug_rows)})")
-    except Exception as e:
-        print(f"[warn] Could not write needs_action_debug.csv: {e}")
+        (reports_dir / "would_stage.txt").write_text(
+            f"{len(ready_to_apply)} preview(s) would stage:\n" + "\n".join(would_stage_names),
+            encoding="utf-8"
+        )
+    except Exception as _e:
+        print(f"[warn] failed writing would_stage summary: {_e}")
 
 
 
 
+
+# GAL 25-10-18: Updated to mirror manifest CSV and include timestamps
+# --- DRY-RUN HTML manifest (adds Present + StagedTime) ---
+# --- DRY-RUN HTML manifest (de-dupe by PreviewName, keep highest Revision) ---
 # GAL 25-10-18: Updated to mirror manifest CSV and include timestamps
 # --- DRY-RUN HTML manifest (adds Present + StagedTime) ---
 # --- DRY-RUN HTML manifest (de-dupe by PreviewName, keep highest Revision) ---
@@ -1757,13 +2206,15 @@ def write_dryrun_manifest_html(
     author_by_name: dict[str, str] | None = None,
     staging_root: Path | None = None,   # enables Present + StagedTime
 ):
-    """
+    r"""
     Build a sortable HTML manifest of DRY-RUN winners, de-duped by PreviewName.
     For duplicates, keep the row with the highest numeric Revision.
     Columns: FileName, Author, Revision, Action, Present, StagedTime
     """
     from datetime import datetime
-    import os
+    #import os
+    #import re
+    #from pathlib import Path
 
     def _revnum(v: str) -> float:
         try:
@@ -1790,31 +2241,28 @@ def write_dryrun_manifest_html(
 
     # --------- de-dupe by PreviewName (highest Revision, then better action) ---------
     best_by_pn: dict[str, dict] = {}
-    for r in winner_rows:
-        pn = (r.get("PreviewName") or "").strip()
+    for rrow in winner_rows:
+        pn = (rrow.get("PreviewName") or "").strip()
         if not pn:
             continue
-        rev = (r.get("Revision") or "").strip()
-        act_raw = (r.get("Action") or "").strip()
+        rev = (rrow.get("Revision") or "").strip()
+        act_raw = (rrow.get("Action") or "").strip()
         act_norm = _norm_action(act_raw)
         score = (_revnum(rev), _action_score(act_norm))  # primary: revision, secondary: action quality
 
         key = pn.lower()
         cur = best_by_pn.get(key)
-        if cur is None:
-            best_by_pn[key] = {"row": r, "score": score}
-        else:
-            if score > cur["score"]:
-                best_by_pn[key] = {"row": r, "score": score}
+        if cur is None or score > cur["score"]:
+            best_by_pn[key] = {"row": rrow, "score": score}
 
     # --------- build output rows (unique per PreviewName) ---------
     rows = []
     for item in best_by_pn.values():
-        r = item["row"]
-        pn     = (r.get("PreviewName") or "").strip()
-        rev    = r.get("Revision") or ""
-        act    = (r.get("Action") or "").strip()
-        author = (r.get("Author") or (author_by_name or {}).get(pn, "") or "")
+        rrow = item["row"]
+        pn     = (rrow.get("PreviewName") or "").strip()
+        rev    = rrow.get("Revision") or ""
+        act    = (rrow.get("Action") or "").strip()
+        author = (rrow.get("Author") or (author_by_name or {}).get(pn, "") or "")
         fname  = f"{pn}.lorprev" if pn else ""
 
         present = "No"
@@ -1832,7 +2280,7 @@ def write_dryrun_manifest_html(
         # FileName, Author, Revision, Action, Present, StagedTime
         rows.append((fname, author, rev, act, present, staged_time))
 
-    # Sort by FileName asc, Revision desc (same as CSV manifest intent)
+    # Sort by FileName asc, Revision desc (same intent as CSV manifest)
     rows.sort(key=lambda x: ((x[0] or "").lower(), -_revnum(x[2])))
 
     _emit_manifest_html(
@@ -1849,6 +2297,7 @@ def write_dryrun_manifest_html(
         context_path=str(out_html.parent),
         extra_title="(DRY RUN)",
     )
+# --- end write_dryrun_manifest_html ---
 
 
 # GAL 25-10-16: run_meta.json writer (read by merge_reports_to_excel.py Info tab)
@@ -1863,7 +2312,7 @@ def write_run_meta_json(reports_dir: Path, staging_root: Path, run_mode: str, to
             "run_mode": run_mode,                  # "dry-run" | "apply"
             "csv_root": str(reports_dir),          # where CSVs are stored
             "staging_root": str(staging_root),     # canonical staging folder (for Info tab)
-            "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "started_at": dt.datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "user": getpass.getuser(),
             "host": socket.gethostname(),
             "totals": totals or {},
@@ -1906,7 +2355,7 @@ def _emit_manifest_html(
     )
     tr = "\n".join("<tr>" + "".join(f"<td>{_esc(c)}</td>" for c in row) + "</tr>" for row in norm_rows)
 
-    run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    run_ts = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ctx = _esc(context_path or "")
     xt = f" {extra_title.strip()}" if extra_title else ""  # leading space
     # User@Host GAL 25-10-14
@@ -2049,14 +2498,15 @@ CREATE INDEX IF NOT EXISTS idx_decisions_run_id  ON staging_decisions(run_id);
 """
 
 
-def history_connect(db_path: Path) -> sqlite3.Connection:
-    ensure_dir(db_path.parent)
-    conn = sqlite3.connect(str(db_path))
-    conn.execute('PRAGMA foreign_keys=ON')
-    conn.executescript(DDL_HISTORY)
-    return conn
+def history_connect(db_path: Path, *, mode: str = "rw"):
+    """mode='ro' opens read-only; mode='rw' opens read/write and creates the folder."""
+    if mode == "ro":
+        uri = f"file:{Path(db_path).as_posix()}?mode=ro"
+        return sqlite3.connect(uri, uri=True)
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    return sqlite3.connect(str(db_path))
 
-# ============================= Core logic ============================= #
+# # ============================= Core logic ============================= #
 
 def load_user_map(arg_map: Optional[str], json_path: Optional[str]) -> Dict[str, str]:
     out: Dict[str, str] = {}
@@ -2078,130 +2528,10 @@ def load_user_map(arg_map: Optional[str], json_path: Optional[str]) -> Dict[str,
                 out[k.strip()] = v.strip()
     return out
 
-# ---------------------------------------------------------------------------
-# GAL 25-10-15: File hashing utilities
-# ---------------------------------------------------------------------------
 
-def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
-    """
-    GAL 25-10-15
-    Compute the SHA-256 digest of a file in chunks (1 MB default).
-    Used as the base hash for change detection and for semantic hashing.
-    """
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for block in iter(lambda: f.read(chunk), b""):
-            h.update(block)
-    return h.hexdigest()
 
-# ---------------------------------------------------------------------------
-# GAL 25-10-15: Semantic SHA-256 hash
-# Purpose:
-#   Ignore volatile metadata fields in .lorprev files (Revision, SavedOn, etc.)
-#   so a simple save without content change does not trigger a restage.
-# ---------------------------------------------------------------------------
-_VOLATILE_PATTERNS = [
-    rb"<Revision>\s*\d+\s*</Revision>",       rb'"Revision"\s*:\s*\d+',
-    rb"<SavedOn>[^<]+</SavedOn>",             rb'"SavedOn"\s*:\s*"[^"]+"',
-    rb"<SavedBy>[^<]+</SavedBy>",             rb'"SavedBy"\s*:\s*"[^"]+"',
-    rb"<Exported>[^<]+</Exported>",           rb'"Exported"\s*:\s*"[^"]+"',
-    rb"<FileVersion>[^<]+</FileVersion>",     rb'"FileVersion"\s*:\s*"[^"]+"',
-]
 
-def semantic_sha256_file(path: Path) -> str:
-    """
-    GAL 25-10-15
-    Compute a SHA-256 hash after removing volatile metadata patterns.
-    Returns a content-stable hash for use in semantic comparison.
-    """
-    raw = path.read_bytes()
-    for pat in _VOLATILE_PATTERNS:
-        raw = re.sub(pat, b"", raw)
-    raw = re.sub(rb"\s{2,}", b" ", raw)  # compact whitespace
-    return hashlib.sha256(raw).hexdigest()
-# ---------------------------------------------------------------------------
-# GAL 25-10-15: Core-field extractor + signature for .lorprev
-# DB-meaningful fields ONLY (maps to Props table):
-#   Channel Name -> Name
-#   Display Name -> LORComment
-#   Controller (UID hex) -> UID
-#   Start Channel -> StartChannel
-#   Network -> Network
-#   Lights -> Lights
-#   PropID -> PropID
-# ---------------------------------------------------------------------------
-import json as _json, re as _re, hashlib as _hashlib
 
-_CORE_KEYS = [
-    "Channel Name",
-    "Display Name",
-    "Controller",     # normalized to UID hex
-    "Start Channel",
-    "Network",
-    "Lights",
-    "PropID",
-]
-
-# regexes that match either XML tags or JSON keys (case-insensitive)
-_RX_PATTERNS = [
-    (k, _re.compile(fr"<{_re.escape(k).replace(' ', r'\s*')}>([^<]*)</{_re.escape(k).replace(' ', r'\s*')}>",_re.I))
-    for k in _CORE_KEYS
-] + [
-    (k, _re.compile(fr'"{_re.escape(k)}"\s*:\s*"([^"]*)"', _re.I))
-    for k in _CORE_KEYS
-] + [
-    ("Start Channel", _re.compile(r'"Start Channel"\s*:\s*([0-9]+)', _re.I)),
-    ("Lights",        _re.compile(r'"Lights"\s*:\s*([0-9]+)', _re.I)),
-]
-
-def _norm_uid_hex(s: str) -> str:
-    t = (s or "").strip()
-    if not t:
-        return ""
-    if t.startswith("{") and t.endswith("}"):
-        t = t[1:-1]
-    t = t.replace("0x", "").replace("0X", "").strip()
-    return t.upper()
-
-def _normalize_core_value(k: str, v: str) -> str:
-    s = (v or "").strip()
-    if k in ("Start Channel", "Lights"):
-        try: return str(int(s))
-        except Exception: return s
-    if k == "PropID":
-        t = s.lower()
-        if t.startswith("{") and t.endswith("}"): t = t[1:-1]
-        return t
-    if k == "Controller":
-        return _norm_uid_hex(s)
-    return " ".join(s.split())
-
-def extract_core_fields(path: Path) -> dict[str, str]:
-    raw = path.read_bytes()
-    try: s = raw.decode("utf-8", errors="ignore")
-    except Exception: s = raw.decode("latin-1", errors="ignore")
-    result: dict[str, str] = {k: "" for k in _CORE_KEYS}
-    for key, rx in _RX_PATTERNS:
-        m = rx.search(s)
-        if m:
-            result[key] = _normalize_core_value(key, m.group(1))
-    return result
-
-def core_signature(path: Path) -> str:
-    fields = extract_core_fields(path)
-    payload = _json.dumps({k: fields.get(k, "") for k in _CORE_KEYS}, ensure_ascii=False, sort_keys=True)
-    return _hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-def diff_core_fields(src: Path, dst: Path) -> tuple[bool, list[str]]:
-    """
-    Returns (is_same, changed_keys). If dst doesn't exist, treat as different.
-    """
-    if not dst.exists():
-        return (False, _CORE_KEYS[:])
-    a = extract_core_fields(src)
-    b = extract_core_fields(dst)
-    changed = [k for k in _CORE_KEYS if (a.get(k, "") != b.get(k, ""))]
-    return (len(changed) == 0, changed)
 
 
 def scan_input(input_root: Path, user_map: Dict[str, str], email_domain: Optional[str]) -> List[Candidate]:
@@ -2378,7 +2708,7 @@ def stage_copy(src: Path, dst: Path, apply_mode: bool, make_backup: bool, *, sem
 
     # Only back up if content actually changed (semantic), and backups are enabled
     if make_backup and dst.exists() and semantic_different:
-        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        ts = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         backup = dst.with_suffix(dst.suffix + f".bak.{ts}")
         try:
             shutil.copy2(dst, backup)
@@ -2388,6 +2718,124 @@ def stage_copy(src: Path, dst: Path, apply_mode: bool, make_backup: bool, *, sem
     tmp = dst.with_suffix(dst.suffix + ".tmp")
     shutil.copy2(src, tmp)
     tmp.replace(dst)
+
+# ---------------------------------------------------------------------------
+# GAL 25-10-18: Archive the currently-Previews for Props file before overwriting
+# ---------------------------------------------------------------------------
+def archive_with_dated_filename(src: Path, archive_root: Path) -> Path:
+    r"""
+    Generic helper for future use (e.g., PreviewsForProps\archive).
+    Moves 'src' into 'archive_root' with __YYYY-MM-DD_HHMMSS added before the extension.
+    """
+    ensure_dir(archive_root)
+    ts = dt.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    base, ext = src.stem, src.suffix
+    dest = archive_root / f"{base}__{ts}{ext}"
+    counter = 1
+    while dest.exists():
+        dest = archive_root / f"{base}__{ts}__{counter}{ext}"
+        counter += 1
+    shutil.move(str(src), str(dest))
+    return dest
+
+# ---------------------------------------------------------------------------
+# GAL 25-10-18: Archive the currently-staged file (flat archive folder + dated filename)
+# ---------------------------------------------------------------------------
+def archive_existing_staged_file(staged_path: Path, archive_root: Path, *, apply_mode: bool):
+    r"""
+    Archives an existing staged preview by moving it to:
+      <archive_root>\
+
+    with a timestamp appended to the filename (before its extension), e.g.:
+      'Show Background Stage 07 Whoville 2025.leprop'  ->
+      'Show Background Stage 07 Whoville 2025__2025-10-18_193022.leprop'
+
+    Returns the archive destination Path if a move occurred.
+    """
+    if not apply_mode:
+        return None
+    if not staged_path.exists():
+        return None
+
+    ensure_dir(archive_root)
+
+    # Build dated filename: OriginalBase__YYYY-MM-DD_HHMMSS.ext
+    ts = dt.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    base = staged_path.stem
+    ext = staged_path.suffix
+    archived_name = f"{base}__{ts}{ext}"
+    dest = archive_root / archived_name
+
+    # If somehow that exists, add a counter (rare, but keep it robust)
+    counter = 1
+    while dest.exists():
+        archived_name = f"{base}__{ts}__{counter}{ext}"
+        dest = archive_root / archived_name
+        counter += 1
+
+    shutil.move(str(staged_path), str(dest))
+    return dest
+
+
+
+# ---------------------------------------------------------------------------
+# GAL 25-10-18: Build a human-readable notice of staged preview updates
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# GAL 25-10-18: Build a human-readable notice of staged preview updates
+# ---------------------------------------------------------------------------
+def build_preview_update_notice(applied_rows, reports_dir: Path, manifest_path: Path) -> Path:
+    r"""
+    Create a dated notice summarizing staged preview updates.
+    Writes to _notifications\preview-update-YYYYMMDD-HHMMSS.txt
+    and returns the path written.
+    """
+    #from datetime import datetime
+    #import os
+
+    # base directories
+    notifications_root = Path(r"G:\Shared drives\MSB Database\Database Previews\_notifications")
+    notifications_root.mkdir(parents=True, exist_ok=True)
+
+    timestamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    out_path = notifications_root / f"preview-update-{timestamp}.txt"
+
+    rows = applied_rows or []
+    lines = []
+    lines.append("MSB Preview Staging Update")
+    lines.append("------------------------------------------------------------")
+    lines.append(f"Generated : {dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"Count     : {len(rows)}")
+    lines.append("")
+
+    if rows:
+        lines.append("Staged previews (PreviewName — Author — Exported — Revision):")
+        for r in sorted(rows, key=lambda x: (
+            str(x.get("PreviewName") or "").lower(),
+            str(x.get("Author") or "").lower()
+        )):
+            lines.append(
+                f"  - {r.get('PreviewName','?')} — {r.get('Author','?')} — "
+                f"{r.get('Exported','?')} — {r.get('Revision','')}"
+            )
+    else:
+        lines.append("No previews were staged in this run.")
+
+    lines.append("")
+    lines.append("Reminder: For the latest authoritative list of previews,")
+    lines.append(str(manifest_path))
+
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+
+    # also keep the short report copy in /reports for quick access if desired
+    try:
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        (reports_dir / "preview_update_notice.txt").write_text("\n".join(lines), encoding="utf-8")
+    except Exception:
+        pass  # not fatal
+
+    return out_path
+
 
 
 # ============================= Reporting ============================= #
@@ -2440,7 +2888,7 @@ def write_html(report_html: Path, rows: List[Dict], input_root: str, staging_roo
         '<h2>LOR Preview Compare</h2>',
         f"<p><b>Input root:</b> {esc(input_root)}</p>",
         f"<p><b>Staging root:</b> {esc(staging_root)}</p>",
-        f"<p>Generated: {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')}</p>",
+        f"<p>Generated: {dt.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S%z')}</p>",
         '<table><thead><tr>' + ''.join(f'<th>{h}</th>' for h in headers) + '</tr></thead><tbody>'
     ]
     for r in rows:
@@ -2527,6 +2975,8 @@ def main():
     for k, v in cli.items():
         if v is not None:
             defaults[k] = v
+
+
 
     # -----------------------------------------------------------------------
     # GAL 25-10-15: Pin critical outputs to G:\ regardless of repo/json/CLI
@@ -2626,6 +3076,16 @@ def main():
     args = ap.parse_args()
 
     # -----------------------------------------------------------------------
+    # GAL 25-10-18: Add a clear run mode and single run stamp
+    # -----------------------------------------------------------------------
+    run_mode  = "apply" if args.apply else "dry-run"
+    run_stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")   # <-- USE dt.datetime.now()
+    print(f"[mode] {run_mode}  [run] {run_stamp}")
+    # If you still have open_history_db, it probably expects a bool (apply_mode).
+    # If so, pass args.apply. If you deleted it (Option A earlier), remove this line.
+    # conn, run_id = open_history_db(args.apply)
+
+    # -----------------------------------------------------------------------
     # 3) Compute final paths AFTER parsing args (may override defaults)
     # -----------------------------------------------------------------------
     input_root   = Path(args.input_root)
@@ -2685,7 +3145,7 @@ def main():
     allowed_winner_rows_report: list[dict] = []  # optional: keep if you want
 
     # Useful run metadata
-    run_started_local = datetime.now().astimezone().isoformat(timespec='seconds')
+    run_started_local = dt.datetime.now().astimezone().isoformat(timespec='seconds')
     applied_by        = socket.gethostname()  # or os.getlogin()
 
     # Directories (create AFTER coercion)
@@ -2727,7 +3187,7 @@ def main():
     excel_out.mkdir(parents=True, exist_ok=True)
 
     # Excel targets
-    _ts = datetime.now().strftime("%Y%m%d-%H%M")
+    _ts = dt.datetime.now().strftime("%Y%m%d-%H%M")
     xlsx_latest = excel_out / "reports.xlsx"
     xlsx_ts     = excel_out / f"reports-{_ts}.xlsx"
 
@@ -2846,47 +3306,105 @@ def main():
     # Build user→email map
     user_map = load_user_map(args.user_map, args.user_map_json)
 
-    # History DB: start run
-    conn = history_connect(history_db)
-    run_id = hashlib.sha256(os.urandom(16)).hexdigest()
+    # # === GAL 2025-10-18 21:08 === History DB: start run (APPLY-ONLY; dry-run is RO and writes NOTHING)
+    # === GAL 2025-10-18 — History DB run header and guarded interactions ===
+    #
+    # Policy:
+    #   • Dry-run: NEVER write to the DB (no connection opened).
+    #   • Apply  : Open R/W, ensure schema, record a single run header row.
+    #
+    # Notes:
+    #   • started_local is LOCAL time (ISO with offset) to match other artifacts.
+    #   • We only read/write subsequent tables when (args.apply and conn) is true.
 
-    # Local, tz-aware timestamp (fixes utcnow() deprecation)
-    _now_local = datetime.now().astimezone()
-    started_local = _now_local.isoformat(timespec='seconds')  # e.g. 2025-08-31T08:25:33-05:00
+    conn: Optional[sqlite3.Connection] = None
+    run_id: Optional[str] = None
 
-    # Keeping the column name started for now, but storing local ISO with offset
-    conn.execute(
-        'INSERT INTO runs(run_id, started, policy) VALUES (?,?,?)',
-        (run_id, started_local, args.policy)
-    )
-    conn.commit()
+    # One canonical local timestamp for this run (used in logs/DB header when apply)
+    started_local = dt.datetime.now().astimezone().isoformat(timespec='seconds')  # e.g. 2025-10-19T09:18:11-05:00
 
-    # Load prior state for cross-run change detection
+    if args.apply:
+        # --- APPLY MODE: open DB R/W and ensure schema; record run header once ---
+        conn = history_connect(history_db, mode="rw")
+        run_id = hashlib.sha256(os.urandom(16)).hexdigest()
+
+        # Ensure minimal schema (idempotent)
+        conn.execute("""CREATE TABLE IF NOT EXISTS runs(
+            run_id  TEXT PRIMARY KEY,
+            started TEXT,
+            policy  TEXT
+        )""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS staging_decisions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id TEXT,
+            preview_key TEXT,
+            winner_path TEXT,
+            staged_as TEXT,
+            decision_reason TEXT,
+            conflict INTEGER,
+            action TEXT
+        )""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS file_observations(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id TEXT,
+            user TEXT,
+            user_email TEXT,
+            path TEXT,
+            file_name TEXT,
+            preview_key TEXT,
+            preview_guid TEXT,
+            preview_name TEXT,
+            revision_raw TEXT,
+            revision_num REAL,
+            file_size INTEGER,
+            exported TEXT,
+            sha256 TEXT
+        )""")
+
+        # Single authoritative run header
+        conn.execute(
+            'INSERT OR IGNORE INTO runs(run_id, started, policy) VALUES (?,?,?)',
+            (run_id, started_local, args.policy)
+        )
+        conn.commit()
+    # --- DRY-RUN: leave conn=None so no DB writes can occur ---
+
+    # (1) Load prior state for cross-run change detection (APPLY only)
     prior: Dict[str, Dict] = {}
-    for row in conn.execute(
-        "SELECT preview_key, preview_name, revision_num, sha256 FROM preview_state"
-    ):
-        prior[row[0]] = {
-            "preview_name": row[1],
-            "revision_num": row[2],
-            "sha256": row[3],
-        }
-        
-    # Scan candidates (root only)
+    if args.apply and conn:
+        try:
+            for row in conn.execute(
+                "SELECT preview_key, preview_name, revision_num, sha256 FROM preview_state"
+            ):
+                prior[row[0]] = {
+                    "preview_name": row[1],
+                    "revision_num": row[2],
+                    "sha256": row[3],
+                }
+        except Exception as e:
+            # Table may not exist on first run; proceed with empty 'prior'
+            print(f"[warn] prior state unavailable: {e}")
+
+    # (2) Scan candidates (always)
     candidates = scan_input(input_root, user_map, args.email_domain)
 
-    # Record file observations
-    with conn:
-        for c in candidates:
-            conn.execute(
-                'INSERT INTO file_observations(run_id,user,user_email,path,file_name,preview_key,preview_guid,preview_name,revision_raw,revision_num,file_size,exported,sha256) '
-                'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                (
-                    run_id, c.user, c.user_email, c.path, Path(c.path).name, c.key,
-                    c.identity.guid, c.identity.name, c.identity.revision_raw, c.identity.revision_num,
-                    c.size, ymd_hms(c.mtime), c.sha256
-                )
-            )
+    # (3) Record file observations (APPLY only; NEVER on dry-run)
+    if args.apply and conn:
+        try:
+            with conn:
+                for c in candidates:
+                    conn.execute(
+                        'INSERT INTO file_observations(run_id,user,user_email,path,file_name,preview_key,preview_guid,preview_name,revision_raw,revision_num,file_size,exported,sha256) '
+                        'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        (
+                            run_id, c.user, c.user_email, c.path, Path(c.path).name, c.key,
+                            c.identity.guid, c.identity.name, c.identity.revision_raw, c.identity.revision_num,
+                            c.size, ymd_hms(c.mtime), c.sha256
+                        )
+                    )
+        except Exception as e:
+            print(f"[warn] could not record file observations: {e}")
+    # === /GAL 2025-10-18 — History DB block ===
 
     groups = group_by_key(candidates)
 
@@ -3237,72 +3755,171 @@ def main():
                     ensure_dir(staged_dest.parent)
 
                     # Compare ONLY DB-meaningful fields (short-circuits rev/metadata noise)
+                    # ----- BEGIN CORE COMPARISON AND STAGE DECISION (GAL 25-10-18) -----
+
+                    # Compare ONLY DB-meaningful fields (core)
                     staged_exists = staged_dest.exists()
                     if staged_exists:
-                        core_same, core_changed = diff_core_fields(Path(winner.path), staged_dest)
+                        core_same, core_changed = diff_core_fields(Path(winner.path), staged_dest)  # local helper
                     else:
-                        core_same, core_changed = (False, _CORE_KEYS[:])  # dest missing → treat as different
+                        core_same, core_changed = (False, ["new file"])
 
-                    # Decide
+                    # Archive folder for staged previews (flat folder with dated filenames)
+                    # Example: G:\Shared drives\MSB Database\Database Previews\archive
+                    staged_archive_root = Path(r"G:\Shared drives\MSB Database\Database Previews\archive")
+
+                    # If we’re going to overwrite an existing staged file with a core change,
+                    # archive the old staged file first (one time, before copy; only when --apply)
+                    if args.apply and staged_exists and (not core_same):
+                        try:
+                            archived_prior = archive_existing_staged_file(
+                                staged_path=staged_dest,
+                                archive_root=staged_archive_root,
+                                apply_mode=True
+                            )
+                            if archived_prior:
+                                print(f"[INFO] Archived previous staged file → {archived_prior}")
+                        except Exception as e:
+                            print(f"[WARN] Failed to archive previous staged file: {e}")
+
+                    # Decide whether to stage the winner
                     if core_same:
                         should_stage = False
-                        stage_reason = (stage_reason + '; ' if stage_reason else '') + 'skip: core-identical (DB fields unchanged)  # GAL 25-10-15'
+                        stage_reason = (stage_reason + '; ' if stage_reason else '') + 'skip: core-identical (DB fields unchanged)  # GAL 25-10-18'
                     else:
                         should_stage = True
-                        stage_reason = (stage_reason + '; ' if stage_reason else '') + f"apply: core changed ({', '.join(core_changed)})  # GAL 25-10-15"
+                        stage_reason = (stage_reason + '; ' if stage_reason else '') + f"apply: core changed ({', '.join(core_changed)})  # GAL 25-10-18"
+
+                    # === GAL 2025-10-19 11:00 === decision logger
+                    # Safe locals for logging/ledger (Candidate/Winner doesn’t expose preview_name/author/revision at top level)
+                    name       = winner.identity.name
+                    author_s   = (winner.user or "")
+                    revision_s = (winner.identity.revision_raw or str(winner.identity.revision_num) or "")
+
+                    reason_bits = ["core=DIFF" if not core_same else "core=SAME"]
+                    try:
+                        t_author = os.path.getmtime(Path(winner.path))
+                        t_staged = os.path.getmtime(staged_dest) if staged_dest.exists() else 0
+                        newer = "author>staged" if (not staged_dest.exists() or t_author > t_staged) else "author<=staged"
+                        reason_bits.append(newer)
+                    except Exception:
+                        reason_bits.append("time=?")
+
+                    print(
+                        f"[decision] {name} → "
+                        f"{'STAGE' if should_stage else 'SKIP'} "
+                        f"({', '.join(reason_bits)}; winnerfrom={getattr(winner, 'winner_from', '')})"
+                    )
+                    # === GAL 2025-10-19 11:00 ===
+
 
                     # Do the copy (no writes in dry-run; backups only if **core** changed)
+                    # === GAL 2025-10-18 21:45 — stage + immediate logging (APPLY ONLY logs; dry-run safe) ===
                     core_different = not core_same
+                    copy_ok = True
+
                     if should_stage:
-                        stage_copy(
-                            Path(winner.path),
-                            staged_dest,
-                            apply_mode=args.apply,
-                            make_backup=True,                 # keep one backup when DB-core changed
-                            semantic_different=core_different # we reuse this flag for "meaningful change"
-                        )
-                        copy_ok = True
+                        try:
+                            stage_copy(
+                                Path(winner.path),
+                                staged_dest,
+                                apply_mode=args.apply,
+                                make_backup=True,                 # keep one backup when DB-core changed
+                                semantic_different=core_different
+                            )
+
+                            # === GAL 2025-10-19 11:00 ===
+                            # Only now (success) do we record as applied
+                            ts_utc = dt.datetime.utcnow().isoformat(timespec="seconds")
+                            action = "stage-new" if not staged_exists else "update-staging"
+                            archived_str = str(archived_prior) if 'archived_prior' in locals() and archived_prior else ""
+
+                            event = {
+                                "TS_UTC": ts_utc,
+                                "PreviewName": name,        # winner.identity.name
+                                "Author":      author_s,    # winner.user
+                                "Revision":    revision_s,  # identity.revision_raw/num
+                                "Action":      action,
+                                "SrcPath":     str(Path(winner.path)),
+                                "DestPath":    str(staged_dest),
+                                "ArchivedPrior": archived_str,
+                            }
+                            # >>> ADD THESE TWO LINES <<<
+                            event["CoreDifferent"] = "yes" if not core_same else "no"
+                            event["CoreChangedFields"] = ", ".join(core_changed_fields)
+                            # <<< END ADD >>>
+                            applied_this_run.append(event)
+                            # === GAL 2025-10-19 11:00 ===
+
+                            # Append to append-only CSV ledger immediately (durable even if later steps fail)
+                            ledger_csv = Path(reports_dir) / "apply_events.csv"
+                            header = [
+                                "TS_UTC","PreviewName","Author","Revision","Action",
+                                "SrcPath","DestPath","ArchivedPrior",
+                                "CoreDifferent","CoreChangedFields"
+                            ]
+                            write_header = not ledger_csv.exists()
+                            with ledger_csv.open("a", newline="", encoding="utf-8-sig") as _f:
+                                _w = csv.DictWriter(_f, fieldnames=header)
+                                if write_header: _w.writeheader()
+                                _w.writerow({k: event.get(k, "") for k in header})
+
+                            # === GAL 2025-10-19 11:00 ===
+                            # Insert a staging decision into the history DB (APPLY ONLY)
+                            if args.apply and conn:
+                                conn.execute("""CREATE TABLE IF NOT EXISTS staging_decisions(
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    run_id TEXT,
+                                    preview_key TEXT,
+                                    staged_as TEXT,
+                                    action TEXT
+                                )""")
+                                conn.execute(
+                                    "INSERT INTO staging_decisions(run_id, preview_key, staged_as, action) VALUES (?,?,?,?)",
+                                    (run_id, getattr(winner, "key", name), str(staged_dest), "staged")  # <— name replaces winner.preview_name
+                                )
+                                conn.commit()
+
+                            print(f"[OK] Staged: {name} → {staged_dest.name}")  # <— name replaces winner.preview_name
+                            # === GAL 2025-10-19 11:00 ===
+
+                        except Exception as e:
+                            copy_ok = False
+                            print(f"[ERROR] Failed to stage {name}: {e}")  # <— name replaces winner.preview_name
+                            # Capture failure context
+                            excluded_detailed.append({
+                                "PreviewName":  name,
+                                "Key":          key,
+                                "GUID":         winner_guid,
+                                "Revision":     winner.identity.revision_raw or "",
+                                "Action":       action,
+                                "User":         winner.user or "",
+                                "Reason":       "apply failed",
+                                "Failure":      str(e),
+                                "RuleNeeded":   "",
+                                "SuggestedFix": "",
+                                "Path":         winner.path,
+                                "StagedPath":   str(staged_dest),
+                            })
+
                     else:
-                        copy_ok = True  # decision was to skip; still count as handled
+                        # Not staging by decision; still considered OK for loop continuity
+                        copy_ok = True
+                    # === /GAL 2025-10-18 21:45 ===
 
-                except Exception as e:
-                    excluded_detailed.append({
-                        "PreviewName":  name,
-                        "Key":          key,
-                        "GUID":         winner_guid,
-                        "Revision":     winner.identity.revision_raw or "",
-                        "Action":       action,
-                        "User":         winner.user or "",
-                        "Reason":       "apply failed",
-                        "Failure":      str(e),
-                        "RuleNeeded":   "",
-                        "SuggestedFix": "",
-                        "Path":         winner.path,
-                        "StagedPath":   str(staged_dest),
-                    })
+                    # ----- END CORE COMPARISON AND STAGE DECISION (GAL 25-10-18) -----
 
-                if copy_ok:
-                    with conn:
-                        conn.execute(
-                            'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
-                            (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'staged')
-                        )
-                    applied_this_run.append({
-                        'Key':         key,
-                        'PreviewName': name,
-                        'Author':      winner.user or '',
-                        'Revision':    winner.identity.revision_raw or '',
-                        'Size':        winner.size,
-                        'Exported':    ymd_hms(winner.mtime),
-                        'ApplyDate':   ymd_hms(time.time()),
-                        'AppliedBy':   applied_by,
-                    })
+
+                    # NOTE:
+                    # We already inserted a 'staged' row into the DB and appended to applied_this_run
+                    # immediately AFTER stage_copy(...) succeeded (GAL 2025-10-18 21:45 block).
+                    # So we DO NOT repeat those here to avoid duplicate history.
 
                     # -----------------------------------------------------------------------
-                    # GAL 25-10-15: Archive losers (no backups; treat as different path)
+                    # Archive losers (apply only). No backups; treat as different path.
                     # -----------------------------------------------------------------------
                     if archive_root and losers:
-                        day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+                        day = dt.datetime.now(timezone.utc).strftime('%Y-%m-%d')
                         for l in losers:
                             arch_dest = archive_root / day / sanitize_name(l.user) / (
                                 default_stage_name(l.identity, Path(l.path)).replace(
@@ -3315,17 +3932,19 @@ def main():
                                     Path(l.path),
                                     arch_dest,
                                     apply_mode=args.apply,
-                                    make_backup=False,      # archives don’t need backups
-                                    semantic_different=True # copying to a new file → always "different"
+                                    make_backup=False,       # archives don’t need backups
+                                    semantic_different=True  # copying to a new file → always "different"
                                 )
-                                with conn:
-                                    conn.execute(
-                                        'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
-                                        (run_id, key, winner.path, str(arch_dest), 'archived non-winner', 0, 'archived')
-                                    )
+                                # Record archive decision in DB (APPLY ONLY)
+                                if args.apply and conn:
+                                    with conn:
+                                        conn.execute(
+                                            'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) '
+                                            'VALUES (?,?,?,?,?,?,?)',
+                                            (run_id, key, winner.path, str(arch_dest), 'archived non-winner', 0, 'archived')
+                                        )
                             except Exception as e:
                                 print(f"[WARN][GAL 25-10-15] Failed archiving loser {l.path} -> {arch_dest}: {e}", file=sys.stderr)
-
                                 excluded_detailed.append({
                                     "PreviewName":  l.identity.name or "",
                                     "Key":          key,
@@ -3340,13 +3959,39 @@ def main():
                                     "Path":         l.path,
                                     "StagedPath":   str(arch_dest),
                                 })
-            else:
-                # explicitly record the skip
-                with conn:
-                    conn.execute(
-                        'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) VALUES (?,?,?,?,?,?,?)',
-                        (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'skipped')
-                    )
+
+                    # If we decided NOT to stage, explicitly record the skip (APPLY ONLY)
+                    if (not should_stage) and args.apply and conn:
+                        with conn:
+                            conn.execute(
+                                'INSERT INTO staging_decisions(run_id,preview_key,winner_path,staged_as,decision_reason,conflict,action) '
+                                'VALUES (?,?,?,?,?,?,?)',
+                                (run_id, key, winner.path, str(staged_dest), stage_reason, int(conflict), 'skipped')
+                            )
+
+                # === GAL 2025-10-18 22:28 — close outer try: ensure_dir/diff/archive/skip ===
+                except Exception as e:
+                    copy_ok = False
+                    print(f"[ERROR] Staging flow crashed for {name}: {e}")
+                    # Best-effort failure record (avoid NameError if something above wasn't set)
+                    try:
+                        excluded_detailed.append({
+                            "PreviewName":  name if 'name' in locals() else getattr(winner.identity, 'name', ''),
+                            "Key":          key if 'key' in locals() else '',
+                            "GUID":         winner_guid if 'winner_guid' in locals() else getattr(winner.identity, 'guid', ''),
+                            "Revision":     getattr(winner.identity, 'revision_raw', '') or '',
+                            "Action":       action if 'action' in locals() else '',
+                            "User":         winner.user if hasattr(winner, 'user') else '',
+                            "Reason":       "apply failed (outer try)",
+                            "Failure":      str(e),
+                            "RuleNeeded":   "",
+                            "SuggestedFix": "",
+                            "Path":         winner.path if hasattr(winner, 'path') else '',
+                            "StagedPath":   str(staged_dest) if 'staged_dest' in locals() else '',
+                        })
+                    except Exception:
+                        pass
+                # === /GAL 2025-10-18 22:28 ===
 
 
         # progress: one tick per preview key
@@ -3401,7 +4046,7 @@ def main():
     # ---- Missing comments report (STAGING ONLY; top-level; skip DeviceType="None") REMOVE LINE AFTER DEBUG
     # GAL 25-10-16: Missing comments report (AUTHOR + STAGING; no path in output)
     # We no longer look at winners/candidates — only what is currently in staging_root.
-# ---- Missing comments report (AUTHOR + STAGING; unified columns, NO Path) ----
+    # ---- Missing comments report (AUTHOR + STAGING; unified columns, NO Path) ----
     try:
         ensure_dir(miss_csv.parent)
 
@@ -3808,8 +4453,6 @@ def main():
     else:
         print("[filter] excluded 0 previews; all winners match allowed families", file=sys.stderr)
 
-
-
     if args.apply:
         print(f"Staged → {staging_root}")
         if archive_root:
@@ -3938,7 +4581,7 @@ def main():
 
         # Write the on-disk manifest of what's actually in staging now
         manifest_csv_path = Path(staging_root) / "current_previews_manifest.csv"
-        write_current_manifest(Path(staging_root), manifest_csv_path)
+        write_current_manifest_csv(staging_root, manifest_csv_path)
 
         # HTML version too 25-09-19
         manifest_html_path = Path(staging_root) / "current_previews_manifest.html"
@@ -4094,7 +4737,7 @@ def main():
         keep_names = {p.name for p in staged_points}
 
         # 2) Move any *other* report-like files out of staging
-        archive_base = reports_dir / "archive" / datetime.now().strftime("%Y-%m-%d")
+        archive_base = reports_dir / "archive" / dt.datetime.now().strftime("%Y-%m-%d")
         archive_base.mkdir(parents=True, exist_ok=True)
 
         try:
@@ -4110,7 +4753,7 @@ def main():
                     # If name collision in archive, add a timestamp suffix
                     if target.exists():
                         stem, suf = p.stem, p.suffix
-                        ts = datetime.now().strftime("%H%M%S")
+                        ts = dt.datetime.now().strftime("%H%M%S")
                         target = archive_base / f"{stem}.{ts}{suf}"
                     move(str(p), str(target))
                     print(f"[INFO][GAL 25-10-15] Archived old report from staging: {p.name} -> {target}")
@@ -4159,6 +4802,22 @@ def main():
     print(f"[cfg] CSV root: {reports_dir}")
     print(f"[cfg] Excel out: {excel_out}")
     print("[OK] Excel workbook(s) written by merge_reports_to_excel.py")
+    # ------------------------------------------------------------------------------
+    # GAL 25-10-18: Human-readable summary + notice file
+    total_staged = len(applied_this_run)
+    if total_staged:
+        print("\n[SUMMARY] Preview staging changes this run:")
+        for r in sorted(applied_this_run, key=lambda x: (str(r.get('PreviewName') or ''), str(r.get('Author') or ''))):
+            print(f"  • {r.get('PreviewName','?')} — {r.get('Author','?')} — {r.get('Exported','?')} — {r.get('Revision','')}")
+    else:
+        print("\n[SUMMARY] No previews were staged in this run.")
+
+    notice_path = build_preview_update_notice(
+        applied_this_run,
+        reports_dir=reports_dir,
+        manifest_path=Path(r"G:\Shared drives\MSB Database\Database Previews\current_previews_manifest.html")
+    )
+    print(f"[INFO] Preview Staging Update Notice → {notice_path}")
 
     # ------------------------------------------------------------------------------
 
