@@ -78,8 +78,10 @@ import datetime as dt
 DEBUG_CORE = False
 DEBUG_APPLY = True  # set False once you’re happy
 # GAL 25-10-20 — knobs you can flip
-REQUIRE_CORE_DIFF = True       # if False, stage based only on the Action
-REQUIRE_AUTHOR_NEWER = True    # if False, ignore mtime and allow equal/older timestamps
+#REQUIRE_CORE_DIFF = True       # if False, stage based only on the Action
+#REQUIRE_AUTHOR_NEWER = True    # if False, ignore mtime and allow equal/older timestamps
+REQUIRE_CORE_DIFF = False       # if False, stage based only on the Action
+REQUIRE_AUTHOR_NEWER = False    # if False, ignore mtime and allow equal/older timestamps
 
 # DEBUG_APPLY = FALSE  
 
@@ -4839,9 +4841,13 @@ def main():
                     continue
 
                 # Single source of truth for change: lor_core
-                changed = _core_changed_via_lc(Path(src), Path(dst) if dst.exists() else None)
+                # 1) Core difference (lor_core)
+                # KNOBS located ~ Line 80
+                # With both knobs set to False, apply will stage anything whose Action was
+                # stage-new or update-staging — matching dry-run.
+                # changed = _core_changed_via_lc(Path(src), Path(dst) if dst.exists() else None)
 
-                # If replacing, require the author export to be newer than staged
+                # 2) Timestamp check
                 author_newer = True
                 if dst.exists():
                     try:
@@ -4849,10 +4855,21 @@ def main():
                     except Exception:
                         author_newer = True
 
-                if not (changed and author_newer):
+                # Apply gating per your knobs
+                gate_ok = True
+                if REQUIRE_CORE_DIFF and not changed:
+                    gate_ok = False
+                if REQUIRE_AUTHOR_NEWER and not author_newer:
+                    gate_ok = False
+
+                if not gate_ok:
                     reason = []
-                    if not changed: reason.append("core-identical")
-                    if not author_newer: reason.append("author older/equal to staged")
+                    if REQUIRE_CORE_DIFF and not changed:
+                        reason.append("core-identical")
+                    if REQUIRE_AUTHOR_NEWER and not author_newer:
+                        reason.append("author older/equal to staged")
+                    if DEBUG_APPLY:
+                        print(f"[apply][SKIP] '{pn}' → {', '.join(reason) or 'not ready'}")
                     try:
                         excluded_detailed.append({
                             "PreviewName": pn, "Key": r.get("Key",""), "GUID": r.get("GUID",""),
@@ -4862,9 +4879,11 @@ def main():
                         })
                     except Exception:
                         pass
-                    if DEBUG_APPLY:
-                        print(f"[apply][SKIP] '{pn}' → {', '.join(reason) or 'not ready'}")
                     continue
+
+                if DEBUG_APPLY:
+                    print(f"[apply][OK] staging '{pn}' (REQUIRE_CORE_DIFF={REQUIRE_CORE_DIFF}, REQUIRE_AUTHOR_NEWER={REQUIRE_AUTHOR_NEWER})")
+
 
                 # Archive existing staged file using your helper (respects apply_mode)
                 if dst.exists():
