@@ -72,18 +72,73 @@ import traceback  # (optional, if you print tracebacks elsewhere)
 import tempfile # Required for _write_atomic
 import datetime as dt
 
-# GAL 25-10-20: toggleable debug flag (set False to silence core compare logs)
-# Pick one or the other here:
+# ────────────────────────────────────────────────────────────────────────────────
+# GAL 25-10-20 — INTERNAL KNOBS (debug + staging policy)
+#
+# DEBUG_CORE
+#   What: Verbose logging for the “core-different” comparison (Network/UID/StartChannel, etc.).
+#   Use:  True while tuning compare logic or investigating why a preview is or isn’t “core-different”.
+#         False for normal runs to keep logs quiet.
+#
+# DEBUG_APPLY
+#   What: Verbose logging for the staging/apply path (what would be copied, where, backups, etc.).
+#   Use:  True when validating would-be file operations in dry-run, or first time using --apply.
+#         False once behavior is proven, to reduce console noise.
+#
+# REQUIRE_CORE_DIFF
+#   What: Gate that requires a semantic wiring change (“core-different == True”) to stage a winner.
+#   True  ➜ Only stage if core fields changed. Pure comment-only or older-same-core winners are blocked.
+#   False ➜ Stage based on the computed Action (e.g., “update”) even if core is identical.
+#           Useful when you intentionally want to propagate non-core changes (labels/comments).
+#
+# REQUIRE_AUTHOR_NEWER
+#   What: Gate that requires the author’s preview mtime to be newer than the staged copy.
+#   True  ➜ Prevents staging equal/older author files (extra safety against regression).
+#   False ➜ Allows staging even if timestamps are equal or older (use with care).
+#           Handy when clock skew or copy workflows make mtimes unreliable, or when
+#           you intentionally want to push a known-good but older-dated file.
+#
+# INTERACTIONS (most common outcomes)
+#   - REQUIRE_CORE_DIFF=True & REQUIRE_AUTHOR_NEWER=True   → Most conservative (safe default for production).
+#   - REQUIRE_CORE_DIFF=True & REQUIRE_AUTHOR_NEWER=False  → Allow pushing same-core if newer check is disabled? No:
+#                                                             still requires core change; timestamp is ignored.
+#   - REQUIRE_CORE_DIFF=False & REQUIRE_AUTHOR_NEWER=True  → Allow non-core updates, but only if author file is newer.
+#   - REQUIRE_CORE_DIFF=False & REQUIRE_AUTHOR_NEWER=False → Most permissive: allows non-core and older/equal mtimes.
+#                                                             Only use deliberately (bulk comment sync, backfills).
+#
+# QUICK PROFILES
+#   Conservative (recommended for nightly / shared use):
+#       DEBUG_CORE=False
+#       DEBUG_APPLY=False
+#       REQUIRE_CORE_DIFF=True
+#       REQUIRE_AUTHOR_NEWER=True
+#
+#   Comment/label sync (propagate non-core changes, but still protect against older files):
+#       DEBUG_CORE=False
+#       DEBUG_APPLY=True
+#       REQUIRE_CORE_DIFF=False
+#       REQUIRE_AUTHOR_NEWER=True
+#
+#   Backfill / override (force a specific known-good file regardless of timestamp):
+#       DEBUG_CORE=True
+#       DEBUG_APPLY=True
+#       REQUIRE_CORE_DIFF=False
+#       REQUIRE_AUTHOR_NEWER=False
+#
+# Note: DEBUG_* flags affect logging only. REQUIRE_* flags affect whether a winner is eligible to stage.
+# ────────────────────────────────────────────────────────────────────────────────
+
 #DEBUG_CORE = True  # set False once you’re happy
 DEBUG_CORE = False
 DEBUG_APPLY = True  # set False once you’re happy
-# GAL 25-10-20 — knobs you can flip
+# DEBUG_APPLY = FALSE  
+
 #REQUIRE_CORE_DIFF = True       # if False, stage based only on the Action
 #REQUIRE_AUTHOR_NEWER = True    # if False, ignore mtime and allow equal/older timestamps
 REQUIRE_CORE_DIFF = False       # if False, stage based only on the Action
 REQUIRE_AUTHOR_NEWER = False    # if False, ignore mtime and allow equal/older timestamps
 
-# DEBUG_APPLY = FALSE  
+
 
 # GAL 25-10-20: Force sibling lor_core import and log the actual path/version
 from pathlib import Path as _GALPath
@@ -3055,6 +3110,61 @@ def _load_config_json(path: Optional[str]) -> Dict[str, str]:
             pass
     return {}
 
+# ────────────────────────────────────────────────────────────────────────────────
+# 🧭 CONFIGURATION "KNOBS" — USER-TUNABLE FLAGS & MODES
+#
+# These control how preview_merger.py behaves during execution.
+# Each knob can be set via command-line flag or inferred from context.
+# They are intentionally centralized here for clarity and debugging.
+#
+#   --apply            ➜   Actually apply/stage the winning previews
+#                         into Database Previews (live merge mode).
+#                         When absent, script runs in "dry-run" mode:
+#                         all reports/manifests are generated,
+#                         but no files are copied or renamed.
+#
+#   --root <path>      ➜   Path to the working "reports" directory.
+#                         Default: G:\Shared drives\MSB Database\Database Previews\reports
+#                         Used by all report generators (CSV, HTML, Excel)
+#                         and by merge_reports_to_excel.py when building Info tab.
+#
+#   --policy <mode>    ➜   Author selection policy. Determines which user’s
+#                         preview takes precedence when multiple copies exist.
+#                         Common modes:
+#                             prefer-comments-then-revision   ← Default
+#                             prefer-newest-revision
+#                             prefer-staging
+#
+#   --actor <label>    ➜   Optional label to override the detected
+#                         user@machine identifier.  Usually auto-detected.
+#                         Appears in Info tab and notification messages.
+#
+#   --reason <text>    ➜   Optional human-readable explanation for the run.
+#                         Stored in run_meta.json and shown in the Excel Info tab.
+#                         Examples:
+#                             "Weekly database refresh"
+#                             "Post-show cleanup (2025 season)"
+#
+#   run_mode           ➜   Internal string ("apply" | "dry-run") derived from --apply.
+#                         Propagated into reports and Info tab.
+#
+#   actor              ➜   Internal resolved user@host identifier.  Auto-filled
+#                         from environment if --actor not given.
+#
+#   compare_summary    ➜   Optional dict summarizing differences (counts of updates,
+#                         no-ops, etc.) passed to merge_reports_to_excel for the Info tab.
+#
+#   run_meta.json      ➜   Small JSON file written into <root> each run,
+#                         capturing run_mode, reason, user, host, and timestamp.
+#                         merge_reports_to_excel.py reads this to populate
+#                         the “Info” sheet in lorprev_reports.xlsx.
+#
+# Typical usage:
+#     python preview_merger.py              ← Dry-run (default)
+#     python preview_merger.py --apply      ← Apply live updates
+#     python preview_merger.py --apply --reason "Post-show update"
+#
+# ────────────────────────────────────────────────────────────────────────────────
 
 # ----------------------------- Main -----------------------------
 def parse_cli() -> dict:
