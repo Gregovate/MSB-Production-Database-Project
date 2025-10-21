@@ -2066,12 +2066,19 @@ def write_dryrun_manifest_csv(
         present     = (r["Present"] or "").strip().lower()   # "yes"/"no"
         raw_action  = r["Action"]
 
-        # Resolve author hint (explicit map -> WinnerFrom -> None)
-        author_hint = (r.get("Author") or "").strip()
+        # Resolve author hint (normalize historical fields; then WinnerFrom)
+        author_hint = (
+            r.get("Author")
+            or r.get("WinnerAuthor")
+            or r.get("User")
+            or r.get("WinnerUser")
+            or ""
+        ).strip()
         if not author_hint:
             wf = (r.get("WinnerFrom") or "").strip()
             if wf:
-                author_hint = wf.split(":",1)[1].strip() if wf.upper().startswith("USER:") else wf
+                author_hint = wf.split(":", 1)[1].strip() if wf.upper().startswith("USER:") else wf
+
 
         author, author_file, where_tag = _find_author_and_file(pn, author_hint)
         staged_file = staging_root / f"{pn}.lorprev"
@@ -4840,6 +4847,7 @@ def main():
                         print(f"[apply][SKIP] Missing author file for '{pn}' (author='{auth}')")
                     continue
 
+
                 # Single source of truth for change: lor_core
                 # 1) Core difference (lor_core)
                 # KNOBS located ~ Line 80
@@ -5002,13 +5010,29 @@ def main():
                     status     = "Applied"
                     apply_date = applied.get("ApplyDate") or ""
                     applied_by = applied.get("AppliedBy") or ""
-                    exported   = applied.get("Exported") or (r.get("Exported") or "")
+                    exported   = applied.get("Exported")  or (r.get("Exported") or "")
+                    # Prefer the author recorded at apply time; fallback to row variants
+                    author     = (
+                        applied.get("Author")
+                        or r.get("Author")
+                        or r.get("WinnerAuthor")
+                        or r.get("User")
+                        or r.get("WinnerUser")
+                        or ""
+                    )
                 else:
                     apply_date = r.get("ApplyDate") or ""
                     applied_by = r.get("AppliedBy") or ""
                     exported   = r.get("Exported") or ""
+                    author     = (
+                        r.get("Author")
+                        or r.get("WinnerAuthor")
+                        or r.get("User")
+                        or r.get("WinnerUser")
+                        or ""
+                    )
 
-                author = r.get("Author") or r.get("User") or ""
+                author      = author.strip()
                 display_pct = r.get("DisplayNamesFilledPct") or ""
 
                 _w.writerow({
