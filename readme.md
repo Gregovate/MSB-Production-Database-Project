@@ -22,17 +22,14 @@ Create props table that contains one record per display. Use the subprops and dm
 - The datafiles are untouched as not to affect the sequencing software.
 
 ## Definitions
-
-- **Preview**: A collection of props in a designated stage. This can be a collection of props sequenced to music or a background animation.
 - **LOR**: Abbreviation for Light O Rama
-- **Stage**: An area set to a theme containing displays that are either background animations or displays sequenced to music (e.g., Elf Choir, Candyland).
-- **Prop**: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical object.
-- **SubProp**: A prop that responds to the same commands as a prop. This must be explicitly assigned in the preview.
-- **Channel Name** → `Name` in LOR XML. The label used by the sequencer. Never modified by the parser.
-- **Display Name** → `LORComment` in LOR XML. Our inventory/display label. Used for grouping,
-- **Display**: A display as a single physical object that we design, build, setup, and inventory. A display can be a single prop or can be a combination of props and/or SubProp.
+- **Preview**: This is a collection of **Displays** sequenced to music or a background animation and required for any sequencing in **LOR**
+- **Stage**: An area set to a theme containing displays that are either background animations or displays sequenced to music (e.g., Elf Choir, Candyland). The stage name is used to define the **Preview**.
+- **Display**: A display as a single physical object that we design, build, setup, and/or inventory for the show. A Display can have multiple - SubProps or it can be an undetermined device type needed for a display like support arches, Scaffolding, etc that must be managed. The Display Name is typed into the comment field inside the preview and must follow specific naming conventions.
+- **Prop AKA Channel Name**: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical object, it's NOT. A prop is the **Channel Name**.
+- **SubProp**: This can either be explicitly assigned in the preview to repeat the same commands as the prop or is part of the same physical display that responds to different commands.The LORComment field of any sub prop must be **IDENTICAL** to the **Display Name**. 
 - **UID**: The hexadecimal number assigned to a controller
-- **id**: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure
+- **id**: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure their uniqueness.
 
 ## Preview Types (what we build and why)
 
