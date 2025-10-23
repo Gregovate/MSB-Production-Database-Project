@@ -1,6 +1,6 @@
 # MSB Database — LOR Preview Parser (v6)
-# Initial Release : 2022-01-20 V0.1.0
-# Current Version : 2025-10-23 V6.7.0  (GAL)
+# Initial Release : 2022-01-20  V0.1.0
+# Current Version : 2025-10-23  V6.7.5 (GAL)
 # Author          : Greg Liebig, Engineering Innovations, LLC.
 #
 # Purpose
@@ -12,18 +12,26 @@
 #   • dmxChannels
 #   • wiring views (preview_wiring_map_v6 / preview_wiring_sorted_v6)
 #
-# Recent Additions (GAL 2025-10-23)
-# ---------------------------------
-# • Safe inserts (props/subProps): detect PropID/SubPropID collisions and skip overwrites.
-#     - Console: human-friendly ERROR with Preview Name, Display Name, Channel Name, wiring context.
-#     - Reports: CSVs written to …\Database Previews\reports\
-#         · propid_collisions.csv
-#         · subpropid_collisions.csv
-# • End-of-run reporting: writes collision CSVs, then a notice file with artifact list.
-# • Logging: compact per-preview INFO line — S=<StageID> R=<Rev> D=<DisplayCount>
-#     - Optional full preview dump gated by PREVIEW_DEBUG.
-# • StageID extraction fix: “Stage NN” uses exactly 1–2 digits; “Animation …” uses whole name.
+# Recent Additions (GAL 2025-10-23 → v6.7.5)
+# -------------------------------------------
+# • DeviceType ="None" handling re-aligned to Core Model v1.0:
+#     – Masters ( MasterPropId is NULL ) → insert into props as stand-alone inventory records.  
+#     – Linked units ( MasterPropId set ) → ignored or optional subProps write (no wiring impact).  
+#     – No local fan-out; global fan-out handled later in the pipeline.
 #
+# • Global uniqueness audit added for DisplayName masters across previews.  
+#     – A DisplayName can be mastered in only one preview → hard error with CSV reports.  
+#     – Grouped console output restored (props/subProps counts per preview).
+#
+# • Reports now write to a dedicated folder:  
+#       G:\Shared drives\MSB Database\Database Previews\reports\
+#        – duplicate_display_names_masters.csv  
+#        – duplicate_display_names_by_preview.csv
+#
+# • get_reports_dir() enhanced to honor REPORTS_DIR or REPORTS_PATH and auto-create the folder.
+#
+# • Minor documentation alignment with lor_core.py (field map clarity; no logic changes).
+
 # Naming Convention
 # -----------------
 # Display names follow a consistent pattern:
@@ -143,6 +151,34 @@ def require_g():
         print("[FATAL] G: drive not available. All data lives on the shared drive.")
         print("        Mount the shared drive and try again.")
         sys.exit(2)
+
+def get_reports_dir() -> str:
+    """
+    Resolve a writable reports directory:
+      1) REPORTS_DIR (Path or str), if defined
+      2) REPORTS_PATH (str), if defined
+      3) <folder of DB_FILE>\reports
+    Ensures the directory exists and returns an absolute path.
+    """
+    import os
+    # Prefer REPORTS_DIR if present
+    rd = globals().get("REPORTS_DIR", None)
+    if rd:
+        reports_dir = os.path.abspath(str(rd))
+    else:
+        rp = globals().get("REPORTS_PATH", None)
+        if rp:
+            reports_dir = os.path.abspath(rp)
+        else:
+            db_dir = os.path.abspath(os.path.dirname(DB_FILE))
+            reports_dir = os.path.join(db_dir, "reports")
+
+    os.makedirs(reports_dir, exist_ok=True)
+    return reports_dir
+
+# ============================= G: ONLY ============================= #
+
+
 
 # ---- Global flags & defaults (must be defined before functions) ----
 DEBUG = False  # Global debug flag
@@ -1139,7 +1175,7 @@ def reconcile_subprops_to_canonical_master(db_file: str):
 
 # ============================ Parsing Modules ===========================================
 # def process_none_props(preview_id, root):
-def process_none_props(preview_id, root, skip_display_names: set[str] | None = None):
+# def process_none_props(preview_id, root, skip_display_names: set[str] | None = None):
     r"""
     RULES (DeviceType == "None")
     ----------------------------
@@ -1185,65 +1221,99 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
         harden the wiring view to exclude DeviceType='None' on the sub-prop leg.
     """
 
+def process_none_props(preview_id, root, skip_display_names: set[str] | None = None):
+    """
+    DeviceType == "None" (masters-only to props; linked units ignored by default)
+    Policy (per user spec):
+      • If MasterPropId (XML) is empty  → this record is the INVENTORY MASTER → INSERT into props.
+      • If MasterPropId is present      → this record is a linked unit        → IGNORE (or write to subProps if desired).
+      • Do NOT fan-out here.
+    """
+
+    WRITE_LINKED_TO_SUBPROPS = False  # set True if you want to keep linked units in subProps for reference
+
     conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+    cur = conn.cursor()
+
+    def _scoped(preview_id: str, raw_id: str | None) -> str | None:
+        raw_id = (raw_id or "").strip()
+        if not raw_id:
+            return None
+        return raw_id if ":" in raw_id else f"{preview_id}:{raw_id}"
+
+    # Pass 0: collect NONE records
+    # We’ll detect duplicate masters per DisplayName to avoid ambiguous inventory.
+    masters_by_display: dict[str, dict] = {}
+    linked_rows: list[dict] = []
+    seen_master_displaynames: dict[str, list[dict]] = {}
 
     for prop in root.findall(".//PropClass"):
         if (prop.get("DeviceType") or "").strip() != "None":
             continue
 
-        # GAL 25-10-16: Comment→DisplayName hygiene should match lor_core.validate_display_name()
         comment = (prop.get("Comment") or "").strip()
         if not comment:
-            # skip blanks; they cause churn in inventory
+            continue
+        if skip_display_names and comment in skip_display_names:
             continue
 
-        raw_id    = prop.get("id") or ""
-        base_name = prop.get("Name") or ""
-        max_ch    = safe_int(prop.get("MaxChannels"), 0)
-        parm2     = prop.get("Parm2")
-        lights    = safe_int(parm2, 0)
+        rec = {
+            "raw_id":              (prop.get("id") or "").strip(),
+            "name":                prop.get("Name") or "",
+            "comment":             comment,
+            "max_ch":              safe_int(prop.get("MaxChannels"), 0),
+            "parm1":               prop.get("Parm1"),
+            "parm2":               prop.get("Parm2"),
+            "parm3":               prop.get("Parm3"),
+            "parm4":               prop.get("Parm4"),
+            "parm5":               prop.get("Parm5"),
+            "parm6":               prop.get("Parm6"),
+            "parm7":               prop.get("Parm7"),
+            "parm8":               prop.get("Parm8"),
+            "bulb_shape":          prop.get("BulbShape"),
+            "dimming_curve_name":  prop.get("DimmingCurveName"),
+            "traditional_type":    prop.get("TraditionalType"),
+            "traditional_colors":  prop.get("TraditionalColors"),
+            "string_type":         prop.get("StringType"),
+            "effect_bulb_size":    prop.get("EffectBulbSize"),
+            "custom_bulb_color":   prop.get("CustomBulbColor"),
+            "tag":                 prop.get("Tag"),
+            "opacity":             prop.get("Opacity"),
+            "preview_bulb_size":   prop.get("PreviewBulbSize"),
+            "separate_ids":        prop.get("SeparateIds"),
+            "start_location":      prop.get("StartLocation"),
+            "legacy_method":       prop.get("LegacySequenceMethod"),
+            "individual_ch":       prop.get("IndividualChannels"),
+            "master_dimmable":     prop.get("MasterDimmable"),
+            "master_raw":          (prop.get("MasterPropId") or prop.get("UseSameChannelAs") or "").strip(),
+        }
 
-        # Determine how many instances to materialize
-        count = max(1, max_ch if max_ch > 0 else (lights if lights > 0 else 1))
+        if rec["master_raw"] == "":  # MASTER
+            # detect duplicate masters for same DisplayName
+            lst = seen_master_displaynames.setdefault(comment, [])
+            lst.append(rec)
+        else:  # LINKED
+            linked_rows.append(rec)
 
-        # "Use same channel as" can come through under different attribute names;
-        # check both common variants.
-        same_as = (
-            (prop.get("UseSameChannelAs") or "").strip()
-            or (prop.get("MasterPropId") or "").strip()
-        )
-        if same_as.lower() in ("", "none", "null"):
-            same_as = ""
+    # Guardrail: error if >1 master per DisplayName in this preview
+    dup_masters = [dn for dn, lst in seen_master_displaynames.items() if len(lst) > 1]
+    if dup_masters:
+        print("[ERROR] Multiple MASTER inventory records for the same DisplayName within a single preview (DeviceType=None).")
+        for dn in dup_masters:
+            names = ", ".join((r["name"] or r["raw_id"] or "?") for r in seen_master_displaynames[dn])
+            print(f"  - PreviewId={preview_id} DisplayName='{dn}' has {len(seen_master_displaynames[dn])} masters: {names}")
+        raise SystemExit(2)
 
-        # Copy over other descriptive fields you want to retain on NONE records
-        dimming_curve_name = prop.get("DimmingCurveName")
-        bulb_shape         = prop.get("BulbShape")
-        traditional_type   = prop.get("TraditionalType")
-        traditional_colors = prop.get("TraditionalColors")
-        string_type        = prop.get("StringType")
-        effect_bulb_size   = prop.get("EffectBulbSize")
-        custom_bulb_color  = prop.get("CustomBulbColor")
-        tag                = prop.get("Tag")
-        opacity            = prop.get("Opacity")
-        preview_bulb_size  = prop.get("PreviewBulbSize")
-        separate_ids       = prop.get("SeparateIds")
-        start_location     = prop.get("StartLocation")
-        legacy_method      = prop.get("LegacySequenceMethod")
-        individual_ch      = prop.get("IndividualChannels")
+    # Build final maps
+    for dn, lst in seen_master_displaynames.items():
+        masters_by_display[dn] = lst[0]  # the only one (we just enforced uniqueness)
 
-        # Materialize count instances: PropID-01, PropID-02, ...
-        for i in range(1, count + 1):
-            inst_id = f"{raw_id}-{i:02d}"
-
-            # only suffix when we actually fan-out to multiple rows
-            if count > 1:
-                inst_comment = f"{comment}-{i:02d}"
-            else:
-                inst_comment = comment
-
-            cursor.execute("""
-                INSERT OR REPLACE INTO props (
+    # Pass 1: insert MASTERS to props
+    for dn, m in masters_by_display.items():
+        prop_id_scoped = _scoped(preview_id, m["raw_id"]) or f"{preview_id}:NONE"
+        try:
+            cur.execute("""
+                INSERT INTO props (
                     PropID, Name, LORComment, DeviceType,
                     BulbShape, DimmingCurveName, MaxChannels,
                     CustomBulbColor, IndividualChannels, LegacySequenceMethod,
@@ -1252,25 +1322,80 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
                     Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8,
                     Lights, PreviewId, MasterPropId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                inst_id, base_name, inst_comment, "None",     # ← here
-                bulb_shape, dimming_curve_name, max_ch,
-                custom_bulb_color, individual_ch, legacy_method,
-                opacity, prop.get("MasterDimmable"), preview_bulb_size, separate_ids, start_location,
-                string_type, traditional_colors, traditional_type, effect_bulb_size, tag,
-                prop.get("Parm1"), prop.get("Parm2"), prop.get("Parm3"), prop.get("Parm4"),
-                prop.get("Parm5"), prop.get("Parm6"), prop.get("Parm7"), prop.get("Parm8"),
-                lights, preview_id, same_as or None
+                prop_id_scoped, m["name"], dn, "None",
+                m["bulb_shape"], m["dimming_curve_name"], m["max_ch"],
+                m["custom_bulb_color"], m["individual_ch"], m["legacy_method"],
+                m["opacity"], m["master_dimmable"], m["preview_bulb_size"], m["separate_ids"], m["start_location"],
+                m["string_type"], m["traditional_colors"], m["traditional_type"], m["effect_bulb_size"], m["tag"],
+                m["parm1"], m["parm2"], m["parm3"], m["parm4"], m["parm5"], m["parm6"], m["parm7"], m["parm8"],
+                safe_int(m["parm2"], 0), preview_id, None
             ))
+        except sqlite3.IntegrityError as e:
+            print(f"[ERROR] Duplicate PropID (None/MASTER): {prop_id_scoped} "
+                  f"(PreviewId={preview_id}, Display='{dn}') -> {e}")
+            raise
+
+        if DEBUG:
+            print(f"[NONE->MASTER] {prop_id_scoped}  name='{m['name']}'  display='{dn}'")
+
+    # Pass 2: (optional) write LINKED units to subProps for reference; otherwise IGNORE
+    if WRITE_LINKED_TO_SUBPROPS and linked_rows:
+        # Pre-resolve master scoped ids by their DisplayName + raw master id
+        master_scoped_by_raw = {
+            masters_by_display[dn]["raw_id"]: _scoped(preview_id, masters_by_display[dn]["raw_id"]) or f"{preview_id}:NONE"
+            for dn in masters_by_display
+        }
+
+        for r in linked_rows:
+            # only write if this linked row references a known master for its DisplayName
+            dn = r["comment"]
+            master_rec = masters_by_display.get(dn)
+            if not master_rec:
+                # Linked references a display with no master in this preview → ignore silently (or log)
+                if DEBUG:
+                    print(f"[NONE->SKIP-LINK] raw_id='{r['raw_id']}' display='{dn}' (no master found in this preview)")
+                continue
+
+            # XML says "MasterPropId = PropID of the record that stands alone" → that is the master's raw_id
+            # Be strict: ensure it matches the master we accepted for this display
+            if r["master_raw"] != master_rec["raw_id"]:
+                # Mismatch: linked points to a different raw master id than the accepted master for this display
+                if DEBUG:
+                    print(f"[NONE->SKIP-LINK] raw_id='{r['raw_id']}' display='{dn}' master_raw='{r['master_raw']}' "
+                          f"!= expected '{master_rec['raw_id']}'")
+                continue
+
+            sub_scoped    = _scoped(preview_id, r["raw_id"]) or f"{preview_id}:NONE"
+            master_scoped = master_scoped_by_raw[master_rec["raw_id"]]
+
+            try:
+                cur.execute("""
+                    INSERT INTO subProps (
+                        SubPropID, MasterPropId,
+                        Name, LORComment, DeviceType,
+                        Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8,
+                        PreviewId
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    sub_scoped, master_scoped,
+                    r["name"], dn, "None",
+                    r["parm1"], r["parm2"], r["parm3"], r["parm4"],
+                    r["parm5"], r["parm6"], r["parm7"], r["parm8"],
+                    preview_id
+                ))
+            except sqlite3.IntegrityError as e:
+                print(f"[ERROR] Duplicate SubPropID (None/LINK): {sub_scoped} "
+                      f"(Master={master_scoped}, Display='{dn}') -> {e}")
+                raise
 
             if DEBUG:
-                mode = "EXPAND+LINK" if same_as else "EXPAND"
-                print(f"[NONE->{mode}] {inst_id}  name='{base_name}'  comment='{inst_comment}'")
-
+                print(f"[NONE->SUB] {sub_scoped}  name='{r['name']}'  display='{dn}'  master='{master_scoped}'")
 
     conn.commit()
     conn.close()
+
 
 
 def process_dmx_props(preview_id, root):
@@ -2434,6 +2559,120 @@ def collapse_duplicate_masters(db_file: str):
     finally:
         conn.close()
 
+# --- GAL 25-10-23: Enforce global uniqueness of DisplayName across previews (masters only) ---
+# --- GAL 25-10-23: Masters-only uniqueness audit with grouped console output ---
+def audit_displayname_masters_unique_across_previews(
+    db_path: str,
+    out_csv_flat_name: str = "duplicate_display_names_masters.csv",
+    out_csv_grouped_name: str = "duplicate_display_names_by_preview.csv",
+) -> None:
+    import sqlite3, csv
+    from collections import defaultdict, Counter
+    import os
+
+    reports_dir = get_reports_dir()
+    out_csv_flat = os.path.join(reports_dir, out_csv_flat_name)
+    out_csv_grouped = os.path.join(reports_dir, out_csv_grouped_name)
+
+    conn = sqlite3.connect(db_path)
+
+    # 1) Find offending DisplayNames based on MASTERS-ONLY uniqueness rule
+    q_masters = r"""
+    WITH masters AS (
+      SELECT
+        p.PreviewId,
+        pv.Name AS PreviewName,
+        UPPER(TRIM(p.LORComment)) AS DisplayKey,
+        p.PropID
+      FROM props p
+      JOIN previews pv ON pv.id = p.PreviewId
+      WHERE TRIM(COALESCE(p.LORComment,'')) <> ''
+        AND UPPER(p.LORComment) <> 'SPARE'
+        AND p.MasterPropId IS NULL
+    ),
+    offenders AS (
+      SELECT DisplayKey
+      FROM masters
+      GROUP BY DisplayKey
+      HAVING COUNT(DISTINCT PreviewId) > 1
+    )
+    SELECT m.DisplayKey, m.PreviewId, m.PreviewName, m.PropID
+    FROM masters m
+    JOIN offenders o ON o.DisplayKey = m.DisplayKey
+    ORDER BY m.DisplayKey, m.PreviewName;
+    """
+    masters_rows = conn.execute(q_masters).fetchall()
+
+    if not masters_rows:
+        print("[OK] All DisplayNames are unique across previews (masters only).")
+        conn.close()
+        return
+
+    offender_keys = {r[0] for r in masters_rows}
+
+    # Flat CSV of masters
+    with open(out_csv_flat, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["DisplayName", "PreviewId", "PreviewName", "MasterPropID"])
+        for display_key, preview_id, preview_name, prop_id in masters_rows:
+            w.writerow([display_key, preview_id, preview_name, prop_id])
+
+    # 3) Per-preview counts (for readable console + grouped CSV)
+    q_canon = r"""
+    WITH canon AS (
+      SELECT p.PreviewId, pv.Name AS PreviewName,
+             UPPER(TRIM(p.LORComment)) AS DisplayKey,
+             'props' AS Source
+      FROM props p
+      JOIN previews pv ON pv.id = p.PreviewId
+      WHERE TRIM(COALESCE(p.LORComment,'')) <> '' AND UPPER(p.LORComment) <> 'SPARE'
+      UNION ALL
+      SELECT sp.PreviewId, pv.Name AS PreviewName,
+             UPPER(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment))) AS DisplayKey,
+             'subProps' AS Source
+      FROM subProps sp
+      JOIN props p  ON p.PropID = sp.MasterPropId
+      JOIN previews pv ON pv.id = sp.PreviewId
+      WHERE TRIM(COALESCE(COALESCE(NULLIF(sp.LORComment,''), p.LORComment),'')) <> ''
+        AND UPPER(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)) <> 'SPARE'
+    )
+    SELECT DisplayKey, PreviewName, Source, COUNT(*) AS N
+    FROM canon
+    WHERE DisplayKey IN ({placeholders})
+    GROUP BY DisplayKey, PreviewName, Source
+    ORDER BY DisplayKey, PreviewName, Source;
+    """.format(placeholders=",".join("?" for _ in offender_keys))
+
+    canon_rows = conn.execute(q_canon, tuple(sorted(offender_keys))).fetchall()
+    conn.close()
+
+    grouped = defaultdict(lambda: defaultdict(Counter))
+    for display_key, preview_name, source, n in canon_rows:
+        grouped[display_key][preview_name][source] += n
+
+    # Grouped CSV
+    with open(out_csv_grouped, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["DisplayName", "PreviewName", "props_count", "subProps_count"])
+        for dk in sorted(grouped):
+            for pn in sorted(grouped[dk]):
+                c = grouped[dk][pn]
+                w.writerow([dk, pn, c.get("props", 0), c.get("subProps", 0)])
+
+    print("\n[ERROR] Duplicate DisplayName(s) found across previews (masters-only rule):")
+    for dk in sorted(grouped):
+        bits = []
+        for pn in sorted(grouped[dk]):
+            c = grouped[dk][pn]
+            parts = []
+            if c.get("props"):    parts.append(f"props:{c['props']}")
+            if c.get("subProps"): parts.append(f"subProps:{c['subProps']}")
+            bits.append(f"{pn} ({', '.join(parts)})" if parts else pn)
+        print(f"  - {dk}  →  " + " | ".join(bits))
+
+    print(f"[ERROR] See details: {out_csv_flat}")
+    print(f"[ERROR] Grouped by preview: {out_csv_grouped}")
+    raise SystemExit(2)
 
 
 def main():
@@ -2481,7 +2720,15 @@ def main():
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
 
+    # 🚨 Fail-fast audit: a DisplayName can be mastered in ONLY one preview
+    audit_displayname_masters_unique_across_previews(DB_FILE)
+
+    # # 🚨 Fail-fast audits (write CSV + exit non-zero if problems)
+    # audit_duplicate_display_names(DB_FILE)   # required
+    # # audit_prop_id_crosspreview(DB_FILE)    # optional but recommended during transition
+
     print("Processing complete. Check the database.")
+
 
     # -----------------------------------------------------------------------------
     # GAL 25-10-22: End-of-run reporting (collision CSVs + notice)
@@ -2823,6 +3070,137 @@ WHERE ConnectionType = 'FIELD';
             print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
     except Exception as e:
         print(f"[WARN] Could not run compare script: {e}")
+
+# --- GAL 25-10-23: Duplicate DisplayName audit across previews ---
+def audit_duplicate_display_names(db_path: str, out_csv: str = "duplicate_display_names.csv") -> None:
+    """
+    Error if any 'DisplayName' (dashified LORComment) appears in >1 preview.
+    Writes a CSV with all collisions for triage, then exits non-zero.
+    """
+    import sqlite3, csv
+    q = r"""
+    WITH canon AS (
+      -- props (use raw p.LORComment; dashify only for display)
+      SELECT
+        p.PreviewId,
+        pv.Name AS PreviewName,
+        UPPER(TRIM(p.LORComment)) AS DisplayKey,
+        'props' AS Source,
+        COALESCE(p.DeviceType,'') AS DeviceType,
+        p.PropID AS ItemID
+      FROM props p
+      JOIN previews pv ON pv.id = p.PreviewId
+      WHERE TRIM(COALESCE(p.LORComment,'')) <> '' AND UPPER(p.LORComment) <> 'SPARE'
+
+      UNION ALL
+
+      -- subProps (prefer sub comment when present)
+      SELECT
+        sp.PreviewId,
+        pv.Name AS PreviewName,
+        UPPER(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment))) AS DisplayKey,
+        'subProps' AS Source,
+        COALESCE(sp.DeviceType,'') AS DeviceType,
+        sp.SubPropID AS ItemID
+      FROM subProps sp
+      JOIN props p  ON p.PropID = sp.MasterPropId
+      JOIN previews pv ON pv.id = sp.PreviewId
+      WHERE TRIM(COALESCE(COALESCE(NULLIF(sp.LORComment,''), p.LORComment),'')) <> ''
+        AND UPPER(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)) <> 'SPARE'
+    ),
+    dups AS (
+      SELECT DisplayKey
+      FROM canon
+      GROUP BY DisplayKey
+      HAVING COUNT(DISTINCT PreviewId) > 1
+    )
+    SELECT c.DisplayKey, c.PreviewId, c.PreviewName, c.Source, c.DeviceType, c.ItemID
+    FROM canon c
+    JOIN dups d ON d.DisplayKey = c.DisplayKey
+    ORDER BY c.DisplayKey, c.PreviewName, c.Source, c.ItemID;
+    """
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute(q).fetchall()
+    conn.close()
+
+    if not rows:
+        print("[OK] No duplicate display names across previews.")
+        return
+
+    # write details for triage
+    # --- Write flat detail CSV (existing behavior) ---
+    with open(out_csv, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["DisplayName", "PreviewId", "PreviewName", "Source", "DeviceType", "ItemID"])
+        for r in rows:
+            w.writerow(r)
+
+    # --- Also build a grouped-by-preview summary for console + CSV ---
+    from collections import defaultdict, Counter
+
+    by_key = defaultdict(list)  # DisplayName -> list of (PreviewName, Source)
+    for display_key, _pid, preview_name, source, _dtype, _itemid in rows:
+        by_key[display_key].append((preview_name, source))
+
+    # Console output: each duplicate with its previews + counts by source
+    print("\n[ERROR] Duplicate DisplayName(s) found across previews:")
+    for display_key in sorted(by_key):
+        entries = by_key[display_key]
+        preview_counts = defaultdict(Counter)  # PreviewName -> Counter({props: n, subProps: n})
+        for pn, src in entries:
+            preview_counts[pn][src] += 1
+
+        # Compose a readable per-duplicate line
+        preview_bits = []
+        for pn in sorted(preview_counts):
+            c = preview_counts[pn]
+            parts = []
+            if c.get("props"):    parts.append(f"props:{c['props']}")
+            if c.get("subProps"): parts.append(f"subProps:{c['subProps']}")
+            preview_bits.append(f"{pn} ({', '.join(parts)})")
+        print(f"  - {display_key}  →  " + " | ".join(preview_bits))
+
+    # Grouped CSV for quick triage
+    grouped_csv = out_csv.replace(".csv", "_by_preview.csv")
+    with open(grouped_csv, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["DisplayName", "PreviewName", "props_count", "subProps_count"])
+        for display_key in sorted(by_key):
+            entries = by_key[display_key]
+            preview_counts = defaultdict(Counter)
+            for pn, src in entries:
+                preview_counts[pn][src] += 1
+            for pn in sorted(preview_counts):
+                w.writerow([display_key, pn, preview_counts[pn].get("props", 0), preview_counts[pn].get("subProps", 0)])
+
+    print(f"[ERROR] See details: {out_csv}")
+    print(f"[ERROR] Grouped by preview: {grouped_csv}")
+    raise SystemExit(2)
+
+
+
+# --- GAL 25-10-23: Optional belt-and-suspenders audit (PropID cross-preview) ---
+def audit_prop_id_crosspreview(db_path: str) -> None:
+    """
+    Should be empty if all PropIDs are properly preview-scoped.
+    """
+    import sqlite3
+    q = """
+    SELECT PropID, COUNT(DISTINCT PreviewId) AS previews
+    FROM props
+    GROUP BY PropID
+    HAVING COUNT(DISTINCT PreviewId) > 1
+    """
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute(q).fetchall()
+    conn.close()
+    if rows:
+        print("[ERROR] Unscoped PropID(s) exist across previews:")
+        for pid, cnt in rows:
+            print(f"  - {pid} in {cnt} previews")
+        raise SystemExit(2)
+
+
 
 
 if __name__ == "__main__":
