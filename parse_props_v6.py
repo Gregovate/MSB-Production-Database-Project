@@ -1,6 +1,7 @@
 # MSB Database — LOR Preview Parser (v6)
-# Initial Release: 2022-01-20 V0.1.0
-# Author: Greg Liebig, Engineering Innovations, LLC.
+# Initial Release : 2022-01-20 V0.1.0
+# Current Version : 2025-10-23 V6.7.0  (GAL)
+# Author          : Greg Liebig, Engineering Innovations, LLC.
 #
 # Purpose
 # -------
@@ -10,6 +11,18 @@
 #   • subProps
 #   • dmxChannels
 #   • wiring views (preview_wiring_map_v6 / preview_wiring_sorted_v6)
+#
+# Recent Additions (GAL 2025-10-23)
+# ---------------------------------
+# • Safe inserts (props/subProps): detect PropID/SubPropID collisions and skip overwrites.
+#     - Console: human-friendly ERROR with Preview Name, Display Name, Channel Name, wiring context.
+#     - Reports: CSVs written to …\Database Previews\reports\
+#         · propid_collisions.csv
+#         · subpropid_collisions.csv
+# • End-of-run reporting: writes collision CSVs, then a notice file with artifact list.
+# • Logging: compact per-preview INFO line — S=<StageID> R=<Rev> D=<DisplayCount>
+#     - Optional full preview dump gated by PREVIEW_DEBUG.
+# • StageID extraction fix: “Stage NN” uses exactly 1–2 digits; “Animation …” uses whole name.
 #
 # Naming Convention
 # -----------------
@@ -39,19 +52,18 @@
 #
 # • None  : Props with no electronic channels (physical-only, e.g., static cutouts).
 #           - Saved in `props` with DeviceType="None".
-#           - Lights count pulled from Parm2 (if present) and aggregated by LORComment.
+#           - Lights count from Parm2 (if present) aggregated by LORComment.
 #           - Present for labeling, inventory, storage.
-#           - Excluded from wiring views (since no channels).
+#           - Excluded from wiring views (no channels).
 #
 # Wiring Views
 # ------------
-# • preview_wiring_map_v6 and preview_wiring_sorted_v6 present a channel map for wiring.
+# • preview_wiring_map_v6 / preview_wiring_sorted_v6 present channel maps for wiring.
 # • Only channel-based items appear (LOR, DMX).
-# • DeviceType=None props are omitted (no wiring), but remain in `props`.
-# • DisplayName is derived by dashifying LORComment (spaces → '-').
+# • DeviceType=None props are omitted from views but remain in `props`.
 #
-# IMPORTANT: ID SCOPING 
-# -----------------------------------
+# IDs and Scoping
+# ---------------
 # LOR Visualizer can reuse PropClass.id across different previews. If you need
 # globally unique keys, scope every raw xml id by preview:
 #
@@ -61,11 +73,28 @@
 # Use the scoped value consistently for:
 #   - props.PropID
 #   - subProps.MasterPropId
-#   - subProps.SubPropID (manual subprops can use their own scoped id; auto
-#     subprops may derive "<master>-<Start:02d>" or similar, prefixed with master).
+#   - subProps.SubPropID
 #
-# NOTE: The current script uses xml ids as-is. If collisions across previews are
-# observed, enable scoping and update inserts accordingly.
+# Error Checking & Reports (GAL 2025-10-23)
+# -----------------------------------------
+# • PropID/SubPropID collisions:
+#     - Console ERROR: “Prop/SubProp collision: Preview='<Name>' Display='<LORComment>' Channel='<Name>' …”
+#     - CSVs: propid_collisions.csv, subpropid_collisions.csv
+# • (Planned next) Duplicate Display Names (ERROR) across system → duplicate_display_names.csv
+# • (Planned next) Wiring collisions across previews (INFO) → wiring_collisions_all_previews.csv
+#
+# Logging Toggles
+# ---------------
+# • DEBUG:            chatty per-item logs and per-display listing.
+# • PREVIEW_DEBUG:    dumps full preview dicts (off by default).
+# • PREVIEW_SUMMARY_STYLE: "short" | "long" line format for per-preview summaries.
+#
+# Notice & Artifacts
+# ------------------
+# On completion, a notice file is written to:
+#     G:\Shared drives\MSB Database\Database Previews\_notifications\db-rebuild-YYYYMMDD-HHMMSS.txt
+# It lists standard artifacts (wiring views, preview manifest, spreadsheet log) and any present reports.
+
 
 
 import os
@@ -76,6 +105,10 @@ import pathlib
 from collections import defaultdict
 import uuid
 from pathlib import Path
+import re
+# GAL 25-10-22 (GAL): CSV + filesystem for reporting
+import csv
+
 
 # GAL 25-10-16: Align parser docs with Core Model v1.0 (no logic changes)
 # - Declares LOR→DB naming map inline for clarity (Comment→DisplayName, Name→ChannelName, etc.)
@@ -103,7 +136,8 @@ except Exception:
 
 # ============================= G: ONLY ============================= #
 G = Path(r"G:\Shared drives\MSB Database")
-
+# GAL 25-10-23 reports directory for collision CSVs and audits
+REPORTS_DIR = Path(r"G:\Shared drives\MSB Database\Database Previews\reports")
 def require_g():
     if not G.exists():
         print("[FATAL] G: drive not available. All data lives on the shared drive.")
@@ -112,6 +146,8 @@ def require_g():
 
 # ---- Global flags & defaults (must be defined before functions) ----
 DEBUG = False  # Global debug flag
+# GAL 25-10-22: toggle for ultra-verbose preview dict logging
+PREVIEW_DEBUG = False  # set True only when you want the full preview dict dumped
 
 # Hard-set G:\ defaults
 DEFAULT_DB_FILE      = G / "database" / "lor_output_v6.db"
@@ -129,10 +165,378 @@ def get_path(prompt: str, default_path: str) -> str:
         return os.path.normpath(user_input)
     return default_path
 
+
+# --- Preview name resolver ---------------------------------------------------
+# GAL 25-10-22 (GAL): Resolve previews.id -> previews.Name for human reports.
+_preview_name_cache: dict[str, str] = {}
+
+def get_preview_name(cursor, preview_id: str | None) -> str:
+    if not preview_id:
+        return ""
+    if preview_id in _preview_name_cache:
+        return _preview_name_cache[preview_id]
+    try:
+        cursor.execute("SELECT Name FROM previews WHERE id = ?", (preview_id,))
+        row = cursor.fetchone()
+        name = row[0] if row else ""
+        _preview_name_cache[preview_id] = name
+        return name
+    except Exception:
+        return ""
+
+# GAL 25-10-23: compact per-preview summary (no duplicate ctx name)
+# Console logging format
+PREVIEW_SUMMARY_STYLE = "short"  # "short" | "long"
+
+def log_preview_summary(pd: dict, display_count: int):
+    """
+    Short, readable line per preview.
+      short → [..][INFO][ctx=Show Background Stage 14 Icicle Tunnel] S=14 R=103 D=34
+      long  → [..][INFO][ctx=Show Background Stage 14 Icicle Tunnel] StageID=14 Rev=103 Displays=34
+    """
+    name = pd.get("Name", "")
+    stage = pd.get("StageID", "--")
+    rev = pd.get("Revision", "?")
+    if PREVIEW_SUMMARY_STYLE == "short":
+        INFO(f"ID={stage} Rev={rev} DispQty={display_count}", ctx=name)
+    else:
+        INFO(f"StageID={stage} Rev={rev} Displays={display_count}", ctx=name)
+
+
+
+# -----------------------------------------------------------------------------
+# GAL 25-10-22 (GAL): PropID collision helpers (standalone, no extra deps)
+# (TOP-LEVEL definitions; NOT nested inside get_preview_name)
+# -----------------------------------------------------------------------------
+
+# In-memory accumulator for collisions (write once at end-of-run)
+try:
+    _PROPID_COLLISIONS  # may already exist if pasted earlier
+except NameError:
+    _PROPID_COLLISIONS: list[dict] = []
+
+def find_prop_by_id(cursor, prop_id: str) -> dict | None:
+    """
+    Return an existing props row as dict if present, else None.
+    Pulls only columns we need for actionable collision messages.
+    Uses literal column names to avoid alias dependencies.
+    """
+    try:
+        cursor.execute("""
+            SELECT
+                PropID,
+                Name,
+                LORComment,
+                PreviewId,
+                DeviceType,
+                Network,
+                UID,
+                StartChannel,
+                EndChannel
+            FROM props
+            WHERE PropID = ?
+        """, (prop_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        cols = [d[0] for d in cursor.description]
+        return {k: v for k, v in zip(cols, row)}
+    except Exception as e:
+        WARN(f"find_prop_by_id failed for PropID='{prop_id}': {e}")
+        return None
+
+def _record_propid_collision(incoming: dict, existing: dict):
+    """
+    Record a PropID collision for console + CSV later.
+    We prefer human-readable names in the console; IDs remain in the CSV.
+    """
+    # Prefer human preview names if present
+    new_prev_name = incoming.get("PreviewName") or incoming.get("Incoming_PreviewName") or ""
+    old_prev_name = existing.get("PreviewName") or existing.get("Existing_PreviewName") or ""
+
+    # Fallback to IDs if names missing
+    new_prev_id = incoming.get("PreviewId", "")
+    old_prev_id = (existing or {}).get("PreviewId", "")
+
+    # Display & channel names
+    new_disp  = incoming.get("LORComment") or incoming.get("Name") or ""
+    old_disp  = (existing or {}).get("LORComment") or (existing or {}).get("Name") or ""
+    new_chan  = incoming.get("Name") or ""
+    old_chan  = (existing or {}).get("Name") or ""
+
+    # Wiring context
+    new_net   = incoming.get("Network", "")
+    new_uid   = incoming.get("UID", "")
+    new_start = incoming.get("StartChannel", "")
+    new_end   = incoming.get("EndChannel", "")
+    new_dtype = incoming.get("DeviceType", "")
+
+    old_net   = (existing or {}).get("Network", "")
+    old_uid   = (existing or {}).get("UID", "")
+    old_start = (existing or {}).get("StartChannel", "")
+    old_end   = (existing or {}).get("EndChannel", "")
+    old_dtype = (existing or {}).get("DeviceType", "")
+
+    # Console ERROR (human-focused)
+    disp_ctx = new_prev_name or new_prev_id or new_disp or "unknown"
+    ERROR(
+        "Prop collision: "
+        f"Preview='{new_prev_name or new_prev_id}', Display='{new_disp}', Channel='{new_chan}' "
+        f"conflicts with existing in Preview='{old_prev_name or old_prev_id}', "
+        f"Display='{old_disp}', Channel='{old_chan}' "
+        f"(Dev='{old_dtype}', Net='{old_net}', UID='{old_uid}', Ch={old_start}-{old_end})",
+        ctx=disp_ctx
+    )
+
+    # CSV row (keep full structured data; IDs + later-resolved names)
+    _PROPID_COLLISIONS.append({
+        "PropID": incoming.get("PropID", ""),
+        "Existing_PreviewId": old_prev_id,
+        "Existing_PreviewName": old_prev_name,
+        "Existing_DisplayName": old_disp,
+        "Existing_DeviceType": old_dtype,
+        "Existing_Network": old_net,
+        "Existing_UID": old_uid,
+        "Existing_StartChannel": old_start,
+        "Existing_EndChannel": old_end,
+
+        "Incoming_PreviewId": new_prev_id,
+        "Incoming_PreviewName": new_prev_name,
+        "Incoming_DisplayName": new_disp,
+        "Incoming_DeviceType": new_dtype,
+        "Incoming_Network": new_net,
+        "Incoming_UID": new_uid,
+        "Incoming_StartChannel": new_start,
+        "Incoming_EndChannel": new_end,
+    })
+
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# GAL 25-10-22 (GAL): SubPropID collision detection (standalone)
+# -----------------------------------------------------------------------------
+
+# In-memory accumulator for subprop collisions
+try:
+    _SUBPROPID_COLLISIONS  # may already exist
+except NameError:
+    _SUBPROPID_COLLISIONS: list[dict] = []
+
+def find_subprop_by_id(cursor, subprop_id: str) -> dict | None:
+    """
+    Return an existing subProps row as dict if present, else None.
+    Pull columns that make the collision message actionable.
+    """
+    try:
+        cursor.execute("""
+            SELECT
+                SubPropID,
+                Name,
+                LORComment,
+                PreviewId,
+                DeviceType,
+                Network,
+                UID,
+                StartChannel,
+                EndChannel,
+                MasterPropId
+            FROM subProps
+            WHERE SubPropID = ?
+        """, (subprop_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        cols = [d[0] for d in cursor.description]
+        return {k: v for k, v in zip(cols, row)}
+    except Exception as e:
+        WARN(f"find_subprop_by_id failed for SubPropID='{subprop_id}': {e}")
+        return None
+
+def _record_subprop_collision(incoming: dict, existing: dict):
+    """
+    Capture a SubPropID collision (human-friendly console; detailed CSV).
+    """
+    new_prev_name = incoming.get("PreviewName") or incoming.get("Incoming_PreviewName") or ""
+    old_prev_name = existing.get("PreviewName") or existing.get("Existing_PreviewName") or ""
+
+    new_prev_id = incoming.get("PreviewId", "")
+    old_prev_id = (existing or {}).get("PreviewId", "")
+
+    new_disp  = incoming.get("LORComment") or incoming.get("Name") or ""
+    old_disp  = (existing or {}).get("LORComment") or (existing or {}).get("Name") or ""
+    new_chan  = incoming.get("Name") or ""
+    old_chan  = (existing or {}).get("Name") or ""
+
+    new_net   = incoming.get("Network", "")
+    new_uid   = incoming.get("UID", "")
+    new_start = incoming.get("StartChannel", "")
+    new_end   = incoming.get("EndChannel", "")
+    new_dtype = incoming.get("DeviceType", "")
+    new_mid   = incoming.get("MasterPropId", "")
+
+    old_net   = (existing or {}).get("Network", "")
+    old_uid   = (existing or {}).get("UID", "")
+    old_start = (existing or {}).get("StartChannel", "")
+    old_end   = (existing or {}).get("EndChannel", "")
+    old_dtype = (existing or {}).get("DeviceType", "")
+    old_mid   = (existing or {}).get("MasterPropId", "")
+
+    disp_ctx = new_prev_name or new_prev_id or new_disp or "unknown"
+    ERROR(
+        "SubProp collision: "
+        f"Preview='{new_prev_name or new_prev_id}', Display='{new_disp}', Channel='{new_chan}' "
+        f"conflicts with existing in Preview='{old_prev_name or old_prev_id}', "
+        f"Display='{old_disp}', Channel='{old_chan}' "
+        f"(Dev='{old_dtype}', Net='{old_net}', UID='{old_uid}', Ch={old_start}-{old_end}, Master='{old_mid}')",
+        ctx=disp_ctx
+    )
+
+    _SUBPROPID_COLLISIONS.append({
+        "SubPropID": incoming.get("SubPropID",""),
+        "Existing_PreviewId": old_prev_id,
+        "Existing_PreviewName": old_prev_name,
+        "Existing_DisplayName": old_disp,
+        "Existing_DeviceType": old_dtype,
+        "Existing_Network": old_net,
+        "Existing_UID": old_uid,
+        "Existing_StartChannel": old_start,
+        "Existing_EndChannel": old_end,
+        "Existing_MasterPropId": old_mid,
+
+        "Incoming_PreviewId": new_prev_id,
+        "Incoming_PreviewName": new_prev_name,
+        "Incoming_DisplayName": new_disp,
+        "Incoming_DeviceType": new_dtype,
+        "Incoming_Network": new_net,
+        "Incoming_UID": new_uid,
+        "Incoming_StartChannel": new_start,
+        "Incoming_EndChannel": new_end,
+        "Incoming_MasterPropId": new_mid,
+    })
+
+
+# -----------------------------------------------------------------------------
+# GAL 25-10-23: collision-aware subProps insert (fixed local 'sid' scope)
+# -----------------------------------------------------------------------------
+def safe_insert_subprop(cursor, insert_sql: str, params: tuple | list, incoming_context: dict):
+    """
+    Perform a subProps INSERT with collision detection by SubPropID.
+    - If SubPropID missing: ERROR and skip
+    - If SubPropID exists: ERROR, record collision, skip
+    - Else: execute the INSERT
+    """
+    sid = incoming_context.get("SubPropID")
+    if not sid:
+        ERROR("Attempted to insert subprop without SubPropID; insert skipped.", ctx=incoming_context.get("PreviewId"))
+        return False
+
+    # Pre-check for existing SubPropID
+    existing = find_subprop_by_id(cursor, sid)
+    if existing:
+        # Enrich with human preview names for a clearer console message
+        try:
+            inc = dict(incoming_context)
+            inc["PreviewName"] = get_preview_name(cursor, inc.get("PreviewId"))
+            ex = dict(existing)
+            ex["PreviewName"] = get_preview_name(cursor, ex.get("PreviewId"))
+        except Exception:
+            inc = incoming_context
+            ex = existing
+
+        _record_subprop_collision(inc, ex)
+        return False
+
+    # Attempt the actual insert
+    try:
+        cursor.execute(insert_sql, params)
+        return True
+    except sqlite3.IntegrityError as e:
+        ERROR(f"DB integrity error inserting SubPropID='{sid}': {e}", ctx=incoming_context.get("PreviewId"))
+        return False
+    except Exception as e:
+        ERROR(f"DB error inserting SubPropID='{sid}': {e}", ctx=incoming_context.get("PreviewId"))
+        return False
+# -----------------------------------------------------------------------------
+
+
+
+def write_subprop_collisions_csv(cursor=None):
+    """Write all recorded SubPropID collisions to REPORTS_DIR/subpropid_collisions.csv."""
+    # Nothing to do if empty/undefined
+    try:
+        if not _SUBPROPID_COLLISIONS:
+            return
+    except NameError:
+        return
+
+    # Ensure folder
+    try:
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        WARN(f"Could not ensure reports directory: {e}")
+
+    out_path = REPORTS_DIR / "subpropid_collisions.csv"
+    try:
+        fieldnames = [
+            "SubPropID",
+            "Existing_PreviewId", "Existing_PreviewName", "Existing_DisplayName",
+            "Existing_DeviceType", "Existing_Network", "Existing_UID", "Existing_StartChannel", "Existing_EndChannel", "Existing_MasterPropId",
+            "Incoming_PreviewId", "Incoming_PreviewName", "Incoming_DisplayName",
+            "Incoming_DeviceType", "Incoming_Network", "Incoming_UID", "Incoming_StartChannel", "Incoming_EndChannel", "Incoming_MasterPropId",
+        ]
+
+        rows = []
+        for r in _SUBPROPID_COLLISIONS:
+            rp = dict(r)
+            if cursor:
+                rp["Existing_PreviewName"] = get_preview_name(cursor, r.get("Existing_PreviewId"))
+                rp["Incoming_PreviewName"] = get_preview_name(cursor, r.get("Incoming_PreviewId"))
+            else:
+                rp["Existing_PreviewName"] = ""
+                rp["Incoming_PreviewName"] = ""
+            rows.append(rp)
+
+        with open(out_path, "w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fieldnames)
+            w.writeheader()
+            w.writerows(rows)
+        INFO(f"Wrote SubPropID collision report: {out_path}")
+    except Exception as e:
+        WARN(f"Failed writing SubPropID collision CSV: {e}")
+# -----------------------------------------------------------------------------
+
+
+# --- Debug print -------------------------------------------------------------
+# (Existing behavior retained)
 def dprint(msg: str):
     """Safe debug print that won't crash if DEBUG isn't bound elsewhere."""
     if DEBUG:
         print(msg)
+
+# GAL 25-10-22 (GAL): Structured console logging helpers
+# Notes:
+# - We keep dprint(...) for very chatty lines.
+# - INFO/WARN/ERROR add a timestamp and an optional context tag (e.g., PreviewName).
+# - Zero behavior changes elsewhere; these are additive and safe to call anywhere.
+import datetime as _dt
+
+def _log(level: str, msg: str, ctx: str | None = None):
+    """
+    Emit a structured console line.
+    Example:
+        INFO("Processed preview", ctx="RGB Plus Prop Stage 03 Mega Cube")
+    Output:
+        [2025-10-22 20:11:03][INFO][ctx=RGB Plus Prop Stage 03 Mega Cube] Processed preview
+    """
+    ts = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ctx_part = f"[ctx={ctx}] " if ctx else ""
+    # Use print(..., flush=True) so lines appear immediately in long runs.
+    print(f"[{ts}][{level}]{ctx_part}{msg}", flush=True)
+
+def INFO(msg: str, ctx: str | None = None): _log("INFO", msg, ctx)
+def WARN(msg: str, ctx: str | None = None): _log("WARN", msg, ctx)
+def ERROR(msg: str, ctx: str | None = None): _log("ERROR", msg, ctx)
+
 
 # --- ID scoping: prevent cross-preview overwrites --------------------------
 def scoped_id(preview_id: str, raw_id: str) -> str:
@@ -243,28 +647,130 @@ def _who_ran() -> str:
     return f"{user} on {host}"
 
 
+# -----------------------------------------------------------------------------
+# Notification message and file writer
+# -----------------------------------------------------------------------------
+
 def _notice_text(preview_path: str | Path, db_file: str | Path, actor: str | None = None) -> str:
+    # GAL 25-10-22 (GAL): include Actor; list standard artifacts; tack on
+    # optional audit reports if they exist. No behavior changes for callers.
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     actor = actor or _who_ran()
-    return (
+
+    # Core body (unchanged, preserving your wording/layout)
+    body = (
         "MSB Database rebuild complete\n"
         f"Timestamp : {ts}\n"
-        f"Actor     : {actor}\n"          # <-- NEW
+        f"Actor     : {actor}\n"          # <-- NEW in your version; preserved
         f"Database  : {Path(db_file)}\n"
         f"Previews  : {Path(preview_path)}\n"
         "Artifacts :\n"
         "  - Wiring views created (v6)\n"
-        "  - Preview manifest written G:\Shared drives\MSB Database\Database Previews\current_previews_manifest.html\n"
-        "  - Spreadsheet Log written G:\Shared drives\MSB Database\Database Previews\lorprev_reports.xlsx\n"
+        "  - Preview manifest written G:\\Shared drives\\MSB Database\\Database Previews\\current_previews_manifest.html\n"
+        "  - Spreadsheet Log written G:\\Shared drives\\MSB Database\\Database Previews\\lorprev_reports.xlsx\n"
     )
+
+    # Optional audits (only shown if present)
+    try:
+        from pathlib import Path as _P
+        reports_dir = _P(r"G:\Shared drives\MSB Database\Database Previews\reports")
+        extras = []
+        if (reports_dir / "propid_collisions.csv").exists():
+            extras.append("  - PropID collision report (if any): Database Previews\\reports\\propid_collisions.csv")
+        if (reports_dir / "duplicate_display_names.csv").exists():
+            extras.append("  - Duplicate Display Names report (if any): Database Previews\\reports\\duplicate_display_names.csv")
+        if (reports_dir / "wiring_collisions_all_previews.csv").exists():
+            extras.append("  - Wiring collisions report (if any): Database Previews\\reports\\wiring_collisions_all_previews.csv")
+        if extras:
+            body += "".join(line + "\n" for line in extras)
+    except Exception:
+        # Non-fatal; keep the core notice if any error occurs checking files
+        pass
+
+    return body
+
 def write_notice_file(preview_path: str | Path, text: str) -> Path:
+    # GAL 25-10-22 (GAL): INFO log with written path; otherwise unchanged
     outdir = Path(preview_path) / "_notifications"
     outdir.mkdir(parents=True, exist_ok=True)
     fname = f"db-rebuild-{datetime.now().strftime('%Y%m%d-%H%M%S')}.txt"
     outpath = outdir / fname
     outpath.write_text(text, encoding="utf-8")
+    INFO(f"Notice written: {outpath}")
     return outpath
 # -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# GAL 25-10-22 (GAL): Write PropID collision CSV (resolves preview names)
+# -----------------------------------------------------------------------------
+def write_propid_collisions_csv(cursor=None):
+    """Write all recorded PropID collisions to REPORTS_DIR/propid_collisions.csv."""
+    try:
+        if not _PROPID_COLLISIONS:
+            return
+    except NameError:
+        return  # not defined = nothing to write
+
+    # Make sure the folder exists without relying on _ensure_reports_dir()
+    try:
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        WARN(f"Could not ensure reports directory: {e}")
+
+    out_path = REPORTS_DIR / "propid_collisions.csv"
+    try:
+        fieldnames = [
+            "PropID",
+            "Existing_PreviewId", "Existing_PreviewName", "Existing_DisplayName",
+            "Existing_DeviceType", "Existing_Network", "Existing_UID", "Existing_StartChannel", "Existing_EndChannel",
+            "Incoming_PreviewId", "Incoming_PreviewName", "Incoming_DisplayName",
+            "Incoming_DeviceType", "Incoming_Network", "Incoming_UID", "Incoming_StartChannel", "Incoming_EndChannel",
+        ]
+
+        # Enrich with preview names if cursor provided
+        rows = []
+        for r in _PROPID_COLLISIONS:
+            rp = dict(r)  # copy
+            if cursor:
+                rp["Existing_PreviewName"] = get_preview_name(cursor, r.get("Existing_PreviewId"))
+                rp["Incoming_PreviewName"] = get_preview_name(cursor, r.get("Incoming_PreviewId"))
+            else:
+                rp["Existing_PreviewName"] = ""
+                rp["Incoming_PreviewName"] = ""
+            rows.append(rp)
+
+        with open(out_path, "w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fieldnames)
+            w.writeheader()
+            w.writerows(rows)
+
+        INFO(f"Wrote PropID collision report: {out_path}")
+    except Exception as e:
+        WARN(f"Failed writing PropID collision CSV: {e}")
+
+# Call this once at end-of-run (after all inserts; before exit/close):
+# try:
+#     write_propid_collisions_csv(cursor)
+# except Exception as _e:
+#     WARN(f"Unable to write PropID collision CSV: {_e}")
+# -----------------------------------------------------------------------------
+
+
+
+
+
+# --- Column Aliases (documentation + safer references) -----------------------
+# GAL 25-10-22 (GAL): We keep DB column names identical to LOR XML where possible.
+# These aliases are for readability in code/reports. Do NOT change schema.
+DISPLAY_NAME    = "LORComment"   # Human "Display Name" (from XML Comment)
+CONTROLLER_UID  = "UID"          # Hex controller ID (human-readable)
+CONTROLLER_NET  = "Network"      # Regular, Aux A, Aux B, ...
+CHANNEL_START   = "StartChannel" # A/C plug for AC controllers; RGB start chan
+CHANNEL_END     = "EndChannel"   # RGB end channel
+DEVICE_TYPE     = "DeviceType"   # LOR, DMX, None (Undetermined in LOR UI)
+PREVIEW_ID_COL  = "PreviewId"    # FK to previews.id
+PROP_ID_COL     = "PropID"       # LOR-generated prop GUID (join key downstream)
+PROP_NAME_COL   = "Name"         # Human channel name (from XML Name)
 
 
 def setup_database():
@@ -433,12 +939,103 @@ def process_preview(preview):
         "Brightness": preview.get("Brightness"),
         "BackgroundFile": preview.get("BackgroundFile")
     }
-    print(f"[DEBUG] Processed Preview: {preview_data}")
+    # GAL 25-10-22: keep the old dump but gate it behind PREVIEW_DEBUG
+    if PREVIEW_DEBUG:
+        dprint(f"[DEBUG] Processed Preview: {preview_data}")
     return preview_data
 
-def extract_stage_id(name):
-    """Extract StageID from the Name field."""
-    return ''.join(filter(str.isdigit, name)) if name else None
+# --- Stage ID extraction -----------------------------------------------------
+# GAL 25-10-22 (GAL): Refined StageID logic and documentation
+#   Purpose:
+#     - Capture only the two-digit number that follows the word "Stage"
+#       Example: "Show Background Stage 05 Mega Star" -> StageID = "05"
+#     - If "Animation" is in the name (and no Stage found), use the entire
+#       preview name as StageID for clarity and uniqueness.
+#     - If neither found, return None (safe default).
+#
+#   Why:
+#     Previous versions could extract trailing digits from longer numbers
+#     (e.g., "Stage 00 HWY42" -> "0042").  This version avoids that bug.
+#
+#   Notes:
+#     - Zero-pads single digits ("Stage 7" -> "07").
+#     - Case-insensitive.
+#     - Safe for missing/None names.
+
+_STAGE_RE = re.compile(r"\bStage\s*(\d{1,2})\b", flags=re.IGNORECASE)
+
+def extract_stage_id(name: str | None):
+    """Return normalized 2-digit StageID or None if not found."""
+    if not name:
+        return None
+
+    # Primary: look for "Stage NN" (two digits)
+    m = _STAGE_RE.search(name)
+    if m:
+        try:
+            # normalize to exactly 2 digits
+            return f"{int(m.group(1)):02d}"
+        except Exception:
+            # In case of malformed capture, return None safely
+            return None
+
+    # Secondary: "Animation" fallback (use full name as ID)
+    if "animation" in name.lower():
+        return name
+
+    # Otherwise, no StageID context available
+    return None
+# (GAL 25-10-22)
+
+# ---- Insert Helpers ---------------------------------------------------------
+# -----------------------------------------------------------------------------
+# GAL 25-10-22 (GAL): Collision-aware insert wrapper for props
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# GAL 25-10-23: collision-aware props insert (fixed local 'pid' scope)
+# -----------------------------------------------------------------------------
+def safe_insert_prop(cursor, insert_sql: str, params: tuple | list, incoming_context: dict):
+    """
+    Perform a props INSERT with collision detection by PropID.
+    - If PropID missing: ERROR and skip
+    - If PropID exists: ERROR, record collision, skip
+    - Else: execute the INSERT
+    """
+    pid = incoming_context.get("PropID")
+    if not pid:
+        ERROR("Attempted to insert prop without PropID; insert skipped.", ctx=incoming_context.get("PreviewId"))
+        return False
+
+    # Pre-check for existing PropID
+    existing = find_prop_by_id(cursor, pid)
+    if existing:
+        # Enrich with human preview names for the console message
+        try:
+            inc = dict(incoming_context)
+            inc["PreviewName"] = get_preview_name(cursor, inc.get("PreviewId"))
+            ex = dict(existing)
+            ex["PreviewName"] = get_preview_name(cursor, ex.get("PreviewId"))
+        except Exception:
+            inc = incoming_context
+            ex = existing
+
+        _record_propid_collision(inc, ex)
+        return False
+
+    # Attempt the actual insert
+    try:
+        cursor.execute(insert_sql, params)
+        return True
+    except sqlite3.IntegrityError as e:
+        ERROR(f"DB integrity error inserting PropID='{pid}': {e}", ctx=incoming_context.get("PreviewId"))
+        return False
+    except Exception as e:
+        ERROR(f"DB error inserting PropID='{pid}': {e}", ctx=incoming_context.get("PreviewId"))
+        return False
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+
 
 def insert_preview_data(preview_data):
     """Insert preview data into the database."""
@@ -535,6 +1132,10 @@ def reconcile_subprops_to_canonical_master(db_file: str):
         print("[INFO] Reconciled subProps → canonical masters.")
     finally:
         conn.close()
+
+# 
+
+
 
 # ============================ Parsing Modules ===========================================
 # def process_none_props(preview_id, root):
@@ -793,15 +1394,17 @@ def process_dmx_props(preview_id, root):
         master = arr[0]
 
         # Master props row (single row per comment)
-        cur.execute("""
-            INSERT OR REPLACE INTO props (
+        # GAL 25-10-22: use collision-aware insert (no silent overwrite)
+        insert_sql = """
+            INSERT INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName,
                 MaxChannels, CustomBulbColor, IndividualChannels, LegacySequenceMethod,
                 Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation,
                 StringType, TraditionalColors, TraditionalType, EffectBulbSize, Tag,
                 Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        """
+        params = (
             master["PropID"], master["Name"], master["LORComment"], "DMX",
             master["BulbShape"], master["DimmingCurveName"], master["MaxChannels"],
             master["CustomBulbColor"], master["IndividualChannels"], master["LegacySequenceMethod"],
@@ -810,9 +1413,27 @@ def process_dmx_props(preview_id, root):
             master["EffectBulbSize"], master["Tag"], master["Parm1"], master["Parm2"], master["Parm3"],
             master["Parm4"], master["Parm5"], master["Parm6"], master["Parm7"], master["Parm8"],
             master["Lights"], preview_id
-        ))
+        )
+        incoming_ctx = {
+            "PropID":       master.get("PropID"),
+            "Name":         master.get("Name"),
+            "LORComment":   comment,
+            "PreviewId":    preview_id,
+            "DeviceType":   "DMX",
+            # DMX master insert usually has no Network/UID/Channels at this point;
+            # include if present in your master dict (harmless if missing):
+            "Network":      master.get("Network", ""),
+            "UID":          master.get("UID", ""),
+            "StartChannel": master.get("StartChannel", ""),
+            "EndChannel":   master.get("EndChannel", ""),
+        }
+        ok = safe_insert_prop(cur, insert_sql, params, incoming_ctx)
         if DEBUG:
-            print(f"[DEBUG] (DMX) master → props: {master['PropID']}  Display='{comment}'")
+            if ok:
+                print(f"[DEBUG] (DMX) master → props INSERT: {master['PropID']}  Display='{comment}'")
+            else:
+                print(f"[DEBUG] (DMX) master → props SKIP (collision/error): {master['PropID']}  Display='{comment}'")
+
 
         # All legs from every member of the group get attached to the master
         for r in arr:
@@ -909,15 +1530,18 @@ def process_lor_props(preview_id, root):
             grid = parse_single_grid(ch_raw) or {}
             raw_id = prop.get("id") or ""
             prop_id_scoped = scoped_id(preview_id, raw_id)
-            cursor.execute("""
-                INSERT OR REPLACE INTO props (
+            # Process_LOR_Props PASS 0: SPARE rows (single-grid) -> props as-is
+            # GAL 25-10-22: collision-aware insert (no silent overwrite)
+            insert_sql = """
+                INSERT INTO props (
                     PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                     CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                     PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                     Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+            """
+            params = (
                 prop_id_scoped, name, prop.get("Comment", ""), "LOR",
                 prop.get("BulbShape"), prop.get("DimmingCurveName"), prop.get("MaxChannels"),
                 prop.get("CustomBulbColor"), prop.get("IndividualChannels"), prop.get("LegacySequenceMethod"),
@@ -929,9 +1553,25 @@ def process_lor_props(preview_id, root):
                 int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
                 grid.get("Network"), grid.get("UID"), grid.get("StartChannel"), grid.get("EndChannel"),
                 grid.get("Unknown"), grid.get("Color"), preview_id
-            ))
+            )
+            incoming_ctx = {
+                "PropID":       prop_id_scoped,
+                "Name":         name,
+                "LORComment":   prop.get("Comment", ""),
+                "PreviewId":    preview_id,
+                "DeviceType":   "LOR",
+                "Network":      grid.get("Network", ""),
+                "UID":          grid.get("UID", ""),
+                "StartChannel": grid.get("StartChannel", ""),
+                "EndChannel":   grid.get("EndChannel", ""),
+            }
+            ok = safe_insert_prop(cursor, insert_sql, params, incoming_ctx)
             if DEBUG:
-                print(f"[DEBUG] (LOR single) SPARE -> props: {prop_id_scoped} '{name}'")
+                if ok:
+                    print(f"[DEBUG] (LOR single) SPARE -> props INSERT: {prop_id_scoped} '{name}'")
+                else:
+                    print(f"[DEBUG] (LOR single) SPARE -> props SKIP (collision/error): {prop_id_scoped} '{name}'")
+
 
     # -----------------------------------------------------------------------
     # PASS 0B: MANUAL SUBPROPS (MasterPropId set)
@@ -968,15 +1608,18 @@ def process_lor_props(preview_id, root):
         sub_id_scoped    = scoped_id(preview_id, sp.get("id") or "")
         master_id_scoped = scoped_id(preview_id, master.get("id") or "") if master is not None else None
         g = grid_or(sp, grid_or(master))
-        cursor.execute("""
-            INSERT OR REPLACE INTO subProps (
+        # Process_LOR_Props PASS 0B: MANUAL SUBPROPS (MasterPropId set)
+        # GAL 25-10-22: collision-aware insert (no silent overwrite)
+        insert_sql = """
+            INSERT INTO subProps (
                 SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                 EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                 LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                 MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        """
+        params = (
             sub_id_scoped, sp.get("Name",""), sp.get("Comment",""), "LOR", sp.get("BulbShape"),
             g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
             sp.get("CustomBulbColor"), sp.get("DimmingCurveName"), sp.get("IndividualChannels"),
@@ -988,7 +1631,26 @@ def process_lor_props(preview_id, root):
             sp.get("Parm7"), sp.get("Parm8"),
             int(sp.get("Parm2")) if (sp.get("Parm2") and str(sp.get("Parm2")).isdigit()) else 0,
             preview_id
-        ))
+        )
+        incoming_ctx = {
+            "SubPropID":    sub_id_scoped,
+            "Name":         sp.get("Name",""),
+            "LORComment":   sp.get("Comment",""),
+            "PreviewId":    preview_id,
+            "DeviceType":   "LOR",
+            "Network":      g.get("Network",""),
+            "UID":          g.get("UID",""),
+            "StartChannel": g.get("StartChannel",""),
+            "EndChannel":   g.get("EndChannel",""),
+            "MasterPropId": master_id_scoped,
+        }
+        ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
+        if DEBUG:
+            if ok:
+                print(f"[DEBUG] (LOR manual subprop) INSERT: {sub_id_scoped}  Master='{master_id_scoped}'")
+            else:
+                print(f"[DEBUG] (LOR manual subprop) SKIP (collision/error): {sub_id_scoped}  Master='{master_id_scoped}'")
+
 
     # For manuals whose Display_Name changed: build FULL group (manual + non-manual) for that Display_Name
     materialized_comments = set()
@@ -1040,16 +1702,19 @@ def process_lor_props(preview_id, root):
 
 
 
-        # Insert new master
-        cursor.execute("""
-            INSERT OR REPLACE INTO props (
+        # Insert new master  Pre-index non-manual, single-grid, non-spare rows by Display_Name
+        # Insert new master  Pre-index non-manual, single-grid, non-spare rows by Display_Name
+        # GAL 25-10-22: collision-aware insert (no silent overwrite)
+        insert_sql = """
+            INSERT INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                 CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                 PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                 Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        """
+        params = (
             new_master_id, new_master.get("Name",""), new_comment, "LOR",
             new_master.get("BulbShape"), new_master.get("DimmingCurveName"), new_master.get("MaxChannels"),
             new_master.get("CustomBulbColor"), new_master.get("IndividualChannels"),
@@ -1062,35 +1727,77 @@ def process_lor_props(preview_id, root):
             int(new_master.get("Parm2")) if (new_master.get("Parm2") and str(new_master.get("Parm2")).isdigit()) else 0,
             g_master["Network"], g_master["UID"], g_master["StartChannel"], g_master["EndChannel"],
             g_master["Unknown"], g_master["Color"], preview_id
-        ))
+        )
+        incoming_ctx = {
+            "PropID":       new_master_id,
+            "Name":         new_master.get("Name",""),
+            "LORComment":   new_comment,
+            "PreviewId":    preview_id,
+            "DeviceType":   "LOR",
+            "Network":      g_master.get("Network",""),
+            "UID":          g_master.get("UID",""),
+            "StartChannel": g_master.get("StartChannel",""),
+            "EndChannel":   g_master.get("EndChannel",""),
+        }
+        ok = safe_insert_prop(cursor, insert_sql, params, incoming_ctx)
+        if DEBUG:
+            if ok:
+                print(f"[DEBUG] (LOR master new) -> props INSERT: {new_master_id}  Display='{new_comment}'")
+            else:
+                print(f"[DEBUG] (LOR master new) -> props SKIP (collision/error): {new_master_id}  Display='{new_comment}'")
 
         # Everyone else in the group -> subProps under new master
+        # Everyone else in the group -> subProps under new master
         for node in full_group:
-            if node is new_master: 
+            if node is new_master:
                 continue
             g = grid_or(node)
             sub_id = scoped_id(preview_id, node.get("id") or "")
-            cursor.execute("""
-                INSERT OR REPLACE INTO subProps (
+
+            # GAL 25-10-22: collision-aware insert (no silent overwrite)
+            insert_sql = """
+                INSERT INTO subProps (
                     SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                     EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                     LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                     MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+            """
+            params = (
                 sub_id, node.get("Name",""), new_comment, "LOR", node.get("BulbShape"),
                 g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                 node.get("CustomBulbColor"), node.get("DimmingCurveName"), node.get("IndividualChannels"),
                 node.get("LegacySequenceMethod"), node.get("MaxChannels"), node.get("Opacity"), node.get("MasterDimmable"),
-                node.get("PreviewBulbSize"), None, new_master_id, node.get("SeparateIds"), node.get("StartLocation"),
-                node.get("StringType"), node.get("TraditionalColors"), node.get("TraditionalType"), node.get("EffectBulbSize"),
+                node.get("PreviewBulbSize"), None,
+                new_master_id, node.get("SeparateIds"), node.get("StartLocation"), node.get("StringType"),
+                node.get("TraditionalColors"), node.get("TraditionalType"), node.get("EffectBulbSize"),
                 node.get("Tag"), node.get("Parm1"), node.get("Parm2"), node.get("Parm3"), node.get("Parm4"), node.get("Parm5"),
                 node.get("Parm6"), node.get("Parm7"), node.get("Parm8"),
                 int(node.get("Parm2")) if (node.get("Parm2") and str(node.get("Parm2")).isdigit()) else 0,
                 preview_id
-            ))
+            )
+            incoming_ctx = {
+                "SubPropID":    sub_id,
+                "Name":         node.get("Name",""),
+                "LORComment":   new_comment,
+                "PreviewId":    preview_id,
+                "DeviceType":   "LOR",
+                "Network":      g.get("Network",""),
+                "UID":          g.get("UID",""),
+                "StartChannel": g.get("StartChannel",""),
+                "EndChannel":   g.get("EndChannel",""),
+                "MasterPropId": new_master_id,
+            }
+            ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
+            if DEBUG:
+                if ok:
+                    print(f"[DEBUG] (LOR group sub) -> subProps INSERT: {sub_id}  Master='{new_master_id}' Display='{new_comment}'")
+                else:
+                    print(f"[DEBUG] (LOR group sub) -> subProps SKIP (collision/error): {sub_id}  Master='{new_master_id}' Display='{new_comment}'")
+
         materialized_comments.add(new_comment)
+
 
     # -----------------------------------------------------------------------
     # PASS 1: AUTO GROUP by LORComment (exclude SPARE, MANUALS, and any
@@ -1174,16 +1881,18 @@ def process_lor_props(preview_id, root):
         master = min(group, key=_pair_key)           # ← uses (UID, StartChannel)
         m_grid = master["Grid"] or {...}
         master_id = master["PropID_scoped"]
-            # MASTER -> props
-        cursor.execute("""
-            INSERT OR REPLACE INTO props (
+        # MASTER -> props
+        # GAL 25-10-22: collision-aware insert (no silent overwrite)
+        insert_sql = """
+            INSERT INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                 CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                 PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                 Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        """
+        params = (
             master_id, master["Name"], display_name, master["DeviceType"], master["BulbShape"],
             master["DimmingCurveName"], master["MaxChannels"], master["CustomBulbColor"],
             master["IndividualChannels"], master["LegacySequenceMethod"], master["Opacity"],
@@ -1194,25 +1903,45 @@ def process_lor_props(preview_id, root):
             master["Parm7"], master["Parm8"], master["Lights"],
             m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"],
             m_grid["Unknown"], m_grid["Color"], master["PreviewId"]
-        ))
+        )
+        incoming_ctx = {
+            "PropID":       master_id,
+            "Name":         master.get("Name",""),
+            "LORComment":   display_name,
+            "PreviewId":    master.get("PreviewId"),
+            "DeviceType":   master.get("DeviceType",""),
+            "Network":      (m_grid or {}).get("Network",""),
+            "UID":          (m_grid or {}).get("UID",""),
+            "StartChannel": (m_grid or {}).get("StartChannel",""),
+            "EndChannel":   (m_grid or {}).get("EndChannel",""),
+        }
+        ok = safe_insert_prop(cursor, insert_sql, params, incoming_ctx)
         if DEBUG:
-            print(f"[DEBUG] (LOR single) MASTER -> props: {master_id} '{display_name}' Start={m_grid['StartChannel']}")
+            if ok:
+                print(f"[DEBUG] (LOR single) MASTER -> props INSERT: {master_id} '{display_name}' Start={m_grid['StartChannel']}")
+            else:
+                print(f"[DEBUG] (LOR single) MASTER -> props SKIP (collision/error): {master_id} '{display_name}' Start={m_grid['StartChannel']}")
 
+
+        # REMAINING -> subProps
         # REMAINING -> subProps
         for rec in group:
             if rec["PropID_scoped"] == master_id:
                 continue
             g = rec["Grid"] or {"Network":None,"UID":None,"StartChannel":None,"EndChannel":None,"Unknown":None,"Color":None}
             sub_id = scoped_id(preview_id, rec["PropID_raw"])
-            cursor.execute("""
-                INSERT OR REPLACE INTO subProps (
+
+            # GAL 25-10-22: collision-aware insert (no silent overwrite)
+            insert_sql = """
+                INSERT INTO subProps (
                     SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                     EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                     LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                     MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+            """
+            params = (
                 sub_id, rec["Name"], rec["LORComment"], rec["DeviceType"], rec["BulbShape"],
                 g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                 rec["CustomBulbColor"], rec["DimmingCurveName"], rec["IndividualChannels"], rec["LegacySequenceMethod"],
@@ -1220,9 +1949,26 @@ def process_lor_props(preview_id, root):
                 master_id, rec["SeparateIds"], rec["StartLocation"], rec["StringType"], rec["TraditionalColors"],
                 rec["TraditionalType"], rec["EffectBulbSize"], rec["Tag"], rec["Parm1"], rec["Parm2"], rec["Parm3"],
                 rec["Parm4"], rec["Parm5"], rec["Parm6"], rec["Parm7"], rec["Parm8"], rec["Lights"], rec["PreviewId"]
-            ))
+            )
+            incoming_ctx = {
+                "SubPropID":    sub_id,
+                "Name":         rec.get("Name",""),
+                "LORComment":   rec.get("LORComment",""),
+                "PreviewId":    rec.get("PreviewId"),
+                "DeviceType":   rec.get("DeviceType",""),
+                "Network":      (g or {}).get("Network",""),
+                "UID":          (g or {}).get("UID",""),
+                "StartChannel": (g or {}).get("StartChannel",""),
+                "EndChannel":   (g or {}).get("EndChannel",""),
+                "MasterPropId": master_id,
+            }
+            ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
             if DEBUG:
-                print(f"[DEBUG] (LOR single) AUTO -> subProps: parent={master_id} sub={sub_id} Start={g['StartChannel']}")
+                if ok:
+                    print(f"[DEBUG] (LOR single) AUTO -> subProps INSERT: parent={master_id} sub={sub_id} Start={g['StartChannel']}")
+                else:
+                    print(f"[DEBUG] (LOR single) AUTO -> subProps SKIP (collision/error): parent={master_id} sub={sub_id} Start={g['StartChannel']}")
+
 
     conn.commit()
     conn.close()
@@ -1403,18 +2149,46 @@ def process_lor_multiple_channel_grids(preview_id, root):
         )
 
         # Insert master into props (WITH full network/channel fields)
-        cursor.execute("""
-            INSERT OR REPLACE INTO props (
+        # Handle a single LOR PropClass that contains MULTIPLE ChannelGrid groups (";"-separated).
+        # Keep the original prop as the master; materialize each grid group as its own subProp
+        # GAL 25-10-22: collision-aware insert (no silent overwrite)
+        insert_sql = """
+            INSERT INTO props (
                 PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                 CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                 PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                 Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, props_row)
+        """
+        # props_row already matches the column order above
+        params = props_row
 
+        # Build a minimal context for clear collision messages
+        name_for_ctx = ""
+        try:
+            if isinstance(props_row, (list, tuple)) and len(props_row) > 1:
+                name_for_ctx = props_row[1] or ""
+        except Exception:
+            pass
+        incoming_ctx = {
+            "PropID":       master_id,
+            "Name":         name_for_ctx,
+            "LORComment":   comment,
+            "PreviewId":    preview_id,
+            "DeviceType":   "LOR",
+            "Network":      (m_grid or {}).get("Network", ""),
+            "UID":          (m_grid or {}).get("UID", ""),
+            "StartChannel": (m_grid or {}).get("StartChannel", ""),
+            "EndChannel":   (m_grid or {}).get("EndChannel", ""),
+        }
+
+        ok = safe_insert_prop(cursor, insert_sql, params, incoming_ctx)
         if DEBUG:
-            print(f"[DEBUG] (LOR multi) MASTER → props  id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
+            if ok:
+                print(f"[DEBUG] (LOR multi) MASTER → props INSERT id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
+            else:
+                print(f"[DEBUG] (LOR multi) MASTER → props SKIP (collision/error) id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
 
         # Insert remaining grids into subProps
         lor_first = first_token(comment)
@@ -1431,16 +2205,19 @@ def process_lor_multiple_channel_grids(preview_id, root):
             if uid is not None:
                 name_parts.append(f"{uid}-{start:02d}")
             sub_name = " ".join(name_parts).strip()
-
-            cursor.execute("""
-                INSERT OR REPLACE INTO subProps (
+            # Insert master into props (WITH full network/channel fields)
+            # Keep the original prop as the master; materialize each grid group as its own subProp
+            # GAL 25-10-22: collision-aware insert (no silent overwrite)
+            insert_sql = """
+                INSERT INTO subProps (
                     SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                     EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                     LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                     MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
+            """
+            params = (
                 sub_id, sub_name, comment, "LOR", d["BulbShape"],
                 g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                 d["CustomBulbColor"], d["DimmingCurveName"], d["IndividualChannels"], d["LegacySequenceMethod"],
@@ -1448,9 +2225,26 @@ def process_lor_multiple_channel_grids(preview_id, root):
                 master_id, d["SeparateIds"], d["StartLocation"], d["StringType"], d["TraditionalColors"],
                 d["TraditionalType"], d["EffectBulbSize"], d["Tag"], d["Parm1"], d["Parm2"], d["Parm3"],
                 d["Parm4"], d["Parm5"], d["Parm6"], d["Parm7"], d["Parm8"], d["Lights"], preview_id
-            ))
+            )
+            incoming_ctx = {
+                "SubPropID":    sub_id,
+                "Name":         sub_name,
+                "LORComment":   comment,
+                "PreviewId":    preview_id,
+                "DeviceType":   "LOR",
+                "Network":      g.get("Network",""),
+                "UID":          uid,
+                "StartChannel": g.get("StartChannel",""),
+                "EndChannel":   g.get("EndChannel",""),
+                "MasterPropId": master_id,
+            }
+
+            ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
             if DEBUG:
-                print(f"[DEBUG] (LOR multi) SUB  → subProps id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+                if ok:
+                    print(f"[DEBUG] (LOR multi) SUB  → subProps INSERT id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+                else:
+                    print(f"[DEBUG] (LOR multi) SUB  → subProps SKIP (collision/error) id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
 
     conn.commit()
     conn.close()
@@ -1460,15 +2254,38 @@ def process_lor_multiple_channel_grids(preview_id, root):
 
 def process_file(file_path):
     """Process a single .lorprev file."""
-    print(f"[DEBUG] Processing file: {file_path}")
+    dprint(f"[DEBUG] Processing file: {file_path}")  # quieter unless DEBUG=True
     preview = locate_preview_class_deep(file_path)
     if preview is not None:
-        preview_data = process_preview(preview)
+        preview_data = process_preview(preview)   # full dict dump is now gated by PREVIEW_DEBUG inside process_preview
         insert_preview_data(preview_data)
 
         # Parse and process DeviceType == None and DMX props
         tree = ET.parse(file_path)
         root = tree.getroot()
+
+        # --- Count unique Displays (by PropClass/@Comment) for a concise summary ---
+        display_names = set()
+        for node in root.findall(".//PropClass"):
+            c = (node.get("Comment") or "").strip()
+            if c:
+                display_names.add(c)
+
+        # One concise INFO line per preview
+        # INFO(
+        #     f"Preview OK: Name='{preview_data.get('Name','')}', "
+        #     f"StageID={preview_data.get('StageID')}, "
+        #     f"Rev={preview_data.get('Revision')}, "
+        #     f"Displays={len(display_names)}",
+        #     ctx=preview_data.get('Name','')
+        # )
+        # One concise INFO line per preview
+        log_preview_summary(preview_data, len(display_names))
+
+        # Optional: show each display only when DEBUG=True
+        if DEBUG:
+            for dn in sorted(display_names, key=str.lower):
+                dprint(f"    - {dn}")
 
         # Pre-scan: which display names should be owned by LOR/DMX/manual wiring?
         channel_names = collect_channel_display_names(root)
@@ -1484,7 +2301,8 @@ def process_file(file_path):
         process_lor_props(preview_data["id"], root)
         process_lor_multiple_channel_grids(preview_data["id"], root)
     else:
-        print(f"[WARNING] No <PreviewClass> found in {file_path}")
+        WARN(f"No <PreviewClass> found in {file_path}")
+
 
 def process_folder(folder_path):
     """Process all .lorprev files in the specified folder."""
@@ -1665,15 +2483,37 @@ def main():
 
     print("Processing complete. Check the database.")
 
+    # -----------------------------------------------------------------------------
+    # GAL 25-10-22: End-of-run reporting (collision CSVs + notice)
+    # We open a short-lived connection here just to resolve preview names in reports.
+    # -----------------------------------------------------------------------------
+    try:
+        _conn = sqlite3.connect(DB_FILE)
+        _cursor = _conn.cursor()
+        try:
+            write_propid_collisions_csv(_cursor)
+        except Exception as _e:
+            WARN(f"Unable to write PropID collision CSV: {_e}")
+        try:
+            write_subprop_collisions_csv(_cursor)
+        except Exception as _e:
+            WARN(f"Unable to write SubPropID collision CSV: {_e}")
+    finally:
+        try:
+            _conn.close()
+        except Exception:
+            pass
+
     # === Notice breadcrumb (FILE ONLY; no webhook required) ===
     try:
         actor = _who_ran()
-        text = _notice_text(PREVIEW_PATH, DB_FILE)  # you said this helper exists
-        notice_path = write_notice_file(PREVIEW_PATH, text)  # and this one too
+        text = _notice_text(PREVIEW_PATH, DB_FILE, actor=actor)  # pass actor for clarity
+        notice_path = write_notice_file(PREVIEW_PATH, text)
         print(f"[notify] Wrote notice file → {notice_path}")
     except Exception as e:
         print(f"[notify] failed: {e}")
         import traceback; traceback.print_exc()
+
 
 # === Wiring views for V6 (map + sorted) GAL 25-08-23 ===
     """
