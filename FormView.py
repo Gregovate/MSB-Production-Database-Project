@@ -19,6 +19,9 @@
 #                     Fixed scope/indent issues, safe filename handling, and event binding.
 # 2025-10-23  V0.2.2  Changed default sort order to Controller → StartChannel (hex/numeric),
 #                     preserving user sort toggle behavior.
+# 2025-10-23  V0.2.3  Added Stage View tab placeholder and Notebook shell;
+#                     moved Image path field below Stage/Preview for better layout,
+#                     and implemented "Open Folder" button for quick access to background images.
 #
 # Notes
 # -----
@@ -34,6 +37,8 @@ import sqlite3, csv, os, urllib.parse
 import tkinter as tk
 import re
 from tkinter import ttk, filedialog, messagebox
+from pathlib import Path
+import datetime
 
 DEFAULT_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
 
@@ -93,12 +98,149 @@ def connect_ro(db_path: str) -> sqlite3.Connection:
     except Exception:
         return sqlite3.connect(db_path, timeout=5.0)
 
-class WiringViewer(tk.Tk):
-    def __init__(self, db_path=DEFAULT_DB):
-        super().__init__()
-        self.title("Wiring Viewer (v6) v0.2.0 — Field wiring mode")
-        self.geometry("1280x780")
+class StageViewFrame(ttk.Frame):
+    """
+    Read-only stage listing, grouped Stage -> Preview -> Displays.
+    Uses the views created by parse_props_v6.py (stage_display_list_all_v1).
+    """
+    def __init__(self, master, db_path: str, reports_root: Path):
+        super().__init__(master)
         self.db_path = db_path
+        self.reports_root = reports_root
+
+        # Top bar
+        top = ttk.Frame(self)
+        top.pack(fill="x", pady=6)
+        ttk.Button(top, text="Export HTML for Print", command=self.on_export).pack(side="right")
+
+        # Tree
+        self.tree = ttk.Treeview(self, columns=("type",), show="tree")
+        self.tree.pack(fill="both", expand=True)
+        self.refresh()
+
+    def _guess_stage_name(self, label: str, stage: str) -> str:
+        """
+        Extract a human title from a StagePreviewLabel like:
+        'Show Background Stage 09 Global Warming'
+        'RGB Plus Prop Stage 15 Church'
+        Returns the part after 'Stage <num>'.
+        """
+        try:
+            n = int(stage)  # handle '09' -> 9
+        except Exception:
+            n = stage
+        # look for "Stage <n> <Title...>"
+        m = re.search(rf"\bStage\s*0?{n}\s*(.+)$", label, flags=re.IGNORECASE)
+        if m:
+            title = m.group(1).strip(" -:–—\t")
+            return title
+        return ""
+
+
+    def refresh(self):
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+
+        rows = self._fetch_rows()
+        from collections import defaultdict, OrderedDict
+        stages = defaultdict(lambda: OrderedDict())
+        stage_titles = {}  # NEW: stage -> derived title
+
+        for stage, label, name, has in rows:
+            stages[stage].setdefault(label, []).append((name, has))
+            # NEW: remember the first non-empty title we can extract
+            if stage not in stage_titles:
+                t = self._guess_stage_name(label, stage)
+                if t:
+                    stage_titles[stage] = t
+
+        # Render
+        for stage in sorted(stages.keys(), key=lambda s: (s=='Unassigned', len(s), s)):
+            # NEW: append " — <title>" if we have one
+            title = stage_titles.get(stage, "")
+            text = f"Stage {stage}" + (f" — {title}" if title else "")
+            sid = self.tree.insert("", "end", text=text, open=True)
+
+            for label, items in stages[stage].items():
+                lid = self.tree.insert(sid, "end", text=label, open=False)
+                for name, has in items:
+                    suffix = "" if has else "  [no wiring]"
+                    self.tree.insert(lid, "end", text=f"{name}{suffix}")
+
+
+    def _fetch_rows(self):
+        q = """
+        SELECT StageBucket, StagePreviewLabel, DisplayName, HasWiring
+        FROM stage_display_list_all_v1
+        ORDER BY
+          (StageBucket='Unassigned') ASC,
+          LENGTH(StageBucket), StageBucket,
+          (StagePreviewLabel LIKE '%Show Background Stage%') DESC,
+          (StagePreviewLabel LIKE '%RGB Plus Prop Stage%') DESC,
+          StagePreviewLabel COLLATE NOCASE ASC,
+          DisplayName COLLATE NOCASE ASC
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            rows = conn.execute(q).fetchall()
+        finally:
+            conn.close()
+        return rows
+
+    def on_export(self):
+        # Mirror the parser’s output location
+        self.reports_root.mkdir(parents=True, exist_ok=True)
+        out = self.reports_root / "stage_display_list.html"
+        try:
+            # Recreate the same HTML structure the parser writes (lightweight re-gen here)
+            rows = self._fetch_rows()
+            from collections import defaultdict, OrderedDict
+            stages = defaultdict(lambda: OrderedDict())
+            for stage, label, name, has in rows:
+                stages[stage].setdefault(label, []).append((name, has))
+
+            # GAL 25-10-23 — local import avoids any module-scope shadowing
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+            html = [
+                "<!doctype html><meta charset='utf-8'>",
+                "<title>MSB — Stage Display Listing</title>",
+                "<style>body{font:14px/1.4 system-ui,Segoe UI,Arial} h1{font-size:20px} "
+                "h2{font-size:16px;margin:14px 0 6px} h3{margin:8px 0 4px} "
+                "ul{margin:0 0 14px 20px} .stage{page-break-inside:avoid} "
+                ".inv{opacity:.85} .tag{font-size:11px;padding:0 6px;border:1px solid #aaa;"
+                "border-radius:8px;margin-left:6px}</style>",
+                f"<h1>Stage Display Listing <small style='font-weight:normal;color:#666'>(generated {ts})</small></h1>"
+            ]
+            for stage in sorted(stages.keys(), key=lambda s: (s=='Unassigned', len(s), s)):
+                html.append(f"<div class='stage'><h2>Stage {stage}</h2>")
+                for label, items in stages[stage].items():
+                    html.append(f"<h3>{label}</h3><ul>")
+                    for name, has in items:
+                        tag = "" if has else '<span class="tag">no wiring</span>'
+                        cls = "" if has else ' class="inv"'
+                        html.append(f"<li{cls}>{name}{tag}</li>")
+                    html.append("</ul>")
+                html.append("</div>")
+
+            out.write_text("\n".join(html), encoding="utf-8")
+            messagebox.showinfo("Export", f"Stage report written:\n{out}")
+        except Exception as e:
+            messagebox.showerror("Export failed", str(e))
+
+
+
+from tkinter import ttk
+
+class WiringViewer(ttk.Frame):
+    def __init__(self, master, db_path):
+        super().__init__(master)            # <— we are a Frame hosted by a parent
+        self.db_path = db_path
+        # DO NOT set title/geometry here (those belong to the root)
+        # build UI on self...
+        # e.g., self.tree = ttk.Treeview(self); self.tree.pack(...)
+
         self.conn: sqlite3.Connection | None = None
 
         self.sort_col = "Controller"
@@ -115,11 +257,25 @@ class WiringViewer(tk.Tk):
         self.preview_var = tk.StringVar()
         self.preview_cbo = ttk.Combobox(top, textvariable=self.preview_var, width=55, state="readonly")
         self.preview_cbo.pack(side=tk.LEFT, padx=(2,6))
-        self.preview_cbo.bind("<<ComboboxSelected>>", lambda e: self.refresh_rows())
+        self.preview_cbo.bind("<<ComboboxSelected>>",
+                            lambda e: (self._update_bg_path_ui(), self.refresh_rows()))
 
+        # GAL 25-10-23 — show BackgroundFile path to the right of the preview picker
         ttk.Button(top, text="Refresh", command=self.refresh_rows).pack(side=tk.LEFT, padx=(0,6))
         ttk.Button(top, text="Export CSV…", command=self.export_csv).pack(side=tk.LEFT)
         ttk.Button(top, text="Export Printable…", command=self.export_printable_html).pack(side=tk.LEFT, padx=(6,0))
+
+        # --- second row: preview image path (full width) ---  GAL 25-10-23
+        # --- second row: preview image path (full width) ---  GAL 25-10-23
+        row2 = ttk.Frame(self, padding=(6, 0, 6, 6))
+        row2.pack(side=tk.TOP, fill=tk.X)
+
+        ttk.Label(row2, text="Image:").pack(side=tk.LEFT, padx=(0, 6))
+        self.bg_path_var = tk.StringVar(value="")
+        self.bg_entry = ttk.Entry(row2, textvariable=self.bg_path_var, state="readonly")
+        self.bg_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        ttk.Button(row2, text="Open Folder", command=self._open_image_folder).pack(side=tk.LEFT, padx=(6, 0))
 
 
         # Filters
@@ -201,9 +357,53 @@ class WiringViewer(tk.Tk):
             self.preview_cbo["values"] = names
             if names and (self.preview_var.get() not in names):
                 self.preview_var.set(names[0])
+
+            # GAL 25-10-23 — update BackgroundFile path display
+            self._update_bg_path_ui()
+
             self.after(50, self.refresh_rows)
         except Exception as e:
             messagebox.showerror("Query Error", str(e))
+
+    def _open_image_folder(self):
+        p = (self.bg_path_var.get() or "").strip()
+        if not p:
+            messagebox.showinfo("Open Folder", "No image path for this preview.")
+            return
+        try:
+            folder = os.path.dirname(p) if os.path.splitext(p)[1] else p
+            os.startfile(folder)  # Windows
+        except Exception as e:
+            messagebox.showerror("Open Folder", str(e))
+
+
+    # GAL 25-10-23 — helpers to fetch and show the preview image path
+    # GAL 25-10-23 — resolve image by PreviewName OR StagePreviewLabel
+    def _get_preview_bg_path(self, selected: str) -> str:
+        """
+        Look up BackgroundFile from previews using Name (combobox text),
+        with a fallback to StageID. Returns a normalized absolute/empty string.
+        """
+        try:
+            con = self.conn if self.conn else sqlite3.connect(self.db_path)
+            row = con.execute(
+                "SELECT BackgroundFile FROM previews WHERE Name = ? OR StageID = ? LIMIT 1",
+                (selected, selected),
+            ).fetchone()
+            if con is not self.conn:
+                con.close()
+            path = (row[0] or "").strip() if row else ""
+            return os.path.normpath(path) if path else ""
+        except Exception:
+            return ""
+
+
+
+    def _update_bg_path_ui(self):
+        name = self.preview_var.get().strip()
+        self.bg_path_var.set(self._get_preview_bg_path(name) or "(no background image)")
+
+
 
     # ------------------------ UI actions ------------------------
     def clear_rows(self):
@@ -451,6 +651,38 @@ class WiringViewer(tk.Tk):
 
 
 
+# === Combined main window with tabs (GAL 25-10-23) ===========================
+# GAL 25-10-23 — minimal tabbed shell around WiringViewer (no class changes)
 if __name__ == "__main__":
-    app = WiringViewer(DEFAULT_DB)
-    app.mainloop()
+    import tkinter as tk
+    from tkinter import ttk
+
+    # Pick your DB path constant; fall back if not defined
+    try:
+        DB_PATH = DEFAULT_DB   # if you already define this above
+    except NameError:
+        DB_PATH = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
+
+    root = tk.Tk()
+    root.title("MSB Database — Wiring & Stage Tools (v2.3)")
+    #root.title("MSB — TABBED TEST " + u"\u2728")
+
+    root.geometry("1280x780")
+
+    notebook = ttk.Notebook(root)
+    notebook.pack(fill=tk.BOTH, expand=True)
+
+    # Tab 1: your existing UI (WiringViewer is a Frame)
+    wiring_tab = WiringViewer(notebook, db_path=DB_PATH)
+    notebook.add(wiring_tab, text="Wiring View")
+
+    # Tab 2: placeholder Stage View (swap in your real class later)
+    REPORTS_ROOT = Path(r"G:\Shared drives\MSB Database\Database Previews\reports")
+    stage_tab = StageViewFrame(notebook, db_path=DB_PATH, reports_root=REPORTS_ROOT)
+    notebook.add(stage_tab, text="Stage View")
+
+    root.mainloop()
+
+# ============================================================================
+
+

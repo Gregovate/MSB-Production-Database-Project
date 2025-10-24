@@ -1,6 +1,7 @@
 # MSB Database — LOR Preview Parser (v6)
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2025-10-23  V6.7.6 (GAL)
+# Current Version : 2025-10-23  V6.7.6 
+# (GAL)
 # Author          : Greg Liebig, Engineering Innovations, LLC.
 #
 # Purpose
