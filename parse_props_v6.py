@@ -1,6 +1,6 @@
 # MSB Database — LOR Preview Parser (v6)
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2025-10-23  V6.7.5 (GAL)
+# Current Version : 2025-10-23  V6.7.6 (GAL)
 # Author          : Greg Liebig, Engineering Innovations, LLC.
 #
 # Purpose
@@ -36,6 +36,7 @@
 # -----------------
 # Display names follow a consistent pattern:
 #     <Name>[-<Location>][-<Seq><Color?>]
+
 #
 # • Name: CamelCase (capitalize each word, no spaces).
 #         Stage/section or pattern may be embedded (e.g., DF_A, ElfP2, NoteB).
@@ -1309,36 +1310,46 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
         masters_by_display[dn] = lst[0]  # the only one (we just enforced uniqueness)
 
     # Pass 1: insert MASTERS to props
+    # Pass 1: insert MASTERS to props (with local fan-out for DeviceType=None)
     for dn, m in masters_by_display.items():
-        prop_id_scoped = _scoped(preview_id, m["raw_id"]) or f"{preview_id}:NONE"
-        try:
-            cur.execute("""
-                INSERT INTO props (
-                    PropID, Name, LORComment, DeviceType,
-                    BulbShape, DimmingCurveName, MaxChannels,
-                    CustomBulbColor, IndividualChannels, LegacySequenceMethod,
-                    Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation,
-                    StringType, TraditionalColors, TraditionalType, EffectBulbSize, Tag,
-                    Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8,
-                    Lights, PreviewId, MasterPropId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                prop_id_scoped, m["name"], dn, "None",
-                m["bulb_shape"], m["dimming_curve_name"], m["max_ch"],
-                m["custom_bulb_color"], m["individual_ch"], m["legacy_method"],
-                m["opacity"], m["master_dimmable"], m["preview_bulb_size"], m["separate_ids"], m["start_location"],
-                m["string_type"], m["traditional_colors"], m["traditional_type"], m["effect_bulb_size"], m["tag"],
-                m["parm1"], m["parm2"], m["parm3"], m["parm4"], m["parm5"], m["parm6"], m["parm7"], m["parm8"],
-                safe_int(m["parm2"], 0), preview_id, None
-            ))
-        except sqlite3.IntegrityError as e:
-            print(f"[ERROR] Duplicate PropID (None/MASTER): {prop_id_scoped} "
-                  f"(PreviewId={preview_id}, Display='{dn}') -> {e}")
-            raise
+        base_scoped = _scoped(preview_id, m["raw_id"]) or f"{preview_id}:NONE"
+
+        # how many instances? (matches your historical rule)
+        lights = safe_int(m["parm2"], 0)
+        count  = max(1, m["max_ch"] if m["max_ch"] > 0 else (lights if lights > 0 else 1))
+
+        for i in range(1, count + 1):
+            inst_id      = f"{base_scoped}-{i:02d}" if count > 1 else base_scoped
+            inst_comment = f"{dn}-{i:02d}"           if count > 1 else dn
+            try:
+                cur.execute("""
+                    INSERT INTO props (
+                        PropID, Name, LORComment, DeviceType,
+                        BulbShape, DimmingCurveName, MaxChannels,
+                        CustomBulbColor, IndividualChannels, LegacySequenceMethod,
+                        Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation,
+                        StringType, TraditionalColors, TraditionalType, EffectBulbSize, Tag,
+                        Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8,
+                        Lights, PreviewId, MasterPropId
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    inst_id, m["name"], inst_comment, "None",
+                    m["bulb_shape"], m["dimming_curve_name"], m["max_ch"],
+                    m["custom_bulb_color"], m["individual_ch"], m["legacy_method"],
+                    m["opacity"], m["master_dimmable"], m["preview_bulb_size"], m["separate_ids"], m["start_location"],
+                    m["string_type"], m["traditional_colors"], m["traditional_type"], m["effect_bulb_size"], m["tag"],
+                    m["parm1"], m["parm2"], m["parm3"], m["parm4"], m["parm5"], m["parm6"], m["parm7"], m["parm8"],
+                    lights, preview_id, None
+                ))
+            except sqlite3.IntegrityError as e:
+                print(f"[ERROR] Duplicate PropID (None/MASTER): {inst_id} "
+                    f"(PreviewId={preview_id}, Display='{inst_comment}') -> {e}")
+                raise
 
         if DEBUG:
-            print(f"[NONE->MASTER] {prop_id_scoped}  name='{m['name']}'  display='{dn}'")
+            mode = "MASTER-FANOUT" if count > 1 else "MASTER"
+            print(f"[NONE->{mode}] {base_scoped}  name='{m['name']}'  display='{dn}' x{count}")
 
     # Pass 2: (optional) write LINKED units to subProps for reference; otherwise IGNORE
     if WRITE_LINKED_TO_SUBPROPS and linked_rows:
@@ -2720,8 +2731,13 @@ def main():
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
 
+    # ✅ Build the Stage Display views and write printable report (includes “no wiring” items)
+    write_stage_display_report(DEFAULT_DB_FILE)   # GAL 25-10-23
+    
     # 🚨 Fail-fast audit: a DisplayName can be mastered in ONLY one preview
     audit_displayname_masters_unique_across_previews(DB_FILE)
+
+
 
     # # 🚨 Fail-fast audits (write CSV + exit non-zero if problems)
     # audit_duplicate_display_names(DB_FILE)   # required
@@ -2785,9 +2801,15 @@ def main():
       - Adds supporting indexes on props/subProps/dmxChannels for faster filtering/sorting.
     """
 def create_wiring_views_v6(db_file: str):
-    import sqlite3
+    """
+    Build channel-centric wiring views (map + sorted) and field-wiring helpers.
+    Idempotent: pre-drops only the views this function creates.
+    GAL 25-10-23
+    """
+    import sqlite3, re
 
-    ddl = """
+    # --- Base wiring views (map + sorted) + indexes ---------------------------
+    ddl_wiring = r"""
 DROP VIEW IF EXISTS preview_wiring_map_v6;
 CREATE VIEW preview_wiring_map_v6 AS
     -- Master props (single-grid legs on props)
@@ -2810,7 +2832,7 @@ CREATE VIEW preview_wiring_map_v6 AS
     SELECT
         pv.Name,
         REPLACE(TRIM(COALESCE(NULLIF(sp.LORComment,''), p.LORComment)), ' ', '-') AS DisplayName,
-        sp.Name              AS LORName,  -- ✅ subprop’s own channel name
+        sp.Name              AS LORName,  -- subprop’s own channel name
         sp.Network,
         sp.UID,
         sp.StartChannel,
@@ -2828,12 +2850,12 @@ CREATE VIEW preview_wiring_map_v6 AS
         REPLACE(TRIM(p.LORComment), ' ', '-') AS DisplayName,
         p.Name              AS LORName,
         dc.Network,
-        CAST(dc.StartUniverse AS TEXT),
+        CAST(dc.StartUniverse AS TEXT) AS Controller,
         dc.StartChannel,
         dc.EndChannel,
-        'DMX',
-        'DMX',
-        p.Tag
+        'DMX'               AS DeviceType,
+        'DMX'               AS Source,
+        p.Tag               AS LORTag
     FROM dmxChannels dc
     JOIN props p  ON p.PropID = dc.PropId
     JOIN previews pv ON pv.id = p.PreviewId;
@@ -2855,63 +2877,9 @@ CREATE INDEX IF NOT EXISTS idx_subprops_preview  ON subProps(PreviewId);
 CREATE INDEX IF NOT EXISTS idx_dmx_prop          ON dmxChannels(PropId);
 """
 
-    fieldmap = r"""
-DROP VIEW IF EXISTS preview_wiring_fieldmap_v6;
-CREATE VIEW preview_wiring_fieldmap_v6 AS
-WITH map AS (
-  SELECT
-    m.Source,
-    m.LORName            AS Channel_Name,
-    m.DisplayName        AS Display_Name,
-    m.Network,
-    m.Controller,
-    m.StartChannel,
-    m.EndChannel,
-    CASE WHEN m.DeviceType='DMX' THEN 'RGB' ELSE NULL END AS Color,
-    m.DeviceType         AS DeviceType,
-    m.LORTag,
-    m.PreviewName
-  FROM preview_wiring_sorted_v6 m
-  WHERE m.Controller IS NOT NULL
-    AND m.StartChannel IS NOT NULL
-    AND m.DeviceType <> 'None'
-),
-ranked AS (
-  SELECT
-    map.*,
-    ROW_NUMBER() OVER (
-      PARTITION BY PreviewName, Network, Controller, StartChannel, Display_Name
-      ORDER BY (Source='PROP') DESC, Channel_Name COLLATE NOCASE
-    ) AS lead_rank
-  FROM map
-),
-span AS (
-  SELECT
-    ranked.*,
-    SUM(CASE WHEN lead_rank = 1 THEN 1 ELSE 0 END)
-      OVER (PARTITION BY PreviewName, Network, Controller, StartChannel) AS display_span
-  FROM ranked
-)
-SELECT
-  PreviewName, Source, Channel_Name, Display_Name,
-  Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag,
-  CASE WHEN lead_rank = 1 THEN 'FIELD' ELSE 'INTERNAL' END AS ConnectionType,
-  CASE WHEN display_span > 1 THEN 1 ELSE 0 END            AS CrossDisplay
-FROM span;
-
-DROP VIEW IF EXISTS preview_wiring_fieldonly_v6;
-CREATE VIEW preview_wiring_fieldonly_v6 AS
-SELECT *
-FROM preview_wiring_fieldmap_v6
-WHERE ConnectionType = 'FIELD';
-
-
---------------------------------------------------------------------
--- FIELD WIRING HELPERS (Stage/Preview-focused)
--- Paste this block AFTER preview_wiring_map_v6 / preview_wiring_sorted_v6 are created
---------------------------------------------------------------------
-
--- Field/Internal mapping without COUNT(DISTINCT) window functions
+    # --- Field wiring helpers (single, canonical definition) ------------------
+    helpers = r"""
+-- Field/Internal mapping (canonical; single definition)
 DROP VIEW IF EXISTS preview_wiring_fieldmap_v6;
 CREATE VIEW preview_wiring_fieldmap_v6 AS
 WITH map AS (
@@ -2993,20 +2961,27 @@ FROM preview_wiring_fieldmap_v6
 WHERE ConnectionType = 'FIELD';
 """
 
+    # --- Connect and pre-drop the views we are about to create ----------------
     conn = sqlite3.connect(db_file)
     try:
-        conn.executescript(ddl)
-        conn.executescript(fieldmap)
+        full_script = ddl_wiring + "\n" + helpers
+
+        view_names = re.findall(
+            r'CREATE\s+VIEW\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_]+)\s+AS',
+            full_script, flags=re.IGNORECASE
+        )
+        print("[DEBUG] Wiring DDL will (re)create these views:", ", ".join(view_names))  # GAL debug
+
+        for vn in view_names:
+            try:
+                conn.execute(f"DROP VIEW IF EXISTS {vn};")
+            except Exception as e:
+                print(f"[WARN] Could not drop view {vn}: {e}")
+
+        # Create wiring + helpers once
+        conn.executescript(full_script)
         conn.commit()
         print("[INFO] Created preview_wiring_map_v6, preview_wiring_sorted_v6, and FIELD/INTERNAL views.")
-    finally:
-        conn.close()
-
-    conn = sqlite3.connect(db_file)
-    try:
-        conn.executescript(ddl)
-        conn.commit()
-        print("[INFO] Created wiring views + helpers (props slice, controller_networks_v6, breaking_check_v6).")
     finally:
         conn.close()
 
@@ -3061,7 +3036,7 @@ WHERE ConnectionType = 'FIELD';
 
     # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
     try:
-        import subprocess, sys
+        import subprocess, sys, os
         compare_script = r"G:\Shared drives\MSB Database\Spreadsheet\compare_displays_vs_db.py"
         if os.path.exists(compare_script):
             print("[INFO] Running compare_displays_vs_db.py …")
@@ -3070,6 +3045,224 @@ WHERE ConnectionType = 'FIELD';
             print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
     except Exception as e:
         print(f"[WARN] Could not run compare script: {e}")
+
+# === Stage Display views + printable report (GAL 25-10-23) ===================
+# Purpose: include BOTH wired and inventory-only assets so stages like
+#          "Santa's Station Generator" (no wiring) appear in rollups.
+
+STAGE_VIEW_SQL = r"""
+-- Channel-bearing assets (props/subprops/dmx)
+DROP VIEW IF EXISTS stage_display_assets_v1;
+CREATE VIEW stage_display_assets_v1 AS
+SELECT
+  pv.StageID,
+  pv.Name              AS PreviewName,
+  p.LORComment         AS DisplayName,
+  p.Name               AS ChannelName,
+  COALESCE(p.DeviceType,'LOR') AS DeviceType,
+  p.Network, p.UID, p.StartChannel, p.EndChannel,
+  1 AS HasWiring,
+  'PROP' AS Source
+FROM props p
+JOIN previews pv ON pv.id = p.PreviewId
+WHERE p.Network IS NOT NULL AND p.StartChannel IS NOT NULL
+
+UNION ALL
+SELECT
+  pv.StageID,
+  pv.Name,
+  COALESCE(NULLIF(sp.LORComment,''), p.LORComment) AS DisplayName,
+  sp.Name,
+  COALESCE(sp.DeviceType,'LOR'),
+  sp.Network, sp.UID, sp.StartChannel, sp.EndChannel,
+  1 AS HasWiring,
+  'SUBPROP'
+FROM subProps sp
+JOIN props    p  ON p.PropID = sp.MasterPropId
+JOIN previews pv ON pv.id    = sp.PreviewId
+WHERE sp.Network IS NOT NULL AND sp.StartChannel IS NOT NULL
+
+UNION ALL
+SELECT
+  pv.StageID,
+  pv.Name,
+  p.LORComment         AS DisplayName,
+  p.Name               AS ChannelName,
+  'DMX'                AS DeviceType,
+  dc.Network,
+  CAST(dc.StartUniverse AS TEXT) AS UID,
+  dc.StartChannel, dc.EndChannel,
+  1 AS HasWiring,
+  'DMX'
+FROM dmxChannels dc
+JOIN props     p  ON p.PropID = dc.PropId
+JOIN previews  pv ON pv.id    = p.PreviewId;
+
+-- Inventory-only assets (present in previews, but with NO channels)
+DROP VIEW IF EXISTS stage_display_inventory_only_v1;
+CREATE VIEW stage_display_inventory_only_v1 AS
+SELECT DISTINCT
+  pv.StageID,
+  pv.Name              AS PreviewName,
+  p.LORComment         AS DisplayName,
+  NULL AS ChannelName,
+  COALESCE(p.DeviceType,'INV') AS DeviceType,
+  NULL AS Network, NULL AS UID, NULL AS StartChannel, NULL AS EndChannel,
+  0 AS HasWiring,
+  'PROP_INV' AS Source
+FROM props p
+JOIN previews pv ON pv.id = p.PreviewId
+WHERE (p.Network IS NULL OR p.StartChannel IS NULL)
+  AND TRIM(COALESCE(p.LORComment,'')) <> ''
+
+UNION
+SELECT DISTINCT
+  pv.StageID,
+  pv.Name,
+  COALESCE(NULLIF(sp.LORComment,''), p.LORComment) AS DisplayName,
+  NULL AS ChannelName,
+  COALESCE(sp.DeviceType,'INV'),
+  NULL, NULL, NULL, NULL,
+  0 AS HasWiring,
+  'SUBPROP_INV'
+FROM subProps sp
+JOIN props    p  ON p.PropID = sp.MasterPropId
+JOIN previews pv ON pv.id    = sp.PreviewId
+WHERE (sp.Network IS NULL OR sp.StartChannel IS NULL)
+  AND TRIM(COALESCE(COALESCE(NULLIF(sp.LORComment,''), p.LORComment),'')) <> '';
+
+-- All assets together
+DROP VIEW IF EXISTS stage_display_assets_all_v1;
+CREATE VIEW stage_display_assets_all_v1 AS
+SELECT * FROM stage_display_assets_v1
+UNION ALL
+SELECT * FROM stage_display_inventory_only_v1;
+
+-- Print-friendly distinct list (Stage → Preview → Display)
+DROP VIEW IF EXISTS stage_display_list_all_v1;
+CREATE VIEW stage_display_list_all_v1 AS
+WITH base AS (
+  SELECT
+    COALESCE(StageID, 'Unassigned') AS StageBucket,
+    PreviewName,
+    TRIM(DisplayName)               AS DisplayName,
+    HasWiring
+  FROM stage_display_assets_all_v1
+  WHERE TRIM(COALESCE(DisplayName,'')) <> ''
+)
+SELECT
+  StageBucket,
+  CASE
+    WHEN PreviewName LIKE 'Show Background Stage %' THEN printf('%s — %s', StageBucket, PreviewName)
+    WHEN PreviewName LIKE 'RGB Plus Prop Stage %'   THEN printf('%s — %s', StageBucket, PreviewName)
+    ELSE printf('%s — %s', StageBucket, PreviewName)
+  END AS StagePreviewLabel,
+  DisplayName,
+  MAX(HasWiring) AS HasWiring
+FROM base
+GROUP BY StageBucket, StagePreviewLabel, DisplayName
+ORDER BY
+  (StageBucket='Unassigned') ASC,
+  LENGTH(StageBucket), StageBucket,
+  (StagePreviewLabel LIKE '%Show Background Stage%') DESC,
+  (StagePreviewLabel LIKE '%RGB Plus Prop Stage%') DESC,
+  StagePreviewLabel COLLATE NOCASE ASC,
+  DisplayName COLLATE NOCASE ASC;
+
+-- Unassigned quick check
+DROP VIEW IF EXISTS stage_display_unassigned_v1;
+CREATE VIEW stage_display_unassigned_v1 AS
+SELECT DisplayName
+FROM stage_display_list_all_v1
+WHERE StageBucket='Unassigned';
+"""
+
+def _ensure_stage_views(db_file: str) -> None:
+    """Create/refresh Stage Display SQL views (safe to run every parse).  GAL 25-10-23"""
+    import sqlite3, os
+    # Always target the same DB the parser uses (DEFAULT_DB_FILE)
+    db_path = os.fspath(DEFAULT_DB_FILE)   # GAL 25-10-23: Path → str
+    if db_file and os.fspath(db_file) != db_path:
+        # Log only; we still write to DEFAULT_DB_FILE to avoid split-brain
+        print(f"[WARN] Stage views requested on {db_file!r} — using DEFAULT_DB_FILE instead: {db_path}")
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.executescript(STAGE_VIEW_SQL)
+        conn.commit()
+        print(f"[INFO] Created stage_display_* views in: {db_path}")
+    finally:
+        conn.close()
+
+def write_stage_display_report(db_file: str, out_dir_hint: str | None = None) -> str:
+    """
+    Write a printable HTML listing of displays by Stage (including 'no wiring' items).
+    Output: <db_dir>/reports/stage_display_list.html   GAL 25-10-23
+    """
+    import sqlite3, os, datetime
+    from pathlib import Path
+    from collections import defaultdict, OrderedDict
+
+    db_path = os.fspath(DEFAULT_DB_FILE)  # GAL 25-10-23: hard-lock to production DB
+    print(f"[INFO] Stage report using DB: {db_path}")
+
+    # Ensure the stage views exist
+    _ensure_stage_views(db_path)
+
+    # Reports folder (prefer your existing helper if present)
+    try:
+        reports_dir = Path(get_reports_dir())
+    except Exception:
+        reports_dir = Path(out_dir_hint or DEFAULT_DB_FILE.parent) / "reports"  # same folder as DB
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    out_path = reports_dir / "stage_display_list.html"
+
+    # Pull flattened list
+    conn = sqlite3.connect(db_path)
+    cur  = conn.cursor()
+    rows = cur.execute("""
+        SELECT StageBucket, StagePreviewLabel, DisplayName, HasWiring
+        FROM stage_display_list_all_v1
+        ORDER BY
+          (StageBucket='Unassigned') ASC,
+          LENGTH(StageBucket), StageBucket,
+          (StagePreviewLabel LIKE '%Show Background Stage%') DESC,
+          (StagePreviewLabel LIKE '%RGB Plus Prop Stage%') DESC,
+          StagePreviewLabel COLLATE NOCASE ASC,
+          DisplayName COLLATE NOCASE ASC
+    """).fetchall()
+    conn.close()
+
+    # Group Stage → Preview → [Displays]
+    stage_map: dict[str, dict[str, list[tuple[str,int]]]] = defaultdict(lambda: OrderedDict())
+    for stage_bucket, label, disp, has in rows:
+        stage_map[stage_bucket].setdefault(label, []).append((disp, has))
+
+    # Emit simple printable HTML
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    html = [
+        "<!doctype html><meta charset='utf-8'>",
+        "<title>MSB — Stage Display Listing</title>",
+        "<style>body{font:14px/1.4 system-ui,Segoe UI,Arial} h1{font-size:20px} h2{font-size:16px;margin:14px 0 6px} h3{margin:8px 0 4px} ul{margin:0 0 14px 20px} .stage{page-break-inside:avoid} .inv{opacity:.85} .tag{font-size:11px;padding:0 6px;border:1px solid #aaa;border-radius:8px;margin-left:6px}</style>",
+        f"<h1>Stage Display Listing <small style='font-weight:normal;color:#666'>(generated {ts})</small></h1>"
+    ]
+    for stage_bucket in sorted(stage_map.keys(), key=lambda s: (s=='Unassigned', len(s), s)):
+        html.append(f"<div class='stage'><h2>Stage {stage_bucket}</h2>")
+        for preview_label, displays in stage_map[stage_bucket].items():
+            html.append(f"<h3>{preview_label}</h3><ul>")
+            for name, has in displays:
+                html.append(f"<li class='{'inv' if not has else ''}'>{name}{'' if has else '<span class=\"tag\">no wiring</span>'}</li>")
+            html.append("</ul>")
+        html.append("</div>")
+
+    out_path.write_text("\n".join(html), encoding="utf-8")
+    print(f"[INFO] Wrote printable Stage Display report → {out_path}")
+    return str(out_path)
+# === End Stage Display (GAL 25-10-23) ========================================
+
+# === End Stage Display (GAL 25-10-23) ========================================
+
+
+
 
 # --- GAL 25-10-23: Duplicate DisplayName audit across previews ---
 def audit_duplicate_display_names(db_path: str, out_csv: str = "duplicate_display_names.csv") -> None:
