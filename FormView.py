@@ -40,7 +40,57 @@ from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 import datetime
 
-DEFAULT_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
+# --- GAL 25-10-25: Added robust shared-drive path resolver for teammate PCs ---
+import sys
+import tkinter.messagebox as m
+
+def _resolve_db_path() -> str:
+    """
+    Find a usable DB path in this order:
+      1) MSB_DB_PATH env var (lets you override per-PC)
+      2) Standard shared path on G:
+      3) Local copy next to script/exe
+      4) Prompt user if all else fails
+    """
+    env = os.environ.get("MSB_DB_PATH")
+    if env and os.path.exists(env):
+        return env
+
+    std = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
+    if os.path.exists(std):
+        return std
+
+    here = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+    local = here / "lor_output_v6.db"
+    if local.exists():
+        return str(local)
+
+    root = tk.Tk(); root.withdraw()
+    m.showwarning("Locate Database",
+                  "Could not find the MSB database automatically.\n\n"
+                  "Please select lor_output_v6.db.")
+    sel = filedialog.askopenfilename(
+        title="Locate lor_output_v6.db",
+        filetypes=[("SQLite DB", "*.db *.sqlite *.sqlite3"), ("All files", "*.*")]
+    )
+    root.destroy()
+
+    if sel and os.path.exists(sel):
+        return sel
+
+    root = tk.Tk(); root.withdraw()
+    m.showerror(
+        "Path Error",
+        "Database not found:\n\n"
+        "• Expected: G:\\Shared drives\\MSB Database\\database\\lor_output_v6.db\n"
+        "• Or set MSB_DB_PATH to a valid .db file\n\n"
+        "Ask a lead to map your G: drive to the Shared Drive or browse to the DB."
+    )
+    root.destroy()
+    raise SystemExit(1)
+
+DEFAULT_DB = _resolve_db_path()
+# --- End of path resolver (GAL 25-10-25) ---
 
 # Superset of columns used by both views; extra columns are filled when present
 COLUMNS = [
