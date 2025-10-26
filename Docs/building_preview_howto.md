@@ -1,23 +1,27 @@
 # Building a Preview (Operator How-To)
 
-_Last updated: 2025-10-01_
+_Last updated: 2025-10-26
 
 This guide explains how to build, edit, and export a preview in **Light‑O‑Rama (LOR)** for integration with the MSB Database.
 
 ---
 
 ## Prerequisites
-- A background image (`.jpg` or `.png`) of the display panel design.
+- A background image (`.jpg`) of the display panel design or entire stage.
 - Save the file to:  
-  `G:\Shared drives\Display Folders`
+  `G:\Shared drives\Display Folders\Stage Folder'
 - Size limits:
   - Max **4000 × 3000 px**
   - Recommended: **800 × 600 px** for a single panel.
+  - Recommended: **3840 x 2160 px** for a full stage.
+  - Save as JPG optimized with a 20% compression factor (Easy to do in PaintShop Pro) 
 - File naming:
   ```
-  Preview Background <Display Name>
+  - Show Background Stage xx LOR Preview.jpg
+  - RGB Plus Prop Stage xx LOR Preview.jpg
   ```
-
+- Example:
+![Show Background Stage 15 Preview Background](Docs/images/Show_ Background_Stage_15_Preview_Backround.jpg)
 ---
 
 ## Creating a New Preview
@@ -80,6 +84,57 @@ The `.leprop` file creates a **prop key** that can be reused inside larger previ
      G:\Shared drives\MSB Database\UserPreviewStaging
      ```
 
+---
+## Create a Wiring Backround
+We now have the ability to include an image in the field wiring paperwork. Creating this image involves a few more steps. This only applies to the stage previews:
+  ```
+  - Show Background Stage xx preview name.jpg
+  - RGB Plus Prop Stage xx preview name.jpg
+  ```
+1. Open the complete Preview in the Preview Editor:
+2. Snip the **entire preview image** you created using the Windows Snip App Full Screen:
+3. Save the snipped image
+- Save the file to:  
+  `G:\Shared drives\Display Folders\Stage Folder\Show Background Stage xx Preview Backround Wired.jpg'
+- File naming:
+  ```
+  - Show Background Stage xx LOR Preview Wired.jpg
+  - RGB Plus Prop Stage xx LOR Preview Wired.jpg
+  ```
+4. Replace the initial background with the wired version you just created. Depending on how accurate you were  making the snip, you may have to adjust your wired props slightly to get everything to line up.
+5. Save the preview. The basic wiring diagram is done
+Example:
+![Show Background Stage 15 Preview Background Wired](Docs/images/Show_ Background_Stage_15_Preview_Backround_Wired.jpg)
+---
+
+## Create a Tagged Wiring Backround
+This is the last step to create a useful wiring diagram that tags the channels in the preview. Unfortunately, there is no way to create this image in LOR but we can build this image using drawio.
+1. Open the DrawIO app
+2. Select a Blank Diagram the Create
+3. Go to Page Properties
+  - Drag your wired image into the background or just drag the original background image without the wiring
+  - Landscape
+  - Page Size Custom
+    - Set the page size to fit the backround image. Hint: Should be **3840 x 2160**
+4. Then using the Arrows or other geometry from the tool bar on left select the shape you want and drag it onto the image.
+5. Double Click the shape and add each **DisplayName** to the shape. Format it so it fits the shape. You may need to open the sequencer and copy the Comment field to keep things accurate.
+  - Do not use **Channel Names!**, these will appear in the Field Wiring Chart
+  - If you add **Channel Names** and the channels change over time, the wiring diagram will need to be updated!
+6. Repeat until you have all the displays defined.
+7. Save the file as `G:\Shared drives\Display Folders\Stage Folder\
+
+  ```
+  - Show Background Stage xx LOR Preview Tagged.drawio
+  - RGB Plus Prop Stage xx LOR Preview Tagged.drawio
+  ```
+8. Eport the file to `G:\Shared drives\Display Folders\Stage Folder\
+  ```
+  - Show Background Stage xx LOR Preview Tagged.jpg
+  - RGB Plus Prop Stage xx LOR Preview Tagged.jpg
+  ```
+9. Lastly, you will need to assign the new image as the background file in the sequencer.
+Example:
+![Show Background Stage 15 Preview Background Tagged](Docs/images/Show_ Background_Stage_15_Preview_Backround_Tagged.jpg)
 ---
 
 ## Reminder
