@@ -119,8 +119,10 @@ This is the last step to create a useful wiring diagram that tags the channels i
     - Set the page size to fit the background image. Hint: Should be **3840 x 2160**
 4. Then using the Arrows or other geometry from the tool bar on left select the shape you want and drag it onto the image.
 5. Double Click the shape and add each **DisplayName** to the shape. Format it so it fits the shape. You may need to open the sequencer and copy the Comment field to keep things accurate.
+  - Font: Helvetica. Minimum Font Size 18pt BOLD 24pt Bold is better
   - Do not use **Channel Names!**, these will appear in the Field Wiring Chart
   - If you add **Channel Names** and the channels change over time, the wiring diagram will need to be updated!
+  - As long as the preview background path does not change, the background is updateable as long as the path and file name remains the same. No need to edit the preview.
 6. Repeat until you have all the displays defined.
 7. Save the file as `G:\Shared drives\Display Folders\Stage Folder\
 
@@ -148,15 +150,4 @@ After **any changes** to previews:
   4. DB Compare
 
 This ensures the system stays consistent for all users.
-
----
-
-## Suggested commit message
-```
-docs: add operator guide for building and editing previews
-
-- New doc: Docs/building_preview_howto.md
-- Covers prerequisites, creating a preview, personal props, editing existing previews
-- Reminder to follow Workflow v6 after any preview changes
-```
 
