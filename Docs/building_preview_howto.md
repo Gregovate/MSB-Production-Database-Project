@@ -122,6 +122,7 @@ This is the last step to create a useful wiring diagram that tags the channels i
   - Font: Helvetica. Minimum Font Size 18pt BOLD 24pt Bold is better
   - Do not use **Channel Names!**, these will appear in the Field Wiring Chart
   - If you add **Channel Names** and the channels change over time, the wiring diagram will need to be updated!
+  - As long as the preview background path does not change, the background is updateable as long as the path and file name remains the same. No need to edit the preview.
 6. Repeat until you have all the displays defined.
 7. Save the file as `G:\Shared drives\Display Folders\Stage Folder\
 
