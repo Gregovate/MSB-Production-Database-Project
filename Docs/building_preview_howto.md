@@ -21,7 +21,8 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
   - RGB Plus Prop Stage xx LOR Preview.jpg
   ```
 - Example:
-![Show Background Stage 15 Preview Background](images/Show_Background_Stage_15_Preview_Background.jpg)
+[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background.jpg" width="600" alt="Show Background Stage 15 (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background.jpg)
+
 ---
 
 ## Creating a New Preview
@@ -104,8 +105,8 @@ We now have the ability to include an image in the field wiring paperwork. Creat
 4. Replace the initial background with the wired version you just created. Depending on how accurate you were  making the snip, you may have to adjust your wired props slightly to get everything to line up.
 5. Save the preview. The basic wiring diagram is done
 Example:
-![Show Background Stage 15 Preview Background Wired](images/Show_Background_Stage_15_Preview_Background_Wired.jpg)
----
+[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background_Wired.jpg" width="600" alt="Show Background Stage 15 Wired (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background_Wired.jpg)
+
 
 ## Create a Tagged Wiring Background
 This is the last step to create a useful wiring diagram that tags the channels in the preview. Unfortunately, there is no way to create this image in LOR but we can build this image using drawio.
@@ -134,7 +135,8 @@ This is the last step to create a useful wiring diagram that tags the channels i
   ```
 9. Lastly, you will need to assign the new image as the background file in the sequencer.
 Example:
-![Show Background Stage 15 Preview Background Tagged](images/Show_Background_Stage_15_Preview_Background_Tagged.jpg)
+[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg" width="600" alt="Show Background Stage 15 Tagged (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg)
+
 ---
 
 ## Reminder
