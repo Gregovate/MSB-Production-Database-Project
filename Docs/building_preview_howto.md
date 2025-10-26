@@ -149,14 +149,3 @@ After **any changes** to previews:
 
 This ensures the system stays consistent for all users.
 
----
-
-## Suggested commit message
-```
-docs: add operator guide for building and editing previews
-
-- New doc: Docs/building_preview_howto.md
-- Covers prerequisites, creating a preview, personal props, editing existing previews
-- Reminder to follow Workflow v6 after any preview changes
-```
-
