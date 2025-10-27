@@ -146,6 +146,7 @@ This is the last step to create a useful wiring diagram that tags the channels i
   ```
 9. Lastly, you will need to assign the new image as the background file in the sequencer.
 - Tagged Stage Example:
+
 [<img src="/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg" width="600" alt="Show Background Stage 15 Tagged (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg)
 
 ---
