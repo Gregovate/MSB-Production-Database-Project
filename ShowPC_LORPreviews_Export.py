@@ -5,6 +5,9 @@
 import argparse, os, re, sys, zipfile, sqlite3, hashlib, datetime
 from pathlib import Path
 from xml.etree import ElementTree as ET
+import pandas as pd
+import traceback
+from contextlib import contextmanager
 
 try:
     import pandas as pd
@@ -26,6 +29,52 @@ def pick_zip_file():
     except Exception:
         return None
 
+# --- Prevent the parser from killing this wrapper via sys.exit() ---
+# import sys
+# from contextlib import contextmanager
+
+@contextmanager
+def suppress_sys_exit():
+    """Temporarily replace sys.exit so parser can't terminate this wrapper."""
+    original_exit = sys.exit
+    try:
+        sys.exit = lambda code=0: (_ for _ in ()).throw(SystemExit(code))
+        yield
+    finally:
+        sys.exit = original_exit
+
+# --- Make input() non-interactive (auto-press Enter / supply default) ---
+from contextlib import contextmanager
+@contextmanager
+def override_input(default=""):
+    import builtins
+    old_input = builtins.input
+    builtins.input = lambda prompt='': (print(prompt, end='') or default)
+    try:
+        yield
+    finally:
+        builtins.input = old_input
+
+def wrap_parser_audits_soft(parser_mod, verbose=False):
+    """
+    If parse_props_v6 has an audit function that raises/stops, wrap it so it only warns.
+    Safe: no-op if not present.
+    """
+    candidates = [
+        "audit_displayname_masters_unique_across_previews",
+    ]
+    for name in candidates:
+        if hasattr(parser_mod, name):
+            original = getattr(parser_mod, name)
+            def soft_audit(db_file, _orig=original, _audit_name=name):
+                try:
+                    return _orig(db_file)
+                except Exception as e:
+                    print(f"[WARN] {_audit_name} suppressed: {e}")
+                    return None
+            setattr(parser_mod, name, soft_audit)
+            if verbose:
+                print(f"[DEBUG] Wrapped {name} with soft handler.")
 
 def strip_ns_tree(tree: ET.ElementTree) -> ET.ElementTree:
     root = tree.getroot()
@@ -100,19 +149,46 @@ def write_manifest_csv(manifest: list[dict], out_csv: Path):
         return
     pd.DataFrame(manifest).to_csv(out_csv, index=False)
 
-def run_parser_on_folder(parser_mod, lorprev_dir: Path, temp_db: Path, verbose=False):
+def run_parser_on_folder(parser_mod, lorprev_dir: Path, temp_db: Path, verbose=False, continue_on_error=False):
     parser_mod.DB_FILE = str(temp_db)
     if verbose:
         print(f"[INFO] Building temp DB: {temp_db}")
     parser_mod.setup_database()
-    parser_mod.process_folder(str(lorprev_dir))
-    try:
-        parser_mod.collapse_duplicate_masters(str(temp_db))
-        parser_mod.reconcile_subprops_to_canonical_master(str(temp_db))
-    except Exception as e:
-        if verbose:
-            print(f"[WARN] reconcile/collapse skipped: {e}")
-    parser_mod.create_wiring_views_v6(str(temp_db))
+
+    wrap_parser_audits_soft(parser_mod, verbose=verbose)
+
+    # Prevent sys.exit() from killing this wrapper AND make the parser non-interactive
+    with suppress_sys_exit(), override_input(default=""):
+        try:
+            parser_mod.process_folder(str(lorprev_dir))
+            try:
+                parser_mod.collapse_duplicate_masters(str(temp_db))
+                parser_mod.reconcile_subprops_to_canonical_master(str(temp_db))
+            except Exception as e:
+                if verbose:
+                    print(f"[WARN] reconcile/collapse skipped: {e}")
+        except SystemExit as se:
+            if not continue_on_error:
+                raise
+            print(f"[WARN] Parser attempted to exit: SystemExit({se}). Continuing due to --continue-on-error.")
+        except Exception as e:
+            if not continue_on_error:
+                raise
+            print(f"[WARN] Parser aborted early: {e}")
+            print("[WARN] Continuing to build whatever wiring views we can…")
+
+    # Always try to build views; keep non-interactive here too
+    with suppress_sys_exit(), override_input(default=""):
+        try:
+            parser_mod.create_wiring_views_v6(str(temp_db))
+        except SystemExit as se2:
+            if not continue_on_error:
+                raise
+            print(f"[WARN] create_wiring_views_v6 attempted to exit: {se2}.")
+        except Exception as e2:
+            if verbose:
+                print(f"[WARN] Could not create views: {e2}")
+
 
 def build_wiring_excel(temp_db: Path, prod_db: Path, out_xlsx: Path, verbose=False):
     if not pd:
@@ -156,17 +232,35 @@ def main():
     ap = argparse.ArgumentParser(description='ShowPC LORPreviews exporter + wiring compare')
     ap.add_argument('--xml', help='Path to LORPreviews.xml (CommonData)')
     ap.add_argument('--xml-zip', help='Path to a ZIP containing LORPreviews.xml')
-    ap.add_argument('--out', required=True, help='Output folder (staging)')
-    ap.add_argument('--prod-db', required=True, help='Production lor_output_v6.db to compare against')
+    ap.add_argument('--out', help='Output folder (staging); defaults to dated ShowPC_Export folder')
+    ap.add_argument('--out-previews', help='Folder for extracted .lorprev files (default: <out>/lorprevs)')
+    ap.add_argument('--prod-db', help='Production lor_output_v6.db to compare against')
     ap.add_argument('--filter', default=r'^(RGB Plus Background|Show Animation|Show Background)',
                     help='Regex to select PreviewClass @Name; default limits to show masters')
     ap.add_argument('--parser', help='Optional path to parse_props_v6.py (defaults to next to this script)')
     ap.add_argument('--keep-temp-db', action='store_true', help='Keep temp DB after report creation')
     ap.add_argument('--verbose', action='store_true')
+    ap.add_argument('--continue-on-error', action='store_true',
+                help='Keep going even if parser audits/errors occur')
+
     args = ap.parse_args()
 
+    # --- Default output location if not specified ---
+    if not args.out:
+        base = Path(r"G:\Shared drives\MSB Database\UserPreviewStaging\ShowPC")
+        date_tag = datetime.datetime.now().strftime("%Y-%m-%d")
+        args.out = str(base / f"ShowPC_Export_{date_tag}")
+        print(f"[INFO] No --out specified; using default export folder:")
+        print(f"       {args.out}")
+
+    # --- Default preview folder if not provided ---
+    if not args.out_previews:
+        args.out_previews = str(Path(args.out) / "lorprevs")
+
+    # --- Create all folders ---
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
-    lorprev_dir = out_dir / 'lorprevs'; lorprev_dir.mkdir(exist_ok=True)
+    lorprev_dir = Path(args.out_previews); lorprev_dir.mkdir(parents=True, exist_ok=True)
+
     manifest_csv = out_dir / f"LORPreviews_Manifest_{datetime.datetime.now().strftime('%Y-%m-%d')}.csv"
     temp_db = out_dir / 'showpc_extracted.db'
     excel_path = out_dir / f"ShowPC_WiringCompare_{datetime.datetime.now().strftime('%Y-%m-%d')}.xlsx"
@@ -175,7 +269,13 @@ def main():
     if not parser_path.exists():
         print(f"[FATAL] parse_props_v6.py not found at {parser_path}")
         sys.exit(2)
+ 
+    parse_log = []   # [(preview, status, message)]
+
     parser_mod = load_parser_module(parser_path)
+
+    print(f"[INFO] Output base: {out_dir}")
+    print(f"[INFO] Preview extracts: {lorprev_dir}")
 
     # --- Choose input file (CLI arg or GUI picker) ---
     xml_path = args.xml or args.xml_zip
@@ -213,13 +313,89 @@ def main():
 
 
     manifest = extract_previews(xml_bytes, lorprev_dir, name_filter=args.filter)
-    if pd:
-        write_manifest_csv(manifest, manifest_csv)
-    if args.verbose:
-        print(f"[INFO] Extracted {len(manifest)} previews matching filter to {lorprev_dir}")
+    print(f"[INFO] Extracted {len(manifest)} previews to {lorprev_dir}")
+    if manifest:
+        sample = [m["PreviewName"] for m in manifest[:10]]
+        print("[INFO] First previews:", ", ".join(sample))    
+        if pd:
+            write_manifest_csv(manifest, manifest_csv)
+        if args.verbose:
+            print(f"[INFO] Extracted {len(manifest)} previews matching filter to {lorprev_dir}")
 
-    run_parser_on_folder(parser_mod, lorprev_dir, temp_db, verbose=args.verbose)
+    # Track any parser error so we can report it in Excel
+    parser_error_msg = ""
+
+    try:
+        run_parser_on_folder(parser_mod, lorprev_dir, temp_db,
+                            verbose=args.verbose,
+                            continue_on_error=getattr(args, "continue_on_error", False))
+    except Exception as e:
+        if not getattr(args, "continue_on_error", False):
+            raise
+        parser_error_msg = f"{type(e).__name__}: {e}"
+        print(f"[WARN] Parser aborted early: {parser_error_msg}")
+        print("[WARN] Continuing to build whatever wiring views we can…")
+        try:
+            parser_mod.create_wiring_views_v6(str(temp_db))
+        except Exception as e2:
+            print(f"[WARN] Could not create views: {e2}")
+ 
+    # ---- Build ParserStatus (OK/FAIL per preview) BEFORE we write Excel ----
+    # Requires: `manifest`, `temp_db`
+    # import sqlite3
+    if pd is not None:
+        # previews we attempted (from manifest just created by extract_previews)
+        attempted = [m["PreviewName"] for m in manifest]
+
+        # previews that actually made it into the temp DB
+        parsed_names = set()
+        try:
+            conn_tmp = sqlite3.connect(str(temp_db))
+            try:
+                # Prefer the parser's 'previews' table; fall back to the wiring view if needed
+                exists_df = pd.read_sql_query(
+                    "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name IN ('previews','preview_wiring_sorted_v6')",
+                    conn_tmp
+                )
+                if (exists_df["name"] == "previews").any():
+                    df_parsed = pd.read_sql_query("SELECT DISTINCT Name FROM previews", conn_tmp)
+                else:
+                    df_parsed = pd.read_sql_query(
+                        "SELECT DISTINCT PreviewName AS Name FROM preview_wiring_sorted_v6", conn_tmp
+                    )
+                parsed_names = set(df_parsed["Name"].astype(str))
+            finally:
+                conn_tmp.close()
+        except Exception as e:
+            print(f"[WARN] Could not read parsed preview names from temp DB: {e}")
+            parsed_names = set()
+
+        # Build status rows (every attempted preview gets a row)
+        status_rows = []
+        # If you captured a top-level parser error earlier, plug it in here:
+        # parser_error_msg = parser_error_msg if 'parser_error_msg' in locals() else ""
+        for name in attempted:
+            if name in parsed_names:
+                status_rows.append({"PreviewName": name, "Status": "OK", "Message": "Parsed successfully"})
+            else:
+                status_rows.append({"PreviewName": name, "Status": "FAIL",
+                                    "Message": "Not parsed (audit/exception before this preview)"})
+
+        df_parser_status = pd.DataFrame(status_rows).sort_values(["Status", "PreviewName"]).reset_index(drop=True)
+    else:
+        df_parser_status = None
+
     build_wiring_excel(temp_db, Path(args.prod_db), excel_path, verbose=args.verbose)
+
+    # ---- Append ParserStatus to the Excel we just created ----
+    if pd is not None and df_parser_status is not None:
+        try:
+            with pd.ExcelWriter(excel_path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+                df_parser_status.to_excel(writer, index=False, sheet_name="ParserStatus")
+            print(f"[INFO] Added ParserStatus sheet to {excel_path}")
+        except Exception as e:
+            print(f"[WARN] Could not append ParserStatus sheet: {e}")
+
 
     if not args.keep_temp_db:
         try:
@@ -232,6 +408,12 @@ def main():
     if pd:
         print(f'  Manifest: {manifest_csv}')
         print(f'  Excel: {excel_path}')
+    print(f"[INFO] Output base: {out_dir}")
+    print(f"[INFO] Preview extracts: {lorprev_dir}")
+    print(f"[INFO] Temp DB: {temp_db} (deleted after run unless --keep-temp-db)")
+    print(f"[INFO] Manifest: {manifest_csv}")
+    print(f"[INFO] Excel: {excel_path}")
+
 
 if __name__ == '__main__':
     main()
