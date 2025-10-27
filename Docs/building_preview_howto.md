@@ -20,12 +20,13 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
   - Show Background Stage xx LOR Preview.jpg
   - RGB Plus Prop Stage xx LOR Preview.jpg
   ```
-- Example:
+- Stage Preview Example:
+
 [<img src="/Docs/images/Show_Background_Stage_15_Preview_Background.jpg" width="600" alt="Show Background Stage 15 (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background.jpg)
 
 ---
 
-## Creating a New Preview
+## Creating Single Panel Preview for a New Display 
 
 1. **Open LOR Sequence Editor.**
 2. In the bottom-left panel, select **Background → Set Image**.
@@ -37,7 +38,7 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
    - **Comment field:** must be filled with the **Display Name** (required for every channel).
 6. When finished:
    - Select all channels → **Create Group**.
-   - Save the group with the **Prop Naming Convention**.
+   - Save the group with the **Display Name**.
 7. Export the group as a **.leprop** file:
    ```
    G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
@@ -45,10 +46,13 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
    Use the **Preview Name** for the file.
 8. Save the preview as:
    ```
-   1st Panel Preview <Display Name>
+   **Display Prop <Display Name> UID StartChannel-EndChannel**
    ```
 9. Export the preview (`.lorprev`) to the same `PreviewsForProps` folder.
+- Display Prop Example with Channel Grid
 
+[<img src="/Docs/images/ChristmasHippo.jpg" width="600" alt="Display Prop ChristmasHippo TC 7B 01-07 (scaled)">](/Docs/images/ChristmasHippo.jpg)
+  
 ---
 
 ## Personal Props
@@ -59,14 +63,18 @@ G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps
 
 ---
 
-## Reusing Props
-The `.leprop` file creates a **prop key** that can be reused inside larger previews, such as:
+## Creating Previews for Stages
+The `.leprop` file creates a **PropID** that can be reused inside larger previews, such as:
 - `RGB Plus Prop Stage xx`
 - `Show Background Stage xx`
 - `Show Animation xx`
-
+If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spirit Bright signs, they must be created in one preview to ensure each display has it's unique PropID. The database will error if more than one display shares the same PropID
 ---
-
+1. When exporting props, they land, by default, in the Author's ImportExport folder
+2. These props can then be added to a Stage Preview.
+3. You can import all the props you need
+4. Not Finished
+ 
 ## Editing an Existing Preview
 
 1. Import the preview from the canonical folder:
@@ -86,7 +94,7 @@ The `.leprop` file creates a **prop key** that can be reused inside larger previ
      ```
 
 ---
-## Create a Wiring Background
+## Create a Wiring Background for Stage Previews
 We now have the ability to include an image in the field wiring paperwork. Creating this image involves a few more steps. This only applies to the stage previews:
   ```
   - Show Background Stage xx preview name.jpg
@@ -104,11 +112,12 @@ We now have the ability to include an image in the field wiring paperwork. Creat
   ```
 4. Replace the initial background with the wired version you just created. Depending on how accurate you were  making the snip, you may have to adjust your wired props slightly to get everything to line up.
 5. Save the preview. The basic wiring diagram is done
-Example:
+- Stage Wiring Example:
+
 [<img src="/Docs/images/Show_Background_Stage_15_Preview_Background_Wired.jpg" width="600" alt="Show Background Stage 15 Wired (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background_Wired.jpg)
 
 
-## Create a Tagged Wiring Background
+## Create a Tagged Wiring Background For Stage Previews
 This is the last step to create a useful wiring diagram that tags the channels in the preview. Unfortunately, there is no way to create this image in LOR but we can build this image using drawio.
 1. Open the DrawIO app
 2. Select a Blank Diagram the Create
@@ -136,7 +145,7 @@ This is the last step to create a useful wiring diagram that tags the channels i
   - RGB Plus Prop Stage xx LOR Preview Tagged.jpg
   ```
 9. Lastly, you will need to assign the new image as the background file in the sequencer.
-Example:
+- Tagged Stage Example:
 [<img src="/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg" width="600" alt="Show Background Stage 15 Tagged (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg)
 
 ---
