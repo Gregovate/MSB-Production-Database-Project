@@ -21,6 +21,7 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
   - RGB Plus Prop Stage xx LOR Preview.jpg
   ```
 - Stage Preview Example:
+
 [<img src="/Docs/images/Show_Background_Stage_15_Preview_Background.jpg" width="600" alt="Show Background Stage 15 (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background.jpg)
 
 ---
