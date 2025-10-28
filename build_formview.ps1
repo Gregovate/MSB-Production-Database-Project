@@ -3,7 +3,11 @@ $ErrorActionPreference = 'Stop'
 Set-Location "C:\lor\ImportExport\VSCode"
 
 # ==== Version + metadata you control ====
-$Version   = '0.2.4'
+# --- Read version from FormView.py (APP_VERSION = "X.Y.Z") ---
+$FormViewPath = Join-Path $PWD 'formview.py'     # note: lowercase if your file is lowercase
+$Version = (Select-String -Path $FormViewPath -Pattern 'APP_VERSION\s*=\s*"([^"]+)"' -ErrorAction Stop |
+           Select-Object -First 1).Matches[0].Groups[1].Value
+Write-Host "Detected APP_VERSION from formview.py: $Version"
 $Company   = 'Engineering Innovations, LLC'
 $Product   = 'MSB Database - FormView'         # use ASCII hyphen, not em-dash
 $FileDesc  = 'Wiring & Stage Tools (Tkinter)'  # single quotes avoid & issues
@@ -11,7 +15,9 @@ $Copyright = '(c) 2025 Engineering Innovations, LLC'
 
 
 # (Optional) app icon — put an .ico next to FormView.py and set this path:
-$IconPath  = ''  # e.g., "$PWD\formview.ico" or leave blank to skip
+$IconPath = "$PWD\Docs\images\formview.ico"
+if (-not (Test-Path $IconPath)) { throw "Icon not found: $IconPath" }
+
 
 # ==== Paths ====
 $BuildRoot = "build_artifacts"
@@ -26,7 +32,7 @@ $DestDir   = "G:\Shared drives\MSB Database\Apps\FormView\current"
 $DestExe   = Join-Path $DestDir $ExeName
 
 # ==== Clean local artifacts (optional) ====
-Remove-Item -Recurse -Force $BuildRoot -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force .\build_artifacts\build, .\build_artifacts\dist, .\FormViewSA.spec -ErrorAction SilentlyContinue
 
 # ==== Generate a temp version file for PyInstaller (no comments, strict syntax) ====
 $VerFile = Join-Path $BuildRoot "version.txt"
@@ -121,20 +127,21 @@ $SpecFile   = Join-Path $SpecPath "FormViewSA.spec"
 Remove-Item -Force $SpecFile -ErrorAction SilentlyContinue
 
 $piArgs = @(
-  $SrcPy,
-  '--onefile','--noconsole',
+  'formview.py',
+  '--onefile','--noconsole','--clean',
   '--name','FormViewSA',
-  '--distpath',$DistPath,
-  '--workpath',$WorkPath,
-  '--specpath',$SpecPath,
-  '--version-file',$VerFileAbs,
+  '--distpath', (Join-Path $PWD 'build_artifacts\dist'),
+  '--workpath', (Join-Path $PWD 'build_artifacts\build'),
+  '--specpath', (Join-Path $PWD 'build_artifacts'),
+  '--version-file', (Resolve-Path '.\build_artifacts\version.txt'),
   '--hidden-import=tkinter',
   '--hidden-import=tkinter.filedialog',
-  '--hidden-import=tkinter.messagebox'
+  '--hidden-import=tkinter.messagebox',
+  '--icon', $IconPath
 )
-if ($IconPath) { $piArgs += @('--icon', $IconPath) }
-
+Write-Host "PyInstaller args: $($piArgs -join ' ')"
 pyinstaller @piArgs
+
 
 
 

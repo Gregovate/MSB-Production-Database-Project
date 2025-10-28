@@ -51,6 +51,8 @@ import datetime
 import sys
 import tkinter.messagebox as m
 
+APP_VERSION = "0.2.6"
+
 def _resolve_db_path() -> str:
     """
     Find a usable DB path in this order:
