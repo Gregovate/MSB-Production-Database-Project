@@ -34,6 +34,7 @@
 #                     - Set AppUserModelID for taskbar grouping
 #                     - Apply iconbitmap(.ico) + iconphoto(True) before splash
 #                     - Bundle Docs/images for reliable runtime lookup
+# 2025-10-29  V0.2.9  Increased splash screen delay to 3000 ms
 
 # Notes
 # -----
@@ -56,7 +57,7 @@ import datetime
 import sys
 import tkinter.messagebox as m
 
-APP_VERSION = "0.2.8"
+APP_VERSION = "0.2.9"
 
 # --- GAL 25-10-29c: Windows taskbar grouping + icon pick-up ---
 try:
@@ -1277,8 +1278,8 @@ if __name__ == "__main__":
     splash.update()  # paint now, before heavier init
 
     # close splash after ~900ms and show main window
-    root.after(1500, splash.close)
-    root.after(, root.deiconify)
+    root.after(3000, splash.close)
+    root.after(3000, root.deiconify)
 
     # Main UI
     root.geometry("1280x780")
