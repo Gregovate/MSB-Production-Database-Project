@@ -22,10 +22,13 @@
 # 2025-10-23  V0.2.3  Added Stage View tab placeholder and Notebook shell;
 #                     moved Image path field below Stage/Preview for better layout,
 #                     and implemented "Open Folder" button for quick access to background images.
-# 2025-10-28  V0.2.4  Refined wiring view columns for clarity (Controller → StartChannel → Channel_Name …);
-#                     removed EndChannel, Color, CrossDisplay from both UI and export;
-#                     printable HTML now omits LORTag/ConnectionType/CrossDisplay and shows image path above image;
-#                     on-screen view now echoes the image path above the preview image for field reference.
+# 2025-10-28  V0.2.4  Refined wiring columns (Controller → StartChannel → Channel_Name …);
+#                     removed EndChannel/Color/CrossDisplay; printable HTML now omits
+#                     LORTag/ConnectionType/CrossDisplay and shows image path above image.
+# 2025-10-28  V0.2.5  Added on-screen preview image with “Show image” toggle (default ON);
+#                     echoed image path above image; anchored image to stay above grid when toggled.
+# 2025-10-29  V0.2.6  Added image Scale slider (0.2×–2.0×); use bitmap scaling (no ttk height);
+#                     fixed prior “image load error” and kept grid layout stable.
 
 # Notes
 # -----
@@ -383,9 +386,66 @@ class WiringViewer(ttk.Frame):
 
         ttk.Button(row2, text="Open Folder", command=self._open_image_folder).pack(side=tk.LEFT, padx=(6, 0))
 
+        # --- GAL 25-10-28c: toggle to show/hide on-screen image (default ON) ---
+        self.show_image_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            row2,
+            text="Show image",
+            variable=self.show_image_var,
+            command=self._toggle_image_visibility
+        ).pack(side=tk.LEFT, padx=(12, 0))
+
+        # --- GAL 25-10-28e: on-screen image area (path echo + image) ---
+        from PIL import Image, ImageTk  # safe to repeat import, no harm
+
+        # This frame holds both the small path label and the preview image
+        self.image_frame = ttk.Frame(self, padding=(6, 6, 6, 6))
+        self.image_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=False)
+
+        # Show the image path again above the image (small font)
+        try:
+            style = ttk.Style()
+            style.configure("Small.TLabel", font=("Segoe UI", 8))
+        except Exception:
+            pass
+        self.bg_path_echo = ttk.Label(
+            self.image_frame,
+            textvariable=self.bg_path_var,
+            style="Small.TLabel",
+            anchor="w"
+        )
+        self.bg_path_echo.pack(side=tk.TOP, fill=tk.X, padx=6, pady=(0, 4))
+
+        # This label will hold the actual image
+        self.image_label = ttk.Label(self.image_frame, anchor="center")
+        self.image_label.pack(side=tk.TOP, fill=tk.X, padx=6, pady=(0, 6))
+
+        # Keep a reference to avoid image disappearing
+        self._current_img = None
+
+        # Update the image whenever the path changes
+        self.bg_path_var.trace_add("write", lambda *_: self._update_preview_image())
+
+        # Make sure it’s visible if the toggle is ON
+        self._toggle_image_visibility()
+        self._update_preview_image()
+
+        # --- GAL 25-10-29a: image scale slider ---
+        ttk.Label(row2, text="Scale:").pack(side=tk.LEFT, padx=(12, 2))
+        self.image_scale_var = tk.DoubleVar(value=1.0)
+        scale = ttk.Scale(
+            row2,
+            from_=0.2, to=2.0, orient="horizontal",
+            variable=self.image_scale_var,
+            command=lambda *_: self._update_preview_image()
+        )
+        scale.pack(side=tk.LEFT, padx=(0, 6))
+
 
         # Filters
-        filt = ttk.Frame(self, padding=(6,0,6,6)); filt.pack(side=tk.TOP, fill=tk.X)
+        filt = ttk.Frame(self, padding=(6,0,6,6))
+        filt.pack(side=tk.TOP, fill=tk.X)
+        self.filters_frame = filt   # GAL 25-10-28f: anchor for image re-pack placement
 
         self.field_mode = tk.BooleanVar(value=True)
         ttk.Checkbutton(
@@ -481,6 +541,106 @@ class WiringViewer(ttk.Frame):
             os.startfile(folder)  # Windows
         except Exception as e:
             messagebox.showerror("Open Folder", str(e))
+
+    # --- GAL 25-10-28c: helpers for image loading and visibility ---
+    def _toggle_image_visibility(self):
+        """Show/hide the on-screen preview image area."""
+        if self.show_image_var.get():
+            # Ensure we re-pack the image above Filters (and thus above the grid)
+            try:
+                self.image_frame.pack_forget()
+            except Exception:
+                pass
+
+            kwargs = dict(side=tk.TOP, fill=tk.BOTH, expand=False)
+            anchor = getattr(self, "filters_frame", None)
+            # Only use 'before' if the anchor shares the same parent and uses pack
+            if anchor is not None and str(anchor.winfo_manager()) == "pack" and anchor.winfo_parent() == self.winfo_name():
+                kwargs["before"] = anchor
+            else:
+                # Fallback: still pack at top (most layouts will be fine)
+                kwargs["before"] = anchor
+
+            self.image_frame.pack(**kwargs)
+            self._update_preview_image()
+        else:
+            self.image_frame.pack_forget()
+
+    # --- GAL 25-10-28h: image update helper (must live INSIDE the WiringViewer class) ---
+    def _update_preview_image(self):
+        """Load and display the preview image on screen (resized), if the toggle is ON."""
+        # If the toggle isn’t present or is OFF, do nothing
+        if not hasattr(self, "show_image_var") or not self.show_image_var.get():
+            return
+        if not hasattr(self, "image_label"):
+            return
+
+        # Path from the on-screen entry/echo
+        path = (self.bg_path_var.get().strip() if hasattr(self, "bg_path_var") else "")
+        if not path or not os.path.exists(path):
+            self.image_label.configure(image="", text="(no image)")
+            self._current_img = None
+            return
+
+        # Try to import Pillow on-demand so app still runs even if Pillow is missing
+        try:
+            from PIL import Image, ImageTk, ImageOps
+        except Exception:
+            # Pillow isn’t installed — just show a friendly message
+            self.image_label.configure(image="", text="(install Pillow to show image)")
+            self._current_img = None
+            return
+
+        try:
+            im = Image.open(path)
+            # Correct EXIF rotation if present
+            try:
+                im = ImageOps.exif_transpose(im)
+            except Exception:
+                pass
+
+            # Normalize mode
+            if im.mode not in ("RGB", "RGBA"):
+                im = im.convert("RGB")
+
+            # # Reasonable size for the UI
+            # max_w, max_h = 900, 600
+            # im.thumbnail((max_w, max_h), Image.LANCZOS)
+
+            # --- GAL 25-10-29a: dynamic scale + fixed frame height ---
+            # --- GAL 25-10-29b: dynamic scale — constrain by target height (no widget 'height') ---
+            scale_factor = 1.0
+            if hasattr(self, "image_scale_var"):
+                try:
+                    scale_factor = float(self.image_scale_var.get())
+                except Exception:
+                    pass
+
+            # Base viewport; keep modest height so the grid doesn’t shrink
+            BASE_W, BASE_H = 900, 300           # 300px tall by default
+            target_w = max(1, int(BASE_W * scale_factor))
+            target_h = max(1, int(BASE_H * scale_factor))
+
+            im.thumbnail((target_w, target_h), Image.LANCZOS)
+
+            # Show it and keep a reference to avoid GC
+            tk_img = ImageTk.PhotoImage(im)
+            self.image_label.configure(image=tk_img, text="")
+            self._current_img = tk_img
+
+            # Prevent frame from collapsing smaller than 300 px
+            self.image_frame.update_idletasks()
+            # self.image_label.configure(height=300)
+
+
+            # Show it and keep a reference to avoid GC
+            tk_img = ImageTk.PhotoImage(im)
+            self.image_label.configure(image=tk_img, text="")
+            self._current_img = tk_img
+        except Exception as e:
+            print(f"[DEBUG] Failed to load image: {e}")
+            self.image_label.configure(image="", text="(image load error)")
+            self._current_img = None
 
 
     # GAL 25-10-23 — helpers to fetch and show the preview image path
