@@ -1,4 +1,23 @@
-# build_formview.ps1 — GAL 2025-10-25
+# ============================================================
+#  MSB Database — Build Script for FormViewSA
+#  GAL 2025-10-25
+# ============================================================
+#  Purpose:
+#    Packages FormView.py into a standalone EXE using PyInstaller.
+#    Bundles Docs\images (PNG + ICO) for runtime icons and splash.
+#
+#  Notes:
+#    - Builds to build_artifacts\dist\FormViewSA.exe
+#    - Uses local version.txt for embedded version info
+#    - Includes tkinter imports to prevent runtime omissions
+#    - Called by build_formview.bat on successful build
+#
+#  Revision History:
+#    2025-10-25  GAL  Initial release for EXE build
+#    2025-10-29  GAL  Added --add-data Docs\images (bundle PNG+ICO)
+#                     and stable build paths for smoother splash/icon handling.
+# ============================================================
+# 
 $ErrorActionPreference = 'Stop'
 Set-Location "C:\lor\ImportExport\VSCode"
 
@@ -126,6 +145,11 @@ $VerFileAbs = (Resolve-Path $VerFile).Path
 $SpecFile   = Join-Path $SpecPath "FormViewSA.spec"
 Remove-Item -Force $SpecFile -ErrorAction SilentlyContinue
 
+# Paths
+$ScriptRoot = Split-Path -Parent $PSCommandPath
+$ImagesPath = Join-Path $ScriptRoot 'Docs\images'
+$IconPath   = Join-Path $ImagesPath  'formview.ico'   # used by --icon
+
 $piArgs = @(
   'formview.py',
   '--onefile','--noconsole','--clean',
@@ -139,12 +163,12 @@ $piArgs = @(
   '--hidden-import=tkinter.messagebox',
   '--icon', $IconPath
 )
+# Bundle the entire images folder so both PNG and ICO are present at runtime
+# NOTE: On Windows, PyInstaller uses ';' between SRC and DEST.
+$piArgs += @('--add-data', "$ImagesPath;Docs/images")
+
 Write-Host "PyInstaller args: $($piArgs -join ' ')"
 pyinstaller @piArgs
-
-
-
-
 
 # ==== Deploy to shared folder ====
 New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
