@@ -30,6 +30,10 @@
 # 2025-10-29  V0.2.6  Added image Scale slider (0.2×–2.0×); use bitmap scaling (no ttk height);
 #                     fixed prior “image load error” and kept grid layout stable.
 # 2025-10-29  V0.2.7  Added startup splash (icon + title + version/date); instant show, auto-close on UI ready.
+# 2025-10-29  V0.2.8  Windows icon fix + splash order:
+#                     - Set AppUserModelID for taskbar grouping
+#                     - Apply iconbitmap(.ico) + iconphoto(True) before splash
+#                     - Bundle Docs/images for reliable runtime lookup
 
 # Notes
 # -----
@@ -52,7 +56,107 @@ import datetime
 import sys
 import tkinter.messagebox as m
 
-APP_VERSION = "0.2.7"
+APP_VERSION = "0.2.8"
+
+# --- GAL 25-10-29c: Windows taskbar grouping + icon pick-up ---
+try:
+    import ctypes  # type: ignore
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+        "EngineeringInnovations.MSB.FormView"
+    )
+except Exception:
+    pass
+
+# --- Splash helpers (GAL 25-10-29) ---
+def resource_path(rel_path: str) -> str:
+    """Return an absolute path to resource, works for dev & PyInstaller."""
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, rel_path)
+    return os.path.join(os.path.dirname(__file__), rel_path)
+
+class Splash:
+    def __init__(self, root: tk.Tk, image_path: str, min_ms: int = 800):
+        """
+        root: the ONE Tk() instance (hidden while splash shows)
+        image_path: PNG path via resource_path('Docs/images/splash.png')
+        min_ms: minimum time to show splash while we init heavy stuff
+        """
+        from PIL import Image, ImageTk  # Pillow required
+        self._root = root
+        self._min_ms = min_ms
+        self._shown_at = None
+
+        # Top-level splash (no titlebar)
+        self.top = tk.Toplevel(root)
+        self.top.overrideredirect(True)
+        self.top.attributes("-topmost", True)
+        try:
+            apply_window_icons(self.top)
+        except Exception:
+            pass
+
+        # Load image
+        ipath = image_path
+        try:
+            im = Image.open(ipath)
+            im = im.convert("RGBA")
+            self._img = ImageTk.PhotoImage(im)
+        except Exception as e:
+            # fallback: colored panel with text
+            self._img = None
+            frm = ttk.Frame(self.top, padding=20)
+            frm.pack()
+            ttk.Label(frm, text="Loading FormView…", font=("Segoe UI", 14)).pack()
+        else:
+            lbl = ttk.Label(self.top, image=self._img, borderwidth=0)
+            lbl.pack()
+
+        self._center_on_screen(self.top)
+        self._shown_at = self._root.after(0, lambda: None)
+
+    def _center_on_screen(self, win):
+        win.update_idletasks()
+        w = win.winfo_width()
+        h = win.winfo_height()
+        sw = win.winfo_screenwidth()
+        sh = win.winfo_screenheight()
+        x = (sw - w) // 2
+        y = (sh - h) // 3
+        win.geometry(f"{w}x{h}+{x}+{y}")
+
+    def close(self):
+        # ensure min show time
+        self.top.destroy()
+
+# --- GAL 25-10-29c: one place to set all window icons (titlebar + taskbar) ---
+def apply_window_icons(win: tk.Misc):
+    """
+    Set both the .ico (title bar) and a PNG via iconphoto, which becomes the
+    default for taskbar/alt-tab and all future Toplevels.
+    """
+    # Try ICO first (titlebar on Windows)
+    try:
+        ico = resource_path(os.path.join("Docs", "images", "formview.ico"))
+        if not os.path.exists(ico):
+            ico = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "formview.ico")
+        if os.path.exists(ico) and hasattr(win, "iconbitmap"):
+            win.iconbitmap(ico)  # may raise on some Tk builds
+    except Exception:
+        pass
+
+    # Also set a PNG iconphoto; Tk uses it broadly (incl. taskbar)
+    try:
+        png = resource_path(os.path.join("Docs", "images", "formview.png"))
+        if not os.path.exists(png):
+            png = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "formview.png")
+        if os.path.exists(png):
+            _icon_img = tk.PhotoImage(file=png)
+            # True => make it the default for future toplevels, too
+            win.iconphoto(True, _icon_img)
+            # keep a reference to avoid GC
+            setattr(win, "_iconphoto_ref", _icon_img)
+    except Exception:
+        pass
 
 def _resolve_db_path() -> str:
     """
@@ -1148,28 +1252,33 @@ class WiringViewer(ttk.Frame):
 # GAL 25-10-23 — minimal tabbed shell around WiringViewer (no class changes)
 # === Combined main window with tabs (GAL 25-10-29, splash-enabled) ===========
 if __name__ == "__main__":
-    import tkinter as tk
-    from tkinter import ttk
-    from pathlib import Path
-    import os, datetime
-
     # Pick your DB path constant; fall back if not defined
     try:
         DB_PATH = DEFAULT_DB
     except NameError:
         DB_PATH = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
 
-    # Build splash bits
-    # Use the same folder where the script or EXE is located
-    icon_png = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "formview.png")
+    # Build splash bits (use bundled, then exe folder, then shared path)
+    icon_png = resource_path(os.path.join("Docs", "images", "formview.png"))
+    if not os.path.exists(icon_png):
+        icon_png = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "formview.png")
+    if not os.path.exists(icon_png):
+        icon_png = r"G:\Shared drives\MSB Database\Apps\FormView\current\formview.png"
 
-    subtitle  = f"v{APP_VERSION} — {datetime.date.today():%Y-%m-%d}"
+    subtitle = f"v{APP_VERSION} — {datetime.date.today():%Y-%m-%d}"
 
-    # Start Tk and show splash immediately
+    # Start Tk and set icons BEFORE any toplevels (splash) are created
     root = tk.Tk()
+    apply_window_icons(root)   # <-- GAL 25-10-28: critical for taskbar icon
     root.withdraw()
+
+    # Splash window (created after icons are set)
     splash = Splash(root, icon_png, "MSB Database — FormView", subtitle)
     splash.update()  # paint now, before heavier init
+
+    # close splash after ~900ms and show main window
+    root.after(1500, splash.close)
+    root.after(, root.deiconify)
 
     # Main UI
     root.geometry("1280x780")
@@ -1184,22 +1293,17 @@ if __name__ == "__main__":
     stage_tab = StageViewFrame(notebook, db_path=DB_PATH, reports_root=REPORTS_ROOT)
     notebook.add(stage_tab, text="Stage View")
 
-    # Reveal app
-    try:
-        splash.close()
-    except Exception:
-        try: splash.destroy()
-        except Exception: pass
-
-    root.deiconify()
     root.title(f"MSB Database — Wiring & Stage Tools (v{APP_VERSION})")
-    # Optional: set window icon at runtime (compiled EXE already has embedded icon)
+
+    # Optional legacy fallback; apply_window_icons already did this
     try:
         root.iconbitmap(os.path.join(os.path.dirname(__file__), "Docs", "images", "formview.ico"))
     except Exception:
         pass
 
     root.mainloop()
+
+
 
 # ============================================================================
 
