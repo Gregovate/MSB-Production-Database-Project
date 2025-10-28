@@ -29,6 +29,7 @@
 #                     echoed image path above image; anchored image to stay above grid when toggled.
 # 2025-10-29  V0.2.6  Added image Scale slider (0.2×–2.0×); use bitmap scaling (no ttk height);
 #                     fixed prior “image load error” and kept grid layout stable.
+# 2025-10-29  V0.2.7  Added startup splash (icon + title + version/date); instant show, auto-close on UI ready.
 
 # Notes
 # -----
@@ -51,7 +52,7 @@ import datetime
 import sys
 import tkinter.messagebox as m
 
-APP_VERSION = "0.2.6"
+APP_VERSION = "0.2.7"
 
 def _resolve_db_path() -> str:
     """
@@ -208,6 +209,71 @@ def connect_ro(db_path: str) -> sqlite3.Connection:
         return sqlite3.connect(f"file:///{uri_path}?mode=ro&immutable=0", uri=True, timeout=5.0)
     except Exception:
         return sqlite3.connect(db_path, timeout=5.0)
+
+# --- GAL 25-10-29: simple splash screen (icon + title + version/date) ---
+class Splash(tk.Toplevel):
+    def __init__(self, master, image_path: str, title_text: str, subtitle_text: str):
+        super().__init__(master)
+        self.overrideredirect(True)              # borderless
+        self.attributes("-topmost", True)        # stay above while loading
+        try:
+            self.wm_attributes("-toolwindow", True)
+        except Exception:
+            pass
+
+        # Size/center
+        w, h = 520, 340
+        self.update_idletasks()
+        x = self.winfo_screenwidth() // 2 - w // 2
+        y = self.winfo_screenheight() // 2 - h // 2
+        self.geometry(f"{w}x{h}+{x}+{y}")
+
+        # UI
+        outer = ttk.Frame(self, padding=16)
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        # Try to show PNG icon (fallback to text)
+        img_ok = False
+        try:
+            from PIL import Image, ImageTk, ImageOps
+            if image_path and os.path.exists(image_path):
+                im = Image.open(image_path)
+                im = ImageOps.exif_transpose(im)
+                im.thumbnail((160, 160), Image.LANCZOS)
+                self._img = ImageTk.PhotoImage(im)  # keep ref
+                ttk.Label(outer, image=self._img, anchor="center").pack(pady=(4, 10))
+                img_ok = True
+        except Exception:
+            pass
+
+        if not img_ok:
+            ttk.Label(outer, text="MSB FormView", font=("Segoe UI", 18, "bold")).pack(pady=(12, 10))
+
+        ttk.Label(outer, text=title_text, font=("Segoe UI", 16, "bold")).pack()
+        ttk.Label(outer, text=subtitle_text, font=("Segoe UI", 10)).pack(pady=(2, 8))
+        ttk.Label(outer, text="Loading…", font=("Segoe UI", 9)).pack(pady=(10, 0))
+
+    def close(self, fade_ms: int = 160):
+        """Optional quick fade-out for polish."""
+        try:
+            for i in range(10, -1, -1):
+                self.attributes("-alpha", i / 10)
+                self.update_idletasks()
+                self.after(max(1, fade_ms // 10))
+        except Exception:
+            pass
+        self.destroy()
+
+    def close(self, fade_ms: int = 160):
+        """Optional quick fade-out for polish."""
+        try:
+            for i in range(10, -1, -1):
+                self.attributes("-alpha", i / 10)
+                self.update_idletasks()
+                self.after(max(1, fade_ms // 10))
+        except Exception:
+            pass
+        self.destroy()
 
 class StageViewFrame(ttk.Frame):
     """
@@ -1080,33 +1146,58 @@ class WiringViewer(ttk.Frame):
 
 # === Combined main window with tabs (GAL 25-10-23) ===========================
 # GAL 25-10-23 — minimal tabbed shell around WiringViewer (no class changes)
+# === Combined main window with tabs (GAL 25-10-29, splash-enabled) ===========
 if __name__ == "__main__":
     import tkinter as tk
     from tkinter import ttk
+    from pathlib import Path
+    import os, datetime
 
     # Pick your DB path constant; fall back if not defined
     try:
-        DB_PATH = DEFAULT_DB   # if you already define this above
+        DB_PATH = DEFAULT_DB
     except NameError:
         DB_PATH = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
 
+    # Build splash bits
+    # Use the same folder where the script or EXE is located
+    icon_png = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "formview.png")
+
+    subtitle  = f"v{APP_VERSION} — {datetime.date.today():%Y-%m-%d}"
+
+    # Start Tk and show splash immediately
     root = tk.Tk()
-    root.title("MSB Database — Wiring & Stage Tools (v2.3)")
-    #root.title("MSB — TABBED TEST " + u"\u2728")
+    root.withdraw()
+    splash = Splash(root, icon_png, "MSB Database — FormView", subtitle)
+    splash.update()  # paint now, before heavier init
 
+    # Main UI
     root.geometry("1280x780")
+    notebook = ttk.Notebook(root); notebook.pack(fill=tk.BOTH, expand=True)
 
-    notebook = ttk.Notebook(root)
-    notebook.pack(fill=tk.BOTH, expand=True)
-
-    # Tab 1: your existing UI (WiringViewer is a Frame)
+    # Tab 1: Wiring
     wiring_tab = WiringViewer(notebook, db_path=DB_PATH)
     notebook.add(wiring_tab, text="Wiring View")
 
-    # Tab 2: placeholder Stage View (swap in your real class later)
+    # Tab 2: Stage View
     REPORTS_ROOT = Path(r"G:\Shared drives\MSB Database\Database Previews\reports")
     stage_tab = StageViewFrame(notebook, db_path=DB_PATH, reports_root=REPORTS_ROOT)
     notebook.add(stage_tab, text="Stage View")
+
+    # Reveal app
+    try:
+        splash.close()
+    except Exception:
+        try: splash.destroy()
+        except Exception: pass
+
+    root.deiconify()
+    root.title(f"MSB Database — Wiring & Stage Tools (v{APP_VERSION})")
+    # Optional: set window icon at runtime (compiled EXE already has embedded icon)
+    try:
+        root.iconbitmap(os.path.join(os.path.dirname(__file__), "Docs", "images", "formview.ico"))
+    except Exception:
+        pass
 
     root.mainloop()
 
