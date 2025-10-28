@@ -339,7 +339,7 @@ class WiringViewer(ttk.Frame):
 
         self.props_only = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            filt, text="Props only", variable=self.props_only, command=self.refresh_rows
+            filt, text="Displays only", variable=self.props_only, command=self.refresh_rows
         ).pack(side=tk.LEFT, padx=(0,12))
 
         self.hide_spares = tk.BooleanVar(value=True)
