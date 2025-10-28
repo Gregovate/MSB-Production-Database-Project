@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location "C:\lor\ImportExport\VSCode"
 
 # ==== Version + metadata you control ====
-$Version   = '2.3.0'
+$Version   = '0.2.4'
 $Company   = 'Engineering Innovations, LLC'
 $Product   = 'MSB Database - FormView'         # use ASCII hyphen, not em-dash
 $FileDesc  = 'Wiring & Stage Tools (Tkinter)'  # single quotes avoid & issues

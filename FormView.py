@@ -22,7 +22,11 @@
 # 2025-10-23  V0.2.3  Added Stage View tab placeholder and Notebook shell;
 #                     moved Image path field below Stage/Preview for better layout,
 #                     and implemented "Open Folder" button for quick access to background images.
-#
+# 2025-10-28  V0.2.4  Refined wiring view columns for clarity (Controller → StartChannel → Channel_Name …);
+#                     removed EndChannel, Color, CrossDisplay from both UI and export;
+#                     printable HTML now omits LORTag/ConnectionType/CrossDisplay and shows image path above image;
+#                     on-screen view now echoes the image path above the preview image for field reference.
+
 # Notes
 # -----
 # • CSV Export: retains full columns for data completeness.
@@ -92,20 +96,34 @@ def _resolve_db_path() -> str:
 DEFAULT_DB = _resolve_db_path()
 # --- End of path resolver (GAL 25-10-25) ---
 
-# Superset of columns used by both views; extra columns are filled when present
+# # Superset of columns used by both views; extra columns are filled when present
+# COLUMNS = [
+#     ("Source",         90),
+#     ("Channel_Name",  260),
+#     ("Display_Name",  260),
+#     ("Network",        90),
+#     ("Controller",     90),
+#     ("StartChannel",  110),
+#     ("EndChannel",    100),
+#     ("Color",          80),
+#     ("DeviceType",     90),
+#     ("LORTag",        300),
+#     ("ConnectionType",110),  # only present in field views
+#     ("CrossDisplay",  110),  # only present in field views
+# ]
+
+# --- GAL 25-10-28: streamlined wiring columns for field clarity ---
+# Order: Controller, StartChannel, Channel_Name, Display_Name, Network, Source, ConnectionType, DeviceType, LORTag
 COLUMNS = [
-    ("Source",         90),
+    ("Controller",     90),
+    ("StartChannel",  110),
     ("Channel_Name",  260),
     ("Display_Name",  260),
     ("Network",        90),
-    ("Controller",     90),
-    ("StartChannel",  110),
-    ("EndChannel",    100),
-    ("Color",          80),
+    ("Source",         90),
+    ("ConnectionType",110),  # blank in non-field maps
     ("DeviceType",     90),
     ("LORTag",        300),
-    ("ConnectionType",110),  # only present in field views
-    ("CrossDisplay",  110),  # only present in field views
 ]
 
 SQL_PREVIEWS = "SELECT Name FROM previews ORDER BY Name COLLATE NOCASE;"
@@ -117,11 +135,29 @@ SQL_VIEW_CHECKS = {
     "fieldonly":"SELECT name FROM sqlite_master WHERE type='view' AND name='preview_wiring_fieldonly_v6';",
 }
 
+# SQL_MAP = """
+# SELECT
+#   Source, LORName AS Channel_Name, DisplayName AS Display_Name,
+#   Network, Controller, StartChannel, EndChannel, NULL AS Color, DeviceType, LORTag,
+#   '' AS ConnectionType, 0 AS CrossDisplay
+# FROM preview_wiring_sorted_v6
+# WHERE PreviewName = ?
+# {extra_filters}
+# ORDER BY {order_by};
+# """
+
+# --- GAL 25-10-28: streamlined wiring columns for field clarity ---
 SQL_MAP = """
 SELECT
-  Source, LORName AS Channel_Name, DisplayName AS Display_Name,
-  Network, Controller, StartChannel, EndChannel, NULL AS Color, DeviceType, LORTag,
-  '' AS ConnectionType, 0 AS CrossDisplay
+  Controller,                      -- Controller
+  StartChannel,                    -- StartChannel
+  LORName       AS Channel_Name,   -- Channel_Name
+  DisplayName   AS Display_Name,   -- Display_Name
+  Network,                         -- Network
+  Source,                          -- Source
+  ''            AS ConnectionType, -- ConnectionType (not used in map view)
+  DeviceType,                      -- DeviceType
+  LORTag                           -- LORTag
 FROM preview_wiring_sorted_v6
 WHERE PreviewName = ?
 {extra_filters}
@@ -129,11 +165,31 @@ ORDER BY {order_by};
 """
 
 # Field wiring mode: show exactly one FIELD row per display per circuit within the selected stage/preview
+
+# SQL_FIELDLEAD = """
+# SELECT
+#   Source, Channel_Name, Display_Name,
+#   Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag,
+#   ConnectionType, CrossDisplay
+# FROM preview_wiring_fieldlead_v6
+# WHERE PreviewName = ?
+# {extra_filters}
+# ORDER BY {order_by};
+#"""
+
+# --- GAL 25-10-28: streamlined wiring columns for field clarity ---
+# Field wiring mode: one FIELD row per display/circuit for the selected preview
 SQL_FIELDLEAD = """
 SELECT
-  Source, Channel_Name, Display_Name,
-  Network, Controller, StartChannel, EndChannel, Color, DeviceType, LORTag,
-  ConnectionType, CrossDisplay
+  Controller,                      -- Controller
+  StartChannel,                    -- StartChannel
+  Channel_Name,                    -- Channel_Name
+  Display_Name,                    -- Display_Name
+  Network,                         -- Network
+  Source,                          -- Source
+  ConnectionType,                  -- ConnectionType
+  DeviceType,                      -- DeviceType
+  LORTag                           -- LORTag
 FROM preview_wiring_fieldlead_v6
 WHERE PreviewName = ?
 {extra_filters}
@@ -461,6 +517,52 @@ class WiringViewer(ttk.Frame):
             self.tree.delete(iid)
         self.count_var.set("Rows: 0")
 
+    # def _order_by_clause(self):
+    #     col = self.sort_col
+    #     dirn = "ASC" if self.sort_asc else "DESC"
+
+    #     CTRL_HEX_NUM = "(" \
+    #     " (instr('0123456789ABCDEF', upper(substr(Controller,1,1))) - 1)*16 +" \
+    #     " (instr('0123456789ABCDEF', upper(substr(Controller,2,1))) - 1) " \
+    #     ")"
+
+    #     text_cols = {
+    #         "Source": "Source COLLATE NOCASE",
+    #         "Channel_Name": "Channel_Name COLLATE NOCASE",
+    #         "Display_Name": "Display_Name COLLATE NOCASE",
+    #         "Network": "Network COLLATE NOCASE",
+    #         "Color": "Color COLLATE NOCASE",
+    #         "DeviceType": "DeviceType COLLATE NOCASE",
+    #         "LORTag": "LORTag COLLATE NOCASE",
+    #         "ConnectionType": "ConnectionType COLLATE NOCASE",
+    #     }
+    #     int_cols = {
+    #         "Controller": CTRL_HEX_NUM,  # 👈 hex-aware numeric sort
+    #         "StartChannel": "CAST(StartChannel AS INTEGER)",
+    #         "EndChannel": "CAST(EndChannel AS INTEGER)",
+    #         "CrossDisplay": "CAST(CrossDisplay AS INTEGER)",
+    #     }
+
+    #     primary = text_cols.get(col) or int_cols.get(col) or "Display_Name COLLATE NOCASE"
+
+    #     # Always stabilize sorting: controller (hex) → channel → display name
+    #     # GAL 2025-10-23 — default to Controller+StartChannel for field wiring
+    #     if col in int_cols or col == "Controller":
+    #         primary = CTRL_HEX_NUM
+    #         dirn = "ASC"  # always ascending for controller hex
+    #     elif col == "StartChannel":
+    #         primary = "CAST(StartChannel AS INTEGER)"
+    #     else:
+    #         primary = text_cols.get(col) or "Display_Name COLLATE NOCASE"
+
+    #     return (
+    #         f"{primary} {dirn}, "
+    #         f"{CTRL_HEX_NUM} ASC, "
+    #         "CAST(StartChannel AS INTEGER) ASC, "
+    #         "Display_Name COLLATE NOCASE ASC"
+    #     )
+
+    # --- GAL 25-10-28: streamlined wiring columns for field clarity ---
     def _order_by_clause(self):
         col = self.sort_col
         dirn = "ASC" if self.sort_asc else "DESC"
@@ -471,33 +573,27 @@ class WiringViewer(ttk.Frame):
         ")"
 
         text_cols = {
-            "Source": "Source COLLATE NOCASE",
             "Channel_Name": "Channel_Name COLLATE NOCASE",
             "Display_Name": "Display_Name COLLATE NOCASE",
-            "Network": "Network COLLATE NOCASE",
-            "Color": "Color COLLATE NOCASE",
-            "DeviceType": "DeviceType COLLATE NOCASE",
-            "LORTag": "LORTag COLLATE NOCASE",
-            "ConnectionType": "ConnectionType COLLATE NOCASE",
+            "Network":      "Network COLLATE NOCASE",
+            "Source":       "Source COLLATE NOCASE",
+            "ConnectionType":"ConnectionType COLLATE NOCASE",
+            "DeviceType":   "DeviceType COLLATE NOCASE",
+            "LORTag":       "LORTag COLLATE NOCASE",
         }
         int_cols = {
-            "Controller": CTRL_HEX_NUM,  # 👈 hex-aware numeric sort
+            "Controller":   CTRL_HEX_NUM,  # hex-aware
             "StartChannel": "CAST(StartChannel AS INTEGER)",
-            "EndChannel": "CAST(EndChannel AS INTEGER)",
-            "CrossDisplay": "CAST(CrossDisplay AS INTEGER)",
         }
 
         primary = text_cols.get(col) or int_cols.get(col) or "Display_Name COLLATE NOCASE"
 
-        # Always stabilize sorting: controller (hex) → channel → display name
-        # GAL 2025-10-23 — default to Controller+StartChannel for field wiring
-        if col in int_cols or col == "Controller":
+        # Stabilize: Controller (hex) → StartChannel → Display_Name
+        if col == "Controller":
             primary = CTRL_HEX_NUM
-            dirn = "ASC"  # always ascending for controller hex
+            dirn = "ASC"
         elif col == "StartChannel":
             primary = "CAST(StartChannel AS INTEGER)"
-        else:
-            primary = text_cols.get(col) or "Display_Name COLLATE NOCASE"
 
         return (
             f"{primary} {dirn}, "
@@ -505,6 +601,7 @@ class WiringViewer(ttk.Frame):
             "CAST(StartChannel AS INTEGER) ASC, "
             "Display_Name COLLATE NOCASE ASC"
         )
+
 
     def _safe_export_name(self, preview_name: str | None, suffix: str) -> str:
         """
@@ -540,12 +637,18 @@ class WiringViewer(ttk.Frame):
             else:
                 sql = SQL_MAP.format(extra_filters=extra_filters, order_by=self._order_by_clause())
 
+            # rows = self.conn.execute(sql, (preview,)).fetchall()
+            # for row in rows:
+            #     vals = list(row)
+            #     if len(vals) == 10:
+            #         vals += ["", 0]
+            #     self.tree.insert("", "end", values=vals)
+            # self.count_var.set(f"Rows: {len(rows)}")
+
+            # --- GAL 25-10-28: streamlined wiring columns for field clarity ---
             rows = self.conn.execute(sql, (preview,)).fetchall()
             for row in rows:
-                vals = list(row)
-                if len(vals) == 10:
-                    vals += ["", 0]
-                self.tree.insert("", "end", values=vals)
+                self.tree.insert("", "end", values=list(row))
             self.count_var.set(f"Rows: {len(rows)}")
 
             if self.field_mode.get() and not field_mode_ok:
@@ -598,6 +701,108 @@ class WiringViewer(ttk.Frame):
     # Omits EndChannel + Color; embeds preview image from previews.PicturePath
     # GAL 2025-10-23 — Export printable HTML
     # Uses previews.BackgroundFile for stage image, omits EndChannel + Color
+    # def export_printable_html(self):
+    #     if not self.tree.get_children():
+    #         messagebox.showinfo("Export", "Nothing to export.")
+    #         return
+
+    #     path = filedialog.asksaveasfilename(
+    #         defaultextension=".html",
+    #         filetypes=[("HTML Files","*.html"), ("All Files","*.*")],
+    #         initialfile=self._safe_export_name(self.preview_var.get(), "wiring.html"),
+    #         title="Export Printable HTML"
+    #     )
+    #     if not path:
+    #         return
+
+    #     import datetime, html, webbrowser, base64, mimetypes, os
+
+    #     preview_name = (self.preview_var.get() or "").strip()
+    #     image_html = ""
+
+    #     # ---- Pull BackgroundFile path from DB and embed if it exists ----
+    #     if self.conn and preview_name:
+    #         try:
+    #             row = self.conn.execute(
+    #                 "SELECT BackgroundFile FROM previews WHERE Name = ?;", (preview_name,)
+    #             ).fetchone()
+    #             if row:
+    #                 bg_path = (row[0] or "").strip()
+    #                 print(f"[DEBUG] BackgroundFile path: {bg_path}")
+    #                 if bg_path and os.path.exists(bg_path):
+    #                     mime = mimetypes.guess_type(bg_path)[0] or "image/jpeg"
+    #                     with open(bg_path, "rb") as f:
+    #                         b64 = base64.b64encode(f.read()).decode("ascii")
+    #                     data_uri = f"data:{mime};base64,{b64}"
+    #                     image_html = (
+    #                         f'<div style="margin:12px 0;">'
+    #                         f'<img src="{data_uri}" '
+    #                         f'style="max-width:100%;height:auto;border:1px solid #ccc;border-radius:4px;">'
+    #                         f'</div>'
+    #                     )
+    #                 else:
+    #                     print(f"[DEBUG] BackgroundFile not found: {bg_path}")
+    #         except Exception as e:
+    #             print(f"[DEBUG] Error loading BackgroundFile: {e}")
+    #             image_html = ""
+
+    #     # ---- Build table, skipping EndChannel + Color ----
+    #     exclude_cols = {"EndChannel", "Color"}
+    #     all_headers = [c for c, _ in COLUMNS]
+    #     headers = [h for h in all_headers if h not in exclude_cols]
+    #     keep_idx = [i for i, h in enumerate(all_headers) if h not in exclude_cols]
+
+    #     rows = []
+    #     for iid in self.tree.get_children():
+    #         vals = self.tree.item(iid, "values")
+    #         rows.append([html.escape(str(vals[i])) for i in keep_idx])
+
+    #     printed = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #     preview = html.escape(preview_name)
+    #     db_path = html.escape(self.db_path)
+
+    #     css = """
+    #     <style>
+    #       body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;}
+    #       h1{margin:0 0 6px 0;font-size:20px}
+    #       .meta{font-size:12px;color:#555;margin:0 0 12px 0}
+    #       .warn{font-size:12px;color:#a00;margin:6px 0 12px 0;font-weight:600}
+    #       table{border-collapse:collapse;width:100%;font-size:12px}
+    #       th,td{border:1px solid #ccc;padding:6px 8px;vertical-align:top}
+    #       th{background:#f5f5f5;position:sticky;top:0}
+    #       tfoot td{border:none;color:#555;font-size:11px;padding-top:18px}
+    #       @media print { .noprint{display:none} th{position:sticky;top:0} }
+    #     </style>
+    #     """
+    #     head = f"""
+    #     <h1>MSB Field Wiring — {preview}</h1>
+    #     <p class="meta">DB: {db_path}</p>
+    #     {image_html}
+    #     <p class="warn">Printed: {printed} — Use immediately. Discard if not printed “today”.</p>
+    #     """
+
+    #     thead = "<thead><tr>" + "".join(f"<th>{html.escape(h)}</th>" for h in headers) + "</tr></thead>"
+    #     tbody = "<tbody>" + "".join(
+    #         "<tr>" + "".join(f"<td>{v}</td>" for v in row) + "</tr>" for row in rows
+    #     ) + "</tbody>"
+    #     foot = f"""
+    #     <tfoot><tr><td colspan="{len(headers)}">
+    #       Rows: {len(rows)} • Printed: {printed}
+    #       • Guidance: paper copies expire as soon as a new database build or preview merge occurs.
+    #     </td></tr></tfoot>
+    #     """
+
+    #     html_doc = (
+    #         f"<!doctype html><meta charset='utf-8'><title>Wiring — {preview}</title>"
+    #         f"{css}{head}<table>{thead}{tbody}{foot}</table>"
+    #     )
+    #     with open(path, "w", encoding="utf-8") as f:
+    #         f.write(html_doc)
+
+    #     webbrowser.open("file:///" + os.path.abspath(path).replace("\\", "/"))
+    #     messagebox.showinfo("Export", f"Saved: {path}")
+
+    # --- GAL 25-10-28: streamlined wiring columns for field clarity ---
     def export_printable_html(self):
         if not self.tree.get_children():
             messagebox.showinfo("Export", "Nothing to export.")
@@ -614,45 +819,54 @@ class WiringViewer(ttk.Frame):
 
         import datetime, html, webbrowser, base64, mimetypes, os
 
+        # --- GAL 25-10-28b: prefer on-screen path value for reliability ---
         preview_name = (self.preview_var.get() or "").strip()
-        image_html = ""
+        bg_path = (self.bg_path_var.get().strip() if hasattr(self, "bg_path_var") else "")
 
-        # ---- Pull BackgroundFile path from DB and embed if it exists ----
-        if self.conn and preview_name:
+        # If empty, fall back to DB
+        if (not bg_path) and self.conn and preview_name:
             try:
                 row = self.conn.execute(
                     "SELECT BackgroundFile FROM previews WHERE Name = ?;", (preview_name,)
                 ).fetchone()
                 if row:
                     bg_path = (row[0] or "").strip()
-                    print(f"[DEBUG] BackgroundFile path: {bg_path}")
-                    if bg_path and os.path.exists(bg_path):
-                        mime = mimetypes.guess_type(bg_path)[0] or "image/jpeg"
-                        with open(bg_path, "rb") as f:
-                            b64 = base64.b64encode(f.read()).decode("ascii")
-                        data_uri = f"data:{mime};base64,{b64}"
-                        image_html = (
-                            f'<div style="margin:12px 0;">'
-                            f'<img src="{data_uri}" '
-                            f'style="max-width:100%;height:auto;border:1px solid #ccc;border-radius:4px;">'
-                            f'</div>'
-                        )
-                    else:
-                        print(f"[DEBUG] BackgroundFile not found: {bg_path}")
             except Exception as e:
-                print(f"[DEBUG] Error loading BackgroundFile: {e}")
-                image_html = ""
+                print(f"[DEBUG] BackgroundFile lookup failed: {e}")
 
-        # ---- Build table, skipping EndChannel + Color ----
-        exclude_cols = {"EndChannel", "Color"}
+        # --- Build the image path line + embedded image (if file resolves) ---
+        image_path_text = ""
+        image_html = ""
+        if bg_path:
+            image_path_text = f"<p class='meta'>Image path: {html.escape(bg_path)}</p>"
+            try:
+                if os.path.exists(bg_path):
+                    mime = mimetypes.guess_type(bg_path)[0] or "image/jpeg"
+                    with open(bg_path, "rb") as f:
+                        b64 = base64.b64encode(f.read()).decode("ascii")
+                    data_uri = f"data:{mime};base64,{b64}"
+                    image_html = (
+                        f'<div style="margin:8px 0 14px 0;">'
+                        f'<img src="{data_uri}" style="max-width:100%;height:auto;'
+                        f'border:1px solid #ccc;border-radius:4px;">'
+                        f'</div>'
+                    )
+            except Exception as e:
+                print(f"[DEBUG] Image embed failed: {e}")
+
+        # --- Collect grid data, then FILTER unwanted columns for export ---
+        # Columns to hide in HTML:
+        HIDE_FOR_EXPORT = {"LORTag", "ConnectionType", "CrossDisplay"}  # GAL 25-10-28b
+
         all_headers = [c for c, _ in COLUMNS]
-        headers = [h for h in all_headers if h not in exclude_cols]
-        keep_idx = [i for i, h in enumerate(all_headers) if h not in exclude_cols]
+        keep_idx = [i for i, h in enumerate(all_headers) if h not in HIDE_FOR_EXPORT]
+        headers = [all_headers[i] for i in keep_idx]
 
         rows = []
         for iid in self.tree.get_children():
-            vals = self.tree.item(iid, "values")
-            rows.append([html.escape(str(vals[i])) for i in keep_idx])
+            vals = list(self.tree.item(iid, "values"))
+            pruned = [html.escape(str(vals[i])) for i in keep_idx if i < len(vals)]
+            rows.append(pruned)
 
         printed = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         preview = html.escape(preview_name)
@@ -660,20 +874,21 @@ class WiringViewer(ttk.Frame):
 
         css = """
         <style>
-          body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;}
-          h1{margin:0 0 6px 0;font-size:20px}
-          .meta{font-size:12px;color:#555;margin:0 0 12px 0}
-          .warn{font-size:12px;color:#a00;margin:6px 0 12px 0;font-weight:600}
-          table{border-collapse:collapse;width:100%;font-size:12px}
-          th,td{border:1px solid #ccc;padding:6px 8px;vertical-align:top}
-          th{background:#f5f5f5;position:sticky;top:0}
-          tfoot td{border:none;color:#555;font-size:11px;padding-top:18px}
-          @media print { .noprint{display:none} th{position:sticky;top:0} }
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;}
+        h1{margin:0 0 6px 0;font-size:20px}
+        .meta{font-size:12px;color:#555;margin:0 0 6px 0}
+        .warn{font-size:12px;color:#a00;margin:10px 0 12px 0;font-weight:600}
+        table{border-collapse:collapse;width:100%;font-size:12px}
+        th,td{border:1px solid #ccc;padding:6px 8px;vertical-align:top}
+        th{background:#f5f5f5;position:sticky;top:0}
+        tfoot td{border:none;color:#555;font-size:11px;padding-top:18px}
+        @media print { .noprint{display:none} th{position:sticky;top:0} }
         </style>
         """
         head = f"""
         <h1>MSB Field Wiring — {preview}</h1>
         <p class="meta">DB: {db_path}</p>
+        {image_path_text}
         {image_html}
         <p class="warn">Printed: {printed} — Use immediately. Discard if not printed “today”.</p>
         """
@@ -684,8 +899,8 @@ class WiringViewer(ttk.Frame):
         ) + "</tbody>"
         foot = f"""
         <tfoot><tr><td colspan="{len(headers)}">
-          Rows: {len(rows)} • Printed: {printed}
-          • Guidance: paper copies expire as soon as a new database build or preview merge occurs.
+        Rows: {len(rows)} • Printed: {printed}
+        • Guidance: paper copies expire as soon as a new database build or preview merge occurs.
         </td></tr></tfoot>
         """
 
@@ -693,13 +908,13 @@ class WiringViewer(ttk.Frame):
             f"<!doctype html><meta charset='utf-8'><title>Wiring — {preview}</title>"
             f"{css}{head}<table>{thead}{tbody}{foot}</table>"
         )
+
         with open(path, "w", encoding="utf-8") as f:
             f.write(html_doc)
 
+        import webbrowser, os
         webbrowser.open("file:///" + os.path.abspath(path).replace("\\", "/"))
         messagebox.showinfo("Export", f"Saved: {path}")
-
-
 
 # === Combined main window with tabs (GAL 25-10-23) ===========================
 # GAL 25-10-23 — minimal tabbed shell around WiringViewer (no class changes)
