@@ -1,27 +1,27 @@
 @echo off
 setlocal
-title MSB Database - FormViewApp Launcher
+title MSB Database - FormViewApp Launcher (GAL 25-10-29)
 
-rem ============================================================
-rem  MSB Database — FormViewApp Launcher
-rem  GAL 25-10-25
-rem  This ensures a visible console, logs any errors, and checks
-rem  that the G: drive and database file exist before launching.
-rem ============================================================
-
-rem ---- Canonical EXE on shared drive ----
+rem ---- canonical EXE on shared drive ----
 set "SRC=G:\Shared drives\MSB Database\Apps\FormView\current\FormViewSA.exe"
 
-rem ---- Local per-user cache (avoids network execution issues) ----
-set "CACHE=%LOCALAPPDATA%\MSB\FormView\FormViewSA.exe"
-set "LOG=%LOCALAPPDATA%\MSB\FormView\FormViewApp.log"
+rem ---- local per-user cache ----
+set "CACHE_DIR=%LOCALAPPDATA%\MSB\FormView"
+set "CACHE=%CACHE_DIR%\FormViewSA.exe"
+set "LOG=%CACHE_DIR%\FormViewApp.log"
 set "DB=G:\Shared drives\MSB Database\database\lor_output_v6.db"
 
-mkdir "%LOCALAPPDATA%\MSB\FormView" >nul 2>nul
-
+if not exist "%CACHE_DIR%" mkdir "%CACHE_DIR%" >nul 2>nul
 echo ===== %date% %time% (%USERNAME%) ===== >> "%LOG%"
 
-rem --- Basic checks ---
+rem --- single-instance guard ---
+tasklist /FI "IMAGENAME eq FormViewSA.exe" | find /I "FormViewSA.exe" >NUL
+if not errorlevel 1 (
+  echo [INFO] Already running; exiting launcher. >> "%LOG%"
+  goto :EOF
+)
+
+rem --- prerequisites ---
 if not exist "G:\" (
   echo [ERR] G: missing >> "%LOG%"
   echo G: drive is not mapped. Please open Google Drive or remap.
@@ -38,7 +38,7 @@ if not exist "%SRC%" (
   pause & exit /b 1
 )
 
-rem --- Auto-update local cache if shared EXE is newer ---
+rem --- copy/update local cache atomically to avoid AV hiccups ---
 for %%I in ("%SRC%")   do set "SRC_SZ=%%~zI"   & set "SRC_TM=%%~tI"
 for %%I in ("%CACHE%") do set "CACHE_SZ=%%~zI" & set "CACHE_TM=%%~tI"
 
@@ -48,11 +48,17 @@ if not exist "%CACHE%" (
 ) else (
   if not "%SRC_SZ%"=="%CACHE_SZ%" if not "%SRC_TM%"=="%CACHE_TM%" (
     echo [INFO] New version detected; updating cache >> "%LOG%"
-    copy /y "%SRC%" "%CACHE%" >nul
+    copy /y "%SRC%" "%CACHE%.new" >nul
+    if exist "%CACHE%.new" (
+      move /y "%CACHE%.new" "%CACHE%" >nul
+    )
   )
 )
 
-rem --- Launch from local cache ---
+rem --- tiny settle delay helps some AVs ---
+timeout /t 1 /nobreak >nul
+
+rem --- launch minimized, with correct working dir, then exit launcher ---
 echo [INFO] Launching cached exe >> "%LOG%"
-start "" "%CACHE%"
+start "" /MIN /D "%CACHE_DIR%" "%CACHE%"
 exit /b 0
