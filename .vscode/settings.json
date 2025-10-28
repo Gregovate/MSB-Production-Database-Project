@@ -1,12 +1,37 @@
 {
+    // Spellchecker additions
     "cSpell.words": [
-        "SubProp"
+        "SubProp",
+        "FormView",
+        "LOR",
+        "PyInstaller"
     ],
+    // Use the repo-local venv automatically
+    "python.defaultInterpreterPath": ".venv/Scripts/python.exe",
+    // Optional: format & lint nicely
+    "python.analysis.typeCheckingMode": "basic",
+    "editor.formatOnSave": true,
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    // Quieter notebook popups if you open ipynb
+    "python.dataScience.useNotebookEditor": true,
+    // Keep problems panel tidy
+    "files.exclude": {
+        "build_artifacts/": true,
+        ".venv/": true,
+        "**/__pycache__/": true
+    },
+    // (Optional) let the Python extension know this is a project
     "python-envs.pythonProjects": [
         {
             "path": "",
-            "envManager": "ms-python.python:system",
+            "envManager": "ms-python.python:venv",
             "packageManager": "ms-python.python:pip"
         }
+    ]
+    // 👇 ADD THIS SECTION before the very last curly brace
+    "terminal.integrated.shellArgs.windows": [
+        "-ExecutionPolicy",
+        "Bypass"
     ]
 }
