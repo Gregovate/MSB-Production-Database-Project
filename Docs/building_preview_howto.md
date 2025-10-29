@@ -7,22 +7,21 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
 ---
 
 ## Prerequisites
-- A background image (`.jpg`) of the display panel design or entire stage.
-- Save the file to:  
-  `G:\Shared drives\Display Folders\Stage Folder'
+- Start with the Prop Approval Form.
+- Once approved, draw the concept display.
+- Create a folder under the corect Display Stage ID with the Display name
+- Create the Background image (`.jpg`) of the display panel design
+- Save a copy of the finished display file to:  
+  'G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\'
 - Size limits:
   - Max **4000 × 3000 px**
-  - Recommended: **800 × 600 px** for a single panel.
+  - Recommended: **800 × 600 px** for a horizontal panel or **600 x 800** for a vertical panel.
   - Recommended: **3840 x 2160 px** for a full stage.
   - Save as JPG optimized with a 20% compression factor (Easy to do in PaintShop Pro) 
 - File naming:
   ```
-  - Show Background Stage xx LOR Preview.jpg
-  - RGB Plus Prop Stage xx LOR Preview.jpg
+  - DisplayName.jpg
   ```
-- Stage Preview Example:
-
-[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background.jpg" width="600" alt="Show Background Stage 15 (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background.jpg)
 
 ---
 
@@ -30,28 +29,36 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
 
 1. **Open LOR Sequence Editor.**
 2. In the bottom-left panel, select **Background → Set Image**.
-3. Browse to your background file.  
-   ⚠️ **Do not save the image with the preview.**
-4. Draw the strings and assign controllers and channels.
-5. **Naming Conventions:**
-   - **Channel Names:** follow channel naming conventions.
-   - **Comment field:** must be filled with the **Display Name** (required for every channel).
-6. When finished:
+3. Browse to your background file you saved in   G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\wiring
+   1. Start with the background image created 
+   2. ⚠️ **Do not save the image with the preview.**
+   3. 
+   
+5. Draw the strings and assign controllers and channels.
+6. **Channel Naming Conventions:**
+   [LL UID-Channel Name]
+    - LL:  is the character abbreviation of the display or stage
+    - UID:  assigned to the controller used
+    - Channel:   is the channel or port of the controller
+    - Name:  A brief description of the channel name. The list sorts alphabetically
+
+7. When finished:
    - Select all channels → **Create Group**.
    - Save the group with the **Display Name**.
-7. Export the group as a **.leprop** file:
+8. Export the group as a **.leprop** file:
    ```
    G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
    ```
    Use the **Preview Name** for the file.
-8. Save the preview as:
+9. Save the preview as:
    ```
    **Display Prop <Display Name> UID StartChannel-EndChannel**
    ```
-9. Export the preview (`.lorprev`) to the same `PreviewsForProps` folder.
+10. Export the preview (`.lorprev`) to the same `PreviewsForProps` folder.
 - Display Prop Example with Channel Grid
 
 [<img src="/Docs/images/ChristmasHippo.jpg" width="600" alt="Display Prop ChristmasHippo TC 7B 01-07 (scaled)">](/Docs/images/ChristmasHippo.jpg)
+
   
 ---
 
@@ -73,7 +80,7 @@ If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spir
 1. When exporting props, they land, by default, in the Author's ImportExport folder
 2. These props can then be added to a Stage Preview.
 3. You can import all the props you need
-4. Not Finished
+4. In Progess...
  
 ## Editing an Existing Preview
 
@@ -92,7 +99,9 @@ If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spir
      ```
      G:\Shared drives\MSB Database\UserPreviewStaging
      ```
+- Stage Preview Example:
 
+[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background.jpg" width="600" alt="Show Background Stage 15 (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background.jpg)
 ---
 ## Create a Wiring Background for Stage Previews
 We now have the ability to include an image in the field wiring paperwork. Creating this image involves a few more steps. This only applies to the stage previews:
