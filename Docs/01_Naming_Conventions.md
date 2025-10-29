@@ -29,8 +29,6 @@ To keep multi-channel motion props in proper order, use the format:
 
 LL DisplayOrAbbrev UID-Channel Description
 
-pgsql
-Copy code
 
 | Element | Description |
 |----------|-------------|
@@ -43,9 +41,6 @@ Copy code
 **Example**
 
 EC Cond L28-15 Conductor Head
-
-yaml
-Copy code
 
 ### ⚠️ Note
 If the **UID** or **channel** changes, the preview and harness labels must be updated.  
@@ -113,9 +108,6 @@ For props with multiple channels inside one panel, the **Display Name** remains 
 ## 4. Display Name Format
 
 <LL>-<DisplayName>-<Variation>-<Sequence>-<Color>
-
-yaml
-Copy code
 
 | Segment | Meaning |
 |----------|---------|
