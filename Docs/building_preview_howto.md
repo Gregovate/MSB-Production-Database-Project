@@ -1,3 +1,9 @@
+---
+title: Building a Preview (Operator How-To)
+version: 2025-10-29
+author: Greg Liebig / Engineering Innovations, LLC
+---
+
 # Building a Preview (Operator How-To)
 
 _Last updated: 2025-10-26
@@ -35,6 +41,10 @@ This guide explains how to build, edit, and export a preview in **Light‑O‑Ra
    3. 
    
 5. Draw the strings and assign controllers and channels.
+
+> 📘 See [Prop and Display Naming Conventions](./01_Naming_Conventions.md)  
+> for full rules on channel grouping, display IDs, and comment field requirements.
+
 6. **Channel Naming Conventions:**
    [LL UID-Channel Name]
     - LL:  is the character abbreviation of the display or stage

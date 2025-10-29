@@ -21,198 +21,39 @@ Create props table that contains one record per display. Use the subprops and dm
 - Reads the prop data and links to a table containing Display information using a sqlite database
 - The datafiles are untouched as not to affect the sequencing software.
 
-## Definitions
-- **LOR**: Abbreviation for Light O Rama
-- **Preview**: This is a collection of **Displays** sequenced to music or a background animation and required for any sequencing in **LOR**
-- **Stage**: An area set to a theme containing displays that are either background animations or displays sequenced to music (e.g., Elf Choir, Candyland). The stage name is used to define the **Preview**.
-- **Display**: A display as a single physical object that we design, build, setup, and/or inventory for the show. A Display can have multiple - SubProps or it can be an undetermined device type needed for a display like support arches, Scaffolding, etc that must be managed. The Display Name is typed into the comment field inside the preview and must follow specific naming conventions.
-- **Prop AKA Channel Name**: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical object, it's NOT. A prop is the **Channel Name**.
-- **SubProp**: This can either be explicitly assigned in the preview to repeat the same commands as the prop or is part of the same physical display that responds to different commands.The LORComment field of any sub prop must be **IDENTICAL** to the **Display Name**. 
-- **UID**: The hexadecimal number assigned to a controller
-- **id**: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure their uniqueness.
+# MSB Production Database Project
 
-## Preview Types (what we build and why)
-
-### 1) Previews for Props *(panel authoring; source of truth)*
-
-Where we design an individual panel/component and set correct **Channel Name** (`Name`) and **Display Name** (`Comment`).  
-We then **Export as Props** from here.
-
-**Authoring path**
-
-~~~
-G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps\
-~~~
+This repository contains all scripts, configuration, and documentation for the **Making Spirits Bright Production Database**, used to manage LOR previews, stage wiring maps, prop inventory, and show integration.
 
 ---
 
-### 2) Master Previews *(sequencing targets)*
+## 📂 Repository Structure
 
-Where we **import props** and do the actual sequencing.
-
-- **RGB Plus Prop Stage `xx`** — primary sequencing canvas per stage  
-- **Show Background Stage `yy`** — background/static elements per stage (e.g. Peanuts, Goal Sign, Sledder, etc.)
-- **Show Animation `zz`** — shared/global animation elements (Elf on Shelf)
-
-> When we import exported props into these masters, the **RawPropID** is preserved, but the original **PreviewID** is not. That’s OK—our checks use **RawPropID**.
+| Folder | Description |
+|--------|--------------|
+| `Docs/` | Full documentation hub — operator guides, naming conventions, workflows, and field procedures |
+| `Apps/` | Application builds and source (FormView, Parser, Merger, etc.) |
+| `Docs/images/` | Screenshots and diagrams referenced in documentation |
 
 ---
 
-### 3) Staged Previews *(for the database build)*
+## 🧭 Quick Start
 
-The curated set of previews the parser consumes to build the database (v6).  
-These copies are produced by the **preview_merger** (do **not** copy into this folder by hand).
+**Primary workflow (v6):**
+1. Run the **Preview Merger** (`preview_merger.py`)
+2. Run the **Parser** (`parse_props_v6.py`)
+3. Run the **Excel Export / DB Compare** step  
+4. Open reports under  
+   `G:\Shared drives\MSB Database\Spreadsheet`
 
-**Staging path**
+---
 
-~~~
-G:\Shared drives\MSB Database\Database Previews\
-~~~
+## 📘 Full Documentation
 
-**Typical contents**
+➡️ See the complete documentation hub under  
+[**Docs/README.md**](./Docs/README.md)
 
-~~~
-G:\Shared drives\MSB Database\
-  Database\
-    lor_output_v6.db
-    master_musical_preview_keys.csv        (optional: last-year snapshot for drift checks)
-  Database Previews\                        <-- Staged previews used to build the DB
-    RGB Plus Prop Stage 01 ....lorprev
-    Show Background Stage 07 ....lorprev
-    Show Animation 03 ....lorprev
-  UserPreviewStaging\
-    <username>\
-      PreviewsForProps\                     <-- Panel authoring previews (export to props)
-        1st Panel Animation - <Panel>.lorprev
-        1st Panel Animation - <Another>.lorprev
-~~~
+---
 
-## Authoring → Build Master → Validate & Stage → Parse (the workflow)
-
-> **Rule of thumb**
->
-> - All editing/exports happen in your **UserPreviewStaging** area.  
-> - The **preview_merger** is the only tool that copies validated previews into **Database Previews** (staging).  
-> - The **parser** reads **only** from **Database Previews**.
-
-### 1) Author the panel preview (*Previews for Props*)
-
-- Work in:`G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps\`
-- Set **Channel Name** = LOR **`Name`** (sequencer label)  
-- Set **Display Name** = LOR **`Comment`** (inventory/display label)  
-- Save your `.lorprev`.  
-- **Export the panel preview as a prop** (LOR “Export as Props”).
-
-### 2) Create/Edit a Master Preview for sequencing
-
-- Choose one of the three masters and **import the prop** you just exported:
-  - **RGB Plus Prop Stage `xx`** — primary sequencing canvas  
-  - **Show Background Stage `yy`** — background/static elements  
-  - **Show Animation `zz`** — shared/global animation elements
-- Continue editing until the master preview looks correct in LOR.
-- Keep these master `.lorprev` files under your `UserPreviewStaging\<username>` area (**do not** place them in the staging folder manually).
-
-### 3) Validate with the preview_merger (*produces the staged copies*)
-
-- Run the merger against your `UserPreviewStaging\<username>` previews (both **panel authoring previews** and the **master previews** you edited).
-- The merger fixes/flags issues (blank comments, duplicates, formatting) and **writes validated copies** into:  
-  `G:\Shared drives\MSB Database\Database Previews\` ← *staging for the parser*  
-- You **never** copy files into **Database Previews** by hand.
-
-### 4) Parse staged previews to build/update the DB
-
-- From VS Code, run `parse_props_v6.py` (see **[DEBUG Guide](./debug.md)**).  
-- Output: `lor_output_v6.db` (SQLite), with views:
-  - `preview_wiring_map_v6`
-  - `preview_wiring_sorted_v6` *(used by `formview.py`)*
-
-### (Optional) Breaking-change / drift check
-
-- Keep `master_musical_preview_keys.csv` (last year’s snapshot) with:  
-  **RawPropID, ChannelName, DisplayName, ChannelGrid_SHA256**
-- Compare snapshot vs current DB by **RawPropID** to flag:  
-  **Missing_Now / ChannelName_Changed / DisplayName_Changed / Grid change**.
-
-## Developer Quick Links
-
-- [DEBUG Guide](./debug.md) — step-by-step instructions for running the parsers in VS Code,
-  required Python setup, **previews folder location**, and troubleshooting tips.
-
-## Documentation References
-
-## Docs (start here)
-
-- [Operator Quickstart](Docs/quickstart_operator.md)
-- [Preview Merger — Reference](Docs/preview_merger_reference.md)
-- [Reporting & History](Docs/reporting_history.md)
-- [Workflow v6 — End-to-End Pipeline](Docs/workflow_v6_readme.md)  
-  Step-by-step process from preview merger to DB compare, including where reports live and how to read ledgers vs manifests.
-- [Building a Preview (Operator How-To)](Docs/building_preview_howto.md)  
-  Guide for creating, editing, and exporting previews in LOR, with prerequisites, naming conventions, and export locations.
-- Archived docs live in [/archive/docs](archive/docs/)
-- 📝 [CHANGELOG](CHANGELOG.md) — curated list of processing and schema changes by date.
-- 📘 [Naming Conventions](naming_conventions.md)  
-  Explains both **Channel Naming Conventions** (LOR sequencing) and **Prop/Display Naming Conventions** (labels, inventory, database).
-- 🗄️ [Database Cheat Sheet](database_cheatsheet.md)  
-  Quick SQL reference for querying `lor_output_v6.db`, including how to list controllers, find DeviceType=None props, and detect spare channels.
-
-
-
-### **Processing Logic Summary**
-
-- [Procesing Rules](ProcessingRules.md)
-
-### **Additional Notes**
-
-- **Fancy Queries or Joins**:
-  - When reassembling data for setup, consider using server-side logic (e.g., SQL JOINs or stored procedures) to simplify retrieval based on the linked tables (`props`, `subprops`, `dmxchannels`, etc.).
-
-- **Terminology Updates**:
-  - `propbuildInfo` → `Display` table: Links `DisplayName` to `LORComment`.
-  - `Fixtures` → `subprops` table.
-
-Let me know if you'd like me to refine the explanation further or help troubleshoot the script!
-
-## Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/username/repo-name.git
-   ```
-
-2. Navigate to the project directory:
-
-   ```bash
-   cd repo-name
-   ```
-
-3. Install dependencies:
-   - Python is required on required on the machine you are running this script.
-   - SQLite browser required to open the database created.
-
-## Usage
-
-  1. Create a folder to store the exported previews you want to include for processing. If you want to include all previews, just use the ImportExport folder under your Light O Rama installation.
-
-  2. Using the Light O Rama Sequencing Software, Navigate to the Preview Panel and Right Click in the preview or previews you want to include in the database and save them to the folder of your choice.
-
-  3. Open a Terminal Window and run the parse_props_vx.py script. When prompted, enter the path to the folder containing the preview(s) you want to process.
-
-  4. The location for the database is currently hard coded at the top of the script. This can be changed to put the database in the location of your choosing.
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-name`).
-3. Commit your changes (`git commit -m 'Add some feature'`).
-4. Push to the branch (`git push origin feature-name`).
-5. Open a pull request.
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
-## Acknowledgments
+© Engineering Innovations, LLC — Greg Liebig  
+Making Spirits Bright Production Team, Sheboygan WI
