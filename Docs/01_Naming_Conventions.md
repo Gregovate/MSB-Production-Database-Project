@@ -1,5 +1,3 @@
-# Naming Conventions
-
 ---
 title: Prop and Display Naming Conventions
 version: 2025-10-29
@@ -66,11 +64,6 @@ That identifier:
 | **Display** | The complete physical panel (e.g., Conductor, Note, or Elf). |
 | **Sub-Prop** | Any individual motion element belonging to that Display. All sub-props share the exact same **Display Name** in the Comment field. |
 
-**Example**
-
-> *ElfConductor* is one display panel with multiple sub-props controlling arms, head, etc.  
-> Each sub-prop still uses `ElfConductor` in its Comment field.
-
 ---
 
 ### 3.2 Single-Channel Displays
@@ -81,14 +74,19 @@ Some displays have only one lighting element. Each must still have a unique iden
 
 | Pattern | Display Names |
 |----------|----------------|
-| **Elves** (4 patterns × 8 each) | `Elf-P1-1 … Elf-P1-8`, `Elf-P2-1 … Elf-P2-8`, `Elf-P3-1 … Elf-P3-8`, `Elf-P4-1 … Elf-P4-8` |
-| **Notes** (4 patterns × 2 each) | `Note-A-1, Note-A-2`, `Note-B-1, Note-B-2`, `Note-C-1, Note-C-2`, `Note-D-1, Note-D-2` |
+| **Elves** (4 patterns × 8 each) | `Elf-P1-01 … Elf-P1-08`, `Elf-P2-01 … Elf-P2-08`, `Elf-P3-01 … Elf-P3-08`, `Elf-P4-01 … Elf-P4-08` |
+| **Notes** (4 patterns × 2 each) | `Note-A-01, Note-A-02`, `Note-B-01, Note-B-02`, `Note-C-01, Note-C-02`, `Note-D-01, Note-D-02` |
 
 ---
 
 ### 3.3 Multi-Channel Displays (LOR or DMX)
 
 For props with multiple channels inside one panel, the **Display Name** remains identical across all channels.
+**Example**
+
+> *ElfConductor* is one display panel with multiple sub-props controlling arms, head, etc.  
+> Each sub-prop still uses `ElfConductor` in its Comment field.
+
 
 **Example**
 
