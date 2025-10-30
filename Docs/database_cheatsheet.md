@@ -22,6 +22,15 @@ SELECT *
 FROM preview_wiring_map_v6_props;
 ```
 
+### Find Background paths for all previews
+```sql
+SELECT
+    Name            AS PreviewName,
+    IFNULL(BackgroundFile, '(none)') AS BackgroundFile
+FROM previews
+ORDER BY Name COLLATE NOCASE;
+```
+
 ### Master props for a specific preview (includes DeviceType='None')
 ```sql
 SELECT *
