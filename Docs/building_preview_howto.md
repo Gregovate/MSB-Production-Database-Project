@@ -20,7 +20,7 @@ G:
 ├── BackgroundStage -> **Only store images here needed for the Field Wiring Instructions here for Background Previews**
 │ ├── Show Background Stage 21 PolarBears-Tagged.jpg
 │ ├── Show Background Stage 21 Sliding Penguins-Tagged.jpg
-│ └── SourceImages **Location to build the background images for Field Wiring Instructions**
+│ └── SourceDocs **Location to build the background images for Field Wiring Instructions**
 │ ├── polar_bears_map.drawio
 │ ├── polar_bears_wiring.pspimage
 │ └── sliding_penguins_layout.jpg
@@ -28,7 +28,7 @@ G:
 ├── MusicalStage -> **Only store images here needed for the Field Wiring Instructions here for Musical Previews**
 │ ├── Show Musical Stage 21 PolarBears-Tagged.jpg
 │ ├── Show Musical Stage 21 Sliding Penguins-Wired.jpg
-│ └── SourceImages **Location to build the background images for Field Wiring Instructions**
+│ └── SourceDocs **Location to build the background images for Field Wiring Instructions**
 │ ├── polar_bears_musical_map.drawio
 │ ├── penguins_musical_layers.pspimage
 │ └── penguins_overview_layout.jpg
@@ -115,9 +115,9 @@ If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spir
    - If the show is running, take a picture of the stage being careful to collect all elements possible
    - Try to have enough light so the displays are visible. Needed for the Field Wiring documentation
    - The location for image storage depends on the type of background image being taken `Musical Stage` or `Background Stage`
-     - `Musical` Save the image to G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceImages
+     - `Musical` Save the image to G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs
        - RGB Plus Stage xx Name Background.jpg
-     - `Background` Save the image to G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceImages
+     - `Background` Save the image to G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs
        - Show Background Stage xx Name Background.jpg
    - Edit Open up the image in an editor. Corel Paint Shop Pro is Avaiable on the Show PC
    - Ensure the Canvas/Image size it to 3840 x 2160 and use a 20% Compression
@@ -149,10 +149,10 @@ Examples:
 1. Open the complete Preview in the Preview Editor:
 2. Snip the **entire preview image** you created using the Windows Snip App Full Screen:
 3. Save the snipped image. Location depends on the preview `stage type` you are working ie: `MusicalStage` or `BackgroundStage`
--  It's important to save this image in the SourceImages Folder
-- `Musical Stage` G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\MusicalStage\SourceImages'
+-  It's important to save this image in the SourceDocs Folder
+- `Musical Stage` G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\MusicalStage\SourceDocs'
   - RGB Plus Prop Stage xx LOR Preview-Wired.jpg
-- `Background Stage` G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\BackgroundStage\SourceImages'
+- `Background Stage` G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\BackgroundStage\SourceDocs'
   - File naming: Show Background Stage xx LOR Preview-Wired.jpg
 4. If you are stopping here then just copy the image you just saved to G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\`Stage Type`\
 5. Re-open the preview and then select the file you just saved G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\`Stage Type`\ and set as background.
@@ -181,10 +181,10 @@ This is the last step to create a useful wiring diagram that tags the channels i
 6. Repeat until you have all the displays defined.
 7. Save the *.drawio file. Examples:
 - MusicalStage
-  -  `G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceImages\
+  -  `G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs\
     -  `RGB Plus Prop Stage 15 Church-Tagged.drawio`
 - BackgroudStage
-  -  `G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceImages\
+  -  `G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs\
     -  `Show Backround Stage 21 Sliding Penguins-Tagged.drawio`
 8. Export your tagged file as *.jpg and save it to:
 - MusicalStage
