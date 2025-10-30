@@ -87,10 +87,12 @@ The `.leprop` file creates a **PropID** that can be reused inside larger preview
 - `Show Animation xx`
 If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spirit Bright signs, they must be created in one preview to ensure each display has it's unique PropID. The database will error if more than one display shares the same PropID
 ---
-1. When exporting props, they land, by default, in the Author's ImportExport folder
-2. These props can then be added to a Stage Preview.
-3. You can import all the props you need
-4. In Progess...
+1. When exporting props, they land, by default, in the Author's ImportExport folder on their local PC
+2. Copy the prop file to <em>G:\Shared drives\MSB Database\Database Previews\PreviewsForProps</em>
+3. These props can then be added to a Stage Preview and will be available to everyone
+4. You can import all the props you need.
+5. Be sure to double check the Channel Names to comply with our naming conventions and channel/Controller assignments are correct.
+6. If there are SPARE channels, be sure to include them and use SPARE as the Display Name (Comment) field. I color them Orange and they are used as place-holders for future development.
  
 ## Editing an Existing Preview
 
@@ -99,11 +101,17 @@ If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spir
    G:\Shared drives\MSB Database\Database Previews
    ```
    (ensures you have the latest version).
-2. To add a prop: choose **Add → LOR Prop file**, then select from:
+2. If the preview Does Not contain a background image we need to add it
+   - If the show is running, take a picture of the stage being careful to collect all elements possible
+   - Save the image to G:\Shared drives\Display Folders\Stage Folder\Wiring\Show Background Stage xx Preview Backround.jpg
+   - Edit Open up the image in an editor. Corel Paint Shop Pro is Avaiable on the Show PC
+   - Ensure the Canvas/Image size it to 3840 x 2160 and use a 20% Compression
+   - Begin importing the prop files created for the stage
+   - To add a prop: choose **Add → LOR Prop file**, then select from:
    ```
    G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
    ```
-3. After editing:
+5. After editing:
    - Save the preview.
    - Export the updated `.lorprev` file to your **user staging folder**:
      ```
@@ -152,7 +160,7 @@ This is the last step to create a useful wiring diagram that tags the channels i
   - If you add **Channel Names** and the channels change over time, the wiring diagram will need to be updated!
   - As long as the preview background path does not change, the background is updateable as long as the path and file name remains the same. No need to edit the preview.
 6. Repeat until you have all the displays defined.
-7. Save the file as `G:\Shared drives\Display Folders\Stage Folder\
+7. Save the file as `G:\Shared drives\Display Folders\Stage Folder\Wiring\
 
   ```
   - Show Background Stage xx LOR Preview Tagged.drawio
