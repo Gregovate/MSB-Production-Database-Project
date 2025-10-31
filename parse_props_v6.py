@@ -3038,14 +3038,29 @@ WHERE ConnectionType = 'FIELD';
     # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
     try:
         import subprocess, sys, os
-        compare_script = r"G:\Shared drives\MSB Database\Spreadsheet\compare_displays_vs_db.py"
-        if os.path.exists(compare_script):
-            print("[INFO] Running compare_displays_vs_db.py …")
-            subprocess.run([sys.executable, compare_script], check=False)
+
+        # --- Only run this compare when:
+        #     1) We are writing to the production DB, AND
+        #     2) The caller did not explicitly disable it via env var.
+        DEFAULT_PROD_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
+        _db_norm = os.path.normcase(os.path.normpath(str(DB_PATH)))
+        _prod_norm = os.path.normcase(os.path.normpath(DEFAULT_PROD_DB))
+        _skip = os.environ.get("MSB_SKIP_DISPLAYS_COMPARE", "0") == "1"
+
+        if not _skip and _db_norm == _prod_norm:
+            compare_script = r"G:\Shared drives\MSB Database\Spreadsheet\compare_displays_vs_db.py"
+            if os.path.exists(compare_script):
+                print("[INFO] Running compare_displays_vs_db.py …")
+                subprocess.run([sys.executable, compare_script], check=False)
+            else:
+                print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
         else:
-            print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
+            reason = "env flag" if _skip else "non-production DB"
+            print(f"[INFO] Skipping compare_displays_vs_db ({reason}).")
+
     except Exception as e:
         print(f"[WARN] Could not run compare script: {e}")
+
 
 # === Stage Display views + printable report (GAL 25-10-23) ===================
 # Purpose: include BOTH wired and inventory-only assets so stages like
