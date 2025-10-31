@@ -920,20 +920,22 @@ class WiringViewer(ttk.Frame):
         # Identify the currently displayed image (whatever is active onscreen)
         current_img = (self.bg_path_var.get() or "").strip().lower()
 
-        for i, img_path in enumerate(self._image_pages, start=1):
-            # Skip the image currently displayed in the header
+        total = len(self._image_pages)
+        shown = 0
+        for img_path in self._image_pages:
             if img_path.strip().lower() == current_img:
-                continue
-
+                continue  # skip current image shown in header
+            shown += 1
             name = os.path.basename(img_path)
             html_parts.append(f"""
             <figure style="text-align:center; margin-bottom:1.5em; page-break-after:always;">
                 <img src="file:///{img_path}" style="max-width:95%; height:auto; border:1px solid #ccc;">
                 <figcaption style="font-size:0.9em; color:#555;">
-                    Page {i}/{len(self._image_pages)} — {name}
+                    Page {shown}/{total-1 if total>1 else 1} — {name}
                 </figcaption>
             </figure>
             """)
+
 
 
 
@@ -1269,23 +1271,62 @@ class WiringViewer(ttk.Frame):
 
         css = """
         <style>
-        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;}
-        h1{margin:0 0 6px 0;font-size:20px}
-        .meta{font-size:12px;color:#555;margin:0 0 6px 0}
-        .warn{font-size:12px;color:#a00;margin:10px 0 12px 0;font-weight:600}
-        table{border-collapse:collapse;width:100%;font-size:12px}
-        th,td{border:1px solid #ccc;padding:6px 8px;vertical-align:top}
-        th{background:#f5f5f5;position:sticky;top:0}
-        tfoot td{border:none;color:#555;font-size:11px;padding-top:18px}
-        @media print { .noprint{display:none} th{position:sticky;top:0} }
+        body{
+            font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+            margin:24px;
+        }
+        h1{
+            margin:0 0 6px 0;
+            font-size:20px;
+        }
+        .meta{
+            font-size:12px;
+            color:#555;
+            margin:0 0 6px 0;
+        }
+        .warn{
+            font-size:14px;               /* bigger and bolder than before */
+            color:#c00;                   /* brighter red */
+            margin:10px 0 12px 0;
+            font-weight:700;
+        }
+        .dbpath{
+            font-size:10px;               /* small, gray DB path */
+            color:#777;
+        }
+        table{
+            border-collapse:collapse;
+            width:100%;
+            font-size:12px;
+        }
+        th,td{
+            border:1px solid #ccc;
+            padding:6px 8px;
+            vertical-align:top;
+        }
+        th{
+            background:#f5f5f5;
+            position:sticky;
+            top:0;
+        }
+        tfoot td{
+            border:none;
+            color:#555;
+            font-size:11px;
+            padding-top:18px;
+        }
+        @media print {
+            .noprint{display:none}
+            th{position:sticky;top:0}
+        }
         </style>
         """
+
         head = f"""
         <h1>MSB Field Wiring — {preview}</h1>
-        <p class="meta">DB: {db_path}</p>
+        <p class="warn">Printed: {printed} — Use immediately. Discard if not printed “today”.</p>
         {image_path_text}
         {image_html}
-        <p class="warn">Printed: {printed} — Use immediately. Discard if not printed “today”.</p>
         """
 
         # --- GAL 25-10-31e [IMG_EXPORT_HTML_INSERT] -------------------------------
@@ -1298,10 +1339,11 @@ class WiringViewer(ttk.Frame):
         tbody = "<tbody>" + "".join(
             "<tr>" + "".join(f"<td>{v}</td>" for v in row) + "</tr>" for row in rows
         ) + "</tbody>"
+ 
         foot = f"""
         <tfoot><tr><td colspan="{len(headers)}">
-        Rows: {len(rows)} • Printed: {printed}
-        • Guidance: paper copies expire as soon as a new database build or preview merge occurs.
+        Rows: {len(rows)} • Database: <span class="dbpath">{db_path}</span><br>
+        Guidance: paper copies expire as soon as a new database build or preview merge occurs.
         </td></tr></tfoot>
         """
 
