@@ -289,7 +289,7 @@ def main():
     ap.add_argument('--xml-zip', help='Path to a ZIP containing LORPreviews.xml')
     ap.add_argument('--out', help='Output folder (staging); defaults to dated ShowPC_Export folder')
     ap.add_argument('--out-previews', help='Folder for extracted .lorprev files (default: <out>/lorprevs)')
-    ap.add_argument('--filter', default=r'^(RGB Plus Background|Show Animation|Show Background)',
+    ap.add_argument('--filter', default=r'^(RGB Plus Prop Stage|Show Animation|Show Background Stage)',
                     help='Regex to select PreviewClass @Name; default limits to show masters')
     ap.add_argument('--parser', help='Optional path to parse_props_v6.py (defaults to next to this script)')
     ap.add_argument('--keep-temp-db', action='store_true', help='Keep temp DB after report creation')
@@ -507,6 +507,28 @@ def main():
     print(f"[INFO] Temp DB: {temp_db} (deleted after run unless --keep-temp-db)")
     print(f"[INFO] Manifest: {manifest_csv}")
     print(f"[INFO] Excel: {excel_path}")
+    # --- Open the Excel report for the operator ---
+    try:
+        from pathlib import Path as _P
+        import os, subprocess, platform, time
+
+        # Give the filesystem a brief moment (handles network share latency)
+        time.sleep(0.2)
+
+        xls = _P(excel_path)
+        if xls.exists():
+            sysname = platform.system()
+            if sysname == "Windows":
+                os.startfile(str(xls))  # opens in default Excel
+            elif sysname == "Darwin":  # macOS
+                subprocess.run(["open", str(xls)], check=False)
+            else:  # Linux/other
+                subprocess.run(["xdg-open", str(xls)], check=False)
+            print(f"[INFO] Opened Excel report: {xls}")
+        else:
+            print(f"[WARN] Excel report not found to open: {xls}")
+    except Exception as e:
+        print(f"[WARN] Could not open Excel automatically: {e}")
 
 
 if __name__ == '__main__':
