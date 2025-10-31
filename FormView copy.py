@@ -519,13 +519,6 @@ class WiringViewer(ttk.Frame):
     def __init__(self, master, db_path):
         super().__init__(master)            # <— we are a Frame hosted by a parent
         self.db_path = db_path
-        # --- GAL 25-10-30a [IMG_PAGING_STATE] ---------------------------------------
-        # Image paging state: page list + current index.
-        # Page 0 = the BackgroundFile shown by the preview (Page 01 visually)
-        self._image_pages: list[str] = []
-        self._image_page_idx: int = 0
-        # ---------------------------------------------------------------------------
-
         # DO NOT set title/geometry here (those belong to the root)
         # build UI on self...
         # e.g., self.tree = ttk.Treeview(self); self.tree.pack(...)
@@ -822,95 +815,8 @@ class WiringViewer(ttk.Frame):
             self.image_label.configure(image="", text="(image load error)")
             self._current_img = None
 
-    # --- GAL 25-10-30b [IMG_DISCOVERY_BLOCK] ------------------------------------
-    def _discover_image_pages(self, primary_path: str) -> list[str]:
-        """
-        Given the BackgroundFile path (primary_path), return an ordered list
-        of image paths for paging. Rules:
 
-        • Page 1 is the primary BackgroundFile (if present on disk).
-        • Additional pages are discovered in the *same folder* as primary.
-        • We prefer files that match the same Stage number token.
-            - Robust detection for both 'Stage 21' and 'Stage-21' styles.
-        • Allowed extensions: .jpg, .jpeg, .png (case-insensitive).
-        • If no stage token is found, fall back to 'all images in folder'.
-        • The returned list is deduped and alphabetically/naturally ordered
-            with the primary first.
-
-        This function *does not* change UI state. Caller sets self._image_pages
-        and self._image_page_idx as needed.
-        """
-        try:
-            import os, re
-            from pathlib import Path
-            p = (primary_path or "").strip()
-            if not p:
-                return []
-
-            # Normalize
-            p = os.path.normpath(p)
-            folder = os.path.dirname(p)
-            name   = os.path.basename(p)
-
-            # If primary isn't a file on disk, we still treat it as Page 1 *display*,
-            # but discovery will have nothing to add (unless we still scan the folder).
-            primary_exists = os.path.exists(p)
-
-            # Stage token extraction (accepts "Stage 21", "Stage-21", "Stage:21")
-            stage_num = None
-            m = re.search(r"\bStage[\s\-_:]*0?(\d{1,2})\b", name, flags=re.IGNORECASE)
-            if m:
-                stage_num = m.group(1)
-
-            # Gather candidates from folder
-            exts = {".jpg", ".jpeg", ".png"}
-            try:
-                entries = list(Path(folder).glob("*"))
-            except Exception:
-                entries = []
-
-            # First pass: allowed image files
-            imgs = [str(e) for e in entries
-                    if e.is_file() and e.suffix.lower() in exts]
-
-            # Filter by Stage token if we found one
-            if stage_num is not None:
-                # Build tolerant regex that matches "... Stage 21 ..." or "... Stage-21 ..."
-                # (ignore case; allow multiple spaces/dashes/underscores)
-                token = re.compile(rf"\bStage[\s\-_:]*0?{re.escape(stage_num)}\b",
-                                flags=re.IGNORECASE)
-                imgs = [f for f in imgs if token.search(os.path.basename(f))]
-
-            # Natural-ish sort (alphabetic is fine for now)
-            imgs = sorted(imgs, key=lambda s: s.lower())
-
-            # Ensure primary is first (even if it wouldn't pass stage filter).
-            out = []
-
-            if p not in imgs:
-                # Include the primary even if missing (shows as 'no image' later),
-                # because we want page 1 to track the selected BackgroundFile.
-                out.append(p)
-            else:
-                # Remove from the list so we can prepend it exactly once
-                imgs = [x for x in imgs if x != p]
-                out.append(p)
-
-            # Append the rest; dedupe just in case
-            seen = {out[0]}
-            for x in imgs:
-                if x not in seen:
-                    out.append(x); seen.add(x)
-
-            # If primary doesn't exist and there are zero other images,
-            # return just [primary] to keep paging logic consistent.
-            return out
-        except Exception:
-            # Fail safe: only the primary, if any
-            return [primary_path] if primary_path else []
-    # ---------------------------------------------------------------------------
-
-
+    # GAL 25-10-23 — helpers to fetch and show the preview image path
     # GAL 25-10-23 — resolve image by PreviewName OR StagePreviewLabel
     def _get_preview_bg_path(self, selected: str) -> str:
         """
@@ -930,22 +836,11 @@ class WiringViewer(ttk.Frame):
         except Exception:
             return ""
 
-    # --- GAL 25-10-30c [IMG_DISCOVERY_INTEGRATION] ------------------------------
+
+
     def _update_bg_path_ui(self):
         name = self.preview_var.get().strip()
-        primary = self._get_preview_bg_path(name) or ""
-        self.bg_path_var.set(primary or "(no background image)")
-
-        # NEW: discover pages whenever the primary path changes
-        pages = self._discover_image_pages(primary) if primary else []
-        # Always keep a consistent list (even if primary is empty)
-        self._image_pages = pages if pages else ([primary] if primary else [])
-        # Reset index to 0 (primary page)
-        self._image_page_idx = 0
-
-        # If you later wire up << >>, you'll set bg_path_var from self._image_pages[idx]
-        # For now, we leave bg_path_var = primary. The on-screen image already follows bg_path_var.
-    # ---------------------------------------------------------------------------
+        self.bg_path_var.set(self._get_preview_bg_path(name) or "(no background image)")
 
 
 
