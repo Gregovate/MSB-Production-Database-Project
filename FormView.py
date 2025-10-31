@@ -57,7 +57,7 @@ import datetime
 import sys
 import tkinter.messagebox as m
 
-APP_VERSION = "0.2.9"
+APP_VERSION = "0.3.0"
 
 # --- GAL 25-10-29c: Windows taskbar grouping + icon pick-up ---
 try:
