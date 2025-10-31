@@ -903,6 +903,44 @@ class WiringViewer(ttk.Frame):
         self._update_image_from_index()
     # ---------------------------------------------------------------------------
 
+    # --- GAL 25-10-31d [IMG_EXPORT_HTML_BLOCK] ------------------------------------
+    def _html_image_section(self) -> str:
+        """
+        Return HTML for all discovered images (self._image_pages).
+        Automatically includes captions and page breaks for printing.
+        """
+        import os
+        if not getattr(self, "_image_pages", None):
+            return "<p><em>No images found for this preview.</em></p>"
+
+        html_parts = [
+            '<div class="image-section" style="margin-bottom:1em;">'
+        ]
+
+        # Identify the currently displayed image (whatever is active onscreen)
+        current_img = (self.bg_path_var.get() or "").strip().lower()
+
+        for i, img_path in enumerate(self._image_pages, start=1):
+            # Skip the image currently displayed in the header
+            if img_path.strip().lower() == current_img:
+                continue
+
+            name = os.path.basename(img_path)
+            html_parts.append(f"""
+            <figure style="text-align:center; margin-bottom:1.5em; page-break-after:always;">
+                <img src="file:///{img_path}" style="max-width:95%; height:auto; border:1px solid #ccc;">
+                <figcaption style="font-size:0.9em; color:#555;">
+                    Page {i}/{len(self._image_pages)} — {name}
+                </figcaption>
+            </figure>
+            """)
+
+
+
+        html_parts.append("</div>")
+        return "\n".join(html_parts)
+    # ---------------------------------------------------------------------------
+
 
     # --- GAL 25-10-30b [IMG_DISCOVERY_BLOCK] ------------------------------------
     def _discover_image_pages(self, primary_path: str) -> list[str]:
@@ -1250,6 +1288,12 @@ class WiringViewer(ttk.Frame):
         <p class="warn">Printed: {printed} — Use immediately. Discard if not printed “today”.</p>
         """
 
+        # --- GAL 25-10-31e [IMG_EXPORT_HTML_INSERT] -------------------------------
+        # Insert discovered images (all pages) before the wiring grid.
+        html_image_section = self._html_image_section()
+        # ---------------------------------------------------------------------------
+
+
         thead = "<thead><tr>" + "".join(f"<th>{html.escape(h)}</th>" for h in headers) + "</tr></thead>"
         tbody = "<tbody>" + "".join(
             "<tr>" + "".join(f"<td>{v}</td>" for v in row) + "</tr>" for row in rows
@@ -1261,10 +1305,15 @@ class WiringViewer(ttk.Frame):
         </td></tr></tfoot>
         """
 
+        # --- GAL 25-10-31f [IMG_EXPORT_HTML_BUILD] -------------------------------
         html_doc = (
             f"<!doctype html><meta charset='utf-8'><title>Wiring — {preview}</title>"
-            f"{css}{head}<table>{thead}{tbody}{foot}</table>"
+            f"{css}{head}"
+            f"<h2>Wiring Images</h2>"
+            f"{html_image_section}"
+            f"<table>{thead}{tbody}{foot}</table>"
         )
+        # ---------------------------------------------------------------------------
 
         with open(path, "w", encoding="utf-8") as f:
             f.write(html_doc)
