@@ -1,6 +1,50 @@
 #!/usr/bin/env python3
 # ShowPC_LORPreviews_Export.py
 # GAL 2025-10-26 — v0.9
+# 
+# ShowPC LORPreviews exporter + wiring compare — SAFE PATH
+# --------------------------------------------------------
+# Purpose:
+#   • Read the live LORPreviews.xml (or its .zip) from the Show PC.
+#   • Extract selected PreviewClass entries into individual .lorprev files.
+#   • Build a temporary SQLite (via parse_props_v6.py) and create wiring views.
+#   • Compare wiring rows against the production lor_output_v6.db.
+#   • Generate a dated Excel report (Overview, Matches, OnlyInDB, OnlyInXML),
+#     plus preview metadata (including BackgroundFile) and background mismatches.
+
+# Why this script now:
+#   • Final two weeks before show: we avoid `--apply` in the merger.
+#   • The Show PC exports are the operational source of truth.
+
+# Outputs:
+#   • <out>/lorprevs/*.lorprev          (clean extracts from the Show PC)
+#   • <out>/showpc_extracted.db        (temp DB; deleted unless --keep-temp-db)
+#   • <out>/LORPreviews_Manifest_<date>.csv
+#   • <out>/ShowPC_WiringCompare_<date>.xlsx
+#       - Sheets: Overview, Wiring_Matches, Wiring_OnlyInDB, Wiring_OnlyInXML,
+#                 ParserStatus, Previews_XML, Background_Mismatches
+
+# Safe defaults:
+#   • Prompts for the live XML/ZIP (or pass --xml / --xml-zip).
+#   • Writes to G:\Shared drives\MSB Database\UserPreviewStaging\ShowPC\ShowPC_Export_<date>\
+#   • NEVER modifies prod DB. No `--apply`. No network moves. Just reports.
+
+# Operator notes:
+#   • Run after each editing session on the Show PC.
+#   • Share the XLSX to the team; use FormView for wiring.
+#     
+# Changelog:
+# 2025-10-26  V0.0.9  Initial code release
+# 2025-10-31  V1.0.0  First stable operational release
+#                     • Added GUI file picker for XML/ZIP input
+#                     • Added DEFAULT_PROD_DB with fail-fast validation
+#                     • Added MSB_SKIP_DISPLAYS_COMPARE=1 to skip display sheet compare
+#                     • Added BackgroundFile capture in manifest + Excel
+#                     • Added Previews_XML & Background_Mismatches Excel sheets
+#                     • Parsing now writes to TEMP DB only (no production writes)
+#                     • Timestamped output folders and filenames
+#                     • Full operator workflow: “double-click → pick file → done”
+
 
 import argparse, os, re, sys, zipfile, sqlite3, hashlib, datetime
 from pathlib import Path
@@ -8,6 +52,15 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 import traceback
 from contextlib import contextmanager
+
+# ---- Defaults (paths live on Show PC / Shared Drive)
+DEFAULT_PROD_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"  # read-only compare
+DEFAULT_REPORT_ROOT = r"G:\Shared drives\MSB Database\Database Previews\reports\ShowPC"
+DEFAULT_OUT_ROOT    = r"G:\Shared drives\MSB Database\UserPreviewStaging\ShowPC"
+# Temporarily disable the Displays CSV compare step
+RUN_DISPLAYS_COMPARE = False
+#Skip displays compare by default 
+os.environ["MSB_SKIP_DISPLAYS_COMPARE"] = "1"
 
 try:
     import pandas as pd
@@ -114,13 +167,15 @@ def extract_previews(xml_bytes: bytes, out_dir: Path, name_filter: str|None=None
             continue
         pid = prev.get('ID') or prev.get('Id') or prev.get('id') or ''
         rev = prev.get('Revision') or prev.get('revision') or ''
+        bg = prev.get('BackgroundFile') or ''
         xml_str = ET.tostring(prev, encoding='utf-8').decode('utf-8')
         fname = f"{safe_name(nm)}.lorprev"
         (out_dir / fname).write_text('<?xml version="1.0" encoding="utf-8"?>\n' + xml_str, encoding='utf-8')
         propcount = len(prev.findall('.//PropClass'))
         manifest.append({
             'PreviewName': nm, 'PreviewID': pid, 'Revision': rev,
-            'PropCount': propcount, 'HashFullXML': sha256_text(xml_str), 'FileName': fname
+            'PropCount': propcount, 'HashFullXML': sha256_text(xml_str), 'FileName': fname,
+            'BackgroundFile': bg  # <— add this
         })
     return manifest
 
@@ -234,7 +289,6 @@ def main():
     ap.add_argument('--xml-zip', help='Path to a ZIP containing LORPreviews.xml')
     ap.add_argument('--out', help='Output folder (staging); defaults to dated ShowPC_Export folder')
     ap.add_argument('--out-previews', help='Folder for extracted .lorprev files (default: <out>/lorprevs)')
-    ap.add_argument('--prod-db', help='Production lor_output_v6.db to compare against')
     ap.add_argument('--filter', default=r'^(RGB Plus Background|Show Animation|Show Background)',
                     help='Regex to select PreviewClass @Name; default limits to show masters')
     ap.add_argument('--parser', help='Optional path to parse_props_v6.py (defaults to next to this script)')
@@ -242,14 +296,23 @@ def main():
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--continue-on-error', action='store_true',
                 help='Keep going even if parser audits/errors occur')
+    ap.add_argument('--prod-db',
+        default=DEFAULT_PROD_DB,
+        help='Production lor_output_v6.db to compare against (read-only). '
+            f'Default: {DEFAULT_PROD_DB}')
+    ap.add_argument('--no-wiring-compare', action='store_true',
+        help='Skip wiring compare + Excel build (useful if prod DB not mapped)')
 
     args = ap.parse_args()
+
+    run_stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+
 
     # --- Default output location if not specified ---
     if not args.out:
         base = Path(r"G:\Shared drives\MSB Database\UserPreviewStaging\ShowPC")
         date_tag = datetime.datetime.now().strftime("%Y-%m-%d")
-        args.out = str(base / f"ShowPC_Export_{date_tag}")
+        args.out = str(base / f"ShowPC_Export_{run_stamp}")
         print(f"[INFO] No --out specified; using default export folder:")
         print(f"       {args.out}")
 
@@ -261,9 +324,9 @@ def main():
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
     lorprev_dir = Path(args.out_previews); lorprev_dir.mkdir(parents=True, exist_ok=True)
 
-    manifest_csv = out_dir / f"LORPreviews_Manifest_{datetime.datetime.now().strftime('%Y-%m-%d')}.csv"
+    manifest_csv = out_dir / f"LORPreviews_Manifest_{run_stamp}.csv"
     temp_db = out_dir / 'showpc_extracted.db'
-    excel_path = out_dir / f"ShowPC_WiringCompare_{datetime.datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    excel_path   = out_dir / f"ShowPC_WiringCompare_{run_stamp}.xlsx"
 
     parser_path = Path(args.parser) if args.parser else (Path(__file__).parent / 'parse_props_v6.py')
     if not parser_path.exists():
@@ -386,6 +449,37 @@ def main():
         df_parser_status = None
 
     build_wiring_excel(temp_db, Path(args.prod_db), excel_path, verbose=args.verbose)
+
+    # ---- Append Preview background info and mismatches ----
+    if pd is not None:
+        try:
+            import sqlite3 as _sqlite
+            # Read previews from TEMP (XML side)
+            conn_tmp = _sqlite.connect(str(temp_db))
+            df_xml_prev = pd.read_sql_query(
+                "SELECT Name AS PreviewName, BackgroundFile AS Background_XML FROM previews", conn_tmp
+            )
+            conn_tmp.close()
+
+            # Read previews from PROD (DB side)
+            conn_prod = _sqlite.connect(str(Path(args.prod_db)))
+            df_db_prev = pd.read_sql_query(
+                "SELECT Name AS PreviewName, BackgroundFile AS Background_DB FROM previews", conn_prod
+            )
+            conn_prod.close()
+
+            # Left join XML → DB to spot deltas
+            df_bg = df_xml_prev.merge(df_db_prev, on="PreviewName", how="left")
+            df_mismatch = df_bg[df_bg["Background_XML"].fillna("") != df_bg["Background_DB"].fillna("")] \
+                            .sort_values("PreviewName")
+
+            with pd.ExcelWriter(excel_path, engine="openpyxl", mode="a", if_sheet_exists="overlay") as writer:
+                df_xml_prev.sort_values("PreviewName").to_excel(writer, index=False, sheet_name="Previews_XML")
+                df_mismatch.to_excel(writer, index=False, sheet_name="Background_Mismatches")
+            print(f"[INFO] Added Previews_XML and Background_Mismatches to {excel_path}")
+        except Exception as e:
+            print(f"[WARN] Could not append preview background sheets: {e}")
+
 
     # ---- Append ParserStatus to the Excel we just created ----
     if pd is not None and df_parser_status is not None:
