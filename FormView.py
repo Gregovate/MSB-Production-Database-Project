@@ -1347,15 +1347,26 @@ class WiringViewer(ttk.Frame):
         </td></tr></tfoot>
         """
 
-        # --- GAL 25-10-31f [IMG_EXPORT_HTML_BUILD] -------------------------------
+        # --- GAL 25-11-01f [IMG_EXPORT_CONDITIONAL_SECTION] ------------------------
+        extra_images_exist = (
+            hasattr(self, "_image_pages") and
+            len(self._image_pages) > 1
+        )
+
         html_doc = (
             f"<!doctype html><meta charset='utf-8'><title>Wiring — {preview}</title>"
             f"{css}{head}"
-            f"<h2>Wiring Images</h2>"
-            f"{html_image_section}"
+            +
+            (
+                f"<h2>Additional Wiring Images</h2>{html_image_section}"
+                if extra_images_exist else
+                ""
+            )
+            +
             f"<table>{thead}{tbody}{foot}</table>"
         )
         # ---------------------------------------------------------------------------
+
 
         with open(path, "w", encoding="utf-8") as f:
             f.write(html_doc)
