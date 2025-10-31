@@ -507,6 +507,31 @@ def main():
     print(f"[INFO] Temp DB: {temp_db} (deleted after run unless --keep-temp-db)")
     print(f"[INFO] Manifest: {manifest_csv}")
     print(f"[INFO] Excel: {excel_path}")
+    
+    # --- Auto-fit columns in the Excel report ---
+    try:
+        from openpyxl import load_workbook
+
+        wb = load_workbook(excel_path)
+        for ws in wb.worksheets:
+            for col in ws.columns:
+                max_len = 0
+                col_letter = col[0].column_letter
+                for cell in col:
+                    try:
+                        # Convert cell value to string and measure length
+                        val_len = len(str(cell.value)) if cell.value is not None else 0
+                        if val_len > max_len:
+                            max_len = val_len
+                    except Exception:
+                        pass
+                # Add a small buffer (2 chars)
+                ws.column_dimensions[col_letter].width = max_len + 2
+        wb.save(excel_path)
+        print(f"[INFO] Auto-fitted columns in: {excel_path}")
+    except Exception as e:
+        print(f"[WARN] Could not auto-fit columns: {e}")
+    
     # --- Open the Excel report for the operator ---
     try:
         from pathlib import Path as _P
