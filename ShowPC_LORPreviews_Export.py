@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ShowPC_LORPreviews_Export.py
-# GAL 2025-10-26 — v0.9
+# GAL 2025-11-01 — v1.1.0
 # 
 # ShowPC LORPreviews exporter + wiring compare — SAFE PATH
 # --------------------------------------------------------
@@ -44,6 +44,18 @@
 #                     • Parsing now writes to TEMP DB only (no production writes)
 #                     • Timestamped output folders and filenames
 #                     • Full operator workflow: “double-click → pick file → done”
+# 2025-11-01  V1.1.0  Display Name audit enhancements
+#                     • Added prop-level Display Name audits using TEMP DB
+#                     • Joins props → previews via both GUID and IntPreviewID keys
+#                     • Fallback join to preview_wiring_sorted_v6 for unmatched props
+#                     • Ignores blanks when DeviceType == "None"
+#                     • Flags Display Names containing whitespace
+#                     • Adds two Excel sheets:
+#                           - Blank_DisplayNames
+#                           - Spaces_in_DisplayNames
+#                     • Includes PreviewName and BackgroundFile context for repairs
+#                     • Confirmed background path + auto-fit + auto-open all working
+
 
 
 import argparse, os, re, sys, zipfile, sqlite3, hashlib, datetime
@@ -168,14 +180,22 @@ def extract_previews(xml_bytes: bytes, out_dir: Path, name_filter: str|None=None
         pid = prev.get('ID') or prev.get('Id') or prev.get('id') or ''
         rev = prev.get('Revision') or prev.get('revision') or ''
         bg = prev.get('BackgroundFile') or ''
+        # NEW: LOR “Display Name” lives in the comment; different exports use different keys
+        display_name = (prev.get('Comment') or prev.get('LORComment') or '').strip()
+
         xml_str = ET.tostring(prev, encoding='utf-8').decode('utf-8')
         fname = f"{safe_name(nm)}.lorprev"
         (out_dir / fname).write_text('<?xml version="1.0" encoding="utf-8"?>\n' + xml_str, encoding='utf-8')
         propcount = len(prev.findall('.//PropClass'))
         manifest.append({
-            'PreviewName': nm, 'PreviewID': pid, 'Revision': rev,
-            'PropCount': propcount, 'HashFullXML': sha256_text(xml_str), 'FileName': fname,
-            'BackgroundFile': bg  # <— add this
+            'PreviewName': nm,
+            'PreviewID': pid,
+            'Revision': rev,
+            'PropCount': propcount,
+            'HashFullXML': sha256_text(xml_str),
+            'FileName': fname,
+            'BackgroundFile': bg,
+            'LORComment': display_name,   # <— add this
         })
     return manifest
 
@@ -480,6 +500,103 @@ def main():
         except Exception as e:
             print(f"[WARN] Could not append preview background sheets: {e}")
 
+    # --- Prop-level Display Name audits (robust): blanks + spaces + solid preview join ---
+    try:
+        # import sqlite3 as _sqlite
+        # import pandas as pd
+
+        conn = _sqlite.connect(str(temp_db))
+
+        # 1) First, build a preview lookup that carries both keys (GUID + Int)
+        q_pv = """
+        SELECT
+            CAST(IntPreviewID AS TEXT) AS IntKey,
+            CAST(id AS TEXT)           AS GuidKey,
+            Name                       AS PreviewName,
+            BackgroundFile
+        FROM previews
+        """
+        df_pv = pd.read_sql_query(q_pv, conn)
+
+        # 2) Pull props with DisplayName (LORComment), DeviceType, and raw PreviewId
+        q_props = """
+        SELECT
+            PropID,
+            Name                          AS PropName,
+            COALESCE(DeviceType,'')       AS DeviceType,
+            TRIM(COALESCE(LORComment,'')) AS DisplayName,
+            CAST(PreviewId AS TEXT)       AS PreviewIdRaw
+        FROM props
+        """
+        df_props = pd.read_sql_query(q_props, conn)
+
+        # 3) Try to resolve preview via either Int or GUID key
+        #    (two left-joins then coalesce the matched columns)
+        df_join_int  = df_props.merge(df_pv.add_prefix("Int_"),  left_on="PreviewIdRaw", right_on="Int_IntKey",  how="left")
+        df_join_both = df_join_int.merge(df_pv.add_prefix("Guid_"), left_on="PreviewIdRaw", right_on="Guid_GuidKey", how="left")
+
+        # Coalesce preview columns from either side
+        df_join_both["PreviewName"]   = df_join_both["Int_PreviewName"].fillna(df_join_both["Guid_PreviewName"])
+        df_join_both["BackgroundFile"] = df_join_both["Int_BackgroundFile"].fillna(df_join_both["Guid_BackgroundFile"])
+
+        # 4) Fallback: if still missing, use wiring view (has PreviewName by PropID)
+        try:
+            q_wiring = """
+            SELECT DISTINCT
+                PropID,
+                PreviewName
+            FROM preview_wiring_sorted_v6
+            """
+            df_wiring = pd.read_sql_query(q_wiring, conn)
+            # fill only where PreviewName is still null
+            mask_missing = df_join_both["PreviewName"].isna()
+            df_join_both.loc[mask_missing, "PreviewName"] = df_join_both[mask_missing].merge(
+                df_wiring, on="PropID", how="left"
+            )["PreviewName"].values
+        except Exception:
+            # wiring view may not exist if parser failed early; ignore
+            pass
+
+        conn.close()
+
+        # Normalize helper and build audits
+        df_all = df_join_both[[
+            "PropID","PropName","DeviceType","DisplayName","PreviewName","BackgroundFile","PreviewIdRaw"
+        ]].copy()
+
+        df_all["DeviceType_lc"] = df_all["DeviceType"].astype(str).str.lower()
+
+        # Rule 1: Blank display names (excluding DeviceType == "none")
+        df_blanks = df_all[
+            (df_all["DisplayName"] == "") &
+            (df_all["DeviceType_lc"] != "none")
+        ].drop(columns=["DeviceType_lc"]).sort_values(["PreviewName", "PropName"], na_position="last")
+
+        # Rule 2: Names containing spaces (any whitespace)
+        df_spaces = df_all[
+            df_all["DisplayName"].astype(str).str.contains(r"\s", regex=True, na=False)
+        ].drop(columns=["DeviceType_lc"]).sort_values(["PreviewName", "PropName"], na_position="last")
+
+        # Write both tabs (replace-or-create)
+        with pd.ExcelWriter(excel_path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            if df_blanks.empty:
+                pd.DataFrame([{"Status": "No blank Display Names (excluding DeviceType=None)"}]).to_excel(
+                    writer, index=False, sheet_name="Blank_DisplayNames"
+                )
+            else:
+                df_blanks.to_excel(writer, index=False, sheet_name="Blank_DisplayNames")
+
+            if df_spaces.empty:
+                pd.DataFrame([{"Status": "No Display Names with spaces"}]).to_excel(
+                    writer, index=False, sheet_name="Spaces_in_DisplayNames"
+                )
+            else:
+                df_spaces.to_excel(writer, index=False, sheet_name="Spaces_in_DisplayNames")
+
+        print(f"[INFO] Audited Display Names → Blank: {len(df_blanks)}; Spaces: {len(df_spaces)}")
+
+    except Exception as e:
+        print(f"[WARN] Could not build Display Name audit sheets: {e}")
 
     # ---- Append ParserStatus to the Excel we just created ----
     if pd is not None and df_parser_status is not None:
