@@ -2261,7 +2261,7 @@ def process_lor_multiple_channel_grids(preview_id, root):
                 "Lights":       int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
                 "Grid":         g,  # parsed grid dict
             }
-            groups.setdefault(comment, []).append(entry)
+            groups.setdefault(raw_id, []).append(entry)
 
     # ---------------------- process each multi-grid group --------------------
     # Choose master GRID by lowest (UID, StartChannel)  [controller wins]
@@ -2275,9 +2275,11 @@ def process_lor_multiple_channel_grids(preview_id, root):
         rid = d.get("PropID_scoped") or d.get("id") or d.get("Name") or ""
         return (uid_key, sc_key, rid)
     
-    for comment, items in groups.items():
+    for raw_id_key, items in groups.items():
         if len(items) < 2:
             continue  # true multi-grid groups only
+        comment = items[0].get("LORComment") or ""
+
 
         # Choose master GRID by lowest StartChannel; tiebreaker: UID sorting
         # items_sorted = sorted(
