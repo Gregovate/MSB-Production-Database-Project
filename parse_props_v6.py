@@ -2110,6 +2110,27 @@ def process_lor_props(preview_id, root):
     conn.commit()
     conn.close()
 
+# --- GAL 25-11-02: aggregate detection helper (very conservative) ----------
+# GAL 25-11-02 — conservative aggregate detector
+def _is_aggregate_unit(device_type: str,
+                       individual_channels: str | None,
+                       leg_count: int,
+                       bulb_shape: str | None = None) -> bool:
+    """
+    Treat as a single physical RGB/RGBW unit (no subProps) when:
+      • LOR device
+      • IndividualChannels False-ish
+      • exactly 3 or 4 legs (RGB or RGBW)
+    Bulb shape is optional here; we can tighten later if needed.
+    """
+    ic = str(individual_channels or "").strip().lower()
+    is_ic_false = ic in ("", "false", "0", "no", "n")
+    return (
+        device_type == "LOR"
+        and is_ic_false
+        and leg_count in (3, 4)
+    )
+
 
 
 
@@ -2267,6 +2288,16 @@ def process_lor_multiple_channel_grids(preview_id, root):
         items_sorted = sorted(items, key=_pair_key_grid)
         master = items_sorted[0]
 
+        # GAL 25-11-02 — decide if this group is an aggregate one-plug unit
+        p0 = master["prop"]
+        device_type = p0.get("DeviceType") or "LOR"
+        bulb_shape  = p0.get("BulbShape")
+        ind_ch      = p0.get("IndividualChannels")
+        leg_count   = len(items_sorted)
+        is_aggregate = _is_aggregate_unit(device_type, ind_ch, leg_count, bulb_shape)
+
+
+
         # Compose scoped master id from the PropClass that *owns* the master grid
         master_raw_id = master["raw_id"]
         master_id     = scoped_id(preview_id, master_raw_id)
@@ -2328,60 +2359,63 @@ def process_lor_multiple_channel_grids(preview_id, root):
                 print(f"[DEBUG] (LOR multi) MASTER → props SKIP (collision/error) id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
 
         # Insert remaining grids into subProps
-        lor_first = first_token(comment)
-        for d in items_sorted[1:]:
-            g = d["Grid"]
-            uid   = g["UID"]
-            start = g["StartChannel"] if g["StartChannel"] is not None else 0
-            sub_id = f"{master_id}-{uid}-{start:02d}"   # unique under this master/preview
+        # Insert remaining grids into subProps (skip for aggregate one-plug RGB/RGBW)
+        if not is_aggregate:
+            lor_first = first_token(comment)
+            for d in items_sorted[1:]:
+                g = d["Grid"]
+                uid   = g["UID"]
+                start = g["StartChannel"] if g["StartChannel"] is not None else 0
+                sub_id = f"{master_id}-{uid}-{start:02d}"   # unique under this master/preview
 
-            # Subprop name pattern: "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
-            name_parts = [lor_first]
-            if g["Color"]:
-                name_parts.append(g["Color"])
-            if uid is not None:
-                name_parts.append(f"{uid}-{start:02d}")
-            sub_name = " ".join(name_parts).strip()
-            # Insert master into props (WITH full network/channel fields)
-            # Keep the original prop as the master; materialize each grid group as its own subProp
-            # GAL 25-10-22: collision-aware insert (no silent overwrite)
-            insert_sql = """
-                INSERT INTO subProps (
-                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
-                    EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
-                    LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
-                    MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            params = (
-                sub_id, sub_name, comment, "LOR", d["BulbShape"],
-                g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
-                d["CustomBulbColor"], d["DimmingCurveName"], d["IndividualChannels"], d["LegacySequenceMethod"],
-                d["MaxChannels"], d["Opacity"], d["MasterDimmable"], d["PreviewBulbSize"], None,  # RgbOrder=NULL
-                master_id, d["SeparateIds"], d["StartLocation"], d["StringType"], d["TraditionalColors"],
-                d["TraditionalType"], d["EffectBulbSize"], d["Tag"], d["Parm1"], d["Parm2"], d["Parm3"],
-                d["Parm4"], d["Parm5"], d["Parm6"], d["Parm7"], d["Parm8"], d["Lights"], preview_id
-            )
-            incoming_ctx = {
-                "SubPropID":    sub_id,
-                "Name":         sub_name,
-                "LORComment":   comment,
-                "PreviewId":    preview_id,
-                "DeviceType":   "LOR",
-                "Network":      g.get("Network",""),
-                "UID":          uid,
-                "StartChannel": g.get("StartChannel",""),
-                "EndChannel":   g.get("EndChannel",""),
-                "MasterPropId": master_id,
-            }
+                # Subprop name pattern: "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
+                name_parts = [lor_first]
+                if g["Color"]:
+                    name_parts.append(g["Color"])
+                if uid is not None:
+                    name_parts.append(f"{uid}-{start:02d}")
+                sub_name = " ".join(name_parts).strip()
 
-            ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
+                insert_sql = """
+                    INSERT INTO subProps (
+                        SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                        EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                        LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                        MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                        EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                params = (
+                    sub_id, sub_name, comment, "LOR", d["BulbShape"],
+                    g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                    d["CustomBulbColor"], d["DimmingCurveName"], d["IndividualChannels"], d["LegacySequenceMethod"],
+                    d["MaxChannels"], d["Opacity"], d["MasterDimmable"], d["PreviewBulbSize"], None,  # RgbOrder=NULL
+                    master_id, d["SeparateIds"], d["StartLocation"], d["StringType"], d["TraditionalColors"],
+                    d["TraditionalType"], d["EffectBulbSize"], d["Tag"], d["Parm1"], d["Parm2"], d["Parm3"],
+                    d["Parm4"], d["Parm5"], d["Parm6"], d["Parm7"], d["Parm8"], d["Lights"], preview_id
+                )
+                incoming_ctx = {
+                    "SubPropID":    sub_id,
+                    "Name":         sub_name,
+                    "LORComment":   comment,
+                    "PreviewId":    preview_id,
+                    "DeviceType":   "LOR",
+                    "Network":      g.get("Network",""),
+                    "UID":          uid,
+                    "StartChannel": g.get("StartChannel",""),
+                    "EndChannel":   g.get("EndChannel",""),
+                    "MasterPropId": master_id,
+                }
+
+                ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
+                if DEBUG:
+                    if ok:
+                        print(f"[DEBUG] (LOR multi) SUB  → subProps INSERT id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+                    else:
+                        print(f"[DEBUG] (LOR multi) SUB  → subProps SKIP (collision/error) id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+        else:
             if DEBUG:
-                if ok:
-                    print(f"[DEBUG] (LOR multi) SUB  → subProps INSERT id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
-                else:
-                    print(f"[DEBUG] (LOR multi) SUB  → subProps SKIP (collision/error) id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+                print(f"[DEBUG] (LOR multi) aggregate skip subProps → {comment}  legs={leg_count}")
 
     conn.commit()
     conn.close()
