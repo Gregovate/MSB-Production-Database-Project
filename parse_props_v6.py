@@ -1,6 +1,6 @@
 # MSB Database — LOR Preview Parser (v6)
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2025-10-23  V6.7.6 
+# Current Version : 2025-11-02  V6.8.0
 # (GAL)
 # Author          : Greg Liebig, Engineering Innovations, LLC.
 #
@@ -13,64 +13,37 @@
 #   • dmxChannels
 #   • wiring views (preview_wiring_map_v6 / preview_wiring_sorted_v6)
 #
-# Recent Additions (GAL 2025-10-23 → v6.7.5)
-# -------------------------------------------
-# • DeviceType ="None" handling re-aligned to Core Model v1.0:
-#     – Masters ( MasterPropId is NULL ) → insert into props as stand-alone inventory records.  
-#     – Linked units ( MasterPropId set ) → ignored or optional subProps write (no wiring impact).  
-#     – No local fan-out; global fan-out handled later in the pipeline.
+# Revision History
+# ----------------
+# 2025-11-02  V6.8.0  (GAL)
+# • Multi-grid collector groups by raw PropID (XML id) instead of LORComment.
+#   – Prevents cross-prop merges when authors reuse comments (e.g., "FreeFrosty").
+# • Multi-grid subProp creation is gated by a new aggregate decision:
+#   – If IndividualChannels=False (boolean false-ish) → treat as one-plug unit → skip subProps.
+#   – If IndividualChannels=True → per-leg strings (arches/pinwheels) → create subProps as before.
+#   – DMX channel rows are still written for all legs (no change to wiring rollups).
+# • Added optional DEBUG traces at decision points (off by default).
+# • (Housekeeping) Compare step guard: align DB_PATH with DB_FILE when present.
 #
-# • Global uniqueness audit added for DisplayName masters across previews.  
-#     – A DisplayName can be mastered in only one preview → hard error with CSV reports.  
-#     – Grouped console output restored (props/subProps counts per preview).
+# 2025-10-23  V6.7.6  (GAL)
+# • Global uniqueness audit for DisplayName masters across previews with CSV reports.
+# • Report directory standardization:
+#     G:\Shared drives\MSB Database\Database Previews\reports\
+#   – duplicate_display_names_masters.csv
+#   – duplicate_display_names_by_preview.csv
+# • Summary output alignment & minor documentation updates.
 #
-# • Reports now write to a dedicated folder:  
-#       G:\Shared drives\MSB Database\Database Previews\reports\
-#        – duplicate_display_names_masters.csv  
-#        – duplicate_display_names_by_preview.csv
-#
-# • get_reports_dir() enhanced to honor REPORTS_DIR or REPORTS_PATH and auto-create the folder.
-#
-# • Minor documentation alignment with lor_core.py (field map clarity; no logic changes).
-
-# Naming Convention
-# -----------------
-# Display names follow a consistent pattern:
-#     <Name>[-<Location>][-<Seq><Color?>]
-
-#
-# • Name: CamelCase (capitalize each word, no spaces).
-#         Stage/section or pattern may be embedded (e.g., DF_A, ElfP2, NoteB).
-# • Location (optional): DS, PS, LH, RH, Center, Front, Rear, A/B/C… (sections).
-# • Seq (optional): instance number.
-#       - Use 1..9 if guaranteed <10 total.
-#       - Use zero-padded 01, 02, …, 10, 11… if 10+ possible.
-# • Color (optional): single-letter suffix appended to Seq with no extra hyphen.
-#       R=Red, G=Green, B=Blue, W=White, Y=Yellow (e.g., -01R).
-#       If needed, full color names (e.g., -Red) may be used, but suffix is preferred.
-#
-# Device Types
-# ------------
-# • LOR   : Single- or multi-grid channel props.
-#           - Master prop = lowest StartChannel among items with the same LORComment.
-#           - Master goes to `props`.
-#           - Other legs go to `subProps` (linked via MasterPropId).
-#
-# • DMX   : Channel grids are split into universes.
-#           - Master metadata goes to `props`.
-#           - Each universe leg goes to `dmxChannels`.
-#
-# • None  : Props with no electronic channels (physical-only, e.g., static cutouts).
-#           - Saved in `props` with DeviceType="None".
-#           - Lights count from Parm2 (if present) aggregated by LORComment.
-#           - Present for labeling, inventory, storage.
-#           - Excluded from wiring views (no channels).
+# 2025-10-23  V6.7.5  (GAL)
+# • DeviceType="None" handling aligned to Core Model v1.0:
+#   – Masters (MasterPropId is NULL) are inserted to props as inventory records.
+#   – Linked units (MasterPropId set) are ignored or optionally written as subProps (no wiring impact).
+#   – No local fan-out; global fan-out handled later in the pipeline.
 #
 # Wiring Views
 # ------------
 # • preview_wiring_map_v6 / preview_wiring_sorted_v6 present channel maps for wiring.
 # • Only channel-based items appear (LOR, DMX).
-# • DeviceType=None props are omitted from views but remain in `props`.
+# • DeviceType=None props are omitted from views (no channels).
 #
 # IDs and Scoping
 # ---------------
@@ -85,13 +58,12 @@
 #   - subProps.MasterPropId
 #   - subProps.SubPropID
 #
-# Error Checking & Reports (GAL 2025-10-23)
-# -----------------------------------------
+# Error Checking & Reports (context)
+# ----------------------------------
 # • PropID/SubPropID collisions:
-#     - Console ERROR: “Prop/SubProp collision: Preview='<Name>' Display='<LORComment>' Channel='<Name>' …”
-#     - CSVs: propid_collisions.csv, subpropid_collisions.csv
-# • (Planned next) Duplicate Display Names (ERROR) across system → duplicate_display_names.csv
-# • (Planned next) Wiring collisions across previews (INFO) → wiring_collisions_all_previews.csv
+#     - Console ERROR + CSVs: propid_collisions.csv, subpropid_collisions.csv
+# • Duplicate DisplayName masters across previews (ERROR):
+#     - CSVs: duplicate_display_names_masters.csv, duplicate_display_names_by_preview.csv
 #
 # Logging Toggles
 # ---------------
