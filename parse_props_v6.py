@@ -1,6 +1,6 @@
 # MSB Database — LOR Preview Parser (v6)
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2025-10-23  V6.7.6 
+# Current Version : 2025-11-02  V6.8.0
 # (GAL)
 # Author          : Greg Liebig, Engineering Innovations, LLC.
 #
@@ -13,64 +13,37 @@
 #   • dmxChannels
 #   • wiring views (preview_wiring_map_v6 / preview_wiring_sorted_v6)
 #
-# Recent Additions (GAL 2025-10-23 → v6.7.5)
-# -------------------------------------------
-# • DeviceType ="None" handling re-aligned to Core Model v1.0:
-#     – Masters ( MasterPropId is NULL ) → insert into props as stand-alone inventory records.  
-#     – Linked units ( MasterPropId set ) → ignored or optional subProps write (no wiring impact).  
-#     – No local fan-out; global fan-out handled later in the pipeline.
+# Revision History
+# ----------------
+# 2025-11-02  V6.8.0  (GAL)
+# • Multi-grid collector groups by raw PropID (XML id) instead of LORComment.
+#   – Prevents cross-prop merges when authors reuse comments (e.g., "FreeFrosty").
+# • Multi-grid subProp creation is gated by a new aggregate decision:
+#   – If IndividualChannels=False (boolean false-ish) → treat as one-plug unit → skip subProps.
+#   – If IndividualChannels=True → per-leg strings (arches/pinwheels) → create subProps as before.
+#   – DMX channel rows are still written for all legs (no change to wiring rollups).
+# • Added optional DEBUG traces at decision points (off by default).
+# • (Housekeeping) Compare step guard: align DB_PATH with DB_FILE when present.
 #
-# • Global uniqueness audit added for DisplayName masters across previews.  
-#     – A DisplayName can be mastered in only one preview → hard error with CSV reports.  
-#     – Grouped console output restored (props/subProps counts per preview).
+# 2025-10-23  V6.7.6  (GAL)
+# • Global uniqueness audit for DisplayName masters across previews with CSV reports.
+# • Report directory standardization:
+#     G:\Shared drives\MSB Database\Database Previews\reports\
+#   – duplicate_display_names_masters.csv
+#   – duplicate_display_names_by_preview.csv
+# • Summary output alignment & minor documentation updates.
 #
-# • Reports now write to a dedicated folder:  
-#       G:\Shared drives\MSB Database\Database Previews\reports\
-#        – duplicate_display_names_masters.csv  
-#        – duplicate_display_names_by_preview.csv
-#
-# • get_reports_dir() enhanced to honor REPORTS_DIR or REPORTS_PATH and auto-create the folder.
-#
-# • Minor documentation alignment with lor_core.py (field map clarity; no logic changes).
-
-# Naming Convention
-# -----------------
-# Display names follow a consistent pattern:
-#     <Name>[-<Location>][-<Seq><Color?>]
-
-#
-# • Name: CamelCase (capitalize each word, no spaces).
-#         Stage/section or pattern may be embedded (e.g., DF_A, ElfP2, NoteB).
-# • Location (optional): DS, PS, LH, RH, Center, Front, Rear, A/B/C… (sections).
-# • Seq (optional): instance number.
-#       - Use 1..9 if guaranteed <10 total.
-#       - Use zero-padded 01, 02, …, 10, 11… if 10+ possible.
-# • Color (optional): single-letter suffix appended to Seq with no extra hyphen.
-#       R=Red, G=Green, B=Blue, W=White, Y=Yellow (e.g., -01R).
-#       If needed, full color names (e.g., -Red) may be used, but suffix is preferred.
-#
-# Device Types
-# ------------
-# • LOR   : Single- or multi-grid channel props.
-#           - Master prop = lowest StartChannel among items with the same LORComment.
-#           - Master goes to `props`.
-#           - Other legs go to `subProps` (linked via MasterPropId).
-#
-# • DMX   : Channel grids are split into universes.
-#           - Master metadata goes to `props`.
-#           - Each universe leg goes to `dmxChannels`.
-#
-# • None  : Props with no electronic channels (physical-only, e.g., static cutouts).
-#           - Saved in `props` with DeviceType="None".
-#           - Lights count from Parm2 (if present) aggregated by LORComment.
-#           - Present for labeling, inventory, storage.
-#           - Excluded from wiring views (no channels).
+# 2025-10-23  V6.7.5  (GAL)
+# • DeviceType="None" handling aligned to Core Model v1.0:
+#   – Masters (MasterPropId is NULL) are inserted to props as inventory records.
+#   – Linked units (MasterPropId set) are ignored or optionally written as subProps (no wiring impact).
+#   – No local fan-out; global fan-out handled later in the pipeline.
 #
 # Wiring Views
 # ------------
 # • preview_wiring_map_v6 / preview_wiring_sorted_v6 present channel maps for wiring.
 # • Only channel-based items appear (LOR, DMX).
-# • DeviceType=None props are omitted from views but remain in `props`.
+# • DeviceType=None props are omitted from views (no channels).
 #
 # IDs and Scoping
 # ---------------
@@ -85,13 +58,12 @@
 #   - subProps.MasterPropId
 #   - subProps.SubPropID
 #
-# Error Checking & Reports (GAL 2025-10-23)
-# -----------------------------------------
+# Error Checking & Reports (context)
+# ----------------------------------
 # • PropID/SubPropID collisions:
-#     - Console ERROR: “Prop/SubProp collision: Preview='<Name>' Display='<LORComment>' Channel='<Name>' …”
-#     - CSVs: propid_collisions.csv, subpropid_collisions.csv
-# • (Planned next) Duplicate Display Names (ERROR) across system → duplicate_display_names.csv
-# • (Planned next) Wiring collisions across previews (INFO) → wiring_collisions_all_previews.csv
+#     - Console ERROR + CSVs: propid_collisions.csv, subpropid_collisions.csv
+# • Duplicate DisplayName masters across previews (ERROR):
+#     - CSVs: duplicate_display_names_masters.csv, duplicate_display_names_by_preview.csv
 #
 # Logging Toggles
 # ---------------
@@ -195,6 +167,8 @@ DEFAULT_PREVIEW_PATH = G / "Database Previews"
 DB_FILE = DEFAULT_DB_FILE
 PREVIEW_PATH = DEFAULT_PREVIEW_PATH
 
+# GAL 25-11-02 — ensure compare_displays_vs_db and legacy calls see same DB reference
+DB_PATH = DB_FILE
 
 def get_path(prompt: str, default_path: str) -> str:
     """Prompt for a path, using a default if user just hits Enter."""
@@ -2110,6 +2084,27 @@ def process_lor_props(preview_id, root):
     conn.commit()
     conn.close()
 
+# --- GAL 25-11-02: aggregate detection helper (very conservative) ----------
+# GAL 25-11-02 — conservative aggregate detector
+def _is_aggregate_unit(device_type: str,
+                       individual_channels: str | None,
+                       leg_count: int,
+                       bulb_shape: str | None = None) -> bool:
+    """
+    Treat as a single physical RGB/RGBW unit (no subProps) when:
+      • LOR device
+      • IndividualChannels False-ish
+      • exactly 3 or 4 legs (RGB or RGBW)
+    Bulb shape is optional here; we can tighten later if needed.
+    """
+    ic = str(individual_channels or "").strip().lower()
+    is_ic_false = ic in ("", "false", "0", "no", "n")
+    return (
+        device_type == "LOR"
+        and is_ic_false
+        and leg_count in (3, 4)
+    )
+
 
 
 
@@ -2240,7 +2235,7 @@ def process_lor_multiple_channel_grids(preview_id, root):
                 "Lights":       int(prop.get("Parm2")) if (prop.get("Parm2") and str(prop.get("Parm2")).isdigit()) else 0,
                 "Grid":         g,  # parsed grid dict
             }
-            groups.setdefault(comment, []).append(entry)
+            groups.setdefault(raw_id, []).append(entry)
 
     # ---------------------- process each multi-grid group --------------------
     # Choose master GRID by lowest (UID, StartChannel)  [controller wins]
@@ -2254,9 +2249,11 @@ def process_lor_multiple_channel_grids(preview_id, root):
         rid = d.get("PropID_scoped") or d.get("id") or d.get("Name") or ""
         return (uid_key, sc_key, rid)
     
-    for comment, items in groups.items():
+    for raw_id_key, items in groups.items():
         if len(items) < 2:
             continue  # true multi-grid groups only
+        comment = items[0].get("LORComment") or ""
+
 
         # Choose master GRID by lowest StartChannel; tiebreaker: UID sorting
         # items_sorted = sorted(
@@ -2266,6 +2263,16 @@ def process_lor_multiple_channel_grids(preview_id, root):
         # )
         items_sorted = sorted(items, key=_pair_key_grid)
         master = items_sorted[0]
+
+        # GAL 25-11-02 — decide if this group is an aggregate one-plug unit
+        p0 = master["prop"]
+        device_type = p0.get("DeviceType") or "LOR"
+        bulb_shape  = p0.get("BulbShape")
+        ind_ch      = p0.get("IndividualChannels")
+        leg_count   = len(items_sorted)
+        is_aggregate = _is_aggregate_unit(device_type, ind_ch, leg_count, bulb_shape)
+
+
 
         # Compose scoped master id from the PropClass that *owns* the master grid
         master_raw_id = master["raw_id"]
@@ -2328,60 +2335,63 @@ def process_lor_multiple_channel_grids(preview_id, root):
                 print(f"[DEBUG] (LOR multi) MASTER → props SKIP (collision/error) id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
 
         # Insert remaining grids into subProps
-        lor_first = first_token(comment)
-        for d in items_sorted[1:]:
-            g = d["Grid"]
-            uid   = g["UID"]
-            start = g["StartChannel"] if g["StartChannel"] is not None else 0
-            sub_id = f"{master_id}-{uid}-{start:02d}"   # unique under this master/preview
+        # Insert remaining grids into subProps (skip for aggregate one-plug RGB/RGBW)
+        if not is_aggregate:
+            lor_first = first_token(comment)
+            for d in items_sorted[1:]:
+                g = d["Grid"]
+                uid   = g["UID"]
+                start = g["StartChannel"] if g["StartChannel"] is not None else 0
+                sub_id = f"{master_id}-{uid}-{start:02d}"   # unique under this master/preview
 
-            # Subprop name pattern: "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
-            name_parts = [lor_first]
-            if g["Color"]:
-                name_parts.append(g["Color"])
-            if uid is not None:
-                name_parts.append(f"{uid}-{start:02d}")
-            sub_name = " ".join(name_parts).strip()
-            # Insert master into props (WITH full network/channel fields)
-            # Keep the original prop as the master; materialize each grid group as its own subProp
-            # GAL 25-10-22: collision-aware insert (no silent overwrite)
-            insert_sql = """
-                INSERT INTO subProps (
-                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
-                    EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
-                    LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
-                    MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
-                    EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            params = (
-                sub_id, sub_name, comment, "LOR", d["BulbShape"],
-                g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
-                d["CustomBulbColor"], d["DimmingCurveName"], d["IndividualChannels"], d["LegacySequenceMethod"],
-                d["MaxChannels"], d["Opacity"], d["MasterDimmable"], d["PreviewBulbSize"], None,  # RgbOrder=NULL
-                master_id, d["SeparateIds"], d["StartLocation"], d["StringType"], d["TraditionalColors"],
-                d["TraditionalType"], d["EffectBulbSize"], d["Tag"], d["Parm1"], d["Parm2"], d["Parm3"],
-                d["Parm4"], d["Parm5"], d["Parm6"], d["Parm7"], d["Parm8"], d["Lights"], preview_id
-            )
-            incoming_ctx = {
-                "SubPropID":    sub_id,
-                "Name":         sub_name,
-                "LORComment":   comment,
-                "PreviewId":    preview_id,
-                "DeviceType":   "LOR",
-                "Network":      g.get("Network",""),
-                "UID":          uid,
-                "StartChannel": g.get("StartChannel",""),
-                "EndChannel":   g.get("EndChannel",""),
-                "MasterPropId": master_id,
-            }
+                # Subprop name pattern: "<first-token-of-LORComment> <Color?> <UID>-<Start:02d>"
+                name_parts = [lor_first]
+                if g["Color"]:
+                    name_parts.append(g["Color"])
+                if uid is not None:
+                    name_parts.append(f"{uid}-{start:02d}")
+                sub_name = " ".join(name_parts).strip()
 
-            ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
+                insert_sql = """
+                    INSERT INTO subProps (
+                        SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                        EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
+                        LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
+                        MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
+                        EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                params = (
+                    sub_id, sub_name, comment, "LOR", d["BulbShape"],
+                    g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
+                    d["CustomBulbColor"], d["DimmingCurveName"], d["IndividualChannels"], d["LegacySequenceMethod"],
+                    d["MaxChannels"], d["Opacity"], d["MasterDimmable"], d["PreviewBulbSize"], None,  # RgbOrder=NULL
+                    master_id, d["SeparateIds"], d["StartLocation"], d["StringType"], d["TraditionalColors"],
+                    d["TraditionalType"], d["EffectBulbSize"], d["Tag"], d["Parm1"], d["Parm2"], d["Parm3"],
+                    d["Parm4"], d["Parm5"], d["Parm6"], d["Parm7"], d["Parm8"], d["Lights"], preview_id
+                )
+                incoming_ctx = {
+                    "SubPropID":    sub_id,
+                    "Name":         sub_name,
+                    "LORComment":   comment,
+                    "PreviewId":    preview_id,
+                    "DeviceType":   "LOR",
+                    "Network":      g.get("Network",""),
+                    "UID":          uid,
+                    "StartChannel": g.get("StartChannel",""),
+                    "EndChannel":   g.get("EndChannel",""),
+                    "MasterPropId": master_id,
+                }
+
+                ok = safe_insert_subprop(cursor, insert_sql, params, incoming_ctx)
+                if DEBUG:
+                    if ok:
+                        print(f"[DEBUG] (LOR multi) SUB  → subProps INSERT id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+                    else:
+                        print(f"[DEBUG] (LOR multi) SUB  → subProps SKIP (collision/error) id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+        else:
             if DEBUG:
-                if ok:
-                    print(f"[DEBUG] (LOR multi) SUB  → subProps INSERT id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
-                else:
-                    print(f"[DEBUG] (LOR multi) SUB  → subProps SKIP (collision/error) id={sub_id}  parent={master_id}  start={g['StartChannel']} uid={uid}")
+                print(f"[DEBUG] (LOR multi) aggregate skip subProps → {comment}  legs={leg_count}")
 
     conn.commit()
     conn.close()
