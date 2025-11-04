@@ -7,7 +7,7 @@
 # Purpose:
 #   • Read the live LORPreviews.xml (or its .zip) from the Show PC.
 #   • Extract selected PreviewClass entries into individual .lorprev files.
-#   • Build a temporary SQLite (via parse_props_v6.py) and create wiring views.
+#   • Build a temporary SQLite (via parse_props_v7.py) and create wiring views.
 #   • Compare wiring rows against the production lor_output_v6.db.
 #   • Generate a dated Excel report (Overview, Matches, OnlyInDB, OnlyInXML),
 #     plus preview metadata (including BackgroundFile) and background mismatches.
@@ -122,7 +122,7 @@ def override_input(default=""):
 
 def wrap_parser_audits_soft(parser_mod, verbose=False):
     """
-    If parse_props_v6 has an audit function that raises/stops, wrap it so it only warns.
+    If parse_props_v7 has an audit function that raises/stops, wrap it so it only warns.
     Safe: no-op if not present.
     """
     candidates = [
@@ -160,7 +160,7 @@ def sha256_text(s: str) -> str:
 
 def load_parser_module(path: Path):
     import importlib.util, types
-    spec = importlib.util.spec_from_file_location('parse_props_v6', str(path))
+    spec = importlib.util.spec_from_file_location('parse_props_v7', str(path))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -311,7 +311,7 @@ def main():
     ap.add_argument('--out-previews', help='Folder for extracted .lorprev files (default: <out>/lorprevs)')
     ap.add_argument('--filter', default=r'^(RGB Plus Prop Stage|Show Animation|Show Background Stage)',
                     help='Regex to select PreviewClass @Name; default limits to show masters')
-    ap.add_argument('--parser', help='Optional path to parse_props_v6.py (defaults to next to this script)')
+    ap.add_argument('--parser', help='Optional path to parse_props_v7.py (defaults to next to this script)')
     ap.add_argument('--keep-temp-db', action='store_true', help='Keep temp DB after report creation')
     ap.add_argument('--verbose', action='store_true')
     ap.add_argument('--continue-on-error', action='store_true',
@@ -348,9 +348,9 @@ def main():
     temp_db = out_dir / 'showpc_extracted.db'
     excel_path   = out_dir / f"ShowPC_WiringCompare_{run_stamp}.xlsx"
 
-    parser_path = Path(args.parser) if args.parser else (Path(__file__).parent / 'parse_props_v6.py')
+    parser_path = Path(args.parser) if args.parser else (Path(__file__).parent / 'parse_props_v7.py')
     if not parser_path.exists():
-        print(f"[FATAL] parse_props_v6.py not found at {parser_path}")
+        print(f"[FATAL] parse_props_v7.py not found at {parser_path}")
         sys.exit(2)
  
     parse_log = []   # [(preview, status, message)]
