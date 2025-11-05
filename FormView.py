@@ -40,7 +40,9 @@
 #
 # 2025-11-05  V0.3.1  Added Programming View tab using same Stage/Preview dropdown as Wiring View;
 #                     shows Props and Groups (with Tags) per preview;
-#                     added Export CSV and Printable HTML outputs for programming reference.
+#                     added Export CSV and Printable HTML outputs for programming reference;
+#                     refined wiring sort so Channel sorts globally by channel number,
+#                     and Controller sorts by controller (hex) then channel.
 
 
 
@@ -1086,7 +1088,7 @@ class WiringViewer(ttk.Frame):
             self.tree.delete(iid)
         self.count_var.set("Rows: 0")
 
-    # --- GAL 25-10-28: streamlined wiring columns for field clarity ---
+    # --- GAL 25-11-05: refined sort for Controller vs Channel ---
     def _order_by_clause(self):
         col = self.sort_col
         dirn = "ASC" if self.sort_asc else "DESC"
@@ -1097,27 +1099,38 @@ class WiringViewer(ttk.Frame):
         ")"
 
         text_cols = {
-            "Channel_Name": "Channel_Name COLLATE NOCASE",
-            "Display_Name": "Display_Name COLLATE NOCASE",
-            "Network":      "Network COLLATE NOCASE",
-            "Source":       "Source COLLATE NOCASE",
+            "Channel_Name":  "Channel_Name COLLATE NOCASE",
+            "Display_Name":  "Display_Name COLLATE NOCASE",
+            "Network":       "Network COLLATE NOCASE",
+            "Source":        "Source COLLATE NOCASE",
             "ConnectionType":"ConnectionType COLLATE NOCASE",
-            "DeviceType":   "DeviceType COLLATE NOCASE",
-            "LORTag":       "LORTag COLLATE NOCASE",
+            "DeviceType":    "DeviceType COLLATE NOCASE",
+            "LORTag":        "LORTag COLLATE NOCASE",
         }
         int_cols = {
-            "Controller":   CTRL_HEX_NUM,  # hex-aware
+            "Controller":   CTRL_HEX_NUM,                  # hex-aware
             "StartChannel": "CAST(StartChannel AS INTEGER)",
         }
 
-        primary = text_cols.get(col) or int_cols.get(col) or "Display_Name COLLATE NOCASE"
+        # Special behavior:
+        #  - Click Channel: sort by channel number only (global), then controller as tie-breaker
+        #  - Click Controller: sort by controller (hex), then channel
+        if col == "StartChannel":
+            return (
+                "CAST(StartChannel AS INTEGER) {dirn}, "
+                f"{CTRL_HEX_NUM} ASC, "
+                "Display_Name COLLATE NOCASE ASC"
+            ).format(dirn=dirn)
 
-        # Stabilize: Controller (hex) → StartChannel → Display_Name
         if col == "Controller":
-            primary = CTRL_HEX_NUM
-            dirn = "ASC"
-        elif col == "StartChannel":
-            primary = "CAST(StartChannel AS INTEGER)"
+            return (
+                f"{CTRL_HEX_NUM} {dirn}, "
+                "CAST(StartChannel AS INTEGER) ASC, "
+                "Display_Name COLLATE NOCASE ASC"
+            )
+
+        # All other columns: clicked column first, then Controller + Channel as stable tie-break
+        primary = text_cols.get(col) or int_cols.get(col) or "Display_Name COLLATE NOCASE"
 
         return (
             f"{primary} {dirn}, "
@@ -1125,6 +1138,7 @@ class WiringViewer(ttk.Frame):
             "CAST(StartChannel AS INTEGER) ASC, "
             "Display_Name COLLATE NOCASE ASC"
         )
+
 
 
     def _safe_export_name(self, preview_name: str | None, suffix: str) -> str:
