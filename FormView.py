@@ -35,6 +35,14 @@
 #                     - Apply iconbitmap(.ico) + iconphoto(True) before splash
 #                     - Bundle Docs/images for reliable runtime lookup
 # 2025-10-29  V0.2.9  Increased splash screen delay to 3000 ms
+# 2025-10-30  V0.3.0  Added Stage View tab with printable stage display reports;
+#                     improved database verification and wiring preview handling.
+#
+# 2025-11-05  V0.3.1  Added Programming View tab using same Stage/Preview dropdown as Wiring View;
+#                     shows Props and Groups (with Tags) per preview;
+#                     added Export CSV and Printable HTML outputs for programming reference.
+
+
 
 # Notes
 # -----
@@ -57,7 +65,7 @@ import datetime
 import sys
 import tkinter.messagebox as m
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.1"
 
 # --- GAL 25-10-29c: Windows taskbar grouping + icon pick-up ---
 try:
@@ -1375,6 +1383,307 @@ class WiringViewer(ttk.Frame):
         webbrowser.open("file:///" + os.path.abspath(path).replace("\\", "/"))
         messagebox.showinfo("Export", f"Saved: {path}")
 
+# ============================================================
+#  Programming View Tab (Stage / Props / Groups / Tags)
+#  GAL 25-11-05b — uses same Stage/Preview dropdown pattern as Wiring View
+# ============================================================
+class ProgrammingViewFrame(ttk.Frame):
+    """
+    Read-only view for programming:
+      - Uses the same Stage / Preview list as Wiring View (previews.Name)
+      - Lists all Props and Groups for the selected preview
+      - Shows StageID, StageName, Type (PROP/GROUP), Name and Tag
+      - Can export CSV or printable HTML for programmers
+    """
+
+    def __init__(self, parent, db_path: str):
+        super().__init__(parent)
+        self.db_path = db_path
+
+        self.preview_var = tk.StringVar()
+        self.count_var = tk.StringVar(value="Rows: 0")
+
+        self._build_widgets()
+        self._load_previews()
+        self._refresh_rows()
+
+    # ---------- UI construction ----------
+
+    def _build_widgets(self):
+        # Top bar: Stage/Preview dropdown + actions
+        top = ttk.Frame(self, padding=6)
+        top.pack(side=tk.TOP, fill=tk.X)
+
+        ttk.Label(top, text="Stage / Preview:").pack(side=tk.LEFT)
+        self.preview_cbo = ttk.Combobox(
+            top,
+            textvariable=self.preview_var,
+            width=55,
+            state="readonly"
+        )
+        self.preview_cbo.pack(side=tk.LEFT, padx=(4, 6))
+        self.preview_cbo.bind("<<ComboboxSelected>>", lambda e: self._refresh_rows())
+
+        ttk.Button(top, text="Refresh", command=self._refresh_rows).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(top, text="Export CSV…", command=self._export_csv).pack(side=tk.LEFT)
+        ttk.Button(top, text="Export Printable…", command=self._export_html).pack(side=tk.LEFT, padx=(6, 0))
+
+        ttk.Label(top, textvariable=self.count_var).pack(side=tk.RIGHT)
+
+        # Main treeview area
+        row = ttk.Frame(self, padding=(6, 3, 6, 6))
+        row.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        self.columns = ("StageID", "StageName", "RecordType", "ItemName", "ItemTag")
+        self.tree = ttk.Treeview(
+            row,
+            columns=self.columns,
+            show="headings",
+            selectmode="browse"
+        )
+
+        # Column headings
+        self.tree.heading("StageID", text="Stage")
+        self.tree.heading("StageName", text="Stage Name")
+        self.tree.heading("RecordType", text="Type")
+        self.tree.heading("ItemName", text="Name")
+        self.tree.heading("ItemTag", text="Tag")
+
+        # Column widths (tweak as needed)
+        self.tree.column("StageID", width=60, anchor=tk.CENTER)
+        self.tree.column("StageName", width=200, anchor=tk.W)
+        self.tree.column("RecordType", width=70, anchor=tk.CENTER)
+        self.tree.column("ItemName", width=260, anchor=tk.W)
+        self.tree.column("ItemTag", width=320, anchor=tk.W)
+
+        # Scrollbar
+        vsb = ttk.Scrollbar(row, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb.pack(side=tk.LEFT, fill=tk.Y)
+
+    # ---------- Helpers ----------
+
+    def _connect_ro(self):
+        """Short-lived read-only connection for queries."""
+        return connect_ro(self.db_path)
+
+    def _load_previews(self):
+        """Populate the Stage/Preview dropdown from the previews table."""
+        try:
+            conn = self._connect_ro()
+            with conn:
+                rows = conn.execute(SQL_PREVIEWS).fetchall()
+        except Exception as e:
+            messagebox.showerror("Query Error", f"Could not load previews:\n{e}")
+            return
+
+        names = [r[0] for r in rows]
+        self.preview_cbo["values"] = names
+        if names and (self.preview_var.get() not in names):
+            self.preview_var.set(names[0])
+
+    def _safe_export_name(self, preview_name: str | None, suffix: str) -> str:
+        """
+        Build a filesystem-safe default export name using the current preview.
+        Mirrors Wiring View style.
+        """
+        import re
+        base = (preview_name or "").strip() or "Preview"
+        base = re.sub(r"[^A-Za-z0-9._-]+", "_", base)  # squash weird chars/spaces
+        base = re.sub(r"_+", "_", base).strip("_") or "Preview"
+        return f"{base}_{suffix}"
+
+    # ---------- Data loading ----------
+
+    def _refresh_rows(self):
+        """Load Props + Groups for the selected Preview (Stage/Preview)."""
+        preview = (self.preview_var.get() or "").strip()
+        # Clear current rows
+        for iid in self.tree.get_children():
+            self.tree.delete(iid)
+        self.count_var.set("Rows: 0")
+
+        if not preview:
+            return
+
+        sql_props = """
+            SELECT
+                pv.StageID      AS StageID,
+                pv.Name         AS StageName,
+                'PROP'          AS RecordType,
+                pr.Name         AS ItemName,
+                pr.Tag          AS ItemTag
+            FROM props pr
+            JOIN previews pv ON pv.id = pr.PreviewId
+            WHERE pv.Name = ?
+        """
+
+        sql_groups = """
+            SELECT
+                pv.StageID      AS StageID,
+                pv.Name         AS StageName,
+                'GROUP'         AS RecordType,
+                g.Name          AS ItemName,
+                g.Tag           AS ItemTag
+            FROM groups g
+            JOIN previews pv ON pv.id = g.PreviewId
+            WHERE pv.Name = ?
+        """
+
+        union_sql = f"""
+            {sql_props}
+            UNION ALL
+            {sql_groups}
+            ORDER BY
+                StageID,
+                RecordType,
+                ItemName
+        """
+
+        try:
+            conn = self._connect_ro()
+            with conn:
+                rows = conn.execute(union_sql, (preview, preview)).fetchall()
+        except Exception as e:
+            messagebox.showerror("Query Error", f"Could not load programming view:\n{e}")
+            return
+
+        for row in rows:
+            self.tree.insert("", tk.END, values=row)
+
+        self.count_var.set(f"Rows: {len(rows)}")
+
+    # ---------- Exporters ----------
+
+    def _export_csv(self):
+        if not self.tree.get_children():
+            messagebox.showinfo("Export", "Nothing to export.")
+            return
+
+        preview = (self.preview_var.get() or "").strip()
+        path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
+            initialfile=self._safe_export_name(preview, "programming.csv"),
+            title="Export Programming CSV"
+        )
+        if not path:
+            return
+
+        try:
+            import csv
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(self.columns)
+                for iid in self.tree.get_children():
+                    vals = self.tree.item(iid, "values")
+                    writer.writerow(vals)
+            messagebox.showinfo("Export", f"Saved: {path}")
+        except Exception as e:
+            messagebox.showerror("Export Error", str(e))
+
+    def _export_html(self):
+        if not self.tree.get_children():
+            messagebox.showinfo("Export", "Nothing to export.")
+            return
+
+        import html, datetime, webbrowser, os
+
+        preview = (self.preview_var.get() or "").strip()
+        path = filedialog.asksaveasfilename(
+            defaultextension=".html",
+            filetypes=[("HTML Files", "*.html"), ("All Files", "*.*")],
+            initialfile=self._safe_export_name(preview, "programming.html"),
+            title="Export Programming HTML"
+        )
+        if not path:
+            return
+
+        printed = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        db_path = html.escape(self.db_path)
+        preview_esc = html.escape(preview)
+
+        # Collect table rows
+        rows = []
+        for iid in self.tree.get_children():
+            vals = [html.escape(str(v)) for v in self.tree.item(iid, "values")]
+            rows.append(vals)
+
+        css = """
+        <style>
+        body{
+            font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+            margin:24px;
+        }
+        h1{
+            margin:0 0 6px 0;
+            font-size:20px;
+        }
+        .meta{
+            font-size:12px;
+            color:#555;
+            margin:0 0 6px 0;
+        }
+        table{
+            border-collapse:collapse;
+            width:100%;
+            font-size:12px;
+        }
+        th,td{
+            border:1px solid #ccc;
+            padding:6px 8px;
+            vertical-align:top;
+        }
+        th{
+            background:#f5f5f5;
+            position:sticky;
+            top:0;
+        }
+        tfoot td{
+            border:none;
+            color:#555;
+            font-size:11px;
+            padding-top:18px;
+        }
+        @media print {
+            .noprint{display:none}
+            th{position:sticky;top:0}
+        }
+        </style>
+        """
+
+        head = f"""
+        <h1>MSB Programming View — {preview_esc}</h1>
+        <p class="meta">Printed: {printed} • Database: {db_path}</p>
+        """
+
+        thead = "<thead><tr>" + "".join(f"<th>{html.escape(col)}</th>" for col in self.columns) + "</tr></thead>"
+        tbody = "<tbody>" + "".join(
+            "<tr>" + "".join(f"<td>{v}</td>" for v in row) + "</tr>" for row in rows
+        ) + "</tbody>"
+
+        foot = f"""
+        <tfoot><tr><td colspan="{len(self.columns)}">
+        Rows: {len(rows)}<br>
+        Guidance: For programming reference only. Regenerate after any parser/preview changes.
+        </td></tr></tfoot>
+        """
+
+        html_doc = (
+            f"<!doctype html><meta charset='utf-8'><title>Programming — {preview_esc}</title>"
+            f"{css}{head}<table>{thead}{tbody}{foot}</table>"
+        )
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html_doc)
+
+        webbrowser.open("file:///" + os.path.abspath(path).replace("\\", "/"))
+        messagebox.showinfo("Export", f"Saved: {path}")
+
+
+
 # === Combined main window with tabs (GAL 25-10-23) ===========================
 # GAL 25-10-23 — minimal tabbed shell around WiringViewer (no class changes)
 # === Combined main window with tabs (GAL 25-10-29, splash-enabled) ===========
@@ -1420,6 +1729,9 @@ if __name__ == "__main__":
     stage_tab = StageViewFrame(notebook, db_path=DB_PATH, reports_root=REPORTS_ROOT)
     notebook.add(stage_tab, text="Stage View")
 
+    # Tab 3: Programming View
+    programming_tab = ProgrammingViewFrame(notebook, db_path=DB_PATH)
+    notebook.add(programming_tab, text="Programming View")   
     root.title(f"MSB Database — Wiring & Stage Tools (v{APP_VERSION})")
 
     # Optional legacy fallback; apply_window_icons already did this
