@@ -309,8 +309,10 @@ def main():
     ap.add_argument('--xml-zip', help='Path to a ZIP containing LORPreviews.xml')
     ap.add_argument('--out', help='Output folder (staging); defaults to dated ShowPC_Export folder')
     ap.add_argument('--out-previews', help='Folder for extracted .lorprev files (default: <out>/lorprevs)')
-    ap.add_argument('--filter', default=r'^(RGB Plus Prop Stage|Show Animation|Show Background Stage)',
+    ap.add_argument('--filter', default=r'^(RGB Plus Stage|Show Animation|Show Background Stage)',
                     help='Regex to select PreviewClass @Name; default limits to show masters')
+    ap.add_argument('--all-previews', action='store_true',
+                    help='Ignore --filter and export every PreviewClass in LORPreviews.xml')    
     ap.add_argument('--parser', help='Optional path to parse_props_v7.py (defaults to next to this script)')
     ap.add_argument('--keep-temp-db', action='store_true', help='Keep temp DB after report creation')
     ap.add_argument('--verbose', action='store_true')
@@ -394,8 +396,16 @@ def main():
     if args.verbose:
         print("[INFO] XML loaded. Extracting previews...")
 
+    # Decide which name filter to use
+    if getattr(args, "all_previews", False):
+        effective_filter = None
+        if args.verbose:
+            print("[INFO] --all-previews set; exporting every PreviewClass (no name filter).")
+    else:
+        effective_filter = args.filter
 
-    manifest = extract_previews(xml_bytes, lorprev_dir, name_filter=args.filter)
+    manifest = extract_previews(xml_bytes, lorprev_dir, name_filter=effective_filter)
+
     print(f"[INFO] Extracted {len(manifest)} previews to {lorprev_dir}")
     if manifest:
         sample = [m["PreviewName"] for m in manifest[:10]]
