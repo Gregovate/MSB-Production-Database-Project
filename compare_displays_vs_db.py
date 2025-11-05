@@ -13,6 +13,13 @@ Usage:
 Dependencies:
     pip install pandas openpyxl
 """
+# ------------------------------------------------------------
+# MSB Database — Displays vs DB compare report
+# Revision history
+#   GAL 24-10-14  Initial compare_displays_vs_db.py with Excel output.
+#   GAL 25-10-14  Add CSV header cleanup + wait_until_stable().
+#   GAL 25-11-05  Auto-open Excel after report build; add revision header.
+# ------------------------------------------------------------
 
 import os
 import re
@@ -523,6 +530,14 @@ def main():
     try:
         tables = run_compare(db_path, csv_path)
         write_excel(xlsx_path, tables)
+
+        # ---- Auto-open the Excel report (Windows/ShowPC) ----  GAL 25-11-05
+        try:
+            os.startfile(str(xlsx_path))
+            print(f"[OK] Opened Excel report: {xlsx_path}")
+        except Exception as e:
+            print(f"[WARN] Excel report written, but could not auto-open it: {e}")
+
     except Exception as e:
         print(f"[ERROR] {e}")
         sys.exit(1)
