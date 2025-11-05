@@ -3128,8 +3128,11 @@ WHERE ConnectionType = 'FIELD';
     #     print("[INFO] Created breaking_check_v6 view")
 
     # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
+    # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
     try:
         import subprocess, sys, os
+        #from pathlib import Path
+        import platform
 
         # --- Only run this compare when:
         #     1) We are writing to the production DB, AND
@@ -3144,6 +3147,31 @@ WHERE ConnectionType = 'FIELD';
             if os.path.exists(compare_script):
                 print("[INFO] Running compare_displays_vs_db.py …")
                 subprocess.run([sys.executable, compare_script], check=False)
+
+                # --- Best-effort: open the compare Excel from here as well ---
+                try:
+                    # Try to use the same default path as the compare script
+                    try:
+                        import compare_displays_vs_db as _cmp
+                        xlsx = Path(getattr(_cmp, "DEFAULT_XLSX_PATH",
+                                            r"G:\Shared drives\MSB Database\Spreadsheet\lor_display_compare.xlsx"))
+                    except Exception:
+                        xlsx = Path(r"G:\Shared drives\MSB Database\Spreadsheet\lor_display_compare.xlsx")
+
+                    xlsx = Path(xlsx)  # normalize to Path
+                    if xlsx.exists():
+                        sysname = platform.system()
+                        if sysname == "Windows":
+                            os.startfile(str(xlsx))  # default Excel
+                        elif sysname == "Darwin":
+                            subprocess.run(["open", str(xlsx)], check=False)
+                        else:
+                            subprocess.run(["xdg-open", str(xlsx)], check=False)
+                        print(f"[INFO] Opened display compare report: {xlsx}")
+                    else:
+                        print(f"[WARN] Display compare report not found to open: {xlsx}")
+                except Exception as e:
+                    print(f"[WARN] Could not auto-open display compare report: {e}")
             else:
                 print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
         else:
