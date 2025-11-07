@@ -1,4 +1,4 @@
-# GAL 2025-11-06  V1.1.0
+# GAL 2025-11-06  V1.3.0
 # extract_preview_rgbplus_tags.py
 #
 # Light-O-Rama .lorprev Group/Tag Explorer → Excel

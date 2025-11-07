@@ -1,5 +1,5 @@
 # GAL 2025-11-06  V1.3.0
-# apply_rgbplus_tags_from_excel.py
+# python apply_rgbplus_tags_from_excel.py
 #
 # Apply edited ApplyTag / ApplyPropTag + MaxChannels values from *_lor_groups.xlsx
 # back into a .lorprev file.
