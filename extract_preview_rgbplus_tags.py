@@ -1,5 +1,5 @@
-# GAL 2025-11-06  V1.0.0
-# python extract_preview_rgbplus_tags.py
+# GAL 2025-11-06  V1.1.0
+# extract_preview_rgbplus_tags.py
 #
 # Light-O-Rama .lorprev Group/Tag Explorer → Excel
 #
@@ -7,12 +7,19 @@
 # - Builds:
 #     * Groups        (one row per PropGroup)
 #     * GroupMembers  (one row per Group+Prop member)
+#     * Props         (one row per PropClass, grouped + ungrouped)
 #     * TagsIndex     (unique tags in this preview)
 #     * AllowedTags   (LOR master tag list from previewtags.txt)
 #     * Meta          (ties Excel back to the source .lorprev)
-# - Adds GroupMembers.ApplyTag, prefilled from MemberPropTag
-# - Adds data validation dropdown on ApplyTag using AllowedTags
-# - Copies C:\lor\...\previewtags.txt into the preview folder as a backup
+# - Adds:
+#     * GroupMembers.ApplyTag   (prefilled from MemberPropTag)
+#     * Props.ApplyPropTag      (prefilled from PropTag)
+# - Adds data validation dropdowns on:
+#     * GroupMembers.ApplyTag
+#     * Props.ApplyPropTag
+#   using AllowedTags (or TagsIndex as fallback)
+# - Copies C:\lor\LORInternal\Downloads\previews\previewtags.txt into
+#   the preview folder as previewtags.txt (back door for other tools).
 #
 # Requires: pandas, openpyxl
 #   pip install pandas openpyxl
@@ -29,16 +36,22 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 
+# ---------------------------------------------------------------------
+# Tag source handling (LOR install + back door copy)
+# ---------------------------------------------------------------------
+
+
 def load_allowed_tags_from_lor(lorprev_path: Path):
     r"""
     Load allowed tags from the LOR-installed previewtags.txt.
-    Primary: C:\lor\LORInternal\Downloads\previews\previewtags.txt
-    Back door: <lorprev_folder>\previewtags.txt (copy placed there by this script)
+
+    Primary:  C:\lor\LORInternal\Downloads\previews\previewtags.txt
+    Back door: <lorprev_folder>\previewtags.txt
+
     Returns a list of strings (may be empty).
     """
-    # Primary: LOR install location
-    default_path = Path("C:\\lor\\LORInternal\\Downloads\\previews\\previewtags.txt")
-
+    # Primary LOR path (raw string to avoid escape issues)
+    default_path = Path(r"C:\lor\LORInternal\Downloads\previews\previewtags.txt")
 
     # Optional override via environment variable (for dev/testing)
     override = os.environ.get("LOR_PREVIEW_TAGS_PATH")
@@ -54,20 +67,16 @@ def load_allowed_tags_from_lor(lorprev_path: Path):
                 if t:
                     tags.append(t)
 
-        # Back door: copy to preview folder (kept in sync programmatically)
+        # Back door: copy to preview folder
         try:
             dest = lorprev_path.parent / "previewtags.txt"
-            # Only write if different or missing
-            if not dest.is_file():
-                dest.write_text("\n".join(tags), encoding="utf-8")
-            else:
-                # Simple overwrite; tags are small
-                dest.write_text("\n".join(tags), encoding="utf-8")
+            dest.write_text("\n".join(tags), encoding="utf-8")
         except Exception as e:
             print(f"[WARN] Could not copy previewtags.txt to preview folder: {e}")
+
         return tags
 
-    # If LOR install path is missing, try back door in preview folder
+    # If LOR path is missing, try back door in preview folder
     fallback = lorprev_path.parent / "previewtags.txt"
     if fallback.is_file():
         with fallback.open("r", encoding="utf-8") as f:
@@ -79,6 +88,11 @@ def load_allowed_tags_from_lor(lorprev_path: Path):
 
     # Nothing found
     return []
+
+
+# ---------------------------------------------------------------------
+# Core parsing / DataFrame builders
+# ---------------------------------------------------------------------
 
 
 def parse_lorprev(path: Path):
@@ -131,6 +145,35 @@ def build_group_members_df(groups, props):
     return pd.DataFrame(rows)
 
 
+def build_props_df(props, groups):
+    """Return a DataFrame of all PropClass elements, grouped + ungrouped."""
+    # Map prop ID → list of groups that include it (for quick reference)
+    membership = {}
+    for g in groups:
+        gname = g.get("Name", "")
+        for m in g.findall("member"):
+            pid = m.get("id")
+            if not pid:
+                continue
+            membership.setdefault(pid, []).append(gname)
+
+    rows = []
+    for pid, p in props.items():
+        rows.append(
+            {
+                "PropName": p.get("Name", ""),
+                "PropTag": p.get("Tag", ""),
+                "ApplyPropTag": p.get("Tag", ""),
+                "ChannelGrid": p.get("ChannelGrid", ""),
+                "DeviceType": p.get("DeviceType", ""),
+                "MaxChannels": p.get("MaxChannels", ""),
+                "PropID": pid,
+                "Groups": ", ".join(membership.get(pid, [])),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def build_tags_index_df(groups, props):
     tag_roles = defaultdict(set)
     for p in props.values():
@@ -170,9 +213,14 @@ def build_meta_df(lorprev_path: Path, preview_name: str, preview_id: str):
         {"Key": "PreviewName", "Value": preview_name},
         {"Key": "PreviewId", "Value": preview_id},
         {"Key": "ToolName", "Value": "extract_preview_rgbplus_tags"},
-        {"Key": "ToolVersion", "Value": "1.0.0"},
+        {"Key": "ToolVersion", "Value": "1.1.0"},
     ]
     return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------
+# UI helpers
+# ---------------------------------------------------------------------
 
 
 def pick_input_output():
@@ -213,32 +261,19 @@ def autofit(writer):
 
 def add_applytag_validation(writer):
     """
-    Add data validation to GroupMembers.ApplyTag.
+    Add data validation to:
+      - GroupMembers.ApplyTag
+      - Props.ApplyPropTag
 
     Preference:
       1) AllowedTags.Tag (global LOR tag list)
       2) TagsIndex.Tag (fallback if AllowedTags is empty)
     """
     wb = writer.book
-    ws_gm = writer.sheets.get("GroupMembers")
     ws_tags = writer.sheets.get("TagsIndex")
     ws_allowed = writer.sheets.get("AllowedTags")
-    if ws_gm is None:
-        return
 
-    # Find ApplyTag column
-    apply_col_idx = None
-    for cell in ws_gm[1]:
-        if (cell.value or "").strip() == "ApplyTag":
-            apply_col_idx = cell.column
-            break
-    if apply_col_idx is None:
-        return
-
-    apply_col_letter = get_column_letter(apply_col_idx)
-    max_row_gm = ws_gm.max_row
-
-    # Prefer AllowedTags if it has data
+    # Determine validation range
     dv_range = None
     if ws_allowed is not None and ws_allowed.max_row >= 2:
         max_row_allowed = ws_allowed.max_row
@@ -248,17 +283,47 @@ def add_applytag_validation(writer):
         dv_range = f"=TagsIndex!$A$2:$A${max_row_tags}"
 
     if not dv_range:
-        # No tag list available
         return
 
-    dv = DataValidation(
-        type="list",
-        formula1=dv_range,
-        allow_blank=True,
-        showDropDown=True,
-    )
-    ws_gm.add_data_validation(dv)
-    dv.add(f"{apply_col_letter}2:{apply_col_letter}{max_row_gm}")
+    # GroupMembers.ApplyTag
+    ws_gm = writer.sheets.get("GroupMembers")
+    if ws_gm is not None:
+        apply_col_idx = None
+        for cell in ws_gm[1]:
+            if (cell.value or "").strip() == "ApplyTag":
+                apply_col_idx = cell.column
+                break
+        if apply_col_idx is not None:
+            apply_col_letter = get_column_letter(apply_col_idx)
+            max_row_gm = ws_gm.max_row
+            dv_gm = DataValidation(
+                type="list",
+                formula1=dv_range,
+                allow_blank=True,
+                showDropDown=True,
+            )
+            ws_gm.add_data_validation(dv_gm)
+            dv_gm.add(f"{apply_col_letter}2:{apply_col_letter}{max_row_gm}")
+
+    # Props.ApplyPropTag
+    ws_props = writer.sheets.get("Props")
+    if ws_props is not None:
+        applyp_col_idx = None
+        for cell in ws_props[1]:
+            if (cell.value or "").strip() == "ApplyPropTag":
+                applyp_col_idx = cell.column
+                break
+        if applyp_col_idx is not None:
+            applyp_col_letter = get_column_letter(applyp_col_idx)
+            max_row_props = ws_props.max_row
+            dv_p = DataValidation(
+                type="list",
+                formula1=dv_range,
+                allow_blank=True,
+                showDropDown=True,
+            )
+            ws_props.add_data_validation(dv_p)
+            dv_p.add(f"{applyp_col_letter}2:{applyp_col_letter}{max_row_props}")
 
 
 def open_excel(path: Path):
@@ -266,7 +331,7 @@ def open_excel(path: Path):
     try:
         if os.name == "nt":  # Windows
             os.startfile(path)
-        else:  # macOS / Linux fallback
+        else:
             import sys
 
             subprocess.Popen(
@@ -274,6 +339,11 @@ def open_excel(path: Path):
             )
     except Exception as e:
         print(f"[WARN] Could not open Excel automatically: {e}")
+
+
+# ---------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------
 
 
 def main():
@@ -296,6 +366,7 @@ def main():
 
     groups_df = build_groups_df(groups)
     gm_df = build_group_members_df(groups, props)
+    props_df = build_props_df(props, groups)
     tags_df = build_tags_index_df(groups, props)
     meta_df = build_meta_df(lor_path, preview_name, preview_id)
 
@@ -306,7 +377,7 @@ def main():
     else:
         gm_df["ApplyTag"] = ""
 
-    # 👉 Reorder columns in GroupMembers to your preferred layout
+    # Reorder GroupMembers columns to a human-friendly layout
     desired_order = [
         "GroupTag",
         "GroupName",
@@ -319,14 +390,11 @@ def main():
         "GroupID",
         "MemberPropID",
     ]
-
     existing = list(gm_df.columns)
-    # Keep only the columns that exist, in the desired order
     ordered = [c for c in desired_order if c in existing]
-    # Append any extra columns (if any) at the end in their current order
     extra = [c for c in existing if c not in ordered]
-    gm_df = gm_df[ordered + extra]
-
+    if ordered:
+        gm_df = gm_df[ordered + extra]
 
     # Load allowed tags from LOR / preview folder
     allowed_tags = load_allowed_tags_from_lor(lor_path)
@@ -339,6 +407,7 @@ def main():
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         groups_df.to_excel(writer, index=False, sheet_name="Groups")
         gm_df.to_excel(writer, index=False, sheet_name="GroupMembers")
+        props_df.to_excel(writer, index=False, sheet_name="Props")
         tags_df.to_excel(writer, index=False, sheet_name="TagsIndex")
         meta_df.to_excel(writer, index=False, sheet_name="Meta")
         allowed_df.to_excel(writer, index=False, sheet_name="AllowedTags")
