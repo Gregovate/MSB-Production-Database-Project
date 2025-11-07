@@ -2476,6 +2476,25 @@ def process_lor_multiple_channel_grids(preview_id, root):
     conn.close()
 
 
+# GAL 25-11-07: track which .lorprev file each PreviewId came from
+SEEN_PREVIEW_IDS = {}  # preview_id (str) -> file_path (str)
+
+def register_preview_id(preview_guid: str, file_path: Path) -> None:
+    """
+    GAL 25-11-07: Ensure each PreviewId only appears in a single .lorprev file.
+
+    If the same PreviewId is found in two different files under Database Previews,
+    we abort early with a clear message instead of flooding the log with channel
+    collisions.
+    """
+    existing = SEEN_PREVIEW_IDS.get(preview_guid)
+    if existing is not None and existing != file_path:
+        print("[FATAL] Duplicate PreviewId detected:")
+        print(f"        PreviewId: {preview_guid}")
+        print(f"        First file: {existing}")
+        print(f"        This file : {file_path}")
+        raise SystemExit(1)
+    SEEN_PREVIEW_IDS[preview_guid] = file_path
 
 
 def process_file(file_path):
@@ -2483,6 +2502,11 @@ def process_file(file_path):
     dprint(f"[DEBUG] Processing file: {file_path}")  # quieter unless DEBUG=True
     preview = locate_preview_class_deep(file_path)
     if preview is not None:
+
+        # GAL 25-11-07: ensure this PreviewId is unique across .lorprev files
+        preview_id = preview.get("id")
+        register_preview_id(preview_id, file_path)
+
         preview_data = process_preview(preview)   # full dict dump is now gated by PREVIEW_DEBUG inside process_preview
         insert_preview_data(preview_data)
 
