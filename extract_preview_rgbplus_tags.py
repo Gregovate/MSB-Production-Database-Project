@@ -107,15 +107,30 @@ def parse_lorprev(path: Path):
     return props, groups, preview_name, preview_id
 
 
-def build_groups_df(groups):
+def build_groups_df(groups, props):
+    """Build Groups sheet, including a summary of member DisplayNames (LOR Comment)."""
     rows = []
     for g in sorted(groups, key=lambda g: g.get("Tag") or ""):
+        member_comments = []
+        for m in g.findall("member"):
+            pid = m.get("id")
+            if not pid:
+                continue
+            p = props.get(pid)
+            if not p:
+                continue
+            c = p.get("Comment", "")
+            if c and c not in member_comments:
+                member_comments.append(c)
+
         rows.append(
             {
                 "GroupTag": g.get("Tag", ""),
                 "GroupName": g.get("Name", ""),
                 "GroupID": g.get("id", ""),
                 "MemberCount": len(g.findall("member")),
+                # New: all unique DisplayNames (LOR Comment) for member props
+                "MemberDisplayName": ", ".join(member_comments),
             }
         )
     return pd.DataFrame(rows)
@@ -176,6 +191,8 @@ def build_group_members_df(groups, props):
                     "GroupID": g.get("id", ""),
                     "MemberPropTag": p.get("Tag", ""),
                     "MemberPropName": p.get("Name", ""),
+                    # New: raw DisplayName from <PropClass Comment="...">
+                    "MemberDisplayName": p.get("Comment", ""),
                     "MemberPropID": pid,
                     "ChannelGrid": p.get("ChannelGrid", ""),
                     "DeviceType": p.get("DeviceType", ""),
@@ -202,6 +219,8 @@ def build_props_df(props, groups):
         rows.append(
             {
                 "PropName": p.get("Name", ""),
+                # New: DisplayName from LOR Comment field
+                "DisplayName": p.get("Comment", ""),
                 "PropTag": p.get("Tag", ""),
                 "ApplyPropTag": p.get("Tag", ""),
                 "ChannelGrid": p.get("ChannelGrid", ""),
@@ -253,7 +272,7 @@ def build_meta_df(lorprev_path: Path, preview_name: str, preview_id: str):
         {"Key": "PreviewName", "Value": preview_name},
         {"Key": "PreviewId", "Value": preview_id},
         {"Key": "ToolName", "Value": "extract_preview_rgbplus_tags"},
-        {"Key": "ToolVersion", "Value": "1.1.0"},
+        {"Key": "ToolVersion", "Value": "1.3.0"},
     ]
     return pd.DataFrame(rows)
 
@@ -404,7 +423,7 @@ def main():
         messagebox.showerror("Parse Error", f"Failed to parse {lor_path.name}\n\n{e}")
         return
 
-    groups_df = build_groups_df(groups)
+    groups_df = build_groups_df(groups, props)
     gm_df = build_group_members_df(groups, props)
     props_df = build_props_df(props, groups)
     tags_df = build_tags_index_df(groups, props)
@@ -423,6 +442,7 @@ def main():
         "GroupTag",
         "GroupName",
         "MemberPropName",
+        "MemberDisplayName",
         "MemberPropTag",
         "ApplyTag",
         "ChannelGrid",
@@ -431,6 +451,7 @@ def main():
         "GroupID",
         "MemberPropID",
     ]
+
     existing = list(gm_df.columns)
     ordered = [c for c in desired_order if c in existing]
     extra = [c for c in existing if c not in ordered]
@@ -446,11 +467,11 @@ def main():
 
     out_path = Path(out_file)
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+        meta_df.to_excel(writer, index=False, sheet_name="Meta")
         groups_df.to_excel(writer, index=False, sheet_name="Groups")
         gm_df.to_excel(writer, index=False, sheet_name="GroupMembers")
         props_df.to_excel(writer, index=False, sheet_name="Props")
         tags_df.to_excel(writer, index=False, sheet_name="TagsIndex")
-        meta_df.to_excel(writer, index=False, sheet_name="Meta")
         allowed_df.to_excel(writer, index=False, sheet_name="AllowedTags")
         # NEW: motion rows sheet  GAL 25-11-09
         motion_df.to_excel(writer, index=False, sheet_name="MotionRows")
