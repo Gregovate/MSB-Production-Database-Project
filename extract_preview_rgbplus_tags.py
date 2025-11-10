@@ -120,6 +120,46 @@ def build_groups_df(groups):
         )
     return pd.DataFrame(rows)
 
+def build_motion_rows_df(props): 
+    """
+    added GAL 25-11-09
+    Build a DataFrame of MotionRowDefault entries under each PropClass.
+
+    Columns:
+      - ParentPropName / ParentPropTag / ParentPropID
+      - DeviceType / MaxChannels
+      - RowID / RowName
+      - subx / suby / subw / subh / subc
+    """
+    rows = []
+    for pid, p in props.items():
+        parent_name = p.get("Name", "")
+        parent_tag = p.get("Tag", "")
+        dev_type = p.get("DeviceType", "")
+        max_ch = p.get("MaxChannels", "")
+
+        # Each PropClass may have zero or more MotionRowDefaults containers
+        for mrd in p.findall("MotionRowDefaults"):
+            for row in mrd.findall("MotionRowDefault"):
+                rows.append(
+                    {
+                        "ParentPropName": parent_name,
+                        "ParentPropTag": parent_tag,
+                        "ParentPropID": pid,
+                        "DeviceType": dev_type,
+                        "MaxChannels": max_ch,
+                        "RowID": row.get("id", ""),
+                        "RowName": row.get("name", ""),
+                        "subx": row.get("subx", ""),
+                        "suby": row.get("suby", ""),
+                        "subw": row.get("subw", ""),
+                        "subh": row.get("subh", ""),
+                        "subc": row.get("subc", ""),
+                    }
+                )
+
+    return pd.DataFrame(rows)
+
 
 def build_group_members_df(groups, props):
     rows = []
@@ -369,6 +409,7 @@ def main():
     props_df = build_props_df(props, groups)
     tags_df = build_tags_index_df(groups, props)
     meta_df = build_meta_df(lor_path, preview_name, preview_id)
+    motion_df = build_motion_rows_df(props)  # GAL 25-11-09
 
     # Insert ApplyTag and prefill from MemberPropTag
     if not gm_df.empty and "MemberPropTag" in gm_df.columns:
@@ -411,6 +452,8 @@ def main():
         tags_df.to_excel(writer, index=False, sheet_name="TagsIndex")
         meta_df.to_excel(writer, index=False, sheet_name="Meta")
         allowed_df.to_excel(writer, index=False, sheet_name="AllowedTags")
+        # NEW: motion rows sheet  GAL 25-11-09
+        motion_df.to_excel(writer, index=False, sheet_name="MotionRows")
 
         autofit(writer)
         add_applytag_validation(writer)
