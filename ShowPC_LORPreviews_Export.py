@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ShowPC_LORPreviews_Export.py
+# python ShowPC_LORPreviews_Export.py
 # GAL 2025-11-01 — v1.1.0
 # 
 # ShowPC LORPreviews exporter + wiring compare — SAFE PATH

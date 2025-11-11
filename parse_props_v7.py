@@ -2068,8 +2068,22 @@ def process_lor_props(preview_id, root):
     #     master_id = master["PropID_scoped"]
     for display_name, group in props_grouped_by_comment.items():
         # master = min(... by StartChannel)
-        master = min(group, key=_pair_key)           # ← uses (UID, StartChannel)
-        m_grid = master["Grid"] or {...}
+        master = min(group, key=_pair_key)  # uses (UID, StartChannel)
+
+        # GAL 25-11-10: normalize Grid; v7 bug fix against set/None/empty fallback
+        raw_grid = master.get("Grid")
+        if isinstance(raw_grid, dict):
+            m_grid = raw_grid
+        else:
+            m_grid = {
+                "Network":      "",
+                "UID":          "",
+                "StartChannel": None,
+                "EndChannel":   None,
+                "Unknown":      "",
+                "Color":        "",
+            }
+
         master_id = master["PropID_scoped"]
         # MASTER -> props
         # GAL 25-10-22: collision-aware insert (no silent overwrite)
@@ -2091,27 +2105,33 @@ def process_lor_props(preview_id, root):
             master["TraditionalType"], master["EffectBulbSize"], master["Tag"], master["Parm1"],
             master["Parm2"], master["Parm3"], master["Parm4"], master["Parm5"], master["Parm6"],
             master["Parm7"], master["Parm8"], master["Lights"],
-            m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"],
-            m_grid["Unknown"], m_grid["Color"], master["PreviewId"]
+            m_grid.get("Network"),
+            m_grid.get("UID"),
+            m_grid.get("StartChannel"),
+            m_grid.get("EndChannel"),
+            m_grid.get("Unknown"),
+            m_grid.get("Color"),
+            master["PreviewId"],
         )
+
         incoming_ctx = {
             "PropID":       master_id,
-            "Name":         master.get("Name",""),
+            "Name":         master.get("Name", ""),
             "LORComment":   display_name,
             "PreviewId":    master.get("PreviewId"),
-            "DeviceType":   master.get("DeviceType",""),
-            "Network":      (m_grid or {}).get("Network",""),
-            "UID":          (m_grid or {}).get("UID",""),
-            "StartChannel": (m_grid or {}).get("StartChannel",""),
-            "EndChannel":   (m_grid or {}).get("EndChannel",""),
+            "DeviceType":   master.get("DeviceType", ""),
+            "Network":      m_grid.get("Network", ""),
+            "UID":          m_grid.get("UID", ""),
+            "StartChannel": m_grid.get("StartChannel", ""),
+            "EndChannel":   m_grid.get("EndChannel", ""),
         }
         ok = safe_insert_prop(cursor, insert_sql, params, incoming_ctx)
         if DEBUG:
+            start = m_grid.get("StartChannel")
             if ok:
-                print(f"[DEBUG] (LOR single) MASTER -> props INSERT: {master_id} '{display_name}' Start={m_grid['StartChannel']}")
+                print(f"[DEBUG] (LOR single) MASTER -> props INSERT: {master_id} '{display_name}' Start={start}")
             else:
-                print(f"[DEBUG] (LOR single) MASTER -> props SKIP (collision/error): {master_id} '{display_name}' Start={m_grid['StartChannel']}")
-
+                print(f"[DEBUG] (LOR single) MASTER -> props SKIP (collision/error): {master_id} '{display_name}' Start={start}")
 
         # REMAINING -> subProps
         # REMAINING -> subProps
