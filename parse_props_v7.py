@@ -3096,6 +3096,22 @@ CREATE VIEW preview_wiring_fieldonly_v6 AS
 SELECT *
 FROM preview_wiring_fieldmap_v6
 WHERE ConnectionType = 'FIELD';
+
+-- Controllers per network (non-DMX), with preview context
+DROP VIEW IF EXISTS controller_networks_v7;
+CREATE VIEW controller_networks_v7 AS
+SELECT DISTINCT
+  PreviewName,
+  Controller,
+  Network
+FROM preview_wiring_sorted_v6
+WHERE Controller IS NOT NULL
+  AND DeviceType <> 'DMX'
+ORDER BY
+    Network COLLATE NOCASE,
+    LENGTH(Controller),           -- 1-digit before 2-digit, etc.
+    UPPER(Controller),            -- hex-safe lexicographic order
+    PreviewName COLLATE NOCASE;
 """
 
     # --- Connect and pre-drop the views we are about to create ----------------
