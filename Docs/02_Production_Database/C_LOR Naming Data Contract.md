@@ -1,4 +1,4 @@
-# B — MSB Database — LOR Naming Data Contract (v1.1)
+# C — MSB Database — LOR Naming Data Contract (v1.1)
 Last updated: 2026-02-20
 Owner: MSB Production Crew (DB + Sequencing)
 

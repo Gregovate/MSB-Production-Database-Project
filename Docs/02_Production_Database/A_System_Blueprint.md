@@ -1,116 +1,102 @@
 # A — Production Database — System Blueprint
 Last updated: 2026-02-20  
 Owner: MSB Production Crew  
-Status: Design Lock – Phase 1 Foundation  
+Status: Design Lock — Phase 1 Foundation
 
 ---
 
-# 1. Purpose
+## 1. Purpose
 
-The Production Database is the **operational system of record** for all physical and logistical aspects of the MSB show.
+The Production Database is the **operational system of record** for the physical and logistical reality of the MSB show.
 
-It exists to manage everything that LOR does not:
+It exists to manage everything LOR does *not* manage well:
 
-- Physical Displays
-- Storage (Pallets / Rack Locations)
+- Physical Displays (what the thing actually is)
+- Storage (pallets / racks / zones)
 - Annual Maintenance Testing
 - Kits and Inventory
-- Controllers (hardware inventory)
-- Infrastructure (panels, outlets, streetlights)
-- Setup / Takedown documentation
+- Controller hardware inventory (physical assets)
+- Infrastructure dependencies (panels, outlets, streetlights)
+- Setup / takedown documentation
 - Reporting and historical tracking
 
-LOR remains the authoritative source for **show topology and wiring**.  
-Production DB is authoritative for **physical assets and operations**.
+**Boundary statement:**
+- **LOR** remains the authoritative source for *show topology and wiring*.
+- **Production DB** is authoritative for *physical assets and operations*. 【turn12file6†A_System_Blueprint.md†L10-L25】
 
 ---
 
-# 2. System Boundaries
+## 2. System Boundaries
 
-## LOR Owns
+### LOR owns
 - Previews
-- Props
-- Subprops
+- Props / Subprops
 - Controller assignments
 - Channel ranges
 - Wiring topology
-- LOR UUIDs
+- LOR UUIDs 【turn12file6†A_System_Blueprint.md†L30-L38】
 
-## Production DB Owns
-- What a Display physically is
-- Where it is stored
-- Who tested it
-- Whether it passed inspection
-- What lights it contains
-- Which pallet it belongs to
-- Which rack location that pallet occupies
-- Kit contents
-- Controller hardware inventory
-- Infrastructure dependencies
+### Production DB owns
+- Display definition (what it physically is)
+- Storage assignments + history
+- Maintenance seasons + test results
+- Physical attributes (lights, power, vendor/cost, etc.)
+- Kit definitions + kit contents
+- Controller hardware inventory (physical tagging, status)
+- Infrastructure dependencies by stage 【turn12file6†A_System_Blueprint.md†L39-L50】
 
 ---
 
-# 3. Core Principles
+## 3. Core Principles
 
-### 3.1 DisplayKey is Identity
-Display identity is derived from the LOR Comment field.
+### 3.1 DisplayKey is identity (Production identity)
+Display identity is derived from the **LOR Comment** field.
 
-DisplayKey format:
+**DisplayKey format:**
+`<SC>-<DisplayName>(-tokens...)`
 
-<SC>-<DisplayName>(-tokens...)
+Where:
+- `<SC>` = required 2-character Stage Code (controlled vocabulary)
 
+Production identity keys:
+- `display_key_raw` (original)
+- `display_key_norm` (normalized + unique) 【turn12file6†A_System_Blueprint.md†L55-L67】
 
-Where `<SC>` is the required 2-character Stage Code.
+### 3.2 UUIDs are not identity
+LOR UUIDs are stored for traceability but **never used** as Production identity.
+If LOR regenerates UUIDs, Production must remain stable. 【turn12file4†A_System_Blueprint.md†L3-L8】
 
-DisplayKey is the **primary logical key** for Production.
+### 3.3 Snapshot-based ingestion
+Each LOR import is stored as a snapshot so we can:
+- diff year-over-year
+- detect changes
+- roll back safely
+- audit what changed and when 【turn12file4†A_System_Blueprint.md†L10-L18】
 
----
-
-### 3.2 UUIDs Are Not Identity
-LOR UUIDs are stored for traceability but are not used as primary keys.
-
-If LOR regenerates UUIDs, Production data must remain stable.
-
----
-
-### 3.3 Snapshot-Based Ingestion
-Each LOR import is stored as a snapshot.
-
-This allows:
-- Year-over-year diffing
-- Change detection
-- Rollback safety
-- Audit traceability
-
----
-
-### 3.4 Separation of Concerns
+### 3.4 Separation of concerns
 Production DB must never:
-- Modify LOR data
-- Attempt to become the show topology source
+- modify LOR data
+- try to become show topology
 
-It consumes LOR outputs and enriches them.
-
----
-
-# 4. High-Level Architecture
-
-
-LOR SQLite → Parser → LOR Snapshot Tables (Postgres)
-↓
-Display Matching
-↓
-Production Core Tables
-↓
-Reports / Apps
-
+It consumes LOR outputs and enriches them. 【turn12file4†A_System_Blueprint.md†L21-L27】
 
 ---
 
-# 5. Core Domain Model
+## 4. High-Level Architecture
 
-## 5.1 Stage
+LOR SQLite → Parser → LOR Snapshot Tables (Postgres)  
+↓  
+Display Matching  
+↓  
+Production Core Tables  
+↓  
+Reports / Apps 【turn12file4†A_System_Blueprint.md†L30-L40】
 
+---
+
+## 5. Core Domain Model
+
+### 5.1 Stage
 Represents a physical park location.
 
 Fields:
@@ -120,12 +106,11 @@ Fields:
 - active
 - notes
 
-Stage identity comes from the 2-character code in DisplayKey.
+Stage identity comes from the 2-character Stage Code in DisplayKey. 【turn12file6†A_System_Blueprint.md†L112-L124】
 
 ---
 
-## 5.2 Display
-
+### 5.2 Display
 Represents a single physical buildable/storable item.
 
 Fields:
@@ -139,83 +124,79 @@ Fields:
 - designer
 - notes
 
-Relationships:
+Relationships (conceptual):
 - 1 Display → many MaintenanceRecords
 - 1 Display → 0..many PalletAssignments
 - 1 Display → 0..many LOR Bindings
 - 1 Display → 0..many Documents
-- 1 Display → 0..many Wiring Legs (via snapshot)
+- 1 Display → 0..many Wiring Legs (via snapshot) 【turn12file6†A_System_Blueprint.md†L127-L148】
 
 ---
 
-## 5.3 LOR Snapshot Tables
+### 5.3 LOR Snapshot Tables (Postgres)
+Ingestion-only tables; raw truth preserved.
 
-These are ingestion-only tables.
-
-Example:
+Examples:
 - lor_import_run
 - lor_preview
 - lor_prop
 - lor_wiring_leg
 
 Purpose:
-- Preserve raw wiring truth
-- Allow diffing
-- Provide wiring lookup for tablet app
+- preserve raw wiring truth
+- allow diffing
+- provide wiring lookup for the future tablet app 【turn12file6†A_System_Blueprint.md†L151-L168】【turn12file9†A_System_Blueprint.md†L1-L11】
 
 ---
 
-## 5.4 Storage Model
-
-### Pallet
+### 5.4 Storage Model (Future Phase)
+#### Pallet
 - id
 - pallet_tag (barcode-ready)
 - description
 - status
 
-### Rack Location
+#### Rack Location
 - id
 - rack_code (A-03-02 style)
 - zone
 - notes
 
-### Pallet Assignment
-Tracks which display is on which pallet and when.
+#### Pallet Assignment
+Tracks which Display is on which pallet and when.
 
-### Pallet Location History
-Tracks pallet movement between rack locations.
+#### Pallet Location History
+Tracks pallet movement between rack locations. 【turn12file6†A_System_Blueprint.md†L102-L122】【turn12file9†A_System_Blueprint.md†L14-L33】
 
 ---
 
-## 5.5 Maintenance Model
-
-### Maintenance Season
+### 5.5 Maintenance Model (Future Phase)
+#### Maintenance Season
 - id
 - year
 - start_date
 - end_date
 - status
 
-### Maintenance Record
+#### Maintenance Record
 - season_id
 - display_id
 - tested_by
 - tested_at
-- result (pass/fail/repair-needed)
+- result (pass / fail / repair-needed)
 - notes
 - minutes_spent
 
 Key Reports:
-- Untested displays
-- Failed displays
-- Last tested date
-- Maintenance completion %
+- untested displays
+- failed displays
+- last tested date
+- maintenance completion % 【turn12file6†A_System_Blueprint.md†L124-L147】
 
 ---
 
-## 5.6 Display Attributes
-
-Tracks physical characteristics not in LOR:
+### 5.6 Display Attributes (Enrichment)
+Physical characteristics not in LOR, used for planning/budget/power:
 
 - light_technology (LED, incandescent, rope)
 - color
@@ -226,16 +207,15 @@ Tracks physical characteristics not in LOR:
 - year_acquired
 - power_notes
 
-This supports:
-- Annual light counts
-- Power planning
-- Inventory budgeting
+Supports:
+- annual light counts
+- power planning
+- inventory budgeting 【turn12file6†A_System_Blueprint.md†L150-L167】
 
 ---
 
-## 5.7 Kit & Inventory Model
-
-### Kit
+### 5.7 Kit & Inventory Model (Future Phase)
+#### Kit
 Represents a box or grouped equipment set.
 
 Fields:
@@ -244,7 +224,7 @@ Fields:
 - typical_stage_id
 - notes
 
-### Inventory Item
+#### Inventory Item
 - id
 - item_code
 - description
@@ -252,14 +232,13 @@ Fields:
 - consumable_flag
 - reorder_point
 
-### Kit Item
-Defines contents of each kit.
+#### Kit Item
+Defines contents of each kit. 【turn12file4†A_System_Blueprint.md†L170-L192】
 
 ---
 
-## 5.8 Controller Inventory
-
-Tracks physical controller hardware.
+### 5.8 Controller Inventory (Future Phase)
+Tracks physical controller hardware (not LOR topology).
 
 Fields:
 - id
@@ -268,21 +247,17 @@ Fields:
 - firmware_version
 - network
 - status
-- notes
-
-This is separate from LOR controller topology.
+- notes 【turn12file9†A_System_Blueprint.md†L106-L121】
 
 ---
 
-## 5.9 Infrastructure Assets
-
+### 5.9 Infrastructure Assets (Future Phase)
 Tracks seasonal dependencies:
-
-- Streetlights to turn off
-- Metered panels
-- Circuits
-- Outlet assignments
-- Power distribution
+- streetlights to turn off
+- metered panels
+- circuits
+- outlet assignments
+- power distribution
 
 Fields:
 - id
@@ -290,76 +265,69 @@ Fields:
 - identifier
 - stage_id
 - seasonal_rules
-- documentation_link
+- documentation_link 【turn12file1†A_System_Blueprint.md†L3-L20】
 
 ---
 
-# 6. Tablet Field Wiring App (Future Layer)
+## 6. Tablet Field Wiring App (Future Layer)
 
-The tablet app will:
-
-Filter by Stage  
-List Displays  
-Show:
-- Wiring legs
-- Controller assignments
-- Channel ranges
-- Setup instructions
-- Related schematics
+Tablet app goals:
+- filter by Stage
+- list Displays
+- show wiring legs, controller assignments, channel ranges
+- show setup instructions + related schematics
 
 Data source:
-- LOR snapshot + Production enrichment
+- LOR snapshot + Production enrichment 【turn12file1†A_System_Blueprint.md†L23-L38】
 
 ---
 
-# 7. Phase Implementation Plan
+## 7. Phase Implementation Plan
 
-## Phase 1 (Immediate Priority)
+### Phase 1 (Immediate Priority)
 - LOR snapshot ingestion
 - Display auto-creation
 - Stage registry
-- Basic wiring lookup
+- basic wiring lookup
 
-## Phase 2
-- Pallets
-- Rack locations
-- Display storage assignment
+### Phase 2
+- pallets
+- rack locations
+- display storage assignment
 
-## Phase 3
-- Maintenance season + records
-- Maintenance reporting
+### Phase 3
+- maintenance season + records
+- maintenance reporting
 
-## Phase 4
-- Kits + inventory
-- Controller hardware inventory
+### Phase 4
+- kits + inventory
+- controller hardware inventory
 
-## Phase 5
-- Infrastructure registry
-- Tablet application layer
+### Phase 5
+- infrastructure registry
+- tablet application layer 【turn12file1†A_System_Blueprint.md†L41-L65】
 
 ---
 
-# 8. Governance Rules
+## 8. Governance Rules
 
 1. DisplayKey changes require alias tracking.
 2. Stage Codes are controlled vocabulary.
-3. No production table may use LOR UUID as primary identity.
+3. No Production table may use LOR UUID as primary identity.
 4. Every ingestion run must produce a change report.
-5. This document must be versioned when schema changes.
+5. This document must be versioned when schema changes. 【turn12file1†A_System_Blueprint.md†L68-L75】
 
 ---
 
-# 9. Long-Term Vision
+## 9. Long-Term Vision
 
 The Production Database becomes:
-
-- The authoritative physical asset registry
-- The historical record of show evolution
-- The operational backbone for volunteers
-- The foundation for barcode scanning
-- The backend for the field tablet app
-- The reporting engine for annual planning
+- authoritative physical asset registry
+- historical record of show evolution
+- operational backbone for volunteers
+- foundation for barcode scanning
+- backend for the field tablet app
+- reporting engine for annual planning
 
 It is not just a database.
-
-It is the operations platform for MSB.
+It is the operations platform for MSB. 
