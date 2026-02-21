@@ -186,74 +186,143 @@ It should be sourced from your existing wiring views/logic.
 
 # 6. Production Operational Tables (prod.*)
 
-These tables are **hand-managed** and represent the system of record for operations.
+These tables are **hand-managed** and represent the system of record for physical assets and operations.
+
+---
 
 ## 6.1 prod.display
-Represents a single physical display.
+
+Represents a single physical display (stable physical identity).
+
+This table is the canonical record for a physical object, independent of LOR UUIDs, wiring changes, controller changes, or stage reassignment.
 
 **Fields**
+
 - `display_id` (PK)
-- `display_key_raw` (text)
-- `display_key_norm` (text, UNIQUE, NOT NULL)
-- `display_name` (text) — friendly label if different from key
+- `display_key_raw` (text) — as originally captured
+- `display_key_norm` (text, UNIQUE, NOT NULL) — canonical identity key
+- `display_title` (text, nullable) — optional friendly label if different from key
 - `stage_id_default` (FK → ref.stage)
 - `status_code` (FK → ref.display_status)
 - `year_built` (int, nullable)
 - `designer` (text, nullable)
-- `active_flag` (bool) — optional; can be implied by status
-- `notes` (text)
+- `notes` (text, nullable)
 
 **Constraints**
-- `display_key_norm` must be unique.
-- Stage code inside DisplayKey must exist in `ref.stage` (validated during ingestion / data entry).
+
+- `display_key_norm` must be UNIQUE.
+- Stage code inside `display_key_norm` must exist in `ref.stage`.
+- This table must never be automatically mutated by ingestion without reconciliation approval.
+
+**Identity Rule**
+
+- `display_key_norm` is the stable relational key.
+- LOR UUIDs are never used as identity.
 
 ---
 
-## 6.2 prod.display_alias (optional but recommended)
-Tracks DisplayKey renames without losing history.
+## 6.2 prod.display_reconciliation (Required)
+
+Captures ingest-time decisions when LOR snapshot data does not cleanly match an existing Display.
+
+This table prevents:
+- silent auto-creation
+- silent renaming
+- accidental duplication due to spelling errors
+
+This is the governance layer for matching LOR snapshot records to canonical Displays.
 
 **Fields**
+
+- `reconciliation_id` (PK)
+- `import_run_id` (FK → lor_snap.lor_import_run)
+- `lor_display_key_raw` (text)
+- `lor_display_key_norm` (text)
+- `suggested_display_id` (FK → prod.display, nullable)
+- `resolved_display_id` (FK → prod.display, nullable)
+- `decision_status` (text)
+  - SUGGESTED
+  - CONFIRMED_MATCH
+  - NEW_DISPLAY
+  - CORRECTED_KEY
+  - REJECTED
+- `decided_by` (text, nullable)
+- `decided_at` (timestamp, nullable)
+- `notes` (text, nullable)
+
+**Rules**
+
+- Exact matches may auto-confirm (optional).
+- Non-exact matches must generate a reconciliation record.
+- New physical Displays are created only after a decision is recorded.
+- Spelling corrections update `prod.display.display_key_norm` directly (no alias required unless structural).
+
+---
+
+## 6.3 prod.display_alias (Rare / Structural Renames Only)
+
+Tracks intentional canonical DisplayKey changes where historical traceability matters.
+
+Use this only when:
+- A display is intentionally renamed for structural reasons.
+- A stage code is permanently changed.
+- Two displays are merged or split.
+
+Do NOT use this for minor typo corrections.
+
+**Fields**
+
 - `alias_id` (PK)
 - `display_id` (FK → prod.display)
-- `old_display_key_norm` (text)
-- `old_display_key_raw` (text)
+- `old_display_key_norm` (text, NOT NULL)
+- `old_display_key_raw` (text, nullable)
+- `new_display_key_norm` (text, NOT NULL)
+- `new_display_key_raw` (text, nullable)
 - `changed_at` (timestamp)
 - `changed_by` (text)
 - `reason` (text)
 
 ---
 
-## 6.3 prod.display_attribute
-Physical and cost attributes not in LOR.
+## 6.4 prod.display_attribute
+
+Physical, electrical, and cost attributes not stored in LOR.
+
+These represent measured or calculated physical properties of a display.
 
 **Fields**
+
 - `display_id` (FK → prod.display)
+
 - `tech_code` (FK → ref.light_technology)
 - `color` (text, nullable)
-- `accurate_light_count` (int, nullable)
-- `amps_estimate` (numeric, nullable)
+
+- `amps_measured` (numeric, nullable)
+  - Measured current draw under load.
+  - This is the authoritative electrical value.
+
+- `light_count_estimated` (int, nullable)
+  - Estimated based on measured amps and manufacturer lights-per-amp specification.
+  - This may vary depending on manufacturer and light type.
+
+- `manufacturer` (text, nullable)
+  - Used for lights-per-amp reference and specification tracking.
+
 - `vendor` (text, nullable)
 - `cost` (numeric, nullable)
+
 - `inventory_source` (text, nullable)
 - `year_acquired` (int, nullable)
+
 - `power_notes` (text, nullable)
 - `notes` (text, nullable)
 
 **Keys**
+
 - PK: (`display_id`)
-  - (One row per display; if you need history, add a history table later.)
-
----
-
-## 6.4 prod.storage_pallet
-**Fields**
-- `pallet_id` (PK)
-- `pallet_tag` (text, UNIQUE) — barcode-ready identifier
-- `description` (text)
-- `status_code` (text, nullable) — if you want (ACTIVE/RETIRED/etc)
-- `notes` (text)
-
----
+  - One row per display.
+  - If historical electrical measurements are required later, introduce a
+    `display_electrical_history` table rather than overloading this table.
 
 ## 6.5 prod.storage_rack_location
 **Fields**

@@ -1,5 +1,5 @@
 # C — MSB Database — LOR Naming Data Contract (v1.1)
-Last updated: 2026-02-20
+Last updated: 2026-02-21
 Owner: MSB Production Crew (DB + Sequencing)
 
 ## Purpose
@@ -172,6 +172,7 @@ Each LOR import run must populate a snapshot with at minimum:
 **Primary join rule**
 - The default join from LOR snapshot to Production Display is:
   - `display.display_key_norm = lor_snapshot.display_key_norm`
+  - If display_key_norm does not match an existing Production display, the system must flag the record for reconciliation rather than auto-creating a new Display. 02/21/26 GAL
 
 **Fallback join**
 - For exceptions, Production may store explicit bindings:
@@ -210,12 +211,14 @@ Each LOR import run must populate a snapshot with at minimum:
   - wiring lookup linkage
 - Therefore:
   - renames require a Production DB alias record OR an explicit “DisplayKey changed” migration entry
+  - Recommended for structural renames.
+  - Not required for minor corrections.
 
 ### Contract versioning
 - Any change to normalization rules, token parsing, or validation rules requires:
   - bumping this doc version
-  - recording the date and reason
-  - running a diff report to detect impact
+  - recording the date and reason 02/21/26 GAL
+  - running a diff report to detect impact 02/21/26 GAL
 
 ---
 

@@ -1,5 +1,5 @@
 # A — Production Database — System Blueprint
-Last updated: 2026-02-20  
+Last updated: 2026-02-21
 Owner: MSB Production Crew  
 Status: Design Lock — Phase 1 Foundation
 
@@ -286,7 +286,7 @@ Data source:
 
 ### Phase 1 (Immediate Priority)
 - LOR snapshot ingestion
-- Display auto-creation
+- Display reconciliation workflow (review required for new/mismatched DisplayKeys) 2/21/26 GAL
 - Stage registry
 - basic wiring lookup
 
@@ -305,8 +305,7 @@ Data source:
 
 ### Phase 5
 - infrastructure registry
-- tablet application layer 【turn12file1†A_System_Blueprint.md†L41-L65】
-
+- tablet application layer 
 ---
 
 ## 8. Governance Rules
@@ -322,6 +321,7 @@ Data source:
 ## 9. Long-Term Vision
 
 The Production Database becomes:
+
 - authoritative physical asset registry
 - historical record of show evolution
 - operational backbone for volunteers
