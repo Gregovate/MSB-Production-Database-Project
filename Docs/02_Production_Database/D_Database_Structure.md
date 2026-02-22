@@ -1,13 +1,26 @@
 # D — Database Structure (Production DB)
-Last updated: 2026-02-21
+Last updated: 2026-02-22
 Owner: MSB Production Crew
 Status: Draft (Phase 1–3 scope locked)
 
 ## Change Block
-- 2026-02-21: Added **Work Orders / Task System** as a first-class Production module (users/roles, priorities/task types/skills, operational workflow, notification outbox).
-- Notes: Additive change only. No existing modules removed.
 
----
+- 2026-02-21:
+  - Completed **LOR Snapshot → Postgres ingestion pipeline**.
+  - Implemented atomic snapshot loading with single end-of-run commit.
+  - Formalized `lor_snap` as immutable, run-versioned schema.
+  - Snapshot now sourced from `lor_output_v6.db` (SQLite parser v6).
+  - Wiring layer standardized as derived `lor_wiring_leg` representation (mirrors `preview_wiring_sorted_v6`).
+  - Views rebuilt automatically during ingestion.
+
+- 2026-02-21:
+  - Added **Work Orders / Task System** as a first-class Production module
+    (users/roles, priorities/task types/skills, operational workflow, notification outbox).
+
+- Notes:
+  - Snapshot layer changes are structural but additive.
+  - No existing production modules removed.
+  - No backward-breaking changes to Production schema.
 
 # 1. Scope and Intent
 
@@ -401,86 +414,220 @@ Controlled list of production seasons (typically one per calendar year).
 
 ---
 
-# 5. LOR Snapshot Tables (lor_snap.*)
+# 5. LOR Snapshot Layer (lor_snap.*)
 
-These tables store ingestion results per import run.
-They are **not hand-edited**.
+The `lor_snap` schema represents immutable snapshot data imported
+from the authoritative LOR SQLite database (`lor_output_v6.db`).
+
+This data is:
+
+- Derived from `parse_props_v6.py`
+- Ingested into Postgres via the snapshot ingestion script
+- Stored per `import_run_id`
+- Never manually edited
+
+Each ingest is atomic and versioned.
+
+---
+
+## 5.0 Snapshot Architecture
+
+Source of truth:
+- SQLite file: `lor_output_v6.db`
+- Built by: `parse_props_v6.py`
+- Includes:
+  - previews
+  - props
+  - subProps
+  - dmxChannels
+  - preview_wiring_map_v6
+  - preview_wiring_sorted_v6 (field-ready output)
+
+Postgres ingestion:
+- Creates one row in `lor_snap.lor_import_run`
+- Bulk loads snapshot tables
+- Rebuilds derived wiring views
+- Commits once (atomic run)
+
+If ingestion fails, no partial state remains.
+
+---
 
 ## 5.1 lor_snap.lor_import_run
-Represents one LOR ingest event.
 
-**Fields**
-- `import_run_id` (PK)
-- `imported_at` (timestamp)
-- `source_name` (text) — which file/DB/build produced it
-- `source_version` (text) — parser version, git hash, etc
-- `notes` (text)
+Represents one LOR ingestion event.
+
+One row per snapshot load.
+
+### Fields
+
+- `import_run_id` (PK, serial)
+- `imported_at` (timestamp with time zone, default now())
+- `source_name` (text) — SQLite filename or build identifier
+- `source_version` (text) — parser version / git hash
+- `notes` (text, optional)
+
+### Rules
+
+- Never updated
+- Never deleted
+- All snapshot tables reference this ID
 
 ---
 
 ## 5.2 lor_snap.lor_preview
-**Fields**
+
+Raw preview metadata per import run.
+
+### Fields
+
 - `import_run_id` (FK → lor_import_run)
 - `lor_preview_uuid` (text)
 - `preview_name` (text)
-- `created_at` (timestamp, optional if available)
-- `notes` (text)
+- `stage_id` (text, derived in parser)
+- `revision` (text, optional)
+- `brightness` (numeric, optional)
+- `background_file` (text, optional)
 
-**Keys**
+### Keys
+
 - PK: (`import_run_id`, `lor_preview_uuid`)
 
 ---
 
 ## 5.3 lor_snap.lor_prop
-Represents raw LOR props (and optionally subprops if you store them here too).
 
-**Fields**
+Raw LOR props from SQLite `props` table.
+
+Includes:
+- LOR
+- DMX
+- DeviceType = None (inventory-only objects)
+
+### Fields
+
 - `import_run_id` (FK)
 - `lor_prop_uuid` (text)
 - `lor_preview_uuid` (text)
 - `prop_name` (text)
-- `comment_raw` (text)
-- `display_key_raw` (text) — derived from comment conventions
-- `display_key_norm` (text) — normalized for joins (must match ref.display)
+- `lor_comment` (text)
 - `device_type` (text)
-- `max_channels` (int, optional)
-- `tag` (text, optional)
-- `notes` (text)
+- `network` (text, nullable)
+- `controller_uid` (text, nullable)
+- `start_channel` (int, nullable)
+- `end_channel` (int, nullable)
+- `max_channels` (int, nullable)
+- `lights` (int, nullable)
+- `tag` (text, nullable)
+- `raw_json` (jsonb, optional future enhancement)
 
-**Keys**
+### Keys
+
 - PK: (`import_run_id`, `lor_prop_uuid`)
-
-**Notes**
-- DeviceType = "None" indicates inventory-only objects; excluded from wiring legs.
 
 ---
 
-## 5.4 lor_snap.lor_wiring_leg
-This table is the structured representation of field wiring output.
-It should be sourced from your existing wiring views/logic.
+## 5.4 lor_snap.lor_sub_prop
 
-**Fields**
+Materialized sub-props from SQLite `subProps`.
+
+Represents:
+- Multi-channel grid splits
+- Cross-reuse wiring legs
+
+### Fields
+
 - `import_run_id` (FK)
-- `lor_preview_uuid` (text) OR `preview_name` (text)
-- `stage_code` (text) — derived from DisplayKey OR preview naming (contract rules)
+- `lor_subprop_uuid` (text)
+- `master_prop_uuid` (text)
+- `lor_preview_uuid` (text)
+- `prop_name` (text)
+- `lor_comment` (text)
+- `device_type` (text)
+- `network` (text)
+- `controller_uid` (text)
+- `start_channel` (int)
+- `end_channel` (int)
+- `tag` (text, nullable)
+
+### Keys
+
+- PK: (`import_run_id`, `lor_subprop_uuid`)
+
+---
+
+## 5.5 lor_snap.lor_dmx_channel
+
+Materialized DMX channel ranges from SQLite `dmxChannels`.
+
+### Fields
+
+- `import_run_id` (FK)
+- `lor_prop_uuid` (text)
+- `network` (text)
+- `universe` (int)
+- `start_channel` (int)
+- `end_channel` (int)
+
+### Keys
+
+- PK: (`import_run_id`, `lor_prop_uuid`, `universe`, `start_channel`)
+
+---
+
+## 5.6 lor_snap.lor_wiring_leg (Derived)
+
+Structured field-ready wiring representation.
+
+Built from:
+
+- lor_prop
+- lor_sub_prop
+- lor_dmx_channel
+
+Equivalent to SQLite view `preview_wiring_sorted_v6`.
+
+### Fields
+
+- `import_run_id` (FK)
+- `preview_name` (text)
+- `stage_code` (text, derived from display naming contract)
 - `display_key_norm` (text)
-- `display_key_raw` (text, optional)
-- `lor_name` (text) — original LOR channel/prop naming used for reference
+- `lor_name` (text)
 - `network` (text)
 - `controller_id` (text)
 - `start_channel` (int)
 - `end_channel` (int)
 - `device_type` (text)
+- `source` (PROP | SUBPROP | DMX)
+- `lor_tag` (text, nullable)
 
-**Keys**
-- PK: (`import_run_id`, `stage_code`, `display_key_norm`, `network`, `controller_id`, `start_channel`)
+### Keys
 
-**Indexes**
-- (`import_run_id`, `stage_code`)
+- PK:
+  (`import_run_id`,
+   `preview_name`,
+   `controller_id`,
+   `start_channel`)
+
+### Indexes
+
+- (`import_run_id`, `preview_name`)
 - (`display_key_norm`)
 - (`controller_id`)
 
 ---
+
+## Snapshot Layer Rules
+
+1. Immutable per import_run_id
+2. No manual edits
+3. No business logic
+4. Pure representation of LOR state
+5. Downstream layers (prod.*) reference specific runs
+
+---
+
 
 # 6. Production Operational Tables (prod.*)
 

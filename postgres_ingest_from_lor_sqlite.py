@@ -390,8 +390,9 @@ def main() -> int:
 
         if row[6] > 0:
             print(f"[WARN] Unassigned displays detected: {row[6]}", file=sys.stderr)
-            
+
         return 0
+    
 
     except Exception as e:
         pg_conn.rollback()
