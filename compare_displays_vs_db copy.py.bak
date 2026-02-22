@@ -15,13 +15,10 @@ Dependencies:
 """
 # ------------------------------------------------------------
 # MSB Database — Displays vs DB compare report
-# Filename: compare_displays_vs_db.py
 # Revision history
 #   GAL 24-10-14  Initial compare_displays_vs_db.py with Excel output.
 #   GAL 25-10-14  Add CSV header cleanup + wait_until_stable().
 #   GAL 25-11-05  Auto-open Excel after report build; add revision header.
-#   GAL 26-02-22  Include inventory_type and display_status in compare pipeline;
-#                 carry through to Matches, Sheet_Only, and Needs_Fix tabs.
 # ------------------------------------------------------------
 
 import os
@@ -257,12 +254,11 @@ def load_sheet_names(csv_path: Path) -> pd.DataFrame:
       - First non-blank row is header (blank header cells allowed)
       - Second row is skipped if YearBuilt isn't numeric (human labels row)
       - '#N/A' normalized to ''
-    Returns DataFrame with columns:
-      display_name, display_name_clean, display_name_norm,
-      inventory_type, display_status
+    Returns DataFrame with columns: display_name, display_name_clean, display_name_norm
     """
     print(f"[INFO] Reading sheet CSV from: {csv_path}")
 
+    # Parse with csv module (more tolerant than pandas for ragged rows)
     with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
         r = csv.reader(f, delimiter=",")
 
@@ -272,19 +268,15 @@ def load_sheet_names(csv_path: Path) -> pd.DataFrame:
                 raw_header = [ (c or "").strip() for c in row ]
                 break
         else:
-            return pd.DataFrame(columns=[
-                "display_name","display_name_clean","display_name_norm",
-                "inventory_type","display_status"
-            ])
+            return pd.DataFrame(columns=["display_name","display_name_clean","display_name_norm"])
 
         headers = _normalize_header_names(raw_header)
         year_idx = _find_year_idx(headers)
 
-        # Normalize headers for matching
-        norm_hdrs = [ (h or "").strip().lower().replace("_"," ").replace("-"," ") for h in headers ]
-
         # Identify display-name column by header
+        # Accept 'DisplayName', 'Display Name', 'Display', or 'LOR Comment'
         disp_idx = None
+        norm_hdrs = [ (h or "").strip().lower().replace("_"," ") for h in headers ]
         for want in ("display name", "displayname", "display", "lor comment", "lorcomment"):
             if want in norm_hdrs:
                 disp_idx = norm_hdrs.index(want)
@@ -292,30 +284,13 @@ def load_sheet_names(csv_path: Path) -> pd.DataFrame:
         if disp_idx is None:
             disp_idx = 0  # fallback to first column
 
-        # Find optional new columns
-        inv_idx = None
-        for want in ("inventory type", "inventory_type"):
-            if want in norm_hdrs:
-                inv_idx = norm_hdrs.index(want)
-                break
-
-        status_idx = None
-        for want in ("display status", "display_status", "status"):
-            if want in norm_hdrs:
-                status_idx = norm_hdrs.index(want)
-                break
-
         # Consume rows
         disp_values = []
-        inv_values = []
-        status_values = []
-
         checked_second = False
         for row in r:
             if not row or not any((c or "").strip() for c in row):
                 continue
             cells = [ (c or "").strip() for c in row ]
-
             # pad/truncate to header length
             if len(cells) < len(headers):
                 cells += [""] * (len(headers) - len(cells))
@@ -331,42 +306,17 @@ def load_sheet_names(csv_path: Path) -> pd.DataFrame:
             v = cells[disp_idx]
             if v.upper() == "#N/A":
                 v = ""
-
-            inv = cells[inv_idx] if inv_idx is not None else ""
-            st  = cells[status_idx] if status_idx is not None else ""
-
             disp_values.append(v)
-            inv_values.append(inv)
-            status_values.append(st)
 
-    df = pd.DataFrame({
-        "display_name": disp_values,
-        "inventory_type": inv_values,
-        "display_status": status_values,
-    })
-
+    df = pd.DataFrame({"display_name": disp_values})
     df["display_name"]       = df["display_name"].astype(str)
     df["display_name_clean"] = df["display_name"].map(exact_clean)
     df["display_name_norm"]  = df["display_name"].map(norm_key)
-
-    # Normalize new fields (optional but helpful)
-    df["inventory_type"] = df["inventory_type"].astype(str).str.strip().str.upper()
-    df["display_status"] = df["display_status"].astype(str).str.strip().str.upper()
-
     df = df[df["display_name_norm"] != ""].drop_duplicates(subset=["display_name_clean"])
 
     print(f"[INFO] Using column for display name: '{headers[disp_idx]}'")
-    if inv_idx is not None:
-        print(f"[INFO] Found inventory_type column: '{headers[inv_idx]}'")
-    else:
-        print("[WARN] inventory_type column not found in CSV header (will be blank in report)")
-
-    if status_idx is not None:
-        print(f"[INFO] Found display_status column: '{headers[status_idx]}'")
-    else:
-        print("[WARN] display_status column not found in CSV header (will be blank in report)")
-
     return df
+
 
 def fuzzy_suggestions(missing_df: pd.DataFrame, universe_df: pd.DataFrame, k=3) -> pd.DataFrame:
     if missing_df.empty or universe_df.empty:
@@ -422,15 +372,7 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
         "display_name_clean":"Exact_Key",
         "display_name_norm_db":"DB_Normalized",
         "display_name_norm_sheet":"Sheet_Normalized",
-    })[[
-        "DB_Display_Name",
-        "Sheet_Display_Name",
-        "Exact_Key",
-        "Preview",
-        "Revision",
-        "inventory_type",
-        "display_status",
-    ]].sort_values("Exact_Key")
+    })[["DB_Display_Name","Sheet_Display_Name","Exact_Key","Preview","Revision"]].sort_values("Exact_Key")
 
     # 2) DB_only / Sheet_only (still strict)
     db_only = db_df[~db_df["display_name_clean"].isin(matches["Exact_Key"])] \
@@ -439,16 +381,16 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
               .sort_values("DB_Display_Name").rename(columns={"display_name_clean":"Exact_Key"})
 
     sheet_only = sh_df[~sh_df["display_name_clean"].isin(matches["Exact_Key"])] \
-        .rename(columns={"display_name":"Sheet_Display_Name","display_name_norm":"Normalized_Key"}) \
-        [["Sheet_Display_Name","display_name_clean","Normalized_Key","inventory_type","display_status"]] \
-        .sort_values("Sheet_Display_Name").rename(columns={"display_name_clean":"Exact_Key"})
+                .rename(columns={"display_name":"Sheet_Display_Name","display_name_norm":"Normalized_Key"}) \
+                [["Sheet_Display_Name","display_name_clean","Normalized_Key"]] \
+                .sort_values("Sheet_Display_Name").rename(columns={"display_name_clean":"Exact_Key"})
 
     # 3) NEEDS_FIX — “intended pairs” that don’t match exactly (same norm_key, different strings)
     fix_pairs = db_only.merge(
         sheet_only,
         on="Normalized_Key",
         how="inner",
-        suffixes=("_DBonly", "_Sheetonly")
+        suffixes=("_DBonly","_Sheetonly")
     )
 
     if not fix_pairs.empty:
@@ -459,27 +401,12 @@ def run_compare(db_path: Path, csv_path: Path) -> dict:
         # Choose your canonical side here (Sheet or DB). Default: SHEET as authority.
         fix_pairs.insert(0, "Edit_Side", "Preview_Comment")  # or "Sheet"
         fix_pairs.insert(1, "Target_Name", fix_pairs["Sheet_Display_Name"])
-
         needs_fix = fix_pairs[[
-            "Edit_Side",
-            "DB_Display_Name",
-            "Sheet_Display_Name",
-            "Target_Name",
-            "Reason",
-            "Normalized_Key",
-            "inventory_type",
-            "display_status",
-        ]].sort_values(["Reason", "Normalized_Key", "Target_Name"])
+            "Edit_Side","DB_Display_Name","Sheet_Display_Name","Target_Name","Reason","Normalized_Key"
+        ]].sort_values(["Reason","Normalized_Key","Target_Name"])
     else:
         needs_fix = pd.DataFrame(columns=[
-            "Edit_Side",
-            "DB_Display_Name",
-            "Sheet_Display_Name",
-            "Target_Name",
-            "Reason",
-            "Normalized_Key",
-            "inventory_type",
-            "display_status",
+            "Edit_Side","DB_Display_Name","Sheet_Display_Name","Target_Name","Reason","Normalized_Key"
         ])
 
     # 4) Optional fuzzy suggestions (unchanged)
