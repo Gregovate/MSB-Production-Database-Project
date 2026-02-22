@@ -2013,32 +2013,8 @@ def process_lor_props(preview_id, root):
     for display_name, group in props_grouped_by_comment.items():
         # master = min(... by StartChannel)
         master = min(group, key=_pair_key)           # ← uses (UID, StartChannel)
-
-        # master_id is used throughout this block; define it immediately after selecting master.
+        m_grid = master["Grid"] or {...}
         master_id = master["PropID_scoped"]
-
-        # ---------------------------------------------------------------------
-        # Master grid safety:
-        # - Downstream code expects Grid to be a dict (subscriptable).
-        # - normalize_grid() guarantees dict-or-{} and fails loudly with context
-        #   if something upstream returns the wrong type.
-        # ---------------------------------------------------------------------
-        m_grid = normalize_grid(
-            master.get("Grid"),
-            ctx=f"single-grid master preview={preview_id} master_scoped_id={master_id} comment={display_name}"
-        )
-
-        # Ensure all expected keys exist (missing -> None) so params tuple is stable.
-        m_grid_full = {
-            "Network": None,
-            "UID": None,
-            "StartChannel": None,
-            "EndChannel": None,
-            "Unknown": None,
-            "Color": None,
-            **m_grid,
-        }
-
         # MASTER -> props
         # GAL 25-10-22: collision-aware insert (no silent overwrite)
         insert_sql = """
@@ -2059,8 +2035,8 @@ def process_lor_props(preview_id, root):
             master["TraditionalType"], master["EffectBulbSize"], master["Tag"], master["Parm1"],
             master["Parm2"], master["Parm3"], master["Parm4"], master["Parm5"], master["Parm6"],
             master["Parm7"], master["Parm8"], master["Lights"],
-            m_grid_full["Network"], m_grid_full["UID"], m_grid_full["StartChannel"], m_grid_full["EndChannel"],
-            m_grid_full["Unknown"], m_grid_full["Color"], master["PreviewId"]
+            m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"],
+            m_grid["Unknown"], m_grid["Color"], master["PreviewId"]
         )
         incoming_ctx = {
             "PropID":       master_id,
@@ -2068,17 +2044,18 @@ def process_lor_props(preview_id, root):
             "LORComment":   display_name,
             "PreviewId":    master.get("PreviewId"),
             "DeviceType":   master.get("DeviceType",""),
-            "Network":      (m_grid_full or {}).get("Network",""),
-            "UID":          (m_grid_full or {}).get("UID",""),
-            "StartChannel": (m_grid_full or {}).get("StartChannel",""),
-            "EndChannel":   (m_grid_full or {}).get("EndChannel",""),
+            "Network":      (m_grid or {}).get("Network",""),
+            "UID":          (m_grid or {}).get("UID",""),
+            "StartChannel": (m_grid or {}).get("StartChannel",""),
+            "EndChannel":   (m_grid or {}).get("EndChannel",""),
         }
         ok = safe_insert_prop(cursor, insert_sql, params, incoming_ctx)
         if DEBUG:
             if ok:
-                print(f"[DEBUG] (LOR single) MASTER -> props INSERT: {master_id} '{display_name}' Start={m_grid_full['StartChannel']}")
+                print(f"[DEBUG] (LOR single) MASTER -> props INSERT: {master_id} '{display_name}' Start={m_grid['StartChannel']}")
             else:
-                print(f"[DEBUG] (LOR single) MASTER -> props SKIP (collision/error): {master_id} '{display_name}' Start={m_grid_full['StartChannel']}")
+                print(f"[DEBUG] (LOR single) MASTER -> props SKIP (collision/error): {master_id} '{display_name}' Start={m_grid['StartChannel']}")
+
 
         # REMAINING -> subProps
         # REMAINING -> subProps
@@ -2324,30 +2301,8 @@ def process_lor_multiple_channel_grids(preview_id, root):
         master_raw_id = master["raw_id"]
         master_id     = scoped_id(preview_id, master_raw_id)
 
-        # ---------------------------------------------------------------------
-        # Fields for master props row 2026-02-21 GAL
-        #
-        # WHY normalize_grid():
-        # - m_grid MUST be a dict, because we subscript it below (m_grid_full["Network"], etc.)
-        # - If any upstream path returns a set (or other type), we fail here with context,
-        #   instead of crashing later with the vague "set is not subscriptable".
-        # ---------------------------------------------------------------------
-        m_grid = normalize_grid(
-            master.get("Grid"),
-            ctx=f"multi-grid master preview={preview_id} master_id={master_id} comment={comment}"
-        )
-
-        # Ensure expected keys exist; missing keys become None (keeps SQL tuple stable).
-        m_grid_full = {
-            "Network": None,
-            "UID": None,
-            "StartChannel": None,
-            "EndChannel": None,
-            "Unknown": None,
-            "Color": None,
-            **m_grid,
-        }
-
+        # Fields for master props row
+        m_grid = master["Grid"]
         props_row = (
             master_id, master["Name"], comment, "LOR", master["BulbShape"], master["DimmingCurveName"],
             master["MaxChannels"], master["CustomBulbColor"], master["IndividualChannels"],
@@ -2356,10 +2311,10 @@ def process_lor_multiple_channel_grids(preview_id, root):
             master["TraditionalType"], master["EffectBulbSize"], master["Tag"], master["Parm1"], master["Parm2"],
             master["Parm3"], master["Parm4"], master["Parm5"], master["Parm6"], master["Parm7"], master["Parm8"],
             master["Lights"],  # Lights
-            m_grid_full["Network"], m_grid_full["UID"], m_grid_full["StartChannel"], m_grid_full["EndChannel"],
-            m_grid_full["Unknown"], m_grid_full["Color"],
+            m_grid["Network"], m_grid["UID"], m_grid["StartChannel"], m_grid["EndChannel"], m_grid["Unknown"], m_grid["Color"],
             preview_id
         )
+
         # Insert master into props (WITH full network/channel fields)
         # Handle a single LOR PropClass that contains MULTIPLE ChannelGrid groups (";"-separated).
         # Keep the original prop as the master; materialize each grid group as its own subProp
@@ -2389,20 +2344,18 @@ def process_lor_multiple_channel_grids(preview_id, root):
             "LORComment":   comment,
             "PreviewId":    preview_id,
             "DeviceType":   "LOR",
-            "Network":      m_grid_full.get("Network", ""),
-            "UID":          m_grid_full.get("UID", ""),
-            "StartChannel": m_grid_full.get("StartChannel", ""),
-            "EndChannel":   m_grid_full.get("EndChannel", ""),
+            "Network":      (m_grid or {}).get("Network", ""),
+            "UID":          (m_grid or {}).get("UID", ""),
+            "StartChannel": (m_grid or {}).get("StartChannel", ""),
+            "EndChannel":   (m_grid or {}).get("EndChannel", ""),
         }
 
         ok = safe_insert_prop(cursor, insert_sql, params, incoming_ctx)
         if DEBUG:
-            start = m_grid_full.get("StartChannel")
-            uid   = m_grid_full.get("UID")
             if ok:
-                print(f"[DEBUG] (LOR multi) MASTER → props INSERT id={master_id}  comment={comment}  start={start} uid={uid}")
+                print(f"[DEBUG] (LOR multi) MASTER → props INSERT id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
             else:
-                print(f"[DEBUG] (LOR multi) MASTER → props SKIP (collision/error) id={master_id}  comment={comment}  start={start} uid={uid}")
+                print(f"[DEBUG] (LOR multi) MASTER → props SKIP (collision/error) id={master_id}  comment={comment}  start={m_grid['StartChannel']} uid={m_grid['UID']}")
 
         # Insert remaining grids into subProps
         # Insert remaining grids into subProps (skip for aggregate one-plug RGB/RGBW)
