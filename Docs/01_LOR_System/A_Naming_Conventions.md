@@ -1,176 +1,301 @@
----
 title: Prop and Display Naming Conventions
-version: 2025-10-29
+Filename: A_Naming_Conventions.md
+version: 2026-02-22
 author: Greg Liebig / Engineering Innovations, LLC
 ---
 
 # Prop and Display Naming Conventions
 
-These conventions ensure consistent naming across **LOR sequencing**, **display database records**, and **physical labels** used in the field.  
-Following these rules keeps previews, wiring maps, and channel assignments aligned and machine-readable.
+These conventions ensure consistent naming across:
+
+- **LOR sequencing (Channel Grid)**
+- **Display database records (Postgres / SQLite)**
+- **Physical labels used in the field**
+- **Field wiring exports**
+
+If naming rules are not followed, channels scatter in the grid, wiring reports drift from reality, and physical labels no longer match database records.
+
+This document prevents chaos.
 
 ---
 
-## 1. Purpose
+## 1. Two Separate Naming Layers in LOR
 
-There are two main naming layers:
+LOR uses two different fields that serve different purposes:
 
-1. **LOR Channel Naming Convention** — how channels are named for sequencing and motion order.
-2. **Display Naming Convention** — how physical displays and sub-props are identified in the database and in the field.
+| Field | Purpose | Spaces Allowed | Used as Database Key |
+|--------|----------|----------------|----------------------|
+| **Name** | Channel grid sorting & programming | Yes | No |
+| **Comment** | Physical display identifier | No | Yes |
 
----
-
-## 2. LOR Channel Naming Convention
-
-Light-O-Rama sorts channels alphabetically.  
-To keep multi-channel motion props in proper order, use the format:
-
-LL DisplayOrAbbrev UID-Channel Description
-
-
-| Element | Description |
-|----------|-------------|
-| **LL** | Two-letter abbreviation of the stage or display group. Used to group all channels belonging to that preview. |
-| **Display / Abbreviation** | Display name or short form that ties all channels for that prop together. |
-| **UID** | Unit ID (controller address). |
-| **Channel** | Channel or port number on that controller. |
-| **Description** | Brief functional name (e.g., *Head Bob*, *Left Arm 1*, *Red*). |
-
-**Example**
-
-EC Cond L28-15 Conductor Head
-
-### ⚠️ Note
-If the **UID** or **channel** changes, the preview and harness labels must be updated.  
-This is why display-level naming (below) is used as the true database key.
+These fields must not be confused.
 
 ---
 
-## 3. Display Naming Convention
+## 2. LOR Name Field (Channel Naming Convention)
 
-Every display, sub-prop, and panel we build, maintain, and store must have a **unique identifier**.
+The **Name field controls alphabetical sorting inside the LOR grid.**
 
-That identifier:
-- Appears on the **physical label** attached to the display.
-- Is stored in the **Comment field** in LOR.
-- Allows every channel to trace back to the correct physical panel.
+LOR sorts strictly alphabetically.  
+Improper numbering or inconsistent formatting causes channels to scatter.
+
+### 2.1 Required Structure
+
+Recommended format:
+
+`<LL> <Group> <UID>-<CH> <Description>`
+
+Example:
+
+`TC 7B-01 Hippo Box`
 
 ---
 
-### 3.1 Displays and Sub-Props
+### 2.2 UID and Channel Rules (CRITICAL)
+
+**UID**
+- Controller ID in HEX
+- Uppercase
+- No leading zero padding
+- Example: `7B`, `1F`, `20`
+
+**Channel**
+- Always 2-digit padded
+- `01–16`
+- Even if wiring exports show a single digit
+
+Correct:
+- `7B-01`
+- `7B-02`
+- `7B-10`
+
+Incorrect:
+- `7B-1`
+- `7B-2`
+
+If channels are not padded, alphabetical sorting breaks:
+
+Wrong order:
+
+- 7B-1
+- 7B-10
+- 7B-11
+- 7B-2
+
+
+Correct order:
+
+- 7B-01
+- 7B-02
+- 7B-03
+- 7B-10
+
+---
+
+### 2.3 Real Example (Hippo + Carolers)
+
+![Channel Grid Example](Docs/images/naming_conventions_channel_grid.png)
+
+This grid shows:
+
+- One multi-state animated display (Hippo)
+- Three physical panels (CarolerPanel-01..03)
+- Proper grouping by padded channel numbers
+
+The naming works because:
+- All channels begin with consistent stage prefix
+- Channels are padded
+- Related elements sort together
+
+### 2.4 Unused Channels (SPARE Rule — REQUIRED)
+
+Any unused channel on a controller must be explicitly added to the preview.
+
+Do NOT leave gaps.
+
+Unused channels must:
+
+- Follow the exact same naming structure
+- Use the same Stage and Group prefix
+- Use correct HEX UID
+- Use 2-digit padded channel number
+- End with the word `Spare`
+
+Example:
+
+TC 7B-11 Spare  
+TC 7B-12 Spare  
+
+Why this is required:
+
+- Makes unused capacity immediately visible in the Channel Grid
+- Prevents accidental reuse of a channel already assumed to be empty
+- Keeps controllers fully documented
+- Allows quick identification of expansion space during programming
+
+Unused channels must remain in the preview even if no physical wiring exists.
+
+When a Spare channel is later assigned to a display:
+- Rename the channel
+- Update wiring documentation
+- Remove the `Spare` designation
+  
+---
+
+## 3. Comment Field (Display Identifier)
+
+The **Comment field defines the Display Name** used for:
+
+- Physical labels
+- Database joins
+- Wiring exports
+- Inventory tracking
+- Maintenance records
+
+This is the true identity of the physical display.
+
+---
+
+### 3.1 Comment Field Rules
+
+- No spaces allowed
+- Must start with 2-letter stage abbreviation
+- Use hyphen as structural separator
+- Must remain stable over time
+
+Examples:
+
+Standard stages:
+- `FT-Arch-01`
+- `RA-Arch-DS-01`
+- `EC-Elf-P2-06`
+
+GG stage (numeric prefix allowed):
+- `GG20-Elden`
+- `GG20-Elden-01`
+- `GG30-V2Elden`
+- `GG30-V2Elden-01`
+
+---
+
+### 3.2 Displays vs Sub-Props
 
 | Term | Definition |
-|------|-------------|
-| **Display** | The complete physical panel (e.g., Conductor, Note, or Elf). |
-| **Sub-Prop** | Any individual motion element belonging to that Display. All sub-props share the exact same **Display Name** in the Comment field. |
+|------|------------|
+| **Display** | One physical panel or unit |
+| **Sub-Prop** | Logical motion element within a display |
+
+All sub-props must share the exact same **Comment value** as their parent display.
+
+Example:
+
+| Channel Name | Comment |
+|--------------|---------|
+| `TC 7B-01 Hippo Box` | `ChristmasHippo` |
+| `TC 7B-04 Hippo Body Mid` | `ChristmasHippo` |
+| `TC 7B-05 Hippo Body Full Head` | `ChristmasHippo` |
 
 ---
 
-### 3.2 Single-Channel Displays
+### 3.3 Example – Multi-Panel Display (Caroler)
 
-Some displays have only one lighting element. Each must still have a unique identifier.
+![Visualization Example](Docs/images/naming_conventions_visualization.png)
 
-**Examples**
+Three physical panels:
 
-| Pattern | Display Names |
-|----------|----------------|
-| **Elves** (4 patterns × 8 each) | `Elf-P1-01 … Elf-P1-08`, `Elf-P2-01 … Elf-P2-08`, `Elf-P3-01 … Elf-P3-08`, `Elf-P4-01 … Elf-P4-08` |
-| **Notes** (4 patterns × 2 each) | `Note-A-01, Note-A-02`, `Note-B-01, Note-B-02`, `Note-C-01, Note-C-02`, `Note-D-01, Note-D-02` |
+- `CarolerPanel-01`
+- `CarolerPanel-02`
+- `CarolerPanel-03`
 
----
+Each has its own Comment value.
 
-### 3.3 Multi-Channel Displays (LOR or DMX)
-
-For props with multiple channels inside one panel, the **Display Name** remains identical across all channels.
-**Example**
-
-> *ElfConductor* is one display panel with multiple sub-props controlling arms, head, etc.  
-> Each sub-prop still uses `ElfConductor` in its Comment field.
-
-
-**Example**
-
-| Channel | Description | Comment |
-|----------|--------------|----------|
-| `EC Cond L28-15` | Conductor Head | Conductor |
-| `EC CondHeadBob` | Head Bob | Conductor |
-| `EC Cond LH 1 L28-09` | Left Hand Position 1 | Conductor |
-| `EC Cond LH 2 L28-10` | Left Hand Position 2 | Conductor |
-| `EC Cond LH 3 L28-11` | Left Hand Position 3 | Conductor |
-| `EC Cond RH 1 L28-14` | Right Hand Position 1 | Conductor |
-| `EC Cond RH 2 L28-13` | Right Hand Position 2 | Conductor |
-| `EC Cond RH 3 L28-12` | Right Hand Position 3 | Conductor |
+Even if programming groups them visually, they remain separate physical units in inventory and wiring.
 
 ---
 
-## 4. Display Name Format
+## 4. Display Name Format (Comment Field)
 
-<LL>-<DisplayName>-<Variation>-<Sequence>-<Color>
+`<Stage>-<DisplayName>-<Variation>-<Sequence>-<Color>`
 
 | Segment | Meaning |
 |----------|---------|
-| **LL** | Two-letter stage abbreviation (optional). |
-| **DisplayName** | **Required.** The prop or panel name in CamelCase, no spaces. Examples: `Elf`, `Note`, `CandyCane`, `MiniTree`. |
-| **Variation** | Distinguishes multiple versions of a display (location, pattern, section, etc.). Examples: `DS`, `PS`, `A`, `B`, `C`, `P1`, `P2`, `LH`, `RH`, `M`, `F`. |
-| **Sequence** | Instance number of that variation. Always pad to two digits (`01`, `02`, …). |
-| **Color** | Optional one-letter suffix appended to the sequence (`R`, `G`, `B`, `W`, `Y`). Use full color name only when clarity requires. |
+| Stage | Two-letter stage code |
+| DisplayName | CamelCase, no spaces |
+| Variation | Optional location/version identifier |
+| Sequence | Always 2-digit padded |
+| Color | Optional suffix |
 
----
+Examples:
 
-### Examples
-
-| Type | Example | Description |
-|------|----------|-------------|
-| Pattern-based | `EC-Elf-P2-06` | Elf, Pattern 2, unit #6 |
-| Pattern-based | `EC-Note-B-01` | Note, Pattern B, unit #1 |
-| Color-based | `ST-Star-Red-01` | Red Star, unit #1 |
-| Color-based | `WF-MiniTree-G-04` | Green Mini-Tree, unit #4 |
-| Location-based | `RA-Arch-DS-01` | Arch on Driver Side, unit #1 |
-| Location-based | `RA-Arch-PS-01` | Arch on Passenger Side, unit #1 |
-| Single panel | `EC-ElfConductor` | One panel with multiple sub-props |
+- `EC-Elf-P2-06`
+- `RA-Arch-DS-01`
+- `WF-MiniTree-G-04`
+- `GG20-Elden-01`
 
 ---
 
 ### 4.1 DeviceType = None
 
-When a prop’s **DeviceType** is `None` (display-only object):
-- Omit the `<Seq>` portion.
-- Color or variation can still be used if helpful for identification.
+Inventory-only displays (no controller assigned):
+
+- Must still follow full Comment naming rules
+- Must include unique sequence number
+- Must not contain Network or UID
+
+Example:
+- `GG20-Elden-02`
+- `GG20-Elden-03`
+- `GG20-Elden-04`
 
 ---
 
-### 4.2 MaxChannels Field
+## 5. Field Wiring Alignment
 
-The `MaxChannels` field defines how many channels belong to a display.
-- Minimum = 1  
-- Upper limit can exceed 16 (use as needed).
+![Field Wiring Example](Docs/images/naming_conventions_field_wiring.png)
+
+Field wiring exports rely on the Comment value.
+
+If Comment naming is incorrect:
+- Wiring sheets become inaccurate
+- Displays cannot be located in the field
+- Maintenance records break
 
 ---
 
-## 5. Inventory and Physical Labels
+## 6. Inventory and Physical Labels
 
-Every display label in the field should:
-- Match the **Comment field** value in LOR.
-- Use a printed or engraved tag with the display name and unit number.
-- Remain consistent through wiring harnesses and storage bins.
+Every display label must:
 
-This identifier forms the link between:
-- The **physical prop**
-- The **preview database**
-- The **inventory and maintenance system**
+- Match the Comment field exactly
+- Be permanently attached to the display
+- Match database and wiring documentation
+
+The Comment value is the backbone of:
+
+- Physical inventory
+- Storage tracking
+- Repair history
+- Field setup instructions
 
 ---
 
 ## ✅ Summary
 
-This standard keeps all names **consistent, human-readable, and machine-safe** across:
-- LOR sequencing software
-- Preview parser database
-- Wiring maps and Excel reports
-- Field labeling and inventory control
+| Field | Controls | Critical Rule |
+|--------|----------|--------------|
+| Name | Programming & Grid Sorting | Pad channels to 2 digits |
+| Comment | Physical Identity | No spaces, stable, structured |
+
+Naming consistency prevents:
+
+- Channel grid chaos
+- Lost programming
+- Wiring mismatches
+- Inventory drift
 
 ---
 
-> **Revision History**  
-> - GAL 25-10-29 — Initial merge from legacy Google Doc and repo naming_conventions.md  
-> - GAL 25-10-30 — Formatting cleanup, added DeviceType = Non
+> **Revision History**
+> - GAL 25-10-29 — Initial merge  
+> - GAL 25-10-30 — Formatting cleanup  
+> - GAL 26-02-22 — Major clarification: separated Name vs Comment logic, added UID padding rule, added real-world examples with grid and wiring screenshots
