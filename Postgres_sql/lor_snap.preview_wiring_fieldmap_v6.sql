@@ -1,5 +1,11 @@
 -- =============================================================================
 -- MSB Database — Wiring Field Mapping Views (Postgres)
+-- Port of:
+--   preview_wiring_fieldmap_v6
+--   preview_wiring_fieldlead_v6
+--   preview_wiring_circuit_rollup_v6
+--   preview_wiring_fieldonly_v6
+-- Source: lor_snap.preview_wiring_sorted_v6 (current-run)
 -- Controllers are HEX (e.g., 0A, 0B, 10, 1F)
 -- =============================================================================
 
