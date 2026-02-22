@@ -2966,6 +2966,7 @@ CREATE INDEX IF NOT EXISTS idx_dmx_prop          ON dmxChannels(PropId);
     # --- Field wiring helpers (single, canonical definition) ------------------
     helpers = r"""
 -- Field/Internal mapping (canonical; single definition)
+
 DROP VIEW IF EXISTS preview_wiring_fieldmap_v6;
 CREATE VIEW preview_wiring_fieldmap_v6 AS
 WITH map AS (
@@ -3010,6 +3011,7 @@ SELECT
 FROM span;
 
 -- Exactly one lead row per display per circuit (what to wire in the field)
+
 DROP VIEW IF EXISTS preview_wiring_fieldlead_v6;
 CREATE VIEW preview_wiring_fieldlead_v6 AS
 WITH ranked AS (
@@ -3026,6 +3028,7 @@ FROM ranked
 WHERE lead_rank = 1;
 
 -- Per-circuit rollup for auditing shared circuits
+
 DROP VIEW IF EXISTS preview_wiring_circuit_rollup_v6;
 CREATE VIEW preview_wiring_circuit_rollup_v6 AS
 SELECT
