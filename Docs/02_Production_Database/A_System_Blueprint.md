@@ -284,29 +284,101 @@ Data source:
 
 ## 7. Phase Implementation Plan
 
-### Phase 1 (Immediate Priority)
-- LOR snapshot ingestion
-- Display reconciliation workflow (review required for new/mismatched DisplayKeys) 2/21/26 GAL
-- Stage registry
-- basic wiring lookup
+This section reflects implementation order, not architectural layers.
+(Architectural phases are defined in D_Database_Structure.md.)
 
-### Phase 2
-- pallets
-- rack locations
-- display storage assignment
-
-### Phase 3
-- maintenance season + records
-- maintenance reporting
-
-### Phase 4
-- kits + inventory
-- controller hardware inventory
-
-### Phase 5
-- infrastructure registry
-- tablet application layer 
 ---
+
+### Phase 1 — Snapshot Foundation (COMPLETE 26-02-21)
+
+Delivered:
+- LOR SQLite parser (v6)
+- Postgres `lor_snap` ingestion pipeline
+- Atomic import runs (`import_run_id`)
+- Wiring leg derivation
+- Basic wiring lookup capability
+- Stage registry
+
+Notes:
+- Snapshot layer is immutable and versioned.
+- Wiring structure is now stable.
+- This phase is closed.
+
+---
+
+### Phase 2 — Display Reconciliation & Core Production Mapping (ACTIVE)
+
+Purpose:
+Bridge snapshot data to production entities.
+
+Includes:
+- Display reconciliation workflow
+  - Review required for new/mismatched DisplayKeys
+- ref.display normalization
+- ref.stage validation enforcement
+- Display-to-stage consistency controls
+- Production display registry (`prod.display`)
+
+Goal:
+Stabilize identity mapping between LOR data and operational records.
+
+---
+
+### Phase 3 — Storage & Physical Logistics
+
+Includes:
+- Pallet registry
+- Rack location registry
+- Display storage assignment
+- Rack slot conventions (2-digit slot numbers)
+- Physical location lookup
+
+Goal:
+Answer:
+"Where is this display physically located right now?"
+
+---
+
+### Phase 4 — Maintenance & Work Management
+
+Includes:
+- Maintenance seasons
+- Maintenance records
+- Work Orders / Task System
+- Roles, skills, priorities
+- Operational workflow tracking
+- Reporting
+
+Goal:
+Track lifecycle and repair history of displays and infrastructure.
+
+---
+
+### Phase 5 — Inventory & Hardware Tracking
+
+Includes:
+- Kits
+- Controller hardware inventory
+- Light technology inventory
+- Vendor + acquisition metadata
+- Cost tracking
+
+Goal:
+Tie physical components to financial and operational context.
+
+---
+
+### Phase 6 — Infrastructure & Application Layer
+
+Includes:
+- Infrastructure registry (power, network, controllers)
+- Tablet / shop-floor application layer
+- Barcode / QR integration
+- Lookup & reporting dashboards
+- Role-based access interface
+
+Goal:
+Make the system usable in the field.
 
 ## 8. Governance Rules
 
