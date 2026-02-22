@@ -234,19 +234,89 @@ Examples:
 
 ---
 
-### 4.1 DeviceType = None
+### 4.1 DeviceType = Undetermined (Inventory-Only Displays)
 
-Inventory-only displays (no controller assigned):
+![Undetermined DeviceType Example](Docs/images/naming_conventions_undetermined.png)
 
-- Must still follow full Comment naming rules
-- Must include unique sequence number
-- Must not contain Network or UID
+In the LOR preview editor, DeviceType is set to:
+
+Undetermined
+
+During SQLite parsing and Postgres ingestion, this becomes:
+
+DeviceType = None
+
+Operationally, both represent the same thing:
+
+A physical inventory item with no controller assignment and no channel grid usage.
+
+---
+
+#### Use Cases
+
+- Physical duplicates of programmed displays
+- Arch supports
+- Wrap stands
+- Frame stands
+- Future expansion inventory
+- Volunteer Trailer Steps
+- Igloo wagon for No Left Turn
+- Attional displays were we duplicate the controllers for programming simplification like Emojis
+
+---
+
+#### Quantity Creation (Max Circuits per Unit)
+
+When creating inventory-only items:
+
+- Set "Max Circuits per Unit" equal to the required quantity.
+- LOR automatically generates suffixed records:
+  - `-01`, `-02`, `-03`, etc.
 
 Example:
-- `GG20-Elden-02`
-- `GG20-Elden-03`
-- `GG20-Elden-04`
 
+Comment:
+`FC-WrapStand`
+
+Max Circuits per Unit:
+`32`
+
+Generated records:
+- `FC-WrapStand-01`
+- `FC-WrapStand-02`
+- ...
+- `FC-WrapStand-32`
+
+If Max Circuits per Unit = 1:
+- No suffix is added.
+
+---
+
+#### ⚠️ Critical Warning
+
+The default value for "Max Circuits per Unit" is 16.
+
+If not changed intentionally, LOR will create 16 inventory records automatically.
+
+This will:
+
+- Inflate inventory counts
+- Pollute the database
+- Require manual cleanup
+
+Always verify this value before saving.
+
+---
+
+#### Rules
+
+Inventory-only entries:
+
+- Must follow full Comment naming rules
+- Must not contain Network, UID, or ChannelGrid
+- Must represent real physical inventory
+
+These entries appear in database ingestion but do not affect wiring exports.
 ---
 
 ## 5. Field Wiring Alignment
