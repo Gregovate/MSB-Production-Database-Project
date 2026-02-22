@@ -1,6 +1,11 @@
 # MSB Database — LOR Preview Parser (v6)
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2025-11-02  V6.8.0
+# Version : 2025-11-02  V6.8.0
+# Current Version: 2026-02-21 V6.8.1
+# Changes:
+# - Fix grid fallback bug (set vs dict)
+# - Add normalize_grid() safety guard
+# - Harden master insert paths (single + multi grid)
 # (GAL)
 # Author          : Greg Liebig, Engineering Innovations, LLC.
 #
