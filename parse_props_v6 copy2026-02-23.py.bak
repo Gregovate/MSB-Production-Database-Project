@@ -1,8 +1,13 @@
 # MSB Database — LOR Preview Parser (v6)
 # Initial Release : 2022-01-20  V0.1.0
 # Version : 2025-11-02  V6.8.0
-# Current Version: 2026-02-23 V6.8.2
-# Author: Greg Liebig, Engineering Innovations, LLC.
+# Current Version: 2026-02-21 V6.8.1
+# Changes:
+# - Fix grid fallback bug (set vs dict)
+# - Add normalize_grid() safety guard
+# - Harden master insert paths (single + multi grid)
+# (GAL)
+# Author          : Greg Liebig, Engineering Innovations, LLC.
 #
 # Purpose
 # -------
@@ -15,24 +20,6 @@
 #
 # Revision History
 # ----------------
-## 2026-02-23  V6.8.2  (GAL)
-# • Add preflight validation (NO DB writes) before setup_database():
-#   – Validate Preview UUID uniqueness across ingest input set.
-#   – Validate no duplicate PropClass GUIDs exist within a single preview file.
-# • Improve DeviceType=None master guardrails:
-#   – Detect and fail-fast when multiple MASTER inventory records share the same DisplayName
-#     within a single preview (prevents ambiguous inventory masters).
-# • Folder ingest visibility improvements:
-#   – Ensure ingest explicitly reports how many .lorprev files are found in the production folder
-#     (helps catch files skipped due to non-recursive folder logic).
-#
-# 2026-02-21  V6.8.1  (GAL)
-# • Fix grid fallback bug (set vs dict) that could crash when Grid is missing.
-# • Add normalize_grid() safety guard to enforce dict Grid objects (fail-fast with context).
-# • Harden master insert paths for both single-grid and multi-grid LOR props:
-#   – Ensure master rows carry full Network/UID/Start/End fields consistently.
-#   – Collision-aware insert remains enforced (no silent overwrite).
-#
 # 2025-11-02  V6.8.0  (GAL)
 # • Multi-grid collector groups by raw PropID (XML id) instead of LORComment.
 #   – Prevents cross-prop merges when authors reuse comments (e.g., "FreeFrosty").
@@ -488,65 +475,7 @@ def safe_insert_subprop(cursor, insert_sql: str, params: tuple | list, incoming_
         return False
 # -----------------------------------------------------------------------------
 
-def validate_previews(preview_root: Path):
-    """
-    Preflight validation (NO DB writes).
-    - Ensure Preview UUID is unique across all .lorprev files in the ingest tree.
-    - Ensure no duplicate PropClass GUIDs exist within a single preview file.
 
-    Added 2026-02-23 (GAL) — catch basic problems before any DB writes.
-    """
-    import xml.etree.ElementTree as ET
-    from collections import Counter
-    from pathlib import Path
-
-    preview_root = Path(preview_root)
-
-    seen_preview_ids: dict[str, Path] = {}
-
-    # NOTE: non-recursive by design (production folder only)
-    lorprev_files = list(preview_root.glob("*.lorprev"))
-
-    for file_path in lorprev_files:
-        try:
-            root = ET.parse(file_path).getroot()
-        except Exception as e:
-            print(f"[FATAL] Could not parse preview XML: {file_path}")
-            print(f"        {type(e).__name__}: {e}")
-            raise SystemExit(2)
-
-        preview_id = (root.get("id") or "").strip()
-        if not preview_id:
-            print(f"[FATAL] Preview missing id attribute: {file_path}")
-            raise SystemExit(2)
-
-        if preview_id in seen_preview_ids:
-            print("[FATAL] Duplicate PreviewId detected BEFORE ingest.")
-            print(f"        PreviewId: {preview_id}")
-            print(f"        First file:  {seen_preview_ids[preview_id]}")
-            print(f"        Second file: {file_path}")
-            raise SystemExit(2)
-
-        seen_preview_ids[preview_id] = file_path
-
-        # Duplicate PropClass ids inside a single preview file
-        prop_ids = []
-        for prop in root.findall(".//PropClass"):
-            rid = (prop.get("id") or "").strip()
-            if rid:
-                prop_ids.append(rid)
-
-        if len(prop_ids) != len(set(prop_ids)):
-            dupes = [k for k, v in Counter(prop_ids).items() if v > 1]
-            print("[FATAL] Duplicate PropClass id(s) detected within a single preview file.")
-            print(f"        File: {file_path}")
-            for d in dupes[:10]:
-                print(f"        PropClass id duplicated: {d}")
-            if len(dupes) > 10:
-                print(f"        ...and {len(dupes) - 10} more")
-            raise SystemExit(2)
-
-    print(f"[INFO] Preflight OK: {len(seen_preview_ids)} previews verified.")
 
 def write_subprop_collisions_csv(cursor=None):
     """Write all recorded SubPropID collisions to REPORTS_DIR/subpropid_collisions.csv."""
@@ -2599,18 +2528,14 @@ def process_file(file_path):
 
 def process_folder(folder_path):
     """Process all .lorprev files in the specified folder."""
-    files = os.listdir(folder_path)
-    lorprevs = [f for f in files if f.lower().endswith(".lorprev")]
-
-    print(f"[INFO] Found {len(lorprevs)} .lorprev files in: {folder_path}")
-
-    if not lorprevs:
-        print(f"[WARNING] No .lorprev files found in folder: {folder_path}")
+    if not os.listdir(folder_path):
+        print(f"[WARNING] No files found in folder: {folder_path}")
         return
 
-    for file_name in sorted(lorprevs):
-        file_path = os.path.join(folder_path, file_name)
-        process_file(file_path)
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".lorprev"):
+            file_path = os.path.join(folder_path, file_name)
+            process_file(file_path)
 
 def collapse_duplicate_masters(db_file: str):
     """
@@ -2876,17 +2801,6 @@ def main():
     if not PREVIEW_PATH.is_dir():
         print(f"[ERROR] '{PREVIEW_PATH}' is not a valid directory.")
         return
-
-    # ---------------------------------------------------------------------
-    # Preflight validation (no DB writes)
-    # Ensures:
-    #   • Preview UUIDs are unique
-    #   • No structural collisions
-    #   • No duplicate internal GUIDs per preview
-    # Fails fast before wiping DB.
-    # Added 26/02/23 — we want to catch basic problems before any DB writes, and this also serves as a sanity check on the input data.
-    # ---------------------------------------------------------------------
-    validate_previews(PREVIEW_PATH)
 
     # Set up the database
     setup_database()
