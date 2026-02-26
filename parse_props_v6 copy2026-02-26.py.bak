@@ -1,7 +1,7 @@
 # MSB Database — LOR Preview Parser (v6)
 # Initial Release : 2022-01-20  V0.1.0
 # Version : 2025-11-02  V6.8.0
-# Current Version: 2026-02-26 V6.8.3
+# Current Version: 2026-02-23 V6.8.2
 # Author: Greg Liebig, Engineering Innovations, LLC.
 #
 # Purpose
@@ -15,18 +15,6 @@
 #
 # Revision History
 # ----------------
-## 2026-02-26  V6.8.3  (GAL)
-# • Fix StageID parsing to support sub-stages and animation ordering:
-#   – Support park stage tokens as NN or NNa (e.g., 07, 07a).
-#   – Parse stage token from either:
-#       * Prefix form: "07a-<Name> ..." / "07-<Name> ..."
-#       * Embedded form: "... Stage 07a ..." / "... Stage 17 ..."
-#   – Support "Show Animation" previews by extracting the first 1–2 digit number after
-#     "Show Animation" and normalizing to 2 digits (e.g., 90 → "90").
-#   – Remove legacy digits-only extraction and remove "animation returns full name" fallback.
-# • Outcome: SQLite previews.StageID now reliably populates for sub-stages (07a) and
-#   animation previews (90–94) without contaminating non-stage records.
-#
 ## 2026-02-23  V6.8.2  (GAL)
 # • Add preflight validation (NO DB writes) before setup_database():
 #   – Validate Preview UUID uniqueness across ingest input set.
@@ -1085,56 +1073,30 @@ def process_preview(preview):
 #     - Case-insensitive.
 #     - Safe for missing/None names.
 
-# Park stage patterns
-_STAGE_PREFIX_RE = re.compile(r'^\s*(\d{1,2})([a-z]?)\s*[-_]\s*', re.IGNORECASE)
-_STAGE_TOKEN_RE  = re.compile(r'(?i)\bstage\s*0*(\d{1,2})([a-z]?)\b')
-
-# Animation pattern
-# Matches: "Show Animation ... 90 ..."
-_ANIMATION_RE = re.compile(r'(?i)\bshow\s+animation\b.*?\b0*(\d{1,2})\b')
+_STAGE_RE = re.compile(r"\bStage\s*(\d{1,2})\b", flags=re.IGNORECASE)
 
 def extract_stage_id(name: str | None):
-    """
-    Return normalized StageID or None.
-
-    Supported:
-      - Park stages:
-            "07-Whoville ..."
-            "RGB Plus Stage 07a ..."
-        → returns "07" or "07a"
-
-      - Animation previews:
-            "Show Animation EL 90 Elf On Shelf-1"
-        → returns "90"
-
-    Returns None if no valid stage token is found.
-    """
-
+    """Return normalized 2-digit StageID or None if not found."""
     if not name:
         return None
 
-    # 1) Park stage via prefix (07a-Whoville)
-    m = _STAGE_PREFIX_RE.search(name)
+    # Primary: look for "Stage NN" (two digits)
+    m = _STAGE_RE.search(name)
     if m:
-        num = int(m.group(1))
-        suffix = (m.group(2) or "").lower()
-        return f"{num:02d}{suffix}"
+        try:
+            # normalize to exactly 2 digits
+            return f"{int(m.group(1)):02d}"
+        except Exception:
+            # In case of malformed capture, return None safely
+            return None
 
-    # 2) Park stage via "Stage 07a"
-    m = _STAGE_TOKEN_RE.search(name)
-    if m:
-        num = int(m.group(1))
-        suffix = (m.group(2) or "").lower()
-        return f"{num:02d}{suffix}"
+    # Secondary: "Animation" fallback (use full name as ID)
+    if "animation" in name.lower():
+        return name
 
-    # 3) Animation stage
-    m = _ANIMATION_RE.search(name)
-    if m:
-        num = int(m.group(1))
-        return f"{num:02d}"
-
+    # Otherwise, no StageID context available
     return None
-# (GAL 26-02-26) Revised to support NN and NNa stage tokens
+# (GAL 25-10-22)
 
 # ---- Insert Helpers ---------------------------------------------------------
 # -----------------------------------------------------------------------------
