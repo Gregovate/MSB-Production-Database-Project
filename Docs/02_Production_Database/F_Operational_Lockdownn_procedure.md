@@ -103,7 +103,7 @@ Re-run snapshot.
 ## Step 4 – Rebuild `ref.display`
 
 ```sql
-
+call ref.rebuild_stage_from_latest_lor();
 
 ```
 

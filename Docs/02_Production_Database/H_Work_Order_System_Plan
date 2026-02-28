@@ -1,0 +1,271 @@
+# MSB Work Order System — DB-First SOP (Final v2)
+**Project:** MSB Database (Production Ops)  
+**Owner:** Greg (Production Crew)  
+**Audience:** Managers + Volunteers (separate operating sections)  
+**Scope:** Design + operational workflow only (NO SQL/DDL here).  
+**Outcome:** Postgres is the single source of truth for work orders (create/assign/complete/history), with legacy Google Sheets imported.
+
+---
+
+## 1) What we are doing (Decisions Locked)
+### 1.1 DB is the source of truth
+- All work orders live in the MSB Production Database.
+- All updates happen in the DB:
+  - create
+  - assign
+  - completion
+  - notes / comments
+- Google Form/Sheets are legacy history and (optionally) intake only. Once DB intake is live, Google can be retired.
+
+### 1.2 “Done flag” is not needed
+- We will not store a separate `done_flag`.
+- Open vs Completed is derived:
+  - **Open**: `date_completed` is NULL
+  - **Completed**: `date_completed` is NOT NULL
+- Completed items must have `date_completed` populated.
+
+### 1.3 Priority is split into two independent fields
+Legacy “Priority” was overloaded. In the DB we store:
+- **Urgency** (optional): triage / “do now”
+- **Target Year** (optional): planning / “do during 2026 season”
+Either can be null, and either/both can be set.
+
+### 1.4 Work location is unified
+We must support:
+- Park stages (ref.stage)
+- Non-stage locations (workshop, office, command center, etc.)
+We will create a unified `ref.work_area` and work orders will point to `work_area_id`.
+
+### 1.5 People + permissions live in ref.person (locked)
+- We have **only `ref.person`** (no separate `ref.user`).
+- Manager permissions are stored in `ref.person` (manager boolean lives there).
+- Email lookup and identity are handled via `ref.person`.
+
+### 1.6 Anyone authenticated can create a work order
+- Any person who can authenticate in `my.sheboyganlights.org` can create a work order.
+- Assignment is manager-controlled (see Section 5).
+
+---
+
+## 2) Tables Needed (Minimum v1)
+### 2.1 Reference tables
+1) **ref.work_area** (NEW)
+- Canonical list of places where work happens.
+- Supports stage-backed and non-stage areas.
+- Stage-backed areas reference `ref.stage`.
+
+2) **ref.task_type** (NEW)
+- Canonical list: Repair, Build, Setup, Design, etc.
+
+3) **ref.person** (EXISTS, includes manager boolean)
+- Canonical people list (email + manager flag).
+
+4) **ref.stage** (EXISTS)
+- Canonical stage list (used by work_area when type=STAGE).
+
+> Optional (recommended soon, but not required for v1):
+- **ref.work_order_status** (NEW) if we want more workflow states than open/completed.
+
+### 2.2 Operational tables
+1) **ops.work_order** (NEW)
+- Main record for all work items (repairs + long-term plans).
+
+2) **ops.work_order_assignee** (NEW, recommended)
+- Supports 0..N assignees per work order.
+
+> Optional but valuable:
+- **ops.work_order_comment** (recommended)
+  - Captures “what was done” and ongoing notes without overwriting history.
+
+---
+
+## 3) Core Field Contract (Work Order)
+### 3.1 Required v1 fields
+**Identity/Audit**
+- work_order_id (PK)
+- created_at
+- created_by_person_id (FK → ref.person)
+- updated_at
+- updated_by_person_id (FK → ref.person)
+
+**Classification**
+- task_type_id (FK → ref.task_type)
+- work_area_id (FK → ref.work_area)
+
+**Scheduling**
+- urgency_code (nullable)
+- target_year (nullable)
+- legacy_priority_raw (nullable; for imported history)
+
+**Content**
+- problem (long text)  ← legacy “Problem or Suggestion”
+- notes (long text)    ← legacy “Notes” (initial detail)
+- photo_url (nullable) ← legacy “Photo Upload” hyperlink
+
+**Completion (no done flag)**
+- date_completed (nullable)
+- completed_by_person_id (nullable FK → ref.person)
+
+**Recommended linkage**
+- display_id (nullable FK → display table)
+  - Because the immediate goal is “repair tickets for display repairs”.
+
+### 3.2 “What was done?” (completion notes)
+Yes — we need a place to record the completion result.
+
+**v1 recommendation (simple + effective):**
+- Add `completion_notes` (nullable long text) on `ops.work_order`.
+
+**v1+ recommendation (better history):**
+- Implement `ops.work_order_comment` and require a final comment when completing.
+
+We will support at least one of these in v1. (Preferred: `completion_notes` on the work order because it’s dead simple for volunteers.)
+
+---
+
+## 4) Import Plan (Google Sheets → DB)
+### 4.1 Source sheets
+- “To do” (open work orders)
+- “Completed” (closed work orders history)
+
+### 4.2 Combine into one DB table
+- Both tabs import into `ops.work_order`.
+- Open vs Completed derived from `date_completed`.
+
+### 4.3 Completed-tab validation rule (critical)
+- Completed rows should have `date_completed`.
+- If any Completed rows have a blank completion date, we must fill it during import.
+
+**Rule for missing completion dates found on Completed tab:**
+1) If `date_added` exists → set `date_completed = date_added`
+2) Else → set `date_completed = import_timestamp`
+Also record that the date was backfilled (import audit / note).
+
+### 4.4 Preserve and parse legacy “Priority”
+- Keep exact raw value in `legacy_priority_raw`.
+- Soft-parse into:
+  - target_year (if it looks like a year, e.g., >= 2020)
+  - urgency_code (if it looks like P1 / 1 / 2 / etc.)
+- If it doesn’t parse cleanly, leave both null and keep legacy_priority_raw.
+
+---
+
+## 5) Creation, Assignment, Completion Rules (DB UI behavior)
+### 5.1 Creating a work order (any authenticated user)
+- Any authenticated user may create.
+- Fields available to all creators:
+  - work_area, task_type, problem, notes, photo_url, target_year, urgency
+  - (display link if available)
+- Default assignment: **unassigned**.
+
+### 5.2 Assignment (manager-controlled)
+- Only **managers** (ref.person.manager = true) can assign work orders.
+- Managers can assign:
+  - at creation time
+  - or later during triage
+- Non-managers cannot set assignees.
+
+### 5.3 Completing a work order (button behavior)
+We will implement a **Complete** button in the UI.
+
+When clicked:
+- Set `date_completed = now()`
+- Set `completed_by_person_id` based on the authenticated user (email → ref.person lookup)
+- Prompt for “what was done”:
+  - either fill `completion_notes`
+  - or create a completion comment entry (if comments table exists)
+
+If the user lacks a matching `ref.person` record, completion should be blocked (or logged) — we don’t want “unknown completed_by”.
+
+---
+
+## 6) Operational SOP — Volunteers (Front-line workflow)
+Volunteers do NOT need to know schema details.
+
+### 6.1 Create a work order (any authenticated volunteer)
+When you see an issue:
+1) Open the Work Orders app (DB UI).
+2) Click “New Work Order”.
+3) Fill in:
+   - Work Area (where it is)
+   - Task Type (Repair / Build / Setup / etc.)
+   - Problem (what’s wrong)
+   - Notes (extra detail)
+   - Photo URL (optional) / attach photo (if enabled)
+   - Target Year (optional if it’s a future plan item)
+   - Urgency (optional if you know it; otherwise leave blank)
+   - Display link (if you can find it)
+4) Save.
+
+**Important:** volunteers should not assign work orders.
+
+### 6.2 Update a work order (while working)
+- Add notes (or comments) describing findings and progress.
+- Don’t overwrite the original problem statement; add detail in notes/comments.
+
+### 6.3 Complete a work order (button)
+When the work is finished:
+1) Open the work order
+2) Click **Complete**
+3) Enter “what was done” (completion notes)
+4) Save
+
+The system will automatically:
+- stamp completion date/time (now)
+- record who completed it (your email / person record)
+
+---
+
+## 7) Operational SOP — Managers (triage + assignment)
+### 7.1 Triage views (saved filters)
+Managers should have saved views:
+- Unassigned Open Work Orders
+- Urgent Open Work Orders (urgency P0–P2)
+- Target Year = 2026 Plan Items
+- Needs Triage (urgency null + target_year null)
+
+### 7.2 Assign work
+1) Open the work order
+2) Add one or more assignees
+3) Optionally set urgency and/or target year
+4) Save
+
+### 7.3 Assign at creation time (manager-only)
+- If a manager is creating the work order, they may assign immediately.
+
+---
+
+## 8) Go-Live Checklist (Before DDL/Import)
+1) Confirm seed lists:
+   - ref.work_area (including mapping all stages into work_area)
+   - ref.task_type
+2) Confirm urgency scale (P0–P4 or 1–5)
+3) Confirm import backfill rule for Completed-tab missing dates
+4) Confirm display linkage included in v1 (recommended YES)
+5) Confirm completion behavior:
+   - Complete button stamps now + completed_by from authenticated email
+   - completion notes required (recommended)
+
+---
+
+## 9) Next Steps (after this SOP)
+1) Write DDL for:
+   - ref.work_area
+   - ref.task_type
+   - ops.work_order (+ completion_notes)
+   - ops.work_order_assignee
+   - (optional) ops.work_order_comment
+2) Create raw staging tables for sheet import.
+3) Import history:
+   - To do → open items (date_completed null)
+   - Completed → closed items (date_completed required; backfill blanks)
+4) Build views:
+   - target_year “plans”
+   - urgent open
+   - unassigned open
+5) Build the DB UI screens:
+   - Volunteer create/update/complete
+   - Manager assign/triage
+
+---
+**End SOP**
