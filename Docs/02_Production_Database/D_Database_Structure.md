@@ -5,6 +5,17 @@ Status: Draft (Phase 1–3 scope locked)
 
 ## Change Block
 
+- 2026-02-28:
+  - Introduced canonical `display_id` (identity surrogate key) on `ref.display`.
+  - Preserved `lor_prop_id` as LOR ingestion key (remains primary key for Phase 1 stability).
+  - Enforced `display_name` uniqueness at the database level.
+  - Began migration of `ops.display_test_session` to reference `ref.display.display_id` instead of `lor_prop_id`.
+  - Established architectural boundary:
+    - `lor_snap` = ingestion layer (LOR-coupled)
+    - `ref` = canonical reference layer
+    - `ops` = operational history layer (must not depend on LOR keys)
+  - Declared `lor_prop_id` usage in `ops` tables as transitional only (2026 backfill compatibility).
+  
 - 2026-02-21:
   - Completed **LOR Snapshot → Postgres ingestion pipeline**.
   - Implemented atomic snapshot loading with single end-of-run commit.
@@ -126,6 +137,47 @@ This table is the canonical record for a physical object, independent of LOR UUI
 - Display identity is `display_key_norm`.
 - This table must never be auto-mutated by ingestion without reconciliation approval.
 
+# MSB DB — Fixing ops.display_test_session Keying (Stop using lor_prop_id in ops)
+
+Date: 2026-02-28
+Owner: Greg
+Status: DO-NOW (required before backfill + go-live UI)
+
+## Problem
+
+`ref.display` currently uses `lor_prop_id` as its PRIMARY KEY.
+`ops.display_test_session` also stores `lor_prop_id`.
+
+This couples ops tables to LOR internals and makes future changes painful.
+It also caused confusion when trying to populate `display_id`:
+- `ref.display` does NOT have `display_id` today
+- so `update ... set display_id = d.display_id` fails (correctly)
+
+## Decision
+
+- `ref.display` gets a canonical surrogate key: `display_id` (integer identity)
+- `display_name` remains the human-visible natural key and stays UNIQUE
+- `lor_prop_id` remains the LOR linkage and stays UNIQUE
+- ops tables reference `display_id` (not `lor_prop_id`, not `display_name`)
+
+This is the correct boundary:
+LOR → lor_snap (authoritative source) → ref.display (canonical mapping) → ops (operational history)
+
+## Implementation Plan (Minimal Disruption)
+
+### Step 1 — Add display_id to ref.display
+
+```sql
+alter table ref.display
+  add column display_id bigint generated always as identity;
+
+-- must be UNIQUE to be FK target (does not have to be PK)
+alter table ref.display
+  add constraint uq_ref_display_display_id unique (display_id);
+
+-- enforce your “names are unique” rule at the DB layer
+alter table ref.display
+  add constraint uq_ref_display_display_name unique (display_name);
 ---
 
 ## 4.1 ref.stage
