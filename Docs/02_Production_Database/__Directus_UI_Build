@@ -1,0 +1,24 @@
+MSB Ops — Directus UI Build (MVP)
+
+Directus URL (local / container name):
+- URL: http://<host_or_ip>:8055
+- Container: <directus_container_name>
+
+Postgres connection name inside Directus:
+- <directus_db_connection_name>
+
+Roles to create first (in this order):
+- Viewer
+- Tester
+- Repair Lead
+- Admin
+
+Confirm views exist + compile:
+- ops.v_container_testing_summary: ✅/❌
+- ops.v_container_testing_displays: ✅/❌
+- ops.v_stage_container_contents: ✅/❌
+- ops.v_work_order_open: ✅/❌
+
+Confirm base tables visible:
+- ops.display_test_session: ✅/❌
+- ops.work_order: ✅/❌

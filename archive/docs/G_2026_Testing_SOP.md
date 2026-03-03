@@ -100,6 +100,7 @@ If no child records have `checked_at`:
 When first display is checked:
 - pulled_at = first checked_at timestamp
 - status = IN_PROGRESS
+- Child records built for ops.deisplay_test_session
 
 ---
 
