@@ -1,9 +1,12 @@
 # D — Database Structure (Production DB)
-Last updated: 2026-02-22
+Last updated: 2026-03-03
 Owner: MSB Production Crew
 Status: Draft (Phase 1–3 scope locked)
 
 ## Change Block
+
+- 2026-03-06
+  - Revised section 4.6 Storage Location to include new Zone Codes
 
 - 2026-02-28:
   - Introduced canonical `display_id` (identity surrogate key) on `ref.display`.
@@ -89,8 +92,8 @@ High-level relationship map:
   ↳ `prod.pallet_assignment`
   ↳ `prod.display_document_link` (FK → ref.display)
 
-- `ref.pallet`
-  ↔ `prod.pallet_location_history` → `ref.rack_location`
+- `ref.container`
+  ↔ `prod.pallet_location_history` → `ref.storage_location`
 
 - `ref.season`
   ↳ `prod.maintenance_record`
@@ -258,9 +261,9 @@ Controlled list of operational Locations used across assignments and Work Orders
 
 ---
 
-## 4.61 ref.pallet
+## 4.61 ref.container
 
-Represents one physical pallet used for storage/staging/deployment.
+Represents one physical container used for storage/staging/deployment.
 
 Pallets are governed resources (they exist independent of assignment events).
 Operational movement and assignment are tracked in `prod.*`.
@@ -275,84 +278,103 @@ Operational movement and assignment are tracked in `prod.*`.
 
 ---
 
-## 4.62 ref.rack_location
+## 4.62 ref.storage_location
 
-Represents one physical rack location in the shop storage system.
+Represents one physical storage or staging location in the shop.
 
-This table supports:
-- pallet storage (typical: no slot)
-- shelf/bin storage (optional: slot within a location)
+There are two supported location types:
 
-**Identity rule**
-- The authoritative identity is (`rack_letter`, `column_num`, `row_code`, `slot_num`).
-- `rack_code` is DERIVED and must not be manually edited.
+- **R = Rack Slot** (single-occupancy)
+- **Z = Zone** (multi-occupancy)
 
-### Rack conventions
+---
 
-- `rack_letter`: RA, RB, RC… (rack identifier)
-- `column_num`: 1..N  
-  - Column numbering is consistent within a rack.
-  - Direction is defined by shop layout (West→East or South→North).
-- `row_code`: A..Z  
-  - A = bottom / floor-up
-- `slot_num`: 1..N (nullable)  
-  - Only used when a shelf position contains multiple bins/boxes.
-  - Pallets typically use NULL (occupies the whole position).
+### Generated Identity
 
-### Fields
+`location_code` is a **GENERATED column** and must never be manually inserted or updated.
 
-- `rack_location_id` (PK)
-- `rack_letter` (text, NOT NULL) — RA, RB, …
-- `column_num` (int, NOT NULL)
-- `row_code` (text, NOT NULL) — A, B, C…
-- `slot_num` (int, nullable) — 1..N
-- `rack_code` (text, UNIQUE, NOT NULL) — DERIVED
-- `active` (bool, default true)
-- `notes` (text, nullable)
+Its value is derived from component columns based on `type_code`.
 
-### Derived naming
+#### Generated rule (simplified)
 
-Base (no slot):
-- `rack_code` format: `<rack_letter>-<column_num:02>-<row_code>`
-  - Example: `RA-03-B`
+- For `type_code = 'R'`:
+  R<rack_row_code><column_num 2-digit>-<shelf_level_code>-<slot_bin_num 2-digit>
 
-With slot:
-- `rack_code` format: `<rack_letter>-<column_num:02>-<row_code>-<slot_num:02>`
-  - Example: `RE-03-B-04`
 
-### Constraints (recommended)
+- For `type_code = 'Z'`:
+  Z-<rack_row_code>[-<shelf_level_code>]
 
-- UNIQUE (`rack_letter`, `column_num`, `row_code`, `slot_num`)
-- CHECK (`column_num` > 0)
-- CHECK (`slot_num` IS NULL OR slot_num > 0)
 
-### Notes
+The exact formatting is enforced by the database expression and is authoritative.
 
-- `rack_code` is stored for convenience/search/sorting, but is always derived from the authoritative fields.
-- Slot is optional and should only be used where bins/boxes share a shelf location.
-**Fields**
+---
 
-- `rack_location_id` (PK)
+## R — Rack Slot Rules
 
-**Authoritative components**
+Rack slots represent precise physical positions in the rack system.
 
-- `rack_letter` (text, NOT NULL)
-- `column_num` (int, NOT NULL)
-- `row_num` (int, NOT NULL)
+**Required columns when `type_code = 'R'`:**
 
-**Derived**
+- `rack_row_code`      (ex: RA, RB, RC…)
+- `column_num`         (integer; rendered as 2-digit)
+- `shelf_level_code`   (A..Z; A = bottom)
+- `slot_bin_num`       (integer; rendered as 2-digit)
 
-- `rack_code` (text, GENERATED / COMPUTED) — derived from the three fields above
+**Important convention:**
+Every rack location must have at least one slot.
+The minimum slot is `slot_bin_num = 1` (renders as `-01`).
 
-**Optional context**
-- `zone` (text, nullable) — optional shop/warehouse section label
-- `active` (bool, default true)
-- `notes` (text, nullable)
+Rack slots are treated as **single-occupancy locations**.
+Only one container may occupy a rack slot at a time (enforced by operational logic / constraints).
 
-**Constraints**
-- UNIQUE (`rack_letter`, `column_num`, `row_num`)
-- (Optional) UNIQUE (`rack_code`) if stored/generated as a column
-  
+---
+
+## Z — Zone Rules
+
+Zones represent logical or temporary storage areas.
+
+Examples:
+- FIX LOCATION
+- MEZZANINE
+- TRAILER
+- WORK AREA
+- UNKNOWN
+- STANDALONE DISPLAY
+
+**Required columns when `type_code = 'Z'`:**
+
+- `rack_row_code`      (used as the zone name / grouping label)
+
+**Optional column:**
+
+- `shelf_level_code`   (used as a zone sub-label; may be NULL)
+
+**Must be NULL for Z:**
+
+- `column_num`
+- `slot_bin_num`
+
+Zone locations are **multi-occupancy**.
+Multiple containers may share the same Z location.
+
+---
+
+## Insert Rules (Critical)
+
+Because `location_code` is GENERATED:
+
+- Never insert or update `location_code`
+- Always insert only the component columns required by the type
+- Follow the R vs Z NULL/NOT NULL rules strictly
+
+Violating these rules will trigger CHECK constraint or generated column errors.
+
+---
+
+## Operational Distinction
+
+- `ref.container.location_code` represents a container’s **home rack location** (typically R).
+- `ops.test_session.work_location_code` typically references a **Z zone** (e.g., WORK AREA) during active testing or repair.
 ---
 
 ## 4.7 ref.work_priority
@@ -754,31 +776,31 @@ Maps Displays to Pallets over time.
 
 **Fields**
 - `pallet_assignment_id` (PK)
-- `pallet_id` (FK → ref.pallet)
+- `pallet_id` (FK → ref.container)
 - `display_id` (FK → ref.display)
 - `assigned_at` (timestamp)
 - `removed_at` (timestamp, nullable)
 - `condition_notes` (text, nullable)
 
 **Rules**
-- A display can be on **0 or 1 pallet** at a time (enforce with constraint or app logic).
-- A pallet can contain **many displays**.
+- A display can be on **0 or 1 container** at a time (enforce with constraint or app logic).
+- A container can contain **many displays**.
 
 ---
 
-## 6.5 prod.pallet_location_history
+## 6.5 prod.container_location_history
 Tracks where pallets are stored (movement/history).
 
 **Fields**
 - `pallet_location_id` (PK)
-- `pallet_id` (FK → ref.pallet)
-- `rack_location_id` (FK → ref.rack_location)
+- `pallet_id` (FK → ref.container)
+- `rack_location_id` (FK → ref.storage_location)
 - `moved_at` (timestamp)
 - `moved_by` (FK → ref.user, nullable)
 - `note` (text, nullable)
 
 **Rule**
-- Current pallet location is the most recent `moved_at` record.
+- Current container location is the most recent `moved_at` record.
 
 ## 6.6 prod.maintenance_record
 Annual testing record per display.
@@ -982,11 +1004,11 @@ Tracks testing status for each display per season.
 
 ## 8.2 prod.pallet_season_status
 
-Tracks deployment readiness at pallet level.
+Tracks deployment readiness at container level.
 
 **Fields**
 - `season_id` (FK → ref.season)
-- `pallet_id` (FK → ref.pallet)
+- `pallet_id` (FK → ref.container)
 - `ready_status` (NOT_READY / READY)
 - `ready_at` (timestamp, nullable)
 - `ready_by` (FK → ref.user, nullable)
@@ -1033,7 +1055,7 @@ These can be added after the core is stable.
 # 10. Open Decisions (Design Lock Items)
 
 1) Do we allow multiple maintenance attempts per season per display?
-2) Do we enforce “one pallet per display at a time” via DB constraint or app logic?
+2) Do we enforce “one container per display at a time” via DB constraint or app logic?
 3) Where do we store Stage derivation truth if DisplayKey and Preview naming disagree?
 
 Record answers in this doc when decided.
