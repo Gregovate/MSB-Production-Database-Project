@@ -5,8 +5,15 @@ Status: Draft (Phase 1–3 scope locked)
 
 ## Change Block
 
+<<<<<<< HEAD
+- 2026-03-01:
+  - Added `ref.display.display_id` as an IDENTITY surrogate key to support stable internal FK relationships for ops tables.
+  - Kept `ref.display.lor_prop_id` as the LOR-authoritative natural key used for LOR upserts.
+  - Clarified that downstream ops tables should reference `display_id` (not `lor_prop_id`) to avoid coupling ops workflows to LOR identifiers.
+=======
 - 2026-03-06
   - Revised section 4.6 Storage Location to include new Zone Codes
+>>>>>>> 57fab74a6b5edd282acd6642106453a5fd5b3ddc
 
 - 2026-02-28:
   - Introduced canonical `display_id` (identity surrogate key) on `ref.display`.
@@ -259,6 +266,16 @@ Controlled list of operational Locations used across assignments and Work Orders
 - `active` (bool)
 - `notes` (text, nullable)
 
+R locations must be fully specified (rack_row_code + column_num + shelf_level_code + slot_bin_num all NOT NULL)
+
+Z locations are bucket locations and must have:
+
+  - rack_row_code NOT NULL
+  - column_num NULL
+  - slot_bin_num NULL
+  - (shelf_level_code can be whatever / NULL — not constrained here)
+
+So YES: using UNKNOWN is the safest move until the UI exists.
 ---
 
 ## 4.61 ref.container
