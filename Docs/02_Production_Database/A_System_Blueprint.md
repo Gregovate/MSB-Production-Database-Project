@@ -1,5 +1,5 @@
 # A — Production Database — System Blueprint
-Last updated: 2026-02-21
+Last updated: 2026-03-03
 Owner: MSB Production Crew  
 Status: Design Lock — Phase 1 Foundation
 
@@ -150,7 +150,7 @@ Purpose:
 ---
 
 ### 5.4 Storage Model (Future Phase)
-#### Pallet
+#### Container
 - id
 - pallet_tag (barcode-ready)
 - description
@@ -162,15 +162,15 @@ Purpose:
 - zone
 - notes
 
-#### Pallet Assignment
-Tracks which Display is on which pallet and when.
+#### Container Assignment
+Tracks which Display is on which Container and when.
 
-#### Pallet Location History
-Tracks pallet movement between rack locations. 【turn12file6†A_System_Blueprint.md†L102-L122】【turn12file9†A_System_Blueprint.md†L14-L33】
+#### Container Location History
+Tracks Container movement between rack locations. 【turn12file6†A_System_Blueprint.md†L102-L122】【turn12file9†A_System_Blueprint.md†L14-L33】
 
 ---
 
-### 5.5 Maintenance Model (Future Phase)
+### 5.5 Maintenance Model 
 #### Maintenance Season
 - id
 - year
@@ -306,7 +306,7 @@ Notes:
 
 ---
 
-### Phase 2 — Display Reconciliation & Core Production Mapping (ACTIVE)
+### Phase 2 — Display Reconciliation & Core Production Mapping (DONE)
 
 Purpose:
 Bridge snapshot data to production entities.
@@ -324,10 +324,10 @@ Stabilize identity mapping between LOR data and operational records.
 
 ---
 
-### Phase 3 — Storage & Physical Logistics
+### Phase 3 — Storage & Physical Logistics (DONE)
 
 Includes:
-- Pallet registry
+- Container registry
 - Rack location registry
 - Display storage assignment
 - Rack slot conventions (2-digit slot numbers)
@@ -339,14 +339,15 @@ Answer:
 
 ---
 
-### Phase 4 — Maintenance & Work Management
+### Phase 4 — Maintenance & Work Management (DONE need to automate)
 
 Includes:
-- Maintenance seasons
+- Convert Google Sheets Work Order System to Postgres (Done)
+- Add Display Repairs as a work order to Work Order System based on test_status=REPAIR
 - Maintenance records
 - Work Orders / Task System
 - Roles, skills, priorities
-- Operational workflow tracking
+- Operational workflow tracking Mark Repaired displays as Repaired when completed See Document G_2026-Containter Repair V3.md
 - Reporting
 
 Goal:
