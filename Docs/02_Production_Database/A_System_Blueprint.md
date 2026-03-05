@@ -43,8 +43,7 @@ It exists to manage everything LOR does *not* manage well:
 - Physical attributes (lights, power, vendor/cost, etc.)
 - Kit definitions + kit contents
 - Controller hardware inventory (physical tagging, status)
-- Infrastructure dependencies by stage 【turn12file6†A_System_Blueprint.md†L39-L50】
-
+- Infrastructure dependencies by stage 
 ---
 
 ## 3. Core Principles
@@ -60,25 +59,25 @@ Where:
 
 Production identity keys:
 - `display_key_raw` (original)
-- `display_key_norm` (normalized + unique) 【turn12file6†A_System_Blueprint.md†L55-L67】
+- `display_key_norm` (normalized + unique) 
 
 ### 3.2 UUIDs are not identity
 LOR UUIDs are stored for traceability but **never used** as Production identity.
-If LOR regenerates UUIDs, Production must remain stable. 【turn12file4†A_System_Blueprint.md†L3-L8】
+If LOR regenerates UUIDs, Production must remain stable.
 
 ### 3.3 Snapshot-based ingestion
 Each LOR import is stored as a snapshot so we can:
 - diff year-over-year
 - detect changes
 - roll back safely
-- audit what changed and when 【turn12file4†A_System_Blueprint.md†L10-L18】
+- audit what changed and when
 
 ### 3.4 Separation of concerns
 Production DB must never:
 - modify LOR data
 - try to become show topology
 
-It consumes LOR outputs and enriches them. 【turn12file4†A_System_Blueprint.md†L21-L27】
+It consumes LOR outputs and enriches them. 
 
 ---
 
@@ -129,7 +128,7 @@ Relationships (conceptual):
 - 1 Display → 0..many PalletAssignments
 - 1 Display → 0..many LOR Bindings
 - 1 Display → 0..many Documents
-- 1 Display → 0..many Wiring Legs (via snapshot) 【turn12file6†A_System_Blueprint.md†L127-L148】
+- 1 Display → 0..many Wiring Legs (via snapshot) 
 
 ---
 
@@ -145,7 +144,7 @@ Examples:
 Purpose:
 - preserve raw wiring truth
 - allow diffing
-- provide wiring lookup for the future tablet app 【turn12file6†A_System_Blueprint.md†L151-L168】【turn12file9†A_System_Blueprint.md†L1-L11】
+- provide wiring lookup for the future tablet app 
 
 ---
 

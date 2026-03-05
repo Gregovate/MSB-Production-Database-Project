@@ -1076,3 +1076,146 @@ These can be added after the core is stable.
 3) Where do we store Stage derivation truth if DisplayKey and Preview naming disagree?
 
 Record answers in this doc when decided.
+
+# 11. Operational Automation Rules (ops schema)
+
+These rules describe automated behavior implemented through database triggers
+and constraints in the `ops` schema.
+
+They document the expected system behavior for container testing and repair
+workflow so future developers and operators understand how the database
+automatically manages work orders and testing status.
+
+---
+
+## 11.1 Repair Detection → Work Order Creation
+
+When a display is tested during container testing, results are stored in:
+
+`ops.display_test_session`
+
+If a tester sets:
+
+`test_result = 'REPAIR'`
+
+the system will automatically create a repair work order in:
+
+`ops.work_order`
+
+The work order is linked to the checklist row via:
+
+`work_order.display_test_session_id`
+
+### Duplicate Protection
+
+The system enforces:
+
+- Only **one open work order per checklist row**.
+
+This is implemented with the index:
+
+
+ux_work_order_open_per_checklist_line
+(display_test_session_id)
+WHERE display_test_session_id IS NOT NULL
+AND date_completed IS NULL
+
+
+If a repair work order already exists and is still open,
+no additional work order will be created.
+
+Once the existing work order is completed,
+a new repair can be created if the display fails testing again.
+
+---
+
+## 11.2 Work Order Completion → Display Repair Status
+
+When a repair work order is completed:
+
+- `date_completed`
+- `completed_by_person_id`
+
+are populated in `ops.work_order`.
+
+The system then updates the linked checklist row:
+
+
+ops.display_test_session.test_result
+
+
+from
+
+
+REPAIR
+
+
+to
+
+
+OK-REPAIRED
+
+
+This indicates the display has been repaired successfully.
+
+---
+
+## 11.3 Container Test Session Completion
+
+Each container testing session is tracked in:
+
+`ops.test_session`
+
+A container test session can be marked **DONE** when all checklist rows
+in the associated `ops.display_test_session` records meet the completion rules.
+
+Allowed final statuses:
+
+
+OK
+OK-REPAIRED
+
+
+Blocking statuses:
+
+
+REPAIR
+NULL
+
+
+If any checklist row remains in a blocking state,
+the container test session remains incomplete.
+
+Operationally this corresponds to the container retaining a **Yellow Tag**.
+
+Once all rows meet the completion rules,
+the container can be **Green Tagged** and the session is recorded as:
+
+
+status = 'DONE'
+done_at
+done_by
+
+
+Containers marked DONE are removed from the active testing queue.
+
+---
+
+## 11.4 Physical vs System State
+
+The database tracks operational state,
+but certain actions remain physical workflow steps.
+
+Examples:
+
+Physical actions
+- moving a display to the repair area
+- wiring Yellow Tags to displays or containers
+- returning displays to containers
+
+System actions
+- creating work orders
+- updating checklist status
+- marking container testing sessions DONE
+
+The SOP document defines the human workflow that corresponds to these system states.
