@@ -1100,6 +1100,9 @@ automatically manages work orders and testing status.
 4) When all checklist rows for a `test_session_id` are resolved, roll up the container status to DONE.
 
 This section exists to prevent “documented behavior” from being mistaken as “implemented behavior”.
+
+When editing display checklist rows inside a Test Session form, changes are not committed until the parent Test Session record is saved. Repair work orders are created only after the full Test Session edit is saved.
+
 ---
 
 ## 11.1 Repair Detection → Work Order Creation
