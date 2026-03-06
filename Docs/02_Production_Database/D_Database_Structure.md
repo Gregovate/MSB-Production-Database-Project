@@ -65,7 +65,7 @@ This structure is written to support the current priorities:
 
 Recommended logical schemas (namespaces):
 - `lor_snap` — LOR snapshot tables (ingestion-only, append-only by run)
-- `prod` — Production operational tables (source-of-truth)
+- `ops` — Production operational tables (source-of-truth)
 - `ref` — Reference/master tables (governed lists: controlled vocabularies **and** resources such as Displays, Users, Locations, Racks)
 
 > If you don’t want multiple schemas initially, keep everything in `public` and prefix tables:
@@ -74,7 +74,7 @@ Recommended logical schemas (namespaces):
 ## 2.1 Table naming rules (Design Lock)
 
 - `ref.*` = governed master tables (controlled vocabularies **and** resources users reference repeatedly: Displays, Users, Skills, Locations, Racks).
-- `prod.*` = operational transactions/history/workflows (assignments, events, maintenance/testing records, work orders, notifications).
+- `ops.*` = operational transactions/history/workflows (assignments, events, maintenance/testing records, work orders, notifications).
 - `lor_snap.*` = immutable snapshot ingestion tables (append-only by import run).
 
 Relationship table naming:
@@ -95,17 +95,17 @@ High-level relationship map:
 
 - `ref.display` (unique by `display_key_norm`)
   ↔ joins to `lor_snap.lor_wiring_leg` by DisplayKey for wiring lookup
-  ↳ `prod.maintenance_record`
-  ↳ `prod.pallet_assignment`
-  ↳ `prod.display_document_link` (FK → ref.display)
+  ↳ `ops.maintenance_record`
+  ↳ `ops.pallet_assignment`
+  ↳ `ops.display_document_link` (FK → ref.display)
 
 - `ref.container`
-  ↔ `prod.pallet_location_history` → `ref.storage_location`
+  ↔ `ops.pallet_location_history` → `ref.storage_location`
 
 - `ref.season`
-  ↳ `prod.maintenance_record`
-  ↳ `prod.display_season_status`
-  ↳ `prod.pallet_season_status`
+  ↳ `ops.maintenance_record`
+  ↳ `ops.display_season_status`
+  ↳ `ops.pallet_season_status`
 
 ---
 
@@ -283,7 +283,7 @@ So YES: using UNKNOWN is the safest move until the UI exists.
 Represents one physical container used for storage/staging/deployment.
 
 Pallets are governed resources (they exist independent of assignment events).
-Operational movement and assignment are tracked in `prod.*`.
+Operational movement and assignment are tracked in `ops.*`.
 
 **Fields**
 
@@ -715,18 +715,18 @@ Equivalent to SQLite view `preview_wiring_sorted_v6`.
 2. No manual edits
 3. No business logic
 4. Pure representation of LOR state
-5. Downstream layers (prod.*) reference specific runs
+5. Downstream layers (ops.*) reference specific runs
 
 ---
 
 
-# 6. Production Operational Tables (prod.*)
+# 6. Production Operational Tables (ops.*)
 
 These tables are **hand-managed** and represent the system of record for physical assets and operations.
 
 ---
 
-## 6.1 prod.display_reconciliation (Required)
+## 6.1 ops.display_reconciliation (Required)
 
 Captures ingest-time decisions when LOR snapshot data does not cleanly match an existing Display.
 
@@ -762,7 +762,7 @@ This is the governance layer for matching LOR snapshot records to canonical Disp
 
 ---
 
-## 6.2 prod.display_alias (Rare / Structural Renames Only)
+## 6.2 ops.display_alias (Rare / Structural Renames Only)
 
 Tracks intentional canonical DisplayKey changes where historical traceability matters.
 
@@ -788,7 +788,7 @@ Do NOT use this for minor typo corrections.
 
 ---
 
-## 6.4 prod.pallet_assignment
+## 6.4 ops.pallet_assignment
 Maps Displays to Pallets over time.
 
 **Fields**
@@ -805,7 +805,7 @@ Maps Displays to Pallets over time.
 
 ---
 
-## 6.5 prod.container_location_history
+## 6.5 ops.container_location_history
 Tracks where pallets are stored (movement/history).
 
 **Fields**
@@ -819,7 +819,7 @@ Tracks where pallets are stored (movement/history).
 **Rule**
 - Current container location is the most recent `moved_at` record.
 
-## 6.6 prod.maintenance_record
+## 6.6 ops.maintenance_record
 Annual testing record per display.
 
 **Fields**
@@ -838,7 +838,7 @@ Annual testing record per display.
 
 ---
 
-## 6.7 prod.kit
+## 6.7 ops.kit
 **Fields**
 - `kit_id` (PK)
 - `kit_code` (text, UNIQUE)
@@ -848,7 +848,7 @@ Annual testing record per display.
 
 ---
 
-## 6.8 prod.inventory_item
+## 6.8 ops.inventory_item
 **Fields**
 - `item_id` (PK)
 - `item_code` (text, UNIQUE)
@@ -860,10 +860,10 @@ Annual testing record per display.
 
 ---
 
-## 6.9 prod.kit_item
+## 6.9 ops.kit_item
 **Fields**
-- `kit_id` (FK → prod.kit)
-- `item_id` (FK → prod.inventory_item)
+- `kit_id` (FK → ops.kit)
+- `item_id` (FK → ops.inventory_item)
 - `quantity` (int)
 - `notes` (text, nullable)
 
@@ -872,7 +872,7 @@ Annual testing record per display.
 
 ---
 
-## 6.10 prod.controller
+## 6.10 ops.controller
 Hardware inventory for controllers.
 
 **Fields**
@@ -886,7 +886,7 @@ Hardware inventory for controllers.
 
 ---
 
-## 6.11 prod.document
+## 6.11 ops.document
 Generic document registry (drawio, pdf, photos, etc).
 
 **Fields**
@@ -899,12 +899,12 @@ Generic document registry (drawio, pdf, photos, etc).
 
 ---
 
-## 6.12 prod.display_document_link
+## 6.12 ops.display_document_link
 Links documents to displays (many-to-many).
 
 **Fields**
 - `display_id` (FK → ref.display)
-- `document_id` (FK → prod.document)
+- `document_id` (FK → ops.document)
 - `relationship` (text, nullable) — SCHEMATIC, SETUP, TAKEDOWN, PHOTO, etc
 
 **Keys**
@@ -912,7 +912,7 @@ Links documents to displays (many-to-many).
 
 ---
 
-# 6A. Work Orders Module (prod.work_*)
+# 6A. Work Orders Module (ops.work_*)
 
 Separate functional module for operational task intake, assignment, completion, and history.
 Relies on shared masters in `ref.*` (including Users), and can optionally link to `ref.display`.
@@ -921,7 +921,7 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.1 prod.work_order
+## 6A.1 ops.work_order
 
 **Fields**
 - `work_order_id` (PK)
@@ -947,10 +947,10 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.2 prod.work_order_assignment
+## 6A.2 ops.work_order_assignment
 
 **Fields**
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `assignee_user_id` (FK → ref.user)
 - `assigned_at` (timestamp)
 - `assigned_by_user_id` (FK → ref.user)
@@ -961,10 +961,10 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.3 prod.work_order_required_skill (Optional)
+## 6A.3 ops.work_order_required_skill (Optional)
 
 **Fields**
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `skill_id` (FK → ref.skill)
 - `min_skill_level_id` (FK → ref.skill_level, nullable)
 
@@ -973,11 +973,11 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.4 prod.work_order_event
+## 6A.4 ops.work_order_event
 
 **Fields**
 - `event_id` (PK)
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `event_type` (text)
 - `event_at` (timestamp)
 - `actor_user_id` (FK → ref.user)
@@ -985,12 +985,12 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.5 prod.notification_outbox
+## 6A.5 ops.notification_outbox
 
 **Fields**
 - `outbox_id` (PK)
 - `event_type` (text) — PRIORITY1_ASSIGNED / WORK_COMPLETED
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `payload` (jsonb)
 - `status_code` (text) — PENDING / SENT / FAILED
 - `attempt_count` (int)
@@ -1002,7 +1002,7 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 # 8. Seasonal Testing & Tagging Tables
 
-## 8.1 prod.display_season_status
+## 8.1 ops.display_season_status
 
 Tracks testing status for each display per season.
 
@@ -1010,7 +1010,7 @@ Tracks testing status for each display per season.
 - `season_id` (FK → ref.season)
 - `display_id` (FK → ref.display)
 - `test_status` (UNTESTED / PASS / NEEDS_REPAIR / RETEST_REQUIRED)
-- `active_repair_work_order_id` (FK → prod.work_order, nullable)
+- `active_repair_work_order_id` (FK → ops.work_order, nullable)
 - `last_updated_at` (timestamp)
 - `last_updated_by` (FK → ref.user)
 
@@ -1019,7 +1019,7 @@ Tracks testing status for each display per season.
 
 ---
 
-## 8.2 prod.pallet_season_status
+## 8.2 ops.pallet_season_status
 
 Tracks deployment readiness at container level.
 
@@ -1037,7 +1037,7 @@ Tracks deployment readiness at container level.
 
 ---
 
-## 8.3 prod.label_print_job (Optional but Recommended)
+## 8.3 ops.label_print_job (Optional but Recommended)
 
 Queue and audit table for LAN-based label printing.
 
@@ -1086,6 +1086,20 @@ They document the expected system behavior for container testing and repair
 workflow so future developers and operators understand how the database
 automatically manages work orders and testing status.
 
+## ops — Testing Repairs → Work Orders (Automation)
+
+**Current state (as of 2026-03-05):**
+- There are **no triggers** on `ops.display_test_session`.
+- Setting `ops.display_test_session.test_status = 'REPAIR'` currently **does not** auto-create a work order.
+
+**Planned automation (MVP):**
+1) When a checklist row is set to `test_status = 'REPAIR'`, create an **open** `ops.work_order` linked by `work_order.display_test_session_id`.
+2) Enforce “one open work order per checklist row” using the existing unique partial index:
+   - `ux_work_order_open_per_checklist_line` on `(display_test_session_id)` where `date_completed IS NULL`.
+3) When the linked work order is completed (`date_completed` + `completed_by_person_id`), update the checklist row to `test_status = 'OK-REPAIRED'`.
+4) When all checklist rows for a `test_session_id` are resolved, roll up the container status to DONE.
+
+This section exists to prevent “documented behavior” from being mistaken as “implemented behavior”.
 ---
 
 ## 11.1 Repair Detection → Work Order Creation
@@ -1158,6 +1172,7 @@ OK-REPAIRED
 
 This indicates the display has been repaired successfully.
 
+When editing display checklist rows inside a Test Session form, changes are not committed until the parent Test Session record is saved. Repair work orders are created only after the full Test Session edit is saved.
 ---
 
 ## 11.3 Container Test Session Completion
