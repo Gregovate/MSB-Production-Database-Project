@@ -158,7 +158,7 @@ This structure is written to support the current priorities:
 
 Recommended logical schemas (namespaces):
 - `lor_snap` — LOR snapshot tables (ingestion-only, append-only by run)
-- `prod` — Production operational tables (source-of-truth)
+- `ops` — Production operational tables (source-of-truth)
 - `ref` — Reference/master tables (governed lists: controlled vocabularies **and** resources such as Displays, Users, Locations, Racks)
 
 > If you don’t want multiple schemas initially, keep everything in `public` and prefix tables:
@@ -167,7 +167,7 @@ Recommended logical schemas (namespaces):
 ## 2.1 Table naming rules (Design Lock)
 
 - `ref.*` = governed master tables (controlled vocabularies **and** resources users reference repeatedly: Displays, Users, Skills, Locations, Racks).
-- `prod.*` = operational transactions/history/workflows (assignments, events, maintenance/testing records, work orders, notifications).
+- `ops.*` = operational transactions/history/workflows (assignments, events, maintenance/testing records, work orders, notifications).
 - `lor_snap.*` = immutable snapshot ingestion tables (append-only by import run).
 
 Relationship table naming conventions this section is not used anymore except for _history:
@@ -816,18 +816,18 @@ Equivalent to SQLite view `preview_wiring_sorted_v6`.
 2. No manual edits
 3. No business logic
 4. Pure representation of LOR state
-5. Downstream layers (prod.*) reference specific runs
+5. Downstream layers (ops.*) reference specific runs
 
 ---
 
 
-# 6. Production Operational Tables (prod.*)
+# 6. Production Operational Tables (ops.*)
 
 These tables are **hand-managed** and represent the system of record for physical assets and operations.
 
 ---
 
-## 6.1 prod.display_reconciliation (Required)
+## 6.1 ops.display_reconciliation (Required)
 
 Captures ingest-time decisions when LOR snapshot data does not cleanly match an existing Display.
 
@@ -863,7 +863,7 @@ This is the governance layer for matching LOR snapshot records to canonical Disp
 
 ---
 
-## 6.2 prod.display_alias (Rare / Structural Renames Only)
+## 6.2 ops.display_alias (Rare / Structural Renames Only)
 
 Tracks intentional canonical DisplayKey changes where historical traceability matters.
 
@@ -889,7 +889,7 @@ Do NOT use this for minor typo corrections.
 
 ---
 
-## 6.4 prod.pallet_assignment
+## 6.4 ops.pallet_assignment
 Maps Displays to Pallets over time.
 
 **Fields**
@@ -906,7 +906,7 @@ Maps Displays to Pallets over time.
 
 ---
 
-## 6.5 prod.container_location_history
+## 6.5 ops.container_location_history
 Tracks where pallets are stored (movement/history).
 
 **Fields**
@@ -1120,7 +1120,7 @@ Tracks testing status for each display per season.
 
 ---
 
-## 8.2 prod.pallet_season_status
+## 8.2 ops.pallet_season_status
 
 Tracks deployment readiness at container level.
 
