@@ -81,7 +81,7 @@ This ensures that every change can be attributed whether it originates from:
 
 Every writable table in `ref` and `ops` must include the following audit columns.
 
-
+```
 created_at timestamptz not null default now()
 created_by text not null default current_user
 created_by_person_id bigint
@@ -89,15 +89,15 @@ created_by_person_id bigint
 updated_at timestamptz not null default now()
 updated_by text not null default current_user
 updated_by_person_id bigint
+```
 
+For workflow tables in the **`ops` schema** where a specific operational action is recorded (such as inspection or testing), the following fields are also used:
 
-For workflow tables where a **specific operational action** is recorded (such as inspection or testing), the following fields are also used:
-
-
+```
 checked_at timestamptz
 checked_by text
 checked_by_person_id bigint
-
+```
 
 ---
 
@@ -137,7 +137,7 @@ Example rule:
 
 The text audit fields (`*_by`) **always contain a value** when a write occurs.
 
-The relational fields (`*_person_id`) are populated when the acting user can be resolved to a row in `ref.person`.  
+The relational fields (`*_person_id`) are populated when the acting user can be resolved to a row in `ref.person`.
 
 If no mapping exists, the `*_person_id` field may remain `NULL` while the text field records the PostgreSQL session user.
 
@@ -157,35 +157,81 @@ This structure is written to support the current priorities:
 # 2. Schema Layout (Logical)
 
 Recommended logical schemas (namespaces):
+
 - `lor_snap` — LOR snapshot tables (ingestion-only, append-only by run)
 - `ops` — Production operational tables (source-of-truth)
-- `ref` — Reference/master tables (governed lists: controlled vocabularies **and** resources such as Displays, Users, Locations, Racks)
+- `ref` — Reference/master tables (governed lists and reusable entities such as Displays, Users, Locations, and Racks)
+- `stage` — Ingestion staging tables used to load legacy spreadsheets or external intake systems
+- `dev` — Development and testing objects not used in production workflows
 
-> If you don’t want multiple schemas initially, keep everything in `public` and prefix tables:
-> - `lor_*`, `prod_*`, `ref_*`
+---
 
-## 2.1 Table naming rules (Design Lock)
+## 2.1 Table Naming Rules (Design Lock)
 
-- `ref.*` = governed master tables (controlled vocabularies **and** resources users reference repeatedly: Displays, Users, Skills, Locations, Racks).
-- `ops.*` = operational transactions/history/workflows (assignments, events, maintenance/testing records, work orders, notifications).
-- `lor_snap.*` = immutable snapshot ingestion tables (append-only by import run).
+The MSB Production Database uses logical schemas to clearly separate ingestion, reference data, operational workflows, and development objects.
 
-Relationship table naming conventions this section is not used anymore except for _history:
+- `ref.*`  
+  Governed master tables containing reusable entities and controlled vocabularies referenced throughout the system  
+  *(examples: displays, containers, stages, storage locations, people)*
 
-- `*_assignment` — assignment intent between entities, often with time or history tracking  
-  *(example: display_container_assignment)*
+- `ops.*`  
+  Operational workflow and transaction tables representing real-world activity and state changes  
+  *(examples: test sessions, work orders, container movements, inspection records)*
 
-- `*_link` — pure many-to-many relationship with no operational meaning beyond association  
-  *(example: display_skill_link)*
+- `lor_snap.*`  
+  Immutable Light-O-Rama ingestion snapshots.  
+  These tables represent the state of the LOR configuration at the time of import and are **append-only by import run**.
 
-- `*_history` — time-based movement or state history  
-  *(example: container_location_history)*
+- `stage.*`  
+  Transitional ingestion tables used to load external data sources (such as legacy spreadsheets or intake forms) before normalization into `ref` or `ops`.
 
-Design rule:
+- `dev.*`  
+  Development and experimentation objects used during schema design, testing, or migration work.  
+  Objects in this schema are **not considered production data** and may be recreated or removed as needed.
+
+---
+
+### Design Rule
 
 If users repeatedly **select an item from a list**, that entity belongs in `ref.*` and must be referenced via a foreign key.
 
 Operational tables must **never duplicate reference attributes** that already exist in `ref.*`.
+
+Instead they should reference the appropriate `ref` table using foreign keys.
+
+## 2.2 Relationship Table Naming
+
+The MSB Production Database intentionally minimizes special naming conventions for relationship tables.
+
+The only standardized suffix used is:
+
+- *_history
+
+This suffix indicates a table that records **time-based movement, assignment changes, or state transitions**.
+
+History tables preserve a chronological record of changes to an entity without overwriting prior state.
+
+Example:
+
+- container_location_history
+
+Typical characteristics of `_history` tables:
+
+- store **effective timestamps** or event timestamps
+- reference the primary entity using foreign keys
+- preserve previous state for reporting and operational traceability
+- are **append-only in normal workflows**
+
+Design rule:
+
+Operational state that must be historically traceable should be recorded in a `_history` table rather than overwriting values in the primary entity table.
+
+This suffix indicates time-based movement or state tracking.
+
+Example:
+
+- container_location_history
+
 
 # 3. Key Entities and Relationships
 
