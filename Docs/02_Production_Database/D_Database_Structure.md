@@ -157,44 +157,18 @@ This structure is written to support the current priorities:
 # 2. Schema Layout (Logical)
 
 Recommended logical schemas (namespaces):
-- `lor_snap` — LOR snapshot tables; ingestion-owned and append-only by import run. No audit fields required because historical change is captured through snapshotting.
-- `stage` — Staging area for legacy imports, spreadsheet loads, temporary import tables, and foreign tables used to feed PostgreSQL structures.
-- `ref` — Reference and master tables; writable and governed by audit fields. Includes controlled vocabularies and core operational reference entities such as Displays, Containers, People, Stages, and Storage Locations.
-- `ops` — Operational workflow tables; writable and governed by audit fields.
-- `dev` — Development-only objects used for testing, scratch work, and schema experimentation. Not part of production operations.
-- `archive` — Retired procedures, functions, scripts, and historical support objects preserved for reference only; not used in active production operations.
+- `lor_snap` — LOR snapshot tables (ingestion-only, append-only by run)
+- `prod` — Production operational tables (source-of-truth)
+- `ref` — Reference/master tables (governed lists: controlled vocabularies **and** resources such as Displays, Users, Locations, Racks)
 
-## 2.1 Table Naming Rules (Design Lock)
+> If you don’t want multiple schemas initially, keep everything in `public` and prefix tables:
+> - `lor_*`, `prod_*`, `ref_*`
 
-Schema purpose:
+## 2.1 Table naming rules (Design Lock)
 
-## Database Schemas
-
-The MSB Production Database is organized into several schemas to separate operational data, reference data, ingestion staging, and development work.
-
-- `ref` — Canonical reference tables defining physical assets and core entities (Displays, Containers, Locations, People, etc.).
-
-- `ops` — Operational workflow tables used during the maintenance and testing season (test sessions, repairs, work orders, assignments, status history).
-
-- `lor_snap` — Immutable snapshots of Light-O-Rama data imported from preview exports. Each import represents a historical capture of show topology and wiring data.
-
-- `stage` — Temporary ingestion tables used when importing external data into the database. These may originate from legacy spreadsheets, CSV imports, or the new work order intake system. Data in this schema is considered transitional and may be transformed or normalized before being written to `ref` or `ops`.
-
-- `dev` — Development and experimentation tables used for testing schema changes, procedures, and data transformations. Objects in this schema are **not considered production data** and may be dropped or recreated as needed.
-
-
-### Directus Write Rules
-
-- Directus may write to approved tables in `ref` and `ops`.
-- Directus may write only to approved intake tables in `stage`.
-- Directus must treat `lor_snap` as read-only.
-- `dev` is excluded from production workflow and may be used only for development/testing as needed.
-
-### Procedure-Controlled Tables
-
-Some tables in writable schemas may still be controlled primarily by database procedures rather than manual editing. In those cases, Directus permissions do not change the fact that row creation, synchronization, or lifecycle may be owned by database logic.
-
-Examples include tables populated or maintained by LOR ingest or update procedures.
+- `ref.*` = governed master tables (controlled vocabularies **and** resources users reference repeatedly: Displays, Users, Skills, Locations, Racks).
+- `prod.*` = operational transactions/history/workflows (assignments, events, maintenance/testing records, work orders, notifications).
+- `lor_snap.*` = immutable snapshot ingestion tables (append-only by import run).
 
 Relationship table naming conventions this section is not used anymore except for _history:
 
@@ -223,16 +197,16 @@ High-level relationship map:
 - `ref.display` (unique by `display_key_norm`)
   ↔ joins to `lor_snap.lor_wiring_leg` by DisplayKey for wiring lookup
   ↳ `ops.maintenance_record`
-  ↳ `ops.container_assignment`
+  ↳ `ops.pallet_assignment`
   ↳ `ops.display_document_link` (FK → ref.display)
 
 - `ref.container`
-  ↔ `ops.container_location_history` → `ref.storage_location`
+  ↔ `ops.pallet_location_history` → `ref.storage_location`
 
 - `ref.season`
   ↳ `ops.maintenance_record`
   ↳ `ops.display_season_status`
-  ↳ `ops.container_season_status`
+  ↳ `ops.pallet_season_status`
 
 ---
 
@@ -409,7 +383,7 @@ So YES: using UNKNOWN is the safest move until the UI exists.
 
 Represents one physical container used for storage/staging/deployment.
 
-Containers are governed resources (they exist independent of assignment events).
+Pallets are governed resources (they exist independent of assignment events).
 Operational movement and assignment are tracked in `ops.*`.
 
 **Fields**
@@ -842,18 +816,18 @@ Equivalent to SQLite view `preview_wiring_sorted_v6`.
 2. No manual edits
 3. No business logic
 4. Pure representation of LOR state
-5. Downstream layers (ops.*) reference specific runs
+5. Downstream layers (prod.*) reference specific runs
 
 ---
 
 
-# 6. Production Operational Tables (ops.*)
+# 6. Production Operational Tables (prod.*)
 
 These tables are **hand-managed** and represent the system of record for physical assets and operations.
 
 ---
 
-## 6.1 ops.display_reconciliation (Required)
+## 6.1 prod.display_reconciliation (Required)
 
 Captures ingest-time decisions when LOR snapshot data does not cleanly match an existing Display.
 
@@ -889,7 +863,7 @@ This is the governance layer for matching LOR snapshot records to canonical Disp
 
 ---
 
-## 6.2 ops.display_alias (Rare / Structural Renames Only)
+## 6.2 prod.display_alias (Rare / Structural Renames Only)
 
 Tracks intentional canonical DisplayKey changes where historical traceability matters.
 
@@ -915,8 +889,8 @@ Do NOT use this for minor typo corrections.
 
 ---
 
-## 6.4 ops.container_assignment
-Maps Displays to Containers over time.
+## 6.4 prod.pallet_assignment
+Maps Displays to Pallets over time.
 
 **Fields**
 - `container_assignment_id` (PK)
@@ -932,8 +906,8 @@ Maps Displays to Containers over time.
 
 ---
 
-## 6.5 ops.container_location_history
-Tracks where containers are stored (movement/history).
+## 6.5 prod.container_location_history
+Tracks where pallets are stored (movement/history).
 
 **Fields**
 - `container_location_id` (PK)
@@ -1146,7 +1120,7 @@ Tracks testing status for each display per season.
 
 ---
 
-## 8.2 ops.container_season_status
+## 8.2 prod.pallet_season_status
 
 Tracks deployment readiness at container level.
 
@@ -1203,3 +1177,164 @@ These can be added after the core is stable.
 3) Where do we store Stage derivation truth if DisplayKey and Preview naming disagree?
 
 Record answers in this doc when decided.
+
+# 11. Operational Automation Rules (ops schema)
+
+These rules describe automated behavior implemented through database triggers
+and constraints in the `ops` schema.
+
+They document the expected system behavior for container testing and repair
+workflow so future developers and operators understand how the database
+automatically manages work orders and testing status.
+
+## ops — Testing Repairs → Work Orders (Automation)
+
+**Current state (as of 2026-03-05):**
+- There are **no triggers** on `ops.display_test_session`.
+- Setting `ops.display_test_session.test_status = 'REPAIR'` currently **does not** auto-create a work order.
+
+**Planned automation (MVP):**
+1) When a checklist row is set to `test_status = 'REPAIR'`, create an **open** `ops.work_order` linked by `work_order.display_test_session_id`.
+2) Enforce “one open work order per checklist row” using the existing unique partial index:
+   - `ux_work_order_open_per_checklist_line` on `(display_test_session_id)` where `date_completed IS NULL`.
+3) When the linked work order is completed (`date_completed` + `completed_by_person_id`), update the checklist row to `test_status = 'OK-REPAIRED'`.
+4) When all checklist rows for a `test_session_id` are resolved, roll up the container status to DONE.
+
+This section exists to prevent “documented behavior” from being mistaken as “implemented behavior”.
+
+When editing display checklist rows inside a Test Session form, changes are not committed until the parent Test Session record is saved. Repair work orders are created only after the full Test Session edit is saved.
+
+---
+
+## 11.1 Repair Detection → Work Order Creation
+
+When a display is tested during container testing, results are stored in:
+
+`ops.display_test_session`
+
+If a tester sets:
+
+`test_result = 'REPAIR'`
+
+the system will automatically create a repair work order in:
+
+`ops.work_order`
+
+The work order is linked to the checklist row via:
+
+`work_order.display_test_session_id`
+
+### Duplicate Protection
+
+The system enforces:
+
+- Only **one open work order per checklist row**.
+
+This is implemented with the index:
+
+
+ux_work_order_open_per_checklist_line
+(display_test_session_id)
+WHERE display_test_session_id IS NOT NULL
+AND date_completed IS NULL
+
+
+If a repair work order already exists and is still open,
+no additional work order will be created.
+
+Once the existing work order is completed,
+a new repair can be created if the display fails testing again.
+
+---
+
+## 11.2 Work Order Completion → Display Repair Status
+
+When a repair work order is completed:
+
+- `date_completed`
+- `completed_by_person_id`
+
+are populated in `ops.work_order`.
+
+The system then updates the linked checklist row:
+
+
+ops.display_test_session.test_result
+
+
+from
+
+
+REPAIR
+
+
+to
+
+
+OK-REPAIRED
+
+
+This indicates the display has been repaired successfully.
+
+When editing display checklist rows inside a Test Session form, changes are not committed until the parent Test Session record is saved. Repair work orders are created only after the full Test Session edit is saved.
+---
+
+## 11.3 Container Test Session Completion
+
+Each container testing session is tracked in:
+
+`ops.test_session`
+
+A container test session can be marked **DONE** when all checklist rows
+in the associated `ops.display_test_session` records meet the completion rules.
+
+Allowed final statuses:
+
+
+OK
+OK-REPAIRED
+
+
+Blocking statuses:
+
+
+REPAIR
+NULL
+
+
+If any checklist row remains in a blocking state,
+the container test session remains incomplete.
+
+Operationally this corresponds to the container retaining a **Yellow Tag**.
+
+Once all rows meet the completion rules,
+the container can be **Green Tagged** and the session is recorded as:
+
+
+status = 'DONE'
+done_at
+done_by
+
+
+Containers marked DONE are removed from the active testing queue.
+
+---
+
+## 11.4 Physical vs System State
+
+The database tracks operational state,
+but certain actions remain physical workflow steps.
+
+Examples:
+
+Physical actions
+- moving a display to the repair area
+- wiring Yellow Tags to displays or containers
+- returning displays to containers
+
+System actions
+- creating work orders
+- updating checklist status
+- marking container testing sessions DONE
+
+The SOP document defines the human workflow that corresponds to these system states.

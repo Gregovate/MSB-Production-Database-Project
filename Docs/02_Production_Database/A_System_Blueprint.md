@@ -1,5 +1,5 @@
 # A — Production Database — System Blueprint
-Last updated: 2026-02-21
+Last updated: 2026-03-03
 Owner: MSB Production Crew  
 Status: Design Lock — Phase 1 Foundation
 
@@ -43,8 +43,7 @@ It exists to manage everything LOR does *not* manage well:
 - Physical attributes (lights, power, vendor/cost, etc.)
 - Kit definitions + kit contents
 - Controller hardware inventory (physical tagging, status)
-- Infrastructure dependencies by stage 【turn12file6†A_System_Blueprint.md†L39-L50】
-
+- Infrastructure dependencies by stage 
 ---
 
 ## 3. Core Principles
@@ -60,25 +59,25 @@ Where:
 
 Production identity keys:
 - `display_key_raw` (original)
-- `display_key_norm` (normalized + unique) 【turn12file6†A_System_Blueprint.md†L55-L67】
+- `display_key_norm` (normalized + unique) 
 
 ### 3.2 UUIDs are not identity
 LOR UUIDs are stored for traceability but **never used** as Production identity.
-If LOR regenerates UUIDs, Production must remain stable. 【turn12file4†A_System_Blueprint.md†L3-L8】
+If LOR regenerates UUIDs, Production must remain stable.
 
 ### 3.3 Snapshot-based ingestion
 Each LOR import is stored as a snapshot so we can:
 - diff year-over-year
 - detect changes
 - roll back safely
-- audit what changed and when 【turn12file4†A_System_Blueprint.md†L10-L18】
+- audit what changed and when
 
 ### 3.4 Separation of concerns
 Production DB must never:
 - modify LOR data
 - try to become show topology
 
-It consumes LOR outputs and enriches them. 【turn12file4†A_System_Blueprint.md†L21-L27】
+It consumes LOR outputs and enriches them. 
 
 ---
 
@@ -129,7 +128,7 @@ Relationships (conceptual):
 - 1 Display → 0..many PalletAssignments
 - 1 Display → 0..many LOR Bindings
 - 1 Display → 0..many Documents
-- 1 Display → 0..many Wiring Legs (via snapshot) 【turn12file6†A_System_Blueprint.md†L127-L148】
+- 1 Display → 0..many Wiring Legs (via snapshot) 
 
 ---
 
@@ -145,12 +144,12 @@ Examples:
 Purpose:
 - preserve raw wiring truth
 - allow diffing
-- provide wiring lookup for the future tablet app 【turn12file6†A_System_Blueprint.md†L151-L168】【turn12file9†A_System_Blueprint.md†L1-L11】
+- provide wiring lookup for the future tablet app 
 
 ---
 
 ### 5.4 Storage Model (Future Phase)
-#### Pallet
+#### Container
 - id
 - pallet_tag (barcode-ready)
 - description
@@ -162,15 +161,15 @@ Purpose:
 - zone
 - notes
 
-#### Pallet Assignment
-Tracks which Display is on which pallet and when.
+#### Container Assignment
+Tracks which Display is on which Container and when.
 
-#### Pallet Location History
-Tracks pallet movement between rack locations. 【turn12file6†A_System_Blueprint.md†L102-L122】【turn12file9†A_System_Blueprint.md†L14-L33】
+#### Container Location History
+Tracks Container movement between rack locations. 【turn12file6†A_System_Blueprint.md†L102-L122】【turn12file9†A_System_Blueprint.md†L14-L33】
 
 ---
 
-### 5.5 Maintenance Model (Future Phase)
+### 5.5 Maintenance Model 
 #### Maintenance Season
 - id
 - year
@@ -306,7 +305,7 @@ Notes:
 
 ---
 
-### Phase 2 — Display Reconciliation & Core Production Mapping (ACTIVE)
+### Phase 2 — Display Reconciliation & Core Production Mapping (DONE)
 
 Purpose:
 Bridge snapshot data to production entities.
@@ -324,10 +323,10 @@ Stabilize identity mapping between LOR data and operational records.
 
 ---
 
-### Phase 3 — Storage & Physical Logistics
+### Phase 3 — Storage & Physical Logistics (DONE)
 
 Includes:
-- Pallet registry
+- Container registry
 - Rack location registry
 - Display storage assignment
 - Rack slot conventions (2-digit slot numbers)
@@ -339,14 +338,15 @@ Answer:
 
 ---
 
-### Phase 4 — Maintenance & Work Management
+### Phase 4 — Maintenance & Work Management (DONE need to automate)
 
 Includes:
-- Maintenance seasons
+- Convert Google Sheets Work Order System to Postgres (Done)
+- Add Display Repairs as a work order to Work Order System based on test_status=REPAIR
 - Maintenance records
 - Work Orders / Task System
 - Roles, skills, priorities
-- Operational workflow tracking
+- Operational workflow tracking Mark Repaired displays as Repaired when completed See Document G_2026-Containter Repair V3.md
 - Reporting
 
 Goal:
