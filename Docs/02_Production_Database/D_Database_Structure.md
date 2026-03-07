@@ -5,15 +5,19 @@ Status: Draft (Phase 1–3 scope locked)
 
 ## Change Block
 
-<<<<<<< HEAD
+- 2026-03-07
+  - Established standard audit model for all writable tables in the `ref` and `ops` schemas.
+  - Added relational attribution fields (`*_person_id`) referencing `ref.person.person_id`.
+  - Defined fallback behavior where text audit fields (`*_by`) record the PostgreSQL session user when no `ref.person` mapping exists.
+  - Documented audit trigger resolution order (Directus user → mapped PostgreSQL login → PostgreSQL session user fallback).
+
+- 2026-03-06
+  - Revised section 4.6 Storage Location to include new Zone Codes
+  - 
 - 2026-03-01:
   - Added `ref.display.display_id` as an IDENTITY surrogate key to support stable internal FK relationships for ops tables.
   - Kept `ref.display.lor_prop_id` as the LOR-authoritative natural key used for LOR upserts.
   - Clarified that downstream ops tables should reference `display_id` (not `lor_prop_id`) to avoid coupling ops workflows to LOR identifiers.
-=======
-- 2026-03-06
-  - Revised section 4.6 Storage Location to include new Zone Codes
->>>>>>> 57fab74a6b5edd282acd6642106453a5fd5b3ddc
 
 - 2026-02-28:
   - Introduced canonical `display_id` (identity surrogate key) on `ref.display`.
@@ -40,51 +44,174 @@ Status: Draft (Phase 1–3 scope locked)
 
 - Notes:
   - Snapshot layer changes are structural but additive.
-  - No existing production modules removed.
+  - No existing opsuction modules removed.
   - No backward-breaking changes to Production schema.
 
 # 1. Scope and Intent
 
-This document defines the **Production Database structure** (Postgres) for MSB.
+This document defines the **MSB Production Database structure** in PostgreSQL.
 
-Guiding rules:
-- **LOR remains source-of-truth for show topology and wiring.**
-- Production DB is source-of-truth for **physical assets and operations**.
+## Guiding Rules
+
+- **LOR remains the source of truth for show topology and wiring.**
+- The Production Database is the source of truth for **physical assets and operations**.
 - LOR data is ingested as **immutable snapshots** per import run.
-- Physical **Display identity is the DisplayKey** (derived from LOR Comment conventions).
+- Physical **Display identity is the `display_key`** (derived from LOR comment conventions).
+
+---
+
+## Audit Model
+
+All writable tables in the **`ref`** and **`ops`** schemas must include standard audit fields to track data creation and modification.
+
+Audit fields provide two attribution layers:
+
+1. **Relational attribution** through `ref.person` (`*_person_id` fields reference `ref.person.person_id`)
+2. **Text fallback attribution** using the PostgreSQL session user
+
+This ensures that every change can be attributed whether it originates from:
+
+- Directus UI
+- database administration tools (DBeaver / pgAdmin)
+- automated scripts or procedures
+
+---
+
+## Required Audit Columns
+
+Every writable table in `ref` and `ops` must include the following audit columns.
+
+
+created_at timestamptz not null default now()
+created_by text not null default current_user
+created_by_person_id bigint
+
+updated_at timestamptz not null default now()
+updated_by text not null default current_user
+updated_by_person_id bigint
+
+
+For workflow tables where a **specific operational action** is recorded (such as inspection or testing), the following fields are also used:
+
+
+checked_at timestamptz
+checked_by text
+checked_by_person_id bigint
+
+
+---
+
+## Attribution Resolution Rules
+
+Audit triggers determine the acting user using the following resolution order:
+
+1. **Directus user context**
+
+   When changes originate from Directus, the logged-in Directus user UUID is resolved to a corresponding row in `ref.person`.
+
+2. **Mapped PostgreSQL login**
+
+   If the PostgreSQL login name exists in `ref.person`, that record is used.
+
+3. **PostgreSQL session user fallback**
+
+   If no mapping exists, the PostgreSQL session user (`current_user`) is written to the text audit field.
+
+This approach ensures:
+
+- relational integrity when user identity is known
+- readable attribution for administrative database edits
+- no loss of attribution for manual SQL operations
+
+---
+
+## Audit Field Behavior
+
+- `created_*` fields are populated when a row is first inserted.
+- `updated_*` fields are updated on every modification.
+- workflow fields such as `checked_*` are populated according to table-specific business rules.
+
+Example rule:
+
+- `checked_at` and `checked_by` are populated when a status field transitions from `NULL` to a defined value.
+
+The text audit fields (`*_by`) **always contain a value** when a write occurs.
+
+The relational fields (`*_person_id`) are populated when the acting user can be resolved to a row in `ref.person`.  
+
+If no mapping exists, the `*_person_id` field may remain `NULL` while the text field records the PostgreSQL session user.
+
+---
+
+## System Purpose
 
 This structure is written to support the current priorities:
-1) Ingest LOR snapshot into Postgres
-2) Enrich Displays with physical attributes
-3) Assign Displays → Pallets → Rack Locations
-4) Maintenance season testing & reporting
+
+1. Ingest LOR snapshots into PostgreSQL  
+2. Enrich Displays with physical attributes  
+3. Assign Displays → Containers → Storage Locations  
+4. Support maintenance season testing, repair workflow, and reporting
 
 ---
 
 # 2. Schema Layout (Logical)
 
 Recommended logical schemas (namespaces):
-- `lor_snap` — LOR snapshot tables (ingestion-only, append-only by run)
-- `prod` — Production operational tables (source-of-truth)
-- `ref` — Reference/master tables (governed lists: controlled vocabularies **and** resources such as Displays, Users, Locations, Racks)
+- `lor_snap` — LOR snapshot tables; ingestion-owned and append-only by import run. No audit fields required because historical change is captured through snapshotting.
+- `stage` — Staging area for legacy imports, spreadsheet loads, temporary import tables, and foreign tables used to feed PostgreSQL structures.
+- `ref` — Reference and master tables; writable and governed by audit fields. Includes controlled vocabularies and core operational reference entities such as Displays, Containers, People, Stages, and Storage Locations.
+- `ops` — Operational workflow tables; writable and governed by audit fields.
+- `dev` — Development-only objects used for testing, scratch work, and schema experimentation. Not part of production operations.
+- `archive` — Retired procedures, functions, scripts, and historical support objects preserved for reference only; not used in active production operations.
 
-> If you don’t want multiple schemas initially, keep everything in `public` and prefix tables:
-> - `lor_*`, `prod_*`, `ref_*`
+## 2.1 Table Naming Rules (Design Lock)
 
-## 2.1 Table naming rules (Design Lock)
+Schema purpose:
 
-- `ref.*` = governed master tables (controlled vocabularies **and** resources users reference repeatedly: Displays, Users, Skills, Locations, Racks).
-- `prod.*` = operational transactions/history/workflows (assignments, events, maintenance/testing records, work orders, notifications).
-- `lor_snap.*` = immutable snapshot ingestion tables (append-only by import run).
+## Database Schemas
 
-Relationship table naming:
-- `*_assignment` = assignment intent (often time/history driven)
-- `*_link` = pure many-to-many
-- `*_history` = time-tracked movement/history
+The MSB Production Database is organized into several schemas to separate operational data, reference data, ingestion staging, and development work.
 
-Rule: if users select it repeatedly, it belongs in `ref.*` and is referenced by FK.
+- `ref` — Canonical reference tables defining physical assets and core entities (Displays, Containers, Locations, People, etc.).
 
----
+- `ops` — Operational workflow tables used during the maintenance and testing season (test sessions, repairs, work orders, assignments, status history).
+
+- `lor_snap` — Immutable snapshots of Light-O-Rama data imported from preview exports. Each import represents a historical capture of show topology and wiring data.
+
+- `stage` — Temporary ingestion tables used when importing external data into the database. These may originate from legacy spreadsheets, CSV imports, or the new work order intake system. Data in this schema is considered transitional and may be transformed or normalized before being written to `ref` or `ops`.
+
+- `dev` — Development and experimentation tables used for testing schema changes, procedures, and data transformations. Objects in this schema are **not considered production data** and may be dropped or recreated as needed.
+
+
+### Directus Write Rules
+
+- Directus may write to approved tables in `ref` and `ops`.
+- Directus may write only to approved intake tables in `stage`.
+- Directus must treat `lor_snap` as read-only.
+- `dev` is excluded from production workflow and may be used only for development/testing as needed.
+
+### Procedure-Controlled Tables
+
+Some tables in writable schemas may still be controlled primarily by database procedures rather than manual editing. In those cases, Directus permissions do not change the fact that row creation, synchronization, or lifecycle may be owned by database logic.
+
+Examples include tables populated or maintained by LOR ingest or update procedures.
+
+Relationship table naming conventions this section is not used anymore except for _history:
+
+- `*_assignment` — assignment intent between entities, often with time or history tracking  
+  *(example: display_container_assignment)*
+
+- `*_link` — pure many-to-many relationship with no operational meaning beyond association  
+  *(example: display_skill_link)*
+
+- `*_history` — time-based movement or state history  
+  *(example: container_location_history)*
+
+Design rule:
+
+If users repeatedly **select an item from a list**, that entity belongs in `ref.*` and must be referenced via a foreign key.
+
+Operational tables must **never duplicate reference attributes** that already exist in `ref.*`.
 
 # 3. Key Entities and Relationships
 
@@ -95,17 +222,17 @@ High-level relationship map:
 
 - `ref.display` (unique by `display_key_norm`)
   ↔ joins to `lor_snap.lor_wiring_leg` by DisplayKey for wiring lookup
-  ↳ `prod.maintenance_record`
-  ↳ `prod.pallet_assignment`
-  ↳ `prod.display_document_link` (FK → ref.display)
+  ↳ `ops.maintenance_record`
+  ↳ `ops.container_assignment`
+  ↳ `ops.display_document_link` (FK → ref.display)
 
 - `ref.container`
-  ↔ `prod.pallet_location_history` → `ref.storage_location`
+  ↔ `ops.container_location_history` → `ref.storage_location`
 
 - `ref.season`
-  ↳ `prod.maintenance_record`
-  ↳ `prod.display_season_status`
-  ↳ `prod.pallet_season_status`
+  ↳ `ops.maintenance_record`
+  ↳ `ops.display_season_status`
+  ↳ `ops.container_season_status`
 
 ---
 
@@ -197,9 +324,9 @@ Controlled list of stage codes (build + wiring/setup unit).
 **Fields**
 - `stage_id` (PK)
 - `stage_code` (UNIQUE) — 2 characters (FC, WW, FT, DF, …)
-- `stage_name` — human name
-- `short_code` (text, nullable)
-- `folder_name` (text, nullable) — canonical folder name used by crew
+- `stage_name` — Preview Name used in LOR Previews
+- `short_code` (text, nullable) 2 digit Sequence of stage in park. Split stages can have a trailing alpha
+- `folder_name` human name — canonical folder name used by crew 
 - `folder_path` (text, nullable) — relative path in repo/share (preferred)
 - `setup_doc_path` (text, nullable) — primary setup/wiring doc reference (optional)
 - `default_location_id` (FK → ref.location, nullable) — typical installed park area
@@ -282,14 +409,14 @@ So YES: using UNKNOWN is the safest move until the UI exists.
 
 Represents one physical container used for storage/staging/deployment.
 
-Pallets are governed resources (they exist independent of assignment events).
-Operational movement and assignment are tracked in `prod.*`.
+Containers are governed resources (they exist independent of assignment events).
+Operational movement and assignment are tracked in `ops.*`.
 
 **Fields**
 
-- `pallet_id` (PK)
-- `pallet_tag` (text, UNIQUE, NOT NULL) — human-visible identifier (barcode-ready)
-- `pallet_type` (text, nullable) — STANDARD / OVERSIZE / CUSTOM / OTHER
+- `container_id` (PK)
+- `container_tag` (text, UNIQUE, NOT NULL) — human-visible identifier (barcode-ready)
+- `container_type` (text, nullable) — STANDARD / OVERSIZE / CUSTOM / OTHER
 - `active` (bool, default true)
 - `notes` (text, nullable)
 
@@ -438,7 +565,7 @@ Violating these rules will trigger CHECK constraint or generated column errors.
 
 ## 4.11 ref.season
 
-Controlled list of production seasons (typically one per calendar year).
+Controlled list of opsuction seasons (typically one per calendar year).
 
 **Fields**
 - `season_id` (PK)
@@ -715,18 +842,18 @@ Equivalent to SQLite view `preview_wiring_sorted_v6`.
 2. No manual edits
 3. No business logic
 4. Pure representation of LOR state
-5. Downstream layers (prod.*) reference specific runs
+5. Downstream layers (ops.*) reference specific runs
 
 ---
 
 
-# 6. Production Operational Tables (prod.*)
+# 6. Production Operational Tables (ops.*)
 
 These tables are **hand-managed** and represent the system of record for physical assets and operations.
 
 ---
 
-## 6.1 prod.display_reconciliation (Required)
+## 6.1 ops.display_reconciliation (Required)
 
 Captures ingest-time decisions when LOR snapshot data does not cleanly match an existing Display.
 
@@ -762,7 +889,7 @@ This is the governance layer for matching LOR snapshot records to canonical Disp
 
 ---
 
-## 6.2 prod.display_alias (Rare / Structural Renames Only)
+## 6.2 ops.display_alias (Rare / Structural Renames Only)
 
 Tracks intentional canonical DisplayKey changes where historical traceability matters.
 
@@ -788,12 +915,12 @@ Do NOT use this for minor typo corrections.
 
 ---
 
-## 6.4 prod.pallet_assignment
-Maps Displays to Pallets over time.
+## 6.4 ops.container_assignment
+Maps Displays to Containers over time.
 
 **Fields**
-- `pallet_assignment_id` (PK)
-- `pallet_id` (FK → ref.container)
+- `container_assignment_id` (PK)
+- `container_id` (FK → ref.container)
 - `display_id` (FK → ref.display)
 - `assigned_at` (timestamp)
 - `removed_at` (timestamp, nullable)
@@ -805,12 +932,12 @@ Maps Displays to Pallets over time.
 
 ---
 
-## 6.5 prod.container_location_history
-Tracks where pallets are stored (movement/history).
+## 6.5 ops.container_location_history
+Tracks where containers are stored (movement/history).
 
 **Fields**
-- `pallet_location_id` (PK)
-- `pallet_id` (FK → ref.container)
+- `container_location_id` (PK)
+- `container_id` (FK → ref.container)
 - `rack_location_id` (FK → ref.storage_location)
 - `moved_at` (timestamp)
 - `moved_by` (FK → ref.user, nullable)
@@ -819,7 +946,7 @@ Tracks where pallets are stored (movement/history).
 **Rule**
 - Current container location is the most recent `moved_at` record.
 
-## 6.6 prod.maintenance_record
+## 6.6 ops.maintenance_record
 Annual testing record per display.
 
 **Fields**
@@ -838,7 +965,7 @@ Annual testing record per display.
 
 ---
 
-## 6.7 prod.kit
+## 6.7 ops.kit
 **Fields**
 - `kit_id` (PK)
 - `kit_code` (text, UNIQUE)
@@ -848,7 +975,7 @@ Annual testing record per display.
 
 ---
 
-## 6.8 prod.inventory_item
+## 6.8 ops.inventory_item
 **Fields**
 - `item_id` (PK)
 - `item_code` (text, UNIQUE)
@@ -860,10 +987,10 @@ Annual testing record per display.
 
 ---
 
-## 6.9 prod.kit_item
+## 6.9 ops.kit_item
 **Fields**
-- `kit_id` (FK → prod.kit)
-- `item_id` (FK → prod.inventory_item)
+- `kit_id` (FK → ops.kit)
+- `item_id` (FK → ops.inventory_item)
 - `quantity` (int)
 - `notes` (text, nullable)
 
@@ -872,7 +999,7 @@ Annual testing record per display.
 
 ---
 
-## 6.10 prod.controller
+## 6.10 ops.controller
 Hardware inventory for controllers.
 
 **Fields**
@@ -886,7 +1013,7 @@ Hardware inventory for controllers.
 
 ---
 
-## 6.11 prod.document
+## 6.11 ops.document
 Generic document registry (drawio, pdf, photos, etc).
 
 **Fields**
@@ -899,12 +1026,12 @@ Generic document registry (drawio, pdf, photos, etc).
 
 ---
 
-## 6.12 prod.display_document_link
+## 6.12 ops.display_document_link
 Links documents to displays (many-to-many).
 
 **Fields**
 - `display_id` (FK → ref.display)
-- `document_id` (FK → prod.document)
+- `document_id` (FK → ops.document)
 - `relationship` (text, nullable) — SCHEMATIC, SETUP, TAKEDOWN, PHOTO, etc
 
 **Keys**
@@ -912,7 +1039,7 @@ Links documents to displays (many-to-many).
 
 ---
 
-# 6A. Work Orders Module (prod.work_*)
+# 6A. Work Orders Module (ops.work_*)
 
 Separate functional module for operational task intake, assignment, completion, and history.
 Relies on shared masters in `ref.*` (including Users), and can optionally link to `ref.display`.
@@ -921,7 +1048,7 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.1 prod.work_order
+## 6A.1 ops.work_order
 
 **Fields**
 - `work_order_id` (PK)
@@ -947,10 +1074,10 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.2 prod.work_order_assignment
+## 6A.2 ops.work_order_assignment
 
 **Fields**
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `assignee_user_id` (FK → ref.user)
 - `assigned_at` (timestamp)
 - `assigned_by_user_id` (FK → ref.user)
@@ -961,10 +1088,10 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.3 prod.work_order_required_skill (Optional)
+## 6A.3 ops.work_order_required_skill (Optional)
 
 **Fields**
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `skill_id` (FK → ref.skill)
 - `min_skill_level_id` (FK → ref.skill_level, nullable)
 
@@ -973,11 +1100,11 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.4 prod.work_order_event
+## 6A.4 ops.work_order_event
 
 **Fields**
 - `event_id` (PK)
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `event_type` (text)
 - `event_at` (timestamp)
 - `actor_user_id` (FK → ref.user)
@@ -985,12 +1112,12 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 ---
 
-## 6A.5 prod.notification_outbox
+## 6A.5 ops.notification_outbox
 
 **Fields**
 - `outbox_id` (PK)
 - `event_type` (text) — PRIORITY1_ASSIGNED / WORK_COMPLETED
-- `work_order_id` (FK → prod.work_order)
+- `work_order_id` (FK → ops.work_order)
 - `payload` (jsonb)
 - `status_code` (text) — PENDING / SENT / FAILED
 - `attempt_count` (int)
@@ -1002,7 +1129,7 @@ Workflow is modeled by status + timestamps (no row-moving).
 
 # 8. Seasonal Testing & Tagging Tables
 
-## 8.1 prod.display_season_status
+## 8.1 ops.display_season_status
 
 Tracks testing status for each display per season.
 
@@ -1010,7 +1137,7 @@ Tracks testing status for each display per season.
 - `season_id` (FK → ref.season)
 - `display_id` (FK → ref.display)
 - `test_status` (UNTESTED / PASS / NEEDS_REPAIR / RETEST_REQUIRED)
-- `active_repair_work_order_id` (FK → prod.work_order, nullable)
+- `active_repair_work_order_id` (FK → ops.work_order, nullable)
 - `last_updated_at` (timestamp)
 - `last_updated_by` (FK → ref.user)
 
@@ -1019,13 +1146,13 @@ Tracks testing status for each display per season.
 
 ---
 
-## 8.2 prod.pallet_season_status
+## 8.2 ops.container_season_status
 
 Tracks deployment readiness at container level.
 
 **Fields**
 - `season_id` (FK → ref.season)
-- `pallet_id` (FK → ref.container)
+- `container_id` (FK → ref.container)
 - `ready_status` (NOT_READY / READY)
 - `ready_at` (timestamp, nullable)
 - `ready_by` (FK → ref.user, nullable)
@@ -1033,11 +1160,11 @@ Tracks deployment readiness at container level.
 - `notes` (nullable)
 
 **Keys**
-- PK: (`season_id`, `pallet_id`)
+- PK: (`season_id`, `container_id`)
 
 ---
 
-## 8.3 prod.label_print_job (Optional but Recommended)
+## 8.3 ops.label_print_job (Optional but Recommended)
 
 Queue and audit table for LAN-based label printing.
 
@@ -1048,7 +1175,7 @@ Queue and audit table for LAN-based label printing.
 - `template_key` (nullable)
 - `season_id` (nullable)
 - `display_id` (nullable)
-- `pallet_id` (nullable)
+- `container_id` (nullable)
 - `work_order_id` (nullable)
 - `payload` (jsonb)
 - `status` (QUEUED / PRINTED / FAILED / CANCELED)
