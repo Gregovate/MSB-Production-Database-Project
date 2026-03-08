@@ -8,8 +8,14 @@ Status: Draft (Phase 1–3 scope locked)
 - 2026-03-07
   - Established standard audit model for all writable tables in the `ref` and `ops` schemas.
   - Added relational attribution fields (`*_person_id`) referencing `ref.person.person_id`.
-  - Defined fallback behavior where text audit fields (`*_by`) record the PostgreSQL session user when no `ref.person` mapping exists.
-  - Documented audit trigger resolution order (Directus user → mapped PostgreSQL login → PostgreSQL session user fallback).
+  - Implemented Directus hook (`stamp-actor-fields`) to stamp human actor identity (`*_by`, `*_person_id`) for UI-originated writes.
+  - Updated PostgreSQL audit triggers to **preserve Directus-stamped actor fields** while continuing to own timestamp fields (`*_at`).
+  - Implemented trigger fallback behavior so database-side writes resolve actor identity using `ref.person.pg_login_name` or the PostgreSQL session user.
+  - Completed working audit workflow for `ops.display_test_session` including `checked_*` and `updated_*` fields.
+  - Confirmed audit system works correctly for:
+    - Directus UI updates
+    - first-time workflow status transitions
+    - database-side edits (DBeaver / pgAdmin)
 
 - 2026-03-06
   - Revised section 4.6 Storage Location to include new Zone Codes
@@ -127,20 +133,120 @@ This approach ensures:
 
 ## Audit Field Behavior
 
-- `created_*` fields are populated when a row is first inserted.
-- `updated_*` fields are updated on every modification.
-- workflow fields such as `checked_*` are populated according to table-specific business rules.
+Audit fields track who performed an action and when it occurred.
+
+The system uses a **hybrid model**:
+
+- A **Directus hook** stamps human actor identity fields (`*_by`, `*_person_id`) when changes originate from the Directus UI.
+- **PostgreSQL triggers** stamp timestamps (`*_at`) and provide fallback actor resolution for database-side writes.
+
+This design ensures:
+
+- Directus actions record the **actual volunteer name**
+- Database edits still record the **PostgreSQL session user**
+- Timestamps remain **database authoritative**
+
+---
+
+### Insert Behavior
+
+When a row is first inserted:
+
+| Field | Source |
+|------|------|
+| `created_at` | PostgreSQL trigger (`now()`) |
+| `created_by` | Directus hook (preferred) or DB fallback |
+| `created_by_person_id` | Directus hook when the user resolves to `ref.person` |
+| `updated_at` | PostgreSQL trigger (`now()`) |
+| `updated_by` | Directus hook (preferred) or DB fallback |
+| `updated_by_person_id` | Directus hook when the user resolves to `ref.person` |
+
+`updated_*` is intentionally populated during insert so every row has a complete audit trail.
+
+---
+
+### Update Behavior
+
+On every modification:
+
+| Field | Source |
+|------|------|
+| `updated_at` | PostgreSQL trigger |
+| `updated_by` | Directus hook (preferred) or DB fallback |
+| `updated_by_person_id` | Directus hook when the user resolves to `ref.person` |
+
+The database trigger **preserves values already stamped by Directus** and only fills them if they are `NULL`.
+
+---
+
+### Workflow Audit Fields
+
+Some tables include workflow audit fields tied to business rules.
 
 Example rule:
 
-- `checked_at` and `checked_by` are populated when a status field transitions from `NULL` to a defined value.
+| Field | Rule |
+|------|------|
+| `checked_at` | Set when a status transitions from `NULL` to a defined value |
+| `checked_by` | Set by the Directus hook when the change originates from the UI |
+| `checked_by_person_id` | Set when the acting user resolves to `ref.person` |
+
+The PostgreSQL trigger stamps the timestamp while respecting actor fields already provided by Directus.
+
+---
+
+### Actor Resolution
+
+Two mechanisms resolve the acting user.
+
+**Directus UI actions**
+
+Directus user UUID → `ref.person.directus_user_id`
+
+**Database / script actions**
+
+PostgreSQL session user → `ref.person.pg_login_name`
+
+---
+
+### Behavior When No Person Mapping Exists
 
 The text audit fields (`*_by`) **always contain a value** when a write occurs.
 
-The relational fields (`*_person_id`) are populated when the acting user can be resolved to a row in `ref.person`.
+If the actor cannot be resolved to a row in `ref.person`:
 
-If no mapping exists, the `*_person_id` field may remain `NULL` while the text field records the PostgreSQL session user.
+- `*_by` records the PostgreSQL session user
+- `*_person_id` remains `NULL`
 
+---
+
+### Example
+
+Directus volunteer updates a display check:
+
+- checked_at = 2026-03-07 22:13:29
+- checked_by = Greg
+- checked_by_person_id = 17
+- updated_at = 2026-03-07 22:13:29
+- updated_by = Greg
+- updated_by_person_id = 17
+
+DBA edits the same row in DBeaver:
+
+- updated_at = now()
+- updated_by = msbadmin
+- updated_by_person_id = 17
+
+---
+
+### Design Rationale
+
+This architecture:
+
+- records **human-readable volunteer names**
+- keeps **timestamps authoritative in PostgreSQL**
+- supports **Directus UI, scripts, and DBA tools**
+- avoids embedding application-specific identity logic inside the database
 ---
 
 ## System Purpose
