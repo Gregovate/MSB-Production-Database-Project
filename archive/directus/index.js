@@ -1,25 +1,18 @@
 /**
- * Directus hook: policy-driven actor stamping with temporary debug logging.
+ * Directus hook: actor stamping debug proof
  *
  * Purpose:
- * - Stamp human-readable actor fields from ref.person for Directus writes
- * - Use ref.audit_collection_policy to control which collections participate
- * - Leave timestamps to PostgreSQL
- * - Allow PostgreSQL fallback for DBeaver / pgAdmin / scripts
- *
- * Temporary debug goals:
- * - Prove what Directus thinks the collection name is
- * - Prove actor lookup is working
- * - Prove policy lookup is or is not matching
- * - Prove whether the outgoing payload actually contains Greg before insert/update
+ * - Prove beyond doubt whether the filter callback is executing
+ * - Prove what Directus reports as event + collection
+ * - Prove actor lookup and policy lookup paths
  *
  * IMPORTANT:
- * - Remove these debug logs after the container_endpoint test is solved.
+ * - This is temporary debug code.
+ * - console.error() is used intentionally because it is harder to miss in logs.
  */
-export default ({ filter }, { logger }) => {
-    /**
-     * Resolve the logged-in Directus user to ref.person.
-     */
+export default ({ filter }) => {
+    console.error("stamp-actor-fields: extension module loaded");
+
     async function getActor(context) {
         const userId = context?.accountability?.user;
         if (!userId) return null;
@@ -38,17 +31,6 @@ export default ({ filter }, { logger }) => {
         };
     }
 
-    /**
-     * Look up audit policy by collection name.
-     *
-     * For now, Directus gives us collection names like:
-     * - test_session
-     * - display_test_session
-     * - container_endpoint
-     *
-     * The schema is stored in the table for documentation and future hardening,
-     * but collection_name is the key match used here.
-     */
     async function getAuditPolicy(collection, context) {
         if (!collection) return null;
 
@@ -71,76 +53,40 @@ export default ({ filter }, { logger }) => {
         return policy ?? null;
     }
 
-    /**
-     * Stamp create actor fields.
-     */
-    function stampCreateFields(payload, actor) {
-        payload.created_by = actor.preferred_name;
-        payload.created_by_person_id = actor.person_id;
-        payload.updated_by = actor.preferred_name;
-        payload.updated_by_person_id = actor.person_id;
-    }
-
-    /**
-     * Stamp update actor fields.
-     */
-    function stampUpdateFields(payload, actor) {
-        payload.updated_by = actor.preferred_name;
-        payload.updated_by_person_id = actor.person_id;
-    }
-
-    /**
-     * Stamp checked actor fields.
-     */
-    function stampCheckedFields(payload, actor) {
-        payload.checked_by = actor.preferred_name;
-        payload.checked_by_person_id = actor.person_id;
-    }
-
-    /**
-     * Main write filter.
-     */
     async function stampActor(payload, meta, context) {
+        console.error(
+            `stamp-actor-fields: ENTER stampActor event=${meta?.event} collection=${meta?.collection}`
+        );
+
         try {
             const collection = meta?.collection;
             const event = meta?.event;
 
-            logger.info(
-                `stamp-actor-fields: event=${event} collection=${collection}`
-            );
-
             const actor = await getActor(context);
-
-            logger.info(
+            console.error(
                 `stamp-actor-fields: actor=${JSON.stringify(actor)}`
             );
 
-            if (!actor) {
-                logger.warn(
-                    `stamp-actor-fields: no ref.person mapping found for Directus user on collection=${collection}`
-                );
-                return payload;
-            }
-
             const policy = await getAuditPolicy(collection, context);
-
-            logger.info(
+            console.error(
                 `stamp-actor-fields: policy=${JSON.stringify(policy)}`
             );
 
-            if (!policy) {
-                logger.warn(
-                    `stamp-actor-fields: no active audit policy found for collection=${collection}`
-                );
+            if (!actor || !policy) {
+                console.error("stamp-actor-fields: actor or policy missing; returning payload unchanged");
                 return payload;
             }
 
             if (event === "items.create" && policy.insert_actor_enabled === true) {
-                stampCreateFields(payload, actor);
+                payload.created_by = actor.preferred_name;
+                payload.created_by_person_id = actor.person_id;
+                payload.updated_by = actor.preferred_name;
+                payload.updated_by_person_id = actor.person_id;
             }
 
             if (event === "items.update" && policy.update_actor_enabled === true) {
-                stampUpdateFields(payload, actor);
+                payload.updated_by = actor.preferred_name;
+                payload.updated_by_person_id = actor.person_id;
             }
 
             if (
@@ -150,24 +96,25 @@ export default ({ filter }, { logger }) => {
                 payload.test_status !== null &&
                 payload.test_status !== ""
             ) {
-                stampCheckedFields(payload, actor);
+                payload.checked_by = actor.preferred_name;
+                payload.checked_by_person_id = actor.person_id;
             }
 
-            logger.info(
+            console.error(
                 `stamp-actor-fields: final payload=${JSON.stringify(payload)}`
             );
 
             return payload;
         } catch (error) {
-            logger.error(
-                `stamp-actor-fields hook failed: ${error?.message ?? error}`
+            console.error(
+                `stamp-actor-fields: ERROR ${error?.stack ?? error?.message ?? error}`
             );
-
-            // Never block the write; let DB fallback proceed.
             return payload;
         }
     }
 
     filter("items.create", stampActor);
     filter("items.update", stampActor);
+
+    console.error("stamp-actor-fields: filters registered");
 };
