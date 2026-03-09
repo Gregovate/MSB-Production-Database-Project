@@ -1,378 +1,378 @@
-# **MSB Production Database Project**
-
-## **Daily Project Summary**
-
-**Period: 2/20/2026 – 2/28/2026**
+# MSB Production Database Project
+## Daily Project Summary
+Period: 2/20/2026 – 3/8/2026
 
 ---
 
-## **2/20/2026 — 6 hrs**
+## 2/20/2026 — 6 hrs
+### Infrastructure Build & Database Installation
 
-### **Infrastructure Build & Database Installation**
+Built dedicated production database server.
 
-* Built dedicated production database server.  
-* Installed PostgreSQL.  
-* Validated connectivity and basic DB configuration.  
-* Established baseline environment for MSB Production Database.  
-* Confirmed container strategy and overall architecture direction.
+Installed PostgreSQL and verified database connectivity.
 
-**Outcome:**  
-Operational Postgres environment ready for schema design and ingestion planning.
+Established the baseline environment for the MSB Production Database system.
 
----
+Confirmed container strategy and architecture direction for ingestion and operational layers.
 
-## **2/21/2026 — 14 hrs**
+Outcome:
 
-### **Architecture & Design Documentation (Phase 1\)**
-
-* Drafted core database design documents.  
-* Defined schema separation strategy:  
-  * `lor_snap` (LOR ingestion)  
-  * `ref` (reference data)  
-  * `stage` (raw spreadsheet imports)  
-  * `public/prod` (operational tables)  
-* Designed normalization strategy for:  
-  * Displays  
-  * Stages  
-  * Pallets  
-  * Racks  
-  * Status tables  
-* Defined naming conventions and data contracts.  
-* Documented ingestion workflow from LOR SQLite.
-
-**Outcome:**  
-Formalized system architecture and schema strategy before building tables.
+• Production database server operational  
+• PostgreSQL installed and validated  
+• Environment ready for schema design and ingestion planning
 
 ---
 
-## **2/22/2026 — 12 hrs**
+## 2/21/2026 — 14 hrs
+### Architecture & Design Documentation (Phase 1)
 
-### **Architecture Finalization & Data Model Refinement**
+Drafted core database design documentation.
 
-* Completed design documentation.  
-* Finalized canonical structure for:  
-  * `ref.display`  
-  * `ref.stage`  
-  * Status reference tables  
-* Clarified separation between:  
-  * LOR-derived data  
-  * Operational/maintenance data  
-* Defined production table strategy for future:  
-  * Work Orders  
-  * Repairs  
-  * Maintenance logs  
-  * Inventory tracking
+Defined schema separation strategy:
 
-**Outcome:**  
-Approved blueprint for moving from ingestion → operational system.
+• `lor_snap` — Light-O-Rama ingestion snapshots  
+• `ref` — canonical reference data  
+• `stage` — raw spreadsheet import staging  
+• `ops` — operational workflow tables
 
----
+Designed normalization strategy for:
 
-## **2/23/2026 — 9 hrs**
+• Displays  
+• Stages  
+• Containers and pallets  
+• Rack storage locations  
+• Status reference tables
 
-### **LOR Display Import & Ingestion Testing**
+Defined naming conventions and data contracts between ingestion and operational layers.
 
-* Imported display data from `lor_output_v6.db`.  
-* Began transformation into normalized Postgres structures.  
-* Validated preview parsing logic from `parse_props_v6.py`  
-   parse\_props\_v6  
-* Began reconciling:  
-  * LOR display names  
-  * Stage assignments  
-  * Channel mappings
+Outcome:
 
-**Outcome:**  
-Displays successfully materialized into Postgres for first time.
+• Formalized architecture and schema strategy  
+• Documentation prepared before table creation
 
 ---
 
-## **2/24/2026 — 8.5 hrs**
+## 2/22/2026 — 12 hrs
+### Architecture Finalization & Data Model Refinement
 
-### **Parser Debugging & Bug Resolution**
+Completed system design documentation.
 
-* Identified bug in `lor_parse_props_v6`.  
-* Traced issue to ChannelGrid handling and grid normalization.  
-* Fixed parsing logic.  
-* Re-tested ingestion pipeline.  
-* Confirmed wiring view generation (`preview_wiring_map_v6`, `preview_wiring_sorted_v6`).
+Finalized canonical structures for:
 
-**Outcome:**  
-Stable ingestion from LOR previews into normalized SQLite and Postgres staging.
+• `ref.display`  
+• `ref.stage`  
+• status reference tables
 
----
+Clarified separation between:
 
-## **2/25/2026 — 12 hrs**
+• LOR-derived data  
+• reference data  
+• operational data
 
-### **Testing & Validation Framework**
+Defined production table strategy for future operational modules:
 
-* Began building formal testing procedure.  
-* Defined validation checkpoints:  
-  * Display counts  
-  * Channel ranges  
-  * Stage alignment  
-* Identified mismatches between LOR and spreadsheet inventory.  
-* Began reconciliation methodology for pallet/display alignment.
+• Work orders  
+• Repairs  
+• Maintenance logs  
+• Inventory tracking
 
-**Outcome:**  
-Testing strategy initiated to prevent silent data corruption.
+Outcome:
+
+• Approved database blueprint ready for implementation
 
 ---
 
-## **2/26/2026 — 22 hrs**
+## 2/23/2026 — 9 hrs
+### LOR Display Import & Ingestion Testing
 
-### **Operational Schema Expansion**
+Imported display data from `lor_output_v6.db`.
 
-* Began building operational production tables.  
-* Extended reference model.  
-* Continued refinement of display normalization.  
-* Investigated stage data inconsistencies.  
-* Addressed data model drift between staging and ref schemas.  
-* Continued reconciliation and constraint hardening.
+Validated preview parsing logic from the LOR preview parser.
 
-**Outcome:**  
-Shift from ingestion-only system toward full operational database.
+Began transformation of display data into normalized PostgreSQL structures.
 
----
+Began reconciliation of:
 
-## **2/27/2026 — 9 hrs**
+• LOR display names  
+• stage assignments  
+• channel mappings
 
-### **Data Integrity & Model Corrections**
+Outcome:
 
-* Continued stage/ref table cleanup.  
-* Resolved schema inconsistencies.  
-* Addressed normalization errors discovered during ingestion.  
-* Validated relationships across:  
-  * Displays  
-  * Stages  
-  * Status tables  
-* Stabilized foundational reference layer.
-
-**Outcome:**  
-Core reference tables structurally sound and ready for operational linkage.
+• Displays successfully imported into Postgres for the first time
 
 ---
 
-## **2/28/2026 — 14.5 hrs**
+## 2/24/2026 — 8.5 hrs
+### Parser Debugging & Ingestion Stabilization
 
-### **Work Order System & Spare Channel Refactor**
+Identified bug in preview parser affecting ChannelGrid handling.
 
-* Designed and implemented initial Work Order system.  
-* Built structure for:  
-  * Repair tracking  
-  * Display maintenance workflow  
-  * Volunteer-facing operational usage  
-* Refactored spare handling:  
-  * Removed spare channels from display/channel records.  
-  * Created new table: `ref.spare_channels`.  
-* Began display repair backfill process.  
-* Prepared system for real-world use by production team.
+Traced issue to grid normalization logic.
 
-**Outcome:**  
-Transitioned from data ingestion project to functional operational tool.
+Corrected parsing routines and re-tested ingestion pipeline.
+
+Validated generation of wiring views used for channel verification.
+
+Outcome:
+
+• Parser stabilized  
+• Reliable ingestion pipeline established
 
 ---
 
-# **Total Effort (2/20 – 2/28)**
+## 2/25/2026 — 12 hrs
+### Testing & Validation Framework
 
-**\~106 hours over 9 days**
+Developed validation procedures to ensure imported data matches physical inventory.
+
+Defined validation checkpoints for:
+
+• display counts  
+• channel ranges  
+• stage assignments
+
+Identified mismatches between LOR preview data and spreadsheet inventory records.
+
+Started reconciliation methodology for aligning pallets and display assignments.
+
+Outcome:
+
+• Data validation process established to prevent ingestion errors
+
+---
+
+## 2/26/2026 — 22 hrs
+### Operational Schema Expansion
+
+Began building operational production tables.
+
+Expanded reference model and refined display normalization.
+
+Investigated stage inconsistencies and data drift between staging and reference schemas.
+
+Strengthened constraints and relationships across reference tables.
+
+Outcome:
+
+• Transition from ingestion-only system toward operational database
+
+---
+
+## 2/27/2026 — 9 hrs
+### Data Integrity & Reference Layer Stabilization
+
+Continued stage and reference table cleanup.
+
+Corrected normalization errors discovered during ingestion testing.
+
+Verified relationships between:
+
+• displays  
+• stages  
+• status tables
+
+Outcome:
+
+• Core reference layer stabilized
+
+---
+
+## 2/28/2026 — 14.5 hrs
+### Work Order System & Spare Channel Refactor
+
+Designed and implemented initial work order framework.
+
+Created structure for:
+
+• repair tracking  
+• maintenance workflow  
+• volunteer operational usage
+
+Refactored spare lighting channels:
+
+• removed spares from display/channel records  
+• created new table `ref.spare_channels`
+
+Started display repair backfill process.
+
+Outcome:
+
+• Work order system foundation created  
+• spare channel modeling corrected
+
+---
+
+## 3/1/2026 — 16 hrs
+### Directus Integration Planning & Operational Interface
+
+Deployed Directus and connected it to PostgreSQL.
+
+Mapped reference and operational tables to Directus collections.
+
+Outcome:
+
+• Directus selected as operational UI platform
+
+---
+
+## 3/2/2026 — 16 hrs
+### Roles, Permissions & Security Model
+
+Defined operational roles and access policies.
+
+Protected ingestion schema and LOR-owned fields.
+
+Outcome:
+
+• Volunteer security model implemented
+
+---
+
+## 3/3/2026 — 14 hrs
+### Operational Workflow Design
+
+Developed container testing workflow.
+
+Defined dashboards and operational views.
+
+Outcome:
+
+• Production workflows defined
+
+---
+
+## 3/4/2026 — 16 hrs
+### Schema Corrections & Directus UI Stabilization
+
+Resolved relationship issues and enum configuration problems.
+
+Outcome:
+
+• Database schema and UI alignment stabilized
+
+---
+
+## 3/5/2026 — 18.5 hrs
+### Container Testing System Development
+
+Developed operational container testing workflow.
+
+Implemented relationships between containers, displays, and test sessions.
+
+Outcome:
+
+• Testing workflow operational
+
+---
+
+## 3/6/2026 — 8 hrs
+### Operational Debugging & Workflow Hardening
+
+Debugged container workflow logic and constraint validation.
+
+Outcome:
+
+• System stability improving
+
+---
+
+## 3/7/2026 — 10.5 hrs
+### Operational Workflow Development, Schema Refinement & UI Enhancements
+
+Focused on advancing the operational capabilities of the production database and improving the usability of the Directus interface.
+
+Developed and implemented the container pull workflow used by production volunteers when retrieving containers from storage for testing or repair.
+
+Key workflow elements implemented:
+
+• container pull status tracking  
+• work location assignment  
+• validation rules requiring a work location before container pull  
+• operational state updates within the testing workflow
+
+Refined database schema to support the container movement workflow including updates to operational tables and supporting reference structures.
+
+Continued development and refinement of the Directus user interface to improve operational usability for production volunteers and managers.
+
+Performed ongoing database documentation updates including:
+
+• schema documentation updates  
+• workflow documentation updates  
+• operational system behavior documentation
+
+Outcome:
+
+• Container pull workflow implemented  
+• Database schema updated to support container movement tracking  
+• UI improvements implemented in Directus  
+• Documentation updated to reflect system architecture and workflow behavior
+
+
+---
+
+## 3/8/2026 — 11 hrs
+### Hybrid Audit System Implementation, System Hardening & Operational Readiness
+
+Implemented a hybrid audit tracking system integrating Directus hooks with PostgreSQL triggers to provide complete operational activity tracking.
+
+Developed a custom Directus extension responsible for stamping authenticated user information into database records during create and update operations.
+
+Audit fields implemented across operational tables include:
+
+• created_at  
+• created_by  
+• created_by_person_id  
+• updated_at  
+• updated_by  
+• updated_by_person_id
+
+Directus users are mapped to internal personnel records using the `ref.person` reference table to ensure accurate attribution of operational actions.
+
+Database triggers were implemented to provide authoritative timestamp tracking and ensure audit fields are populated even when changes are made outside the Directus interface.
+
+Additional workflow audit tracking implemented for container testing and inspection processes including:
+
+• checked_at  
+• checked_by  
+• checked_by_person_id
+
+Performed additional schema refinements and database documentation updates to reflect new audit functionality and operational workflow changes.
+
+Completed UI refinements within Directus to support operational testing workflows.
+
+Outcome:
+
+• Hybrid audit system fully implemented  
+• Complete activity logging now available across operational workflows  
+• Container pull system integrated with audit tracking  
+• System prepared for operational testing by production team
+
+---
+
+# Total Effort (2/20 – 3/8)
+
+Total Hours: **~223.5 hours**
 
 Breakdown:
 
-* Infrastructure: 6 hrs  
-* Architecture & Design: 26 hrs  
-* Ingestion & Debugging: \~30 hrs  
-* Testing & Data Integrity: \~20 hrs  
-* Operational Build (Work Orders \+ Refactor): \~24 hrs
-
----
-
-# **What This Period Accomplished**
-
-In 8–9 days you:
-
-* Built a dedicated production DB server.  
-* Installed and configured PostgreSQL.  
-* Designed a normalized multi-schema architecture.  
-* Imported and stabilized LOR preview data.  
-* Fixed parser-level ingestion bugs.  
-* Built a testing methodology.  
-* Created reference data structures.  
-* Began operational production system.  
-* Implemented Work Order foundation.  
-* Refactored spare channel modeling correctly into its own reference table.
-
-This was not “just coding.”  
-This was full-stack infrastructure \+ architecture \+ data engineering \+ operational system design.
-
-MSB Production Database Project  
-Daily Project Summary  
-Period: 2/20/2026 – 3/4/2026
-
-
-3/1/2026 — 16 hrs  
-Operational System Expansion & Directus Integration Planning
-
-Began transition from database-only system toward a usable operational interface.
-
-Established initial Directus deployment on the production server and connected it to the Postgres database.
-
-Defined the initial Directus collection model for the operational schemas:
-
-REF collections:
-- ref.display
-- ref.container
-- ref.storage_location
-- ref.stage
-- ref.display_status
-- ref.person
-
-OPS collections:
-- ops.test_session
-- ops.display_test_session
-- ops.work_order
-
-Defined separation between:
-
-System-owned data (LOR ingestion)
-Reference data (managed internally)
-Operational data (volunteer workflow)
-
-Began designing role-based access approach for volunteers using Directus.
-
-Outcome:  
-Directus selected as the operational UI layer for the MSB Production Database.
-
-
-3/2/2026 — 16 hrs  
-Security Model, Roles, and Permissions Framework
-
-Designed security model for Directus users and operational access.
-
-Defined initial user roles:
-
-Admin  
-Manager  
-Production Crew  
-Browser  
-Unassigned
-
-Built policy strategy to enforce strict data protection rules:
-
-LOR ingestion schema (`lor_snap`) completely hidden from non-admin users.
-
-Reference tables restricted to prevent accidental modification of critical fields.
-
-Operational tables structured so volunteers can update only the fields relevant to testing and repair activities.
-
-Developed approach for:
-
-Display testing workflow  
-Container tracking  
-Repair intake and work order management
-
-Started defining operational dashboard views for production use.
-
-Outcome:  
-Operational security model established to safely expose the database to volunteers.
-
-
-3/3/2026 — 14 hrs  
-Operational UI Modeling & Testing Workflow Design
-
-Focused on translating the database design into real-world volunteer workflows.
-
-Designed operational views and dashboards for:
-
-Container Testing Dashboard  
-Container Focus View  
-Work Order Queue  
-Display Repair Rollup
-
-Defined process for how volunteers will:
-
-Select a container to test  
-Record display testing results  
-Flag repairs or issues  
-Create work orders for maintenance
-
-Worked through Directus relationship configuration between:
-
-Displays  
-Containers  
-Test Sessions  
-Repair records
-
-Resolved early relationship modeling issues within Directus collections.
-
-Outcome:  
-Operational workflow for display testing and repair tracking defined.
-
-
-3/4/2026 — 16 hrs  
-System Debugging, Data Model Corrections & UI Stabilization
-
-Continued debugging integration between Directus collections and the Postgres schemas.
-
-Resolved issues with:
-
-Stage relationships
-Display testing session joins
-Enum fields not appearing correctly in Directus forms
-
-Corrected schema relationships to ensure:
-
-Display ↔ Test Session linkage works properly  
-Stage references resolve correctly in operational tables
-
-Removed temporary fields that were introduced earlier during debugging.
-
-Stabilized schema relationships for:
-
-ops.display_test_session  
-ref.stage  
-ref.display
-
-Refined the Directus UI structure to better match operational testing workflow.
-
-Outcome:  
-Database schema and Directus UI alignment stabilized enough for operational testing.
-
-
----------------------------------------
-
-Total Effort (2/20 – 3/4)
-
-~168 hours over 13 days
-
-Breakdown:
-
-Infrastructure & Environment Setup: ~6 hrs  
+Infrastructure Setup: ~6 hrs  
 Architecture & System Design: ~38 hrs  
-Ingestion Pipeline & Parser Debugging: ~30 hrs  
-Data Integrity & Normalization: ~26 hrs  
-Operational Database Build: ~40 hrs  
-Directus UI & Workflow Modeling: ~28 hrs
+Data Ingestion & Parser Engineering: ~30 hrs  
+Data Integrity & Validation: ~26 hrs  
+Operational Database Development: ~70 hrs  
+Directus UI Development & Workflow Modeling: ~40 hrs  
+Database Documentation & System Governance: ~13.5 hrs
 
+# Current Status
 
----------------------------------------
+The MSB Production Database has transitioned from architecture to a functional operational system.
 
-What This Period Accomplished
+The platform now includes:
 
-In roughly two weeks the MSB Production Database project has progressed from concept to a functioning operational platform.
-
-Major milestones include:
-
-• Built a dedicated production database server  
-• Installed and configured PostgreSQL  
-• Designed a multi-schema normalized database architecture  
-• Implemented LOR preview ingestion pipeline  
-• Fixed parser bugs in preview processing system :contentReference[oaicite:0]{index=0}  
-• Materialized displays, stages, and channel data in Postgres  
-• Built reference data structures for displays, containers, and locations  
-• Refactored spare channel handling into its own table  
-• Implemented the foundation of the repair and work order system  
-• Deployed Directus as the operational UI layer  
-• Designed volunteer workflow for display testing and repair tracking  
-• Implemented role-based access control for production operations
-
-The project has transitioned from **data ingestion engineering** to a **full operational system capable of supporting MSB production workflows.**
+• LOR data ingestion pipeline  
+• normalized inventory database  
+• container and display tracking  
+• repair and work order management  
+• operational web interface for volunteers  
+• audit logging for all system activity
