@@ -1,0 +1,5 @@
+- no code, discuss first 
+- investigate, include step numbers so I can reply back to a step number with results
+- gather data if needed like field names, functions, triggers
+- no code at first -when writing sql need a suggested file name and short comment for what this is for at the top of non-throw away scripts
+- step-by step fixes, no vomiting

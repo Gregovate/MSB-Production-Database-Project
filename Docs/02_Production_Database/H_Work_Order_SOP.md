@@ -86,19 +86,89 @@ As you investigate or work:
 ---
 
 ## 6) Completing a Work Order (Everyone)
-### 6.1 Complete button behavior
+
+### 6.1 Completion workflow
+
 When you finish the work:
+
 1) Open the work order
-2) Click **Complete**
-3) Enter **Completion Notes** (“what was done”)
+2) Enter **Completion Notes** (what was done)
+3) Check **Repair Complete**
 4) Save
 
-The system will automatically record:
-- completion date/time = now
-- completed by = your user identity (email)
+When **Repair Complete** is checked, the system automatically records:
+
+• `date_completed` = current date/time  
+• `completed_by_person_id` = the logged-in user
+
+This happens automatically in the database.
+
+If a historical repair is being backfilled, managers may manually enter the completion date and person before checking **Repair Complete**. The system will **not overwrite existing values**.
+
+---
 
 ### 6.2 Completion notes requirement
+
 Completion notes are required because “done” without details is useless for future repairs and training.
+
+Examples:
+
+- “Replaced failed SSR board on channel 3. Retested OK.”
+- “Repaired broken wire at prop base and resealed connector.”
+- “Replaced 4 LED strings and verified full sequence test.”
+
+---
+
+## 7) Automatic Display Repair Workflow
+
+Some work orders are created automatically from the **display testing system**.
+
+When a tester marks a display test result as:
+
+
+REPAIR
+
+
+the system automatically creates a repair work order.
+
+When that repair work order is completed:
+
+1. The system detects the completion automatically.
+2. The associated testing record is updated.
+3. The display test status changes to:
+
+
+OK_REPAIRED
+
+
+The testing notes are updated to include the repair notes while preserving the original testing notes.
+
+This creates a closed repair loop between:
+
+
+Testing → Repair Work Order → Completed Repair → Testing Updated
+
+
+Volunteers do **not** need to update the testing system manually after a repair.
+
+---
+
+## 10) System Status
+
+Current operational capabilities:
+
+• Work order creation  
+• Work order completion tracking  
+• Automated display repair workflow from testing  
+• Automatic completion stamping via database trigger  
+
+Work still in development:
+
+• Manager assignment workflow improvements  
+• Email notifications for assigned work orders  
+• Intake integration with legacy Google Forms  
+
+The repair workflow between **display testing and work orders is fully operational.**
 
 ---
 
@@ -140,4 +210,38 @@ It may have no urgency — that’s fine.
 - Always complete with completion notes.
 
 ---
+
+## Change Log
+
+This document reflects the operational procedures for volunteers and managers using the MSB Work Order System.
+
+---
+
+### 2026-03-10 — Repair Workflow Operational + Testing Integration
+
+Operational procedures updated to reflect the completed repair workflow integration.
+
+Key changes:
+
+• Work order completion now uses **Repair Complete checkbox** instead of a manual "Complete" button  
+• Completion date and user identity are automatically recorded by a PostgreSQL trigger  
+• Historical repairs may be backfilled without overwriting manually entered completion data  
+
+Display testing integration:
+
+• Display testing automatically generates repair work orders when a test result is `REPAIR`  
+• Completing the repair work order automatically updates the testing record  
+• `display_test_session.test_status` automatically updates to `OK_REPAIRED`  
+• Repair notes are prepended to the testing record while preserving original test notes  
+
+Operational impact:
+
+• Volunteers only need to enter **completion notes** and check **Repair Complete**  
+• No manual updates to the display testing system are required after repairs  
+• Repair tracking is now fully automated between testing and work order systems  
+
+System status: **Repair workflow operational. Assignment and notification workflow still under development.**
+
+---
+
 **End Operational SOP**
