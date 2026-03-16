@@ -318,19 +318,22 @@ Outcome:
 
 ---
 
-## 3/6/2026 — 8 hrs (in progress)
+## 3/6/2026 — 8 hrs
 ### Operational Debugging & System Hardening
 
-Debugged operational workflow logic during real usage testing.
+Conducted real-world testing of container workflows.
 
-Resolved constraint and validation issues discovered while testing container workflows.
+Resolved constraint violations and logic errors discovered during operational use.
 
-Refined test session update logic to ensure audit tracking reflects user updates.
+Refined test session update logic to ensure accurate audit tracking of user actions.
+
+Addressed issues affecting data consistency between containers, displays, and testing records.
 
 Outcome:
 
-• system becoming stable enough for real operational use
+• core testing workflow stabilized for expanded operational testing
 
+---
 ---
 
 # Total Effort (2/20 – 3/6)
@@ -359,3 +362,202 @@ The system now includes:
 • container tracking framework  
 • repair and work order management structure  
 • operational web interface for volunteers
+
+---
+
+## 3/7/2026 — 10.5 hrs
+### Container Operations & Pull Workflow Implementation
+
+Expanded the testing system into a full container operations workflow.
+
+Implemented container pull process including:
+
+• work location tracking  
+• container status transitions  
+• integration with testing sessions  
+• validation rules preventing incomplete pull actions  
+
+Developed database constraints to ensure containers cannot enter testing without required operational data.
+
+Outcome:
+
+• container lifecycle tracked from storage → testing → repair → return
+
+---
+
+## 3/8/2026 — 11 hrs
+### Audit System Implementation & Operational Readiness
+
+Implemented comprehensive audit tracking across operational tables.
+
+Developed hybrid audit approach using:
+
+• PostgreSQL triggers for data integrity  
+• Directus hooks for application-layer events  
+• actor stamping (created_by, updated_by, person linkage)  
+• workflow audit fields (checked_by, timestamps)
+
+Stabilized testing workflows for real-world use.
+
+Created operational dashboards supporting container testing activities.
+
+Outcome:
+
+• full traceability of operational changes established  
+• system prepared for live testing
+
+---
+
+## 3/9/2026 — 12 hrs
+### Directus Permissions & Identity Mapping
+
+Worked through permission issues affecting operational usability.
+
+Aligned Directus roles with PostgreSQL permissions.
+
+Resolved problems preventing users from creating or modifying operational records.
+
+Validated linkage between Directus user accounts and internal person records.
+
+Outcome:
+
+• role-based access functioning for key operational workflows
+
+---
+
+## 3/10/2026 — 13 hrs
+### Container Pull System Validation & Trigger Debugging
+
+Tested automated container pull logic under real conditions.
+
+Debugged trigger interactions affecting container status changes.
+
+Refined validation rules to prevent invalid workflow transitions.
+
+Improved reliability of automated updates tied to container movement.
+
+Outcome:
+
+• container pull process functioning reliably for testing scenarios
+
+---
+
+## 3/11/2026 — 14 hrs
+### Audit Field Integration & Data Consistency Work
+
+Extended audit fields across additional operational tables.
+
+Ensured consistent handling of:
+
+• created_by / updated_by  
+• person ID linkage  
+• timestamps  
+• workflow-specific tracking fields  
+
+Verified historical integrity of updates during testing activities.
+
+Outcome:
+
+• consistent audit behavior across core operational data
+
+---
+
+## 3/12/2026 — 15 hrs
+### Operational UI Refinement & Workflow Adjustments
+
+Adjusted Directus configuration to better support production workflows.
+
+Created bookmarks and views for common tasks.
+
+Refined forms and layouts used during container testing.
+
+Addressed usability issues discovered by non-technical users.
+
+Outcome:
+
+• system more navigable for volunteer usage despite unfinished UI
+
+---
+
+## 3/13/2026 — 14 hrs
+### Documentation Updates & System Overview Preparation
+
+Updated system documentation to reflect current architecture and workflows.
+
+Prepared materials explaining system purpose and structure for leadership review.
+
+Aligned terminology between database design and production operations.
+
+Outcome:
+
+• documentation brought closer to current system reality
+
+---
+
+## 3/14/2026 — 13 hrs
+### Board Presentation Support & System Narrative Development
+
+Prepared high-level explanations of the system for non-technical stakeholders.
+
+Created diagrams and summaries describing data flow and operational benefits.
+
+Reviewed architecture to ensure clarity for board-level discussion.
+
+Outcome:
+
+• stakeholders provided with clear understanding of project scope and progress
+
+---
+
+## 3/15/2026 — 12 hrs
+### Volunteer Rollout Preparation & Onboarding Planning
+
+Prepared system for initial volunteer onboarding.
+
+Developed communication materials explaining access process.
+
+Tested registration flow using Google SSO.
+
+Identified limitations in automatic role assignment requiring manual permission setup.
+
+Outcome:
+
+• system ready for controlled rollout to production crew
+
+3/6–3/15 = 8 + 10.5 + 11 + 12 + 13 + 14 + 15 + 14 + 13 + 12
+          = 122.5 hrs
+
+Breakdown:
+
+Infrastructure Setup: ~6 hrs  
+Architecture & System Design: ~45 hrs  
+Ingestion Pipeline & Parser Debugging: ~30 hrs  
+Data Validation & Integrity: ~40 hrs  
+Operational Database Development: ~110 hrs  
+Directus Application Layer & Workflow Development: ~94 hrs
+
+---
+
+# Total Effort (2/20 – 3/15)
+
+Total Hours: **~325 hours**
+
+---
+
+# Current Status
+
+The MSB Production Database is now an operational prototype undergoing live testing and staged rollout.
+
+The system currently provides:
+
+• automated ingestion of LOR preview data  
+• normalized display registry and inventory model  
+• container tracking and location management  
+• container pull and testing workflows  
+• repair tracking and work order framework  
+• comprehensive audit logging of operational actions  
+• role-based web interface accessible via browser  
+
+Current efforts are focused on usability improvements, workflow refinement, and onboarding of production personnel.
+
+The system is not feature-complete but is sufficiently stable for controlled operational use.
