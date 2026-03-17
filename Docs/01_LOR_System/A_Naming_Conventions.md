@@ -1,6 +1,6 @@
 title: Prop and Display Naming Conventions
 Filename: A_Naming_Conventions.md
-version: 2026-02-22
+version: 2026-03-17
 author: Greg Liebig / Engineering Innovations, LLC
 ---
 
@@ -161,6 +161,7 @@ This is the true identity of the physical display.
 - No spaces allowed
 - Must start with 2-letter stage abbreviation
 - Use hyphen as structural separator
+- Use a hyphen after the Actual Display Name (CamelCase)
 - Must remain stable over time
 
 Examples:
@@ -170,7 +171,7 @@ Standard stages:
 - `RA-Arch-DS-01`
 - `EC-Elf-P2-06`
 
-GG stage (numeric prefix allowed):
+GG stage (numeric prefix specifically allowed):
 - `GG20-Elden`
 - `GG20-Elden-01`
 - `GG30-V2Elden`
@@ -191,9 +192,9 @@ Example:
 
 | Channel Name | Comment |
 |--------------|---------|
-| `TC 7B-01 Hippo Box` | `ChristmasHippo` |
-| `TC 7B-04 Hippo Body Mid` | `ChristmasHippo` |
-| `TC 7B-05 Hippo Body Full Head` | `ChristmasHippo` |
+| `TC 7B-01 Hippo Box` | `TC-ChristmasHippo` |
+| `TC 7B-04 Hippo Body Mid` | `TC-ChristmasHippo` |
+| `TC 7B-05 Hippo Body Full Head` | `TC-ChristmasHippo` |
 
 ---
 
@@ -203,11 +204,11 @@ Example:
 
 Three physical panels:
 
-- `CarolerPanel-01`
-- `CarolerPanel-02`
-- `CarolerPanel-03`
+- `TC-CarolerPanel-01`
+- `TC-CarolerPanel-02`
+- `TC-CarolerPanel-03`
 
-Each has its own Comment value.
+Each has its own Comment value. TC is the Stage Code for Traditional Christmas
 
 Even if programming groups them visually, they remain separate physical units in inventory and wiring.
 
@@ -215,7 +216,25 @@ Even if programming groups them visually, they remain separate physical units in
 
 ## 4. Display Name Format (Comment Field)
 
-`<Stage>-<DisplayName>-<Variation>-<Sequence>-<Color>`
+Display names must be structured so that:
+
+The first hyphen separates Stage from DisplayName
+Subsequent hyphens separate functional attributes
+No attribute codes may be appended directly to DisplayName without a hyphen
+
+Prohibited:
+
+EntryArchWrapDS
+SteelEntryArchPS
+CarCounterArchGrn
+
+Required:
+
+IT-EntryArchWrap-DS
+IT-SteelEntryArch-PS
+FC-CarCounterArch-Grn
+
+`<Stage Code>-<DisplayName>-<Variation>-<Sequence>-<Color>`
 
 | Segment | Meaning |
 |----------|---------|
@@ -225,7 +244,7 @@ Even if programming groups them visually, they remain separate physical units in
 | Sequence | Always 2-digit padded |
 | Color | Optional suffix |
 
-Examples:
+More Examples:
 
 - `EC-Elf-P2-06`
 - `RA-Arch-DS-01`
@@ -250,6 +269,8 @@ Operationally, both represent the same thing:
 
 A physical inventory item with no controller assignment and no channel grid usage.
 
+`<Stage Code>-<DisplayName>-<Variation>-<Sequence>-<Color>`
+
 ---
 
 #### Use Cases
@@ -261,7 +282,7 @@ A physical inventory item with no controller assignment and no channel grid usag
 - Future expansion inventory
 - Volunteer Trailer Steps
 - Igloo wagon for No Left Turn
-- Attional displays were we duplicate the controllers for programming simplification like Emojis
+- Additional displays were we duplicate the controllers for programming simplification like Emojis
 
 ---
 
@@ -317,6 +338,7 @@ Inventory-only entries:
 - Must represent real physical inventory
 
 These entries appear in database ingestion but do not affect wiring exports.
+
 ---
 
 ## 5. Field Wiring Alignment
@@ -366,6 +388,7 @@ Naming consistency prevents:
 ---
 
 > **Revision History**
-> - GAL 25-10-29 — Initial merge  
-> - GAL 25-10-30 — Formatting cleanup  
+> - GAL 26-03-17 — Clarified Section 4 due to label printing conflicts
 > - GAL 26-02-22 — Major clarification: separated Name vs Comment logic, added UID padding rule, added real-world examples with grid and wiring screenshots
+> - GAL 25-10-30 — Formatting cleanup
+> - GAL 25-10-29 — Initial merge  
