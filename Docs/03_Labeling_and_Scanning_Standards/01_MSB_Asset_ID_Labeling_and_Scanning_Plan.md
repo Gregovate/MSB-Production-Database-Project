@@ -49,9 +49,17 @@ The system must:
 - support future scan workflows without redoing labels
 - remain user friendly for volunteers and production staff
 
+### 3.1 Printer
+- Brother P950NW Printer
+- 1.4" Label stock
+- Wireless printing
+- ip address 192.168.5.12
+
 ---
 
 ## 4. Asset Identification Standard
+
+All codes must be scanable AND human-readable.
 
 Every scannable asset shall have a machine-readable identifier using this format:
 
@@ -87,18 +95,24 @@ The following prefixes are approved for Phase 1 and immediate planning:
 ## 6. Key Rules by Asset Type
 
 ### 6.1 Containers
-Use the stable internal container ID.
+- Use the stable internal container ID.
+- Scannable from a distance
+- Code 128 Barcode
+- Used for matching container to location
 
 Example:
 
-`CONT:587`
+- `CONT:587`
 
 ### 6.2 Displays
-Use the stable internal display ID.
 
-Example:
+- Use the stable internal display ID.
+- Human Readable Display_Name
+- QR code only for easy lookups to testing records and display information
 
-`DISP:251`
+Example: 
+
+- `DISP:251`
 
 ### 6.3 Storage Locations
 Use the operational location code, since this is the real working identifier used by people.
@@ -112,7 +126,7 @@ Use a structured controller key.
 
 Example:
 
-`CTRL:CL-042`
+- `CTRL:CL-042`
 
 ---
 
@@ -238,6 +252,119 @@ This means the label system must track both:
 
 - print job history
 - current label status on the asset
+
+---
+
+## 10.6 Print Initiation Method (Operational Requirement)
+
+Label printing must be initiated through the MSB application interface using controlled actions.
+
+The system shall not require users to:
+
+- export data manually
+- manipulate CSV files
+- open external labeling software
+- select printer templates manually
+- perform technical configuration steps
+
+Instead, printing shall occur via application commands such as:
+
+- **Print Labels for Selected Assets**
+- **Print Labels for Container**
+- **Reprint Labels**
+
+The application shall generate all required data and communicate with the print service automatically.
+
+This requirement exists to support non-technical users and to prevent process errors.
+
+---
+
+## 10.7 Container-Scoped Display Label Printing
+
+Display labels should normally be printed by container rather than individually.
+
+Reason:
+
+- Displays are physically stored and moved in containers
+- Batch printing aligns with real operational workflow
+- Reduces risk of missed labels
+- Reduces confusion for volunteers
+
+When printing display labels by container:
+
+- The system shall select all displays assigned to that container
+- Only displays requiring labels shall be printed
+- Labels already marked as printed shall be excluded unless reprint is explicitly requested
+
+---
+
+## 10.8 Automatic Quantity Rules
+
+The system shall enforce label quantity rules automatically.
+
+Users must not be required to remember quantities.
+
+Default quantities:
+
+| Asset Type | Labels Printed |
+|------------|----------------|
+| Container | 2 |
+| Display | 1 |
+| Storage Location | 1 |
+| Controller | 1 (planned) |
+
+For containers, both labels shall be produced within the same print job.
+
+---
+
+## 12.4 Required Print Job Outcome Tracking
+
+Each print job item shall record the outcome of the printing attempt.
+
+Minimum required outcomes:
+
+- PRINTED_SUCCESSFULLY
+- PRINT_FAILED
+- CANCELLED
+- PARTIAL_SUCCESS
+
+This allows recovery from printer errors without losing track of which labels were produced.
+
+---
+
+## 12.5 Current Label Presence Assumption
+
+The system must distinguish between:
+
+- labels that have been printed
+- labels that are believed to be present on the asset
+- labels that require replacement
+
+A printed label does not guarantee that the label is still attached or legible.
+
+Therefore, assets may be marked as needing reprint even if previously printed.
+
+---
+
+## 13.1 External Print Service Responsibility
+
+The external print service must:
+
+- generate barcode or QR graphics
+- populate label layout templates
+- send print jobs to the Brother P950NW printer
+- report job results back to the application
+- support batch printing
+- enforce quantity rules per asset type
+- avoid duplicate printing unless explicitly authorized
+
+The print service may internally use CSV or other formats but this must be hidden from users.
+
+---
+
+### Addition to Section 6.2 Displays
+
+Display labels are typically printed in batches based on container assignment rather than individually.
 
 ---
 
@@ -463,7 +590,47 @@ The following planning decisions are approved for this document:
 
 ---
 
-## 21. Summary
+
+
+21. Machine-Readable Payload Standard
+
+Two machine-readable payload standards are approved.
+
+21.1 Operational Barcode Payload Standard
+
+For operational barcodes used in warehouse, forklift, and logistics workflows, the encoded value shall be the canonical asset identifier in this format:
+
+TYPE:KEY
+
+Examples:
+
+- CONT:587
+- LOC:RA-01-A-03
+- CTRL:CL-042
+
+These identifiers are intended for fast scanner input, validation workflows, and database lookup by the scan application.
+
+21.2 Mobile QR Lookup Standard
+
+For QR codes intended to support phone or tablet access to asset records, the encoded value may be a stable scan URL using this pattern:
+
+https://db.sheboyganlights.org/scan/<TYPE>/<KEY>
+
+Examples:
+
+https://db.sheboyganlights.org/scan/DISP/251
+
+https://db.sheboyganlights.org/scan/CTRL/CL-042
+
+These URLs must not be raw Directus admin browser URLs.
+They must use a stable redirect or application route controlled by MSB so future UI changes do not require label replacement.
+
+21.3 Canonical Key Requirement
+
+Whether encoded as a barcode payload or embedded in a scan URL, the canonical asset identifier must remain based on the approved TYPE:KEY standard
+
+---
+## 22. Summary
 
 This plan establishes the foundation for a controlled, scalable MSB labeling and scanning system.
 
