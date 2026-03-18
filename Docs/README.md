@@ -18,7 +18,7 @@ All documents here are maintained under version control to ensure consistent pro
 
 ## 📘 Core Documents
 
-- [00 Project Overview](./00_Project_Overview.md)
+- [00 Project Overview](./docs/00_Project_Overview.md)
 - [Project Overview (Narrative)](./Project_Overview.md)
 
 ### LOR System
