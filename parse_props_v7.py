@@ -205,7 +205,7 @@ DEBUG = False  # Global debug flag
 PREVIEW_DEBUG = False  # set True only when you want the full preview dict dumped
 
 # Hard-set G:\ defaults
-DEFAULT_DB_FILE      = G / "database" / "lor_output_v6.db"
+DEFAULT_DB_FILE      = G / "database" / "lor_output_v7.db"
 DEFAULT_PREVIEW_PATH = G / "Database Previews"
 
 # Globals that existing functions use; will be set/confirmed in main()
@@ -3376,7 +3376,7 @@ WHERE ConnectionType = 'FIELD';
         # --- Only run this compare when:
         #     1) We are writing to the production DB, AND
         #     2) The caller did not explicitly disable it via env var.
-        DEFAULT_PROD_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
+        DEFAULT_PROD_DB = r"G:\Shared drives\MSB Database\database\lor_output_v7.db"
         _db_norm = os.path.normcase(os.path.normpath(str(DB_PATH)))
         _prod_norm = os.path.normcase(os.path.normpath(DEFAULT_PROD_DB))
         _skip = os.environ.get("MSB_SKIP_DISPLAYS_COMPARE", "0") == "1"
