@@ -1042,19 +1042,21 @@ def setup_database():
     """)
 
     # Create DMX Channels Table
-    # GAL 26-03-17:
-    #   PropId here references ScopedPropID so DMX rows remain unique within preview context.
+    # 2026-03-18 GAL:
+    #   PropId = raw LOR PropClass.id
+    #   ScopedPropID = synthetic PreviewId:PropID used only for cross-preview uniqueness
+    #   PreviewId remains the separate preview context
     cursor.execute("""
     CREATE TABLE dmxChannels (
         IntDMXChannelID INTEGER PRIMARY KEY AUTOINCREMENT,
         PropId TEXT,
+        ScopedPropID TEXT,
         Network TEXT,
         StartUniverse INTEGER,
         StartChannel INTEGER,
         EndChannel INTEGER,
         Unknown TEXT,
         PreviewId TEXT,
-        FOREIGN KEY (PropId) REFERENCES props (ScopedPropID),
         FOREIGN KEY (PreviewId) REFERENCES previews (id)
     );
     """)
@@ -1577,7 +1579,10 @@ def process_dmx_props(preview_id, root):
     DMX grouping rules:
       • Group by LORComment (display name).
       • Write exactly ONE master props row per group.
-      • Attach ALL DMX ChannelGrid legs from every row in the group to that master (dmxChannels.PropId = master).
+      • Attach ALL DMX ChannelGrid legs from every row in the group to that master.
+      • In dmxChannels:
+          - PropId = raw LOR PropClass.id
+          - ScopedPropID = scoped_id(preview_id, raw_id)
       • Choose master by the smallest (StartUniverse, StartChannel); tie-break by PropID for determinism.
 
     Behavior
@@ -1687,7 +1692,7 @@ def process_dmx_props(preview_id, root):
         arr.sort(key=lambda r: r["SortKey"])
         master = arr[0]
 
-        # Master props row (single row per comment)
+        # Master props row (single row per display name / LORComment)
         # 2026-03-18 GAL:
         #   PropID = raw LOR PropClass.id
         #   ScopedPropID = synthetic PreviewId:PropID used only for cross-preview uniqueness
@@ -1739,10 +1744,10 @@ def process_dmx_props(preview_id, root):
             for leg in r["Legs"]:
                 cur.execute("""
                     INSERT OR REPLACE INTO dmxChannels (
-                        PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown, PreviewId
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        PropId, ScopedPropID, Network, StartUniverse, StartChannel, EndChannel, Unknown, PreviewId
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    master["ScopedPropID"], leg["Network"], leg["StartUniverse"],
+                    master["PropID"], master["ScopedPropID"], leg["Network"], leg["StartUniverse"],
                     leg["StartChannel"], leg["EndChannel"], leg["Unknown"], preview_id
                 ))
                 if DEBUG:
