@@ -1,6 +1,6 @@
 title: Prop and Display Naming Conventions
 Filename: A_Naming_Conventions.md
-version: 2026-03-17
+version: 2026-03-24
 author: Greg Liebig / Engineering Innovations, LLC
 ---
 
@@ -93,7 +93,7 @@ Correct order:
 
 ### 2.3 Real Example (Hippo + Carolers)
 
-![Channel Grid Example](Docs/images/naming_conventions_channel_grid.png)
+![Channel Grid Example](/Docs/images/naming_conventions_channel_grid.png)
 
 This grid shows:
 
@@ -155,7 +155,7 @@ This is the true identity of the physical display.
 
 ---
 
-### 3.1 Comment Field Rules
+### 3.1 Comment Field [Display Name] Rules
 
 - No spaces allowed
 - Must start with 2-letter stage abbreviation
@@ -166,15 +166,15 @@ This is the true identity of the physical display.
 Examples:
 
 Standard stages:
-- `FT-Arch-01`
-- `RA-Arch-DS-01`
-- `EC-Elf-P2-06`
+- `FC-Arch-01`means Food Collection Arch #1
+- `RA-Arch-DS-01`means Racing Arches, Driver Side #1
+- `EC-Elf-P2-06`means Elf Choir, Elf, Pattern 2, #6
 
-GG stage (numeric prefix specifically allowed):
-- `GG20-Elden`
-- `GG20-Elden-01`
-- `GG30-V2Elden`
-- `GG30-V2Elden-01`
+GG stage (Controller Unit ID's specifically allowed):
+- `GG-Elden-20-01 means Glistening Grove, Elden (version 1), UID 20 #1
+- `GG-Elden-20-04`means Glistening Grove, Elden (version 1), UID 20 #4
+- `GG-EldenV2-30-01 means Glistening Grove, Elden (version 2), UID 30 #1
+- `GG-EldenV2-30-02`means Glistening Grove, Elden (version 2), UID 30 #2
 
 ---
 
@@ -185,11 +185,11 @@ GG stage (numeric prefix specifically allowed):
 | **Display** | One physical panel or unit |
 | **Sub-Prop** | Logical motion element within a display |
 
-All sub-props must share the exact same **Comment value** as their parent display.
+All sub-props must share the **exact same Comment value** as their parent display.
 
 Example:
 
-| Channel Name | Comment |
+| Channel Name | Comment [Display Name]|
 |--------------|---------|
 | `TC 7B-01 Hippo Box` | `TC-ChristmasHippo` |
 | `TC 7B-04 Hippo Body Mid` | `TC-ChristmasHippo` |
@@ -199,9 +199,9 @@ Example:
 
 ### 3.3 Example – Multi-Panel Display (Caroler)
 
-![Visualization Example](Docs/images/naming_conventions_visualization.png)
+![Visualization Example](/Docs/images/naming_conventions_visualization.png)
 
-Three physical panels:
+Three physical displays (panels):
 
 - `TC-CarolerPanel-01`
 - `TC-CarolerPanel-02`
@@ -213,7 +213,7 @@ Even if programming groups them visually, they remain separate physical units in
 
 ---
 
-## 4. Display Name Format (Comment Field)
+## 4. Display Name Format (put into Comment field)
 
 Display names must be structured so that:
 
@@ -227,11 +227,11 @@ EntryArchWrapDS
 SteelEntryArchPS
 CarCounterArchGrn
 
-Required:
+Required (Stage Code-Display Name-Attributes):
 
-IT-EntryArchWrap-DS
-IT-SteelEntryArch-PS
-FC-CarCounterArch-Grn
+- IT-EntryArchWrap-DS
+- IT-SteelEntryArch-PS
+- FC-CarCounterArch-Grn
 
 `<Stage Code>-<DisplayName>-<Variation>-<Sequence>-<Color>`
 
@@ -248,13 +248,14 @@ More Examples:
 - `EC-Elf-P2-06`
 - `RA-Arch-DS-01`
 - `WF-MiniTree-G-04`
-- `GG20-Elden-01`
+- `GG-Elden-20-01`
+- `DF-Wrap-DS-A-02G`
 
 ---
 
 ### 4.1 DeviceType = Undetermined (Inventory-Only Displays)
 
-![Undetermined DeviceType Example](Docs/images/naming_conventions_undetermined.png)
+![Undetermined DeviceType Example](/Docs/images/DisplayTypeNone.png)
 
 In the LOR preview editor, DeviceType is set to:
 
@@ -342,7 +343,7 @@ These entries appear in database ingestion but do not affect wiring exports.
 
 ## 5. Field Wiring Alignment
 
-![Field Wiring Example](Docs/images/naming_conventions_field_wiring.png)
+![Field Wiring Example](/Docs/images/naming_conventions_field_wiring.png)
 
 Field wiring exports rely on the Comment value.
 
@@ -387,6 +388,7 @@ Naming consistency prevents:
 ---
 
 > **Revision History**
+> - GAL 26-03-24 — Added images back in and fixed some typos
 > - GAL 26-03-17 — Clarified Section 4 due to label printing conflicts
 > - GAL 26-02-22 — Major clarification: separated Name vs Comment logic, added UID padding rule, added real-world examples with grid and wiring screenshots
 > - GAL 25-10-30 — Formatting cleanup
