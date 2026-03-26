@@ -1,10 +1,10 @@
-title: Prop and Display Naming Conventions
-Filename: A_Naming_Conventions.md
-version: 2026-03-24
-author: Greg Liebig / Engineering Innovations, LLC
----
-
 # Prop and Display Naming Conventions
+
+- Filename: A_Naming_Conventions.md
+- version: 2026-03-24
+- author: Greg Liebig / Engineering Innovations, LLC
+- 
+---
 
 These conventions ensure consistent naming across:
 
@@ -23,10 +23,10 @@ This document prevents chaos.
 
 LOR uses two different fields that serve different purposes:
 
-| Field | Purpose | Spaces Allowed | Used as Database Key |
-|--------|----------|----------------|----------------------|
-| **Name** | Channel grid sorting & programming | Yes | No |
-| **Comment** | Physical display identifier | No | Yes |
+| Field | Meaning | Purpose | Spaces Allowed | Used as Database Key |
+|-------|---------|---------|----------------|----------------------|
+| **Name** | Channel Name | Channel grid sorting and programming | Yes | No |
+| **Comment** | Display Name | Physical display identifier | No | Yes |
 
 These fields must not be confused.
 
@@ -36,14 +36,14 @@ These fields must not be confused.
 
 The **Name field controls alphabetical sorting inside the LOR grid.**
 
-LOR sorts strictly alphabetically.  
-Improper numbering or inconsistent formatting causes channels to scatter.
+- LOR sorts strictly alphabetically.  
+- Improper numbering or inconsistent formatting causes channels to scatter.
 
 ### 2.1 Required Structure
 
 Recommended format:
 
-`<LL> <Group> <UID>-<CH> <Description>`
+`<SC> <UID>-<CH> <Channel Group>  <Optional Attribute>`
 
 Example:
 
@@ -53,13 +53,24 @@ Example:
 
 ### 2.2 UID and Channel Rules (CRITICAL)
 
-**UID**
+**SC** Stage Code
+
+- SC is Stage Code
+- 2 Character Abbreviation
+- Examples:
+  - FT = Festive Trees
+  - FC = Food Collection
+  - WW = Winter Wonderand
+
+**UID** Contriller Unit ID (HEX)
+
 - Controller ID in HEX
 - Uppercase
 - No leading zero padding
 - Example: `7B`, `1F`, `20`
 
 **Channel**
+- Is the plug used on an A/C Controller
 - Always 2-digit padded
 - `01–16`
 - Even if wiring exports show a single digit
@@ -72,6 +83,24 @@ Correct:
 Incorrect:
 - `7B-1`
 - `7B-2`
+
+**Channel Group**
+
+- Often Used when building a preview with additional detail
+- `Uses the same channel as` in the Preview channel grid
+  - This allows the additional detail on the preview drawing to use the same physical channel without conflict
+- Again used to keep channels sorted together
+- Usually used with with additional Attributes
+
+**Optional Attributes**
+
+- Helpful when building animations
+- Used to describe an Action of a Channel group
+- Examples:
+  - Lid Open
+  - Lid Closed
+  - Arm Up
+  - Arm Down
 
 If channels are not padded, alphabetical sorting breaks:
 
@@ -171,10 +200,10 @@ Standard stages:
 - `EC-Elf-P2-06`means Elf Choir, Elf, Pattern 2, #6
 
 GG stage (Controller Unit ID's specifically allowed):
-- `GG-Elden-20-01 means Glistening Grove, Elden (version 1), UID 20 #1
-- `GG-Elden-20-04`means Glistening Grove, Elden (version 1), UID 20 #4
-- `GG-EldenV2-30-01 means Glistening Grove, Elden (version 2), UID 30 #1
-- `GG-EldenV2-30-02`means Glistening Grove, Elden (version 2), UID 30 #2
+- `GG-Elden-20-01` means Glistening Grove, Elden (version 1), UID 20 #1
+- `GG-Elden-20-04` means Glistening Grove, Elden (version 1), UID 20 #4
+- `GG-EldenV2-30-01` means Glistening Grove, Elden (version 2), UID 30 #1
+- `GG-EldenV2-30-02` means Glistening Grove, Elden (version 2), UID 30 #2
 
 ---
 
