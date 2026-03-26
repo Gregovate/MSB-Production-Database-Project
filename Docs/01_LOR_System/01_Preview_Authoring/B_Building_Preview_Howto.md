@@ -40,7 +40,7 @@ G:
 ```
 
 ## Prerequisites
-- Start with the Prop Approval Form.
+- Start with the Display Approval Form.
 - Once approved, draw the concept display.
 - Create a folder under the corect Display Stage ID with the Display name
 - Create the Background image (`.jpg`) of the display panel design
@@ -65,12 +65,12 @@ G:
    
 5. Draw the strings and assign controllers and channels.
 
-> 📘 See [Prop and Display Naming Conventions](./01_Naming_Conventions.md)  
+> 📘 See [Prop and Display Naming Conventions](Docs/01_LOR_System/01_Preview_Authoring/A_Naming_Conventions.md)  
 > for full rules on channel grouping, display IDs, and comment field requirements.
 
 6. **Channel Naming Conventions:**
-   [LL UID-Channel Name]
-    - LL:  is the character abbreviation of the display or stage
+   [SC UID-Channel Name]
+    - SC:  is the character abbreviation of the display or stage
     - UID:  assigned to the controller used
     - Channel:   is the channel or port of the controller
     - Name:  A brief description of the channel name. The list sorts alphabetically
@@ -106,7 +106,7 @@ The `.leprop` file creates a **PropID** that can be reused inside larger preview
 
 ## Duplicated Displays
 
-If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spirit Bright signs, they must be created in one preview to ensure each display has it's unique PropID. The database will error if more than one display shares the same PropID
+If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spirit Bright signs, they **MUST** be created in one preview to ensure each display has it's unique PropID. The database will error if more than one display shares the same PropID
 
 ## Editing an Existing Preview
 
