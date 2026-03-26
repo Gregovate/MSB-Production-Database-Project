@@ -38,11 +38,23 @@ G:
 │ ├── penguins_musical_layers.pspimage
 │ └── penguins_overview_layout.jpg
 ```
+## Tools for making display drawing
+
+To build a display, we will need a plotable vector drawing. Scaling a bitmap file like *.jpg will not work for a 4' x 8' panel. So we can utilize a few different programs
+
+- AutoCAD works well with DXF formats and we have a few licenses for use
+- Inkscape is a vector drawing program that is free to use
+  - It can bring in a bitmap file and can trace it to make a vector format.
+  - It can output a *.svg file (Scalable Vector Graphic)
+  - Note: Inkscape saves the file as an inkscape.svg by default. This is great for building the drawing but not good for export.
+  - When working on a drawing in inkscape, be sure to include -inkscape.svg in the drawing file name so we know it is in inkscape format
+  - When the drawing is finished and ready for use save with the word -working.svg in the file name.
+
 
 ## Prerequisites
 - Start with the Display Approval Form.
 - Once approved, draw the concept display.
-- Create a folder under the corect Display Stage ID with the Display name
+- Create a folder under the correct Display Stage ID with the Display name
 - Create the Background image (`.jpg`) of the display panel design
 - Save a copy of the finished display file to:  
   `G:\Shared drives\Display Folders\StageID-StageName-Prefix\Wiring\Props-Displays`
@@ -65,7 +77,7 @@ G:
    
 5. Draw the strings and assign controllers and channels.
 
-> 📘 See [Prop and Display Naming Conventions](Docs/01_LOR_System/01_Preview_Authoring/A_Naming_Conventions.md)  
+> 📘 See [Prop and Display Naming Conventions](/Docs/01_LOR_System/01_Preview_Authoring/A_Naming_Conventions.md)  
 > for full rules on channel grouping, display IDs, and comment field requirements.
 
 6. **Channel Naming Conventions:**
@@ -107,6 +119,18 @@ The `.leprop` file creates a **PropID** that can be reused inside larger preview
 ## Duplicated Displays
 
 If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spirit Bright signs, they **MUST** be created in one preview to ensure each display has it's unique PropID. The database will error if more than one display shares the same PropID
+- Never copy a .leprop file from one preview to another preview!
+
+- Example:
+
+[<img src="/Docs/images/combined_duplicated_displays.png" width="600" alt="Combined Duplicate Displays">](/Docs/images/combined_duplicated_displays.png)
+
+- Each group is saved to it's own *.leprop file
+  - MSB-01.leprop
+  - MSB-02.leprop
+  - MSB-03.leprop
+  - MSB-04.leprop
+- Then these props will be safe to import into other previews
 
 ## Editing an Existing Preview
 
