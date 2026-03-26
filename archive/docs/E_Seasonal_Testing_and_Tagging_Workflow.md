@@ -7,6 +7,7 @@ Related Documents:
 - D_Database_Structure.md
 - (Future) F_Staging_Waves_and_Picklists.md
 
+> STATUS: REFERENCE / ARCHIVE ONLY — DO NOT USE AS LIVE SOP
 ---
 
 ## Change Log
