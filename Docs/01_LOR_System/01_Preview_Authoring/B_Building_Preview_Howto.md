@@ -38,191 +38,506 @@ G:
 │ ├── penguins_musical_layers.pspimage
 │ └── penguins_overview_layout.jpg
 ```
-## Tools for making display drawing
+## Tools for Making Display Drawings
 
-To build a display, we will need a plotable vector drawing. Scaling a bitmap file like *.jpg will not work for a 4' x 8' panel. So we can utilize a few different programs
+To build a display, we need a plottable **vector drawing**.  
+Scaling a bitmap image (such as *.jpg or *.png) will not work for a 4 ft × 8 ft panel because bitmap images lose quality when enlarged.
 
-- AutoCAD works well with DXF formats and we have a few licenses for use
-- Inkscape is a vector drawing program that is free to use
-  - It can bring in a bitmap file and can trace it to make a vector format.
-  - It can output a *.svg file (Scalable Vector Graphic)
-  - Note: Inkscape saves the file as an inkscape.svg by default. This is great for building the drawing but not good for export.
-  - When working on a drawing in inkscape, be sure to include -inkscape.svg in the drawing file name so we know it is in inkscape format
-  - When the drawing is finished and ready for use save with the word -working.svg in the file name.
+Several programs can be used to create vector drawings:
+
+### AutoCAD
+- Works well with DXF formats
+- We have a limited number of licenses available
+- Suitable for precise dimensional work
+
+### Inkscape — Free Vector Graphics Editor
+- [Inkscape](https://inkscape.org/)
+- Free and open-source vector drawing program
+- Can import bitmap images and trace them to create vector graphics
+- Exports scalable vector formats such as *.svg
+- Ideal for signage, outlines, and panel layouts
+
+**File Naming Guidelines:**
+
+- Inkscape saves files as `*.svg` using Inkscape-specific features
+- For working files, include `-inkscape.svg` in the filename  
+  *(Example: `SnowmanPanel-inkscape.svg`)*
+- When the drawing is finalized and ready for production, save a clean export with `-working.svg`  
+  *(Example: `SnowmanPanel-working.svg`)*
+
+### GIMP — GNU Image Manipulation Program (Raster Editor)
+- [GIMP](https://www.gimp.org/)
+- Free image editor for bitmap graphics
+- Useful for cleaning up photos or artwork before vector tracing
+- Not suitable for final scalable drawings
 
 
 ## Prerequisites
-- Start with the Display Approval Form.
-- Once approved, draw the concept display.
-- Create a folder under the correct Display Stage ID with the Display name
-- Create the Background image (`.jpg`) of the display panel design
-- Save a copy of the finished display file to:  
-  `G:\Shared drives\Display Folders\StageID-StageName-Prefix\Wiring\Props-Displays`
-- Size limits:
-  - Max **4000 × 3000 px**
-  - Recommended: **800 × 600 px** for a horizontal panel or **600 x 800** for a vertical panel.
-  - Recommended: **3840 x 2160 px** for a full stage.
-  - Save as JPG optimized with a 20% compression factor (Easy to do in PaintShop Pro) 
-- File naming: `DisplayName.jpg`
+
+Complete the following steps before beginning wiring or preview work:
+
+1. Start with the **Display Approval Form**
+2. Once approved, create the concept drawing of the display
+3. Create a folder under the correct **Display Stage ID** using the display name
+4. Create the background image (`.jpg`) of the display panel design
+5. Save a copy of the finished display file to:
+
+
+G:\Shared drives\Display Folders\StageID-StageName-Prefix\Wiring\Props-Displays
+
 
 ---
 
-## Creating Single Panel Preview for a New Display 
+## Image Requirements
 
-1. **Open LOR Sequence Editor.**
-2. In the bottom-left panel, select **Background → Set Image**.
-3. Browse to your background file you saved in   G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\Props-Displays
-   1. Start with the background image created 
-   2. ⚠️ **Do not save the image with the preview.**
-   
-5. Draw the strings and assign controllers and channels.
+### Size Limits
 
-> 📘 See [Prop and Display Naming Conventions](/Docs/01_LOR_System/01_Preview_Authoring/A_Naming_Conventions.md)  
-> for full rules on channel grouping, display IDs, and comment field requirements.
+- **Maximum:** 4000 × 3000 pixels  
+- **Recommended (single panel):**
+- Horizontal: **800 × 600 px**
+- Vertical: **600 × 800 px**
+- **Recommended (full stage):**
+- **3840 × 2160 px**
 
-6. **Channel Naming Conventions:**
-   [SC UID-Channel Name]
-    - SC:  is the character abbreviation of the display or stage
-    - UID:  assigned to the controller used
-    - Channel:   is the channel or port of the controller
-    - Name:  A brief description of the channel name. The list sorts alphabetically
+### Format
 
-7. When finished:
-   - Select all channels → **Create Group**.
-   - Save the group with the **Display Name**.
-8. Export the group as a **.leprop** file:
-  - When exporting props, they land, by default, in the Author's ImportExport folder on their local PC
-  - Copy the prop file to `G:\Shared drives\MSB Database\Database Previews\PreviewsForProps`
-    -  Use the **Preview Name** for the file.
-10. Save the preview as:  **Display Prop <Display Name> UID StartChannel-EndChannel**
-11. Export the preview (`.lorprev`) to the same `PreviewsForProps` folder.
-- Display Prop Example with Channel Grid
+- Save as **JPG**
+- Optimize with approximately **20% compression**
+- (Easy to do in PaintShop Pro or similar software)
+
+### File Naming
+
+Use the display name exactly:
+
+DisplayName.jpg
+
+---
+
+## Creating a Single-Panel Preview for a New Display
+
+1. **Open LOR Sequence Editor**
+
+2. In the bottom-left panel, select  
+   **Background → Set Image**
+
+3. Browse to your background file located at:
+
+
+G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring\Props-Displays
+
+
+- Use the background image created during the design phase
+- ⚠️ **Do NOT embed or save the image with the preview**
+
+4. Draw the strings and assign controllers and channels
+
+---
+
+### Naming Guidance
+
+📘 See  
+[Prop and Display Naming Conventions](../01_Preview_Authoring/A_Naming_Conventions.md)  
+for full rules on channel grouping, display IDs, and comment field requirements.
+
+---
+
+### Channel Naming Convention
+
+Use the following format:
+
+
+SC UID-Channel Name
+
+
+Where:
+
+- **SC** — Character abbreviation of the display or stage  
+- **UID** — Controller ID assigned to the display  
+- **Channel** — Controller port or channel number  
+- **Name** — Brief description of the channel  
+  - Channel lists sort alphabetically
+
+---
+
+5. When channel setup is complete:
+
+   - Select all channels → **Create Group**
+   - Save the group using the **Display Name**
+
+6. Export the group as a `.leprop` file
+
+   - Exported props are saved by default to the author’s local `ImportExport` folder
+   - Copy the `.leprop` file to:
+
+
+G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
+
+
+- Use the **Preview Name** as the file name
+
+7. Save the preview as:
+
+
+Display Prop <Display Name> UID StartChannel-EndChannel
+
+
+8. Export the preview (`.lorprev`) to the same  
+   `PreviewsForProps` folder
+
+---
+
+## Example — Display Prop with Channel Grid
 
 [<img src="/Docs/images/ChristmasHippo.jpg" width="600" alt="Display Prop ChristmasHippo TC 7B 01-07 (scaled)">](/Docs/images/ChristmasHippo.jpg)
 
 ---
 
 ## Creating Previews for Stages
+
 The `.leprop` file creates a **PropID** that can be reused inside larger previews, such as:
-- `RGB Plus Prop Stage xx` `MusicalStage`
-- `Show Background Stage xx` `BackgroundStage`
-- `Show Animation xx` (Not Implemented)
+
+- `RGB Plus Prop Stage xx` (`MusicalStage`)
+- `Show Background Stage xx` (`BackgroundStage`)
+- `Show Animation xx` *(Not implemented)*
+
+---
 
 ## Background
--  When exporting props, they land, by default, in the Author's ImportExport folder on their local PC
--  Copy the prop file to 'G:\Shared drives\MSB Database\Database Previews\PreviewsForProps'
--  These props can then be added to a Stage Preview and will be available to everyone
--  You can import all the props you need.
--  Be sure to double check the Channel Names to comply with our naming conventions and channel/Controller assignments are correct.
--  If there are SPARE channels, be sure to include them and use SPARE as the Display Name (Comment) field. I color them Orange and they are used as place-holders for future development.
+
+- When exporting props, they are saved by default to the author’s local **ImportExport** folder
+- Copy the prop file to:
+
+G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
+
+- These props can then be added to a Stage Preview and will be available to everyone
+- Import all required props into the stage preview
+- Verify channel names comply with naming conventions and controller assignments
+- If there are **spare channels**:
+- Include them in the preview
+- Use **SPARE** as the Display Name (Comment field)
+- Color them **orange** as placeholders for future development
 
 ## Duplicated Displays
 
-If there are duplicate displays like Arrow signs, Speed Limit signs, Making Spirit Bright signs, they **MUST** be created in one preview to ensure each display has it's unique PropID. The database will error if more than one display shares the same PropID
-- Never copy a .leprop file from one preview to another preview!
+If there are multiple identical displays (such as arrow signs, speed limit signs, or Making Spirits Bright signs), they **MUST** be created together in a single preview so that each display receives a unique **PropID**.
 
-- Example:
+The database will generate errors if more than one display shares the same PropID.
+
+- ❌ Never copy a `.leprop` file from one preview into another preview
+
+---
+
+### Example
 
 [<img src="/Docs/images/combined_duplicated_displays.png" width="600" alt="Combined Duplicate Displays">](/Docs/images/combined_duplicated_displays.png)
 
-- Each group is saved to it's own *.leprop file
-  - MSB-01.leprop
-  - MSB-02.leprop
-  - MSB-03.leprop
-  - MSB-04.leprop
-- Then these props will be safe to import into other previews
+---
+
+### Export Procedure
+
+- Each display group is exported to its own `.leprop` file:
+
+  - `MSB-01.leprop`
+  - `MSB-02.leprop`
+  - `MSB-03.leprop`
+  - `MSB-04.leprop`
+
+- These props can then be safely imported into other previews
+
+---
 
 ## Editing an Existing Preview
 
-1. Import the preview from the canonical folder: `G:\Shared drives\MSB Database\Database Previews` (ensures you have the latest version).
-2. If the preview Does Not contain a background image we need to add it
-   - If the show is running, take a picture of the stage being careful to collect all elements possible
-   - Try to have enough light so the displays are visible. Needed for the Field Wiring documentation
-   - The location for image storage depends on the type of background image being taken `Musical Stage` or `Background Stage`
-     - `Musical` Save the image to G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs
-       - RGB Plus Stage xx Name Background.jpg
-     - `Background` Save the image to G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs
-       - Show Background Stage xx Name Background.jpg
-   - Edit Open up the image in an editor. Corel Paint Shop Pro is Avaiable on the Show PC
-   - Ensure the Canvas/Image size it to 3840 x 2160 and use a 20% Compression
-   - Begin importing the prop files created for the stage
-   - To add a prop: choose **Add → LOR Prop file**, then select from: `G:\Shared drives\MSB Database\Database Previews\PreviewsForProps`
-3. After editing:
-   - Save the preview.
-   - Export the updated `.lorprev` file to your **G:\Shared drives\MSB Database\UserPreviewStaging\Author**:
-- Stage Preview Example:
+1. Import the preview from the canonical folder:
 
-[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background.jpg" width="600" alt="Show Background Stage 15 (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background.jpg)
+```
+G:\Shared drives\MSB Database\Database Previews
+```
+
+   This ensures you have the latest version.
+
 ---
-## Create a Wiring Backgrounds for Stage Previews
-We now have the ability to include an image in the Field Wiring paperwork. Creating this image involves a few more steps. This only applies to the `Musical` or `Background` stage previews:
 
-### Field Wiring Images
--  This is the fastest method to create a wiring view but not very useful
--  Only `.jpg` files directly inside `BackgroundStage` or `MusicalStage` folders are used by FormView and exported to HTML.
--  Every image in these folders will be used in the Field Wiring documentation **Remove every file not needed!**
+### If the preview does NOT contain a background image
 
-**File naming pattern:**
-Show <Category> <StageType> <Stage#> <DisplayName>-<Tag>.jpg
-Examples:  
-- `Show Background Stage 21 PolarBears-Tagged.jpg`  
-- `Show Backround Stage 21 Sliding Penguins-Wired.jpg`
-- `RGB Plus Prop Stage 15 Wired.jpg`
+We need to create and add one.
 
-### How-To
-1. Open the complete Preview in the Preview Editor:
-2. Snip the **entire preview image** you created using the Windows Snip App Full Screen:
-3. Save the snipped image. Location depends on the preview `stage type` you are working ie: `MusicalStage` or `BackgroundStage`
--  It's important to save this image in the SourceDocs Folder
-- `Musical Stage` G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\MusicalStage\SourceDocs'
-  - RGB Plus Prop Stage xx LOR Preview-Wired.jpg
-- `Background Stage` G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\BackgroundStage\SourceDocs'
-  - File naming: Show Background Stage xx LOR Preview-Wired.jpg
-4. If you are stopping here then just copy the image you just saved to G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\`Stage Type`\
-5. Re-open the preview and then select the file you just saved G:\Shared drives\Display Folders\<StageID-StageName-Prefix>\Wiring\`Stage Type`\ and set as background.
-6. Replace the initial background with the wired version you just created. Depending on how accurate you were  making the snip, you may have to adjust your wired props slightly to get everything to line up. This tells FormView where to look for the image.
-7. Save the preview. The basic wiring diagram is done
-- Stage Wiring Example:
+#### Capture the image
 
-[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background_Wired.jpg" width="600" alt="Show Background Stage 15 Wired (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background_Wired.jpg)
+- If the show is running, take a photo of the stage.
+- Ensure lighting is sufficient so displays are clearly visible.
+- Capture ALL elements if possible (needed for Field Wiring documentation).
+
+#### Save location depends on stage type
+
+**Musical Stage**
+
+Save to:
+
+```
+G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs
+```
+
+File name:
 
 
-### Tagged Wiring Images
-This is the last step to create a useful wiring diagram that tags the channels in the preview. Unfortunately, there is no way to create this image in LOR but we can build this image using drawio.
-1. Open the DrawIO app
-2. Select a Blank Diagram the Create
-3. Go to Page Properties
-  - Drag your wired image into the background or just drag the original background image without the wiring
-  - Landscape
-  - Page Size Custom
-    - Set the page size to fit the background image. Hint: Should be **3840 x 2160**
-4. Then using the Arrows or other geometry from the tool bar on left select the shape you want and drag it onto the image.
-5. Double Click the shape and add each **DisplayName** to the shape. Format it so it fits the shape. You may need to open the sequencer and copy the Comment field to keep things accurate.
-  - Font: Helvetica. Minimum Font Size 18pt BOLD 24pt Bold is better
-  - Do not use **Channel Names!**, these will appear in the Field Wiring Chart
-  - If you add **Channel Names** and the channels change over time, the wiring diagram will need to be updated!
-  - As long as the preview background path does not change, the background is updateable as long as the path and file name remains the same. No need to edit the preview.
-6. Repeat until you have all the displays defined.
-7. Save the *.drawio file. Examples:
-- MusicalStage
-  -  `G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs\
-    -  `RGB Plus Prop Stage 15 Church-Tagged.drawio`
-- BackgroudStage
-  -  `G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs\
-    -  `Show Backround Stage 21 Sliding Penguins-Tagged.drawio`
-8. Export your tagged file as *.jpg and save it to:
-- MusicalStage
-  - G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\
-    - RGB Plus Prop Stage 15 Church-Tagged.jpg
-- BackgroundStage
-  - Show Background Stage 21 PolarBears-Tagged.jpg
-  - Show Background Stage 21 Sliding Penguins-Tagged.jpg
-9. Lastly, you will need to Re-open the preview and assign the new image as the background file in the sequencer.
+RGB Plus Stage <Stage#> <Name> Background.jpg
 
-**IMPORTANT**
-For large displays, it may not be possible to create a single preview image to capture the detail needed for wiring the displays. A preview can only have one background image assigned. The FormView app understands this and will scan `MusicalStage` and `BackgroundStage` folders for all the images needed for setting up the display. That's why there are two images G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Wiring\BackgroundStage folder. **Only keep the images NEEDED for the Field Wiring documentation in thier repective folders!** The Formview app will print **EVERY** image in these folders and it will become useless if these folders get polluted with garbage image files!
 
-[<img src="/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg" width="600" alt="Show Background Stage 15 Tagged (scaled)">](/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg)
+---
+
+**Background Stage**
+
+Save to:
+
+```
+G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs
+```
+
+File name:
+
+
+Show Background Stage <Stage#> <Name> Background.jpg
+
+
+---
+
+### Edit the Image
+
+1. Open the image in an editor  
+   - Corel PaintShop Pro is available on the Show PC
+2. Set canvas size to:
+    - 3840 × 2160 pixels
+3. Save as JPG with approximately 20% compression
+
+---
+
+### Import Props into the Preview
+
+1. Begin importing the prop files created for the stage.
+2. To add a prop:
+    - **Add → LOR Prop file**
+3. Select props from:
+
+```
+G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
+```
+
+---
+
+### After Editing
+
+1. Save the preview.
+2. Export the updated `.lorprev` file to your staging folder:
+
+```
+G:\Shared drives\MSB Database\UserPreviewStaging<Author>
+```
+
+---
+
+## Create Wiring Backgrounds for Stage Previews
+
+This allows Field Wiring documentation to include images.
+
+Applies only to:
+
+- Musical Stage previews
+- Background Stage previews
+
+---
+
+## Field Wiring Images (Basic)
+
+Fastest method, but limited detail.
+
+- Only `.jpg` files directly inside the stage folders are used by FormView.
+- ALL images in these folders will be included in Field Wiring documentation.
+
+⚠️ Remove any files that should not appear.
+
+### File Naming Pattern
+
+>Show <Category> <StageType> <Stage#> <DisplayName>-<Tag>.jpg
+
+Examples:
+
+- Show Background Stage 21 PolarBears-Tagged.jpg
+- Show Background Stage 21 Sliding Penguins-Wired.jpg
+- RGB Plus Prop Stage 15 Wired.jpg
+
+---
+
+## How to Create a Basic Wiring Image
+
+1. Open the complete preview in the Preview Editor.
+2. Capture the entire preview using the Windows Snip Tool (Full Screen).
+3. Save the image to the SourceDocs folder for the stage type.
+
+---
+
+### Save Locations
+
+**Musical Stage**
+
+
+G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring\MusicalStage\SourceDocs
+
+
+File example:
+- RGB Plus Prop Stage <Stage#> LOR Preview-Wired.jpg
+
+---
+
+**Background Stage**
+
+```
+G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring\BackgroundStage\SourceDocs
+```
+
+File example:
+
+- Show Background Stage <Stage#> LOR Preview-Wired.jpg
+
+---
+
+4. If stopping here, copy the image to the main stage folder:
+
+```
+G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring<StageType>
+```
+
+5. Re-open the preview and set this image as the background.
+6. Adjust props if needed to align correctly.
+7. Save the preview.
+
+The basic wiring diagram is now complete.
+
+---
+
+## Tagged Wiring Images (Recommended)
+
+Creates a detailed diagram showing Display Names.
+
+This cannot be generated inside LOR — use draw.io.
+
+---
+
+### Create Tagged Diagram in draw.io
+
+1. Open draw.io and create a Blank Diagram.
+2. Open Page Properties:
+   - Orientation: Landscape
+   - Page Size: Custom
+   - Set to match the background image (typically 3840 × 2160)
+3. Insert the wired image as the background.
+4. Add shapes (arrows, boxes, etc.) to label each display.
+5. Double-click shapes and enter the **Display Name**.
+   ⚠️ Do NOT use Channel Names  
+   Channel assignments may change over time.
+6. Formatting guidelines:
+   - Font: Helvetica
+   - Minimum size: 18 pt bold
+   - Recommended: 24 pt bold
+7. Repeat until all displays are labeled.
+
+---
+
+### Save the draw.io File
+
+**Musical Stage**
+
+```
+G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs
+```
+
+Example:
+- RGB Plus Prop Stage <Stage#> <Name>-Tagged.drawio
+
+---
+
+**Background Stage**
+
+```
+G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs
+```
+
+Example:
+
+- Show Background Stage <Stage#> <Name>-Tagged.drawio
+
+---
+
+### Export Tagged Image
+
+Export as JPG and save to the stage folder:
+
+**Musical Stage**
+
+```
+G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage
+```
+
+Example:
+
+- RGB Plus Prop Stage <Stage#> <Name>-Tagged.jpg
+
+---
+
+**Background Stage**
+
+```
+G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage
+```
+
+Examples:
+- Show Background Stage <Stage#> PolarBears-Tagged.jpg
+- Show Background Stage <Stage#> Sliding Penguins-Tagged.jpg
+
+---
+
+### Final Step
+
+Re-open the preview and assign the tagged image as the background file.
+
+Save the preview.
+
+Field Wiring documentation will now use the tagged diagram.
+
+## ⚠️ IMPORTANT — Large Displays and Field Wiring Images
+
+For large displays, a single preview image may not provide enough detail for wiring documentation.
+
+A preview in LOR can only have **one background image**, but the FormView application supports multiple images for a stage.
+
+FormView will automatically scan the following folders and include **all images found** when generating Field Wiring documentation:
+
+- `MusicalStage`
+- `BackgroundStage`
+
+Example:
+
+```
+G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Wiring\BackgroundStage
+```
+
+Multiple images may be required to fully document complex stages.
+
+### 🚨 Critical Requirement
+
+**Only keep the images that are REQUIRED for Field Wiring documentation in these folders.**
+
+FormView will print **EVERY image** found.
+
+If unnecessary files are present, the wiring documentation will become cluttered and difficult to use.
+
+Remove any temporary, draft, or unrelated images before finalizing.
+
+---
+
+### Example — Tagged Wiring Image
+
+![Show Background Stage 15 Tagged](/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg)
 
 ---
 
