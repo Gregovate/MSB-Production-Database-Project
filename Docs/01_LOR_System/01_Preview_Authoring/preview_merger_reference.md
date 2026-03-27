@@ -1,5 +1,10 @@
 # Preview Merger — Reference (v1)
 
+> Status Note — March 2026:
+> This document reflects an earlier multi-user preview merge workflow.
+> Current operational source of truth is the ShowPC post-show preview set.
+> Personal preview stores are no longer considered authoritative.
+
 _Companion to **MSB Preview Update — Operator Quickstart (Consolidated)**._  
 Use this when you need the **why/details** behind the workflow.
 

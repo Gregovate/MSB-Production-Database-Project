@@ -1,5 +1,10 @@
 # Core Comparison Logic — How `lor_core.core_items_from_lorprev` Detects Changes
 
+> Status Note — March 2026:
+> This document reflects an earlier multi-user preview merge workflow.
+> Current operational source of truth is the ShowPC post-show preview set.
+> Personal preview stores are no longer considered authoritative.
+
 _Companion to **Preview Merger — Reference (v1)**_  
 _Added in build GAL 2025-10-19 to support multi-user merge consistency._
 

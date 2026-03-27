@@ -1,4 +1,7 @@
 # MSB Production DB — Container Testing & Repair Workflow (Go-Live Draft)
+
+>STATUS: REFERENCE / ARCHIVE ONLY — DO NOT USE AS LIVE SOP
+
 Version: 2026-02-28 (V3)
 Owner: Greg
 Scope: Volunteer-facing operational workflow + the one key system decision (when child rows get created)
