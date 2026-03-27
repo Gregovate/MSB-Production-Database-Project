@@ -1,7 +1,7 @@
 # MSB Label Printing — Operator Guide
 
 **Author:** Greg Liebig / Engineering Innovations, LLC  
-**Date:** 2026-03-22  
+**Date:** 2026-03-27 
 **System Version:** Label Service v3.x  
 
 This guide explains how to print display and container labels
@@ -94,15 +94,22 @@ No further action is required.
 
 ## ❗ If Printing Does Not Start
 
-Check the following:
+🚫 Do NOT repeatedly click print
 
-- Printer power
-- Network connection
-- Tape installed
-- Correct tape width
-- Printer not paused or offline
+If labels do not start printing:
 
-If problems persist, notify system administrator.
+1. Wait at least **10–15 seconds**
+2. Verify the printer is powered on and has tape installed
+
+If printing still does not start:
+
+👉 [Label Print Service — Operator Guide](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Operator_Label_Printing.md)
+
+This guide explains how to check and restart the print service on the dedicated print server.
+
+---
+
+🚨 Do NOT continue retrying print jobs without checking the service first
 
 ---
 
