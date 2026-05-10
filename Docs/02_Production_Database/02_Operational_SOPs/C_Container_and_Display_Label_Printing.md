@@ -1,7 +1,7 @@
 # MSB Label Printing — Operator Guide
 
 **Author:** Greg Liebig / Engineering Innovations, LLC  
-**Date:** 2026-03-27 
+**Date:** 2026-03-30
 **System Version:** Label Service v3.x  
 
 This guide explains how to print display and container labels
@@ -90,6 +90,17 @@ After saving:
 
 No further action is required.
 
+## Label batch actor rule
+
+The actor for a label print batch is the user who last updated the print-triggering record at the moment the batch row is created.
+
+The batch row must store this actor directly so the print service and logs do not need to infer it later.
+
+Recommended fields on the batch:
+- requested_by
+- requested_by_person_id
+- requested_at
+
 ---
 
 ## ❗ If Printing Does Not Start
@@ -164,4 +175,9 @@ if printing repeatedly fails or produces incorrect labels.
 
 ## 🔄 Revision History
 
-- Initial operator guide for Label Service v3
+- 03/30/2026  
+  - Documented post-print workflow behavior ("What Happens Next")  
+  - Added label batch actor tracking rule (requested_by, requested_by_person_id, requested_at)
+
+- 03/27/2026  
+  - Initial operator guide for Label Service v3
