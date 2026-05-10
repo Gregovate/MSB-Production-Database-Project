@@ -121,6 +121,7 @@ https://www.gimp.org/
 - Helpful for removing backgrounds or increasing contrast
 - Commonly used before importing artwork into Inkscape
 - NOT suitable for final scalable fabrication drawings
+- Can be used to create *.gif files to preview animation
 
 Typical workflow:
 
