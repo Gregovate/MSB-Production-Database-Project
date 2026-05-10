@@ -38,100 +38,484 @@ G:
 │ ├── penguins_musical_layers.pspimage
 │ └── penguins_overview_layout.jpg
 ```
-## Tools for Making Display Drawings
+# Display Drawing and Preview Creation
 
-To build a display, we need a plottable **vector drawing**.  
-Scaling a bitmap image (such as *.jpg or *.png) will not work for a 4 ft × 8 ft panel because bitmap images lose quality when enlarged.
+## Overview
 
-Several programs can be used to create vector drawings:
+To build a display, we need a plottable **vector drawing**.
 
-### AutoCAD
+Scaling a bitmap image (such as *.jpg or *.png) will NOT work for fabrication because bitmap images lose quality when enlarged. A 4 ft × 8 ft panel requires a full-scale vector drawing that can be accurately resized without distortion.
+
+Vector drawings are used for:
+
+- CNC cutting
+- Plotting
+- Wiring overlays
+- Panel layout verification
+- Full-scale printing
+- Documentation
+- Preview background generation
+
+Bitmap images are still important for:
+
+- Documentation
+- Preview images
+- Tracing source artwork
+- Wiring references
+
+Both vector and bitmap workflows are required for building displays.
+
+---
+
+# Recommended Software Tools
+
+## AutoCAD
+
+https://www.autodesk.com/products/autocad/
+
 - Works well with DXF formats
-- We have a limited number of licenses available
 - Suitable for precise dimensional work
+- Best suited for fabrication and dimensional accuracy
+- We have a limited number of licenses available
 
-### Inkscape — Free Vector Graphics Editor
-- [Inkscape](https://inkscape.org/)
+---
+
+## Inkscape — Free Vector Graphics Editor
+
+https://inkscape.org/
+
 - Free and open-source vector drawing program
-- Can import bitmap images and trace them to create vector graphics
+- Can import bitmap images and trace them into vector graphics
 - Exports scalable vector formats such as *.svg
-- Ideal for signage, outlines, and panel layouts
+- Ideal for signage, outlines, overlays, and panel layouts
+- Works well for organizing display wiring layers
 
-**File Naming Guidelines:**
+### IMPORTANT — Full Scale Document Setup
 
-- Inkscape saves files as `*.svg` using Inkscape-specific features
-- For working files, include `-inkscape.svg` in the filename  
-  *(Example: `SnowmanPanel-inkscape.svg`)*
-- When the drawing is finalized and ready for production, save a clean export with `-working.svg`  
-  *(Example: `SnowmanPanel-working.svg`)*
+When creating a new display drawing in Inkscape:
 
-### GIMP — GNU Image Manipulation Program (Raster Editor)
-- [GIMP](https://www.gimp.org/)
-- Free image editor for bitmap graphics
+- The document size MUST match the actual panel size being built
+- Always start the drawing at full scale
+
+Examples:
+
+- 4 ft × 8 ft panel
+- 8 ft × 4 ft panel
+- 3 ft × 6 ft coro panel
+
+This ensures:
+
+- Artwork fits correctly on stock frames
+- Layout dimensions remain accurate
+- Wiring overlays align correctly
+- Exported files remain usable for fabrication
+
+---
+
+## GIMP — GNU Image Manipulation Program (Raster Editor)
+
+https://www.gimp.org/
+
+- Free bitmap image editor
 - Useful for cleaning up photos or artwork before vector tracing
-- Not suitable for final scalable drawings
+- Helpful for removing backgrounds or increasing contrast
+- Commonly used before importing artwork into Inkscape
+- NOT suitable for final scalable fabrication drawings
 
+Typical workflow:
 
-## Prerequisites
-
-Complete the following steps before beginning wiring or preview work:
-
-1. Start with the **Display Approval Form**
-2. Once approved, create the concept drawing of the display
-3. Create a folder under the correct **Display Stage ID** using the display name
-4. Create the background image (`.jpg`) of the display panel design
-5. Save a copy of the finished display file to:
-
-
-G:\Shared drives\Display Folders\StageID-StageName-Prefix\Wiring\Props-Displays
-
+1. Clean up artwork in GIMP
+2. Import image into Inkscape
+3. Trace bitmap into vector artwork
+4. Organize drawing into layers
+5. Export production SVG files
 
 ---
 
-## Image Requirements
+# Layer Requirements
 
-### Size Limits
+Layers are extremely important for display construction.
 
-- **Maximum:** 4000 × 3000 pixels  
-- **Recommended (single panel):**
-- Horizontal: **800 × 600 px**
-- Vertical: **600 × 800 px**
-- **Recommended (full stage):**
-- **3840 × 2160 px**
+Each layer should represent a logical wiring or construction group.
 
-### Format
+Examples:
 
-- Save as **JPG**
-- Optimize with approximately **20% compression**
-- (Easy to do in PaintShop Pro or similar software)
+- Outline
+- Cut Lines
+- Channel 1
+- Channel 2
+- Roofline
+- Eyes
+- Mouth
+- Floods
+- Mounting Holes
+- Wiring Overlay
 
-### File Naming
+Proper layer organization allows:
 
-Use the display name exactly:
+- Easier troubleshooting
+- Cleaner fabrication files
+- Wiring overlays to be generated
+- Cleaner exported documentation
+- Selective printing and exporting
 
-DisplayName.jpg
+Poor layer organization makes future maintenance extremely difficult.
+
+---
+
+# File Naming Standards
+
+Inkscape uses special SVG features that are NOT fully compatible with many other programs.
+
+Because of this, TWO SVG versions must be preserved.
 
 ---
 
-## Creating a Single-Panel Preview for a New Display
+## 1. Inkscape MASTER File
 
-1. **Open LOR Sequence Editor**
+This file preserves:
 
-2. In the bottom-left panel, select  
-   **Background → Set Image**
+- Layers
+- Guides
+- Inkscape effects
+- Editable objects
+- Internal metadata
 
-3. Browse to your background file located at:
+### Naming Format
 
+`DisplayName-inkscape.svg`
 
-G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring\Props-Displays
+### Example
 
+`SnowmanPanel-inkscape.svg`
 
-- Use the background image created during the design phase
-- ⚠️ **Do NOT embed or save the image with the preview**
-
-4. Draw the strings and assign controllers and channels
+This is the MASTER working file and should always be preserved.
 
 ---
+
+## 2. Production / Working Export
+
+Once the drawing is finalized for production, export a simplified SVG version for compatibility with other programs.
+
+### Naming Format
+
+`DisplayName-plain.svg`
+
+### Example
+
+`SnowmanPanel-plain.svg`
+
+This version is typically used for:
+
+- CNC software
+- Plotters
+- Sharing with other programs
+- Production workflows
+
+---
+
+# JPG / PNG Export Rules
+
+Bitmap images such as *.jpg and *.png are ONLY used for:
+
+- Documentation
+- Wiring previews
+- Web pages
+- Printed instructions
+- Preview backgrounds
+- Quick reference images
+
+Bitmap formats are:
+
+- NOT scalable
+- NOT suitable for fabrication
+- NOT suitable for plotting or CNC work
+
+Because bitmap images are resolution-dependent:
+
+- Export sizes matter
+- Low-resolution exports become blurry when enlarged
+- Large images consume excessive storage space
+
+---
+
+# Folder Structure Requirements
+
+Each approved display must have its files stored under the proper stage folder structure.
+
+## Standard Stage Folder Location
+
+```text
+G:\Shared drives\Display Folders\StageID-StageName-Prefix\
+```
+
+Example:
+
+```text
+G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\
+```
+
+---
+
+# Display Folder Organization
+
+Under each stage folder, there should be a dedicated folder for each display.
+
+This folder should contain:
+
+- Inkscape drawings
+- AutoCAD drawings
+- Working SVG files
+- Source artwork
+- Preview images
+- Documentation images
+- Related fabrication files
+
+Example:
+
+```text
+G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Snowman\
+```
+
+---
+
+# Display Groups for Large Projects
+
+For larger multi-part displays, a display group folder may be created to organize related displays together.
+
+This is commonly used when multiple props belong to a larger themed scene.
+
+Example:
+
+```text
+G:\Shared drives\Display Folders\13-Winter Wonderland-WW\Christmas Vacation\
+```
+
+Inside the display group folder, individual display folders may then be created:
+
+```text
+13-Winter Wonderland-WW\
+└── Christmas Vacation\
+    ├── RV\
+    ├── Cousin Eddie\
+    ├── Clark\
+    ├── Garbage Can\
+    └── Uncle Louis\
+```
+
+This helps keep:
+
+- Related artwork together
+- Wiring documentation organized
+- Preview assets grouped logically
+- Fabrication files easier to manage
+- Multi-display scenes easier to maintain
+
+---
+
+# IMPORTANT — Avoid Loose Files
+
+Do NOT store unrelated drawing files directly under the stage root folder.
+
+Every display should have its own dedicated folder structure.
+
+This prevents:
+
+- Lost artwork
+- Duplicate files
+- Broken preview references
+- Wiring documentation confusion
+- Difficulty locating fabrication assets later
+
+# Wiring Documentation Folder
+
+⚠️ IMPORTANT:
+
+The `Wiring\` folder is a RESERVED folder structure used for **field installation documentation**.
+
+This folder is NOT intended for storing:
+
+- Raw artwork
+- Working SVG files
+- Fabrication files
+- General preview assets
+- Temporary exports
+
+The Wiring folder exists specifically to support:
+
+- Field setup documentation
+- Controller connection diagrams
+- DrawIO wiring documents
+- FormView-generated wiring PDFs
+- Visual field reference images
+
+---
+
+# FormView Integration
+
+The FormView application automatically scans the Wiring folder structure and generates printable field setup documentation.
+
+This documentation is used by setup crews to identify:
+
+- Which controller plugs into which display
+- Wiring paths
+- Display locations
+- Port assignments
+- Visual setup references
+
+---
+
+# IMPORTANT — Preview Name Controls Folder Linking
+
+The Preview Name is extremely important because it controls how the FormView application locates the correct Wiring folders.
+
+The Preview Name acts as the pointer between:
+
+- LOR Preview files
+- Wiring documentation folders
+- Background images
+- FormView-generated PDFs
+
+If the Preview Name does NOT match the expected folder structure:
+
+- FormView may fail to locate images
+- Wiring PDFs may generate incorrectly
+- Field setup documentation may be incomplete
+- Wrong displays may appear in generated packets
+
+Because of this, Preview Names must remain standardized and consistent.
+
+---
+
+# IMPORTANT — Keep Wiring Folders Clean
+
+The FormView application scans these folders automatically.
+
+⚠️ Any extra images or unrelated files may appear in generated wiring PDFs.
+
+Because of this:
+
+- ONLY place files needed for field setup into these folders
+- Do NOT use the Wiring folders for general artwork storage
+- Do NOT leave old exports or temporary images in these folders
+- Remove obsolete images when displays are updated
+
+If these folders become cluttered, the generated field documentation becomes difficult to use.
+
+---
+
+# Typical Wiring Folder Structure
+
+```text
+Wiring\
+Wiring\BackgroundStage\
+Wiring\MusicalStage\
+Wiring\DrawIO\
+```
+
+Additional folders may be added later as the workflow evolves.
+
+---
+
+# Future Direction
+
+The current FormView workflow is considered temporary.
+
+Future plans are to migrate the wiring and setup documentation system into the new MSB Database workflow. That system is not yet implemented.
+
+Until then, the existing Wiring folder structure remains critical for field setup operations.
+
+# Prerequisites Before Wiring or Preview Work
+
+Complete the following steps before beginning wiring or preview creation:
+
+1. Start with the approved Display Approval Form
+2. Create the concept drawing of the display
+3. Create the display folder under the correct Stage ID
+4. Create the vector artwork
+5. Create the preview background image (*.jpg)
+6. Save all files into the proper Wiring folders
+
+---
+
+# Image Requirements
+
+## Size Limits
+
+### Maximum
+
+- 4000 × 3000 pixels
+
+### Recommended — Single Panel
+
+- Horizontal: 800 × 600 px
+- Vertical: 600 × 800 px
+
+### Recommended — Full Stage
+
+- 3840 × 2160 px
+
+---
+
+# Image Format Requirements
+
+- Save preview images as JPG
+- Optimize with approximately 20% compression
+- PaintShop Pro, GIMP, or similar software may be used
+
+---
+
+# Background Image File Naming
+
+Use the display name exactly.
+
+Example:
+
+```text
+SnowmanPanel.jpg
+```
+
+---
+
+# Creating a Single-Panel Preview for a New Display
+
+## 1. Open LOR Sequence Editor
+
+---
+
+## 2. Set the Background Image
+
+In the lower-left panel:
+
+```text
+Background → Set Image
+```
+
+Browse to the background image located under the display stage folder.
+
+Example:
+
+```text
+G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Wiring\Props-Displays
+```
+
+Use the JPG background image created during the design phase.
+
+⚠️ IMPORTANT:
+
+- Do NOT embed the image into the preview
+- The preview should reference the image externally
+- This keeps preview files smaller and easier to maintain
+
+---
+
+## 3. Draw Strings and Assign Channels
+
+- Draw the display strings
+- Assign controllers
+- Assign channels
+- Verify scaling and placement
+- Save the preview file into the correct stage folder
 
 ### Naming Guidance
 
