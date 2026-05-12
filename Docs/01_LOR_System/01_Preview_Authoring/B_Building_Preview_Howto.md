@@ -6,7 +6,22 @@ author: Greg Liebig / Engineering Innovations, LLC
 
 # Building a Preview (Operator How-To)
 
-This guide explains how to build, edit, and export a preview in **Light‑O‑Rama (LOR)** for integration with the MSB Database.
+This guide explains how to build, edit, and export a preview in **Light‑O‑Rama (LOR)** for integration with the MSB Database. 
+This is a multi-step process where:
+1. A concept is dreamed up
+2. Drawings/sketches created to describe the concept
+3. [Display Design-Approval Form](https://docs.google.com/spreadsheets/d/1Pw91W724KTUcvG1HdSYsTuLY1Mo-2JRPdKq7nziDz8M/edit?usp=sharing)
+    - Is used to document the display including
+      - Controller
+      - Stage
+      - Channels
+      - Colors
+      - Lighting types
+4. After the drawings are finalized a preview must be created in LOR
+   - This is done on the programmer's PC
+   - Channel Namimg conventions must be used
+   - When Finished the final preview is exported to the individual's preview folder
+   - G:\Shared drives\MSB Database\UserPreviewStaging\username
 
 ---
 
@@ -188,7 +203,7 @@ This file preserves:
 
 ### Example
 
-`SnowmanPanel-inkscape.svg`
+`TC-SnowmanPanel-inkscape.svg`
 
 This is the MASTER working file and should always be preserved.
 
@@ -204,7 +219,7 @@ Once the drawing is finalized for production, export a simplified SVG version fo
 
 ### Example
 
-`SnowmanPanel-plain.svg`
+`TC-SnowmanPanel-plain.svg`
 
 This version is typically used for:
 
@@ -426,7 +441,7 @@ Future plans are to migrate the wiring and setup documentation system into the n
 
 Until then, the existing Wiring folder structure remains critical for field setup operations.
 
-# Prerequisites Before Wiring or Preview Work
+# Prerequisites Before Creating a Preview
 
 Complete the following steps before beginning wiring or preview creation:
 
@@ -435,9 +450,18 @@ Complete the following steps before beginning wiring or preview creation:
 3. Create the display folder under the correct Stage ID
 4. Create the vector artwork
 5. Create the preview background image (*.jpg)
-6. Save all files into the proper Wiring folders
+6. Save all files into the proper Display folders
 
 ---
+
+# Open Light O Rama and on the Right Side Click the + to create a New Preview
+
+## Name
+
+```text
+PreviewPropFile [SC-] DisplayName [UID] [StartChannel - EndChannel]
+```    
+
 
 # Image Requirements
 
@@ -531,13 +555,11 @@ for full rules on channel grouping, display IDs, and comment field requirements.
 
 Use the following format:
 
-
 SC UID-Channel Name
-
 
 Where:
 
-- **SC** — Character abbreviation of the display or stage  
+- **SC** — Stage Code abbreviation of the stage  
 - **UID** — Controller ID assigned to the display  
 - **Channel** — Controller port or channel number  
 - **Name** — Brief description of the channel  
