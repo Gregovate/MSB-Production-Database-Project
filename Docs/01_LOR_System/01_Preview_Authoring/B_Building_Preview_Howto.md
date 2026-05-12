@@ -1,6 +1,6 @@
 ---
 title: Building a Preview (Operator How-To)
-version: 2025-10-30
+version: See Changelog
 author: Greg Liebig / Engineering Innovations, LLC
 ---
 
@@ -482,6 +482,7 @@ SnowmanPanel.jpg
 
 ## 1. Open LOR Sequence Editor
 
+All previews are built within Light-O-Rama 
 ---
 
 ## 2. Set the Background Image
@@ -936,3 +937,7 @@ After **any changes** to previews, Export the preview to your G:\Shared drives\M
 
 This ensures the system stays consistent for all users.
 
+# Changelog
+
+2026-05-10 - Updated Recommended Software Tools
+2025-10-05 - Intial Release
