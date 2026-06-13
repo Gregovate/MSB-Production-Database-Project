@@ -1,49 +1,107 @@
-@'
 # === Generated artifacts we do not track ===
+
 *.csv
 *.html
 *.json
 *.log
 
-# === SQLite + sidecars ===
-*.db
+# === Generated SQLite outputs ===
+
+lor_output*.db
+lor_output*.db-wal
+lor_output*.db-shm
+
+# Optional SQLite scratch files
+
 *.sqlite
 *.sqlite3
-*.db-wal
-*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
 
-# === Office files you chose to ignore ===
+# === Office / export artifacts ===
+
 *.xlsx
 
-# === Whole working dirs that are data, not code ===
-/database/**
-/Spreadsheet/**
-/Database Previews/**
-/UserPreviewStaging/**
-/docs/output/**
-/docs/Work_Hour_Record/**
-/tmp/**
-/.venv/**
+# === Build artifacts ===
 
-# Keep placeholders if needed
-!database/.gitkeep
-!Spreadsheet/.gitkeep
-!database/merger/.gitkeep*
-
-# --- PyInstaller build artifacts ---
 build/
 dist/
 build_artifacts/
 *.spec
 
-# --- Python cache and temp files ---
+# === Python cache / temp ===
+
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
 
-# --- Local / system files ---
+# === Virtual environments ===
+
+.venv/
+venv/
+env/
+
+# === IDE / editor ===
+
+.vscode/
+.idea/
+
+# === Environment / secrets ===
+
+.env
+.env.*
+*.pem
+*.key
+
+# === Local OS files ===
+
 .DS_Store
 Thumbs.db
-'@ | Out-File -Encoding utf8 .gitignore
-.venv/
+
+# === Backup / archive files ===
+
+*.bak
+*.zip
+*.7z
+
+# =========================================================
+# PROJECT WORKING DATA (not source code)
+# =========================================================
+
+/database/**
+/Spreadsheet/**
+/Database Previews/**
+/UserPreviewStaging/**
+/tmp/**
+/reports/**
+/exports/**
+
+# Generated docs / exports
+
+/docs/output/**
+/docs/Work_Hour_Record/**
+
+# =========================================================
+# KEEP PLACEHOLDERS
+# =========================================================
+
+!database/.gitkeep
+!Spreadsheet/.gitkeep
+!database/merger/.gitkeep*
+
+# =========================================================
+# OPTIONAL: TRACK SMALL REFERENCE DBS
+# =========================================================
+
+# If you later want a checked-in reference DB:
+#
+# !reference_data/
+# !reference_data/*.db
+#
+# This allows tiny baseline DBs while still ignoring
+# generated parser outputs.
+# =========================================================
