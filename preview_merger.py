@@ -1065,7 +1065,7 @@ def _iter_props_from_preview(path: Path):
     Defensive against slight API differences (object vs dict).
     """
     try:
-        import parse_props_v6 as pp
+        import parsers.production.parse_props_v6 as pp
     except Exception:
         return []
 
