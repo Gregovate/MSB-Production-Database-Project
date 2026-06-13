@@ -949,6 +949,7 @@ def setup_database():
     cursor.execute("DROP TABLE IF EXISTS props")
     cursor.execute("DROP TABLE IF EXISTS subProps")
     cursor.execute("DROP TABLE IF EXISTS dmxChannels")
+    cursor.execute("DROP TABLE IF EXISTS scenes")
 
     # Create Previews Table
     # GAL 25-10-16: Table mirrors Core Model v1.0 preview fields (PreviewID/Name/BackgroundFile)
@@ -961,6 +962,26 @@ def setup_database():
         Revision TEXT,
         Brightness REAL,
         BackgroundFile TEXT
+    )
+    """)
+
+    # Create Scenes Table
+    # GAL 2026-06-13: LOR V6.6 scene/workspace metadata.
+    # Scenes are presentation/workspace views, not physical display identities.
+    cursor.execute("""
+    CREATE TABLE scenes (
+        IntSceneID INTEGER PRIMARY KEY AUTOINCREMENT,
+        SceneID TEXT UNIQUE,
+        PreviewId TEXT,
+        StageID TEXT,
+        Name TEXT,
+        SceneSection TEXT,
+        BackgroundFile TEXT,
+        HScroll INTEGER,
+        VScroll INTEGER,
+        Zoom INTEGER,
+        CreateGridView TEXT,
+        FOREIGN KEY (PreviewId) REFERENCES previews (id)
     )
     """)
 
@@ -1106,6 +1127,113 @@ def locate_preview_class_deep(file_path):
                 scene.attrib
             )
 
+        # ------------------------------------------------------------
+        # V7 Scene Membership Diagnostic GAL 26-06-13
+        # ------------------------------------------------------------
+
+        for scene in scene_nodes[:5]:
+
+            scene_name = scene.attrib.get("Name", "")
+            scene_id = scene.attrib.get("id", "")
+
+            prop_children = []
+
+            for child in scene.iter():
+                if child.tag.endswith("PropClass"):
+                    prop_children.append(child)
+
+            print(
+                f"[V7] Scene Membership: "
+                f"{scene_name} | id={scene_id} | "
+                f"PropClass children={len(prop_children)}"
+            )
+
+            for prop in prop_children[:10]:
+                print(
+                    "    [V7] Prop:",
+                    prop.attrib.get("Name"),
+                    "| Comment:",
+                    prop.attrib.get("Comment"),
+                    "| id:",
+                    prop.attrib.get("id")
+                )
+
+        # ------------------------------------------------------------
+        # V7 Prop Scene Reference Diagnostic GAL 26-06-13
+        # ------------------------------------------------------------
+
+        scene_ids = {
+            (scene.attrib.get("id") or "").strip()
+            for scene in scene_nodes
+            if (scene.attrib.get("id") or "").strip()
+        }
+
+        scene_ref_hits = []
+
+        for prop in root.findall(".//PropClass"):
+            for attr_name, attr_value in prop.attrib.items():
+                val = (attr_value or "").strip()
+                if val in scene_ids or any(scene_id in val for scene_id in scene_ids):
+                    scene_ref_hits.append(
+                        {
+                            "PropName": prop.attrib.get("Name", ""),
+                            "Comment": prop.attrib.get("Comment", ""),
+                            "PropID": prop.attrib.get("id", ""),
+                            "AttrName": attr_name,
+                            "AttrValue": val,
+                        }
+                    )
+
+        print(f"[V7] Prop scene reference hits: {len(scene_ref_hits)}")
+
+        for hit in scene_ref_hits[:25]:
+            print(
+                "[V7] Prop Scene Ref:",
+                hit["PropName"],
+                "| Comment:",
+                hit["Comment"],
+                "| PropID:",
+                hit["PropID"],
+                "|",
+                hit["AttrName"],
+                "=",
+                hit["AttrValue"],
+            )
+
+        # ------------------------------------------------------------
+        # V7 Global Scene Reference Diagnostic GAL 26-06-13
+        # ------------------------------------------------------------
+
+        global_scene_ref_hits = []
+
+        for element in root.iter():
+            for attr_name, attr_value in element.attrib.items():
+                val = (attr_value or "").strip()
+
+                if val in scene_ids or any(scene_id in val for scene_id in scene_ids):
+                    global_scene_ref_hits.append(
+                        {
+                            "Tag": element.tag,
+                            "AttrName": attr_name,
+                            "AttrValue": val,
+                            "AllAttrs": dict(element.attrib),
+                        }
+                    )
+
+        print(f"[V7] Global scene reference hits: {len(global_scene_ref_hits)}")
+
+        for hit in global_scene_ref_hits[:50]:
+            print(
+                "[V7] Global Scene Ref:",
+                hit["Tag"],
+                "|",
+                hit["AttrName"],
+                "=",
+                hit["AttrValue"],
+                "| attrs:",
+                hit["AllAttrs"],
+            )
+
         # Deep search for PreviewClass
         for element in root.iter():
             if element.tag.endswith("PreviewClass"):  # Handle namespaces or simple tag names
@@ -1156,6 +1284,63 @@ _STAGE_TOKEN_RE  = re.compile(r'(?i)\bstage\s*0*(\d{1,2})([a-z]?)\b')
 # Matches: "Show Animation ... 90 ..."
 _ANIMATION_RE = re.compile(r'(?i)\bshow\s+animation\b.*?\b0*(\d{1,2})\b')
 
+def extract_scene_section(scene_name: str | None) -> str | None:
+    """
+    Return scene section/name after the StageID prefix.
+
+    Examples:
+      07-Who Characters -> Who Characters
+      07a-Who Forest    -> Who Forest
+      15-Church         -> Church
+    """
+    if not scene_name:
+        return None
+
+    name = scene_name.strip()
+
+    m = _STAGE_PREFIX_RE.search(name)
+    if m:
+        return _STAGE_PREFIX_RE.sub("", name).strip() or None
+
+    m = _STAGE_TOKEN_RE.search(name)
+    if m:
+        return name[m.end():].strip(" -_") or None
+
+    return name or None
+
+def process_scenes(preview_id: str, root):
+    """
+    Extract LOR V6.6 Scene metadata.
+
+    Scenes are sequencing workspaces / camera views.
+    They do NOT own props and must not change display identity.
+    """
+    scene_count = 0
+
+    for scene in root.iter():
+        if not scene.tag.endswith("Scene"):
+            continue
+
+        scene_name = scene.get("Name")
+
+        scene_data = {
+            "SceneID": scene.get("id"),
+            "PreviewId": preview_id,
+            "StageID": extract_stage_id(scene_name),
+            "Name": scene_name,
+            "SceneSection": extract_scene_section(scene_name),
+            "BackgroundFile": scene.get("BackgroundFile"),
+            "HScroll": scene.get("HScroll"),
+            "VScroll": scene.get("VScroll"),
+            "Zoom": scene.get("Zoom"),
+            "CreateGridView": scene.get("CreateGridView"),
+        }
+
+        insert_scene_data(scene_data)
+        scene_count += 1
+
+    INFO(f"Scenes inserted: {scene_count}", ctx=preview_id)
+
 def extract_stage_id(name: str | None):
     """
     Return normalized StageID or None.
@@ -1197,12 +1382,35 @@ def extract_stage_id(name: str | None):
         return f"{num:02d}"
 
     return None
+
+# Added 2026-06-13 (GAL) to extract the "scene section" (e.g., "Who Characters") from the preview name for scene metadata.
+def extract_scene_section(scene_name: str | None) -> str | None:
+    """
+    Return scene section/name after the StageID prefix.
+
+    Examples:
+      07-Who Characters -> Who Characters
+      07a-Who Forest    -> Who Forest
+      15-Church         -> Church
+    """
+    if not scene_name:
+        return None
+
+    name = scene_name.strip()
+
+    m = _STAGE_PREFIX_RE.search(name)
+    if m:
+        return _STAGE_PREFIX_RE.sub("", name).strip() or None
+
+    m = _STAGE_TOKEN_RE.search(name)
+    if m:
+        return name[m.end():].strip(" -_") or None
+
+    return name or None
+
 # (GAL 26-02-26) Revised to support NN and NNa stage tokens
 
 # ---- Insert Helpers ---------------------------------------------------------
-# -----------------------------------------------------------------------------
-# GAL 25-10-22 (GAL): Collision-aware insert wrapper for props
-# -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # GAL 25-10-23: collision-aware props insert (fixed local 'pid' scope)
 # -----------------------------------------------------------------------------
@@ -1270,6 +1478,41 @@ def insert_preview_data(preview_data):
     conn.close()
     if DEBUG:
         print(f"[DEBUG] Inserted Preview into database: {preview_data}")
+
+def insert_scene_data(scene_data):
+    """Insert LOR Scene metadata into the scenes table."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT OR REPLACE INTO scenes (
+        SceneID,
+        PreviewId,
+        StageID,
+        Name,
+        SceneSection,
+        BackgroundFile,
+        HScroll,
+        VScroll,
+        Zoom,
+        CreateGridView
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        scene_data["SceneID"],
+        scene_data["PreviewId"],
+        scene_data["StageID"],
+        scene_data["Name"],
+        scene_data["SceneSection"],
+        scene_data["BackgroundFile"],
+        safe_int(scene_data["HScroll"], None),
+        safe_int(scene_data["VScroll"], None),
+        safe_int(scene_data["Zoom"], None),
+        scene_data["CreateGridView"],
+    ))
+
+    conn.commit()
+    conn.close()
 
 def reconcile_subprops_to_canonical_master(db_file: str):
     """
@@ -2653,6 +2896,11 @@ def process_file(file_path):
     if preview is not None:
         preview_data = process_preview(preview)   # full dict dump is now gated by PREVIEW_DEBUG inside process_preview
         insert_preview_data(preview_data)
+
+        tree = ET.parse(file_path)
+        root = tree.getroot()
+
+        process_scenes(preview_data["id"], root)
 
         # Parse and process DeviceType == None and DMX props
         tree = ET.parse(file_path)
