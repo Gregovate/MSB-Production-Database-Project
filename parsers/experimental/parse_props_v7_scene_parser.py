@@ -16,17 +16,21 @@
 #   • props
 #   • subProps
 #   • dmxChannels
+#   • scenes
 #   • wiring/report views
 #
 # V7 extends the proven V6.8.3 parser to support the
 # Light-O-Rama V6.6 Scene architecture while preserving
-# compatibility with the existing MSB PostgreSQL workflow.
+# compatibility with the existing MSB PostgreSQL workflow,
+# FormView wiring viewer, and stage preview/report workflows.
 #
 # Core V7 Rules
 # -------------
 #
-# • Scenes are treated as virtual preview contexts.
+# • PreviewClass remains the global LOR prop/control universe.
+# • Scenes are sequencing workspaces / camera views.
 # • Scenes are NOT physical display identities.
+# • Scenes do NOT replace props.PreviewId.
 # • Physical display identity must remain stable.
 # • V6.8.3 materialization behavior must be preserved.
 # • StageID parsing must continue supporting:
@@ -35,13 +39,24 @@
 #     - "Stage NN"
 #     - "Stage NNa"
 #
-# Revision History
-# ----------------
+# Changelog
+# ---------
 #
-## 2026-06-13  V7.0.0  (GAL)
+# 2026-06-13  V7.0.0  (GAL)
 # • Created V7 branch from production parser V6.8.3 baseline.
-# • Begin Scene-aware virtual preview architecture.
-# • Preserve V6.8.3 materialization behavior as baseline requirement.
+# • Added isolated V7 defaults:
+#     - lor_output_v7_scene.db
+#     - Database Previews V6.6.4
+# • Added LOR V6.6 scenes table and scene metadata extraction.
+# • Confirmed scenes are self-closing XML markers using positional grouping:
+#     - <Scene ... />
+#     - following <PropClass ... /> rows belong to that scene until next Scene marker.
+# • Confirmed scenes are sequencing/presentation workspaces, not display identities.
+# • Preserved V6.8.3 materialization behavior as baseline requirement.
+# • Added SCENE_DEBUG gate for scene diagnostics.
+# • Removed legacy spreadsheet comparison hook from V7.
+# • Fixed report output path for V7 preview folder.
+# • Fixed generated timestamp to use local system timezone.
 #
 #
 ## 2026-02-26  V6.8.3  (GAL)
@@ -178,7 +193,7 @@ except Exception:
 # ============================= G: ONLY ============================= #
 G = Path(r"G:\Shared drives\MSB Database")
 # GAL 25-10-23 reports directory for collision CSVs and audits
-REPORTS_DIR = Path(r"G:\Shared drives\MSB Database\Database Previews\reports")
+REPORTS_DIR = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports")
 def require_g():
     if not G.exists():
         print("[FATAL] G: drive not available. All data lives on the shared drive.")
@@ -218,6 +233,9 @@ DEBUG = False  # Global debug flag
 
 # GAL 25-10-22: toggle for ultra-verbose preview dict logging
 PREVIEW_DEBUG = False  # set True only when you want the full preview dict dumped
+
+# GAL 26-06-12: toggle for ultra-verbose preview dict logging
+SCENE_DEBUG = False  # set True only when you want the full scene diagnostics
 
 # ------------------------------------------------------------
 # V7 default paths
@@ -820,7 +838,7 @@ def _who_ran() -> str:
 def _notice_text(preview_path: str | Path, db_file: str | Path, actor: str | None = None) -> str:
     # GAL 25-10-22 (GAL): include Actor; list standard artifacts; tack on
     # optional audit reports if they exist. No behavior changes for callers.
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ts = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     actor = actor or _who_ran()
 
     # Core body (unchanged, preserving your wording/layout)
@@ -1107,132 +1125,61 @@ def locate_preview_class_deep(file_path):
         tree = ET.parse(file_path)
         root = tree.getroot()
 
-        # ------------------------------------------------------------
-        # V7 Scene Detection (diagnostic only) GAL 26-06-13
-        # ------------------------------------------------------------
-
         scene_nodes = []
 
         for element in root.iter():
-            if "scene" in element.tag.lower():
+            if element.tag.endswith("Scene"):
                 scene_nodes.append(element)
 
-        print(f"[V7] Scene-related node count: {len(scene_nodes)}")
+        if SCENE_DEBUG:
+            current_scene = None
+            scene_prop_counts = {}
+            scene_display_counts = {}
+            scene_display_names = {}
 
-        for scene in scene_nodes[:25]:
-            print(
-                "[V7] Scene Node:",
-                scene.tag,
-                "| attrs:",
-                scene.attrib
-            )
+            for element in root.iter():
+                if element.tag.endswith("Scene"):
+                    current_scene = {
+                        "SceneID": element.get("id"),
+                        "Name": element.get("Name"),
+                        "StageID": extract_stage_id(element.get("Name")),
+                    }
 
-        # ------------------------------------------------------------
-        # V7 Scene Membership Diagnostic GAL 26-06-13
-        # ------------------------------------------------------------
+                    key = current_scene["SceneID"]
+                    scene_prop_counts.setdefault(key, 0)
+                    scene_display_counts.setdefault(key, set())
+                    scene_display_names.setdefault(key, current_scene)
+                    continue
 
-        for scene in scene_nodes[:5]:
+                if not element.tag.endswith("PropClass"):
+                    continue
 
-            scene_name = scene.attrib.get("Name", "")
-            scene_id = scene.attrib.get("id", "")
+                if current_scene is None:
+                    continue
 
-            prop_children = []
+                scene_id = current_scene["SceneID"]
+                display_name = (element.get("Comment") or "").strip()
 
-            for child in scene.iter():
-                if child.tag.endswith("PropClass"):
-                    prop_children.append(child)
+                scene_prop_counts[scene_id] = scene_prop_counts.get(scene_id, 0) + 1
 
-            print(
-                f"[V7] Scene Membership: "
-                f"{scene_name} | id={scene_id} | "
-                f"PropClass children={len(prop_children)}"
-            )
+                if display_name:
+                    scene_display_counts.setdefault(scene_id, set()).add(display_name)
 
-            for prop in prop_children[:10]:
+            print("\n[V7] Positional Scene Summary -------------------------")
+
+            for scene_id, scene_info in scene_display_names.items():
+                prop_count = scene_prop_counts.get(scene_id, 0)
+                display_count = len(scene_display_counts.get(scene_id, set()))
+
                 print(
-                    "    [V7] Prop:",
-                    prop.attrib.get("Name"),
-                    "| Comment:",
-                    prop.attrib.get("Comment"),
-                    "| id:",
-                    prop.attrib.get("id")
+                    f"[V7] Scene Summary: "
+                    f"{scene_info['Name']} | "
+                    f"StageID={scene_info['StageID']} | "
+                    f"PropClass rows={prop_count} | "
+                    f"DisplayName count={display_count}"
                 )
 
-        # ------------------------------------------------------------
-        # V7 Prop Scene Reference Diagnostic GAL 26-06-13
-        # ------------------------------------------------------------
 
-        scene_ids = {
-            (scene.attrib.get("id") or "").strip()
-            for scene in scene_nodes
-            if (scene.attrib.get("id") or "").strip()
-        }
-
-        scene_ref_hits = []
-
-        for prop in root.findall(".//PropClass"):
-            for attr_name, attr_value in prop.attrib.items():
-                val = (attr_value or "").strip()
-                if val in scene_ids or any(scene_id in val for scene_id in scene_ids):
-                    scene_ref_hits.append(
-                        {
-                            "PropName": prop.attrib.get("Name", ""),
-                            "Comment": prop.attrib.get("Comment", ""),
-                            "PropID": prop.attrib.get("id", ""),
-                            "AttrName": attr_name,
-                            "AttrValue": val,
-                        }
-                    )
-
-        print(f"[V7] Prop scene reference hits: {len(scene_ref_hits)}")
-
-        for hit in scene_ref_hits[:25]:
-            print(
-                "[V7] Prop Scene Ref:",
-                hit["PropName"],
-                "| Comment:",
-                hit["Comment"],
-                "| PropID:",
-                hit["PropID"],
-                "|",
-                hit["AttrName"],
-                "=",
-                hit["AttrValue"],
-            )
-
-        # ------------------------------------------------------------
-        # V7 Global Scene Reference Diagnostic GAL 26-06-13
-        # ------------------------------------------------------------
-
-        global_scene_ref_hits = []
-
-        for element in root.iter():
-            for attr_name, attr_value in element.attrib.items():
-                val = (attr_value or "").strip()
-
-                if val in scene_ids or any(scene_id in val for scene_id in scene_ids):
-                    global_scene_ref_hits.append(
-                        {
-                            "Tag": element.tag,
-                            "AttrName": attr_name,
-                            "AttrValue": val,
-                            "AllAttrs": dict(element.attrib),
-                        }
-                    )
-
-        print(f"[V7] Global scene reference hits: {len(global_scene_ref_hits)}")
-
-        for hit in global_scene_ref_hits[:50]:
-            print(
-                "[V7] Global Scene Ref:",
-                hit["Tag"],
-                "|",
-                hit["AttrName"],
-                "=",
-                hit["AttrValue"],
-                "| attrs:",
-                hit["AllAttrs"],
-            )
 
         # Deep search for PreviewClass
         for element in root.iter():
@@ -3781,7 +3728,7 @@ def write_stage_display_report(db_file: str, out_dir_hint: str | None = None) ->
         stage_map[stage_bucket].setdefault(label, []).append((disp, has))
 
     # Emit simple printable HTML
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    ts = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     html = [
         "<!doctype html><meta charset='utf-8'>",
         "<title>MSB — Stage Display Listing</title>",
