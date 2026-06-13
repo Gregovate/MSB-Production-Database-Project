@@ -215,12 +215,26 @@ def get_reports_dir() -> str:
 
 # ---- Global flags & defaults (must be defined before functions) ----
 DEBUG = False  # Global debug flag
+
 # GAL 25-10-22: toggle for ultra-verbose preview dict logging
 PREVIEW_DEBUG = False  # set True only when you want the full preview dict dumped
 
-# Hard-set G:\ defaults
-DEFAULT_DB_FILE      = G / "database" / "lor_output_v6.db"
-DEFAULT_PREVIEW_PATH = G / "Database Previews"
+# ------------------------------------------------------------
+# V7 default paths
+# ------------------------------------------------------------
+# This file lives in:
+#   <repo_root>/parsers/experimental/parse_props_v7_scene_parser.py
+#
+# parents[0] = experimental
+# parents[1] = parsers
+# parents[2] = repo root
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+DEFAULT_DB_FILE = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
+
+DEFAULT_PREVIEW_PATH = Path(
+    r"G:\Shared drives\MSB Database\Database Previews V6.6.4"
+)
 
 # Globals that existing functions use; will be set/confirmed in main()
 DB_FILE = DEFAULT_DB_FILE
@@ -1071,6 +1085,26 @@ def locate_preview_class_deep(file_path):
     try:
         tree = ET.parse(file_path)
         root = tree.getroot()
+
+        # ------------------------------------------------------------
+        # V7 Scene Detection (diagnostic only) GAL 26-06-13
+        # ------------------------------------------------------------
+
+        scene_nodes = []
+
+        for element in root.iter():
+            if "scene" in element.tag.lower():
+                scene_nodes.append(element)
+
+        print(f"[V7] Scene-related node count: {len(scene_nodes)}")
+
+        for scene in scene_nodes[:25]:
+            print(
+                "[V7] Scene Node:",
+                scene.tag,
+                "| attrs:",
+                scene.attrib
+            )
 
         # Deep search for PreviewClass
         for element in root.iter():
@@ -3276,31 +3310,35 @@ WHERE ConnectionType = 'FIELD';
     #     conn.commit()
     #     print("[INFO] Created breaking_check_v6 view")
 
-    # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
-    try:
-        import subprocess, sys, os
+    # GAL 2026-06-13:
+    # Legacy spreadsheet comparison removed from V7.
+    # Display validation now belongs in parser validation and PostgreSQL import review.
 
-        # --- Only run this compare when:
-        #     1) We are writing to the production DB, AND
-        #     2) The caller did not explicitly disable it via env var.
-        DEFAULT_PROD_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
-        _db_norm = os.path.normcase(os.path.normpath(str(DB_PATH)))
-        _prod_norm = os.path.normcase(os.path.normpath(DEFAULT_PROD_DB))
-        _skip = os.environ.get("MSB_SKIP_DISPLAYS_COMPARE", "0") == "1"
+    # # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
+    # try:
+    #     import subprocess, sys, os
 
-        if not _skip and _db_norm == _prod_norm:
-            compare_script = r"G:\Shared drives\MSB Database\Spreadsheet\compare_displays_vs_db.py"
-            if os.path.exists(compare_script):
-                print("[INFO] Running compare_displays_vs_db.py …")
-                subprocess.run([sys.executable, compare_script], check=False)
-            else:
-                print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
-        else:
-            reason = "env flag" if _skip else "non-production DB"
-            print(f"[INFO] Skipping compare_displays_vs_db ({reason}).")
+    #     # --- Only run this compare when:
+    #     #     1) We are writing to the production DB, AND
+    #     #     2) The caller did not explicitly disable it via env var.
+    #     DEFAULT_PROD_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
+    #     _db_norm = os.path.normcase(os.path.normpath(str(DB_PATH)))
+    #     _prod_norm = os.path.normcase(os.path.normpath(DEFAULT_PROD_DB))
+    #     _skip = os.environ.get("MSB_SKIP_DISPLAYS_COMPARE", "0") == "1"
 
-    except Exception as e:
-        print(f"[WARN] Could not run compare script: {e}")
+    #     if not _skip and _db_norm == _prod_norm:
+    #         compare_script = r"G:\Shared drives\MSB Database\Spreadsheet\compare_displays_vs_db.py"
+    #         if os.path.exists(compare_script):
+    #             print("[INFO] Running compare_displays_vs_db.py …")
+    #             subprocess.run([sys.executable, compare_script], check=False)
+    #         else:
+    #             print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
+    #     else:
+    #         reason = "env flag" if _skip else "non-production DB"
+    #         print(f"[INFO] Skipping compare_displays_vs_db ({reason}).")
+
+    # except Exception as e:
+    #     print(f"[WARN] Could not run compare script: {e}")
 
 
 # === Stage Display views + printable report (GAL 25-10-23) ===================
