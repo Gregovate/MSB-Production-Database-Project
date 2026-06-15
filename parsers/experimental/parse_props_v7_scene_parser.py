@@ -968,6 +968,7 @@ def setup_database():
     cursor.execute("DROP TABLE IF EXISTS subProps")
     cursor.execute("DROP TABLE IF EXISTS dmxChannels")
     cursor.execute("DROP TABLE IF EXISTS scenes")
+    cursor.execute("DROP TABLE IF EXISTS scene_lor_props")
 
     # Create Previews Table
     # GAL 25-10-16: Table mirrors Core Model v1.0 preview fields (PreviewID/Name/BackgroundFile)
@@ -1000,6 +1001,27 @@ def setup_database():
         Zoom INTEGER,
         CreateGridView TEXT,
         FOREIGN KEY (PreviewId) REFERENCES previews (id)
+    )
+    """)
+
+    # Create Scene LOR Props Table
+    # GAL 2026-06-15: Current positional scene membership.
+    # Rebuilt per PreviewId on each parse to prevent stale scene assignments.
+    cursor.execute("""
+    CREATE TABLE scene_lor_props (
+        IntScenePropID INTEGER PRIMARY KEY AUTOINCREMENT,
+        PreviewId TEXT NOT NULL,
+        PropID TEXT NOT NULL,
+        RawPropID TEXT NOT NULL,
+        SceneID TEXT,
+        PreviewStageID TEXT,
+        SceneStageID TEXT,
+        ScenePropOrdinal INTEGER,
+        SceneRole TEXT DEFAULT 'SCENE_MEMBER',
+        Source TEXT DEFAULT 'POSITIONAL',
+        FOREIGN KEY (PreviewId) REFERENCES previews (id),
+        FOREIGN KEY (SceneID) REFERENCES scenes (SceneID),
+        UNIQUE (PreviewId, PropID)
     )
     """)
 
@@ -1288,6 +1310,85 @@ def process_scenes(preview_id: str, root):
 
     INFO(f"Scenes inserted: {scene_count}", ctx=preview_id)
 
+def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root):
+    """
+    Build current positional Scene -> Prop membership for one preview.
+
+    Rules:
+      - Walk XML in document order.
+      - Current scene starts at <Scene>.
+      - Following <PropClass> rows belong to that scene until next <Scene>.
+      - SceneStageID may be NULL.
+      - PreviewStageID carries the parent preview/stage context.
+      - Rebuild per PreviewId to prevent stale scene assignments when props move.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        DELETE FROM scene_lor_props
+        WHERE PreviewId = ?
+    """, (preview_id,))
+
+    current_scene_id = None
+    current_scene_stage_id = None
+    ordinal = 0
+    inserted = 0
+
+    for element in root.iter():
+        if element.tag.endswith("Scene"):
+            current_scene_id = element.get("id")
+            current_scene_stage_id = extract_stage_id(element.get("Name"))
+            ordinal = 0
+            continue
+
+        if not element.tag.endswith("PropClass"):
+            continue
+
+        # Prop before first scene marker: ignore for now.
+        if current_scene_id is None:
+            continue
+
+        raw_prop_id = (element.get("id") or "").strip()
+        if not raw_prop_id:
+            continue
+
+        ordinal += 1
+
+        prop_id = scoped_id(preview_id, raw_prop_id)
+
+        cursor.execute("""
+            INSERT OR REPLACE INTO scene_lor_props (
+                PreviewId,
+                PropID,
+                RawPropID,
+                SceneID,
+                PreviewStageID,
+                SceneStageID,
+                ScenePropOrdinal,
+                SceneRole,
+                Source
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            preview_id,
+            prop_id,
+            raw_prop_id,
+            current_scene_id,
+            preview_stage_id,
+            current_scene_stage_id,
+            ordinal,
+            "SCENE_MEMBER",
+            "POSITIONAL",
+        ))
+
+        inserted += 1
+
+    conn.commit()
+    conn.close()
+
+    INFO(f"Scene prop memberships inserted: {inserted}", ctx=preview_id)
+
 def extract_stage_id(name: str | None):
     """
     Return normalized StageID or None.
@@ -1456,6 +1557,47 @@ def insert_scene_data(scene_data):
         safe_int(scene_data["VScroll"], None),
         safe_int(scene_data["Zoom"], None),
         scene_data["CreateGridView"],
+    ))
+
+    conn.commit()
+    conn.close()
+
+def insert_scene_lor_prop(scene_prop_data):
+    """
+    Insert one current positional Scene -> Prop membership row.
+
+    GAL 2026-06-15:
+    - scene_lor_props is rebuilt per PreviewId during parse.
+    - UNIQUE (PreviewId, PropID) prevents one prop from being assigned
+      to multiple scenes in the same preview.
+    - NULL SceneStageID is allowed for misc/default scenes.
+    """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT OR REPLACE INTO scene_lor_props (
+        PreviewId,
+        PropID,
+        RawPropID,
+        SceneID,
+        PreviewStageID,
+        SceneStageID,
+        ScenePropOrdinal,
+        SceneRole,
+        Source
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        scene_prop_data["PreviewId"],
+        scene_prop_data["PropID"],
+        scene_prop_data["RawPropID"],
+        scene_prop_data["SceneID"],
+        scene_prop_data["PreviewStageID"],
+        scene_prop_data["SceneStageID"],
+        scene_prop_data["ScenePropOrdinal"],
+        scene_prop_data["SceneRole"],
+        scene_prop_data["Source"],
     ))
 
     conn.commit()
@@ -2849,6 +2991,12 @@ def process_file(file_path):
 
         process_scenes(preview_data["id"], root)
 
+        process_scene_lor_props(
+            preview_data["id"],
+            preview_data["StageID"],
+            root
+        )
+
         # Parse and process DeviceType == None and DMX props
         tree = ET.parse(file_path)
         root = tree.getroot()
@@ -3142,6 +3290,62 @@ def audit_displayname_masters_unique_across_previews(
     print(f"[ERROR] Grouped by preview: {out_csv_grouped}")
     raise SystemExit(2)
 
+def create_scene_views_v7(db_file: str):
+    """
+    GAL 2026-06-15:
+    Scene validation/reporting views for V7 scene architecture.
+    """
+    import sqlite3
+
+    ddl = r"""
+DROP VIEW IF EXISTS scene_prop_count_vw;
+CREATE VIEW scene_prop_count_vw AS
+SELECT
+    p.Name AS PreviewName,
+    s.SceneID,
+    s.Name AS SceneName,
+    s.StageID AS SceneStageID,
+    slp.PreviewStageID,
+    COUNT(*) AS PropCount
+FROM scene_lor_props slp
+JOIN scenes s ON s.SceneID = slp.SceneID
+JOIN previews p ON p.id = slp.PreviewId
+GROUP BY
+    p.Name, s.SceneID, s.Name, s.StageID, slp.PreviewStageID;
+
+DROP VIEW IF EXISTS scene_duplicate_prop_assignment_vw;
+CREATE VIEW scene_duplicate_prop_assignment_vw AS
+SELECT
+    PreviewId,
+    PropID,
+    COUNT(*) AS AssignmentCount
+FROM scene_lor_props
+GROUP BY PreviewId, PropID
+HAVING COUNT(*) > 1;
+
+DROP VIEW IF EXISTS scene_null_stage_review_vw;
+CREATE VIEW scene_null_stage_review_vw AS
+SELECT
+    p.Name AS PreviewName,
+    s.SceneID,
+    s.Name AS SceneName,
+    slp.PreviewStageID,
+    COUNT(*) AS PropCount
+FROM scene_lor_props slp
+JOIN scenes s ON s.SceneID = slp.SceneID
+JOIN previews p ON p.id = slp.PreviewId
+WHERE slp.SceneStageID IS NULL
+GROUP BY
+    p.Name, s.SceneID, s.Name, slp.PreviewStageID;
+"""
+
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.executescript(ddl)
+        conn.commit()
+        print("[INFO] Created V7 scene validation views.")
+    finally:
+        conn.close()
 
 def main():
     """Main entry point for the script."""
@@ -3198,6 +3402,8 @@ def main():
 
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
+
+    create_scene_views_v7(DB_FILE)
 
     # ✅ Build the Stage Display views and write printable report (includes “no wiring” items)
     write_stage_display_report(DEFAULT_DB_FILE)   # GAL 25-10-23
@@ -3268,6 +3474,7 @@ def main():
     Indexes
       - Adds supporting indexes on props/subProps/dmxChannels for faster filtering/sorting.
     """
+
 def create_wiring_views_v6(db_file: str):
     """
     Build channel-centric wiring views (map + sorted) and field-wiring helpers.
@@ -3666,6 +3873,8 @@ SELECT DisplayName
 FROM stage_display_list_all_v1
 WHERE StageBucket='Unassigned';
 """
+
+
 
 def _ensure_stage_views(db_file: str) -> None:
     """Create/refresh Stage Display SQL views (safe to run every parse).  GAL 25-10-23"""
