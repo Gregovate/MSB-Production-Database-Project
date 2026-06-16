@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-06-13  V7.0.0
+# Current Version : 2026-06-15  V7.0.2
 #
 # Author:
 #   Greg Liebig
@@ -18,6 +18,8 @@
 #   • dmxChannels
 #   • scenes
 #   • wiring/report views
+#   • scene_lor_props
+#   • scene validation/report views
 #
 # V7 extends the proven V6.8.3 parser to support the
 # Light-O-Rama V6.6 Scene architecture while preserving
@@ -38,9 +40,26 @@
 #     - NNa
 #     - "Stage NN"
 #     - "Stage NNa"
+# • Only preview-level (P) scenes exported in .lorprev are database-authoritative.
+# • Sequence-level (S) scenes are sequencing helpers and are intentionally excluded.
+# • scene_lor_props is parser/internal sync plumbing, not a Directus business object.
+# • Directus/reporting should consume display-level scene views, not raw PropID membership.
 #
 # Changelog
 # ---------
+## 2026-06-15  V7.0.2  (GAL)
+# • Added scene_lor_props to materialize current positional Scene -> Prop membership.
+# • Rebuilds scene_lor_props per PreviewId to prevent stale scene assignments when props move.
+# • Added V7 scene validation views:
+#     - scene_prop_count_vw
+#     - scene_duplicate_prop_assignment_vw
+#     - scene_null_stage_review_vw
+# • Added scene display reporting views:
+#     - scene_displays_vw
+#     - scene_display_count_vw
+# • Documented Preview-level (P) scenes as database-authoritative.
+# • Documented Sequence-level (S) scenes as sequencing-only and intentionally excluded.
+# • Preserved NULL SceneStageID support for misc/default preview-level scenes.
 #
 # 2026-06-13  V7.0.0  (GAL)
 # • Created V7 branch from production parser V6.8.3 baseline.
@@ -1279,10 +1298,16 @@ def extract_scene_section(scene_name: str | None) -> str | None:
 
 def process_scenes(preview_id: str, root):
     """
-    Extract LOR V6.6 Scene metadata.
+    Extract LOR V6.6 Scene metadata. 2026/06/15 GAL.
 
     Scenes are sequencing workspaces / camera views.
     They do NOT own props and must not change display identity.
+    Only (P) Preview scenes are database-authoritative.
+
+    (S) Sequence scenes are sequencing-only workspaces and must not be imported into the database.
+    If a display is only assigned to an (S) scene, it may still exist in the preview,
+    but it will not be assigned to a database scene.
+
     """
     scene_count = 0
 
@@ -1321,6 +1346,13 @@ def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root)
       - SceneStageID may be NULL.
       - PreviewStageID carries the parent preview/stage context.
       - Rebuild per PreviewId to prevent stale scene assignments when props move.
+        (P) = show / preview / database scope
+        (S) = sequencing helper scope
+
+        If a display is only assigned to an (S) scene, it may still exist in the preview,
+        but it will not be assigned to a database scene
+
+        Displays can appear to “disappear” from scene reports if they are placed only in (S) sequence scenes.
     """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -3294,6 +3326,12 @@ def create_scene_views_v7(db_file: str):
     """
     GAL 2026-06-15:
     Scene validation/reporting views for V7 scene architecture.
+    GAL 2026-06-15
+    Scene -> Display business view.
+
+    IMPORTANT:
+    Only preview-level (P) scenes exported to .lorprev are represented.
+    Sequence-level (S) scenes are intentionally excluded from database reporting.
     """
     import sqlite3
 
@@ -3337,6 +3375,17 @@ JOIN previews p ON p.id = slp.PreviewId
 WHERE slp.SceneStageID IS NULL
 GROUP BY
     p.Name, s.SceneID, s.Name, slp.PreviewStageID;
+
+DROP VIEW IF EXISTS scene_display_count_vw;
+CREATE VIEW scene_display_count_vw AS
+SELECT
+    PreviewName,
+    SceneName,
+    COUNT(*) AS DisplayRows
+FROM scene_displays_vw
+GROUP BY
+    PreviewName,
+    SceneName;
 """
 
     conn = sqlite3.connect(db_file)
