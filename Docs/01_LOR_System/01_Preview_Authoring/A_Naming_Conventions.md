@@ -3,7 +3,7 @@
 - Filename: A_Naming_Conventions.md
 - version: 2026-03-24
 - author: Greg Liebig / Engineering Innovations, LLC
-- 
+
 ---
 
 These conventions ensure consistent naming across:
