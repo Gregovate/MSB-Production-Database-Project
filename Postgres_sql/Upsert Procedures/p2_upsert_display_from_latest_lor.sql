@@ -6,7 +6,6 @@ Purpose:
   Upsert NON-SPARE displays into ref.display from latest LOR snapshot.
   Route SPARE items into ref.spare_channel.
   Ensure NO SPARE rows remain in ref.display for latest run set.
-    Uses parse_props_v6.py Version 2026-02-26  V6.8.3  (GAL)
 
 Revision History:
   2026-02-27 GAL  Fix CTE scope bug by materializing tmp_classified.
