@@ -6,7 +6,7 @@
 | Item | Value |
 |------|-------|
 | Document | 00 - Google Drive Folder Structure |
-| Revision | 1.0 Draft |
+| Revision | 1.1 Draft |
 | Date | 2026-07-29 |
 | Author | Greg Liebig |
 | Status | Draft |
@@ -20,14 +20,16 @@ LOR is **not** the production database, nor is it the authoritative location for
 
 Instead, LOR is one component of a larger engineering information system consisting of:
 
-- Google Shared Drive Displays Folder
-- Goolge shared drive Seasonal Folder
+- Google Shared Drive – Display Folders
+- Google Shared Drive – Seasonal Folders
 - LOR Preview Authoring
 - V7 Import Parser
 - Production PostgreSQL Database
 - Operational Applications
 
-This document provides the architectural overview of those systems and establishes the governing principles used to organize engineering information. This document establishes where engineering information belongs, not how individual engineering documents are created.
+Each system has a specific responsibility. Together they provide the complete engineering and operational information system used to design, build, install, maintain, and operate the annual display.
+
+This document provides the architectural overview of those systems and establishes the governing principles used to organize engineering information. It defines where engineering information belongs rather than how individual engineering documents are created.
 
 Detailed implementation standards are documented elsewhere.
 
@@ -243,6 +245,10 @@ Examples include:
 - Throwing Bears
 - Sliding Penguins
 
+Scenes simplify preview authoring by dividing large or complex areas of the display into manageable workspaces.
+
+As the engineering documentation continues to evolve, Scene folders also provide an appropriate location for scene-specific wiring documentation, background images, procedures, photographs, and other engineering information that applies to the scene as a whole rather than to an individual display.
+
 Scenes improve preview authoring and documentation organization.
 
 Scenes do not define physical display identity.
@@ -288,11 +294,13 @@ The Wiring folder contains both published field documentation and the source doc
 
 # Production Database
 
-The Production Database indexes and relates information contained within the Engineering Repository.
+The Production Database indexes and relates information contained within the Google Shared Drive.
 
 It does not replace engineering documentation.
 
-Instead, it provides operational access to information through applications such as:
+Engineering drawings, wiring documentation, procedures, photographs, manuals, and other engineering records remain within the Google Shared Drive where they can be maintained independently of the database.
+
+Instead, the Production Database provides operational access to that information through applications such as:
 
 - QR scanning
 - FormView
@@ -300,6 +308,8 @@ Instead, it provides operational access to information through applications such
 - Work Orders
 - Label Printing
 - GPS
+
+This approach allows engineering documentation and operational data to work together while preserving a single authoritative location for engineering information.
 
 ---
 
@@ -317,12 +327,26 @@ All new engineering documentation should follow the organizational principles de
 
 # Related Documentation
 
-01 LOR System Definitions
+- [LOR System Overview](01_LOR_System/00_Project_Overview/00_LOR_System_Overview.md)
+- [Preview Authoring](01_LOR_System/01_Preview_Authoring/B_Building_Preview_Howto.md)
+- [LOR Data Extraction and Troubleshooting](01_LOR_System/02_Data_Extraction/Troubleshooting.md)
+- [Production Database System Blueprint](02_Production_Database/01_System_Architecture/A_System_Blueprint.md)
+- [LOR Naming Data Contract](02_Production_Database/01_System_Architecture/C_LOR%20Naming%20Data%20Contract.md)
+- [Production Database Structure](02_Production_Database/01_System_Architecture/D_Database_Structure.md)
+- [Documentation Index](README.md)
 
-Preview Authoring
+---
 
-V7 Import Process
+---
 
-Production Database Architecture
+# Summary
 
-Operations Documentation
+The Google Shared Drive provides the permanent engineering record for the Making Spirits Bright display.
+
+The Light-O-Rama system provides preview authoring for the annual display.
+
+The V7 Import Parser extracts authoritative preview information from LOR into the Production Database.
+
+The Production Database integrates engineering information with operational data to support field applications, reporting, QR code access, labeling, maintenance, and future operational tools.
+
+Together, these systems form the complete engineering information system used to design, build, install, maintain, and operate the Making Spirits Bright Christmas display.
