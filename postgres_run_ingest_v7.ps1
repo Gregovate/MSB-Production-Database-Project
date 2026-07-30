@@ -1,75 +1,35 @@
-# MSB Database — Postgres Snapshot Ingest Runner
+param (
+    [string]$SQLitePath = "G:\Shared drives\MSB Database\database\lor_output_v7_scene.db",
+    [string]$Notes = "V7 scene-aware LOR snapshot ingest"
+)
+
+# =============================================================================
+# MSB Database - Postgres Snapshot Ingest Runner
 # postgres_run_ingest_v7.ps1
 #
 # Initial Release : 2026-02-23  V0.1.0
-# Version         : 2026-03-18  V0.2.0
-# Current Version : 2026-03-18  V0.2.0
+# Version         : 2026-07-29  V0.3.0
+# Current Version : 2026-07-29  V0.3.0
+#
+# Purpose:
+#   Secure wrapper for the V7 scene-aware SQLite-to-Postgres snapshot ingest.
 #
 # Changes:
-# - Enforced ingestion of lor_output_v7.db (raw PropID model restored)
-# - Added hard safety check to prevent accidental v6 ingestion
-# - Updated default notes for v7 migration run
+#   - Uses lor_output_v7_scene.db.
+#   - Calls postgres_ingest_from_lor_sqlite_v7.py.
+#   - Preserves the append-only lor_snap import_run model.
+#   - Prompts securely for the Postgres password.
 #
-# Author          : Greg Liebig, Engineering Innovations, LLC.
+# Change Log:
+#   2026-07-29  GAL  V0.3.0
+#     Updated for V7 scene-aware snapshot ingestion.
 #
-# Purpose
-# -------
-# Secure wrapper to run the SQLite → Postgres snapshot ingest script.
+#   2026-03-18  GAL  V0.2.0
+#     Enforced V7 raw PropID ingestion and blocked obsolete V6 snapshots.
 #
-# This runner:
-#   • Prompts for Postgres password securely (not stored)
-#   • Sets PGPASSWORD environment variable temporarily
-#   • Executes postgres_ingest_from_lor_sqlite.py
-#   • Clears credentials after execution
-#
-# Safety Rules
-# ------------
-# • Only lor_output_v7.db is permitted for ingestion.
-# • Prevents accidental ingestion of obsolete v6 snapshots.
-# • Requires explicit override to use any other SQLite file.
-#
-# Inputs
-# ------
-# Default SQLite file:
-#   G:\Shared drives\MSB Database\database\lor_output_v7.db
-#
-# Target
-# ------
-# Host      : 192.168.5.9  (msb-prod-db)
-# Database  : msb
-# Schema    : lor_snap
-#
-# Execution
-# ---------
-# Run from PowerShell:
-#
-#   .\postgres_run_ingest.ps1
-#
-# Optional override (not recommended):
-#
-#   .\postgres_run_ingest.ps1 -SQLitePath "path\to\lor_output_v7.db"
-#
-# Notes
-# -----
-# This script performs NO data transformations.
-# It is a transport layer only (append-only import_run model).
-#
-# Source of Truth
-# ---------------
-# Wiring, channel mapping, and display metadata originate in LOR.
-# Postgres stores historical snapshots for operational workflows.
-#
-# -----------------------------------------------------------------------------
-# Change Log
-# 2026-03-18  GAL
-#   - Enforce v7 raw PropID ingestion
-#   - Added safety guard against v6 snapshot ingestion
-# -----------------------------------------------------------------------------
-
-param (
-    [string]$SQLitePath = "G:\Shared drives\MSB Database\database\lor_output_v7.db",
-    [string]$Notes = "LOR snapshot ingest v7 raw PropID restore"
-)
+#   2026-02-23  GAL  V0.1.0
+#     Initial release.
+# =============================================================================
 
 $pgHost = "192.168.5.9"
 $pgDb = "msb"
@@ -79,9 +39,9 @@ Write-Host "MSB Postgres Snapshot Ingest"
 Write-Host "SQLite: $SQLitePath"
 Write-Host ""
 
-# ---- Safety check: only allow v7 database ----
-$expectedName = "lor_output_v7.db"
-$actualName = [System.IO.Path]::GetFileName($SQLitePath).ToLower()
+# Safety check: only allow the approved V7 scene-aware database.
+$expectedName = "lor_output_v7_scene.db"
+$actualName = [System.IO.Path]::GetFileName($SQLitePath).ToLowerInvariant()
 
 if ($actualName -ne $expectedName) {
     Write-Host ""
@@ -92,19 +52,54 @@ if ($actualName -ne $expectedName) {
     exit 1
 }
 
-# Secure password prompt
+if (-not (Test-Path -LiteralPath $SQLitePath -PathType Leaf)) {
+    Write-Host ""
+    Write-Host "FATAL: SQLite file not found." -ForegroundColor Red
+    Write-Host "Path: $SQLitePath"
+    exit 1
+}
+
+$pythonScript = Join-Path $PSScriptRoot "postgres_ingest_from_lor_sqlite_v7.py"
+
+if (-not (Test-Path -LiteralPath $pythonScript -PathType Leaf)) {
+    Write-Host ""
+    Write-Host "FATAL: Python ingest script not found." -ForegroundColor Red
+    Write-Host "Expected: $pythonScript"
+    exit 1
+}
+
 $SecurePass = Read-Host "Enter Postgres password" -AsSecureString
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePass)
-$PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 
-$env:PGPASSWORD = $PlainPassword
+try {
+    $PlainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+    $env:PGPASSWORD = $PlainPassword
 
-python postgres_ingest_from_lor_sqlite.py `
-    --sqlite "$SQLitePath" `
-    --pg-host "$pgHost" `
-    --pg-db "$pgDb" `
-    --pg-user "$pgUser" `
-    --notes "$Notes"
+    & python $pythonScript `
+        --sqlite $SQLitePath `
+        --pg-host $pgHost `
+        --pg-db $pgDb `
+        --pg-user $pgUser `
+        --notes $Notes
 
-# Clear password from environment after run
-Remove-Item Env:\PGPASSWORD
+    $exitCode = $LASTEXITCODE
+}
+finally {
+    Remove-Item Env:\PGPASSWORD -ErrorAction SilentlyContinue
+
+    if ($BSTR -ne [IntPtr]::Zero) {
+        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+    }
+
+    $PlainPassword = $null
+    $SecurePass = $null
+}
+
+if ($exitCode -ne 0) {
+    Write-Host ""
+    Write-Host "Ingest failed with exit code $exitCode." -ForegroundColor Red
+    exit $exitCode
+}
+
+Write-Host ""
+Write-Host "Ingest runner completed successfully." -ForegroundColor Green

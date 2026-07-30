@@ -49,3 +49,6 @@ Based on everything we've learned so far, I would continue assuming:
 .lorscene = export/interchange format
 
 until that test proves otherwise.
+
+TODO:
+Investigate why HWY42 Traffic Signs exports the same SPARE PropID twice.
