@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-07-30  V7.0.3
+# Current Version : 2026-06-15  V7.0.2
 #
 # Author:
 #   Greg Liebig
@@ -47,15 +47,6 @@
 #
 # Changelog
 # ---------
-## 2026-07-30  V7.0.3  (GAL)
-# • Resolve positional scene XML rows to the display records materialized by the parser.
-# • Expand DeviceType=None inventory fan-out into scene membership for every physical row.
-# • Consolidate grouped DMX XML components onto the canonical DMX display master.
-# • Exclude blank-comment None layout helpers from display-level scene membership.
-# • Fail immediately on any unresolved nonblank scene row.
-# • Added a final scene membership integrity audit; parser completion now requires zero
-#   scene_lor_props rows missing from both props and subProps.
-#
 ## 2026-06-15  V7.0.2  (GAL)
 # • Added scene_lor_props to materialize current positional Scene -> Prop membership.
 # • Rebuilds scene_lor_props per PreviewId to prevent stale scene assignments when props move.
@@ -1346,7 +1337,7 @@ def process_scenes(preview_id: str, root):
 
 def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root):
     """
-    Build current positional Scene -> parsed-display membership for one preview.
+    Build current positional Scene -> Prop membership for one preview.
 
     Rules:
       - Walk XML in document order.
@@ -1354,16 +1345,6 @@ def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root)
       - Following <PropClass> rows belong to that scene until next <Scene>.
       - SceneStageID may be NULL.
       - PreviewStageID carries the parent preview/stage context.
-      - Resolve XML rows to the records actually produced by the parser:
-          * exact props/subProps ID for ordinary LOR rows;
-          * all suffixed props rows for DeviceType=None inventory fan-out;
-          * the canonical props row for DMX rows grouped by LORComment;
-          * the channel-owned row when a None row was intentionally skipped
-            because LOR/DMX owns the same display name.
-      - Blank-comment None rows are presentation/layout helpers, not database
-        displays, and are intentionally omitted.
-      - An unresolved nonblank row is a parser error; never leave a silent
-        orphan in scene_lor_props.
       - Rebuild per PreviewId to prevent stale scene assignments when props move.
         (P) = show / preview / database scope
         (S) = sequencing helper scope
@@ -1385,69 +1366,6 @@ def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root)
     current_scene_stage_id = None
     ordinal = 0
     inserted = 0
-    blank_helpers_skipped = 0
-    unresolved = []
-
-    def resolve_scene_prop_ids(element):
-        """Return the parsed props/subProps IDs represented by one XML row."""
-        raw_prop_id = (element.get("id") or "").strip()
-        if not raw_prop_id:
-            return []
-
-        xml_prop_id = scoped_id(preview_id, raw_prop_id)
-        comment = (element.get("Comment") or "").strip()
-
-        # Ordinary LOR master/subprop rows retain the scoped XML ID.
-        cursor.execute("""
-            SELECT PropID
-            FROM props
-            WHERE PreviewId = ? AND PropID = ?
-            UNION
-            SELECT SubPropID
-            FROM subProps
-            WHERE PreviewId = ? AND SubPropID = ?
-        """, (preview_id, xml_prop_id, preview_id, xml_prop_id))
-        exact = [row[0] for row in cursor.fetchall()]
-        if exact:
-            return exact
-
-        # DeviceType=None inventory masters may fan out to base-01..base-NN.
-        cursor.execute("""
-            SELECT PropID
-            FROM props
-            WHERE PreviewId = ?
-              AND PropID GLOB ?
-            ORDER BY PropID
-        """, (preview_id, f"{xml_prop_id}-[0-9][0-9]"))
-        fanout = [row[0] for row in cursor.fetchall()]
-        if fanout:
-            return fanout
-
-        # DMX components are grouped to one canonical master by display name.
-        # This also resolves None rows skipped because a channel-bearing record
-        # owns the same display name.
-        if comment:
-            cursor.execute("""
-                SELECT PropID
-                FROM props
-                WHERE PreviewId = ?
-                  AND LORComment = ?
-                ORDER BY
-                    CASE DeviceType
-                        WHEN 'DMX' THEN 0
-                        WHEN 'LOR' THEN 1
-                        ELSE 2
-                    END,
-                    COALESCE(UID, 'ZZ'),
-                    COALESCE(StartChannel, 1000000000),
-                    PropID
-                LIMIT 1
-            """, (preview_id, comment))
-            canonical = cursor.fetchone()
-            if canonical:
-                return [canonical[0]]
-
-        return []
 
     for element in root.iter():
         if element.tag.endswith("Scene"):
@@ -1469,74 +1387,39 @@ def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root)
 
         ordinal += 1
 
-        resolved_prop_ids = resolve_scene_prop_ids(element)
-        if not resolved_prop_ids:
-            comment = (element.get("Comment") or "").strip()
-            device_type = (element.get("DeviceType") or "").strip()
-            if not comment and device_type == "None":
-                blank_helpers_skipped += 1
-                continue
-            unresolved.append({
-                "RawPropID": raw_prop_id,
-                "Name": element.get("Name") or "",
-                "Comment": comment,
-                "DeviceType": device_type,
-                "SceneID": current_scene_id,
-            })
-            continue
+        prop_id = scoped_id(preview_id, raw_prop_id)
 
-        for prop_id in resolved_prop_ids:
-            # Several XML DMX components may resolve to one display master.
-            # Keep the first position rather than replacing it with the last.
-            cursor.execute("""
-                INSERT OR IGNORE INTO scene_lor_props (
-                    PreviewId,
-                    PropID,
-                    RawPropID,
-                    SceneID,
-                    PreviewStageID,
-                    SceneStageID,
-                    ScenePropOrdinal,
-                    SceneRole,
-                    Source
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                preview_id,
-                prop_id,
-                raw_prop_id,
-                current_scene_id,
-                preview_stage_id,
-                current_scene_stage_id,
-                ordinal,
-                "SCENE_MEMBER",
-                "POSITIONAL_RESOLVED",
-            ))
-            inserted += cursor.rowcount
+        cursor.execute("""
+            INSERT OR REPLACE INTO scene_lor_props (
+                PreviewId,
+                PropID,
+                RawPropID,
+                SceneID,
+                PreviewStageID,
+                SceneStageID,
+                ScenePropOrdinal,
+                SceneRole,
+                Source
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            preview_id,
+            prop_id,
+            raw_prop_id,
+            current_scene_id,
+            preview_stage_id,
+            current_scene_stage_id,
+            ordinal,
+            "SCENE_MEMBER",
+            "POSITIONAL",
+        ))
 
-    if unresolved:
-        conn.rollback()
-        details = "\n".join(
-            "  - "
-            f"SceneID={item['SceneID']} RawPropID={item['RawPropID']} "
-            f"DeviceType={item['DeviceType']!r} Name={item['Name']!r} "
-            f"Comment={item['Comment']!r}"
-            for item in unresolved
-        )
-        conn.close()
-        raise RuntimeError(
-            f"Unresolved nonblank scene PropClass rows for PreviewId={preview_id}:\n"
-            f"{details}"
-        )
+        inserted += 1
 
     conn.commit()
     conn.close()
 
-    INFO(
-        f"Scene display memberships inserted: {inserted}; "
-        f"blank layout helpers skipped: {blank_helpers_skipped}",
-        ctx=preview_id
-    )
+    INFO(f"Scene prop memberships inserted: {inserted}", ctx=preview_id)
 
 def extract_stage_id(name: str | None):
     """
@@ -1823,56 +1706,6 @@ def reconcile_subprops_to_canonical_master(db_file: str):
         conn.executescript(sql)
         conn.commit()
         print("[INFO] Reconciled subProps → canonical masters.")
-    finally:
-        conn.close()
-
-def audit_scene_membership_integrity(db_file: str):
-    """
-    Fail fast if a scene membership does not resolve to props or subProps.
-
-    scene_lor_props is intentionally polymorphic, so SQLite cannot express
-    this rule as one ordinary foreign key. Enforce it explicitly before any
-    reports or downstream ingest can treat the database as complete.
-    """
-    conn = sqlite3.connect(db_file)
-    try:
-        rows = conn.execute("""
-            SELECT
-                pv.Name AS PreviewName,
-                s.Name AS SceneName,
-                slp.RawPropID,
-                slp.PropID
-            FROM scene_lor_props slp
-            JOIN previews pv
-              ON pv.id = slp.PreviewId
-            LEFT JOIN scenes s
-              ON s.SceneID = slp.SceneID
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM props p
-                WHERE p.PropID = slp.PropID
-            )
-              AND NOT EXISTS (
-                SELECT 1
-                FROM subProps sp
-                WHERE sp.SubPropID = slp.PropID
-            )
-            ORDER BY pv.Name, s.Name, slp.ScenePropOrdinal
-        """).fetchall()
-
-        if rows:
-            details = "\n".join(
-                "  - "
-                f"Preview={preview_name!r} Scene={scene_name!r} "
-                f"RawPropID={raw_prop_id} PropID={prop_id}"
-                for preview_name, scene_name, raw_prop_id, prop_id in rows
-            )
-            raise RuntimeError(
-                f"Scene membership integrity audit failed: "
-                f"{len(rows)} unresolved row(s).\n{details}"
-            )
-
-        print("[OK] Scene membership integrity audit: 0 unresolved rows.")
     finally:
         conn.close()
 
@@ -3190,6 +3023,12 @@ def process_file(file_path):
 
         process_scenes(preview_data["id"], root)
 
+        process_scene_lor_props(
+            preview_data["id"],
+            preview_data["StageID"],
+            root
+        )
+
         # Parse and process DeviceType == None and DMX props
         tree = ET.parse(file_path)
         root = tree.getroot()
@@ -3230,14 +3069,6 @@ def process_file(file_path):
         process_dmx_props(preview_data["id"], root)
         process_lor_props(preview_data["id"], root)
         process_lor_multiple_channel_grids(preview_data["id"], root)
-
-        # Resolve scene membership only after all parser-owned props, subProps,
-        # DMX masters, and None inventory fan-out rows exist.
-        process_scene_lor_props(
-            preview_data["id"],
-            preview_data["StageID"],
-            root
-        )
     else:
         WARN(f"No <PreviewClass> found in {file_path}")
 
@@ -3617,10 +3448,6 @@ def main():
 
     # Reconciler (canon master snap)
     reconcile_subprops_to_canonical_master(DB_FILE)
-
-    # A scene membership must resolve to a parsed prop/subprop before reports
-    # or downstream ingest are allowed to use this database.
-    audit_scene_membership_integrity(DB_FILE)
 
     # ✅ Build the wiring views in the SAME DB file the parser just wrote
     create_wiring_views_v6(DB_FILE)
