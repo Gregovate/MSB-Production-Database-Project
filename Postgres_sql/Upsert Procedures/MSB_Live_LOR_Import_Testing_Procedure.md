@@ -283,6 +283,27 @@ WHERE n.nspname = 'ref'
       'p2_upsert_display_from_latest_lor'
   )
 ORDER BY p.proname, pg_get_function_identity_arguments(p.oid);
+
+SELECT
+    n.nspname AS schema_name,
+    p.proname AS object_name,
+    CASE p.prokind
+        WHEN 'p' THEN 'PROCEDURE'
+        WHEN 'f' THEN 'FUNCTION'
+        ELSE p.prokind::text
+    END AS object_type,
+    pg_get_userbyid(p.proowner) AS owner,
+    pg_get_function_identity_arguments(p.oid) AS identity_arguments,
+    pg_get_function_result(p.oid) AS result_type
+FROM pg_proc p
+JOIN pg_namespace n
+  ON n.oid = p.pronamespace
+WHERE n.nspname = 'ref'
+  AND p.proname IN (
+      'p1_upsert_stage_from_latest_lor',
+      'p2_upsert_display_from_latest_lor'
+  )
+ORDER BY p.proname, p.oid;
 ```
 
 Expected:
