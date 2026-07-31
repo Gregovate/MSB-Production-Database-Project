@@ -297,7 +297,7 @@ def ingest_table(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Ingest LOR SQLite snapshot into Postgres lor_snap (append-only by run).")
-    ap.add_argument("--sqlite", required=True, help="Path to lor_output_v7_scene.db (SQLite)."
+    ap.add_argument("--sqlite", required=True, help="Path to lor_output_v7_scene.db (SQLite).")
     ap.add_argument("--pg-host", required=True, help="Postgres host (e.g., db.sheboyganlights.org).")
     ap.add_argument("--pg-port", type=int, default=5432, help="Postgres port (default 5432).")
     ap.add_argument("--pg-db", required=True, help="Postgres database name (e.g., msb).")
