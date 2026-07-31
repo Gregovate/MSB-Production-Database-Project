@@ -1,6 +1,20 @@
 # LOR Display Reconciliation SQL Design
 
-## Status
+- **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
+- **Document Type:** Database design specification
+- **Status:** Design draft; not approved for production implementation
+- **Owner:** MSB Database Administrator
+- **Initial Release:** 2026-07-31
+- **Current Revision:** 2026-07-31
+
+## Revision History
+
+| Date | Author | Change |
+|---|---|---|
+| 2026-07-31 | GAL / OpenAI | Initial reconciliation architecture based on the V7 scene-aware snapshot ingest. |
+| 2026-07-31 | GAL / OpenAI | Added the permanent display identity contract and validated the design against the repository schema export and current P2. |
+
+## Status and Scope
 
 Design draft only. The database objects and revised P2 described here are not yet implemented or approved for production.
 
@@ -15,6 +29,18 @@ The design must preserve:
 - Explicit operator review for display-name changes, UUID changes, new displays, status changes, exclusions, and LOR-side corrections.
 - `lor_snap.preview_wiring_fieldonly_v6` exactly as the existing FormView compatibility contract.
 - The Master Musical Preview and its scene membership for future P3 without treating its lack of one preview-level stage ID as an unassigned-display error.
+
+## Non-Negotiable Display Identity Contract
+
+- `ref.display.display_id` is the permanent database identity and the foreign key used by relational tables.
+- `ref.display.display_name` is the meaningful human-facing identity.
+- `ref.display.lor_prop_id` is only the current LOR UUID association stored in `ref.display`.
+- No other production relational table may use `lor_prop_id` as the permanent display identity.
+- A display rename or LOR UUID change must preserve `display_id`.
+- Reconciliation may change the name or current UUID association only through an explicit, audited operator action.
+- P2 must never infer an identity mutation from a matching name or UUID.
+
+The repository schema export confirms that `display_id` is the primary key of `ref.display`. It also contains unique enforcement for the normalized display name and `lor_prop_id`, while downstream label, test-session, and work-order relationships use `display_id`. These constraints support the intended identity model; they do not replace preflight review.
 
 ## Confirmed Source Rules
 
@@ -102,7 +128,6 @@ Append-only audit record for every operator decision.
 
 Initial controlled action codes:
 
-- `ACCEPT_EXACT_MATCH`
 - `RENAME_DISPLAY`
 - `UPDATE_LOR_UUID`
 - `ADD_NEW_DISPLAY`
@@ -113,6 +138,8 @@ Initial controlled action codes:
 - `DEFER`
 
 `DEFER` remains blocking until a separate policy explicitly permits otherwise.
+
+`EXACT_MATCH` does not create an operator action. It is an automatically validated condition: the selected snapshot UUID and normalized name already resolve to the same single `display_id`. Requiring hundreds of acceptance records for unchanged displays would add noise without protecting identity.
 
 ### 3. `ops.lor_reconciliation_run`
 
@@ -172,6 +199,7 @@ Required classifications:
 | `DUPLICATE_LOR_UUID` | One UUID has conflicting candidates | Yes |
 | `DUPLICATE_LOR_NAME` | One name has multiple UUID candidates | Yes |
 | `DUPLICATE_PRODUCTION_UUID` | One UUID maps to multiple `display_id` values | Yes |
+| `DUPLICATE_PRODUCTION_NAME` | One normalized production name maps to multiple `display_id` values | Yes |
 | `EXCLUDED_NONPHYSICAL` | Active exact exclusion rule applies | No |
 | `LOR_CORRECTION_REQUIRED` | Operator recorded that LOR must be corrected | Yes until corrected run |
 | `DEFERRED` | Operator deferred the decision | Yes |
@@ -211,7 +239,6 @@ Each action procedure must lock and revalidate its target, update production dat
 
 Proposed procedures:
 
-- `ops.p_lor_accept_exact_match(...)`
 - `ops.p_lor_rename_display(...)`
 - `ops.p_lor_update_uuid(...)`
 - `ops.p_lor_add_display(...)`
@@ -222,6 +249,36 @@ Proposed procedures:
 - `ops.p_lor_evaluate_gate(import_run_id)`
 
 No procedure may select `max(import_run_id)` internally. The operator or calling application must supply the intended run.
+
+Every mutating action must receive both the exact `import_run_id` and enough current evidence to prevent a stale-screen decision. At minimum, the procedure must re-read the snapshot candidate and the affected `ref.display` row under lock before applying the action. If the UUID, name, status, or `display_id` no longer matches the reviewed evidence, the procedure must fail without writing either the mutation or a successful action record.
+
+## Gate Semantics
+
+The gate is tied to one explicit immutable snapshot, not to whichever run is newest when a procedure happens to execute.
+
+1. Snapshot ingest commits successfully.
+2. Read-only preflight classifies that exact `import_run_id`.
+3. Exact matches pass automatically.
+4. Blocking classifications require an operator action, an LOR correction followed by a new ingest, or an approved exact exclusion.
+5. `ops.p_lor_evaluate_gate(import_run_id)` recomputes the live classifications. It may mark the run `PASSED` only when the blocking count is zero.
+6. P1, P2, and P3 receive the same explicit `import_run_id` and call the assertion procedure before changing production data.
+7. The assertion recomputes the gate. A stored `PASSED` value alone is insufficient if production identity data changed afterward.
+
+A valid snapshot remains historical evidence even when it is blocked. Reconciliation failure must never delete or roll back an already committed snapshot.
+
+## Validated Repository Findings
+
+- `ref.display.display_id` is the primary key.
+- `ref.display.lor_prop_id` is uniquely constrained.
+- A normalized display-name unique index exists on `upper(btrim(display_name))`.
+- Snapshot preview identity is unique by `(import_run_id, id)`.
+- Snapshot prop identity is unique by `(import_run_id, prop_id)`.
+- `lor_snap.props` has a composite foreign key `(import_run_id, preview_id)` to `lor_snap.previews(import_run_id, id)`.
+- Current P2 incorrectly joins props to previews using only `preview_id`; the revised source must use both key columns.
+- Current P2 automatically performs name changes, UUID replacement, new-display insertion, and ACTIVE-status assignment. Those identity decisions must be removed from P2.
+- `lor_snap.preview_wiring_fieldonly_v6` is the established FormView contract and must remain unchanged.
+
+These findings come from the repository schema export and SQL files. They must still be checked against the live production definitions before DDL is approved.
 
 ## Required Implementation Order
 
@@ -247,4 +304,3 @@ Before executable DDL is finalized, confirm:
 - Current actor/audit trigger requirements for new `ops` and `ref` objects.
 - Whether `ref.display.lor_prop_id` is the only persistent UUID mapping or whether a mapping-history object already exists outside the schema export.
 - Current P1 and P2 definitions installed in production match the repository copies.
-
