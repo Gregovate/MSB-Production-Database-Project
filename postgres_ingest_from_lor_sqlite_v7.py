@@ -10,14 +10,15 @@
 # - Loads previews, props, sub_props, dmx_channels
 # - All-or-nothing transaction (rollback on failure)
 # - Removed unassigned display count from summary (no longer relevant)
+# - Added scene_lor_props ingestion for LOR 6.6.4 Software Update(2026-07-31)
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
 #
 # Purpose
 # -------
-# Promote the rebuilt SQLite snapshot (lor_output_v6.db), produced by
-# parse_props_v6.py, into the production Postgres database (msb-prod-db).
+# Promote the rebuilt SQLite snapshot (lor_output_v7_scene.db), produced by
+# parse_props_v7_scene_parser.py, into the production Postgres database (msb-prod-db).
 #
 # This script:
 #   • Creates a new import_run record in lor_snap.import_run
@@ -66,7 +67,7 @@
 #       Postgres tables mirror SQLite tables + import_run_id.
 #
 # Inputs
-#   - SQLite file: G:\Shared drives\MSB Database\database\lor_output_v6.db
+#   - SQLite file: G:\Shared drives\MSB Database\database\lor_output_v7_scene.db
 #   - Postgres host: db.sheboyganlights.org (msb-prod-db)
 #   - Database: msb
 #   - Schema: lor_snap
@@ -74,7 +75,7 @@
 # How to Run (PowerShell)
 #   $env:PGPASSWORD="your_password"
 #   python ingest_lor_sqlite_to_postgres.py `
-#     --sqlite "G:\Shared drives\MSB Database\database\lor_output_v6.db" `
+#     --sqlite "G:\Shared drives\MSB Database\database\lor_output_v7_scene.db" `
 #     --pg-host "db.sheboyganlights.org" `
 #     --pg-db "msb" `
 #     --pg-user "msbadmin" `
@@ -107,7 +108,7 @@ Requirements:
 
 Example:
   python ingest_lor_sqlite_to_postgres.py ^
-    --sqlite "G:\\Shared drives\\MSB Database\\database\\lor_output_v6.db" ^
+    --sqlite "G:\\Shared drives\\MSB Database\\database\\lor_output_v7_scene.db" ^
     --pg-host "db.sheboyganlights.org" ^
     --pg-db "msb" ^
     --pg-user "msbadmin" ^
@@ -414,18 +415,17 @@ def main() -> int:
             """)
             row = cur.fetchone()
 
-        print(
-            "[INFO] Run summary → "
-            f"run={row[0]} | "
-            f"previews={row[1]} | "
-            f"scenes={row[2]} | "
-            f"props={row[3]} | "
-            f"sub_props={row[4]} | "
-            f"dmx={row[5]} | "
-            f"scene_lor_props={row[6]} | "
-            f"field_wiring={row[7]} | "
-            f"unassigned={row[8]}"
-        )
+            print(
+                "[INFO] Run summary → "
+                f"run={row[0]} | "
+                f"previews={row[1]} | "
+                f"scenes={row[2]} | "
+                f"props={row[3]} | "
+                f"sub_props={row[4]} | "
+                f"dmx={row[5]} | "
+                f"scene_lor_props={row[6]} | "
+                f"field_wiring={row[7]}"
+            )
         if row[7] == 0:
             print("[WARN] wiring_field_rows is 0 — views likely failed or current_run is empty.", file=sys.stderr)
 
