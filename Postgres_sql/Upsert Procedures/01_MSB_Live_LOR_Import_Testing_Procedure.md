@@ -1,10 +1,33 @@
 # MSB Production Database — Live LOR Import Testing Procedure
 
-**Status:** DRAFT — production execution blocked pending procedure and preflight review  
-**Date:** 2026-07-28  
-**Database:** PostgreSQL database `msb`  
-**Production host:** `192.168.5.9` (`db.sheboyganlights.org`, where DNS/VPN access is available)  
-**Repository:** `Gregovate/MSB-Production-Database-Project`
+| Document control | Value |
+|---|---|
+| Repository path | `Postgres_sql/Upsert Procedures/01_MSB_Live_LOR_Import_Testing_Procedure.md` |
+| Document type | Administrator execution and validation runbook |
+| Status | DRAFT — production execution blocked pending procedure and preflight review |
+| Owner / author | GAL |
+| Initial release | 2026-07-28 |
+| Current revision | 2026-07-31 |
+| Database | PostgreSQL database `msb` |
+| Production host | `192.168.5.9` (`db.sheboyganlights.org`, where DNS/VPN access is available) |
+| Repository | `Gregovate/MSB-Production-Database-Project` |
+
+## Revision History
+
+| Date | Author | Revision |
+|---|---|---|
+| 2026-07-28 | GAL | Initial live-import testing procedure. |
+| 2026-07-31 | GAL | Added controlled document header and permanent display-identity gate requirements for V7 reconciliation. |
+
+## Non-Negotiable Display Identity Contract
+
+- `display_id` is the permanent database identity and the foreign key used by relational tables.
+- `display_name` is the meaningful human-facing identity.
+- `lor_prop_id` is only the current LOR UUID association stored in `ref.display`.
+- No other production relational tables may depend on `lor_prop_id`.
+- A display rename or LOR UUID change must preserve `display_id`.
+
+Stop the procedure if any proposed action would violate this contract. Do not run P1, P2, or P3 until reconciliation passes for the exact imported `import_run_id`.
 
 ## 1. Purpose
 

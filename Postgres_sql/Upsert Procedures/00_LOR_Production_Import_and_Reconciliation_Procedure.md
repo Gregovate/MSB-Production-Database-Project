@@ -1,5 +1,14 @@
 # LOR Production Import and Reconciliation Procedure
 
+| Document control | Value |
+|---|---|
+| Repository path | `Postgres_sql/Upsert Procedures/00_LOR_Production_Import_and_Reconciliation_Procedure.md` |
+| Document type | Controlled production procedure |
+| Status | DRAFT — production execution remains blocked pending reconciliation implementation and validation |
+| Owner / author | GAL |
+| Initial release | 2026-07-31 |
+| Current revision | 2026-07-31 |
+
 ## Purpose
 
 This procedure controls the complete process for moving authoritative Light-O-Rama (LOR) preview data into the MSB production PostgreSQL database.
@@ -82,6 +91,16 @@ Before editing previews on a replacement computer:
 - A database operator identity for reconciliation audit records.
 
 ## Status and Identity Rules
+
+### Display Identity Contract
+
+- `display_id` is the permanent database identity and the foreign key used by relational tables.
+- `display_name` is the meaningful human-facing identity.
+- `lor_prop_id` is only the current LOR UUID association stored in `ref.display`.
+- No other production relational tables may depend on `lor_prop_id`.
+- A display rename or LOR UUID change must preserve `display_id`.
+
+This contract is enforced by the reconciliation preflight. P1, P2, and P3 must not run for an import until all identity discrepancies for that exact `import_run_id` are resolved and the gate passes.
 
 ### Display Status
 
@@ -466,4 +485,3 @@ The following controls should be automated:
 - Current production P1 procedure
 - Current production P2 procedure
 - Future P3 scene-reference procedure
-
