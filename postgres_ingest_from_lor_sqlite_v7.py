@@ -1,14 +1,15 @@
 # MSB Database — Postgres Snapshot Ingest (from LOR SQLite)
-# postgres_ingest_from_lor_sqlite.py
+# postgres_ingest_from_lor_sqlite_v7.py
 # Initial Release : 2026-02-21  V0.1.0
 # Version         : 2026-02-21  V0.1.0
-# Current Version : 2026-02-21  V0.1.0
+# Current Version : 2026-07-31  V0.1.1
 #
 # Changes:
 # - Initial append-only ingestion layer (SQLite → Postgres)
 # - Creates new lor_snap.import_run row per execution
 # - Loads previews, props, sub_props, dmx_channels
 # - All-or-nothing transaction (rollback on failure)
+# - Removed unassigned display count from summary (no longer relevant)
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
@@ -409,8 +410,7 @@ def main() -> int:
                   (SELECT COUNT(*) FROM lor_snap.v_current_sub_props)              AS sub_props,
                   (SELECT COUNT(*) FROM lor_snap.v_current_dmx_channels)           AS dmx_channels,
                   (SELECT COUNT(*) FROM lor_snap.v_current_scene_lor_props)        AS scene_lor_props,
-                  (SELECT COUNT(*) FROM lor_snap.preview_wiring_fieldonly_v6)      AS wiring_field_rows,
-                  (SELECT COUNT(*) FROM lor_snap.stage_display_unassigned_v1)      AS unassigned_displays
+                  (SELECT COUNT(*) FROM lor_snap.preview_wiring_fieldonly_v6)      AS wiring_field_rows
             """)
             row = cur.fetchone()
 
@@ -428,9 +428,6 @@ def main() -> int:
         )
         if row[7] == 0:
             print("[WARN] wiring_field_rows is 0 — views likely failed or current_run is empty.", file=sys.stderr)
-
-        if row[8] > 0:
-            print(f"[WARN] Unassigned displays detected: {row[8]}", file=sys.stderr)
 
         return 0
     
