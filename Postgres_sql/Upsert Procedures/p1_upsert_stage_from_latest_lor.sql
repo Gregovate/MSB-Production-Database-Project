@@ -3,8 +3,7 @@ Procedure: ref.p1_upsert_stage_from_latest_lor
 
 Purpose:
   Upsert ref.stage from the latest LOR snapshot (lor_snap.previews).
-  Fully derived from preview names; non-destructive; preserves stage_id stability. 
-  Uses parse_props_v6.py Version 2026-02-26  V6.8.3  (GAL)
+  Fully derived from preview names; non-destructive; preserves stage_id stability.
 
 Reads:
   lor_snap.import_run
