@@ -74,7 +74,7 @@
 #
 # How to Run (PowerShell)
 #   $env:PGPASSWORD="your_password"
-#   python ingest_lor_sqlite_to_postgres.py `
+#   python postgres_ingest_from_lor_sqlite_v7.py `
 #     --sqlite "G:\Shared drives\MSB Database\database\lor_output_v7_scene.db" `
 #     --pg-host "db.sheboyganlights.org" `
 #     --pg-db "msb" `
@@ -107,7 +107,7 @@ Requirements:
   pip install psycopg2-binary
 
 Example:
-  python ingest_lor_sqlite_to_postgres.py ^
+  python postgres_ingest_from_lor_sqlite_v7.py ^
     --sqlite "G:\\Shared drives\\MSB Database\\database\\lor_output_v7_scene.db" ^
     --pg-host "db.sheboyganlights.org" ^
     --pg-db "msb" ^
@@ -297,7 +297,7 @@ def ingest_table(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Ingest LOR SQLite snapshot into Postgres lor_snap (append-only by run).")
-    ap.add_argument("--sqlite", required=True, help="Path to lor_output_v6.db (SQLite).")
+    ap.add_argument("--sqlite", required=True, help="Path to lor_output_v7_scene.db (SQLite)."
     ap.add_argument("--pg-host", required=True, help="Postgres host (e.g., db.sheboyganlights.org).")
     ap.add_argument("--pg-port", type=int, default=5432, help="Postgres port (default 5432).")
     ap.add_argument("--pg-db", required=True, help="Postgres database name (e.g., msb).")
@@ -396,7 +396,7 @@ def main() -> int:
 
         # One commit at the end = atomic run
         pg_conn.commit()
-        print(f"[DONE] Ingest + views complete. import_run_id={import_run_id}")
+        print(f"[DONE] Snapshot ingest complete. import_run_id={import_run_id}")
 
         # -----------------------------------------------------------------
         # Post-run sanity summary (quick health check)
