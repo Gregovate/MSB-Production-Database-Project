@@ -14,20 +14,26 @@ Safety:
   SELECT only. Does not call P2, create objects, or modify production data.
 
 Rules validated:
-  - P2 must use the established lor_snap.v_current_* source contract.
-  - P2 must not select max(import_run_id) or rediscover the current run.
-  - P2 must not write ref.spare_channel.
+  - P2 must read the established lor_snap.v_current_* source contract.
+  - P2 must not select max(import_run_id) or independently rediscover a run.
+  - SPARE and PHANTOM rows must never enter ref.display writes.
   - P2 must not delete ref.display rows.
   - P2 must not force display_status_id to ACTIVE.
   - P2 must not substitute props.name for a blank LOR comment.
   - P2 must preserve ref.display.display_id.
   - P2 must consume approved reconciliation classifications rather than blindly
-    upserting every current source row.
+    upserting every current physical source row.
+
+Notes:
+  This audit does not prohibit ref.spare_channel maintenance. It validates the
+  separate and absolute rule that nonphysical rows never reach ref.display.
 
 Result:
   Returns one row per safety rule with PASS, FAIL, or REVIEW_REQUIRED.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Correct SPARE validation: test exclusion from
+                           ref.display rather than prohibiting spare-channel work.
   2026-08-01  GAL / OpenAI  Initial current P2 procedure safety audit.
 */
 
@@ -67,7 +73,7 @@ checks AS (
         CASE
             WHEN pd.definition ~* 'lor_snap\.v_current_(run|props|previews)'
                 THEN 'P2 references the established lor_snap.v_current_* contract.'
-            ELSE 'P2 does not reference the established lor_snap.v_current_* contract.'
+            ELSE 'P2 still reads base snapshot objects instead of lor_snap.v_current_*.'
         END
     FROM procedure_definition AS pd
 
@@ -83,7 +89,7 @@ checks AS (
         END,
         CASE
             WHEN pd.definition ~* 'max\s*\(\s*import_run_id\s*\)'
-                THEN 'P2 independently selects max(import_run_id), which violates the current-view contract.'
+                THEN 'P2 independently selects max(import_run_id); it must use the current-view contract.'
             ELSE 'P2 does not independently select max(import_run_id).'
         END
     FROM procedure_definition AS pd
@@ -92,16 +98,22 @@ checks AS (
 
     SELECT
         4,
-        'DOES_NOT_WRITE_SPARE_CHANNEL',
+        'EXCLUDES_NONPHYSICAL_FROM_REF_DISPLAY',
         CASE
-            WHEN pd.definition ~* '(insert\s+into|update|delete\s+from)\s+ref\.spare_channel'
-                THEN 'FAIL'
-            ELSE 'PASS'
+            WHEN pd.definition ~* 'c\.is_spare\s*=\s*false'
+             AND pd.definition ~* 'upper\s*\([^)]*phantom'
+                THEN 'PASS'
+            WHEN pd.definition ~* 'c\.is_spare\s*=\s*false'
+                THEN 'REVIEW_REQUIRED'
+            ELSE 'FAIL'
         END,
         CASE
-            WHEN pd.definition ~* '(insert\s+into|update|delete\s+from)\s+ref\.spare_channel'
-                THEN 'P2 contains write logic targeting ref.spare_channel.'
-            ELSE 'P2 contains no write logic targeting ref.spare_channel.'
+            WHEN pd.definition ~* 'c\.is_spare\s*=\s*false'
+             AND pd.definition ~* 'upper\s*\([^)]*phantom'
+                THEN 'SPARE and PHANTOM rows are excluded before ref.display writes.'
+            WHEN pd.definition ~* 'c\.is_spare\s*=\s*false'
+                THEN 'SPARE exclusion is present, but PHANTOM exclusion requires definition review.'
+            ELSE 'No reliable nonphysical-row exclusion was detected before ref.display writes.'
         END
     FROM procedure_definition AS pd
 
@@ -111,13 +123,13 @@ checks AS (
         5,
         'DOES_NOT_DELETE_DISPLAY',
         CASE
-            WHEN pd.definition ~* 'delete\s+from\s+ref\.display'
+            WHEN regexp_replace(pd.definition, '--[^\n]*', '', 'g') ~* 'delete\s+from\s+ref\.display'
                 THEN 'FAIL'
             ELSE 'PASS'
         END,
         CASE
-            WHEN pd.definition ~* 'delete\s+from\s+ref\.display'
-                THEN 'P2 contains DELETE logic targeting ref.display.'
+            WHEN regexp_replace(pd.definition, '--[^\n]*', '', 'g') ~* 'delete\s+from\s+ref\.display'
+                THEN 'P2 contains active DELETE logic targeting ref.display.'
             ELSE 'P2 contains no active DELETE logic targeting ref.display.'
         END
     FROM procedure_definition AS pd
@@ -128,15 +140,13 @@ checks AS (
         6,
         'DOES_NOT_FORCE_ACTIVE_STATUS',
         CASE
-            WHEN pd.definition ~* 'display_status_id\s*=\s*v_active_status_id'
-              OR pd.definition ~* 'v_active_status_id'
+            WHEN pd.definition ~* 'v_active_status_id'
                 THEN 'FAIL'
             ELSE 'PASS'
         END,
         CASE
-            WHEN pd.definition ~* 'display_status_id\s*=\s*v_active_status_id'
-              OR pd.definition ~* 'v_active_status_id'
-                THEN 'P2 resolves ACTIVE and assigns it during display writes; status is PostgreSQL/operator owned.'
+            WHEN pd.definition ~* 'v_active_status_id'
+                THEN 'P2 resolves ACTIVE and assigns it during display writes; status requires reconciliation policy.'
             ELSE 'P2 does not force display status to ACTIVE.'
         END
     FROM procedure_definition AS pd
@@ -169,13 +179,13 @@ checks AS (
         'PRESERVES_DISPLAY_ID',
         CASE
             WHEN pd.definition ~* 'update\s+ref\.display'
-             AND pd.definition !~* 'display_id\s*='
+             AND pd.definition !~* 'set[^;]*display_id\s*='
                 THEN 'PASS'
             ELSE 'REVIEW_REQUIRED'
         END,
         CASE
             WHEN pd.definition ~* 'update\s+ref\.display'
-             AND pd.definition !~* 'display_id\s*='
+             AND pd.definition !~* 'set[^;]*display_id\s*='
                 THEN 'No assignment to ref.display.display_id was detected.'
             ELSE 'Display identity preservation requires manual review of the procedure definition.'
         END
@@ -196,7 +206,7 @@ checks AS (
             WHEN pd.definition ~* 'ops\.v_lor_display_reconciliation'
               OR pd.definition ~* 'classification_code'
                 THEN 'P2 consumes the reconciliation classification layer.'
-            ELSE 'P2 does not consume the reconciliation classification layer and can blindly write source rows.'
+            ELSE 'P2 does not consume the reconciliation classification layer and can blindly write physical source rows.'
         END
     FROM procedure_definition AS pd
 )
