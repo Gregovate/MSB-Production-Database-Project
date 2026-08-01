@@ -13,16 +13,20 @@ Safety:
   SELECT only. Does not create objects, call P1/P2/P3, or modify production data.
 
 Rules:
-  - Standalone/background previews bind by preview_id.
-  - Scenes inside shared previews bind by preview_id + scene_id.
-  - A shared preview's preview-level stage_id is context only and cannot identify
+  - A dedicated preview binds to its physical stage by preview_id.
+  - Scenes inside a dedicated preview are subordinate workspace associations and
+    inherit the dedicated preview's stage; scene names or parsed scene stage keys
+    do not override the preview StageID.
+  - Scenes inside the shared Master Musical Preview bind by preview_id + scene_id
+    and use scene-level stage evidence.
+  - A shared preview's preview-level StageID is context only and cannot identify
     one physical stage.
-  - A non-shared preview whose populated scenes disagree with its preview-level
-    stage_id is blocked for source review.
   - Existing ref.stage rows are preserved; this query does not infer renames or
     renumbering without a persistent stage-to-LOR binding table.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Correct dedicated-preview scene handling: inherit
+                           preview StageID and do not report scene-name conflicts.
   2026-08-01  GAL / OpenAI  Materialize classification before final sort.
   2026-08-01  GAL / OpenAI  Add repository filename to document-control header.
   2026-08-01  GAL / OpenAI  Replace stage-key rollup with binding-level preflight.
@@ -41,7 +45,7 @@ populated_scenes AS (
         s.preview_id,
         s.scene_id,
         btrim(s.name) AS scene_name,
-        lower(btrim(coalesce(slp.scene_stage_id, s.stage_id))) AS stage_key
+        lower(btrim(coalesce(slp.scene_stage_id, s.stage_id))) AS declared_scene_stage_key
     FROM lor_snap.scenes AS s
     JOIN selected_run AS sr
       ON sr.import_run_id = s.import_run_id
@@ -60,12 +64,12 @@ preview_profile AS (
         btrim(p.name) AS preview_name,
         lower(btrim(p.stage_id)) AS preview_stage_key,
         count(ps.scene_id) AS populated_scene_count,
-        count(DISTINCT ps.stage_key) AS distinct_scene_stage_count,
-        string_agg(DISTINCT ps.stage_key, ', ' ORDER BY ps.stage_key) AS scene_stage_keys,
-        (
-            p.name ILIKE '%master musical preview%'
-            OR count(DISTINCT ps.stage_key) > 1
-        ) AS is_shared_preview
+        count(DISTINCT ps.declared_scene_stage_key) AS distinct_scene_stage_count,
+        string_agg(
+            DISTINCT ps.declared_scene_stage_key,
+            ', ' ORDER BY ps.declared_scene_stage_key
+        ) AS scene_stage_keys,
+        p.name ILIKE '%master musical preview%' AS is_shared_preview
     FROM lor_snap.previews AS p
     JOIN selected_run AS sr
       ON sr.import_run_id = p.import_run_id
@@ -84,6 +88,7 @@ preview_rows AS (
         NULL::text AS scene_id,
         pp.preview_name AS source_name,
         pp.preview_stage_key AS source_stage_key,
+        NULL::text AS declared_scene_stage_key,
         pp.is_shared_preview,
         pp.populated_scene_count,
         pp.distinct_scene_stage_count,
@@ -91,15 +96,6 @@ preview_rows AS (
         CASE
             WHEN pp.is_shared_preview
                 THEN 'CONTEXT_ONLY_SHARED_PREVIEW'
-            WHEN pp.populated_scene_count > 0
-             AND EXISTS (
-                    SELECT 1
-                    FROM populated_scenes AS ps
-                    WHERE ps.import_run_id = pp.import_run_id
-                      AND ps.preview_id = pp.preview_id
-                      AND ps.stage_key IS DISTINCT FROM pp.preview_stage_key
-                )
-                THEN 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
             ELSE 'PREVIEW_BINDING_CANDIDATE'
         END AS preliminary_classification
     FROM preview_profile AS pp
@@ -111,12 +107,21 @@ scene_rows AS (
         ps.preview_id,
         ps.scene_id,
         ps.scene_name AS source_name,
-        ps.stage_key AS source_stage_key,
+        CASE
+            WHEN pp.is_shared_preview
+                THEN ps.declared_scene_stage_key
+            ELSE pp.preview_stage_key
+        END AS source_stage_key,
+        ps.declared_scene_stage_key,
         pp.is_shared_preview,
         pp.populated_scene_count,
         pp.distinct_scene_stage_count,
         pp.scene_stage_keys,
-        'SCENE_BINDING_CANDIDATE'::text AS preliminary_classification
+        CASE
+            WHEN pp.is_shared_preview
+                THEN 'SCENE_BINDING_CANDIDATE'
+            ELSE 'DEDICATED_PREVIEW_SCENE_ASSOCIATION'
+        END AS preliminary_classification
     FROM populated_scenes AS ps
     JOIN preview_profile AS pp
       ON pp.import_run_id = ps.import_run_id
@@ -135,6 +140,7 @@ classified AS (
         a.scene_id,
         a.source_name,
         a.source_stage_key,
+        a.declared_scene_stage_key,
         rs.stage_id AS production_stage_id,
         rs.stage_key AS production_stage_key,
         rs.stage_name AS production_stage_name,
@@ -145,33 +151,32 @@ classified AS (
         a.distinct_scene_stage_count,
         a.scene_stage_keys,
         CASE
-            WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
-                THEN a.preliminary_classification
             WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
                 THEN a.preliminary_classification
             WHEN rs.stage_id IS NULL
                 THEN 'NEW_STAGE_REQUIRES_AUTHORITATIVE_METADATA'
+            WHEN a.preliminary_classification = 'DEDICATED_PREVIEW_SCENE_ASSOCIATION'
+                THEN 'DEDICATED_PREVIEW_SCENE_ASSOCIATION'
             WHEN a.binding_type = 'PREVIEW'
                 THEN 'EXISTING_STAGE_PREVIEW_BINDING_CANDIDATE'
             ELSE 'EXISTING_STAGE_SCENE_BINDING_CANDIDATE'
         END AS classification,
         CASE
-            WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
-                THEN true
             WHEN a.preliminary_classification <> 'CONTEXT_ONLY_SHARED_PREVIEW'
              AND rs.stage_id IS NULL
                 THEN true
             ELSE false
         END AS is_blocking,
         CASE
-            WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
-                THEN 'Non-shared preview stage ' || a.source_stage_key ||
-                     ' conflicts with populated scene stage(s) ' ||
-                     coalesce(a.scene_stage_keys, '<none>') || '.'
             WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
                 THEN 'Shared preview_id is context only; stage identity must use scene bindings.'
             WHEN rs.stage_id IS NULL
                 THEN 'No ref.stage row exists for source stage key ' || a.source_stage_key || '.'
+            WHEN a.preliminary_classification = 'DEDICATED_PREVIEW_SCENE_ASSOCIATION'
+                THEN 'Dedicated preview controls stage identity. Scene association inherits permanent stage_id ' ||
+                     rs.stage_id || '; declared scene key ' ||
+                     coalesce(a.declared_scene_stage_key, '<none>') ||
+                     ' does not override preview stage ' || a.source_stage_key || '.'
             ELSE 'Binding candidate resolves to existing permanent stage_id ' || rs.stage_id || '.'
         END AS operator_message
     FROM all_rows AS a
@@ -183,10 +188,10 @@ FROM classified
 ORDER BY
     is_blocking DESC,
     CASE classification
-        WHEN 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT' THEN 1
-        WHEN 'NEW_STAGE_REQUIRES_AUTHORITATIVE_METADATA' THEN 2
-        WHEN 'EXISTING_STAGE_PREVIEW_BINDING_CANDIDATE' THEN 3
-        WHEN 'EXISTING_STAGE_SCENE_BINDING_CANDIDATE' THEN 4
+        WHEN 'NEW_STAGE_REQUIRES_AUTHORITATIVE_METADATA' THEN 1
+        WHEN 'EXISTING_STAGE_PREVIEW_BINDING_CANDIDATE' THEN 2
+        WHEN 'EXISTING_STAGE_SCENE_BINDING_CANDIDATE' THEN 3
+        WHEN 'DEDICATED_PREVIEW_SCENE_ASSOCIATION' THEN 4
         WHEN 'CONTEXT_ONLY_SHARED_PREVIEW' THEN 5
         ELSE 9
     END,
