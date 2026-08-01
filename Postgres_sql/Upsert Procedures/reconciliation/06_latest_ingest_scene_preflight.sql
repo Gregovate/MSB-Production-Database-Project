@@ -1,43 +1,31 @@
 /*
 Schema: lor_snap / ref
-Object: Latest-ingest scene preflight
+Object: Current-ingest scene preflight
 Filename: 06_latest_ingest_scene_preflight.sql
 Type: Read-only validation query
 Owner: msbadmin
 
 Purpose:
-  Compare scenes from the latest complete LOR snapshot with the current
-  production projection in ref.lor_scene.
+  Compare current LOR scenes with ref.lor_scene.
 
 Safety:
   SELECT only. Does not create objects, call P1/P2/P3, or modify production data.
 
-Rules:
-  - The latest import_run_id is selected automatically at execution time.
-  - Dedicated previews control physical stage assignment for every scene they
-    contain. Scene text cannot override the preview StageID.
-  - Shared previews use preview_id + scene_id and the scene StageID.
-  - Scene identity is preview_uuid + scene_uuid.
-  - Historical scene definitions remain in lor_snap.scenes.
-  - Existing production rows are not deleted by this preflight.
+Source contract:
+  Reads only lor_snap.v_current_previews and lor_snap.v_current_scenes.
 
-Result:
-  Returns one exportable result set containing scene candidates classified as
-  ADD_SCENE, UPDATE_SCENE, UNCHANGED_SCENE, or a blocking stage-resolution issue.
+Rules:
+  - Dedicated previews control physical stage assignment for their scenes.
+  - Shared previews use scene-level stage evidence.
+  - Scene identity is preview_uuid + scene_uuid.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Use the established lor_snap.v_current_* snapshot interface.
   2026-08-01  GAL / OpenAI  Split scene and scene-display preflight responsibilities.
-  2026-08-01  GAL / OpenAI  Replace unsupported DISTINCT window functions with grouped CTEs.
   2026-08-01  GAL / OpenAI  Initial latest-ingest scene production preflight.
 */
 
-WITH selected_run AS (
-    SELECT ir.import_run_id, ir.run_ts
-    FROM lor_snap.import_run AS ir
-    ORDER BY ir.import_run_id DESC
-    LIMIT 1
-),
-preview_profile AS (
+WITH preview_profile AS (
     SELECT
         p.import_run_id,
         p.id AS preview_id,
@@ -52,17 +40,9 @@ preview_profile AS (
                 WHERE btrim(coalesce(s.stage_id, '')) <> ''
             ) > 1
         ) AS is_shared_preview
-    FROM lor_snap.previews AS p
-    JOIN selected_run AS sr
-      ON sr.import_run_id = p.import_run_id
-    LEFT JOIN lor_snap.scenes AS s
-      ON s.import_run_id = p.import_run_id
-     AND s.preview_id = p.id
-    GROUP BY
-        p.import_run_id,
-        p.id,
-        p.name,
-        p.stage_id
+    FROM lor_snap.v_current_previews AS p
+    LEFT JOIN lor_snap.v_current_scenes AS s ON s.preview_id = p.id
+    GROUP BY p.import_run_id, p.id, p.name, p.stage_id
 ),
 scene_source AS (
     SELECT
@@ -74,10 +54,9 @@ scene_source AS (
         pp.is_shared_preview,
         pp.preview_stage_key,
         lower(btrim(s.stage_id)) AS declared_scene_stage_key,
-        CASE
-            WHEN pp.is_shared_preview
-                THEN lower(btrim(s.stage_id))
-            ELSE pp.preview_stage_key
+        CASE WHEN pp.is_shared_preview
+             THEN lower(btrim(s.stage_id))
+             ELSE pp.preview_stage_key
         END AS resolved_stage_key,
         to_jsonb(s)->>'scene_section' AS scene_section,
         to_jsonb(s)->>'background_file' AS background_file,
@@ -85,12 +64,8 @@ scene_source AS (
         nullif(to_jsonb(s)->>'v_scroll', '')::integer AS v_scroll,
         nullif(to_jsonb(s)->>'zoom', '')::integer AS zoom,
         to_jsonb(s)->>'create_grid_view' AS create_grid_view
-    FROM lor_snap.scenes AS s
-    JOIN selected_run AS sr
-      ON sr.import_run_id = s.import_run_id
-    JOIN preview_profile AS pp
-      ON pp.import_run_id = s.import_run_id
-     AND pp.preview_id = s.preview_id
+    FROM lor_snap.v_current_scenes AS s
+    JOIN preview_profile AS pp ON pp.preview_id = s.preview_id
 ),
 classified AS (
     SELECT
@@ -107,12 +82,6 @@ classified AS (
         ls.lor_scene_id AS existing_lor_scene_id,
         ls.stage_id AS existing_stage_id,
         ls.scene_name AS existing_scene_name,
-        ls.scene_section AS existing_scene_section,
-        ls.background_file AS existing_background_file,
-        ls.h_scroll AS existing_h_scroll,
-        ls.v_scroll AS existing_v_scroll,
-        ls.zoom AS existing_zoom,
-        ls.create_grid_view AS existing_create_grid_view,
         ss.scene_section,
         ss.background_file,
         ss.h_scroll,
@@ -151,26 +120,15 @@ classified AS (
               OR ls.v_scroll IS DISTINCT FROM ss.v_scroll
               OR ls.zoom IS DISTINCT FROM ss.zoom
               OR ls.create_grid_view IS DISTINCT FROM ss.create_grid_view
-                THEN 'Existing production scene metadata differs from the latest ingest.'
-            ELSE 'Production scene already matches the latest ingest.'
+                THEN 'Existing production scene metadata differs from the current LOR snapshot.'
+            ELSE 'Production scene already matches the current LOR snapshot.'
         END AS operator_message
     FROM scene_source AS ss
-    LEFT JOIN ref.stage AS st
-      ON st.stage_key = ss.resolved_stage_key
+    LEFT JOIN ref.stage AS st ON st.stage_key = ss.resolved_stage_key
     LEFT JOIN ref.lor_scene AS ls
       ON ls.preview_uuid = ss.preview_id
      AND ls.scene_uuid = ss.scene_id
 )
 SELECT *
 FROM classified
-ORDER BY
-    is_blocking DESC,
-    CASE classification
-        WHEN 'BLOCKED_SCENE_STAGE_NOT_RESOLVED' THEN 1
-        WHEN 'ADD_SCENE' THEN 2
-        WHEN 'UPDATE_SCENE' THEN 3
-        WHEN 'UNCHANGED_SCENE' THEN 4
-        ELSE 99
-    END,
-    preview_id,
-    scene_id;
+ORDER BY is_blocking DESC, classification, preview_id, scene_id;
