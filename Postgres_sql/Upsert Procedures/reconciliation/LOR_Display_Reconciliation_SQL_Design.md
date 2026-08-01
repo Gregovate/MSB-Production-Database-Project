@@ -67,11 +67,18 @@ Every reconciliation run re-evaluates every candidate or inseparable logical gro
 
 - Valid records or groups are upserted.
 - Defective records or groups are blocked individually.
+  - ideally a screen should be presented during the workflow to allow the operator to make simple decisions like
+    - New Display
+    - Renamed Display match display_id x
 - Existing production data remains unchanged for blocked records or groups.
 - An error affecting one candidate must not block unrelated valid changes.
 - A run-level failure is reserved for structural conditions that make safe row/group isolation impossible.
-- Corrections are made in LOR or the importer.
+- Corrections are made in LOR or in Directus (Postgres).
 - A new complete parse and ingest is created.
+- A timestamped report is created for all changes made to Directus
+  - Ingest Run Number Date/Time
+  - All changes applied
+  - All items needing correction including metadata where changes need to be made
 - The next reconciliation evaluates all candidates again.
 - Previously blocked records pass normally once corrected.
 - Previously successful records may be processed again through idempotent upserts.
