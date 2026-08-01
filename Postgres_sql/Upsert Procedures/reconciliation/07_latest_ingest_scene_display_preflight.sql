@@ -17,11 +17,13 @@ Rules:
   - Scene identity is preview_uuid + scene_uuid.
   - Display identity remains ref.display.display_id.
   - Physical display resolution is reused from ops.v_lor_display_reconciliation.
+  - The validated P2 display map is materialized once per execution so the
+    reconciliation view is not repeatedly recalculated by downstream joins.
   - EXCLUDED_NONPHYSICAL rows are not candidates for ref.lor_scene_display.
   - A display may have only one current scene within one preview.
   - The parent scene may already exist in ref.lor_scene or be a valid ADD_SCENE
     candidate from 06_latest_ingest_scene_preflight.sql.
-  - Missing or non-unique display resolution blocks only that membership.
+  - Missing display or parent-scene resolution blocks only that membership.
   - Existing production rows are not deleted by this preflight.
 
 Result:
@@ -30,18 +32,19 @@ Result:
   UNCHANGED_SCENE_DISPLAY, or a blocking resolution issue.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Materialize the validated P2 display map once per execution.
   2026-08-01  GAL / OpenAI  Reuse validated P2 display reconciliation mapping and exclude nonphysical scene members.
   2026-08-01  GAL / OpenAI  Resolve display identity by underlying prop UUID and block non-unique production UUID links.
   2026-08-01  GAL / OpenAI  Initial latest-ingest scene-display preflight.
 */
 
-WITH selected_run AS (
+WITH selected_run AS MATERIALIZED (
     SELECT ir.import_run_id, ir.run_ts
     FROM lor_snap.import_run AS ir
     ORDER BY ir.import_run_id DESC
     LIMIT 1
 ),
-scene_source AS (
+scene_source AS MATERIALIZED (
     SELECT
         s.import_run_id,
         s.preview_id,
@@ -55,7 +58,7 @@ scene_source AS (
       ON p.import_run_id = s.import_run_id
      AND p.id = s.preview_id
 ),
-membership_source AS (
+membership_source AS MATERIALIZED (
     SELECT DISTINCT
         slp.import_run_id,
         slp.preview_id,
@@ -68,7 +71,7 @@ membership_source AS (
     JOIN selected_run AS sr
       ON sr.import_run_id = slp.import_run_id
 ),
-physical_display_map AS (
+physical_display_map AS MATERIALIZED (
     SELECT
         v.import_run_id,
         v.lor_prop_id AS source_lor_prop_id,
@@ -79,8 +82,9 @@ physical_display_map AS (
     JOIN selected_run AS sr
       ON sr.import_run_id = v.import_run_id
     WHERE v.classification_code <> 'EXCLUDED_NONPHYSICAL'
+      AND v.display_id IS NOT NULL
 ),
-physical_memberships AS (
+physical_memberships AS MATERIALIZED (
     SELECT
         ms.import_run_id,
         ms.preview_id,
@@ -97,7 +101,7 @@ physical_memberships AS (
       ON pdm.import_run_id = ms.import_run_id
      AND pdm.source_lor_prop_id = ms.source_lor_prop_id
 ),
-membership_counts AS (
+membership_counts AS MATERIALIZED (
     SELECT
         pm.import_run_id,
         pm.preview_id,
@@ -168,8 +172,6 @@ classified AS (
         CASE
             WHEN r.scene_name IS NULL
                 THEN 'BLOCKED_PARENT_SCENE_NOT_IN_LATEST_INGEST'
-            WHEN r.display_id IS NULL
-                THEN 'BLOCKED_DISPLAY_NOT_RESOLVED'
             WHEN r.source_scene_count_for_display > 1
                 THEN 'BLOCKED_MULTIPLE_SCENES_PER_PREVIEW_DISPLAY'
             WHEN r.current_lor_scene_id IS NULL
@@ -181,14 +183,11 @@ classified AS (
         END AS classification,
         (
             r.scene_name IS NULL
-            OR r.display_id IS NULL
             OR r.source_scene_count_for_display > 1
         ) AS is_blocking,
         CASE
             WHEN r.scene_name IS NULL
                 THEN 'The referenced preview_id + scene_id is not present in the latest ingest.'
-            WHEN r.display_id IS NULL
-                THEN 'The validated P2 reconciliation layer did not resolve this physical LOR row to one ref.display row.'
             WHEN r.source_scene_count_for_display > 1
                 THEN 'Display appears in more than one scene within preview ' || r.preview_id || '.'
             WHEN r.current_lor_scene_id IS NULL AND r.target_lor_scene_id IS NULL
@@ -208,14 +207,13 @@ ORDER BY
     is_blocking DESC,
     CASE classification
         WHEN 'BLOCKED_PARENT_SCENE_NOT_IN_LATEST_INGEST' THEN 1
-        WHEN 'BLOCKED_DISPLAY_NOT_RESOLVED' THEN 2
-        WHEN 'BLOCKED_MULTIPLE_SCENES_PER_PREVIEW_DISPLAY' THEN 3
-        WHEN 'ADD_SCENE_DISPLAY' THEN 4
-        WHEN 'REASSOCIATE_SCENE_DISPLAY' THEN 5
-        WHEN 'UNCHANGED_SCENE_DISPLAY' THEN 6
+        WHEN 'BLOCKED_MULTIPLE_SCENES_PER_PREVIEW_DISPLAY' THEN 2
+        WHEN 'ADD_SCENE_DISPLAY' THEN 3
+        WHEN 'REASSOCIATE_SCENE_DISPLAY' THEN 4
+        WHEN 'UNCHANGED_SCENE_DISPLAY' THEN 5
         ELSE 99
     END,
     preview_id,
     scene_id,
-    display_id NULLS FIRST,
+    display_id,
     source_lor_prop_id;
