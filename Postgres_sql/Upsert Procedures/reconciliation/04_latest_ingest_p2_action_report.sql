@@ -1,33 +1,31 @@
 /*
 Schema: ops / lor_snap / ref
-Object: Latest-ingest P2 action and review report
-Fileame: 04_latest_ingest_p2_action_report.sql
+Object: Current-ingest P2 action and review report
+Filename: 04_latest_ingest_p2_action_report.sql
 Type: Read-only preflight query
 Owner: msbadmin
 
 Purpose:
-  Return only latest-ingest display rows that require a production action,
-  operator decision, source correction, or defer decision.
+  Return current-ingest display rows requiring a production action, operator
+  decision, source correction, or defer decision.
 
 Excluded from detail:
-  - EXACT_MATCH: no change occurred.
-  - EXCLUDED_NONPHYSICAL: SPARE/PHANTOM rows are handled by source-quality checks.
-  - PREVIEW_RELOCATED_SAME_DISPLAY: expected V7 assignment context, not a
-    permanent display-identity change by itself.
+  - EXACT_MATCH
+  - EXCLUDED_NONPHYSICAL
+  - PREVIEW_RELOCATED_SAME_DISPLAY
 
 Safety:
   SELECT only. Does not call P2 and does not modify any object.
 
+Source contract:
+  The current run comes only from lor_snap.v_current_run. Display evidence is
+  supplied by the installed reconciliation view for that same import_run_id.
+
 Revision History:
+  2026-08-01  GAL / OpenAI  Correct Filename header and use lor_snap.v_current_run.
   2026-08-01  GAL / OpenAI  Initial latest-ingest version.
 */
 
-WITH selected_run AS (
-    SELECT ir.import_run_id
-    FROM lor_snap.import_run AS ir
-    ORDER BY ir.import_run_id DESC
-    LIMIT 1
-)
 SELECT
     v.import_run_id,
     v.classification_code,
@@ -52,12 +50,9 @@ SELECT
     v.lor_uuid_name_count,
     v.lor_name_uuid_count
 FROM ops.v_lor_display_reconciliation AS v
-JOIN selected_run AS sr
-  ON sr.import_run_id = v.import_run_id
+JOIN lor_snap.v_current_run AS cr ON cr.import_run_id = v.import_run_id
 WHERE v.classification_code NOT IN (
-    'EXACT_MATCH',
-    'EXCLUDED_NONPHYSICAL',
-    'PREVIEW_RELOCATED_SAME_DISPLAY'
+    'EXACT_MATCH', 'EXCLUDED_NONPHYSICAL', 'PREVIEW_RELOCATED_SAME_DISPLAY'
 )
 ORDER BY
     v.is_blocking DESC,
