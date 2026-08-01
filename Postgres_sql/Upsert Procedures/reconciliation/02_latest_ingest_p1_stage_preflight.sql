@@ -2,7 +2,6 @@
 Filename: 02_latest_ingest_p1_stage_preflight.sql
 Schema: lor_snap / ref
 Object: Latest-ingest P1 stage preflight
-Filename: 02_latest_ingest_p1_stage_preflight.sql
 Type: Read-only validation query
 Owner: msbadmin
 
@@ -24,6 +23,7 @@ Rules:
     renumbering without a persistent stage-to-LOR binding table.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Materialize classification before final sort.
   2026-08-01  GAL / OpenAI  Add repository filename to document-control header.
   2026-08-01  GAL / OpenAI  Replace stage-key rollup with binding-level preflight.
   2026-08-01  GAL / OpenAI  Initial latest-ingest version.
@@ -126,56 +126,60 @@ all_rows AS (
     SELECT * FROM preview_rows
     UNION ALL
     SELECT * FROM scene_rows
+),
+classified AS (
+    SELECT
+        a.import_run_id,
+        a.binding_type,
+        a.preview_id,
+        a.scene_id,
+        a.source_name,
+        a.source_stage_key,
+        rs.stage_id AS production_stage_id,
+        rs.stage_key AS production_stage_key,
+        rs.stage_name AS production_stage_name,
+        rs.short_code AS production_short_code,
+        rs.folder_name AS production_folder_name,
+        a.is_shared_preview,
+        a.populated_scene_count,
+        a.distinct_scene_stage_count,
+        a.scene_stage_keys,
+        CASE
+            WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
+                THEN a.preliminary_classification
+            WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
+                THEN a.preliminary_classification
+            WHEN rs.stage_id IS NULL
+                THEN 'NEW_STAGE_REQUIRES_AUTHORITATIVE_METADATA'
+            WHEN a.binding_type = 'PREVIEW'
+                THEN 'EXISTING_STAGE_PREVIEW_BINDING_CANDIDATE'
+            ELSE 'EXISTING_STAGE_SCENE_BINDING_CANDIDATE'
+        END AS classification,
+        CASE
+            WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
+                THEN true
+            WHEN a.preliminary_classification <> 'CONTEXT_ONLY_SHARED_PREVIEW'
+             AND rs.stage_id IS NULL
+                THEN true
+            ELSE false
+        END AS is_blocking,
+        CASE
+            WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
+                THEN 'Non-shared preview stage ' || a.source_stage_key ||
+                     ' conflicts with populated scene stage(s) ' ||
+                     coalesce(a.scene_stage_keys, '<none>') || '.'
+            WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
+                THEN 'Shared preview_id is context only; stage identity must use scene bindings.'
+            WHEN rs.stage_id IS NULL
+                THEN 'No ref.stage row exists for source stage key ' || a.source_stage_key || '.'
+            ELSE 'Binding candidate resolves to existing permanent stage_id ' || rs.stage_id || '.'
+        END AS operator_message
+    FROM all_rows AS a
+    LEFT JOIN ref.stage AS rs
+      ON rs.stage_key = a.source_stage_key
 )
-SELECT
-    a.import_run_id,
-    a.binding_type,
-    a.preview_id,
-    a.scene_id,
-    a.source_name,
-    a.source_stage_key,
-    rs.stage_id AS production_stage_id,
-    rs.stage_key AS production_stage_key,
-    rs.stage_name AS production_stage_name,
-    rs.short_code AS production_short_code,
-    rs.folder_name AS production_folder_name,
-    a.is_shared_preview,
-    a.populated_scene_count,
-    a.distinct_scene_stage_count,
-    a.scene_stage_keys,
-    CASE
-        WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
-            THEN a.preliminary_classification
-        WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
-            THEN a.preliminary_classification
-        WHEN rs.stage_id IS NULL
-            THEN 'NEW_STAGE_REQUIRES_AUTHORITATIVE_METADATA'
-        WHEN a.binding_type = 'PREVIEW'
-            THEN 'EXISTING_STAGE_PREVIEW_BINDING_CANDIDATE'
-        ELSE 'EXISTING_STAGE_SCENE_BINDING_CANDIDATE'
-    END AS classification,
-    CASE
-        WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
-            THEN true
-        WHEN a.preliminary_classification <> 'CONTEXT_ONLY_SHARED_PREVIEW'
-         AND rs.stage_id IS NULL
-            THEN true
-        ELSE false
-    END AS is_blocking,
-    CASE
-        WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
-            THEN 'Non-shared preview stage ' || a.source_stage_key ||
-                 ' conflicts with populated scene stage(s) ' ||
-                 coalesce(a.scene_stage_keys, '<none>') || '.'
-        WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
-            THEN 'Shared preview_id is context only; stage identity must use scene bindings.'
-        WHEN rs.stage_id IS NULL
-            THEN 'No ref.stage row exists for source stage key ' || a.source_stage_key || '.'
-        ELSE 'Binding candidate resolves to existing permanent stage_id ' || rs.stage_id || '.'
-    END AS operator_message
-FROM all_rows AS a
-LEFT JOIN ref.stage AS rs
-  ON rs.stage_key = a.source_stage_key
+SELECT *
+FROM classified
 ORDER BY
     is_blocking DESC,
     CASE classification
@@ -186,6 +190,6 @@ ORDER BY
         WHEN 'CONTEXT_ONLY_SHARED_PREVIEW' THEN 5
         ELSE 9
     END,
-    a.source_stage_key,
-    a.preview_id,
-    a.scene_id NULLS FIRST;
+    source_stage_key,
+    preview_id,
+    scene_id NULLS FIRST;
