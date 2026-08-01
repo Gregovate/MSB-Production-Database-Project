@@ -6,13 +6,24 @@ Type: Read-only validation query
 Owner: msbadmin
 
 Purpose:
-  Compare preview and populated-scene stage evidence from the latest ingest
-  against ref.stage without changing production data.
+  Evaluate preview and populated-scene stage evidence from the latest ingest at
+  the binding level before P1 or any scene-binding procedure is enabled.
 
 Safety:
-  SELECT only. Does not call P1 and does not modify any object.
+  SELECT only. Does not create objects, call P1/P2/P3, or modify production data.
+
+Rules:
+  - Standalone/background previews bind by preview_id.
+  - Scenes inside shared previews bind by preview_id + scene_id.
+  - A shared preview's preview-level stage_id is context only and cannot identify
+    one physical stage.
+  - A non-shared preview whose populated scenes disagree with its preview-level
+    stage_id is blocked for source review.
+  - Existing ref.stage rows are preserved; this query does not infer renames or
+    renumbering without a persistent stage-to-LOR binding table.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Replace stage-key rollup with binding-level preflight.
   2026-08-01  GAL / OpenAI  Initial latest-ingest version.
 */
 
@@ -22,118 +33,157 @@ WITH selected_run AS (
     ORDER BY ir.import_run_id DESC
     LIMIT 1
 ),
-stage_evidence AS (
-    SELECT
-        p.import_run_id,
-        lower(btrim(p.stage_id)) AS stage_key,
-        btrim(p.stage_id) AS stage_id_raw,
-        btrim(p.name) AS source_name,
-        'PREVIEW'::text AS evidence_type,
-        p.id AS preview_id,
-        NULL::text AS scene_id
-    FROM lor_snap.previews AS p
-    JOIN selected_run AS sr ON sr.import_run_id = p.import_run_id
-    WHERE btrim(coalesce(p.stage_id, '')) <> ''
-
-    UNION ALL
-
-    SELECT
+populated_scenes AS (
+    SELECT DISTINCT
         s.import_run_id,
-        lower(btrim(coalesce(slp.scene_stage_id, s.stage_id))) AS stage_key,
-        btrim(coalesce(slp.scene_stage_id, s.stage_id)) AS stage_id_raw,
-        btrim(s.name) AS source_name,
-        'POPULATED_SCENE'::text AS evidence_type,
         s.preview_id,
-        s.scene_id
+        s.scene_id,
+        btrim(s.name) AS scene_name,
+        lower(btrim(coalesce(slp.scene_stage_id, s.stage_id))) AS stage_key
     FROM lor_snap.scenes AS s
-    JOIN selected_run AS sr ON sr.import_run_id = s.import_run_id
+    JOIN selected_run AS sr
+      ON sr.import_run_id = s.import_run_id
     JOIN lor_snap.scene_lor_props AS slp
       ON slp.import_run_id = s.import_run_id
      AND slp.preview_id = s.preview_id
      AND slp.scene_id = s.scene_id
     WHERE btrim(coalesce(slp.scene_stage_id, s.stage_id, '')) <> ''
-    GROUP BY
-        s.import_run_id,
-        slp.scene_stage_id,
-        s.stage_id,
-        s.name,
-        s.preview_id,
-        s.scene_id
+      AND lower(btrim(coalesce(slp.scene_stage_id, s.stage_id)))
+            ~ '^(0|[0-9]{1,2})[a-z]?$'
 ),
-valid_evidence AS (
-    SELECT *
-    FROM stage_evidence
-    WHERE stage_key ~ '^(0|[0-9]{1,2})[a-z]?$'
-),
-normalized AS (
+preview_profile AS (
     SELECT
-        e.*,
+        p.import_run_id,
+        p.id AS preview_id,
+        btrim(p.name) AS preview_name,
+        lower(btrim(p.stage_id)) AS preview_stage_key,
+        count(ps.scene_id) AS populated_scene_count,
+        count(DISTINCT ps.stage_key) AS distinct_scene_stage_count,
+        string_agg(DISTINCT ps.stage_key, ', ' ORDER BY ps.stage_key) AS scene_stage_keys,
+        (
+            p.name ILIKE '%master musical preview%'
+            OR count(DISTINCT ps.stage_key) > 1
+        ) AS is_shared_preview
+    FROM lor_snap.previews AS p
+    JOIN selected_run AS sr
+      ON sr.import_run_id = p.import_run_id
+    LEFT JOIN populated_scenes AS ps
+      ON ps.import_run_id = p.import_run_id
+     AND ps.preview_id = p.id
+    WHERE btrim(coalesce(p.stage_id, '')) <> ''
+      AND lower(btrim(p.stage_id)) ~ '^(0|[0-9]{1,2})[a-z]?$'
+    GROUP BY p.import_run_id, p.id, p.name, p.stage_id
+),
+preview_rows AS (
+    SELECT
+        pp.import_run_id,
+        'PREVIEW'::text AS binding_type,
+        pp.preview_id,
+        NULL::text AS scene_id,
+        pp.preview_name AS source_name,
+        pp.preview_stage_key AS source_stage_key,
+        pp.is_shared_preview,
+        pp.populated_scene_count,
+        pp.distinct_scene_stage_count,
+        pp.scene_stage_keys,
         CASE
-            WHEN e.evidence_type = 'PREVIEW'
-             AND e.source_name ~* ('^Show Stage[[:space:]]+0*' || e.stage_key || '-')
-                THEN regexp_replace(e.source_name, '^Show Stage[[:space:]]+', '', 'i')
-            ELSE e.source_name
-        END AS canonical_source_name
-    FROM valid_evidence AS e
+            WHEN pp.is_shared_preview
+                THEN 'CONTEXT_ONLY_SHARED_PREVIEW'
+            WHEN pp.populated_scene_count > 0
+             AND EXISTS (
+                    SELECT 1
+                    FROM populated_scenes AS ps
+                    WHERE ps.import_run_id = pp.import_run_id
+                      AND ps.preview_id = pp.preview_id
+                      AND ps.stage_key IS DISTINCT FROM pp.preview_stage_key
+                )
+                THEN 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
+            ELSE 'PREVIEW_BINDING_CANDIDATE'
+        END AS preliminary_classification
+    FROM preview_profile AS pp
 ),
-canonical_names AS (
-    SELECT DISTINCT
-        stage_key,
-        canonical_source_name AS source_name,
-        (regexp_match(canonical_source_name,
-            '(?i)^0*' || stage_key || '-(.+)-([^-]+)$'))[1] AS parsed_stage_name,
-        (regexp_match(canonical_source_name,
-            '(?i)^0*' || stage_key || '-(.+)-([^-]+)$'))[2] AS parsed_short_code
-    FROM normalized
-    WHERE evidence_type = 'PREVIEW'
-      AND canonical_source_name ~* ('^0*' || stage_key || '-.+-[a-z]{2}$')
-),
-stage_summary AS (
+scene_rows AS (
     SELECT
-        v.import_run_id,
-        v.stage_key,
-        count(*) AS evidence_count,
-        count(DISTINCT c.source_name) AS canonical_name_count,
-        min(c.parsed_stage_name) AS proposed_stage_name,
-        min(c.parsed_short_code) AS proposed_short_code,
-        min(c.source_name) AS proposed_folder_name,
-        string_agg(
-            DISTINCT v.evidence_type || ': ' || v.source_name ||
-            ' [preview=' || coalesce(v.preview_id, '<null>') ||
-            ', scene=' || coalesce(v.scene_id, '<none>') || ']',
-            E'\n'
-            ORDER BY v.evidence_type || ': ' || v.source_name ||
-            ' [preview=' || coalesce(v.preview_id, '<null>') ||
-            ', scene=' || coalesce(v.scene_id, '<none>') || ']'
-        ) AS source_evidence
-    FROM valid_evidence AS v
-    LEFT JOIN canonical_names AS c ON c.stage_key = v.stage_key
-    GROUP BY v.import_run_id, v.stage_key
+        ps.import_run_id,
+        'SCENE'::text AS binding_type,
+        ps.preview_id,
+        ps.scene_id,
+        ps.scene_name AS source_name,
+        ps.stage_key AS source_stage_key,
+        pp.is_shared_preview,
+        pp.populated_scene_count,
+        pp.distinct_scene_stage_count,
+        pp.scene_stage_keys,
+        'SCENE_BINDING_CANDIDATE'::text AS preliminary_classification
+    FROM populated_scenes AS ps
+    JOIN preview_profile AS pp
+      ON pp.import_run_id = ps.import_run_id
+     AND pp.preview_id = ps.preview_id
+),
+all_rows AS (
+    SELECT * FROM preview_rows
+    UNION ALL
+    SELECT * FROM scene_rows
 )
 SELECT
-    ss.import_run_id,
-    ss.stage_key,
+    a.import_run_id,
+    a.binding_type,
+    a.preview_id,
+    a.scene_id,
+    a.source_name,
+    a.source_stage_key,
     rs.stage_id AS production_stage_id,
+    rs.stage_key AS production_stage_key,
     rs.stage_name AS production_stage_name,
     rs.short_code AS production_short_code,
     rs.folder_name AS production_folder_name,
-    ss.proposed_stage_name,
-    ss.proposed_short_code,
-    ss.proposed_folder_name,
-    ss.evidence_count,
-    ss.canonical_name_count,
+    a.is_shared_preview,
+    a.populated_scene_count,
+    a.distinct_scene_stage_count,
+    a.scene_stage_keys,
     CASE
-        WHEN rs.stage_id IS NOT NULL THEN 'EXISTING_STAGE_REVIEW_BINDINGS'
-        WHEN ss.canonical_name_count = 1 THEN 'NEW_STAGE_CANDIDATE'
-        ELSE 'BLOCKED_UNRESOLVED_STAGE_METADATA'
+        WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
+            THEN a.preliminary_classification
+        WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
+            THEN a.preliminary_classification
+        WHEN rs.stage_id IS NULL
+            THEN 'NEW_STAGE_REQUIRES_AUTHORITATIVE_METADATA'
+        WHEN a.binding_type = 'PREVIEW'
+            THEN 'EXISTING_STAGE_PREVIEW_BINDING_CANDIDATE'
+        ELSE 'EXISTING_STAGE_SCENE_BINDING_CANDIDATE'
     END AS classification,
-    (rs.stage_id IS NULL AND ss.canonical_name_count <> 1) AS is_blocking,
-    ss.source_evidence
-FROM stage_summary AS ss
-LEFT JOIN ref.stage AS rs ON rs.stage_key = ss.stage_key
+    CASE
+        WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
+            THEN true
+        WHEN a.preliminary_classification <> 'CONTEXT_ONLY_SHARED_PREVIEW'
+         AND rs.stage_id IS NULL
+            THEN true
+        ELSE false
+    END AS is_blocking,
+    CASE
+        WHEN a.preliminary_classification = 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT'
+            THEN 'Non-shared preview stage ' || a.source_stage_key ||
+                 ' conflicts with populated scene stage(s) ' ||
+                 coalesce(a.scene_stage_keys, '<none>') || '.'
+        WHEN a.preliminary_classification = 'CONTEXT_ONLY_SHARED_PREVIEW'
+            THEN 'Shared preview_id is context only; stage identity must use scene bindings.'
+        WHEN rs.stage_id IS NULL
+            THEN 'No ref.stage row exists for source stage key ' || a.source_stage_key || '.'
+        ELSE 'Binding candidate resolves to existing permanent stage_id ' || rs.stage_id || '.'
+    END AS operator_message
+FROM all_rows AS a
+LEFT JOIN ref.stage AS rs
+  ON rs.stage_key = a.source_stage_key
 ORDER BY
     is_blocking DESC,
-    CASE WHEN ss.stage_key ~ '^[0-9]+'
-         THEN ((regexp_match(ss.stage_key, '^0*([0-9]{1,2})'))[1])::integer
-         ELSE 1000 END,
-    ss.stage_key;
+    CASE classification
+        WHEN 'BLOCKED_PREVIEW_SCENE_STAGE_CONFLICT' THEN 1
+        WHEN 'NEW_STAGE_REQUIRES_AUTHORITATIVE_METADATA' THEN 2
+        WHEN 'EXISTING_STAGE_PREVIEW_BINDING_CANDIDATE' THEN 3
+        WHEN 'EXISTING_STAGE_SCENE_BINDING_CANDIDATE' THEN 4
+        WHEN 'CONTEXT_ONLY_SHARED_PREVIEW' THEN 5
+        ELSE 9
+    END,
+    a.source_stage_key,
+    a.preview_id,
+    a.scene_id NULLS FIRST;
