@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict uaNgop6UwyfdJZRis2g9cNEF2lwlH1lO9Mb4Ajx9bxYVSQnJtfcaA3Sv9Z8HYQh
+\restrict 01dZC5nyjMkUMBfQ9BfCmg2TzLbufkQ8E93mnLpJq26Y39Wec4VgoDAHrdb5vya
 
 -- Dumped from database version 16.9 (Debian 16.9-1.pgdg110+1)
 -- Dumped by pg_dump version 18.4
 
--- Started on 2026-07-31 08:06:24
+-- Started on 2026-08-01 13:31:27
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -46,7 +46,7 @@ CREATE SCHEMA ref;
 
 
 --
--- TOC entry 5476 (class 0 OID 0)
+-- TOC entry 5544 (class 0 OID 0)
 -- Dependencies: 18
 -- Name: SCHEMA ref; Type: COMMENT; Schema: -; Owner: -
 --
@@ -63,7 +63,7 @@ CREATE SCHEMA stage;
 
 
 --
--- TOC entry 2057 (class 1247 OID 18888)
+-- TOC entry 2068 (class 1247 OID 18888)
 -- Name: display_test_status_enum; Type: TYPE; Schema: ops; Owner: -
 --
 
@@ -75,7 +75,7 @@ CREATE TYPE ops.display_test_status_enum AS ENUM (
 
 
 --
--- TOC entry 2048 (class 1247 OID 18853)
+-- TOC entry 2059 (class 1247 OID 18853)
 -- Name: test_result_code; Type: TYPE; Schema: ops; Owner: -
 --
 
@@ -87,7 +87,7 @@ CREATE TYPE ops.test_result_code AS ENUM (
 
 
 --
--- TOC entry 1106 (class 1255 OID 18081)
+-- TOC entry 1117 (class 1255 OID 18081)
 -- Name: _yn_to_bool(text); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -104,7 +104,7 @@ $$;
 
 
 --
--- TOC entry 928 (class 1255 OID 19138)
+-- TOC entry 939 (class 1255 OID 19138)
 -- Name: display_test_session_set_checked_fields(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -136,7 +136,46 @@ $$;
 
 
 --
--- TOC entry 1074 (class 1255 OID 18866)
+-- TOC entry 480 (class 1255 OID 23113)
+-- Name: f_lor_reconciliation_summary(bigint); Type: FUNCTION; Schema: ops; Owner: -
+--
+
+CREATE FUNCTION ops.f_lor_reconciliation_summary(p_import_run_id bigint) RETURNS TABLE(import_run_id bigint, total_count integer, exact_match_count integer, excluded_nonphysical_count integer, blocking_count integer, preflight_status text)
+    LANGUAGE sql STABLE
+    AS $$
+    SELECT
+        p_import_run_id,
+        count(*)::integer AS total_count,
+        count(*) FILTER (WHERE classification_code = 'EXACT_MATCH')::integer
+            AS exact_match_count,
+        count(*) FILTER (WHERE classification_code = 'EXCLUDED_NONPHYSICAL')::integer
+            AS excluded_nonphysical_count,
+        count(*) FILTER (WHERE is_blocking)::integer AS blocking_count,
+        CASE
+            WHEN NOT EXISTS (
+                SELECT 1
+                FROM lor_snap.import_run AS ir
+                WHERE ir.import_run_id = p_import_run_id
+            ) THEN 'IMPORT_RUN_NOT_FOUND'
+            WHEN count(*) FILTER (WHERE is_blocking) = 0 THEN 'PASSED'
+            ELSE 'BLOCKED'
+        END AS preflight_status
+    FROM ops.v_lor_display_reconciliation
+    WHERE import_run_id = p_import_run_id;
+$$;
+
+
+--
+-- TOC entry 5545 (class 0 OID 0)
+-- Dependencies: 480
+-- Name: FUNCTION f_lor_reconciliation_summary(p_import_run_id bigint); Type: COMMENT; Schema: ops; Owner: -
+--
+
+COMMENT ON FUNCTION ops.f_lor_reconciliation_summary(p_import_run_id bigint) IS 'Returns read-only display reconciliation counts and pass/block status for one explicit immutable LOR import_run_id.';
+
+
+--
+-- TOC entry 1085 (class 1255 OID 18866)
 -- Name: p_pull_container(integer, text, text); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -215,7 +254,7 @@ $$;
 
 
 --
--- TOC entry 821 (class 1255 OID 19496)
+-- TOC entry 832 (class 1255 OID 19496)
 -- Name: p_pull_container(integer, text, text, integer); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -318,7 +357,7 @@ $$;
 
 
 --
--- TOC entry 608 (class 1255 OID 19544)
+-- TOC entry 619 (class 1255 OID 19544)
 -- Name: p_pull_container(integer, text, text, bigint); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -421,7 +460,7 @@ $$;
 
 
 --
--- TOC entry 597 (class 1255 OID 19554)
+-- TOC entry 608 (class 1255 OID 19554)
 -- Name: p_refresh_test_session(bigint, text, integer); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -528,8 +567,8 @@ $$;
 
 
 --
--- TOC entry 5477 (class 0 OID 0)
--- Dependencies: 597
+-- TOC entry 5546 (class 0 OID 0)
+-- Dependencies: 608
 -- Name: FUNCTION p_refresh_test_session(p_test_session_id bigint, p_refreshed_by text, p_refreshed_by_person_id integer); Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -537,7 +576,7 @@ COMMENT ON FUNCTION ops.p_refresh_test_session(p_test_session_id bigint, p_refre
 
 
 --
--- TOC entry 961 (class 1255 OID 19110)
+-- TOC entry 972 (class 1255 OID 19110)
 -- Name: set_audit_fields(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -553,7 +592,7 @@ $$;
 
 
 --
--- TOC entry 567 (class 1255 OID 19175)
+-- TOC entry 578 (class 1255 OID 19175)
 -- Name: set_checked_actor(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -593,7 +632,7 @@ $$;
 
 
 --
--- TOC entry 613 (class 1255 OID 19297)
+-- TOC entry 624 (class 1255 OID 19297)
 -- Name: set_container_search_helper(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -612,7 +651,7 @@ $$;
 
 
 --
--- TOC entry 942 (class 1255 OID 19555)
+-- TOC entry 953 (class 1255 OID 19555)
 -- Name: tf_after_refresh_test_session(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -640,7 +679,7 @@ $$;
 
 
 --
--- TOC entry 1136 (class 1255 OID 19301)
+-- TOC entry 1147 (class 1255 OID 19301)
 -- Name: tf_after_start_container_pull(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -670,7 +709,7 @@ $$;
 
 
 --
--- TOC entry 944 (class 1255 OID 19292)
+-- TOC entry 955 (class 1255 OID 19292)
 -- Name: tf_start_container_pull(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -698,7 +737,7 @@ $$;
 
 
 --
--- TOC entry 442 (class 1255 OID 19560)
+-- TOC entry 452 (class 1255 OID 19560)
 -- Name: tf_validate_display_test_session_notes(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -722,7 +761,7 @@ $$;
 
 
 --
--- TOC entry 697 (class 1255 OID 19574)
+-- TOC entry 708 (class 1255 OID 19574)
 -- Name: tf_work_order_autofill_completion_on_repair_complete(); Type: FUNCTION; Schema: ops; Owner: -
 --
 
@@ -756,7 +795,7 @@ $$;
 
 
 --
--- TOC entry 1056 (class 1255 OID 17175)
+-- TOC entry 1067 (class 1255 OID 17175)
 -- Name: apply_display_metadata_from_sheet(); Type: PROCEDURE; Schema: ref; Owner: -
 --
 
@@ -843,7 +882,7 @@ $$;
 
 
 --
--- TOC entry 503 (class 1255 OID 18341)
+-- TOC entry 514 (class 1255 OID 18341)
 -- Name: p1_upsert_stage_from_latest_lor(); Type: PROCEDURE; Schema: ref; Owner: -
 --
 
@@ -1012,8 +1051,8 @@ $_$;
 
 
 --
--- TOC entry 5478 (class 0 OID 0)
--- Dependencies: 503
+-- TOC entry 5547 (class 0 OID 0)
+-- Dependencies: 514
 -- Name: PROCEDURE p1_upsert_stage_from_latest_lor(); Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -1060,7 +1099,7 @@ Notes:
 
 
 --
--- TOC entry 1005 (class 1255 OID 18571)
+-- TOC entry 1016 (class 1255 OID 18571)
 -- Name: p2_upsert_display_from_latest_lor(); Type: PROCEDURE; Schema: ref; Owner: -
 --
 
@@ -1374,8 +1413,8 @@ $_$;
 
 
 --
--- TOC entry 5479 (class 0 OID 0)
--- Dependencies: 1005
+-- TOC entry 5548 (class 0 OID 0)
+-- Dependencies: 1016
 -- Name: PROCEDURE p2_upsert_display_from_latest_lor(); Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -1399,7 +1438,7 @@ Revision History:
 
 
 --
--- TOC entry 554 (class 1255 OID 19143)
+-- TOC entry 565 (class 1255 OID 19143)
 -- Name: resolve_actor(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1448,7 +1487,7 @@ $$;
 
 
 --
--- TOC entry 1141 (class 1255 OID 19141)
+-- TOC entry 1152 (class 1255 OID 19141)
 -- Name: set_actor_on_insert(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1485,7 +1524,7 @@ $$;
 
 
 --
--- TOC entry 1068 (class 1255 OID 19173)
+-- TOC entry 1079 (class 1255 OID 19173)
 -- Name: set_actor_on_update(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1530,7 +1569,7 @@ $$;
 
 
 --
--- TOC entry 1181 (class 1255 OID 19111)
+-- TOC entry 1192 (class 1255 OID 19111)
 -- Name: set_audit_fields(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1546,7 +1585,7 @@ $$;
 
 
 --
--- TOC entry 408 (class 1255 OID 16703)
+-- TOC entry 418 (class 1255 OID 16703)
 -- Name: set_frame_updated_fields(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1562,7 +1601,7 @@ $$;
 
 
 --
--- TOC entry 879 (class 1255 OID 16722)
+-- TOC entry 890 (class 1255 OID 16722)
 -- Name: set_updated_fields(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1589,7 +1628,7 @@ $$;
 
 
 --
--- TOC entry 556 (class 1255 OID 19847)
+-- TOC entry 567 (class 1255 OID 19847)
 -- Name: sync_audit_collection_policy(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1677,8 +1716,8 @@ $$;
 
 
 --
--- TOC entry 5480 (class 0 OID 0)
--- Dependencies: 556
+-- TOC entry 5549 (class 0 OID 0)
+-- Dependencies: 567
 -- Name: FUNCTION sync_audit_collection_policy(); Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -1804,7 +1843,7 @@ Created: 2026-03-11
 
 
 --
--- TOC entry 565 (class 1255 OID 19299)
+-- TOC entry 576 (class 1255 OID 19299)
 -- Name: sync_container_search_helper_to_test_session(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1822,7 +1861,7 @@ $$;
 
 
 --
--- TOC entry 650 (class 1255 OID 16804)
+-- TOC entry 661 (class 1255 OID 16804)
 -- Name: tg_touch_row(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1838,7 +1877,7 @@ $$;
 
 
 --
--- TOC entry 940 (class 1255 OID 18154)
+-- TOC entry 951 (class 1255 OID 18154)
 -- Name: trg_set_updated(); Type: FUNCTION; Schema: ref; Owner: -
 --
 
@@ -1854,7 +1893,7 @@ $$;
 
 
 --
--- TOC entry 993 (class 1255 OID 20043)
+-- TOC entry 1004 (class 1255 OID 20043)
 -- Name: p_process_work_order_intake(bigint); Type: FUNCTION; Schema: stage; Owner: -
 --
 
@@ -1993,7 +2032,7 @@ $$;
 
 
 --
--- TOC entry 413 (class 1255 OID 17172)
+-- TOC entry 423 (class 1255 OID 17172)
 -- Name: reset_display_sheet(); Type: PROCEDURE; Schema: stage; Owner: -
 --
 
@@ -2010,7 +2049,7 @@ $$;
 
 
 --
--- TOC entry 1130 (class 1255 OID 20086)
+-- TOC entry 1141 (class 1255 OID 20086)
 -- Name: tf_process_work_order_intake_on_triage(); Type: FUNCTION; Schema: stage; Owner: -
 --
 
@@ -2038,7 +2077,7 @@ $$;
 
 
 --
--- TOC entry 1020 (class 1255 OID 20097)
+-- TOC entry 1031 (class 1255 OID 20097)
 -- Name: tf_resolve_work_order_intake_submitter(); Type: FUNCTION; Schema: stage; Owner: -
 --
 
@@ -2079,7 +2118,7 @@ $$;
 
 
 --
--- TOC entry 691 (class 1255 OID 17139)
+-- TOC entry 702 (class 1255 OID 17139)
 -- Name: transform_display_sheet_csv_to_raw(); Type: PROCEDURE; Schema: stage; Owner: -
 --
 
@@ -2135,7 +2174,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- TOC entry 268 (class 1259 OID 16821)
+-- TOC entry 270 (class 1259 OID 16821)
 -- Name: container; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -2170,8 +2209,8 @@ CREATE TABLE ref.container (
 
 
 --
--- TOC entry 5481 (class 0 OID 0)
--- Dependencies: 268
+-- TOC entry 5550 (class 0 OID 0)
+-- Dependencies: 270
 -- Name: COLUMN container.label_required; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2179,8 +2218,8 @@ COMMENT ON COLUMN ref.container.label_required IS 'Indicates whether this contai
 
 
 --
--- TOC entry 5482 (class 0 OID 0)
--- Dependencies: 268
+-- TOC entry 5551 (class 0 OID 0)
+-- Dependencies: 270
 -- Name: COLUMN container.print_label; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2188,8 +2227,8 @@ COMMENT ON COLUMN ref.container.print_label IS 'Operator action flag. Set true t
 
 
 --
--- TOC entry 5483 (class 0 OID 0)
--- Dependencies: 268
+-- TOC entry 5552 (class 0 OID 0)
+-- Dependencies: 270
 -- Name: COLUMN container.label_print_count_cached; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2197,8 +2236,8 @@ COMMENT ON COLUMN ref.container.label_print_count_cached IS 'System-maintained c
 
 
 --
--- TOC entry 5484 (class 0 OID 0)
--- Dependencies: 268
+-- TOC entry 5553 (class 0 OID 0)
+-- Dependencies: 270
 -- Name: COLUMN container.label_print_last_at_cached; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2206,7 +2245,7 @@ COMMENT ON COLUMN ref.container.label_print_last_at_cached IS 'System-maintained
 
 
 --
--- TOC entry 277 (class 1259 OID 17051)
+-- TOC entry 279 (class 1259 OID 17051)
 -- Name: display; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -2243,8 +2282,8 @@ CREATE TABLE ref.display (
 
 
 --
--- TOC entry 5485 (class 0 OID 0)
--- Dependencies: 277
+-- TOC entry 5554 (class 0 OID 0)
+-- Dependencies: 279
 -- Name: COLUMN display.label_required; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2252,8 +2291,8 @@ COMMENT ON COLUMN ref.display.label_required IS 'Indicates whether this display 
 
 
 --
--- TOC entry 5486 (class 0 OID 0)
--- Dependencies: 277
+-- TOC entry 5555 (class 0 OID 0)
+-- Dependencies: 279
 -- Name: COLUMN display.print_label; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2261,8 +2300,8 @@ COMMENT ON COLUMN ref.display.print_label IS 'Operator action flag. Set true to 
 
 
 --
--- TOC entry 5487 (class 0 OID 0)
--- Dependencies: 277
+-- TOC entry 5556 (class 0 OID 0)
+-- Dependencies: 279
 -- Name: COLUMN display.label_print_count_cached; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2270,8 +2309,8 @@ COMMENT ON COLUMN ref.display.label_print_count_cached IS 'System-maintained cac
 
 
 --
--- TOC entry 5488 (class 0 OID 0)
--- Dependencies: 277
+-- TOC entry 5557 (class 0 OID 0)
+-- Dependencies: 279
 -- Name: COLUMN display.label_print_last_at_cached; Type: COMMENT; Schema: ref; Owner: -
 --
 
@@ -2279,7 +2318,7 @@ COMMENT ON COLUMN ref.display.label_print_last_at_cached IS 'System-maintained c
 
 
 --
--- TOC entry 243 (class 1259 OID 16457)
+-- TOC entry 245 (class 1259 OID 16457)
 -- Name: dmx_channels; Type: TABLE; Schema: lor_snap; Owner: -
 --
 
@@ -2297,7 +2336,7 @@ CREATE TABLE lor_snap.dmx_channels (
 
 
 --
--- TOC entry 239 (class 1259 OID 16391)
+-- TOC entry 241 (class 1259 OID 16391)
 -- Name: import_run; Type: TABLE; Schema: lor_snap; Owner: -
 --
 
@@ -2309,7 +2348,7 @@ CREATE TABLE lor_snap.import_run (
 
 
 --
--- TOC entry 238 (class 1259 OID 16390)
+-- TOC entry 240 (class 1259 OID 16390)
 -- Name: import_run_import_run_id_seq; Type: SEQUENCE; Schema: lor_snap; Owner: -
 --
 
@@ -2322,8 +2361,8 @@ CREATE SEQUENCE lor_snap.import_run_import_run_id_seq
 
 
 --
--- TOC entry 5489 (class 0 OID 0)
--- Dependencies: 238
+-- TOC entry 5558 (class 0 OID 0)
+-- Dependencies: 240
 -- Name: import_run_import_run_id_seq; Type: SEQUENCE OWNED BY; Schema: lor_snap; Owner: -
 --
 
@@ -2331,7 +2370,7 @@ ALTER SEQUENCE lor_snap.import_run_import_run_id_seq OWNED BY lor_snap.import_ru
 
 
 --
--- TOC entry 240 (class 1259 OID 16400)
+-- TOC entry 242 (class 1259 OID 16400)
 -- Name: previews; Type: TABLE; Schema: lor_snap; Owner: -
 --
 
@@ -2348,7 +2387,7 @@ CREATE TABLE lor_snap.previews (
 
 
 --
--- TOC entry 241 (class 1259 OID 16414)
+-- TOC entry 243 (class 1259 OID 16414)
 -- Name: props; Type: TABLE; Schema: lor_snap; Owner: -
 --
 
@@ -2396,7 +2435,7 @@ CREATE TABLE lor_snap.props (
 
 
 --
--- TOC entry 242 (class 1259 OID 16433)
+-- TOC entry 244 (class 1259 OID 16433)
 -- Name: sub_props; Type: TABLE; Schema: lor_snap; Owner: -
 --
 
@@ -2445,7 +2484,7 @@ CREATE TABLE lor_snap.sub_props (
 
 
 --
--- TOC entry 244 (class 1259 OID 16479)
+-- TOC entry 246 (class 1259 OID 16479)
 -- Name: v_current_run; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2459,7 +2498,7 @@ CREATE VIEW lor_snap.v_current_run AS
 
 
 --
--- TOC entry 248 (class 1259 OID 16497)
+-- TOC entry 250 (class 1259 OID 16497)
 -- Name: v_current_dmx_channels; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2478,7 +2517,7 @@ CREATE VIEW lor_snap.v_current_dmx_channels AS
 
 
 --
--- TOC entry 245 (class 1259 OID 16483)
+-- TOC entry 247 (class 1259 OID 16483)
 -- Name: v_current_previews; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2496,7 +2535,7 @@ CREATE VIEW lor_snap.v_current_previews AS
 
 
 --
--- TOC entry 246 (class 1259 OID 16487)
+-- TOC entry 248 (class 1259 OID 16487)
 -- Name: v_current_props; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2545,7 +2584,7 @@ CREATE VIEW lor_snap.v_current_props AS
 
 
 --
--- TOC entry 247 (class 1259 OID 16492)
+-- TOC entry 249 (class 1259 OID 16492)
 -- Name: v_current_sub_props; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2595,7 +2634,7 @@ CREATE VIEW lor_snap.v_current_sub_props AS
 
 
 --
--- TOC entry 249 (class 1259 OID 16509)
+-- TOC entry 251 (class 1259 OID 16509)
 -- Name: preview_wiring_map_v6; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2644,7 +2683,7 @@ UNION ALL
 
 
 --
--- TOC entry 250 (class 1259 OID 16514)
+-- TOC entry 252 (class 1259 OID 16514)
 -- Name: preview_wiring_sorted_v6; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2664,7 +2703,7 @@ CREATE VIEW lor_snap.preview_wiring_sorted_v6 AS
 
 
 --
--- TOC entry 251 (class 1259 OID 16518)
+-- TOC entry 253 (class 1259 OID 16518)
 -- Name: preview_wiring_fieldmap_v6; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2743,7 +2782,7 @@ CREATE VIEW lor_snap.preview_wiring_fieldmap_v6 AS
 
 
 --
--- TOC entry 252 (class 1259 OID 16523)
+-- TOC entry 254 (class 1259 OID 16523)
 -- Name: preview_wiring_fieldlead_v6; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2784,7 +2823,7 @@ CREATE VIEW lor_snap.preview_wiring_fieldlead_v6 AS
 
 
 --
--- TOC entry 253 (class 1259 OID 16528)
+-- TOC entry 255 (class 1259 OID 16528)
 -- Name: preview_wiring_circuit_rollup_v6; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2805,7 +2844,7 @@ CREATE VIEW lor_snap.preview_wiring_circuit_rollup_v6 AS
 
 
 --
--- TOC entry 254 (class 1259 OID 16532)
+-- TOC entry 256 (class 1259 OID 16532)
 -- Name: preview_wiring_fieldonly_v6; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2828,7 +2867,7 @@ CREATE VIEW lor_snap.preview_wiring_fieldonly_v6 AS
 
 
 --
--- TOC entry 402 (class 1259 OID 23021)
+-- TOC entry 404 (class 1259 OID 23021)
 -- Name: scene_lor_props; Type: TABLE; Schema: lor_snap; Owner: -
 --
 
@@ -2848,7 +2887,7 @@ CREATE TABLE lor_snap.scene_lor_props (
 
 
 --
--- TOC entry 401 (class 1259 OID 23011)
+-- TOC entry 403 (class 1259 OID 23011)
 -- Name: scenes; Type: TABLE; Schema: lor_snap; Owner: -
 --
 
@@ -2869,7 +2908,7 @@ CREATE TABLE lor_snap.scenes (
 
 
 --
--- TOC entry 255 (class 1259 OID 16548)
+-- TOC entry 257 (class 1259 OID 16548)
 -- Name: stage_display_assets_v1; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2922,7 +2961,7 @@ UNION ALL
 
 
 --
--- TOC entry 256 (class 1259 OID 16553)
+-- TOC entry 258 (class 1259 OID 16553)
 -- Name: stage_display_inventory_only_v1; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2960,7 +2999,7 @@ UNION
 
 
 --
--- TOC entry 257 (class 1259 OID 16558)
+-- TOC entry 259 (class 1259 OID 16558)
 -- Name: stage_display_assets_all_v1; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -2993,7 +3032,7 @@ UNION ALL
 
 
 --
--- TOC entry 258 (class 1259 OID 16563)
+-- TOC entry 260 (class 1259 OID 16563)
 -- Name: stage_display_list_all_v1; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -3040,7 +3079,7 @@ CREATE VIEW lor_snap.stage_display_list_all_v1 AS
 
 
 --
--- TOC entry 259 (class 1259 OID 16568)
+-- TOC entry 261 (class 1259 OID 16568)
 -- Name: stage_display_unassigned_v1; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -3051,7 +3090,7 @@ CREATE VIEW lor_snap.stage_display_unassigned_v1 AS
 
 
 --
--- TOC entry 404 (class 1259 OID 23042)
+-- TOC entry 406 (class 1259 OID 23042)
 -- Name: v_current_scene_lor_props; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -3073,7 +3112,7 @@ CREATE VIEW lor_snap.v_current_scene_lor_props AS
 
 
 --
--- TOC entry 403 (class 1259 OID 23038)
+-- TOC entry 405 (class 1259 OID 23038)
 -- Name: v_current_scenes; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -3096,7 +3135,216 @@ CREATE VIEW lor_snap.v_current_scenes AS
 
 
 --
--- TOC entry 275 (class 1259 OID 16991)
+-- TOC entry 408 (class 1259 OID 23103)
+-- Name: v_display_lor_occurrence; Type: VIEW; Schema: lor_snap; Owner: -
+--
+
+CREATE VIEW lor_snap.v_display_lor_occurrence AS
+ WITH preview_occurrence AS (
+         SELECT p.import_run_id,
+            p.prop_id AS lor_prop_id,
+            btrim(p.lor_comment) AS display_name,
+            upper(btrim(p.lor_comment)) AS display_name_normalized,
+            p.preview_id,
+            pr.name AS preview_name,
+            pr.stage_id AS preview_stage_id,
+            NULL::text AS scene_id,
+            NULL::text AS scene_name,
+            NULL::text AS scene_stage_id,
+            'PREVIEW'::text AS location_type
+           FROM (lor_snap.props p
+             JOIN lor_snap.previews pr ON (((pr.import_run_id = p.import_run_id) AND (pr.id = p.preview_id))))
+          WHERE (NULLIF(btrim(p.lor_comment), ''::text) IS NOT NULL)
+        ), scene_occurrence AS (
+         SELECT (slp.import_run_id)::bigint AS import_run_id,
+            p.prop_id AS lor_prop_id,
+            btrim(p.lor_comment) AS display_name,
+            upper(btrim(p.lor_comment)) AS display_name_normalized,
+            slp.preview_id,
+            pr.name AS preview_name,
+            pr.stage_id AS preview_stage_id,
+            slp.scene_id,
+            sc.name AS scene_name,
+            COALESCE(slp.scene_stage_id, sc.stage_id) AS scene_stage_id,
+            'SCENE'::text AS location_type
+           FROM (((lor_snap.scene_lor_props slp
+             JOIN lor_snap.props p ON (((p.import_run_id = (slp.import_run_id)::bigint) AND (p.prop_id = slp.prop_id))))
+             JOIN lor_snap.previews pr ON (((pr.import_run_id = (slp.import_run_id)::bigint) AND (pr.id = slp.preview_id))))
+             LEFT JOIN lor_snap.scenes sc ON (((sc.import_run_id = slp.import_run_id) AND (sc.preview_id = slp.preview_id) AND (sc.scene_id = slp.scene_id))))
+          WHERE (NULLIF(btrim(p.lor_comment), ''::text) IS NOT NULL)
+        )
+ SELECT preview_occurrence.import_run_id,
+    preview_occurrence.lor_prop_id,
+    preview_occurrence.display_name,
+    preview_occurrence.display_name_normalized,
+    preview_occurrence.preview_id,
+    preview_occurrence.preview_name,
+    preview_occurrence.preview_stage_id,
+    preview_occurrence.scene_id,
+    preview_occurrence.scene_name,
+    preview_occurrence.scene_stage_id,
+    preview_occurrence.location_type
+   FROM preview_occurrence
+UNION ALL
+ SELECT scene_occurrence.import_run_id,
+    scene_occurrence.lor_prop_id,
+    scene_occurrence.display_name,
+    scene_occurrence.display_name_normalized,
+    scene_occurrence.preview_id,
+    scene_occurrence.preview_name,
+    scene_occurrence.preview_stage_id,
+    scene_occurrence.scene_id,
+    scene_occurrence.scene_name,
+    scene_occurrence.scene_stage_id,
+    scene_occurrence.location_type
+   FROM scene_occurrence;
+
+
+--
+-- TOC entry 5559 (class 0 OID 0)
+-- Dependencies: 408
+-- Name: VIEW v_display_lor_occurrence; Type: COMMENT; Schema: lor_snap; Owner: -
+--
+
+COMMENT ON VIEW lor_snap.v_display_lor_occurrence IS 'Run-aware evidence of every preview and scene containing an LOR prop. Scene membership is location evidence, not physical-display identity authority.';
+
+
+--
+-- TOC entry 407 (class 1259 OID 23098)
+-- Name: v_display_reconciliation_source; Type: VIEW; Schema: lor_snap; Owner: -
+--
+
+CREATE VIEW lor_snap.v_display_reconciliation_source AS
+ WITH background_rows AS (
+         SELECT p.import_run_id,
+            p.preview_id,
+            btrim(pr.stage_id) AS preview_stage_id,
+            pr.name AS preview_name,
+            p.prop_id AS lor_prop_id,
+            p.name AS prop_name,
+            p.lor_comment AS prop_comment,
+            btrim(p.lor_comment) AS display_name,
+            upper(btrim(p.lor_comment)) AS display_name_normalized,
+            p.string_type,
+            p.color,
+            ((p.lor_comment ~~* '%spare%'::text) OR (COALESCE(p.name, ''::text) ~~* '%spare%'::text) OR (COALESCE(p.lor_comment, ''::text) ~~* '%spare%'::text)) AS is_spare,
+            (p.lor_comment ~~* '%phantom%'::text) AS is_phantom
+           FROM (lor_snap.props p
+             JOIN lor_snap.previews pr ON (((pr.import_run_id = p.import_run_id) AND (pr.id = p.preview_id))))
+          WHERE ((pr.stage_id IS NOT NULL) AND (btrim(pr.stage_id) <> ''::text) AND (NULLIF(btrim(p.lor_comment), ''::text) IS NOT NULL) AND (lower(btrim(pr.stage_id)) ~ '^0*[0-9]{1,2}[a-z]?$'::text))
+        ), scene_rows AS (
+         SELECT slp.import_run_id,
+            slp.preview_id,
+            btrim(COALESCE(slp.scene_stage_id, sc.stage_id)) AS preview_stage_id,
+            pr.name AS preview_name,
+            p.prop_id AS lor_prop_id,
+            p.name AS prop_name,
+            p.lor_comment AS prop_comment,
+            btrim(p.lor_comment) AS display_name,
+            upper(btrim(p.lor_comment)) AS display_name_normalized,
+            p.string_type,
+            p.color,
+            ((p.lor_comment ~~* '%spare%'::text) OR (COALESCE(p.name, ''::text) ~~* '%spare%'::text) OR (COALESCE(p.lor_comment, ''::text) ~~* '%spare%'::text)) AS is_spare,
+            (p.lor_comment ~~* '%phantom%'::text) AS is_phantom
+           FROM (((lor_snap.scene_lor_props slp
+             JOIN lor_snap.props p ON (((p.import_run_id = slp.import_run_id) AND (p.prop_id = slp.prop_id))))
+             JOIN lor_snap.previews pr ON (((pr.import_run_id = slp.import_run_id) AND (pr.id = slp.preview_id))))
+             LEFT JOIN lor_snap.scenes sc ON (((sc.import_run_id = slp.import_run_id) AND (sc.preview_id = slp.preview_id) AND (sc.scene_id = slp.scene_id))))
+          WHERE ((COALESCE(slp.scene_stage_id, sc.stage_id) IS NOT NULL) AND (btrim(COALESCE(slp.scene_stage_id, sc.stage_id)) <> ''::text) AND (NULLIF(btrim(p.lor_comment), ''::text) IS NOT NULL) AND (lower(btrim(COALESCE(slp.scene_stage_id, sc.stage_id))) ~ '^0*[0-9]{1,2}[a-z]?$'::text) AND (pr.name ~~* '%Master Musical Preview%'::text))
+        ), combined_rows AS (
+         SELECT br.import_run_id,
+            br.preview_id,
+            br.preview_stage_id,
+            br.preview_name,
+            br.lor_prop_id,
+            br.prop_name,
+            br.prop_comment,
+            br.display_name,
+            br.display_name_normalized,
+            br.string_type,
+            br.color,
+            br.is_spare,
+            br.is_phantom,
+            1 AS source_preference
+           FROM background_rows br
+        UNION ALL
+         SELECT sr_1.import_run_id,
+            sr_1.preview_id,
+            sr_1.preview_stage_id,
+            sr_1.preview_name,
+            sr_1.lor_prop_id,
+            sr_1.prop_name,
+            sr_1.prop_comment,
+            sr_1.display_name,
+            sr_1.display_name_normalized,
+            sr_1.string_type,
+            sr_1.color,
+            sr_1.is_spare,
+            sr_1.is_phantom,
+            2 AS source_preference
+           FROM scene_rows sr_1
+        ), source_rows AS (
+         SELECT DISTINCT ON (cr.import_run_id, cr.display_name_normalized, cr.lor_prop_id) cr.import_run_id,
+            cr.preview_id,
+            cr.preview_stage_id,
+            cr.preview_name,
+            cr.lor_prop_id,
+            cr.prop_name,
+            cr.prop_comment,
+            cr.display_name,
+            cr.display_name_normalized,
+            cr.string_type,
+            cr.color,
+            cr.is_spare,
+            cr.is_phantom
+           FROM combined_rows cr
+          ORDER BY cr.import_run_id, cr.display_name_normalized, cr.lor_prop_id, cr.source_preference, cr.preview_name, cr.preview_id
+        ), uuid_counts AS (
+         SELECT source_rows.import_run_id,
+            source_rows.lor_prop_id,
+            (count(*))::integer AS lor_uuid_row_count,
+            (count(DISTINCT source_rows.display_name_normalized))::integer AS lor_uuid_name_count
+           FROM source_rows
+          GROUP BY source_rows.import_run_id, source_rows.lor_prop_id
+        ), name_counts AS (
+         SELECT source_rows.import_run_id,
+            source_rows.display_name_normalized,
+            (count(DISTINCT source_rows.lor_prop_id))::integer AS lor_name_uuid_count
+           FROM source_rows
+          GROUP BY source_rows.import_run_id, source_rows.display_name_normalized
+        )
+ SELECT sr.import_run_id,
+    sr.preview_id,
+    sr.preview_stage_id,
+    sr.preview_name,
+    sr.lor_prop_id,
+    sr.prop_name,
+    sr.prop_comment,
+    sr.display_name,
+    sr.display_name_normalized,
+    sr.string_type,
+    sr.color,
+    sr.is_spare,
+    sr.is_phantom,
+    uc.lor_uuid_row_count,
+    uc.lor_uuid_name_count,
+    nc.lor_name_uuid_count
+   FROM ((source_rows sr
+     JOIN uuid_counts uc ON (((uc.import_run_id = sr.import_run_id) AND (uc.lor_prop_id = sr.lor_prop_id))))
+     JOIN name_counts nc ON (((nc.import_run_id = sr.import_run_id) AND (NOT (nc.display_name_normalized IS DISTINCT FROM sr.display_name_normalized)))));
+
+
+--
+-- TOC entry 5560 (class 0 OID 0)
+-- Dependencies: 407
+-- Name: VIEW v_display_reconciliation_source; Type: COMMENT; Schema: lor_snap; Owner: -
+--
+
+COMMENT ON VIEW lor_snap.v_display_reconciliation_source IS 'Run-aware physical-display candidates requiring a nonblank LOR comment and canonicalized by normalized display name and LOR UUID. Prop/channel names are never substituted for blank comments. Background evidence is preferred; Master Musical scene evidence supplies musical-only displays.';
+
+
+--
+-- TOC entry 277 (class 1259 OID 16991)
 -- Name: v_prop_identity; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -3110,7 +3358,7 @@ CREATE VIEW lor_snap.v_prop_identity AS
 
 
 --
--- TOC entry 285 (class 1259 OID 17187)
+-- TOC entry 287 (class 1259 OID 17187)
 -- Name: v_props_diff_latest_prev; Type: VIEW; Schema: lor_snap; Owner: -
 --
 
@@ -3254,7 +3502,7 @@ CREATE VIEW lor_snap.v_props_diff_latest_prev AS
 
 
 --
--- TOC entry 393 (class 1259 OID 20710)
+-- TOC entry 395 (class 1259 OID 20710)
 -- Name: container_label_batch; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3270,7 +3518,7 @@ CREATE TABLE ops.container_label_batch (
 
 
 --
--- TOC entry 392 (class 1259 OID 20709)
+-- TOC entry 394 (class 1259 OID 20709)
 -- Name: container_label_batch_container_label_batch_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3283,8 +3531,8 @@ CREATE SEQUENCE ops.container_label_batch_container_label_batch_id_seq
 
 
 --
--- TOC entry 5490 (class 0 OID 0)
--- Dependencies: 392
+-- TOC entry 5561 (class 0 OID 0)
+-- Dependencies: 394
 -- Name: container_label_batch_container_label_batch_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3292,7 +3540,7 @@ ALTER SEQUENCE ops.container_label_batch_container_label_batch_id_seq OWNED BY o
 
 
 --
--- TOC entry 395 (class 1259 OID 20722)
+-- TOC entry 397 (class 1259 OID 20722)
 -- Name: container_label_batch_item; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3311,7 +3559,7 @@ CREATE TABLE ops.container_label_batch_item (
 
 
 --
--- TOC entry 394 (class 1259 OID 20721)
+-- TOC entry 396 (class 1259 OID 20721)
 -- Name: container_label_batch_item_container_label_batch_item_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3324,8 +3572,8 @@ CREATE SEQUENCE ops.container_label_batch_item_container_label_batch_item_id_seq
 
 
 --
--- TOC entry 5491 (class 0 OID 0)
--- Dependencies: 394
+-- TOC entry 5562 (class 0 OID 0)
+-- Dependencies: 396
 -- Name: container_label_batch_item_container_label_batch_item_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3333,7 +3581,7 @@ ALTER SEQUENCE ops.container_label_batch_item_container_label_batch_item_id_seq 
 
 
 --
--- TOC entry 386 (class 1259 OID 20611)
+-- TOC entry 388 (class 1259 OID 20611)
 -- Name: container_label_print; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3355,8 +3603,8 @@ CREATE TABLE ops.container_label_print (
 
 
 --
--- TOC entry 5492 (class 0 OID 0)
--- Dependencies: 386
+-- TOC entry 5563 (class 0 OID 0)
+-- Dependencies: 388
 -- Name: TABLE container_label_print; Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -3364,8 +3612,8 @@ COMMENT ON TABLE ops.container_label_print IS 'Successful container label print 
 
 
 --
--- TOC entry 5493 (class 0 OID 0)
--- Dependencies: 386
+-- TOC entry 5564 (class 0 OID 0)
+-- Dependencies: 388
 -- Name: COLUMN container_label_print.label_orientation; Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -3373,7 +3621,7 @@ COMMENT ON COLUMN ops.container_label_print.label_orientation IS 'VERTICAL when 
 
 
 --
--- TOC entry 385 (class 1259 OID 20610)
+-- TOC entry 387 (class 1259 OID 20610)
 -- Name: container_label_print_container_label_print_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3386,8 +3634,8 @@ CREATE SEQUENCE ops.container_label_print_container_label_print_id_seq
 
 
 --
--- TOC entry 5494 (class 0 OID 0)
--- Dependencies: 385
+-- TOC entry 5565 (class 0 OID 0)
+-- Dependencies: 387
 -- Name: container_label_print_container_label_print_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3395,7 +3643,7 @@ ALTER SEQUENCE ops.container_label_print_container_label_print_id_seq OWNED BY o
 
 
 --
--- TOC entry 389 (class 1259 OID 20675)
+-- TOC entry 391 (class 1259 OID 20675)
 -- Name: display_label_batch; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3411,7 +3659,7 @@ CREATE TABLE ops.display_label_batch (
 
 
 --
--- TOC entry 388 (class 1259 OID 20674)
+-- TOC entry 390 (class 1259 OID 20674)
 -- Name: display_label_batch_display_label_batch_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3424,8 +3672,8 @@ CREATE SEQUENCE ops.display_label_batch_display_label_batch_id_seq
 
 
 --
--- TOC entry 5495 (class 0 OID 0)
--- Dependencies: 388
+-- TOC entry 5566 (class 0 OID 0)
+-- Dependencies: 390
 -- Name: display_label_batch_display_label_batch_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3433,7 +3681,7 @@ ALTER SEQUENCE ops.display_label_batch_display_label_batch_id_seq OWNED BY ops.d
 
 
 --
--- TOC entry 391 (class 1259 OID 20687)
+-- TOC entry 393 (class 1259 OID 20687)
 -- Name: display_label_batch_item; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3452,7 +3700,7 @@ CREATE TABLE ops.display_label_batch_item (
 
 
 --
--- TOC entry 390 (class 1259 OID 20686)
+-- TOC entry 392 (class 1259 OID 20686)
 -- Name: display_label_batch_item_display_label_batch_item_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3465,8 +3713,8 @@ CREATE SEQUENCE ops.display_label_batch_item_display_label_batch_item_id_seq
 
 
 --
--- TOC entry 5496 (class 0 OID 0)
--- Dependencies: 390
+-- TOC entry 5567 (class 0 OID 0)
+-- Dependencies: 392
 -- Name: display_label_batch_item_display_label_batch_item_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3474,7 +3722,7 @@ ALTER SEQUENCE ops.display_label_batch_item_display_label_batch_item_id_seq OWNE
 
 
 --
--- TOC entry 384 (class 1259 OID 20591)
+-- TOC entry 386 (class 1259 OID 20591)
 -- Name: display_label_print; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3495,8 +3743,8 @@ CREATE TABLE ops.display_label_print (
 
 
 --
--- TOC entry 5497 (class 0 OID 0)
--- Dependencies: 384
+-- TOC entry 5568 (class 0 OID 0)
+-- Dependencies: 386
 -- Name: TABLE display_label_print; Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -3504,8 +3752,8 @@ COMMENT ON TABLE ops.display_label_print IS 'Successful display label print hist
 
 
 --
--- TOC entry 5498 (class 0 OID 0)
--- Dependencies: 384
+-- TOC entry 5569 (class 0 OID 0)
+-- Dependencies: 386
 -- Name: COLUMN display_label_print.printed_by_person_id; Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -3513,8 +3761,8 @@ COMMENT ON COLUMN ops.display_label_print.printed_by_person_id IS 'Optional Dire
 
 
 --
--- TOC entry 5499 (class 0 OID 0)
--- Dependencies: 384
+-- TOC entry 5570 (class 0 OID 0)
+-- Dependencies: 386
 -- Name: COLUMN display_label_print.printed_by_text; Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -3522,8 +3770,8 @@ COMMENT ON COLUMN ops.display_label_print.printed_by_text IS 'Fallback text iden
 
 
 --
--- TOC entry 5500 (class 0 OID 0)
--- Dependencies: 384
+-- TOC entry 5571 (class 0 OID 0)
+-- Dependencies: 386
 -- Name: COLUMN display_label_print.print_method; Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -3531,7 +3779,7 @@ COMMENT ON COLUMN ops.display_label_print.print_method IS 'Examples: POLLING_SER
 
 
 --
--- TOC entry 383 (class 1259 OID 20590)
+-- TOC entry 385 (class 1259 OID 20590)
 -- Name: display_label_print_display_label_print_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3544,8 +3792,8 @@ CREATE SEQUENCE ops.display_label_print_display_label_print_id_seq
 
 
 --
--- TOC entry 5501 (class 0 OID 0)
--- Dependencies: 383
+-- TOC entry 5572 (class 0 OID 0)
+-- Dependencies: 385
 -- Name: display_label_print_display_label_print_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3553,7 +3801,7 @@ ALTER SEQUENCE ops.display_label_print_display_label_print_id_seq OWNED BY ops.d
 
 
 --
--- TOC entry 289 (class 1259 OID 17288)
+-- TOC entry 291 (class 1259 OID 17288)
 -- Name: display_test_session; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3586,7 +3834,7 @@ CREATE TABLE ops.display_test_session (
 
 
 --
--- TOC entry 288 (class 1259 OID 17287)
+-- TOC entry 290 (class 1259 OID 17287)
 -- Name: display_test_session_display_test_session_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3599,8 +3847,8 @@ CREATE SEQUENCE ops.display_test_session_display_test_session_id_seq
 
 
 --
--- TOC entry 5502 (class 0 OID 0)
--- Dependencies: 288
+-- TOC entry 5573 (class 0 OID 0)
+-- Dependencies: 290
 -- Name: display_test_session_display_test_session_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3608,7 +3856,57 @@ ALTER SEQUENCE ops.display_test_session_display_test_session_id_seq OWNED BY ops
 
 
 --
--- TOC entry 287 (class 1259 OID 17257)
+-- TOC entry 411 (class 1259 OID 23184)
+-- Name: lor_reconciliation_action; Type: TABLE; Schema: ops; Owner: -
+--
+
+CREATE TABLE ops.lor_reconciliation_action (
+    lor_reconciliation_action_id bigint NOT NULL,
+    import_run_id bigint NOT NULL,
+    action_type text NOT NULL,
+    display_id bigint NOT NULL,
+    lor_prop_id_before text,
+    lor_prop_id_after text,
+    display_name_before text,
+    display_name_after text,
+    display_status_id_before integer,
+    display_status_id_after integer,
+    preview_id text,
+    preview_stage_id text,
+    reason text NOT NULL,
+    acted_at timestamp with time zone DEFAULT now() NOT NULL,
+    acted_by text DEFAULT CURRENT_USER NOT NULL,
+    CONSTRAINT ck_lor_reconciliation_action_reason CHECK ((btrim(reason) <> ''::text)),
+    CONSTRAINT ck_lor_reconciliation_action_type CHECK ((action_type = ANY (ARRAY['RENAME_DISPLAY'::text, 'KEEP_DISPLAY_UPDATE_LOR_LINK'::text, 'REASSOCIATE_DISPLAY'::text, 'ADD_NEW_DISPLAY'::text, 'SET_RECYCLED'::text])))
+);
+
+
+--
+-- TOC entry 5574 (class 0 OID 0)
+-- Dependencies: 411
+-- Name: TABLE lor_reconciliation_action; Type: COMMENT; Schema: ops; Owner: -
+--
+
+COMMENT ON TABLE ops.lor_reconciliation_action IS 'Append-only audit history of operator-approved LOR-to-production display identity resolutions.';
+
+
+--
+-- TOC entry 410 (class 1259 OID 23183)
+-- Name: lor_reconciliation_action_lor_reconciliation_action_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
+--
+
+ALTER TABLE ops.lor_reconciliation_action ALTER COLUMN lor_reconciliation_action_id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME ops.lor_reconciliation_action_lor_reconciliation_action_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 289 (class 1259 OID 17257)
 -- Name: test_session; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3650,7 +3948,7 @@ CREATE TABLE ops.test_session (
 
 
 --
--- TOC entry 286 (class 1259 OID 17256)
+-- TOC entry 288 (class 1259 OID 17256)
 -- Name: test_session_test_session_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3663,8 +3961,8 @@ CREATE SEQUENCE ops.test_session_test_session_id_seq
 
 
 --
--- TOC entry 5503 (class 0 OID 0)
--- Dependencies: 286
+-- TOC entry 5575 (class 0 OID 0)
+-- Dependencies: 288
 -- Name: test_session_test_session_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -3672,7 +3970,7 @@ ALTER SEQUENCE ops.test_session_test_session_id_seq OWNED BY ops.test_session.te
 
 
 --
--- TOC entry 387 (class 1259 OID 20635)
+-- TOC entry 389 (class 1259 OID 20635)
 -- Name: v_container_label_last_print; Type: VIEW; Schema: ops; Owner: -
 --
 
@@ -3690,7 +3988,285 @@ CREATE VIEW ops.v_container_label_last_print AS
 
 
 --
--- TOC entry 328 (class 1259 OID 18094)
+-- TOC entry 267 (class 1259 OID 16761)
+-- Name: display_status; Type: TABLE; Schema: ref; Owner: -
+--
+
+CREATE TABLE ref.display_status (
+    display_status_id integer NOT NULL,
+    display_status_name text NOT NULL,
+    description text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by text DEFAULT CURRENT_USER NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text DEFAULT CURRENT_USER NOT NULL,
+    created_by_person_id bigint,
+    updated_by_person_id bigint
+);
+
+
+--
+-- TOC entry 409 (class 1259 OID 23108)
+-- Name: v_lor_display_reconciliation; Type: VIEW; Schema: ops; Owner: -
+--
+
+CREATE VIEW ops.v_lor_display_reconciliation AS
+ WITH production AS (
+         SELECT d.display_id,
+            d.lor_prop_id,
+            d.display_name,
+            upper(btrim(d.display_name)) AS display_name_normalized,
+            d.display_status_id,
+            ds.display_status_name,
+            (upper(btrim(ds.display_status_name)) = 'ACTIVE'::text) AS is_active
+           FROM (ref.display d
+             JOIN ref.display_status ds ON ((ds.display_status_id = d.display_status_id)))
+        ), production_counts AS (
+         SELECT pr.display_id,
+            pr.lor_prop_id,
+            pr.display_name,
+            pr.display_name_normalized,
+            pr.display_status_id,
+            pr.display_status_name,
+            pr.is_active,
+            (count(*) OVER (PARTITION BY pr.lor_prop_id))::integer AS production_uuid_count,
+            (count(*) OVER (PARTITION BY pr.display_name_normalized))::integer AS production_name_count
+           FROM production pr
+        ), source_with_matches AS (
+         SELECT src.import_run_id,
+            src.preview_id,
+            src.preview_stage_id,
+            src.preview_name,
+            src.lor_prop_id,
+            src.prop_name,
+            src.prop_comment,
+            src.display_name,
+            src.display_name_normalized,
+            src.string_type,
+            src.color,
+            src.is_spare,
+            src.is_phantom,
+            src.lor_uuid_row_count,
+            src.lor_uuid_name_count,
+            src.lor_name_uuid_count,
+            uuid_match.display_id AS uuid_display_id,
+            uuid_match.display_name AS uuid_display_name,
+            uuid_match.display_status_id AS uuid_display_status_id,
+            uuid_match.display_status_name AS uuid_display_status_name,
+            uuid_match.is_active AS uuid_is_active,
+            COALESCE(uuid_match.production_uuid_count, 0) AS production_uuid_count,
+            name_match.display_id AS name_display_id,
+            name_match.display_name AS name_display_name,
+            name_match.display_status_id AS name_display_status_id,
+            name_match.display_status_name AS name_display_status_name,
+            name_match.is_active AS name_is_active,
+            name_match.lor_prop_id AS name_production_lor_prop_id,
+            COALESCE(name_match.production_name_count, 0) AS production_name_count
+           FROM ((lor_snap.v_display_reconciliation_source src
+             LEFT JOIN production_counts uuid_match ON ((uuid_match.lor_prop_id = src.lor_prop_id)))
+             LEFT JOIN production_counts name_match ON ((name_match.display_name_normalized = src.display_name_normalized)))
+        ), occurrence_summary AS (
+         SELECT o.import_run_id,
+            o.lor_prop_id,
+            (count(*))::integer AS occurrence_count,
+            string_agg(DISTINCT
+                CASE
+                    WHEN (o.location_type = 'SCENE'::text) THEN format('preview "%s", scene "%s"'::text, COALESCE(o.preview_name, o.preview_id), COALESCE(o.scene_name, o.scene_id))
+                    ELSE format('preview "%s"'::text, COALESCE(o.preview_name, o.preview_id))
+                END, '; '::text ORDER BY
+                CASE
+                    WHEN (o.location_type = 'SCENE'::text) THEN format('preview "%s", scene "%s"'::text, COALESCE(o.preview_name, o.preview_id), COALESCE(o.scene_name, o.scene_id))
+                    ELSE format('preview "%s"'::text, COALESCE(o.preview_name, o.preview_id))
+                END) AS location_summary
+           FROM lor_snap.v_display_lor_occurrence o
+          GROUP BY o.import_run_id, o.lor_prop_id
+        ), candidate_rows AS (
+         SELECT swm.import_run_id,
+            swm.lor_prop_id,
+            swm.display_name AS lor_display_name,
+            swm.display_name_normalized AS lor_display_name_normalized,
+            swm.preview_id,
+            swm.preview_name,
+            swm.preview_stage_id,
+            COALESCE(swm.uuid_display_id, swm.name_display_id) AS display_id,
+            COALESCE(swm.uuid_display_name, swm.name_display_name) AS production_display_name,
+            COALESCE(swm.uuid_display_status_id, swm.name_display_status_id) AS display_status_id,
+            COALESCE(swm.uuid_display_status_name, swm.name_display_status_name) AS display_status_name,
+            COALESCE(swm.uuid_is_active, swm.name_is_active) AS is_active,
+            swm.lor_uuid_row_count,
+            swm.lor_uuid_name_count,
+            swm.lor_name_uuid_count,
+            swm.production_uuid_count,
+            swm.production_name_count,
+            swm.uuid_display_id,
+            swm.name_display_id,
+            COALESCE(os.occurrence_count, 0) AS occurrence_count,
+            os.location_summary,
+                CASE
+                    WHEN (swm.is_spare OR swm.is_phantom) THEN 'EXCLUDED_NONPHYSICAL'::text
+                    WHEN ((swm.lor_uuid_name_count > 1) OR (swm.lor_uuid_row_count > 1)) THEN 'DUPLICATE_LOR_UUID'::text
+                    WHEN (swm.lor_name_uuid_count > 1) THEN 'DUPLICATE_LOR_NAME'::text
+                    WHEN (swm.production_uuid_count > 1) THEN 'DUPLICATE_PRODUCTION_UUID'::text
+                    WHEN (swm.production_name_count > 1) THEN 'DUPLICATE_PRODUCTION_NAME'::text
+                    WHEN ((swm.uuid_display_id IS NOT NULL) AND (swm.uuid_is_active = false)) THEN 'NONACTIVE_DISPLAY_PRESENT_IN_LOR'::text
+                    WHEN ((swm.uuid_display_id IS NOT NULL) AND (swm.name_display_id = swm.uuid_display_id)) THEN 'EXACT_MATCH'::text
+                    WHEN ((swm.uuid_display_id IS NOT NULL) AND (swm.name_display_id IS NULL)) THEN 'NAME_CHANGED_SAME_UUID'::text
+                    WHEN ((swm.uuid_display_id IS NULL) AND (swm.name_display_id IS NOT NULL) AND (swm.name_is_active = false)) THEN 'NONACTIVE_DISPLAY_PRESENT_IN_LOR'::text
+                    WHEN ((swm.uuid_display_id IS NULL) AND (swm.name_display_id IS NOT NULL) AND (regexp_replace(swm.name_production_lor_prop_id, '^[^:]+:'::text, ''::text) = regexp_replace(swm.lor_prop_id, '^[^:]+:'::text, ''::text))) THEN 'PREVIEW_RELOCATED_SAME_DISPLAY'::text
+                    WHEN ((swm.uuid_display_id IS NULL) AND (swm.name_display_id IS NOT NULL)) THEN 'UUID_CHANGED_SAME_NAME'::text
+                    WHEN ((swm.uuid_display_id IS NULL) AND (swm.name_display_id IS NULL)) THEN 'NEW_DISPLAY_CANDIDATE'::text
+                    ELSE 'NAME_AND_UUID_CHANGED'::text
+                END AS classification_code
+           FROM (source_with_matches swm
+             LEFT JOIN occurrence_summary os ON (((os.import_run_id = swm.import_run_id) AND (os.lor_prop_id = swm.lor_prop_id))))
+        ), candidate_output AS (
+         SELECT cr.import_run_id,
+            cr.lor_prop_id,
+            cr.lor_display_name,
+            cr.lor_display_name_normalized,
+            cr.preview_id,
+            cr.preview_name,
+            cr.preview_stage_id,
+            cr.display_id,
+            cr.production_display_name,
+            cr.display_status_id,
+            cr.display_status_name,
+            cr.is_active,
+            cr.lor_uuid_row_count,
+            cr.lor_uuid_name_count,
+            cr.lor_name_uuid_count,
+            cr.production_uuid_count,
+            cr.production_name_count,
+            cr.uuid_display_id,
+            cr.name_display_id,
+            cr.occurrence_count,
+            cr.location_summary,
+            cr.classification_code,
+            (cr.classification_code <> ALL (ARRAY['EXACT_MATCH'::text, 'EXCLUDED_NONPHYSICAL'::text, 'PREVIEW_RELOCATED_SAME_DISPLAY'::text])) AS is_blocking,
+                CASE cr.classification_code
+                    WHEN 'EXACT_MATCH'::text THEN format('Display "%s" matches production display_id %s.'::text, cr.lor_display_name, cr.display_id)
+                    WHEN 'NONACTIVE_DISPLAY_PRESENT_IN_LOR'::text THEN format('Display "%s" is non-active in PostgreSQL but remains in %s. Correct PostgreSQL status or remove it from LOR.'::text, cr.lor_display_name, COALESCE(cr.location_summary, 'the LOR snapshot'::text))
+                    WHEN 'ACTIVE_DISPLAY_MISSING_FROM_LOR'::text THEN NULL::text
+                    WHEN 'NAME_CHANGED_SAME_UUID'::text THEN format('LOR renamed production display_id %s from "%s" to "%s"; operator approval is required.'::text, cr.display_id, cr.production_display_name, cr.lor_display_name)
+                    WHEN 'UUID_CHANGED_SAME_NAME'::text THEN format('Display "%s" has a new LOR UUID; operator approval is required for display_id %s.'::text, cr.lor_display_name, cr.display_id)
+                    WHEN 'PREVIEW_RELOCATED_SAME_DISPLAY'::text THEN format('Display "%s" retains the same prop UUID but moved to preview "%s"; this is an expected V7 preview relocation.'::text, cr.lor_display_name, cr.preview_name)
+                    WHEN 'NEW_DISPLAY_CANDIDATE'::text THEN format('LOR display "%s" is not present in ref.display; operator approval is required to add it.'::text, cr.lor_display_name)
+                    WHEN 'EXCLUDED_NONPHYSICAL'::text THEN format('LOR prop "%s" is classified as SPARE or PHANTOM and is excluded from physical-display identity reconciliation.'::text, cr.lor_display_name)
+                    ELSE format('Display "%s" has blocking reconciliation classification %s.'::text, cr.lor_display_name, cr.classification_code)
+                END AS operator_message,
+                CASE cr.classification_code
+                    WHEN 'EXACT_MATCH'::text THEN ARRAY['NONE'::text]
+                    WHEN 'EXCLUDED_NONPHYSICAL'::text THEN ARRAY['NONE'::text]
+                    WHEN 'NONACTIVE_DISPLAY_PRESENT_IN_LOR'::text THEN ARRAY['CORRECT_POSTGRES_STATUS'::text, 'CORRECT_LOR_AND_REINGEST'::text]
+                    WHEN 'ACTIVE_DISPLAY_MISSING_FROM_LOR'::text THEN ARRAY['CORRECT_POSTGRES_STATUS'::text, 'CORRECT_LOR_AND_REINGEST'::text]
+                    WHEN 'NAME_CHANGED_SAME_UUID'::text THEN ARRAY['APPROVE_LOR_RENAME'::text]
+                    WHEN 'PREVIEW_RELOCATED_SAME_DISPLAY'::text THEN ARRAY['NONE'::text]
+                    WHEN 'UUID_CHANGED_SAME_NAME'::text THEN ARRAY['APPROVE_LOR_UUID_CHANGE'::text]
+                    WHEN 'NEW_DISPLAY_CANDIDATE'::text THEN ARRAY['APPROVE_NEW_LOR_DISPLAY'::text]
+                    ELSE ARRAY['CORRECT_LOR_AND_REINGEST'::text, 'DEFER'::text]
+                END AS allowed_resolution_paths
+           FROM candidate_rows cr
+        ), run_ids AS (
+         SELECT import_run.import_run_id
+           FROM lor_snap.import_run
+        ), missing_active AS (
+         SELECT r.import_run_id,
+            pc.lor_prop_id,
+            NULL::text AS lor_display_name,
+            NULL::text AS lor_display_name_normalized,
+            NULL::text AS preview_id,
+            NULL::text AS preview_name,
+            NULL::text AS preview_stage_id,
+            pc.display_id,
+            pc.display_name AS production_display_name,
+            pc.display_status_id,
+            pc.display_status_name,
+            pc.is_active,
+            0 AS lor_uuid_row_count,
+            0 AS lor_uuid_name_count,
+            0 AS lor_name_uuid_count,
+            pc.production_uuid_count,
+            pc.production_name_count,
+            NULL::bigint AS uuid_display_id,
+            NULL::bigint AS name_display_id,
+            0 AS occurrence_count,
+            NULL::text AS location_summary,
+            'ACTIVE_DISPLAY_MISSING_FROM_LOR'::text AS classification_code,
+            true AS is_blocking,
+            format('Active PostgreSQL display "%s" (display_id %s) is missing from the authoritative LOR display source. Restore it in LOR or correct its PostgreSQL status.'::text, pc.display_name, pc.display_id) AS operator_message,
+            ARRAY['CORRECT_POSTGRES_STATUS'::text, 'CORRECT_LOR_AND_REINGEST'::text] AS allowed_resolution_paths
+           FROM (run_ids r
+             CROSS JOIN production_counts pc)
+          WHERE (pc.is_active AND (NOT (EXISTS ( SELECT 1
+                   FROM lor_snap.v_display_reconciliation_source src
+                  WHERE ((src.import_run_id = r.import_run_id) AND (NOT src.is_spare) AND (NOT src.is_phantom) AND ((src.lor_prop_id = pc.lor_prop_id) OR (src.display_name_normalized = pc.display_name_normalized)))))))
+        )
+ SELECT candidate_output.import_run_id,
+    candidate_output.lor_prop_id,
+    candidate_output.lor_display_name,
+    candidate_output.lor_display_name_normalized,
+    candidate_output.preview_id,
+    candidate_output.preview_name,
+    candidate_output.preview_stage_id,
+    candidate_output.display_id,
+    candidate_output.production_display_name,
+    candidate_output.display_status_id,
+    candidate_output.display_status_name,
+    candidate_output.is_active,
+    candidate_output.lor_uuid_row_count,
+    candidate_output.lor_uuid_name_count,
+    candidate_output.lor_name_uuid_count,
+    candidate_output.production_uuid_count,
+    candidate_output.production_name_count,
+    candidate_output.uuid_display_id,
+    candidate_output.name_display_id,
+    candidate_output.occurrence_count,
+    candidate_output.location_summary,
+    candidate_output.classification_code,
+    candidate_output.is_blocking,
+    candidate_output.operator_message,
+    candidate_output.allowed_resolution_paths
+   FROM candidate_output
+UNION ALL
+ SELECT missing_active.import_run_id,
+    missing_active.lor_prop_id,
+    missing_active.lor_display_name,
+    missing_active.lor_display_name_normalized,
+    missing_active.preview_id,
+    missing_active.preview_name,
+    missing_active.preview_stage_id,
+    missing_active.display_id,
+    missing_active.production_display_name,
+    missing_active.display_status_id,
+    missing_active.display_status_name,
+    missing_active.is_active,
+    missing_active.lor_uuid_row_count,
+    missing_active.lor_uuid_name_count,
+    missing_active.lor_name_uuid_count,
+    missing_active.production_uuid_count,
+    missing_active.production_name_count,
+    missing_active.uuid_display_id,
+    missing_active.name_display_id,
+    missing_active.occurrence_count,
+    missing_active.location_summary,
+    missing_active.classification_code,
+    missing_active.is_blocking,
+    missing_active.operator_message,
+    missing_active.allowed_resolution_paths
+   FROM missing_active;
+
+
+--
+-- TOC entry 5576 (class 0 OID 0)
+-- Dependencies: 409
+-- Name: VIEW v_lor_display_reconciliation; Type: COMMENT; Schema: ops; Owner: -
+--
+
+COMMENT ON VIEW ops.v_lor_display_reconciliation IS 'Live bidirectional display preflight by explicit import_run_id. Exact matches pass automatically; identity, status, duplicate, and missing-display discrepancies block.';
+
+
+--
+-- TOC entry 330 (class 1259 OID 18094)
 -- Name: stage; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -3715,7 +4291,7 @@ CREATE TABLE ref.stage (
 
 
 --
--- TOC entry 347 (class 1259 OID 18813)
+-- TOC entry 349 (class 1259 OID 18813)
 -- Name: v_stage_container_contents; Type: VIEW; Schema: ops; Owner: -
 --
 
@@ -3733,7 +4309,7 @@ CREATE VIEW ops.v_stage_container_contents AS
 
 
 --
--- TOC entry 348 (class 1259 OID 18869)
+-- TOC entry 350 (class 1259 OID 18869)
 -- Name: v_test_session_container_box; Type: VIEW; Schema: ops; Owner: -
 --
 
@@ -3772,7 +4348,7 @@ CREATE VIEW ops.v_test_session_container_box AS
 
 
 --
--- TOC entry 349 (class 1259 OID 18879)
+-- TOC entry 351 (class 1259 OID 18879)
 -- Name: v_test_session_container_box_ui; Type: VIEW; Schema: ops; Owner: -
 --
 
@@ -3806,7 +4382,7 @@ CREATE VIEW ops.v_test_session_container_box_ui AS
 
 
 --
--- TOC entry 352 (class 1259 OID 18939)
+-- TOC entry 354 (class 1259 OID 18939)
 -- Name: container_test_status; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -3826,7 +4402,7 @@ CREATE TABLE ref.container_test_status (
 
 
 --
--- TOC entry 363 (class 1259 OID 19131)
+-- TOC entry 365 (class 1259 OID 19131)
 -- Name: v_test_session_insights; Type: VIEW; Schema: ops; Owner: -
 --
 
@@ -3849,7 +4425,7 @@ CREATE VIEW ops.v_test_session_insights AS
 
 
 --
--- TOC entry 338 (class 1259 OID 18484)
+-- TOC entry 340 (class 1259 OID 18484)
 -- Name: work_order; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3871,7 +4447,6 @@ CREATE TABLE ops.work_order (
     created_by_person_id integer NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_by_person_id integer NOT NULL,
-    display_lor_prop_id text,
     display_id bigint,
     display_test_session_id bigint,
     created_by text DEFAULT CURRENT_USER NOT NULL,
@@ -3893,8 +4468,8 @@ CREATE TABLE ops.work_order (
 
 
 --
--- TOC entry 5504 (class 0 OID 0)
--- Dependencies: 338
+-- TOC entry 5577 (class 0 OID 0)
+-- Dependencies: 340
 -- Name: COLUMN work_order.source_intake_id; Type: COMMENT; Schema: ops; Owner: -
 --
 
@@ -3902,7 +4477,7 @@ COMMENT ON COLUMN ops.work_order.source_intake_id IS 'Original intake ID for aud
 
 
 --
--- TOC entry 358 (class 1259 OID 19008)
+-- TOC entry 360 (class 1259 OID 19008)
 -- Name: work_order_assignment; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3927,7 +4502,7 @@ CREATE TABLE ops.work_order_assignment (
 
 
 --
--- TOC entry 357 (class 1259 OID 19007)
+-- TOC entry 359 (class 1259 OID 19007)
 -- Name: work_order_assignment_work_order_assignment_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3942,7 +4517,7 @@ ALTER TABLE ops.work_order_assignment ALTER COLUMN work_order_assignment_id ADD 
 
 
 --
--- TOC entry 362 (class 1259 OID 19069)
+-- TOC entry 364 (class 1259 OID 19069)
 -- Name: work_order_outbound_message; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3968,7 +4543,7 @@ CREATE TABLE ops.work_order_outbound_message (
 
 
 --
--- TOC entry 361 (class 1259 OID 19068)
+-- TOC entry 363 (class 1259 OID 19068)
 -- Name: work_order_outbound_message_outbound_message_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -3983,7 +4558,7 @@ ALTER TABLE ops.work_order_outbound_message ALTER COLUMN outbound_message_id ADD
 
 
 --
--- TOC entry 360 (class 1259 OID 19044)
+-- TOC entry 362 (class 1259 OID 19044)
 -- Name: work_order_status_history; Type: TABLE; Schema: ops; Owner: -
 --
 
@@ -3998,7 +4573,7 @@ CREATE TABLE ops.work_order_status_history (
 
 
 --
--- TOC entry 359 (class 1259 OID 19043)
+-- TOC entry 361 (class 1259 OID 19043)
 -- Name: work_order_status_history_work_order_status_history_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -4013,7 +4588,7 @@ ALTER TABLE ops.work_order_status_history ALTER COLUMN work_order_status_history
 
 
 --
--- TOC entry 337 (class 1259 OID 18483)
+-- TOC entry 339 (class 1259 OID 18483)
 -- Name: work_order_work_order_id_seq; Type: SEQUENCE; Schema: ops; Owner: -
 --
 
@@ -4026,8 +4601,8 @@ CREATE SEQUENCE ops.work_order_work_order_id_seq
 
 
 --
--- TOC entry 5505 (class 0 OID 0)
--- Dependencies: 337
+-- TOC entry 5578 (class 0 OID 0)
+-- Dependencies: 339
 -- Name: work_order_work_order_id_seq; Type: SEQUENCE OWNED BY; Schema: ops; Owner: -
 --
 
@@ -4035,7 +4610,7 @@ ALTER SEQUENCE ops.work_order_work_order_id_seq OWNED BY ops.work_order.work_ord
 
 
 --
--- TOC entry 279 (class 1259 OID 17094)
+-- TOC entry 281 (class 1259 OID 17094)
 -- Name: display_sheet_raw; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -4056,7 +4631,7 @@ CREATE TABLE stage.display_sheet_raw (
 
 
 --
--- TOC entry 368 (class 1259 OID 19212)
+-- TOC entry 370 (class 1259 OID 19212)
 -- Name: audit_collection_policy; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4079,7 +4654,7 @@ CREATE TABLE ref.audit_collection_policy (
 
 
 --
--- TOC entry 367 (class 1259 OID 19211)
+-- TOC entry 369 (class 1259 OID 19211)
 -- Name: audit_collection_policy_audit_collection_policy_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4094,7 +4669,7 @@ ALTER TABLE ref.audit_collection_policy ALTER COLUMN audit_collection_policy_id 
 
 
 --
--- TOC entry 365 (class 1259 OID 19207)
+-- TOC entry 367 (class 1259 OID 19207)
 -- Name: container_container_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4107,8 +4682,8 @@ CREATE SEQUENCE ref.container_container_id_seq
 
 
 --
--- TOC entry 5506 (class 0 OID 0)
--- Dependencies: 365
+-- TOC entry 5579 (class 0 OID 0)
+-- Dependencies: 367
 -- Name: container_container_id_seq; Type: SEQUENCE OWNED BY; Schema: ref; Owner: -
 --
 
@@ -4116,7 +4691,7 @@ ALTER SEQUENCE ref.container_container_id_seq OWNED BY ref.container.container_i
 
 
 --
--- TOC entry 332 (class 1259 OID 18282)
+-- TOC entry 334 (class 1259 OID 18282)
 -- Name: container_endpoint; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4133,7 +4708,7 @@ CREATE TABLE ref.container_endpoint (
 
 
 --
--- TOC entry 364 (class 1259 OID 19205)
+-- TOC entry 366 (class 1259 OID 19205)
 -- Name: container_endpoint_endpoint_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4146,8 +4721,8 @@ CREATE SEQUENCE ref.container_endpoint_endpoint_id_seq
 
 
 --
--- TOC entry 5507 (class 0 OID 0)
--- Dependencies: 364
+-- TOC entry 5580 (class 0 OID 0)
+-- Dependencies: 366
 -- Name: container_endpoint_endpoint_id_seq; Type: SEQUENCE OWNED BY; Schema: ref; Owner: -
 --
 
@@ -4155,7 +4730,7 @@ ALTER SEQUENCE ref.container_endpoint_endpoint_id_seq OWNED BY ref.container_end
 
 
 --
--- TOC entry 351 (class 1259 OID 18938)
+-- TOC entry 353 (class 1259 OID 18938)
 -- Name: container_test_status_container_test_status_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4170,7 +4745,7 @@ ALTER TABLE ref.container_test_status ALTER COLUMN container_test_status_id ADD 
 
 
 --
--- TOC entry 369 (class 1259 OID 19295)
+-- TOC entry 371 (class 1259 OID 19295)
 -- Name: container_test_status_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4183,7 +4758,7 @@ CREATE SEQUENCE ref.container_test_status_id_seq
 
 
 --
--- TOC entry 267 (class 1259 OID 16806)
+-- TOC entry 269 (class 1259 OID 16806)
 -- Name: container_type; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4205,7 +4780,7 @@ CREATE TABLE ref.container_type (
 
 
 --
--- TOC entry 372 (class 1259 OID 20326)
+-- TOC entry 374 (class 1259 OID 20326)
 -- Name: display_backup_20260317; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4237,7 +4812,7 @@ CREATE TABLE ref.display_backup_20260317 (
 
 
 --
--- TOC entry 376 (class 1259 OID 20431)
+-- TOC entry 378 (class 1259 OID 20431)
 -- Name: display_backup_20260318_after_run22_success; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4269,7 +4844,7 @@ CREATE TABLE ref.display_backup_20260318_after_run22_success (
 
 
 --
--- TOC entry 378 (class 1259 OID 20453)
+-- TOC entry 380 (class 1259 OID 20453)
 -- Name: display_backup_20260319_after_run23_baseline; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4301,7 +4876,7 @@ CREATE TABLE ref.display_backup_20260319_after_run23_baseline (
 
 
 --
--- TOC entry 382 (class 1259 OID 20534)
+-- TOC entry 384 (class 1259 OID 20534)
 -- Name: display_backup_20260319_before_run25_p2; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4333,7 +4908,7 @@ CREATE TABLE ref.display_backup_20260319_before_run25_p2 (
 
 
 --
--- TOC entry 380 (class 1259 OID 20476)
+-- TOC entry 382 (class 1259 OID 20476)
 -- Name: display_backup_20260319_run23_post_p2; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4365,7 +4940,7 @@ CREATE TABLE ref.display_backup_20260319_run23_post_p2 (
 
 
 --
--- TOC entry 346 (class 1259 OID 18722)
+-- TOC entry 348 (class 1259 OID 18722)
 -- Name: display_display_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4380,25 +4955,7 @@ ALTER TABLE ref.display ALTER COLUMN display_id ADD GENERATED ALWAYS AS IDENTITY
 
 
 --
--- TOC entry 265 (class 1259 OID 16761)
--- Name: display_status; Type: TABLE; Schema: ref; Owner: -
---
-
-CREATE TABLE ref.display_status (
-    display_status_id integer NOT NULL,
-    display_status_name text NOT NULL,
-    description text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    created_by text DEFAULT CURRENT_USER NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_by text DEFAULT CURRENT_USER NOT NULL,
-    created_by_person_id bigint,
-    updated_by_person_id bigint
-);
-
-
---
--- TOC entry 264 (class 1259 OID 16760)
+-- TOC entry 266 (class 1259 OID 16760)
 -- Name: display_status_display_status_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4413,7 +4970,7 @@ ALTER TABLE ref.display_status ALTER COLUMN display_status_id ADD GENERATED BY D
 
 
 --
--- TOC entry 350 (class 1259 OID 18907)
+-- TOC entry 352 (class 1259 OID 18907)
 -- Name: display_test_status; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4431,7 +4988,7 @@ CREATE TABLE ref.display_test_status (
 
 
 --
--- TOC entry 261 (class 1259 OID 16706)
+-- TOC entry 263 (class 1259 OID 16706)
 -- Name: frame; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4451,7 +5008,7 @@ CREATE TABLE ref.frame (
 
 
 --
--- TOC entry 260 (class 1259 OID 16705)
+-- TOC entry 262 (class 1259 OID 16705)
 -- Name: frame_frame_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4466,7 +5023,7 @@ ALTER TABLE ref.frame ALTER COLUMN frame_id ADD GENERATED BY DEFAULT AS IDENTITY
 
 
 --
--- TOC entry 276 (class 1259 OID 17028)
+-- TOC entry 278 (class 1259 OID 17028)
 -- Name: inventory_type; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4482,7 +5039,112 @@ CREATE TABLE ref.inventory_type (
 
 
 --
--- TOC entry 266 (class 1259 OID 16805)
+-- TOC entry 413 (class 1259 OID 23226)
+-- Name: lor_scene; Type: TABLE; Schema: ref; Owner: -
+--
+
+CREATE TABLE ref.lor_scene (
+    lor_scene_id bigint NOT NULL,
+    preview_uuid text NOT NULL,
+    scene_uuid text NOT NULL,
+    stage_id integer NOT NULL,
+    scene_name text NOT NULL,
+    scene_section text,
+    background_file text,
+    h_scroll integer,
+    v_scroll integer,
+    zoom integer,
+    create_grid_view text,
+    source_import_run_id bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by text DEFAULT CURRENT_USER NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text DEFAULT CURRENT_USER NOT NULL
+);
+
+
+--
+-- TOC entry 5581 (class 0 OID 0)
+-- Dependencies: 413
+-- Name: TABLE lor_scene; Type: COMMENT; Schema: ref; Owner: -
+--
+
+COMMENT ON TABLE ref.lor_scene IS 'Current production LOR scenes. Historical definitions remain in lor_snap.scenes.';
+
+
+--
+-- TOC entry 5582 (class 0 OID 0)
+-- Dependencies: 413
+-- Name: COLUMN lor_scene.preview_uuid; Type: COMMENT; Schema: ref; Owner: -
+--
+
+COMMENT ON COLUMN ref.lor_scene.preview_uuid IS 'LOR preview identity. Combined with scene_uuid to identify a scene.';
+
+
+--
+-- TOC entry 5583 (class 0 OID 0)
+-- Dependencies: 413
+-- Name: COLUMN lor_scene.scene_uuid; Type: COMMENT; Schema: ref; Owner: -
+--
+
+COMMENT ON COLUMN ref.lor_scene.scene_uuid IS 'LOR scene identity scoped to preview_uuid; not assumed globally unique.';
+
+
+--
+-- TOC entry 414 (class 1259 OID 23251)
+-- Name: lor_scene_display; Type: TABLE; Schema: ref; Owner: -
+--
+
+CREATE TABLE ref.lor_scene_display (
+    lor_scene_id bigint NOT NULL,
+    preview_uuid text NOT NULL,
+    display_id bigint NOT NULL,
+    scene_prop_ordinal integer,
+    scene_role text,
+    source text,
+    source_import_run_id bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by text DEFAULT CURRENT_USER NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text DEFAULT CURRENT_USER NOT NULL
+);
+
+
+--
+-- TOC entry 5584 (class 0 OID 0)
+-- Dependencies: 414
+-- Name: TABLE lor_scene_display; Type: COMMENT; Schema: ref; Owner: -
+--
+
+COMMENT ON TABLE ref.lor_scene_display IS 'Current scene assignment for permanent displays; one scene per display within a preview.';
+
+
+--
+-- TOC entry 5585 (class 0 OID 0)
+-- Dependencies: 414
+-- Name: COLUMN lor_scene_display.preview_uuid; Type: COMMENT; Schema: ref; Owner: -
+--
+
+COMMENT ON COLUMN ref.lor_scene_display.preview_uuid IS 'Duplicated parent preview identity used to enforce one current scene per display per preview.';
+
+
+--
+-- TOC entry 412 (class 1259 OID 23225)
+-- Name: lor_scene_lor_scene_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
+--
+
+ALTER TABLE ref.lor_scene ALTER COLUMN lor_scene_id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME ref.lor_scene_lor_scene_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 268 (class 1259 OID 16805)
 -- Name: pallet_type_pallet_type_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4497,7 +5159,7 @@ ALTER TABLE ref.container_type ALTER COLUMN container_type_id ADD GENERATED BY D
 
 
 --
--- TOC entry 272 (class 1259 OID 16953)
+-- TOC entry 274 (class 1259 OID 16953)
 -- Name: person; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4527,7 +5189,7 @@ CREATE TABLE ref.person (
 
 
 --
--- TOC entry 366 (class 1259 OID 19209)
+-- TOC entry 368 (class 1259 OID 19209)
 -- Name: person_person_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4540,8 +5202,8 @@ CREATE SEQUENCE ref.person_person_id_seq
 
 
 --
--- TOC entry 5508 (class 0 OID 0)
--- Dependencies: 366
+-- TOC entry 5586 (class 0 OID 0)
+-- Dependencies: 368
 -- Name: person_person_id_seq; Type: SEQUENCE OWNED BY; Schema: ref; Owner: -
 --
 
@@ -4549,7 +5211,7 @@ ALTER SEQUENCE ref.person_person_id_seq OWNED BY ref.person.person_id;
 
 
 --
--- TOC entry 274 (class 1259 OID 16973)
+-- TOC entry 276 (class 1259 OID 16973)
 -- Name: person_xref; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4569,7 +5231,7 @@ CREATE TABLE ref.person_xref (
 
 
 --
--- TOC entry 370 (class 1259 OID 19486)
+-- TOC entry 372 (class 1259 OID 19486)
 -- Name: season; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4589,7 +5251,7 @@ CREATE TABLE ref.season (
 
 
 --
--- TOC entry 339 (class 1259 OID 18556)
+-- TOC entry 341 (class 1259 OID 18556)
 -- Name: spare_channel; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4620,7 +5282,7 @@ CREATE TABLE ref.spare_channel (
 
 
 --
--- TOC entry 373 (class 1259 OID 20331)
+-- TOC entry 375 (class 1259 OID 20331)
 -- Name: spare_channel_backup_20260317; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4651,7 +5313,7 @@ CREATE TABLE ref.spare_channel_backup_20260317 (
 
 
 --
--- TOC entry 377 (class 1259 OID 20438)
+-- TOC entry 379 (class 1259 OID 20438)
 -- Name: spare_channel_backup_20260318_after_run22_success; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4682,7 +5344,7 @@ CREATE TABLE ref.spare_channel_backup_20260318_after_run22_success (
 
 
 --
--- TOC entry 374 (class 1259 OID 20359)
+-- TOC entry 376 (class 1259 OID 20359)
 -- Name: spare_channel_backup_20260318_lor_raw_fix; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4713,7 +5375,7 @@ CREATE TABLE ref.spare_channel_backup_20260318_lor_raw_fix (
 
 
 --
--- TOC entry 375 (class 1259 OID 20365)
+-- TOC entry 377 (class 1259 OID 20365)
 -- Name: spare_channel_backup_20260318_partial_raw_restore; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4744,7 +5406,7 @@ CREATE TABLE ref.spare_channel_backup_20260318_partial_raw_restore (
 
 
 --
--- TOC entry 379 (class 1259 OID 20460)
+-- TOC entry 381 (class 1259 OID 20460)
 -- Name: spare_channel_backup_20260319_after_run23_baseline; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4775,7 +5437,7 @@ CREATE TABLE ref.spare_channel_backup_20260319_after_run23_baseline (
 
 
 --
--- TOC entry 381 (class 1259 OID 20510)
+-- TOC entry 383 (class 1259 OID 20510)
 -- Name: spare_channel_backup_20260319_before_run24_p2; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4806,7 +5468,7 @@ CREATE TABLE ref.spare_channel_backup_20260319_before_run24_p2 (
 
 
 --
--- TOC entry 329 (class 1259 OID 18103)
+-- TOC entry 331 (class 1259 OID 18103)
 -- Name: stage_history; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4825,7 +5487,7 @@ CREATE TABLE ref.stage_history (
 
 
 --
--- TOC entry 330 (class 1259 OID 18171)
+-- TOC entry 332 (class 1259 OID 18171)
 -- Name: stage_stage_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4838,8 +5500,8 @@ CREATE SEQUENCE ref.stage_stage_id_seq
 
 
 --
--- TOC entry 5509 (class 0 OID 0)
--- Dependencies: 330
+-- TOC entry 5587 (class 0 OID 0)
+-- Dependencies: 332
 -- Name: stage_stage_id_seq; Type: SEQUENCE OWNED BY; Schema: ref; Owner: -
 --
 
@@ -4847,7 +5509,7 @@ ALTER SEQUENCE ref.stage_stage_id_seq OWNED BY ref.stage.stage_id;
 
 
 --
--- TOC entry 269 (class 1259 OID 16841)
+-- TOC entry 271 (class 1259 OID 16841)
 -- Name: storage_location; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4882,7 +5544,7 @@ END) STORED NOT NULL,
 
 
 --
--- TOC entry 334 (class 1259 OID 18393)
+-- TOC entry 336 (class 1259 OID 18393)
 -- Name: task_type; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4901,7 +5563,7 @@ CREATE TABLE ref.task_type (
 
 
 --
--- TOC entry 333 (class 1259 OID 18392)
+-- TOC entry 335 (class 1259 OID 18392)
 -- Name: task_type_task_type_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4914,8 +5576,8 @@ CREATE SEQUENCE ref.task_type_task_type_id_seq
 
 
 --
--- TOC entry 5510 (class 0 OID 0)
--- Dependencies: 333
+-- TOC entry 5588 (class 0 OID 0)
+-- Dependencies: 335
 -- Name: task_type_task_type_id_seq; Type: SEQUENCE OWNED BY; Schema: ref; Owner: -
 --
 
@@ -4923,7 +5585,7 @@ ALTER SEQUENCE ref.task_type_task_type_id_seq OWNED BY ref.task_type.task_type_i
 
 
 --
--- TOC entry 263 (class 1259 OID 16746)
+-- TOC entry 265 (class 1259 OID 16746)
 -- Name: theme; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4941,7 +5603,7 @@ CREATE TABLE ref.theme (
 
 
 --
--- TOC entry 262 (class 1259 OID 16745)
+-- TOC entry 264 (class 1259 OID 16745)
 -- Name: theme_theme_pk_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -4956,7 +5618,7 @@ ALTER TABLE ref.theme ALTER COLUMN theme_id ADD GENERATED BY DEFAULT AS IDENTITY
 
 
 --
--- TOC entry 371 (class 1259 OID 19624)
+-- TOC entry 373 (class 1259 OID 19624)
 -- Name: urgency; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4970,7 +5632,7 @@ CREATE TABLE ref.urgency (
 
 
 --
--- TOC entry 336 (class 1259 OID 18423)
+-- TOC entry 338 (class 1259 OID 18423)
 -- Name: work_area; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -4989,7 +5651,7 @@ CREATE TABLE ref.work_area (
 
 
 --
--- TOC entry 335 (class 1259 OID 18422)
+-- TOC entry 337 (class 1259 OID 18422)
 -- Name: work_area_work_area_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -5002,8 +5664,8 @@ CREATE SEQUENCE ref.work_area_work_area_id_seq
 
 
 --
--- TOC entry 5511 (class 0 OID 0)
--- Dependencies: 335
+-- TOC entry 5589 (class 0 OID 0)
+-- Dependencies: 337
 -- Name: work_area_work_area_id_seq; Type: SEQUENCE OWNED BY; Schema: ref; Owner: -
 --
 
@@ -5011,7 +5673,7 @@ ALTER SEQUENCE ref.work_area_work_area_id_seq OWNED BY ref.work_area.work_area_i
 
 
 --
--- TOC entry 354 (class 1259 OID 18962)
+-- TOC entry 356 (class 1259 OID 18962)
 -- Name: work_order_status; Type: TABLE; Schema: ref; Owner: -
 --
 
@@ -5033,7 +5695,7 @@ CREATE TABLE ref.work_order_status (
 
 
 --
--- TOC entry 353 (class 1259 OID 18961)
+-- TOC entry 355 (class 1259 OID 18961)
 -- Name: work_order_status_work_order_status_id_seq; Type: SEQUENCE; Schema: ref; Owner: -
 --
 
@@ -5048,7 +5710,7 @@ ALTER TABLE ref.work_order_status ALTER COLUMN work_order_status_id ADD GENERATE
 
 
 --
--- TOC entry 278 (class 1259 OID 17088)
+-- TOC entry 280 (class 1259 OID 17088)
 -- Name: display_sheet_csv; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5069,7 +5731,7 @@ CREATE TABLE stage.display_sheet_csv (
 
 
 --
--- TOC entry 270 (class 1259 OID 16868)
+-- TOC entry 272 (class 1259 OID 16868)
 -- Name: location_raw_full; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5089,7 +5751,7 @@ CREATE TABLE stage.location_raw_full (
 
 
 --
--- TOC entry 331 (class 1259 OID 18248)
+-- TOC entry 333 (class 1259 OID 18248)
 -- Name: pallet_raw_2026; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5108,7 +5770,7 @@ CREATE TABLE stage.pallet_raw_2026 (
 
 
 --
--- TOC entry 327 (class 1259 OID 18067)
+-- TOC entry 329 (class 1259 OID 18067)
 -- Name: test_plan_2026_raw; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5133,7 +5795,7 @@ CREATE TABLE stage.test_plan_2026_raw (
 
 
 --
--- TOC entry 281 (class 1259 OID 17108)
+-- TOC entry 283 (class 1259 OID 17108)
 -- Name: v_sheet_match; Type: VIEW; Schema: stage; Owner: -
 --
 
@@ -5165,7 +5827,7 @@ CREATE VIEW stage.v_sheet_match AS
 
 
 --
--- TOC entry 343 (class 1259 OID 18688)
+-- TOC entry 345 (class 1259 OID 18688)
 -- Name: work_order_completed_raw; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5190,7 +5852,7 @@ CREATE TABLE stage.work_order_completed_raw (
 
 
 --
--- TOC entry 341 (class 1259 OID 18653)
+-- TOC entry 343 (class 1259 OID 18653)
 -- Name: work_order_todo_raw; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5215,7 +5877,7 @@ CREATE TABLE stage.work_order_todo_raw (
 
 
 --
--- TOC entry 344 (class 1259 OID 18704)
+-- TOC entry 346 (class 1259 OID 18704)
 -- Name: v_work_order_all_raw; Type: VIEW; Schema: stage; Owner: -
 --
 
@@ -5250,7 +5912,7 @@ UNION ALL
 
 
 --
--- TOC entry 271 (class 1259 OID 16889)
+-- TOC entry 273 (class 1259 OID 16889)
 -- Name: val_stages_raw; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5266,7 +5928,7 @@ CREATE TABLE stage.val_stages_raw (
 
 
 --
--- TOC entry 273 (class 1259 OID 16968)
+-- TOC entry 275 (class 1259 OID 16968)
 -- Name: val_user_raw; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5286,7 +5948,7 @@ CREATE TABLE stage.val_user_raw (
 
 
 --
--- TOC entry 342 (class 1259 OID 18687)
+-- TOC entry 344 (class 1259 OID 18687)
 -- Name: work_order_completed_raw_src_row_num_seq; Type: SEQUENCE; Schema: stage; Owner: -
 --
 
@@ -5299,8 +5961,8 @@ CREATE SEQUENCE stage.work_order_completed_raw_src_row_num_seq
 
 
 --
--- TOC entry 5512 (class 0 OID 0)
--- Dependencies: 342
+-- TOC entry 5590 (class 0 OID 0)
+-- Dependencies: 344
 -- Name: work_order_completed_raw_src_row_num_seq; Type: SEQUENCE OWNED BY; Schema: stage; Owner: -
 --
 
@@ -5308,7 +5970,7 @@ ALTER SEQUENCE stage.work_order_completed_raw_src_row_num_seq OWNED BY stage.wor
 
 
 --
--- TOC entry 356 (class 1259 OID 18976)
+-- TOC entry 358 (class 1259 OID 18976)
 -- Name: work_order_intake; Type: TABLE; Schema: stage; Owner: -
 --
 
@@ -5350,8 +6012,8 @@ CREATE TABLE stage.work_order_intake (
 
 
 --
--- TOC entry 5513 (class 0 OID 0)
--- Dependencies: 356
+-- TOC entry 5591 (class 0 OID 0)
+-- Dependencies: 358
 -- Name: COLUMN work_order_intake.stage_raw; Type: COMMENT; Schema: stage; Owner: -
 --
 
@@ -5359,8 +6021,8 @@ COMMENT ON COLUMN stage.work_order_intake.stage_raw IS 'Raw stage value selected
 
 
 --
--- TOC entry 5514 (class 0 OID 0)
--- Dependencies: 356
+-- TOC entry 5592 (class 0 OID 0)
+-- Dependencies: 358
 -- Name: COLUMN work_order_intake.location_type_raw; Type: COMMENT; Schema: stage; Owner: -
 --
 
@@ -5368,8 +6030,8 @@ COMMENT ON COLUMN stage.work_order_intake.location_type_raw IS 'Branch selected 
 
 
 --
--- TOC entry 5515 (class 0 OID 0)
--- Dependencies: 356
+-- TOC entry 5593 (class 0 OID 0)
+-- Dependencies: 358
 -- Name: COLUMN work_order_intake.work_area_raw; Type: COMMENT; Schema: stage; Owner: -
 --
 
@@ -5377,7 +6039,7 @@ COMMENT ON COLUMN stage.work_order_intake.work_area_raw IS 'Raw work area select
 
 
 --
--- TOC entry 355 (class 1259 OID 18975)
+-- TOC entry 357 (class 1259 OID 18975)
 -- Name: work_order_intake_intake_id_seq; Type: SEQUENCE; Schema: stage; Owner: -
 --
 
@@ -5392,7 +6054,7 @@ ALTER TABLE stage.work_order_intake ALTER COLUMN intake_id ADD GENERATED ALWAYS 
 
 
 --
--- TOC entry 340 (class 1259 OID 18652)
+-- TOC entry 342 (class 1259 OID 18652)
 -- Name: work_order_todo_raw_src_row_num_seq; Type: SEQUENCE; Schema: stage; Owner: -
 --
 
@@ -5405,8 +6067,8 @@ CREATE SEQUENCE stage.work_order_todo_raw_src_row_num_seq
 
 
 --
--- TOC entry 5516 (class 0 OID 0)
--- Dependencies: 340
+-- TOC entry 5594 (class 0 OID 0)
+-- Dependencies: 342
 -- Name: work_order_todo_raw_src_row_num_seq; Type: SEQUENCE OWNED BY; Schema: stage; Owner: -
 --
 
@@ -5414,7 +6076,7 @@ ALTER SEQUENCE stage.work_order_todo_raw_src_row_num_seq OWNED BY stage.work_ord
 
 
 --
--- TOC entry 4745 (class 2604 OID 16394)
+-- TOC entry 4774 (class 2604 OID 16394)
 -- Name: import_run import_run_id; Type: DEFAULT; Schema: lor_snap; Owner: -
 --
 
@@ -5422,7 +6084,7 @@ ALTER TABLE ONLY lor_snap.import_run ALTER COLUMN import_run_id SET DEFAULT next
 
 
 --
--- TOC entry 4906 (class 2604 OID 20713)
+-- TOC entry 4935 (class 2604 OID 20713)
 -- Name: container_label_batch container_label_batch_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5430,7 +6092,7 @@ ALTER TABLE ONLY ops.container_label_batch ALTER COLUMN container_label_batch_id
 
 
 --
--- TOC entry 4909 (class 2604 OID 20725)
+-- TOC entry 4938 (class 2604 OID 20725)
 -- Name: container_label_batch_item container_label_batch_item_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5438,7 +6100,7 @@ ALTER TABLE ONLY ops.container_label_batch_item ALTER COLUMN container_label_bat
 
 
 --
--- TOC entry 4897 (class 2604 OID 20614)
+-- TOC entry 4926 (class 2604 OID 20614)
 -- Name: container_label_print container_label_print_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5446,7 +6108,7 @@ ALTER TABLE ONLY ops.container_label_print ALTER COLUMN container_label_print_id
 
 
 --
--- TOC entry 4901 (class 2604 OID 20678)
+-- TOC entry 4930 (class 2604 OID 20678)
 -- Name: display_label_batch display_label_batch_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5454,7 +6116,7 @@ ALTER TABLE ONLY ops.display_label_batch ALTER COLUMN display_label_batch_id SET
 
 
 --
--- TOC entry 4904 (class 2604 OID 20690)
+-- TOC entry 4933 (class 2604 OID 20690)
 -- Name: display_label_batch_item display_label_batch_item_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5462,7 +6124,7 @@ ALTER TABLE ONLY ops.display_label_batch_item ALTER COLUMN display_label_batch_i
 
 
 --
--- TOC entry 4893 (class 2604 OID 20594)
+-- TOC entry 4922 (class 2604 OID 20594)
 -- Name: display_label_print display_label_print_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5470,7 +6132,7 @@ ALTER TABLE ONLY ops.display_label_print ALTER COLUMN display_label_print_id SET
 
 
 --
--- TOC entry 4812 (class 2604 OID 17291)
+-- TOC entry 4841 (class 2604 OID 17291)
 -- Name: display_test_session display_test_session_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5478,7 +6140,7 @@ ALTER TABLE ONLY ops.display_test_session ALTER COLUMN display_test_session_id S
 
 
 --
--- TOC entry 4801 (class 2604 OID 17260)
+-- TOC entry 4830 (class 2604 OID 17260)
 -- Name: test_session test_session_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5486,7 +6148,7 @@ ALTER TABLE ONLY ops.test_session ALTER COLUMN test_session_id SET DEFAULT nextv
 
 
 --
--- TOC entry 4836 (class 2604 OID 18487)
+-- TOC entry 4865 (class 2604 OID 18487)
 -- Name: work_order work_order_id; Type: DEFAULT; Schema: ops; Owner: -
 --
 
@@ -5494,7 +6156,7 @@ ALTER TABLE ONLY ops.work_order ALTER COLUMN work_order_id SET DEFAULT nextval('
 
 
 --
--- TOC entry 4763 (class 2604 OID 19208)
+-- TOC entry 4792 (class 2604 OID 19208)
 -- Name: container container_id; Type: DEFAULT; Schema: ref; Owner: -
 --
 
@@ -5502,7 +6164,7 @@ ALTER TABLE ONLY ref.container ALTER COLUMN container_id SET DEFAULT nextval('re
 
 
 --
--- TOC entry 4821 (class 2604 OID 19206)
+-- TOC entry 4850 (class 2604 OID 19206)
 -- Name: container_endpoint endpoint_id; Type: DEFAULT; Schema: ref; Owner: -
 --
 
@@ -5510,7 +6172,7 @@ ALTER TABLE ONLY ref.container_endpoint ALTER COLUMN endpoint_id SET DEFAULT nex
 
 
 --
--- TOC entry 4777 (class 2604 OID 19210)
+-- TOC entry 4806 (class 2604 OID 19210)
 -- Name: person person_id; Type: DEFAULT; Schema: ref; Owner: -
 --
 
@@ -5518,7 +6180,7 @@ ALTER TABLE ONLY ref.person ALTER COLUMN person_id SET DEFAULT nextval('ref.pers
 
 
 --
--- TOC entry 4814 (class 2604 OID 18188)
+-- TOC entry 4843 (class 2604 OID 18188)
 -- Name: stage stage_id; Type: DEFAULT; Schema: ref; Owner: -
 --
 
@@ -5526,7 +6188,7 @@ ALTER TABLE ONLY ref.stage ALTER COLUMN stage_id SET DEFAULT nextval('ref.stage_
 
 
 --
--- TOC entry 4826 (class 2604 OID 18396)
+-- TOC entry 4855 (class 2604 OID 18396)
 -- Name: task_type task_type_id; Type: DEFAULT; Schema: ref; Owner: -
 --
 
@@ -5534,7 +6196,7 @@ ALTER TABLE ONLY ref.task_type ALTER COLUMN task_type_id SET DEFAULT nextval('re
 
 
 --
--- TOC entry 4831 (class 2604 OID 18426)
+-- TOC entry 4860 (class 2604 OID 18426)
 -- Name: work_area work_area_id; Type: DEFAULT; Schema: ref; Owner: -
 --
 
@@ -5542,7 +6204,7 @@ ALTER TABLE ONLY ref.work_area ALTER COLUMN work_area_id SET DEFAULT nextval('re
 
 
 --
--- TOC entry 4850 (class 2604 OID 18691)
+-- TOC entry 4879 (class 2604 OID 18691)
 -- Name: work_order_completed_raw src_row_num; Type: DEFAULT; Schema: stage; Owner: -
 --
 
@@ -5550,7 +6212,7 @@ ALTER TABLE ONLY stage.work_order_completed_raw ALTER COLUMN src_row_num SET DEF
 
 
 --
--- TOC entry 4847 (class 2604 OID 18656)
+-- TOC entry 4876 (class 2604 OID 18656)
 -- Name: work_order_todo_raw src_row_num; Type: DEFAULT; Schema: stage; Owner: -
 --
 
@@ -5558,7 +6220,7 @@ ALTER TABLE ONLY stage.work_order_todo_raw ALTER COLUMN src_row_num SET DEFAULT 
 
 
 --
--- TOC entry 4942 (class 2606 OID 16463)
+-- TOC entry 4983 (class 2606 OID 16463)
 -- Name: dmx_channels dmx_channels_pkey; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5567,7 +6229,7 @@ ALTER TABLE ONLY lor_snap.dmx_channels
 
 
 --
--- TOC entry 4928 (class 2606 OID 16399)
+-- TOC entry 4969 (class 2606 OID 16399)
 -- Name: import_run import_run_pkey; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5576,7 +6238,7 @@ ALTER TABLE ONLY lor_snap.import_run
 
 
 --
--- TOC entry 4930 (class 2606 OID 16408)
+-- TOC entry 4971 (class 2606 OID 16408)
 -- Name: previews previews_import_run_id_id_key; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5585,7 +6247,7 @@ ALTER TABLE ONLY lor_snap.previews
 
 
 --
--- TOC entry 4932 (class 2606 OID 16406)
+-- TOC entry 4973 (class 2606 OID 16406)
 -- Name: previews previews_pkey; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5594,7 +6256,7 @@ ALTER TABLE ONLY lor_snap.previews
 
 
 --
--- TOC entry 4934 (class 2606 OID 16422)
+-- TOC entry 4975 (class 2606 OID 16422)
 -- Name: props props_import_run_id_prop_id_key; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5603,7 +6265,7 @@ ALTER TABLE ONLY lor_snap.props
 
 
 --
--- TOC entry 4936 (class 2606 OID 16420)
+-- TOC entry 4977 (class 2606 OID 16420)
 -- Name: props props_pkey; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5612,7 +6274,7 @@ ALTER TABLE ONLY lor_snap.props
 
 
 --
--- TOC entry 4938 (class 2606 OID 16441)
+-- TOC entry 4979 (class 2606 OID 16441)
 -- Name: sub_props sub_props_import_run_id_sub_prop_id_key; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5621,7 +6283,7 @@ ALTER TABLE ONLY lor_snap.sub_props
 
 
 --
--- TOC entry 4940 (class 2606 OID 16439)
+-- TOC entry 4981 (class 2606 OID 16439)
 -- Name: sub_props sub_props_pkey; Type: CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -5630,7 +6292,7 @@ ALTER TABLE ONLY lor_snap.sub_props
 
 
 --
--- TOC entry 5100 (class 2606 OID 20732)
+-- TOC entry 5140 (class 2606 OID 20732)
 -- Name: container_label_batch_item container_label_batch_item_container_label_batch_id_contain_key; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5639,7 +6301,7 @@ ALTER TABLE ONLY ops.container_label_batch_item
 
 
 --
--- TOC entry 5102 (class 2606 OID 20730)
+-- TOC entry 5142 (class 2606 OID 20730)
 -- Name: container_label_batch_item container_label_batch_item_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5648,7 +6310,7 @@ ALTER TABLE ONLY ops.container_label_batch_item
 
 
 --
--- TOC entry 5097 (class 2606 OID 20719)
+-- TOC entry 5137 (class 2606 OID 20719)
 -- Name: container_label_batch container_label_batch_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5657,7 +6319,7 @@ ALTER TABLE ONLY ops.container_label_batch
 
 
 --
--- TOC entry 5082 (class 2606 OID 20623)
+-- TOC entry 5122 (class 2606 OID 20623)
 -- Name: container_label_print container_label_print_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5666,7 +6328,7 @@ ALTER TABLE ONLY ops.container_label_print
 
 
 --
--- TOC entry 5089 (class 2606 OID 20697)
+-- TOC entry 5129 (class 2606 OID 20697)
 -- Name: display_label_batch_item display_label_batch_item_display_label_batch_id_display_id_key; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5675,7 +6337,7 @@ ALTER TABLE ONLY ops.display_label_batch_item
 
 
 --
--- TOC entry 5091 (class 2606 OID 20695)
+-- TOC entry 5131 (class 2606 OID 20695)
 -- Name: display_label_batch_item display_label_batch_item_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5684,7 +6346,7 @@ ALTER TABLE ONLY ops.display_label_batch_item
 
 
 --
--- TOC entry 5086 (class 2606 OID 20684)
+-- TOC entry 5126 (class 2606 OID 20684)
 -- Name: display_label_batch display_label_batch_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5693,7 +6355,7 @@ ALTER TABLE ONLY ops.display_label_batch
 
 
 --
--- TOC entry 5078 (class 2606 OID 20602)
+-- TOC entry 5118 (class 2606 OID 20602)
 -- Name: display_label_print display_label_print_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5702,7 +6364,7 @@ ALTER TABLE ONLY ops.display_label_print
 
 
 --
--- TOC entry 5003 (class 2606 OID 17296)
+-- TOC entry 5044 (class 2606 OID 17296)
 -- Name: display_test_session display_test_session_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5711,7 +6373,16 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 4998 (class 2606 OID 17267)
+-- TOC entry 5155 (class 2606 OID 23194)
+-- Name: lor_reconciliation_action lor_reconciliation_action_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
+--
+
+ALTER TABLE ONLY ops.lor_reconciliation_action
+    ADD CONSTRAINT lor_reconciliation_action_pkey PRIMARY KEY (lor_reconciliation_action_id);
+
+
+--
+-- TOC entry 5039 (class 2606 OID 17267)
 -- Name: test_session test_session_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5720,7 +6391,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5106 (class 2606 OID 20779)
+-- TOC entry 5146 (class 2606 OID 20779)
 -- Name: container_label_batch_item uq_container_label_batch_item_batch_container; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5729,7 +6400,7 @@ ALTER TABLE ONLY ops.container_label_batch_item
 
 
 --
--- TOC entry 5095 (class 2606 OID 20761)
+-- TOC entry 5135 (class 2606 OID 20761)
 -- Name: display_label_batch_item uq_display_label_batch_item_batch_display; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5738,7 +6409,7 @@ ALTER TABLE ONLY ops.display_label_batch_item
 
 
 --
--- TOC entry 5005 (class 2606 OID 18748)
+-- TOC entry 5046 (class 2606 OID 18748)
 -- Name: display_test_session uq_display_per_session_display_id; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5747,7 +6418,7 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5000 (class 2606 OID 19543)
+-- TOC entry 5041 (class 2606 OID 19543)
 -- Name: test_session uq_test_session_season_container; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5756,7 +6427,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5060 (class 2606 OID 19019)
+-- TOC entry 5100 (class 2606 OID 19019)
 -- Name: work_order_assignment work_order_assignment_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5765,7 +6436,7 @@ ALTER TABLE ONLY ops.work_order_assignment
 
 
 --
--- TOC entry 5066 (class 2606 OID 19079)
+-- TOC entry 5106 (class 2606 OID 19079)
 -- Name: work_order_outbound_message work_order_outbound_message_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5774,7 +6445,7 @@ ALTER TABLE ONLY ops.work_order_outbound_message
 
 
 --
--- TOC entry 5031 (class 2606 OID 18493)
+-- TOC entry 5071 (class 2606 OID 18493)
 -- Name: work_order work_order_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5783,7 +6454,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5063 (class 2606 OID 19051)
+-- TOC entry 5103 (class 2606 OID 19051)
 -- Name: work_order_status_history work_order_status_history_pkey; Type: CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -5792,7 +6463,7 @@ ALTER TABLE ONLY ops.work_order_status_history
 
 
 --
--- TOC entry 5068 (class 2606 OID 19222)
+-- TOC entry 5108 (class 2606 OID 19222)
 -- Name: audit_collection_policy audit_collection_policy_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5801,7 +6472,7 @@ ALTER TABLE ONLY ref.audit_collection_policy
 
 
 --
--- TOC entry 5016 (class 2606 OID 18288)
+-- TOC entry 5057 (class 2606 OID 18288)
 -- Name: container_endpoint container_endpoint_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5810,7 +6481,7 @@ ALTER TABLE ONLY ref.container_endpoint
 
 
 --
--- TOC entry 5042 (class 2606 OID 18949)
+-- TOC entry 5082 (class 2606 OID 18949)
 -- Name: container_test_status container_test_status_container_test_status_code_key; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5819,7 +6490,7 @@ ALTER TABLE ONLY ref.container_test_status
 
 
 --
--- TOC entry 5044 (class 2606 OID 18947)
+-- TOC entry 5084 (class 2606 OID 18947)
 -- Name: container_test_status container_test_status_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5828,7 +6499,7 @@ ALTER TABLE ONLY ref.container_test_status
 
 
 --
--- TOC entry 4983 (class 2606 OID 18845)
+-- TOC entry 5024 (class 2606 OID 18845)
 -- Name: display display_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5837,7 +6508,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 4954 (class 2606 OID 16773)
+-- TOC entry 4995 (class 2606 OID 16773)
 -- Name: display_status display_status_display_status_name_key; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5846,7 +6517,7 @@ ALTER TABLE ONLY ref.display_status
 
 
 --
--- TOC entry 4956 (class 2606 OID 16771)
+-- TOC entry 4997 (class 2606 OID 16771)
 -- Name: display_status display_status_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5855,7 +6526,7 @@ ALTER TABLE ONLY ref.display_status
 
 
 --
--- TOC entry 5040 (class 2606 OID 18913)
+-- TOC entry 5080 (class 2606 OID 18913)
 -- Name: display_test_status display_test_status_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5864,7 +6535,7 @@ ALTER TABLE ONLY ref.display_test_status
 
 
 --
--- TOC entry 4944 (class 2606 OID 16716)
+-- TOC entry 4985 (class 2606 OID 16716)
 -- Name: frame frame_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5873,7 +6544,7 @@ ALTER TABLE ONLY ref.frame
 
 
 --
--- TOC entry 4981 (class 2606 OID 17034)
+-- TOC entry 5022 (class 2606 OID 17034)
 -- Name: inventory_type inventory_type_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5882,7 +6553,16 @@ ALTER TABLE ONLY ref.inventory_type
 
 
 --
--- TOC entry 4962 (class 2606 OID 16831)
+-- TOC entry 5160 (class 2606 OID 23236)
+-- Name: lor_scene lor_scene_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene
+    ADD CONSTRAINT lor_scene_pkey PRIMARY KEY (lor_scene_id);
+
+
+--
+-- TOC entry 5003 (class 2606 OID 16831)
 -- Name: container pallet_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5891,7 +6571,7 @@ ALTER TABLE ONLY ref.container
 
 
 --
--- TOC entry 4958 (class 2606 OID 16818)
+-- TOC entry 4999 (class 2606 OID 16818)
 -- Name: container_type pallet_type_pallet_type_name_key; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5900,7 +6580,7 @@ ALTER TABLE ONLY ref.container_type
 
 
 --
--- TOC entry 4960 (class 2606 OID 16816)
+-- TOC entry 5001 (class 2606 OID 16816)
 -- Name: container_type pallet_type_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5909,7 +6589,7 @@ ALTER TABLE ONLY ref.container_type
 
 
 --
--- TOC entry 4972 (class 2606 OID 16966)
+-- TOC entry 5013 (class 2606 OID 16966)
 -- Name: person person_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5918,7 +6598,16 @@ ALTER TABLE ONLY ref.person
 
 
 --
--- TOC entry 4979 (class 2606 OID 16986)
+-- TOC entry 5168 (class 2606 OID 23261)
+-- Name: lor_scene_display pk_lor_scene_display; Type: CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene_display
+    ADD CONSTRAINT pk_lor_scene_display PRIMARY KEY (lor_scene_id, display_id);
+
+
+--
+-- TOC entry 5020 (class 2606 OID 16986)
 -- Name: person_xref pk_person_xref; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5927,7 +6616,7 @@ ALTER TABLE ONLY ref.person_xref
 
 
 --
--- TOC entry 4985 (class 2606 OID 18741)
+-- TOC entry 5026 (class 2606 OID 18741)
 -- Name: display ref_display_display_id_uk; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5936,7 +6625,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5072 (class 2606 OID 19493)
+-- TOC entry 5112 (class 2606 OID 19493)
 -- Name: season season_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5945,7 +6634,7 @@ ALTER TABLE ONLY ref.season
 
 
 --
--- TOC entry 5034 (class 2606 OID 18566)
+-- TOC entry 5074 (class 2606 OID 18566)
 -- Name: spare_channel spare_channel_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5954,7 +6643,7 @@ ALTER TABLE ONLY ref.spare_channel
 
 
 --
--- TOC entry 5014 (class 2606 OID 18111)
+-- TOC entry 5055 (class 2606 OID 18111)
 -- Name: stage_history stage_history_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5963,7 +6652,7 @@ ALTER TABLE ONLY ref.stage_history
 
 
 --
--- TOC entry 5010 (class 2606 OID 18102)
+-- TOC entry 5051 (class 2606 OID 18102)
 -- Name: stage stage_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5972,7 +6661,7 @@ ALTER TABLE ONLY ref.stage
 
 
 --
--- TOC entry 4965 (class 2606 OID 18906)
+-- TOC entry 5006 (class 2606 OID 18906)
 -- Name: storage_location storage_location_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5981,7 +6670,7 @@ ALTER TABLE ONLY ref.storage_location
 
 
 --
--- TOC entry 5018 (class 2606 OID 18404)
+-- TOC entry 5059 (class 2606 OID 18404)
 -- Name: task_type task_type_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5990,7 +6679,7 @@ ALTER TABLE ONLY ref.task_type
 
 
 --
--- TOC entry 4950 (class 2606 OID 16756)
+-- TOC entry 4991 (class 2606 OID 16756)
 -- Name: theme theme_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -5999,7 +6688,7 @@ ALTER TABLE ONLY ref.theme
 
 
 --
--- TOC entry 4952 (class 2606 OID 16758)
+-- TOC entry 4993 (class 2606 OID 16758)
 -- Name: theme theme_theme_name_key; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6008,7 +6697,7 @@ ALTER TABLE ONLY ref.theme
 
 
 --
--- TOC entry 5070 (class 2606 OID 19224)
+-- TOC entry 5110 (class 2606 OID 19224)
 -- Name: audit_collection_policy uq_audit_collection_policy; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6017,7 +6706,7 @@ ALTER TABLE ONLY ref.audit_collection_policy
 
 
 --
--- TOC entry 4946 (class 2606 OID 16718)
+-- TOC entry 4987 (class 2606 OID 16718)
 -- Name: frame uq_frame_code; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6026,7 +6715,7 @@ ALTER TABLE ONLY ref.frame
 
 
 --
--- TOC entry 4948 (class 2606 OID 16720)
+-- TOC entry 4989 (class 2606 OID 16720)
 -- Name: frame uq_frame_size; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6035,7 +6724,7 @@ ALTER TABLE ONLY ref.frame
 
 
 --
--- TOC entry 4967 (class 2606 OID 16854)
+-- TOC entry 5008 (class 2606 OID 16854)
 -- Name: storage_location uq_location_parts; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6044,7 +6733,34 @@ ALTER TABLE ONLY ref.storage_location
 
 
 --
--- TOC entry 4974 (class 2606 OID 19130)
+-- TOC entry 5170 (class 2606 OID 23263)
+-- Name: lor_scene_display uq_lor_scene_display_preview_display; Type: CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene_display
+    ADD CONSTRAINT uq_lor_scene_display_preview_display UNIQUE (preview_uuid, display_id);
+
+
+--
+-- TOC entry 5162 (class 2606 OID 23240)
+-- Name: lor_scene uq_lor_scene_id_preview; Type: CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene
+    ADD CONSTRAINT uq_lor_scene_id_preview UNIQUE (lor_scene_id, preview_uuid);
+
+
+--
+-- TOC entry 5164 (class 2606 OID 23238)
+-- Name: lor_scene uq_lor_scene_preview_scene; Type: CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene
+    ADD CONSTRAINT uq_lor_scene_preview_scene UNIQUE (preview_uuid, scene_uuid);
+
+
+--
+-- TOC entry 5015 (class 2606 OID 19130)
 -- Name: person uq_person_directus_user_id; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6053,7 +6769,7 @@ ALTER TABLE ONLY ref.person
 
 
 --
--- TOC entry 4987 (class 2606 OID 18734)
+-- TOC entry 5028 (class 2606 OID 18734)
 -- Name: display uq_ref_display_display_id; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6062,7 +6778,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5012 (class 2606 OID 18163)
+-- TOC entry 5053 (class 2606 OID 18163)
 -- Name: stage uq_ref_stage_stage_key; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6071,7 +6787,7 @@ ALTER TABLE ONLY ref.stage
 
 
 --
--- TOC entry 5074 (class 2606 OID 19631)
+-- TOC entry 5114 (class 2606 OID 19631)
 -- Name: urgency urgency_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6080,7 +6796,7 @@ ALTER TABLE ONLY ref.urgency
 
 
 --
--- TOC entry 5076 (class 2606 OID 19633)
+-- TOC entry 5116 (class 2606 OID 19633)
 -- Name: urgency urgency_urgency_code_key; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6089,7 +6805,7 @@ ALTER TABLE ONLY ref.urgency
 
 
 --
--- TOC entry 4989 (class 2606 OID 18843)
+-- TOC entry 5030 (class 2606 OID 18843)
 -- Name: display ux_display_lor_prop_id; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6098,7 +6814,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5022 (class 2606 OID 18434)
+-- TOC entry 5063 (class 2606 OID 18434)
 -- Name: work_area work_area_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6107,7 +6823,7 @@ ALTER TABLE ONLY ref.work_area
 
 
 --
--- TOC entry 5047 (class 2606 OID 18973)
+-- TOC entry 5087 (class 2606 OID 18973)
 -- Name: work_order_status work_order_status_pkey; Type: CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -6116,7 +6832,7 @@ ALTER TABLE ONLY ref.work_order_status
 
 
 --
--- TOC entry 5038 (class 2606 OID 18697)
+-- TOC entry 5078 (class 2606 OID 18697)
 -- Name: work_order_completed_raw work_order_completed_raw_pkey; Type: CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -6125,7 +6841,7 @@ ALTER TABLE ONLY stage.work_order_completed_raw
 
 
 --
--- TOC entry 5055 (class 2606 OID 18987)
+-- TOC entry 5095 (class 2606 OID 18987)
 -- Name: work_order_intake work_order_intake_pkey; Type: CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -6134,7 +6850,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5036 (class 2606 OID 18662)
+-- TOC entry 5076 (class 2606 OID 18662)
 -- Name: work_order_todo_raw work_order_todo_raw_pkey; Type: CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -6143,7 +6859,7 @@ ALTER TABLE ONLY stage.work_order_todo_raw
 
 
 --
--- TOC entry 5110 (class 1259 OID 23034)
+-- TOC entry 5150 (class 1259 OID 23034)
 -- Name: ix_lor_snap_scene_lor_props_run; Type: INDEX; Schema: lor_snap; Owner: -
 --
 
@@ -6151,7 +6867,7 @@ CREATE INDEX ix_lor_snap_scene_lor_props_run ON lor_snap.scene_lor_props USING b
 
 
 --
--- TOC entry 5111 (class 1259 OID 23037)
+-- TOC entry 5151 (class 1259 OID 23037)
 -- Name: ix_lor_snap_scene_lor_props_run_preview; Type: INDEX; Schema: lor_snap; Owner: -
 --
 
@@ -6159,7 +6875,7 @@ CREATE INDEX ix_lor_snap_scene_lor_props_run_preview ON lor_snap.scene_lor_props
 
 
 --
--- TOC entry 5112 (class 1259 OID 23036)
+-- TOC entry 5152 (class 1259 OID 23036)
 -- Name: ix_lor_snap_scene_lor_props_run_prop; Type: INDEX; Schema: lor_snap; Owner: -
 --
 
@@ -6167,7 +6883,7 @@ CREATE INDEX ix_lor_snap_scene_lor_props_run_prop ON lor_snap.scene_lor_props US
 
 
 --
--- TOC entry 5113 (class 1259 OID 23035)
+-- TOC entry 5153 (class 1259 OID 23035)
 -- Name: ix_lor_snap_scene_lor_props_run_scene; Type: INDEX; Schema: lor_snap; Owner: -
 --
 
@@ -6175,7 +6891,7 @@ CREATE INDEX ix_lor_snap_scene_lor_props_run_scene ON lor_snap.scene_lor_props U
 
 
 --
--- TOC entry 5107 (class 1259 OID 23031)
+-- TOC entry 5147 (class 1259 OID 23031)
 -- Name: ix_lor_snap_scenes_run; Type: INDEX; Schema: lor_snap; Owner: -
 --
 
@@ -6183,7 +6899,7 @@ CREATE INDEX ix_lor_snap_scenes_run ON lor_snap.scenes USING btree (import_run_i
 
 
 --
--- TOC entry 5108 (class 1259 OID 23033)
+-- TOC entry 5148 (class 1259 OID 23033)
 -- Name: ix_lor_snap_scenes_run_preview; Type: INDEX; Schema: lor_snap; Owner: -
 --
 
@@ -6191,7 +6907,7 @@ CREATE INDEX ix_lor_snap_scenes_run_preview ON lor_snap.scenes USING btree (impo
 
 
 --
--- TOC entry 5109 (class 1259 OID 23032)
+-- TOC entry 5149 (class 1259 OID 23032)
 -- Name: ix_lor_snap_scenes_run_scene; Type: INDEX; Schema: lor_snap; Owner: -
 --
 
@@ -6199,7 +6915,7 @@ CREATE INDEX ix_lor_snap_scenes_run_scene ON lor_snap.scenes USING btree (import
 
 
 --
--- TOC entry 5103 (class 1259 OID 20743)
+-- TOC entry 5143 (class 1259 OID 20743)
 -- Name: idx_container_batch_item_batch; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6207,7 +6923,7 @@ CREATE INDEX idx_container_batch_item_batch ON ops.container_label_batch_item US
 
 
 --
--- TOC entry 5104 (class 1259 OID 20781)
+-- TOC entry 5144 (class 1259 OID 20781)
 -- Name: idx_container_label_batch_item_batch; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6215,7 +6931,7 @@ CREATE INDEX idx_container_label_batch_item_batch ON ops.container_label_batch_i
 
 
 --
--- TOC entry 5098 (class 1259 OID 20720)
+-- TOC entry 5138 (class 1259 OID 20720)
 -- Name: idx_container_label_batch_status; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6223,7 +6939,7 @@ CREATE INDEX idx_container_label_batch_status ON ops.container_label_batch USING
 
 
 --
--- TOC entry 5083 (class 1259 OID 20629)
+-- TOC entry 5123 (class 1259 OID 20629)
 -- Name: idx_container_label_print_container_id; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6231,7 +6947,7 @@ CREATE INDEX idx_container_label_print_container_id ON ops.container_label_print
 
 
 --
--- TOC entry 5084 (class 1259 OID 20630)
+-- TOC entry 5124 (class 1259 OID 20630)
 -- Name: idx_container_label_print_printed_at; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6239,7 +6955,7 @@ CREATE INDEX idx_container_label_print_printed_at ON ops.container_label_print U
 
 
 --
--- TOC entry 5092 (class 1259 OID 20708)
+-- TOC entry 5132 (class 1259 OID 20708)
 -- Name: idx_display_batch_item_batch; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6247,7 +6963,7 @@ CREATE INDEX idx_display_batch_item_batch ON ops.display_label_batch_item USING 
 
 
 --
--- TOC entry 5093 (class 1259 OID 20762)
+-- TOC entry 5133 (class 1259 OID 20762)
 -- Name: idx_display_label_batch_item_batch; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6255,7 +6971,7 @@ CREATE INDEX idx_display_label_batch_item_batch ON ops.display_label_batch_item 
 
 
 --
--- TOC entry 5087 (class 1259 OID 20685)
+-- TOC entry 5127 (class 1259 OID 20685)
 -- Name: idx_display_label_batch_status; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6263,7 +6979,7 @@ CREATE INDEX idx_display_label_batch_status ON ops.display_label_batch USING btr
 
 
 --
--- TOC entry 5079 (class 1259 OID 20793)
+-- TOC entry 5119 (class 1259 OID 20793)
 -- Name: idx_display_label_print_display_id; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6271,7 +6987,7 @@ CREATE INDEX idx_display_label_print_display_id ON ops.display_label_print USING
 
 
 --
--- TOC entry 5080 (class 1259 OID 20609)
+-- TOC entry 5120 (class 1259 OID 20609)
 -- Name: idx_display_label_print_printed_at; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6279,7 +6995,7 @@ CREATE INDEX idx_display_label_print_printed_at ON ops.display_label_print USING
 
 
 --
--- TOC entry 4993 (class 1259 OID 18956)
+-- TOC entry 5034 (class 1259 OID 18956)
 -- Name: ix_test_session_container_test_status; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6287,7 +7003,7 @@ CREATE INDEX ix_test_session_container_test_status ON ops.test_session USING btr
 
 
 --
--- TOC entry 4994 (class 1259 OID 17286)
+-- TOC entry 5035 (class 1259 OID 17286)
 -- Name: ix_test_session_pallet; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6295,7 +7011,7 @@ CREATE INDEX ix_test_session_pallet ON ops.test_session USING btree (container_i
 
 
 --
--- TOC entry 4995 (class 1259 OID 18082)
+-- TOC entry 5036 (class 1259 OID 18082)
 -- Name: ix_test_session_season_status; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6303,7 +7019,7 @@ CREATE INDEX ix_test_session_season_status ON ops.test_session USING btree (seas
 
 
 --
--- TOC entry 4996 (class 1259 OID 17285)
+-- TOC entry 5037 (class 1259 OID 17285)
 -- Name: ix_test_session_status; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6311,7 +7027,7 @@ CREATE INDEX ix_test_session_status ON ops.test_session USING btree (season_year
 
 
 --
--- TOC entry 5056 (class 1259 OID 19866)
+-- TOC entry 5096 (class 1259 OID 19866)
 -- Name: ix_woa_person; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6319,7 +7035,7 @@ CREATE INDEX ix_woa_person ON ops.work_order_assignment USING btree (person_id);
 
 
 --
--- TOC entry 5057 (class 1259 OID 19041)
+-- TOC entry 5097 (class 1259 OID 19041)
 -- Name: ix_woa_work_order; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6327,7 +7043,7 @@ CREATE INDEX ix_woa_work_order ON ops.work_order_assignment USING btree (work_or
 
 
 --
--- TOC entry 5064 (class 1259 OID 19095)
+-- TOC entry 5104 (class 1259 OID 19095)
 -- Name: ix_woom_work_order; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6335,15 +7051,7 @@ CREATE INDEX ix_woom_work_order ON ops.work_order_outbound_message USING btree (
 
 
 --
--- TOC entry 5023 (class 1259 OID 18584)
--- Name: ix_work_order_display_lor_prop_id; Type: INDEX; Schema: ops; Owner: -
---
-
-CREATE INDEX ix_work_order_display_lor_prop_id ON ops.work_order USING btree (display_lor_prop_id);
-
-
---
--- TOC entry 5024 (class 1259 OID 18528)
+-- TOC entry 5064 (class 1259 OID 18528)
 -- Name: ix_work_order_open; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6351,7 +7059,7 @@ CREATE INDEX ix_work_order_open ON ops.work_order USING btree (date_completed) W
 
 
 --
--- TOC entry 5025 (class 1259 OID 19799)
+-- TOC entry 5065 (class 1259 OID 19799)
 -- Name: ix_work_order_stage_open; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6359,7 +7067,7 @@ CREATE INDEX ix_work_order_stage_open ON ops.work_order USING btree (stage_id) W
 
 
 --
--- TOC entry 5026 (class 1259 OID 18531)
+-- TOC entry 5066 (class 1259 OID 18531)
 -- Name: ix_work_order_target_year; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6367,7 +7075,7 @@ CREATE INDEX ix_work_order_target_year ON ops.work_order USING btree (target_yea
 
 
 --
--- TOC entry 5027 (class 1259 OID 19772)
+-- TOC entry 5067 (class 1259 OID 19772)
 -- Name: ix_work_order_urgency_open; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6375,7 +7083,7 @@ CREATE INDEX ix_work_order_urgency_open ON ops.work_order USING btree (urgency_i
 
 
 --
--- TOC entry 5028 (class 1259 OID 18530)
+-- TOC entry 5068 (class 1259 OID 18530)
 -- Name: ix_work_order_work_area_open; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6383,7 +7091,7 @@ CREATE INDEX ix_work_order_work_area_open ON ops.work_order USING btree (work_ar
 
 
 --
--- TOC entry 5061 (class 1259 OID 19067)
+-- TOC entry 5101 (class 1259 OID 19067)
 -- Name: ix_wosh_work_order; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6391,7 +7099,7 @@ CREATE INDEX ix_wosh_work_order ON ops.work_order_status_history USING btree (wo
 
 
 --
--- TOC entry 5006 (class 1259 OID 18350)
+-- TOC entry 5047 (class 1259 OID 18350)
 -- Name: ux_display_test_session_session_prop; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6399,7 +7107,15 @@ CREATE UNIQUE INDEX ux_display_test_session_session_prop ON ops.display_test_ses
 
 
 --
--- TOC entry 5001 (class 1259 OID 18349)
+-- TOC entry 5156 (class 1259 OID 23215)
+-- Name: ux_lor_reconciliation_action_run_decision; Type: INDEX; Schema: ops; Owner: -
+--
+
+CREATE UNIQUE INDEX ux_lor_reconciliation_action_run_decision ON ops.lor_reconciliation_action USING btree (import_run_id, action_type, display_id);
+
+
+--
+-- TOC entry 5042 (class 1259 OID 18349)
 -- Name: ux_test_session_season_container; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6407,7 +7123,7 @@ CREATE UNIQUE INDEX ux_test_session_season_container ON ops.test_session USING b
 
 
 --
--- TOC entry 5058 (class 1259 OID 19865)
+-- TOC entry 5098 (class 1259 OID 19865)
 -- Name: ux_woa_active; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6415,7 +7131,7 @@ CREATE UNIQUE INDEX ux_woa_active ON ops.work_order_assignment USING btree (work
 
 
 --
--- TOC entry 5029 (class 1259 OID 18772)
+-- TOC entry 5069 (class 1259 OID 18772)
 -- Name: ux_work_order_open_per_checklist_line; Type: INDEX; Schema: ops; Owner: -
 --
 
@@ -6423,7 +7139,7 @@ CREATE UNIQUE INDEX ux_work_order_open_per_checklist_line ON ops.work_order USIN
 
 
 --
--- TOC entry 4970 (class 1259 OID 17192)
+-- TOC entry 5011 (class 1259 OID 17192)
 -- Name: idx_person_personal_email; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6431,7 +7147,39 @@ CREATE INDEX idx_person_personal_email ON ref.person USING btree (personal_email
 
 
 --
--- TOC entry 4976 (class 1259 OID 16988)
+-- TOC entry 5165 (class 1259 OID 23281)
+-- Name: ix_lor_scene_display_display; Type: INDEX; Schema: ref; Owner: -
+--
+
+CREATE INDEX ix_lor_scene_display_display ON ref.lor_scene_display USING btree (display_id);
+
+
+--
+-- TOC entry 5166 (class 1259 OID 23282)
+-- Name: ix_lor_scene_display_source_run; Type: INDEX; Schema: ref; Owner: -
+--
+
+CREATE INDEX ix_lor_scene_display_source_run ON ref.lor_scene_display USING btree (source_import_run_id);
+
+
+--
+-- TOC entry 5157 (class 1259 OID 23280)
+-- Name: ix_lor_scene_source_run; Type: INDEX; Schema: ref; Owner: -
+--
+
+CREATE INDEX ix_lor_scene_source_run ON ref.lor_scene USING btree (source_import_run_id);
+
+
+--
+-- TOC entry 5158 (class 1259 OID 23279)
+-- Name: ix_lor_scene_stage; Type: INDEX; Schema: ref; Owner: -
+--
+
+CREATE INDEX ix_lor_scene_stage ON ref.lor_scene USING btree (stage_id);
+
+
+--
+-- TOC entry 5017 (class 1259 OID 16988)
 -- Name: ix_person_xref_email; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6439,7 +7187,7 @@ CREATE INDEX ix_person_xref_email ON ref.person_xref USING btree (lower(email));
 
 
 --
--- TOC entry 4977 (class 1259 OID 16987)
+-- TOC entry 5018 (class 1259 OID 16987)
 -- Name: ix_person_xref_person_id; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6447,7 +7195,7 @@ CREATE INDEX ix_person_xref_person_id ON ref.person_xref USING btree (person_id)
 
 
 --
--- TOC entry 5007 (class 1259 OID 18161)
+-- TOC entry 5048 (class 1259 OID 18161)
 -- Name: ix_ref_stage_parent; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6455,7 +7203,7 @@ CREATE INDEX ix_ref_stage_parent ON ref.stage USING btree (parent_stage_key);
 
 
 --
--- TOC entry 5008 (class 1259 OID 18131)
+-- TOC entry 5049 (class 1259 OID 18131)
 -- Name: ix_stage_order; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6463,7 +7211,7 @@ CREATE INDEX ix_stage_order ON ref.stage USING btree (park_order, sub_order);
 
 
 --
--- TOC entry 5032 (class 1259 OID 18567)
+-- TOC entry 5072 (class 1259 OID 18567)
 -- Name: spare_channel_lor_prop_id_idx; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6471,7 +7219,7 @@ CREATE UNIQUE INDEX spare_channel_lor_prop_id_idx ON ref.spare_channel USING btr
 
 
 --
--- TOC entry 4963 (class 1259 OID 18749)
+-- TOC entry 5004 (class 1259 OID 18749)
 -- Name: ux_container_location_code_non_zone; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6479,7 +7227,7 @@ CREATE UNIQUE INDEX ux_container_location_code_non_zone ON ref.container USING b
 
 
 --
--- TOC entry 4968 (class 1259 OID 18332)
+-- TOC entry 5009 (class 1259 OID 18332)
 -- Name: ux_location_rack_slot; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6487,7 +7235,7 @@ CREATE UNIQUE INDEX ux_location_rack_slot ON ref.storage_location USING btree (r
 
 
 --
--- TOC entry 4975 (class 1259 OID 16967)
+-- TOC entry 5016 (class 1259 OID 16967)
 -- Name: ux_person_email; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6495,7 +7243,7 @@ CREATE UNIQUE INDEX ux_person_email ON ref.person USING btree (lower(email)) WHE
 
 
 --
--- TOC entry 4990 (class 1259 OID 18583)
+-- TOC entry 5031 (class 1259 OID 18583)
 -- Name: ux_ref_display_display_name; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6503,7 +7251,7 @@ CREATE UNIQUE INDEX ux_ref_display_display_name ON ref.display USING btree (uppe
 
 
 --
--- TOC entry 4991 (class 1259 OID 17255)
+-- TOC entry 5032 (class 1259 OID 17255)
 -- Name: ux_ref_display_lor_prop_id; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6511,7 +7259,7 @@ CREATE UNIQUE INDEX ux_ref_display_lor_prop_id ON ref.display USING btree (lor_p
 
 
 --
--- TOC entry 4992 (class 1259 OID 18731)
+-- TOC entry 5033 (class 1259 OID 18731)
 -- Name: ux_ref_display_name; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6519,7 +7267,7 @@ CREATE UNIQUE INDEX ux_ref_display_name ON ref.display USING btree (display_name
 
 
 --
--- TOC entry 4969 (class 1259 OID 18315)
+-- TOC entry 5010 (class 1259 OID 18315)
 -- Name: ux_storage_location_code; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6527,7 +7275,7 @@ CREATE UNIQUE INDEX ux_storage_location_code ON ref.storage_location USING btree
 
 
 --
--- TOC entry 5019 (class 1259 OID 18405)
+-- TOC entry 5060 (class 1259 OID 18405)
 -- Name: ux_task_type_key; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6535,7 +7283,7 @@ CREATE UNIQUE INDEX ux_task_type_key ON ref.task_type USING btree (upper(btrim(t
 
 
 --
--- TOC entry 5020 (class 1259 OID 18435)
+-- TOC entry 5061 (class 1259 OID 18435)
 -- Name: ux_work_area_key; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6543,7 +7291,7 @@ CREATE UNIQUE INDEX ux_work_area_key ON ref.work_area USING btree (upper(btrim(w
 
 
 --
--- TOC entry 5045 (class 1259 OID 18974)
+-- TOC entry 5085 (class 1259 OID 18974)
 -- Name: ux_work_order_status_key; Type: INDEX; Schema: ref; Owner: -
 --
 
@@ -6551,7 +7299,7 @@ CREATE UNIQUE INDEX ux_work_order_status_key ON ref.work_order_status USING btre
 
 
 --
--- TOC entry 5048 (class 1259 OID 19003)
+-- TOC entry 5088 (class 1259 OID 19003)
 -- Name: ix_intake_submitted_at; Type: INDEX; Schema: stage; Owner: -
 --
 
@@ -6559,7 +7307,7 @@ CREATE INDEX ix_intake_submitted_at ON stage.work_order_intake USING btree (subm
 
 
 --
--- TOC entry 5049 (class 1259 OID 19654)
+-- TOC entry 5089 (class 1259 OID 19654)
 -- Name: ix_work_order_intake_stage_id; Type: INDEX; Schema: stage; Owner: -
 --
 
@@ -6567,7 +7315,7 @@ CREATE INDEX ix_work_order_intake_stage_id ON stage.work_order_intake USING btre
 
 
 --
--- TOC entry 5050 (class 1259 OID 19876)
+-- TOC entry 5090 (class 1259 OID 19876)
 -- Name: ix_work_order_intake_submitter_person; Type: INDEX; Schema: stage; Owner: -
 --
 
@@ -6575,7 +7323,7 @@ CREATE INDEX ix_work_order_intake_submitter_person ON stage.work_order_intake US
 
 
 --
--- TOC entry 5051 (class 1259 OID 19656)
+-- TOC entry 5091 (class 1259 OID 19656)
 -- Name: ix_work_order_intake_task_type_id; Type: INDEX; Schema: stage; Owner: -
 --
 
@@ -6583,7 +7331,7 @@ CREATE INDEX ix_work_order_intake_task_type_id ON stage.work_order_intake USING 
 
 
 --
--- TOC entry 5052 (class 1259 OID 19657)
+-- TOC entry 5092 (class 1259 OID 19657)
 -- Name: ix_work_order_intake_urgency_id; Type: INDEX; Schema: stage; Owner: -
 --
 
@@ -6591,7 +7339,7 @@ CREATE INDEX ix_work_order_intake_urgency_id ON stage.work_order_intake USING bt
 
 
 --
--- TOC entry 5053 (class 1259 OID 19655)
+-- TOC entry 5093 (class 1259 OID 19655)
 -- Name: ix_work_order_intake_work_area_id; Type: INDEX; Schema: stage; Owner: -
 --
 
@@ -6599,7 +7347,7 @@ CREATE INDEX ix_work_order_intake_work_area_id ON stage.work_order_intake USING 
 
 
 --
--- TOC entry 5255 (class 2620 OID 19556)
+-- TOC entry 5320 (class 2620 OID 19556)
 -- Name: test_session trg_after_refresh_test_session; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6607,7 +7355,7 @@ CREATE TRIGGER trg_after_refresh_test_session AFTER UPDATE ON ops.test_session F
 
 
 --
--- TOC entry 5256 (class 2620 OID 19303)
+-- TOC entry 5321 (class 2620 OID 19303)
 -- Name: test_session trg_after_start_container_pull; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6615,7 +7363,7 @@ CREATE TRIGGER trg_after_start_container_pull AFTER UPDATE ON ops.test_session F
 
 
 --
--- TOC entry 5261 (class 2620 OID 19144)
+-- TOC entry 5326 (class 2620 OID 19144)
 -- Name: display_test_session trg_display_test_session_set_actor_insert; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6623,7 +7371,7 @@ CREATE TRIGGER trg_display_test_session_set_actor_insert BEFORE INSERT ON ops.di
 
 
 --
--- TOC entry 5262 (class 2620 OID 19191)
+-- TOC entry 5327 (class 2620 OID 19191)
 -- Name: display_test_session trg_display_test_session_set_actor_update; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6631,7 +7379,7 @@ CREATE TRIGGER trg_display_test_session_set_actor_update BEFORE UPDATE ON ops.di
 
 
 --
--- TOC entry 5263 (class 2620 OID 19176)
+-- TOC entry 5328 (class 2620 OID 19176)
 -- Name: display_test_session trg_display_test_session_set_checked_actor; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6639,7 +7387,7 @@ CREATE TRIGGER trg_display_test_session_set_checked_actor BEFORE UPDATE ON ops.d
 
 
 --
--- TOC entry 5257 (class 2620 OID 19298)
+-- TOC entry 5322 (class 2620 OID 19298)
 -- Name: test_session trg_set_container_search_helper; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6647,7 +7395,7 @@ CREATE TRIGGER trg_set_container_search_helper BEFORE INSERT OR UPDATE OF contai
 
 
 --
--- TOC entry 5258 (class 2620 OID 19302)
+-- TOC entry 5323 (class 2620 OID 19302)
 -- Name: test_session trg_start_container_pull; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6655,7 +7403,7 @@ CREATE TRIGGER trg_start_container_pull BEFORE UPDATE ON ops.test_session FOR EA
 
 
 --
--- TOC entry 5259 (class 2620 OID 19145)
+-- TOC entry 5324 (class 2620 OID 19145)
 -- Name: test_session trg_test_session_set_actor_insert; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6663,7 +7411,7 @@ CREATE TRIGGER trg_test_session_set_actor_insert BEFORE INSERT ON ops.test_sessi
 
 
 --
--- TOC entry 5260 (class 2620 OID 19192)
+-- TOC entry 5325 (class 2620 OID 19192)
 -- Name: test_session trg_test_session_set_actor_update; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6671,7 +7419,7 @@ CREATE TRIGGER trg_test_session_set_actor_update BEFORE UPDATE ON ops.test_sessi
 
 
 --
--- TOC entry 5264 (class 2620 OID 19561)
+-- TOC entry 5329 (class 2620 OID 19561)
 -- Name: display_test_session trg_validate_display_test_session_notes; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6679,7 +7427,7 @@ CREATE TRIGGER trg_validate_display_test_session_notes BEFORE INSERT OR UPDATE O
 
 
 --
--- TOC entry 5283 (class 2620 OID 19825)
+-- TOC entry 5348 (class 2620 OID 19825)
 -- Name: work_order_assignment trg_work_order_assignment_set_actor_insert; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6687,7 +7435,7 @@ CREATE TRIGGER trg_work_order_assignment_set_actor_insert BEFORE INSERT ON ops.w
 
 
 --
--- TOC entry 5284 (class 2620 OID 19826)
+-- TOC entry 5349 (class 2620 OID 19826)
 -- Name: work_order_assignment trg_work_order_assignment_set_actor_update; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6695,7 +7443,7 @@ CREATE TRIGGER trg_work_order_assignment_set_actor_update BEFORE UPDATE ON ops.w
 
 
 --
--- TOC entry 5272 (class 2620 OID 19575)
+-- TOC entry 5337 (class 2620 OID 19575)
 -- Name: work_order trg_work_order_autofill_completion_on_repair_complete; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6703,7 +7451,7 @@ CREATE TRIGGER trg_work_order_autofill_completion_on_repair_complete BEFORE UPDA
 
 
 --
--- TOC entry 5286 (class 2620 OID 19119)
+-- TOC entry 5351 (class 2620 OID 19119)
 -- Name: work_order_outbound_message trg_work_order_outbound_message_set_updated; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6711,7 +7459,7 @@ CREATE TRIGGER trg_work_order_outbound_message_set_updated BEFORE UPDATE ON ops.
 
 
 --
--- TOC entry 5273 (class 2620 OID 19823)
+-- TOC entry 5338 (class 2620 OID 19823)
 -- Name: work_order trg_work_order_set_actor_insert; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6719,7 +7467,7 @@ CREATE TRIGGER trg_work_order_set_actor_insert BEFORE INSERT ON ops.work_order F
 
 
 --
--- TOC entry 5274 (class 2620 OID 19824)
+-- TOC entry 5339 (class 2620 OID 19824)
 -- Name: work_order trg_work_order_set_actor_update; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6727,7 +7475,7 @@ CREATE TRIGGER trg_work_order_set_actor_update BEFORE UPDATE ON ops.work_order F
 
 
 --
--- TOC entry 5285 (class 2620 OID 19124)
+-- TOC entry 5350 (class 2620 OID 19124)
 -- Name: work_order_status_history trg_work_order_status_history_set_updated; Type: TRIGGER; Schema: ops; Owner: -
 --
 
@@ -6735,7 +7483,7 @@ CREATE TRIGGER trg_work_order_status_history_set_updated BEFORE UPDATE ON ops.wo
 
 
 --
--- TOC entry 5287 (class 2620 OID 19226)
+-- TOC entry 5352 (class 2620 OID 19226)
 -- Name: audit_collection_policy trg_audit_collection_policy_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6743,7 +7491,7 @@ CREATE TRIGGER trg_audit_collection_policy_set_actor_insert BEFORE INSERT ON ref
 
 
 --
--- TOC entry 5288 (class 2620 OID 19225)
+-- TOC entry 5353 (class 2620 OID 19225)
 -- Name: audit_collection_policy trg_audit_collection_policy_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6751,7 +7499,7 @@ CREATE TRIGGER trg_audit_collection_policy_set_actor_update BEFORE UPDATE ON ref
 
 
 --
--- TOC entry 5266 (class 2620 OID 19172)
+-- TOC entry 5331 (class 2620 OID 19172)
 -- Name: container_endpoint trg_container_endpoint_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6759,7 +7507,7 @@ CREATE TRIGGER trg_container_endpoint_set_actor_insert BEFORE INSERT ON ref.cont
 
 
 --
--- TOC entry 5267 (class 2620 OID 19174)
+-- TOC entry 5332 (class 2620 OID 19174)
 -- Name: container_endpoint trg_container_endpoint_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6767,7 +7515,7 @@ CREATE TRIGGER trg_container_endpoint_set_actor_update BEFORE UPDATE ON ref.cont
 
 
 --
--- TOC entry 5246 (class 2620 OID 19177)
+-- TOC entry 5311 (class 2620 OID 19177)
 -- Name: container trg_container_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6775,7 +7523,7 @@ CREATE TRIGGER trg_container_set_actor_insert BEFORE INSERT ON ref.container FOR
 
 
 --
--- TOC entry 5247 (class 2620 OID 19178)
+-- TOC entry 5312 (class 2620 OID 19178)
 -- Name: container trg_container_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6783,7 +7531,7 @@ CREATE TRIGGER trg_container_set_actor_update BEFORE UPDATE ON ref.container FOR
 
 
 --
--- TOC entry 5277 (class 2620 OID 19195)
+-- TOC entry 5342 (class 2620 OID 19195)
 -- Name: container_test_status trg_container_test_status_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6791,7 +7539,7 @@ CREATE TRIGGER trg_container_test_status_set_actor_insert BEFORE INSERT ON ref.c
 
 
 --
--- TOC entry 5278 (class 2620 OID 19196)
+-- TOC entry 5343 (class 2620 OID 19196)
 -- Name: container_test_status trg_container_test_status_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6799,7 +7547,7 @@ CREATE TRIGGER trg_container_test_status_set_actor_update BEFORE UPDATE ON ref.c
 
 
 --
--- TOC entry 5244 (class 2620 OID 19183)
+-- TOC entry 5309 (class 2620 OID 19183)
 -- Name: container_type trg_container_type_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6807,7 +7555,7 @@ CREATE TRIGGER trg_container_type_set_actor_insert BEFORE INSERT ON ref.containe
 
 
 --
--- TOC entry 5245 (class 2620 OID 19184)
+-- TOC entry 5310 (class 2620 OID 19184)
 -- Name: container_type trg_container_type_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6815,7 +7563,7 @@ CREATE TRIGGER trg_container_type_set_actor_update BEFORE UPDATE ON ref.containe
 
 
 --
--- TOC entry 5254 (class 2620 OID 19180)
+-- TOC entry 5319 (class 2620 OID 19180)
 -- Name: display trg_display_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6823,7 +7571,7 @@ CREATE TRIGGER trg_display_set_actor_update BEFORE UPDATE ON ref.display FOR EAC
 
 
 --
--- TOC entry 5242 (class 2620 OID 19185)
+-- TOC entry 5307 (class 2620 OID 19185)
 -- Name: display_status trg_display_status_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6831,7 +7579,7 @@ CREATE TRIGGER trg_display_status_set_actor_insert BEFORE INSERT ON ref.display_
 
 
 --
--- TOC entry 5243 (class 2620 OID 19186)
+-- TOC entry 5308 (class 2620 OID 19186)
 -- Name: display_status trg_display_status_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6839,7 +7587,7 @@ CREATE TRIGGER trg_display_status_set_actor_update BEFORE UPDATE ON ref.display_
 
 
 --
--- TOC entry 5275 (class 2620 OID 19197)
+-- TOC entry 5340 (class 2620 OID 19197)
 -- Name: display_test_status trg_display_test_status_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6847,7 +7595,7 @@ CREATE TRIGGER trg_display_test_status_set_actor_insert BEFORE INSERT ON ref.dis
 
 
 --
--- TOC entry 5276 (class 2620 OID 19198)
+-- TOC entry 5341 (class 2620 OID 19198)
 -- Name: display_test_status trg_display_test_status_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6855,7 +7603,7 @@ CREATE TRIGGER trg_display_test_status_set_actor_update BEFORE UPDATE ON ref.dis
 
 
 --
--- TOC entry 5238 (class 2620 OID 19187)
+-- TOC entry 5303 (class 2620 OID 19187)
 -- Name: frame trg_frame_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6863,7 +7611,7 @@ CREATE TRIGGER trg_frame_set_actor_insert BEFORE INSERT ON ref.frame FOR EACH RO
 
 
 --
--- TOC entry 5239 (class 2620 OID 19188)
+-- TOC entry 5304 (class 2620 OID 19188)
 -- Name: frame trg_frame_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6871,7 +7619,7 @@ CREATE TRIGGER trg_frame_set_actor_update BEFORE UPDATE ON ref.frame FOR EACH RO
 
 
 --
--- TOC entry 5252 (class 2620 OID 19199)
+-- TOC entry 5317 (class 2620 OID 19199)
 -- Name: inventory_type trg_inventory_type_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6879,7 +7627,7 @@ CREATE TRIGGER trg_inventory_type_set_actor_insert BEFORE INSERT ON ref.inventor
 
 
 --
--- TOC entry 5253 (class 2620 OID 19200)
+-- TOC entry 5318 (class 2620 OID 19200)
 -- Name: inventory_type trg_inventory_type_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6887,7 +7635,7 @@ CREATE TRIGGER trg_inventory_type_set_actor_update BEFORE UPDATE ON ref.inventor
 
 
 --
--- TOC entry 5250 (class 2620 OID 19189)
+-- TOC entry 5315 (class 2620 OID 19189)
 -- Name: person trg_person_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6895,7 +7643,7 @@ CREATE TRIGGER trg_person_set_actor_insert BEFORE INSERT ON ref.person FOR EACH 
 
 
 --
--- TOC entry 5251 (class 2620 OID 19190)
+-- TOC entry 5316 (class 2620 OID 19190)
 -- Name: person trg_person_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6903,7 +7651,7 @@ CREATE TRIGGER trg_person_set_actor_update BEFORE UPDATE ON ref.person FOR EACH 
 
 
 --
--- TOC entry 5289 (class 2620 OID 19494)
+-- TOC entry 5354 (class 2620 OID 19494)
 -- Name: season trg_season_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6911,7 +7659,7 @@ CREATE TRIGGER trg_season_set_actor_insert BEFORE INSERT ON ref.season FOR EACH 
 
 
 --
--- TOC entry 5290 (class 2620 OID 19495)
+-- TOC entry 5355 (class 2620 OID 19495)
 -- Name: season trg_season_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6919,7 +7667,7 @@ CREATE TRIGGER trg_season_set_actor_update BEFORE UPDATE ON ref.season FOR EACH 
 
 
 --
--- TOC entry 5265 (class 2620 OID 19182)
+-- TOC entry 5330 (class 2620 OID 19182)
 -- Name: stage trg_stage_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6927,7 +7675,7 @@ CREATE TRIGGER trg_stage_set_actor_update BEFORE UPDATE ON ref.stage FOR EACH RO
 
 
 --
--- TOC entry 5249 (class 2620 OID 19181)
+-- TOC entry 5314 (class 2620 OID 19181)
 -- Name: storage_location trg_storage_location_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6935,7 +7683,7 @@ CREATE TRIGGER trg_storage_location_set_actor_update BEFORE UPDATE ON ref.storag
 
 
 --
--- TOC entry 5248 (class 2620 OID 19300)
+-- TOC entry 5313 (class 2620 OID 19300)
 -- Name: container trg_sync_container_search_helper_to_test_session; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6943,7 +7691,7 @@ CREATE TRIGGER trg_sync_container_search_helper_to_test_session AFTER UPDATE OF 
 
 
 --
--- TOC entry 5268 (class 2620 OID 19201)
+-- TOC entry 5333 (class 2620 OID 19201)
 -- Name: task_type trg_task_type_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6951,7 +7699,7 @@ CREATE TRIGGER trg_task_type_set_actor_insert BEFORE INSERT ON ref.task_type FOR
 
 
 --
--- TOC entry 5269 (class 2620 OID 19202)
+-- TOC entry 5334 (class 2620 OID 19202)
 -- Name: task_type trg_task_type_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6959,7 +7707,7 @@ CREATE TRIGGER trg_task_type_set_actor_update BEFORE UPDATE ON ref.task_type FOR
 
 
 --
--- TOC entry 5240 (class 2620 OID 19193)
+-- TOC entry 5305 (class 2620 OID 19193)
 -- Name: theme trg_theme_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6967,7 +7715,7 @@ CREATE TRIGGER trg_theme_set_actor_insert BEFORE INSERT ON ref.theme FOR EACH RO
 
 
 --
--- TOC entry 5241 (class 2620 OID 19194)
+-- TOC entry 5306 (class 2620 OID 19194)
 -- Name: theme trg_theme_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6975,7 +7723,7 @@ CREATE TRIGGER trg_theme_set_actor_update BEFORE UPDATE ON ref.theme FOR EACH RO
 
 
 --
--- TOC entry 5270 (class 2620 OID 19203)
+-- TOC entry 5335 (class 2620 OID 19203)
 -- Name: work_area trg_work_area_set_actor_insert; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6983,7 +7731,7 @@ CREATE TRIGGER trg_work_area_set_actor_insert BEFORE INSERT ON ref.work_area FOR
 
 
 --
--- TOC entry 5271 (class 2620 OID 19204)
+-- TOC entry 5336 (class 2620 OID 19204)
 -- Name: work_area trg_work_area_set_actor_update; Type: TRIGGER; Schema: ref; Owner: -
 --
 
@@ -6991,7 +7739,7 @@ CREATE TRIGGER trg_work_area_set_actor_update BEFORE UPDATE ON ref.work_area FOR
 
 
 --
--- TOC entry 5279 (class 2620 OID 20088)
+-- TOC entry 5344 (class 2620 OID 20088)
 -- Name: work_order_intake trg_process_work_order_intake_on_triage; Type: TRIGGER; Schema: stage; Owner: -
 --
 
@@ -6999,7 +7747,7 @@ CREATE TRIGGER trg_process_work_order_intake_on_triage AFTER UPDATE OF triage_dr
 
 
 --
--- TOC entry 5280 (class 2620 OID 20098)
+-- TOC entry 5345 (class 2620 OID 20098)
 -- Name: work_order_intake trg_resolve_work_order_intake_submitter; Type: TRIGGER; Schema: stage; Owner: -
 --
 
@@ -7007,7 +7755,7 @@ CREATE TRIGGER trg_resolve_work_order_intake_submitter BEFORE INSERT OR UPDATE O
 
 
 --
--- TOC entry 5281 (class 2620 OID 19845)
+-- TOC entry 5346 (class 2620 OID 19845)
 -- Name: work_order_intake trg_work_order_intake_set_actor_insert; Type: TRIGGER; Schema: stage; Owner: -
 --
 
@@ -7015,7 +7763,7 @@ CREATE TRIGGER trg_work_order_intake_set_actor_insert BEFORE INSERT ON stage.wor
 
 
 --
--- TOC entry 5282 (class 2620 OID 19846)
+-- TOC entry 5347 (class 2620 OID 19846)
 -- Name: work_order_intake trg_work_order_intake_set_actor_update; Type: TRIGGER; Schema: stage; Owner: -
 --
 
@@ -7023,7 +7771,7 @@ CREATE TRIGGER trg_work_order_intake_set_actor_update BEFORE UPDATE ON stage.wor
 
 
 --
--- TOC entry 5120 (class 2606 OID 16464)
+-- TOC entry 5177 (class 2606 OID 16464)
 -- Name: dmx_channels dmx_channels_import_run_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7032,7 +7780,7 @@ ALTER TABLE ONLY lor_snap.dmx_channels
 
 
 --
--- TOC entry 5121 (class 2606 OID 16474)
+-- TOC entry 5178 (class 2606 OID 16474)
 -- Name: dmx_channels dmx_channels_import_run_id_preview_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7041,7 +7789,7 @@ ALTER TABLE ONLY lor_snap.dmx_channels
 
 
 --
--- TOC entry 5122 (class 2606 OID 16469)
+-- TOC entry 5179 (class 2606 OID 16469)
 -- Name: dmx_channels dmx_channels_import_run_id_prop_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7050,7 +7798,7 @@ ALTER TABLE ONLY lor_snap.dmx_channels
 
 
 --
--- TOC entry 5237 (class 2606 OID 23026)
+-- TOC entry 5293 (class 2606 OID 23026)
 -- Name: scene_lor_props fk_scene_lor_props_import_run; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7059,7 +7807,7 @@ ALTER TABLE ONLY lor_snap.scene_lor_props
 
 
 --
--- TOC entry 5236 (class 2606 OID 23016)
+-- TOC entry 5292 (class 2606 OID 23016)
 -- Name: scenes fk_scenes_import_run; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7068,7 +7816,7 @@ ALTER TABLE ONLY lor_snap.scenes
 
 
 --
--- TOC entry 5114 (class 2606 OID 16409)
+-- TOC entry 5171 (class 2606 OID 16409)
 -- Name: previews previews_import_run_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7077,7 +7825,7 @@ ALTER TABLE ONLY lor_snap.previews
 
 
 --
--- TOC entry 5115 (class 2606 OID 16423)
+-- TOC entry 5172 (class 2606 OID 16423)
 -- Name: props props_import_run_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7086,7 +7834,7 @@ ALTER TABLE ONLY lor_snap.props
 
 
 --
--- TOC entry 5116 (class 2606 OID 16428)
+-- TOC entry 5173 (class 2606 OID 16428)
 -- Name: props props_import_run_id_preview_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7095,7 +7843,7 @@ ALTER TABLE ONLY lor_snap.props
 
 
 --
--- TOC entry 5117 (class 2606 OID 16442)
+-- TOC entry 5174 (class 2606 OID 16442)
 -- Name: sub_props sub_props_import_run_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7104,7 +7852,7 @@ ALTER TABLE ONLY lor_snap.sub_props
 
 
 --
--- TOC entry 5118 (class 2606 OID 16447)
+-- TOC entry 5175 (class 2606 OID 16447)
 -- Name: sub_props sub_props_import_run_id_master_prop_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7113,7 +7861,7 @@ ALTER TABLE ONLY lor_snap.sub_props
 
 
 --
--- TOC entry 5119 (class 2606 OID 16452)
+-- TOC entry 5176 (class 2606 OID 16452)
 -- Name: sub_props sub_props_import_run_id_preview_id_fkey; Type: FK CONSTRAINT; Schema: lor_snap; Owner: -
 --
 
@@ -7122,7 +7870,7 @@ ALTER TABLE ONLY lor_snap.sub_props
 
 
 --
--- TOC entry 5232 (class 2606 OID 20738)
+-- TOC entry 5288 (class 2606 OID 20738)
 -- Name: container_label_batch_item container_label_batch_item_container_id_fkey; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7131,7 +7879,7 @@ ALTER TABLE ONLY ops.container_label_batch_item
 
 
 --
--- TOC entry 5233 (class 2606 OID 20733)
+-- TOC entry 5289 (class 2606 OID 20733)
 -- Name: container_label_batch_item container_label_batch_item_container_label_batch_id_fkey; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7140,7 +7888,7 @@ ALTER TABLE ONLY ops.container_label_batch_item
 
 
 --
--- TOC entry 5227 (class 2606 OID 20703)
+-- TOC entry 5283 (class 2606 OID 20703)
 -- Name: display_label_batch_item display_label_batch_item_display_id_fkey; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7149,7 +7897,7 @@ ALTER TABLE ONLY ops.display_label_batch_item
 
 
 --
--- TOC entry 5228 (class 2606 OID 20698)
+-- TOC entry 5284 (class 2606 OID 20698)
 -- Name: display_label_batch_item display_label_batch_item_display_label_batch_id_fkey; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7158,7 +7906,7 @@ ALTER TABLE ONLY ops.display_label_batch_item
 
 
 --
--- TOC entry 5165 (class 2606 OID 17299)
+-- TOC entry 5222 (class 2606 OID 17299)
 -- Name: display_test_session display_test_session_test_session_id_fkey; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7167,7 +7915,7 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5234 (class 2606 OID 20768)
+-- TOC entry 5290 (class 2606 OID 20768)
 -- Name: container_label_batch_item fk_container_label_batch_item_batch; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7176,7 +7924,7 @@ ALTER TABLE ONLY ops.container_label_batch_item
 
 
 --
--- TOC entry 5235 (class 2606 OID 20773)
+-- TOC entry 5291 (class 2606 OID 20773)
 -- Name: container_label_batch_item fk_container_label_batch_item_container; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7185,7 +7933,7 @@ ALTER TABLE ONLY ops.container_label_batch_item
 
 
 --
--- TOC entry 5231 (class 2606 OID 20763)
+-- TOC entry 5287 (class 2606 OID 20763)
 -- Name: container_label_batch fk_container_label_batch_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7194,7 +7942,7 @@ ALTER TABLE ONLY ops.container_label_batch
 
 
 --
--- TOC entry 5224 (class 2606 OID 20812)
+-- TOC entry 5280 (class 2606 OID 20812)
 -- Name: container_label_print fk_container_label_print_container; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7203,7 +7951,7 @@ ALTER TABLE ONLY ops.container_label_print
 
 
 --
--- TOC entry 5225 (class 2606 OID 20668)
+-- TOC entry 5281 (class 2606 OID 20668)
 -- Name: container_label_print fk_container_label_print_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7212,7 +7960,7 @@ ALTER TABLE ONLY ops.container_label_print
 
 
 --
--- TOC entry 5229 (class 2606 OID 20750)
+-- TOC entry 5285 (class 2606 OID 20750)
 -- Name: display_label_batch_item fk_display_label_batch_item_batch; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7221,7 +7969,7 @@ ALTER TABLE ONLY ops.display_label_batch_item
 
 
 --
--- TOC entry 5230 (class 2606 OID 20755)
+-- TOC entry 5286 (class 2606 OID 20755)
 -- Name: display_label_batch_item fk_display_label_batch_item_display; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7230,7 +7978,7 @@ ALTER TABLE ONLY ops.display_label_batch_item
 
 
 --
--- TOC entry 5226 (class 2606 OID 20745)
+-- TOC entry 5282 (class 2606 OID 20745)
 -- Name: display_label_batch fk_display_label_batch_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7239,7 +7987,7 @@ ALTER TABLE ONLY ops.display_label_batch
 
 
 --
--- TOC entry 5222 (class 2606 OID 20817)
+-- TOC entry 5278 (class 2606 OID 20817)
 -- Name: display_label_print fk_display_label_print_display; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7248,7 +7996,7 @@ ALTER TABLE ONLY ops.display_label_print
 
 
 --
--- TOC entry 5223 (class 2606 OID 20663)
+-- TOC entry 5279 (class 2606 OID 20663)
 -- Name: display_label_print fk_display_label_print_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7257,7 +8005,7 @@ ALTER TABLE ONLY ops.display_label_print
 
 
 --
--- TOC entry 5166 (class 2606 OID 19267)
+-- TOC entry 5223 (class 2606 OID 19267)
 -- Name: display_test_session fk_display_test_session_checked_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7266,7 +8014,7 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5167 (class 2606 OID 19257)
+-- TOC entry 5224 (class 2606 OID 19257)
 -- Name: display_test_session fk_display_test_session_created_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7275,7 +8023,7 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5168 (class 2606 OID 18933)
+-- TOC entry 5225 (class 2606 OID 18933)
 -- Name: display_test_session fk_display_test_session_stage; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7284,7 +8032,7 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5169 (class 2606 OID 18928)
+-- TOC entry 5226 (class 2606 OID 18928)
 -- Name: display_test_session fk_display_test_session_test_status; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7293,7 +8041,7 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5170 (class 2606 OID 19262)
+-- TOC entry 5227 (class 2606 OID 19262)
 -- Name: display_test_session fk_display_test_session_updated_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7302,7 +8050,43 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5156 (class 2606 OID 19527)
+-- TOC entry 5294 (class 2606 OID 23200)
+-- Name: lor_reconciliation_action fk_lor_reconciliation_action_display; Type: FK CONSTRAINT; Schema: ops; Owner: -
+--
+
+ALTER TABLE ONLY ops.lor_reconciliation_action
+    ADD CONSTRAINT fk_lor_reconciliation_action_display FOREIGN KEY (display_id) REFERENCES ref.display(display_id);
+
+
+--
+-- TOC entry 5295 (class 2606 OID 23195)
+-- Name: lor_reconciliation_action fk_lor_reconciliation_action_run; Type: FK CONSTRAINT; Schema: ops; Owner: -
+--
+
+ALTER TABLE ONLY ops.lor_reconciliation_action
+    ADD CONSTRAINT fk_lor_reconciliation_action_run FOREIGN KEY (import_run_id) REFERENCES lor_snap.import_run(import_run_id);
+
+
+--
+-- TOC entry 5296 (class 2606 OID 23210)
+-- Name: lor_reconciliation_action fk_lor_reconciliation_action_status_after; Type: FK CONSTRAINT; Schema: ops; Owner: -
+--
+
+ALTER TABLE ONLY ops.lor_reconciliation_action
+    ADD CONSTRAINT fk_lor_reconciliation_action_status_after FOREIGN KEY (display_status_id_after) REFERENCES ref.display_status(display_status_id);
+
+
+--
+-- TOC entry 5297 (class 2606 OID 23205)
+-- Name: lor_reconciliation_action fk_lor_reconciliation_action_status_before; Type: FK CONSTRAINT; Schema: ops; Owner: -
+--
+
+ALTER TABLE ONLY ops.lor_reconciliation_action
+    ADD CONSTRAINT fk_lor_reconciliation_action_status_before FOREIGN KEY (display_status_id_before) REFERENCES ref.display_status(display_status_id);
+
+
+--
+-- TOC entry 5213 (class 2606 OID 19527)
 -- Name: test_session fk_test_session_container; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7311,7 +8095,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5157 (class 2606 OID 18951)
+-- TOC entry 5214 (class 2606 OID 18951)
 -- Name: test_session fk_test_session_container_test_status; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7320,7 +8104,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5158 (class 2606 OID 19247)
+-- TOC entry 5215 (class 2606 OID 19247)
 -- Name: test_session fk_test_session_created_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7329,7 +8113,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5159 (class 2606 OID 19532)
+-- TOC entry 5216 (class 2606 OID 19532)
 -- Name: test_session fk_test_session_home_location; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7338,7 +8122,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5160 (class 2606 OID 19549)
+-- TOC entry 5217 (class 2606 OID 19549)
 -- Name: test_session fk_test_session_last_refreshed_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7347,7 +8131,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5161 (class 2606 OID 19497)
+-- TOC entry 5218 (class 2606 OID 19497)
 -- Name: test_session fk_test_session_pulled_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7356,7 +8140,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5162 (class 2606 OID 19522)
+-- TOC entry 5219 (class 2606 OID 19522)
 -- Name: test_session fk_test_session_season; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7365,7 +8149,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5163 (class 2606 OID 19252)
+-- TOC entry 5220 (class 2606 OID 19252)
 -- Name: test_session fk_test_session_updated_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7374,7 +8158,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5164 (class 2606 OID 19537)
+-- TOC entry 5221 (class 2606 OID 19537)
 -- Name: test_session fk_test_session_work_location; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7383,7 +8167,7 @@ ALTER TABLE ONLY ops.test_session
 
 
 --
--- TOC entry 5206 (class 2606 OID 19923)
+-- TOC entry 5262 (class 2606 OID 19923)
 -- Name: work_order_assignment fk_woa_assigned_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7392,7 +8176,7 @@ ALTER TABLE ONLY ops.work_order_assignment
 
 
 --
--- TOC entry 5207 (class 2606 OID 19918)
+-- TOC entry 5263 (class 2606 OID 19918)
 -- Name: work_order_assignment fk_woa_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7401,7 +8185,7 @@ ALTER TABLE ONLY ops.work_order_assignment
 
 
 --
--- TOC entry 5208 (class 2606 OID 19928)
+-- TOC entry 5264 (class 2606 OID 19928)
 -- Name: work_order_assignment fk_woa_unassigned_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7410,7 +8194,7 @@ ALTER TABLE ONLY ops.work_order_assignment
 
 
 --
--- TOC entry 5209 (class 2606 OID 20126)
+-- TOC entry 5265 (class 2606 OID 20126)
 -- Name: work_order_assignment fk_woa_work_order; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7419,7 +8203,7 @@ ALTER TABLE ONLY ops.work_order_assignment
 
 
 --
--- TOC entry 5215 (class 2606 OID 19085)
+-- TOC entry 5271 (class 2606 OID 19085)
 -- Name: work_order_outbound_message fk_woom_created_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7428,7 +8212,7 @@ ALTER TABLE ONLY ops.work_order_outbound_message
 
 
 --
--- TOC entry 5216 (class 2606 OID 19090)
+-- TOC entry 5272 (class 2606 OID 19090)
 -- Name: work_order_outbound_message fk_woom_updated_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7437,7 +8221,7 @@ ALTER TABLE ONLY ops.work_order_outbound_message
 
 
 --
--- TOC entry 5217 (class 2606 OID 19080)
+-- TOC entry 5273 (class 2606 OID 19080)
 -- Name: work_order_outbound_message fk_woom_work_order; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7446,7 +8230,7 @@ ALTER TABLE ONLY ops.work_order_outbound_message
 
 
 --
--- TOC entry 5210 (class 2606 OID 19933)
+-- TOC entry 5266 (class 2606 OID 19933)
 -- Name: work_order_assignment fk_work_order_assignment_created_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7455,7 +8239,7 @@ ALTER TABLE ONLY ops.work_order_assignment
 
 
 --
--- TOC entry 5211 (class 2606 OID 19938)
+-- TOC entry 5267 (class 2606 OID 19938)
 -- Name: work_order_assignment fk_work_order_assignment_updated_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7464,7 +8248,7 @@ ALTER TABLE ONLY ops.work_order_assignment
 
 
 --
--- TOC entry 5180 (class 2606 OID 19903)
+-- TOC entry 5237 (class 2606 OID 19903)
 -- Name: work_order fk_work_order_completed_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7473,7 +8257,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5181 (class 2606 OID 19908)
+-- TOC entry 5238 (class 2606 OID 19908)
 -- Name: work_order fk_work_order_created_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7482,7 +8266,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5182 (class 2606 OID 18762)
+-- TOC entry 5239 (class 2606 OID 18762)
 -- Name: work_order fk_work_order_display; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7491,16 +8275,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5183 (class 2606 OID 18846)
--- Name: work_order fk_work_order_display_lor_prop; Type: FK CONSTRAINT; Schema: ops; Owner: -
---
-
-ALTER TABLE ONLY ops.work_order
-    ADD CONSTRAINT fk_work_order_display_lor_prop FOREIGN KEY (display_lor_prop_id) REFERENCES ref.display(lor_prop_id);
-
-
---
--- TOC entry 5184 (class 2606 OID 18767)
+-- TOC entry 5240 (class 2606 OID 18767)
 -- Name: work_order fk_work_order_display_test_session; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7509,7 +8284,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5218 (class 2606 OID 19282)
+-- TOC entry 5274 (class 2606 OID 19282)
 -- Name: work_order_outbound_message fk_work_order_outbound_message_created_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7518,7 +8293,7 @@ ALTER TABLE ONLY ops.work_order_outbound_message
 
 
 --
--- TOC entry 5219 (class 2606 OID 19287)
+-- TOC entry 5275 (class 2606 OID 19287)
 -- Name: work_order_outbound_message fk_work_order_outbound_message_updated_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7527,7 +8302,7 @@ ALTER TABLE ONLY ops.work_order_outbound_message
 
 
 --
--- TOC entry 5185 (class 2606 OID 19814)
+-- TOC entry 5241 (class 2606 OID 19814)
 -- Name: work_order fk_work_order_stage; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7536,7 +8311,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5186 (class 2606 OID 20038)
+-- TOC entry 5242 (class 2606 OID 20038)
 -- Name: work_order fk_work_order_submitted_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7545,7 +8320,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5187 (class 2606 OID 18504)
+-- TOC entry 5243 (class 2606 OID 18504)
 -- Name: work_order fk_work_order_task_type; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7554,7 +8329,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5188 (class 2606 OID 20089)
+-- TOC entry 5244 (class 2606 OID 20089)
 -- Name: work_order fk_work_order_triaged_by_person; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7563,7 +8338,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5189 (class 2606 OID 19913)
+-- TOC entry 5245 (class 2606 OID 19913)
 -- Name: work_order fk_work_order_updated_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7572,7 +8347,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5190 (class 2606 OID 19787)
+-- TOC entry 5246 (class 2606 OID 19787)
 -- Name: work_order fk_work_order_urgency; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7581,7 +8356,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5191 (class 2606 OID 18499)
+-- TOC entry 5247 (class 2606 OID 18499)
 -- Name: work_order fk_work_order_work_area; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7590,7 +8365,7 @@ ALTER TABLE ONLY ops.work_order
 
 
 --
--- TOC entry 5212 (class 2606 OID 19062)
+-- TOC entry 5268 (class 2606 OID 19062)
 -- Name: work_order_status_history fk_wosh_changed_by; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7599,7 +8374,7 @@ ALTER TABLE ONLY ops.work_order_status_history
 
 
 --
--- TOC entry 5213 (class 2606 OID 19057)
+-- TOC entry 5269 (class 2606 OID 19057)
 -- Name: work_order_status_history fk_wosh_status; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7608,7 +8383,7 @@ ALTER TABLE ONLY ops.work_order_status_history
 
 
 --
--- TOC entry 5214 (class 2606 OID 19052)
+-- TOC entry 5270 (class 2606 OID 19052)
 -- Name: work_order_status_history fk_wosh_work_order; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7617,7 +8392,7 @@ ALTER TABLE ONLY ops.work_order_status_history
 
 
 --
--- TOC entry 5171 (class 2606 OID 18742)
+-- TOC entry 5228 (class 2606 OID 18742)
 -- Name: display_test_session ops_display_test_session_display_id_fk; Type: FK CONSTRAINT; Schema: ops; Owner: -
 --
 
@@ -7626,7 +8401,7 @@ ALTER TABLE ONLY ops.display_test_session
 
 
 --
--- TOC entry 5220 (class 2606 OID 19227)
+-- TOC entry 5276 (class 2606 OID 19227)
 -- Name: audit_collection_policy fk_audit_collection_policy_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7635,7 +8410,7 @@ ALTER TABLE ONLY ref.audit_collection_policy
 
 
 --
--- TOC entry 5221 (class 2606 OID 19232)
+-- TOC entry 5277 (class 2606 OID 19232)
 -- Name: audit_collection_policy fk_audit_collection_policy_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7644,7 +8419,7 @@ ALTER TABLE ONLY ref.audit_collection_policy
 
 
 --
--- TOC entry 5131 (class 2606 OID 19324)
+-- TOC entry 5188 (class 2606 OID 19324)
 -- Name: container fk_container_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7653,7 +8428,7 @@ ALTER TABLE ONLY ref.container
 
 
 --
--- TOC entry 5174 (class 2606 OID 19242)
+-- TOC entry 5231 (class 2606 OID 19242)
 -- Name: container_endpoint fk_container_endpoint_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7662,7 +8437,7 @@ ALTER TABLE ONLY ref.container_endpoint
 
 
 --
--- TOC entry 5175 (class 2606 OID 19237)
+-- TOC entry 5232 (class 2606 OID 19237)
 -- Name: container_endpoint fk_container_endpoint_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7671,7 +8446,7 @@ ALTER TABLE ONLY ref.container_endpoint
 
 
 --
--- TOC entry 5132 (class 2606 OID 18915)
+-- TOC entry 5189 (class 2606 OID 18915)
 -- Name: container fk_container_goes_to_endpoint; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7680,7 +8455,7 @@ ALTER TABLE ONLY ref.container
 
 
 --
--- TOC entry 5133 (class 2606 OID 21095)
+-- TOC entry 5190 (class 2606 OID 21095)
 -- Name: container fk_container_label_print_last_by_cached_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7689,7 +8464,7 @@ ALTER TABLE ONLY ref.container
 
 
 --
--- TOC entry 5129 (class 2606 OID 19334)
+-- TOC entry 5186 (class 2606 OID 19334)
 -- Name: container_type fk_container_type_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7698,7 +8473,7 @@ ALTER TABLE ONLY ref.container_type
 
 
 --
--- TOC entry 5130 (class 2606 OID 19339)
+-- TOC entry 5187 (class 2606 OID 19339)
 -- Name: container_type fk_container_type_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7707,7 +8482,7 @@ ALTER TABLE ONLY ref.container_type
 
 
 --
--- TOC entry 5134 (class 2606 OID 19329)
+-- TOC entry 5191 (class 2606 OID 19329)
 -- Name: container fk_container_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7716,7 +8491,7 @@ ALTER TABLE ONLY ref.container
 
 
 --
--- TOC entry 5146 (class 2606 OID 19344)
+-- TOC entry 5203 (class 2606 OID 19344)
 -- Name: display fk_display_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7725,7 +8500,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5147 (class 2606 OID 17204)
+-- TOC entry 5204 (class 2606 OID 17204)
 -- Name: display fk_display_designer; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7734,7 +8509,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5148 (class 2606 OID 17199)
+-- TOC entry 5205 (class 2606 OID 17199)
 -- Name: display fk_display_frame; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7743,7 +8518,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5149 (class 2606 OID 17062)
+-- TOC entry 5206 (class 2606 OID 17062)
 -- Name: display fk_display_inventory_type; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7752,7 +8527,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5150 (class 2606 OID 21090)
+-- TOC entry 5207 (class 2606 OID 21090)
 -- Name: display fk_display_label_print_last_by_cached_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7761,7 +8536,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5151 (class 2606 OID 17077)
+-- TOC entry 5208 (class 2606 OID 17077)
 -- Name: display fk_display_pallet; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7770,7 +8545,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5152 (class 2606 OID 17067)
+-- TOC entry 5209 (class 2606 OID 17067)
 -- Name: display fk_display_status; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7779,7 +8554,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5127 (class 2606 OID 19354)
+-- TOC entry 5184 (class 2606 OID 19354)
 -- Name: display_status fk_display_status_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7788,7 +8563,7 @@ ALTER TABLE ONLY ref.display_status
 
 
 --
--- TOC entry 5128 (class 2606 OID 19359)
+-- TOC entry 5185 (class 2606 OID 19359)
 -- Name: display_status fk_display_status_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7797,7 +8572,7 @@ ALTER TABLE ONLY ref.display_status
 
 
 --
--- TOC entry 5194 (class 2606 OID 19364)
+-- TOC entry 5250 (class 2606 OID 19364)
 -- Name: display_test_status fk_display_test_status_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7806,7 +8581,7 @@ ALTER TABLE ONLY ref.display_test_status
 
 
 --
--- TOC entry 5195 (class 2606 OID 19369)
+-- TOC entry 5251 (class 2606 OID 19369)
 -- Name: display_test_status fk_display_test_status_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7815,7 +8590,7 @@ ALTER TABLE ONLY ref.display_test_status
 
 
 --
--- TOC entry 5153 (class 2606 OID 17194)
+-- TOC entry 5210 (class 2606 OID 17194)
 -- Name: display fk_display_theme; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7824,7 +8599,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5154 (class 2606 OID 19349)
+-- TOC entry 5211 (class 2606 OID 19349)
 -- Name: display fk_display_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7833,7 +8608,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5123 (class 2606 OID 19374)
+-- TOC entry 5180 (class 2606 OID 19374)
 -- Name: frame fk_frame_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7842,7 +8617,7 @@ ALTER TABLE ONLY ref.frame
 
 
 --
--- TOC entry 5124 (class 2606 OID 19379)
+-- TOC entry 5181 (class 2606 OID 19379)
 -- Name: frame fk_frame_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7851,7 +8626,7 @@ ALTER TABLE ONLY ref.frame
 
 
 --
--- TOC entry 5144 (class 2606 OID 19384)
+-- TOC entry 5201 (class 2606 OID 19384)
 -- Name: inventory_type fk_inventory_type_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7860,7 +8635,7 @@ ALTER TABLE ONLY ref.inventory_type
 
 
 --
--- TOC entry 5145 (class 2606 OID 19389)
+-- TOC entry 5202 (class 2606 OID 19389)
 -- Name: inventory_type fk_inventory_type_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7869,7 +8644,52 @@ ALTER TABLE ONLY ref.inventory_type
 
 
 --
--- TOC entry 5135 (class 2606 OID 18316)
+-- TOC entry 5300 (class 2606 OID 23269)
+-- Name: lor_scene_display fk_lor_scene_display_display; Type: FK CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene_display
+    ADD CONSTRAINT fk_lor_scene_display_display FOREIGN KEY (display_id) REFERENCES ref.display(display_id);
+
+
+--
+-- TOC entry 5301 (class 2606 OID 23274)
+-- Name: lor_scene_display fk_lor_scene_display_import_run; Type: FK CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene_display
+    ADD CONSTRAINT fk_lor_scene_display_import_run FOREIGN KEY (source_import_run_id) REFERENCES lor_snap.import_run(import_run_id);
+
+
+--
+-- TOC entry 5302 (class 2606 OID 23264)
+-- Name: lor_scene_display fk_lor_scene_display_scene; Type: FK CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene_display
+    ADD CONSTRAINT fk_lor_scene_display_scene FOREIGN KEY (lor_scene_id, preview_uuid) REFERENCES ref.lor_scene(lor_scene_id, preview_uuid) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 5298 (class 2606 OID 23246)
+-- Name: lor_scene fk_lor_scene_import_run; Type: FK CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene
+    ADD CONSTRAINT fk_lor_scene_import_run FOREIGN KEY (source_import_run_id) REFERENCES lor_snap.import_run(import_run_id);
+
+
+--
+-- TOC entry 5299 (class 2606 OID 23241)
+-- Name: lor_scene fk_lor_scene_stage; Type: FK CONSTRAINT; Schema: ref; Owner: -
+--
+
+ALTER TABLE ONLY ref.lor_scene
+    ADD CONSTRAINT fk_lor_scene_stage FOREIGN KEY (stage_id) REFERENCES ref.stage(stage_id);
+
+
+--
+-- TOC entry 5192 (class 2606 OID 18316)
 -- Name: container fk_pallet_location; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7878,7 +8698,7 @@ ALTER TABLE ONLY ref.container
 
 
 --
--- TOC entry 5139 (class 2606 OID 19394)
+-- TOC entry 5196 (class 2606 OID 19394)
 -- Name: person fk_person_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7887,7 +8707,7 @@ ALTER TABLE ONLY ref.person
 
 
 --
--- TOC entry 5140 (class 2606 OID 19399)
+-- TOC entry 5197 (class 2606 OID 19399)
 -- Name: person fk_person_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7896,7 +8716,7 @@ ALTER TABLE ONLY ref.person
 
 
 --
--- TOC entry 5141 (class 2606 OID 19404)
+-- TOC entry 5198 (class 2606 OID 19404)
 -- Name: person_xref fk_person_xref_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7905,7 +8725,7 @@ ALTER TABLE ONLY ref.person_xref
 
 
 --
--- TOC entry 5142 (class 2606 OID 19409)
+-- TOC entry 5199 (class 2606 OID 19409)
 -- Name: person_xref fk_person_xref_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7914,7 +8734,7 @@ ALTER TABLE ONLY ref.person_xref
 
 
 --
--- TOC entry 5192 (class 2606 OID 19414)
+-- TOC entry 5248 (class 2606 OID 19414)
 -- Name: spare_channel fk_spare_channel_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7923,7 +8743,7 @@ ALTER TABLE ONLY ref.spare_channel
 
 
 --
--- TOC entry 5193 (class 2606 OID 19419)
+-- TOC entry 5249 (class 2606 OID 19419)
 -- Name: spare_channel fk_spare_channel_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7932,7 +8752,7 @@ ALTER TABLE ONLY ref.spare_channel
 
 
 --
--- TOC entry 5172 (class 2606 OID 19424)
+-- TOC entry 5229 (class 2606 OID 19424)
 -- Name: stage fk_stage_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7941,7 +8761,7 @@ ALTER TABLE ONLY ref.stage
 
 
 --
--- TOC entry 5173 (class 2606 OID 19429)
+-- TOC entry 5230 (class 2606 OID 19429)
 -- Name: stage fk_stage_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7950,7 +8770,7 @@ ALTER TABLE ONLY ref.stage
 
 
 --
--- TOC entry 5137 (class 2606 OID 19434)
+-- TOC entry 5194 (class 2606 OID 19434)
 -- Name: storage_location fk_storage_location_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7959,7 +8779,7 @@ ALTER TABLE ONLY ref.storage_location
 
 
 --
--- TOC entry 5138 (class 2606 OID 19439)
+-- TOC entry 5195 (class 2606 OID 19439)
 -- Name: storage_location fk_storage_location_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7968,7 +8788,7 @@ ALTER TABLE ONLY ref.storage_location
 
 
 --
--- TOC entry 5176 (class 2606 OID 19444)
+-- TOC entry 5233 (class 2606 OID 19444)
 -- Name: task_type fk_task_type_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7977,7 +8797,7 @@ ALTER TABLE ONLY ref.task_type
 
 
 --
--- TOC entry 5177 (class 2606 OID 19449)
+-- TOC entry 5234 (class 2606 OID 19449)
 -- Name: task_type fk_task_type_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7986,7 +8806,7 @@ ALTER TABLE ONLY ref.task_type
 
 
 --
--- TOC entry 5125 (class 2606 OID 19454)
+-- TOC entry 5182 (class 2606 OID 19454)
 -- Name: theme fk_theme_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -7995,7 +8815,7 @@ ALTER TABLE ONLY ref.theme
 
 
 --
--- TOC entry 5126 (class 2606 OID 19459)
+-- TOC entry 5183 (class 2606 OID 19459)
 -- Name: theme fk_theme_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8004,7 +8824,7 @@ ALTER TABLE ONLY ref.theme
 
 
 --
--- TOC entry 5178 (class 2606 OID 19464)
+-- TOC entry 5235 (class 2606 OID 19464)
 -- Name: work_area fk_work_area_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8013,7 +8833,7 @@ ALTER TABLE ONLY ref.work_area
 
 
 --
--- TOC entry 5179 (class 2606 OID 19469)
+-- TOC entry 5236 (class 2606 OID 19469)
 -- Name: work_area fk_work_area_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8022,7 +8842,7 @@ ALTER TABLE ONLY ref.work_area
 
 
 --
--- TOC entry 5196 (class 2606 OID 19474)
+-- TOC entry 5252 (class 2606 OID 19474)
 -- Name: work_order_status fk_work_order_status_created_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8031,7 +8851,7 @@ ALTER TABLE ONLY ref.work_order_status
 
 
 --
--- TOC entry 5197 (class 2606 OID 19479)
+-- TOC entry 5253 (class 2606 OID 19479)
 -- Name: work_order_status fk_work_order_status_updated_by_person; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8040,7 +8860,7 @@ ALTER TABLE ONLY ref.work_order_status
 
 
 --
--- TOC entry 5136 (class 2606 OID 16834)
+-- TOC entry 5193 (class 2606 OID 16834)
 -- Name: container pallet_pallet_type_id_fkey; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8049,7 +8869,7 @@ ALTER TABLE ONLY ref.container
 
 
 --
--- TOC entry 5143 (class 2606 OID 16980)
+-- TOC entry 5200 (class 2606 OID 16980)
 -- Name: person_xref person_xref_person_id_fkey; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8058,7 +8878,7 @@ ALTER TABLE ONLY ref.person_xref
 
 
 --
--- TOC entry 5155 (class 2606 OID 18335)
+-- TOC entry 5212 (class 2606 OID 18335)
 -- Name: display ref_display_stage_id_fkey; Type: FK CONSTRAINT; Schema: ref; Owner: -
 --
 
@@ -8067,7 +8887,7 @@ ALTER TABLE ONLY ref.display
 
 
 --
--- TOC entry 5198 (class 2606 OID 19943)
+-- TOC entry 5254 (class 2606 OID 19943)
 -- Name: work_order_intake fk_intake_triaged_by; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8076,7 +8896,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5199 (class 2606 OID 19987)
+-- TOC entry 5255 (class 2606 OID 19987)
 -- Name: work_order_intake fk_work_order_intake_created_by_person; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8085,7 +8905,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5200 (class 2606 OID 19634)
+-- TOC entry 5256 (class 2606 OID 19634)
 -- Name: work_order_intake fk_work_order_intake_stage; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8094,7 +8914,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5201 (class 2606 OID 19948)
+-- TOC entry 5257 (class 2606 OID 19948)
 -- Name: work_order_intake fk_work_order_intake_submitter_person; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8103,7 +8923,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5202 (class 2606 OID 19644)
+-- TOC entry 5258 (class 2606 OID 19644)
 -- Name: work_order_intake fk_work_order_intake_task_type; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8112,7 +8932,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5203 (class 2606 OID 19992)
+-- TOC entry 5259 (class 2606 OID 19992)
 -- Name: work_order_intake fk_work_order_intake_updated_by_person; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8121,7 +8941,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5204 (class 2606 OID 19649)
+-- TOC entry 5260 (class 2606 OID 19649)
 -- Name: work_order_intake fk_work_order_intake_urgency; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8130,7 +8950,7 @@ ALTER TABLE ONLY stage.work_order_intake
 
 
 --
--- TOC entry 5205 (class 2606 OID 19639)
+-- TOC entry 5261 (class 2606 OID 19639)
 -- Name: work_order_intake fk_work_order_intake_work_area; Type: FK CONSTRAINT; Schema: stage; Owner: -
 --
 
@@ -8138,11 +8958,11 @@ ALTER TABLE ONLY stage.work_order_intake
     ADD CONSTRAINT fk_work_order_intake_work_area FOREIGN KEY (work_area_id) REFERENCES ref.work_area(work_area_id);
 
 
--- Completed on 2026-07-31 08:06:30
+-- Completed on 2026-08-01 13:31:34
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict uaNgop6UwyfdJZRis2g9cNEF2lwlH1lO9Mb4Ajx9bxYVSQnJtfcaA3Sv9Z8HYQh
+\unrestrict 01dZC5nyjMkUMBfQ9BfCmg2TzLbufkQ8E93mnLpJq26Y39Wec4VgoDAHrdb5vya
 
