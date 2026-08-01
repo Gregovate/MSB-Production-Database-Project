@@ -7,7 +7,7 @@
 | Status | DRAFT — implementation and production validation required |
 | Owner | MSB Database Administrator |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-07-31 |
+| Current revision | 2026-08-01 |
 
 ## Purpose
 
@@ -17,15 +17,102 @@ Define the controlled promotion of one approved, immutable LOR snapshot from
 This specification documents the responsibilities currently embedded only in
 P1 and P2, defines the missing P3 scene promotion, and establishes the final
 execution model. After validation, operators must not manually run P1, P2, or
-P3 in production. One orchestration procedure will enforce the reconciliation
-gate and run the complete promotion in the correct order.
+P3 in production. One controlled workflow will enforce the reconciliation gate,
+retain one persistent execution context, and run the complete promotion in the
+correct order.
+
+The operator-facing production procedure is defined in
+`00_LOR_Production_Import_and_Reconciliation_Procedure.md`. Detailed stage,
+display, scene, classification, operator-decision, and report rules are defined
+in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
-| 2026-07-31 | GAL / OpenAI | Initial P1/P2/P3 and controlled-orchestration design for V7 scene-aware imports. |
+| 2026-08-01 | GAL / OpenAI | Defined the persistent reconciliation execution context, automatic latest-completed-ingest capture, single-evaluation working sets, operator pause/resume, committed-result reporting, and the handoff from the operator procedure to P1/P2/P3 promotion. |
 | 2026-07-31 | GAL / OpenAI | Revised promotion to process stage/scene context first, promote independently safe displays, synchronize assignments last, and quarantine only affected exceptions. |
+| 2026-07-31 | GAL / OpenAI | Initial P1/P2/P3 and controlled-orchestration design for V7 scene-aware imports. |
+
+## Relationship to the Production Procedure
+
+The production import is one stateful workflow even though parser, ingest,
+preflight, operator review, promotion, validation, and reporting are separate
+implementation phases.
+
+The finished operator experience is:
+
+```text
+Start LOR Production Import
+    -> parser
+    -> password-protected snapshot ingest
+    -> capture latest completed ingest
+    -> build persistent reconciliation working sets
+    -> automatic preflight
+    -> operator review only when required
+    -> apply approved changes
+    -> validate committed results
+    -> generate and publish timestamped HTML report
+    -> complete
+```
+
+If no operator decisions are required, the workflow continues automatically
+through promotion, validation, report publication, and completion. If review is
+required, the workflow pauses without losing its captured ingest or evaluated
+candidates. The operator later resumes the same reconciliation execution rather
+than starting a new comparison.
+
+## Persistent Reconciliation Execution Context
+
+Each production execution creates one persistent reconciliation-run record. The
+entry point automatically captures the latest completed `lor_snap.import_run`
+once and stores its `import_run_id` on that reconciliation run.
+
+Directus users do not select, enter, or interpret `import_run_id`. Lower-level
+procedures receive the stored value internally from the orchestrator and must not
+rediscover the latest run independently.
+
+The persistent context must retain, at minimum:
+
+- the reconciliation-run identity;
+- the captured `import_run_id`;
+- execution status and timestamps;
+- stage candidates and binding results;
+- display identity and lifecycle candidates;
+- scene candidates;
+- scene-display membership candidates;
+- operator decisions, including defer decisions;
+- committed actions and post-write validation results;
+- the generated report path and publication timestamp.
+
+These rows remain available until promotion, validation, report generation, and
+report publication are complete. They remain afterward as audit history unless a
+separate approved retention process archives them.
+
+Temporary tables may be used during development or inside one atomic database
+operation, but session-local temporary tables are not the production workflow
+state. The production workflow may span separate Directus requests, database
+connections, operator decisions, and report-generation steps.
+
+## Single-Evaluation Principle
+
+The captured ingest is evaluated once per reconciliation execution.
+
+The expensive identity-resolution and classification work is persisted once and
+reused by:
+
+- P1 stage processing;
+- P2 display processing;
+- P3 scene processing;
+- P3 scene-display membership processing;
+- operator-review screens;
+- promotion validation;
+- the final HTML report.
+
+No downstream phase may independently rebuild its own interpretation of the
+snapshot or reselect the latest ingest. This prevents inconsistent decisions,
+reduces repeated query cost, and guarantees that operator review, production
+writes, validation, and reporting describe the same evaluated source state.
 
 ## Architectural Boundaries
 
@@ -43,12 +130,13 @@ but it does not create a second physical-display identity.
 
 ## Non-Negotiable Controls
 
-1. Every procedure accepts an explicit `import_run_id`. No promotion procedure
-   may select `max(import_run_id)` for itself.
-2. The exact run must have a completed reconciliation classification before
+1. The reconciliation entry point automatically captures the latest completed
+   ingest once. Lower-level procedures receive that captured `import_run_id`
+   internally and may not select `max(import_run_id)` for themselves.
+2. The captured run must have a completed reconciliation classification before
    promotion. Independently safe records may be promoted while unresolved records
-   and their dependent assignments remain quarantined.
-3. P1, P2, and P3 must be idempotent for the same approved run.
+   and their dependent assignments remain quarantined or deferred.
+3. P1, P2, and P3 must be idempotent for the same approved reconciliation run.
 4. Structural validation and each promotion phase run under controlled transaction
    boundaries. A structural failure rolls back the affected promotion attempt;
    record-level reconciliation exceptions do not roll back unrelated safe work.
@@ -61,9 +149,11 @@ but it does not create a second physical-display identity.
 7. Direct production execution of P1, P2, and P3 is removed from the normal
    operator role after validation. Only the orchestrator receives operator-facing
    execution permission.
-8. Each completed promotion records the selected run, start and completion
-   timestamps, caller, result, procedure versions, promoted counts, skipped counts,
-   and exception counts.
+8. Each completed promotion records the captured ingest, reconciliation run,
+   start and completion timestamps, caller, result, procedure versions, promoted
+   counts, blocked/deferred counts, validation results, and report location.
+9. Final reporting is generated from persisted committed-result records. It must
+   not rerun the comparison and infer what probably changed after the fact.
 
 ## Canonical Effective Stage Evidence
 
@@ -76,24 +166,24 @@ V7 has three source cases for associating a physical display with a stage:
    canonical `previews.stage_id`.
 
 Background and standalone stage-bearing previews define their stage directly.
-The Parade Float preview is not a background preview and is not part of the
-Master Musical Preview. The Master Musical Preview does not define one physical
-stage for the entire preview; the assigned scene supplies the effective stage for
-each display. Scene/stage context must therefore be processed before display
-attributes. Conflicting stage evidence blocks only the affected scene, display,
-and assignment unless the conflict shows that the source structure as a whole
-cannot be trusted.
+Scenes inside a dedicated preview are subordinate workspace views and do not
+override that preview's stage assignment. The Master Musical Preview does not
+define one physical stage for the entire preview; its scene supplies effective
+stage context for each display. Scene/stage context must therefore be processed
+before display attributes.
 
 All joins among `previews`, `props`, `scenes`, and `scene_lor_props` must include
-the selected `import_run_id` as well as their run-scoped LOR identifiers.
+the captured `import_run_id` as well as their run-scoped LOR identifiers.
 
 ## P1 — Stage Promotion
 
-### Proposed signature
+### Internal signature
 
 ```sql
-call ref.p1_upsert_stage_from_lor(p_import_run_id => :import_run_id);
+call ref.p1_upsert_stage_from_lor(p_import_run_id => p_captured_import_run_id);
 ```
+
+The orchestrator supplies the captured value. This is not an operator prompt.
 
 ### Existing behavior being replaced
 
@@ -111,51 +201,39 @@ preview no longer carries an individual musical-stage identity.
 
 ### Revised responsibility
 
-P1 owns only durable `ref.stage` promotion.
+P1 consumes the persisted stage candidates and approved stage decisions for the
+reconciliation run. It owns durable `ref.stage` promotion and the associated
+persistent LOR scene/stage projection required by the approved design.
 
 It will:
 
-- Assert that structural preflight has completed for the supplied run.
-- Discover normalized stage keys from both previews and populated scenes.
+- Assert that structural preflight has completed for the reconciliation run.
+- Consume the already-evaluated stage and scene evidence rather than recalculating it.
 - Validate stage keys against the established canonical format.
 - Preserve `stage_id` on every update.
-- Preserve the established `stage_name`, `short_code`, `folder_name`, and
-  `folder_path` for every existing production stage.
-- Update only `park_order` and `sub_order` for existing stages.
-- Use scene names only to discover the stage key from their leading numeric or
-  numeric-letter prefix. A scene name does not need a stage short code and
-  cannot initialize one.
-- Insert a genuinely new stage only when one unambiguous stage-preview source
-  name follows `<stage_key>-<stage_name>-<short_code>`, where `short_code` is
-  exactly two letters and is preserved for channel naming and wiring.
-- Accept the established standalone-preview form
-  `Show Stage <stage_key>-<stage_name>-<short_code>` by removing only the exact
-  `Show Stage ` prefix. For example, the Parade Float preview becomes
-  `40-Parade Float Trailer-PF` for a new Stage 40 insertion.
-- Never apply that normalization to `Show Background Stage ...` names.
-- Leave an ambiguously named new stage unresolved so only that stage and its
-  dependent scenes, displays, and assignments are withheld.
+- Apply only approved metadata and binding changes.
+- Leave blocked or deferred stage groups unchanged.
 - Leave stages absent from the run unchanged.
 
-P1 will not promote scenes, assign displays, change display status, or delete a
-stage.
+P1 will not assign displays, infer display status, or delete a physical stage.
 
 ### Blocking conditions
 
-- The run is not reconciliation-approved.
-- A scene-derived stage ID is missing or noncanonical when it is required.
-- A new stage key has no unambiguous stage-preview source containing its
-  two-letter short code, or has more than one distinct canonical source name.
+- The reconciliation run is not ready for promotion.
+- Required stage evidence is missing, contradictory, or noncanonical.
+- A new stage lacks enough authoritative metadata to create a valid production row.
 - A required parent/substage relationship is invalid.
-- The selected run lacks required preview or scene source rows.
+- The persisted stage candidate does not match the captured ingest.
 
-## P2 — Display Attribute and Spare-Channel Promotion
+## P2 — Display Promotion
 
-### Proposed signature
+### Internal signature
 
 ```sql
-call ref.p2_promote_display_attributes_from_lor(p_import_run_id => :import_run_id);
+call ref.p2_promote_display_attributes_from_lor(p_import_run_id => p_captured_import_run_id);
 ```
+
+The orchestrator supplies the captured value and reconciliation-run context.
 
 ### Existing behavior being replaced
 
@@ -174,256 +252,193 @@ the audited reconciliation process.
 
 ### Revised responsibility
 
-P2 updates LOR-owned operational attributes only after permanent identity has
-already been approved.
+P2 consumes persisted display candidates and approved operator decisions. It does
+not perform a second identity investigation during promotion.
 
 It will:
 
-- Assert that structural preflight and record classification have completed for
-  the supplied run.
-- Consume the same canonical V7 display source used by reconciliation.
-- Resolve stage using background evidence first and scene evidence as fallback.
-- Match or create physical displays through deterministic, audited reconciliation
-  rules. Process only candidates classified as safe for automatic promotion or
-  explicitly approved by an operator.
-- Update `stage_id`, `string_type`, `color`, and other explicitly designated
-  LOR-owned attributes.
-- Route approved spare-channel candidates to `ref.spare_channel` without deleting
-  or reclassifying a production display.
-- Preserve `display_id` for every existing display. LOR-owned current values,
-  including name, current LOR UUID, stage/location, controller, network, channel,
-  wiring, and similar configuration, may be overwritten when the deterministic
-  identity match is safe.
+- Assert that structural preflight and candidate classification completed for the
+  reconciliation run.
+- Process only deterministic safe candidates or explicit approved decisions.
+- Preserve `display_id` for every existing display.
+- Apply approved name, current LOR UUID, stage, wiring, controller, network,
+  channel, color, string type, and other designated LOR-owned current attributes.
+- Create a genuinely new display only from an approved new-display candidate.
+- Apply status changes only from an explicit operator decision using
+  `ref.display_status`.
+- Leave blocked or deferred display groups unchanged.
+- Never insert confirmed or inferred SPARE rows into `ref.display`.
+- Never insert, update, or delete `ref.spare_channel` as part of P2.
 
-P2 may automatically apply deterministic cases: exact UUID match, same UUID with
-a changed name, unique same-name UUID relink, and a genuinely new unique display.
-Ambiguous identity, destructive status, merge, or uncertain reassociation decisions
-remain quarantined for operator review. A blocked candidate does not block unrelated
-safe candidates.
+A blocked candidate does not block unrelated safe candidates.
 
 ## P3 — Scene and Scene-Membership Promotion
 
-### Proposed signature
+### Internal signature
 
 ```sql
-call ref.p3_upsert_scene_membership_from_lor(p_import_run_id => :import_run_id);
+call ref.p3_upsert_scene_membership_from_lor(p_import_run_id => p_captured_import_run_id);
 ```
 
 ### Production objects
 
-#### `ref.lor_scene`
+P3 uses the existing production objects created for the V7 scene model:
 
-Durable current scene identity and presentation metadata.
+- `ref.lor_scene`
+- `ref.lor_scene_display`
 
-| Column | Purpose |
-|---|---|
-| `lor_scene_id` | Surrogate production primary key |
-| `scene_uuid` | LOR `scene_id`; identity within its parent preview |
-| `preview_uuid` | Parent LOR preview identity |
-| `stage_id` | Required FK to `ref.stage`, resolved from the effective stage key |
-| `scene_name` | Human-facing scene name |
-| `scene_section` | LOR section/group metadata |
-| `background_file` | Scene-specific background reference |
-| `h_scroll`, `v_scroll`, `zoom`, `create_grid_view` | Presentation metadata |
-| `source_import_run_id` | Last approved snapshot that supplied the current row |
-| `created_at`, `created_by`, `updated_at`, `updated_by` | Current-row audit metadata, not scene history |
+`ref.lor_scene` stores the current persistent LOR scene identity
+`(preview_uuid, scene_uuid)`, current presentation metadata, and its resolved
+physical `stage_id`.
 
-The table name uses `lor_scene` to prevent a generic production “scene” concept
-from being confused with physical stages or future non-LOR reporting views.
-
-Required keys and constraints:
-
-- Primary key: `lor_scene_id`.
-- Unique current LOR identity: `(preview_uuid, scene_uuid)`. A `scene_uuid` must
-  not be assumed globally unique outside its parent preview.
-- Required foreign key: `stage_id` references `ref.stage(stage_id)`.
-- `preview_uuid`, `scene_uuid`, and `scene_name` are required for every promoted
-  production scene.
-
-#### `ref.lor_scene_display`
-
-Current scene assignment from a scene to permanent displays.
-
-| Column | Purpose |
-|---|---|
-| `lor_scene_id` | FK to `ref.lor_scene` |
-| `preview_uuid` | Parent preview identity duplicated to enforce one scene per display per preview |
-| `display_id` | FK to permanent `ref.display.display_id` |
-| `scene_prop_ordinal` | LOR ordering evidence |
-| `scene_role` | Parsed membership role |
-| `source` | Parser source classification |
-| `source_import_run_id` | Approved snapshot that established this membership |
-| `created_at`, `created_by`, `updated_at`, `updated_by` | Current-row audit metadata, not assignment history |
-
-One preview may contain multiple scenes, and one scene may contain many displays.
-One physical display/prop may be assigned to only one current scene within its
-preview. The production model must therefore enforce one current assignment per
-`(preview_uuid, display_id)`, while also preventing duplicate
-`(lor_scene_id, display_id)` rows.
-
-Because `preview_uuid` belongs to the parent scene, PostgreSQL cannot enforce the
-first rule from `lor_scene_display` unless that value is also stored on the
-assignment row. The table therefore includes `preview_uuid` as a required,
-deliberately duplicated enforcement column with:
-
-- Primary key: `(lor_scene_id, display_id)`.
-- Unique constraint: `(preview_uuid, display_id)`.
-- Supporting unique constraint on `ref.lor_scene(lor_scene_id, preview_uuid)`.
-- Composite foreign key: `(lor_scene_id, preview_uuid)` references the matching
-  scene identity in `ref.lor_scene`.
-- Foreign key: `display_id` references `ref.display(display_id)`.
-- `ON DELETE CASCADE` from `ref.lor_scene` so deleting a current scene removes
-  its current assignments.
-
-No separate production background table is required for the initial P3 design.
-Scene background and viewport attributes belong to `ref.lor_scene`. Production
-scene tables contain only the current state. The immutable `lor_snap.scenes` and
-`lor_snap.scene_lor_props` rows retain source history for each import run without
-turning the production tables into history tables.
+`ref.lor_scene_display` stores current scene membership by permanent
+`display_id`. A scene move updates an association and never creates a new display
+identity.
 
 ### P3 responsibility
 
-P3 will:
+P3 consumes persisted scene and scene-display candidates for the reconciliation
+run. It will:
 
-- Assert that structural preflight and record classification have completed for
-  the supplied run.
-- Validate that each eligible scene membership resolves to one snapshot prop and,
-  for a physical display, one permanent `display_id`.
-- Upsert current scene metadata by `(preview_uuid, scene_uuid)`.
-- Resolve a scene's `stage_id` through the effective stage key and existing
-  `ref.stage` row created or updated by P1.
-- Quarantine a scene and its dependent assignments when one valid `stage_id`
-  cannot be resolved; never insert a production scene with a null stage.
-- Synchronize current membership for each eligible display using `display_id`,
-  never `lor_prop_id`, as the durable relationship. Moving a display between
-  scenes overwrites its current assignment without changing its identity.
-- Delete obsolete assignments after eligible displays have been resolved to
-  their authoritative current scenes.
-- Delete a scene when it is absent from its authoritative current preview or
-  when it has no current display assignments.
-- Skip and report assignments whose scene or display is quarantined; continue
-  with unrelated valid assignments.
-- Preserve snapshot history in `lor_snap`; P3 changes only the current production
-  projection.
-
-### Current-state scene synchronization policy
-
-LOR is authoritative for current scene definitions and assignments. P3 replaces
-the current membership set for each authoritative preview atomically after P2
-has resolved the eligible displays.
-
-If a production scene no longer exists in that preview, P3 deletes its obsolete
-assignments and deletes the scene. If a scene exists but is empty, P3 also deletes
-it. Displays that still exist are assigned to their new current scenes from the
-same run; neither the scene move nor deletion changes their permanent
-`display_id`. A scene with the same UUID and changed metadata is updated in place.
-
-No inactive scene or scene-assignment history is retained in production tables.
-Prior imported definitions and memberships remain available only in the immutable
-`lor_snap` snapshot tables.
+- upsert approved scene rows;
+- associate each scene with the approved permanent `stage_id`;
+- synchronize approved memberships using `display_id`;
+- reassociate moved displays without changing `display_id`;
+- remove obsolete current memberships only when the authoritative captured
+  snapshot and approved candidate set make that removal safe;
+- remove obsolete/empty production scenes according to the approved current-state
+  synchronization policy;
+- leave blocked or deferred scenes and dependent memberships unchanged;
+- preserve all historical source evidence in immutable `lor_snap` rows.
 
 ## Controlled Orchestration
 
-### Proposed procedure
+### Proposed entry points
+
+The final application presents one start action and, only when review is needed,
+one finish/resume action. Internally these may call separate procedures so the
+workflow can pause safely.
+
+Illustrative internal procedures:
 
 ```sql
-call ops.p_promote_approved_lor_import(p_import_run_id => :import_run_id);
+call ops.p_start_lor_reconciliation();
+call ops.p_finish_lor_reconciliation(p_lor_reconciliation_run_id => :run_id);
 ```
 
-### Required processing sequence
+`p_start_lor_reconciliation` must:
 
-1. Acquire an advisory lock preventing concurrent LOR promotions.
-2. Verify the exact `lor_snap.import_run` exists and is immutable/complete.
-3. Run structural validation and classify reconciliation candidates for that
-   exact run. Structural failures stop the run; record-level exceptions are
-   quarantined.
-4. Refuse a run already promoted unless invoked in an explicitly supported
-   idempotent verification mode.
-5. Promote and verify stage definitions from background previews and Master
-   Musical Preview scene evidence.
-6. Resolve, validate, and upsert scene definitions so effective stage context
-   exists before any display is processed. A temporarily upserted scene that has
-   no eligible current assignment is removed during final synchronization.
-7. Promote every independently safe display and spare-channel record; quarantine
-   only ambiguous records.
-8. Synchronize scene-to-display assignments after permanent `display_id` values
-   are available. Skip assignments dependent on quarantined scenes or displays.
-9. Verify promoted and skipped counts for stages, scenes, displays, spares, and
-   assignments.
-10. Write the completed promotion audit record.
-11. Commit the controlled promotion result. Record-level exceptions produce
-    `PASSED_WITH_EXCEPTIONS`; structural or transaction failures produce `FAILED`.
+1. Acquire a lock preventing concurrent production reconciliation starts.
+2. Verify parser/ingest prerequisites supplied by the secured external runner.
+3. Capture the latest completed ingest exactly once.
+4. Create the persistent reconciliation-run row.
+5. Build and persist stage, display, scene, and membership candidates once.
+6. Persist structural checks and classifications.
+7. Continue automatically when no operator decisions are required, or set the
+   run to an operator-review status and stop cleanly.
 
-P3 may be implemented as two internal phases—scene definitions before P2 and
-scene assignments after P2—or as two separately named procedures. The numbering
-is less important than enforcing this dependency order.
+`p_finish_lor_reconciliation` must:
+
+1. Verify the same reconciliation run and captured ingest remain authoritative
+   for this execution.
+2. Verify every required decision is resolved or explicitly deferred.
+3. Apply approved P1/P2/P3 changes in dependency order.
+4. Persist actual committed results.
+5. Run post-write validation against the committed state.
+6. Generate the timestamped HTML reconciliation report from persisted results.
+7. Publish the report to the internal web server.
+8. Store the report path/publication timestamp and mark the run complete.
+
+If no review is required, the start procedure or calling application may invoke
+the finish phase immediately so the operator experiences one uninterrupted run.
+
+### Required processing order
+
+1. Capture ingest and build the persistent reconciliation context.
+2. Validate and apply stage decisions.
+3. Upsert approved scene definitions needed for stage context.
+4. Apply approved display identity, metadata, and lifecycle decisions.
+5. Synchronize approved scene-display memberships.
+6. Validate committed production state.
+7. Persist committed-result counts and plain-language messages.
+8. Generate and publish the report.
+
+Record-level exceptions produce a completed run with blocked/deferred items when
+safe isolation is preserved. Structural or transaction failures produce `FAILED`.
 
 ### Execution permissions after validation
 
 - Revoke direct `EXECUTE` on P1, P2, and P3 from normal operator roles.
 - Grant those procedures only to the orchestrator owner/execution role.
-- Grant operators `EXECUTE` only on `ops.p_promote_approved_lor_import`.
-- Keep preflight and verification functions read-only and independently available.
+- Grant the operator-facing application only the controlled start, decision, and
+  finish operations required by the workflow.
+- Keep diagnostic preflight and verification reports read-only.
 - Emergency direct execution requires a documented database-administrator change
-  process; it is not part of the routine production workflow.
+  process; it is not part of routine production operation.
 
-The PowerShell/Python import runner may eventually invoke the orchestrator only
-after structural validation and reconciliation classification are complete. It
-must pass the explicit run ID returned by snapshot ingest; it must never
-substitute “latest run.”
+The secured PowerShell/Python runner owns parser and snapshot-ingest execution.
+The database workflow owns capture of the resulting latest completed ingest and
+all subsequent reconciliation state.
 
-## Promotion Audit Object
+## Promotion and Reconciliation Audit Objects
 
-Create `ops.lor_promotion_run` with at least:
+The final schema must include a persistent reconciliation-run control row and
+persistent child rows for evaluated candidates, operator decisions, committed
+results, validation, and report publication.
 
-- `lor_promotion_run_id` bigint identity primary key.
-- `import_run_id` unique FK to `lor_snap.import_run`.
-- reconciliation approval reference and timestamp.
-- `started_at`, `completed_at`, `started_by`, and result.
-- P1/P2/P3 version identifiers.
-- stage, display, spare, scene, and membership inserted/updated/skipped counts.
-- exception count and references to the unresolved exception manifest.
-- verification summary and failure message.
+The exact table split is defined in the reconciliation SQL design, but the
+pipeline requires these logical capabilities:
 
-Failed attempts may be logged outside the rolled-back promotion transaction by
-the calling runner. A row marked completed must never survive a rolled-back
-promotion.
+- one reconciliation execution identity;
+- one captured `import_run_id` per execution;
+- persisted stage candidates;
+- persisted display candidates;
+- persisted scene candidates;
+- persisted scene-display candidates;
+- append-only operator decisions;
+- append-only committed-result messages;
+- post-write validation results;
+- report file path and publication state.
+
+A row reported as `ADDED`, `UPDATED`, `REASSOCIATED`, or `STATUS_CHANGED` must
+represent an actual committed production change. Exact matches are not included
+in the change report. Blocked and deferred candidates appear in the operator
+review section with enough metadata for follow-up work.
 
 ## Required Validation Before Production Approval
 
-1. Unit-test each procedure with an explicit historical test run.
-2. Prove repeat execution against the same run produces no unintended changes.
-3. Prove structural failure is rejected before unsafe writes.
-4. Prove a record-level display exception does not prevent unrelated safe stage,
-   scene, display, spare, or assignment promotion.
-5. Prove a newer snapshot arriving during approval cannot change the selected
-   run being promoted.
-6. Prove background-preview stage evidence wins over matching musical-scene
-   fallback evidence.
-7. Prove conflicting scene/background stage assignments block the affected
-   dependency chain without silently selecting a winner.
-8. Prove scene membership resolves through permanent `display_id` after UUID and
-   rename reconciliation.
-9. Prove a missing display does not cause an implicit delete or status change,
-   while an empty or removed scene and its obsolete assignments are deleted from
-   the current production projection.
-10. Compare final counts and representative wiring/scene reports with the known
-    good run-36 reconciliation results.
-11. Revoke direct procedure permissions only after the orchestrator and recovery
+1. Prove the start operation captures the latest completed ingest once.
+2. Prove a newer ingest arriving during review cannot change the captured run.
+3. Prove candidate working sets are built once and reused by review, promotion,
+   validation, and reporting.
+4. Prove repeat execution against the same reconciliation run is idempotent.
+5. Prove structural failure is rejected before unsafe writes.
+6. Prove a record-level exception does not prevent unrelated safe promotion.
+7. Prove dedicated preview stage evidence cannot be overridden by a subordinate
+   scene name.
+8. Prove Master Musical Preview scene evidence resolves the correct stage.
+9. Prove scene membership resolves through permanent `display_id`.
+10. Prove a missing display does not cause an implicit delete or status change.
+11. Prove blocked/deferred candidates preserve existing production rows.
+12. Prove the HTML report is generated from actual committed results and excludes
+    exact matches.
+13. Revoke direct procedure permissions only after the orchestrator and recovery
     process have been validated.
 
 ## Implementation Order
 
-1. Approve this data model and current-state scene deletion policy.
-2. Create DDL for `ref.lor_scene`, `ref.lor_scene_display`, and
-   `ops.lor_promotion_run`.
-3. Replace P1 with the explicit-run, preview-plus-scene implementation.
-4. Replace P2 with the explicit-run, reconciliation-safe implementation.
-5. Implement P3.
-6. Implement the orchestrator and verification functions.
-7. Validate outside production, then perform a supervised production validation.
-8. Revoke routine direct execution of P1/P2/P3 and make the orchestrator the only
-   normal production entry point.
+1. Approve the persistent reconciliation-run and candidate data model.
+2. Implement the start/capture/build-candidates phase.
+3. Convert existing preflight SQL into persisted candidate builders and read-only
+   diagnostic reports over one reconciliation run.
+4. Replace P1 with the reconciliation-run-aware implementation.
+5. Replace P2 with the reconciliation-run-aware implementation.
+6. Implement P3 against `ref.lor_scene` and `ref.lor_scene_display`.
+7. Implement finish/promotion, committed-result capture, validation, and HTML
+   report publication.
+8. Validate outside production, then perform supervised production validation.
+9. Revoke routine direct execution of P1/P2/P3 and make the controlled workflow
+   the only normal production entry point.
 
 ## Related Documents
 
