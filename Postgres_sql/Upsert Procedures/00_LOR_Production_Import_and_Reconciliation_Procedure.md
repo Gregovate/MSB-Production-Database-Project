@@ -30,6 +30,8 @@ The parser and snapshot ingest do **not** update production reference data by th
 | Date | Author | Revision |
 |---|---|---|
 | 2026-07-31 | GAL | Initial procedure draft. Documents authoritative-preview controls, V7 parsing, PostgreSQL ingest, reconciliation requirements, and the P1/P2/P3 gate. |
+| 2026-07-31 | GAL / OpenAI | Linked the full P1/P2/P3 promotion design and established controlled orchestration as the required final production execution model. |
+| 2026-07-31 | GAL / OpenAI | Revised the gate to promote independently safe records, quarantine only affected exceptions, and process stage/scene context before displays and scene assignments. |
 
 ## Current Implementation Status
 
@@ -39,9 +41,10 @@ The parser and snapshot ingest do **not** update production reference data by th
 | `parse_props_v7_scene_parser.py` | Implemented and under V7 validation |
 | `postgres_run_ingest_v7.ps1` | Implemented and tested |
 | Reconciliation preflight/report | Under development |
-| P1 | Existing production procedure; exact execution and validation details must be added |
-| P2 | Existing production procedure; exact execution and validation details must be added |
-| P3 | Not yet written; intended to create/update scene reference data not currently present in `ref` |
+| P1 | Legacy procedure exists; V7 explicit-run replacement is designed but not implemented |
+| P2 | Legacy procedure exists; reconciliation-safe explicit-run replacement is designed but not implemented |
+| P3 | Scene and scene-membership promotion is designed but not implemented |
+| Controlled orchestrator | Required final production entry point; designed but not implemented |
 
 Do not represent an under-development component as production-ready.
 
@@ -71,7 +74,8 @@ Before editing previews on a replacement computer:
 2. Export every current production preview from the existing Master PC.
 3. Transfer the complete authoritative preview set to the replacement computer.
 4. Import every preview into LOR on the replacement computer.
-5. Verify that every expected stage preview and the Master Musical Preview were transferred.
+5. Verify that every expected background preview, every authoritative standalone
+   stage preview, and the Master Musical Preview were transferred.
 6. Compare preview names, stage IDs, UUIDs, revisions, and modified dates where available.
 7. Resolve every missing, duplicate, older, or uncertain preview.
 8. Record the replacement computer as the new Master PC.
@@ -83,6 +87,8 @@ Before editing previews on a replacement computer:
 
 - Authoritative LOR previews from the designated Master PC.
 - Exactly one current production background preview for every expected stage.
+- Every current authoritative standalone stage preview, including the Parade
+  Float preview.
 - Exactly one current Master Musical Preview.
 - Current `parse_props_v7_scene_parser.py`.
 - Current `postgres_run_ingest_v7.ps1` and its associated PostgreSQL ingest SQL.
@@ -100,7 +106,10 @@ Before editing previews on a replacement computer:
 - No other production relational tables may depend on `lor_prop_id`.
 - A display rename or LOR UUID change must preserve `display_id`.
 
-This contract is enforced by the reconciliation preflight. P1, P2, and P3 must not run for an import until all identity discrepancies for that exact `import_run_id` are resolved and the gate passes.
+This contract is enforced by reconciliation classification. Unresolved identity
+exceptions quarantine only the affected display and its dependent assignments
+when they can be isolated safely. They do not prevent unrelated valid records
+from being promoted.
 
 ### Display Status
 
@@ -155,13 +164,17 @@ UUID evidence must be combined with the display name, previous imports, preview/
 1. Confirm the computer is the designated LOR Master PC.
 2. Create or empty the folder used for this production export.
 3. Export every current production background preview to that folder.
-4. Export the current Master Musical Preview to that folder.
-5. Do not copy forward files from a previous export merely because they appear to be missing.
-6. Investigate a missing preview at its authoritative source.
+4. Export every current authoritative standalone stage preview, including the
+   Parade Float preview, to that folder.
+5. Export the current Master Musical Preview to that folder.
+6. Do not copy forward files from a previous export merely because they appear to be missing.
+7. Investigate a missing preview at its authoritative source.
 
 The folder must contain:
 
 - Exactly one current background preview per expected stage.
+- Every current authoritative standalone stage preview, including the Parade
+  Float preview.
 - Exactly one current Master Musical Preview.
 - No duplicate-stage previews.
 - No older revisions.
@@ -183,8 +196,10 @@ Record at least:
 
 Validate:
 
-- Every expected stage is present.
-- No stage is represented more than once.
+- Every expected background and standalone stage preview is present.
+- No stage-bearing preview is duplicated unintentionally. A standalone preview
+  is not an error merely because another preview or scene resolves to the same
+  stage; its role must be understood and authoritative.
 - The Master Musical Preview is present exactly once.
 - Preview names and stage IDs are correct.
 - No filename or preview metadata indicates an old or test copy.
@@ -360,17 +375,27 @@ Every reconciliation action must record:
 - Operator.
 - Timestamp.
 
-### 6. Enforce the Reconciliation Gate
+### 6. Classify Safe Records and Exceptions
 
-Rerun the reconciliation report after each action or controlled batch.
-
-P1, P2, and P3 must remain blocked until every discrepancy is one of the following:
+Rerun the reconciliation report after each action or controlled batch. Every
+candidate must be classified as one of the following:
 
 - Resolved.
 - Explicitly excluded by an approved persistent rule.
 - Formally deferred with a reason and with an approved policy that permits the deferment.
 
-The final design must define whether any deferred item is allowed to pass the production gate. Until that rule is implemented, treat a deferred identity conflict as a hard stop.
+A deferred identity conflict with reliable row-level isolation is withheld from
+display promotion along with its scene assignment. Unrelated safe records may
+continue. Whole-run rejection is reserved for structural failures or inconsistencies
+that make row-level isolation unsafe.
+
+Required run results are:
+
+| Result | Meaning |
+|---|---|
+| `PASSED` | All eligible records promoted; no unresolved exceptions remain |
+| `PASSED_WITH_EXCEPTIONS` | Safe records promoted; isolated unresolved records and their dependencies were withheld |
+| `FAILED` | Structural, source-integrity, or transaction failure made safe isolation impossible |
 
 Record the passing preflight result:
 
@@ -385,54 +410,81 @@ Record the passing preflight result:
 | Displays retired | |
 | Displays recycled | |
 | Exclusions recorded | |
+| Safe/promotable count | |
 | Unresolved/deferred count | |
+| Dependent assignment count withheld | |
 
-### 7. Run P1
+### 7. Promote the Approved Run
 
-P1 is run only after reconciliation passes.
+The final production workflow will not instruct an operator to run P1, P2, and
+P3 separately. After implementation and validation, the operator will invoke one
+controlled orchestration procedure with the explicitly approved `import_run_id`.
 
-Current known responsibility:
+The orchestrator will:
 
-- Upsert `ref.stage` from the latest approved LOR snapshot while preserving stable stage identities.
+- Reassert structural validation and reconciliation classification for that exact
+  run.
+- Promote stage definitions first.
+- Promote scene definitions second so Master Musical Preview displays have stage
+  context.
+- Promote every independently safe display and spare-channel record.
+- Synchronize scene assignments last, after permanent `display_id` values exist.
+- Withhold only assignments dependent on quarantined scenes or displays.
+- Roll back on structural or transaction failure, not merely because isolated
+  reconciliation exceptions exist.
+- Record promoted, skipped, and exception counts.
 
-TODO before this procedure is declared complete:
+Direct execution of P1, P2, or P3 is permitted only during development and
+supervised validation. Once the pipeline is approved, normal production roles
+will receive execution permission only on the orchestrator.
 
-- Insert the exact production procedure name.
-- Document how the approved `import_run_id` is selected.
-- Document the command or database UI execution steps.
-- Document expected row counts and notices.
-- Document rollback or recovery behavior.
-- Add verification queries.
+The full design is maintained in:
 
-### 8. Run P2
+`Postgres_sql/Upsert Procedures/01_LOR_Production_Promotion_Pipeline_Design.md`
 
-P2 is run only after P1 succeeds and its validation passes.
+#### P1 responsibility
 
-TODO before this procedure is declared complete:
+- Promote durable stages from background-preview evidence plus scene-derived
+  fallback evidence.
+- Preserve permanent `stage_id` values.
+- Never delete stages missing from one run.
 
-- Document the exact production procedure name.
-- Document its purpose, reads, writes, and prerequisites from the production definition.
-- Document how it is tied to the approved `import_run_id`.
-- Add execution instructions, expected results, stop conditions, and verification queries.
+#### P2 responsibility
 
-### 9. Run P3 — Scene Reference Upsert
+- Update deterministic safe or explicitly approved displays' LOR-owned current
+  attributes.
+- Resolve stage through background evidence first and scene evidence as fallback.
+- Route approved spare-channel data.
+- Automatically handle exact UUID matches, same-UUID renames, unique same-name
+  UUID relinks, and genuinely new unique displays.
+- Quarantine ambiguous identity or destructive status decisions for operator
+  review without blocking unrelated records.
 
-P3 does not yet exist.
+#### P3 responsibility
 
-Intended responsibility:
+- Promote current LOR scene metadata into `ref.lor_scene`.
+- Promote scene membership into `ref.lor_scene_display` using permanent
+  `display_id` relationships.
+- Preserve the distinction between scenes, physical stages, and displays.
+- Enforce one current scene per display within its preview. A preview may contain
+  multiple scenes, and each scene may contain many displays.
+- Treat scene assignment as LOR-owned current placement: a move overwrites the
+  assignment without changing `display_id`.
+- Delete obsolete scene assignments and delete scenes that are empty or no
+  longer exist in their authoritative preview.
+- Keep prior scene definitions and memberships only in immutable `lor_snap`
+  snapshots; production scene tables contain current state only.
 
-- Create or update the scene-related reference data that does not currently exist in `ref`.
-- Preserve the distinction between physical display identity and LOR presentation/workspace scenes.
-- Support future scene-based backgrounds and field-documentation reporting without treating scenes as displays.
+P3 does not yet exist, and the revised P1/P2/orchestrator are not yet implemented.
+This section is therefore a design requirement, not a production instruction.
 
-P3 must not be run or documented as operational until its schema, mapping rules, idempotency, audit behavior, and validation queries are designed and tested.
+### 8. Perform Final Validation
 
-### 10. Perform Final Validation
-
-After P1, P2, and—when implemented—P3:
+After the controlled stage, scene-definition, display, and scene-assignment phases:
 
 - Confirm every procedure used the approved snapshot/import run.
-- Confirm no unresolved reconciliation item was bypassed.
+- Confirm unresolved reconciliation items and dependent assignments were withheld
+  and reported, not silently bypassed.
 - Confirm renamed displays retained their original `display_id`.
 - Confirm corrected UUID mappings retained their original `display_id`.
 - Confirm new physical displays were created as `ACTIVE`.
@@ -456,7 +508,7 @@ Stop the workflow immediately if:
 - A proposed rename or UUID change cannot be tied confidently to one permanent `display_id`.
 - A UUID maps to multiple production displays without an established explanation.
 - Multiple UUIDs map unexpectedly to one display.
-- Any required reconciliation item remains unresolved.
+- A structural or source-integrity error prevents safe row-level isolation.
 - P1 or P2 validation fails.
 - P3 has not yet been implemented and approved for production use.
 
@@ -471,7 +523,11 @@ The following controls should be automated:
 - Bidirectional LOR-to-`ACTIVE`-display reconciliation.
 - Controlled buttons/forms for rename, UUID correction, add, retire, recycle, exclude, flag LOR correction, and defer.
 - Full reconciliation audit history.
-- A database-enforced pre-P1/P2/P3 approval gate tied to `import_run_id`.
+- Database-enforced structural validation and row-level reconciliation
+  classification tied to `import_run_id`.
+- One explicit-run orchestration procedure that enforces the stage → scene
+  definitions → safe displays → scene assignments order.
+- Production permissions that prevent routine manual execution of P1/P2/P3.
 - Post-procedure verification report.
 
 ## Related Files and Objects
@@ -485,3 +541,4 @@ The following controls should be automated:
 - Current production P1 procedure
 - Current production P2 procedure
 - Future P3 scene-reference procedure
+- `01_LOR_Production_Promotion_Pipeline_Design.md`
