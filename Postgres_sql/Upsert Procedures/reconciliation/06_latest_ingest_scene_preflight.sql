@@ -29,6 +29,7 @@ Result:
   Exact matches are included as UNCHANGED rows for first-run verification.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Replace unsupported DISTINCT window functions with grouped CTEs.
   2026-08-01  GAL / OpenAI  Initial latest-ingest scene production preflight.
 */
 
@@ -38,28 +39,47 @@ WITH selected_run AS (
     ORDER BY ir.import_run_id DESC
     LIMIT 1
 ),
+preview_profile AS (
+    SELECT
+        p.import_run_id,
+        p.id AS preview_id,
+        btrim(p.name) AS preview_name,
+        lower(btrim(p.stage_id)) AS preview_stage_key,
+        count(DISTINCT lower(btrim(s.stage_id))) FILTER (
+            WHERE btrim(coalesce(s.stage_id, '')) <> ''
+        ) AS distinct_scene_stage_count,
+        (
+            p.name ILIKE '%master musical preview%'
+            OR count(DISTINCT lower(btrim(s.stage_id))) FILTER (
+                WHERE btrim(coalesce(s.stage_id, '')) <> ''
+            ) > 1
+        ) AS is_shared_preview
+    FROM lor_snap.previews AS p
+    JOIN selected_run AS sr
+      ON sr.import_run_id = p.import_run_id
+    LEFT JOIN lor_snap.scenes AS s
+      ON s.import_run_id = p.import_run_id
+     AND s.preview_id = p.id
+    GROUP BY
+        p.import_run_id,
+        p.id,
+        p.name,
+        p.stage_id
+),
 scene_source AS (
     SELECT
         s.import_run_id,
         s.preview_id,
         s.scene_id,
         btrim(s.name) AS scene_name,
-        btrim(p.name) AS preview_name,
-        (
-            p.name ILIKE '%master musical preview%'
-            OR count(DISTINCT lower(btrim(s2.stage_id))) FILTER (
-                WHERE btrim(coalesce(s2.stage_id, '')) <> ''
-            ) OVER (PARTITION BY s.import_run_id, s.preview_id) > 1
-        ) AS is_shared_preview,
-        lower(btrim(p.stage_id)) AS preview_stage_key,
+        pp.preview_name,
+        pp.is_shared_preview,
+        pp.preview_stage_key,
         lower(btrim(s.stage_id)) AS declared_scene_stage_key,
         CASE
-            WHEN p.name ILIKE '%master musical preview%'
-              OR count(DISTINCT lower(btrim(s2.stage_id))) FILTER (
-                    WHERE btrim(coalesce(s2.stage_id, '')) <> ''
-                 ) OVER (PARTITION BY s.import_run_id, s.preview_id) > 1
+            WHEN pp.is_shared_preview
                 THEN lower(btrim(s.stage_id))
-            ELSE lower(btrim(p.stage_id))
+            ELSE pp.preview_stage_key
         END AS resolved_stage_key,
         to_jsonb(s)->>'scene_section' AS scene_section,
         to_jsonb(s)->>'background_file' AS background_file,
@@ -70,15 +90,12 @@ scene_source AS (
     FROM lor_snap.scenes AS s
     JOIN selected_run AS sr
       ON sr.import_run_id = s.import_run_id
-    JOIN lor_snap.previews AS p
-      ON p.import_run_id = s.import_run_id
-     AND p.id = s.preview_id
-    LEFT JOIN lor_snap.scenes AS s2
-      ON s2.import_run_id = s.import_run_id
-     AND s2.preview_id = s.preview_id
+    JOIN preview_profile AS pp
+      ON pp.import_run_id = s.import_run_id
+     AND pp.preview_id = s.preview_id
 ),
 scene_candidates AS (
-    SELECT DISTINCT
+    SELECT
         ss.import_run_id,
         ss.preview_id,
         ss.scene_id,
@@ -176,18 +193,32 @@ membership_source AS (
     JOIN selected_run AS sr
       ON sr.import_run_id = slp.import_run_id
 ),
+membership_counts AS (
+    SELECT
+        ms.import_run_id,
+        ms.preview_id,
+        ms.lor_prop_id,
+        count(DISTINCT ms.scene_id) AS source_scene_count_for_display
+    FROM membership_source AS ms
+    GROUP BY
+        ms.import_run_id,
+        ms.preview_id,
+        ms.lor_prop_id
+),
 membership_resolution AS (
     SELECT
         ms.*,
         d.display_id,
         d.display_name,
-        count(DISTINCT ms.scene_id) OVER (
-            PARTITION BY ms.import_run_id, ms.preview_id, d.display_id
-        ) AS source_scene_count_for_display,
+        mc.source_scene_count_for_display,
         sc.resolved_stage_id,
         sc.existing_lor_scene_id,
         lsd.lor_scene_id AS current_lor_scene_id
     FROM membership_source AS ms
+    JOIN membership_counts AS mc
+      ON mc.import_run_id = ms.import_run_id
+     AND mc.preview_id = ms.preview_id
+     AND mc.lor_prop_id = ms.lor_prop_id
     LEFT JOIN ref.display AS d
       ON d.lor_prop_id = ms.lor_prop_id
     LEFT JOIN scene_candidates AS sc
@@ -249,13 +280,14 @@ membership_results AS (
       ON sc.import_run_id = mr.import_run_id
      AND sc.preview_id = mr.preview_id
      AND sc.scene_id = mr.scene_id
-)
-SELECT *
-FROM (
+),
+results AS (
     SELECT * FROM scene_results
     UNION ALL
     SELECT * FROM membership_results
-) AS results
+)
+SELECT *
+FROM results
 ORDER BY
     is_blocking DESC,
     CASE classification
