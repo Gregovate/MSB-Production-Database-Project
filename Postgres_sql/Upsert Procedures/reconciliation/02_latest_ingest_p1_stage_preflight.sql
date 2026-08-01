@@ -1,4 +1,5 @@
 /*
+Filename: 02_latest_ingest_p1_stage_preflight.sql
 Schema: lor_snap / ref
 Object: Latest-ingest P1 stage/scene binding preflight
 Type: Read-only validation query
@@ -22,6 +23,7 @@ Rules:
     renumbering without a persistent stage-to-LOR binding table.
 
 Revision History:
+  2026-08-01  GAL / OpenAI  Add repository filename to document-control header.
   2026-08-01  GAL / OpenAI  Replace stage-key rollup with binding-level preflight.
   2026-08-01  GAL / OpenAI  Initial latest-ingest version.
 */
