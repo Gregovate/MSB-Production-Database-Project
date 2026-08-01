@@ -1,5 +1,6 @@
 /*
 Object: ref.lor_scene, ref.lor_scene_display
+Filename: 0012_create_lor_scene_production_tables.sql
 Type: Production current-state table DDL
 Owner: msbadmin
 

@@ -1,6 +1,7 @@
 /*
 Schema: lor_snap / ref
 Object: Latest-ingest reconciliation integrity checks
+Filename: 05_latest_ingest_integrity_checks.sql
 Type: Read-only preflight query
 Owner: msbadmin
 

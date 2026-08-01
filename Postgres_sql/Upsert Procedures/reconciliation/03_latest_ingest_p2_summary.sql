@@ -1,6 +1,7 @@
 /*
 Schema: ops / lor_snap
 Object: Latest-ingest P2 reconciliation summary
+FILENAME: 03_latest_ingest_p2_summary.sql
 Type: Read-only preflight query
 Owner: msbadmin
 

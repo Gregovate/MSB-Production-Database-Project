@@ -1,6 +1,7 @@
 /*
 Schema: ops / lor_snap / ref
 Object: Latest-ingest P2 action and review report
+Fileame: 04_latest_ingest_p2_action_report.sql
 Type: Read-only preflight query
 Owner: msbadmin
 
