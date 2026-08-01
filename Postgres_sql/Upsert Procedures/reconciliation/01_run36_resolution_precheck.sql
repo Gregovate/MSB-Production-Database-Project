@@ -13,6 +13,9 @@ Revision History:
   2026-07-31  GAL / OpenAI  Post-migration revision: work orders are joined
                             exclusively through display_id; removed all use of
                             the deleted display_lor_prop_id column.
+  2026-07-31  GAL / OpenAI  Validate classification evidence independently
+                            of is_blocking. Approved/commented decisions may
+                            already be nonblocking before they are applied.
 ============================================================================ */
 
 /* Confirm the immutable run and installed reconciliation revision. */
@@ -135,7 +138,7 @@ WITH decision_manifest (
 evidence AS (
     SELECT *
     FROM ops.v_lor_display_reconciliation
-    WHERE import_run_id = 36 AND is_blocking
+    WHERE import_run_id = 36
 )
 SELECT
     dm.decision_type,
