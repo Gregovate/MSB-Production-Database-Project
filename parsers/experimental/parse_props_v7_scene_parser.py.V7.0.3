@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-02  V7.0.4
+# Current Version : 2026-07-30  V7.0.3
 #
 # Author:
 #   Greg Liebig
@@ -47,15 +47,6 @@
 #
 # Changelog
 # ---------
-## 2026-08-02  V7.0.4  (GAL)
-# • Added RawPropID to props and subProps to preserve the exact LOR PropClass UUID.
-# • Retained existing preview-scoped PropID/SubPropID keys for parser and relational integrity.
-# • Populated RawPropID across every props/subProps materialization path, including
-#   DeviceType=None fan-out, grouped DMX, manual/automatic LOR grouping, multi-grid
-#   subprops, and duplicate-master demotion.
-# • Added a fail-fast raw PropClass identity audit; parser completion now requires
-#   every props and subProps row to contain a nonblank RawPropID.
-#
 ## 2026-07-30  V7.0.3  (GAL)
 # • Resolve positional scene XML rows to the display records materialized by the parser.
 # • Expand DeviceType=None inventory fan-out into scene membership for every physical row.
@@ -169,8 +160,6 @@
 #   - subProps.MasterPropId
 #   - subProps.SubPropID
 #
-# Preserve the exact XML UUID separately in props.RawPropID and subProps.RawPropID.
-#
 # Error Checking & Reports (context)
 # ----------------------------------
 # • PropID/SubPropID collisions:
@@ -213,8 +202,7 @@ import csv
 #   PreviewClass.id     → previews.id           (PreviewID; key)
 #   PreviewClass.Name   → previews.Name         (PreviewName; operator label)
 #   PreviewClass.BackgroundFile → previews.BackgroundFile  (QA/low)
-#   PropClass.id        → props.RawPropID / subProps.RawPropID (exact XML UUID)
-#   scoped PropClass.id → props.PropID / subProps.SubPropID     (parser key)
+#   PropClass.id        → props.PropID / subProps.SubPropID   (key)
 #   PropClass.Comment   → props.LORComment / subProps.LORComment (Display Name)
 #   PropClass.Name      → props.Name / subProps.Name            (Channel Name)
 #   ChannelGrid         → props.Network, props.UID, props.StartChannel, props.EndChannel, props.Unknown, props.Color
@@ -1071,7 +1059,6 @@ def setup_database():
     CREATE TABLE props (
         IntPropID INTEGER PRIMARY KEY AUTOINCREMENT,
         PropID TEXT UNIQUE,
-        RawPropID TEXT NOT NULL,
         Name TEXT,
         LORComment TEXT,
         DeviceType TEXT,
@@ -1118,7 +1105,6 @@ def setup_database():
         CREATE TABLE subProps (
             IntSubPropID INTEGER PRIMARY KEY AUTOINCREMENT,
             SubPropID TEXT UNIQUE,
-            RawPropID TEXT NOT NULL,
             Name TEXT,
             LORComment TEXT,
             DeviceType TEXT,
@@ -1840,35 +1826,6 @@ def reconcile_subprops_to_canonical_master(db_file: str):
     finally:
         conn.close()
 
-def audit_raw_prop_identity(db_file: str):
-    """Fail fast if any materialized prop/subprop lacks its source PropClass UUID."""
-    conn = sqlite3.connect(db_file)
-    try:
-        rows = conn.execute("""
-            SELECT 'props' AS Source, PropID AS ItemID
-            FROM props
-            WHERE RawPropID IS NULL OR TRIM(RawPropID) = ''
-            UNION ALL
-            SELECT 'subProps' AS Source, SubPropID AS ItemID
-            FROM subProps
-            WHERE RawPropID IS NULL OR TRIM(RawPropID) = ''
-            ORDER BY Source, ItemID
-        """).fetchall()
-
-        if rows:
-            details = "\n".join(
-                f"  - Source={source} ItemID={item_id}"
-                for source, item_id in rows
-            )
-            raise RuntimeError(
-                f"Raw PropClass identity audit failed: {len(rows)} row(s) missing RawPropID.\n"
-                f"{details}"
-            )
-
-        print("[OK] Raw PropClass identity audit: 0 missing RawPropID values.")
-    finally:
-        conn.close()
-
 def audit_scene_membership_integrity(db_file: str):
     """
     Fail fast if a scene membership does not resolve to props or subProps.
@@ -2073,17 +2030,17 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
             try:
                 cur.execute("""
                     INSERT INTO props (
-                        PropID, RawPropID, Name, LORComment, DeviceType,
+                        PropID, Name, LORComment, DeviceType,
                         BulbShape, DimmingCurveName, MaxChannels,
                         CustomBulbColor, IndividualChannels, LegacySequenceMethod,
                         Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation,
                         StringType, TraditionalColors, TraditionalType, EffectBulbSize, Tag,
                         Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8,
                         Lights, PreviewId, MasterPropId
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    inst_id, m["raw_id"], m["name"], inst_comment, "None",
+                    inst_id, m["name"], inst_comment, "None",
                     m["bulb_shape"], m["dimming_curve_name"], m["max_ch"],
                     m["custom_bulb_color"], m["individual_ch"], m["legacy_method"],
                     m["opacity"], m["master_dimmable"], m["preview_bulb_size"], m["separate_ids"], m["start_location"],
@@ -2133,13 +2090,13 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
             try:
                 cur.execute("""
                     INSERT INTO subProps (
-                        SubPropID, RawPropID, MasterPropId,
+                        SubPropID, MasterPropId,
                         Name, LORComment, DeviceType,
                         Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8,
                         PreviewId
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    sub_scoped, r["raw_id"], master_scoped,
+                    sub_scoped, master_scoped,
                     r["name"], dn, "None",
                     r["parm1"], r["parm2"], r["parm3"], r["parm4"],
                     r["parm5"], r["parm6"], r["parm7"], r["parm8"],
@@ -2282,15 +2239,15 @@ def process_dmx_props(preview_id, root):
         # GAL 25-10-22: use collision-aware insert (no silent overwrite)
         insert_sql = """
             INSERT INTO props (
-                PropID, RawPropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName,
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName,
                 MaxChannels, CustomBulbColor, IndividualChannels, LegacySequenceMethod,
                 Opacity, MasterDimmable, PreviewBulbSize, SeparateIds, StartLocation,
                 StringType, TraditionalColors, TraditionalType, EffectBulbSize, Tag,
                 Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            master["PropID"], master["RawID"], master["Name"], master["LORComment"], "DMX",
+            master["PropID"], master["Name"], master["LORComment"], "DMX",
             master["BulbShape"], master["DimmingCurveName"], master["MaxChannels"],
             master["CustomBulbColor"], master["IndividualChannels"], master["LegacySequenceMethod"],
             master["Opacity"], master["MasterDimmable"], master["PreviewBulbSize"], master["SeparateIds"],
@@ -2419,15 +2376,15 @@ def process_lor_props(preview_id, root):
             # GAL 25-10-22: collision-aware insert (no silent overwrite)
             insert_sql = """
                 INSERT INTO props (
-                    PropID, RawPropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                    PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                     CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                     PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                     Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             params = (
-                prop_id_scoped, raw_id, name, prop.get("Comment", ""), "LOR",
+                prop_id_scoped, name, prop.get("Comment", ""), "LOR",
                 prop.get("BulbShape"), prop.get("DimmingCurveName"), prop.get("MaxChannels"),
                 prop.get("CustomBulbColor"), prop.get("IndividualChannels"), prop.get("LegacySequenceMethod"),
                 prop.get("Opacity"), prop.get("MasterDimmable"), prop.get("PreviewBulbSize"),
@@ -2497,15 +2454,15 @@ def process_lor_props(preview_id, root):
         # GAL 25-10-22: collision-aware insert (no silent overwrite)
         insert_sql = """
             INSERT INTO subProps (
-                SubPropID, RawPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                 EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                 LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                 MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            sub_id_scoped, sp.get("id") or "", sp.get("Name",""), sp.get("Comment",""), "LOR", sp.get("BulbShape"),
+            sub_id_scoped, sp.get("Name",""), sp.get("Comment",""), "LOR", sp.get("BulbShape"),
             g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
             sp.get("CustomBulbColor"), sp.get("DimmingCurveName"), sp.get("IndividualChannels"),
             sp.get("LegacySequenceMethod"), sp.get("MaxChannels"), sp.get("Opacity"),
@@ -2592,15 +2549,15 @@ def process_lor_props(preview_id, root):
         # GAL 25-10-22: collision-aware insert (no silent overwrite)
         insert_sql = """
             INSERT INTO props (
-                PropID, RawPropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                 CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                 PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                 Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            new_master_id, new_master.get("id") or "", new_master.get("Name",""), new_comment, "LOR",
+            new_master_id, new_master.get("Name",""), new_comment, "LOR",
             new_master.get("BulbShape"), new_master.get("DimmingCurveName"), new_master.get("MaxChannels"),
             new_master.get("CustomBulbColor"), new_master.get("IndividualChannels"),
             new_master.get("LegacySequenceMethod"), new_master.get("Opacity"), new_master.get("MasterDimmable"),
@@ -2642,15 +2599,15 @@ def process_lor_props(preview_id, root):
             # GAL 25-10-22: collision-aware insert (no silent overwrite)
             insert_sql = """
                 INSERT INTO subProps (
-                    SubPropID, RawPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                     EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                     LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                     MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             params = (
-                sub_id, node.get("id") or "", node.get("Name",""), new_comment, "LOR", node.get("BulbShape"),
+                sub_id, node.get("Name",""), new_comment, "LOR", node.get("BulbShape"),
                 g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                 node.get("CustomBulbColor"), node.get("DimmingCurveName"), node.get("IndividualChannels"),
                 node.get("LegacySequenceMethod"), node.get("MaxChannels"), node.get("Opacity"), node.get("MasterDimmable"),
@@ -2794,15 +2751,15 @@ def process_lor_props(preview_id, root):
         # GAL 25-10-22: collision-aware insert (no silent overwrite)
         insert_sql = """
             INSERT INTO props (
-                PropID, RawPropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                 CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                 PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                 Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
-            master_id, master["PropID_raw"], master["Name"], display_name, master["DeviceType"], master["BulbShape"],
+            master_id, master["Name"], display_name, master["DeviceType"], master["BulbShape"],
             master["DimmingCurveName"], master["MaxChannels"], master["CustomBulbColor"],
             master["IndividualChannels"], master["LegacySequenceMethod"], master["Opacity"],
             master["MasterDimmable"], master["PreviewBulbSize"], master["SeparateIds"],
@@ -2842,15 +2799,15 @@ def process_lor_props(preview_id, root):
             # GAL 25-10-22: collision-aware insert (no silent overwrite)
             insert_sql = """
                 INSERT INTO subProps (
-                    SubPropID, RawPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                    SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                     EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                     LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                     MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                     EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             params = (
-                sub_id, rec["PropID_raw"], rec["Name"], rec["LORComment"], rec["DeviceType"], rec["BulbShape"],
+                sub_id, rec["Name"], rec["LORComment"], rec["DeviceType"], rec["BulbShape"],
                 g["Network"], g["UID"], g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                 rec["CustomBulbColor"], rec["DimmingCurveName"], rec["IndividualChannels"], rec["LegacySequenceMethod"],
                 rec["MaxChannels"], rec["Opacity"], rec["MasterDimmable"], rec["PreviewBulbSize"], None,
@@ -3100,7 +3057,7 @@ def process_lor_multiple_channel_grids(preview_id, root):
         }
 
         props_row = (
-            master_id, master_raw_id, master["Name"], comment, "LOR", master["BulbShape"], master["DimmingCurveName"],
+            master_id, master["Name"], comment, "LOR", master["BulbShape"], master["DimmingCurveName"],
             master["MaxChannels"], master["CustomBulbColor"], master["IndividualChannels"],
             master["LegacySequenceMethod"], master["Opacity"], master["MasterDimmable"], master["PreviewBulbSize"],
             master["SeparateIds"], master["StartLocation"], master["StringType"], master["TraditionalColors"],
@@ -3117,12 +3074,12 @@ def process_lor_multiple_channel_grids(preview_id, root):
         # GAL 25-10-22: collision-aware insert (no silent overwrite)
         insert_sql = """
             INSERT INTO props (
-                PropID, RawPropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
+                PropID, Name, LORComment, DeviceType, BulbShape, DimmingCurveName, MaxChannels,
                 CustomBulbColor, IndividualChannels, LegacySequenceMethod, Opacity, MasterDimmable,
                 PreviewBulbSize, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                 EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights,
                 Network, UID, StartChannel, EndChannel, Unknown, Color, PreviewId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         # props_row already matches the column order above
         params = props_row
@@ -3130,8 +3087,8 @@ def process_lor_multiple_channel_grids(preview_id, root):
         # Build a minimal context for clear collision messages
         name_for_ctx = ""
         try:
-            if isinstance(props_row, (list, tuple)) and len(props_row) > 2:
-                name_for_ctx = props_row[2] or ""
+            if isinstance(props_row, (list, tuple)) and len(props_row) > 1:
+                name_for_ctx = props_row[1] or ""
         except Exception:
             pass
         incoming_ctx = {
@@ -3175,15 +3132,15 @@ def process_lor_multiple_channel_grids(preview_id, root):
 
                 insert_sql = """
                     INSERT INTO subProps (
-                        SubPropID, RawPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
+                        SubPropID, Name, LORComment, DeviceType, BulbShape, Network, UID, StartChannel,
                         EndChannel, Unknown, Color, CustomBulbColor, DimmingCurveName, IndividualChannels,
                         LegacySequenceMethod, MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
                         MasterPropId, SeparateIds, StartLocation, StringType, TraditionalColors, TraditionalType,
                         EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 params = (
-                    sub_id, d["raw_id"], sub_name, comment, "LOR", d["BulbShape"],
+                    sub_id, sub_name, comment, "LOR", d["BulbShape"],
                     g["Network"], uid, g["StartChannel"], g["EndChannel"], g["Unknown"], g["Color"],
                     d["CustomBulbColor"], d["DimmingCurveName"], d["IndividualChannels"], d["LegacySequenceMethod"],
                     d["MaxChannels"], d["Opacity"], d["MasterDimmable"], d["PreviewBulbSize"], None,  # RgbOrder=NULL
@@ -3351,7 +3308,7 @@ def collapse_duplicate_masters(db_file: str):
 
         -- Demote extra PROPs -> subProps under the canonical master
         INSERT OR REPLACE INTO subProps (
-            SubPropID, RawPropID, Name, LORComment, DeviceType, BulbShape,
+            SubPropID, Name, LORComment, DeviceType, BulbShape,
             Network, UID, StartChannel, EndChannel, Unknown, Color,
             CustomBulbColor, DimmingCurveName, IndividualChannels, LegacySequenceMethod,
             MaxChannels, Opacity, MasterDimmable, PreviewBulbSize, RgbOrder,
@@ -3359,7 +3316,7 @@ def collapse_duplicate_masters(db_file: str):
             EffectBulbSize, Tag, Parm1, Parm2, Parm3, Parm4, Parm5, Parm6, Parm7, Parm8, Lights, PreviewId
         )
         SELECT
-            p.PropID, p.RawPropID, p.Name, p.LORComment, p.DeviceType, p.BulbShape,
+            p.PropID, p.Name, p.LORComment, p.DeviceType, p.BulbShape,
             p.Network, p.UID, p.StartChannel, p.EndChannel, p.Unknown, p.Color,
             p.CustomBulbColor, p.DimmingCurveName, p.IndividualChannels, p.LegacySequenceMethod,
             p.MaxChannels, p.Opacity, p.MasterDimmable, p.PreviewBulbSize, NULL,
@@ -3660,9 +3617,6 @@ def main():
 
     # Reconciler (canon master snap)
     reconcile_subprops_to_canonical_master(DB_FILE)
-
-    # Every materialized row must preserve the exact source PropClass UUID.
-    audit_raw_prop_identity(DB_FILE)
 
     # A scene membership must resolve to a parsed prop/subprop before reports
     # or downstream ingest are allowed to use this database.
