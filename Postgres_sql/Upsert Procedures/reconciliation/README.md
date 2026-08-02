@@ -23,21 +23,41 @@ Run these files individually in numeric order. Each file returns one exportable 
 
 4. `04_latest_ingest_p2_action_report.sql`
    - Returns only display candidates requiring a production action, operator decision, source correction, or defer decision.
-   - Excludes exact matches, nonphysical rows, and expected preview relocation rows from the detailed action list.
+   - Excludes exact matches and nonphysical rows from the detailed action list.
 
 5. `05_latest_ingest_integrity_checks.sql`
    - Checks duplicate production display names.
    - Checks duplicate production LOR UUID links.
+   - Checks `raw_prop_id` completeness in props, subprops, and scene memberships.
+   - Verifies each scene membership's scoped row and `raw_prop_id` agree.
    - Reports SPARE rows whose required LOR Comment is missing or invalid.
+
+6. `06_latest_ingest_scene_preflight.sql`
+   - Resolves current scene identity and stage evidence without production writes.
+
+7. `07_latest_ingest_scene_display_preflight.sql`
+   - Resolves scene membership to permanent `ref.display.display_id` through
+     unscoped `raw_prop_id` while retaining scoped `prop_id` as source evidence.
+
+8. `08_latest_ingest_p2_display_identity_gate.sql`
+   - Summarizes current display-identity classifications for development validation.
+
+9. `09_current_p2_projected_write_validation.sql`
+   - Projects permitted P2 changes without executing them.
+   - Rechecks the exact captured source row and uses `raw_prop_id` for the
+     proposed `ref.display.lor_prop_id` association.
 
 ## Supporting Files
 
-- `00_create_lor_display_reconciliation_preflight.sql`
-  - Current prototype object-creation SQL for the display reconciliation views and summary function.
-  - Must be reviewed and revised before it becomes an approved production definition.
+- `0011_create_lor_display_reconciliation_preflight_v7.sql`
+  - Current read-only display reconciliation views and summary function.
 
-- `02_create_lor_scene_production_tables.sql`
+- `0012_create_lor_scene_production_tables.sql`
   - Proposed scene-related production objects under review.
+
+- `0013_expose_current_raw_prop_identity.sql`
+  - Adds `raw_prop_id` to the current props and subprops view interfaces.
+  - Replaces views only and performs no snapshot or production-data writes.
 
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.

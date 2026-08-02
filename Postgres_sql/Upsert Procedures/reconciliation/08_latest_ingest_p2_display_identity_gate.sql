@@ -43,8 +43,9 @@ Production row preservation contract:
 
 Gate behavior:
   - Exact matches require no operator action.
-  - SPARE/PHANTOM and expected preview relocations pass without ref.display
-    writes.
+  - SPARE/PHANTOM rows pass without ref.display writes.
+  - Preview movement does not alter LOR identity because reconciliation uses
+    unscoped raw_prop_id rather than preview-scoped prop_id.
   - Identity changes and lifecycle discrepancies require operator review.
   - Duplicate or structurally conflicting evidence is blocking and normally
     requires LOR or PostgreSQL correction before a new ingest or re-evaluation.
@@ -62,6 +63,8 @@ Result:
   summary but omitted from detail.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Use raw_prop_id as preview-independent LOR identity
+                           and remove the obsolete preview-relocation class.
   2026-08-01  GAL / OpenAI  Replaced the procedure-definition audit with the
                            required two-way production identity preflight gate.
   2026-08-01  GAL / OpenAI  Documented the shared-field ownership boundary and
@@ -84,8 +87,7 @@ classified AS (
         CASE
             WHEN r.classification_code IN (
                 'EXACT_MATCH',
-                'EXCLUDED_NONPHYSICAL',
-                'PREVIEW_RELOCATED_SAME_DISPLAY'
+                'EXCLUDED_NONPHYSICAL'
             ) THEN 'PASS'
             WHEN r.classification_code IN (
                 'NAME_CHANGED_SAME_UUID',
@@ -108,8 +110,6 @@ summary AS (
             AS exact_match_count,
         count(*) FILTER (WHERE c.classification_code = 'EXCLUDED_NONPHYSICAL')::bigint
             AS excluded_nonphysical_count,
-        count(*) FILTER (WHERE c.classification_code = 'PREVIEW_RELOCATED_SAME_DISPLAY')::bigint
-            AS preview_relocated_count,
         count(*) FILTER (WHERE c.gate_class = 'REVIEW_REQUIRED')::bigint
             AS review_required_count,
         count(*) FILTER (WHERE c.gate_class = 'BLOCKED')::bigint
@@ -148,11 +148,10 @@ output_rows AS (
         NULL::text AS location_summary,
         NULL::text[] AS allowed_resolution_paths,
         format(
-            'total=%s; exact=%s; excluded_nonphysical=%s; preview_relocated=%s; review_required=%s; blocked=%s',
+            'total=%s; exact=%s; excluded_nonphysical=%s; review_required=%s; blocked=%s',
             s.total_candidate_count,
             s.exact_match_count,
             s.excluded_nonphysical_count,
-            s.preview_relocated_count,
             s.review_required_count,
             s.blocked_count
         ) AS operator_message

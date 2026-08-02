@@ -16,6 +16,8 @@ Source contract:
   supplied by the installed reconciliation view for that same import_run_id.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Remove obsolete preview-relocation identity class;
+                           raw_prop_id is independent of preview scope.
   2026-08-01  GAL / OpenAI  Use lor_snap.v_current_run as the shared current-run source.
   2026-08-01  GAL / OpenAI  Initial latest-ingest version.
 */
@@ -25,10 +27,9 @@ WITH classification_counts AS (
         v.import_run_id,
         count(*) FILTER (WHERE v.classification_code = 'EXACT_MATCH') AS exact_match_count,
         count(*) FILTER (WHERE v.classification_code = 'EXCLUDED_NONPHYSICAL') AS excluded_nonphysical_count,
-        count(*) FILTER (WHERE v.classification_code = 'PREVIEW_RELOCATED_SAME_DISPLAY') AS preview_relocated_count,
         count(*) FILTER (
             WHERE v.classification_code NOT IN (
-                'EXACT_MATCH', 'EXCLUDED_NONPHYSICAL', 'PREVIEW_RELOCATED_SAME_DISPLAY'
+                'EXACT_MATCH', 'EXCLUDED_NONPHYSICAL'
             )
         ) AS action_or_review_count,
         count(*) FILTER (WHERE v.is_blocking) AS blocking_count,
@@ -43,7 +44,6 @@ SELECT
     cc.total_count,
     cc.exact_match_count,
     cc.excluded_nonphysical_count,
-    cc.preview_relocated_count,
     cc.action_or_review_count,
     cc.blocking_count,
     CASE

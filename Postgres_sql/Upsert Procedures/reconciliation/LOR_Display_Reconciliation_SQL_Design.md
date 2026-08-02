@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Corrected the LOR identity mapping: preview-scoped `prop_id` identifies the exact captured occurrence, while unscoped `raw_prop_id` is the LOR association stored in `ref.display.lor_prop_id` and remains independent of preview movement. |
 | 2026-08-02 | GAL / OpenAI | Added the mandatory P2 defense-in-depth check against raw `lor_snap.props.lor_comment`: null, empty, and whitespace-only comments are never valid display names and must be rejected before every `ref.display` insert or update, even if parser or reconciliation filtering fails upstream. Automatic SPARE, PHANTOM, and blank-comment exclusions remain out of the operator report unless production already violates the rule. |
 | 2026-08-02 | GAL / OpenAI | Defined the complete reconciliation engine required by the approved operator procedure and promotion architecture: one-interface start, automatic latest-snapshot capture, P1/P2/P3/P4 boundaries, Finish and Cancel behavior, SPARE and PHANTOM exclusion, exact `ref.display` write authority, read-only 01-09 scripts, completed/cancelled reporting, and controlled snapshot retention management. |
 | 2026-08-01 | GAL / OpenAI | Aligned the reconciliation design with the end-to-end production workflow and promotion-pipeline design: persistent reconciliation execution context, single evaluation of the captured ingest, operator pause/resume, existing `ref.lor_scene` and `ref.lor_scene_display` production objects, committed-result reporting, and timestamped HTML publication. |
@@ -389,7 +390,7 @@ For an existing `ref.display` row, ordinary approved LOR promotion may modify on
 
 | Source evidence | `ref.display` target |
 |---|---|
-| `lor_snap.props.prop_id` / approved current LOR association | `lor_prop_id` |
+| `lor_snap.props.raw_prop_id` / approved current LOR association | `lor_prop_id` |
 | `btrim(lor_snap.props.lor_comment)` | `display_name` |
 | approved effective stage resolved from preview/scene evidence | `stage_id` |
 | `lor_snap.props.string_type` | `string_type` |
@@ -402,6 +403,13 @@ NULLIF(btrim(lor_snap.props.lor_comment), '') IS NOT NULL
 ```
 
 This is a final database write guard, not a replacement for parser or reconciliation filtering. A candidate that fails this assertion is rejected even if its persisted classification incorrectly marked it as physical.
+
+`lor_snap.props.prop_id` is the preview-scoped snapshot occurrence key used to
+re-read that exact captured row. It is not written to `ref.display.lor_prop_id`.
+The unscoped `lor_snap.props.raw_prop_id` is the LOR identity evidence stored as
+the current `ref.display.lor_prop_id` association. Moving a prop between
+previews must not change its LOR identity merely because its scoped `prop_id`
+changes.
 
 P2 must never derive `display_name` from `props.name` or another fallback column.
 

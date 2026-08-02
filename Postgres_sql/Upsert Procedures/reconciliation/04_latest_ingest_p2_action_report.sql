@@ -12,7 +12,6 @@ Purpose:
 Excluded from detail:
   - EXACT_MATCH
   - EXCLUDED_NONPHYSICAL
-  - PREVIEW_RELOCATED_SAME_DISPLAY
 
 Safety:
   SELECT only. Does not call P2 and does not modify any object.
@@ -22,6 +21,8 @@ Source contract:
   supplied by the installed reconciliation view for that same import_run_id.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Remove obsolete preview-relocation identity class;
+                           raw_prop_id is independent of preview scope.
   2026-08-01  GAL / OpenAI  Correct Filename header and use lor_snap.v_current_run.
   2026-08-01  GAL / OpenAI  Initial latest-ingest version.
 */
@@ -52,7 +53,7 @@ SELECT
 FROM ops.v_lor_display_reconciliation AS v
 JOIN lor_snap.v_current_run AS cr ON cr.import_run_id = v.import_run_id
 WHERE v.classification_code NOT IN (
-    'EXACT_MATCH', 'EXCLUDED_NONPHYSICAL', 'PREVIEW_RELOCATED_SAME_DISPLAY'
+    'EXACT_MATCH', 'EXCLUDED_NONPHYSICAL'
 )
 ORDER BY
     v.is_blocking DESC,

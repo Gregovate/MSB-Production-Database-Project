@@ -26,8 +26,8 @@ Revision history:
                            scene evidence by display name and LOR UUID.
   2026-07-31  GAL / OpenAI  Add an installation fingerprint so DBeaver
                            confirms the scene-aware definition was installed.
-  2026-07-31  GAL / OpenAI  Classify a matching prop UUID under a different
-                           preview UUID as PREVIEW_RELOCATED_SAME_DISPLAY.
+  2026-08-02  GAL / OpenAI  Use unscoped raw_prop_id for LOR identity while
+                           retaining scoped prop_id only for snapshot joins.
   2026-07-31  GAL / OpenAI  Classify SPARE and PHANTOM rows before duplicate
                            identity checks so nonphysical props do not block.
   2026-07-31  GAL / OpenAI  Require a nonblank LOR comment for display
@@ -57,7 +57,7 @@ WITH background_rows AS (
         p.preview_id,
         btrim(pr.stage_id) AS preview_stage_id,
         pr.name AS preview_name,
-        p.prop_id AS lor_prop_id,
+        p.raw_prop_id AS lor_prop_id,
         p.name AS prop_name,
         p.lor_comment AS prop_comment,
         btrim(p.lor_comment) AS display_name,
@@ -87,7 +87,7 @@ scene_rows AS (
         slp.preview_id,
         btrim(coalesce(slp.scene_stage_id, sc.stage_id)) AS preview_stage_id,
         pr.name AS preview_name,
-        p.prop_id AS lor_prop_id,
+        slp.raw_prop_id AS lor_prop_id,
         p.name AS prop_name,
         p.lor_comment AS prop_comment,
         btrim(p.lor_comment) AS display_name,
@@ -106,6 +106,7 @@ scene_rows AS (
     JOIN lor_snap.props AS p
       ON p.import_run_id = slp.import_run_id
      AND p.prop_id = slp.prop_id
+     AND p.raw_prop_id = slp.raw_prop_id
     JOIN lor_snap.previews AS pr
       ON pr.import_run_id = slp.import_run_id
      AND pr.id = slp.preview_id
@@ -201,7 +202,7 @@ CREATE OR REPLACE VIEW lor_snap.v_display_lor_occurrence AS
 WITH preview_occurrence AS (
     SELECT
         p.import_run_id,
-        p.prop_id AS lor_prop_id,
+        p.raw_prop_id AS lor_prop_id,
         btrim(p.lor_comment) AS display_name,
         upper(btrim(p.lor_comment)) AS display_name_normalized,
         p.preview_id,
@@ -220,7 +221,7 @@ WITH preview_occurrence AS (
 scene_occurrence AS (
     SELECT
         slp.import_run_id::bigint AS import_run_id,
-        p.prop_id AS lor_prop_id,
+        slp.raw_prop_id AS lor_prop_id,
         btrim(p.lor_comment) AS display_name,
         upper(btrim(p.lor_comment)) AS display_name_normalized,
         slp.preview_id,
@@ -234,6 +235,7 @@ scene_occurrence AS (
     JOIN lor_snap.props AS p
       ON p.import_run_id = slp.import_run_id::bigint
      AND p.prop_id = slp.prop_id
+     AND p.raw_prop_id = slp.raw_prop_id
     JOIN lor_snap.previews AS pr
       ON pr.import_run_id = slp.import_run_id::bigint
      AND pr.id = slp.preview_id
@@ -383,11 +385,6 @@ candidate_rows AS (
                 THEN 'NONACTIVE_DISPLAY_PRESENT_IN_LOR'
             WHEN swm.uuid_display_id IS NULL
              AND swm.name_display_id IS NOT NULL
-             AND regexp_replace(swm.name_production_lor_prop_id, '^[^:]+:', '')
-                 = regexp_replace(swm.lor_prop_id, '^[^:]+:', '')
-                THEN 'PREVIEW_RELOCATED_SAME_DISPLAY'
-            WHEN swm.uuid_display_id IS NULL
-             AND swm.name_display_id IS NOT NULL
                 THEN 'UUID_CHANGED_SAME_NAME'
             WHEN swm.uuid_display_id IS NULL
              AND swm.name_display_id IS NULL
@@ -404,8 +401,7 @@ candidate_output AS (
         cr.*,
         cr.classification_code NOT IN (
             'EXACT_MATCH',
-            'EXCLUDED_NONPHYSICAL',
-            'PREVIEW_RELOCATED_SAME_DISPLAY'
+            'EXCLUDED_NONPHYSICAL'
         )
             AS is_blocking,
         CASE cr.classification_code
@@ -422,8 +418,6 @@ candidate_output AS (
                 format('LOR renamed production display_id %s from "%s" to "%s"; operator approval is required.', cr.display_id, cr.production_display_name, cr.lor_display_name)
             WHEN 'UUID_CHANGED_SAME_NAME' THEN
                 format('Display "%s" has a new LOR UUID; operator approval is required for display_id %s.', cr.lor_display_name, cr.display_id)
-            WHEN 'PREVIEW_RELOCATED_SAME_DISPLAY' THEN
-                format('Display "%s" retains the same prop UUID but moved to preview "%s"; this is an expected V7 preview relocation.', cr.lor_display_name, cr.preview_name)
             WHEN 'NEW_DISPLAY_CANDIDATE' THEN
                 format('LOR display "%s" is not present in ref.display; operator approval is required to add it.', cr.lor_display_name)
             WHEN 'EXCLUDED_NONPHYSICAL' THEN
@@ -439,7 +433,6 @@ candidate_output AS (
             WHEN 'ACTIVE_DISPLAY_MISSING_FROM_LOR' THEN
                 ARRAY['CORRECT_POSTGRES_STATUS', 'CORRECT_LOR_AND_REINGEST']::text[]
             WHEN 'NAME_CHANGED_SAME_UUID' THEN ARRAY['APPROVE_LOR_RENAME']::text[]
-            WHEN 'PREVIEW_RELOCATED_SAME_DISPLAY' THEN ARRAY['NONE']::text[]
             WHEN 'UUID_CHANGED_SAME_NAME' THEN ARRAY['APPROVE_LOR_UUID_CHANGE']::text[]
             WHEN 'NEW_DISPLAY_CANDIDATE' THEN ARRAY['APPROVE_NEW_LOR_DISPLAY']::text[]
             ELSE ARRAY['CORRECT_LOR_AND_REINGEST', 'DEFER']::text[]

@@ -30,6 +30,8 @@ Rules:
     valid ADD_SCENE candidate from the same current snapshot.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Resolve display identity through raw_prop_id while
+                           retaining scoped prop_id as occurrence evidence.
   2026-08-01  GAL / OpenAI  Replace temporary working tables with the established
                            lor_snap.v_current_* snapshot interface.
   2026-08-01  GAL / OpenAI  Reuse validated P2 display reconciliation mapping.
@@ -63,7 +65,8 @@ physical_membership AS MATERIALIZED (
         slp.import_run_id,
         slp.preview_id,
         slp.scene_id,
-        slp.prop_id AS source_lor_prop_id,
+        slp.prop_id AS source_prop_id,
+        slp.raw_prop_id AS source_lor_prop_id,
         nullif(to_jsonb(slp)->>'scene_prop_ordinal', '')::integer AS scene_prop_ordinal,
         to_jsonb(slp)->>'scene_role' AS scene_role,
         to_jsonb(slp)->>'source' AS membership_source,
@@ -72,7 +75,8 @@ physical_membership AS MATERIALIZED (
         dm.display_classification
     FROM lor_snap.v_current_scene_lor_props AS slp
     JOIN current_display_map AS dm
-      ON dm.source_lor_prop_id = slp.prop_id
+      ON dm.import_run_id = slp.import_run_id
+     AND dm.source_lor_prop_id = slp.raw_prop_id
 ),
 membership_counts AS (
     SELECT

@@ -12,7 +12,8 @@
 # - Removed unassigned display count from summary (no longer relevant)
 # - Added scene_lor_props ingestion for LOR 6.6.4 Software Update (2026-07-31)
 # - V0.2.0 requires props.RawPropID and subProps.RawPropID in SQLite and
-#   lor_snap.props.raw_prop_id and lor_snap.sub_props.raw_prop_id in Postgres.
+#   lor_snap.props.raw_prop_id, lor_snap.sub_props.raw_prop_id, and
+#   lor_snap.scene_lor_props.raw_prop_id in Postgres.
 # - V0.2.0 fails before creating an import_run when the raw UUID schema contract
 #   is missing, rather than silently inserting NULL into an unmapped column.
 # (GAL)
@@ -180,6 +181,12 @@ RAW_ID_SCHEMA_CONTRACT = {
         "pg_table": "sub_props",
         "pg_column": "raw_prop_id",
     },
+    "scene_lor_props": {
+        "sqlite_table": "scene_lor_props",
+        "sqlite_column": "RawPropID",
+        "pg_table": "scene_lor_props",
+        "pg_column": "raw_prop_id",
+    },
 }
 
 
@@ -223,10 +230,10 @@ def validate_raw_id_schema_contract(
 
 
 def validate_raw_id_source_values(sqlite_conn: sqlite3.Connection) -> None:
-    """Fail if any rebuilt SQLite prop/subprop row lacks RawPropID."""
+    """Fail if any rebuilt SQLite identity-bearing row lacks RawPropID."""
     failures: List[str] = []
 
-    for table in ("props", "subProps"):
+    for table in ("props", "subProps", "scene_lor_props"):
         missing = int(
             sqlite_conn.execute(
                 f"""
@@ -253,7 +260,7 @@ def validate_raw_id_target_values(pg_conn, import_run_id: int) -> None:
     """Fail if the inserted Postgres snapshot contains blank raw_prop_id values."""
     failures: List[str] = []
 
-    for table in ("props", "sub_props"):
+    for table in ("props", "sub_props", "scene_lor_props"):
         with pg_conn.cursor() as cur:
             cur.execute(
                 f"""

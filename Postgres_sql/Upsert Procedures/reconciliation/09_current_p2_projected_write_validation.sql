@@ -47,6 +47,8 @@ Result:
   A completely unchanged current snapshot returns zero rows.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Project ref.display.lor_prop_id from raw_prop_id;
+                           retain prop_id as the scoped source occurrence key.
   2026-08-02  GAL / OpenAI  Hardened blank-comment validation to inspect raw
                            lor_snap.props.lor_comment directly rather than rely
                            on the normalized reconciliation source view.
@@ -68,7 +70,8 @@ WITH current_run AS (
 raw_current_props AS (
     SELECT
         p.import_run_id,
-        p.prop_id AS lor_prop_id,
+        p.prop_id AS source_prop_id,
+        p.raw_prop_id AS lor_prop_id,
         p.lor_comment,
         p.string_type,
         p.color
@@ -223,7 +226,6 @@ physical_projection_base AS (
       ON st.stage_key = lower(btrim(r.preview_stage_id))
     WHERE r.classification_code IN (
         'EXACT_MATCH',
-        'PREVIEW_RELOCATED_SAME_DISPLAY',
         'NAME_CHANGED_SAME_UUID',
         'UUID_CHANGED_SAME_NAME',
         'NEW_DISPLAY_CANDIDATE'
