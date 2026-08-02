@@ -7,28 +7,30 @@
 | Status | DRAFT — production execution remains blocked pending reconciliation implementation and validation |
 | Owner / author | GAL |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-01 |
+| Current revision | 2026-08-02 |
 
 ## Purpose
 
-This procedure controls the complete process for moving authoritative Light-O-Rama (LOR) preview data into the MSB production PostgreSQL database.
+This procedure defines the complete operator workflow for moving authoritative Light-O-Rama (LOR) preview data into the MSB production PostgreSQL database.
 
 It is intended to prevent:
 
-- Stale or duplicate previews from entering an import.
-- Test or temporary previews from being treated as production data.
-- Display-name corrections from creating duplicate display records.
-- Changed LOR UUIDs from breaking an established display identity.
-- New physical displays from being omitted from `ref.display`.
-- Dismantled or discarded displays from remaining `ACTIVE`.
-- P1, P2, or P3 from running outside the controlled reconciliation workflow.
+- stale or duplicate previews from entering an import;
+- test or temporary previews from being treated as production data;
+- display-name corrections from creating duplicate display records;
+- changed LOR UUIDs from breaking an established display identity;
+- new physical displays from being omitted from `ref.display`;
+- dismantled or discarded displays from remaining `ACTIVE` without an explicit lifecycle decision;
+- P1, P2, or P3 from running outside the controlled reconciliation workflow;
+- a successful ingest from remaining unreconciled.
 
-The parser and snapshot ingest do **not** update production reference data by themselves. Reconciliation is a mandatory gate between snapshot ingest and P1/P2/P3.
+The parser and snapshot ingest do **not** update production reference data by themselves. Every successful latest ingest must enter reconciliation. Reconciliation is the mandatory gate between snapshot ingest and P1/P2/P3 production promotion.
 
 ## Revision History
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Defined the complete single-interface workflow: start import, run parser and protected ingest, automatically begin reconciliation, collect decisions, promote all passing candidates, block deferred or unresolved candidates, support finish or cancel, and generate a report in both cases. |
 | 2026-08-01 | GAL / OpenAI | Defined the finished single-workflow operator experience, automatic latest-ingest capture, persistent reconciliation state, operator pause/resume, finish reconciliation, post-write validation, and timestamped HTML report publication. |
 | 2026-07-31 | GAL / OpenAI | Revised the gate to promote independently safe records, quarantine only affected exceptions, and process stage/scene context before displays and scene assignments. |
 | 2026-07-31 | GAL / OpenAI | Linked the full P1/P2/P3 promotion design and established controlled orchestration as the required final production execution model. |
@@ -38,54 +40,57 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 The finished system is one controlled operator workflow, not a collection of unrelated scripts.
 
-The operator initiates the production import once. The workflow then performs:
+The operator uses one application action, provisionally named **Start LOR Production Import**. The final interface may be implemented as a Directus workflow button or another approved operator interface, but the behavior is the same.
 
 ```text
 Start LOR Production Import
     -> run the V7 scene-aware parser
     -> run the password-protected PostgreSQL snapshot ingest
-    -> automatically capture the latest completed ingest
+    -> automatically start reconciliation for the latest completed snapshot
     -> create the persistent reconciliation run
-    -> build the stage, display, scene, and scene-membership working sets once
-    -> run preflight and classifications
-    -> pause only when operator decisions are required
-    -> apply approved P1/P2/P3 changes
+    -> build the stage, display, scene, and scene-membership candidate sets once
+    -> run preflight checks and classifications
+    -> prompt the operator only for candidates requiring decisions
+    -> block deferred candidates and candidates without completed decisions
+    -> promote every passing and approved candidate
     -> validate actual committed production results
-    -> generate a timestamped HTML reconciliation report
-    -> publish the report to the internal web server
-    -> mark reconciliation complete
+    -> generate and publish the reconciliation report
+    -> complete
 ```
 
-If preflight requires no operator decisions, the workflow continues automatically through promotion, validation, report publication, and completion.
+If no operator decisions are required, the workflow continues automatically through promotion, validation, report publication, and completion.
 
-If decisions are required, the workflow pauses in operator review. The operator records approve, add, rename/relink, reassociate, lifecycle-status, source-correction, exclude, block, or defer decisions as applicable. The operator then invokes **Finish Reconciliation** to resume the same persistent reconciliation run.
+If decisions are required, the workflow pauses in operator review. The operator records the applicable decision for each candidate and then chooses one of two workflow actions:
 
-The workflow does not ask the operator to select or enter an `import_run_id`. The database captures the latest completed ingest once and uses that same captured run through preflight, decisions, P1, P2, P3, validation, and reporting.
+- **Finish Reconciliation** — promote every passing or approved candidate, leave deferred and unresolved candidates unchanged in production, validate the committed results, publish the report, and complete the reconciliation.
+- **Cancel Reconciliation** — apply no production changes, delete the entire latest snapshot and its uncommitted reconciliation working state, publish a cancellation report, and close the reconciliation as `CANCELLED`.
 
-A newer ingest created while reconciliation is paused does not replace the captured ingest. It becomes eligible for the next reconciliation workflow.
+The operator never selects or enters an `import_run_id`. The ingest and reconciliation workflow uses the latest completed snapshot created by that execution.
 
 ## Persistent Reconciliation Context
 
-The production workflow must persist its reconciliation state because operator review and report publication may span multiple database connections and application requests.
+The production workflow must persist its reconciliation state because operator review and report publication may span multiple application requests and database connections.
 
 The persistent context includes:
 
 - reconciliation-run identity;
-- captured `import_run_id`;
+- captured latest-snapshot `import_run_id`;
 - workflow status and timestamps;
 - stage candidates;
 - display candidates;
 - scene candidates;
 - scene-display membership candidates;
 - operator decisions and defer reasons;
-- blocked candidates;
+- blocked and unresolved candidates;
 - actual committed results;
 - validation results;
 - generated report path and publication timestamp.
 
-The candidate working sets are built once and reused throughout the workflow. P1, P2, P3, validation, and reporting do not independently rerun the expensive identity-resolution comparison.
+The candidate sets are built once and reused throughout the workflow. P1, P2, P3, validation, and reporting do not independently rerun the identity-resolution comparison or select a different ingest.
 
-Session-local temporary tables may be used during development but are not the finished production state. The persistent reconciliation rows remain available through completion and afterward as audit history unless a separate approved retention process archives them.
+Session-local temporary tables may be used during development or inside one atomic operation, but they are not the finished production workflow state.
+
+Completed reconciliation decisions, committed results, and report references remain as audit history. Snapshot retention is separate: retained snapshots are immutable while they exist, but older snapshots may be removed under the approved `lor_snap` retention process.
 
 ## Document Boundaries
 
@@ -99,7 +104,7 @@ The detailed stage, display, scene, classification, operator-decision, and repor
 
 `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 
-The three documents describe one workflow at different levels and must not define competing execution paths.
+The three documents describe one workflow at different levels and must not define competing execution paths. A design change crossing these boundaries requires all affected documents to be updated before implementation continues.
 
 ## Current Implementation Status
 
@@ -108,13 +113,15 @@ The three documents describe one workflow at different levels and must not defin
 | Master PC and preview-folder controls | Procedure defined; automated manifest validation not yet implemented |
 | `parse_props_v7_scene_parser.py` | Implemented and under V7 validation |
 | `postgres_run_ingest_v7.ps1` | Implemented and tested |
-| Latest-ingest preflight scripts | Implemented for development/testing; conversion to persistent candidate builders required |
+| Latest-ingest preflight scripts | Implemented for development/testing; not a production reconciliation interface |
 | Persistent reconciliation-run and candidate tables | Designed; not implemented |
+| Operator decision interface | Designed; not implemented |
+| Finish and cancel workflow actions | Designed; not implemented |
 | P1 | Legacy procedure exists; reconciliation-safe replacement not implemented |
 | P2 | Legacy procedure exists; reconciliation-safe replacement not implemented |
 | P3 | Scene and scene-membership promotion is designed but not implemented |
-| Controlled start/finish workflow | Required final production entry point; designed but not implemented |
-| Timestamped HTML report publication | Required; not implemented |
+| Controlled single-interface workflow | Required production entry point; designed but not implemented |
+| Timestamped HTML report publication | Required for completed and cancelled reconciliations; not implemented |
 
 Do not represent an under-development component as production-ready.
 
@@ -162,6 +169,7 @@ Before editing previews on a replacement computer:
 - Current `postgres_run_ingest_v7.ps1` and its associated PostgreSQL ingest SQL.
 - Access to the production PostgreSQL database.
 - A database operator identity for reconciliation audit records.
+- Access to the approved operator interface for starting, reviewing, finishing, or cancelling reconciliation.
 
 ## Status and Identity Rules
 
@@ -173,7 +181,7 @@ Before editing previews on a replacement computer:
 - No other production relational tables may depend on `lor_prop_id`.
 - A display rename or LOR UUID change must preserve `display_id`.
 
-This contract is enforced by reconciliation classification. Unresolved identity exceptions quarantine only the affected display and its dependent assignments when they can be isolated safely. They do not prevent unrelated valid records from being promoted.
+This contract is enforced by reconciliation classification. Unresolved identity exceptions block only the affected display and its dependent assignments when they can be isolated safely. They do not prevent unrelated valid records from being promoted.
 
 ### Display Status
 
@@ -187,16 +195,11 @@ Current rules:
 | 2 | `RETIRED` | Complete, identifiable display still physically exists but is not currently in use |
 | 3 | `RECYCLED` | Display identity no longer physically exists because it was dismantled, repurposed, or discarded |
 
-- New physical displays are created with status `ACTIVE`.
+- New physical displays are created with status `ACTIVE` only after an explicit approved new-display decision.
 - A status must be selected from `ref.display_status`; the interface must not manufacture status values.
 - Missing from one LOR import does not automatically change a display's status.
 - Status changes require an explicit operator decision and audit record.
 - No display record is deleted as part of reconciliation.
-
-Examples already established:
-
-- Discarded PVC Igloos: `RECYCLED`.
-- QV `Making`, `Spirits`, and `Bright`: `RECYCLED` because the lights were removed and their frames returned to reusable material inventory. The finished displays no longer exist.
 
 ### Permanent Production Identity
 
@@ -235,146 +238,160 @@ UUID evidence must be combined with the display name, previous imports, preview/
 
 The folder must contain:
 
-- Exactly one current background preview per expected stage.
-- Every current authoritative standalone stage preview, including the Parade Float preview.
-- Exactly one current Master Musical Preview.
-- No duplicate-stage previews.
-- No older revisions.
-- No test previews.
-- No temporary, recovery, experimental, or troubleshooting previews.
-- No unrelated previews.
+- exactly one current background preview per expected stage;
+- every current authoritative standalone stage preview, including the Parade Float preview;
+- exactly one current Master Musical Preview;
+- no duplicate-stage previews;
+- no older revisions;
+- no test previews;
+- no temporary, recovery, experimental, or troubleshooting previews;
+- no unrelated previews.
 
-> **Hard stop:** If there is any doubt about which preview is current, stop and resolve the authoritative source before parsing.
+> **Hard stop:** If there is any doubt about which preview is current, stop and resolve the authoritative source before starting the workflow.
 
 ### 2. Validate the Preview Set
 
-Create and review a preview manifest before running the parser. Until automated manifest validation exists, this review is manual.
+Create and review a preview manifest before starting the production import. Until automated manifest validation exists, this review is manual.
 
 Validate:
 
-- Every expected background and standalone stage preview is present.
-- No stage-bearing preview is duplicated unintentionally.
-- The Master Musical Preview is present exactly once.
-- Preview names and stage IDs are correct.
-- No filename or preview metadata indicates an old or test copy.
-- Comment fields come from the intended current preview.
-- Preview UUID or revision changes are understood.
-- The preview set was exported from the designated Master PC.
+- every expected background and standalone stage preview is present;
+- no stage-bearing preview is duplicated unintentionally;
+- the Master Musical Preview is present exactly once;
+- preview names and stage IDs are correct;
+- no filename or preview metadata indicates an old or test copy;
+- comment fields come from the intended current preview;
+- preview UUID or revision changes are understood;
+- the preview set was exported from the designated Master PC.
 
 > **Hard stop:** Missing, duplicate, stale, test, or questionable previews must be resolved before continuing.
 
-### 3. Run the V7 Scene-Aware Parser
+### 3. Start LOR Production Import
 
-Run:
+From the approved operator interface, select **Start LOR Production Import**.
 
-```powershell
-python .\parsers\experimental\parse_props_v7_scene_parser.py
-```
+The interface starts one controlled workflow. The operator does not separately choose a snapshot or reconciliation run.
 
-When prompted:
+The workflow must:
 
-1. Select the intended V7 scene-aware SQLite output database.
-2. Select the validated master export folder.
-3. Confirm the parser reports the expected number of previews.
-4. Review all errors, collisions, and warnings.
-5. Preserve the console output with the import work record.
+1. run the V7 scene-aware parser against the validated master export folder;
+2. stop if parser errors, collisions, missing previews, duplicate preview identities, or other blocking conditions are detected;
+3. run the password-protected PostgreSQL snapshot ingest using the successful parser output;
+4. stop if the ingest fails or produces implausible counts;
+5. create a new latest snapshot in `lor_snap`;
+6. automatically start reconciliation for that latest snapshot.
 
-> **Hard stop:** Do not ingest parser output with unexplained errors, missing previews, duplicate preview identities, or unresolved collisions affecting production identity.
+Password handling must remain protected. The operator may be prompted for the PostgreSQL password by the secured runner, but the password is never stored in the reconciliation records or report.
 
-### 4. Run the Password-Protected PostgreSQL Snapshot Ingest
+### 4. Automatically Start Reconciliation
 
-Run:
+Immediately after a successful ingest, the workflow must:
 
-```powershell
-.\postgres_run_ingest_v7.ps1
-```
-
-Confirm:
-
-- A new `lor_snap.import_run` record is created.
-- The run has a unique `import_run_id`.
-- Previews, scenes, props, subprops, DMX channels, and scene membership are ingested.
-- The runner reports successful completion.
-- Row counts are plausible compared with parser output and the previous known-good run.
-- The run summary is saved with the work record.
-
-The snapshot ingest is immutable historical evidence. Corrections to production reference data occur through reconciliation, not by rewriting the imported snapshot.
-
-### 5. Start Reconciliation and Capture the Ingest
-
-Immediately after successful ingest, the controlled workflow starts reconciliation.
-
-The database must:
-
-1. Create one persistent reconciliation-run row.
-2. Automatically capture the latest completed ingest.
-3. Persist that `import_run_id` on the reconciliation run.
-4. Build the stage, display, scene, and scene-membership candidate working sets once.
-5. Run structural checks and classifications.
-6. Continue automatically or pause for operator review.
+1. create one persistent reconciliation-run row;
+2. capture the latest completed snapshot created by the workflow;
+3. persist its `import_run_id` on the reconciliation run;
+4. build the stage, display, scene, and scene-membership candidate sets once;
+5. run structural checks, classifications, and production comparisons;
+6. separate candidates into passing, decision-required, blocked, and deferred states;
+7. continue automatically when no operator decisions are required;
+8. pause and display the decision interface when operator decisions are required.
 
 The operator does not enter an ingest number.
 
-### 6. Review Only the Candidates Requiring Decisions
+### 5. Review Candidates Requiring Decisions
 
-Every candidate is classified independently. Exact matches require no operator action and are not listed as production changes in the final report.
+Exact matches and other candidates requiring no operator action are not shown as decisions and are not listed as production changes in the final report.
 
 Typical operator decisions include:
 
-| Condition | Operator decision | Production identity result |
+| Condition | Operator decision | Production result |
 |---|---|---|
-| Changed LOR name, same established UUID | Approve rename | Preserve `display_id`; audit old and new name |
-| Same exact display name, changed LOR UUID | Approve UUID relink | Preserve `display_id` and name |
+| Changed LOR name, same established UUID | Approve rename | Preserve `display_id`; update approved LOR-derived fields |
+| Same exact display name, changed LOR UUID | Approve UUID relink | Preserve `display_id` and name; update `lor_prop_id` internally |
 | Name and UUID both changed | Reassociate after investigation | Preserve selected existing `display_id` |
 | Confirmed new physical display | Add new display | Create new `display_id` as `ACTIVE` |
 | Active production display missing from LOR | Retire, recycle, restore-to-LOR, or defer | Preserve existing `display_id` |
 | Non-active display appears in LOR | Correct status, correct LOR, or defer | No automatic reactivation |
 | Nonphysical LOR helper | Exclude | Do not create `ref.display` |
-| LOR source data is wrong | Require source correction | Production remains unchanged; new ingest required |
-| Information is insufficient | Defer with reason | Production remains unchanged |
+| LOR source data is wrong | Cancel reconciliation | Delete latest snapshot; correct source and run again |
+| Information is insufficient | Defer with reason | Leave production unchanged for the affected candidate |
 
-Blocked or deferred items do not prevent unrelated approved items from advancing.
+For each decision-required candidate, the operator may:
 
-### 7. Finish Reconciliation
+- approve the applicable production action;
+- defer the candidate and record a reason;
+- leave the decision unresolved temporarily while reviewing other candidates;
+- cancel the entire reconciliation.
 
-After all required operator decisions are recorded, invoke **Finish Reconciliation**.
+A deferred candidate or a candidate without a completed decision is blocked from production promotion. It does not block unrelated passing or approved candidates.
 
-The finish phase must:
+### 6. Finish Reconciliation
 
-1. Reopen the same persistent reconciliation run.
-2. Verify the captured ingest has not changed.
-3. Verify every required decision is resolved or explicitly deferred.
-4. Apply approved P1 stage changes.
-5. Apply approved scene definitions needed for current stage context.
-6. Apply approved P2 display identity, metadata, and lifecycle changes.
-7. Apply approved P3 scene-display membership changes.
-8. Leave blocked and deferred production rows unchanged.
-9. Persist actual committed result messages.
+When the operator selects **Finish Reconciliation**, the workflow must:
+
+1. reopen the same persistent reconciliation run;
+2. verify that the captured latest snapshot and persisted candidate sets remain valid;
+3. treat every deferred candidate and every candidate without a completed decision as blocked from production promotion;
+4. apply all passing candidates that require no operator decision;
+5. apply all completed approved decisions;
+6. apply approved P1 stage changes;
+7. apply approved scene definitions needed for current stage context;
+8. apply approved P2 display identity, metadata, and lifecycle changes;
+9. apply approved P3 scene-display membership changes;
+10. leave blocked, deferred, and unresolved production rows unchanged;
+11. persist actual committed result messages;
+12. perform post-write validation;
+13. generate and publish the completed reconciliation report;
+14. store the report path or URL and publication timestamp;
+15. mark the reconciliation complete.
 
 Normal operators do not run P1, P2, or P3 directly.
 
+### 7. Cancel Reconciliation
+
+When the operator selects **Cancel Reconciliation**, the workflow must:
+
+1. stop the reconciliation before any production promotion occurs;
+2. apply no production changes;
+3. mark the reconciliation run `CANCELLED`;
+4. record the operator, cancellation timestamp, and cancellation reason;
+5. delete the entire latest snapshot used by the cancelled reconciliation from `lor_snap`;
+6. delete or invalidate the uncommitted candidate and decision working state tied to that snapshot;
+7. generate and publish a cancellation report;
+8. store the report path or URL and publication timestamp;
+9. close the workflow.
+
+After cancellation, the source problem is corrected and the operator starts a new LOR Production Import. The new ingest becomes the latest snapshot and begins a new reconciliation.
+
+Cancellation is an all-or-nothing workflow outcome. A cancelled reconciliation never performs partial production promotion.
+
 ### 8. Perform Post-Write Validation
 
-Confirm:
+For a finished reconciliation, confirm:
 
-- Every phase used the same captured ingest and reconciliation run.
-- Renamed or relinked displays retained their permanent `display_id`.
-- Stage changes retained permanent `stage_id` where required.
-- New displays were created only from approved new-display candidates.
-- Status changes were explicitly approved and use `ref.display_status`.
-- Nonphysical and SPARE rows did not create `ref.display` rows.
-- Scene identity uses `(preview_uuid, scene_uuid)`.
-- Scene membership uses permanent `display_id`.
-- Blocked and deferred rows remained unchanged.
-- Actual committed counts match the persisted result records.
+- every phase used the same captured latest snapshot and reconciliation run;
+- renamed or relinked displays retained their permanent `display_id`;
+- stage changes retained permanent `stage_id` where required;
+- new displays were created only from approved new-display candidates;
+- status changes were explicitly approved and use `ref.display_status`;
+- nonphysical and SPARE rows did not create `ref.display` rows;
+- scene identity uses `(preview_uuid, scene_uuid)`;
+- scene membership uses permanent `display_id`;
+- blocked, deferred, and unresolved rows remained unchanged;
+- actual committed counts match the persisted result records.
 
 A validation failure prevents the reconciliation run from being marked complete and must be reported accurately.
 
-### 9. Generate and Publish the HTML Report
+### 9. Generate and Publish the Reconciliation Report
 
-Generate one timestamped HTML document from persisted reconciliation results and publish it to the internal web server.
+A timestamped HTML report is generated and published for both workflow outcomes:
 
-The report must include:
+- completed reconciliation;
+- cancelled reconciliation.
+
+#### Completed reconciliation report
+
+The completed report must include:
 
 ```text
 Production Results
@@ -388,41 +405,63 @@ Operator Review
 
   Blocked....................n
   Deferred...................n
+  Unresolved.................n
 ```
 
 Exact matches are excluded because no production change occurred.
 
-The detail section must include plain-language messages and enough metadata for follow-up cleanup work orders. The report must describe actual committed results, not proposed changes.
+The detail section must include plain-language messages and enough metadata for follow-up work. The report must describe actual committed results, not proposed changes.
 
-Store the report path and publication timestamp on the reconciliation run before marking it complete.
+#### Cancellation report
+
+The cancellation report must include:
+
+- reconciliation-run identity;
+- deleted latest-snapshot `import_run_id`;
+- operator;
+- cancellation timestamp;
+- cancellation reason;
+- parser and ingest summary available before cancellation;
+- candidate counts available before cancellation;
+- confirmation that no production promotion occurred;
+- confirmation that the latest snapshot was deleted.
+
+The report path or URL and publication timestamp must be stored on the reconciliation run before the workflow is closed.
+
+The operator interface must provide a clickable link to the published report.
 
 ## Stop Conditions Summary
 
 Stop the workflow immediately if:
 
-- The computer is not the verified Master PC.
-- The preview set may not have been fully transferred from the previous Master PC.
-- A required preview or the Master Musical Preview is missing.
-- The folder contains an older, test, temporary, recovery, or unexplained preview.
-- Parser errors or identity collisions are unresolved.
-- Snapshot-ingest row counts are implausible or the ingest fails.
-- Structural preflight cannot safely isolate candidate groups.
-- Persistent reconciliation state cannot be created or retained.
-- A proposed identity change cannot be tied confidently to one permanent identity and is not explicitly deferred.
-- Post-write validation or report publication fails.
+- the computer is not the verified Master PC;
+- the preview set may not have been fully transferred from the previous Master PC;
+- a required preview or the Master Musical Preview is missing;
+- the folder contains an older, test, temporary, recovery, or unexplained preview;
+- parser errors or identity collisions are unresolved;
+- snapshot-ingest row counts are implausible or the ingest fails;
+- structural preflight cannot safely isolate candidate groups;
+- persistent reconciliation state cannot be created or retained;
+- a proposed identity change cannot be tied confidently to one permanent identity and is not deferred or cancelled;
+- post-write validation fails;
+- report generation or publication fails.
 
-## Future Automation Requirements
+## Required Production Interface
 
-The final operator-facing application should provide:
+The operator-facing application must provide:
 
-- one **Start LOR Production Import** action that launches parser, protected ingest, capture, and preflight;
-- controlled review screens only for candidates requiring decisions;
-- one **Finish Reconciliation** action when review is complete;
-- automatic promotion when no review is required;
+- one **Start LOR Production Import** action that launches the parser, protected ingest, latest-snapshot capture, and reconciliation;
+- decision screens only for candidates requiring operator action;
+- explicit approve and defer actions;
+- one **Finish Reconciliation** action;
+- one **Cancel Reconciliation** action;
+- automatic promotion of passing candidates;
+- blocking of deferred and unresolved candidates without blocking unrelated passing work;
 - persistent candidate and decision state;
 - database-enforced dependency ordering;
 - post-write validation;
-- timestamped HTML report generation and internal publication;
+- timestamped HTML report generation and internal publication for completed and cancelled reconciliations;
+- a clickable report link;
 - permissions preventing routine direct execution of P1/P2/P3.
 
 ## Related Files and Objects
@@ -435,5 +474,13 @@ The final operator-facing application should provide:
 - `ref.stage`
 - `ref.lor_scene`
 - `ref.lor_scene_display`
-- `01_LOR_Production_Promotion_Pipeline_Design.md`
-- `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
+
+## Related Documents and Navigation
+
+This controlled procedure is one part of a three-document set:
+
+- **Operator procedure — this document:** `00_LOR_Production_Import_and_Reconciliation_Procedure.md`
+- **Production-promotion architecture:** `01_LOR_Production_Promotion_Pipeline_Design.md`
+- **Reconciliation SQL engineering design:** `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
+
+Use the pipeline design to understand the architecture and procedure boundaries. Use the reconciliation SQL design when building or modifying the database implementation. All three documents must remain synchronized.
