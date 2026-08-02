@@ -8,7 +8,7 @@ Owner: msbadmin
 Purpose:
   Project the complete ref.display row changes that a corrected P2 would need
   to consider for the current LOR snapshot, while enforcing the absolute rule
-  that SPARE and PHANTOM rows never enter ref.display.
+  that SPARE, PHANTOM, and null/blank LOR comments never enter ref.display.
 
   This script does not execute P2.
 
@@ -18,9 +18,10 @@ Safety:
 
 Validation focus:
   - Source data comes from the current-view-backed reconciliation layer.
-  - SPARE and PHANTOM rows are excluded from every projected ref.display write.
-  - Any nonphysical row already associated with ref.display is reported as a
-    blocking production defect.
+  - SPARE, PHANTOM, null, empty, and whitespace-only LOR comments are excluded
+    from every projected ref.display write.
+  - Any excluded source row already associated with ref.display is reported as
+    a blocking production defect.
   - Existing display_id values are preserved.
   - Exact matches do not appear unless a genuinely LOR-owned value differs.
   - Display status is not projected from LOR.
@@ -37,13 +38,16 @@ Permitted projected ref.display fields:
 
 Result:
   Returns only:
-  - blocking nonphysical rows already associated with ref.display;
+  - blocking excluded-source rows already associated with ref.display;
   - unresolved reassociation candidates that must not be written; and
   - genuine projected ref.display inserts or updates for physical displays.
 
   A completely unchanged current snapshot returns zero rows.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Added defense-in-depth exclusion for null, empty,
+                           and whitespace-only LOR comments. Such source rows
+                           can never create or update ref.display.
   2026-08-02  GAL / OpenAI  Report all changed shared fields on one projected
                            row and block NAME_AND_UUID_CHANGED until a persisted
                            reassociation decision supplies the production row.
@@ -98,6 +102,31 @@ nonphysical_in_display AS (
       OR upper(btrim(d.display_name)) = r.lor_display_name_normalized
     WHERE r.classification_code = 'EXCLUDED_NONPHYSICAL'
 ),
+blank_comment_in_display AS (
+    SELECT DISTINCT
+        src.import_run_id,
+        'EXCLUDED_BLANK_COMMENT'::text AS classification_code,
+        'BLANK_COMMENT_ALREADY_IN_REF_DISPLAY'::text AS validation_code,
+        true AS is_blocking,
+        d.display_id,
+        d.display_name AS production_display_name,
+        NULL::text AS lor_display_name,
+        d.lor_prop_id AS current_lor_prop_id,
+        src.lor_prop_id AS proposed_lor_prop_id,
+        d.stage_id AS current_stage_id,
+        NULL::integer AS proposed_stage_id,
+        d.display_status_id AS current_display_status_id,
+        d.string_type AS current_string_type,
+        src.string_type AS proposed_string_type,
+        d.color AS current_color,
+        src.color AS proposed_color,
+        ARRAY['BLANK_LOR_COMMENT']::text[] AS changed_fields,
+        'A current source row with a null, empty, or whitespace-only LOR comment is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
+    FROM current_source AS src
+    JOIN ref.display AS d
+      ON d.lor_prop_id = src.lor_prop_id
+    WHERE NULLIF(btrim(src.display_name_normalized), '') IS NULL
+),
 unresolved_reassociation AS (
     SELECT
         r.import_run_id,
@@ -134,6 +163,7 @@ unresolved_reassociation AS (
     LEFT JOIN ref.stage AS st
       ON st.stage_key = lower(btrim(r.preview_stage_id))
     WHERE r.classification_code = 'NAME_AND_UUID_CHANGED'
+      AND NULLIF(btrim(r.lor_display_name), '') IS NOT NULL
 ),
 physical_projection_base AS (
     SELECT
@@ -176,6 +206,8 @@ physical_projection_base AS (
         'UUID_CHANGED_SAME_NAME',
         'NEW_DISPLAY_CANDIDATE'
     )
+      AND NULLIF(btrim(r.lor_display_name), '') IS NOT NULL
+      AND NULLIF(btrim(src.display_name_normalized), '') IS NOT NULL
 ),
 physical_projection AS (
     SELECT
@@ -216,6 +248,10 @@ report_rows AS (
 
     UNION ALL
 
+    SELECT * FROM blank_comment_in_display
+
+    UNION ALL
+
     SELECT * FROM unresolved_reassociation
 
     UNION ALL
@@ -246,9 +282,10 @@ ORDER BY
     is_blocking DESC,
     CASE validation_code
         WHEN 'NONPHYSICAL_ALREADY_IN_REF_DISPLAY' THEN 1
-        WHEN 'REASSOCIATION_DECISION_REQUIRED' THEN 2
-        WHEN 'INSERT_NEW_DISPLAY' THEN 3
-        WHEN 'UPDATE_EXISTING_DISPLAY' THEN 4
+        WHEN 'BLANK_COMMENT_ALREADY_IN_REF_DISPLAY' THEN 2
+        WHEN 'REASSOCIATION_DECISION_REQUIRED' THEN 3
+        WHEN 'INSERT_NEW_DISPLAY' THEN 4
+        WHEN 'UPDATE_EXISTING_DISPLAY' THEN 5
         ELSE 99
     END,
     coalesce(production_display_name, lor_display_name),
