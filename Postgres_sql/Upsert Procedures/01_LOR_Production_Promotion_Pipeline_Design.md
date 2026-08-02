@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-01 | GAL / OpenAI | Added the three-document navigation contract linking the operator procedure, promotion pipeline design, and reconciliation SQL design. |
 | 2026-08-01 | GAL / OpenAI | Defined the latest-snapshot lifecycle, cancellation of reconciliation for an invalid ingest, optional removal of rejected snapshots, and short-term snapshot retention for current-versus-previous comparison. |
 | 2026-08-01 | GAL / OpenAI | Defined the persistent reconciliation execution context, automatic latest-completed-ingest capture, single-evaluation working sets, operator pause/resume, committed-result reporting, and the handoff from the operator procedure to P1/P2/P3 promotion. |
 | 2026-07-31 | GAL / OpenAI | Revised promotion to process stage/scene context first, promote independently safe displays, synchronize assignments last, and quarantine only affected exceptions. |
@@ -481,7 +482,18 @@ review section with enough metadata for follow-up work.
 9. Revoke routine direct execution of P1/P2/P3 and make the controlled workflow
    the only normal production entry point.
 
-## Related Documents
+## Related Documents and Navigation
 
-- `00_LOR_Production_Import_and_Reconciliation_Procedure.md`
-- `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
+These three documents define one controlled workflow from different perspectives
+and must remain synchronized:
+
+| Document | Role | Navigation |
+|---|---|---|
+| `00_LOR_Production_Import_and_Reconciliation_Procedure.md` | Operator-facing procedure: how the workflow is started, reviewed, completed, validated, and reported | [Open the production procedure](00_LOR_Production_Import_and_Reconciliation_Procedure.md) |
+| `01_LOR_Production_Promotion_Pipeline_Design.md` | Production-promotion architecture: why the workflow exists, where the LOR-to-production handoff occurs, and what P1/P2/P3 are allowed to do | Current document |
+| `reconciliation/LOR_Display_Reconciliation_SQL_Design.md` | Engineering design maintained with the reconciliation SQL: candidate classification, decision controls, validation contracts, and reporting implementation | [Open the reconciliation SQL design](reconciliation/LOR_Display_Reconciliation_SQL_Design.md) |
+
+The production procedure and reconciliation SQL design must link back to this
+document and to each other. A design change that affects more than one layer
+requires all affected documents to be updated together before implementation
+continues.
