@@ -1,5 +1,20 @@
 
 /* ============================================================
+WARNING — LEGACY PROCEDURE; DO NOT INSTALL OR EXECUTE
+
+This file predates the 2026-08-02 ref.display.lor_prop_id migration from
+preview-scoped prop_id values to preview-independent raw_prop_id values.
+
+It is incompatible with the approved reconciliation design because it:
+  - selects max(import_run_id) internally;
+  - uses lor_snap.props.prop_id instead of raw_prop_id;
+  - writes ref.spare_channel;
+  - automatically inserts unmatched display rows; and
+  - does not consume persisted, operator-approved reconciliation actions.
+
+A reconciliation-safe P2 must not be implemented or run until the prerequisite
+reconciliation-run, candidate, action, and result objects exist.
+
 Procedure: ref.p2_upsert_display_from_latest_lor()
 
 Purpose:
@@ -301,4 +316,3 @@ where
 		upper(btrim(d.display_name)) = upper(btrim(c.display_name))
   );
 end;
-

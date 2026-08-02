@@ -1,7 +1,7 @@
 # Prop and Display Naming Conventions
 
 - Filename: A_Naming_Conventions.md
-- version: 2026-03-24
+- version: 2026-08-02
 - author: Greg Liebig / Engineering Innovations, LLC
 
 ---
@@ -167,6 +167,47 @@ When a Spare channel is later assigned to a display:
 - Rename the channel
 - Update wiring documentation
 - Remove the `Spare` designation
+
+### 2.5 Vacated Channels After Moving a Display (CRITICAL)
+
+When a display is moved to another preview, controller, or channel range, do
+not convert its former channel definition into a spare by only renaming it or
+hiding it.
+
+LOR can retain the moved display's PropClass UUID on the old channel. Hidden
+channels are still stored in the preview and are still processed by the parser.
+For a multi-channel prop, the parser uses the lowest channel when constructing
+the prop identity. A stale UUID on that channel can therefore make the new
+display and the old SPARE appear to be the same LOR object.
+
+Required procedure for each vacated channel:
+
+1. Delete the obsolete display channel/prop definition.
+2. Recreate the unused channel as a new SPARE channel.
+3. Use the required channel name and the `SPARE` Comment value.
+4. Keep the recreated SPARE visible so the unused controller capacity can be
+   verified in the preview.
+5. Export, parse, ingest, and confirm that reconciliation reports no shared
+   `raw_prop_id` across different display comments or previews.
+
+Do not:
+
+- rename the former display channel to SPARE and leave the original object in
+  place;
+- hide the former display channel and assume the parser will ignore it;
+- approve reconciliation while a UUID collision remains unresolved.
+
+#### Verified Example — Olaf Move
+
+`IT-Olaf` was moved from Stage 13 Winter Wonderland controller `3E`, channels
+`01-05`, to Stage 14 Icicle Tunnel controller `3F`, channels `11-15`. The old
+`WW 3E-01` channel had been renamed `SPARE` and hidden, but it retained Olaf's
+UUID. Ingest Run 41 exposed the same `raw_prop_id` on `SPARE` and `IT-Olaf`.
+Deleting and recreating `WW 3E-01` assigned the spare a new identity, and Run
+42 confirmed that the collision was gone.
+
+This check is required for every moved display. A stale identity could collide
+with another physical display, not only a spare.
   
 ---
 

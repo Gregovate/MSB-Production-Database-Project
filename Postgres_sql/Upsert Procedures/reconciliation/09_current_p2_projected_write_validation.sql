@@ -47,6 +47,9 @@ Result:
   A completely unchanged current snapshot returns zero rows.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Re-read raw props by the candidate's exact scoped
+                           source_prop_id; raw_prop_id remains the proposed
+                           production association only.
   2026-08-02  GAL / OpenAI  Project ref.display.lor_prop_id from raw_prop_id;
                            retain prop_id as the scoped source occurrence key.
   2026-08-02  GAL / OpenAI  Hardened blank-comment validation to inspect raw
@@ -179,6 +182,7 @@ unresolved_reassociation AS (
      AND src.display_name_normalized = r.lor_display_name_normalized
     JOIN raw_current_props AS p
       ON p.import_run_id = r.import_run_id
+     AND p.source_prop_id = r.source_prop_id
      AND p.lor_prop_id = r.lor_prop_id
     LEFT JOIN ref.display AS d
       ON d.display_id = r.display_id
@@ -219,6 +223,7 @@ physical_projection_base AS (
      AND src.display_name_normalized = r.lor_display_name_normalized
     JOIN raw_current_props AS p
       ON p.import_run_id = r.import_run_id
+     AND p.source_prop_id = r.source_prop_id
      AND p.lor_prop_id = r.lor_prop_id
     LEFT JOIN ref.display AS d
       ON d.display_id = r.display_id

@@ -21,6 +21,8 @@ Source contract:
   supplied by the installed reconciliation view for that same import_run_id.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Include source_prop_id so operator evidence and
+                           later P2 guards identify the exact snapshot row.
   2026-08-02  GAL / OpenAI  Remove obsolete preview-relocation identity class;
                            raw_prop_id is independent of preview scope.
   2026-08-01  GAL / OpenAI  Correct Filename header and use lor_snap.v_current_run.
@@ -38,6 +40,7 @@ SELECT
     v.display_status_id,
     v.display_status_name,
     v.lor_display_name,
+    v.source_prop_id,
     v.lor_prop_id,
     v.preview_stage_id AS proposed_stage_key,
     v.preview_name,

@@ -18,6 +18,9 @@ Source contract:
   lor_snap.v_current_scene_lor_props, and lor_snap.v_current_previews.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Add direct current-ingest detection of one
+                           raw_prop_id carrying multiple display comments,
+                           including hidden and SPARE source rows.
   2026-08-02  GAL / OpenAI  Validate raw_prop_id completeness and scene
                            membership agreement with its scoped source row.
   2026-08-01  GAL / OpenAI  Use the established lor_snap.v_current_* snapshot interface.
@@ -39,6 +42,29 @@ WITH defects AS (
     CROSS JOIN lor_snap.v_current_run AS cr
     GROUP BY cr.import_run_id, upper(btrim(d.display_name))
     HAVING count(*) > 1
+
+    UNION ALL
+
+    SELECT
+        p.import_run_id,
+        'RAW_PROP_ID_MULTIPLE_COMMENTS'::text,
+        p.raw_prop_id,
+        count(*)::integer,
+        string_agg(
+            'preview=' || coalesce(pr.name, p.preview_id, '<unknown>') ||
+            '; prop_id=' || coalesce(p.prop_id, '<null>') ||
+            '; prop_name=' || coalesce(p.name, '<null>') ||
+            '; lor_comment=' || coalesce(p.lor_comment, '<null>'),
+            E'\n' ORDER BY coalesce(pr.name, p.preview_id), p.prop_id
+        )
+    FROM lor_snap.v_current_props AS p
+    LEFT JOIN lor_snap.v_current_previews AS pr
+      ON pr.import_run_id = p.import_run_id
+     AND pr.id = p.preview_id
+    WHERE NULLIF(btrim(p.raw_prop_id), '') IS NOT NULL
+      AND NULLIF(btrim(p.lor_comment), '') IS NOT NULL
+    GROUP BY p.import_run_id, p.raw_prop_id
+    HAVING count(DISTINCT btrim(p.lor_comment)) > 1
 
     UNION ALL
 
@@ -128,7 +154,9 @@ WITH defects AS (
         '; prop_name=' || coalesce(p.name, '<null>') ||
         '; lor_comment=' || coalesce(p.lor_comment, '<null>')
     FROM lor_snap.v_current_props AS p
-    JOIN lor_snap.v_current_previews AS pr ON pr.id = p.preview_id
+    JOIN lor_snap.v_current_previews AS pr
+      ON pr.import_run_id = p.import_run_id
+     AND pr.id = p.preview_id
     WHERE upper(btrim(coalesce(p.name, ''))) ~ '(^|[[:space:]])SPARE[[:space:]]*$'
       AND upper(btrim(coalesce(p.lor_comment, ''))) <> 'SPARE'
 )

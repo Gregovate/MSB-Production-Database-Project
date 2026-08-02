@@ -24,12 +24,16 @@ Run these files individually in numeric order. Each file returns one exportable 
 4. `04_latest_ingest_p2_action_report.sql`
    - Returns only display candidates requiring a production action, operator decision, source correction, or defer decision.
    - Excludes exact matches and nonphysical rows from the detailed action list.
+   - Includes scoped `source_prop_id` evidence separately from the unscoped
+     `lor_prop_id` proposed for production.
 
 5. `05_latest_ingest_integrity_checks.sql`
    - Checks duplicate production display names.
    - Checks duplicate production LOR UUID links.
    - Checks `raw_prop_id` completeness in props, subprops, and scene memberships.
    - Verifies each scene membership's scoped row and `raw_prop_id` agree.
+   - Detects one `raw_prop_id` associated with multiple nonblank LOR comments,
+     including hidden and SPARE rows.
    - Reports SPARE rows whose required LOR Comment is missing or invalid.
 
 6. `06_latest_ingest_scene_preflight.sql`

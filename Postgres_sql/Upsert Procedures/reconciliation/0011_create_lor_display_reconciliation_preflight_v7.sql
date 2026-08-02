@@ -28,6 +28,9 @@ Revision history:
                            confirms the scene-aware definition was installed.
   2026-08-02  GAL / OpenAI  Use unscoped raw_prop_id for LOR identity while
                            retaining scoped prop_id only for snapshot joins.
+  2026-08-02  GAL / OpenAI  Expose the canonical scoped prop_id as
+                           source_prop_id so P2 can revalidate the exact
+                           captured source row before writing ref.display.
   2026-07-31  GAL / OpenAI  Classify SPARE and PHANTOM rows before duplicate
                            identity checks so nonphysical props do not block.
   2026-07-31  GAL / OpenAI  Require a nonblank LOR comment for display
@@ -55,6 +58,7 @@ WITH background_rows AS (
     SELECT
         p.import_run_id,
         p.preview_id,
+        p.prop_id AS source_prop_id,
         btrim(pr.stage_id) AS preview_stage_id,
         pr.name AS preview_name,
         p.raw_prop_id AS lor_prop_id,
@@ -85,6 +89,7 @@ scene_rows AS (
     SELECT
         slp.import_run_id,
         slp.preview_id,
+        p.prop_id AS source_prop_id,
         btrim(coalesce(slp.scene_stage_id, sc.stage_id)) AS preview_stage_id,
         pr.name AS preview_name,
         slp.raw_prop_id AS lor_prop_id,
@@ -138,6 +143,7 @@ source_rows AS (
     )
         cr.import_run_id,
         cr.preview_id,
+        cr.source_prop_id,
         cr.preview_stage_id,
         cr.preview_name,
         cr.lor_prop_id,
@@ -176,10 +182,23 @@ name_counts AS (
     GROUP BY import_run_id, display_name_normalized
 )
 SELECT
-    sr.*,
+    sr.import_run_id,
+    sr.preview_id,
+    sr.preview_stage_id,
+    sr.preview_name,
+    sr.lor_prop_id,
+    sr.prop_name,
+    sr.prop_comment,
+    sr.display_name,
+    sr.display_name_normalized,
+    sr.string_type,
+    sr.color,
+    sr.is_spare,
+    sr.is_phantom,
     uc.lor_uuid_row_count,
     uc.lor_uuid_name_count,
-    nc.lor_name_uuid_count
+    nc.lor_name_uuid_count,
+    sr.source_prop_id
 FROM source_rows AS sr
 JOIN uuid_counts AS uc
   ON uc.import_run_id = sr.import_run_id
@@ -189,7 +208,7 @@ JOIN name_counts AS nc
  AND nc.display_name_normalized IS NOT DISTINCT FROM sr.display_name_normalized;
 
 COMMENT ON VIEW lor_snap.v_display_reconciliation_source IS
-'Run-aware physical-display candidates requiring a nonblank LOR comment and canonicalized by normalized display name and LOR UUID. Prop/channel names are never substituted for blank comments. Background evidence is preferred; Master Musical scene evidence supplies musical-only displays.';
+'Run-aware physical-display candidates requiring a nonblank LOR comment and canonicalized by normalized display name and raw LOR UUID. source_prop_id identifies the exact canonical snapshot occurrence; lor_prop_id is the preview-independent raw_prop_id proposed for ref.display. Prop/channel names are never substituted for blank comments. Background evidence is preferred; Master Musical scene evidence supplies musical-only displays.';
 
 
 /* --------------------------------------------------------------------------
@@ -390,7 +409,8 @@ candidate_rows AS (
              AND swm.name_display_id IS NULL
                 THEN 'NEW_DISPLAY_CANDIDATE'
             ELSE 'NAME_AND_UUID_CHANGED'
-        END AS classification_code
+        END AS classification_code,
+        swm.source_prop_id
     FROM source_with_matches AS swm
     LEFT JOIN occurrence_summary AS os
       ON os.import_run_id = swm.import_run_id
@@ -398,7 +418,28 @@ candidate_rows AS (
 ),
 candidate_output AS (
     SELECT
-        cr.*,
+        cr.import_run_id,
+        cr.lor_prop_id,
+        cr.lor_display_name,
+        cr.lor_display_name_normalized,
+        cr.preview_id,
+        cr.preview_name,
+        cr.preview_stage_id,
+        cr.display_id,
+        cr.production_display_name,
+        cr.display_status_id,
+        cr.display_status_name,
+        cr.is_active,
+        cr.lor_uuid_row_count,
+        cr.lor_uuid_name_count,
+        cr.lor_name_uuid_count,
+        cr.production_uuid_count,
+        cr.production_name_count,
+        cr.uuid_display_id,
+        cr.name_display_id,
+        cr.occurrence_count,
+        cr.location_summary,
+        cr.classification_code,
         cr.classification_code NOT IN (
             'EXACT_MATCH',
             'EXCLUDED_NONPHYSICAL'
@@ -436,7 +477,8 @@ candidate_output AS (
             WHEN 'UUID_CHANGED_SAME_NAME' THEN ARRAY['APPROVE_LOR_UUID_CHANGE']::text[]
             WHEN 'NEW_DISPLAY_CANDIDATE' THEN ARRAY['APPROVE_NEW_LOR_DISPLAY']::text[]
             ELSE ARRAY['CORRECT_LOR_AND_REINGEST', 'DEFER']::text[]
-        END AS allowed_resolution_paths
+        END AS allowed_resolution_paths,
+        cr.source_prop_id
     FROM candidate_rows AS cr
 ),
 run_ids AS (
@@ -473,7 +515,8 @@ missing_active AS (
             pc.display_id
         ) AS operator_message,
         ARRAY['CORRECT_POSTGRES_STATUS', 'CORRECT_LOR_AND_REINGEST']::text[]
-            AS allowed_resolution_paths
+            AS allowed_resolution_paths,
+        NULL::text AS source_prop_id
     FROM run_ids AS r
     CROSS JOIN production_counts AS pc
     WHERE pc.is_active
@@ -548,7 +591,7 @@ columns must be true. It distinguishes this scene-aware revision from an older
 same-named download that excluded Master Musical Preview scene candidates.
 ---------------------------------------------------------------------------- */
 SELECT
-    '2026-07-31-comment-required-display-source-v7'::text
+    '2026-08-02-raw-identity-exact-source-row-v7'::text
         AS installed_revision,
     position(
         'combined_rows' IN
@@ -557,7 +600,14 @@ SELECT
     position(
         'Master Musical Preview' IN
         pg_get_viewdef('lor_snap.v_display_reconciliation_source'::regclass, true)
-    ) > 0 AS has_master_musical_source;
+    ) > 0 AS has_master_musical_source,
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ops'
+          AND table_name = 'v_lor_display_reconciliation'
+          AND column_name = 'source_prop_id'
+    ) AS has_exact_source_prop_id;
 
 /* --------------------------------------------------------------------------
 Operator verification examples -- replace :import_run_id before execution.

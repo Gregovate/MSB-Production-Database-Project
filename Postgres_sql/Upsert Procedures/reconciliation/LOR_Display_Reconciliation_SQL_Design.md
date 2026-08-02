@@ -11,6 +11,9 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Corrected the preflight candidate interface after the production raw-ID migration: every display candidate now retains scoped `source_prop_id` for exact captured-row revalidation while `lor_prop_id` carries only the preview-independent `raw_prop_id` proposed for `ref.display`. |
+| 2026-08-02 | GAL / OpenAI | Recorded completion of the one-time production `ref.display.lor_prop_id` migration using ingest Run 42: all 1,050 rows now store instance-qualified `raw_prop_id`; zero preview prefixes, blanks, duplicates, or ACTIVE identities missing from the captured ingest remained after commit. Marked the legacy P2 source as incompatible and non-runnable pending the reconciliation engine prerequisites. |
+| 2026-08-02 | GAL / OpenAI | Documented the verified moved-display stale-UUID failure found in ingest Run 41 and cleared in Run 42: renamed or hidden vacated channels remain parseable and may retain the moved display's PropClass UUID. Added the mandatory cross-name/cross-preview `raw_prop_id` collision check and source-correction requirement. |
 | 2026-08-02 | GAL / OpenAI | Corrected the LOR identity mapping: preview-scoped `prop_id` identifies the exact captured occurrence, while unscoped `raw_prop_id` is the LOR association stored in `ref.display.lor_prop_id` and remains independent of preview movement. |
 | 2026-08-02 | GAL / OpenAI | Added the mandatory P2 defense-in-depth check against raw `lor_snap.props.lor_comment`: null, empty, and whitespace-only comments are never valid display names and must be rejected before every `ref.display` insert or update, even if parser or reconciliation filtering fails upstream. Automatic SPARE, PHANTOM, and blank-comment exclusions remain out of the operator report unless production already violates the rule. |
 | 2026-08-02 | GAL / OpenAI | Defined the complete reconciliation engine required by the approved operator procedure and promotion architecture: one-interface start, automatic latest-snapshot capture, P1/P2/P3/P4 boundaries, Finish and Cancel behavior, SPARE and PHANTOM exclusion, exact `ref.display` write authority, read-only 01-09 scripts, completed/cancelled reporting, and controlled snapshot retention management. |
@@ -175,6 +178,13 @@ Every candidate row must retain:
 - resolution state;
 - approved action, when present.
 
+Display candidates must retain both identity layers without conflating them:
+
+- `source_prop_id` is the preview-scoped `lor_snap.props.prop_id` of the exact
+  canonical captured source occurrence used for write-time revalidation; and
+- `lor_prop_id` is the complete instance-qualified `raw_prop_id` proposed as
+  the current `ref.display.lor_prop_id` association.
+
 Candidate sets are built once and reused by operator review, P1-P4, validation, and reporting.
 
 ### `ops.lor_reconciliation_action`
@@ -333,6 +343,27 @@ Display identity is independent of stage, preview, scene, container, controller,
 
 `ref.display.lor_prop_id` is the current LOR association and is not a permanent relational key.
 
+### Production Identity Migration Baseline
+
+The one-time production identity migration was completed and independently
+verified against captured ingest Run 42 on 2026-08-02.
+
+- all 1,050 `ref.display` rows were preserved;
+- every preview-scoped `preview_id:` prefix was removed;
+- every stored value is now the complete instance-qualified `raw_prop_id`;
+- no blank or duplicate `lor_prop_id` values remained; and
+- no ACTIVE production identity was missing from Run 42.
+
+Four Run 42 absences were already-RECYCLED displays
+`PB-PVCIgloo-01` through `PB-PVCIgloo-04`; they retained their permanent
+`display_id` and historical `lor_prop_id` values and required no lifecycle
+change.
+
+The pre-migration P2 source is therefore incompatible with the live identity
+contract and must not be installed or executed. Its replacement must follow
+the implementation order in this design and consume only persisted,
+operator-approved reconciliation actions.
+
 No production relational table may use a prop UUID, preview UUID, scene UUID, or preview-qualified composite identifier as the permanent display foreign key.
 
 ## Confirmed Display Source Rules
@@ -410,6 +441,44 @@ The unscoped `lor_snap.props.raw_prop_id` is the LOR identity evidence stored as
 the current `ref.display.lor_prop_id` association. Moving a prop between
 previews must not change its LOR identity merely because its scoped `prop_id`
 changes.
+
+### Moved-Display Stale UUID Hazard
+
+Moving a physical display to a different preview or controller does not by
+itself remove the display's former LOR identity from the vacated channels.
+Renaming an old channel to `SPARE` or hiding it is not sufficient. Hidden
+channels are still present in the preview data and remain eligible for parser
+extraction.
+
+This failure was verified during the 2026 reconciliation preflight:
+
+- `IT-Olaf` was moved from Stage 13 Winter Wonderland controller `3E`,
+  channels `01-05`, to Stage 14 Icicle Tunnel controller `3F`, channels
+  `11-15`;
+- the former `WW 3E-01` channel was renamed `SPARE` and hidden but retained
+  Olaf's original PropClass UUID;
+- the parser uses the lowest channel as the identity source when constructing
+  the multi-channel prop, so the stale UUID caused `SPARE` and `IT-Olaf` to
+  share one `raw_prop_id` in ingest Run 41;
+- deleting and recreating `WW 3E-01`, then ingesting the corrected preview as
+  Run 42, removed the collision.
+
+Therefore, when a display is moved:
+
+1. the obsolete prop/channel definition at the former assignment must be
+   deleted;
+2. any vacated channel that must remain documented as a spare must be recreated
+   as a new visible SPARE channel so it receives a new LOR identity;
+3. merely renaming or hiding the former channel is prohibited;
+4. reconciliation preflight must detect a `raw_prop_id` associated with more
+   than one distinct nonblank `lor_comment` or with conflicting preview
+   evidence;
+5. any collision blocks the affected identity group and requires source-preview
+   correction followed by a new parser run and ingest. Reconciliation must not
+   guess which name or preview owns the UUID.
+
+The operator check is mandatory because the second occurrence may represent
+another physical display, not only a SPARE channel.
 
 P2 must never derive `display_name` from `props.name` or another fallback column.
 
@@ -555,6 +624,11 @@ Run-level failure occurs when safe isolation or trustworthy auditing cannot be g
 - no fallback to `props.name` is permitted;
 - production UUID and exact-name evidence resolve uniquely;
 - UUID and name evidence do not resolve to different displays;
+- one `raw_prop_id` is not associated with multiple distinct nonblank display
+  comments or conflicting preview occurrences;
+- hidden rows are included in identity-collision checks because hidden LOR
+  channels remain parseable source objects;
+- a moved display's vacated channels do not retain the display's former UUID;
 - stage/preview/scene movement does not create a new display identity;
 - parent stage exists or is approved in the same run;
 - missing active and present nonactive displays require review;

@@ -63,6 +63,8 @@ Result:
   summary but omitted from detail.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Include scoped source_prop_id separately from the
+                           raw lor_prop_id production association.
   2026-08-02  GAL / OpenAI  Use raw_prop_id as preview-independent LOR identity
                            and remove the obsolete preview-relocation class.
   2026-08-01  GAL / OpenAI  Replaced the procedure-definition audit with the
@@ -142,6 +144,7 @@ output_rows AS (
         NULL::text AS display_status_name,
         NULL::text AS lor_display_name,
         NULL::text AS lor_prop_id,
+        NULL::text AS source_prop_id,
         NULL::text AS proposed_stage_key,
         NULL::text AS preview_name,
         NULL::text AS preview_id,
@@ -178,6 +181,7 @@ output_rows AS (
         c.display_status_name,
         c.lor_display_name,
         c.lor_prop_id,
+        c.source_prop_id,
         c.preview_stage_id AS proposed_stage_key,
         c.preview_name,
         c.preview_id,
@@ -203,6 +207,7 @@ SELECT
     display_status_name,
     lor_display_name,
     lor_prop_id,
+    source_prop_id,
     proposed_stage_key,
     preview_name,
     preview_id,
