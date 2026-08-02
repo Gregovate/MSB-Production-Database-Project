@@ -2,15 +2,16 @@
 
 - **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 - **Document Type:** Database design specification
-- **Status:** Design draft; not approved for production implementation
+- **Status:** Design draft; approved workflow pending executable implementation and production validation
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
-- **Current Revision:** 2026-08-01
+- **Current Revision:** 2026-08-02
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Defined the complete reconciliation engine required by the approved operator procedure and promotion architecture: one-interface start, automatic latest-snapshot capture, P1/P2/P3/P4 boundaries, Finish and Cancel behavior, SPARE and PHANTOM exclusion, exact `ref.display` write authority, read-only 01-09 scripts, completed/cancelled reporting, and controlled snapshot retention management. |
 | 2026-08-01 | GAL / OpenAI | Aligned the reconciliation design with the end-to-end production workflow and promotion-pipeline design: persistent reconciliation execution context, single evaluation of the captured ingest, operator pause/resume, existing `ref.lor_scene` and `ref.lor_scene_display` production objects, committed-result reporting, and timestamped HTML publication. |
 | 2026-08-01 | GAL / OpenAI | Consolidated the final reconciliation model: incremental record/group-level processing, automatic latest-completed-ingest capture, persistent stage preview/scene bindings, permanent display identity independent of assignment context, operator-controlled missing-display lifecycle handling, subprop and DMX snapshot transfer, and plain-language committed-result reporting. |
 | 2026-07-31 | GAL / OpenAI | Replaced the zero-blocker production gate with deterministic automatic matching, row-level quarantine, and passed-with-exceptions promotion. |
@@ -22,534 +23,675 @@
 
 ## Status and Scope
 
-Design draft only. No P1, P2, reconciliation object, or production database object may be changed until this design has been reviewed and approved.
+This document defines the SQL-engine implementation contract for the V7 production import and reconciliation workflow.
 
-This document defines the reconciliation engine: candidate construction, identity resolution, classifications, operator decisions, committed-result records, and reporting data.
+It defines:
 
-The end-to-end operator procedure is defined in:
+- reconciliation-run creation and state transitions;
+- latest-snapshot capture;
+- persisted candidate construction;
+- identity resolution and classifications;
+- operator decisions, including defer and cancel;
+- P1, P2, P3, and P4 promotion boundaries;
+- committed-result and validation records;
+- completed and cancelled reports;
+- controlled deletion of old `lor_snap` snapshots.
+
+It does not replace the operator procedure or the production-promotion architecture.
+
+The operator procedure is:
 
 `Postgres_sql/Upsert Procedures/00_LOR_Production_Import_and_Reconciliation_Procedure.md`
 
-The persistent promotion and orchestration architecture is defined in:
+The production-promotion architecture is:
 
 `Postgres_sql/Upsert Procedures/01_LOR_Production_Promotion_Pipeline_Design.md`
 
-P1, P2, and P3 are phases inside that controlled workflow. They are not independent production processes.
+The three documents define one workflow and must remain synchronized.
 
 ## Purpose
 
-Define the PostgreSQL design required to reconcile one complete LOR snapshot against permanent production stage and display identities while allowing valid independent changes to advance even when unrelated candidates contain source defects.
+Define the PostgreSQL engine required to reconcile the latest completed LOR snapshot against permanent production identities, apply all safe and approved changes, isolate blocked and deferred candidates, support cancellation, and produce a complete published report.
 
 The design must preserve:
 
-- `ref.stage.stage_id` as the permanent physical-stage identity.
-- `ref.display.display_id` as the permanent physical-display identity.
-- Persistent LOR scene identity through the existing `ref.lor_scene` object.
-- Current scene membership through the existing `ref.lor_scene_display` object.
-- Incremental, record/group-level reconciliation with isolated blocking.
-- Complete snapshot transfer of scenes, props, subprops, and DMX channels.
-- Plain-language reporting of committed changes and blocked/deferred candidates.
-- `lor_snap.preview_wiring_fieldonly_v6` as the current FormView compatibility contract.
+- `ref.stage.stage_id` as the permanent physical-stage identity;
+- `ref.display.display_id` as the permanent physical-display identity;
+- persistent scene identity in `ref.lor_scene`;
+- current scene membership in `ref.lor_scene_display`;
+- complete source snapshots in `lor_snap` while retained;
+- record- and group-level isolation;
+- exact production-column ownership;
+- complete auditability of decisions and committed outcomes.
 
-## Reconciliation Execution Context
+## End-to-End Engine Entry
 
-### Latest-completed-ingest capture
+The operator-facing interface provides one **Start LOR Production Import** action.
 
-Each parser run creates a complete new LOR snapshot. The reconciliation entry point must automatically select and capture the latest completed ingest once, at the beginning of execution.
-
-The captured `import_run_id` is internal execution and audit context. It is not selected, supplied, or interpreted by a Directus user.
-
-The entry point must:
-
-1. Start a reconciliation run.
-2. Select the latest completed ingest according to the authoritative completion state in `lor_snap.import_run`.
-3. Store that `import_run_id` in the reconciliation control row.
-4. Build and persist all candidate working sets from that captured ingest.
-5. Pass the stored context internally through operator review, P1, P2, P3, validation, and reporting.
-6. Never recalculate `max(import_run_id)` or otherwise rediscover the latest run after capture.
-
-Lower-level procedures may accept the captured `import_run_id` and reconciliation-run identity as internal parameters from the orchestrator. They must not require an operator to enter either value and must not select the latest run independently.
-
-A newly completed ingest that appears while reconciliation is running is ignored by that execution and becomes eligible for the next reconciliation run.
-
-### Persistent workflow state
-
-The reconciliation may pause for operator decisions and later resume through a different database connection. Therefore, session-local temporary tables are not the production workflow state.
-
-The production workflow must persist:
-
-- the captured ingest;
-- stage candidates;
-- display candidates;
-- scene candidates;
-- scene-display membership candidates;
-- operator decisions;
-- blocked and deferred items;
-- committed results;
-- validation results;
-- report path and publication status.
-
-These rows remain available until promotion, validation, report generation, and publication complete. They remain afterward as audit history unless an approved retention policy archives them.
-
-### Single-evaluation principle
-
-The expensive identity-resolution and classification work is performed once per reconciliation run and reused everywhere else.
-
-P1, P2, P3, operator-review screens, post-write validation, and the final HTML report must consume the same persisted candidate rows. No downstream phase may independently rebuild a second interpretation of the captured snapshot.
-
-## Incremental Reconciliation Model
-
-An ingest does not have to be completely error-free before valid changes can be applied.
-
-Every reconciliation run evaluates every candidate or inseparable logical group in the captured snapshot:
-
-- Valid records or groups are upserted.
-- Defective records or groups are blocked individually.
-- Operator decisions are presented through controlled actions such as new display, rename/relink, reassociation, lifecycle status, source correction, exclusion, or defer.
-- Existing production data remains unchanged for blocked or deferred records or groups.
-- An error affecting one candidate must not block unrelated valid changes.
-- A run-level failure is reserved for structural conditions that make safe row/group isolation impossible.
-- LOR corrections require a new parse and ingest.
-- PostgreSQL-only corrections or operator decisions may be re-evaluated against the same captured ingest when the source snapshot itself remains valid.
-- The next complete ingest evaluates all candidates again.
-- Previously blocked records pass normally once corrected.
-- Previously successful records may be processed again through idempotent upserts.
-
-The purpose of preflight is to prevent defective source data from corrupting production data, not to require a perfect ingest before anything can advance.
-
-## Logical Group Boundaries
-
-Some records must be evaluated and promoted together because partial application would create invalid state.
-
-Initial inseparable logical groups are:
-
-- One physical stage plus the preview/scene evidence being resolved for that stage.
-- One physical display plus its selected identity match and its stage/preview/scene association changes.
-- One scene plus its resolved physical stage.
-- One scene-display membership plus its resolved scene and permanent `display_id`.
-- One source prop plus its transferred subprops and DMX channel rows in the snapshot layer.
-- One confirmed or inferred SPARE candidate plus the source evidence required to validate its comment.
-
-A defect inside a group blocks that group only. It must not block independent groups unless a shared structural defect prevents deterministic isolation.
-
-## Physical Stage Identity
-
-`ref.stage.stage_id` is the permanent PostgreSQL identity of a physical park stage.
-
-The following are mutable metadata and must not define permanent stage identity:
-
-- Stage number or stage key.
-- Stage name.
-- Folder name.
-- Preview name.
-- Scene name.
-
-A stable LOR preview or scene identity must allow a renamed or renumbered stage to retain the same `ref.stage.stage_id`.
-
-The Stage 39-to-Stage 40 Parade Float case is the required validation example. When stable LOR evidence resolves to the existing physical stage, reconciliation must preserve `ref.stage.stage_id` while updating approved stage metadata.
-
-## Stage and Scene Resolution
-
-The production schema already contains the scene projection created by
-`0012_create_lor_scene_production_tables.sql`:
-
-- `ref.lor_scene`
-- `ref.lor_scene_display`
-
-No parallel `ref.stage_lor_binding` table is introduced by this design.
-
-### Dedicated preview rule
-
-For a standalone or background preview, the preview's canonical `StageID` is authoritative for the physical stage.
-
-Scenes inside that dedicated preview are subordinate workspace views. Their names or numeric prefixes must not override or conflict with the dedicated preview's stage assignment.
-
-### Shared preview rule
-
-For the Master Musical Preview or another shared preview, the preview UUID alone cannot identify one physical stage.
-
-The persistent scene identity is:
+That action invokes the secured external runner, which performs:
 
 ```text
-preview_id + scene_id
+Start LOR Production Import
+    -> run V7 scene-aware parser
+    -> validate parser completion
+    -> run password-protected PostgreSQL ingest
+    -> create latest completed snapshot
+    -> call reconciliation start entry point
 ```
 
-The scene's approved effective stage evidence resolves the permanent `ref.stage.stage_id`, and `ref.lor_scene` stores that current relationship.
+The database does not run the parser executable directly. The secured runner calls the database only after parser and ingest success.
 
-### Existing production scene objects
+The reconciliation start entry point shall:
 
-`ref.lor_scene` stores:
+1. acquire the reconciliation start lock;
+2. identify the latest completed `lor_snap.import_run`;
+3. create one persistent reconciliation-run row;
+4. store the captured `import_run_id`;
+5. build all candidate working sets once;
+6. run structural checks and classifications;
+7. continue automatically if no decisions are required;
+8. otherwise move the run to operator review.
 
-- persistent scene identity `(preview_uuid, scene_uuid)`;
-- current mutable scene metadata;
-- resolved permanent `stage_id`;
-- source import audit metadata.
+The operator never selects or enters an `import_run_id`.
 
-`ref.lor_scene_display` stores:
+## Reconciliation Run State Model
 
-- current scene assignment by permanent `display_id`;
-- parent `preview_uuid`;
-- scene role/source/ordinal metadata;
-- source import audit metadata.
+The implementation shall support at least these logical states:
 
-Multiple scenes may resolve to the same physical stage. A scene rename does not create a new scene identity. A display move between scenes changes only the association.
+- `STARTING`
+- `PARSING`
+- `INGESTING`
+- `PREFLIGHT`
+- `AWAITING_DECISIONS`
+- `PROMOTING`
+- `VALIDATING`
+- `REPORTING`
+- `COMPLETED`
+- `COMPLETED_WITH_EXCEPTIONS`
+- `CANCELLED`
+- `FAILED`
 
-## Permanent Display Identity
+Exact stored values may be finalized during DDL implementation, but every state transition must be explicit, auditable, and valid only from an allowed prior state.
 
-`ref.display.display_id` is the permanent physical-display identity and the foreign key used by production relational tables.
+## Latest Snapshot Capture and Lifecycle
 
-Display identity is independent of:
+Each successful ingest creates a complete snapshot identified by `import_run_id`.
 
-- Stage assignment.
-- Preview assignment.
-- Scene membership.
-- Container assignment.
-- Controller assignment.
-- Channel assignment.
+At reconciliation start, the engine captures the latest completed snapshot once. That captured run remains fixed through candidate construction, decisions, promotion, validation, and reporting.
 
-Moving a prop between scenes or moving a display between stages must not create a new physical display.
+A later ingest does not alter an already-running reconciliation. It becomes the latest snapshot for the next reconciliation.
 
-`ref.display.display_name` is mutable human-facing metadata. `ref.display.lor_prop_id` is the current LOR association, not the permanent database identity.
+Snapshot rows are immutable while retained. Corrections create a new ingest; existing snapshot rows are not edited to represent corrected source data.
 
-The underlying LOR prop UUID is stronger identity evidence than the parser's preview-qualified composite `lor_prop_id`. The preview portion is mutable assignment context and cannot define permanent display identity.
+Snapshots exist primarily to support:
 
-No production relational table may use an LOR prop UUID or preview-qualified composite identifier as the permanent display key.
+- reconciliation of the latest LOR state;
+- latest-versus-previous diff reporting;
+- recent parser and ingest troubleshooting.
 
-### Display match evidence
+`lor_snap` is not the permanent business-history archive. Permanent history is maintained through reconciliation actions, committed results, validation records, and published reports.
 
-The preflight may use the following evidence, subject to uniqueness and conflict checks:
-
-1. Existing current LOR prop UUID association resolves uniquely to one `display_id`.
-2. An identical physical display name resolves uniquely to one `display_id`.
-3. Explicit audited operator reassociation identifies an existing `display_id` when both UUID and name changed.
-
-P2 must not guess. Ambiguous evidence blocks only the affected display group.
-
-## Confirmed Display Source Rules
-
-Physical display reconciliation uses LOR props from the captured ingest only.
-
-Every join across snapshot tables must include `import_run_id` plus the relevant source identifier. Joining only on `preview_id`, `prop_id`, or `scene_id` can mix historical snapshots.
-
-The physical display name is `btrim(props.lor_comment)`.
-
-- `props.name` is an LOR prop, channel, or wiring name and must not be used as fallback physical-display identity.
-- A null, empty, or whitespace-only `props.lor_comment` does not provide a valid physical display name.
-- Confirmed or inferred SPARE rows follow the separate SPARE rules below.
-- Other unnamed physical candidates are blocked as source defects rather than silently inserted.
-
-When the same physical display appears in multiple previews, those are occurrences or associations of one display, not separate physical display candidates.
-
-## Missing Active Displays and Lifecycle Decisions
-
-An active PostgreSQL display missing from the captured LOR snapshot must generate an operator alert.
-
-Absence alone must not cause P2 or any automatic reconciliation procedure to infer a lifecycle decision or modify `ref.display.display_status_id`.
-
-The operator may decide to:
-
-- Mark the display `RETIRED`.
-- Mark the display `RECYCLED`.
-- Restore it to LOR if its absence was an LOR error.
-- Defer the decision while preserving the existing production record.
-
-Restoration to LOR is one possible resolution, not the default required action.
-
-Until the operator makes a lifecycle decision, the missing display is blocked or deferred for lifecycle handling. Its existing production row remains unchanged, while unrelated valid changes may still commit.
-
-A non-active display that appears in LOR must also generate an operator alert. Reconciliation must not automatically reactivate it or automatically require deletion from LOR.
-
-Status meaning must be resolved through `ref.display_status`, not hard-coded numeric IDs.
-
-## Subprops and DMX Channels
-
-The parser output is a complete clean snapshot and rebuilds its source tables on every run.
-
-Every ingest must transfer:
-
-- `lor_snap.sub_props`.
-- `lor_snap.dmx_channels`.
-
-For the current design phase:
-
-- Treat both as source-owned snapshot data.
-- Validate row counts and parent relationships.
-- Do not treat subprops as independent physical displays.
-- Do not treat DMX channel rows as display identity.
-- Do not create persistent `ref` identities for subprops or DMX channels until cross-run behavior has been studied.
-- Their transfer must not alter the current P1/P2 display-reconciliation scope.
-
-A broken parent relationship blocks that source transfer group and is reported. It does not create or delete a physical display identity.
-
-## SPARE Handling
-
-Confirmed and inferred SPARE rows must not be inserted into `ref.display`.
-
-A required SPARE comment that is missing, blank, or insufficient to identify the intended spare is a blocking source defect for that SPARE group. It must be reported rather than silently omitted.
-
-P2 must not insert, update, or delete records in `ref.spare_channel`.
-
-Any future synchronization of `ref.spare_channel` requires a separate approved design and procedure outside P2.
-
-## FormView Compatibility
-
-FormView remains the current method used to obtain the field wiring view needed for park setup. The effect of LOR V7 on the standalone application still requires separate validation.
-
-`lor_snap.preview_wiring_fieldonly_v6` remains unchanged. The `_v6` suffix is the established production object name and does not authorize replacement or removal during reconciliation work.
-
-## Reconciliation Control, Candidate, and Audit Objects
+## Persistent Reconciliation Objects
 
 ### `ops.lor_reconciliation_run`
 
-One persistent execution-control row per reconciliation attempt.
+One row per reconciliation attempt.
 
 Required logical fields include:
 
 - reconciliation-run identity;
-- automatically captured `import_run_id`;
+- captured `import_run_id`;
 - status;
-- start/completion timestamps;
-- actor/application;
+- started, paused, resumed, completed, cancelled, and failed timestamps as applicable;
+- actor and application identity;
 - structural failure count;
-- blocked and deferred counts;
+- blocked, deferred, and unresolved counts;
 - validation state;
-- report path and publication timestamp.
+- report path, URL, and publication timestamp;
+- cancellation reason when applicable.
 
-Directus users do not select or edit `import_run_id`.
+### Persisted Candidate Working Sets
 
-### Persisted candidate working sets
-
-The final implementation must persist one evaluated working set for each area:
+The engine shall persist separate evaluated candidate sets for:
 
 - stage candidates;
 - display candidates;
 - scene candidates;
 - scene-display membership candidates.
 
-Exact table names may be finalized during DDL design, but every row must retain the reconciliation-run identity, captured `import_run_id`, source keys, proposed production identity, classification, blocking state, operator message, and resolution state.
-
-These rows are built once and reused. They are not temporary report output.
-
-### `ops.lor_reconciliation_action`
-
-Append-only audit record for operator decisions that approve, resolve, correct, exclude, or defer candidates.
-
-Initial action types include:
-
-- `REASSOCIATE_DISPLAY`.
-- `ADD_NEW_DISPLAY`.
-- `RENAME_DISPLAY`.
-- `UPDATE_LOR_LINK`.
-- `SET_RETIRED`.
-- `SET_RECYCLED`.
-- `RESTORE_TO_LOR_REQUIRED`.
-- `CORRECT_SOURCE_REQUIRED`.
-- `DEFER`.
-- `EXCLUDE_NONPHYSICAL`.
-
-Operator actions preserve decision history. They do not convert mutable source identifiers into permanent production identities.
-
-### `ops.lor_reconciliation_result`
-
-Append-only result detail for actual committed outcomes, blocked candidates, deferred candidates, validation, and run completion.
-
-A result row must retain:
+Every candidate row must retain:
 
 - reconciliation-run identity;
 - captured `import_run_id`;
-- entity type and key;
-- result class;
-- technical reason code;
-- plain-language message;
-- committed flag;
-- timestamp.
+- source keys;
+- source evidence;
+- proposed production identity;
+- classification;
+- blocking state;
+- operator message;
+- required decision type;
+- resolution state;
+- approved action, when present.
 
-A proposed change that did not commit cannot be reported as `ADDED`, `UPDATED`, `REASSOCIATED`, or `STATUS_CHANGED`.
+Candidate sets are built once and reused by operator review, P1-P4, validation, and reporting.
+
+### `ops.lor_reconciliation_action`
+
+Append-only operator-decision record.
+
+Initial candidate-level action types include:
+
+- `RENAME_DISPLAY`
+- `UPDATE_LOR_LINK`
+- `REASSOCIATE_DISPLAY`
+- `ADD_NEW_DISPLAY`
+- `SET_RETIRED`
+- `SET_RECYCLED`
+- `RESTORE_TO_LOR_REQUIRED`
+- `CORRECT_SOURCE_REQUIRED`
+- `EXCLUDE_NONPHYSICAL`
+- `DEFER`
+
+`CANCEL_RECONCILIATION` is a run-level action, not a display-candidate action.
+
+### `ops.lor_reconciliation_result`
+
+Append-only result detail for:
+
+- committed production outcomes;
+- blocked candidates;
+- deferred candidates;
+- unresolved required decisions;
+- validation outcomes;
+- cancellation outcomes;
+- report publication.
+
+A result row must retain the reconciliation run, captured ingest, entity type/key, result class, reason code, plain-language message, committed flag, and timestamp.
+
+A proposed change that did not commit must never be reported as `ADDED`, `UPDATED`, `REASSOCIATED`, or `STATUS_CHANGED`.
+
+## Single-Evaluation Principle
+
+The reconciliation engine evaluates the captured snapshot once per reconciliation run.
+
+No downstream phase may:
+
+- select `max(import_run_id)`;
+- rediscover the latest run;
+- rebuild an independent identity interpretation;
+- bypass persisted decisions;
+- infer a write from fresh comparison logic during promotion.
+
+P1-P4, validation, and reporting consume the persisted reconciliation rows.
+
+## Incremental Reconciliation Model
+
+Every candidate or inseparable logical group is evaluated independently.
+
+- Passing candidates advance automatically.
+- Approved decisions advance.
+- Blocked candidates remain unchanged in production.
+- Deferred candidates remain unchanged in production.
+- Candidates still lacking a required decision when **Finish Reconciliation** is selected remain blocked and unchanged.
+- Blocked, deferred, and unresolved candidates do not prevent unrelated passing candidates from promotion.
+- Run-level failure is reserved for structural conditions that prevent safe isolation or trustworthy auditing.
+
+The operator ends review by selecting either:
+
+- **Finish Reconciliation**, or
+- **Cancel Reconciliation**.
+
+## Finish Reconciliation
+
+When **Finish Reconciliation** is selected, the engine shall:
+
+1. reopen the same reconciliation run;
+2. verify the captured ingest and persisted candidates;
+3. classify every unresolved required decision as blocked;
+4. preserve every blocked or deferred production row unchanged;
+5. execute all passing and approved work in dependency order;
+6. run post-write validation;
+7. persist actual results;
+8. generate and publish the HTML report;
+9. mark the run `COMPLETED` or `COMPLETED_WITH_EXCEPTIONS`.
+
+## Cancel Reconciliation
+
+When **Cancel Reconciliation** is selected, the engine shall:
+
+1. stop before any production promotion;
+2. record the cancellation actor, timestamp, and reason;
+3. confirm that no P1-P4 production writes committed;
+4. delete the entire captured latest snapshot from `lor_snap` as one unit;
+5. delete all child snapshot rows belonging to that `import_run_id`;
+6. retain the reconciliation control, action, and result audit records;
+7. generate and publish a cancelled-run HTML report;
+8. mark the reconciliation run `CANCELLED`.
+
+Cancellation must never partially delete a snapshot and must never cascade into `ref`, `ops`, or other production data.
+
+After cancellation, the source problem is corrected and a new parser/ingest run creates the next latest snapshot.
+
+## Logical Group Boundaries
+
+Initial inseparable logical groups are:
+
+- one physical stage plus its selected preview/scene evidence;
+- one physical display plus its selected identity and assignment evidence;
+- one scene plus its resolved stage;
+- one scene-display membership plus its scene and permanent `display_id`;
+- one source prop plus its source-owned subprops and DMX rows;
+- one SPARE or PHANTOM candidate plus the evidence required to classify it.
+
+A defect blocks only its group unless a shared structural defect prevents deterministic isolation.
+
+## Physical Stage Identity
+
+`ref.stage.stage_id` is permanent.
+
+Stage key, stage number, stage name, folder name, preview name, and scene name are mutable metadata and must not define permanent stage identity.
+
+The Stage 39-to-Stage 40 Parade Float case is the required validation example: stable source evidence must preserve `stage_id` while approved mutable metadata changes.
+
+## Stage and Scene Resolution
+
+### Dedicated Preview Rule
+
+For a standalone or background preview, the preview's canonical `StageID` is authoritative for the physical stage.
+
+Subordinate scenes do not override the dedicated preview's stage.
+
+### Shared Preview Rule
+
+For the Master Musical Preview or another shared preview, stage context is resolved from scene evidence.
+
+Persistent scene identity is:
+
+```text
+preview_id + scene_id
+```
+
+The effective scene stage resolves to the permanent production `stage_id`.
+
+### Production Scene Objects
+
+`ref.lor_scene` stores current persistent scene identity and resolved stage.
+
+`ref.lor_scene_display` stores current scene membership by permanent `display_id`.
+
+A scene rename does not create a new scene identity. A display move changes an association, not display identity.
+
+## Permanent Display Identity
+
+`ref.display.display_id` is permanent and is the only production relational identity for a physical display.
+
+Display identity is independent of stage, preview, scene, container, controller, network, and channel assignment.
+
+`ref.display.display_name` is mutable human-facing metadata.
+
+`ref.display.lor_prop_id` is the current LOR association and is not a permanent relational key.
+
+No production relational table may use a prop UUID, preview UUID, scene UUID, or preview-qualified composite identifier as the permanent display foreign key.
+
+## Confirmed Display Source Rules
+
+Physical display reconciliation uses LOR props from the captured ingest only.
+
+Every snapshot join must include `import_run_id` plus the relevant source identifier.
+
+The physical display name is:
+
+```text
+btrim(lor_snap.props.lor_comment)
+```
+
+`props.name` is not a fallback physical-display identity.
+
+A null, empty, or whitespace-only `lor_comment` does not provide a valid physical display name.
+
+## SPARE, PHANTOM, and Nonphysical Exclusion
+
+SPARE, PHANTOM, and other confirmed nonphysical helpers must never create or update a row in `ref.display`.
+
+The display candidate classification shall distinguish at least:
+
+- `PHYSICAL_DISPLAY`
+- `SPARE`
+- `PHANTOM`
+- `NONPHYSICAL_HELPER`
+- `INVALID_UNNAMED_SOURCE`
+
+Only `PHYSICAL_DISPLAY` candidates are eligible for P2.
+
+P2 must reject any SPARE, PHANTOM, NONPHYSICAL, or otherwise unconfirmed physical candidate.
+
+No insert, update, UUID relink, rename, stage change, metadata change, or lifecycle change may target `ref.display` for those classifications.
+
+P2 must not insert, update, or delete `ref.spare_channel`. Any future spare-channel synchronization requires a separate approved design.
+
+## Exact P2 Write Authority
+
+`lor_snap.props` and `ref.display` are not matching schemas.
+
+For an existing `ref.display` row, ordinary approved LOR promotion may modify only these mapped fields:
+
+| Source evidence | `ref.display` target |
+|---|---|
+| `lor_snap.props.prop_id` / approved current LOR association | `lor_prop_id` |
+| `btrim(lor_snap.props.lor_comment)` | `display_name` |
+| approved effective stage resolved from preview/scene evidence | `stage_id` |
+| `lor_snap.props.string_type` | `string_type` |
+| `lor_snap.props.color` | `color` |
+
+`display_status_id` may change only through an explicit lifecycle decision.
+
+All other production- or Directus-maintained fields must remain unchanged, including:
+
+- `display_id`;
+- `inventory_type`;
+- `designer_id`;
+- `theme_id`;
+- `frame_id`;
+- `container_id`;
+- `year_built`;
+- `amps_measured`;
+- `est_light_count`;
+- `dumb_controller`;
+- `notes`;
+- `label_required`;
+- `created_at` and `created_by`;
+- `created_by_person_id`;
+- `updated_by_person_id`.
+
+Normal approved writes may update standard `updated_at` and `updated_by` audit fields.
+
+Wiring, controller, network, and channel data are not authorized P2 writes to `ref.display` under this design.
+
+## Missing and Nonactive Display Lifecycle Decisions
+
+An active production display missing from the captured snapshot requires operator review.
+
+Absence alone must not change status.
+
+Allowed outcomes include:
+
+- `RETIRED`;
+- `RECYCLED`;
+- restore to LOR;
+- defer.
+
+A nonactive production display appearing in LOR also requires review. It must not be automatically reactivated.
+
+Status meaning is resolved through `ref.display_status`, not hard-coded IDs.
+
+## P1-P4 Promotion Phases
+
+The reconciliation engine produces four internal promotion phases.
+
+### P1 — Stage Promotion
+
+Consumes approved stage candidates and writes `ref.stage`.
+
+P1 preserves existing `stage_id`, applies only approved mutable metadata, does not delete physical stages, and does not assign displays.
+
+### P2 — Display Promotion
+
+Consumes only approved or automatically passing `PHYSICAL_DISPLAY` candidates and writes `ref.display` within the exact write-authority contract above.
+
+P2 preserves `display_id`, does not guess identity, does not process SPARE or PHANTOM candidates, and does not write `ref.spare_channel`.
+
+### P3 — Scene Definition Promotion
+
+Consumes approved scene candidates and writes `ref.lor_scene`.
+
+P3 preserves persistent `(preview_uuid, scene_uuid)` identity, resolves the approved `stage_id`, updates current scene metadata, and may remove obsolete/empty current scene projections only when the authoritative candidate set makes that removal safe.
+
+### P4 — Scene-Display Membership Promotion
+
+Consumes approved membership candidates and writes `ref.lor_scene_display`.
+
+P4 requires both:
+
+- a resolved production scene from P3; and
+- a permanent production `display_id` from P2.
+
+P4 never creates display identity. It synchronizes current membership and may remove obsolete assignments only when safe and approved by the candidate set.
+
+### Required Dependency Order
+
+```text
+P1 — stages
+    -> P3 — scene definitions
+    -> P2 — displays
+    -> P4 — scene-display memberships
+    -> post-write validation
+    -> report publication
+```
+
+P1-P4 are internal engine phases. Operators do not run them directly.
+
+## Read-Only Development Scripts 01-09
+
+The existing reconciliation scripts `01` through `09` are development preflight and validation scripts.
+
+They may:
+
+- `SELECT` from `lor_snap`, `ref`, `ops`, and PostgreSQL catalog metadata;
+- return result grids;
+- validate projected classifications and writes.
+
+They may not:
+
+- `INSERT`;
+- `UPDATE`;
+- `DELETE`;
+- call P1, P2, P3, P4, or another write procedure;
+- create production decisions;
+- alter production state.
+
+Production candidate builders shall be new controlled database objects implementing the validated logic. Write behavior must never be hidden inside scripts 01-09.
 
 ## Required Preflight Checks
 
-Preflight runs against the captured `import_run_id` and produces one persisted classification for every candidate or logical group before promotion.
+### Run-Level Structural Checks
 
-### Run-level structural checks
+Run-level failure occurs when safe isolation or trustworthy auditing cannot be guaranteed, including:
 
-These conditions fail the reconciliation run because safe isolation cannot be trusted:
+- captured ingest missing or incomplete;
+- required snapshot tables inaccessible;
+- rows not safely scoped by `import_run_id`;
+- global uniqueness or relationship failures preventing deterministic candidate isolation;
+- reconciliation state not persistable;
+- report or transaction controls unable to record committed truth.
 
-- Captured ingest does not exist or is not marked completed.
-- Required snapshot tables for the captured run are missing or inaccessible.
-- Snapshot rows cannot be scoped unambiguously by `import_run_id`.
-- Required uniqueness or foreign-key structure needed to isolate candidates is absent or violated globally.
-- Reconciliation control or candidate rows cannot be persisted reliably.
-- Reporting or transaction control fails such that committed outcomes cannot be audited accurately.
+### Stage and Scene Checks
 
-### Stage and scene checks
+- dedicated preview stage evidence is canonical;
+- shared-preview scenes resolve by `(preview_id, scene_id)`;
+- one scene does not resolve to multiple stages;
+- stage metadata changes preserve `stage_id`;
+- scene metadata changes preserve scene identity;
+- scene parent rows exist in the same captured run.
 
-- Dedicated preview stage evidence is canonical and cannot be overridden by subordinate scene text.
-- Shared-preview scenes resolve by `(preview_id, scene_id)`.
-- One scene identity does not resolve to multiple physical stages.
-- A proposed stage update does not collide with another production stage key after normalization.
-- Stage renumbering or renaming preserves `stage_id`.
-- Every scene row has a valid parent preview in the same captured run.
-- Scene metadata changes preserve scene identity.
+### Display Checks
 
-### Display identity checks
+- physical display comment is present and usable;
+- production UUID and exact-name evidence resolve uniquely;
+- UUID and name evidence do not resolve to different displays;
+- stage/preview/scene movement does not create a new display identity;
+- parent stage exists or is approved in the same run;
+- missing active and present nonactive displays require review;
+- SPARE, PHANTOM, and nonphysical candidates are excluded from P2.
 
-- Physical display comment is present and nonblank unless handled as SPARE or approved nonphysical data.
-- LOR prop UUID evidence is present where required.
-- One LOR prop UUID does not resolve to multiple physical display names in the same captured snapshot.
-- Production UUID and exact-name matches each resolve to no more than one `display_id`.
-- UUID and name evidence do not resolve to different existing displays.
-- Moving stage, preview, or scene associations does not create a new `display_id`.
-- Required parent stage exists or is approved in the same execution.
-- Missing active and present non-active displays are classified for operator review, not automatically changed.
+### Membership Checks
 
-### Scene membership checks
+- parent scene and prop rows exist in the captured run;
+- membership resolves through permanent `display_id`;
+- blocked or deferred displays do not receive unsafe assignment changes;
+- membership changes are association changes only.
 
-- Every membership has valid parent scene and prop rows in the same captured run.
-- Membership resolves to one permanent `display_id` through the persisted display candidate mapping.
-- One display has no more than one current scene within a preview.
-- Membership changes are association changes, not identity changes.
-- Blocked or deferred displays do not receive unsafe membership changes.
+### Subprop and DMX Checks
 
-### Subprop and DMX checks
+Subprops and DMX channels remain source-owned snapshot data.
 
-- Source row counts are recorded for the captured run.
-- Every subprop and DMX row has a valid parent prop in the same captured run.
-- Parent-child checks use `import_run_id` plus source identifiers.
-- Duplicate source keys or malformed channel ranges are classified and reported.
-
-### SPARE checks
-
-- Confirmed and inferred SPARE rows are excluded from `ref.display` candidates.
-- Required SPARE comments are present and usable.
-- Missing required comments block the SPARE group and produce an operator-readable message.
-- No P2 operation targets `ref.spare_channel`.
+- row counts are recorded;
+- parent prop relationships are validated within the same `import_run_id`;
+- they are not physical display identities;
+- they do not create independent `ref` identities under this design.
 
 ## Result Classifications
 
-### Production results
+### Production Results
 
-| Class | Meaning |
-|---|---|
-| `ADDED` | A new production identity or association committed. |
-| `UPDATED` | Existing production metadata committed with a changed value. |
-| `REASSOCIATED` | Existing permanent identity committed to a different current stage/scene/source association. |
-| `STATUS_CHANGED` | Explicit operator-approved lifecycle status committed. |
+- `ADDED`
+- `UPDATED`
+- `REASSOCIATED`
+- `STATUS_CHANGED`
 
-Exact matches are not included in the change report because no production change occurred.
+Exact matches are excluded because no production change occurred.
 
-### Operator review
+### Operator Review Results
 
-| Class | Meaning |
-|---|---|
-| `BLOCKED` | A source or identity defect prevented this candidate/group from changing production. Existing production data remained unchanged. |
-| `DEFERRED` | An operator deliberately postponed the decision. Existing production data remained unchanged. |
+- `BLOCKED`
+- `DEFERRED`
+- `UNRESOLVED`
 
-### Run failure
+### Run Results
 
-| Class | Meaning |
-|---|---|
-| `FAILED` | A structural or transaction failure prevented trustworthy safe execution. |
+- `COMPLETED`
+- `COMPLETED_WITH_EXCEPTIONS`
+- `CANCELLED`
+- `FAILED`
 
-Technical reason codes support filtering and cleanup workflows. Every candidate must also carry a plain-language operator message.
+Every result includes a technical reason code and plain-language operator message.
 
-## Plain-Language HTML Run Report
+## HTML Report Contract
 
-Every reconciliation execution must produce a timestamped HTML report and publish it to the internal web server.
+Every reconciliation attempt produces one timestamped HTML report and publishes it to the internal web server.
 
-The report is generated from persisted committed-result, blocked, and deferred rows. It must not rerun the comparison after promotion.
+The report is generated from persisted actions, committed results, exceptions, validation, and cancellation records. It must not rerun reconciliation after the fact.
 
-Required high-level sections include:
+### Finished Reconciliation Report
 
-```text
-Production Results
+The report includes:
 
-  Added......................n
-  Updated....................n
-  Reassociated...............n
-  Status Changes.............n
+- reconciliation-run identity;
+- captured `import_run_id`;
+- operator and timestamps;
+- committed additions, updates, reassociations, and status changes;
+- blocked candidates;
+- deferred candidates;
+- unresolved required decisions blocked at finish;
+- post-write validation results;
+- final status;
+- clickable published URL.
 
-Operator Review
+### Cancelled Reconciliation Report
 
-  Blocked....................n
-  Deferred...................n
-```
+The report includes:
 
-Exact matches are excluded from those sections.
+- `CANCELLED` status;
+- reconciliation-run identity;
+- captured `import_run_id`;
+- operator, timestamp, and reason;
+- confirmation that no production promotion occurred;
+- confirmation that the captured latest snapshot was deleted;
+- deletion counts by snapshot table;
+- clickable published URL.
 
-Detailed messages must describe actual outcomes, for example:
+A reconciliation is not complete or cancelled until the report is generated, published, and its link is stored.
 
-- `ADDED: Display "Parade Float Trailer" added to Stage 40.`
-- `UPDATED: Display "Tree 7" name corrected while preserving display_id 412.`
-- `REASSOCIATED: Display "Welcome Sign" moved to scene "Entrance View".`
-- `STATUS CHANGED: Display "PVC Igloo 2" changed from ACTIVE to RECYCLED.`
-- `BLOCKED: Display "Tree 7" was not added because required inventory information is missing.`
-- `DEFERRED: Missing display "Arch 5" remains unchanged until the operator determines its lifecycle state.`
+## Snapshot Retention Management
 
-The report must preserve enough metadata to create follow-up cleanup work orders.
+The operator interface shall provide a separate **Manage Old Snapshots** action.
 
-## Promotion Semantics
+It shall allow the operator to review and delete old `lor_snap` ingest runs by:
 
-1. Start the reconciliation workflow and automatically capture the latest completed ingest.
-2. Build and persist all candidate working sets once.
-3. Pause only when operator decisions are required.
-4. Apply valid and approved stage changes.
-5. Apply valid and approved display changes.
-6. Apply valid and approved scene changes.
-7. Apply valid and approved scene-display associations.
-8. Validate committed production state.
-9. Persist actual results.
-10. Generate and publish the HTML report.
-11. Mark the reconciliation run complete.
+- selecting runs from a list;
+- filtering by date range;
+- using a default eligibility threshold such as older than the latest five completed ingests.
 
-A valid snapshot remains historical evidence even when some candidates are blocked or deferred. Reconciliation must never delete or roll back the completed ingest merely because candidate-level defects were found.
+The review list shall show at least:
 
-## Conflict With Current P1 and P2
+- `import_run_id`;
+- ingest timestamp;
+- ingest notes;
+- source row counts;
+- reconciliation status;
+- report link;
+- deletion eligibility.
 
-Current production and repository procedures must be reviewed only after this design is approved.
+Hard protections:
 
-Required future changes include:
+- the latest completed ingest cannot be deleted through routine retention management;
+- the immediately previous ingest used for diff reporting cannot be deleted;
+- an ingest referenced by an active reconciliation cannot be deleted;
+- one snapshot must be deleted as a complete unit;
+- no deletion may cascade into `ref`, `ops`, or other production data.
 
-- P1 and P2 must consume the internally captured run and persisted candidate rows.
-- P1 must preserve permanent `stage_id` and apply only approved stage/scene results.
-- P2 must preserve permanent `display_id` across assignment changes.
-- P2 must process valid display groups even when unrelated groups are blocked.
-- P2 must not infer lifecycle changes from absence.
-- P2 must not write `ref.spare_channel`.
-- Neither procedure may independently select the latest ingest or rebuild its own identity analysis.
+The operator must confirm the selected runs, count, and date range before deletion.
 
-No P1 or P2 code change is authorized by this document revision alone.
+Every deletion shall create an audit record containing actor, timestamp, selected `import_run_id` values, reason, and per-table deleted row counts.
+
+Cancellation deletion and routine retention deletion may use the same protected internal snapshot-delete procedure, but with different authorization and audit reasons.
+
+## FormView Compatibility
+
+`lor_snap.preview_wiring_fieldonly_v6` remains the current FormView compatibility contract.
+
+The `_v6` suffix is the established production object name and does not authorize replacement or removal during V7 reconciliation implementation.
 
 ## Work-Order Identity Boundary
 
 `ops.work_order` may reference a display only through `display_id -> ref.display.display_id` and a stage only through `stage_id -> ref.stage.stage_id`.
 
-LOR prop UUIDs, preview UUIDs, scene UUIDs, and preview-qualified composite identifiers are source-system metadata. They must not be used as permanent work-order foreign keys.
+LOR UUIDs and preview-qualified identifiers are source metadata, not permanent work-order foreign keys.
 
-Any legacy work-order UUID dependency must be migrated separately after UUID-only rows are safely mapped to permanent identities.
+Any legacy UUID dependency requires a separate controlled migration.
 
-## Required Implementation Order After Design Approval
+## Required Implementation Order After Approval
 
-1. Confirm this design against current production table definitions, constraints, status values, and ingest completion semantics.
-2. Define persistent reconciliation-run, candidate, action, result, validation, and report-publication objects.
-3. Implement automatic latest-completed-ingest capture.
-4. Convert the current read-only preflight logic into candidate builders that run once per reconciliation execution.
-5. Validate candidate classifications against the current V7 snapshot.
-6. Revise P1 to consume approved stage/scene candidates.
-7. Revise P2 to consume approved display candidates.
-8. Implement P3 using `ref.lor_scene` and `ref.lor_scene_display`.
-9. Implement post-write validation and timestamped HTML report publication.
-10. Test the complete workflow against a disposable or restored database before production use.
+1. Validate this design against the current production schema and ingest completion semantics.
+2. Implement reconciliation-run, candidate, action, result, validation, report, and snapshot-deletion audit objects.
+3. Implement the secured start entry point called after successful parser and ingest execution.
+4. Convert validated 01-09 logic into new persistent candidate builders.
+5. Validate candidate classifications against the latest V7 snapshot.
+6. Implement reconciliation-safe P1.
+7. Implement P3 scene definition promotion.
+8. Implement reconciliation-safe P2 with exact write authority and SPARE/PHANTOM exclusion.
+9. Implement P4 scene-display membership promotion.
+10. Implement Finish and Cancel reconciliation paths.
+11. Implement post-write validation.
+12. Implement completed and cancelled HTML report generation/publication.
+13. Implement protected snapshot-retention management.
+14. Test the complete workflow against a disposable or restored database before production use.
 
-## Immediate Validation Needed Before Executable DDL
+## Immediate Validation Required Before Executable DDL
 
-Confirm from the live production database and current importer:
+Confirm from the live production database and importer:
 
-- Exact `lor_snap.import_run` completion columns and authoritative completed-ingest definition.
-- Current columns, constraints, indexes, and triggers on `ref.stage`, `ref.display`, `ref.lor_scene`, and `ref.lor_scene_display`.
-- Current P1 and P2 definitions installed in production.
-- Actual preview, scene, prop, subprop, and DMX uniqueness constraints in `lor_snap`.
-- Actual names and IDs in `ref.display_status`.
-- Whether any production UUID or display name currently maps to multiple identities.
-- Current actor/audit trigger requirements for new `ops` objects.
-- Any legacy work-order columns or foreign keys that still reference LOR UUIDs.
-- The exact source rule used by the V7 ingest to distinguish completed, failed, and partial imports.
+- exact `lor_snap.import_run` completion semantics;
+- all child tables that must be deleted for one snapshot;
+- current columns, constraints, indexes, and triggers on `ref.stage`, `ref.display`, `ref.lor_scene`, and `ref.lor_scene_display`;
+- current P1 and P2 definitions installed in production;
+- snapshot uniqueness constraints;
+- current status lookup values;
+- current actor/audit trigger requirements;
+- any legacy LOR UUID foreign keys;
+- exact PHANTOM source markers used by the V7 parser;
+- internal web-server report path and URL rules.
+
+## Related Documents and Navigation
+
+This engineering design is one part of the three-document V7 production-import contract:
+
+1. **Operator procedure — how the workflow is used**  
+   `../00_LOR_Production_Import_and_Reconciliation_Procedure.md`
+
+2. **Promotion architecture — how the workflow fits together**  
+   `../01_LOR_Production_Promotion_Pipeline_Design.md`
+
+3. **Reconciliation SQL design — how the engine is built**  
+   `LOR_Display_Reconciliation_SQL_Design.md`
+
+Changes crossing operator workflow, production architecture, or SQL-engine boundaries require all affected documents to be updated and reviewed before implementation continues.
