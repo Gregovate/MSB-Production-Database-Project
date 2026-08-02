@@ -9,7 +9,7 @@ param (
 #
 # Initial Release : 2026-02-23  V0.1.0
 # Version         : 2026-07-29  V0.3.0
-# Current Version : 2026-07-29  V0.3.0
+# Current Version : 2026-08-02  V0.3.1
 #
 # Purpose:
 #   Secure wrapper for the V7 scene-aware SQLite-to-Postgres snapshot ingest.

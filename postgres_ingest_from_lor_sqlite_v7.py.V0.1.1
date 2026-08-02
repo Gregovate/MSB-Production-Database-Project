@@ -2,19 +2,15 @@
 # postgres_ingest_from_lor_sqlite_v7.py
 # Initial Release : 2026-02-21  V0.1.0
 # Version         : 2026-02-21  V0.1.0
-# Current Version : 2026-08-02  V0.2.0
+# Current Version : 2026-07-31  V0.1.1
 #
 # Changes:
 # - Initial append-only ingestion layer (SQLite → Postgres)
 # - Creates new lor_snap.import_run row per execution
-# - Loads previews, scenes, props, sub_props, dmx_channels, scene_lor_props
+# - Loads previews, props, sub_props, dmx_channels
 # - All-or-nothing transaction (rollback on failure)
 # - Removed unassigned display count from summary (no longer relevant)
-# - Added scene_lor_props ingestion for LOR 6.6.4 Software Update (2026-07-31)
-# - V0.2.0 requires props.RawPropID and subProps.RawPropID in SQLite and
-#   lor_snap.props.raw_prop_id and lor_snap.sub_props.raw_prop_id in Postgres.
-# - V0.2.0 fails before creating an import_run when the raw UUID schema contract
-#   is missing, rather than silently inserting NULL into an unmapped column.
+# - Added scene_lor_props ingestion for LOR 6.6.4 Software Update(2026-07-31)
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
@@ -97,11 +93,6 @@
 #
 # -----------------------------------------------------------------------------
 # Change Log
-# 2026-08-02  GAL  V0.2.0
-#   - Added required raw PropClass UUID ingestion for props and sub_props.
-#   - Added source/target schema-contract validation before import_run creation.
-#   - Added post-ingest raw UUID completeness checks for both snapshot tables.
-#
 # 2026-02-21  GAL
 #   - Initial version: append-only snapshot ingestion from SQLite to Postgres.
 # =============================================================================
@@ -165,121 +156,6 @@ def get_pg_columns(pg_conn, schema: str, table: str) -> List[str]:
             (schema, table),
         )
         return [r[0] for r in cur.fetchall()]
-
-
-RAW_ID_SCHEMA_CONTRACT = {
-    "props": {
-        "sqlite_table": "props",
-        "sqlite_column": "RawPropID",
-        "pg_table": "props",
-        "pg_column": "raw_prop_id",
-    },
-    "sub_props": {
-        "sqlite_table": "subProps",
-        "sqlite_column": "RawPropID",
-        "pg_table": "sub_props",
-        "pg_column": "raw_prop_id",
-    },
-}
-
-
-def validate_raw_id_schema_contract(
-    sqlite_conn: sqlite3.Connection,
-    pg_conn,
-) -> None:
-    """
-    Require the raw LOR PropClass UUID columns on both sides before ingest.
-
-    This prevents the generic column mapper from silently inserting NULL when
-    either the rebuilt SQLite schema or the Postgres snapshot schema is stale.
-    """
-    failures: List[str] = []
-
-    for label, contract in RAW_ID_SCHEMA_CONTRACT.items():
-        sqlite_cols = get_sqlite_columns(sqlite_conn, contract["sqlite_table"])
-        pg_cols = get_pg_columns(pg_conn, "lor_snap", contract["pg_table"])
-
-        if contract["sqlite_column"] not in sqlite_cols:
-            failures.append(
-                f'SQLite table "{contract["sqlite_table"]}" is missing '
-                f'"{contract["sqlite_column"]}"'
-            )
-
-        if contract["pg_column"] not in pg_cols:
-            failures.append(
-                f'Postgres table lor_snap.{contract["pg_table"]} is missing '
-                f'"{contract["pg_column"]}"'
-            )
-
-    if failures:
-        details = "\n".join(f"  - {item}" for item in failures)
-        raise RuntimeError(
-            "Raw PropClass UUID schema contract failed:\n"
-            f"{details}\n"
-            "The ingest was not started."
-        )
-
-    print("[OK] Raw PropClass UUID schema contract verified.")
-
-
-def validate_raw_id_source_values(sqlite_conn: sqlite3.Connection) -> None:
-    """Fail if any rebuilt SQLite prop/subprop row lacks RawPropID."""
-    failures: List[str] = []
-
-    for table in ("props", "subProps"):
-        missing = int(
-            sqlite_conn.execute(
-                f"""
-                SELECT COUNT(*)
-                FROM "{table}"
-                WHERE RawPropID IS NULL OR TRIM(RawPropID) = ''
-                """
-            ).fetchone()[0]
-        )
-        if missing:
-            failures.append(f'SQLite "{table}" has {missing} blank RawPropID row(s)')
-
-    if failures:
-        details = "\n".join(f"  - {item}" for item in failures)
-        raise RuntimeError(
-            "Raw PropClass UUID source-value validation failed:\n"
-            f"{details}"
-        )
-
-    print("[OK] SQLite raw PropClass UUID values are complete.")
-
-
-def validate_raw_id_target_values(pg_conn, import_run_id: int) -> None:
-    """Fail if the inserted Postgres snapshot contains blank raw_prop_id values."""
-    failures: List[str] = []
-
-    for table in ("props", "sub_props"):
-        with pg_conn.cursor() as cur:
-            cur.execute(
-                f"""
-                SELECT COUNT(*)
-                FROM lor_snap.{table}
-                WHERE import_run_id = %s
-                  AND (raw_prop_id IS NULL OR BTRIM(raw_prop_id) = '')
-                """,
-                (import_run_id,),
-            )
-            missing = int(cur.fetchone()[0])
-
-        if missing:
-            failures.append(
-                f"lor_snap.{table} has {missing} blank raw_prop_id row(s) "
-                f"for import_run_id={import_run_id}"
-            )
-
-    if failures:
-        details = "\n".join(f"  - {item}" for item in failures)
-        raise RuntimeError(
-            "Raw PropClass UUID target-value validation failed:\n"
-            f"{details}"
-        )
-
-    print("[OK] Postgres raw PropClass UUID values are complete.")
 
 
 def build_column_map(sqlite_cols: List[str], pg_cols: List[str]) -> Dict[str, str]:
@@ -455,10 +331,6 @@ def main() -> int:
     pg_conn.autocommit = False  # we want all-or-nothing
 
     try:
-        # Validate the new raw UUID contract before creating an import_run row.
-        validate_raw_id_schema_contract(sqlite_conn, pg_conn)
-        validate_raw_id_source_values(sqlite_conn)
-
         import_run_id = insert_import_run(pg_conn, args.notes)
         print(f"[INFO] Created import_run_id={import_run_id}")
 
@@ -521,9 +393,6 @@ def main() -> int:
 
         # Views are managed separately in PostgreSQL and are not rebuilt here.
         # This ingest transaction only loads the append-only lor_snap snapshot.
-
-        # Confirm the raw UUID survived SQLite -> Postgres before committing.
-        validate_raw_id_target_values(pg_conn, import_run_id)
 
         # One commit at the end = atomic run
         pg_conn.commit()
