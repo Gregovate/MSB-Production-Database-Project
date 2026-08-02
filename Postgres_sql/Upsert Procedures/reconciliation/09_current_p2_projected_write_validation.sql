@@ -18,6 +18,8 @@ Safety:
 
 Validation focus:
   - Source data comes from the current-view-backed reconciliation layer.
+  - Raw lor_snap.props.lor_comment is checked directly so normalized views
+    cannot hide null, empty, or whitespace-only source comments.
   - SPARE, PHANTOM, null, empty, and whitespace-only LOR comments are excluded
     from every projected ref.display write.
   - Any excluded source row already associated with ref.display is reported as
@@ -45,6 +47,9 @@ Result:
   A completely unchanged current snapshot returns zero rows.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Hardened blank-comment validation to inspect raw
+                           lor_snap.props.lor_comment directly rather than rely
+                           on the normalized reconciliation source view.
   2026-08-02  GAL / OpenAI  Added defense-in-depth exclusion for null, empty,
                            and whitespace-only LOR comments. Such source rows
                            can never create or update ref.display.
@@ -59,6 +64,17 @@ Revision History:
 WITH current_run AS (
     SELECT import_run_id, run_ts
     FROM lor_snap.v_current_run
+),
+raw_current_props AS (
+    SELECT
+        p.import_run_id,
+        p.prop_id AS lor_prop_id,
+        p.lor_comment,
+        p.string_type,
+        p.color
+    FROM lor_snap.props AS p
+    JOIN current_run AS cr
+      ON cr.import_run_id = p.import_run_id
 ),
 reconciliation AS (
     SELECT v.*
@@ -104,7 +120,7 @@ nonphysical_in_display AS (
 ),
 blank_comment_in_display AS (
     SELECT DISTINCT
-        src.import_run_id,
+        p.import_run_id,
         'EXCLUDED_BLANK_COMMENT'::text AS classification_code,
         'BLANK_COMMENT_ALREADY_IN_REF_DISPLAY'::text AS validation_code,
         true AS is_blocking,
@@ -112,20 +128,20 @@ blank_comment_in_display AS (
         d.display_name AS production_display_name,
         NULL::text AS lor_display_name,
         d.lor_prop_id AS current_lor_prop_id,
-        src.lor_prop_id AS proposed_lor_prop_id,
+        p.lor_prop_id AS proposed_lor_prop_id,
         d.stage_id AS current_stage_id,
         NULL::integer AS proposed_stage_id,
         d.display_status_id AS current_display_status_id,
         d.string_type AS current_string_type,
-        src.string_type AS proposed_string_type,
+        p.string_type AS proposed_string_type,
         d.color AS current_color,
-        src.color AS proposed_color,
+        p.color AS proposed_color,
         ARRAY['BLANK_LOR_COMMENT']::text[] AS changed_fields,
-        'A current source row with a null, empty, or whitespace-only LOR comment is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
-    FROM current_source AS src
+        'A current raw LOR prop with a null, empty, or whitespace-only lor_comment is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
+    FROM raw_current_props AS p
     JOIN ref.display AS d
-      ON d.lor_prop_id = src.lor_prop_id
-    WHERE NULLIF(btrim(src.display_name_normalized), '') IS NULL
+      ON d.lor_prop_id = p.lor_prop_id
+    WHERE NULLIF(btrim(p.lor_comment), '') IS NULL
 ),
 unresolved_reassociation AS (
     SELECT
@@ -158,12 +174,15 @@ unresolved_reassociation AS (
       ON src.import_run_id = r.import_run_id
      AND src.lor_prop_id = r.lor_prop_id
      AND src.display_name_normalized = r.lor_display_name_normalized
+    JOIN raw_current_props AS p
+      ON p.import_run_id = r.import_run_id
+     AND p.lor_prop_id = r.lor_prop_id
     LEFT JOIN ref.display AS d
       ON d.display_id = r.display_id
     LEFT JOIN ref.stage AS st
       ON st.stage_key = lower(btrim(r.preview_stage_id))
     WHERE r.classification_code = 'NAME_AND_UUID_CHANGED'
-      AND NULLIF(btrim(r.lor_display_name), '') IS NOT NULL
+      AND NULLIF(btrim(p.lor_comment), '') IS NOT NULL
 ),
 physical_projection_base AS (
     SELECT
@@ -195,6 +214,9 @@ physical_projection_base AS (
       ON src.import_run_id = r.import_run_id
      AND src.lor_prop_id = r.lor_prop_id
      AND src.display_name_normalized = r.lor_display_name_normalized
+    JOIN raw_current_props AS p
+      ON p.import_run_id = r.import_run_id
+     AND p.lor_prop_id = r.lor_prop_id
     LEFT JOIN ref.display AS d
       ON d.display_id = r.display_id
     LEFT JOIN ref.stage AS st
@@ -206,8 +228,7 @@ physical_projection_base AS (
         'UUID_CHANGED_SAME_NAME',
         'NEW_DISPLAY_CANDIDATE'
     )
-      AND NULLIF(btrim(r.lor_display_name), '') IS NOT NULL
-      AND NULLIF(btrim(src.display_name_normalized), '') IS NOT NULL
+      AND NULLIF(btrim(p.lor_comment), '') IS NOT NULL
 ),
 physical_projection AS (
     SELECT
