@@ -6,14 +6,15 @@ Type: Read-only projected-write validation
 Owner: msbadmin
 
 Purpose:
-  Project the ref.display changes that a corrected P2 would need to consider for
-  the current LOR snapshot, while enforcing the absolute rule that SPARE and
-  PHANTOM rows never enter ref.display.
+  Project the complete ref.display row changes that a corrected P2 would need
+  to consider for the current LOR snapshot, while enforcing the absolute rule
+  that SPARE and PHANTOM rows never enter ref.display.
 
   This script does not execute P2.
 
 Safety:
-  SELECT only. Does not call P2, create objects, or modify production data.
+  SELECT only. Does not call P2, create objects, record decisions, or modify
+  lor_snap, ref, or ops data.
 
 Validation focus:
   - Source data comes from the current-view-backed reconciliation layer.
@@ -23,17 +24,29 @@ Validation focus:
   - Existing display_id values are preserved.
   - Exact matches do not appear unless a genuinely LOR-owned value differs.
   - Display status is not projected from LOR.
-  - Name, UUID, stage, and new-display changes retain their reconciliation
-    classification for operator approval or deterministic handling.
+  - Every changed shared field is reported on the same projected row.
+  - NAME_AND_UUID_CHANGED never becomes a projected write until an explicit
+    reassociation decision identifies the preserved production display_id.
+
+Permitted projected ref.display fields:
+  - lor_prop_id
+  - display_name
+  - stage_id
+  - string_type
+  - color
 
 Result:
   Returns only:
-  - blocking nonphysical rows already associated with ref.display; and
+  - blocking nonphysical rows already associated with ref.display;
+  - unresolved reassociation candidates that must not be written; and
   - genuine projected ref.display inserts or updates for physical displays.
 
   A completely unchanged current snapshot returns zero rows.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Report all changed shared fields on one projected
+                           row and block NAME_AND_UUID_CHANGED until a persisted
+                           reassociation decision supplies the production row.
   2026-08-01  GAL / OpenAI  Correct nonphysical handling: SPARE and PHANTOM
                            rows are never projected as ref.display writes.
   2026-08-01  GAL / OpenAI  Initial current P2 projected-write validation.
@@ -73,7 +86,8 @@ nonphysical_in_display AS (
         src.string_type AS proposed_string_type,
         d.color AS current_color,
         src.color AS proposed_color,
-        'A current SPARE/PHANTOM source row is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
+        ARRAY['NONPHYSICAL_SOURCE']::text[] AS changed_fields,
+        'A current SPARE or PHANTOM source row is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
     FROM reconciliation AS r
     JOIN current_source AS src
       ON src.import_run_id = r.import_run_id
@@ -84,24 +98,47 @@ nonphysical_in_display AS (
       OR upper(btrim(d.display_name)) = r.lor_display_name_normalized
     WHERE r.classification_code = 'EXCLUDED_NONPHYSICAL'
 ),
-physical_projection AS (
+unresolved_reassociation AS (
     SELECT
         r.import_run_id,
         r.classification_code,
-        CASE
-            WHEN r.display_id IS NULL
-                THEN 'INSERT_NEW_DISPLAY'
-            WHEN d.display_name IS DISTINCT FROM r.lor_display_name
-                THEN 'UPDATE_DISPLAY_NAME'
-            WHEN d.lor_prop_id IS DISTINCT FROM r.lor_prop_id
-                THEN 'UPDATE_LOR_PROP_ID'
-            WHEN d.stage_id IS DISTINCT FROM st.stage_id
-                THEN 'UPDATE_STAGE_ID'
-            WHEN d.string_type IS DISTINCT FROM src.string_type
-              OR d.color IS DISTINCT FROM src.color
-                THEN 'UPDATE_LOR_METADATA'
-            ELSE 'NO_REF_DISPLAY_CHANGE'
-        END AS validation_code,
+        'REASSOCIATION_DECISION_REQUIRED'::text AS validation_code,
+        true AS is_blocking,
+        r.display_id,
+        d.display_name AS production_display_name,
+        r.lor_display_name,
+        d.lor_prop_id AS current_lor_prop_id,
+        r.lor_prop_id AS proposed_lor_prop_id,
+        d.stage_id AS current_stage_id,
+        st.stage_id AS proposed_stage_id,
+        d.display_status_id AS current_display_status_id,
+        d.string_type AS current_string_type,
+        src.string_type AS proposed_string_type,
+        d.color AS current_color,
+        src.color AS proposed_color,
+        ARRAY_REMOVE(ARRAY[
+            CASE WHEN d.display_name IS DISTINCT FROM r.lor_display_name THEN 'display_name' END,
+            CASE WHEN d.lor_prop_id IS DISTINCT FROM r.lor_prop_id THEN 'lor_prop_id' END,
+            CASE WHEN d.stage_id IS DISTINCT FROM st.stage_id THEN 'stage_id' END,
+            CASE WHEN d.string_type IS DISTINCT FROM src.string_type THEN 'string_type' END,
+            CASE WHEN d.color IS DISTINCT FROM src.color THEN 'color' END
+        ]::text[], NULL) AS changed_fields,
+        'Name and LOR UUID both changed. P2 must not project a write until an explicit reassociation decision identifies the existing display_id to preserve.'::text AS operator_message
+    FROM reconciliation AS r
+    JOIN current_source AS src
+      ON src.import_run_id = r.import_run_id
+     AND src.lor_prop_id = r.lor_prop_id
+     AND src.display_name_normalized = r.lor_display_name_normalized
+    LEFT JOIN ref.display AS d
+      ON d.display_id = r.display_id
+    LEFT JOIN ref.stage AS st
+      ON st.stage_key = lower(btrim(r.preview_stage_id))
+    WHERE r.classification_code = 'NAME_AND_UUID_CHANGED'
+),
+physical_projection_base AS (
+    SELECT
+        r.import_run_id,
+        r.classification_code,
         r.is_blocking,
         r.display_id,
         d.display_name AS production_display_name,
@@ -115,20 +152,14 @@ physical_projection AS (
         src.string_type AS proposed_string_type,
         d.color AS current_color,
         src.color AS proposed_color,
-        CASE
-            WHEN r.display_id IS NULL
-                THEN 'New physical display requires the approved ADD_NEW_DISPLAY path.'
-            WHEN d.display_name IS DISTINCT FROM r.lor_display_name
-                THEN 'Apply the approved LOR display-name correction while preserving display_id.'
-            WHEN d.lor_prop_id IS DISTINCT FROM r.lor_prop_id
-                THEN 'Update the current LOR UUID association while preserving display_id.'
-            WHEN d.stage_id IS DISTINCT FROM st.stage_id
-                THEN 'Update the LOR-owned stage assignment while preserving display_id.'
-            WHEN d.string_type IS DISTINCT FROM src.string_type
-              OR d.color IS DISTINCT FROM src.color
-                THEN 'Update only the changed LOR-owned metadata values.'
-            ELSE 'No ref.display change is required.'
-        END AS operator_message
+        ARRAY_REMOVE(ARRAY[
+            CASE WHEN r.display_id IS NULL THEN 'new_display' END,
+            CASE WHEN d.display_name IS DISTINCT FROM r.lor_display_name THEN 'display_name' END,
+            CASE WHEN d.lor_prop_id IS DISTINCT FROM r.lor_prop_id THEN 'lor_prop_id' END,
+            CASE WHEN d.stage_id IS DISTINCT FROM st.stage_id THEN 'stage_id' END,
+            CASE WHEN d.string_type IS DISTINCT FROM src.string_type THEN 'string_type' END,
+            CASE WHEN d.color IS DISTINCT FROM src.color THEN 'color' END
+        ]::text[], NULL) AS changed_fields
     FROM reconciliation AS r
     JOIN current_source AS src
       ON src.import_run_id = r.import_run_id
@@ -138,24 +169,58 @@ physical_projection AS (
       ON d.display_id = r.display_id
     LEFT JOIN ref.stage AS st
       ON st.stage_key = lower(btrim(r.preview_stage_id))
-    WHERE r.classification_code <> 'EXCLUDED_NONPHYSICAL'
-      AND r.classification_code IN (
-          'EXACT_MATCH',
-          'PREVIEW_RELOCATED_SAME_DISPLAY',
-          'NAME_CHANGED_SAME_UUID',
-          'UUID_CHANGED_SAME_NAME',
-          'NEW_DISPLAY_CANDIDATE',
-          'NAME_AND_UUID_CHANGED'
-      )
+    WHERE r.classification_code IN (
+        'EXACT_MATCH',
+        'PREVIEW_RELOCATED_SAME_DISPLAY',
+        'NAME_CHANGED_SAME_UUID',
+        'UUID_CHANGED_SAME_NAME',
+        'NEW_DISPLAY_CANDIDATE'
+    )
+),
+physical_projection AS (
+    SELECT
+        p.import_run_id,
+        p.classification_code,
+        CASE
+            WHEN p.display_id IS NULL THEN 'INSERT_NEW_DISPLAY'
+            ELSE 'UPDATE_EXISTING_DISPLAY'
+        END AS validation_code,
+        p.is_blocking,
+        p.display_id,
+        p.production_display_name,
+        p.lor_display_name,
+        p.current_lor_prop_id,
+        p.proposed_lor_prop_id,
+        p.current_stage_id,
+        p.proposed_stage_id,
+        p.current_display_status_id,
+        p.current_string_type,
+        p.proposed_string_type,
+        p.current_color,
+        p.proposed_color,
+        p.changed_fields,
+        CASE
+            WHEN p.display_id IS NULL THEN
+                'New physical display requires the approved ADD_NEW_DISPLAY path.'
+            ELSE
+                format(
+                    'Update only these approved LOR-owned fields while preserving display_id and all other production metadata: %s.',
+                    array_to_string(p.changed_fields, ', ')
+                )
+        END AS operator_message
+    FROM physical_projection_base AS p
+    WHERE cardinality(p.changed_fields) > 0
 ),
 report_rows AS (
     SELECT * FROM nonphysical_in_display
 
     UNION ALL
 
-    SELECT *
-    FROM physical_projection
-    WHERE validation_code <> 'NO_REF_DISPLAY_CHANGE'
+    SELECT * FROM unresolved_reassociation
+
+    UNION ALL
+
+    SELECT * FROM physical_projection
 )
 SELECT
     import_run_id,
@@ -174,17 +239,16 @@ SELECT
     proposed_string_type,
     current_color,
     proposed_color,
+    changed_fields,
     operator_message
 FROM report_rows
 ORDER BY
     is_blocking DESC,
     CASE validation_code
         WHEN 'NONPHYSICAL_ALREADY_IN_REF_DISPLAY' THEN 1
-        WHEN 'INSERT_NEW_DISPLAY' THEN 2
-        WHEN 'UPDATE_DISPLAY_NAME' THEN 3
-        WHEN 'UPDATE_LOR_PROP_ID' THEN 4
-        WHEN 'UPDATE_STAGE_ID' THEN 5
-        WHEN 'UPDATE_LOR_METADATA' THEN 6
+        WHEN 'REASSOCIATION_DECISION_REQUIRED' THEN 2
+        WHEN 'INSERT_NEW_DISPLAY' THEN 3
+        WHEN 'UPDATE_EXISTING_DISPLAY' THEN 4
         ELSE 99
     END,
     coalesce(production_display_name, lor_display_name),
