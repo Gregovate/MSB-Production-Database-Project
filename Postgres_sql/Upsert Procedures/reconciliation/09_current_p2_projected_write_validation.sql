@@ -47,6 +47,9 @@ Result:
   A completely unchanged current snapshot returns zero rows.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Added human-readable current/proposed stage keys
+                           and names plus the canonical preview and complete
+                           occurrence evidence used by the projection.
   2026-08-02  GAL / OpenAI  Re-read raw props by the candidate's exact scoped
                            source_prop_id; raw_prop_id remains the proposed
                            production association only.
@@ -112,6 +115,8 @@ nonphysical_in_display AS (
         src.string_type AS proposed_string_type,
         d.color AS current_color,
         src.color AS proposed_color,
+        r.preview_name AS source_preview_name,
+        r.location_summary AS source_location_evidence,
         ARRAY['NONPHYSICAL_SOURCE']::text[] AS changed_fields,
         'A current SPARE or PHANTOM source row is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
     FROM reconciliation AS r
@@ -142,6 +147,8 @@ blank_comment_in_display AS (
         p.string_type AS proposed_string_type,
         d.color AS current_color,
         p.color AS proposed_color,
+        NULL::text AS source_preview_name,
+        NULL::text AS source_location_evidence,
         ARRAY['BLANK_LOR_COMMENT']::text[] AS changed_fields,
         'A current raw LOR prop with a null, empty, or whitespace-only lor_comment is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
     FROM raw_current_props AS p
@@ -167,6 +174,8 @@ unresolved_reassociation AS (
         src.string_type AS proposed_string_type,
         d.color AS current_color,
         src.color AS proposed_color,
+        r.preview_name AS source_preview_name,
+        r.location_summary AS source_location_evidence,
         ARRAY_REMOVE(ARRAY[
             CASE WHEN d.display_name IS DISTINCT FROM r.lor_display_name THEN 'display_name' END,
             CASE WHEN d.lor_prop_id IS DISTINCT FROM r.lor_prop_id THEN 'lor_prop_id' END,
@@ -208,6 +217,8 @@ physical_projection_base AS (
         src.string_type AS proposed_string_type,
         d.color AS current_color,
         src.color AS proposed_color,
+        r.preview_name AS source_preview_name,
+        r.location_summary AS source_location_evidence,
         ARRAY_REMOVE(ARRAY[
             CASE WHEN r.display_id IS NULL THEN 'new_display' END,
             CASE WHEN d.display_name IS DISTINCT FROM r.lor_display_name THEN 'display_name' END,
@@ -258,6 +269,8 @@ physical_projection AS (
         p.proposed_string_type,
         p.current_color,
         p.proposed_color,
+        p.source_preview_name,
+        p.source_location_evidence,
         p.changed_fields,
         CASE
             WHEN p.display_id IS NULL THEN
@@ -297,15 +310,25 @@ SELECT
     current_lor_prop_id,
     proposed_lor_prop_id,
     current_stage_id,
+    current_stage.stage_key AS current_stage_key,
+    current_stage.stage_name AS current_stage_name,
     proposed_stage_id,
+    proposed_stage.stage_key AS proposed_stage_key,
+    proposed_stage.stage_name AS proposed_stage_name,
     current_display_status_id,
     current_string_type,
     proposed_string_type,
     current_color,
     proposed_color,
+    source_preview_name,
+    source_location_evidence,
     changed_fields,
     operator_message
 FROM report_rows
+LEFT JOIN ref.stage AS current_stage
+  ON current_stage.stage_id = report_rows.current_stage_id
+LEFT JOIN ref.stage AS proposed_stage
+  ON proposed_stage.stage_id = report_rows.proposed_stage_id
 ORDER BY
     is_blocking DESC,
     CASE validation_code
