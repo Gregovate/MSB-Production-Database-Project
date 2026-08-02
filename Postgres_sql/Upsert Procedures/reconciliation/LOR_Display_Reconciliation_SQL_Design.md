@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Added the mandatory P2 defense-in-depth check against raw `lor_snap.props.lor_comment`: null, empty, and whitespace-only comments are never valid display names and must be rejected before every `ref.display` insert or update, even if parser or reconciliation filtering fails upstream. Automatic SPARE, PHANTOM, and blank-comment exclusions remain out of the operator report unless production already violates the rule. |
 | 2026-08-02 | GAL / OpenAI | Defined the complete reconciliation engine required by the approved operator procedure and promotion architecture: one-interface start, automatic latest-snapshot capture, P1/P2/P3/P4 boundaries, Finish and Cancel behavior, SPARE and PHANTOM exclusion, exact `ref.display` write authority, read-only 01-09 scripts, completed/cancelled reporting, and controlled snapshot retention management. |
 | 2026-08-01 | GAL / OpenAI | Aligned the reconciliation design with the end-to-end production workflow and promotion-pipeline design: persistent reconciliation execution context, single evaluation of the captured ingest, operator pause/resume, existing `ref.lor_scene` and `ref.lor_scene_display` production objects, committed-result reporting, and timestamped HTML publication. |
 | 2026-08-01 | GAL / OpenAI | Consolidated the final reconciliation model: incremental record/group-level processing, automatic latest-completed-ingest capture, persistent stage preview/scene bindings, permanent display identity independent of assignment context, operator-controlled missing-display lifecycle handling, subprop and DMX snapshot transfer, and plain-language committed-result reporting. |
@@ -281,7 +282,7 @@ Initial inseparable logical groups are:
 - one scene plus its resolved stage;
 - one scene-display membership plus its scene and permanent `display_id`;
 - one source prop plus its source-owned subprops and DMX rows;
-- one SPARE or PHANTOM candidate plus the evidence required to classify it.
+- one SPARE, PHANTOM, or unnamed-source candidate plus the evidence required to classify it.
 
 A defect blocks only its group unless a shared structural defect prevents deterministic isolation.
 
@@ -347,11 +348,20 @@ btrim(lor_snap.props.lor_comment)
 
 `props.name` is not a fallback physical-display identity.
 
-A null, empty, or whitespace-only `lor_comment` does not provide a valid physical display name.
+The engine must classify source rows by the raw captured `lor_snap.props.lor_comment`, not only by a normalized downstream view.
 
-## SPARE, PHANTOM, and Nonphysical Exclusion
+A null, empty, or whitespace-only `lor_comment`:
 
-SPARE, PHANTOM, and other confirmed nonphysical helpers must never create or update a row in `ref.display`.
+- does not provide a valid physical display name;
+- is classified as `INVALID_UNNAMED_SOURCE` or an equivalent nonphysical exclusion;
+- never creates a display candidate requiring operator review;
+- never creates or updates `ref.display`;
+- remains out of the reconciliation report when the rule is being followed;
+- becomes a blocking production defect only if that raw source row is already associated with an existing `ref.display` row.
+
+## SPARE, PHANTOM, Blank Comment, and Nonphysical Exclusion
+
+SPARE, PHANTOM, null/blank-comment props, and other confirmed nonphysical helpers must never create or update a row in `ref.display`.
 
 The display candidate classification shall distinguish at least:
 
@@ -363,9 +373,11 @@ The display candidate classification shall distinguish at least:
 
 Only `PHYSICAL_DISPLAY` candidates are eligible for P2.
 
-P2 must reject any SPARE, PHANTOM, NONPHYSICAL, or otherwise unconfirmed physical candidate.
+P2 must reject any SPARE, PHANTOM, NONPHYSICAL, `INVALID_UNNAMED_SOURCE`, or otherwise unconfirmed physical candidate.
 
 No insert, update, UUID relink, rename, stage change, metadata change, or lifecycle change may target `ref.display` for those classifications.
+
+These automatic rule-following exclusions are not operator decisions and do not belong in the reconciliation report. Only a violation already present in production is reported.
 
 P2 must not insert, update, or delete `ref.spare_channel`. Any future spare-channel synchronization requires a separate approved design.
 
@@ -382,6 +394,16 @@ For an existing `ref.display` row, ordinary approved LOR promotion may modify on
 | approved effective stage resolved from preview/scene evidence | `stage_id` |
 | `lor_snap.props.string_type` | `string_type` |
 | `lor_snap.props.color` | `color` |
+
+Before every insert or update, P2 must independently re-read the raw captured prop row by both `import_run_id` and `prop_id` and enforce:
+
+```sql
+NULLIF(btrim(lor_snap.props.lor_comment), '') IS NOT NULL
+```
+
+This is a final database write guard, not a replacement for parser or reconciliation filtering. A candidate that fails this assertion is rejected even if its persisted classification incorrectly marked it as physical.
+
+P2 must never derive `display_name` from `props.name` or another fallback column.
 
 `display_status_id` may change only through an explicit lifecycle decision.
 
@@ -438,7 +460,9 @@ P1 preserves existing `stage_id`, applies only approved mutable metadata, does n
 
 Consumes only approved or automatically passing `PHYSICAL_DISPLAY` candidates and writes `ref.display` within the exact write-authority contract above.
 
-P2 preserves `display_id`, does not guess identity, does not process SPARE or PHANTOM candidates, and does not write `ref.spare_channel`.
+P2 preserves `display_id`, does not guess identity, does not process SPARE, PHANTOM, blank-comment, or other nonphysical candidates, and does not write `ref.spare_channel`.
+
+Immediately before each write, P2 revalidates the raw captured prop and rejects a null, empty, or whitespace-only `lor_comment`. This assertion is mandatory even when the persisted candidate passed upstream checks.
 
 ### P3 — Scene Definition Promotion
 
@@ -491,6 +515,8 @@ They may not:
 
 Production candidate builders shall be new controlled database objects implementing the validated logic. Write behavior must never be hidden inside scripts 01-09.
 
+Script `09_current_p2_projected_write_validation.sql` must inspect raw `lor_snap.props.lor_comment` directly. It must not rely solely on `lor_snap.v_display_reconciliation_source` or another normalized view that may already omit invalid unnamed rows.
+
 ## Required Preflight Checks
 
 ### Run-Level Structural Checks
@@ -515,13 +541,18 @@ Run-level failure occurs when safe isolation or trustworthy auditing cannot be g
 
 ### Display Checks
 
+- raw `lor_snap.props.lor_comment` is inspected directly;
 - physical display comment is present and usable;
+- null, empty, and whitespace-only comments are excluded before candidate promotion;
+- no fallback to `props.name` is permitted;
 - production UUID and exact-name evidence resolve uniquely;
 - UUID and name evidence do not resolve to different displays;
 - stage/preview/scene movement does not create a new display identity;
 - parent stage exists or is approved in the same run;
 - missing active and present nonactive displays require review;
-- SPARE, PHANTOM, and nonphysical candidates are excluded from P2.
+- SPARE, PHANTOM, blank-comment, and nonphysical candidates are excluded from P2;
+- excluded rows appear in the operator report only when an existing production association violates the rule;
+- P2 independently repeats the raw-comment and nonphysical checks before writing.
 
 ### Membership Checks
 
@@ -570,6 +601,10 @@ Every result includes a technical reason code and plain-language operator messag
 Every reconciliation attempt produces one timestamped HTML report and publishes it to the internal web server.
 
 The report is generated from persisted actions, committed results, exceptions, validation, and cancellation records. It must not rerun reconciliation after the fact.
+
+Automatic rule-following exclusions do not belong in the report. This includes SPARE, PHANTOM, null/blank-comment props, and other confirmed nonphysical helpers that were correctly prevented from reaching `ref.display`.
+
+A rule violation does belong in the report when an excluded raw source row is already linked to `ref.display` or otherwise exposes a production defect.
 
 ### Finished Reconciliation Report
 
@@ -655,10 +690,10 @@ Any legacy UUID dependency requires a separate controlled migration.
 2. Implement reconciliation-run, candidate, action, result, validation, report, and snapshot-deletion audit objects.
 3. Implement the secured start entry point called after successful parser and ingest execution.
 4. Convert validated 01-09 logic into new persistent candidate builders.
-5. Validate candidate classifications against the latest V7 snapshot.
+5. Validate candidate classifications against the latest V7 snapshot, including raw null/blank-comment exclusions.
 6. Implement reconciliation-safe P1.
 7. Implement P3 scene definition promotion.
-8. Implement reconciliation-safe P2 with exact write authority and SPARE/PHANTOM exclusion.
+8. Implement reconciliation-safe P2 with exact write authority and independent raw-comment/SPARE/PHANTOM/nonphysical write guards.
 9. Implement P4 scene-display membership promotion.
 10. Implement Finish and Cancel reconciliation paths.
 11. Implement post-write validation.
@@ -679,6 +714,7 @@ Confirm from the live production database and importer:
 - current actor/audit trigger requirements;
 - any legacy LOR UUID foreign keys;
 - exact PHANTOM source markers used by the V7 parser;
+- whether the parser currently excludes null/blank `lor_comment` rows and how that behavior is tested;
 - internal web-server report path and URL rules.
 
 ## Related Documents and Navigation
