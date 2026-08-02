@@ -11,8 +11,8 @@
 
 ## Purpose
 
-Define the controlled promotion of one approved, immutable LOR snapshot from
-`lor_snap` into durable production reference data.
+Define the controlled promotion of approved changes from the latest completed
+LOR snapshot in `lor_snap` into durable production reference data.
 
 This specification documents the responsibilities currently embedded only in
 P1 and P2, defines the missing P3 scene promotion, and establishes the final
@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-01 | GAL / OpenAI | Defined the latest-snapshot lifecycle, cancellation of reconciliation for an invalid ingest, optional removal of rejected snapshots, and short-term snapshot retention for current-versus-previous comparison. |
 | 2026-08-01 | GAL / OpenAI | Defined the persistent reconciliation execution context, automatic latest-completed-ingest capture, single-evaluation working sets, operator pause/resume, committed-result reporting, and the handoff from the operator procedure to P1/P2/P3 promotion. |
 | 2026-07-31 | GAL / OpenAI | Revised promotion to process stage/scene context first, promote independently safe displays, synchronize assignments last, and quarantine only affected exceptions. |
 | 2026-07-31 | GAL / OpenAI | Initial P1/P2/P3 and controlled-orchestration design for V7 scene-aware imports. |
@@ -62,11 +63,51 @@ required, the workflow pauses without losing its captured ingest or evaluated
 candidates. The operator later resumes the same reconciliation execution rather
 than starting a new comparison.
 
+## Latest Snapshot Lifecycle
+
+The reconciliation workflow begins with the **latest completed LOR snapshot** in
+`lor_snap`.
+
+Each successful ingest creates a new snapshot identified by a unique
+`import_run_id`. Snapshot rows are immutable while that snapshot exists: an
+existing snapshot is not edited to represent corrected source data. A corrected
+parser run or ingest creates a new snapshot.
+
+The operational purpose of snapshot retention is to support:
+
+- reconciliation against the latest LOR state;
+- comparison of the latest snapshot with the immediately previous snapshot;
+- validation and troubleshooting of recent parser and ingest activity.
+
+`lor_snap` is not intended to be the permanent business-history archive for all
+LOR imports. Durable history is maintained through reconciliation decisions,
+committed promotion results, and published reconciliation reports. Older
+snapshots may be removed under an approved retention process after they are no
+longer needed for current-versus-previous comparison or troubleshooting.
+
+If the latest snapshot is found to be invalid before promotion, the operator may
+cancel the reconciliation execution. Examples include:
+
+- selecting the wrong preview folder;
+- using the wrong parser or parser version;
+- running from the wrong computer;
+- ingesting an incomplete or incorrect preview set;
+- discovering corrupted or otherwise unreliable source data.
+
+A cancelled reconciliation must not promote any production changes. Candidate
+rows and decisions associated with the rejected snapshot must not be reused for
+a later ingest. The invalid snapshot may be removed through the approved
+administrative workflow, the source problem corrected, and a new ingest run. The
+new successful ingest then becomes the latest snapshot and starts a new
+reconciliation execution.
+
 ## Persistent Reconciliation Execution Context
 
 Each production execution creates one persistent reconciliation-run record. The
 entry point automatically captures the latest completed `lor_snap.import_run`
-once and stores its `import_run_id` on that reconciliation run.
+once and stores its `import_run_id` on that reconciliation run. That captured
+latest snapshot remains fixed for the execution unless the operator cancels the
+reconciliation and starts a new execution against a later ingest.
 
 Directus users do not select, enter, or interpret `import_run_id`. Lower-level
 procedures receive the stored value internally from the orchestrator and must not
@@ -120,7 +161,7 @@ The pipeline preserves four different concepts:
 
 | Concept | Meaning | Authority |
 |---|---|---|
-| Snapshot preview | One imported LOR preview file | Immutable `lor_snap` import evidence |
+| Snapshot preview | One imported LOR preview file in the latest or retained snapshot | Immutable while retained in `lor_snap` |
 | Stage | Durable physical park location | `ref.stage` |
 | Display | Durable physical display identity | `ref.display` |
 | Scene | LOR presentation/workspace view used to organize props and backgrounds | LOR snapshot, promoted for reporting through P3 |
@@ -309,7 +350,7 @@ run. It will:
 - remove obsolete/empty production scenes according to the approved current-state
   synchronization policy;
 - leave blocked or deferred scenes and dependent memberships unchanged;
-- preserve all historical source evidence in immutable `lor_snap` rows.
+- preserve source evidence for the retained snapshot; snapshot retention is governed by the approved `lor_snap` lifecycle policy.
 
 ## Controlled Orchestration
 
@@ -408,7 +449,7 @@ review section with enough metadata for follow-up work.
 ## Required Validation Before Production Approval
 
 1. Prove the start operation captures the latest completed ingest once.
-2. Prove a newer ingest arriving during review cannot change the captured run.
+2. Prove a newer ingest arriving during review cannot silently change the captured run, while allowing the operator to cancel the reconciliation and start a new execution against the new latest snapshot.
 3. Prove candidate working sets are built once and reused by review, promotion,
    validation, and reporting.
 4. Prove repeat execution against the same reconciliation run is idempotent.
