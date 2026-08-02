@@ -7,7 +7,7 @@
 | Status | DRAFT — implementation and production validation required |
 | Owner | MSB Database Administrator |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-01 |
+| Current revision | 2026-08-02 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Defined P2 as the final database guard against SPARE, PHANTOM, null, empty, and whitespace-only `lor_comment` values; removed stale authorization for wiring/controller/network/channel writes to `ref.display`; and limited ordinary P2 writes to the five approved LOR-owned fields. |
 | 2026-08-01 | GAL / OpenAI | Added the three-document navigation contract linking the operator procedure, promotion pipeline design, and reconciliation SQL design. |
 | 2026-08-01 | GAL / OpenAI | Defined the latest-snapshot lifecycle, cancellation of reconciliation for an invalid ingest, optional removal of rejected snapshots, and short-term snapshot retention for current-versus-previous comparison. |
 | 2026-08-01 | GAL / OpenAI | Defined the persistent reconciliation execution context, automatic latest-completed-ingest capture, single-evaluation working sets, operator pause/resume, committed-result reporting, and the handoff from the operator procedure to P1/P2/P3 promotion. |
@@ -196,6 +197,11 @@ but it does not create a second physical-display identity.
    counts, blocked/deferred counts, validation results, and report location.
 9. Final reporting is generated from persisted committed-result records. It must
    not rerun the comparison and infer what probably changed after the fact.
+10. P2 is the final write boundary protecting `ref.display`. Before every insert
+    or update, P2 must independently verify the raw captured
+    `lor_snap.props.lor_comment`. A null, empty, or whitespace-only comment is
+    never a physical display name and must be rejected even if parser or
+    reconciliation classification failed upstream.
 
 ## Canonical Effective Stage Evidence
 
@@ -283,14 +289,17 @@ The current `ref.p2_upsert_display_from_latest_lor`:
 
 - Selects the latest run internally.
 - Obtains stage only through `props.preview_id -> previews.stage_id`.
+- Falls back from a null or blank `props.lor_comment` to `props.name` when
+  constructing `display_name`.
 - Renames existing displays when UUID matches.
 - Replaces a UUID association when normalized display name matches.
 - Inserts unmatched displays as `ACTIVE`.
 - Updates every matched display to `ACTIVE`.
 - Routes inferred spare records to `ref.spare_channel`.
 
-Those identity and status decisions are no longer permitted because they bypass
-the audited reconciliation process.
+Those identity, naming, status, and spare-routing decisions are no longer
+permitted because they bypass the audited reconciliation process and can create
+nonphysical rows in `ref.display`.
 
 ### Revised responsibility
 
@@ -303,14 +312,28 @@ It will:
   reconciliation run.
 - Process only deterministic safe candidates or explicit approved decisions.
 - Preserve `display_id` for every existing display.
-- Apply approved name, current LOR UUID, stage, wiring, controller, network,
-  channel, color, string type, and other designated LOR-owned current attributes.
+- Re-read the matching raw captured `lor_snap.props` row using both
+  `import_run_id` and `prop_id` immediately before the write.
+- Reject the candidate when `NULLIF(btrim(lor_comment), '') IS NULL`.
+- Reject SPARE, PHANTOM, nonphysical-helper, and otherwise unconfirmed physical
+  candidates even if an upstream parser or reconciliation defect allowed one to
+  reach P2.
+- Apply only these ordinary LOR-owned fields:
+  - `lor_prop_id`;
+  - `display_name` from `btrim(lor_snap.props.lor_comment)`;
+  - approved resolved `stage_id`;
+  - `string_type`;
+  - `color`.
 - Create a genuinely new display only from an approved new-display candidate.
-- Apply status changes only from an explicit operator decision using
-  `ref.display_status`.
+- Apply `display_status_id` only from an explicit operator lifecycle decision
+  resolved through `ref.display_status`.
 - Leave blocked or deferred display groups unchanged.
-- Never insert confirmed or inferred SPARE rows into `ref.display`.
+- Never insert or update `ref.display` from `props.name` as a fallback name.
 - Never insert, update, or delete `ref.spare_channel` as part of P2.
+
+Every other production- or Directus-owned `ref.display` column remains unchanged.
+Wiring, controller, network, channel, container, design, inventory, and other
+production metadata are outside ordinary P2 authority.
 
 A blocked candidate does not block unrelated safe candidates.
 
@@ -462,9 +485,11 @@ review section with enough metadata for follow-up work.
 9. Prove scene membership resolves through permanent `display_id`.
 10. Prove a missing display does not cause an implicit delete or status change.
 11. Prove blocked/deferred candidates preserve existing production rows.
-12. Prove the HTML report is generated from actual committed results and excludes
-    exact matches.
-13. Revoke direct procedure permissions only after the orchestrator and recovery
+12. Prove P2 independently rejects SPARE, PHANTOM, null, empty, and
+    whitespace-only raw `lor_comment` values before every `ref.display` write.
+13. Prove the HTML report is generated from actual committed results and excludes
+    exact matches and automatic rule-following exclusions.
+14. Revoke direct procedure permissions only after the orchestrator and recovery
     process have been validated.
 
 ## Implementation Order
@@ -474,7 +499,8 @@ review section with enough metadata for follow-up work.
 3. Convert existing preflight SQL into persisted candidate builders and read-only
    diagnostic reports over one reconciliation run.
 4. Replace P1 with the reconciliation-run-aware implementation.
-5. Replace P2 with the reconciliation-run-aware implementation.
+5. Replace P2 with the reconciliation-run-aware implementation and independent
+   raw-comment/nonphysical write guard.
 6. Implement P3 against `ref.lor_scene` and `ref.lor_scene_display`.
 7. Implement finish/promotion, committed-result capture, validation, and HTML
    report publication.
