@@ -379,3 +379,27 @@ Although the production database remains recoverable, the incident confirms the 
 This event ultimately validates the design direction of the V7 reconciliation project.
 
 The production documentation will continue to serve as the governing specification from which all future SQL procedures and validation scripts are derived.
+
+# Lasting Design Changes Resulting from This Incident
+
+• Production reconciliation is a gated workflow, not an automated import.
+
+• All reconciliation scripts (01–09) are read-only.
+
+• No SQL prior to the promotion phase may modify ref.display.
+
+• P2 is no longer an "upsert" procedure. It is a promotion procedure that
+  executes only operator-approved reconciliation decisions.
+
+• New displays are never created automatically.
+
+• Display lifecycle changes (ACTIVE, RECYCLED, RETIRED, etc.) always require
+  explicit operator approval.
+
+• The reconciliation report becomes the permanent audit record for every
+  production promotion.
+
+• LOR remains the source of truth for LOR-owned fields only.
+
+• ref.display remains the source of truth for production identity and
+  production metadata.
