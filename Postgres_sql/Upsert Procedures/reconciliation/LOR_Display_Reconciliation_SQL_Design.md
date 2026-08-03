@@ -12,6 +12,7 @@
 | Date | Author | Change |
 |---|---|---|
 | 2026-08-03 | GAL / OpenAI | Defined reconciliation-owned source-manifest evidence and the operator-facing HTML report contract: NAS publication folder, immutable timestamped files, completed/cancelled statuses, readable change and exception tables, reason codes, replacement-label instruction, UUID suppression, and retry-safe terminal publication. |
+| 2026-08-03 | GAL / OpenAI | Made no-op suppression part of the production-write contract: authorized business fields require null-safe comparison, unchanged rows retain all audit values, and validation/reporting must reject false changes. |
 | 2026-08-03 | GAL / OpenAI | Added `0019` atomic Finish/Cancel lifecycle and rollback validation `15`. Finish executes and validates P1/P3/P2/P4 before advancing to `REPORTING`; Cancel records its audit and atomically removes the captured snapshot before advancing to `REPORTING`. Terminal status remains gated by report publication. |
 | 2026-08-03 | GAL / OpenAI | Added `0018` frozen scene and scene-membership candidates, reconciliation-safe P3/P4 current-state promotion, guarded obsolete-row removal, and rollback validation `14`. Installation and database validation remain pending; Run 1 must not be promoted. |
 | 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated `0015`/`0016` stage layers and added reconciliation-safe P2 migration `0017` with rollback validation `13`. Run 1 is development state and must not be promoted. |
@@ -520,7 +521,23 @@ All other production- or Directus-maintained fields must remain unchanged, inclu
 - `created_by_person_id`;
 - `updated_by_person_id`.
 
-Normal approved writes may update standard `updated_at` and `updated_by` audit fields.
+### No-op suppression and audit-field preservation
+
+Candidate evaluation is not a production write. P1-P4 must not issue an `UPDATE` merely because an existing row participated in reconciliation, matched a candidate, or was approved.
+
+Each promotion statement must:
+
+1. compare only the business fields that phase is authorized to maintain;
+2. use null-safe `IS DISTINCT FROM` comparisons, or an exactly equivalent predicate;
+3. execute an `UPDATE` only when at least one authorized business field will receive a different value;
+4. leave `created_at`, `created_by`, and `created_by_person_id` unchanged on every update;
+5. leave `updated_at`, `updated_by`, and `updated_by_person_id` unchanged when no authorized business value changes;
+6. allow the established actor/audit mechanism to update the `updated_*` fields only for a row receiving a real approved business change;
+7. persist a production result only for an actual insert, update, reassociation, status change, or authorized deletion.
+
+The rule applies to stages, displays, scenes, and scene-display memberships. Same-run idempotency means the second execution produces the same projected result set but performs no additional production writes and causes no audit-field churn.
+
+Rollback and post-write validation must compare pre-write and post-write business values and audit fields. Validation fails if an unchanged production row has different `updated_*` values, if a no-op is persisted as a production change, or if a no-op appears in a final-report change table.
 
 Wiring, controller, network, and channel data are not authorized P2 writes to `ref.display` under this design.
 
