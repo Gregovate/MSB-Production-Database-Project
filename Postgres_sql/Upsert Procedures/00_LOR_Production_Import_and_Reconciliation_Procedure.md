@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Added the no-op production-write contract: evaluated-but-unchanged rows must not be updated, their audit fields must remain intact, and they must not appear as report changes. |
 | 2026-08-03 | GAL / OpenAI | Defined the operator-facing reconciliation report contract, including the internal NAS publication folder, report access, immutable timestamped filenames, source-preview manifest, completed/cancelled status, readable change tables, reason codes, replacement-label instructions, and failure handling. |
 | 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated P1/stage-preservation layers and added the repository implementation plus rollback validation for reconciliation-safe P2. Reconciliation Run 1 remains development state and is prohibited from production promotion. |
 | 2026-08-02 | GAL / OpenAI | Implemented the repository DDL for persistent stage-to-LOR bindings, frozen stage candidates/groups, unified reconciliation start, and reconciliation-gated P1. Installation and rollback validation remain required before any production stage promotion. |
@@ -309,6 +310,23 @@ The operator does not enter an ingest number.
 ### 5. Review Candidates Requiring Decisions
 
 Exact matches and other candidates requiring no operator action are not shown as decisions and are not listed as production changes in the final report.
+
+#### Unchanged-record contract
+
+Reconciliation may evaluate a production record without changing it. Evaluation alone is never authority to issue an `UPDATE`.
+
+For every existing production row, the promotion phase must compare only the business fields it is authorized to maintain. Null-safe comparisons must use `IS DISTINCT FROM` or equivalent logic. An `UPDATE` is permitted only when at least one authorized business field will actually change.
+
+If all authorized business fields are unchanged:
+
+- no `UPDATE` statement may be issued for that row;
+- `updated_at`, `updated_by`, and `updated_by_person_id` must retain their existing values;
+- existing `created_*` audit values must retain their existing values;
+- no production result may classify the row as changed;
+- the row must not appear in a final-report change table.
+
+A reconciliation run that evaluates every display, stage, scene, or membership must therefore update only the subset with real approved changes. Post-write validation must fail if an unchanged row receives new audit values or a reported change result.
+
 
 Typical operator decisions include:
 
