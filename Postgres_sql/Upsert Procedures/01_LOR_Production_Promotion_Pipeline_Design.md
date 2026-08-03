@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Implemented the repository P3/P4 checkpoint: frozen scene and physical-membership candidates, captured-source revalidation, guarded current-state synchronization, permanent display identity resolution after P2, and rollback validation. Production promotion remains disabled. |
 | 2026-08-03 | GAL / OpenAI | Added reconciliation-safe P2 and rollback validation: frozen action consumption, exact captured raw-source revalidation, nonphysical guards, atomic chained reassociation, exact write authority, and same-run idempotency checks. Production promotion remains disabled. |
 | 2026-08-02 | GAL / OpenAI | Implemented the reconciliation-safe P1 repository layer: stable `ref.stage_lor_binding` identities, frozen stage candidates and atomic groups, unified display/stage start, captured-source revalidation, and an internal P1 that consumes only approved persisted groups. Installation and rollback validation remain required. |
 | 2026-08-02 | GAL / OpenAI | Recorded the repository implementation of the persistent display-decision foundation: captured reconciliation runs, frozen display candidates, data-derived atomic groups, append-only actions, complete reassociation mappings, and read-only operator views. Installation and live validation remain prerequisites to promotion work. |
@@ -509,7 +510,8 @@ review section with enough metadata for follow-up work.
 4. Install and validate the repository implementation of reconciliation-safe P1.
 5. Replace P2 with the reconciliation-run-aware implementation and independent
    raw-comment/nonphysical write guard.
-6. Implement P3 against `ref.lor_scene` and `ref.lor_scene_display`.
+6. Install and rollback-validate P3/P4 against `ref.lor_scene` and
+   `ref.lor_scene_display`.
 7. Implement finish/promotion, committed-result capture, validation, and HTML
    report publication.
 8. Validate outside production, then perform supervised production validation.

@@ -2,7 +2,7 @@
 
 - **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 - **Document Type:** Database design specification
-- **Status:** Approved design under implementation; persistent display-decision layer validated and reconciliation-safe P1 pending installation validation
+- **Status:** Approved design under implementation; P1/P2 rollback-validated and P3/P4 repository checkpoint pending installation validation
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
 - **Current Revision:** 2026-08-02
@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Added `0018` frozen scene and scene-membership candidates, reconciliation-safe P3/P4 current-state promotion, guarded obsolete-row removal, and rollback validation `14`. Installation and database validation remain pending; Run 1 must not be promoted. |
 | 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated `0015`/`0016` stage layers and added reconciliation-safe P2 migration `0017` with rollback validation `13`. Run 1 is development state and must not be promoted. |
 | 2026-08-02 | GAL / OpenAI | Implemented `0015` and validation query `11`: persistent stage-to-LOR bindings, frozen stage candidates and atomic groups, unified reconciliation start, exact captured-source revalidation, and reconciliation-gated P1. No P1 production write has been authorized or executed. |
 | 2026-08-02 | GAL / OpenAI | Implemented the persistent display-decision foundation in `0014`: reconciliation-run capture, frozen display candidates, generic connected identity groups, append-only group actions, complete reassociation mappings, result storage, and Directus-ready review views. Added validation query `10`; no promotion writes are enabled. |
@@ -779,12 +780,13 @@ Any legacy UUID dependency requires a separate controlled migration.
 ## Required Implementation Order After Approval
 
 Current implementation checkpoint: the display decision layer in `0014` and
-`10` is installed and live-validated. Reconciliation-safe P1 in `0015` and the
+`10` is installed and validated. Reconciliation-safe P1 in `0015` and the
 multi-preview preservation action in `0016` are installed and rollback-
-validated by `11` and `12`. Reconciliation-safe P2 is implemented in repository
-migration `0017` with rollback validation `13` pending. Scene and scene-
-membership candidate persistence remains outstanding. Run 1 is development
-state and must not be promoted. P1-P4 remain disabled for committed production
+validated by `11` and `12`. Reconciliation-safe P2 in `0017` is installed and
+rollback-validated by `13`. Migration `0018` now implements frozen scene and
+scene-membership candidates plus internal P3/P4, with rollback validation `14`;
+installation and database validation are pending. Run 1 is development state
+and must not be promoted. P1-P4 remain disabled for committed production
 promotion.
 
 1. Validate this design against the current production schema and ingest completion semantics.

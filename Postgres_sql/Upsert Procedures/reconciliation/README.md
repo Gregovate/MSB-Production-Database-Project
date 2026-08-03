@@ -77,6 +77,19 @@ Run these files individually in numeric order. Each file returns one exportable 
     stage-specific rules.
   - Does not implement or call P1-P4.
 
+- `0018_create_reconciliation_safe_scene_promotion.sql`
+  - Freezes scene-definition and physical scene-membership candidates for the
+    reconciliation run's already-captured ingest.
+  - Installs internal reconciliation-gated P3 and P4 procedures.
+  - Synchronizes current production scenes and memberships conservatively;
+    blocked or deferred preview state is preserved.
+  - Installation does not call P1, P2, P3, or P4.
+
+- `14_reconciliation_safe_scene_promotion_validation.sql`
+  - Exercises P3, P2, and P4 in dependency order inside one transaction.
+  - Validates scene metadata, permanent-display memberships, obsolete-scene
+    removal, and same-transaction idempotency, then ends in `ROLLBACK`.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 
