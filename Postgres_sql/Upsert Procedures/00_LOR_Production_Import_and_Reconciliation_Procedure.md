@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Defined the operator-facing reconciliation report contract, including the internal NAS publication folder, report access, immutable timestamped filenames, source-preview manifest, completed/cancelled status, readable change tables, reason codes, replacement-label instructions, and failure handling. |
 | 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated P1/stage-preservation layers and added the repository implementation plus rollback validation for reconciliation-safe P2. Reconciliation Run 1 remains development state and is prohibited from production promotion. |
 | 2026-08-02 | GAL / OpenAI | Implemented the repository DDL for persistent stage-to-LOR bindings, frozen stage candidates/groups, unified reconciliation start, and reconciliation-gated P1. Installation and rollback validation remain required before any production stage promotion. |
 | 2026-08-02 | GAL / OpenAI | Implemented the repository DDL for the persistent reconciliation run, frozen display candidates, generic logical groups, append-only group decisions, atomic reassociation assignments, and operator review views. Production installation and live validation remain required; the UI and promotion procedures remain unimplemented. |
@@ -120,13 +121,13 @@ The three documents describe one workflow at different levels and must not defin
 | Latest-ingest preflight scripts | Implemented for development/testing; not a production reconciliation interface |
 | Persistent reconciliation-run and display-candidate tables | Installed and live-validated from `reconciliation/0014_create_lor_reconciliation_decision_layer.sql` on 2026-08-02 |
 | Persistent stage candidate and binding tables | Installed from `0015` and rollback-validated by `11`; multi-preview metadata preservation installed from `0016` and rollback-validated by `12` |
-| Persistent scene and scene-membership candidate tables | Designed; not implemented |
+| Persistent scene and scene-membership candidate tables | Installed from `0018` and rollback-validated by `14` |
 | Operator decision database contract | Installed and live-validated for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views on 2026-08-02; application interface remains pending |
 | Operator decision application interface | Designed; not implemented |
-| Finish and cancel workflow actions | Designed; not implemented |
+| Finish and cancel workflow actions | Installed from `0019` revision v2 and rollback-validated by `15`; terminal report publication remains pending |
 | P1 | Installed and rollback-validated; production promotion remains prohibited until the complete orchestrated workflow is validated |
-| P2 | Reconciliation-safe repository implementation in `0017`; rollback-only validation `13` required; legacy procedure remains prohibited |
-| P3 | Scene and scene-membership promotion is designed but not implemented |
+| P2 | Installed from `0017` and rollback-validated by `13`; legacy procedure remains prohibited |
+| P3/P4 | Installed from `0018` and rollback-validated by `14`; these remain internal engine phases |
 | Controlled single-interface workflow | Required production entry point; designed but not implemented |
 | Timestamped HTML report publication | Required for completed and cancelled reconciliations; not implemented |
 
@@ -391,57 +392,117 @@ A validation failure prevents the reconciliation run from being marked complete 
 
 ### 9. Generate and Publish the Reconciliation Report
 
-A timestamped HTML report is generated and published for both workflow outcomes:
+A reconciliation remains in `REPORTING` until its report is generated, published, and linked to the reconciliation run. Report generation failure does not falsely mark the run complete or cancelled.
 
-- completed reconciliation;
-- cancelled reconciliation.
+#### Report location and operator access
 
-#### Completed reconciliation report
-
-The completed report must include:
+Reports are published as immutable, timestamped HTML files in:
 
 ```text
-Production Results
-
-  Added......................n
-  Updated....................n
-  Reassociated...............n
-  Status Changes.............n
-  Replacement Labels.........n
-
-Operator Review
-
-  Blocked....................n
-  Deferred...................n
-  Unresolved.................n
+\\192.168.5.4\web\my\committees\production\reconciliation-reports
 ```
 
-Every committed display-name change must appear in a replacement-label detail
-section with the permanent `display_id`, old and new display names, old and new
-stages, reconciliation run, and reason. Reconciliation records this required
-work but does not automatically print a label.
+The `reconciliation-reports` folder must be created before the reporting layer is placed in service.
 
-Exact matches are excluded because no production change occurred.
+The normal operator opens the report from the clickable report link in Directus. An administrator may open the same file through Windows File Explorer at the NAS path above. A published report is an audit record and must not be overwritten. If regeneration is required after a publication failure, the publisher creates a new file and records the final published path.
 
-The detail section must include plain-language messages and enough metadata for follow-up work. The report must describe actual committed results, not proposed changes.
+The filename must contain the reconciliation completion or cancellation timestamp and the reconciliation-run identity. The exact filename pattern will be finalized with the publisher implementation.
+
+#### Required source manifest
+
+Every completed or cancelled report must identify exactly what source material produced the snapshot:
+
+- source preview-folder name and captured path;
+- preview filename;
+- LOR preview name;
+- preview revision;
+- parser execution timestamp;
+- captured `import_run_id` and reconciliation-run identity.
+
+The scene-aware parser currently stores preview name and revision in SQLite, but it does not persist the selected source folder or original filename as reconciliation audit metadata. The preview merger's manifest is not available because that merger does not run during reconciliation.
+
+Therefore the production workflow must be corrected before report implementation:
+
+1. the parser records the selected source-folder evidence and one manifest row for every parsed `.lorprev` file;
+2. the ingest transfers that manifest into the captured snapshot;
+3. reconciliation freezes the manifest in reconciliation-owned audit rows before Finish or Cancel;
+4. report publication reads the frozen audit copy, not live source files and not snapshot rows that cancellation may delete.
+
+#### Status shown to the operator
+
+The report must show one of these user-facing statuses prominently:
+
+- **Completed** — all eligible work committed and no exceptions remain;
+- **Completed with Exceptions** — eligible work committed while deferred, blocked, or unresolved items remained unchanged;
+- **Canceled** — no production promotion occurred and the captured snapshot was removed.
+
+#### Completed or completed-with-exceptions report
+
+The report begins with a concise run summary and then uses readable tables. Every change or follow-up row includes a technical reason code and a plain-language reason.
+
+Required sections are:
+
+1. **Display Name Changes**
+   - permanent `display_id`;
+   - before display name;
+   - after display name;
+   - before and after stage when applicable;
+   - reason code and plain-language reason;
+   - operator instruction: **Preprint replacement label**.
+
+2. **Other Display Changes**
+   - new displays, lifecycle/status changes, and other committed user-visible display changes;
+   - before and after values where applicable;
+   - reason code and plain-language reason.
+
+3. **Stage Changes**
+   - permanent `stage_id`;
+   - before and after user-visible stage values;
+   - reason code and plain-language reason.
+
+4. **Scene Changes**
+   - preview and scene names;
+   - before and after user-visible scene or stage assignment values;
+   - membership additions and removals summarized clearly;
+   - reason code and plain-language reason.
+
+5. **Items Deferred for Further Investigation**
+   - deferred, blocked, and unresolved items that remained unchanged;
+   - entity type and user-visible identity;
+   - required follow-up;
+   - reason code and plain-language reason.
+
+6. **Validation Results**
+   - post-write validation outcome and relevant counts.
+
+Exact matches are excluded because no production change occurred. Backend-only LOR UUID/link changes are not shown to operators and must not appear as a report change.
+
+The report describes actual committed results only. Proposed changes that did not commit belong only in the follow-up table.
 
 #### Cancellation report
 
-The cancellation report must include:
+A cancelled report includes:
 
-- reconciliation-run identity;
-- deleted latest-snapshot `import_run_id`;
-- operator;
-- cancellation timestamp;
-- cancellation reason;
-- parser and ingest summary available before cancellation;
+- prominent **Canceled** status;
+- reconciliation-run identity and captured `import_run_id`;
+- operator, cancellation timestamp, and cancellation reason;
+- frozen source manifest;
 - candidate counts available before cancellation;
 - confirmation that no production promotion occurred;
-- confirmation that the latest snapshot was deleted.
+- confirmation that the captured snapshot was deleted;
+- deleted row counts by snapshot table;
+- validation/audit result.
 
-The report path or URL and publication timestamp must be stored on the reconciliation run before the workflow is closed.
+Cancellation report generation must not depend on the deleted `lor_snap` rows.
 
-The operator interface must provide a clickable link to the published report.
+#### Terminal transition
+
+After successful publication, the publisher stores the immutable file path, clickable URL, publication timestamp, and final report result. It then changes:
+
+- a successful Finish run from `REPORTING` to `COMPLETED` or `COMPLETED_WITH_EXCEPTIONS`; or
+- a successful Cancel run from `REPORTING` to `CANCELLED`.
+
+If generation, filesystem publication, link storage, or final transition fails, the run remains `REPORTING` with a recorded failure. The operator must be able to retry publication without rerunning P1-P4 or cancellation.
 
 ## Stop Conditions Summary
 
