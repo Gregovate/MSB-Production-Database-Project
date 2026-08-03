@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Removed `color` from reconciliation authority because RGB props legitimately supply no single color; added committed display-name changes to the replacement-label report contract. |
 | 2026-08-02 | GAL / OpenAI | Corrected the preflight candidate interface after the production raw-ID migration: every display candidate now retains scoped `source_prop_id` for exact captured-row revalidation while `lor_prop_id` carries only the preview-independent `raw_prop_id` proposed for `ref.display`. |
 | 2026-08-02 | GAL / OpenAI | Recorded completion of the one-time production `ref.display.lor_prop_id` migration using ingest Run 42: all 1,050 rows now store instance-qualified `raw_prop_id`; zero preview prefixes, blanks, duplicates, or ACTIVE identities missing from the captured ingest remained after commit. Marked the legacy P2 source as incompatible and non-runnable pending the reconciliation engine prerequisites. |
 | 2026-08-02 | GAL / OpenAI | Documented the verified moved-display stale-UUID failure found in ingest Run 41 and cleared in Run 42: renamed or hidden vacated channels remain parseable and may retain the moved display's PropClass UUID. Added the mandatory cross-name/cross-preview `raw_prop_id` collision check and source-correction requirement. |
@@ -425,7 +426,10 @@ For an existing `ref.display` row, ordinary approved LOR promotion may modify on
 | `btrim(lor_snap.props.lor_comment)` | `display_name` |
 | approved effective stage resolved from preview/scene evidence | `stage_id` |
 | `lor_snap.props.string_type` | `string_type` |
-| `lor_snap.props.color` | `color` |
+
+`ref.display.color` is production-maintained metadata and is not reconciled
+from LOR. RGB props legitimately have no single LOR color, so a null source
+color must never clear or replace the production value.
 
 Before every insert or update, P2 must independently re-read the raw captured prop row by both `import_run_id` and `prop_id` and enforce:
 
@@ -696,6 +700,9 @@ The report includes:
 - captured `import_run_id`;
 - operator and timestamps;
 - committed additions, updates, reassociations, and status changes;
+- replacement-label requirements created by committed display-name changes,
+  including permanent `display_id`, old and new display names, old and new
+  stages, reconciliation run, and reason;
 - blocked candidates;
 - deferred candidates;
 - unresolved required decisions blocked at finish;

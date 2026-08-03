@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Added the replacement-label report requirement for committed display-name changes; reconciliation records label work but does not print automatically. |
 | 2026-08-02 | GAL / OpenAI | Defined the complete single-interface workflow: start import, run parser and protected ingest, automatically begin reconciliation, collect decisions, promote all passing candidates, block deferred or unresolved candidates, support finish or cancel, and generate a report in both cases. |
 | 2026-08-01 | GAL / OpenAI | Defined the finished single-workflow operator experience, automatic latest-ingest capture, persistent reconciliation state, operator pause/resume, finish reconciliation, post-write validation, and timestamped HTML report publication. |
 | 2026-07-31 | GAL / OpenAI | Revised the gate to promote independently safe records, quarantine only affected exceptions, and process stage/scene context before displays and scene assignments. |
@@ -400,6 +401,7 @@ Production Results
   Updated....................n
   Reassociated...............n
   Status Changes.............n
+  Replacement Labels.........n
 
 Operator Review
 
@@ -407,6 +409,11 @@ Operator Review
   Deferred...................n
   Unresolved.................n
 ```
+
+Every committed display-name change must appear in a replacement-label detail
+section with the permanent `display_id`, old and new display names, old and new
+stages, reconciliation run, and reason. Reconciliation records this required
+work but does not automatically print a label.
 
 Exact matches are excluded because no production change occurred.
 

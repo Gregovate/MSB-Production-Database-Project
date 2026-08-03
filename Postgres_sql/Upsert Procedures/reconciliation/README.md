@@ -18,12 +18,15 @@ Run these files individually in numeric order. Each file returns one exportable 
    - Does not call or modify P1.
 
 3. `03_latest_ingest_p2_summary.sql`
-   - Returns aggregate display-classification counts.
-   - Counts exact matches but does not report them individually.
+   - Returns aggregate identity-classification and projected-change counts.
+   - Separately counts exact identity matches that still project a production
+     field change.
 
 4. `04_latest_ingest_p2_action_report.sql`
    - Returns only display candidates requiring a production action, operator decision, source correction, or defer decision.
-   - Excludes exact matches and nonphysical rows from the detailed action list.
+   - Excludes unchanged exact matches and nonphysical rows from detail.
+   - Includes exact identity matches with projected changes for approval or
+     `DEFER`.
    - Includes scoped `source_prop_id` evidence separately from the unscoped
      `lor_prop_id` proposed for production.
 
@@ -44,12 +47,14 @@ Run these files individually in numeric order. Each file returns one exportable 
      unscoped `raw_prop_id` while retaining scoped `prop_id` as source evidence.
 
 8. `08_latest_ingest_p2_display_identity_gate.sql`
-   - Summarizes current display-identity classifications for development validation.
+   - Summarizes identity classifications and projected changes; exact identity
+     does not hide a proposed production update.
 
 9. `09_current_p2_projected_write_validation.sql`
    - Projects permitted P2 changes without executing them.
    - Rechecks the exact captured source row and uses `raw_prop_id` for the
      proposed `ref.display.lor_prop_id` association.
+   - Does not compare or project `ref.display.color`.
 
 ## Supporting Files
 

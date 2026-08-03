@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-02  V7.0.5
+# Current Version : 2026-08-02  V7.0.4
 #
 # Author:
 #   Greg Liebig
@@ -47,16 +47,8 @@
 #
 # Changelog
 # ---------
-## 2026-08-02  V7.0.5  (GAL)
-# • Corrected DeviceType=None fan-out identity handling.
-# • Fanned-out props now append the instance suffix to RawPropID as well as PropID:
-#     - base UUID -> base UUID-01, base UUID-02, ...
-# • Preserved the unsuffixed XML PropClass UUID only for non-fanned materialized rows.
-# • Updated scene_lor_props fan-out rows to carry the same materialized RawPropID
-#   stored on the resolved props row.
-#
 ## 2026-08-02  V7.0.4  (GAL)
-# • Added RawPropID to props and subProps to preserve the LOR source identity.
+# • Added RawPropID to props and subProps to preserve the exact LOR PropClass UUID.
 # • Retained existing preview-scoped PropID/SubPropID keys for parser and relational integrity.
 # • Populated RawPropID across every props/subProps materialization path, including
 #   DeviceType=None fan-out, grouped DMX, manual/automatic LOR grouping, multi-grid
@@ -177,9 +169,7 @@
 #   - subProps.MasterPropId
 #   - subProps.SubPropID
 #
-# Preserve the LOR source identity separately in props.RawPropID and subProps.RawPropID.
-# DeviceType=None physical fan-out appends -01, -02, ... so each materialized
-# instance has a stable raw occurrence identity while retaining the LOR UUID base.
+# Preserve the exact XML UUID separately in props.RawPropID and subProps.RawPropID.
 #
 # Error Checking & Reports (context)
 # ----------------------------------
@@ -223,8 +213,7 @@ import csv
 #   PreviewClass.id     → previews.id           (PreviewID; key)
 #   PreviewClass.Name   → previews.Name         (PreviewName; operator label)
 #   PreviewClass.BackgroundFile → previews.BackgroundFile  (QA/low)
-#   PropClass.id        → props.RawPropID / subProps.RawPropID
-#                          (exact UUID unless physical fan-out appends -NN)
+#   PropClass.id        → props.RawPropID / subProps.RawPropID (exact XML UUID)
 #   scoped PropClass.id → props.PropID / subProps.SubPropID     (parser key)
 #   PropClass.Comment   → props.LORComment / subProps.LORComment (Display Name)
 #   PropClass.Name      → props.Name / subProps.Name            (Channel Name)
@@ -1511,21 +1500,6 @@ def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root)
             continue
 
         for prop_id in resolved_prop_ids:
-            # Use the RawPropID stored on the resolved materialized row.
-            # For DeviceType=None fan-out this preserves the -01, -02, ... suffix.
-            cursor.execute("""
-                SELECT RawPropID
-                FROM props
-                WHERE PreviewId = ? AND PropID = ?
-                UNION ALL
-                SELECT RawPropID
-                FROM subProps
-                WHERE PreviewId = ? AND SubPropID = ?
-                LIMIT 1
-            """, (preview_id, prop_id, preview_id, prop_id))
-            resolved_raw_row = cursor.fetchone()
-            materialized_raw_prop_id = resolved_raw_row[0] if resolved_raw_row else raw_prop_id
-
             # Several XML DMX components may resolve to one display master.
             # Keep the first position rather than replacing it with the last.
             cursor.execute("""
@@ -1544,7 +1518,7 @@ def process_scene_lor_props(preview_id: str, preview_stage_id: str | None, root)
             """, (
                 preview_id,
                 prop_id,
-                materialized_raw_prop_id,
+                raw_prop_id,
                 current_scene_id,
                 preview_stage_id,
                 current_scene_stage_id,
@@ -1867,7 +1841,7 @@ def reconcile_subprops_to_canonical_master(db_file: str):
         conn.close()
 
 def audit_raw_prop_identity(db_file: str):
-    """Fail fast if any materialized prop/subprop lacks its source PropClass UUID."""
+    """Fail fast if any identity-bearing row lacks its source PropClass UUID."""
     conn = sqlite3.connect(db_file)
     try:
         rows = conn.execute("""
@@ -1877,6 +1851,10 @@ def audit_raw_prop_identity(db_file: str):
             UNION ALL
             SELECT 'subProps' AS Source, SubPropID AS ItemID
             FROM subProps
+            WHERE RawPropID IS NULL OR TRIM(RawPropID) = ''
+            UNION ALL
+            SELECT 'scene_lor_props' AS Source, PropID AS ItemID
+            FROM scene_lor_props
             WHERE RawPropID IS NULL OR TRIM(RawPropID) = ''
             ORDER BY Source, ItemID
         """).fetchall()
@@ -2095,7 +2073,6 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
 
         for i in range(1, count + 1):
             inst_id      = f"{base_scoped}-{i:02d}" if count > 1 else base_scoped
-            inst_raw_id  = f"{m['raw_id']}-{i:02d}" if count > 1 else m["raw_id"]
             inst_comment = f"{dn}-{i:02d}"           if count > 1 else dn
             try:
                 cur.execute("""
@@ -2110,7 +2087,7 @@ def process_none_props(preview_id, root, skip_display_names: set[str] | None = N
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    inst_id, inst_raw_id, m["name"], inst_comment, "None",
+                    inst_id, m["raw_id"], m["name"], inst_comment, "None",
                     m["bulb_shape"], m["dimming_curve_name"], m["max_ch"],
                     m["custom_bulb_color"], m["individual_ch"], m["legacy_method"],
                     m["opacity"], m["master_dimmable"], m["preview_bulb_size"], m["separate_ids"], m["start_location"],

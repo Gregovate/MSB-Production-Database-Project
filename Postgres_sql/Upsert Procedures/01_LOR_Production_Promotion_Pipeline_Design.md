@@ -30,7 +30,8 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
-| 2026-08-02 | GAL / OpenAI | Defined P2 as the final database guard against SPARE, PHANTOM, null, empty, and whitespace-only `lor_comment` values; removed stale authorization for wiring/controller/network/channel writes to `ref.display`; and limited ordinary P2 writes to the five approved LOR-owned fields. |
+| 2026-08-02 | GAL / OpenAI | Removed `color` from LOR-owned P2 fields because RGB props have no single source color; added committed display-name changes to the replacement-label report requirements. |
+| 2026-08-02 | GAL / OpenAI | Defined P2 as the final database guard against SPARE, PHANTOM, null, empty, and whitespace-only `lor_comment` values; removed stale authorization for wiring/controller/network/channel writes to `ref.display`; and limited ordinary P2 writes to the approved LOR-owned fields. |
 | 2026-08-01 | GAL / OpenAI | Added the three-document navigation contract linking the operator procedure, promotion pipeline design, and reconciliation SQL design. |
 | 2026-08-01 | GAL / OpenAI | Defined the latest-snapshot lifecycle, cancellation of reconciliation for an invalid ingest, optional removal of rejected snapshots, and short-term snapshot retention for current-versus-previous comparison. |
 | 2026-08-01 | GAL / OpenAI | Defined the persistent reconciliation execution context, automatic latest-completed-ingest capture, single-evaluation working sets, operator pause/resume, committed-result reporting, and the handoff from the operator procedure to P1/P2/P3 promotion. |
@@ -322,8 +323,9 @@ It will:
   - `lor_prop_id`;
   - `display_name` from `btrim(lor_snap.props.lor_comment)`;
   - approved resolved `stage_id`;
-  - `string_type`;
-  - `color`.
+  - `string_type`.
+- Preserve `ref.display.color` as production-maintained metadata; a null LOR
+  color, including the expected null for RGB props, never clears it.
 - Create a genuinely new display only from an approved new-display candidate.
 - Apply `display_status_id` only from an explicit operator lifecycle decision
   resolved through `ref.display_status`.
