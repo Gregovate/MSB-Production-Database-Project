@@ -2,7 +2,7 @@
 # postgres_ingest_from_lor_sqlite_v7.py
 # Initial Release : 2026-02-21  V0.1.0
 # Version         : 2026-02-21  V0.1.0
-# Current Version : 2026-08-03  V0.3.0
+# Current Version : 2026-08-03  V0.3.1
 #
 # Changes:
 # - Initial append-only ingestion layer (SQLite → Postgres)
@@ -17,6 +17,8 @@
 #   is missing, rather than silently inserting NULL into an unmapped column.
 # - V0.3.0 reads the disposable SQLite parser_run row and writes parser provenance,
 #   source paths, ingest provenance, and source row counts to lor_snap.import_run.
+# - V0.3.1 preserves the exact source .lorprev filename in
+#   lor_snap.previews.source_filename.
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
@@ -99,6 +101,12 @@
 #
 # -----------------------------------------------------------------------------
 # Change Log
+# 2026-08-03  GAL  V0.3.1
+#   - Added source preview filename handoff from
+#     SQLite previews.SourceFilename to
+#     lor_snap.previews.source_filename.
+#   - The exact .lorprev filename is now preserved with each
+#     append-only PostgreSQL preview snapshot row.
 # 2026-08-03  GAL  V0.3.0
 #   - Added INGEST_SCRIPT_VERSION as the authoritative ingest version constant.
 #   - Reads parser_run metadata from the rebuilt SQLite snapshot.
@@ -151,7 +159,7 @@ import psycopg2
 import psycopg2.extras
 
 
-INGEST_SCRIPT_VERSION = "V0.3.0"
+INGEST_SCRIPT_VERSION = "V0.3.1"
 
 
 # ---------------------------
