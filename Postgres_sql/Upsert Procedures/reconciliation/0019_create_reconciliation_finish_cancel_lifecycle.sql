@@ -2,7 +2,7 @@
 Object group: Atomic LOR reconciliation Finish/Cancel lifecycle
 Repository:   Postgres_sql/Upsert Procedures/reconciliation/
 Filename:     0019_create_reconciliation_finish_cancel_lifecycle.sql
-Revision:     2026-08-03-reconciliation-finish-cancel-v1
+Revision:     2026-08-03-reconciliation-finish-cancel-v2
 
 Purpose:
   Install the only operator-facing write entry points for finishing or
@@ -19,6 +19,7 @@ Safety boundary:
     later report publisher because publication is part of completion.
 
 Revision history:
+  2026-08-03  GAL / OpenAI  v2: Validate scene membership by its actual scene/display composite key.
   2026-08-03  GAL / OpenAI  Initial atomic Finish/Cancel lifecycle.
 ============================================================================ */
 
@@ -250,7 +251,7 @@ BEGIN
       AND NOT c.is_blocking
       AND display_group.effective_resolution_state IN ('AUTO_APPROVED', 'APPROVED')
       AND (d.display_id IS NULL OR s.lor_scene_id IS NULL
-           OR sd.lor_scene_display_id IS NULL);
+           OR sd.lor_scene_id IS NULL);
 
     IF v_invalid_scene_count <> 0 OR v_invalid_membership_count <> 0 THEN
         RAISE EXCEPTION
@@ -404,7 +405,7 @@ COMMENT ON SCHEMA ops IS
 COMMIT;
 
 SELECT
-    '2026-08-03-reconciliation-finish-cancel-v1'::text AS installed_revision,
+    '2026-08-03-reconciliation-finish-cancel-v2'::text AS installed_revision,
     to_regprocedure('ops.p_finish_lor_reconciliation(bigint,text)') IS NOT NULL
         AS has_finish_procedure,
     to_regprocedure('ops.p_cancel_lor_reconciliation(bigint,text,text)') IS NOT NULL
