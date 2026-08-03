@@ -115,6 +115,17 @@ Run these files individually in numeric order. Each file returns one exportable 
   - Read-only validation of current-run provenance, preview counts, and the
     per-preview filename/name/revision evidence required for reporting.
 
+- `0021_freeze_reconciliation_source_evidence.sql`
+  - Adds immutable, reconciliation-owned typed copies of the captured
+    `lor_snap.import_run` row and every run-scoped preview and scene row.
+  - Updates unified Start Reconciliation to freeze that report evidence in the
+    same transaction before completing the candidate working set.
+  - Does not change P1, P2, scene promotion, or production data.
+
+- `17_frozen_reconciliation_source_evidence_validation.sql`
+  - Read-only validation that the latest reconciliation owns one complete
+    source-run record and matching frozen preview and scene counts.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 
