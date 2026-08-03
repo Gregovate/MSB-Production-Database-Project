@@ -105,6 +105,16 @@ Run these files individually in numeric order. Each file returns one exportable 
   - Ends both parts in `ROLLBACK`; no promotion, cancellation, or snapshot
     deletion persists.
 
+- `0020_expose_current_snapshot_provenance.sql`
+  - Extends `lor_snap.v_current_run` with all parser, source-folder, ingest,
+    and row-count provenance already stored in `lor_snap.import_run`.
+  - Extends `lor_snap.v_current_previews` with `source_filename`.
+  - Leaves historical nullable provenance as `NULL` and changes no data.
+
+- `16_current_snapshot_provenance_validation.sql`
+  - Read-only validation of current-run provenance, preview counts, and the
+    per-preview filename/name/revision evidence required for reporting.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 
