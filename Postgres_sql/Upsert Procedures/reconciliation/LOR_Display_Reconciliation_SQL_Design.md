@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Corrected the attempt lifecycle: every Start creates an independent evaluation, an interrupted review attempt is frozen and reported as `SUPERSEDED` instead of blocking later work, multiple attempts may evaluate the same ingest, prior decisions are history only, and normal Finish requires deliberate terminal outcomes for every decision-required group. |
 | 2026-08-03 | GAL / OpenAI | Defined reconciliation-owned source-manifest evidence and the operator-facing HTML report contract: NAS publication folder, immutable timestamped files, completed/cancelled statuses, readable change and exception tables, reason codes, replacement-label instruction, UUID suppression, and retry-safe terminal publication. |
 | 2026-08-03 | GAL / OpenAI | Made no-op suppression part of the production-write contract: authorized business fields require null-safe comparison, unchanged rows retain all audit values, and validation/reporting must reject false changes. |
 | 2026-08-03 | GAL / OpenAI | Added `0019` atomic Finish/Cancel lifecycle and rollback validation `15`. Finish executes and validates P1/P3/P2/P4 before advancing to `REPORTING`; Cancel records its audit and atomically removes the captured snapshot before advancing to `REPORTING`. Terminal status remains gated by report publication. |
@@ -107,6 +108,12 @@ The reconciliation start entry point shall:
 
 The operator never selects or enters an `import_run_id`.
 
+Every Start request creates a new reconciliation attempt, even when another
+attempt evaluated the same captured ingest. Before the new attempt is built,
+any interrupted review-stage attempt is frozen and closed as `SUPERSEDED`.
+Its undecided groups are reported as incomplete at supersession; they are not
+silently converted to `DEFER` or inherited by the new attempt.
+
 ## Reconciliation Run State Model
 
 The implementation shall support at least these logical states:
@@ -122,6 +129,7 @@ The implementation shall support at least these logical states:
 - `COMPLETED`
 - `COMPLETED_WITH_EXCEPTIONS`
 - `CANCELLED`
+- `SUPERSEDED`
 - `FAILED`
 
 Exact stored values may be finalized during DDL implementation, but every state transition must be explicit, auditable, and valid only from an allowed prior state.
@@ -133,6 +141,14 @@ Each successful ingest creates a complete snapshot identified by `import_run_id`
 At reconciliation start, the engine captures the latest completed snapshot once. That captured run remains fixed through candidate construction, decisions, promotion, validation, and reporting.
 
 A later ingest does not alter an already-running reconciliation. It becomes the latest snapshot for the next reconciliation.
+
+An unfinished review attempt never blocks a later Start. The later attempt
+reevaluates the latest completed ingest against production as it exists at that
+time. A previously deferred, rejected, or undecided issue disappears when the
+source or production correction resolves it and appears again when it remains.
+Prior actions remain visible as audit history but have no decision authority in
+the later attempt. Repeated attempts against unchanged source and production
+must produce the same candidate classifications.
 
 Snapshot rows are immutable while retained. Corrections create a new ingest; existing snapshot rows are not edited to represent corrected source data.
 
@@ -162,6 +178,8 @@ Required logical fields include:
 - validation state;
 - report path, URL, and publication timestamp;
 - cancellation reason when applicable.
+- supersession timestamp, reason, and later reconciliation-run identity when
+  an interrupted attempt is replaced.
 
 ### Persisted Candidate Working Sets
 
@@ -252,8 +270,10 @@ Every candidate or inseparable logical group is evaluated independently.
 - Approved decisions advance.
 - Blocked candidates remain unchanged in production.
 - Deferred candidates remain unchanged in production.
-- Candidates still lacking a required decision when **Finish Reconciliation** is selected remain blocked and unchanged.
-- Blocked, deferred, and unresolved candidates do not prevent unrelated passing candidates from promotion.
+- Every decision-required group must have a deliberate terminal operator
+  outcome before **Finish Reconciliation** may begin promotion.
+- Blocked, rejected, and deferred outcomes do not prevent unrelated passing
+  candidates from promotion after every required decision is terminal.
 - Run-level failure is reserved for structural conditions that prevent safe isolation or trustworthy auditing.
 
 The operator ends review by selecting either:
@@ -267,8 +287,8 @@ When **Finish Reconciliation** is selected, the engine shall:
 
 1. reopen the same reconciliation run;
 2. verify the captured ingest and persisted candidates;
-3. classify every unresolved required decision as blocked;
-4. preserve every blocked or deferred production row unchanged;
+3. reject Finish if any decision-required group lacks a terminal outcome;
+4. preserve every blocked, rejected, or deferred production row unchanged;
 5. execute all passing and approved work in dependency order;
 6. run post-write validation;
 7. persist actual results;
@@ -754,6 +774,7 @@ The report is generated from:
 - deferred, blocked, and unresolved exception results;
 - post-write validation results;
 - cancellation and snapshot-deletion audit results.
+- supersession lineage plus incomplete-at-supersession results.
 
 The publisher does not rerun reconciliation or recompute identity decisions. Proposed changes that did not commit are never reported as committed changes.
 
@@ -768,8 +789,14 @@ The report shows one of these statuses prominently:
 - **Completed**
 - **Completed with Exceptions**
 - **Canceled**
+- **Superseded**
 
 `Completed with Exceptions` applies whenever valid work committed while deferred, blocked, or unresolved items remained unchanged.
+
+`Superseded` applies when a later Start closes an interrupted review attempt.
+Its report distinguishes deliberate deferrals and rejected changes from groups
+that were still undecided when superseded. No superseded result is described as
+a committed production change.
 
 ### Required report header
 

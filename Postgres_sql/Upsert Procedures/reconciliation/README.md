@@ -126,6 +126,20 @@ Run these files individually in numeric order. Each file returns one exportable 
   - Read-only validation that the latest reconciliation owns one complete
     source-run record and matching frozen preview and scene counts.
 
+- `0022_make_reconciliation_attempts_independent.sql`
+  - Removes both the global open-run blocker and the one-attempt-per-ingest
+    restriction.
+  - Every Start creates a fresh evaluation of the current completed ingest.
+  - Freezes and marks interrupted review-stage attempts `SUPERSEDED`, records
+    their undecided groups without treating them as operator deferrals, and
+    preserves explicit lineage to the later attempt.
+  - Requires deliberate terminal operator outcomes for all decision-required
+    groups before normal Finish can enter promotion.
+  - Does not call P1-P4, alter production data, or delete snapshots.
+
+- `18_independent_reconciliation_attempt_validation.sql`
+  - Read-only installation and run-history validation for migration `0022`.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 
@@ -134,7 +148,7 @@ Run these files individually in numeric order. Each file returns one exportable 
 `10_persistent_operator_decision_validation.sql` is deliberately outside the
 read-only 01-09 preflight suite.
 
-- It starts or reopens the persistent reconciliation for the automatically
+- It starts a new persistent reconciliation attempt for the automatically
   captured current ingest.
 - It persists only `ops` reconciliation working state.
 - It returns the run summary, decision groups, complete display detail, and
