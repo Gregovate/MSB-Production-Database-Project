@@ -1,5 +1,6 @@
 /* ============================================================================
 Object: Rollback-only validation of reconciliation-safe P2
+Filename: 13_reconciliation_safe_p2_display_validation.sql
 
 Safety:
   This entire script is one transaction ending in ROLLBACK. It temporarily
@@ -31,7 +32,7 @@ BEGIN
     FROM ops.lor_reconciliation_display_candidate AS c
     WHERE c.lor_reconciliation_group_id = v_group_id;
 
-    IF jsonb_object_length(v_map) <> 2 THEN
+    IF (SELECT count(*) FROM jsonb_object_keys(COALESCE(v_map, '{}'::jsonb))) <> 2 THEN
         RAISE EXCEPTION 'Welcome validation requires exactly two frozen members';
     END IF;
 
