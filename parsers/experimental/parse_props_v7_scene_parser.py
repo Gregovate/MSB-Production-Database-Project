@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-03  V7.0.6
+# Current Version : 2026-08-03  V7.0.7
 #
 # Author:
 #   Greg Liebig
@@ -47,6 +47,13 @@
 #
 # Changelog
 # ---------
+## 2026-08-03  V7.0.7  (GAL)
+# • Added SourceFilename to the disposable previews table.
+# • Record the exact .lorprev filename used to create each preview row.
+# • Preserve source folder metadata in parser_run and source file identity
+#   in previews for an unambiguous parser-to-ingest audit trail.
+# • Updated process_preview() and preview insertion logic to carry
+#   Path(file_path).name into previews.SourceFilename.
 ## 2026-08-03  V7.0.6  (GAL)
 # • Added PARSER_VERSION as the single runtime parser version constant.
 # • Added disposable parser_run metadata table to the rebuilt SQLite snapshot.
@@ -291,7 +298,7 @@ def get_reports_dir() -> str:
 
 
 # ---- Global flags & defaults (must be defined before functions) ----
-PARSER_VERSION = "V7.0.6"  # GAL 2026-08-03: authoritative runtime version
+PARSER_VERSION = "V7.0.7"  # GAL 2026-08-03: authoritative runtime version
 
 DEBUG = False  # Global debug flag
 
@@ -1045,7 +1052,8 @@ def setup_database():
         Name TEXT,
         Revision TEXT,
         Brightness REAL,
-        BackgroundFile TEXT
+        BackgroundFile TEXT,
+        SourceFilename TEXT
     )
     """)
 
@@ -1297,7 +1305,7 @@ def locate_preview_class_deep(file_path):
         print(f"[ERROR] Failed to parse {file_path}: {e}")
         return None
 
-def process_preview(preview):
+def process_preview(preview, file_path):
     """Extract and return data from the <PreviewClass> element."""
     preview_data = {
         "id": preview.get("id"),
@@ -1305,7 +1313,8 @@ def process_preview(preview):
         "Name": preview.get("Name"),
         "Revision": preview.get("Revision"),
         "Brightness": preview.get("Brightness"),
-        "BackgroundFile": preview.get("BackgroundFile")
+        "BackgroundFile": preview.get("BackgroundFile"),
+        "SourceFilename": Path(file_path).name,
     }
     # GAL 25-10-22: keep the old dump but gate it behind PREVIEW_DEBUG
     if PREVIEW_DEBUG:
@@ -1806,15 +1815,16 @@ def insert_preview_data(preview_data):
     cursor = conn.cursor()
 
     cursor.execute("""
-    INSERT OR REPLACE INTO previews (id, StageID, Name, Revision, Brightness, BackgroundFile)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO previews (id, StageID, Name, Revision, Brightness, BackgroundFile, SourceFilename)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         preview_data["id"],
         preview_data["StageID"],
         preview_data["Name"],
         preview_data["Revision"],
         preview_data["Brightness"],
-        preview_data["BackgroundFile"]
+        preview_data["BackgroundFile"],
+        preview_data["SourceFilename"],
     ))
 
     conn.commit()
@@ -3358,7 +3368,7 @@ def process_file(file_path):
     dprint(f"[DEBUG] Processing file: {file_path}")  # quieter unless DEBUG=True
     preview = locate_preview_class_deep(file_path)
     if preview is not None:
-        preview_data = process_preview(preview)   # full dict dump is now gated by PREVIEW_DEBUG inside process_preview
+        preview_data = process_preview(preview, file_path)   # full dict dump is now gated by PREVIEW_DEBUG inside process_preview
         insert_preview_data(preview_data)
 
         tree = ET.parse(file_path)
