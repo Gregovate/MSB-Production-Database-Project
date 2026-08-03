@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Implemented the repository DDL for persistent stage-to-LOR bindings, frozen stage candidates/groups, unified reconciliation start, and reconciliation-gated P1. Installation and rollback validation remain required before any production stage promotion. |
 | 2026-08-02 | GAL / OpenAI | Implemented the repository DDL for the persistent reconciliation run, frozen display candidates, generic logical groups, append-only group decisions, atomic reassociation assignments, and operator review views. Production installation and live validation remain required; the UI and promotion procedures remain unimplemented. |
 | 2026-08-02 | GAL / OpenAI | Added the replacement-label report requirement for committed display-name changes; reconciliation records label work but does not print automatically. |
 | 2026-08-02 | GAL / OpenAI | Defined the complete single-interface workflow: start import, run parser and protected ingest, automatically begin reconciliation, collect decisions, promote all passing candidates, block deferred or unresolved candidates, support finish or cancel, and generate a report in both cases. |
@@ -116,12 +117,13 @@ The three documents describe one workflow at different levels and must not defin
 | `parse_props_v7_scene_parser.py` | Implemented and under V7 validation |
 | `postgres_run_ingest_v7.ps1` | Implemented and tested |
 | Latest-ingest preflight scripts | Implemented for development/testing; not a production reconciliation interface |
-| Persistent reconciliation-run and display-candidate tables | Repository DDL implemented in `reconciliation/0014_create_lor_reconciliation_decision_layer.sql`; production installation and live validation pending |
-| Persistent stage, scene, and scene-membership candidate tables | Designed; not implemented |
-| Operator decision database contract | Repository DDL implemented for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views; production installation and live validation pending |
+| Persistent reconciliation-run and display-candidate tables | Installed and live-validated from `reconciliation/0014_create_lor_reconciliation_decision_layer.sql` on 2026-08-02 |
+| Persistent stage candidate and binding tables | Repository DDL implemented in `reconciliation/0015_create_reconciliation_safe_p1_stage_promotion.sql`; installation and live validation pending |
+| Persistent scene and scene-membership candidate tables | Designed; not implemented |
+| Operator decision database contract | Installed and live-validated for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views on 2026-08-02; application interface remains pending |
 | Operator decision application interface | Designed; not implemented |
 | Finish and cancel workflow actions | Designed; not implemented |
-| P1 | Legacy procedure exists; reconciliation-safe replacement not implemented |
+| P1 | Reconciliation-safe repository implementation complete in migration `0015`; installation and rollback-only live validation pending; legacy procedure remains prohibited |
 | P2 | Legacy procedure exists; reconciliation-safe replacement not implemented |
 | P3 | Scene and scene-membership promotion is designed but not implemented |
 | Controlled single-interface workflow | Required production entry point; designed but not implemented |

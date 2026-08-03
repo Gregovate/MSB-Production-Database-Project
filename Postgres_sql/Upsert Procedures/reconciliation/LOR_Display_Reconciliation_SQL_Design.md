@@ -2,7 +2,7 @@
 
 - **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 - **Document Type:** Database design specification
-- **Status:** Approved design under implementation; persistent display-decision DDL complete in repository and pending production validation
+- **Status:** Approved design under implementation; persistent display-decision layer validated and reconciliation-safe P1 pending installation validation
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
 - **Current Revision:** 2026-08-02
@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Implemented `0015` and validation query `11`: persistent stage-to-LOR bindings, frozen stage candidates and atomic groups, unified reconciliation start, exact captured-source revalidation, and reconciliation-gated P1. No P1 production write has been authorized or executed. |
 | 2026-08-02 | GAL / OpenAI | Implemented the persistent display-decision foundation in `0014`: reconciliation-run capture, frozen display candidates, generic connected identity groups, append-only group actions, complete reassociation mappings, result storage, and Directus-ready review views. Added validation query `10`; no promotion writes are enabled. |
 | 2026-08-02 | GAL / OpenAI | Removed `color` from reconciliation authority because RGB props legitimately supply no single color; added committed display-name changes to the replacement-label report contract. |
 | 2026-08-02 | GAL / OpenAI | Corrected the preflight candidate interface after the production raw-ID migration: every display candidate now retains scoped `source_prop_id` for exact captured-row revalidation while `lor_prop_id` carries only the preview-independent `raw_prop_id` proposed for `ref.display`. |
@@ -776,10 +777,12 @@ Any legacy UUID dependency requires a separate controlled migration.
 
 ## Required Implementation Order After Approval
 
-Current implementation checkpoint: the display portion of steps 2 through 5
-is implemented in repository files `0014` and `10`, but has not yet been
-installed or validated against production. Stage, scene, and scene-membership
-candidate persistence remains outstanding. P1-P4 remain disabled.
+Current implementation checkpoint: the display decision layer in `0014` and
+`10` is installed and live-validated. The reconciliation-safe P1 repository
+layer is implemented in `0015` with validation query `11`; installation and
+rollback-only live validation remain pending. Scene and scene-membership
+candidate persistence remains outstanding. P1-P4 remain disabled for committed
+production promotion.
 
 1. Validate this design against the current production schema and ingest completion semantics.
 2. Implement reconciliation-run, candidate, action, result, validation, report, and snapshot-deletion audit objects.

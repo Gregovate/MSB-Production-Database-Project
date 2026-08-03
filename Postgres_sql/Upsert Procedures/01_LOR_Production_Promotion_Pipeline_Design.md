@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Implemented the reconciliation-safe P1 repository layer: stable `ref.stage_lor_binding` identities, frozen stage candidates and atomic groups, unified display/stage start, captured-source revalidation, and an internal P1 that consumes only approved persisted groups. Installation and rollback validation remain required. |
 | 2026-08-02 | GAL / OpenAI | Recorded the repository implementation of the persistent display-decision foundation: captured reconciliation runs, frozen display candidates, data-derived atomic groups, append-only actions, complete reassociation mappings, and read-only operator views. Installation and live validation remain prerequisites to promotion work. |
 | 2026-08-02 | GAL / OpenAI | Removed `color` from LOR-owned P2 fields because RGB props have no single source color; added committed display-name changes to the replacement-label report requirements. |
 | 2026-08-02 | GAL / OpenAI | Defined P2 as the final database guard against SPARE, PHANTOM, null, empty, and whitespace-only `lor_comment` values; removed stale authorization for wiring/controller/network/channel writes to `ref.display`; and limited ordinary P2 writes to the approved LOR-owned fields. |
@@ -230,10 +231,13 @@ the captured `import_run_id` as well as their run-scoped LOR identifiers.
 ### Internal signature
 
 ```sql
-call ref.p1_upsert_stage_from_lor(p_import_run_id => p_captured_import_run_id);
+call ref.p1_promote_stage_from_reconciliation(
+    p_lor_reconciliation_run_id => p_reconciliation_run_id
+);
 ```
 
-The orchestrator supplies the captured value. This is not an operator prompt.
+The procedure resolves the captured `import_run_id` from the persisted
+reconciliation run. Neither value is an operator prompt.
 
 ### Existing behavior being replaced
 
@@ -501,7 +505,7 @@ review section with enough metadata for follow-up work.
 2. Implement the start/capture/build-candidates phase.
 3. Convert existing preflight SQL into persisted candidate builders and read-only
    diagnostic reports over one reconciliation run.
-4. Replace P1 with the reconciliation-run-aware implementation.
+4. Install and validate the repository implementation of reconciliation-safe P1.
 5. Replace P2 with the reconciliation-run-aware implementation and independent
    raw-comment/nonphysical write guard.
 6. Implement P3 against `ref.lor_scene` and `ref.lor_scene_display`.
