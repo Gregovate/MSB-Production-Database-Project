@@ -22,6 +22,9 @@ Source contract:
   supplied by the installed reconciliation view for that same import_run_id.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Removed a redundant second evaluation of the
+                           canonical source view; read string_type from the
+                           already exact-matched raw prop row.
   2026-08-02  GAL / OpenAI  Added projected field comparison so exact identity
                            matches with stage or string-type changes remain
                            visible and available for DEFER; excluded color.
@@ -50,19 +53,15 @@ projected AS (
         d.stage_id AS current_stage_id,
         st.stage_id AS proposed_stage_id,
         d.string_type AS current_string_type,
-        src.string_type AS proposed_string_type,
+        raw.string_type AS proposed_string_type,
         ARRAY_REMOVE(ARRAY[
             CASE WHEN r.display_id IS NULL THEN 'new_display' END,
             CASE WHEN d.display_name IS DISTINCT FROM r.lor_display_name THEN 'display_name' END,
             CASE WHEN d.lor_prop_id IS DISTINCT FROM r.lor_prop_id THEN 'lor_prop_id' END,
             CASE WHEN d.stage_id IS DISTINCT FROM st.stage_id THEN 'stage_id' END,
-            CASE WHEN d.string_type IS DISTINCT FROM src.string_type THEN 'string_type' END
+            CASE WHEN d.string_type IS DISTINCT FROM raw.string_type THEN 'string_type' END
         ]::text[], NULL) AS changed_fields
     FROM reconciliation AS r
-    JOIN lor_snap.v_display_reconciliation_source AS src
-      ON src.import_run_id = r.import_run_id
-     AND src.lor_prop_id = r.lor_prop_id
-     AND src.display_name_normalized = r.lor_display_name_normalized
     JOIN lor_snap.props AS raw
       ON raw.import_run_id = r.import_run_id
      AND raw.prop_id = r.source_prop_id

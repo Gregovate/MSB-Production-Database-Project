@@ -18,6 +18,9 @@ Source contract:
   supplied by the installed reconciliation view for that same import_run_id.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Removed a redundant second evaluation of the
+                           canonical source view; read string_type from the
+                           already exact-matched raw prop row.
   2026-08-02  GAL / OpenAI  Added projected-write counts based on the same
                            LOR-owned fields as query 09; excluded color and
                            exposed changes hidden by EXACT_MATCH identity.
@@ -67,15 +70,11 @@ projected_changes AS (
             CASE WHEN d.display_name IS DISTINCT FROM v.lor_display_name THEN 'display_name' END,
             CASE WHEN d.lor_prop_id IS DISTINCT FROM v.lor_prop_id THEN 'lor_prop_id' END,
             CASE WHEN d.stage_id IS DISTINCT FROM st.stage_id THEN 'stage_id' END,
-            CASE WHEN d.string_type IS DISTINCT FROM src.string_type THEN 'string_type' END
+            CASE WHEN d.string_type IS DISTINCT FROM raw.string_type THEN 'string_type' END
         ]::text[], NULL) AS changed_fields
     FROM ops.v_lor_display_reconciliation AS v
     JOIN current_run AS cr
       ON cr.import_run_id = v.import_run_id
-    JOIN lor_snap.v_display_reconciliation_source AS src
-      ON src.import_run_id = v.import_run_id
-     AND src.lor_prop_id = v.lor_prop_id
-     AND src.display_name_normalized = v.lor_display_name_normalized
     JOIN lor_snap.props AS raw
       ON raw.import_run_id = v.import_run_id
      AND raw.prop_id = v.source_prop_id
