@@ -2,7 +2,7 @@
 
 - **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 - **Document Type:** Database design specification
-- **Status:** Approved design under implementation; P1-P4 installed and rollback-validated; Finish/Cancel repository checkpoint pending installation validation
+- **Status:** Approved design under implementation; P1-P4 and Finish/Cancel installed and rollback-validated; reporting layer pending
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
 - **Current Revision:** 2026-08-03
@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Defined reconciliation-owned source-manifest evidence and the operator-facing HTML report contract: NAS publication folder, immutable timestamped files, completed/cancelled statuses, readable change and exception tables, reason codes, replacement-label instruction, UUID suppression, and retry-safe terminal publication. |
 | 2026-08-03 | GAL / OpenAI | Added `0019` atomic Finish/Cancel lifecycle and rollback validation `15`. Finish executes and validates P1/P3/P2/P4 before advancing to `REPORTING`; Cancel records its audit and atomically removes the captured snapshot before advancing to `REPORTING`. Terminal status remains gated by report publication. |
 | 2026-08-03 | GAL / OpenAI | Added `0018` frozen scene and scene-membership candidates, reconciliation-safe P3/P4 current-state promotion, guarded obsolete-row removal, and rollback validation `14`. Installation and database validation remain pending; Run 1 must not be promoted. |
 | 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated `0015`/`0016` stage layers and added reconciliation-safe P2 migration `0017` with rollback validation `13`. Run 1 is development state and must not be promoted. |
@@ -695,48 +696,136 @@ Exact matches are excluded because no production change occurred.
 
 Every result includes a technical reason code and plain-language operator message.
 
+## Reconciliation Source Manifest
+
+Reporting cannot depend on the preview merger because reconciliation does not run it. The scene-aware parser already captures preview name and revision in SQLite, but the current parser/ingest contract does not preserve the selected preview-folder path or original preview filename as reconciliation-owned audit evidence.
+
+The reporting implementation therefore requires:
+
+- parser-run metadata containing the selected source-folder path and folder name;
+- one parser manifest row per parsed `.lorprev` file;
+- original preview filename, parsed preview name, preview revision, preview identity, and parser timestamp;
+- ingest transfer of that metadata into `lor_snap`, scoped by `import_run_id`;
+- a frozen reconciliation-owned manifest copied at reconciliation start or before any cancellation deletion;
+- immutable use of that frozen manifest by both completed and cancelled reports.
+
+The report publisher must not inspect the live preview folder after reconciliation. It must not reconstruct the manifest from whatever files happen to exist later. A cancelled run deletes its captured snapshot before report publication, so the frozen reconciliation-owned copy is mandatory.
+
 ## HTML Report Contract
 
-Every reconciliation attempt produces one timestamped HTML report and publishes it to the internal web server.
+Every reconciliation attempt produces one immutable, timestamped HTML report.
 
-The report is generated from persisted actions, committed results, exceptions, validation, and cancellation records. It must not rerun reconciliation after the fact.
+### Publication location
 
-Automatic rule-following exclusions do not belong in the report. This includes SPARE, PHANTOM, null/blank-comment props, and other confirmed nonphysical helpers that were correctly prevented from reaching `ref.display`.
+The internal NAS publication folder is:
 
-A rule violation does belong in the report when an excluded raw source row is already linked to `ref.display` or otherwise exposes a production defect.
+```text
+\\192.168.5.4\web\my\committees\production\reconciliation-reports
+```
 
-### Finished Reconciliation Report
+The `reconciliation-reports` folder must be created before deployment. Normal operators open the published URL from Directus. Administrators may open the same report through the NAS path.
 
-The report includes:
+A filename contains at least the terminal-event timestamp and reconciliation-run identity. Publication never overwrites an existing audit report. The publisher stores the final file path, clickable URL, and publication timestamp on the reconciliation run.
 
-- reconciliation-run identity;
-- captured `import_run_id`;
-- operator and timestamps;
-- committed additions, updates, reassociations, and status changes;
-- replacement-label requirements created by committed display-name changes,
-  including permanent `display_id`, old and new display names, old and new
-  stages, reconciliation run, and reason;
-- blocked candidates;
-- deferred candidates;
-- unresolved required decisions blocked at finish;
+### Data authority
+
+The report is generated from:
+
+- frozen source-manifest audit rows;
+- persisted reconciliation actions;
+- actual committed results;
+- deferred, blocked, and unresolved exception results;
 - post-write validation results;
-- final status;
-- clickable published URL.
+- cancellation and snapshot-deletion audit results.
 
-### Cancelled Reconciliation Report
+The publisher does not rerun reconciliation or recompute identity decisions. Proposed changes that did not commit are never reported as committed changes.
 
-The report includes:
+Automatic rule-following exclusions do not belong in the report. SPARE, PHANTOM, blank-comment, and confirmed nonphysical helper rows are omitted unless they expose an existing production defect.
 
-- `CANCELLED` status;
-- reconciliation-run identity;
-- captured `import_run_id`;
-- operator, timestamp, and reason;
+Backend-only LOR UUID/link changes are not user-facing changes and must not be mentioned in the operator report.
+
+### User-facing status
+
+The report shows one of these statuses prominently:
+
+- **Completed**
+- **Completed with Exceptions**
+- **Canceled**
+
+`Completed with Exceptions` applies whenever valid work committed while deferred, blocked, or unresolved items remained unchanged.
+
+### Required report header
+
+Both completed and cancelled reports include:
+
+- user-facing final status;
+- reconciliation-run identity and captured `import_run_id`;
+- operator and relevant timestamps;
+- source preview-folder name and captured path;
+- preview filename, preview name, and revision for every parsed preview;
+- parser/ingest summary counts.
+
+### Completed report tables
+
+Completed and completed-with-exceptions reports contain these simple, readable tables:
+
+1. **Display Name Changes**
+   - permanent `display_id`;
+   - before and after display name;
+   - before and after stage where applicable;
+   - technical reason code and plain-language reason;
+   - fixed instruction: **Preprint replacement label**.
+
+2. **Other Display Changes**
+   - new displays and user-visible status/lifecycle changes;
+   - before and after values where applicable;
+   - technical reason code and plain-language reason.
+
+3. **Stage Changes**
+   - permanent `stage_id`;
+   - before and after user-visible values;
+   - technical reason code and plain-language reason.
+
+4. **Scene Changes**
+   - preview and scene names;
+   - before and after scene metadata or stage assignment;
+   - readable membership additions/removals;
+   - technical reason code and plain-language reason.
+
+5. **Items Deferred for Further Investigation**
+   - deferred, blocked, and unresolved items;
+   - user-visible identity and entity type;
+   - required follow-up;
+   - technical reason code and plain-language reason.
+
+6. **Validation Results**
+   - post-write validation state and relevant counts.
+
+Exact matches are excluded. Every production table reports actual committed outcomes, while noncommitted proposals appear only in the follow-up table.
+
+### Cancelled report
+
+A cancelled report includes:
+
+- **Canceled** status;
+- operator, cancellation timestamp, and reason;
+- the frozen source manifest;
+- candidate counts captured before deletion;
 - confirmation that no production promotion occurred;
-- confirmation that the captured latest snapshot was deleted;
-- deletion counts by snapshot table;
-- clickable published URL.
+- confirmation that the captured snapshot was deleted;
+- deleted counts by snapshot table;
+- cancellation validation/audit result.
 
-A reconciliation is not complete or cancelled until the report is generated, published, and its link is stored.
+Cancellation reporting reads reconciliation-owned audit data and cannot depend on deleted `lor_snap` rows.
+
+### Publication and terminal state
+
+Atomic Finish and Cancel advance a run to `REPORTING`. Only successful report publication may assign the terminal status:
+
+- Finish becomes `COMPLETED` or `COMPLETED_WITH_EXCEPTIONS`;
+- Cancel becomes `CANCELLED`.
+
+If HTML generation, filesystem publication, URL storage, or terminal transition fails, the run remains `REPORTING` with the failure recorded. Publication can be retried without rerunning P1-P4 and without repeating snapshot deletion.
 
 ## Snapshot Retention Management
 
@@ -794,9 +883,8 @@ multi-preview preservation action in `0016` are installed and rollback-
 validated by `11` and `12`. Reconciliation-safe P2 in `0017` is installed and
 rollback-validated by `13`. Migration `0018` implements frozen scene and
 scene-membership candidates plus internal P3/P4; installation and rollback
-validation `14` passed against development Run 1. Migration `0019` now
-implements the controlled atomic Finish/Cancel database lifecycle and
-validation `15`; it is not yet installed or database-validated. Run 1 remains
+validation `14` passed against development Run 1. Migration `0019` revision v2 implements the controlled atomic Finish/Cancel
+database lifecycle and is installed and rollback-validated by `15`. Run 1 remains
 development state and must not be committed. P1-P4 remain internal and may not
 be called directly.
 
