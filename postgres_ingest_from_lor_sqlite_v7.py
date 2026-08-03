@@ -2,7 +2,7 @@
 # postgres_ingest_from_lor_sqlite_v7.py
 # Initial Release : 2026-02-21  V0.1.0
 # Version         : 2026-02-21  V0.1.0
-# Current Version : 2026-08-03  V0.3.1
+# Current Version : 2026-08-03  V0.3.2
 #
 # Changes:
 # - Initial append-only ingestion layer (SQLite → Postgres)
@@ -19,6 +19,7 @@
 #   source paths, ingest provenance, and source row counts to lor_snap.import_run.
 # - V0.3.1 preserves the exact source .lorprev filename in
 #   lor_snap.previews.source_filename.
+# - V0.3.2 refuses to ingest unless parser_run.Status is COMPLETE.
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
@@ -101,6 +102,10 @@
 #
 # -----------------------------------------------------------------------------
 # Change Log
+# 2026-08-03  GAL  V0.3.2
+#   - Added a pre-ingest parser lifecycle guard.
+#   - Requires parser_run.Status = COMPLETE before creating import_run.
+#   - RUNNING, FAILED, blank, or missing status aborts without PostgreSQL writes.
 # 2026-08-03  GAL  V0.3.1
 #   - Added source preview filename handoff from
 #     SQLite previews.SourceFilename to
@@ -159,7 +164,7 @@ import psycopg2
 import psycopg2.extras
 
 
-INGEST_SCRIPT_VERSION = "V0.3.1"
+INGEST_SCRIPT_VERSION = "V0.3.2"
 
 
 # ---------------------------
@@ -383,7 +388,17 @@ def read_parser_run(sqlite_conn: sqlite3.Connection) -> Dict[str, Any]:
         "source_sqlite_path",
         "parser_status",
     ]
-    return dict(zip(keys, rows[0]))
+    parser_run = dict(zip(keys, rows[0]))
+    parser_status = parser_run.get("parser_status")
+    if parser_status != "COMPLETE":
+        displayed_status = "<NULL>" if parser_status is None else repr(parser_status)
+        raise RuntimeError(
+            "Parser snapshot is not eligible for ingest: "
+            f"parser_run.Status must be exactly COMPLETE; found {displayed_status}. "
+            "Run the parser successfully before starting PostgreSQL ingest."
+        )
+
+    return parser_run
 
 
 def get_sqlite_snapshot_counts(sqlite_conn: sqlite3.Connection) -> Dict[str, int]:
