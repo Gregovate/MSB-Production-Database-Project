@@ -2,15 +2,16 @@
 
 - **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 - **Document Type:** Database design specification
-- **Status:** Approved design under implementation; P1/P2 rollback-validated and P3/P4 repository checkpoint pending installation validation
+- **Status:** Approved design under implementation; P1-P4 installed and rollback-validated; Finish/Cancel repository checkpoint pending installation validation
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
-- **Current Revision:** 2026-08-02
+- **Current Revision:** 2026-08-03
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Added `0019` atomic Finish/Cancel lifecycle and rollback validation `15`. Finish executes and validates P1/P3/P2/P4 before advancing to `REPORTING`; Cancel records its audit and atomically removes the captured snapshot before advancing to `REPORTING`. Terminal status remains gated by report publication. |
 | 2026-08-03 | GAL / OpenAI | Added `0018` frozen scene and scene-membership candidates, reconciliation-safe P3/P4 current-state promotion, guarded obsolete-row removal, and rollback validation `14`. Installation and database validation remain pending; Run 1 must not be promoted. |
 | 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated `0015`/`0016` stage layers and added reconciliation-safe P2 migration `0017` with rollback validation `13`. Run 1 is development state and must not be promoted. |
 | 2026-08-02 | GAL / OpenAI | Implemented `0015` and validation query `11`: persistent stage-to-LOR bindings, frozen stage candidates and atomic groups, unified reconciliation start, exact captured-source revalidation, and reconciliation-gated P1. No P1 production write has been authorized or executed. |
@@ -272,6 +273,10 @@ When **Finish Reconciliation** is selected, the engine shall:
 8. generate and publish the HTML report;
 9. mark the run `COMPLETED` or `COMPLETED_WITH_EXCEPTIONS`.
 
+The atomic database Finish entry point performs steps 1-7 and advances the
+run to `REPORTING`. Only the report publisher may perform steps 8-9 and assign
+a terminal completed status.
+
 ## Cancel Reconciliation
 
 When **Cancel Reconciliation** is selected, the engine shall:
@@ -284,6 +289,10 @@ When **Cancel Reconciliation** is selected, the engine shall:
 6. retain the reconciliation control, action, and result audit records;
 7. generate and publish a cancelled-run HTML report;
 8. mark the reconciliation run `CANCELLED`.
+
+The atomic database Cancel entry point performs steps 1-6 and advances the run
+to `REPORTING` with `cancelled_at` and the cancellation reason populated. Only
+the report publisher may perform steps 7-8 and assign terminal `CANCELLED`.
 
 Cancellation must never partially delete a snapshot and must never cascade into `ref`, `ops`, or other production data.
 
@@ -783,11 +792,13 @@ Current implementation checkpoint: the display decision layer in `0014` and
 `10` is installed and validated. Reconciliation-safe P1 in `0015` and the
 multi-preview preservation action in `0016` are installed and rollback-
 validated by `11` and `12`. Reconciliation-safe P2 in `0017` is installed and
-rollback-validated by `13`. Migration `0018` now implements frozen scene and
-scene-membership candidates plus internal P3/P4, with rollback validation `14`;
-installation and database validation are pending. Run 1 is development state
-and must not be promoted. P1-P4 remain disabled for committed production
-promotion.
+rollback-validated by `13`. Migration `0018` implements frozen scene and
+scene-membership candidates plus internal P3/P4; installation and rollback
+validation `14` passed against development Run 1. Migration `0019` now
+implements the controlled atomic Finish/Cancel database lifecycle and
+validation `15`; it is not yet installed or database-validated. Run 1 remains
+development state and must not be committed. P1-P4 remain internal and may not
+be called directly.
 
 1. Validate this design against the current production schema and ingest completion semantics.
 2. Implement reconciliation-run, candidate, action, result, validation, report, and snapshot-deletion audit objects.

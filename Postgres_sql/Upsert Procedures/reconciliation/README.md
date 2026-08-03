@@ -1,6 +1,8 @@
 # V7 Reconciliation Development Workspace
 
-This folder contains the design and read-only validation work required to protect production `ref` data before the scene-aware LOR snapshot is promoted through P1 and P2.
+This folder contains the design, controlled promotion objects, and rollback
+validation required to protect production `ref` data during scene-aware LOR
+reconciliation.
 
 The parser and PostgreSQL ingest populate `lor_snap`. The files in this folder begin with the latest completed ingest already present in `lor_snap` and evaluate the consequences of applying that snapshot to production identities and relationships.
 
@@ -90,6 +92,19 @@ Run these files individually in numeric order. Each file returns one exportable 
   - Validates scene metadata, permanent-display memberships, obsolete-scene
     removal, and same-transaction idempotency, then ends in `ROLLBACK`.
 
+- `0019_create_reconciliation_finish_cancel_lifecycle.sql`
+  - Installs the only operator-facing Finish and Cancel write entry points.
+  - Finish locks one persisted run, executes P1/P3/P2/P4 atomically, runs
+    post-write validation, and advances the run to `REPORTING`.
+  - Cancel is allowed only before promotion, records the append-only audit,
+    deletes the captured snapshot atomically, and advances to `REPORTING`.
+  - Terminal completion remains the report publisher's responsibility.
+
+- `15_reconciliation_finish_cancel_rollback_validation.sql`
+  - Exercises Finish and Cancel separately against development Run 1.
+  - Ends both parts in `ROLLBACK`; no promotion, cancellation, or snapshot
+    deletion persists.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 
@@ -114,6 +129,7 @@ Latest-ingest preflight scripts 01-09 are read-only:
 - They do not require an operator-selected run number.
 - They do not authorize production promotion.
 
-P1 and P2 remain disabled until the latest-ingest preflight classifications and proposed changes are validated against production data.
+P1-P4 are internal engine phases. Operators must use the controlled Finish or
+Cancel entry point after installation and full rollback validation.
 
 Run-specific reconciliation scripts are not retained in this folder. One-time historical decisions belong in the database audit history or Git history, not in the current operator testing suite.
