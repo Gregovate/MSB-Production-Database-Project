@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated `0015`/`0016` stage layers and added reconciliation-safe P2 migration `0017` with rollback validation `13`. Run 1 is development state and must not be promoted. |
 | 2026-08-02 | GAL / OpenAI | Implemented `0015` and validation query `11`: persistent stage-to-LOR bindings, frozen stage candidates and atomic groups, unified reconciliation start, exact captured-source revalidation, and reconciliation-gated P1. No P1 production write has been authorized or executed. |
 | 2026-08-02 | GAL / OpenAI | Implemented the persistent display-decision foundation in `0014`: reconciliation-run capture, frozen display candidates, generic connected identity groups, append-only group actions, complete reassociation mappings, result storage, and Directus-ready review views. Added validation query `10`; no promotion writes are enabled. |
 | 2026-08-02 | GAL / OpenAI | Removed `color` from reconciliation authority because RGB props legitimately supply no single color; added committed display-name changes to the replacement-label report contract. |
@@ -778,11 +779,13 @@ Any legacy UUID dependency requires a separate controlled migration.
 ## Required Implementation Order After Approval
 
 Current implementation checkpoint: the display decision layer in `0014` and
-`10` is installed and live-validated. The reconciliation-safe P1 repository
-layer is implemented in `0015` with validation query `11`; installation and
-rollback-only live validation remain pending. Scene and scene-membership
-candidate persistence remains outstanding. P1-P4 remain disabled for committed
-production promotion.
+`10` is installed and live-validated. Reconciliation-safe P1 in `0015` and the
+multi-preview preservation action in `0016` are installed and rollback-
+validated by `11` and `12`. Reconciliation-safe P2 is implemented in repository
+migration `0017` with rollback validation `13` pending. Scene and scene-
+membership candidate persistence remains outstanding. Run 1 is development
+state and must not be promoted. P1-P4 remain disabled for committed production
+promotion.
 
 1. Validate this design against the current production schema and ingest completion semantics.
 2. Implement reconciliation-run, candidate, action, result, validation, report, and snapshot-deletion audit objects.

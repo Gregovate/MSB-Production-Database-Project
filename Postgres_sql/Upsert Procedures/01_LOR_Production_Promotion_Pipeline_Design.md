@@ -7,7 +7,7 @@
 | Status | DRAFT — implementation and production validation required |
 | Owner | MSB Database Administrator |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-02 |
+| Current revision | 2026-08-03 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Added reconciliation-safe P2 and rollback validation: frozen action consumption, exact captured raw-source revalidation, nonphysical guards, atomic chained reassociation, exact write authority, and same-run idempotency checks. Production promotion remains disabled. |
 | 2026-08-02 | GAL / OpenAI | Implemented the reconciliation-safe P1 repository layer: stable `ref.stage_lor_binding` identities, frozen stage candidates and atomic groups, unified display/stage start, captured-source revalidation, and an internal P1 that consumes only approved persisted groups. Installation and rollback validation remain required. |
 | 2026-08-02 | GAL / OpenAI | Recorded the repository implementation of the persistent display-decision foundation: captured reconciliation runs, frozen display candidates, data-derived atomic groups, append-only actions, complete reassociation mappings, and read-only operator views. Installation and live validation remain prerequisites to promotion work. |
 | 2026-08-02 | GAL / OpenAI | Removed `color` from LOR-owned P2 fields because RGB props have no single source color; added committed display-name changes to the replacement-label report requirements. |
