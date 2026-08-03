@@ -46,6 +46,9 @@ Result:
   A completely unchanged current snapshot returns zero rows.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Apply generic connected identity dependency groups
+                           to projected-write validation so no member of an
+                           unresolved reassociation can appear write-ready.
   2026-08-02  GAL / OpenAI  Removed color from LOR reconciliation. RGB props
                            legitimately have no single color, and production
                            color metadata must not be cleared from LOR NULLs.
@@ -74,7 +77,7 @@ Revision History:
   2026-08-01  GAL / OpenAI  Initial current P2 projected-write validation.
 */
 
-WITH current_run AS (
+WITH RECURSIVE current_run AS (
     SELECT import_run_id, run_ts
     FROM lor_snap.v_current_run
 ),
@@ -94,6 +97,51 @@ reconciliation AS (
     FROM ops.v_lor_display_reconciliation AS v
     JOIN current_run AS cr
       ON cr.import_run_id = v.import_run_id
+),
+identity_edges AS (
+    SELECT DISTINCT
+        least(r.uuid_display_id, r.name_display_id) AS display_id_a,
+        greatest(r.uuid_display_id, r.name_display_id) AS display_id_b
+    FROM reconciliation AS r
+    WHERE r.uuid_display_id IS NOT NULL
+      AND r.name_display_id IS NOT NULL
+      AND r.uuid_display_id <> r.name_display_id
+),
+identity_nodes AS (
+    SELECT display_id_a AS display_id FROM identity_edges
+    UNION
+    SELECT display_id_b AS display_id FROM identity_edges
+),
+identity_reach AS (
+    SELECT n.display_id AS root_display_id, n.display_id
+    FROM identity_nodes AS n
+
+    UNION
+
+    SELECT
+        ir.root_display_id,
+        CASE
+            WHEN ie.display_id_a = ir.display_id THEN ie.display_id_b
+            ELSE ie.display_id_a
+        END AS display_id
+    FROM identity_reach AS ir
+    JOIN identity_edges AS ie
+      ON ie.display_id_a = ir.display_id
+      OR ie.display_id_b = ir.display_id
+),
+identity_components AS (
+    SELECT
+        display_id,
+        min(root_display_id) AS component_id
+    FROM identity_reach
+    GROUP BY display_id
+),
+identity_component_counts AS (
+    SELECT
+        component_id,
+        count(*)::integer AS member_count
+    FROM identity_components
+    GROUP BY component_id
 ),
 current_source AS (
     SELECT src.*
@@ -146,6 +194,8 @@ nonphysical_in_display AS (
         se.source_scene_name,
         se.scene_derived_stage_key,
         r.location_summary AS source_location_evidence,
+        NULL::text AS logical_group_key,
+        NULL::integer AS logical_group_member_count,
         ARRAY['NONPHYSICAL_SOURCE']::text[] AS changed_fields,
         'A current SPARE or PHANTOM source row is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
     FROM reconciliation AS r
@@ -181,6 +231,8 @@ blank_comment_in_display AS (
         NULL::text AS source_scene_name,
         NULL::text AS scene_derived_stage_key,
         NULL::text AS source_location_evidence,
+        NULL::text AS logical_group_key,
+        NULL::integer AS logical_group_member_count,
         ARRAY['BLANK_LOR_COMMENT']::text[] AS changed_fields,
         'A current raw LOR prop with a null, empty, or whitespace-only lor_comment is associated with ref.display. No P2 write is permitted; resolve the production record separately.'::text AS operator_message
     FROM raw_current_props AS p
@@ -208,13 +260,19 @@ unresolved_reassociation AS (
         se.source_scene_name,
         se.scene_derived_stage_key,
         r.location_summary AS source_location_evidence,
+        format('DISPLAY_IDENTITY:%s', ic.component_id) AS logical_group_key,
+        icc.member_count AS logical_group_member_count,
         ARRAY_REMOVE(ARRAY[
             CASE WHEN d.display_name IS DISTINCT FROM r.lor_display_name THEN 'display_name' END,
             CASE WHEN d.lor_prop_id IS DISTINCT FROM r.lor_prop_id THEN 'lor_prop_id' END,
             CASE WHEN d.stage_id IS DISTINCT FROM st.stage_id THEN 'stage_id' END,
             CASE WHEN d.string_type IS DISTINCT FROM src.string_type THEN 'string_type' END
         ]::text[], NULL) AS changed_fields,
-        'Name and LOR UUID both changed. P2 must not project a write until an explicit reassociation decision identifies the existing display_id to preserve.'::text AS operator_message
+        format(
+            'This display is one of %s records in identity dependency group DISPLAY_IDENTITY:%s. Resolve or defer the complete group atomically before P2 may project any member.',
+            icc.member_count,
+            ic.component_id
+        )::text AS operator_message
     FROM reconciliation AS r
     JOIN current_source AS src
       ON src.import_run_id = r.import_run_id
@@ -231,7 +289,11 @@ unresolved_reassociation AS (
       ON d.display_id = r.display_id
     LEFT JOIN ref.stage AS st
       ON st.stage_key = lower(btrim(r.preview_stage_id))
-    WHERE r.classification_code = 'NAME_AND_UUID_CHANGED'
+    JOIN identity_components AS ic
+      ON ic.display_id = r.display_id
+    JOIN identity_component_counts AS icc
+      ON icc.component_id = ic.component_id
+    WHERE r.classification_code <> 'EXCLUDED_NONPHYSICAL'
       AND NULLIF(btrim(p.lor_comment), '') IS NOT NULL
 ),
 physical_projection_base AS (
@@ -253,6 +315,8 @@ physical_projection_base AS (
         se.source_scene_name,
         se.scene_derived_stage_key,
         r.location_summary AS source_location_evidence,
+        NULL::text AS logical_group_key,
+        NULL::integer AS logical_group_member_count,
         ARRAY_REMOVE(ARRAY[
             CASE WHEN r.display_id IS NULL THEN 'new_display' END,
             CASE WHEN d.display_name IS DISTINCT FROM r.lor_display_name THEN 'display_name' END,
@@ -276,6 +340,8 @@ physical_projection_base AS (
       ON d.display_id = r.display_id
     LEFT JOIN ref.stage AS st
       ON st.stage_key = lower(btrim(r.preview_stage_id))
+    LEFT JOIN identity_components AS ic
+      ON ic.display_id = r.display_id
     WHERE r.classification_code IN (
         'EXACT_MATCH',
         'NAME_CHANGED_SAME_UUID',
@@ -283,6 +349,7 @@ physical_projection_base AS (
         'NEW_DISPLAY_CANDIDATE'
     )
       AND NULLIF(btrim(p.lor_comment), '') IS NOT NULL
+      AND ic.display_id IS NULL
 ),
 physical_projection AS (
     SELECT
@@ -307,6 +374,8 @@ physical_projection AS (
         p.source_scene_name,
         p.scene_derived_stage_key,
         p.source_location_evidence,
+        p.logical_group_key,
+        p.logical_group_member_count,
         p.changed_fields,
         CASE
             WHEN p.display_id IS NULL THEN
@@ -350,6 +419,8 @@ SELECT
     source_scene_name,
     scene_derived_stage_key,
     source_location_evidence,
+    logical_group_key,
+    logical_group_member_count,
     current_string_type,
     proposed_string_type,
     changed_fields,
