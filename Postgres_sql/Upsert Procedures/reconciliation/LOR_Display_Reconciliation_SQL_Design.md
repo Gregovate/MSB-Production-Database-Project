@@ -2,7 +2,7 @@
 
 - **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 - **Document Type:** Database design specification
-- **Status:** Design draft; approved workflow pending executable implementation and production validation
+- **Status:** Approved design under implementation; persistent display-decision DDL complete in repository and pending production validation
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
 - **Current Revision:** 2026-08-02
@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Implemented the persistent display-decision foundation in `0014`: reconciliation-run capture, frozen display candidates, generic connected identity groups, append-only group actions, complete reassociation mappings, result storage, and Directus-ready review views. Added validation query `10`; no promotion writes are enabled. |
 | 2026-08-02 | GAL / OpenAI | Removed `color` from reconciliation authority because RGB props legitimately supply no single color; added committed display-name changes to the replacement-label report contract. |
 | 2026-08-02 | GAL / OpenAI | Corrected the preflight candidate interface after the production raw-ID migration: every display candidate now retains scoped `source_prop_id` for exact captured-row revalidation while `lor_prop_id` carries only the preview-independent `raw_prop_id` proposed for `ref.display`. |
 | 2026-08-02 | GAL / OpenAI | Recorded completion of the one-time production `ref.display.lor_prop_id` migration using ingest Run 42: all 1,050 rows now store instance-qualified `raw_prop_id`; zero preview prefixes, blanks, duplicates, or ACTIVE identities missing from the captured ingest remained after commit. Marked the legacy P2 source as incompatible and non-runnable pending the reconciliation engine prerequisites. |
@@ -774,6 +775,11 @@ LOR UUIDs and preview-qualified identifiers are source metadata, not permanent w
 Any legacy UUID dependency requires a separate controlled migration.
 
 ## Required Implementation Order After Approval
+
+Current implementation checkpoint: the display portion of steps 2 through 5
+is implemented in repository files `0014` and `10`, but has not yet been
+installed or validated against production. Stage, scene, and scene-membership
+candidate persistence remains outstanding. P1-P4 remain disabled.
 
 1. Validate this design against the current production schema and ingest completion semantics.
 2. Implement reconciliation-run, candidate, action, result, validation, report, and snapshot-deletion audit objects.

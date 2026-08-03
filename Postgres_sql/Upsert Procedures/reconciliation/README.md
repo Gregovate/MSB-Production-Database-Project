@@ -68,12 +68,33 @@ Run these files individually in numeric order. Each file returns one exportable 
   - Adds `raw_prop_id` to the current props and subprops view interfaces.
   - Replaces views only and performs no snapshot or production-data writes.
 
+- `0014_create_lor_reconciliation_decision_layer.sql`
+  - Preserves the obsolete action table as legacy audit history.
+  - Creates persistent reconciliation runs, logical groups, frozen display
+    candidates, append-only actions, atomic reassociation assignments, result
+    storage, secured action functions, and operator review views.
+  - Implements generic identity-component grouping with no run-, display-, or
+    stage-specific rules.
+  - Does not implement or call P1-P4.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 
+## Persistent Decision-Layer Validation
+
+`10_persistent_operator_decision_validation.sql` is deliberately outside the
+read-only 01-09 preflight suite.
+
+- It starts or reopens the persistent reconciliation for the automatically
+  captured current ingest.
+- It persists only `ops` reconciliation working state.
+- It returns the run summary, decision groups, complete display detail, and
+  hard validation assertions.
+- It does not call promotion or modify `ref` or `lor_snap`.
+
 ## Safety Boundary
 
-All numbered latest-ingest preflight scripts are read-only:
+Latest-ingest preflight scripts 01-09 are read-only:
 
 - They do not call P1 or P2.
 - They do not insert, update, or delete production data.

@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Implemented the repository DDL for the persistent reconciliation run, frozen display candidates, generic logical groups, append-only group decisions, atomic reassociation assignments, and operator review views. Production installation and live validation remain required; the UI and promotion procedures remain unimplemented. |
 | 2026-08-02 | GAL / OpenAI | Added the replacement-label report requirement for committed display-name changes; reconciliation records label work but does not print automatically. |
 | 2026-08-02 | GAL / OpenAI | Defined the complete single-interface workflow: start import, run parser and protected ingest, automatically begin reconciliation, collect decisions, promote all passing candidates, block deferred or unresolved candidates, support finish or cancel, and generate a report in both cases. |
 | 2026-08-01 | GAL / OpenAI | Defined the finished single-workflow operator experience, automatic latest-ingest capture, persistent reconciliation state, operator pause/resume, finish reconciliation, post-write validation, and timestamped HTML report publication. |
@@ -115,8 +116,10 @@ The three documents describe one workflow at different levels and must not defin
 | `parse_props_v7_scene_parser.py` | Implemented and under V7 validation |
 | `postgres_run_ingest_v7.ps1` | Implemented and tested |
 | Latest-ingest preflight scripts | Implemented for development/testing; not a production reconciliation interface |
-| Persistent reconciliation-run and candidate tables | Designed; not implemented |
-| Operator decision interface | Designed; not implemented |
+| Persistent reconciliation-run and display-candidate tables | Repository DDL implemented in `reconciliation/0014_create_lor_reconciliation_decision_layer.sql`; production installation and live validation pending |
+| Persistent stage, scene, and scene-membership candidate tables | Designed; not implemented |
+| Operator decision database contract | Repository DDL implemented for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views; production installation and live validation pending |
+| Operator decision application interface | Designed; not implemented |
 | Finish and cancel workflow actions | Designed; not implemented |
 | P1 | Legacy procedure exists; reconciliation-safe replacement not implemented |
 | P2 | Legacy procedure exists; reconciliation-safe replacement not implemented |

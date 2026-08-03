@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-02 | GAL / OpenAI | Recorded the repository implementation of the persistent display-decision foundation: captured reconciliation runs, frozen display candidates, data-derived atomic groups, append-only actions, complete reassociation mappings, and read-only operator views. Installation and live validation remain prerequisites to promotion work. |
 | 2026-08-02 | GAL / OpenAI | Removed `color` from LOR-owned P2 fields because RGB props have no single source color; added committed display-name changes to the replacement-label report requirements. |
 | 2026-08-02 | GAL / OpenAI | Defined P2 as the final database guard against SPARE, PHANTOM, null, empty, and whitespace-only `lor_comment` values; removed stale authorization for wiring/controller/network/channel writes to `ref.display`; and limited ordinary P2 writes to the approved LOR-owned fields. |
 | 2026-08-01 | GAL / OpenAI | Added the three-document navigation contract linking the operator procedure, promotion pipeline design, and reconciliation SQL design. |
