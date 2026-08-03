@@ -22,6 +22,9 @@ Source contract:
   supplied by the installed reconciliation view for that same import_run_id.
 
 Revision History:
+  2026-08-02  GAL / OpenAI  Derive multi-display identity dependency groups
+                           from conflicting UUID/name matches so every member
+                           receives one atomic reassociation decision.
   2026-08-02  GAL / OpenAI  Removed a redundant second evaluation of the
                            canonical source view; read string_type from the
                            already exact-matched raw prop row.
@@ -36,7 +39,7 @@ Revision History:
   2026-08-01  GAL / OpenAI  Initial latest-ingest version.
 */
 
-WITH current_run AS (
+WITH RECURSIVE current_run AS (
     SELECT import_run_id
     FROM lor_snap.v_current_run
 ),
@@ -89,20 +92,92 @@ action_rows AS (
             r.classification_code = 'EXACT_MATCH'
         AND cardinality(coalesce(p.changed_fields, ARRAY[]::text[])) > 0
        )
+),
+identity_edges AS (
+    SELECT DISTINCT
+        least(r.uuid_display_id, r.name_display_id) AS display_id_a,
+        greatest(r.uuid_display_id, r.name_display_id) AS display_id_b
+    FROM reconciliation AS r
+    WHERE r.uuid_display_id IS NOT NULL
+      AND r.name_display_id IS NOT NULL
+      AND r.uuid_display_id <> r.name_display_id
+),
+identity_nodes AS (
+    SELECT display_id_a AS display_id FROM identity_edges
+    UNION
+    SELECT display_id_b AS display_id FROM identity_edges
+),
+identity_reach AS (
+    SELECT n.display_id AS root_display_id, n.display_id
+    FROM identity_nodes AS n
+
+    UNION
+
+    SELECT
+        ir.root_display_id,
+        CASE
+            WHEN ie.display_id_a = ir.display_id THEN ie.display_id_b
+            ELSE ie.display_id_a
+        END AS display_id
+    FROM identity_reach AS ir
+    JOIN identity_edges AS ie
+      ON ie.display_id_a = ir.display_id
+      OR ie.display_id_b = ir.display_id
+),
+identity_components AS (
+    SELECT
+        display_id,
+        min(root_display_id) AS component_id
+    FROM identity_reach
+    GROUP BY display_id
+),
+grouped_action_rows AS (
+    SELECT
+        a.*,
+        ic.component_id AS identity_component_id,
+        CASE
+            WHEN ic.component_id IS NOT NULL
+                THEN format('DISPLAY_IDENTITY:%s', ic.component_id)
+            WHEN a.display_id IS NOT NULL
+                THEN format('DISPLAY:%s', a.display_id)
+            ELSE format('LOR_PROP:%s', a.lor_prop_id)
+        END AS logical_group_key
+    FROM action_rows AS a
+    LEFT JOIN identity_components AS ic
+      ON ic.display_id = a.display_id
+),
+grouped_with_counts AS (
+    SELECT
+        ga.*,
+        count(*) OVER (PARTITION BY ga.logical_group_key)::integer
+            AS logical_group_member_count,
+        bool_or(ga.classification_code = 'NAME_AND_UUID_CHANGED') OVER (
+            PARTITION BY ga.logical_group_key
+        ) AS requires_atomic_reassociation
+    FROM grouped_action_rows AS ga
 )
 SELECT
     a.import_run_id,
+    a.logical_group_key,
+    a.logical_group_member_count,
     a.classification_code,
     CASE
-        WHEN a.classification_code = 'NAME_AND_UUID_CHANGED' THEN true
+        WHEN a.requires_atomic_reassociation THEN true
         ELSE a.is_blocking
     END AS is_blocking,
     CASE
+        WHEN a.requires_atomic_reassociation
+            THEN ARRAY['REASSOCIATE_DISPLAY', 'CORRECT_LOR_AND_REINGEST', 'DEFER']::text[]
         WHEN a.classification_code = 'EXACT_MATCH'
             THEN ARRAY['DEFER']::text[]
         ELSE a.allowed_resolution_paths
     END AS allowed_resolution_paths,
     CASE
+        WHEN a.requires_atomic_reassociation THEN format(
+            'This display is one of %s records in identity dependency group %s. Resolve or defer the complete group atomically.',
+            a.logical_group_member_count,
+            a.logical_group_key
+        )
         WHEN a.classification_code = 'EXACT_MATCH' THEN format(
             'Identity matches production. Projected fields: %s. The change remains eligible unless the operator records DEFER.',
             array_to_string(a.changed_fields, ', ')
@@ -133,7 +208,7 @@ SELECT
     a.lor_uuid_row_count,
     a.lor_uuid_name_count,
     a.lor_name_uuid_count
-FROM action_rows AS a
+FROM grouped_with_counts AS a
 LEFT JOIN ref.stage AS current_stage
   ON current_stage.stage_id = a.current_stage_id
 LEFT JOIN ref.stage AS proposed_stage
