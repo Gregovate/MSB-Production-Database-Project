@@ -1,7 +1,7 @@
 /* ============================================================================
 Object:   Rollback-only validation of atomic Finish/Cancel lifecycle
 Filename: 15_reconciliation_finish_cancel_rollback_validation.sql
-Revision: 2026-08-03-reconciliation-finish-cancel-validation-v1
+Revision: 2026-08-03-reconciliation-finish-cancel-validation-v2
 
 Safety:
   Part A calls Finish for development Run 1 and rolls back all P1-P4 writes.
@@ -9,6 +9,7 @@ Safety:
   deletion and cancellation audit. No production or snapshot change persists.
 
 Revision history:
+  2026-08-03  GAL / OpenAI  v2: Validate membership using the actual scene/display composite key.
   2026-08-03  GAL / OpenAI  Initial Finish/Cancel rollback validation.
 ============================================================================ */
 
@@ -71,10 +72,10 @@ GROUP BY r.lor_reconciliation_run_id;
 
 SELECT
     count(*) FILTER (WHERE s.lor_scene_id IS NULL) AS missing_scene_count,
-    count(*) FILTER (WHERE sd.lor_scene_display_id IS NULL)
+    count(*) FILTER (WHERE sd.lor_scene_id IS NULL)
         AS missing_membership_count,
     CASE WHEN count(*) FILTER (
-        WHERE s.lor_scene_id IS NULL OR sd.lor_scene_display_id IS NULL
+        WHERE s.lor_scene_id IS NULL OR sd.lor_scene_id IS NULL
     ) = 0 THEN 'PASS' ELSE 'FAIL' END AS finish_projection_validation
 FROM ops.lor_reconciliation_scene_display_candidate AS c
 JOIN ops.lor_reconciliation_display_candidate AS dc
