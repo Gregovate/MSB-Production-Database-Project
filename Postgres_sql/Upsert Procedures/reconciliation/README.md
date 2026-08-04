@@ -140,6 +140,23 @@ Run these files individually in numeric order. Each file returns one exportable 
 - `18_independent_reconciliation_attempt_validation.sql`
   - Read-only installation and run-history validation for migration `0022`.
 
+- `0023_use_preview_manifest_for_stage_bindings.sql`
+  - Uses the preserved manifest `source_filename` as evidence for each distinct
+    preview file.
+  - Resolves existing stage identity through stable binding or canonical
+    `StageID`, while preventing preview names from silently renaming permanent
+    stage metadata.
+  - Automatically accepts legitimate independently controlled or scheduled
+    preview files that share one physical stage.
+  - Leaves new or conflicting stage identity subject to operator review.
+  - Does not record decisions or call any promotion phase.
+
+- `19_preview_manifest_stage_binding_validation.sql`
+  - Read-only installation and latest-ingest evidence validation for `0023`.
+  - Lists the human-readable filenames and preview names for every existing
+    stage with multiple preview files, including Stages 00, 01, and 04 when
+    present in the captured ingest.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 

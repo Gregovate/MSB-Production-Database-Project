@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Corrected existing-stage preview handling: the manifest filename and `preview_id` preserve each independently scheduled/controller-specific preview, the canonical `StageID` resolves its permanent stage, and the preview's descriptive name cannot silently rename `ref.stage`. Legitimate same-stage files auto-bind; new or conflicting stage identity still requires review. |
 | 2026-08-03 | GAL / OpenAI | Corrected the attempt lifecycle: every Start creates an independent evaluation, an interrupted review attempt is frozen and reported as `SUPERSEDED` instead of blocking later work, multiple attempts may evaluate the same ingest, prior decisions are history only, and normal Finish requires deliberate terminal outcomes for every decision-required group. |
 | 2026-08-03 | GAL / OpenAI | Defined reconciliation-owned source-manifest evidence and the operator-facing HTML report contract: NAS publication folder, immutable timestamped files, completed/cancelled statuses, readable change and exception tables, reason codes, replacement-label instruction, UUID suppression, and retry-safe terminal publication. |
 | 2026-08-03 | GAL / OpenAI | Made no-op suppression part of the production-write contract: authorized business fields require null-safe comparison, unchanged rows retain all audit values, and validation/reporting must reject false changes. |
@@ -345,7 +346,13 @@ The Stage 39-to-Stage 40 Parade Float case is the required validation example: s
 
 ### Dedicated Preview Rule
 
-For a standalone or background preview, the preview's canonical `StageID` is authoritative for the physical stage.
+For a standalone or background preview, the preview's canonical `StageID` is authoritative for physical-stage identity and assignment.
+
+The manifest `source_filename`, `preview_id`, full preview name, revision, controller purpose, and schedule remain properties of that individual preview file. Multiple differently named preview files may legitimately resolve to the same permanent stage because they control different equipment or run on different schedules.
+
+An individual preview's descriptive name is not authoritative `ref.stage.stage_name` or `ref.stage.folder_name` metadata. When the canonical `StageID` or an existing stable preview binding resolves an existing permanent stage, reconciliation automatically preserves the permanent stage metadata and creates or refreshes the individual preview binding. It must not raise a contradictory-stage-metadata decision merely because other files for that stage have different names.
+
+A new canonical `StageID`, a stable binding that conflicts with the canonical stage key, or other contradictory stage-identity evidence still requires operator review. A permanent stage rename requires a separately explicit, approved stage-metadata action; it is never inferred from a preview filename or preview name.
 
 Subordinate scenes do not override the dedicated preview's stage.
 
@@ -665,6 +672,9 @@ Run-level failure occurs when safe isolation or trustworthy auditing cannot be g
 ### Stage and Scene Checks
 
 - dedicated preview stage evidence is canonical;
+- every parsed preview retains its manifest `source_filename` as individual evidence;
+- multiple differently named preview files may bind to one existing permanent stage without proposing a stage rename;
+- preview names and filenames cannot silently update permanent stage metadata;
 - shared-preview scenes resolve by `(preview_id, scene_id)`;
 - one scene does not resolve to multiple stages;
 - stage metadata changes preserve `stage_id`;
