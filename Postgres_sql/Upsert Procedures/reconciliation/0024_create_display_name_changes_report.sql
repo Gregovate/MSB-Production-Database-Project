@@ -82,7 +82,7 @@ FROM ops.lor_reconciliation_result AS r
 JOIN resolved_candidate AS rc
   ON rc.lor_reconciliation_run_id = r.lor_reconciliation_run_id
  AND rc.import_run_id = r.import_run_id
- AND rc.target_display_id = r.entity_key::bigint
+ AND rc.target_display_id::text = r.entity_key
 WHERE r.entity_type = 'DISPLAY'
   AND r.committed IS TRUE
   AND r.result_class IN ('UPDATED', 'REASSOCIATED')
