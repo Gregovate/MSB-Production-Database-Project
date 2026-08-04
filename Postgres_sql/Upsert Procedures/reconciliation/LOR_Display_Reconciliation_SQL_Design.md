@@ -942,6 +942,26 @@ database lifecycle and is installed and rollback-validated by `15`. Run 1 remain
 development state and must not be committed. P1-P4 remain internal and may not
 be called directly.
 
+### Authoritative Stage-Candidate Builder
+
+`0015_create_reconciliation_safe_p1_stage_promotion.sql` is the immutable
+historical migration that originally installed
+`ops.f_build_lor_reconciliation_stage_candidates(bigint)` together with the P1
+stage layer. Its original stage-candidate function is superseded.
+
+`0023_use_preview_manifest_for_stage_bindings.sql` is the current authoritative
+definition of that function. It corrects the original behavior by using the
+manifest `source_filename`, stable preview binding, and canonical `StageID`
+without interpreting an individual preview's descriptive name as permanent
+stage metadata. Validation authority is
+`19_preview_manifest_stage_binding_validation.sql`.
+
+Future maintenance must inspect the installed definition with
+`pg_get_functiondef(...)`, repair it by running `0023` only after explicit
+database-change authorization, and then run validation `19`. Do not edit or
+rerun all of `0015` to repair this function. Function repair does not authorize
+decision recording, P1-P4, Finish, promotion, or any production-data change.
+
 1. Validate this design against the current production schema and ingest completion semantics.
 2. Implement reconciliation-run, candidate, action, result, validation, report, and snapshot-deletion audit objects.
 3. Implement the secured start entry point called after successful parser and ingest execution.
