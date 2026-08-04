@@ -200,6 +200,35 @@ Run these files individually in numeric order. Each file returns one exportable 
     stage with multiple preview files, including Stages 00, 01, and 04 when
     present in the captured ingest.
 
+- `0024_create_display_name_changes_report.sql`
+  - Exposes committed display-name changes as the required four-column
+    replacement-label report: Display_id, Before, After, and Follow-up.
+
+- `20_display_name_changes_report_validation.sql`
+  - Rollback-only validation of committed name-change reporting, including
+    permanent identity reassociation.
+
+- `0025_create_reconciliation_report_publication.sql`
+  - Records the immutable timestamped HTML report path, URL, SHA-256, and
+    publication timestamp for one retained reconciliation run.
+  - Performs the terminal `REPORTING` to `COMPLETED`,
+    `COMPLETED_WITH_EXCEPTIONS`, or `CANCELLED` transition only after the file
+    publisher reports success.
+  - Does not select a latest run and does not call P1-P4.
+
+- `21_reconciliation_report_publication_validation.sql`
+  - Read-only installation and safety-boundary validation for `0025`.
+
+- `tools/publish_lor_reconciliation_report.py`
+  - Generates the six-section operator HTML report from frozen source evidence,
+    committed results, decisions, exceptions, and validation records.
+  - Publishes to `\\192.168.5.4\web\my\lortodb\reports` by default and then
+    calls `ops.p_publish_lor_reconciliation_report` to record the audit.
+
+- `tools/publish_lor_reconciliation_report.ps1`
+  - Secured Windows runner that accepts the reconciliation ID retained by the
+    workflow and prompts for the database password without storing it.
+
 - `LOR_Display_Reconciliation_SQL_Design.md`
   - Current design authority for the preflight, identity-preservation, operator-decision, defer, and reporting model.
 

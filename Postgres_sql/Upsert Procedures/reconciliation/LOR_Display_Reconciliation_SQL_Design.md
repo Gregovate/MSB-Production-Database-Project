@@ -767,10 +767,10 @@ Every reconciliation attempt produces one immutable, timestamped HTML report.
 The internal NAS publication folder is:
 
 ```text
-\\192.168.5.4\web\my\committees\production\reconciliation-reports
+\\192.168.5.4\web\my\lortodb\reports
 ```
 
-The `reconciliation-reports` folder must be created before deployment. Normal operators open the published URL from Directus. Administrators may open the same report through the NAS path.
+The `reports` folder must be created before deployment. Normal operators open the published URL from Directus. Administrators may open the same report through the NAS path.
 
 A filename contains at least the terminal-event timestamp and reconciliation-run identity. Publication never overwrites an existing audit report. The publisher stores the final file path, clickable URL, and publication timestamp on the reconciliation run.
 

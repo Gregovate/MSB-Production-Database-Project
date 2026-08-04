@@ -130,7 +130,7 @@ The three documents describe one workflow at different levels and must not defin
 | P2 | Installed from `0017` and rollback-validated by `13`; legacy procedure remains prohibited |
 | P3/P4 | Installed from `0018` and rollback-validated by `14`; these remain internal engine phases |
 | Controlled single-interface workflow | Required production entry point; designed but not implemented |
-| Timestamped HTML report publication | Required for completed and cancelled reconciliations; not implemented |
+| Timestamped HTML report publication | Repository framework implemented by `0025`, validation `21`, and `tools/publish_lor_reconciliation_report.*`; installation and production evaluation remain required |
 
 Do not represent an under-development component as production-ready.
 
