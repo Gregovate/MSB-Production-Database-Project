@@ -2,7 +2,7 @@
 
 - **Repository Path:** `Postgres_sql/Upsert Procedures/reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 - **Document Type:** Database design specification
-- **Status:** Approved design under implementation; P1-P4 and Finish/Cancel installed and rollback-validated; reporting layer pending
+- **Status:** Approved design under implementation; P1-P4, Finish/Cancel, and report-publication database layer installed; effective-counter correction pending installation
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
 - **Current Revision:** 2026-08-03
@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Made effective logical-group state authoritative for run-level exception counters and current report problems. Frozen candidate blocking flags remain historical evidence after reassociation or other operator resolution. Added migration `0026` and validation `22` to repair runs already in `REPORTING` without rerunning promotion. |
 | 2026-08-03 | GAL / OpenAI | Corrected existing-stage preview handling: the manifest filename and `preview_id` preserve each independently scheduled/controller-specific preview, the canonical `StageID` resolves its permanent stage, and the preview's descriptive name cannot silently rename `ref.stage`. Legitimate same-stage files auto-bind; new or conflicting stage identity still requires review. |
 | 2026-08-03 | GAL / OpenAI | Corrected the attempt lifecycle: every Start creates an independent evaluation, an interrupted review attempt is frozen and reported as `SUPERSEDED` instead of blocking later work, multiple attempts may evaluate the same ingest, prior decisions are history only, and normal Finish requires deliberate terminal outcomes for every decision-required group. |
 | 2026-08-03 | GAL / OpenAI | Defined reconciliation-owned source-manifest evidence and the operator-facing HTML report contract: NAS publication folder, immutable timestamped files, completed/cancelled statuses, readable change and exception tables, reason codes, replacement-label instruction, UUID suppression, and retry-safe terminal publication. |

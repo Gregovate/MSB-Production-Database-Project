@@ -110,13 +110,26 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
             FROM ops.f_lor_reconciliation_display_name_changes_report(%s)
         """, (run_id,))
         problems = rows(cur, """
-            SELECT entity_type, entity_key, result_class, reason_code,
-                   operator_message, recorded_at
-            FROM ops.lor_reconciliation_result
-            WHERE lor_reconciliation_run_id = %s
-              AND result_class IN ('BLOCKED','DEFERRED','UNRESOLVED','FAILED')
+            /* Current problems come from effective state, not historical flags. */
+            SELECT gr.entity_type, gr.logical_group_key AS entity_key,
+                   gr.effective_resolution_state AS result_class,
+                   gr.effective_action_type AS reason_code,
+                   coalesce(gr.effective_reason, gr.operator_message)
+                       AS operator_message,
+                   gr.acted_at AS recorded_at
+            FROM ops.v_lor_reconciliation_group_review AS gr
+            WHERE gr.lor_reconciliation_run_id = %s
+              AND gr.effective_resolution_state IN (
+                  'BLOCKED', 'DEFERRED', 'UNRESOLVED'
+              )
+            UNION ALL
+            SELECT rr.entity_type, rr.entity_key, rr.result_class,
+                   rr.reason_code, rr.operator_message, rr.recorded_at
+            FROM ops.lor_reconciliation_result AS rr
+            WHERE rr.lor_reconciliation_run_id = %s
+              AND rr.result_class = 'FAILED'
             ORDER BY result_class, entity_type, entity_key, recorded_at
-        """, (run_id,))
+        """, (run_id, run_id))
         decisions = rows(cur, """
             SELECT g.logical_group_key, a.action_type, a.reason,
                    a.acted_by, a.acted_by_application, a.acted_at

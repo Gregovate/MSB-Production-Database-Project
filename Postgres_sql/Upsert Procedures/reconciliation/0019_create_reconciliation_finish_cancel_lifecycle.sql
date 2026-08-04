@@ -2,7 +2,7 @@
 Object group: Atomic LOR reconciliation Finish/Cancel lifecycle
 Repository:   Postgres_sql/Upsert Procedures/reconciliation/
 Filename:     0019_create_reconciliation_finish_cancel_lifecycle.sql
-Revision:     2026-08-03-reconciliation-finish-cancel-v2
+Revision:     2026-08-03-reconciliation-finish-cancel-v3
 
 Purpose:
   Install the only operator-facing write entry points for finishing or
@@ -19,6 +19,7 @@ Safety boundary:
     later report publisher because publication is part of completion.
 
 Revision history:
+  2026-08-03  GAL / OpenAI  v3: Count current blocked groups from effective resolution state only.
   2026-08-03  GAL / OpenAI  v2: Validate scene membership by its actual scene/display composite key.
   2026-08-03  GAL / OpenAI  Initial atomic Finish/Cancel lifecycle.
 ============================================================================ */
@@ -167,33 +168,16 @@ BEGIN
     FROM ops.v_lor_reconciliation_group_review AS gr
     WHERE gr.lor_reconciliation_run_id = p_lor_reconciliation_run_id;
 
-    SELECT count(*) INTO v_blocked
-    FROM (
-        SELECT gr.lor_reconciliation_group_id
-        FROM ops.v_lor_reconciliation_group_review AS gr
-        WHERE gr.lor_reconciliation_run_id = p_lor_reconciliation_run_id
-          AND gr.effective_resolution_state = 'BLOCKED'
-        UNION
-        SELECT c.lor_reconciliation_group_id
-        FROM ops.lor_reconciliation_stage_candidate AS c
-        WHERE c.lor_reconciliation_run_id = p_lor_reconciliation_run_id
-          AND c.is_blocking
-        UNION
-        SELECT c.lor_reconciliation_group_id
-        FROM ops.lor_reconciliation_display_candidate AS c
-        WHERE c.lor_reconciliation_run_id = p_lor_reconciliation_run_id
-          AND c.is_blocking
-        UNION
-        SELECT c.lor_reconciliation_group_id
-        FROM ops.lor_reconciliation_scene_candidate AS c
-        WHERE c.lor_reconciliation_run_id = p_lor_reconciliation_run_id
-          AND c.is_blocking
-        UNION
-        SELECT c.lor_reconciliation_group_id
-        FROM ops.lor_reconciliation_scene_display_candidate AS c
-        WHERE c.lor_reconciliation_run_id = p_lor_reconciliation_run_id
-          AND c.is_blocking
-    ) AS blocked_groups;
+    /*
+    Frozen candidate flags describe the condition observed at capture time.
+    They remain audit evidence after an operator resolves the logical group and
+    therefore must not be counted as current exceptions.
+    */
+    SELECT count(*)
+      INTO v_blocked
+    FROM ops.v_lor_reconciliation_group_review AS gr
+    WHERE gr.lor_reconciliation_run_id = p_lor_reconciliation_run_id
+      AND gr.effective_resolution_state = 'BLOCKED';
 
     UPDATE ops.lor_reconciliation_run
        SET status = 'PROMOTING',

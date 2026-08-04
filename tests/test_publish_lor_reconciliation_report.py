@@ -88,6 +88,15 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn("<script>alert(1)</script>", output)
         self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", output)
 
+    def test_problem_query_uses_effective_state_not_frozen_candidate_flag(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        problem_query = source.split("problems = rows(cur,", 1)[1].split(
+            "decisions = rows(cur,", 1
+        )[0]
+
+        self.assertIn("effective_resolution_state", problem_query)
+        self.assertNotIn("is_blocking", problem_query)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-03 | GAL / OpenAI | Corrected reconciliation exception counters and report problems to use current effective logical-group state; frozen blocking flags remain audit evidence after operator resolution and are not reported as current exceptions. |
 | 2026-08-03 | GAL / OpenAI | Added the no-op production-write contract: evaluated-but-unchanged rows must not be updated, their audit fields must remain intact, and they must not appear as report changes. |
 | 2026-08-03 | GAL / OpenAI | Defined the operator-facing reconciliation report contract, including the internal NAS publication folder, report access, immutable timestamped filenames, source-preview manifest, completed/cancelled status, readable change tables, reason codes, replacement-label instructions, and failure handling. |
 | 2026-08-03 | GAL / OpenAI | Recorded installed and rollback-validated P1/stage-preservation layers and added the repository implementation plus rollback validation for reconciliation-safe P2. Reconciliation Run 1 remains development state and is prohibited from production promotion. |
@@ -125,12 +126,12 @@ The three documents describe one workflow at different levels and must not defin
 | Persistent scene and scene-membership candidate tables | Installed from `0018` and rollback-validated by `14` |
 | Operator decision database contract | Installed and live-validated for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views on 2026-08-02; application interface remains pending |
 | Operator decision application interface | Designed; not implemented |
-| Finish and cancel workflow actions | Installed from `0019` revision v2 and rollback-validated by `15`; terminal report publication remains pending |
+| Finish and cancel workflow actions | Installed from `0019` revision v2 and rollback-validated by `15`; effective-state counter correction is implemented by `0026` with validation `22` pending installation |
 | P1 | Installed and rollback-validated; production promotion remains prohibited until the complete orchestrated workflow is validated |
 | P2 | Installed from `0017` and rollback-validated by `13`; legacy procedure remains prohibited |
 | P3/P4 | Installed from `0018` and rollback-validated by `14`; these remain internal engine phases |
 | Controlled single-interface workflow | Required production entry point; designed but not implemented |
-| Timestamped HTML report publication | Repository framework implemented by `0025`, validation `21`, and `tools/publish_lor_reconciliation_report.*`; installation and production evaluation remain required |
+| Timestamped HTML report publication | Database framework `0025` and validation `21` are installed; publisher framework is implemented in `tools/publish_lor_reconciliation_report.*`; production report evaluation remains pending effective-counter correction `0026`/`22` |
 
 Do not represent an under-development component as production-ready.
 
