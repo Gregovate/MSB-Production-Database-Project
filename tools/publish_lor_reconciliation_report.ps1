@@ -1,11 +1,12 @@
 param(
-    [Parameter(Mandatory = $true)] [long]$ReconciliationRunId,
+    [long]$ReconciliationRunId,
     [string]$OutputDirectory = "\\192.168.5.4\web\my\lortodb\reports",
     [string]$BaseUrl,
     [string]$PgHost = "192.168.5.9",
     [string]$PgDatabase = "msb",
     [string]$PgUser = "msbadmin",
-    [switch]$EvaluationCopy
+    [switch]$EvaluationCopy,
+    [switch]$RefreshIndex
 )
 
 # Secured production runner. The workflow passes the run ID it retained from
@@ -15,14 +16,25 @@ if (-not (Test-Path -LiteralPath $publisher -PathType Leaf)) {
     throw "Report publisher not found: $publisher"
 }
 
+$arguments = @($publisher, "--output-dir", $OutputDirectory)
+if ($RefreshIndex) {
+    # Rebuild browsing from files already present; no database credentials or
+    # reconciliation state are needed or changed.
+    $arguments += "--refresh-index"
+    & python @arguments
+    if ($LASTEXITCODE -ne 0) { throw "Report index refresh failed with exit code $LASTEXITCODE" }
+    return
+}
+if (-not $PSBoundParameters.ContainsKey("ReconciliationRunId")) {
+    throw "ReconciliationRunId is required unless -RefreshIndex is used"
+}
+
 $securePassword = Read-Host "Enter Postgres password" -AsSecureString
 $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
 try {
     $env:PGPASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringAuto($passwordPointer)
-    $arguments = @(
-        $publisher,
+    $arguments += @(
         "--run-id", $ReconciliationRunId,
-        "--output-dir", $OutputDirectory,
         "--pg-host", $PgHost,
         "--pg-db", $PgDatabase,
         "--pg-user", $PgUser

@@ -1,4 +1,6 @@
 import importlib.util
+import subprocess
+import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -161,7 +163,53 @@ class ReportRenderingTests(unittest.TestCase):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
     def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.3.0")
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.4.0")
+
+    def test_index_includes_existing_published_and_evaluation_reports(self):
+        with TemporaryDirectory() as output_dir:
+            directory = Path(output_dir)
+            published = directory / "lor-reconciliation-20260803-233221-run-3.html"
+            evaluation = directory / "lor-reconciliation-20260804-170000-run-3-evaluation.html"
+            published.write_text(
+                '<p class="meta">Generated 2026-08-03 23:32:21 CDT · '
+                'Report framework V0.1.0 · Captured ingest 44</p>', encoding="utf-8"
+            )
+            evaluation.write_text(
+                '<p class="meta">Generated 2026-08-04 17:00:00 CDT · '
+                'Report framework V0.3.0 · Captured ingest 44</p>', encoding="utf-8"
+            )
+
+            index = REPORT.refresh_report_index(output_dir).read_text(encoding="utf-8")
+
+            self.assertIn(published.name, index)
+            self.assertIn(evaluation.name, index)
+            self.assertIn("Published report", index)
+            self.assertIn("Evaluation copy", index)
+            self.assertIn("Captured ingest", index)
+            self.assertLess(index.index(evaluation.name), index.index(published.name))
+
+    def test_index_ignores_unrecognized_html_files(self):
+        with TemporaryDirectory() as output_dir:
+            directory = Path(output_dir)
+            (directory / "unrelated.html").write_text("not a report", encoding="utf-8")
+
+            index = REPORT.refresh_report_index(output_dir).read_text(encoding="utf-8")
+
+            self.assertNotIn("unrelated.html", index)
+            self.assertIn("No reconciliation reports are available", index)
+
+    def test_refresh_index_cli_needs_no_database_arguments(self):
+        with TemporaryDirectory() as output_dir:
+            result = subprocess.run(
+                [sys.executable, str(MODULE_PATH), "--output-dir", output_dir, "--refresh-index"],
+                capture_output=True,
+                check=False,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("REPORT_INDEX_PATH=", result.stdout)
+            self.assertTrue((Path(output_dir) / "index.html").is_file())
 
 
 if __name__ == "__main__":

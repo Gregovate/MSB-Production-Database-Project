@@ -19,8 +19,12 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.3.0"
+REPORT_VERSION = "V0.4.0"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lortodb\reports"
+REPORT_FILENAME = re.compile(
+    r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
+    r"(?P<evaluation>-evaluation)?\.html$"
+)
 
 
 def rows(cursor, query: str, params: Sequence[Any]) -> list[dict[str, Any]]:
@@ -131,6 +135,67 @@ def section(number: int, title: str, body: str, action: str) -> str:
         f'<p class="action {action_class}"><strong>Action Required:</strong> '
         f"{html.escape(action)}</p>{body}</section>"
     )
+
+
+def report_index_entry(path: Path) -> dict[str, str] | None:
+    """Read operator-facing metadata from one generated report filename/body."""
+    match = REPORT_FILENAME.match(path.name)
+    if not match:
+        return None
+    generated = datetime.strptime(match.group("stamp"), "%Y%m%d-%H%M%S")
+    content = path.read_text(encoding="utf-8", errors="replace")
+    meta_match = re.search(
+        r"Generated\s+(.+?)\s+·\s+Report framework\s+([^·<]+)"
+        r"\s+·\s+Captured ingest\s+([^<]+)",
+        content,
+    )
+    return {
+        "filename": path.name,
+        "run_id": match.group("run"),
+        "report_type": "Evaluation copy" if match.group("evaluation") else "Published report",
+        "generated": meta_match.group(1).strip() if meta_match else generated.strftime("%Y-%m-%d %H:%M:%S"),
+        "framework": meta_match.group(2).strip() if meta_match else "—",
+        "captured_ingest": meta_match.group(3).strip() if meta_match else "—",
+        "sort_key": match.group("stamp"),
+    }
+
+
+def refresh_report_index(output_dir: str) -> Path:
+    """Atomically rebuild the browsable index from every report in the folder."""
+    directory = Path(output_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    entries = [
+        entry for path in directory.glob("lor-reconciliation-*.html")
+        if (entry := report_index_entry(path)) is not None
+    ]
+    entries.sort(key=lambda entry: entry["sort_key"], reverse=True)
+    rows_html = "".join(
+        "<tr>"
+        f'<td><a href="{html.escape(entry["filename"], quote=True)}">'
+        f'{html.escape(entry["filename"])}</a></td>'
+        f'<td>{html.escape(entry["report_type"])}</td>'
+        f'<td>{html.escape(entry["run_id"])}</td>'
+        f'<td>{html.escape(entry["captured_ingest"])}</td>'
+        f'<td>{html.escape(entry["generated"])}</td>'
+        f'<td>{html.escape(entry["framework"])}</td>'
+        "</tr>"
+        for entry in entries
+    )
+    if not rows_html:
+        rows_html = '<tr><td colspan="6" class="empty">No reconciliation reports are available.</td></tr>'
+    generated = datetime.now().astimezone()
+    document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>LOR Reconciliation Reports</title>
+<style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}.meta{{color:#475569}}table{{width:100%;border-collapse:collapse;margin-top:18px}}th,td{{border:1px solid #cbd5e1;padding:8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}a{{color:#075985}}.empty{{font-style:italic;color:#475569}}</style></head><body>
+<h1>LOR Reconciliation Reports</h1><p class="meta">Index refreshed {html.escape(display(generated))} · {len(entries)} report(s)</p>
+<table><thead><tr><th>Report</th><th>Type</th><th>Reconciliation run</th><th>Captured ingest</th><th>Generated</th><th>Framework</th></tr></thead><tbody>{rows_html}</tbody></table>
+</body></html>"""
+    destination = directory / "index.html"
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as tmp:
+        tmp.write(document)
+        temporary = Path(tmp.name)
+    os.replace(temporary, destination)
+    return destination
 
 
 def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
@@ -342,6 +407,7 @@ def publish(conn: Any, run_id: int, output_dir: str, base_url: str | None) -> Pa
         cur.execute("CALL ops.p_publish_lor_reconciliation_report(%s,%s,%s,%s,%s)",
                     (run_id, str(destination), report_url, digest, "Python HTML report publisher"))
     conn.commit()
+    refresh_report_index(output_dir)
     return destination
 
 
@@ -370,15 +436,16 @@ def render_evaluation_copy(conn: Any, run_id: int, output_dir: str) -> Path:
         tmp.write(report_bytes)
         temporary = Path(tmp.name)
     os.replace(temporary, destination)
+    refresh_report_index(output_dir)
     return destination
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-id", type=int, required=True, help="Run ID retained by Start Reconciliation")
+    parser.add_argument("--run-id", type=int, help="Run ID retained by Start Reconciliation")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--base-url")
-    parser.add_argument("--pg-host", required=True)
+    parser.add_argument("--pg-host")
     parser.add_argument("--pg-db", default="msb")
     parser.add_argument("--pg-user", default="msbadmin")
     parser.add_argument(
@@ -389,7 +456,20 @@ def main() -> int:
             "changing its audit record"
         ),
     )
+    parser.add_argument(
+        "--refresh-index",
+        action="store_true",
+        help="Rebuild index.html from existing reports without connecting to PostgreSQL",
+    )
     args = parser.parse_args()
+    if args.refresh_index:
+        path = refresh_report_index(args.output_dir)
+        print(f"REPORT_INDEX_PATH={path}")
+        return 0
+    if args.run_id is None:
+        parser.error("--run-id is required unless --refresh-index is used")
+    if not args.pg_host:
+        parser.error("--pg-host is required unless --refresh-index is used")
     password = os.environ.get("PGPASSWORD")
     if not password:
         raise RuntimeError("PGPASSWORD is required; use the secured PowerShell runner")
