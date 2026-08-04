@@ -4,6 +4,49 @@ This folder contains the design, controlled promotion objects, and rollback
 validation required to protect production `ref` data during scene-aware LOR
 reconciliation.
 
+## Current Authoritative Function Definitions
+
+Numbered migrations are retained as immutable installation history. A later
+`CREATE OR REPLACE FUNCTION` migration supersedes only the named function; it
+does not rewrite or invalidate the earlier migration that originally created
+the surrounding tables, functions, or procedures.
+
+| Database object | Originally installed by | Current authoritative definition | Required validation |
+|---|---|---|---|
+| `ops.f_build_lor_reconciliation_stage_candidates(bigint)` | `0015_create_reconciliation_safe_p1_stage_promotion.sql` | `0023_use_preview_manifest_for_stage_bindings.sql` | `19_preview_manifest_stage_binding_validation.sql` |
+
+For this function, `0015` is historical and must not be edited or rerun as a
+repair procedure. Its stage-candidate builder incorrectly treated descriptive
+preview names as permanent-stage metadata. `0023` replaces that function with
+the manifest-filename/stable-binding behavior defined by the current design.
+All other objects created by `0015` remain owned by their original migration
+unless another row in this table explicitly supersedes them.
+
+### Inspection and Repair Procedure
+
+To inspect the installed definition without changing the database:
+
+```sql
+SELECT pg_get_functiondef(
+    'ops.f_build_lor_reconciliation_stage_candidates(bigint)'::regprocedure
+);
+```
+
+Compare the result with the complete `CREATE OR REPLACE FUNCTION` statement in
+`0023_use_preview_manifest_for_stage_bindings.sql`. If the function is missing,
+damaged, or older than the authoritative definition:
+
+1. Obtain explicit database-change authorization.
+2. Run only `0023_use_preview_manifest_for_stage_bindings.sql`.
+3. Run `19_preview_manifest_stage_binding_validation.sql` and require every
+   assertion to pass.
+4. Review its human-readable same-stage filename/preview-name evidence.
+5. Start a new reconciliation attempt only after validation passes.
+
+Installing or repairing `0023` does not authorize P1, P2, P3, P4, Finish,
+promotion, decision recording, or production-data changes. Do not rerun all of
+`0015` to repair this function.
+
 The parser and PostgreSQL ingest populate `lor_snap`. The files in this folder begin with the latest completed ingest already present in `lor_snap` and evaluate the consequences of applying that snapshot to production identities and relationships.
 
 ## Current Latest-Ingest Preflight Suite
