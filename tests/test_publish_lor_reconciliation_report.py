@@ -2,6 +2,8 @@ import importlib.util
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 
 MODULE_PATH = Path(__file__).parents[1] / "tools" / "publish_lor_reconciliation_report.py"
@@ -127,6 +129,39 @@ class ReportRenderingTests(unittest.TestCase):
 
         self.assertIn("effective_resolution_state", problem_query)
         self.assertNotIn("is_blocking", problem_query)
+
+    def test_evaluation_copy_renders_completed_run_without_database_write(self):
+        data = self.base_data()
+        data["run"]["status"] = "COMPLETED"
+
+        class ReadOnlyConnection:
+            def cursor(self):
+                raise AssertionError("evaluation copy attempted a database write")
+
+            def commit(self):
+                raise AssertionError("evaluation copy attempted a database commit")
+
+        with TemporaryDirectory() as output_dir, patch.object(
+            REPORT, "collect_report_data", return_value=data
+        ):
+            path = REPORT.render_evaluation_copy(
+                ReadOnlyConnection(), 101, output_dir
+            )
+
+            self.assertTrue(path.exists())
+            self.assertTrue(path.name.endswith("-run-101-evaluation.html"))
+            self.assertIn("LOR Production Reconciliation Report", path.read_text())
+
+    def test_evaluation_copy_rejects_noncompleted_run(self):
+        data = self.base_data()
+        with TemporaryDirectory() as output_dir, patch.object(
+            REPORT, "collect_report_data", return_value=data
+        ):
+            with self.assertRaisesRegex(RuntimeError, "not COMPLETED"):
+                REPORT.render_evaluation_copy(object(), 101, output_dir)
+
+    def test_report_framework_version_identifies_evaluation_copy_release(self):
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.3.0")
 
 
 if __name__ == "__main__":

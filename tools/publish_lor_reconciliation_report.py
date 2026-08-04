@@ -2,6 +2,8 @@
 
 The workflow supplies the reconciliation run ID returned by Start. This tool
 never selects a latest run and contains no environment-specific run IDs.
+Completed runs may also be rendered as unregistered evaluation copies so the
+report presentation can be revised without changing the production audit row.
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.2.0"
+REPORT_VERSION = "V0.3.0"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lortodb\reports"
 
 
@@ -343,6 +345,34 @@ def publish(conn: Any, run_id: int, output_dir: str, base_url: str | None) -> Pa
     return destination
 
 
+def render_evaluation_copy(conn: Any, run_id: int, output_dir: str) -> Path:
+    """Render a completed run without registering or mutating it.
+
+    Evaluation copies are deliberately separate from publication. They do not
+    call ``ops.p_publish_lor_reconciliation_report``, commit a transaction, or
+    replace the path, URL, timestamp, and hash registered for the original.
+    """
+    data = collect_report_data(conn, run_id)
+    if data["run"]["status"] != "COMPLETED":
+        raise RuntimeError(
+            f'Run {run_id} is {data["run"]["status"]}, not COMPLETED; '
+            "evaluation-copy mode is only for completed runs"
+        )
+    generated = datetime.now().astimezone()
+    filename = (
+        f"lor-reconciliation-{generated:%Y%m%d-%H%M%S}-run-{run_id}"
+        "-evaluation.html"
+    )
+    destination = Path(output_dir) / filename
+    report_bytes = render_report(data, generated).encode("utf-8")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("wb", dir=destination.parent, delete=False) as tmp:
+        tmp.write(report_bytes)
+        temporary = Path(tmp.name)
+    os.replace(temporary, destination)
+    return destination
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-id", type=int, required=True, help="Run ID retained by Start Reconciliation")
@@ -351,6 +381,14 @@ def main() -> int:
     parser.add_argument("--pg-host", required=True)
     parser.add_argument("--pg-db", default="msb")
     parser.add_argument("--pg-user", default="msbadmin")
+    parser.add_argument(
+        "--evaluation-copy",
+        action="store_true",
+        help=(
+            "Render an unregistered HTML copy of a COMPLETED run without "
+            "changing its audit record"
+        ),
+    )
     args = parser.parse_args()
     password = os.environ.get("PGPASSWORD")
     if not password:
@@ -363,8 +401,12 @@ def main() -> int:
         ) from exc
     conn = psycopg2.connect(host=args.pg_host, dbname=args.pg_db, user=args.pg_user, password=password)
     try:
-        path = publish(conn, args.run_id, args.output_dir, args.base_url)
-        print(f"REPORT_PATH={path}")
+        if args.evaluation_copy:
+            path = render_evaluation_copy(conn, args.run_id, args.output_dir)
+            print(f"EVALUATION_REPORT_PATH={path}")
+        else:
+            path = publish(conn, args.run_id, args.output_dir, args.base_url)
+            print(f"REPORT_PATH={path}")
     finally:
         conn.close()
     return 0
