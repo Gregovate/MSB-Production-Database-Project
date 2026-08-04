@@ -46,6 +46,8 @@ class ReportRenderingTests(unittest.TestCase):
                 "background_file": None,
             }],
             "changes": [], "names": [], "problems": [],
+            "display_names": {}, "preview_names": {"preview-uuid": "Stage 01"},
+            "stage_names": {}, "scene_names": {},
             "decisions": [],
             "validations": [{
                 "validation_check": "FINISH_POST_WRITE_VALIDATION_PASSED",
@@ -75,11 +77,40 @@ class ReportRenderingTests(unittest.TestCase):
             "display_id": 123,
             "before_name": "Old",
             "after_name": "New",
-            "action_required": "Preprint replacement label",
+            "action_required": "Print replacement label",
         }]
         output = REPORT.render_report(data, datetime.now(timezone.utc))
         self.assertIn("Print replacement labels", output)
-        self.assertIn("Preprint replacement label", output)
+        self.assertIn("Print replacement label", output)
+
+    def test_manifest_hides_uuid_and_formats_whole_numbers_as_integers(self):
+        data = self.base_data()
+        data["previews"][0]["preview_revision"] = "12.0"
+        data["previews"][0]["brightness"] = 20.0
+        output = REPORT.render_report(data, datetime.now(timezone.utc))
+        self.assertNotIn("Preview UUID", output)
+        self.assertNotIn("20.0", output)
+        self.assertIn(">20<", output)
+
+    def test_changes_use_human_readable_display_and_scene_keys(self):
+        data = self.base_data()
+        data["display_names"] = {"920": "WA-WelcomeTo-01"}
+        data["scene_names"] = {("preview-uuid", "scene-uuid"): {
+            "scene_name": "Welcome Area", "preview_name": "Stage 01",
+            "stage_name": "Welcome Area",
+        }}
+        data["changes"] = [
+            {"entity_type": "DISPLAY", "entity_key": "920", "result_class": "UPDATED",
+             "reason_code": "P2_AUTO_APPROVED", "operator_message": "internal", "recorded_at": None},
+            {"entity_type": "SCENE", "entity_key": "SCENE:preview-uuid:scene-uuid",
+             "result_class": "ADDED", "reason_code": "P3_ADD_SCENE",
+             "operator_message": "internal UUID detail", "recorded_at": None},
+        ]
+        output = REPORT.render_report(data, datetime.now(timezone.utc))
+        self.assertIn("920-WA-WelcomeTo-01", output)
+        self.assertIn("SCENE: Welcome Area", output)
+        self.assertIn('Synchronized scene &quot;Welcome Area&quot;', output)
+        self.assertNotIn("scene-uuid", output)
 
     def test_database_text_is_html_escaped(self):
         data = self.base_data()

@@ -829,7 +829,7 @@ Completed and completed-with-exceptions reports contain these simple, readable t
    - before and after display name;
    - before and after stage where applicable;
    - technical reason code and plain-language reason;
-   - fixed instruction: **Preprint replacement label**.
+   - fixed instruction: **Print replacement label**.
 
 2. **Other Display Changes**
    - new displays and user-visible status/lifecycle changes;

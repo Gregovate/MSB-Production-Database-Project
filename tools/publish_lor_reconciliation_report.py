@@ -10,13 +10,14 @@ import argparse
 import hashlib
 import html
 import os
+import re
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.1.0"
+REPORT_VERSION = "V0.2.0"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lortodb\reports"
 
 
@@ -33,6 +34,74 @@ def display(value: Any) -> str:
     if isinstance(value, (list, tuple)):
         return ", ".join(display(item) for item in value)
     return str(value)
+
+
+def integer_display(value: Any) -> Any:
+    """Render numeric LOR metadata as an integer when it is whole-valued."""
+    if value is None or value == "":
+        return value
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return value
+    return int(number) if number.is_integer() else value
+
+
+def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Replace internal reconciliation keys with operator-readable identities."""
+    displays = data.get("display_names", {})
+    scenes = data.get("scene_names", {})
+    previews = data.get("preview_names", {})
+    stages = data.get("stage_names", {})
+    readable = []
+
+    for source in data["changes"]:
+        row = dict(source)
+        key = str(row.get("entity_key") or "")
+        entity_type = row.get("entity_type")
+        parts = key.split(":")
+
+        if entity_type == "DISPLAY" and key.isdigit():
+            row["entity_key"] = f"{key}-{displays.get(key, 'Unknown display')}"
+
+        elif entity_type == "SCENE" and len(parts) >= 3:
+            scene = scenes.get((parts[1], parts[2]), {})
+            scene_name = scene.get("scene_name") or "Unnamed scene"
+            preview_name = scene.get("preview_name") or previews.get(parts[1], "Unknown preview")
+            stage_name = scene.get("stage_name")
+            target = f'preview "{preview_name}"'
+            if stage_name:
+                target += f' / stage "{stage_name}"'
+            row["entity_key"] = f"SCENE: {scene_name}"
+            row["operator_message"] = f'Synchronized scene "{scene_name}" to {target}.'
+
+        elif entity_type == "SCENE_DISPLAY":
+            match = re.search(r"display_id\s+(\d+)", str(row.get("operator_message") or ""))
+            display_id = match.group(1) if match else (parts[-1] if parts[-1].isdigit() else None)
+            scene = scenes.get((parts[1], parts[2]), {}) if len(parts) >= 3 else {}
+            scene_name = scene.get("scene_name") or "Unnamed scene"
+            display_key = (
+                f"{display_id}-{displays.get(display_id, 'Unknown display')}"
+                if display_id else "Unknown display"
+            )
+            row["entity_key"] = f"{display_key} -> SCENE: {scene_name}"
+            row["operator_message"] = f'Synchronized display {display_key} to scene "{scene_name}".'
+
+        elif entity_type == "STAGE" and len(parts) >= 2:
+            source_name = previews.get(parts[1]) if parts[0] == "PREVIEW" else None
+            if parts[0] == "SCENE" and len(parts) >= 3:
+                source_name = scenes.get((parts[1], parts[2]), {}).get("scene_name")
+            stage_match = re.search(r"stage_id\s+(\d+)", str(row.get("operator_message") or ""))
+            stage_id = stage_match.group(1) if stage_match else None
+            stage_name = stages.get(stage_id, "Unknown stage") if stage_id else "Unknown stage"
+            row["entity_key"] = f'{parts[0]}: {source_name or "Unnamed source"}'
+            row["operator_message"] = (
+                f'Synchronized {parts[0].lower()} "{source_name or "Unnamed source"}" '
+                f'to stage "{stage_name}".'
+            )
+
+        readable.append(row)
+    return readable
 
 
 def table(columns: Sequence[tuple[str, str]], data: Iterable[dict[str, Any]], empty: str) -> str:
@@ -148,13 +217,34 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
               AND result_class IN ('VALIDATION','FAILED')
             ORDER BY recorded_at, lor_reconciliation_result_id
         """, (run_id,))
+        display_rows = rows(cur, "SELECT display_id, display_name FROM ref.display", ())
+        stage_rows = rows(cur, "SELECT stage_id, stage_name FROM ref.stage", ())
+        scene_rows = rows(cur, """
+            SELECT s.preview_id, s.scene_id, s.scene_name, p.preview_name,
+                   st.stage_name
+            FROM ops.lor_reconciliation_source_scene AS s
+            LEFT JOIN ops.lor_reconciliation_source_preview AS p
+              ON p.lor_reconciliation_run_id = s.lor_reconciliation_run_id
+             AND p.preview_id = s.preview_id
+            LEFT JOIN ref.stage AS st
+              ON st.stage_key = s.stage_id
+            WHERE s.lor_reconciliation_run_id = %s
+        """, (run_id,))
     return {"run": run[0], "previews": previews, "changes": changes,
             "names": names, "problems": problems, "decisions": decisions,
-            "validations": validations}
+            "validations": validations,
+            "display_names": {str(x["display_id"]): x["display_name"] for x in display_rows},
+            "stage_names": {str(x["stage_id"]): x["stage_name"] for x in stage_rows},
+            "preview_names": {str(x["preview_id"]): x["preview_name"] for x in previews},
+            "scene_names": {(str(x["preview_id"]), str(x["scene_id"])): x for x in scene_rows}}
 
 
 def render_report(data: dict[str, Any], generated_at: datetime) -> str:
     r = data["run"]
+    previews = [dict(x) for x in data["previews"]]
+    for preview in previews:
+        preview["preview_revision"] = integer_display(preview.get("preview_revision"))
+        preview["brightness"] = integer_display(preview.get("brightness"))
     if r.get("cancelled_at") is not None:
         final_status = "CANCELLED"
     elif any(int(r.get(key) or 0) != 0 for key in (
@@ -180,20 +270,24 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
     manifest = f'<p><strong>Source folder:</strong> {html.escape(display(r["source_preview_folder"]))}</p>' + table([
         ("source_filename", "Preview filename"), ("preview_revision", "Revision"),
         ("preview_name", "Preview name"), ("stage_id", "Stage"),
-        ("preview_id", "Preview UUID"), ("brightness", "Brightness"),
+        ("brightness", "Brightness"),
         ("background_file", "Background file"),
-    ], data["previews"], "No frozen preview manifest rows were recorded.")
+    ], previews, "No frozen preview manifest rows were recorded.")
     name_table = table([
         ("display_id", "Display_id"), ("before_name", "Before"),
         ("after_name", "After"), ("action_required", "Action Required"),
     ], data["names"], "No display-name changes were committed.")
+    changed_name_ids = {str(n["display_id"]) for n in data["names"]}
+    other_change_data = dict(data)
+    other_change_data["changes"] = [x for x in data["changes"] if not (
+        x["entity_type"] == "DISPLAY" and x["entity_key"] in changed_name_ids
+    )]
+    readable_changes = humanize_changes(other_change_data)
     other_changes = table([
         ("entity_type", "Object"), ("entity_key", "Permanent key"),
         ("result_class", "Change"), ("reason_code", "Reason"),
         ("operator_message", "Detail"),
-    ], [x for x in data["changes"] if not (
-        x["entity_type"] == "DISPLAY" and x["entity_key"] in {str(n["display_id"]) for n in data["names"]}
-    )], "No other production changes were committed.")
+    ], readable_changes, "No other production changes were committed.")
     changes_body = '<h3>Display Name Changes</h3>' + name_table + '<h3>Other Changes</h3>' + other_changes
     issues = table([
         ("entity_type", "Object"), ("entity_key", "Key"),
