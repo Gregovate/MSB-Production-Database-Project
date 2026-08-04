@@ -1,4 +1,5 @@
 /* ============================================================================
+File:        19_preview_manifest_stage_binding_validation.sql
 Validation: Preview-manifest stage binding correction
 Migration:  0023_use_preview_manifest_for_stage_bindings.sql
 
