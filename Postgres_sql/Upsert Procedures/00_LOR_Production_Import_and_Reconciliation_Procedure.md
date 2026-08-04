@@ -417,7 +417,7 @@ A reconciliation remains in `REPORTING` until its report is generated, published
 Reports are published as immutable, timestamped HTML files in:
 
 ```text
-\\192.168.5.4\web\my\committees\production\reconciliation-reports
+\\192.168.5.4\web\my\lortodb\reports
 ```
 
 The `reconciliation-reports` folder must be created before the reporting layer is placed in service.
