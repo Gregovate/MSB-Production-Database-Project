@@ -1,9 +1,35 @@
-"""Generate, publish, and register one immutable LOR reconciliation report.
+"""
+MSB Database - LOR Reconciliation Report Publisher
+publish_lor_reconciliation_report.py
 
-The workflow supplies the reconciliation run ID returned by Start. This tool
-never selects a latest run and contains no environment-specific run IDs.
-Completed runs may also be rendered as unregistered evaluation copies so the
-report presentation can be revised without changing the production audit row.
+Initial Release : 2026-08-03  V0.1.0
+Current Version : 2026-08-04  V0.4.1
+Author          : GAL / OpenAI
+
+Purpose:
+    Generate, publish, index, and register an immutable HTML report for one
+    completed LOR reconciliation run.
+
+Operation:
+    - Uses the reconciliation run ID supplied by the workflow.
+    - Never selects the latest reconciliation run internally.
+    - Contains no environment-specific reconciliation run IDs.
+    - Publishes finalized reports to the protected lor2db reports folder.
+    - Rebuilds the browsable report index.
+    - Registers finalized reports in the production audit record.
+    - Supports unregistered evaluation copies so report presentation can be
+      revised without changing the production audit row.
+
+Revision History:
+    2026-08-04  GAL / OpenAI  V0.4.1
+        Changed the default NAS publication folder from lortodb to lor2db.
+
+    2026-08-04  GAL / OpenAI  V0.4.0
+        Added evaluation-copy rendering and report presentation revisions.
+
+    2026-08-03  GAL / OpenAI  V0.1.0
+        Initial immutable reconciliation report generation, publication,
+        indexing, and registration workflow.
 """
 
 from __future__ import annotations
@@ -19,8 +45,8 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.4.0"
-DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lortodb\reports"
+REPORT_VERSION = "V0.4.1"
+DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
     r"(?P<evaluation>-evaluation)?\.html$"

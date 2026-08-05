@@ -1,13 +1,41 @@
 param(
     [long]$ReconciliationRunId,
-    [string]$OutputDirectory = "\\192.168.5.4\web\my\lortodb\reports",
-    [string]$BaseUrl,
+    [string]$OutputDirectory = "\\192.168.5.4\web\my\lor2db\reports",
+    [string]$BaseUrl = "https://my.sheboyganlights.org/lor2db/reports",
     [string]$PgHost = "192.168.5.9",
     [string]$PgDatabase = "msb",
     [string]$PgUser = "msbadmin",
     [switch]$EvaluationCopy,
     [switch]$RefreshIndex
 )
+# =============================================================================
+# MSB Database - LOR Reconciliation Report Publisher
+# publish_lor_reconciliation_report.ps1
+#
+# Initial Release : 2026-08-03  V0.1.0
+# Current Version : 2026-08-04  V0.1.1
+#
+# Purpose:
+#   Secure PowerShell wrapper for publishing finalized LOR reconciliation
+#   reports and rebuilding the automatically generated report index.
+#
+# Operation:
+#   - Publishes a specified completed reconciliation run.
+#   - Supports evaluation copies without replacing the registered final report.
+#   - Rebuilds index.html from reports already present in the output folder.
+#   - Prompts securely for the PostgreSQL password when database access is needed.
+#   - Publishes beneath the protected my.sheboyganlights.org/lor2db route.
+#
+# Change Log:
+#   2026-08-04  GAL  V0.1.1
+#     Changed the NAS output folder from lortodb to lor2db.
+#     Added the protected default report URL:
+#       https://my.sheboyganlights.org/lor2db/reports
+#
+#   2026-08-03  GAL  V0.1.0
+#     Initial report-publication wrapper.
+# =============================================================================
+
 
 # Secured production runner. The workflow passes the run ID it retained from
 # Start Reconciliation; an operator does not discover or select a latest run.
