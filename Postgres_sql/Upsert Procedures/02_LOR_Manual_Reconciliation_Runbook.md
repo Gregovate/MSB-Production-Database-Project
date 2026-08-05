@@ -2,13 +2,13 @@
 
 | Document control | Value |
 |---|---|
-| Status | ACTIVE — manual workflow until the operator application is implemented |
+| Status | ACTIVE — manual workflow until the operator application is deployed and validated |
 | Owner | GAL |
-| Initial release / current revision | 2026-08-04 |
+| Initial release / current revision | 2026-08-04 / 2026-08-05 |
 
-The reusable screen and its secured backend contract are defined in
+The reusable screen and its secured backend are defined in
 `tools/lor_preflight/`. This runbook remains authoritative until that backend is
-implemented, installed, and production validated.
+deployed and production validated with Run 4.
 
 ## Purpose and Safety Boundary
 

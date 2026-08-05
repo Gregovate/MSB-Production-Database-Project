@@ -1,6 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
- * Initial release/current version: 2026-08-04 V0.1.0
+ * Initial release: 2026-08-04 V0.1.0
+ * Current version: 2026-08-05 V0.2.0
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -186,7 +187,13 @@
     dialogConfirm.textContent = "Proceed with production update"; dialogConfirm.className = "danger";
     dialogConfirm.onclick = async (event) => {
       event.preventDefault();
-      try { await request(`api/runs/${model.run_id}/finish`, { method: "POST", body: "{}" }); location.reload(); }
+      try {
+        await request(`api/runs/${model.run_id}/finish`, {
+          method: "POST",
+          body: JSON.stringify({ expected_decision_version: model.decision_version })
+        });
+        location.href = "../reports/";
+      }
       catch (failure) { dialogBody.textContent = failure.message; }
     };
     dialog.showModal();

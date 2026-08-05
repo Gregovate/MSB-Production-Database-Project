@@ -5,12 +5,13 @@
 - **Status:** Approved design under implementation; P1-P4, Finish/Cancel, and report-publication database layer installed; effective-counter correction pending installation
 - **Owner:** MSB Database Administrator
 - **Initial Release:** 2026-07-31
-- **Current Revision:** 2026-08-03
+- **Current Revision:** 2026-08-05
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-05 | GAL / OpenAI | Implemented the secured same-origin preflight backend with Cloudflare identity enforcement, an independent operator allowlist, persisted individual and bulk decisions, optimistic final-review locking, Cancel, retry-safe Finish/report publication, and loopback-only deployment templates. Production deployment and Run 4 acceptance remain pending. |
 | 2026-08-04 | GAL / OpenAI | Defined the reusable secured preflight operator interface, recorded-decision API boundary, Continue/final-review/confirmed-Proceed flow, and protected `lor2db` publication route. |
 | 2026-08-03 | GAL / OpenAI | Made effective logical-group state authoritative for run-level exception counters and current report problems. Frozen candidate blocking flags remain historical evidence after reassociation or other operator resolution. Added migration `0026` and validation `22` to repair runs already in `REPORTING` without rerunning promotion. |
 | 2026-08-03 | GAL / OpenAI | Corrected existing-stage preview handling: the manifest filename and `preview_id` preserve each independently scheduled/controller-specific preview, the canonical `StageID` resolves its permanent stage, and the preview's descriptive name cannot silently rename `ref.stage`. Legitimate same-stage files auto-bind; new or conflicting stage identity still requires review. |
@@ -319,10 +320,11 @@ state, not a generated SQL workflow and not a browser-only form.
 - The backend rechecks run status, group ownership, allowed actions, operator
   identity, and the previously effective action before recording a decision.
 
-The reusable browser template and backend contract are maintained under
-`tools/lor_preflight/`. Until the backend is implemented and validated, the
-manual SQL runbook remains authoritative and the template must not be described
-as a production decision recorder.
+The reusable browser template, backend, configuration examples, and deployment
+contract are maintained under `tools/lor_preflight/`. The backend must remain
+bound to loopback behind the authenticated reverse proxy. The manual SQL
+runbook remains authoritative until the backend is deployed and Run 4 passes
+the controlled production acceptance test.
 
 ## Finish Reconciliation
 

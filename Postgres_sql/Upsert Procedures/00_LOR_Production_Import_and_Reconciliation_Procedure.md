@@ -4,10 +4,10 @@
 |---|---|
 | Repository path | `Postgres_sql/Upsert Procedures/00_LOR_Production_Import_and_Reconciliation_Procedure.md` |
 | Document type | Controlled production procedure |
-| Status | ACTIVE — manual reconciliation validated; operator application remains pending |
+| Status | ACTIVE — manual reconciliation validated; operator application deployment remains pending |
 | Owner / author | GAL |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-04 |
+| Current revision | 2026-08-05 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-05 | GAL / OpenAI | Implemented the secured preflight backend, restricted operator authorization, persisted-decision endpoints, final-review concurrency check, Cancel, and retry-safe Finish/report publication. Deployment and Run 4 acceptance remain pending. |
 | 2026-08-04 | GAL / OpenAI | Activated the validated manual workflow, linked the executable runbook, and updated implementation status through report publication and evaluation/index support. |
 | 2026-08-03 | GAL / OpenAI | Corrected reconciliation exception counters and report problems to use current effective logical-group state; frozen blocking flags remain audit evidence after operator resolution and are not reported as current exceptions. |
 | 2026-08-03 | GAL / OpenAI | Added the no-op production-write contract: evaluated-but-unchanged rows must not be updated, their audit fields must remain intact, and they must not appear as report changes. |
@@ -370,7 +371,7 @@ For each decision-required candidate, the operator may:
 
 A deferred candidate or a candidate without a completed decision is blocked from production promotion. It does not block unrelated passing or approved candidates.
 
-#### Future secured preflight screen
+#### Secured preflight screen pending deployment
 
 The reusable operator screen is published under:
 
@@ -390,8 +391,9 @@ requires a second confirmation and is the only screen action that may invoke
 Finish. **Cancel Reconciliation** also requires confirmation and a reason and
 never invokes Finish.
 
-The browser template and backend contract live in `tools/lor_preflight/`.
-Until that backend is implemented and validated, use the manual SQL runbook.
+The browser template and implemented backend live in `tools/lor_preflight/`.
+Until that backend is deployed and validated with Run 4, use the manual SQL
+runbook.
 
 ### 6. Finish Reconciliation
 

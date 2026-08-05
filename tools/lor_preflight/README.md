@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | Interface template and API contract; backend implementation pending |
-| Initial release / current revision | 2026-08-04 / 2026-08-04 |
+| Status | Interface and backend implemented; deployment and Run 4 acceptance pending |
+| Initial release / current revision | 2026-08-04 / 2026-08-05 |
 
 This directory contains the reusable browser interface for production LOR
 reconciliation review. It replaces the hard-coded Run 4 mockup with a run-data
@@ -11,10 +11,14 @@ contract. The browser must be published under the protected route:
 
 `https://my.sheboyganlights.org/lor2db/preflight/`
 
-The files are intentionally not a standalone decision system. The browser must
-never contain PostgreSQL credentials or write reconciliation tables directly.
-A same-origin authenticated backend must implement the endpoints below and
-invoke only the installed `ops` views, functions, and procedures.
+The browser never contains PostgreSQL credentials or writes reconciliation
+tables directly. `backend.py` implements the same-origin API and invokes only
+the installed `ops` views, functions, and procedures.
+
+The backend must bind only to loopback and be exposed through the authenticated
+reverse proxy at `/lor2db/preflight/api/`. It requires the Cloudflare Access
+identity header and independently restricts access to the comma-separated
+`LOR_PREFLIGHT_OPERATORS` allowlist. Do not expose port 8784 to the LAN or web.
 
 ## Required API
 
@@ -82,9 +86,35 @@ runs Finish.
 ### `POST api/runs/{run_id}/finish`
 
 Requires `READY_TO_FINISH`, zero unresolved groups, an unchanged final-review
-decision set, and a second browser confirmation. The backend calls
+`decision_version`, and a second browser confirmation. The backend calls
 `ops.p_finish_lor_reconciliation` once and then invokes the existing report
 publisher. This is the only production-write endpoint.
+
+If production promotion commits but report publication fails, the run remains
+`REPORTING`. Repeating Finish does not repeat P1-P4; it retries only publication.
+
+## Deployment boundary
+
+Use `lor-preflight-api.service.example` and `lor-preflight-api.env.example` as
+deployment templates. The service runs with Gunicorn on `127.0.0.1:8784`.
+Configure the authenticated reverse proxy so the public path
+`/lor2db/preflight/api/` maps to that loopback service with the `/api` prefix
+removed. The static files remain in the NAS `lor2db/preflight` folder.
+
+The dedicated login used by `LOR_PREFLIGHT_DATABASE_URL` needs `SELECT` on the
+approved `ops` review views and only the specific reconciliation run, group,
+and action columns read by the concurrency checks. Grant `EXECUTE` only on the
+two decision functions, Finish/Cancel procedures, report data function, and
+report publication function used by the existing publisher. It must not receive
+direct write privileges on `ref`, `lor_snap`, or the reconciliation tables.
+After creating the login separately with a secured password, apply
+`grant_lor_preflight_app.sql` to install this exact grant set.
+
+Run the non-database safety tests from this directory with:
+
+```text
+python -m unittest -v test_backend.py
+```
 
 ## Run 4 acceptance test
 

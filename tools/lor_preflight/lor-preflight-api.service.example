@@ -1,0 +1,17 @@
+[Unit]
+Description=MSB LOR reconciliation preflight API
+After=network-online.target
+
+[Service]
+Type=simple
+User=msbadmin
+Group=msbadmin
+WorkingDirectory=/opt/msb-production-database/tools/lor_preflight
+EnvironmentFile=/etc/msb/lor-preflight-api.env
+ExecStart=/opt/msb-production-database/.venv/bin/gunicorn --bind 127.0.0.1:8784 --workers 2 --timeout 240 backend:app
+Restart=on-failure
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
