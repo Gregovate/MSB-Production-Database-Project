@@ -4,10 +4,10 @@
 |---|---|
 | Repository path | `Postgres_sql/Upsert Procedures/00_LOR_Production_Import_and_Reconciliation_Procedure.md` |
 | Document type | Controlled production procedure |
-| Status | DRAFT — production execution remains blocked pending reconciliation implementation and validation |
+| Status | ACTIVE — manual reconciliation validated; operator application remains pending |
 | Owner / author | GAL |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-03 |
+| Current revision | 2026-08-04 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-04 | GAL / OpenAI | Activated the validated manual workflow, linked the executable runbook, and updated implementation status through report publication and evaluation/index support. |
 | 2026-08-03 | GAL / OpenAI | Corrected reconciliation exception counters and report problems to use current effective logical-group state; frozen blocking flags remain audit evidence after operator resolution and are not reported as current exceptions. |
 | 2026-08-03 | GAL / OpenAI | Added the no-op production-write contract: evaluated-but-unchanged rows must not be updated, their audit fields must remain intact, and they must not appear as report changes. |
 | 2026-08-03 | GAL / OpenAI | Defined the operator-facing reconciliation report contract, including the internal NAS publication folder, report access, immutable timestamped filenames, source-preview manifest, completed/cancelled status, readable change tables, reason codes, replacement-label instructions, and failure handling. |
@@ -43,7 +44,15 @@ The parser and snapshot ingest do **not** update production reference data by th
 | 2026-07-31 | GAL / OpenAI | Linked the full P1/P2/P3 promotion design and established controlled orchestration as the required final production execution model. |
 | 2026-07-31 | GAL | Initial procedure draft. Documents authoritative-preview controls, V7 parsing, PostgreSQL ingest, reconciliation requirements, and the P1/P2/P3 gate. |
 
-## Finished Production Workflow
+## Current Manual Workflow and Future Operator Interface
+
+The active executable procedure is:
+
+`Postgres_sql/Upsert Procedures/02_LOR_Manual_Reconciliation_Runbook.md`
+
+It contains the exact SQL and PowerShell commands, decision templates, result checks, production-write warning, publication sequence, and recovery rules. Until the application interface exists, it is the authoritative execution sequence.
+
+The application workflow described below remains the intended replacement for those manual commands. It must call the same installed boundaries and preserve the same safeguards.
 
 The finished system is one controlled operator workflow, not a collection of unrelated scripts.
 
@@ -117,21 +126,22 @@ The three documents describe one workflow at different levels and must not defin
 
 | Procedure component | Status |
 |---|---|
-| Master PC and preview-folder controls | Procedure defined; automated manifest validation not yet implemented |
-| `parse_props_v7_scene_parser.py` | Implemented and under V7 validation |
+| Master PC and preview-folder controls | Procedure defined; parser/ingest blocking checks active; complete operator application remains pending |
+| `parse_props_v7_scene_parser.py` | Implemented and production exercised through V7.0.7 |
 | `postgres_run_ingest_v7.ps1` | Implemented and tested |
-| Latest-ingest preflight scripts | Implemented for development/testing; not a production reconciliation interface |
+| Latest-ingest capture and frozen preflight | Installed and production validated; manual operation documented in `02_LOR_Manual_Reconciliation_Runbook.md` |
 | Persistent reconciliation-run and display-candidate tables | Installed and live-validated from `reconciliation/0014_create_lor_reconciliation_decision_layer.sql` on 2026-08-02 |
 | Persistent stage candidate and binding tables | Installed from `0015` and rollback-validated by `11`; multi-preview metadata preservation installed from `0016` and rollback-validated by `12` |
 | Persistent scene and scene-membership candidate tables | Installed from `0018` and rollback-validated by `14` |
 | Operator decision database contract | Installed and live-validated for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views on 2026-08-02; application interface remains pending |
 | Operator decision application interface | Designed; not implemented |
-| Finish and cancel workflow actions | Installed from `0019` revision v2 and rollback-validated by `15`; effective-state counter correction is implemented by `0026` with validation `22` pending installation |
-| P1 | Installed and rollback-validated; production promotion remains prohibited until the complete orchestrated workflow is validated |
+| Finish and cancel workflow actions | Installed from `0019`, rollback-validated by `15`, and Finish production-validated through Run 3; `0026`/`22` counter correction installed and passed |
+| P1 | Installed, rollback-validated, and executed only through controlled Finish |
 | P2 | Installed from `0017` and rollback-validated by `13`; legacy procedure remains prohibited |
 | P3/P4 | Installed from `0018` and rollback-validated by `14`; these remain internal engine phases |
-| Controlled single-interface workflow | Required production entry point; designed but not implemented |
-| Timestamped HTML report publication | Database framework `0025` and validation `21` are installed; publisher framework is implemented in `tools/publish_lor_reconciliation_report.*`; production report evaluation remains pending effective-counter correction `0026`/`22` |
+| Controlled manual workflow | Active and documented in `02_LOR_Manual_Reconciliation_Runbook.md` |
+| Controlled single-interface application | Designed; not implemented |
+| Timestamped HTML report publication | Installed and production validated; immutable publication, evaluation copies, and generated report index are implemented |
 
 Do not represent an under-development component as production-ready.
 
@@ -179,7 +189,7 @@ Before editing previews on a replacement computer:
 - Current `postgres_run_ingest_v7.ps1` and its associated PostgreSQL ingest SQL.
 - Access to the production PostgreSQL database.
 - A database operator identity for reconciliation audit records.
-- Access to the approved operator interface for starting, reviewing, finishing, or cancelling reconciliation.
+- Access to the SQL client and report publisher required by the active manual runbook.
 
 ## Status and Identity Rules
 
@@ -276,7 +286,15 @@ Validate:
 
 > **Hard stop:** Missing, duplicate, stale, test, or questionable previews must be resolved before continuing.
 
-### 3. Start LOR Production Import
+### 3. Run the Current Manual Procedure
+
+Until the operator application exists, follow the complete sequence in:
+
+`Postgres_sql/Upsert Procedures/02_LOR_Manual_Reconciliation_Runbook.md`
+
+Do not reconstruct commands from this policy overview or run P1–P4 directly.
+
+### 3A. Future Start LOR Production Import Interface
 
 From the approved operator interface, select **Start LOR Production Import**.
 
@@ -293,7 +311,7 @@ The workflow must:
 
 Password handling must remain protected. The operator may be prompted for the PostgreSQL password by the secured runner, but the password is never stored in the reconciliation records or report.
 
-### 4. Automatically Start Reconciliation
+### 4. Future Automatic Start Reconciliation
 
 Immediately after a successful ingest, the workflow must:
 
@@ -467,7 +485,7 @@ Required sections are:
    - after display name;
    - before and after stage when applicable;
    - reason code and plain-language reason;
-   - operator instruction: **Preprint replacement label**.
+   - operator instruction: **Print replacement label**.
 
 2. **Other Display Changes**
    - new displays, lifecycle/status changes, and other committed user-visible display changes;
@@ -570,9 +588,10 @@ The operator-facing application must provide:
 
 ## Related Documents and Navigation
 
-This controlled procedure is one part of a three-document set:
+This controlled procedure is one part of the controlled documentation set:
 
-- **Operator procedure — this document:** `00_LOR_Production_Import_and_Reconciliation_Procedure.md`
+- **Production policy — this document:** `00_LOR_Production_Import_and_Reconciliation_Procedure.md`
+- **Executable manual runbook:** `02_LOR_Manual_Reconciliation_Runbook.md`
 - **Production-promotion architecture:** `01_LOR_Production_Promotion_Pipeline_Design.md`
 - **Reconciliation SQL engineering design:** `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
 
