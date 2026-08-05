@@ -11,6 +11,7 @@
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-04 | GAL / OpenAI | Defined the reusable secured preflight operator interface, recorded-decision API boundary, Continue/final-review/confirmed-Proceed flow, and protected `lor2db` publication route. |
 | 2026-08-03 | GAL / OpenAI | Made effective logical-group state authoritative for run-level exception counters and current report problems. Frozen candidate blocking flags remain historical evidence after reassociation or other operator resolution. Added migration `0026` and validation `22` to repair runs already in `REPORTING` without rerunning promotion. |
 | 2026-08-03 | GAL / OpenAI | Corrected existing-stage preview handling: the manifest filename and `preview_id` preserve each independently scheduled/controller-specific preview, the canonical `StageID` resolves its permanent stage, and the preview's descriptive name cannot silently rename `ref.stage`. Legitimate same-stage files auto-bind; new or conflicting stage identity still requires review. |
 | 2026-08-03 | GAL / OpenAI | Corrected the attempt lifecycle: every Start creates an independent evaluation, an interrupted review attempt is frozen and reported as `SUPERSEDED` instead of blocking later work, multiple attempts may evaluate the same ingest, prior decisions are history only, and normal Finish requires deliberate terminal outcomes for every decision-required group. |
@@ -278,10 +279,50 @@ Every candidate or inseparable logical group is evaluated independently.
   candidates from promotion after every required decision is terminal.
 - Run-level failure is reserved for structural conditions that prevent safe isolation or trustworthy auditing.
 
-The operator ends review by selecting either:
+The operator ends the candidate-review screen by selecting either:
 
-- **Finish Reconciliation**, or
+- **Continue**, or
 - **Cancel Reconciliation**.
+
+**Continue** is enabled only after every decision-required logical group has a
+persisted effective action. It opens a final application review containing only
+accepted or changed-and-approved production actions. Deferred groups are
+excluded from that application list. The operator may return to candidate
+review or select **Proceed**. Proceed requires a second explicit confirmation
+and is the only interface action permitted to invoke Finish Reconciliation.
+
+## Reusable Preflight Operator Interface
+
+The operator interface is a run-driven view of the persisted reconciliation
+state, not a generated SQL workflow and not a browser-only form.
+
+- The active route is
+  `https://my.sheboyganlights.org/lor2db/preflight/?run={reconciliation_run_id}`.
+- Cloudflare authentication protects the entire `my.sheboyganlights.org`
+  route. Application authorization must further restrict reconciliation access
+  to the smaller approved operator group.
+- One reusable template renders display, stage, scene, and scene-display groups
+  from the installed persisted review views.
+- Every line shows its frozen evidence and only the action types allowed for its
+  logical group.
+- **Accept** resolves to the single proposed production action. It is disabled
+  when reconciliation cannot propose one safe action, such as deciding whether
+  a missing active display is retired or recycled.
+- **Change** exposes the other allowed actions; **Defer** records `DEFER`.
+- Saving calls the existing append-only reconciliation action function through
+  a same-origin secured backend. Reopening the page displays the persisted
+  effective decision rather than browser state.
+- Group actions remain restricted to the operator-selected group IDs and are
+  rejected unless every selected group independently allows the action.
+- The browser contains no PostgreSQL credentials and never writes database
+  tables directly.
+- The backend rechecks run status, group ownership, allowed actions, operator
+  identity, and the previously effective action before recording a decision.
+
+The reusable browser template and backend contract are maintained under
+`tools/lor_preflight/`. Until the backend is implemented and validated, the
+manual SQL runbook remains authoritative and the template must not be described
+as a production decision recorder.
 
 ## Finish Reconciliation
 
@@ -768,7 +809,7 @@ Every reconciliation attempt produces one immutable, timestamped HTML report.
 The internal NAS publication folder is:
 
 ```text
-\\192.168.5.4\web\my\lortodb\reports
+\\192.168.5.4\web\my\lor2db\reports
 ```
 
 The `reports` folder must be created before deployment. Normal operators open the published URL from Directus. Administrators may open the same report through the NAS path.

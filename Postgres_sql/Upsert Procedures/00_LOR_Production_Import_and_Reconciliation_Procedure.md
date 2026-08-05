@@ -370,6 +370,29 @@ For each decision-required candidate, the operator may:
 
 A deferred candidate or a candidate without a completed decision is blocked from production promotion. It does not block unrelated passing or approved candidates.
 
+#### Future secured preflight screen
+
+The reusable operator screen is published under:
+
+`https://my.sheboyganlights.org/lor2db/preflight/?run={reconciliation_run_id}`
+
+It presents each persisted preflight check and its frozen evidence on the left,
+with **Accept**, **Change**, and **Defer** controls on the same line. Accept is
+available only when the engine proposes one unambiguous production action.
+Every saved selection is recorded through the installed append-only decision
+functions by a same-origin authenticated backend; browser state is never the
+record of authority.
+
+After all required decisions are recorded, **Continue** opens a final review of
+only accepted or changed-and-approved production actions. Deferred items are
+excluded. **Back to Review** returns without writing production. **Proceed**
+requires a second confirmation and is the only screen action that may invoke
+Finish. **Cancel Reconciliation** also requires confirmation and a reason and
+never invokes Finish.
+
+The browser template and backend contract live in `tools/lor_preflight/`.
+Until that backend is implemented and validated, use the manual SQL runbook.
+
 ### 6. Finish Reconciliation
 
 When the operator selects **Finish Reconciliation**, the workflow must:
@@ -436,7 +459,7 @@ A reconciliation remains in `REPORTING` until its report is generated, published
 Reports are published as immutable, timestamped HTML files in:
 
 ```text
-\\192.168.5.4\web\my\lortodb\reports
+\\192.168.5.4\web\my\lor2db\reports
 ```
 
 The `reconciliation-reports` folder must be created before the reporting layer is placed in service.

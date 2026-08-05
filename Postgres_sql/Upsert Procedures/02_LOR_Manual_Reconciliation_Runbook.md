@@ -6,6 +6,10 @@
 | Owner | GAL |
 | Initial release / current revision | 2026-08-04 |
 
+The reusable screen and its secured backend contract are defined in
+`tools/lor_preflight/`. This runbook remains authoritative until that backend is
+implemented, installed, and production validated.
+
 ## Purpose and Safety Boundary
 
 This is the executable manual procedure for reconciling one completed V7 LOR snapshot. The operator never supplies an `import_run_id`; Start captures the latest eligible completed ingest once. Retain the returned `lor_reconciliation_run_id` and substitute it for `:run_id` below.
