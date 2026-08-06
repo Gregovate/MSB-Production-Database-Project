@@ -345,10 +345,12 @@ Open `https://lortodb.sheboyganlights.org/lor2db/` after the snapshot ingest com
 Verify that the displayed ingest, parser/ingest versions, timestamps, and row
 counts match the run just completed.
 
-When the page reports `READY TO START`, select **Start reconciliation**. The
+When the page reports `READY TO START`, select **Start reconciliation**. This is
+permitted only when the current snapshot's `import_run_id` has no matching row
+in `ops.lor_reconciliation_run` and no reconciliation run is unfinished. The
 operator does not choose a snapshot or enter an ingest number. If an open run
-exists, the page provides **Open reconciliation** instead and must not replace
-that run's captured snapshot.
+exists, the page provides **Continue previous reconciliation** instead and must
+not replace that run's captured snapshot.
 
 Start must:
 
