@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-06  V0.3.1
+Current Version : 2026-08-06  V0.3.2
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,11 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-06  GAL / OpenAI  V0.3.2
+        Made snapshot ownership authoritative on the landing page and Start
+        endpoint. Any unfinished run is resumed first; otherwise the row whose
+        import_run_id matches the current snapshot controls eligibility. A
+        snapshot can never create a second reconciliation attempt.
     2026-08-06  GAL / OpenAI  V0.3.1
         Removed the repository-layout assumption from report publication.
         Production now supplies the deployed publisher's absolute path through
@@ -52,7 +57,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.3.1"
+APP_VERSION = "V0.3.2"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
@@ -68,9 +73,6 @@ OPEN_RUN_STATES = {
     "STARTING", "PREFLIGHT", "AWAITING_DECISIONS", "READY_TO_FINISH",
     "PROMOTING", "VALIDATING", "REPORTING",
 }
-RECONCILED_RUN_STATES = {"COMPLETED", "COMPLETED_WITH_EXCEPTIONS"}
-
-
 class ApiError(RuntimeError):
     """Expected request failure with a safe HTTP status and message."""
 
@@ -222,8 +224,27 @@ def load_run(conn: Any, run_id: int) -> dict[str, Any]:
 
 
 def dashboard_state(snapshot: dict[str, Any] | None,
-                    latest_run: dict[str, Any] | None) -> dict[str, Any]:
+                    snapshot_run: dict[str, Any] | None) -> dict[str, Any]:
     """Derive the only valid next operator action from persisted state."""
+    if snapshot_run and snapshot_run["status"] in OPEN_RUN_STATES:
+        return {
+            "state": "IN_PROGRESS",
+            "message": (
+                f"Reconciliation run {snapshot_run['lor_reconciliation_run_id']} "
+                f"for snapshot {snapshot_run['import_run_id']} is unfinished "
+                f"({snapshot_run['status'].replace('_', ' ').lower()})."
+            ),
+            "can_start": False,
+            "action": {
+                "kind": "review",
+                "label": "Continue previous reconciliation",
+                "url": (
+                    "preflight/?run="
+                    f"{snapshot_run['lor_reconciliation_run_id']}"
+                ),
+            },
+        }
+
     if snapshot is None:
         return {
             "state": "NO_SNAPSHOT",
@@ -233,30 +254,14 @@ def dashboard_state(snapshot: dict[str, Any] | None,
         }
 
     snapshot_id = snapshot["import_run_id"]
-    if latest_run and latest_run["status"] in OPEN_RUN_STATES:
+    if snapshot_run:
         return {
-            "state": "IN_PROGRESS",
+            "state": "SNAPSHOT_CONSUMED",
             "message": (
-                f"Reconciliation run {latest_run['lor_reconciliation_run_id']} "
-                f"is {latest_run['status'].replace('_', ' ').lower()}."
+                f"Snapshot {snapshot_id} belongs to reconciliation run "
+                f"{snapshot_run['lor_reconciliation_run_id']} "
+                f"({snapshot_run['status'].replace('_', ' ').lower()})."
             ),
-            "can_start": False,
-            "action": {
-                "kind": "review",
-                "label": "Open reconciliation",
-                "url": (
-                    "preflight/?run="
-                    f"{latest_run['lor_reconciliation_run_id']}"
-                ),
-            },
-        }
-
-    if (latest_run
-            and latest_run["import_run_id"] == snapshot_id
-            and latest_run["status"] in RECONCILED_RUN_STATES):
-        return {
-            "state": "RECONCILED",
-            "message": f"Snapshot {snapshot_id} is reconciled.",
             "can_start": False,
             "action": None,
         }
@@ -274,7 +279,7 @@ def dashboard_state(snapshot: dict[str, Any] | None,
 
 
 def load_dashboard(conn: Any) -> dict[str, Any]:
-    """Load current snapshot and latest durable reconciliation attempt."""
+    """Load the current snapshot and its authoritative reconciliation owner."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
             SELECT import_run_id, run_ts, notes, parser_version,
@@ -289,6 +294,10 @@ def load_dashboard(conn: Any) -> dict[str, Any]:
         row = cur.fetchone()
         snapshot = dict(row) if row else None
 
+        # An unfinished run always takes precedence, even if a newer snapshot
+        # was ingested after that run captured its immutable source snapshot.
+        # Otherwise, only the run linked to the current snapshot determines
+        # whether Start is legal. Numeric recency is not snapshot ownership.
         cur.execute("""
             SELECT lor_reconciliation_run_id, import_run_id, status,
                    started_at, completed_at, cancelled_at, failed_at,
@@ -297,16 +306,26 @@ def load_dashboard(conn: Any) -> dict[str, Any]:
                    report_url, report_published_at, cancellation_reason,
                    failure_message
             FROM ops.lor_reconciliation_run
-            ORDER BY lor_reconciliation_run_id DESC
+            WHERE status = ANY(%s)
+               OR import_run_id = %s
+            ORDER BY
+                CASE WHEN status = ANY(%s) THEN 0 ELSE 1 END,
+                lor_reconciliation_run_id DESC
             LIMIT 1
-        """)
+        """, (
+            list(OPEN_RUN_STATES),
+            snapshot["import_run_id"] if snapshot else None,
+            list(OPEN_RUN_STATES),
+        ))
         row = cur.fetchone()
-        latest_run = dict(row) if row else None
+        snapshot_run = dict(row) if row else None
 
-    state = dashboard_state(snapshot, latest_run)
+    state = dashboard_state(snapshot, snapshot_run)
     return {
         "snapshot": snapshot,
-        "latest_run": latest_run,
+        # Retain the response key for the deployed browser contract. Its value
+        # is now the run that owns/blocks the snapshot, not merely the last ID.
+        "latest_run": snapshot_run,
         "workflow": state,
         "reports_url": "reports/",
         "operator": operator_email(),
