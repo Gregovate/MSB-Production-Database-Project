@@ -341,6 +341,12 @@ CALL ops.p_cancel_lor_reconciliation(
 );
 ```
 
+Cancellation is an emergency terminal path, not permission to retry the same
+snapshot. The procedure records the cancellation and removes the captured
+disposable snapshot as documented. The cancelled `import_run_id` remains owned
+by its `CANCELLED` reconciliation row; run the parser and ingest again to create
+a new snapshot before starting another reconciliation.
+
 The run advances to `REPORTING`; publish its cancellation report using Step 9. Correct the LOR source, parse, and ingest again. Never reconstruct the deleted snapshot manually.
 
 ## Recovery Rules
