@@ -25,7 +25,7 @@ class BackendSafetyTests(unittest.TestCase):
             with self.assertRaisesRegex(backend.ApiError, "is not installed"):
                 backend.publish_report(5)
 
-    def test_dashboard_marks_latest_completed_snapshot_reconciled(self) -> None:
+    def test_dashboard_marks_completed_snapshot_consumed(self) -> None:
         state = backend.dashboard_state(
             {"import_run_id": 45},
             {
@@ -34,17 +34,13 @@ class BackendSafetyTests(unittest.TestCase):
                 "status": "COMPLETED",
             },
         )
-        self.assertEqual(state["state"], "RECONCILED")
+        self.assertEqual(state["state"], "SNAPSHOT_CONSUMED")
         self.assertFalse(state["can_start"])
 
     def test_dashboard_allows_start_for_new_snapshot(self) -> None:
         state = backend.dashboard_state(
             {"import_run_id": 46},
-            {
-                "lor_reconciliation_run_id": 4,
-                "import_run_id": 45,
-                "status": "COMPLETED",
-            },
+            None,
         )
         self.assertEqual(state["state"], "READY_TO_START")
         self.assertTrue(state["can_start"])
@@ -61,6 +57,46 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertEqual(state["state"], "IN_PROGRESS")
         self.assertFalse(state["can_start"])
         self.assertEqual(state["action"]["url"], "preflight/?run=4")
+        self.assertEqual(
+            state["action"]["label"], "Continue previous reconciliation"
+        )
+
+    def test_dashboard_resumes_reporting_run_for_same_snapshot(self) -> None:
+        state = backend.dashboard_state(
+            {"import_run_id": 46},
+            {
+                "lor_reconciliation_run_id": 5,
+                "import_run_id": 46,
+                "status": "REPORTING",
+            },
+        )
+        self.assertEqual(state["state"], "IN_PROGRESS")
+        self.assertFalse(state["can_start"])
+        self.assertEqual(state["action"]["url"], "preflight/?run=5")
+
+    def test_dashboard_resumes_open_run_after_cancel_removed_snapshot(self) -> None:
+        state = backend.dashboard_state(
+            None,
+            {
+                "lor_reconciliation_run_id": 5,
+                "import_run_id": 46,
+                "status": "REPORTING",
+            },
+        )
+        self.assertEqual(state["state"], "IN_PROGRESS")
+        self.assertFalse(state["can_start"])
+
+    def test_dashboard_cancelled_snapshot_remains_consumed(self) -> None:
+        state = backend.dashboard_state(
+            {"import_run_id": 46},
+            {
+                "lor_reconciliation_run_id": 5,
+                "import_run_id": 46,
+                "status": "CANCELLED",
+            },
+        )
+        self.assertEqual(state["state"], "SNAPSHOT_CONSUMED")
+        self.assertFalse(state["can_start"])
 
     def test_optional_decision_reason_preserves_comment(self) -> None:
         self.assertEqual(
