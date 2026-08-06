@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Atomic LOR reconciliation Finish/Cancel lifecycle
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 Filename:     0019_create_reconciliation_finish_cancel_lifecycle.sql
 Revision:     2026-08-03-reconciliation-finish-cancel-v3
 

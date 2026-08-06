@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Persistent LOR reconciliation operator-decision layer
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 Filename:     0014_create_lor_reconciliation_decision_layer.sql
 
 Purpose:

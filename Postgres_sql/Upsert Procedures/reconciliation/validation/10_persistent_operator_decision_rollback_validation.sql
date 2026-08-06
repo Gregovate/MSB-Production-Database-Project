@@ -1,7 +1,7 @@
 /* ============================================================================
 Schema: ops / lor_snap / ref
 Object: Persistent reconciliation operator-decision validation
-Filename: 10_persistent_operator_decision_validation.sql
+Filename: 10_persistent_operator_decision_rollback_validation.sql
 Type: Controlled persistence validation; no production writes
 Owner: msbadmin
 
@@ -30,7 +30,7 @@ Revision history:
 
 WITH started AS (
     SELECT ops.f_start_lor_display_reconciliation(
-        '10_persistent_operator_decision_validation.sql'
+        '10_persistent_operator_decision_rollback_validation.sql'
     ) AS lor_reconciliation_run_id
 )
 SELECT

@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Independent, idempotent reconciliation attempts
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 Filename:     0022_make_reconciliation_attempts_independent.sql
 Revision:     2026-08-03-independent-reconciliation-attempts-v1
 

@@ -1,6 +1,6 @@
 /* ============================================================================
 Object:       Reconciliation-safe P1 stage validation
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/validation/
 File:         11_reconciliation_safe_p1_stage_validation.sql
 Type:         Read-only validation plus rollback-only negative gate test
 

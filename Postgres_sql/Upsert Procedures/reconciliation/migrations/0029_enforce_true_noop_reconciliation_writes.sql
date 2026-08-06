@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: True no-op reconciliation promotion
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 Filename:     0029_enforce_true_noop_reconciliation_writes.sql
 Revision:     2026-08-05-true-noop-reconciliation-writes-v4
 

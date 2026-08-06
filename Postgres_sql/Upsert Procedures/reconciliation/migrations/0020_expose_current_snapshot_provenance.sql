@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Current LOR snapshot provenance interface
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 Filename:     0020_expose_current_snapshot_provenance.sql
 Revision:     2026-08-03-current-snapshot-provenance-v1
 

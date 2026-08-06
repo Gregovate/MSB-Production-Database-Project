@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Automatic exact-name LOR UUID relink
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 Filename:     0028_auto_approve_safe_uuid_relinks.sql
 Revision:     2026-08-05-auto-approve-safe-uuid-relinks-v2
 

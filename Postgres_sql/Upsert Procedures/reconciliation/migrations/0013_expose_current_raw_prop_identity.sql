@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: LOR current-snapshot raw identity interface
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 File:         0013_expose_current_raw_prop_identity.sql
 
 Purpose:

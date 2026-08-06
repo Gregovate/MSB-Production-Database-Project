@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Preserve existing stage metadata for multi-preview stages
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 File:         0016_preserve_existing_stage_metadata.sql
 
 Purpose:

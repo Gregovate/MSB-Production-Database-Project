@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Reconciliation-safe P1 stage promotion
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 File:         0015_create_reconciliation_safe_p1_stage_promotion.sql
 
 Purpose:

@@ -1,6 +1,6 @@
 /* ============================================================================
 Object:       Preserve-existing-stage-metadata validation
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/validation/
 File:         12_preserve_existing_stage_metadata_validation.sql
 Type:         Rollback-only decision and projected-P1 validation
 

@@ -1,6 +1,6 @@
 /* ============================================================================
 Object group: Frozen reconciliation source evidence
-Repository:   Postgres_sql/Upsert Procedures/reconciliation/
+Repository:   Postgres_sql/Upsert Procedures/reconciliation/migrations/
 Filename:     0021_freeze_reconciliation_source_evidence.sql
 Revision:     2026-08-03-frozen-source-evidence-v1
 

@@ -698,7 +698,7 @@ They may not:
 
 Production candidate builders shall be new controlled database objects implementing the validated logic. Write behavior must never be hidden inside scripts 01-09.
 
-Script `09_current_p2_projected_write_validation.sql` must inspect raw `lor_snap.props.lor_comment` directly. It must not rely solely on `lor_snap.v_display_reconciliation_source` or another normalized view that may already omit invalid unnamed rows.
+Script `operator_queries/preflight/09_current_p2_projected_write_validation.sql` must inspect raw `lor_snap.props.lor_comment` directly. It must not rely solely on `lor_snap.v_display_reconciliation_source` or another normalized view that may already omit invalid unnamed rows.
 
 ## Required Preflight Checks
 
@@ -988,22 +988,22 @@ be called directly.
 
 ### Authoritative Stage-Candidate Builder
 
-`0015_create_reconciliation_safe_p1_stage_promotion.sql` is the immutable
+`migrations/0015_create_reconciliation_safe_p1_stage_promotion.sql` is the immutable
 historical migration that originally installed
 `ops.f_build_lor_reconciliation_stage_candidates(bigint)` together with the P1
 stage layer. Its original stage-candidate function is superseded.
 
-`0023_use_preview_manifest_for_stage_bindings.sql` is the current authoritative
+`migrations/0023_use_preview_manifest_for_stage_bindings.sql` is the current authoritative
 definition of that function. It corrects the original behavior by using the
 manifest `source_filename`, stable preview binding, and canonical `StageID`
 without interpreting an individual preview's descriptive name as permanent
 stage metadata. Validation authority is
-`19_preview_manifest_stage_binding_validation.sql`.
+`validation/19_preview_manifest_stage_binding_validation.sql`.
 
 Future maintenance must inspect the installed definition with
-`pg_get_functiondef(...)`, repair it by running `0023` only after explicit
-database-change authorization, and then run validation `19`. Do not edit or
-rerun all of `0015` to repair this function. Function repair does not authorize
+`pg_get_functiondef(...)`, repair it by running migration `0023` only after
+explicit database-change authorization, and then run validation `19`. Do not
+edit or rerun all of migration `0015` to repair this function. Function repair does not authorize
 decision recording, P1-P4, Finish, promotion, or any production-data change.
 
 1. Validate this design against the current production schema and ingest completion semantics.
