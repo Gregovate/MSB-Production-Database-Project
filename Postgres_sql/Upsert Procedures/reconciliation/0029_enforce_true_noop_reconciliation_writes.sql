@@ -2,7 +2,7 @@
 Object group: True no-op reconciliation promotion
 Repository:   Postgres_sql/Upsert Procedures/reconciliation/
 Filename:     0029_enforce_true_noop_reconciliation_writes.sql
-Revision:     2026-08-05-true-noop-reconciliation-writes-v1
+Revision:     2026-08-05-true-noop-reconciliation-writes-v2
 
 Purpose:
   Enforce the established rule that a new ingest ID is not a production-data
@@ -16,6 +16,8 @@ Safety boundary:
   - Provenance advances only when meaningful production content changes.
 
 Revision history:
+  2026-08-05  GAL / OpenAI  Replaced indentation-sensitive function-definition
+                            substitutions with verified clause-level patterns.
   2026-08-05  GAL / OpenAI  Initial correction after Run 4 exposed ingest-ID-
                             only updates to otherwise unchanged production rows.
 ============================================================================ */
@@ -36,13 +38,16 @@ BEGIN
         'ref.p1_promote_stage_from_reconciliation(bigint)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := replace(
+    v_corrected := regexp_replace(
         v_definition,
-        E'AND (\n               b.source_name IS DISTINCT FROM v_binding.source_name\n               OR b.last_seen_import_run_id IS DISTINCT FROM v_import_run_id\n           );',
-        E'AND b.source_name IS DISTINCT FROM v_binding.source_name;'
+        '[[:space:]]+OR b\.last_seen_import_run_id IS DISTINCT FROM v_import_run_id',
+        '',
+        'g'
     );
 
-    IF v_corrected = v_definition THEN
+    IF v_corrected = v_definition
+       OR v_corrected LIKE '%OR b.last_seen_import_run_id IS DISTINCT FROM v_import_run_id%'
+       OR v_corrected NOT LIKE '%b.source_name IS DISTINCT FROM v_binding.source_name%' THEN
         RAISE EXCEPTION '0029: expected P1 ingest-only update predicate was not found';
     END IF;
 
@@ -59,13 +64,16 @@ BEGIN
         'ref.p3_promote_scene_from_reconciliation(bigint)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := replace(
+    v_corrected := regexp_replace(
         v_definition,
-        E'\n            OR ref.lor_scene.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id;',
-        E';'
+        '[[:space:]]+OR ref\.lor_scene\.source_import_run_id IS DISTINCT FROM EXCLUDED\.source_import_run_id',
+        '',
+        'g'
     );
 
-    IF v_corrected = v_definition THEN
+    IF v_corrected = v_definition
+       OR v_corrected LIKE '%OR ref.lor_scene.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id%'
+       OR v_corrected NOT LIKE '%ref.lor_scene.create_grid_view IS DISTINCT FROM EXCLUDED.create_grid_view%' THEN
         RAISE EXCEPTION '0029: expected P3 ingest-only update predicate was not found';
     END IF;
 
@@ -82,13 +90,16 @@ BEGIN
         'ref.p4_promote_scene_display_from_reconciliation(bigint)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := replace(
+    v_corrected := regexp_replace(
         v_definition,
-        E'\n            OR ref.lor_scene_display.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id;',
-        E';'
+        '[[:space:]]+OR ref\.lor_scene_display\.source_import_run_id IS DISTINCT FROM EXCLUDED\.source_import_run_id',
+        '',
+        'g'
     );
 
-    IF v_corrected = v_definition THEN
+    IF v_corrected = v_definition
+       OR v_corrected LIKE '%OR ref.lor_scene_display.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id%'
+       OR v_corrected NOT LIKE '%ref.lor_scene_display.source_name IS DISTINCT FROM EXCLUDED.source_name%' THEN
         RAISE EXCEPTION '0029: expected P4 ingest-only update predicate was not found';
     END IF;
 
@@ -105,13 +116,15 @@ BEGIN
         'ops.p_finish_lor_reconciliation(bigint,text)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := replace(
+    v_corrected := regexp_replace(
         v_definition,
-        E'\n          OR s.source_import_run_id <> v_import_run_id',
-        E''
+        '[[:space:]]+OR s\.source_import_run_id <> v_import_run_id',
+        '',
+        'g'
     );
 
-    IF v_corrected = v_definition THEN
+    IF v_corrected = v_definition
+       OR v_corrected LIKE '%OR s.source_import_run_id <> v_import_run_id%' THEN
         RAISE EXCEPTION '0029: expected Finish provenance validation was not found';
     END IF;
 
@@ -206,7 +219,7 @@ COMMENT ON FUNCTION ref.trg_lor_scene_display_require_change() IS
 COMMIT;
 
 SELECT
-    '2026-08-05-true-noop-reconciliation-writes-v1'::text
+    '2026-08-05-true-noop-reconciliation-writes-v2'::text
         AS installed_revision,
     to_regprocedure('ref.trg_stage_lor_binding_require_change()') IS NOT NULL
         AS has_stage_binding_noop_guard,
