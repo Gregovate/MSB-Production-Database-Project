@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-06  V0.3.2
+Current Version : 2026-08-06  V0.3.3
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,9 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-06  GAL / OpenAI  V0.3.3
+        Return the immutable published report URL after Finish so the browser
+        opens the completed run report instead of the report archive.
     2026-08-06  GAL / OpenAI  V0.3.2
         Made snapshot ownership authoritative on the landing page and Start
         endpoint. Any unfinished run is resumed first; otherwise the row whose
@@ -57,7 +60,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.3.2"
+APP_VERSION = "V0.3.3"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
@@ -564,7 +567,13 @@ def finish_run(run_id: int) -> Response:
                             (run_id, f"lor-preflight-api:{operator}"))
             conn.commit()
     publish_report(run_id)
-    return jsonify(run_id=run_id, status="COMPLETED")
+    with database() as conn:
+        completed = load_run(conn, run_id)
+    return jsonify(
+        run_id=run_id,
+        status="COMPLETED",
+        report_url=completed["report_url"],
+    )
 
 
 if __name__ == "__main__":

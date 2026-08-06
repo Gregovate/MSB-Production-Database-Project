@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.4.1"
+REPORT_VERSION = "V0.4.2"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
@@ -387,11 +387,20 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         ("result_class", "State"), ("reason_code", "Reason"),
         ("operator_message", "Required response"),
     ], data["problems"], "No blocked, deferred, unresolved, or failed items.")
+    decision_rows = [dict(row) for row in data["decisions"]]
+    for decision in decision_rows:
+        application = str(decision.get("acted_by_application") or "")
+        if application.startswith("lor-preflight-api:"):
+            # Until the planned Directus person lookup exists, the authenticated
+            # Cloudflare email embedded by the API is the human operator.
+            decision["operator"] = application.split(":", 1)[1]
+        else:
+            decision["operator"] = decision.get("acted_by")
     decisions = table([
         ("logical_group_key", "Logical group"), ("action_type", "Decision"),
-        ("reason", "Reason"), ("acted_by", "Operator"),
+        ("reason", "Reason"), ("operator", "Operator"),
         ("acted_at", "Date/time"),
-    ], data["decisions"], "No operator decisions were required.")
+    ], decision_rows, "No operator decisions were required.")
     validation = table([
         ("validation_check", "Validation check"), ("result", "Result"),
         ("detail", "Detail"), ("recorded_at", "Date/time"),

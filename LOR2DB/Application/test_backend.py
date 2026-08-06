@@ -25,6 +25,11 @@ class BackendSafetyTests(unittest.TestCase):
             with self.assertRaisesRegex(backend.ApiError, "is not installed"):
                 backend.publish_report(5)
 
+    def test_browser_opens_run_report_with_archive_fallback(self) -> None:
+        source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
+        self.assertIn('result.report_url || "../reports/"', source)
+        self.assertEqual(source.count("openPublishedReport(result);"), 2)
+
     def test_dashboard_marks_completed_snapshot_consumed(self) -> None:
         state = backend.dashboard_state(
             {"import_run_id": 45},

@@ -9,6 +9,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-06 | Browser V0.4.3 opens the newly published run's immutable `report_url`, with the archive index only as a fallback. Backend V0.3.3 returns that URL after publication. Report framework V0.4.2 displays the authenticated Cloudflare email as the operator. Directus person resolution and role-based authorization remain a future enhancement. |
 | 2026-08-06 | Enforced permanent one-to-one snapshot ownership. The landing page now continues any unfinished run first and uses the existing `import_run_id` link instead of numeric run recency. Start is hidden and rejected when the snapshot already owns any reconciliation row; cancelled and failed runs also consume their snapshot. |
 | 2026-08-06 | Corrected report-writer deployment after Run 5 exposed a stale repository-layout path. Backend V0.3.1 requires the absolute deployed publisher path and verifies the file before execution. Browser V0.4.2 replaces the production-write confirmation with an explicit report-only retry when a run is already in `REPORTING`. |
 | 2026-08-06 | Added the `/lor2db/` landing page, current snapshot/reconciliation status API, immutable report link, and guarded Start action. Recorded completed Run 4 acceptance. |
@@ -230,6 +231,20 @@ controls. The authenticated production routes were validated during Run 4
 acceptance; Cloudflare Access policy management remains external to this
 repository.
 
+### Future Directus operator integration
+
+The current release authenticates the operator with Cloudflare Access and
+authorizes the email through `LOR_PREFLIGHT_OPERATORS`. The API retains that
+email in `acted_by_application`, and reports display it as the human operator.
+The PostgreSQL service account may still appear in the underlying `acted_by`
+column; it is not the human operator.
+
+A future enhancement should map the authenticated email to the established
+Directus person/actor identity using the label-printing pattern, and should use
+Directus roles and permissions as the reconciliation authorization source. It
+must not add manual operator entry to the API. This enhancement is intentionally
+outside the current release.
+
 The installed service uses these corrected production settings. The obsolete
 `/opt/msb-production-database` paths and `User=msbadmin` setting must not be
 restored:
@@ -266,7 +281,7 @@ sudo -u lor-preflight test -r /opt/lor-preflight/publish_lor_reconciliation_repo
 curl -s http://192.168.5.9:8784/health
 ```
 
-The health response must report `V0.3.2`. Retrying Finish for a run already in
+The health response must report `V0.3.3`. Retrying Finish for a run already in
 `REPORTING` does not execute P1-P4 again; it retries report publication only.
 
 The successful final mount showed the NAS `web` share at `/mnt/msb-web`,

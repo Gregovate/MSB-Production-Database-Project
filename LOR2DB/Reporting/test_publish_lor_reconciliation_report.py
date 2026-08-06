@@ -163,7 +163,21 @@ class ReportRenderingTests(unittest.TestCase):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
     def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.4.1")
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.4.2")
+
+    def test_decision_operator_uses_authenticated_cloudflare_email(self):
+        data = self.base_data()
+        data["decisions"] = [{
+            "logical_group_key": "DISPLAY:1",
+            "action_type": "ADD_NEW_DISPLAY",
+            "reason": "Approved",
+            "acted_by": "msbadmin",
+            "acted_by_application": "lor-preflight-api:greg@example.com",
+            "acted_at": datetime.now(timezone.utc),
+        }]
+        output = REPORT.render_report(data, datetime.now(timezone.utc))
+        self.assertIn("greg@example.com", output)
+        self.assertNotIn(">msbadmin<", output)
 
     def test_index_includes_existing_published_and_evaluation_reports(self):
         with TemporaryDirectory() as output_dir:

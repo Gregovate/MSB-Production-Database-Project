@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-06 V0.4.2
+ * Current version: 2026-08-06 V0.4.3
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -66,6 +66,12 @@
 
   function displayName(candidate) {
     return candidate.current_display_name || candidate.proposed_display_name || candidate.entity_key;
+  }
+
+  function openPublishedReport(result) {
+    // The API returns the immutable URL written to the completed run. Keep the
+    // report archive only as a defensive fallback for older API responses.
+    location.href = result.report_url || "../reports/";
   }
 
   function renderCandidate(candidate) {
@@ -208,11 +214,11 @@
     dialogConfirm.onclick = async (event) => {
       event.preventDefault();
       try {
-        await request(`api/runs/${model.run_id}/finish`, {
+        const result = await request(`api/runs/${model.run_id}/finish`, {
           method: "POST",
           body: JSON.stringify({ expected_decision_version: model.decision_version })
         });
-        location.href = "../reports/";
+        openPublishedReport(result);
       }
       catch (failure) {
         if (failure.message.startsWith("Production update committed, but report publication failed:")) {
@@ -232,11 +238,11 @@
     document.querySelector("#retry-report").addEventListener("click", async (event) => {
       event.currentTarget.disabled = true;
       try {
-        await request(`api/runs/${model.run_id}/finish`, {
+        const result = await request(`api/runs/${model.run_id}/finish`, {
           method: "POST",
           body: JSON.stringify({ expected_decision_version: model.decision_version })
         });
-        location.href = "../reports/";
+        openPublishedReport(result);
       } catch (failure) {
         renderReportingRetry(failure.message);
       }
