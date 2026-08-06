@@ -2,13 +2,14 @@
 Object group: Automatic exact-name LOR UUID relink
 Repository:   Postgres_sql/Upsert Procedures/reconciliation/
 Filename:     0028_auto_approve_safe_uuid_relinks.sql
-Revision:     2026-08-05-auto-approve-safe-uuid-relinks-v1
+Revision:     2026-08-05-auto-approve-safe-uuid-relinks-v2
 
 Purpose:
   Remove false-positive operator review when an ACTIVE production display has
   the exact same unique display name as one unique, unclaimed raw LOR UUID.
-  The frozen candidate remains auditable and P2 applies its changed lor_prop_id
-  as an automatic approved update during Finish.
+  The frozen candidate remains immutable and auditable. An append-only automatic
+  UPDATE_LOR_LINK action removes it from operator review and P2 applies its
+  changed lor_prop_id during Finish.
 
 Safety boundary:
   - Does not call Finish, P1, P2, P3, or P4.
@@ -19,6 +20,8 @@ Safety boundary:
     without creating a new reconciliation or ingest.
 
 Revision history:
+  2026-08-05  GAL / OpenAI  v2: Preserve immutable evidence and append an
+                            automatic UPDATE_LOR_LINK action.
   2026-08-05  GAL / OpenAI  Initial safe exact-name UUID relink policy.
 ============================================================================ */
 
@@ -58,27 +61,36 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    UPDATE ops.lor_reconciliation_display_candidate
-       SET initial_resolution_state = 'AUTO_APPROVED',
-           decision_required = false,
-           is_blocking = false,
-           allowed_action_types = ARRAY[]::text[],
-           operator_message = format(
-               'Automatically update the LOR UUID for display_id %s; the unique ACTIVE display name is unchanged and the new UUID is unique and unclaimed.',
-               NEW.display_id
-           )
-     WHERE lor_reconciliation_display_candidate_id =
-           NEW.lor_reconciliation_display_candidate_id;
-
-    UPDATE ops.lor_reconciliation_group
-       SET decision_required = false,
-           allowed_action_types = ARRAY[]::text[],
-           operator_message = format(
-               'Automatically update the LOR UUID for display_id %s; operator review is not required.',
-               NEW.display_id
-           )
-     WHERE lor_reconciliation_group_id =
-           NEW.lor_reconciliation_group_id;
+    /* Frozen candidates and groups are immutable; approval is append-only. */
+    INSERT INTO ops.lor_reconciliation_action (
+        lor_reconciliation_run_id,
+        lor_reconciliation_group_id,
+        import_run_id,
+        action_type,
+        reason,
+        action_payload,
+        acted_by_application
+    )
+    SELECT
+        NEW.lor_reconciliation_run_id,
+        NEW.lor_reconciliation_group_id,
+        NEW.import_run_id,
+        'UPDATE_LOR_LINK',
+        format(
+            'Automatic exact-name UUID relink for display_id %s: the unique ACTIVE display name is unchanged and the new UUID is unique and unclaimed.',
+            NEW.display_id
+        ),
+        jsonb_build_object(
+            'policy', 'SAFE_EXACT_NAME_UUID_RELINK',
+            'candidate_id', NEW.lor_reconciliation_display_candidate_id
+        ),
+        'reconciliation:auto-safe-uuid-relink'
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM ops.lor_reconciliation_action AS a
+        WHERE a.lor_reconciliation_group_id =
+              NEW.lor_reconciliation_group_id
+    );
 
     RETURN NEW;
 END;
@@ -119,31 +131,34 @@ WITH eligible AS (
           WHERE a.lor_reconciliation_group_id =
                 c.lor_reconciliation_group_id
       )
-),
-updated_candidates AS (
-    UPDATE ops.lor_reconciliation_display_candidate AS c
-       SET initial_resolution_state = 'AUTO_APPROVED',
-           decision_required = false,
-           is_blocking = false,
-           allowed_action_types = ARRAY[]::text[],
-           operator_message = format(
-               'Automatically update the LOR UUID for display_id %s; the unique ACTIVE display name is unchanged and the new UUID is unique and unclaimed.',
-               e.display_id
-           )
-      FROM eligible AS e
-     WHERE c.lor_reconciliation_display_candidate_id =
-           e.lor_reconciliation_display_candidate_id
-    RETURNING c.lor_reconciliation_group_id, c.display_id
 )
-UPDATE ops.lor_reconciliation_group AS g
-   SET decision_required = false,
-       allowed_action_types = ARRAY[]::text[],
-       operator_message = format(
-           'Automatically update the LOR UUID for display_id %s; operator review is not required.',
-           u.display_id
-       )
-  FROM updated_candidates AS u
- WHERE g.lor_reconciliation_group_id = u.lor_reconciliation_group_id;
+INSERT INTO ops.lor_reconciliation_action (
+    lor_reconciliation_run_id,
+    lor_reconciliation_group_id,
+    import_run_id,
+    action_type,
+    reason,
+    action_payload,
+    acted_by_application
+)
+SELECT
+    c.lor_reconciliation_run_id,
+    e.lor_reconciliation_group_id,
+    c.import_run_id,
+    'UPDATE_LOR_LINK',
+    format(
+        'Automatic exact-name UUID relink for display_id %s: the unique ACTIVE display name is unchanged and the new UUID is unique and unclaimed.',
+        e.display_id
+    ),
+    jsonb_build_object(
+        'policy', 'SAFE_EXACT_NAME_UUID_RELINK',
+        'candidate_id', e.lor_reconciliation_display_candidate_id
+    ),
+    'reconciliation:auto-safe-uuid-relink'
+FROM eligible AS e
+JOIN ops.lor_reconciliation_display_candidate AS c
+  ON c.lor_reconciliation_display_candidate_id =
+     e.lor_reconciliation_display_candidate_id;
 
 /* Refresh open-run counters and readiness after removing the false positive. */
 WITH counts AS (
@@ -181,7 +196,7 @@ UPDATE ops.lor_reconciliation_run AS r
  WHERE r.lor_reconciliation_run_id = c.lor_reconciliation_run_id;
 
 COMMENT ON FUNCTION ops.trg_auto_approve_safe_uuid_relink() IS
-'Converts only a single, non-atomic UUID_CHANGED_SAME_NAME frozen candidate into an automatic P2 update after the reconciliation preflight uniqueness and collision guards pass.';
+'Appends an automatic UPDATE_LOR_LINK action for only a single, non-atomic UUID_CHANGED_SAME_NAME frozen candidate after the reconciliation preflight uniqueness and collision guards pass.';
 
 REVOKE EXECUTE ON FUNCTION
     ops.trg_auto_approve_safe_uuid_relink() FROM PUBLIC;
@@ -189,16 +204,22 @@ REVOKE EXECUTE ON FUNCTION
 COMMIT;
 
 SELECT
-    '2026-08-05-auto-approve-safe-uuid-relinks-v1'::text
+    '2026-08-05-auto-approve-safe-uuid-relinks-v2'::text
         AS installed_revision,
     to_regprocedure('ops.trg_auto_approve_safe_uuid_relink()') IS NOT NULL
         AS has_safe_uuid_relink_trigger,
-    count(*) FILTER (WHERE c.decision_required) AS uuid_relinks_still_requiring_review,
     count(*) FILTER (
-        WHERE c.initial_resolution_state = 'AUTO_APPROVED'
+        WHERE gr.effective_resolution_state = 'UNRESOLVED'
+    ) AS uuid_relinks_still_requiring_review,
+    count(*) FILTER (
+        WHERE gr.effective_action_type = 'UPDATE_LOR_LINK'
+          AND gr.acted_by_application =
+              'reconciliation:auto-safe-uuid-relink'
     ) AS auto_approved_uuid_relinks
 FROM ops.lor_reconciliation_display_candidate AS c
 JOIN ops.lor_reconciliation_run AS r
   ON r.lor_reconciliation_run_id = c.lor_reconciliation_run_id
+JOIN ops.v_lor_reconciliation_group_review AS gr
+  ON gr.lor_reconciliation_group_id = c.lor_reconciliation_group_id
 WHERE c.classification_code = 'UUID_CHANGED_SAME_NAME'
   AND r.status IN ('PREFLIGHT', 'AWAITING_DECISIONS', 'READY_TO_FINISH');
