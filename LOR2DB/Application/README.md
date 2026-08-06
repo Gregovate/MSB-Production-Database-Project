@@ -61,6 +61,12 @@ enforces both snapshot uniqueness and the single-unfinished-run rule in
 PostgreSQL; the browser and backend enforce the same contract for a clear
 operator experience.
 
+Unfinished means every nonterminal lifecycle state: `STARTING`, `PREFLIGHT`,
+`AWAITING_DECISIONS`, `READY_TO_FINISH`, `PROMOTING`, `VALIDATING`, and
+`REPORTING`. The database Start function returns that existing run before it
+can create anything. `REPORTING` retries publication only; the earlier states
+continue from their persisted run and never create a replacement attempt.
+
 The Start endpoint acquires the same advisory lock as the database Start
 function, repeats eligibility inside that transaction, and captures the
 current snapshot through `ops.f_start_lor_reconciliation(text)`. No request

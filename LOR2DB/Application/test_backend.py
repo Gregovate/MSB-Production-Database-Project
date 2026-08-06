@@ -74,6 +74,21 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertFalse(state["can_start"])
         self.assertEqual(state["action"]["url"], "preflight/?run=5")
 
+    def test_dashboard_resumes_every_unfinished_lifecycle_state(self) -> None:
+        for status in sorted(backend.OPEN_RUN_STATES):
+            with self.subTest(status=status):
+                state = backend.dashboard_state(
+                    {"import_run_id": 46},
+                    {
+                        "lor_reconciliation_run_id": 5,
+                        "import_run_id": 46,
+                        "status": status,
+                    },
+                )
+                self.assertEqual(state["state"], "IN_PROGRESS")
+                self.assertFalse(state["can_start"])
+                self.assertEqual(state["action"]["url"], "preflight/?run=5")
+
     def test_dashboard_resumes_open_run_after_cancel_removed_snapshot(self) -> None:
         state = backend.dashboard_state(
             None,
