@@ -9,6 +9,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-05 | Made per-decision operator comments optional; blank comments receive a generated audit reason, and database rejections now show their primary error message. |
 | 2026-08-05 | Removed safe exact-name UUID relinks from operator review; added candidate-specific decisions, explicit green Saved/Unsaved changes state, and opt-in bulk decision mode. |
 | 2026-08-05 | Corrected the production runtime environment and recorded the validated Linux service account, systemd service, loopback health check, NAS publication mount, account boundaries, and Synology Advanced Share Permissions requirement. |
 | 2026-08-04 | Initial reusable interface and backend documentation. |
@@ -67,8 +68,9 @@ the uniqueness, collision, ACTIVE-status, singleton-group, and exact-name
 guards pass, migration `0028_auto_approve_safe_uuid_relinks.sql` retains the
 frozen row as `AUTO_APPROVED`; P2 updates the LOR link only when Finish runs.
 
-Each displayed row remains `Not saved` until its decision and reason are
-persisted. A successful save shows green `Saved`. Changing either field after
+Each displayed row remains `Not saved` until its decision is persisted. The
+operator comment is optional; a blank comment receives a generated audit
+reason. A successful save shows green `Saved`. Changing either field after
 that immediately shows `Unsaved changes` and disables final review until the
 row is saved again. Bulk selectors remain hidden until the operator explicitly
 enables bulk decision mode.

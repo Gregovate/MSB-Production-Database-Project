@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-05 V0.4.0
+ * Current version: 2026-08-05 V0.4.1
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -93,7 +93,7 @@
             ${orderedActions.map((action) => `<option value="${esc(action)}" ${action === candidate.effective_action_type ? "selected" : ""}>${esc(decisionLabel(action, proposed, candidate))}</option>`).join("")}
           </select>
         </label>
-        <label>Operator reason<textarea class="reason" rows="2" placeholder="Required before saving">${esc(candidate.effective_reason || "")}</textarea></label>
+        <label>Operator comment (optional)<textarea class="reason" rows="2" placeholder="Add context if it will help the audit record">${esc(candidate.effective_reason || "")}</textarea></label>
         <div><button class="save" type="button">Save decision</button> <span class="save-state ${candidate.effective_action_type ? "is-saved" : ""}">${candidate.effective_action_type ? "Saved" : "Not saved"}</span></div>
       </div>
     </section>`;
@@ -114,7 +114,7 @@
         <button id="toggle-bulk" type="button" aria-expanded="false">Enable bulk decision mode</button>
         <div class="group-controls" hidden><label>Group action<select id="bulk-action"><option value="">Choose…</option>${bulkActions.map((action) => `<option value="${esc(action)}">${esc(actionLabel(action))}</option>`).join("")}</select></label><button id="apply-bulk">Apply and save</button></div>
       </section>
-      <div class="column-head"><span>Preflight check and evidence</span><span>Operator decision — choose, explain, then save</span></div>
+      <div class="column-head"><span>Preflight check and evidence</span><span>Operator decision — choose, optionally comment, then save</span></div>
       <div id="candidates">${model.candidates.map(renderCandidate).join("")}</div>
       <p id="error" class="error" role="alert"></p>
       <footer class="footer"><button id="cancel-run">Cancel reconciliation</button><div class="footer-actions"><span class="muted">${remaining ? `${remaining} decision${remaining === 1 ? "" : "s"} remain.` : "All decisions are recorded."}</span><button id="continue" class="primary" ${remaining || model.status !== "READY_TO_FINISH" ? "disabled" : ""}>Continue to final review</button></div></footer>
@@ -129,7 +129,7 @@
   async function saveCandidate(section, candidate) {
     const action = selectedAction(section);
     const reason = section.querySelector(".reason").value.trim();
-    if (!action || !reason) throw new Error("Select a decision and enter a specific operator reason.");
+    if (!action) throw new Error("Select a decision before saving.");
     const result = await request(`api/runs/${model.run_id}/groups/${candidate.group_id}/decisions`, {
       method: "POST", body: JSON.stringify({ action_type: action, reason, expected_action_id: candidate.effective_action_id || null })
     });

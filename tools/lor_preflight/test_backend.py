@@ -11,6 +11,20 @@ import backend  # noqa: E402  (environment must exist before app import)
 
 
 class BackendSafetyTests(unittest.TestCase):
+    def test_optional_decision_reason_preserves_comment(self) -> None:
+        self.assertEqual(
+            backend.optional_decision_reason(
+                {"reason": "  Saved frame  "}, "SET_RECYCLED"
+            ),
+            "Saved frame",
+        )
+
+    def test_optional_decision_reason_generates_audit_reason(self) -> None:
+        self.assertEqual(
+            backend.optional_decision_reason({}, "SET_RECYCLED"),
+            "Operator selected SET_RECYCLED; no additional comment provided.",
+        )
+
     def test_unambiguous_proposed_action(self) -> None:
         self.assertEqual(
             backend.proposed_action([

@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-05  V0.1.0
+Current Version : 2026-08-05  V0.2.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,9 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-05  GAL / OpenAI  V0.2.0
+        Made per-decision comments optional and return PostgreSQL's primary
+        rejection message instead of an unhelpful generic HTTP 500.
     2026-08-05  GAL / OpenAI  V0.1.0
         Initial secured read, decision, bulk-decision, Cancel, Finish, and
         report-publication implementation.
@@ -35,7 +38,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.1.0"
+APP_VERSION = "V0.2.0"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
@@ -216,10 +219,17 @@ def json_body() -> dict[str, Any]:
     return payload
 
 
+def optional_decision_reason(payload: dict[str, Any], action: str) -> str:
+    """Keep a nonblank audit reason without requiring an operator comment."""
+    reason = str(payload.get("reason") or "").strip()
+    return reason or f"Operator selected {action}; no additional comment provided."
+
+
 def require_reason(payload: dict[str, Any]) -> str:
+    """Require an explanation only for run-level cancellation."""
     reason = str(payload.get("reason") or "").strip()
     if not reason:
-        raise ApiError("A specific operator reason is required")
+        raise ApiError("A specific cancellation reason is required")
     return reason
 
 
@@ -253,6 +263,14 @@ def api_error(error: ApiError) -> tuple[Response, int]:
     return jsonify(error=str(error)), error.status
 
 
+@app.errorhandler(psycopg2.Error)
+def database_error(error: psycopg2.Error) -> tuple[Response, int]:
+    """Return the safe primary database rejection and retain the full log."""
+    app.logger.exception("PostgreSQL rejected a preflight API request")
+    primary = getattr(error.diag, "message_primary", None)
+    return jsonify(error=f"Database rejected the decision: {primary or 'unknown database error'}"), 409
+
+
 @app.errorhandler(Exception)
 def unexpected_error(error: Exception) -> tuple[Response, int]:
     app.logger.exception("Unhandled preflight API error")
@@ -276,7 +294,7 @@ def record_decision(run_id: int, group_id: int) -> Response:
     operator = operator_email()
     payload = json_body()
     action = str(payload.get("action_type") or "").strip().upper()
-    reason = require_reason(payload)
+    reason = optional_decision_reason(payload, action)
     expected = payload.get("expected_action_id")
     if action == "REASSOCIATE_DISPLAY":
         raise ApiError("Reassociation requires the dedicated complete-mapping interface")
@@ -321,7 +339,7 @@ def record_bulk_decision(run_id: int) -> Response:
     except (TypeError, ValueError) as exc:
         raise ApiError("Every selected group ID must be numeric") from exc
     action = str(payload.get("action_type") or "").strip().upper()
-    reason = require_reason(payload)
+    reason = optional_decision_reason(payload, action)
     if action == "REASSOCIATE_DISPLAY":
         raise ApiError("Reassociation cannot be recorded as a bulk action")
     with database() as conn:
