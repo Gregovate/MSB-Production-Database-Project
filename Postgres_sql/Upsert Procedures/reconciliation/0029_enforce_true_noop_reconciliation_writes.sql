@@ -2,7 +2,7 @@
 Object group: True no-op reconciliation promotion
 Repository:   Postgres_sql/Upsert Procedures/reconciliation/
 Filename:     0029_enforce_true_noop_reconciliation_writes.sql
-Revision:     2026-08-05-true-noop-reconciliation-writes-v3
+Revision:     2026-08-05-true-noop-reconciliation-writes-v4
 
 Purpose:
   Enforce the established rule that a new ingest ID is not a production-data
@@ -16,6 +16,9 @@ Safety boundary:
   - Provenance advances only when meaningful production content changes.
 
 Revision history:
+  2026-08-05  GAL / OpenAI  Corrected the P4 safety assertion to verify its
+                            actual meaningful fields: lor_scene_id, ordinal,
+                            role, and source.
   2026-08-05  GAL / OpenAI  Replaced regular-expression source matching with
                             exact clause counting and literal removal. This
                             avoids dependence on indentation or regex parsing.
@@ -123,7 +126,10 @@ BEGIN
 
     IF v_corrected = v_definition
        OR v_corrected LIKE '%OR ref.lor_scene_display.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id%'
-       OR v_corrected NOT LIKE '%ref.lor_scene_display.source_name IS DISTINCT FROM EXCLUDED.source_name%' THEN
+       OR v_corrected NOT LIKE '%ref.lor_scene_display.lor_scene_id IS DISTINCT FROM EXCLUDED.lor_scene_id%'
+       OR v_corrected NOT LIKE '%ref.lor_scene_display.scene_prop_ordinal IS DISTINCT FROM EXCLUDED.scene_prop_ordinal%'
+       OR v_corrected NOT LIKE '%ref.lor_scene_display.scene_role IS DISTINCT FROM EXCLUDED.scene_role%'
+       OR v_corrected NOT LIKE '%ref.lor_scene_display.source IS DISTINCT FROM EXCLUDED.source%' THEN
         RAISE EXCEPTION '0029: expected P4 ingest-only update predicate was not found';
     END IF;
 
@@ -250,7 +256,7 @@ COMMENT ON FUNCTION ref.trg_lor_scene_display_require_change() IS
 COMMIT;
 
 SELECT
-    '2026-08-05-true-noop-reconciliation-writes-v3'::text
+    '2026-08-05-true-noop-reconciliation-writes-v4'::text
         AS installed_revision,
     to_regprocedure('ref.trg_stage_lor_binding_require_change()') IS NOT NULL
         AS has_stage_binding_noop_guard,
