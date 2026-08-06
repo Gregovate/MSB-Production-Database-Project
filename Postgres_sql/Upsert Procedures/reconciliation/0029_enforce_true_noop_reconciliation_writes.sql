@@ -2,7 +2,7 @@
 Object group: True no-op reconciliation promotion
 Repository:   Postgres_sql/Upsert Procedures/reconciliation/
 Filename:     0029_enforce_true_noop_reconciliation_writes.sql
-Revision:     2026-08-05-true-noop-reconciliation-writes-v2
+Revision:     2026-08-05-true-noop-reconciliation-writes-v3
 
 Purpose:
   Enforce the established rule that a new ingest ID is not a production-data
@@ -16,6 +16,9 @@ Safety boundary:
   - Provenance advances only when meaningful production content changes.
 
 Revision history:
+  2026-08-05  GAL / OpenAI  Replaced regular-expression source matching with
+                            exact clause counting and literal removal. This
+                            avoids dependence on indentation or regex parsing.
   2026-08-05  GAL / OpenAI  Replaced indentation-sensitive function-definition
                             substitutions with verified clause-level patterns.
   2026-08-05  GAL / OpenAI  Initial correction after Run 4 exposed ingest-ID-
@@ -38,11 +41,18 @@ BEGIN
         'ref.p1_promote_stage_from_reconciliation(bigint)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := regexp_replace(
+    IF length(v_definition) - length(replace(
+           v_definition,
+           'OR b.last_seen_import_run_id IS DISTINCT FROM v_import_run_id',
+           ''
+       )) <> length('OR b.last_seen_import_run_id IS DISTINCT FROM v_import_run_id') THEN
+        RAISE EXCEPTION '0029: P1 must contain exactly one ingest-only update predicate';
+    END IF;
+
+    v_corrected := replace(
         v_definition,
-        '[[:space:]]+OR b\.last_seen_import_run_id IS DISTINCT FROM v_import_run_id',
-        '',
-        'g'
+        'OR b.last_seen_import_run_id IS DISTINCT FROM v_import_run_id',
+        ''
     );
 
     IF v_corrected = v_definition
@@ -64,11 +74,18 @@ BEGIN
         'ref.p3_promote_scene_from_reconciliation(bigint)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := regexp_replace(
+    IF length(v_definition) - length(replace(
+           v_definition,
+           'OR ref.lor_scene.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id',
+           ''
+       )) <> length('OR ref.lor_scene.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id') THEN
+        RAISE EXCEPTION '0029: P3 must contain exactly one ingest-only update predicate';
+    END IF;
+
+    v_corrected := replace(
         v_definition,
-        '[[:space:]]+OR ref\.lor_scene\.source_import_run_id IS DISTINCT FROM EXCLUDED\.source_import_run_id',
-        '',
-        'g'
+        'OR ref.lor_scene.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id',
+        ''
     );
 
     IF v_corrected = v_definition
@@ -90,11 +107,18 @@ BEGIN
         'ref.p4_promote_scene_display_from_reconciliation(bigint)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := regexp_replace(
+    IF length(v_definition) - length(replace(
+           v_definition,
+           'OR ref.lor_scene_display.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id',
+           ''
+       )) <> length('OR ref.lor_scene_display.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id') THEN
+        RAISE EXCEPTION '0029: P4 must contain exactly one ingest-only update predicate';
+    END IF;
+
+    v_corrected := replace(
         v_definition,
-        '[[:space:]]+OR ref\.lor_scene_display\.source_import_run_id IS DISTINCT FROM EXCLUDED\.source_import_run_id',
-        '',
-        'g'
+        'OR ref.lor_scene_display.source_import_run_id IS DISTINCT FROM EXCLUDED.source_import_run_id',
+        ''
     );
 
     IF v_corrected = v_definition
@@ -116,11 +140,18 @@ BEGIN
         'ops.p_finish_lor_reconciliation(bigint,text)'::regprocedure
     ) INTO v_definition;
 
-    v_corrected := regexp_replace(
+    IF length(v_definition) - length(replace(
+           v_definition,
+           'OR s.source_import_run_id <> v_import_run_id',
+           ''
+       )) <> length('OR s.source_import_run_id <> v_import_run_id') THEN
+        RAISE EXCEPTION '0029: Finish must contain exactly one provenance validation predicate';
+    END IF;
+
+    v_corrected := replace(
         v_definition,
-        '[[:space:]]+OR s\.source_import_run_id <> v_import_run_id',
-        '',
-        'g'
+        'OR s.source_import_run_id <> v_import_run_id',
+        ''
     );
 
     IF v_corrected = v_definition
@@ -219,7 +250,7 @@ COMMENT ON FUNCTION ref.trg_lor_scene_display_require_change() IS
 COMMIT;
 
 SELECT
-    '2026-08-05-true-noop-reconciliation-writes-v2'::text
+    '2026-08-05-true-noop-reconciliation-writes-v3'::text
         AS installed_revision,
     to_regprocedure('ref.trg_stage_lor_binding_require_change()') IS NOT NULL
         AS has_stage_binding_noop_guard,
