@@ -29,6 +29,29 @@ SELECT
          THEN 'PASS' ELSE 'FAIL' END,
     greatest((SELECT count(*) FROM unfinished) - 1, 0);
 
+/* The obsolete, uncommitted Run 2 attempt must be gone. Run 3 must remain as
+   the sole authoritative reconciliation for snapshot 44. */
+SELECT
+    'OBSOLETE_RUN_2_REMOVED' AS check_name,
+    CASE WHEN NOT EXISTS (
+        SELECT 1
+        FROM ops.lor_reconciliation_run
+        WHERE lor_reconciliation_run_id = 2
+    ) THEN 'PASS' ELSE 'FAIL' END AS result,
+    count(*) FILTER (WHERE lor_reconciliation_run_id = 2) AS violation_count
+FROM ops.lor_reconciliation_run
+UNION ALL
+SELECT
+    'RUN_3_OWNS_SNAPSHOT_44',
+    CASE WHEN count(*) = 1
+              AND bool_and(lor_reconciliation_run_id = 3)
+              AND bool_and(status = 'COMPLETED')
+              AND bool_and(validation_state = 'PASSED')
+         THEN 'PASS' ELSE 'FAIL' END,
+    count(*) FILTER (WHERE lor_reconciliation_run_id <> 3)
+FROM ops.lor_reconciliation_run
+WHERE import_run_id = 44;
+
 SELECT
     r.lor_reconciliation_run_id,
     r.import_run_id,
