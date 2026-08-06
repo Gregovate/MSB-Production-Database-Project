@@ -9,6 +9,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-06 | Corrected report-writer deployment after Run 5 exposed a stale repository-layout path. Backend V0.3.1 requires the absolute deployed publisher path and verifies the file before execution. Browser V0.4.2 replaces the production-write confirmation with an explicit report-only retry when a run is already in `REPORTING`. |
 | 2026-08-06 | Added the `/lor2db/` landing page, current snapshot/reconciliation status API, immutable report link, and guarded Start action. Recorded completed Run 4 acceptance. |
 | 2026-08-05 | Removed redundant backend `FOR UPDATE` locks that required unintended table-wide write permission; protected database functions and procedures remain the only writers and retain the authenticated operator email in the audit record. |
 | 2026-08-05 | Made per-decision operator comments optional; blank comments receive a generated audit reason, and database rejections now show their primary error message. |
@@ -196,6 +197,7 @@ The Linux runtime account is a third, separate identity:
 | Linux mount point | `/mnt/msb-web` | systemd automount successfully activated and directory contents listed. |
 | SMB credentials file | `/etc/samba/credentials/lor_preflight_app` | Stored credentials successfully authenticated after correction. Do not record the password in documentation or shell history. |
 | Report output | `/mnt/msb-web/my/lor2db/reports` | Configured by `LOR_REPORT_OUTPUT_DIR`. |
+| Report publisher | `/opt/lor-preflight/publish_lor_reconciliation_report.py` | Configured explicitly by `LOR_REPORT_PUBLISHER_PATH`; the backend and publisher are deployed together. |
 | Report base URL | `https://lortodb.sheboyganlights.org/lor2db/reports/` | Run 4 report and report archive links validated on 2026-08-06. |
 | Reconciliation operator | `gliebig@sheboyganlights.org` | Configured as the current sole member of `LOR_PREFLIGHT_OPERATORS`; future operators must be explicitly added. |
 | Synology access group | `web_maintainers` | Normal ACL and Advanced Share Permissions both set to Read/Write. |
@@ -219,6 +221,33 @@ WorkingDirectory=/opt/lor-preflight
 EnvironmentFile=/etc/msb/lor-preflight-api.env
 ExecStart=/opt/lor-preflight/.venv/bin/gunicorn --bind 192.168.5.9:8784 --workers 2 --timeout 240 backend:app
 ```
+
+The environment file must include the deployed publisher path:
+
+```ini
+LOR_REPORT_PUBLISHER_PATH=/opt/lor-preflight/publish_lor_reconciliation_report.py
+```
+
+Deploy both Python files before restarting the service. A backend-only copy is
+incomplete and will leave a committed reconciliation run in `REPORTING`:
+
+```bash
+sudo install -o root -g msbadmin -m 0640 backend.py /opt/lor-preflight/backend.py
+sudo install -o root -g msbadmin -m 0640 publish_lor_reconciliation_report.py \
+  /opt/lor-preflight/publish_lor_reconciliation_report.py
+sudo systemctl restart lor-preflight-api.service
+sudo systemctl status lor-preflight-api.service --no-pager
+```
+
+After deployment, verify the file and backend version before retrying Finish:
+
+```bash
+sudo -u lor-preflight test -r /opt/lor-preflight/publish_lor_reconciliation_report.py
+curl -s http://192.168.5.9:8784/health
+```
+
+The health response must report `V0.3.1`. Retrying Finish for a run already in
+`REPORTING` does not execute P1-P4 again; it retries report publication only.
 
 The successful final mount showed the NAS `web` share at `/mnt/msb-web`,
 including the `my` directory used by the protected `lor2db` site. No further

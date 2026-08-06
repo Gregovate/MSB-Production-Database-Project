@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-06  V0.3.0
+Current Version : 2026-08-06  V0.3.1
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,11 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-06  GAL / OpenAI  V0.3.1
+        Removed the repository-layout assumption from report publication.
+        Production now supplies the deployed publisher's absolute path through
+        LOR_REPORT_PUBLISHER_PATH, and the backend rejects a missing file
+        before attempting to run it.
     2026-08-06  GAL / OpenAI  V0.3.0
         Added the lor2db landing-page status contract and guarded Start
         endpoint. The operator never supplies an import_run_id; Start captures
@@ -47,7 +52,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.3.0"
+APP_VERSION = "V0.3.1"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
@@ -331,11 +336,15 @@ def require_reason(payload: dict[str, Any]) -> str:
 
 
 def publish_report(run_id: int) -> None:
-    script = (
-        Path(__file__).resolve().parents[1]
-        / "Reporting"
-        / "publish_lor_reconciliation_report.py"
-    )
+    # GAL 2026-08-06: Production deploys a flattened /opt/lor-preflight
+    # application, not the repository's LOR2DB directory tree. An explicit
+    # absolute path prevents repository reorganizations from silently changing
+    # the executable selected by the production service.
+    script = Path(required_setting("LOR_REPORT_PUBLISHER_PATH"))
+    if not script.is_absolute():
+        raise RuntimeError("LOR_REPORT_PUBLISHER_PATH must be an absolute path")
+    if not script.is_file():
+        raise ApiError(f"Report publisher is not installed: {script}", 500)
     parsed = urlparse(required_setting("LOR_PREFLIGHT_DATABASE_URL"))
     if not parsed.hostname or not parsed.username or not parsed.password:
         raise RuntimeError("LOR_PREFLIGHT_DATABASE_URL must include host, user, and password")

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 os.environ.setdefault("LOR_PREFLIGHT_OPERATORS", "greg@sheboyganlights.org")
 
@@ -11,6 +14,17 @@ import backend  # noqa: E402  (environment must exist before app import)
 
 
 class BackendSafetyTests(unittest.TestCase):
+    def test_publish_report_requires_an_absolute_publisher_path(self) -> None:
+        with patch.dict(os.environ, {"LOR_REPORT_PUBLISHER_PATH": "publisher.py"}):
+            with self.assertRaisesRegex(RuntimeError, "must be an absolute path"):
+                backend.publish_report(5)
+
+    def test_publish_report_rejects_a_missing_publisher_before_database_use(self) -> None:
+        missing = Path(tempfile.gettempdir()) / "missing-lor-report-publisher.py"
+        with patch.dict(os.environ, {"LOR_REPORT_PUBLISHER_PATH": str(missing)}):
+            with self.assertRaisesRegex(backend.ApiError, "is not installed"):
+                backend.publish_report(5)
+
     def test_dashboard_marks_latest_completed_snapshot_reconciled(self) -> None:
         state = backend.dashboard_state(
             {"import_run_id": 45},

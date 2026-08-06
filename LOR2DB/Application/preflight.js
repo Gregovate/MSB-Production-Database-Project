@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-05 V0.4.1
+ * Current version: 2026-08-06 V0.4.2
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -214,15 +214,40 @@
         });
         location.href = "../reports/";
       }
-      catch (failure) { dialogBody.textContent = failure.message; }
+      catch (failure) {
+        if (failure.message.startsWith("Production update committed, but report publication failed:")) {
+          model.status = "REPORTING";
+          dialog.close();
+          renderReportingRetry(failure.message);
+          return;
+        }
+        dialogBody.textContent = failure.message;
+      }
     };
     dialog.showModal();
+  }
+
+  function renderReportingRetry(detail = "Production changes are committed, but the report has not been published.") {
+    app.innerHTML = `<div class="card"><h1>Report publication required</h1><p>Reconciliation run ${model.run_id} is in <strong>REPORTING</strong>. Production changes are already committed. P1–P4 will not run again.</p><p class="error">${esc(detail)}</p><div class="footer-actions"><button id="retry-report" class="primary">Retry report publication</button></div></div>`;
+    document.querySelector("#retry-report").addEventListener("click", async (event) => {
+      event.currentTarget.disabled = true;
+      try {
+        await request(`api/runs/${model.run_id}/finish`, {
+          method: "POST",
+          body: JSON.stringify({ expected_decision_version: model.decision_version })
+        });
+        location.href = "../reports/";
+      } catch (failure) {
+        renderReportingRetry(failure.message);
+      }
+    });
   }
 
   async function load() {
     if (!runId || !/^\d+$/.test(runId)) throw new Error("Open the page with a numeric reconciliation run, for example ?run=4.");
     model = await request(`api/runs/${runId}`);
-    renderReview();
+    if (model.status === "REPORTING") renderReportingRetry();
+    else renderReview();
   }
 
   load().catch((failure) => { app.innerHTML = `<div class="card"><h1>Preflight unavailable</h1><p class="error">${esc(failure.message)}</p></div>`; });
