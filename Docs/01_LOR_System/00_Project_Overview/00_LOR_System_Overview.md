@@ -1,197 +1,64 @@
-# Project Overview
+# LOR System Overview
 
-## Definitions
-- **LOR**: Abbreviation for Light O Rama
-- **Preview**: This is a collection of **Displays** sequenced to music or a background animation and required for any sequencing in **LOR**
-- **Stage**: An area set to a theme containing displays that are either background animations or displays sequenced to music (e.g., Elf Choir, Candyland). The stage name is used to define the **Preview**.
-- **Display**: A display as a single physical object that we design, build, setup, and/or inventory for the show. A Display can have multiple - SubProps or it can be an undetermined device type needed for a display like support arches, Scaffolding, etc that must be managed. The Display Name is typed into the comment field inside the preview and must follow specific naming conventions.
-- **Prop AKA Channel Name**: Light O Rama defines a prop as any device that responds to a command sent from the sequencer. This is a very confusing term since most people think a prop is a single physical object, it's NOT. A prop is the **Channel Name**.
-- **SubProp**: This can either be explicitly assigned in the preview to repeat the same commands as the prop or is part of the same physical display that responds to different commands.The LORComment field of any sub prop must be **IDENTICAL** to the **Display Name**. 
-- **UID**: The hexadecimal number assigned to a controller
-- **id**: is the  UUID or "Universally Unique Identifier" assigned to the id of a prop, preview, or subprop by the LOR Software at the time of creation. This number will not change unless the prop is deleted or is imported into a preview where that UUID is shared with a duplicated prop. All duplicated props must be placed into the same preview and re-exported to ensure their uniqueness.
+| Document control | Value |
+|---|---|
+| Status | ACTIVE — V7 scene-aware production workflow |
+| Owner | MSB Database Administrator |
+| Current revision | 2026-08-06 |
 
-## Preview Types (what we build and why)
+## Purpose
 
-### 1) Previews for Props *(panel authoring; source of truth)*
+The MSB LOR system converts the authoritative Light-O-Rama preview set into a
+complete SQLite snapshot, loads that snapshot into PostgreSQL, reconciles it
+against permanent production identities, and publishes an auditable report.
 
-Where we design an individual panel/component and set correct **Channel Name** (`Name`) and **Display Name** (`Comment`).  
-We then **Export as Props** from here.
+The current workflow is V7. V6 parser and database material is archived under
+`archive/v6/` and must not be used for production.
 
-**Authoring path**
+## Identity layers
 
-~~~
-G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps\
-~~~
+- A **stage** is a permanent physical park area.
+- A **display** is one permanent physical object tracked by `display_id`.
+- An LOR **prop** or **subprop** is sequencing structure and is not itself the
+  permanent production identity.
+- A **scene** is a V7 presentation/workspace view associated with a stage.
+- `raw_prop_id` is the current LOR association; it may change without creating
+  a new physical display.
 
----
+## Current production flow
 
-### 2) Master Previews *(sequencing targets)*
+```text
+Authoritative V7 preview exports
+    -> parse_props_v7_scene_parser.py
+    -> lor_output_v7_scene.db
+    -> LOR/ingest/postgres_run_ingest_v7.ps1
+    -> immutable lor_snap snapshot
+    -> https://lortodb.sheboyganlights.org/lor2db/
+    -> persistent reconciliation and operator decisions
+    -> controlled P1-P4 promotion
+    -> validation and immutable HTML report
+```
 
-Where we **import props** and do the actual sequencing.
+For the current release, the parser and PostgreSQL snapshot ingest are run
+manually on the approved Master PC. The `lor2db` page detects the latest
+committed snapshot and never asks the operator to enter an ingest ID.
 
-- **RGB Plus Prop Stage `xx`** — primary sequencing canvas per stage  
-- **Show Background Stage `yy`** — background/static elements per stage (e.g. Peanuts, Goal Sign, Sledder, etc.)
-- **Show Animation `zz`** — shared/global animation elements (Elf on Shelf)
+## Current source and entry points
 
-> When we import exported props into these masters, the **RawPropID** is preserved, but the original **PreviewID** is not. That’s OK—our checks use **RawPropID**.
+- Parser: `LOR/ingest/parse_props_v7_scene_parser.py` (production
+  exercised through V7.0.7; the path name is retained until a separate,
+  controlled source-layout change).
+- SQLite snapshot: `lor_output_v7_scene.db`.
+- PostgreSQL ingest: `LOR/ingest/postgres_run_ingest_v7.ps1`.
+- Controlled production procedure:
+  `LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md`.
+- Reconciliation landing page:
+  `https://lortodb.sheboyganlights.org/lor2db/`.
+- Manual recovery runbook:
+  `LOR2DB/Reconciliation/02_LOR_Manual_Reconciliation_Runbook.md`.
 
----
+## Noncurrent material
 
-### 3) Staged Previews *(for the database build)*
-
-The curated set of previews the parser consumes to build the database (v6).  
-These copies are produced by the **preview_merger** (do **not** copy into this folder by hand).
-
-**Staging path**
-
-~~~
-G:\Shared drives\MSB Database\Database Previews\
-~~~
-
-**Typical contents**
-
-~~~
-G:\Shared drives\MSB Database\
-  Database\
-    lor_output_v6.db
-    master_musical_preview_keys.csv        (optional: last-year snapshot for drift checks)
-  Database Previews\                        <-- Staged previews used to build the DB
-    RGB Plus Prop Stage 01 ....lorprev
-    Show Background Stage 07 ....lorprev
-    Show Animation 03 ....lorprev
-  UserPreviewStaging\
-    <username>\
-      PreviewsForProps\                     <-- Panel authoring previews (export to props)
-        1st Panel Animation - <Panel>.lorprev
-        1st Panel Animation - <Another>.lorprev
-~~~
-
-## Authoring → Build Master → Validate & Stage → Parse (the workflow)
-
-> **Rule of thumb**
->
-> - All editing/exports happen in your **UserPreviewStaging** area.  
-> - The **preview_merger** is the only tool that copies validated previews into **Database Previews** (staging).  
-> - The **parser** reads **only** from **Database Previews**.
-
-### 1) Author the panel preview (*Previews for Props*)
-
-- Work in:`G:\Shared drives\MSB Database\UserPreviewStaging\<username>\PreviewsForProps\`
-- Set **Channel Name** = LOR **`Name`** (sequencer label)  
-- Set **Display Name** = LOR **`Comment`** (inventory/display label)  
-- Save your `.lorprev`.  
-- **Export the panel preview as a prop** (LOR “Export as Props”).
-
-### 2) Create/Edit a Master Preview for sequencing
-
-- Choose one of the three masters and **import the prop** you just exported:
-  - **RGB Plus Prop Stage `xx`** — primary sequencing canvas  
-  - **Show Background Stage `yy`** — background/static elements  
-  - **Show Animation `zz`** — shared/global animation elements
-- Continue editing until the master preview looks correct in LOR.
-- Keep these master `.lorprev` files under your `UserPreviewStaging\<username>` area (**do not** place them in the staging folder manually).
-
-### 3) Validate with the preview_merger (*produces the staged copies*)
-
-- Run the merger against your `UserPreviewStaging\<username>` previews (both **panel authoring previews** and the **master previews** you edited).
-- The merger fixes/flags issues (blank comments, duplicates, formatting) and **writes validated copies** into:  
-  `G:\Shared drives\MSB Database\Database Previews\` ← *staging for the parser*  
-- You **never** copy files into **Database Previews** by hand.
-
-### 4) Parse staged previews to build/update the DB
-
-- From VS Code, run `parse_props_v6.py` (see **[DEBUG Guide](./debug.md)**).  
-- Output: `lor_output_v6.db` (SQLite), with views:
-  - `preview_wiring_map_v6`
-  - `preview_wiring_sorted_v6` *(used by `formview.py`)*
-
-### (Optional) Breaking-change / drift check
-
-- Keep `master_musical_preview_keys.csv` (last year’s snapshot) with:  
-  **RawPropID, ChannelName, DisplayName, ChannelGrid_SHA256**
-- Compare snapshot vs current DB by **RawPropID** to flag:  
-  **Missing_Now / ChannelName_Changed / DisplayName_Changed / Grid change**.
-
-## Developer Quick Links
-
-- [DEBUG Guide](./debug.md) — step-by-step instructions for running the parsers in VS Code,
-  required Python setup, **previews folder location**, and troubleshooting tips.
-
-## Documentation References
-
-## Docs (start here)
-
-- [Operator Quickstart](Docs/quickstart_operator.md)
-- [Preview Merger — Reference](Docs/preview_merger_reference.md)
-- [Reporting & History](Docs/reporting_history.md)
-- [Workflow v6 — End-to-End Pipeline](Docs/workflow_v6_readme.md)  
-  Step-by-step process from preview merger to DB compare, including where reports live and how to read ledgers vs manifests.
-- [Building a Preview (Operator How-To)](Docs/building_preview_howto.md)  
-  Guide for creating, editing, and exporting previews in LOR, with prerequisites, naming conventions, and export locations.
-- Archived docs live in [/archive/docs](archive/docs/)
-- 📝 [CHANGELOG](CHANGELOG.md) — curated list of processing and schema changes by date.
-- 📘 [Naming Conventions](naming_conventions.md)  
-  Explains both **Channel Naming Conventions** (LOR sequencing) and **Prop/Display Naming Conventions** (labels, inventory, database).
-- 🗄️ [Database Cheat Sheet](database_cheatsheet.md)  
-  Quick SQL reference for querying `lor_output_v6.db`, including how to list controllers, find DeviceType=None props, and detect spare channels.
-
-
-
-### **Processing Logic Summary**
-
-- [Procesing Rules](ProcessingRules.md)
-
-### **Additional Notes**
-
-- **Fancy Queries or Joins**:
-  - When reassembling data for setup, consider using server-side logic (e.g., SQL JOINs or stored procedures) to simplify retrieval based on the linked tables (`props`, `subprops`, `dmxchannels`, etc.).
-
-- **Terminology Updates**:
-  - `propbuildInfo` → `Display` table: Links `DisplayName` to `LORComment`.
-  - `Fixtures` → `subprops` table.
-
-Let me know if you'd like me to refine the explanation further or help troubleshoot the script!
-
-## Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/username/repo-name.git
-   ```
-
-2. Navigate to the project directory:
-
-   ```bash
-   cd repo-name
-   ```
-
-3. Install dependencies:
-   - Python is required on required on the machine you are running this script.
-   - SQLite browser required to open the database created.
-
-## Usage
-
-  1. Create a folder to store the exported previews you want to include for processing. If you want to include all previews, just use the ImportExport folder under your Light O Rama installation.
-
-  2. Using the Light O Rama Sequencing Software, Navigate to the Preview Panel and Right Click in the preview or previews you want to include in the database and save them to the folder of your choice.
-
-  3. Open a Terminal Window and run the parse_props_vx.py script. When prompted, enter the path to the folder containing the preview(s) you want to process.
-
-  4. The location for the database is currently hard coded at the top of the script. This can be changed to put the database in the location of your choosing.
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-name`).
-3. Commit your changes (`git commit -m 'Add some feature'`).
-4. Push to the branch (`git push origin feature-name`).
-5. Open a pull request.
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
-## Acknowledgments
+Do not use `parse_props_v6.py`, `lor_output_v6.db`, or V6 workflow instructions
+for a production run. They are retained only under `archive/v6/` so earlier
+decisions and troubleshooting evidence remain available.

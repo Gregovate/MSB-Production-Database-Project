@@ -950,12 +950,17 @@ Remove any temporary, draft, or unrelated images before finalizing.
 ---
 
 ## Reminder
-After **any changes** to previews, Export the preview to your G:\Shared drives\MSB Database\UserPreviewStaging\`Author Folder`
-- Run the full **Workflow v6** pipeline:
-  1. Merger
-  2. Parser
-  3. Sheet Export
-  4. DB Compare
+After **any changes** to previews, export the authoritative preview set from the
+approved Master PC and run the controlled V7 production workflow:
+
+1. V7 scene-aware parser.
+2. Protected PostgreSQL snapshot ingest.
+3. Reconciliation from `https://lortodb.sheboyganlights.org/lor2db/`.
+4. Finish, validation, and immutable report review.
+
+Use `LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md`
+for the current stop conditions and exact workflow. The V6 merger/parser/compare
+pipeline is archived and is not a production procedure.
 
 This ensures the system stays consistent for all users.
 

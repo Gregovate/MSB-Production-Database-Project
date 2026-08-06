@@ -329,7 +329,7 @@ All new engineering documentation should follow the organizational principles de
 
 - [LOR System Overview](01_LOR_System/00_Project_Overview/00_LOR_System_Overview.md)
 - [Preview Authoring](01_LOR_System/01_Preview_Authoring/B_Building_Preview_Howto.md)
-- [LOR Data Extraction and Troubleshooting](01_LOR_System/02_Data_Extraction/Troubleshooting.md)
+- [V7 LOR Data Extraction and Reconciliation](01_LOR_System/02_Data_Extraction/README.md)
 - [Production Database System Blueprint](02_Production_Database/01_System_Architecture/A_System_Blueprint.md)
 - [LOR Naming Data Contract](02_Production_Database/01_System_Architecture/C_LOR%20Naming%20Data%20Contract.md)
 - [Production Database Structure](02_Production_Database/01_System_Architecture/D_Database_Structure.md)

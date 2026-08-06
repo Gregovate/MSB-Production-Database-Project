@@ -108,7 +108,8 @@ Views join staging + mapping tables to output:
 ## 8. LOR Ingestion (Conceptual)
 
 ### Source of truth for LOR export
-- SQLite file: `lor_output_v6.db` 【turn12file13†B_Infrastructure.md†L36-L38】
+- SQLite snapshot: `lor_output_v7_scene.db`, created by the current V7
+  scene-aware parser from the authoritative preview set.
 
 ### Ingestion rules
 - repeatable and idempotent (upsert/replace strategy)
@@ -120,7 +121,8 @@ Views join staging + mapping tables to output:
 - run on a controlled cadence:
   - after sequencing changes
   - at least weekly during build season
-- keep a dated snapshot archive of `lor_output_v6.db` for rollback/debugging 【turn12file13†B_Infrastructure.md†L45-L50】
+- retain snapshots and reconciliation audit/report evidence under the controlled
+  production retention policy.
 
 ---
 
@@ -136,7 +138,7 @@ If backups aren’t automated and restore isn’t tested, this isn’t productio
 - Postgres database dumps (nightly)
 - app configuration (env files, compose files)
 - ingestion logs (failures must be visible)
-- archived `lor_output_v6.db` snapshots 【turn12file13†B_Infrastructure.md†L61-L66】
+- retained V7 snapshot, ingest, reconciliation, and report evidence
 
 ### Retention (starting point)
 - daily: 30 days
