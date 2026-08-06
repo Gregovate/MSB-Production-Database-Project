@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-05  V0.2.1
+Current Version : 2026-08-06  V0.3.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,10 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-06  GAL / OpenAI  V0.3.0
+        Added the lor2db landing-page status contract and guarded Start
+        endpoint. The operator never supplies an import_run_id; Start captures
+        the current committed snapshot through the installed database function.
     2026-08-05  GAL / OpenAI  V0.2.1
         Removed direct reconciliation-table row locks that incorrectly
         required the least-privilege application role to have UPDATE rights.
@@ -43,7 +47,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.2.1"
+APP_VERSION = "V0.3.0"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
@@ -54,6 +58,12 @@ ENTITY_VIEWS = {
 }
 
 app = Flask(__name__)
+
+OPEN_RUN_STATES = {
+    "STARTING", "PREFLIGHT", "AWAITING_DECISIONS", "READY_TO_FINISH",
+    "PROMOTING", "VALIDATING", "REPORTING",
+}
+RECONCILED_RUN_STATES = {"COMPLETED", "COMPLETED_WITH_EXCEPTIONS"}
 
 
 class ApiError(RuntimeError):
@@ -206,6 +216,99 @@ def load_run(conn: Any, run_id: int) -> dict[str, Any]:
     return document
 
 
+def dashboard_state(snapshot: dict[str, Any] | None,
+                    latest_run: dict[str, Any] | None) -> dict[str, Any]:
+    """Derive the only valid next operator action from persisted state."""
+    if snapshot is None:
+        return {
+            "state": "NO_SNAPSHOT",
+            "message": "No committed LOR snapshot is available.",
+            "can_start": False,
+            "action": None,
+        }
+
+    snapshot_id = snapshot["import_run_id"]
+    if latest_run and latest_run["status"] in OPEN_RUN_STATES:
+        return {
+            "state": "IN_PROGRESS",
+            "message": (
+                f"Reconciliation run {latest_run['lor_reconciliation_run_id']} "
+                f"is {latest_run['status'].replace('_', ' ').lower()}."
+            ),
+            "can_start": False,
+            "action": {
+                "kind": "review",
+                "label": "Open reconciliation",
+                "url": (
+                    "preflight/?run="
+                    f"{latest_run['lor_reconciliation_run_id']}"
+                ),
+            },
+        }
+
+    if (latest_run
+            and latest_run["import_run_id"] == snapshot_id
+            and latest_run["status"] in RECONCILED_RUN_STATES):
+        return {
+            "state": "RECONCILED",
+            "message": f"Snapshot {snapshot_id} is reconciled.",
+            "can_start": False,
+            "action": None,
+        }
+
+    return {
+        "state": "READY_TO_START",
+        "message": f"Snapshot {snapshot_id} is ready for reconciliation.",
+        "can_start": True,
+        "action": {
+            "kind": "start",
+            "label": "Start reconciliation",
+            "url": None,
+        },
+    }
+
+
+def load_dashboard(conn: Any) -> dict[str, Any]:
+    """Load current snapshot and latest durable reconciliation attempt."""
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("""
+            SELECT import_run_id, run_ts, notes, parser_version,
+                   parser_started_at, parser_completed_at, parser_actor,
+                   parser_host, source_preview_folder, preview_count,
+                   scene_count, prop_count, sub_prop_count,
+                   dmx_channel_count, scene_lor_prop_count,
+                   ingest_script_version, ingest_actor, ingest_host,
+                   ingest_started_at, ingest_completed_at
+            FROM lor_snap.v_current_run
+        """)
+        row = cur.fetchone()
+        snapshot = dict(row) if row else None
+
+        cur.execute("""
+            SELECT lor_reconciliation_run_id, import_run_id, status,
+                   started_at, completed_at, cancelled_at, failed_at,
+                   validation_state, structural_failure_count,
+                   blocked_count, deferred_count, unresolved_count,
+                   report_url, report_published_at, cancellation_reason,
+                   failure_message
+            FROM ops.lor_reconciliation_run
+            ORDER BY lor_reconciliation_run_id DESC
+            LIMIT 1
+        """)
+        row = cur.fetchone()
+        latest_run = dict(row) if row else None
+
+    state = dashboard_state(snapshot, latest_run)
+    return {
+        "snapshot": snapshot,
+        "latest_run": latest_run,
+        "workflow": state,
+        "reports_url": "reports/",
+        "operator": operator_email(),
+        "parser_ingest_mode": "MANUAL",
+    }
+
+
 def json_body() -> dict[str, Any]:
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
@@ -281,6 +384,44 @@ def get_run(run_id: int) -> Response:
     operator_email()
     with database() as conn:
         return jsonify(load_run(conn, run_id))
+
+
+@app.get("/dashboard")
+def get_dashboard() -> Response:
+    operator_email()
+    with database() as conn:
+        return jsonify(load_dashboard(conn))
+
+
+@app.post("/runs/start")
+def start_run() -> Response:
+    """Start only when the current snapshot has no open/completed attempt."""
+    operator = operator_email()
+    with database() as conn:
+        with conn.cursor() as cur:
+            # Use the same transaction-scoped lock as the installed Start
+            # function so two browser requests cannot pass the eligibility
+            # check and create competing attempts.
+            cur.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(%s))",
+                ("ops.lor_reconciliation.start",),
+            )
+            current = load_dashboard(conn)
+            if not current["workflow"]["can_start"]:
+                raise ApiError(current["workflow"]["message"], 409)
+            cur.execute(
+                "SELECT ops.f_start_lor_reconciliation(%s)",
+                (f"lor-preflight-api:{operator}",),
+            )
+            run_id = cur.fetchone()[0]
+        conn.commit()
+        run = load_run(conn, run_id)
+    return jsonify(
+        run_id=run_id,
+        import_run_id=run["import_run_id"],
+        status=run["status"],
+        review_url=f"preflight/?run={run_id}",
+    ), 201
 
 
 @app.post("/runs/<int:run_id>/groups/<int:group_id>/decisions")

@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | Backend service and NAS publication mount validated; reverse-proxy route and Run 4 acceptance pending |
-| Initial release / current revision | 2026-08-04 / 2026-08-05 |
+| Status | Run 4 completed; lor2db landing-page deployment and acceptance pending |
+| Initial release / current revision | 2026-08-04 / 2026-08-06 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-06 | Added the `/lor2db/` landing page, current snapshot/reconciliation status API, immutable report link, and guarded Start action. Recorded completed Run 4 acceptance. |
 | 2026-08-05 | Removed redundant backend `FOR UPDATE` locks that required unintended table-wide write permission; protected database functions and procedures remain the only writers and retain the authenticated operator email in the audit record. |
 | 2026-08-05 | Made per-decision operator comments optional; blank comments receive a generated audit reason, and database rejections now show their primary error message. |
 | 2026-08-05 | Removed safe exact-name UUID relinks from operator review; added candidate-specific decisions, explicit green Saved/Unsaved changes state, and opt-in bulk decision mode. |
@@ -29,6 +30,31 @@ The backend must bind only to loopback and be exposed through the authenticated
 reverse proxy at `/lor2db/preflight/api/`. It requires the Cloudflare Access
 identity header and independently restricts access to the comma-separated
 `LOR_PREFLIGHT_OPERATORS` allowlist. Do not expose port 8784 to the LAN or web.
+
+## lor2db landing page
+
+Publish the files in `landing/` at:
+
+`https://my.sheboyganlights.org/lor2db/`
+
+The page calls the existing authenticated backend through
+`/lor2db/preflight/api/`. It shows:
+
+- the current committed snapshot, parser/ingest provenance, and row counts;
+- the latest persistent reconciliation run and validation/exception state;
+- the immutable report for a published run;
+- **Open reconciliation** when a run is already active;
+- **Start reconciliation** only when the latest snapshot is not already
+  reconciled and no run is open.
+
+The Start endpoint acquires the same advisory lock as the database Start
+function, repeats eligibility inside that transaction, and captures the
+current snapshot through `ops.f_start_lor_reconciliation(text)`. No request
+parameter accepts an ingest number.
+
+Parser and PostgreSQL ingest remain manual for this release. A future
+app-server runner may precede this page, but it must invoke only the approved
+parser/ingest commands and preserve the current prerequisite checks.
 
 ## Required API
 
@@ -248,10 +274,11 @@ ls -la /mnt/msb-web
 
 ### Still pending
 
-- Verify the authenticated reverse-proxy API route end to end.
-- Complete the Run 4 browser acceptance test described below.
-- Confirm static application and generated report publication through the
-  public protected URLs.
+- Apply `grant_lor_preflight_app.sql` revision V0.2.0.
+- Deploy `landing/` to the protected `/lor2db/` directory.
+- Deploy `backend.py` V0.3.0 and restart the loopback service.
+- Validate the landing page against completed Run 4 and ingest 45.
+- Validate Start only after a new snapshot is manually parsed and ingested.
 
 Run the non-database safety tests from this directory with:
 
@@ -259,16 +286,16 @@ Run the non-database safety tests from this directory with:
 python -m unittest -v test_backend.py
 ```
 
-## Run 4 acceptance test
+## Run 4 production acceptance record
 
-Run 4 must remain unchanged until the backend exists. Its five display rows are
-the first production-flow acceptance data:
+Run 4 captured ingest 45 and completed through the secured browser workflow.
+Its five display decisions were:
 
-- `FE-TuneRadio-2CH-01`: choose `DEFER` during the interface test.
-- `QV-Making-01`, `QV-Bright-01`, and `QV-Spirits-01`: operator selects the
-  appropriate missing-from-LOR action; no action is preaccepted.
-- `QV-ToolBox`: `ADD_NEW_DISPLAY` is the proposed action, still requiring
-  operator acceptance.
+- `FE-TuneRadio-2CH-01`: automatic exact-name UUID relink.
+- `QV-Making-01`, `QV-Bright-01`, and `QV-Spirits-01`: `SET_RECYCLED`.
+- `QV-ToolBox`: `ADD_NEW_DISPLAY`.
 
-Stage, scene, and scene-display sections must render automatically when their
-review views return decision-required groups. Empty sections are omitted.
+The run finished `COMPLETED`, validation passed, and the timestamped report was
+published. The report predates migration `0029`; its provenance-only P1/P3/P4
+rows are retained as immutable historical evidence and are not material
+production changes.

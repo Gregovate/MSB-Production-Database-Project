@@ -4,10 +4,10 @@
 |---|---|
 | Repository path | `Postgres_sql/Upsert Procedures/00_LOR_Production_Import_and_Reconciliation_Procedure.md` |
 | Document type | Controlled production procedure |
-| Status | ACTIVE — manual reconciliation validated; operator application deployment remains pending |
+| Status | ACTIVE — Run 4 production validated; lor2db landing-page deployment pending |
 | Owner / author | GAL |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-05 |
+| Current revision | 2026-08-06 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-06 | GAL / OpenAI | Recorded completed production reconciliation Run 4, the subsequent `0029` true-no-op correction and validation, and the `/lor2db/` landing-page workflow. Parser and snapshot ingest remain manual until the controlled app-server runner is implemented. |
 | 2026-08-05 | GAL / OpenAI | Implemented the secured preflight backend, restricted operator authorization, persisted-decision endpoints, final-review concurrency check, Cancel, and retry-safe Finish/report publication. Deployment and Run 4 acceptance remain pending. |
 | 2026-08-04 | GAL / OpenAI | Activated the validated manual workflow, linked the executable runbook, and updated implementation status through report publication and evaluation/index support. |
 | 2026-08-03 | GAL / OpenAI | Corrected reconciliation exception counters and report problems to use current effective logical-group state; frozen blocking flags remain audit evidence after operator resolution and are not reported as current exceptions. |
@@ -45,25 +46,26 @@ The parser and snapshot ingest do **not** update production reference data by th
 | 2026-07-31 | GAL / OpenAI | Linked the full P1/P2/P3 promotion design and established controlled orchestration as the required final production execution model. |
 | 2026-07-31 | GAL | Initial procedure draft. Documents authoritative-preview controls, V7 parsing, PostgreSQL ingest, reconciliation requirements, and the P1/P2/P3 gate. |
 
-## Current Manual Workflow and Future Operator Interface
+## Current Operator Workflow and Future Parser/Ingest Integration
 
 The active executable procedure is:
 
 `Postgres_sql/Upsert Procedures/02_LOR_Manual_Reconciliation_Runbook.md`
 
-It contains the exact SQL and PowerShell commands, decision templates, result checks, production-write warning, publication sequence, and recovery rules. Until the application interface exists, it is the authoritative execution sequence.
+It contains the exact SQL and PowerShell commands, decision templates, result checks, production-write warning, publication sequence, and recovery rules. It remains the authoritative fallback and recovery sequence.
 
-The application workflow described below remains the intended replacement for those manual commands. It must call the same installed boundaries and preserve the same safeguards.
+The secured reconciliation application is implemented under `tools/lor_preflight/`. The `/lor2db/` landing page reports the latest committed snapshot and reconciliation state, links the immutable report, starts reconciliation only when the latest snapshot is eligible, and routes an open run back to its persisted review. It calls the same installed boundaries and preserves the same safeguards.
 
-The finished system is one controlled operator workflow, not a collection of unrelated scripts.
+For the current release, the parser and PostgreSQL snapshot ingest remain manual on the approved Master PC. After ingest commits, the operator opens `/lor2db/`; the page detects the snapshot automatically. The operator never enters or chooses an `import_run_id`.
 
-The operator uses one application action, provisionally named **Start LOR Production Import**. The final interface may be implemented as a Directus workflow button or another approved operator interface, but the behavior is the same.
+The future app-server phase may invoke the approved Python parser and protected ingest runner before reconciliation. That future control must use a configured Python environment, retain the current parser/ingest preflight checks, and must not expose arbitrary commands or direct P1-P4 execution.
 
 ```text
-Start LOR Production Import
-    -> run the V7 scene-aware parser
-    -> run the password-protected PostgreSQL snapshot ingest
-    -> automatically start reconciliation for the latest completed snapshot
+Run V7 parser manually on the approved Master PC
+    -> run the password-protected PostgreSQL snapshot ingest manually
+    -> open /lor2db/
+    -> review the detected latest completed snapshot
+    -> select Start reconciliation when enabled
     -> create the persistent reconciliation run
     -> build the stage, display, scene, and scene-membership candidate sets once
     -> run preflight checks and classifications
@@ -75,14 +77,14 @@ Start LOR Production Import
     -> complete
 ```
 
-If no operator decisions are required, the workflow continues automatically through promotion, validation, report publication, and completion.
+If no operator decisions are required, the run enters `READY_TO_FINISH`. Finish remains the explicit production-write boundary and performs promotion, validation, report publication, and completion.
 
 If decisions are required, the workflow pauses in operator review. The operator records the applicable decision for each candidate and then chooses one of two workflow actions:
 
 - **Finish Reconciliation** — promote every passing or approved candidate, leave deferred and unresolved candidates unchanged in production, validate the committed results, publish the report, and complete the reconciliation.
 - **Cancel Reconciliation** — apply no production changes, delete the entire latest snapshot and its uncommitted reconciliation working state, publish a cancellation report, and close the reconciliation as `CANCELLED`.
 
-The operator never selects or enters an `import_run_id`. The ingest and reconciliation workflow uses the latest completed snapshot created by that execution.
+The operator never selects or enters an `import_run_id`. Start captures the latest committed snapshot exactly once. A newer ingest cannot replace the snapshot already captured by an open reconciliation run.
 
 ## Persistent Reconciliation Context
 
@@ -134,15 +136,34 @@ The three documents describe one workflow at different levels and must not defin
 | Persistent reconciliation-run and display-candidate tables | Installed and live-validated from `reconciliation/0014_create_lor_reconciliation_decision_layer.sql` on 2026-08-02 |
 | Persistent stage candidate and binding tables | Installed from `0015` and rollback-validated by `11`; multi-preview metadata preservation installed from `0016` and rollback-validated by `12` |
 | Persistent scene and scene-membership candidate tables | Installed from `0018` and rollback-validated by `14` |
-| Operator decision database contract | Installed and live-validated for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views on 2026-08-02; application interface remains pending |
-| Operator decision application interface | Designed; not implemented |
-| Finish and cancel workflow actions | Installed from `0019`, rollback-validated by `15`, and Finish production-validated through Run 3; `0026`/`22` counter correction installed and passed |
+| Operator decision database contract | Installed and live-validated for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views; exercised by the application through Run 4 |
+| Operator decision application interface | Implemented, deployed, and production exercised through Run 4 |
+| Finish and cancel workflow actions | Installed from `0019`, rollback-validated by `15`, and Finish production-validated through Run 4; `0026`/`22` counter correction installed and passed |
 | P1 | Installed, rollback-validated, and executed only through controlled Finish |
 | P2 | Installed from `0017` and rollback-validated by `13`; legacy procedure remains prohibited |
 | P3/P4 | Installed from `0018` and rollback-validated by `14`; these remain internal engine phases |
 | Controlled manual workflow | Active and documented in `02_LOR_Manual_Reconciliation_Runbook.md` |
-| Controlled single-interface application | Designed; not implemented |
+| `/lor2db/` snapshot/reconciliation landing page | Implemented in repository; deployment and end-to-end acceptance pending |
+| App-server parser and ingest invocation | Future phase; parser and ingest remain manual for this release |
 | Timestamped HTML report publication | Installed and production validated; immutable publication, evaluation copies, and generated report index are implemented |
+| True no-op protection | Migration `0029` V4 installed; validation `25` and the seven-part post-install definition/guard check passed on 2026-08-05 |
+
+## Production Validation Record — Reconciliation Run 4
+
+Run 4 is the first completed production exercise of the secured browser workflow.
+
+| Field | Recorded result |
+|---|---|
+| Reconciliation run | `4` |
+| Captured ingest | `45` |
+| Parser | V7.0.7; Greg; `MSB-OFFICE-PC`; completed 2026-08-05 00:28:49 UTC |
+| Parsed snapshot | 32 previews; 62 scenes; 1157 props; 1313 subprops; 508 DMX channels; 2177 scene/prop rows |
+| PostgreSQL ingest | V0.3.2; completed 2026-08-05 00:29:11 UTC |
+| Operator decisions | Automatic UUID relink for `FE-TuneRadio-2CH-01`; add `QV-ToolBox`; mark `QV-Making-01`, `QV-Bright-01`, and `QV-Spirits-01` `RECYCLED` |
+| Final state | `COMPLETED`; validation `PASSED`; zero blocked, deferred, unresolved, or failed items |
+| Report | `lor-reconciliation-20260806-032850-run-4.html`; generated 2026-08-06 03:28:50 UTC with report framework V0.4.1 |
+
+The immutable Run 4 report was generated before migration `0029`. Its **Other Changes** table therefore includes provenance-only P1 stage bindings, P3 scenes, and P4 scene memberships that were evaluated but materially unchanged. Those rows are historical evidence of the defect and must not be interpreted as genuine changes. Migration `0029` V4 subsequently removed ingest IDs as change evidence, installed database no-op guards, passed validation `25`, and passed the post-install check for all four corrected procedures and three guards. The Run 4 report remains immutable; future reports use the corrected behavior.
 
 Do not represent an under-development component as production-ready.
 
@@ -287,32 +308,40 @@ Validate:
 
 > **Hard stop:** Missing, duplicate, stale, test, or questionable previews must be resolved before continuing.
 
-### 3. Run the Current Manual Procedure
+### 3. Run Parser and Snapshot Ingest
 
-Until the operator application exists, follow the complete sequence in:
+For the current release, run the approved V7 parser and PostgreSQL snapshot
+ingest manually using the commands and checks in:
 
 `Postgres_sql/Upsert Procedures/02_LOR_Manual_Reconciliation_Runbook.md`
 
-Do not reconstruct commands from this policy overview or run P1–P4 directly.
+Stop if either command fails or produces implausible counts. Do not reconstruct
+commands from this policy overview or run P1–P4 directly.
 
-### 3A. Future Start LOR Production Import Interface
+### 3A. Start Reconciliation from lor2db
 
-From the approved operator interface, select **Start LOR Production Import**.
+Open `https://my.sheboyganlights.org/lor2db/` after the snapshot ingest commits.
+Verify that the displayed ingest, parser/ingest versions, timestamps, and row
+counts match the run just completed.
 
-The interface starts one controlled workflow. The operator does not separately choose a snapshot or reconciliation run.
+When the page reports `READY TO START`, select **Start reconciliation**. The
+operator does not choose a snapshot or enter an ingest number. If an open run
+exists, the page provides **Open reconciliation** instead and must not replace
+that run's captured snapshot.
 
-The workflow must:
+Start must:
 
-1. run the V7 scene-aware parser against the validated master export folder;
-2. stop if parser errors, collisions, missing previews, duplicate preview identities, or other blocking conditions are detected;
-3. run the password-protected PostgreSQL snapshot ingest using the successful parser output;
-4. stop if the ingest fails or produces implausible counts;
-5. create a new latest snapshot in `lor_snap`;
-6. automatically start reconciliation for that latest snapshot.
+1. acquire the reconciliation Start lock;
+2. repeat eligibility checks inside the locked transaction;
+3. capture the latest committed snapshot exactly once;
+4. create the persistent reconciliation run and frozen candidate sets;
+5. return the operator to the persisted review for that run.
 
-Password handling must remain protected. The operator may be prompted for the PostgreSQL password by the secured runner, but the password is never stored in the reconciliation records or report.
+The future app-server parser/ingest phase may precede this action only after its
+Python environment and secured runner are implemented and validated. Passwords
+must never be stored in reconciliation records, browser content, or reports.
 
-### 4. Future Automatic Start Reconciliation
+### 4. Reconciliation Start Behavior
 
 Immediately after a successful ingest, the workflow must:
 
@@ -322,8 +351,8 @@ Immediately after a successful ingest, the workflow must:
 4. build the stage, display, scene, and scene-membership candidate sets once;
 5. run structural checks, classifications, and production comparisons;
 6. separate candidates into passing, decision-required, blocked, and deferred states;
-7. continue automatically when no operator decisions are required;
-8. pause and display the decision interface when operator decisions are required.
+7. enter `READY_TO_FINISH` when no operator decisions are required;
+8. enter `AWAITING_DECISIONS` and display the decision interface when operator decisions are required.
 
 The operator does not enter an ingest number.
 
@@ -371,7 +400,7 @@ For each decision-required candidate, the operator may:
 
 A deferred candidate or a candidate without a completed decision is blocked from production promotion. It does not block unrelated passing or approved candidates.
 
-#### Secured preflight screen pending deployment
+#### Secured preflight screen
 
 The reusable operator screen is published under:
 
@@ -392,8 +421,9 @@ Finish. **Cancel Reconciliation** also requires confirmation and a reason and
 never invokes Finish.
 
 The browser template and implemented backend live in `tools/lor_preflight/`.
-Until that backend is deployed and validated with Run 4, use the manual SQL
-runbook.
+Run 4 completed through this interface. The manual SQL runbook remains the
+recovery procedure; it is not the normal operator path after landing-page
+deployment.
 
 ### 6. Finish Reconciliation
 
@@ -584,9 +614,12 @@ Stop the workflow immediately if:
 
 ## Required Production Interface
 
-The operator-facing application must provide:
+The operator-facing application for the current release must provide:
 
-- one **Start LOR Production Import** action that launches the parser, protected ingest, latest-snapshot capture, and reconciliation;
+- current snapshot parser/ingest provenance and row counts;
+- current persistent reconciliation run, status, validation, and exception counts;
+- **Start reconciliation** only for an eligible manually ingested snapshot;
+- **Open reconciliation** for an existing active run;
 - decision screens only for candidates requiring operator action;
 - explicit approve and defer actions;
 - one **Finish Reconciliation** action;
@@ -599,6 +632,10 @@ The operator-facing application must provide:
 - timestamped HTML report generation and internal publication for completed and cancelled reconciliations;
 - a clickable report link;
 - permissions preventing routine direct execution of P1/P2/P3.
+
+The future app-server phase may add a secured **Run parser and ingest** action
+before Start. It must not weaken any current validation, credential, or
+procedure-execution boundary.
 
 ## Related Files and Objects
 

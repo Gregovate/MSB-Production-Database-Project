@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOR production database</title>
+  <link rel="stylesheet" href="lor2db.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">MSB production database</p>
+        <h1>LOR snapshot and reconciliation</h1>
+      </div>
+      <a class="secondary" href="reports/">Report archive</a>
+    </header>
+    <div id="app" aria-live="polite">
+      <section class="card"><p>Loading current LOR state…</p></section>
+    </div>
+  </main>
+
+  <dialog id="start-dialog">
+    <form method="dialog">
+      <h2>Start reconciliation?</h2>
+      <p id="start-message"></p>
+      <p>This freezes the current snapshot for review. It does not update production until Finish is explicitly approved.</p>
+      <p id="dialog-error" class="error" role="alert"></p>
+      <div class="dialog-actions">
+        <button value="cancel">Back</button>
+        <button id="confirm-start" class="primary" value="confirm">Start reconciliation</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="lor2db.js" defer></script>
+</body>
+</html>

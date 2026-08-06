@@ -11,6 +11,43 @@ import backend  # noqa: E402  (environment must exist before app import)
 
 
 class BackendSafetyTests(unittest.TestCase):
+    def test_dashboard_marks_latest_completed_snapshot_reconciled(self) -> None:
+        state = backend.dashboard_state(
+            {"import_run_id": 45},
+            {
+                "lor_reconciliation_run_id": 4,
+                "import_run_id": 45,
+                "status": "COMPLETED",
+            },
+        )
+        self.assertEqual(state["state"], "RECONCILED")
+        self.assertFalse(state["can_start"])
+
+    def test_dashboard_allows_start_for_new_snapshot(self) -> None:
+        state = backend.dashboard_state(
+            {"import_run_id": 46},
+            {
+                "lor_reconciliation_run_id": 4,
+                "import_run_id": 45,
+                "status": "COMPLETED",
+            },
+        )
+        self.assertEqual(state["state"], "READY_TO_START")
+        self.assertTrue(state["can_start"])
+
+    def test_dashboard_never_replaces_open_run(self) -> None:
+        state = backend.dashboard_state(
+            {"import_run_id": 46},
+            {
+                "lor_reconciliation_run_id": 4,
+                "import_run_id": 45,
+                "status": "AWAITING_DECISIONS",
+            },
+        )
+        self.assertEqual(state["state"], "IN_PROGRESS")
+        self.assertFalse(state["can_start"])
+        self.assertEqual(state["action"]["url"], "preflight/?run=4")
+
     def test_optional_decision_reason_preserves_comment(self) -> None:
         self.assertEqual(
             backend.optional_decision_reason(
