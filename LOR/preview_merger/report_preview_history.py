@@ -3,8 +3,8 @@ import sqlite3, csv, sys, datetime
 from pathlib import Path
 
 # Shared-drive defaults (change only if your paths differ)
-DEF_DB  = r"G:\Shared drives\MSB Database\database\merger\preview_history.db"
-DEF_OUT = r"G:\Shared drives\MSB Database\database\merger\reports"
+DEF_DB  = r"G:\Shared drives\MSB Database\Database Previews\reports\preview_history.db"
+DEF_OUT = r"G:\Shared drives\MSB Database\Database Previews\reports"
 
 # CSVs to generate (add more queries as needed)
 QUERIES = {

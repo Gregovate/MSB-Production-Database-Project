@@ -1,7 +1,7 @@
 @echo off
 setlocal
 rem Run from repo root; data is on G:
-pushd %~dp0\..
+pushd %~dp0
 py preview_merger.py
 if errorlevel 1 (
   echo.
@@ -10,7 +10,7 @@ if errorlevel 1 (
   exit /b 1
 )
 rem Open the HTML compare report if present
-if exist "G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html" (
-  start "" "G:\Shared drives\MSB Database\database\merger\reports\lorprev_compare.html"
+if exist "G:\Shared drives\MSB Database\Database Previews\reports\compare.html" (
+  start "" "G:\Shared drives\MSB Database\Database Previews\reports\compare.html"
 )
 pause

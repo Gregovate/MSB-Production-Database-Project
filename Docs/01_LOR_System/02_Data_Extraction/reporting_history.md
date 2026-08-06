@@ -5,7 +5,7 @@ _Companion to **MSB Preview Update — Operator Quickstart** and **Preview Merge
 ## Purpose
 Track **who contributed which preview files**, when merges were applied, and what got staged/archived/skipped — using the local‑time audit DB at:
 ```
-G:\Shared drives\MSB Database\database\merger\preview_history.db
+G:\Shared drives\MSB Database\Database Previews\reports\preview_history.db
 ```
 All timestamps are **local, tz‑aware** strings. No UTC.
 
@@ -120,17 +120,17 @@ SELECT * FROM v_run_contributors WHERE run_id=:run;
 ## Reporter tool
 Generate CSVs + `index.html` under:
 ```
-G:\Shared drives\MSB Database\database\merger\reports\YYYYMMDD-HHMM\
+G:\Shared drives\MSB Database\Database Previews\reports\YYYYMMDD-HHMM\
 ```
 
-**tools/report_preview_history.py**
+**LOR/preview_merger/report_preview_history.py**
 ```python
 #!/usr/bin/env python3
 import sqlite3, csv, sys, datetime
 from pathlib import Path
 
-DEF_DB  = r"G:\\Shared drives\\MSB Database\\database\\merger\\preview_history.db"
-DEF_OUT = r"G:\\Shared drives\\MSB Database\\database\\merger\\reports"
+DEF_DB  = r"G:\\Shared drives\\MSB Database\\Database Previews\\reports\\preview_history.db"
+DEF_OUT = r"G:\\Shared drives\\MSB Database\\Database Previews\\reports"
 
 QUERIES = {
     "runs_summary":      "SELECT * FROM v_runs_summary;",
@@ -193,12 +193,12 @@ if __name__ == "__main__":
     main(db, out)
 ```
 
-**helpers/report_preview_history.cmd** (optional)
+**LOR/preview_merger/report_preview_history.cmd** (optional)
 ```bat
 @echo off
-pushd %~dp0\..
-py tools\report_preview_history.py
-set "R=G:\Shared drives\MSB Database\database\merger\reports"
+pushd %~dp0
+py report_preview_history.py
+set "R=G:\Shared drives\MSB Database\Database Previews\reports"
 for /f "delims=" %%D in ('dir /b /ad /o-d "%R%"') do (
   if exist "%R%\%%D\index.html" start "" "%R%\%%D\index.html" & goto :done
 )
@@ -218,4 +218,3 @@ pause
 
 ## Future (optional)
 - Add a `rollback_staged.py` helper that restores a prior file by SHA from `.bak` or `archive/` and logs a `staging_decisions` row with `action='rollback'`.
-
