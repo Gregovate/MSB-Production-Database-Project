@@ -17,6 +17,8 @@ Safety boundary:
   - Stops with a descriptive error if any other existing data violates either rule.
 
 Revision history:
+  2026-08-06  GAL / OpenAI  Corrected V1 cleanup to include all three frozen
+                           source-evidence immutability triggers.
   2026-08-06  GAL / OpenAI  V1 snapshot-ownership enforcement, including
                            guarded cleanup of obsolete uncommitted Run 2.
 ============================================================================ */
@@ -105,6 +107,12 @@ BEGIN
             DISABLE TRIGGER trg_lor_reconciliation_display_candidate_immutable;
         ALTER TABLE ops.lor_reconciliation_group
             DISABLE TRIGGER trg_lor_reconciliation_group_immutable;
+        ALTER TABLE ops.lor_reconciliation_source_scene
+            DISABLE TRIGGER trg_lor_reconciliation_source_scene_immutable;
+        ALTER TABLE ops.lor_reconciliation_source_preview
+            DISABLE TRIGGER trg_lor_reconciliation_source_preview_immutable;
+        ALTER TABLE ops.lor_reconciliation_source_run
+            DISABLE TRIGGER trg_lor_reconciliation_source_run_immutable;
 
         DELETE FROM ops.lor_reconciliation_action_assignment
         WHERE lor_reconciliation_action_id IN (
@@ -147,6 +155,12 @@ BEGIN
             ENABLE TRIGGER trg_lor_reconciliation_display_candidate_immutable;
         ALTER TABLE ops.lor_reconciliation_group
             ENABLE TRIGGER trg_lor_reconciliation_group_immutable;
+        ALTER TABLE ops.lor_reconciliation_source_scene
+            ENABLE TRIGGER trg_lor_reconciliation_source_scene_immutable;
+        ALTER TABLE ops.lor_reconciliation_source_preview
+            ENABLE TRIGGER trg_lor_reconciliation_source_preview_immutable;
+        ALTER TABLE ops.lor_reconciliation_source_run
+            ENABLE TRIGGER trg_lor_reconciliation_source_run_immutable;
     END IF;
 
     IF EXISTS (
