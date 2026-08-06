@@ -64,7 +64,7 @@ views. It must return persisted effective decisions when the page is reopened.
 
 Safe `UUID_CHANGED_SAME_NAME` candidates do not appear in this response. After
 the uniqueness, collision, ACTIVE-status, singleton-group, and exact-name
-guards pass, migration `0023_auto_approve_safe_uuid_relinks.sql` retains the
+guards pass, migration `0028_auto_approve_safe_uuid_relinks.sql` retains the
 frozen row as `AUTO_APPROVED`; P2 updates the LOR link only when Finish runs.
 
 Each displayed row remains `Not saved` until its decision and reason are

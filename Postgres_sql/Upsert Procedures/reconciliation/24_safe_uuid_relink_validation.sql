@@ -1,10 +1,10 @@
 /* ============================================================================
 Object:       Safe exact-name UUID relink validation
-Filename:     13_safe_uuid_relink_validation.sql
+Filename:     24_safe_uuid_relink_validation.sql
 Type:         Read-only post-install validation
 
 Purpose:
-  Confirm that migration 0023 removes qualifying UUID_CHANGED_SAME_NAME rows
+  Confirm that migration 0028 removes qualifying UUID_CHANGED_SAME_NAME rows
   from operator review while retaining them as automatic frozen P2 candidates.
 
 Revision history:
