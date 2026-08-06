@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-05  V0.2.0
+Current Version : 2026-08-05  V0.2.1
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,11 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-05  GAL / OpenAI  V0.2.1
+        Removed direct reconciliation-table row locks that incorrectly
+        required the least-privilege application role to have UPDATE rights.
+        Installed SECURITY DEFINER functions and procedures remain the only
+        database writers and record the Cloudflare-authenticated operator.
     2026-08-05  GAL / OpenAI  V0.2.0
         Made per-decision comments optional and return PostgreSQL's primary
         rejection message instead of an unhelpful generic HTTP 500.
@@ -38,7 +43,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.2.0"
+APP_VERSION = "V0.2.1"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
@@ -132,7 +137,7 @@ def facts_for(entity_type: str, members: list[dict[str, Any]]) -> list[dict[str,
     return facts
 
 
-def load_run(conn: Any, run_id: int, lock_groups: bool = False) -> dict[str, Any]:
+def load_run(conn: Any, run_id: int) -> dict[str, Any]:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         run = fetch_one(cur, """
             SELECT lor_reconciliation_run_id, import_run_id, status,
@@ -141,17 +146,6 @@ def load_run(conn: Any, run_id: int, lock_groups: bool = False) -> dict[str, Any
             FROM ops.lor_reconciliation_run
             WHERE lor_reconciliation_run_id = %s
         """, (run_id,))
-        if lock_groups:
-            # Lock the base rows; the aggregate review view itself is not
-            # lockable. This serializes final review against new decisions.
-            cur.execute("""
-                SELECT lor_reconciliation_group_id
-                FROM ops.lor_reconciliation_group
-                WHERE lor_reconciliation_run_id = %s
-                ORDER BY lor_reconciliation_group_id
-                FOR UPDATE
-            """, (run_id,))
-            cur.fetchall()
         cur.execute("""
             SELECT *
             FROM ops.v_lor_reconciliation_group_review
@@ -310,7 +304,6 @@ def record_decision(run_id: int, group_id: int) -> Response:
                 FROM ops.lor_reconciliation_group AS g
                 WHERE g.lor_reconciliation_run_id = %s
                   AND g.lor_reconciliation_group_id = %s
-                FOR UPDATE
             """, (run_id, group_id))
             group = cur.fetchone()
             if group is None:
@@ -344,13 +337,14 @@ def record_bulk_decision(run_id: int) -> Response:
         raise ApiError("Reassociation cannot be recorded as a bulk action")
     with database() as conn:
         with conn.cursor() as cur:
+            # Membership is checked read-only here. The SECURITY DEFINER bulk
+            # function repeats the authoritative validation and owns locking.
             cur.execute("""
                 SELECT lor_reconciliation_group_id
                 FROM ops.lor_reconciliation_group
                 WHERE lor_reconciliation_run_id = %s
                   AND lor_reconciliation_group_id = ANY(%s)
                 ORDER BY lor_reconciliation_group_id
-                FOR UPDATE
             """, (run_id, group_ids))
             locked = [row[0] for row in cur.fetchall()]
             if sorted(locked) != sorted(group_ids):
@@ -382,7 +376,9 @@ def finish_run(run_id: int) -> Response:
     operator = operator_email()
     expected_version = str(json_body().get("expected_decision_version") or "")
     with database() as conn:
-        document = load_run(conn, run_id, lock_groups=True)
+        # The decision version prevents proceeding from a stale final-review
+        # page. The SECURITY DEFINER Finish procedure owns authoritative locks.
+        document = load_run(conn, run_id)
         if document["status"] == "REPORTING":
             conn.rollback()
         else:
