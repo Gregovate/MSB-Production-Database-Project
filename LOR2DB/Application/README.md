@@ -260,7 +260,7 @@ sudo -u lor-preflight test -r /opt/lor-preflight/publish_lor_reconciliation_repo
 curl -s http://192.168.5.9:8784/health
 ```
 
-The health response must report `V0.3.1`. Retrying Finish for a run already in
+The health response must report `V0.3.2`. Retrying Finish for a run already in
 `REPORTING` does not execute P1-P4 again; it retries report publication only.
 
 The successful final mount showed the NAS `web` share at `/mnt/msb-web`,
