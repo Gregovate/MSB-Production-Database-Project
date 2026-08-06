@@ -5,9 +5,11 @@ Type:         Read-only post-install validation
 
 Purpose:
   Confirm that migration 0028 removes qualifying UUID_CHANGED_SAME_NAME rows
-  from operator review while retaining them as automatic frozen P2 candidates.
+  from operator review by appending an automatic UPDATE_LOR_LINK action while
+  retaining the original frozen candidate and group unchanged.
 
 Revision history:
+  2026-08-05  GAL / OpenAI  v2: Validate the append-only automatic action.
   2026-08-05  GAL / OpenAI  Initial validation.
 ============================================================================ */
 
@@ -42,14 +44,16 @@ WHERE c.classification_code = 'UUID_CHANGED_SAME_NAME'
   AND g.member_count = 1
   AND NOT g.requires_atomic_decision
   AND r.status IN ('PREFLIGHT', 'AWAITING_DECISIONS', 'READY_TO_FINISH')
-  AND (
-      c.initial_resolution_state <> 'AUTO_APPROVED'
-      OR c.decision_required
-      OR c.is_blocking
-      OR g.decision_required
+  AND NOT EXISTS (
+      SELECT 1
+      FROM ops.v_lor_reconciliation_group_review AS gr
+      WHERE gr.lor_reconciliation_group_id = c.lor_reconciliation_group_id
+        AND gr.effective_action_type = 'UPDATE_LOR_LINK'
+        AND gr.acted_by_application =
+            'reconciliation:auto-safe-uuid-relink'
   );
 
-/* Validation 3: show all open UUID relinks and their frozen automatic state. */
+/* Validation 3: show immutable evidence and its effective automatic action. */
 SELECT
     c.lor_reconciliation_run_id,
     c.import_run_id,
@@ -63,12 +67,18 @@ SELECT
     c.is_blocking,
     g.logical_group_key,
     g.decision_required AS group_decision_required,
-    g.allowed_action_types AS group_allowed_actions
+    g.allowed_action_types AS group_allowed_actions,
+    gr.effective_action_type,
+    gr.effective_resolution_state,
+    gr.effective_reason,
+    gr.acted_by_application
 FROM ops.lor_reconciliation_display_candidate AS c
 JOIN ops.lor_reconciliation_group AS g
   ON g.lor_reconciliation_group_id = c.lor_reconciliation_group_id
 JOIN ops.lor_reconciliation_run AS r
   ON r.lor_reconciliation_run_id = c.lor_reconciliation_run_id
+JOIN ops.v_lor_reconciliation_group_review AS gr
+  ON gr.lor_reconciliation_group_id = c.lor_reconciliation_group_id
 WHERE c.classification_code = 'UUID_CHANGED_SAME_NAME'
   AND r.status IN ('PREFLIGHT', 'AWAITING_DECISIONS', 'READY_TO_FINISH')
 ORDER BY c.lor_reconciliation_run_id, c.display_id;
