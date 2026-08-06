@@ -425,7 +425,7 @@ The current system should be considered an **operational prototype under active 
 ### Phase 1 — Snapshot Foundation (Implemented 26-02-21)
 
 Delivered:
-- LOR SQLite parser (v6)
+- Initial LOR SQLite parser and snapshot foundation (later superseded by V7)
 - Postgres `lor_snap` ingestion pipeline
 - Atomic import runs (`import_run_id`)
 - Wiring leg derivation

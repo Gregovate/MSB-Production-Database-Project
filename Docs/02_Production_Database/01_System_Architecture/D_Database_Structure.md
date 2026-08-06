@@ -51,7 +51,9 @@ Status: Draft (Phase 1–3 scope locked)
   - Completed **LOR Snapshot → Postgres ingestion pipeline**.
   - Implemented atomic snapshot loading with single end-of-run commit.
   - Formalized `lor_snap` as immutable, run-versioned schema.
-  - Snapshot now sourced from `lor_output_v6.db` (SQLite parser v6).
+  - At that time, the snapshot was sourced from the V6 SQLite parser. That
+    implementation is now archived; current production uses the V7 scene-aware
+    snapshot and reconciliation workflow.
   - Wiring layer standardized as derived `lor_wiring_leg` representation (mirrors `preview_wiring_sorted_v6`).
   - Views rebuilt automatically during ingestion.
 
@@ -821,12 +823,12 @@ Controlled list of opsuction seasons (typically one per calendar year).
 
 # 5. LOR Snapshot Layer (lor_snap.*)
 
-The `lor_snap` schema represents immutable snapshot data imported
-from the authoritative LOR SQLite database (`lor_output_v6.db`).
+The `lor_snap` schema represents immutable snapshot data imported from the
+current V7 scene-aware LOR SQLite snapshot (`lor_output_v7_scene.db`).
 
 This data is:
 
-- Derived from `parse_props_v6.py`
+- Derived from `parse_props_v7_scene_parser.py`
 - Ingested into Postgres via the snapshot ingestion script
 - Stored per `import_run_id`
 - Never manually edited
@@ -838,15 +840,15 @@ Each ingest is atomic and versioned.
 ## 5.0 Snapshot Architecture
 
 Source of truth:
-- SQLite file: `lor_output_v6.db`
-- Built by: `parse_props_v6.py`
+- SQLite file: `lor_output_v7_scene.db`
+- Built by: `parse_props_v7_scene_parser.py`
 - Includes:
   - previews
   - props
   - subProps
   - dmxChannels
-  - preview_wiring_map_v6
-  - preview_wiring_sorted_v6 (field-ready output)
+  - scenes and scene-to-prop membership
+  - source-owned field-wiring data used by PostgreSQL ingest
 
 Postgres ingestion:
 - Creates one row in `lor_snap.lor_import_run`

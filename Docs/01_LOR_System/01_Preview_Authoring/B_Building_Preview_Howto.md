@@ -23,6 +23,25 @@ This is a multi-step process where:
    - When Finished the final preview is exported to the individual's preview folder
    - G:\Shared drives\MSB Database\UserPreviewStaging\username
 
+## Preview ownership and master protection
+
+Each programmer's preview is an isolated working copy. Exporting it to the
+individual staging folder does not authorize direct replacement of the master.
+
+The controlled path is:
+
+1. Export to `UserPreviewStaging\<username>`.
+2. Run and review the Preview Merger dry comparison.
+3. Resolve identifier, revision, semantic, comment, or ownership conflicts.
+4. Apply only reviewed changes through the controlled merge process.
+5. Run the comparison again and require `noop` to prove idempotence.
+6. Use only the approved master set as V7 parser input.
+
+Historically the Show PC held the master. During LOR 6.6.4/V7 development, the
+Office PC is the designated master. No programmer may overwrite it with their
+local preview. See the active
+[Preview Merger Reference](preview_merger_reference.md).
+
 ---
 
 ## Folder Layout — Wiring Images and Examples
@@ -950,12 +969,17 @@ Remove any temporary, draft, or unrelated images before finalizing.
 ---
 
 ## Reminder
-After **any changes** to previews, Export the preview to your G:\Shared drives\MSB Database\UserPreviewStaging\`Author Folder`
-- Run the full **Workflow v6** pipeline:
-  1. Merger
-  2. Parser
-  3. Sheet Export
-  4. DB Compare
+After **any changes** to previews, export the authoritative preview set from the
+approved Master PC and run the controlled V7 production workflow:
+
+1. V7 scene-aware parser.
+2. Protected PostgreSQL snapshot ingest.
+3. Reconciliation from `https://lortodb.sheboyganlights.org/lor2db/`.
+4. Finish, validation, and immutable report review.
+
+Use `LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md`
+for the current stop conditions and exact workflow. The V6 merger/parser/compare
+pipeline is archived and is not a production procedure.
 
 This ensures the system stays consistent for all users.
 

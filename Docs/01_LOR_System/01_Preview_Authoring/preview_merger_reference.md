@@ -1,96 +1,93 @@
-# Preview Merger — Reference (v1)
+# Preview Merger Reference
 
-> Status Note — March 2026:
-> This document reflects an earlier multi-user preview merge workflow.
-> Current operational source of truth is the ShowPC post-show preview set.
-> Personal preview stores are no longer considered authoritative.
+| Document control | Value |
+|---|---|
+| Process status | ACTIVE — required preview-integrity control |
+| Implementation status | REVIEW REQUIRED before production apply |
+| Current master | Office PC during LOR 6.6.4/V7 development |
+| Current revision | 2026-08-06 |
 
-_Companion to **MSB Preview Update — Operator Quickstart (Consolidated)**._  
-Use this when you need the **why/details** behind the workflow.
+## Why this exists
 
-## Purpose & scope
-`preview_merger.py` selects the best `.lorprev` per preview and stages it to **Database Previews**, producing CSV/HTML reports and a local‑time audit in `preview_history.db`. This doc defines the **rules, columns, and flags**.
+Every programmer works on an isolated LOR preview on their own PC. Their
+working folder is a comparison source, not authority to overwrite the master.
+The Preview Merger exists to compare all candidate exports, expose conflicts,
+apply only reviewed changes, preserve history, and prove idempotence with a
+second `noop` run.
 
-## Required locations (Google Workspace)
-- **User exports (input):** `G:\Shared drives\MSB Database\UserPreviewStaging\<username>\*.lorprev`
-- **Staged previews (output):** `G:\Shared drives\MSB Database\Database Previews`
-- **Reports:** `G:\Shared drives\MSB Database\database\merger\reports\*`
-- **History DB (audit):** `G:\Shared drives\MSB Database\database\merger\preview_history.db`
-- **Time policy:** **Local, tz‑aware** strings everywhere (no UTC).
-- **Default run:** **Dry‑run**; pass `--apply` to stage files.
+Historically the Show PC held the master. During LOR 6.6.4 and V7 development,
+the Office PC is the designated master. Authority may move back only through a
+deliberate handoff after development is complete.
 
-## Selection policy (how winners are chosen)
-Default policy: **prefer‑comments‑then‑revision**
-1. Highest **CommentNoSpace** (strict “real comments” score).  
-2. Highest numeric **Revision**.  
-3. Best fill ratio **CommentFilled / CommentTotal**.  
-4. Latest **Exported** time.  
-5. Deterministic path/name fallback.
+## Required locations
 
-Alternate policies (if enabled in your script): `prefer‑revision‑then‑exported`, `prefer‑exported`.
+- Programmer exports:
+  `G:\Shared drives\MSB Database\UserPreviewStaging\<username>\*.lorprev`
+- Controlled preview set:
+  `G:\Shared drives\MSB Database\Database Previews`
+- Current consolidated reports/history location used by the recovered code:
+  `G:\Shared drives\MSB Database\Database Previews\reports`
+- Default operation: dry-run. `--apply` changes the controlled set and is
+  blocked until the recovered implementation passes the V7/6.6.8 review in
+  `LOR/preview_merger/README.md`.
 
-### DeviceType=="None" rule
-When props in a preview have `DeviceType="None"` (as set in Sequencer), **blank comments are ignored** on purpose. This prevents inflating “missing comments.”
+## Review sequence
 
-## Column dictionary — `lorprev_compare.csv`
-Each row represents a **relationship** between a candidate and what’s currently staged. Keys you’ll reference most:
+1. Confirm each export is in the correct programmer folder.
+2. Run `preview_merger.py` without `--apply`.
+3. Review `compare.csv`, `missing_comments.csv`,
+   `all_staged_comments.csv`, `excluded_winners.csv`,
+   `current_previews_ledger.csv`, and `revision_mismatches.csv` as available.
+4. Use preview filenames for operator review. Retain Key/GUID for database
+   correlation, but never make the operator identify a preview from GUID alone.
+5. Treat identifier changes, revision conflicts, older candidates, unexpected
+   semantic changes, and incomplete comments as review conditions.
+6. Resolve conflicts and rerun the dry comparison.
+7. Apply only after the report is clean and the implementation guardrails have
+   been approved for the current environment.
+8. Run again and require `noop` for every applied preview.
 
-- **Role** – `WINNER`, `CANDIDATE`, `STAGED`, `STAGED‑ONLY`  
-  - `WINNER`: the chosen user file for this Key on this run.  
-  - `CANDIDATE`: other user files for the same Key.  
-  - `STAGED`: current staged file matched to the Key.  
-  - `STAGED‑ONLY`: staged file with no user candidate this run.
-- **Key** – `GUID:<guid>` if a GUID exists; otherwise `NAME:<lowercased name>`.
-- **GUID** – Parsed from `.lorprev` (blank if missing).  
-  **Guardrail**: If this changes between runs, preview structure likely changed (possible breaking change).
-- **Action** (on WINNER):  
-  - `noop` — winner matches staged (sha equal)  
-  - `update‑staging` — will overwrite staged on `--apply`  
-  - `stage‑new` — no staged match exists (new preview)
-- **Action** (on STAGED): `current`, `out‑of‑date`, `staged‑only`.
-- **WinnerSha8 / StagedSha8** – First 8 of file SHA‑256 for quick equality check.
-- **Revision / RevisionRaw** – Parsed numeric and original string.
-- **Exported** – Local time the file claims it was exported (from metadata), or file mtime fallback.
-- **CommentTotal / CommentFilled / CommentNoSpace** –  
-  - **Total**: Count of comment slots.  
-  - **Filled**: Non‑empty comments (ignoring DeviceType==None blanks).  
-  - **NoSpace**: Filled comments with **no spaces** (proxy for correct DisplayName convention).
-- **User / UserEmail** – Derived from subfolder or provided mapping.
-- **Path / FileName** – Full source path and file name.
-- **DecisionReason** – Why the winner beat other candidates (only present in some builds or logs).
+## Comparison fields
 
-### How to interpret comment coverage
-- If **NoSpace ≈ Filled** and both are close to **Total**, DisplayNames are likely conforming.  
-- If **NoSpace** lags **Filled**, you likely have spaces in DisplayNames.
+- **Role:** `WINNER`, `CANDIDATE`, `STAGED`, or `STAGED-ONLY`.
+- **Action:** `noop`, `update-staging`, `stage-new`, `current`,
+  `out-of-date`, or `staged-only`.
+- **PreviewName/FileName:** required human-readable identity for review.
+- **Key/GUID:** machine correlation; identifier changes require investigation
+  because copied/imported LOR snapshots may receive new IDs.
+- **WinnerSha8/StagedSha8:** quick content equality check.
+- **Revision/RevisionRaw:** parsed and original revision values.
+- **Exported:** LOR export time, with file time used only as a fallback.
+- **CommentTotal/CommentFilled/CommentNoSpace:** comment coverage and naming
+  quality indicators. Blank comments on `DeviceType="None"` are intentionally
+  excluded.
+- **Path/StagedPath:** exact programmer candidate and controlled-set paths.
 
-## Column dictionary — `lorprev_missing_comments.csv`
-This is a targeted list for clean‑up work.
+## Selection and safety
 
-- **Key / GUID / PreviewName** – Identification for the preview.  
-- **CommentTotal / CommentFilled / CommentNoSpace** – Same definitions as above.  
-- **NeedsAttention** – Heuristic flag (e.g., `NoSpace < Filled`).  
-- **Notes** – May include reminders about DeviceType==None behavior.
+The recovered code currently defaults to `prefer-exported`, although older
+documentation described `prefer-comments-then-revision`. This is not a settled
+production policy. The V7/6.6.8 review must validate the selection order and
+turn on the appropriate regression safeguards before any production apply.
 
-## Breaking‑change check (Key/GUID)
-- If **Key** flips from `GUID:<...>` to `NAME:<...>` or the **GUID** changes, treat it as **breaking until proven safe**.  
-- Re‑open in **formview.py**, verify channel names/assignments, fix, re‑export, and re‑run the dry‑run until the Key stabilizes.
+The current code also has:
 
-## Flags & usage
-- **`--apply`** — actually stage winners, produce `.bak` when overwriting different files.  
-- **`--policy <name>`** — choose an alternate selection policy (if wired in your build).  
-- **`--report` / `--report-html`** — generate CSV/HTML reports (if split from default flow in your build).  
-- **`--debug`** — verbose logging.  
-- **Defaults** – Script knows the `G:` paths; no flags required for normal runs.
+```python
+REQUIRE_CORE_DIFF = False
+REQUIRE_AUTHOR_NEWER = False
+```
 
-## Troubleshooting
-- **My export wasn’t considered** — ensure it’s under `UserPreviewStaging\<username>` and Drive shows a green checkmark.  
-- **Everything shows stage‑new** — make sure the current staged file (if any) is at the **top level** of `Database Previews`.  
-- **Huge list in missing_comments** — check for DeviceType==None; blanks there are intentional and excluded.  
-- **Locked files** — close SQLiteStudio, Excel, or editors that might have opened staged files during `--apply`.
+That is the most permissive profile. It must not be silently accepted as the
+production configuration.
 
-## Related docs
-- **MSB Preview Update — Operator Quickstart (Consolidated)** — do‑this‑now checklist.  
-- **Reporting & History** — schema, canned queries, and the `report_preview_history.py` tool.
+## Relationship to V7
 
-> This doc supersedes overlapping sections in the older `preview_merger_documentation_pack_v_*.md` files.
+The approved controlled preview set is the only valid input to
+`LOR/ingest/parse_props_v7_scene_parser.py`. V7 imports preview-level (`P`)
+scenes from `.lorprev`; sequence-level (`S`) scenes are intentionally excluded.
+The SQLite snapshot then serves FormView compatibility needs and PostgreSQL
+snapshot ingest according to their documented contracts.
+
+Detailed implementation ownership and the LOR 6.6.8 compatibility checklist
+are in [LOR Preview Merger](../../../../LOR/preview_merger/README.md).
 

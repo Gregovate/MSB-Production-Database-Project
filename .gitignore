@@ -31,6 +31,9 @@ dist/
 build_artifacts/
 *.spec
 
+# === db connections ===
+credentials/
+
 # === Python cache / temp ===
 
 __pycache__/

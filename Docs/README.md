@@ -1,108 +1,29 @@
-# MSB Database — Documentation Index
+# MSB Production Database Documentation
 
-Welcome to the documentation hub for the **Making Spirits Bright Production Database Project**.
+This index identifies the current documentation entry points. Superseded V6
+parser and SQLite instructions are preserved under `archive/v6/` and are not
+part of the production workflow.
 
-This folder contains the detailed documentation for the **Making Spirits Bright Production Database Project** — including preview build procedures, operator guides, and developer references.
+## LOR system
 
-The MSB Database system integrates:
-- Light-O-Rama (LOR) previews and channel data
-- Wiring and stage maps
-- Inventory and maintenance tracking
-- SQL and Excel reporting automation
+- [LOR system overview](01_LOR_System/00_Project_Overview/00_LOR_System_Overview.md)
+- [Naming conventions](01_LOR_System/01_Preview_Authoring/A_Naming_Conventions.md)
+- [Building previews](01_LOR_System/01_Preview_Authoring/B_Building_Preview_Howto.md)
+- [Preview import workflow](01_LOR_System/01_Preview_Authoring/Preview_Import_Workflow.md)
+- [V7 extraction and production workflow](01_LOR_System/02_Data_Extraction/README.md)
 
-All documents here are maintained under version control to ensure consistent processes between **ShowPC**, **OfficePC**, and field operators.
+## Production database
 
----
+- [System architecture](02_Production_Database/01_System_Architecture/)
+- [Operational procedures](02_Production_Database/02_Operational_SOPs/)
+- [LOR production import and reconciliation procedure](../LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md)
+- [LOR production promotion design](../LOR2DB/Reconciliation/01_LOR_Production_Promotion_Pipeline_Design.md)
+- [Manual reconciliation fallback runbook](../LOR2DB/Reconciliation/02_LOR_Manual_Reconciliation_Runbook.md)
 
----
+## Archive
 
-## 📘 Core Documents
+- [V6 parser and database archive](../archive/v6/README.md)
+- [General archived documentation](../archive/docs/)
 
-- [00 Project Overview](./docs/00_Project_Overview.md)
-- [Project Overview (Narrative)](./Project_Overview.md)
-
-### LOR System
-- [01 Naming Conventions](./01_LOR_System/01_Naming_Conventions.md)
-- [Building a Preview (How-To)](./01_LOR_System/building_preview_howto.md)
-- [Preview Import Workflow](./01_LOR_System/Preview_Import_Workflow.md)
-- [Preview Merger — Reference](./01_LOR_System/preview_merger_reference.md)
-- [Core Comparison Logic](./01_LOR_System/Core_Comparison_Logic.md)
-- [Database Structure (LOR)](./01_LOR_System/03_Database_Structure.md)
-- [Quickstart (Operators)](./01_LOR_System/quickstart_operator.md)
-- [Reporting History](./01_LOR_System/reporting_history.md)
-- [Workflow v6 Readme](./01_LOR_System/workflow_v_6_readme.md)
-
----
-
-## 🗄 Production Database
-
-- [Production Overview](./02_Production_Database/Production_Overview.md)
-
----
-
-## 🧰 Support & Setup
-
-- [Troubleshooting](./01_LOR_System/Troubleshooting.md)
-
-### Setup Guides
-- [Install SQLite](./Setup/install_sqlite.md)
-- [Install SQLite DB Browser](./Setup/install_sqlite_db_browser.md)
-
----
-
-## 🗂 Reference / Archive
-
-- [Database Cheat Sheet](./01_LOR_System/database_cheatsheet.md)
-- [Processing Rules](./01_LOR_System/ProcessingRules.md)
-- [Legacy Planning Notes 2023](./archive/legacy_planning_notes_2023.md)
-
----
-```
-Docs/
-│
-├── 00_Project_Overview.md
-│
-├── 01_LOR_System/
-│   ├── Naming_Conventions.md
-│   ├── Preview_Import_Workflow.md
-│   ├── Preview_Merger_Reference.md
-│   ├── Building_Preview_HowTo.md
-│   ├── Processing_Rules.md
-│   ├── Core_Comparison_Logic.md
-│   ├── Workflow_v6_Readme.md
-│   ├── Reporting_History.md
-│   ├── Troubleshooting.md
-│   └── database_cheatsheet.md
-│
-├── 02_Production_Database/
-│   ├── Production_Overview.md
-│   ├── Data_Contract_LOR_to_Production.md
-│   ├── Database_Structure.md
-│   ├── Ingestion_Process.md
-│   ├── Display_Model.md
-│   ├── Storage_Model.md
-│   ├── Maintenance_Model.md
-│   ├── Kit_and_Inventory_Model.md
-│   ├── Controller_Model.md
-│   └── Reporting_and_Views.md
-│
-├── 03_Integration/
-│   ├── LOR_Snapshot_Model.md
-│   ├── DisplayKey_Normalization.md
-│   ├── Validation_and_QA.md
-│   ├── Change_Control.md
-│   └── Versioning_Strategy.md
-│
-├── 04_Operations/
-│   ├── Operator_Quickstart.md
-│   ├── Annual_Startup_Process.md
-│   ├── Annual_Shutdown_Process.md
-│   ├── Maintenance_Season_Workflow.md
-│   └── Field_Wiring_Tablet_App.md
-│
-├── images/
-└── Setup/
-```
-> **Revision History**  
-> - GAL 25-10-29 — Initial merge of documentation index and project overview.  
-> - GAL 25-10-30 — Added integrated intro paragraph and internal navigation links.
+Historical documents retain their original commands and filenames as evidence.
+They must not be used as current operating instructions.

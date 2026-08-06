@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOR reconciliation preflight</title>
+  <link rel="stylesheet" href="preflight.css">
+</head>
+<body>
+  <main id="app" class="shell" aria-live="polite">
+    <p class="loading">Loading reconciliation preflight…</p>
+  </main>
+
+  <dialog id="dialog">
+    <form method="dialog">
+      <h2 id="dialog-title"></h2>
+      <div id="dialog-body"></div>
+      <label id="dialog-reason-wrap" hidden>
+        Reason
+        <textarea id="dialog-reason" rows="3"></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel">Back</button>
+        <button id="dialog-confirm" class="danger" value="confirm">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="preflight.js" defer></script>
+</body>
+</html>
