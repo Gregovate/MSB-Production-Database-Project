@@ -9,6 +9,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-06 | Enforced permanent one-to-one snapshot ownership. The landing page now continues any unfinished run first and uses the existing `import_run_id` link instead of numeric run recency. Start is hidden and rejected when the snapshot already owns any reconciliation row; cancelled and failed runs also consume their snapshot. |
 | 2026-08-06 | Corrected report-writer deployment after Run 5 exposed a stale repository-layout path. Backend V0.3.1 requires the absolute deployed publisher path and verifies the file before execution. Browser V0.4.2 replaces the production-write confirmation with an explicit report-only retry when a run is already in `REPORTING`. |
 | 2026-08-06 | Added the `/lor2db/` landing page, current snapshot/reconciliation status API, immutable report link, and guarded Start action. Recorded completed Run 4 acceptance. |
 | 2026-08-05 | Removed redundant backend `FOR UPDATE` locks that required unintended table-wide write permission; protected database functions and procedures remain the only writers and retain the authenticated operator email in the audit record. |
@@ -43,11 +44,22 @@ The page calls the existing authenticated backend through
 `/lor2db/preflight/api/`. It shows:
 
 - the current committed snapshot, parser/ingest provenance, and row counts;
-- the latest persistent reconciliation run and validation/exception state;
+- the persistent reconciliation run that owns or blocks the current snapshot;
 - the immutable report for a published run;
-- **Open reconciliation** when a run is already active;
-- **Start reconciliation** only when the latest snapshot is not already
-  reconciled and no run is open.
+- **Continue previous reconciliation** whenever any run is unfinished;
+- **Start reconciliation** only when the current snapshot has no matching row
+  in `ops.lor_reconciliation_run` and no other run is unfinished.
+
+`lor_snap.import_run_id` to `ops.lor_reconciliation_run.import_run_id` is a
+permanent one-to-one relationship. `COMPLETED`, `COMPLETED_WITH_EXCEPTIONS`,
+`CANCELLED`, `FAILED`, and historical `SUPERSEDED` runs all consume their
+captured snapshot. A cancelled
+run follows the documented emergency cancellation procedure, including removal
+of its disposable snapshot, so another attempt requires a newly parsed and
+ingested snapshot. Migration `0030_enforce_one_reconciliation_per_snapshot.sql`
+enforces both snapshot uniqueness and the single-unfinished-run rule in
+PostgreSQL; the browser and backend enforce the same contract for a clear
+operator experience.
 
 The Start endpoint acquires the same advisory lock as the database Start
 function, repeats eligibility inside that transaction, and captures the
@@ -141,7 +153,9 @@ Requires `READY_TO_FINISH`, zero unresolved groups, an unchanged final-review
 publisher. This is the only production-write endpoint.
 
 If production promotion commits but report publication fails, the run remains
-`REPORTING`. Repeating Finish does not repeat P1-P4; it retries only publication.
+`REPORTING`. The landing page must present **Continue previous reconciliation**;
+the run page presents **Retry report publication**. Repeating Finish does not
+repeat P1-P4; it retries only publication.
 
 ## Deployment boundary
 
