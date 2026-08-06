@@ -20,7 +20,7 @@ button.danger { color: #fff; border-color: var(--danger); background: var(--dang
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 22px; box-shadow: 0 2px 8px #0000000b; }
 .header, .footer { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
 h1, h2, h3 { margin: 0; }
-.meta, .facts, .actions, .footer-actions { display: flex; gap: 8px 18px; flex-wrap: wrap; }
+.meta, .facts, .footer-actions { display: flex; gap: 8px 18px; flex-wrap: wrap; }
 .meta, .muted, .fact-label { color: var(--muted); }
 .badge { display: inline-block; border-radius: 999px; background: #e8eef4; padding: 2px 9px; font-size: 12px; font-weight: 650; }
 .status { text-align: right; }
@@ -31,13 +31,19 @@ select, textarea { border: 1px solid #aeb8c2; border-radius: 4px; background: #f
 .column-head, .candidate { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; }
 .column-head { padding: 14px 0 8px; color: var(--muted); }
 .candidate { padding: 17px 0; border-top: 1px solid var(--line); align-items: center; }
-.evidence { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.evidence { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+.bulk-enabled .evidence { grid-template-columns: 94px minmax(0, 1fr); }
+.row-selector { display: none; gap: 7px; align-items: start; color: var(--muted); font-size: 12px; font-weight: 500; line-height: 1.2; }
+.bulk-enabled .row-selector { display: flex; }
+.row-selector input { margin-top: 2px; }
 .title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 5px; }
 .facts { margin-top: 8px; font-size: 13px; }
 .decision-panel { display: grid; gap: 10px; }
-.actions label { display: flex; gap: 6px; align-items: center; font-weight: 500; }
+.decision { width: 100%; }
 .reason { width: 100%; }
-.saved { color: var(--ok); font-size: 13px; }
+.save-state { color: var(--muted); font-size: 13px; }
+.save-state.is-saved { color: var(--ok); font-weight: 650; }
+.save-state.is-unsaved { color: #9a5a00; font-weight: 650; }
 .error { color: var(--danger); font-weight: 650; }
 .footer { align-items: center; padding-top: 20px; border-top: 1px solid var(--line); }
 .final-list { margin: 18px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }

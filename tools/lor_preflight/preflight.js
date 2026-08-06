@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-05 V0.2.0
+ * Current version: 2026-08-05 V0.4.0
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -48,26 +48,38 @@
     return action.toLowerCase().split("_").map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
   }
 
+  function decisionLabel(action, proposed, candidate) {
+    const current = candidate.current_display_name || candidate.entity_key;
+    const next = candidate.proposed_display_name || candidate.entity_key;
+    const labels = {
+      ADD_NEW_DISPLAY: `Add ${next} as a new ACTIVE display`,
+      RENAME_DISPLAY: `Approve name change from ${current} to ${next}`,
+      SET_RECYCLED: `Mark ${current} as RECYCLED`,
+      SET_RETIRED: `Mark ${current} as RETIRED`,
+      RESTORE_TO_LOR_REQUIRED: "LOR source needs correction — leave production unchanged",
+      CORRECT_SOURCE_REQUIRED: "Source information is incorrect — leave production unchanged",
+      DEFER: "Defer — leave production unchanged for this run"
+    };
+    if (labels[action]) return labels[action];
+    return `${action === proposed ? "Accept" : "Choose"} — ${actionLabel(action)}`;
+  }
+
   function displayName(candidate) {
     return candidate.current_display_name || candidate.proposed_display_name || candidate.entity_key;
   }
 
-  function decisionMode(candidate) {
-    if (!candidate.effective_action_type) return "";
-    if (candidate.effective_action_type === "DEFER") return "DEFER";
-    if (candidate.effective_action_type === proposedAction(candidate)) return "ACCEPT";
-    return "CHANGE";
-  }
-
   function renderCandidate(candidate) {
     const proposed = proposedAction(candidate);
-    const mode = decisionMode(candidate);
-    const alternatives = candidate.allowed_actions.filter((action) => action !== "DEFER" && action !== proposed);
+    const orderedActions = [
+      ...(proposed ? [proposed] : []),
+      ...candidate.allowed_actions.filter((action) => action !== proposed && action !== "DEFER"),
+      ...candidate.allowed_actions.filter((action) => action === "DEFER")
+    ];
     const facts = (candidate.facts || []).map((fact) =>
       `<span><span class="fact-label">${esc(fact.label)}:</span> ${esc(fact.value)}</span>`).join("");
     return `<section class="candidate" data-group-id="${candidate.group_id}">
       <div class="evidence">
-        <input class="row-select" type="checkbox" aria-label="Select ${esc(displayName(candidate))}">
+        <label class="row-selector"><input class="row-select" type="checkbox"><span>Select for<br>group action</span></label>
         <div>
           <div class="title"><h3>${esc(displayName(candidate))}</h3><span class="badge">${esc(candidate.classification_label)}</span></div>
           <div>${esc(candidate.operator_message)}</div>
@@ -75,16 +87,14 @@
         </div>
       </div>
       <div class="decision-panel">
-        <div class="actions" role="radiogroup" aria-label="Decision for ${esc(displayName(candidate))}">
-          <label><input type="radio" name="decision-${candidate.group_id}" value="ACCEPT" ${proposed ? "" : "disabled"} ${mode === "ACCEPT" ? "checked" : ""}>Accept</label>
-          <label><input type="radio" name="decision-${candidate.group_id}" value="CHANGE" ${alternatives.length ? "" : "disabled"} ${mode === "CHANGE" ? "checked" : ""}>Change</label>
-          <label><input type="radio" name="decision-${candidate.group_id}" value="DEFER" ${candidate.allowed_actions.includes("DEFER") ? "" : "disabled"} ${mode === "DEFER" ? "checked" : ""}>Defer</label>
-        </div>
-        <label class="alternative" ${mode === "CHANGE" ? "" : "hidden"}>Valid action
-          <select>${alternatives.map((action) => `<option value="${esc(action)}" ${action === candidate.effective_action_type ? "selected" : ""}>${esc(actionLabel(action))}</option>`).join("")}</select>
+        <label>Decision
+          <select class="decision">
+            <option value="">Choose a decision…</option>
+            ${orderedActions.map((action) => `<option value="${esc(action)}" ${action === candidate.effective_action_type ? "selected" : ""}>${esc(decisionLabel(action, proposed, candidate))}</option>`).join("")}
+          </select>
         </label>
         <label>Operator reason<textarea class="reason" rows="2" placeholder="Required before saving">${esc(candidate.effective_reason || "")}</textarea></label>
-        <div><button class="save" type="button">Save decision</button> <span class="saved">${candidate.effective_action_type ? "Recorded" : ""}</span></div>
+        <div><button class="save" type="button">Save decision</button> <span class="save-state ${candidate.effective_action_type ? "is-saved" : ""}">${candidate.effective_action_type ? "Saved" : "Not saved"}</span></div>
       </div>
     </section>`;
   }
@@ -100,10 +110,11 @@
         <div class="status"><strong>${complete} of ${model.candidates.length} complete</strong><div class="muted">Production remains unchanged</div></div>
       </header>
       <section class="group-tools">
-        <div><strong>Apply one decision to related checks</strong><div class="muted">Select the lines first. Each line remains visible and can be changed afterward.</div></div>
-        <div class="group-controls"><label>Group action<select id="bulk-action"><option value="">Choose…</option>${bulkActions.map((action) => `<option value="${esc(action)}">${esc(actionLabel(action))}</option>`).join("")}</select></label><button id="apply-bulk">Apply and save</button></div>
+        <div><strong>Bulk decisions</strong><div class="muted">Use only when the same decision and reason apply to several related checks.</div></div>
+        <button id="toggle-bulk" type="button" aria-expanded="false">Enable bulk decision mode</button>
+        <div class="group-controls" hidden><label>Group action<select id="bulk-action"><option value="">Choose…</option>${bulkActions.map((action) => `<option value="${esc(action)}">${esc(actionLabel(action))}</option>`).join("")}</select></label><button id="apply-bulk">Apply and save</button></div>
       </section>
-      <div class="column-head"><span>Preflight check and evidence</span><span>Operator decision</span></div>
+      <div class="column-head"><span>Preflight check and evidence</span><span>Operator decision — choose, explain, then save</span></div>
       <div id="candidates">${model.candidates.map(renderCandidate).join("")}</div>
       <p id="error" class="error" role="alert"></p>
       <footer class="footer"><button id="cancel-run">Cancel reconciliation</button><div class="footer-actions"><span class="muted">${remaining ? `${remaining} decision${remaining === 1 ? "" : "s"} remain.` : "All decisions are recorded."}</span><button id="continue" class="primary" ${remaining || model.status !== "READY_TO_FINISH" ? "disabled" : ""}>Continue to final review</button></div></footer>
@@ -111,16 +122,12 @@
     bindReview();
   }
 
-  function selectedAction(section, candidate) {
-    const mode = section.querySelector("input[type=radio]:checked")?.value;
-    if (mode === "ACCEPT") return proposedAction(candidate);
-    if (mode === "CHANGE") return section.querySelector("select").value;
-    if (mode === "DEFER") return "DEFER";
-    return null;
+  function selectedAction(section) {
+    return section.querySelector(".decision").value || null;
   }
 
   async function saveCandidate(section, candidate) {
-    const action = selectedAction(section, candidate);
+    const action = selectedAction(section);
     const reason = section.querySelector(".reason").value.trim();
     if (!action || !reason) throw new Error("Select a decision and enter a specific operator reason.");
     const result = await request(`api/runs/${model.run_id}/groups/${candidate.group_id}/decisions`, {
@@ -132,16 +139,29 @@
 
   function bindReview() {
     const error = document.querySelector("#error");
+    const continueButton = document.querySelector("#continue");
+    const markUnsaved = (section) => {
+      const state = section.querySelector(".save-state");
+      state.textContent = "Unsaved changes";
+      state.classList.remove("is-saved");
+      state.classList.add("is-unsaved");
+      continueButton.disabled = true;
+    };
     document.querySelectorAll(".candidate").forEach((section) => {
       const candidate = model.candidates.find((item) => item.group_id === Number(section.dataset.groupId));
-      section.querySelectorAll("input[type=radio]").forEach((radio) => radio.addEventListener("change", () => {
-        section.querySelector(".alternative").hidden = radio.value !== "CHANGE";
-        section.querySelector(".saved").textContent = "Not saved";
-      }));
+      section.querySelector(".decision").addEventListener("change", () => markUnsaved(section));
+      section.querySelector(".reason").addEventListener("input", () => markUnsaved(section));
       section.querySelector(".save").addEventListener("click", async () => {
         error.textContent = "";
         try { await saveCandidate(section, candidate); } catch (failure) { error.textContent = failure.message; }
       });
+    });
+    document.querySelector("#toggle-bulk").addEventListener("click", (event) => {
+      const enabled = event.currentTarget.getAttribute("aria-expanded") === "true";
+      event.currentTarget.setAttribute("aria-expanded", String(!enabled));
+      event.currentTarget.textContent = enabled ? "Enable bulk decision mode" : "Disable bulk decision mode";
+      document.querySelector(".group-controls").hidden = enabled;
+      document.querySelector("#candidates").classList.toggle("bulk-enabled", !enabled);
     });
     document.querySelector("#apply-bulk").addEventListener("click", async () => {
       error.textContent = "";
