@@ -2,7 +2,7 @@
 Object group: Snapshot reconciliation ownership
 Repository:   LOR2DB/Reconciliation/reconciliation/migrations/
 Filename:     0030_enforce_one_reconciliation_per_snapshot.sql
-Revision:     2026-08-06-one-reconciliation-per-snapshot-v1
+Revision:     2026-08-06-one-reconciliation-per-snapshot-v3
 
 Purpose:
   Restore the permanent one-to-one relationship between a committed LOR
@@ -17,8 +17,11 @@ Safety boundary:
   - Stops with a descriptive error if any other existing data violates either rule.
 
 Revision history:
-  2026-08-06  GAL / OpenAI  Corrected V1 cleanup to include all three frozen
-                           source-evidence immutability triggers.
+  2026-08-06  GAL / OpenAI  V3 disables all user-defined immutability triggers
+                           on the guarded cleanup tables, avoiding reliance on
+                           incomplete or differing installed trigger names.
+  2026-08-06  GAL / OpenAI  V2 added the three named frozen-source triggers;
+                           production validation found another active trigger.
   2026-08-06  GAL / OpenAI  V1 snapshot-ownership enforcement, including
                            guarded cleanup of obsolete uncommitted Run 2.
 ============================================================================ */
@@ -92,27 +95,29 @@ BEGIN
                 'Run 2 cleanup refused: expected exactly five uncommitted supersession/unresolved results';
         END IF;
 
-        /* Immutable audit triggers normally prohibit deletion. Disable only
-           the named triggers, delete this one proven-uncommitted attempt in
-           foreign-key order, and immediately restore the triggers. */
+        /* Immutable audit triggers normally prohibit deletion. Disable all
+           user-defined triggers only on the guarded cleanup tables, delete
+           this one proven-uncommitted attempt in foreign-key order, and
+           immediately restore the user-defined triggers. PostgreSQL internal
+           constraint triggers remain enabled throughout. */
         ALTER TABLE ops.lor_reconciliation_result
-            DISABLE TRIGGER trg_lor_reconciliation_result_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_scene_display_candidate
-            DISABLE TRIGGER trg_lor_reconciliation_scene_display_candidate_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_scene_candidate
-            DISABLE TRIGGER trg_lor_reconciliation_scene_candidate_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_stage_candidate
-            DISABLE TRIGGER trg_lor_reconciliation_stage_candidate_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_display_candidate
-            DISABLE TRIGGER trg_lor_reconciliation_display_candidate_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_group
-            DISABLE TRIGGER trg_lor_reconciliation_group_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_source_scene
-            DISABLE TRIGGER trg_lor_reconciliation_source_scene_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_source_preview
-            DISABLE TRIGGER trg_lor_reconciliation_source_preview_immutable;
+            DISABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_source_run
-            DISABLE TRIGGER trg_lor_reconciliation_source_run_immutable;
+            DISABLE TRIGGER USER;
 
         DELETE FROM ops.lor_reconciliation_action_assignment
         WHERE lor_reconciliation_action_id IN (
@@ -144,23 +149,23 @@ BEGIN
         WHERE lor_reconciliation_run_id = 2;
 
         ALTER TABLE ops.lor_reconciliation_result
-            ENABLE TRIGGER trg_lor_reconciliation_result_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_scene_display_candidate
-            ENABLE TRIGGER trg_lor_reconciliation_scene_display_candidate_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_scene_candidate
-            ENABLE TRIGGER trg_lor_reconciliation_scene_candidate_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_stage_candidate
-            ENABLE TRIGGER trg_lor_reconciliation_stage_candidate_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_display_candidate
-            ENABLE TRIGGER trg_lor_reconciliation_display_candidate_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_group
-            ENABLE TRIGGER trg_lor_reconciliation_group_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_source_scene
-            ENABLE TRIGGER trg_lor_reconciliation_source_scene_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_source_preview
-            ENABLE TRIGGER trg_lor_reconciliation_source_preview_immutable;
+            ENABLE TRIGGER USER;
         ALTER TABLE ops.lor_reconciliation_source_run
-            ENABLE TRIGGER trg_lor_reconciliation_source_run_immutable;
+            ENABLE TRIGGER USER;
     END IF;
 
     IF EXISTS (
@@ -207,7 +212,7 @@ COMMENT ON INDEX ops.ux_lor_reconciliation_one_unfinished_run IS
 'Only one unfinished reconciliation run may exist; it must be continued or cancelled before another snapshot can start.';
 
 COMMENT ON SCHEMA ops IS
-'Operational workflow and audit objects. Reconciliation engine revision 2026-08-06-one-reconciliation-per-snapshot-v1 installed.';
+'Operational workflow and audit objects. Reconciliation engine revision 2026-08-06-one-reconciliation-per-snapshot-v3 installed.';
 
 COMMIT;
 
