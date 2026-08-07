@@ -8,6 +8,12 @@ LOR2DB moves approved Light-O-Rama preview changes into the MSB production datab
 
 Cloudflare authentication is required, just as it is for [my.sheboyganlights.org](https://my.sheboyganlights.org/).
 
+![LOR2DB landing page](../Docs/images/lor2db_landing_page.jpg)
+
+The landing page shows the current LOR snapshot, reconciliation status, and the report for the current reconciliation run. Use **Report archive** to view all completed reconciliation reports, newest first.
+
+**Completed reconciliation reports:** [Open the report archive](https://my.sheboyganlights.org/lor2db/reports/)
+
 For procedures, recovery, and reconciliation details, go to [Reconciliation](Reconciliation/).
 
 ## What Do You Need To Do?
