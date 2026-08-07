@@ -46,6 +46,26 @@ You will learn how to:
 
 ---
 
+Complete the following lessons in order.
+
+| Lesson | Description |
+|---------|-------------|
+| [01 — Install Visual Studio Code and Git](01_Install_VSCode_and_Git.md) | Install the required software used throughout the MSB Documentation Project. |
+| [02 — Create a GitHub Account and Get Access](02_Create_GitHub_Account_and_Get_Access.md) | Create a GitHub account and obtain permission to access the MSB documentation project. |
+| [03 — Get the MSB Documentation on Your Computer](03_Get_MSB_Documentation_on_Your_Computer.md) | Download the MSB project to your computer and open it in Visual Studio Code. |
+| [04 — Open and Find MSB Documents](04_Open_and_Find_MSB_Documents.md) | Learn how the documentation is organized and how to locate the document you want to edit. |
+| [05 — Understanding Markdown](05_Understanding_Markdown.md) | Learn the basic Markdown formatting used throughout the MSB documentation. |
+| [06 — Edit and Preview a Document](06_Edit_and_Preview_a_Document.md) | Edit documentation, preview your changes, and verify formatting before saving. |
+| [07 — Save and Review Your Changes](07_Save_and_Review_Your_Changes.md) | Learn how to review your changes before submitting them for approval. |
+| [08 — Submit Changes for Review](08_Submit_Changes_for_Review.md) | Submit your documentation changes using GitHub and the review process. |
+| [09 — Update Your Copy Before Editing](09_Update_Your_Copy_Before_Editing.md) | Keep your local copy synchronized with the official MSB documentation. |
+| [10 — Respond to Review Comments](10_Respond_to_Review_Comments.md) | Learn how to respond to review comments and update an existing Pull Request. |
+| [11 — Markdown Quick Reference](11_Markdown_Quick_Reference.md) | A handy reference for the Markdown formatting used throughout the project. |
+| [12 — Common Problems and How to Fix Them](12_Common_Problems_and_How_to_Fix_Them.md) | Solutions to the most common questions and problems encountered by new contributors. |
+| [13 — Working with Screenshots](13_Working_with_Screenshots.md) | Learn how to capture, name, store, and reference screenshots using the shared `Docs/images` folder. |
+
+---
+
 # Why We Use This System
 
 A Word or Google Docs workflow works well when only a few people are editing a small number of documents.
