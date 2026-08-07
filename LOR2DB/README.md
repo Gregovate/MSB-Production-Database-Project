@@ -4,7 +4,9 @@ LOR2DB moves approved Light-O-Rama preview changes into the MSB production datab
 
 ## Start Here
 
-**Running the production workflow:** [Open LOR2DB](https://lortodb.sheboyganlights.org/lor2db/)
+**Running the production workflow:** [Open LOR2DB](https://my.sheboyganlights.org/lor2db/)
+
+Cloudflare authentication is required, just as it is for [my.sheboyganlights.org](https://my.sheboyganlights.org/).
 
 For procedures, recovery, and reconciliation details, go to [Reconciliation](Reconciliation/).
 
