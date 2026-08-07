@@ -44,6 +44,26 @@ Use only the sections that help the reader navigate.
 - Do not require volunteers to understand implementation terms before they can choose where to go.
 - A reader should normally know where to go next within about ten seconds.
 
+## Match the Portal to Its Audience
+
+All portal pages follow the same structural standard, but the language should reflect the intended audience.
+
+| Audience | Portal Style | Examples |
+|----------|--------------|----------|
+| Volunteers / Operators | Task-oriented | Reconciliation |
+| General Users | User-facing | Repository Root, LOR2DB, Reporting |
+| Engineers / Developers | Engineering | Application |
+| Documentation Maintainers | Standards | System_Documentation |
+
+The structure of the portal remains consistent throughout the repository, but the navigation and terminology should match the people who use it.
+
+- **Task-oriented portals** help readers complete an operational workflow.
+- **User-facing portals** introduce a system and help readers find information or reports.
+- **Engineering portals** may use technical terminology appropriate for developers and maintainers.
+- **Standards portals** describe how the documentation system is organized and maintained.
+
+Choose the portal style based on the primary audience, not the types of documents contained within the folder.
+
 ## Technical Detail
 
 Technical depth belongs one level deeper in procedures, design documents, runbooks, or subsystem documentation. A portal may briefly identify those destinations but should not reproduce their content.
