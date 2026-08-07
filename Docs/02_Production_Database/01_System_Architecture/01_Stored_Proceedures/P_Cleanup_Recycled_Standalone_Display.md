@@ -515,3 +515,33 @@ container_type = Standalone Display
 ---
 
 END OF DOCUMENT
+
+---
+
+# Related Documentation
+
+## Procedures
+
+- [`P_Refresh_Test_Session.md`](P_Refresh_Test_Session.md)
+
+  Synchronizes active display testing records and automatically invokes
+  this cleanup procedure when a recycled stand-alone display is detected
+  during a refresh operation.
+
+## Triggers
+
+This procedure is not directly invoked by a database trigger.
+
+Its normal execution path is through:
+
+```
+Directus
+    ↓
+Refresh Displays to Test
+    ↓
+trg_after_refresh_test_session
+    ↓
+ops.p_refresh_test_session()
+    ↓
+ops.p_cleanup_recycled_standalone_display()
+```
