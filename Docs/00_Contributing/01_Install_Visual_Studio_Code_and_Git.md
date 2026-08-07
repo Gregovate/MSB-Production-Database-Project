@@ -1,5 +1,11 @@
 # 01 — Install Visual Studio Code and Git
 
+[← Back to Contributor Training](README.md) | [Next: Create a GitHub Account and Get Access →](02_Create_GitHub_Account_and_Get_Access.md)
+
+---
+
+## Before You Begin
+
 This is the first setup step.
 
 You will install two programs:
@@ -7,24 +13,33 @@ You will install two programs:
 1. **Visual Studio Code**
 2. **Git**
 
-Both are required before continuing.
-
-You only need to perform this installation once on each computer you will use to edit MSB documentation.
+Both programs are free and are required before you can contribute to the MSB Documentation Project.
 
 ---
 
-# Before You Start
+## Required Software
 
-You will need:
+### Visual Studio Code
 
-* A Windows computer.
-* An internet connection.
-* Permission to install programs on the computer.
-* A web browser such as Microsoft Edge, Google Chrome, or Firefox.
+Visual Studio Code (VS Code) is the editor used to read and edit the MSB documentation.
 
-You do **not** need a GitHub account yet.
+Official download:
 
-That will be covered in the next step.
+https://code.visualstudio.com/
+
+---
+
+### Git
+
+Git keeps track of document changes and allows Visual Studio Code to communicate with GitHub.
+
+Official download:
+
+https://git-scm.com/downloads
+
+---
+
+Continue with the installation instructions below.
 
 ---
 
