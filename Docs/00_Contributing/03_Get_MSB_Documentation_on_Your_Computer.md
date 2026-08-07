@@ -54,9 +54,16 @@ Go to:
 
 **https://github.com/**
 
-If you already have a GitHub account that you are comfortable using for MSB documentation, you do not need to create another one.
+If you already have a GitHub account that uses your **@sheboyganlights.org** email address, you may use that account for the MSB Documentation Project.
 
-Sign in and continue to the section:
+If your existing GitHub account uses a personal email address (such as Gmail, Outlook, Yahoo, etc.), you should either:
+
+- Add your **@sheboyganlights.org** email address to that GitHub account and make it your primary email for MSB work, or
+- Create a separate GitHub account using your **@sheboyganlights.org** email address.
+
+Using your MSB email address helps identify contributors, simplifies project administration, and keeps project notifications associated with your MSB account.
+
+If you already have a suitable GitHub account, sign in and continue to:
 
 **Getting Access to the MSB Repository**
 
@@ -70,11 +77,18 @@ At the GitHub website, choose:
 
 **Sign up**
 
-GitHub will ask you for information including an email address and password.
+GitHub will ask you for an email address, password, and username.
 
-Use an email address that you regularly check.
+**Use your @sheboyganlights.org email address when creating your GitHub account.**
 
-You will need access to that email account to complete the registration process and receive future GitHub notifications.
+Your MSB email address will be used to:
+
+- Verify your GitHub account.
+- Receive GitHub notifications.
+- Identify you as an MSB Documentation contributor.
+- Receive access to the MSB Documentation Project.
+
+You will need access to your MSB email account to complete the registration process.
 
 ---
 
@@ -82,39 +96,44 @@ You will need access to that email account to complete the registration process 
 
 GitHub will ask you to choose a username.
 
-Your username is the name other contributors may see next to changes you submit.
+Your username identifies you to other contributors and will appear on documentation changes that you submit.
 
-Choose something appropriate for working with the MSB organization.
+Choose a professional username that you will be comfortable using as an MSB Documentation contributor.
 
-You do not need to create a technical or programming-style username.
+Your username does **not** have to match your email address or your real name, but it should be appropriate for a professional project.
 
 ---
 
 # Create a Secure Password
 
-Choose a password following GitHub's current password requirements.
+Create a strong password that meets GitHub's current password requirements.
 
-Do not share your GitHub password with another person.
+Choose a password that is unique to your GitHub account and store it securely using your approved password manager.
 
-MSB administrators do not need your password to give you documentation access.
+Never share your GitHub password with anyone.
+
+The MSB administrator does **not** need your password to grant access to the project.
 
 ---
 
 # Verify Your Email Address
 
-GitHub may send a verification message to the email address you provided.
+GitHub will send a verification message to your **@sheboyganlights.org** email address.
 
 Open your email.
 
 Look for the GitHub verification message.
 
-Follow the instructions in the message.
+Follow the instructions in the message to verify your email address.
 
-If you do not see the email:
+If you do not receive the verification email:
 
 1. Wait a few minutes.
 2. Check your Spam or Junk folder.
-3. Verify that you entered the correct email address.
+3. Confirm that you entered your **@sheboyganlights.org** email address correctly.
+4. Request that GitHub resend the verification email if necessary.
+
+Your GitHub account must have a verified **@sheboyganlights.org** email address before requesting access to the MSB Documentation Project.
 
 ---
 
