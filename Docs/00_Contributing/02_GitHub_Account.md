@@ -1,10 +1,16 @@
 # 02 — Create a GitHub Account and Get Access
 
+[← Previous: Install Visual Studio Code and Git](01_Install_VSCode_and_Git.md) | [Back to Contributor Training](README.md) | [Next: Get the MSB Documentation on Your Computer →](03_Get_MSB_Documentation_on_Your_Computer.md)
+
+---
+
+## Before You Begin
+
 Visual Studio Code and Git should already be installed before starting this section.
 
 If they are not installed, complete:
 
-**01_Install_VSCode_and_Git.md**
+[01 — Install Visual Studio Code and Git](01_Install_VSCode_and_Git.md)
 
 before continuing.
 
@@ -236,6 +242,14 @@ That process provides better editing, preview, and review tools.
 
 The next section will show you how to place the MSB documentation on your computer.
 
+---
+
+# Next Step
+
 Continue with:
 
-**03_Get_MSB_Documentation_on_Your_Computer.md**
+[03 — Get the MSB Documentation on Your Computer](03_Get_MSB_Documentation_on_Your_Computer.md)
+
+---
+
+[← Previous: Install Visual Studio Code and Git](01_Install_VSCode_and_Git.md) | [Back to Contributor Training](README.md) | [Next: Get the MSB Documentation on Your Computer →](03_Get_MSB_Documentation_on_Your_Computer.md)
