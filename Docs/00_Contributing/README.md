@@ -50,8 +50,8 @@ Complete the following lessons in order.
 
 | Lesson | Description |
 |---------|-------------|
-| [01 — Install Visual Studio Code and Git](01_Install_VSCode_and_Git.md) | Install the required software used throughout the MSB Documentation Project. |
-| [02 — Create a GitHub Account and Get Access](02_Create_GitHub_Account_and_Get_Access.md) | Create a GitHub account and obtain permission to access the MSB documentation project. |
+| [01 — Install Visual Studio Code and Git](01_Install_Visual_Studio_Code_and_Git.md) | Install the required software used throughout the MSB Documentation Project. |
+| [02 — Create a GitHub Account and Get Access](02_GitHub_Account.md) | Create a GitHub account and obtain permission to access the MSB documentation project. |
 | [03 — Get the MSB Documentation on Your Computer](03_Get_MSB_Documentation_on_Your_Computer.md) | Download the MSB project to your computer and open it in Visual Studio Code. |
 | [04 — Open and Find MSB Documents](04_Open_and_Find_MSB_Documents.md) | Learn how the documentation is organized and how to locate the document you want to edit. |
 | [05 — Understanding Markdown](05_Understanding_Markdown.md) | Learn the basic Markdown formatting used throughout the MSB documentation. |
@@ -63,6 +63,8 @@ Complete the following lessons in order.
 | [11 — Markdown Quick Reference](11_Markdown_Quick_Reference.md) | A handy reference for the Markdown formatting used throughout the project. |
 | [12 — Common Problems and How to Fix Them](12_Common_Problems_and_How_to_Fix_Them.md) | Solutions to the most common questions and problems encountered by new contributors. |
 | [13 — Working with Screenshots](13_Working_with_Screenshots.md) | Learn how to capture, name, store, and reference screenshots using the shared `Docs/images` folder. |
+| [14 — Visual Reference Guide](14_Visual_Reference_Guide.md) | Screenshots and visual examples of the Visual Studio Code and GitHub interface used throughout this training. |
+| [15 — Glossary](15_Glossary.md) | Definitions of common Git, GitHub, Visual Studio Code, and Markdown terms used in the MSB Documentation Project. |
 
 ---
 
@@ -216,7 +218,7 @@ The files in this folder are numbered so they appear in the order you should use
 
 Start with:
 
-**01_Install_VSCode_and_Git.md**
+[01 — Install Visual Studio Code and Git](01_Install_Visual_Studio_Code_and_Git.md)
 
 Do not skip directly to the editing instructions during your first setup.
 
