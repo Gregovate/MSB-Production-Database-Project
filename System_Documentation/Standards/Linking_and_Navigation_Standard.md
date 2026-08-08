@@ -55,15 +55,44 @@ Cross-system engineering navigation may supplement this model when a document ne
 
 Most readers should not need to understand the complete repository structure to find the document they need.
 
-## Link Validation
+## Repository Link Cleanup Procedure
 
-Automation may scan Markdown files and report:
+When repository paths have changed, use two passes before redesigning published index pages.
 
-- broken relative links;
+### Pass 1 — Repair Known Moved Paths
+
+Search current repository content for references to known former locations and replace only current navigation/documentation references that now point to moved files or folders.
+
+Examples include moved subsystem folders, renamed documentation roots, or replaced application URLs.
+
+Historical and archived documents may retain original paths when those paths are part of the historical record and the document is clearly identified as noncurrent.
+
+### Pass 2 — Verify README Portal Navigation
+
+After moved-path repairs:
+
+1. Review every current README portal in scope.
+2. Confirm every Markdown link target exists.
+3. Prefer direct links to child `README.md` files where a portal exists.
+4. Confirm Related Systems and Related Documents links resolve.
+5. Confirm image links and current external application URLs used by the portal remain valid.
+6. Record broken or ambiguous links that require human review rather than guessing a replacement.
+
+Do not redesign separately published `index.html` pages during these two passes unless that redesign is explicitly part of the task. Treat those index pages as a separate review because they may have different navigation and audience requirements.
+
+## Link Validation Automation
+
+Automation should eventually reproduce the same two-pass checks programmatically.
+
+At minimum, validation should report:
+
+- broken relative Markdown links;
 - missing README portals where a portal is expected;
-- links to missing files or folders;
-- deep links that may bypass an available child portal;
+- README links that point to missing files or folders;
+- links to a child folder when a direct child `README.md` portal is available;
 - non-clickable entries inside Related Systems or Related Documents sections;
-- current application URLs that still use known superseded locations.
+- image links that do not resolve;
+- current application URLs that still use known superseded locations;
+- references to known moved paths outside clearly historical/archive material.
 
-Automation should report problems before changing human-written navigation. Automatic rewriting should be limited to clearly defined generated sections when those are introduced and approved.
+Automation should report problems before changing human-written navigation. Automatic rewriting should be limited to explicitly approved generated sections or simple deterministic path migrations. Published `index.html` pages remain outside automatic rewriting until their design and ownership rules are separately approved.
