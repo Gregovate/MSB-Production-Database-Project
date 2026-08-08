@@ -5,7 +5,7 @@
 | Status | ACTIVE — transitional production application |
 | Owner | MSB Database Administrator |
 | Current application version | 0.3.1 |
-| Current revision | 2026-08-06 |
+| Current revision | 2026-08-0 |
 
 ## Purpose
 
@@ -39,6 +39,14 @@ It also queries established `_v6` SQLite views. These filenames and view names
 are active compatibility dependencies of FormView; they do **not** make the V6
 parser or V6 PostgreSQL ingest current. Any change to this contract requires a
 controlled FormView update and operational validation before deployment.
+
+Current data source
+
+FormView currently reads the compatibility database lor_output_v6.db.
+
+Equivalent views now exist in lor_output_v7_scene.db.
+
+Migration to the V7 scene-aware database is planned but not yet complete.
 
 ## Source, build, and deployment
 
