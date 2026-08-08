@@ -1,0 +1,1863 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PreviewClass id="ca4ff7e7-03f1-4dd7-8e32-4d5c632207f2" BackgroundFile="" Brightness="20" Revision="44" Name="Show Background Stage 24 Traditional Christmas">
+  <PropClass id="ab4ddfc2-a6dc-4102-a103-b9d2c5895bda" BulbShape="Square" ChannelGrid="Regular,7A,5,5,0,White" Comment="Nutcracker" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-05 Nutcracker" Parm1="78" Parm2="500">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.3803319" y="-0.80223656" />
+      <point x="0.3789343" y="-0.6173209" />
+      <point x="0.37264496" y="-0.6061622" />
+      <point x="0.37753668" y="-0.5663096" />
+      <point x="0.3789343" y="-0.5137043" />
+      <point x="0.37404263" y="-0.46349007" />
+      <point x="0.37264496" y="-0.5049367" />
+      <point x="0.37544027" y="-0.524863" />
+      <point x="0.37229562" y="-0.54000694" />
+      <point x="0.36530745" y="-0.54638344" />
+      <point x="0.36076522" y="-0.53602177" />
+      <point x="0.35866868" y="-0.5192837" />
+      <point x="0.36111453" y="-0.5049367" />
+      <point x="0.36006635" y="-0.4539255" />
+      <point x="0.35936758" y="-0.41805822" />
+      <point x="0.39046475" y="-0.4244346" />
+      <point x="0.38522363" y="-0.40211725" />
+      <point x="0.37753668" y="-0.39653784" />
+      <point x="0.3761391" y="-0.36704695" />
+      <point x="0.39885053" y="-0.37501746" />
+      <point x="0.40479046" y="-0.38378507" />
+      <point x="0.40793508" y="-0.37262636" />
+      <point x="0.42261022" y="-0.36864108" />
+      <point x="0.42924896" y="-0.3654529" />
+      <point x="0.42820072" y="-0.39733493" />
+      <point x="0.4159715" y="-0.42363757" />
+      <point x="0.41282684" y="-0.39653784" />
+      <point x="0.4019952" y="-0.39972603" />
+      <point x="0.3946576" y="-0.39653784" />
+      <point x="0.40024817" y="-0.38617617" />
+      <point x="0.37928376" y="-0.39733493" />
+      <point x="0.37718728" y="-0.36704695" />
+      <point x="0.38592243" y="-0.351106" />
+      <point x="0.38382608" y="-0.3415414" />
+      <point x="0.38487428" y="-0.27379203" />
+      <point x="0.42435727" y="-0.27140093" />
+      <point x="0.42226082" y="-0.34552658" />
+      <point x="0.41946557" y="-0.35190302" />
+      <point x="0.41736913" y="-0.3391502" />
+      <point x="0.40793508" y="-0.33516496" />
+      <point x="0.40304342" y="-0.34632367" />
+      <point x="0.3981517" y="-0.335962" />
+      <point x="0.3908142" y="-0.33436787" />
+      <point x="0.38487428" y="-0.34871483" />
+      <point x="0.3929106" y="-0.3503089" />
+      <point x="0.39885053" y="-0.3447296" />
+      <point x="0.40374225" y="-0.35270005" />
+      <point x="0.40968215" y="-0.351106" />
+      <point x="0.41282684" y="-0.3447296" />
+      <point x="0.41841733" y="-0.35190302" />
+      <point x="0.42330903" y="-0.37103224" />
+      <point x="0.4271525" y="-0.36624992" />
+      <point x="0.42855012" y="-0.39414674" />
+      <point x="0.40409166" y="-0.3869732" />
+      <point x="0.41282684" y="-0.39414674" />
+      <point x="0.39535648" y="-0.398929" />
+      <point x="0.39605525" y="-0.41885525" />
+      <point x="0.44602048" y="-0.4284199" />
+      <point x="0.44392404" y="-0.5894241" />
+      <point x="0.44532165" y="-0.6061622" />
+      <point x="0.44147822" y="-0.618915" />
+      <point x="0.43344185" y="-0.62290025" />
+      <point x="0.42750192" y="-0.60536516" />
+      <point x="0.42820072" y="-0.5894241" />
+      <point x="0.42959836" y="-0.46667832" />
+      <point x="0.421562" y="-0.51211023" />
+      <point x="0.4261043" y="-0.54638344" />
+      <point x="0.4219114" y="-0.6244944" />
+      <point x="0.41841733" y="-0.6221034" />
+      <point x="0.42016435" y="-0.7990482" />
+      <point x="0.41806793" y="-0.7783251" />
+      <point x="0.40548927" y="-0.77354264" />
+      <point x="0.40024817" y="-0.79586047" />
+      <point x="0.40094697" y="-0.62369734" />
+      <point x="0.39989877" y="-0.80223656" />
+      <point x="0.39570588" y="-0.7759342" />
+      <point x="0.3887177" y="-0.7695576" />
+      <point x="0.38172954" y="-0.77991945" />
+      <point x="0.3803319" y="-0.80462784" />
+    </shape>
+  </PropClass>
+  <PropClass id="9cddf6b0-3c4a-4873-8bb1-f9d2e3890ec8" BulbShape="Square" ChannelGrid="Regular,7A,6,6,0,Purple" Comment="Nut Ornament Lg" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Purple" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-06 Nut Ornament Lg" Parm1="18" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.49668455" y="-0.50812495" />
+      <point x="0.4785154" y="-0.52326894" />
+      <point x="0.46418965" y="-0.5503686" />
+      <point x="0.45545447" y="-0.59420645" />
+      <point x="0.45475566" y="-0.6396383" />
+      <point x="0.46488848" y="-0.6786938" />
+      <point x="0.48166" y="-0.71854633" />
+      <point x="0.50157624" y="-0.7384726" />
+      <point x="0.5277818" y="-0.73209614" />
+      <point x="0.5365169" y="-0.70818454" />
+      <point x="0.5504932" y="-0.66514397" />
+      <point x="0.5581802" y="-0.6109445" />
+      <point x="0.5553849" y="-0.5671066" />
+      <point x="0.5459509" y="-0.53363055" />
+      <point x="0.52882993" y="-0.5145014" />
+      <point x="0.5166008" y="-0.5065309" />
+      <point x="0.519396" y="-0.48182225" />
+      <point x="0.49493748" y="-0.48740166" />
+      <point x="0.4970339" y="-0.50892204" />
+    </shape>
+  </PropClass>
+  <PropClass id="93ac337f-d249-4724-a465-e8951fdb0c54" BulbShape="Square" ChannelGrid="Regular,7A,7,7,0,Red" Comment="Nut Ornament 1 Sm" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-07 Nut Ornament 1 Sm" Parm1="19" Parm2="200">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.30765536" y="-0.70898163" />
+      <point x="0.30241424" y="-0.6874613" />
+      <point x="0.29088384" y="-0.66354984" />
+      <point x="0.2807508" y="-0.63166785" />
+      <point x="0.27935332" y="-0.5830476" />
+      <point x="0.29088384" y="-0.56152743" />
+      <point x="0.30346233" y="-0.5495716" />
+      <point x="0.31010115" y="-0.54718035" />
+      <point x="0.3135952" y="-0.5312394" />
+      <point x="0.31813753" y="-0.524863" />
+      <point x="0.32931858" y="-0.5320365" />
+      <point x="0.33211377" y="-0.55435383" />
+      <point x="0.33980078" y="-0.5710919" />
+      <point x="0.3492347" y="-0.5910182" />
+      <point x="0.35098174" y="-0.62290025" />
+      <point x="0.34853595" y="-0.6468117" />
+      <point x="0.34084898" y="-0.6659411" />
+      <point x="0.3300173" y="-0.6818821" />
+      <point x="0.31883624" y="-0.6954317" />
+      <point x="0.30765536" y="-0.70977885" />
+    </shape>
+  </PropClass>
+  <PropClass id="21a06f18-d5f6-4bdf-a186-0ed29e6106dc" BulbShape="Square" ChannelGrid="Regular,7A,8,8,0,White" Comment="Nut Gift1 M" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-08 Nut Gift1 M" Parm1="28" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.27131695" y="-0.823757" />
+      <point x="0.27585924" y="-0.71296686" />
+      <point x="0.28599197" y="-0.6994172" />
+      <point x="0.36006635" y="-0.71535814" />
+      <point x="0.34853595" y="-0.73448724" />
+      <point x="0.27585924" y="-0.7169522" />
+      <point x="0.2709676" y="-0.82535106" />
+      <point x="0.3471383" y="-0.8412919" />
+      <point x="0.35482526" y="-0.8197719" />
+      <point x="0.36041576" y="-0.7161553" />
+      <point x="0.35028294" y="-0.73289335" />
+      <point x="0.3467889" y="-0.840495" />
+      <point x="0.3492347" y="-0.78231037" />
+      <point x="0.32023397" y="-0.7791221" />
+      <point x="0.30241424" y="-0.7759342" />
+      <point x="0.32163164" y="-0.80861294" />
+      <point x="0.29926956" y="-0.7839042" />
+      <point x="0.27970272" y="-0.8197719" />
+      <point x="0.29437786" y="-0.7783251" />
+      <point x="0.28005219" y="-0.79107803" />
+      <point x="0.293679" y="-0.75999296" />
+      <point x="0.27970272" y="-0.76238424" />
+      <point x="0.2863414" y="-0.74644315" />
+      <point x="0.293679" y="-0.75521064" />
+      <point x="0.30241424" y="-0.7536166" />
+      <point x="0.30800474" y="-0.73528445" />
+      <point x="0.31778812" y="-0.74564606" />
+      <point x="0.32198104" y="-0.75999296" />
+      <point x="0.31918567" y="-0.7759342" />
+    </shape>
+  </PropClass>
+  <PropClass id="74c85070-1323-4b7f-a420-f8399bd12cb8" BulbShape="Square" ChannelGrid="Regular,7A,9,9,0,Green" Comment="Nut Gift2 S" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-09 Nut Gift2 S" Parm1="10" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.4428758" y="-0.8667978" />
+      <point x="0.44392404" y="-0.76397836" />
+      <point x="0.453358" y="-0.7408637" />
+      <point x="0.49913037" y="-0.7392695" />
+      <point x="0.4858529" y="-0.7647753" />
+      <point x="0.44427344" y="-0.7671664" />
+      <point x="0.442177" y="-0.86759514" />
+      <point x="0.48375645" y="-0.86520374" />
+      <point x="0.4984315" y="-0.8420895" />
+      <point x="0.49947977" y="-0.7408637" />
+      <point x="0.4855035" y="-0.76796335" />
+    </shape>
+  </PropClass>
+  <PropClass id="690fff71-d123-435b-919c-fd619f736f4b" BulbShape="Square" ChannelGrid="Regular,7A,10,10,0,Red" Comment="Nut Gift3 L" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-10 Nut Gift3 L" Parm1="11" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.5054197" y="-0.8564358" />
+      <point x="0.50332326" y="-0.74883425" />
+      <point x="0.5106608" y="-0.7336903" />
+      <point x="0.5875304" y="-0.73050225" />
+      <point x="0.579494" y="-0.7496313" />
+      <point x="0.5875304" y="-0.729705" />
+      <point x="0.58857846" y="-0.8420895" />
+      <point x="0.5798434" y="-0.8596244" />
+      <point x="0.5805422" y="-0.7496313" />
+      <point x="0.50402206" y="-0.7528196" />
+      <point x="0.5050703" y="-0.85723346" />
+      <point x="0.58019286" y="-0.8596244" />
+    </shape>
+  </PropClass>
+  <PropClass id="f5d160b3-3d45-456a-a973-501c33af5970" BulbShape="Square" ChannelGrid="Regular,7A,12,12,0,White" Comment="Stocking 10yr" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-12 Sock Main" Parm1="46" Parm2="500">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.52942216" y="-0.7629844" />
+      <point x="-0.51687795" y="-0.73529077" />
+      <point x="-0.51923" y="-0.71234477" />
+      <point x="-0.50354964" y="-0.6973112" />
+      <point x="-0.49100518" y="-0.6696178" />
+      <point x="-0.49257326" y="-0.6561666" />
+      <point x="-0.5435346" y="-0.650628" />
+      <point x="-0.48316503" y="-0.5936586" />
+      <point x="-0.5145259" y="-0.5715039" />
+      <point x="-0.4957093" y="-0.5509316" />
+      <point x="-0.47218883" y="-0.5525141" />
+      <point x="-0.46356452" y="-0.56517386" />
+      <point x="-0.46905273" y="-0.5778338" />
+      <point x="-0.48394912" y="-0.58416367" />
+      <point x="-0.51060575" y="-0.57229507" />
+      <point x="-0.5286382" y="-0.55726147" />
+      <point x="-0.53412634" y="-0.53827167" />
+      <point x="-0.523934" y="-0.5240293" />
+      <point x="-0.51138973" y="-0.51928186" />
+      <point x="-0.49727738" y="-0.53035927" />
+      <point x="-0.49414134" y="-0.55172276" />
+      <point x="-0.51295775" y="-0.5730863" />
+      <point x="-0.55059075" y="-0.5461841" />
+      <point x="-0.6101762" y="-0.6102747" />
+      <point x="-0.68779415" y="-0.54381037" />
+      <point x="-0.6972024" y="-0.6213521" />
+      <point x="-0.69093007" y="-0.6260995" />
+      <point x="-0.7081785" y="-0.7075974" />
+      <point x="-0.6940663" y="-0.794634" />
+      <point x="-0.7034745" y="-0.8547683" />
+      <point x="-0.7011224" y="-0.8848353" />
+      <point x="-0.682306" y="-0.90699023" />
+      <point x="-0.63840085" y="-0.91411144" />
+      <point x="-0.603904" y="-0.90778184" />
+      <point x="-0.57097524" y="-0.90461653" />
+      <point x="-0.53883046" y="-0.90936387" />
+      <point x="-0.50433356" y="-0.9212326" />
+      <point x="-0.4604286" y="-0.9172765" />
+      <point x="-0.43141973" y="-0.91332006" />
+      <point x="-0.41181934" y="-0.8919567" />
+      <point x="-0.40633112" y="-0.86505425" />
+      <point x="-0.40946728" y="-0.8413171" />
+      <point x="-0.4290678" y="-0.81678855" />
+      <point x="-0.45494026" y="-0.814415" />
+      <point x="-0.4792449" y="-0.8191625" />
+      <point x="-0.5082537" y="-0.8049202" />
+      <point x="-0.53177416" y="-0.76456684" />
+    </shape>
+  </PropClass>
+  <PropClass id="407a43dd-d612-4663-b3ce-29c6ae492934" BulbShape="Square" ChannelGrid="Regular,7A,13,13,0,Green" Comment="Stocking 10yr" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-13 Sock Ball 1" Parm1="21" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.683874" y="-0.5469754" />
+      <point x="-0.6760338" y="-0.5240293" />
+      <point x="-0.66976166" y="-0.5145345" />
+      <point x="-0.640753" y="-0.53035927" />
+      <point x="-0.643105" y="-0.5643827" />
+      <point x="-0.6227205" y="-0.5406454" />
+      <point x="-0.5952798" y="-0.55014026" />
+      <point x="-0.60939217" y="-0.52877676" />
+      <point x="-0.58822364" y="-0.50266576" />
+      <point x="-0.62507254" y="-0.5082045" />
+      <point x="-0.63604885" y="-0.49079722" />
+      <point x="-0.6415369" y="-0.5137432" />
+      <point x="-0.65643334" y="-0.5010834" />
+      <point x="-0.62193644" y="-0.49079722" />
+      <point x="-0.5976319" y="-0.49712718" />
+      <point x="-0.5654871" y="-0.5161169" />
+      <point x="-0.55921495" y="-0.5414367" />
+      <point x="-0.5576469" y="-0.5525141" />
+      <point x="-0.5772474" y="-0.57229507" />
+      <point x="-0.5976319" y="-0.5865374" />
+      <point x="-0.6125282" y="-0.58970237" />
+      <point x="-0.6313447" y="-0.5912849" />
+    </shape>
+  </PropClass>
+  <PropClass id="735c96ca-d2a9-4a2d-a793-9131bed9af0b" BulbShape="Square" ChannelGrid="Regular,7A,13,13,0,Green" Comment="Stocking 10yr" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="407a43dd-d612-4663-b3ce-29c6ae492934" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-13 Sock Cane 1" Parm1="16" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.53804636" y="-0.6442981" />
+      <point x="-0.4878692" y="-0.6007798" />
+      <point x="-0.46434855" y="-0.5920761" />
+      <point x="-0.44631606" y="-0.5889112" />
+      <point x="-0.42514765" y="-0.6039448" />
+      <point x="-0.41260326" y="-0.6268908" />
+      <point x="-0.41025114" y="-0.6482543" />
+      <point x="-0.42201155" y="-0.6688266" />
+      <point x="-0.4392599" y="-0.68702507" />
+      <point x="-0.45180428" y="-0.68939877" />
+      <point x="-0.46670067" y="-0.676739" />
+      <point x="-0.4604286" y="-0.656958" />
+      <point x="-0.44866818" y="-0.64904547" />
+      <point x="-0.4502362" y="-0.6340119" />
+      <point x="-0.4619965" y="-0.6253083" />
+      <point x="-0.47610897" y="-0.6316382" />
+      <point x="-0.50041354" y="-0.6537929" />
+    </shape>
+  </PropClass>
+  <PropClass id="aa9d3894-c5c3-479b-aa3c-42c18bf55c41" BulbShape="Square" ChannelGrid="Regular,7A,14,14,0,Blue" Comment="Stocking 10yr" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Blue" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-14 Sock Ball 2" Parm1="23" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.6689777" y="-0.4021781" />
+      <point x="-0.6807379" y="-0.42670658" />
+      <point x="-0.68309" y="-0.45914745" />
+      <point x="-0.66348946" y="-0.4884234" />
+      <point x="-0.6266406" y="-0.5050396" />
+      <point x="-0.5858716" y="-0.49712718" />
+      <point x="-0.56391907" y="-0.47022495" />
+      <point x="-0.55607885" y="-0.4425315" />
+      <point x="-0.5537268" y="-0.41562933" />
+      <point x="-0.5795994" y="-0.38556203" />
+      <point x="-0.60233605" y="-0.37685847" />
+      <point x="-0.6242885" y="-0.3729022" />
+      <point x="-0.66192144" y="-0.39030945" />
+      <point x="-0.66819364" y="-0.39980438" />
+      <point x="-0.640753" y="-0.41325548" />
+      <point x="-0.63918483" y="-0.44965264" />
+      <point x="-0.61801636" y="-0.42116797" />
+      <point x="-0.5890077" y="-0.4346192" />
+      <point x="-0.6054721" y="-0.40929937" />
+      <point x="-0.5858716" y="-0.38239712" />
+      <point x="-0.6203684" y="-0.39030945" />
+      <point x="-0.6289926" y="-0.37606716" />
+      <point x="-0.63604885" y="-0.39584807" />
+      <point x="-0.6666256" y="-0.39743078" />
+    </shape>
+  </PropClass>
+  <PropClass id="3546a5ce-2f63-4398-9862-9deaad96af67" BulbShape="Square" ChannelGrid="Regular,7A,14,14,0,Blue" Comment="Stocking 10yr" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="aa9d3894-c5c3-479b-aa3c-42c18bf55c41" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Blue" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-14 Sock Cane 2" Parm1="18" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.53883046" y="-0.6466718" />
+      <point x="-0.46905273" y="-0.6055272" />
+      <point x="-0.44866818" y="-0.59919727" />
+      <point x="-0.41965938" y="-0.6023623" />
+      <point x="-0.40319514" y="-0.6173959" />
+      <point x="-0.39457083" y="-0.6363856" />
+      <point x="-0.3961389" y="-0.656958" />
+      <point x="-0.40633112" y="-0.6751565" />
+      <point x="-0.41730744" y="-0.68702507" />
+      <point x="-0.4345559" y="-0.6957288" />
+      <point x="-0.44396394" y="-0.6973112" />
+      <point x="-0.45807648" y="-0.6799039" />
+      <point x="-0.4478842" y="-0.6648704" />
+      <point x="-0.4345559" y="-0.6577491" />
+      <point x="-0.4282837" y="-0.6395506" />
+      <point x="-0.4369079" y="-0.63322073" />
+      <point x="-0.44945228" y="-0.6268908" />
+      <point x="-0.46278048" y="-0.6363856" />
+      <point x="-0.49884546" y="-0.6561666" />
+    </shape>
+  </PropClass>
+  <PropClass id="cdeba879-033f-4f70-8dc5-a8d267146909" BulbShape="Square" ChannelGrid="Regular,7A,15,15,0,Red" Comment="Stocking 10yr" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-15 Sock Ball 3" Parm1="25" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.6705456" y="-0.28032672" />
+      <point x="-0.682306" y="-0.3032731" />
+      <point x="-0.68544215" y="-0.3317576" />
+      <point x="-0.6791699" y="-0.35865992" />
+      <point x="-0.65643334" y="-0.38318837" />
+      <point x="-0.6227205" y="-0.38556203" />
+      <point x="-0.5921438" y="-0.38002354" />
+      <point x="-0.57097524" y="-0.35786846" />
+      <point x="-0.56156695" y="-0.3365052" />
+      <point x="-0.5584309" y="-0.3111852" />
+      <point x="-0.5647031" y="-0.29061314" />
+      <point x="-0.57567936" y="-0.2732059" />
+      <point x="-0.5976319" y="-0.26212853" />
+      <point x="-0.6235045" y="-0.2565895" />
+      <point x="-0.645457" y="-0.2613372" />
+      <point x="-0.6705456" y="-0.2795358" />
+      <point x="-0.643889" y="-0.2969431" />
+      <point x="-0.64624107" y="-0.32938412" />
+      <point x="-0.6235045" y="-0.3032731" />
+      <point x="-0.5952798" y="-0.3143505" />
+      <point x="-0.6109602" y="-0.28903034" />
+      <point x="-0.5897917" y="-0.26845828" />
+      <point x="-0.62742454" y="-0.2724144" />
+      <point x="-0.6344808" y="-0.2629195" />
+      <point x="-0.64232093" y="-0.2724144" />
+      <point x="-0.6705456" y="-0.2779532" />
+    </shape>
+  </PropClass>
+  <PropClass id="1637c24d-0f59-4bca-9bc9-ea518fa0a2e3" BulbShape="Square" ChannelGrid="Regular,7A,15,15,0,Red" Comment="Stocking 10yr" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="cdeba879-033f-4f70-8dc5-a8d267146909" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-15 Sock Cane 3" Parm1="16" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.5372624" y="-0.64508927" />
+      <point x="-0.47610897" y="-0.6237258" />
+      <point x="-0.43612397" y="-0.6110659" />
+      <point x="-0.4086833" y="-0.6134396" />
+      <point x="-0.38751465" y="-0.6316382" />
+      <point x="-0.38281053" y="-0.6537929" />
+      <point x="-0.38516265" y="-0.6783214" />
+      <point x="-0.39849097" y="-0.69177246" />
+      <point x="-0.4141714" y="-0.70364106" />
+      <point x="-0.44710016" y="-0.7083886" />
+      <point x="-0.45729232" y="-0.6854427" />
+      <point x="-0.44396394" y="-0.6743652" />
+      <point x="-0.42671573" y="-0.6712003" />
+      <point x="-0.42122757" y="-0.6617054" />
+      <point x="-0.4274996" y="-0.64350677" />
+      <point x="-0.44082814" y="-0.6395506" />
+      <point x="-0.49414134" y="-0.6577491" />
+    </shape>
+  </PropClass>
+  <PropClass id="8439b484-ce62-4c52-86d6-689f50a7c39a" BulbShape="Square" ChannelGrid="Regular,7D,1,1,0,Orange" Comment="Cash Donation Sign" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Orange" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-01 Cash Donation Sign" Parm1="10" Parm2="20" Parm3="10">
+    <shape ShapeName="Window Frame" OffsetX="0.67589676" OffsetY="0.52440405" ScaleX="0.33697134" ScaleY="0.31234875" Radians="0" />
+  </PropClass>
+  <PropClass id="3b1bc93f-8694-4d76-ba0b-9ab01043ab3c" BulbShape="Square" ChannelGrid="Regular,7D,9,9,0,White" Comment="" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-09 Santa's Sleigh">
+    <shape ShapeName="Picture" OffsetX="0" OffsetY="0" ScaleX="1" ScaleY="1" Radians="0" />
+  </PropClass>
+  <PropClass id="500d6ec9-d0c5-4bc6-ba30-06cfe850531b" BulbShape="Square" ChannelGrid="Regular,7B,11,11,0,Pink" Comment="" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Pink" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-11 Spare">
+    <shape ShapeName="Hidden" OffsetX="0.26999998" OffsetY="0" ScaleX="1" ScaleY="1" Radians="0" />
+  </PropClass>
+  <PropClass id="5511414c-fd5d-451e-bf98-8dd7a6d23043" BulbShape="Square" ChannelGrid="Regular,7B,12,12,0,Pink" Comment="" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Pink" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-12 Spare">
+    <shape ShapeName="Hidden" OffsetX="0.29999998" OffsetY="0" ScaleX="1" ScaleY="1" Radians="0" />
+  </PropClass>
+  <PropClass id="05c7d3d2-a3b4-4aca-80cb-0d936f0b3d0e" BulbShape="Square" ChannelGrid="Regular,7B,13,13,0,Pink" Comment="" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Pink" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-13 Spare">
+    <shape ShapeName="Hidden" OffsetX="0.32999998" OffsetY="0" ScaleX="1" ScaleY="1" Radians="0" />
+  </PropClass>
+  <PropClass id="7a6c60b7-87d9-4768-88d6-0ee34aa310d8" BulbShape="Square" ChannelGrid="Regular,7B,14,14,0,White" Comment="" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-14 Spare">
+    <shape ShapeName="Hidden" OffsetX="0.35999998" OffsetY="0" ScaleX="1" ScaleY="1" Radians="0" />
+  </PropClass>
+  <PropClass id="545a8384-eb43-4194-919d-f3eb76c1f45c" BulbShape="Square" ChannelGrid="Regular,7B,15,15,0,White" Comment="" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-15 Spare">
+    <shape ShapeName="Hidden" OffsetX="0.39" OffsetY="0" ScaleX="1" ScaleY="1" Radians="0" />
+  </PropClass>
+  <PropClass id="4ea1979f-af9b-4dc5-ba51-3dc15a4c4653" BulbShape="Square" ChannelGrid="Regular,7B,16,16,0,White" Comment="" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-16 Spare">
+    <shape ShapeName="Hidden" OffsetX="0.42" OffsetY="0" ScaleX="1" ScaleY="1" Radians="0" />
+  </PropClass>
+  <PropClass id="bfc6613a-a94b-450e-afef-d42c3f33ae57" BulbShape="Square" ChannelGrid="Aux E,91,1,300,0,;Aux E,92,1,300,0," Comment="Bruce the Spruce" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="510" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="True" StartLocation="n/a" StringType="RGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 93-92 Bruce Face">
+    <shape ShapeName="Custom" OffsetX="-0.57951623" OffsetY="0.54579556" ScaleX="0.14920029" ScaleY="0.35675803" Radians="0" CustomWidth="100" CustomHeight="100" CellSize="0" CustomGrid="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1050,0,0,0,0,1049,0,0,0,1048,0,0,0,1047,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1051,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1046,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1045,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1052,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1044,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1053,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1043,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1054,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,31,0,0,0,0,0,0,0,0,0,33,0,0,0,0,0,0,0,0,1042,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1055,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,34,0,0,0,0,0,0,1041,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,29,0,0,0,0,0,0,30,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1056,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,35,0,0,0,0,0,0,1040,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,27,0,0,0,0,28,0,0,0,0,0,0,0,0,0,0,0,0,0,0,58,0,0,0,0,57,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1057,0,0,0,0,0,0,0,0,0,0,0,0,0,0,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1039,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,8,0,0,0,0,0,0,10,0,0,0,26,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,56,0,0,0,40,0,0,0,0,0,0,38,0,0,0,0,36,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1058,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,11,0,0,0,0,0,0,0,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,41,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1038,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,55,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,37,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,1059,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1037,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,0,0,0,0,0,0,0,0,0,24,0,0,0,0,0,0,0,0,0,0,0,0,0,0,54,0,0,0,0,0,0,0,0,0,42,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,1060,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,13,0,23,0,0,22,0,0,21,0,20,0,0,0,0,0,0,0,0,0,0,0,0,0,0,50,0,51,0,0,52,0,0,53,0,43,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1036,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,59,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,1061,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,14,0,0,0,0,0,0,0,0,0,19,0,0,0,0,0,0,0,0,0,0,0,0,0,0,49,0,0,0,0,0,0,0,0,0,44,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,60,0,0,0,0,0,0,72,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1035,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,1062,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,0,0,0,0,0,0,0,18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,48,0,0,0,0,0,0,0,45,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1034,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,71,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,1063,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,0,0,0,17,0,0,0,0,61,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,47,0,0,0,46,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1033,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,1064,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,62,0,0,0,0,0,0,0,0,0,0,0,0,0,0,70,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1032,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,1065,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,63,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,69,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1031,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,1066,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,66,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,65,0,0,0,0,0,0,0,0,0,67,0,0,0,68,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1030,0,0,0,0,0;0,0,0,0,0,0,1067,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,84,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,73,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1100,0,0,0,0,0,0;0,0,0,0,0,0,1068,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,83,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,74,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,85,0,0,0,0,82,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,75,0,0,0,0,0,98,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1013,0,1012,0,0,0,0,0,0,0,0,0,0,0,81,0,0,0,80,0,0,0,0,0,0,0,0,0,0,0,0,0,77,0,0,0,0,76,0,0,0,0,0,0,0,0,0,0,0,99,0,0,1029,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1099,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,86,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,79,0,0,0,0,78,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,97,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,1069,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,87,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1011,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1098,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1014,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1028,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,1070,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,88,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,95,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1010,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,89,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,94,0,0,0,0,0,0,0,0,0,1001,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1097,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,1071,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1015,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,90,0,0,0,0,0,0,0,0,0,0,0,93,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1027,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,91,0,0,0,92,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1009,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1002,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1096,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,1072,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1016,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1026,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1008,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1003,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1095,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,1073,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1007,0,0,0,0,0,0,0,0,0,0,0,0,0,1004,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1017,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1025,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1006,0,0,0,0,1005,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1094,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1074,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1018,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1024,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1093,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1075,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1019,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1023,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1020,0,0,0,0,0,0,0,0,0,1022,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1092,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1076,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1021,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1091,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1077,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1090,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1078,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1089,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1079,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1080,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1088,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1087,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1081,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1086,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1082,0,0,0,1083,0,0,0,0,1084,0,0,0,1085,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0" BackgroundImage="C:\Users\atbie\Pictures\Bruce The Spruce v34.png" BackgroundTransparency="0" />
+    <MotionRowDefaults>
+      <MotionRowDefault id="24623173-e4a3-47e9-b864-d3d9fc4db01d" name="Outline+Brows+Nose" subc="0.42,0.05;0.38,0.06;0.34,0.08;0.31,0.09;0.27,0.11;0.24,0.13;0.21,0.16;0.18,0.19;0.15,0.22;0.13,0.25;0.11,0.28;0.09,0.32;0.08,0.35;0.07,0.39;0.06,0.43;0.06,0.46;0.06,0.5;0.06,0.53;0.06,0.57;0.07,0.61;0.08,0.65;0.09,0.68;0.11,0.72;0.13,0.75;0.15,0.78;0.18,0.81;0.21,0.84;0.24,0.87;0.27,0.89;0.31,0.91;0.34,0.92;0.38,0.94;0.42,0.95;0.46,0.95;0.51,0.95;0.55,0.95;0.59,0.94;0.63,0.93;0.67,0.92;0.7,0.9;0.74,0.88;0.77,0.85;0.8,0.83;0.83,0.8;0.85,0.77;0.87,0.74;0.89,0.7;0.91,0.67;0.92,0.63;0.93,0.59;0.93,0.56;0.94,0.52;0.94,0.48;0.93,0.44;0.93,0.41;0.92,0.37;0.91,0.34;0.89,0.3;0.87,0.26;0.85,0.23;0.83,0.2;0.8,0.17;0.77,0.14;0.74,0.12;0.7,0.1;0.67,0.08;0.63,0.07;0.59,0.06;0.55,0.05;0.51,0.05;0.47,0.05;0.46,0.15;0.44,0.12;0.39,0.11;0.34,0.12;0.3,0.14;0.26,0.17;0.23,0.21;0.24,0.24;0.28,0.21;0.33,0.19;0.37,0.18;0.42,0.18;0.53,0.15;0.55,0.12;0.6,0.11;0.65,0.12;0.7,0.14;0.73,0.17;0.76,0.21;0.75,0.24;0.71,0.21;0.67,0.19;0.62,0.18;0.57,0.18;0.49,0.31;0.46,0.34;0.44,0.39;0.42,0.43;0.41,0.48;0.4,0.52;0.45,0.52;0.5,0.51;0.55,0.52;0.59,0.52;0.59,0.48;0.57,0.43;0.55,0.38;0.53,0.34" />
+      <MotionRowDefault id="077c7e52-260f-4dd3-9a4b-9e00ed6cd88b" name="Eyes Open" subc="0.35,0.21;0.33,0.23;0.32,0.27;0.32,0.3;0.32,0.33;0.33,0.37;0.35,0.39;0.39,0.39;0.41,0.37;0.42,0.33;0.42,0.3;0.42,0.27;0.41,0.23;0.39,0.21;0.6,0.21;0.58,0.24;0.57,0.27;0.57,0.3;0.57,0.33;0.58,0.37;0.6,0.39;0.64,0.39;0.66,0.37;0.67,0.33;0.67,0.3;0.67,0.27;0.66,0.23;0.64,0.21" />
+      <MotionRowDefault id="b6f91c33-a16e-45c6-a511-e953a11f4c27" name="Eyes Closed" subc="0.34,0.3;0.37,0.3;0.4,0.3;0.59,0.3;0.62,0.3;0.65,0.3;0.67,0.3;0.57,0.3;0.57,0.33;0.58,0.37;0.6,0.39;0.64,0.39;0.66,0.37;0.67,0.33;0.32,0.3;0.32,0.33;0.33,0.37;0.35,0.39;0.39,0.39;0.41,0.37;0.42,0.33;0.42,0.3" />
+      <MotionRowDefault id="43e5a100-a1c7-4711-81a6-2b752475b00b" name="Mouth Full Open" subc="0.24,0.55;0.24,0.59;0.24,0.64;0.25,0.68;0.28,0.72;0.31,0.76;0.35,0.79;0.39,0.81;0.44,0.83;0.49,0.84;0.54,0.83;0.59,0.81;0.64,0.79;0.68,0.76;0.71,0.72;0.73,0.68;0.74,0.64;0.76,0.59;0.75,0.55;0.7,0.57;0.66,0.58;0.61,0.59;0.56,0.59;0.52,0.6;0.47,0.6;0.42,0.59;0.38,0.59;0.33,0.58;0.29,0.57" />
+      <MotionRowDefault id="e088de67-741e-4382-88de-c001704f645b" name="Mouth 1/3 Open" subc="0.24,0.55;0.29,0.57;0.33,0.58;0.38,0.59;0.42,0.59;0.47,0.6;0.52,0.6;0.56,0.59;0.61,0.59;0.66,0.58;0.7,0.57;0.75,0.55;0.72,0.58;0.69,0.6;0.65,0.63;0.62,0.65;0.59,0.67;0.56,0.68;0.52,0.69;0.48,0.69;0.44,0.68;0.4,0.67;0.37,0.65;0.34,0.62;0.31,0.6;0.28,0.58" />
+      <MotionRowDefault id="d4a0a183-b871-4c57-b748-34041fcc189b" name="Mouth 2/3 Open" subc="0.24,0.55;0.26,0.59;0.29,0.63;0.31,0.66;0.35,0.7;0.39,0.73;0.43,0.75;0.47,0.77;0.52,0.77;0.57,0.75;0.61,0.73;0.65,0.7;0.69,0.67;0.71,0.63;0.73,0.59;0.75,0.55;0.7,0.57;0.66,0.58;0.61,0.59;0.56,0.59;0.52,0.6;0.47,0.6;0.42,0.59;0.38,0.59;0.33,0.58;0.29,0.57" />
+    </MotionRowDefaults>
+  </PropClass>
+  <PropClass id="20373e37-6a14-4549-b8ed-1e761935663f" BulbShape="Square" ChannelGrid="Aux E,7C,1,1,0,White" Comment="Bruce the Spruce" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-01 Bruce Tree" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.7043845" y="0.41340023" />
+      <point x="-0.5831463" y="0.86116683" />
+      <point x="-0.42293966" y="0.39795995" />
+    </shape>
+  </PropClass>
+  <PropClass id="57da5a03-3d1c-4c35-bac2-96ea9f350cac" BulbShape="Square" ChannelGrid="Aux E,7C,5,5,0,Red" Comment="Deer 1" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-05 Deer DS" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.71462035" y="0.42060584" />
+      <point x="-0.5842898" y="0.8910179" />
+      <point x="-0.41369063" y="0.40619433" />
+    </shape>
+  </PropClass>
+  <PropClass id="2c7e448b-9cb0-4c2a-8232-fb0778e5f7a5" BulbShape="Square" ChannelGrid="Aux E,7C,3,3,0,Blue" Comment="Prange Gift Bag" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Blue" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-03 Prange Gift Box" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.7224146" y="0.42369384" />
+      <point x="-0.5860221" y="0.91572213" />
+      <point x="-0.40849477" y="0.41957653" />
+    </shape>
+  </PropClass>
+  <PropClass id="6c7154c7-2db5-4377-8f45-a743594b035d" BulbShape="Square" ChannelGrid="Aux E,7C,2,2,0,Red" Comment="Prange Gift Bag" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="4" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-02 Prange Gift Bag" Parm1="10" Parm2="20" Parm3="10">
+    <shape ShapeName="Window Frame" OffsetX="0.05286348" OffsetY="0.7718501" ScaleX="0.076071784" ScaleY="0.3644843" Radians="0" />
+  </PropClass>
+  <PropClass id="88e7daff-c3f5-4dc0-8048-315c37d2fe3c" BulbShape="Star_5" ChannelGrid="Aux E,7C,6,6,0,Red" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-06 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.428" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="4c4b650f-38d6-44b1-a55b-cf84e1eeecaa" BulbShape="Star_5" ChannelGrid="Regular,7C,7,7,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-07 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.4808" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="74329957-6513-42f8-bb4f-f1f43b78de7b" BulbShape="Star_5" ChannelGrid="Aux E,7C,8,8,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-08 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.5336" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="4f1d8d61-4fb1-4a76-a910-1ec836b3f62a" BulbShape="Star_5" ChannelGrid="Aux E,7C,9,9,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-09 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.5864" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="809ee5fe-a860-400c-921c-0aab3f8fe87d" BulbShape="Star_5" ChannelGrid="Aux E,7C,10,10,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-10 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.6392" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="fe053fb4-d5b1-47c5-875a-b73a62405621" BulbShape="Star_5" ChannelGrid="Aux E,7C,11,11,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-11 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.692" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="0bbe5130-5770-4ba6-8720-cd78354858f6" BulbShape="Star_5" ChannelGrid="Aux E,7C,12,12,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC T6-12 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.7448" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="c3a5238a-283e-4437-97e0-aeac9aa59b1c" BulbShape="Star_5" ChannelGrid="Aux E,7C,13,13,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-13 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.7976" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="9663fb4e-e9db-42b6-8431-0adc0512463e" BulbShape="Star_5" ChannelGrid="Aux E,7C,14,14,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-14 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.8504" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="87e7f2cd-0211-470c-a46f-7d27051d4eb8" BulbShape="Star_5" ChannelGrid="Aux E,7C,15,15,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-15 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.9032" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="ad7897d8-c04c-4c17-988f-c66102a250d4" BulbShape="Star_5" ChannelGrid="Aux E,7C,16,16,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="11" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-16 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.956" y="-0.07999999" />
+    </shape>
+  </PropClass>
+  <PropClass id="20074f9a-59c9-406f-9c3a-e812e1b37b3d" BulbShape="Square" ChannelGrid="Regular,7B,8,8,0,White" Comment="Caroler Panel 1" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-08 Caroler Bodies" Parm1="48" Parm2="600">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.40809566" y="0.15057534" />
+      <point x="-0.3990807" y="0.15545338" />
+      <point x="-0.39642906" y="0.17984483" />
+      <point x="-0.40067196" y="0.23935956" />
+      <point x="-0.38794482" y="0.0930118" />
+      <point x="-0.38900548" y="0.020813525" />
+      <point x="-0.384233" y="0.015935257" />
+      <point x="-0.39112717" y="-0.1752926" />
+      <point x="-0.40968663" y="-0.18602476" />
+      <point x="-0.41180682" y="-0.20846488" />
+      <point x="-0.40332323" y="-0.21041621" />
+      <point x="-0.36249155" y="-0.207489" />
+      <point x="-0.36249155" y="-0.1948057" />
+      <point x="-0.35771793" y="0.018862233" />
+      <point x="-0.3550669" y="-0.18407337" />
+      <point x="-0.358249" y="-0.20944035" />
+      <point x="-0.35877973" y="-0.22407532" />
+      <point x="-0.34499183" y="-0.22992922" />
+      <point x="-0.33067408" y="-0.23090464" />
+      <point x="-0.3248408" y="-0.21822132" />
+      <point x="-0.32431027" y="-0.18895175" />
+      <point x="-0.3232496" y="-0.143096" />
+      <point x="-0.3269614" y="-0.10114304" />
+      <point x="-0.3280221" y="-0.039676875" />
+      <point x="-0.3280221" y="0.00032482296" />
+      <point x="-0.33014345" y="0.01691094" />
+      <point x="-0.3269614" y="0.019837886" />
+      <point x="-0.33120406" y="0.11837877" />
+      <point x="-0.31794697" y="0.18277171" />
+      <point x="-0.31476524" y="0.22179773" />
+      <point x="-0.31794697" y="0.26277524" />
+      <point x="-0.34499183" y="0.29985029" />
+      <point x="-0.34446108" y="0.31936342" />
+      <point x="-0.33756796" y="0.32326597" />
+      <point x="-0.3338552" y="0.3369248" />
+      <point x="-0.33915848" y="0.3554624" />
+      <point x="-0.34870452" y="0.3749753" />
+      <point x="-0.37150577" y="0.38375628" />
+      <point x="-0.3863535" y="0.3730238" />
+      <point x="-0.38847554" y="0.35741332" />
+      <point x="-0.38211167" y="0.34472996" />
+      <point x="-0.37999022" y="0.3271686" />
+      <point x="-0.384233" y="0.3144847" />
+      <point x="-0.38741434" y="0.29985029" />
+      <point x="-0.39855075" y="0.28521523" />
+      <point x="-0.410217" y="0.271556" />
+      <point x="-0.41392875" y="0.25301892" />
+      <point x="-0.41286832" y="0.22570038" />
+      <point x="-0.41180682" y="0.18472302" />
+    </shape>
+  </PropClass>
+  <PropClass id="3d500c54-ac03-43c1-b38e-bda470237a83" BulbShape="Square" ChannelGrid="Regular,7B,8,8,0,White" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="20074f9a-59c9-406f-9c3a-e812e1b37b3d" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-08 Caroler Bodies Mid" Parm1="67" Parm2="800">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.21825314" y="0.088133514" />
+      <point x="-0.2193138" y="-0.18212208" />
+      <point x="-0.2659786" y="-0.16260903" />
+      <point x="-0.27711514" y="-0.12163165" />
+      <point x="-0.25961486" y="0.0061787665" />
+      <point x="-0.25749442" y="0.088133514" />
+      <point x="-0.2739335" y="0.107646585" />
+      <point x="-0.27923554" y="0.16325861" />
+      <point x="-0.27287284" y="0.218871" />
+      <point x="-0.2622668" y="0.23643267" />
+      <point x="-0.24954075" y="0.25106746" />
+      <point x="-0.24741912" y="0.29204503" />
+      <point x="-0.2622668" y="0.30277696" />
+      <point x="-0.24847889" y="0.3339976" />
+      <point x="-0.24954075" y="0.3603405" />
+      <point x="-0.23204106" y="0.37985364" />
+      <point x="-0.21719232" y="0.381805" />
+      <point x="-0.20128483" y="0.3769264" />
+      <point x="-0.19916296" y="0.38570762" />
+      <point x="-0.20605701" y="0.3983909" />
+      <point x="-0.20446604" y="0.41107428" />
+      <point x="-0.2081776" y="0.4335146" />
+      <point x="-0.19916296" y="0.45497847" />
+      <point x="-0.1943897" y="0.46278358" />
+      <point x="-0.19704169" y="0.47058904" />
+      <point x="-0.1943897" y="0.485224" />
+      <point x="-0.18802702" y="0.49107826" />
+      <point x="-0.17848217" y="0.48619968" />
+      <point x="-0.17529947" y="0.4754672" />
+      <point x="-0.17848217" y="0.46766198" />
+      <point x="-0.16628498" y="0.45790553" />
+      <point x="-0.16522521" y="0.39448833" />
+      <point x="-0.15620989" y="0.3769264" />
+      <point x="-0.13075638" y="0.35741332" />
+      <point x="-0.12704462" y="0.28521526" />
+      <point x="-0.11696939" y="0.27253202" />
+      <point x="-0.11113565" y="0.24228668" />
+      <point x="-0.10212028" y="0.21594387" />
+      <point x="-0.107953444" y="0.19447958" />
+      <point x="-0.11590825" y="0.19740659" />
+      <point x="-0.12174061" y="0.20326054" />
+      <point x="-0.123331755" y="0.19057697" />
+      <point x="-0.11537813" y="0.18569875" />
+      <point x="-0.11325653" y="0.17203957" />
+      <point x="-0.11537813" y="0.16520989" />
+      <point x="-0.099468976" y="0.13398913" />
+      <point x="-0.08939381" y="0.080328286" />
+      <point x="-0.09045473" y="0.050083086" />
+      <point x="-0.09999968" y="0.03154567" />
+      <point x="-0.101059586" y="-0.046506464" />
+      <point x="-0.11219686" y="-0.12943691" />
+      <point x="-0.107953444" y="-0.1899273" />
+      <point x="-0.09787844" y="-0.21627003" />
+      <point x="-0.101589486" y="-0.23285615" />
+      <point x="-0.13075638" y="-0.20944035" />
+      <point x="-0.1503765" y="-0.16553617" />
+      <point x="-0.17742139" y="-0.1752926" />
+      <point x="-0.17583022" y="-0.20553766" />
+      <point x="-0.16204295" y="-0.23285615" />
+      <point x="-0.19969365" y="-0.20944035" />
+      <point x="-0.19757175" y="-0.18017077" />
+      <point x="-0.21241969" y="-0.1752926" />
+      <point x="-0.22355565" y="-0.18017077" />
+      <point x="-0.22461647" y="-0.20748906" />
+      <point x="-0.2447671" y="-0.23968564" />
+      <point x="-0.2622668" y="-0.23383164" />
+      <point x="-0.25431228" y="-0.21822132" />
+      <point x="-0.24582794" y="-0.20065957" />
+    </shape>
+  </PropClass>
+  <PropClass id="76ebce59-7194-4cd1-a1e0-083a48716d00" BulbShape="Square" ChannelGrid="Regular,7B,8,8,0,White" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="20074f9a-59c9-406f-9c3a-e812e1b37b3d" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-08 Caroler Bodies Dog" Parm1="29" Parm2="150">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.007729709" y="-0.110899515" />
+      <point x="-0.021517351" y="-0.14699857" />
+      <point x="-0.022577345" y="-0.18212208" />
+      <point x="-0.034774303" y="-0.17041425" />
+      <point x="-0.04060757" y="-0.18895169" />
+      <point x="-0.035834983" y="-0.22602655" />
+      <point x="-0.022577345" y="-0.25236925" />
+      <point x="-0.041666925" y="-0.2679796" />
+      <point x="-0.042198345" y="-0.28163847" />
+      <point x="-0.031062424" y="-0.27968737" />
+      <point x="-0.018335477" y="-0.28846842" />
+      <point x="-0.0029568672" y="-0.28066325" />
+      <point x="-0.0013656914" y="-0.21041621" />
+      <point x="-0.006139159" y="-0.17334135" />
+      <point x="-0.0018964708" y="-0.21724555" />
+      <point x="0.007118404" y="-0.18017077" />
+      <point x="-0.0018964708" y="-0.22017266" />
+      <point x="0.00022435188" y="-0.27968737" />
+      <point x="0.02886033" y="-0.2787114" />
+      <point x="0.025678158" y="-0.26993078" />
+      <point x="0.04211697" y="-0.2679796" />
+      <point x="0.040526927" y="-0.25334486" />
+      <point x="0.030450463" y="-0.24553967" />
+      <point x="0.023027241" y="-0.24749081" />
+      <point x="0.038935363" y="-0.20358644" />
+      <point x="0.031511456" y="-0.18602476" />
+      <point x="0.016132802" y="-0.19675697" />
+      <point x="0.018254578" y="-0.16846292" />
+      <point x="0.011891365" y="-0.13431527" />
+      <point x="0.0028764606" y="-0.10504555" />
+    </shape>
+  </PropClass>
+  <PropClass id="941690bd-9d2a-4a50-ad43-1aad48fe89c5" BulbShape="Square" ChannelGrid="Regular,7B,8,8,0,White" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="20074f9a-59c9-406f-9c3a-e812e1b37b3d" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-08 Caroler Bodies Lamp" Parm1="21" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.055905193" y="-0.22602655" />
+      <point x="0.052193373" y="-0.18212208" />
+      <point x="0.05802536" y="-0.16163355" />
+      <point x="0.056964785" y="-0.077727355" />
+      <point x="0.06704134" y="-0.05040908" />
+      <point x="0.069161594" y="0.28521526" />
+      <point x="0.05166185" y="0.33985198" />
+      <point x="0.046359837" y="0.4530276" />
+      <point x="0.063859046" y="0.49400496" />
+      <point x="0.062267542" y="0.5135177" />
+      <point x="0.0845395" y="0.5105907" />
+      <point x="0.08560106" y="0.49205303" />
+      <point x="0.09991792" y="0.45010054" />
+      <point x="0.095675945" y="0.3359493" />
+      <point x="0.082419336" y="0.28911793" />
+      <point x="0.08400941" y="-0.056263003" />
+      <point x="0.08984324" y="-0.08065435" />
+      <point x="0.0914343" y="-0.16553617" />
+      <point x="0.095145404" y="-0.19187868" />
+      <point x="0.091964245" y="-0.22114812" />
+      <point x="0.0845395" y="-0.23480731" />
+      <point x="0.055905193" y="-0.22309944" />
+    </shape>
+  </PropClass>
+  <PropClass id="22ba6b24-57ff-4b65-abec-acbd7e2da30c" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,White" Comment="Caroler Panel 1" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1" Parm1="17" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.4149896" y="0.1808204" />
+      <point x="-0.44839782" y="0.15642926" />
+      <point x="-0.4547605" y="0.16325861" />
+      <point x="-0.4664272" y="0.15447792" />
+      <point x="-0.4765023" y="0.1681371" />
+      <point x="-0.48498774" y="0.17594221" />
+      <point x="-0.4696092" y="0.20033342" />
+      <point x="-0.4664272" y="0.18472302" />
+      <point x="-0.45900267" y="0.17301518" />
+      <point x="-0.4664272" y="0.14569682" />
+      <point x="-0.45210958" y="0.120330065" />
+      <point x="-0.44574618" y="0.121305704" />
+      <point x="-0.4399131" y="0.10862222" />
+      <point x="-0.4367314" y="0.113500476" />
+      <point x="-0.44362414" y="0.12911089" />
+      <point x="-0.4409737" y="0.14179432" />
+      <point x="-0.4229434" y="0.13886744" />
+      <point x="-0.40544367" y="0.14959943" />
+    </shape>
+  </PropClass>
+  <PropClass id="bf114f8e-80fe-4b5a-af5d-5700a371209a" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Red" Comment="Caroler Panel 1" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Mouth Open 1" Parm1="6" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.36620265" y="0.31838712" />
+      <point x="-0.369916" y="0.3154608" />
+      <point x="-0.36885488" y="0.30277696" />
+      <point x="-0.365142" y="0.29692307" />
+      <point x="-0.36089998" y="0.30082566" />
+      <point x="-0.3614307" y="0.3154608" />
+      <point x="-0.3667333" y="0.31741163" />
+    </shape>
+  </PropClass>
+  <PropClass id="1f1c7732-5c10-4fb8-aae0-03e0046ce1a4" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Red" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Mouth Open 2" Parm1="8" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.22461647" y="0.28228837" />
+      <point x="-0.2293891" y="0.2764346" />
+      <point x="-0.23098025" y="0.26862937" />
+      <point x="-0.22726846" y="0.2578969" />
+      <point x="-0.22514701" y="0.25497013" />
+      <point x="-0.21984434" y="0.26375073" />
+      <point x="-0.21719232" y="0.26960483" />
+      <point x="-0.2187832" y="0.27838576" />
+      <point x="-0.22461647" y="0.28228837" />
+    </shape>
+  </PropClass>
+  <PropClass id="eaf18293-c667-4af1-b1cb-b6701a254bf4" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Red" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Mouth Open 3" Parm1="7" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.1832546" y="0.381805" />
+      <point x="-0.18537503" y="0.38570762" />
+      <point x="-0.18431526" y="0.3974154" />
+      <point x="-0.18113267" y="0.40424484" />
+      <point x="-0.17477044" y="0.403269" />
+      <point x="-0.17636052" y="0.38570762" />
+      <point x="-0.18007338" y="0.3779024" />
+      <point x="-0.18378466" y="0.381805" />
+    </shape>
+  </PropClass>
+  <PropClass id="df9ef66a-ee8f-43a6-9f99-c4180db9379f" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Red" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Mouth Open 4" Parm1="5" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.13764939" y="0.1983822" />
+      <point x="-0.1450733" y="0.19935793" />
+      <point x="-0.14401352" y="0.18667433" />
+      <point x="-0.1403009" y="0.17886913" />
+      <point x="-0.13605887" y="0.18277168" />
+      <point x="-0.1355288" y="0.19935793" />
+    </shape>
+  </PropClass>
+  <PropClass id="4d34cc1e-3bef-4a9b-987a-4828acd165a9" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Red" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Dog Head Rt" Parm1="19" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.00719887" y="-0.10406991" />
+      <point x="-0.012502924" y="-0.08065435" />
+      <point x="-0.022048086" y="-0.10406991" />
+      <point x="-0.025229365" y="-0.11285081" />
+      <point x="-0.035834983" y="-0.10309433" />
+      <point x="-0.031592593" y="-0.08943519" />
+      <point x="-0.029471353" y="-0.08065435" />
+      <point x="-0.031592593" y="-0.051384732" />
+      <point x="-0.019396082" y="-0.03870122" />
+      <point x="-0.010910764" y="-0.03870122" />
+      <point x="0.004467368" y="-0.006504707" />
+      <point x="0.013482064" y="-0.0045534596" />
+      <point x="0.018254578" y="-0.015285604" />
+      <point x="0.016663134" y="-0.06016558" />
+      <point x="0.025678158" y="-0.09236221" />
+      <point x="0.022496551" y="-0.12553427" />
+      <point x="0.012951702" y="-0.11382646" />
+      <point x="0.014541656" y="-0.095289156" />
+      <point x="0.003936857" y="-0.08358132" />
+      <point x="0.0028764606" y="-0.10406991" />
+    </shape>
+  </PropClass>
+  <PropClass id="b7134612-f300-4de2-983f-9c264b870051" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Green" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Dog Head Lt" Parm1="19" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.00719887" y="-0.10699692" />
+      <point x="-0.010910764" y="-0.08748394" />
+      <point x="-0.017805696" y="-0.10016739" />
+      <point x="-0.0172742" y="-0.117729045" />
+      <point x="-0.02629" y="-0.12553427" />
+      <point x="-0.032653943" y="-0.10114304" />
+      <point x="-0.023107424" y="-0.058214303" />
+      <point x="-0.024168521" y="-0.0123586655" />
+      <point x="-0.019396082" y="-0.0016264245" />
+      <point x="-0.00879015" y="-0.0055290908" />
+      <point x="0.006587982" y="-0.035774313" />
+      <point x="0.014012575" y="-0.03772556" />
+      <point x="0.026739001" y="-0.062116973" />
+      <point x="0.0251486" y="-0.08358132" />
+      <point x="0.029390961" y="-0.10114304" />
+      <point x="0.027268946" y="-0.11187516" />
+      <point x="0.020905644" y="-0.10894822" />
+      <point x="0.008709669" y="-0.07870302" />
+      <point x="0.0049966574" y="-0.08455701" />
+      <point x="0.0023462176" y="-0.10504555" />
+    </shape>
+  </PropClass>
+  <PropClass id="6200142b-c9ca-497f-b04e-77d4441f3bd0" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Red" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Light Red1" Parm1="9" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.009770513" y="0.46863794" />
+      <point x="0.027799249" y="0.43839252" />
+      <point x="0.020905644" y="0.4169283" />
+      <point x="0.004467368" y="0.4335146" />
+      <point x="0.019314975" y="0.41302574" />
+      <point x="0.017193735" y="0.38765883" />
+      <point x="-0.00030577183" y="0.39253676" />
+      <point x="0.016663134" y="0.38375628" />
+      <point x="0.014541656" y="0.3496081" />
+      <point x="-0.00030577183" y="0.34668145" />
+    </shape>
+  </PropClass>
+  <PropClass id="d2a9f264-1ada-4ccc-a4f7-a8cfd64d9f29" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Red" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Light Red2" Parm1="9" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.14605418" y="0.46766198" />
+      <point x="0.13279605" y="0.43936813" />
+      <point x="0.13385701" y="0.3983909" />
+      <point x="0.14976588" y="0.41595256" />
+      <point x="0.13226616" y="0.39546406" />
+      <point x="0.1306758" y="0.36912113" />
+      <point x="0.14870372" y="0.37204835" />
+      <point x="0.13173512" y="0.3661946" />
+      <point x="0.12802356" y="0.34472996" />
+      <point x="0.14446256" y="0.33790022" />
+    </shape>
+  </PropClass>
+  <PropClass id="9bcd6f99-5442-4230-a58c-362140d35a02" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Red" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Scarf Up" Parm1="8" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.11378674" y="0.17691779" />
+      <point x="-0.09787844" y="0.17203957" />
+      <point x="-0.08302997" y="0.18374747" />
+      <point x="-0.07295486" y="0.17984483" />
+      <point x="-0.07083361" y="0.16716123" />
+      <point x="-0.08037853" y="0.17301518" />
+      <point x="-0.08939381" y="0.16033188" />
+      <point x="-0.104241505" y="0.15642926" />
+      <point x="-0.11484741" y="0.16716123" />
+    </shape>
+  </PropClass>
+  <PropClass id="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,White" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2" Parm1="20" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.41339844" y="0.18277171" />
+      <point x="-0.4468069" y="0.218871" />
+      <point x="-0.4468069" y="0.23057872" />
+      <point x="-0.45794284" y="0.24521372" />
+      <point x="-0.4600634" y="0.26960483" />
+      <point x="-0.46430665" y="0.27936116" />
+      <point x="-0.4388517" y="0.27253205" />
+      <point x="-0.44521576" y="0.26570216" />
+      <point x="-0.4468069" y="0.24033523" />
+      <point x="-0.46377617" y="0.23253006" />
+      <point x="-0.46377617" y="0.20228463" />
+      <point x="-0.460594" y="0.19643089" />
+      <point x="-0.460594" y="0.1808204" />
+      <point x="-0.4584725" y="0.17301518" />
+      <point x="-0.45529085" y="0.17691776" />
+      <point x="-0.45316935" y="0.19545531" />
+      <point x="-0.44839782" y="0.19643089" />
+      <point x="-0.43619967" y="0.17399088" />
+      <point x="-0.4266553" y="0.16033188" />
+      <point x="-0.4181708" y="0.14959943" />
+      <point x="-0.40597385" y="0.15057534" />
+    </shape>
+  </PropClass>
+  <PropClass id="8c412436-36b0-4894-a722-bb86933f7b39" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Green" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Light Grn1" Parm1="6" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.033102304" y="0.4354654" />
+      <point x="0.04582861" y="0.41497684" />
+      <point x="0.04264742" y="0.38765883" />
+      <point x="0.0251486" y="0.4003421" />
+      <point x="0.04211697" y="0.38765883" />
+      <point x="0.043177783" y="0.34765714" />
+      <point x="0.020905644" y="0.35058415" />
+    </shape>
+  </PropClass>
+  <PropClass id="40382cb3-bc39-4a6e-834f-d61ce5363e6a" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Green" Comment="Caroler Panel 3" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Light Grn2" Parm1="6" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.11688763" y="0.42863607" />
+      <point x="0.10256997" y="0.40229356" />
+      <point x="0.10044867" y="0.375951" />
+      <point x="0.11423561" y="0.38863432" />
+      <point x="0.10203987" y="0.37302378" />
+      <point x="0.10044867" y="0.35351065" />
+      <point x="0.12059933" y="0.34570548" />
+    </shape>
+  </PropClass>
+  <PropClass id="bcfc8b90-dce4-41b7-819c-ec6377a399f7" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Green" Comment="Caroler Panel 1" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Mouth Closed 1" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.37362748" y="0.313509" />
+      <point x="-0.3656726" y="0.30472836" />
+      <point x="-0.35771793" y="0.3154608" />
+    </shape>
+  </PropClass>
+  <PropClass id="f6f42cb4-7716-499a-8df9-7507f92abe38" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Green" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Mouth Closed 2" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.23257184" y="0.28228837" />
+      <point x="-0.22514701" y="0.2705805" />
+      <point x="-0.21560115" y="0.27253202" />
+    </shape>
+  </PropClass>
+  <PropClass id="47ed6334-6290-4cac-9d30-fab5a194058d" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Green" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Mouth Closed 3" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.19014847" y="0.39448833" />
+      <point x="-0.18272406" y="0.38863432" />
+      <point x="-0.17264879" y="0.39546406" />
+    </shape>
+  </PropClass>
+  <PropClass id="1bd0ce92-639e-4259-b6cf-51941916fc0b" BulbShape="Square" ChannelGrid="Regular,7B,10,10,0,Green" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-10 Caroler P2 Mouth Closed 4" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.14719525" y="0.19545531" />
+      <point x="-0.13977063" y="0.18569875" />
+      <point x="-0.13234705" y="0.19643092" />
+    </shape>
+  </PropClass>
+  <PropClass id="36f56dc1-4be4-44d1-8e2e-d90130d82e19" BulbShape="Square" ChannelGrid="Regular,7B,9,9,0,Green" Comment="Caroler Panel 2" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="22ba6b24-57ff-4b65-abec-acbd7e2da30c" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-09 Caroler P1 Scarf Dn" Parm1="7" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.11166601" y="0.17594224" />
+      <point x="-0.101059586" y="0.159356" />
+      <point x="-0.08568144" y="0.15447792" />
+      <point x="-0.075076476" y="0.13984308" />
+      <point x="-0.080908865" y="0.12813519" />
+      <point x="-0.08727248" y="0.14277005" />
+      <point x="-0.10212028" y="0.14862406" />
+      <point x="-0.11537813" y="0.16423446" />
+    </shape>
+  </PropClass>
+  <PropClass id="8480d57a-7f1f-4e48-afee-cbabb3a73450" BulbShape="Star_5" ChannelGrid="Regular,7D,2,2,0,White" Comment="Deer 2" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-02 Deer PS" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.28800005" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="2d3decb6-51b9-4d59-ad54-a1d1541b5d75" BulbShape="Star_5" ChannelGrid="Regular,7D,3,3,0,Purple" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Purple" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-03 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.33600006" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="b7180f52-fb57-4db4-b80e-e7839a977615" BulbShape="Star_5" ChannelGrid="Regular,7D,4,4,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-04 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.38400006" y="0.057729818" />
+    </shape>
+  </PropClass>
+  <PropClass id="e6eb514f-7898-45e6-a65a-adfe106cd948" BulbShape="Star_5" ChannelGrid="Regular,7D,5,5,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-05 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.43200007" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="9a3067b5-db85-4f5c-91c5-140196944134" BulbShape="Star_5" ChannelGrid="Regular,7D,6,6,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-06 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.48000008" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="383202d9-7aa8-4bfa-9b07-167a6e139e0a" BulbShape="Star_5" ChannelGrid="Regular,7D,7,7,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-07 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.52800006" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="fe46f259-faa9-44a7-94df-492cc02197e8" BulbShape="Star_5" ChannelGrid="Regular,7D,8,8,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-08 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.57600003" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="b7fc9d54-9fef-4031-b383-da2e6db36178" BulbShape="Star_5" ChannelGrid="Regular,7D,10,10,0,Purple" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Purple" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-10 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.672" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="11c453a3-99ff-4dbc-b94f-4b562d2024d6" BulbShape="Star_5" ChannelGrid="Regular,7D,11,11,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-11 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.71999997" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="71a0c885-5603-4e96-9373-9cbe64276d7a" BulbShape="Star_5" ChannelGrid="Regular,7D,12,12,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-12 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.76799995" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="43673f56-dd83-41e7-82e6-522756b5f580" BulbShape="Star_5" ChannelGrid="Regular,7D,13,13,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-13 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.8159999" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="54781558-087c-4584-930d-ac25babbbee6" BulbShape="Star_5" ChannelGrid="Regular,7D,14,14,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-14 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.8639999" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="bbeab929-6bd5-495d-a4e6-026ff19cc698" BulbShape="Star_5" ChannelGrid="Regular,7D,15,15,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-15 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.9119999" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="2802135d-c4c6-446e-8434-33f382933030" BulbShape="Star_5" ChannelGrid="Regular,7D,16,16,0,White" Comment="" CustomBulbColor="FFFFFFFF" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="10" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7D-16 SPARE" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="0.95999986" y="0.05999998" />
+    </shape>
+  </PropClass>
+  <PropClass id="85dd6de5-fdff-4333-925d-4ab16f38e400" BulbShape="Square" ChannelGrid="Regular,7B,1,1,0,Green" Comment="Christmas Hippo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-01 Hippo Box" Parm1="4" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.7574522" y="-0.19464284" />
+      <point x="-0.90631" y="-0.19464284" />
+      <point x="-0.9039718" y="-0.4043252" />
+      <point x="-0.7488792" y="-0.40225852" />
+      <point x="-0.75667286" y="-0.19360998" />
+    </shape>
+  </PropClass>
+  <PropClass id="12fb402e-17c8-4356-9b44-ae4d32b6e2d1" BulbShape="Square" ChannelGrid="Regular,7B,2,2,0,Green" Comment="Christmas Hippo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-02 Hippo Lid 1 Closed &amp; Bow" Parm1="4" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.73329204" y="-0.19360998" />
+      <point x="-0.9265732" y="-0.19464284" />
+      <point x="-0.928132" y="-0.15126011" />
+      <point x="-0.73563015" y="-0.15332608" />
+      <point x="-0.73485076" y="-0.19360998" />
+    </shape>
+  </PropClass>
+  <PropClass id="2e7b8382-6697-4605-82ea-38d0fcce2221" BulbShape="Square" ChannelGrid="Regular,7B,3,3,0,Green" Comment="Christmas Hippo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-03 Hippo Lid Open" Parm1="4" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.71458745" y="-0.2091038" />
+      <point x="-0.74030626" y="-0.18121466" />
+      <point x="-0.65613556" y="0.0067762733" />
+      <point x="-0.6249612" y="-0.02111248" />
+      <point x="-0.7177049" y="-0.21323541" />
+    </shape>
+  </PropClass>
+  <PropClass id="5977b62c-44e1-4375-929e-6f5e78bcf2e6" BulbShape="Square" ChannelGrid="Regular,7B,4,4,0,Pink" Comment="Christmas Hippo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Pink" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-04 Hippo Body Mid" Parm1="31" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.86422443" y="0.004710391" />
+      <point x="-0.8907227" y="-0.025244206" />
+      <point x="-0.9031924" y="-0.0675939" />
+      <point x="-0.90631" y="-0.10787746" />
+      <point x="-0.8891639" y="-0.13163465" />
+      <point x="-0.85798955" y="-0.14609554" />
+      <point x="-0.81122804" y="-0.14816147" />
+      <point x="-0.7745981" y="-0.14196387" />
+      <point x="-0.7597903" y="-0.10994342" />
+      <point x="-0.7395269" y="-0.07172558" />
+      <point x="-0.73485076" y="-0.042803846" />
+      <point x="-0.73329204" y="-0.013882056" />
+      <point x="-0.7356302" y="-0.03557335" />
+      <point x="-0.76836324" y="-0.060363427" />
+      <point x="-0.70055896" y="-0.0014870763" />
+      <point x="-0.720043" y="0.046027116" />
+      <point x="-0.74108565" y="0.024335861" />
+      <point x="-0.7605697" y="0.0067762733" />
+      <point x="-0.79564077" y="-0.0107833445" />
+      <point x="-0.82369775" y="-0.009750426" />
+      <point x="-0.8424024" y="0.0016116723" />
+      <point x="-0.86110705" y="0.005743332" />
+      <point x="-0.8696799" y="0.025368761" />
+      <point x="-0.8829291" y="0.06255383" />
+      <point x="-0.88137037" y="0.09870587" />
+      <point x="-0.8595483" y="0.12969342" />
+      <point x="-0.8408437" y="0.1441544" />
+      <point x="-0.79174405" y="0.15035175" />
+      <point x="-0.7636871" y="0.14208853" />
+      <point x="-0.74654114" y="0.10903504" />
+      <point x="-0.7340715" y="0.07804759" />
+      <point x="-0.7286159" y="0.0439613" />
+    </shape>
+  </PropClass>
+  <PropClass id="8798629c-2101-421c-9714-035a5ee82a87" BulbShape="Square" ChannelGrid="Regular,7B,5,5,0,White" Comment="Christmas Hippo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-05 Hippo Body Full Up" Parm1="28" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.86004496" y="0.21726924" />
+      <point x="-0.87173533" y="0.30196893" />
+      <point x="-0.86627984" y="0.25548714" />
+      <point x="-0.85848624" y="0.22553273" />
+      <point x="-0.8265325" y="0.20694007" />
+      <point x="-0.8000343" y="0.18834758" />
+      <point x="-0.78366774" y="0.18731475" />
+      <point x="-0.7267746" y="0.2275987" />
+      <point x="-0.7197603" y="0.2720139" />
+      <point x="-0.73222995" y="0.30506727" />
+      <point x="-0.7454791" y="0.33192343" />
+      <point x="-0.76496315" y="0.34741706" />
+      <point x="-0.8086072" y="0.3525819" />
+      <point x="-0.8569275" y="0.32779145" />
+      <point x="-0.8732941" y="0.30300158" />
+      <point x="-0.8670592" y="0.25445437" />
+      <point x="-0.84913397" y="0.26271778" />
+      <point x="-0.84679586" y="0.2885406" />
+      <point x="-0.8296499" y="0.2926724" />
+      <point x="-0.8218564" y="0.2782116" />
+      <point x="-0.8218564" y="0.26168495" />
+      <point x="-0.79379946" y="0.27407968" />
+      <point x="-0.779771" y="0.2895735" />
+      <point x="-0.76886" y="0.29990268" />
+      <point x="-0.7556108" y="0.2875076" />
+      <point x="-0.74937594" y="0.2720139" />
+      <point x="-0.74859655" y="0.26065195" />
+      <point x="-0.7205397" y="0.2689153" />
+      <point x="-0.7259952" y="0.23379606" />
+    </shape>
+  </PropClass>
+  <PropClass id="17acbe8f-52a3-44e7-876b-0e90147c37b1" BulbShape="Square" ChannelGrid="Regular,7B,6,6,0,White" Comment="Christmas Hippo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-06 Hippo Body Full Right" Parm1="55" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.7831713" y="-0.15539195" />
+      <point x="-0.832271" y="-0.15435897" />
+      <point x="-0.8299329" y="-0.11304234" />
+      <point x="-0.84552014" y="-0.09961446" />
+      <point x="-0.8517549" y="-0.07895589" />
+      <point x="-0.8587691" y="-0.06036353" />
+      <point x="-0.86500406" y="-0.042803846" />
+      <point x="-0.8969578" y="-0.039705083" />
+      <point x="-0.90864825" y="-0.02111248" />
+      <point x="-0.9024134" y="0.0181383" />
+      <point x="-0.91800046" y="0.0191712" />
+      <point x="-0.9242355" y="0.04396125" />
+      <point x="-0.90864825" y="0.08217923" />
+      <point x="-0.88448805" y="0.10696919" />
+      <point x="-0.8782532" y="0.108002186" />
+      <point x="-0.86890084" y="0.14622004" />
+      <point x="-0.8813706" y="0.17204306" />
+      <point x="-0.8829293" y="0.20716213" />
+      <point x="-0.8876054" y="0.21852429" />
+      <point x="-0.8891642" y="0.23401803" />
+      <point x="-0.8829294" y="0.23918274" />
+      <point x="-0.8634452" y="0.2309194" />
+      <point x="-0.85565174" y="0.2226558" />
+      <point x="-0.8478582" y="0.19270135" />
+      <point x="-0.81590444" y="0.17410871" />
+      <point x="-0.7894062" y="0.15551642" />
+      <point x="-0.7527763" y="0.16584551" />
+      <point x="-0.71614647" y="0.19476707" />
+      <point x="-0.77459836" y="0.15448348" />
+      <point x="-0.84396136" y="0.1968331" />
+      <point x="-0.87123895" y="0.25054473" />
+      <point x="-0.85643107" y="0.22162315" />
+      <point x="-0.8525343" y="0.20612942" />
+      <point x="-0.8424026" y="0.19063562" />
+      <point x="-0.8314916" y="0.18340492" />
+      <point x="-0.82447743" y="0.18443798" />
+      <point x="-0.812787" y="0.17514184" />
+      <point x="-0.78862685" y="0.158615" />
+      <point x="-0.7621287" y="0.158615" />
+      <point x="-0.74732083" y="0.16997725" />
+      <point x="-0.7364098" y="0.18030646" />
+      <point x="-0.72316074" y="0.1968331" />
+      <point x="-0.7099116" y="0.23608385" />
+      <point x="-0.7153671" y="0.20096472" />
+      <point x="-0.69042766" y="0.27120292" />
+      <point x="-0.6608119" y="0.27946636" />
+      <point x="-0.65457714" y="0.26500577" />
+      <point x="-0.6795166" y="0.17101026" />
+      <point x="-0.6958831" y="0.15241753" />
+      <point x="-0.71458775" y="0.1338251" />
+      <point x="-0.7309543" y="0.121430054" />
+      <point x="-0.7091322" y="0.11316671" />
+      <point x="-0.6834134" y="0.08734383" />
+      <point x="-0.67328167" y="0.054290406" />
+      <point x="-0.67795783" y="0.0181383" />
+      <point x="-0.69510376" y="-0.0004542023" />
+    </shape>
+  </PropClass>
+  <PropClass id="dfab8983-10c5-487d-951e-70cce2196d48" BulbShape="Square" ChannelGrid="Regular,7B,7,7,0,White" Comment="Christmas Hippo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7B-07 Hippo Body Full Left" Parm1="55" Parm2="300">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.8005792" y="-0.13702138" />
+      <point x="-0.8496789" y="-0.13598843" />
+      <point x="-0.8473407" y="-0.09467177" />
+      <point x="-0.862928" y="-0.08124386" />
+      <point x="-0.86916274" y="-0.0605855" />
+      <point x="-0.87617695" y="-0.041992992" />
+      <point x="-0.8824118" y="-0.024433307" />
+      <point x="-0.91436553" y="-0.021334596" />
+      <point x="-0.9260561" y="-0.0027420819" />
+      <point x="-0.9198212" y="0.03650876" />
+      <point x="-0.9354083" y="0.037541658" />
+      <point x="-0.9416432" y="0.0623317" />
+      <point x="-0.9260561" y="0.10054968" />
+      <point x="-0.9018958" y="0.12533964" />
+      <point x="-0.8956608" y="0.1263726" />
+      <point x="-0.88630855" y="0.16459057" />
+      <point x="-0.8987783" y="0.19041349" />
+      <point x="-0.9003371" y="0.22553273" />
+      <point x="-0.9229385" y="0.24825686" />
+      <point x="-0.9252767" y="0.28027743" />
+      <point x="-0.89644027" y="0.30610025" />
+      <point x="-0.87851506" y="0.2875076" />
+      <point x="-0.8730595" y="0.24102637" />
+      <point x="-0.86526597" y="0.21107194" />
+      <point x="-0.8333123" y="0.19247945" />
+      <point x="-0.8068141" y="0.17388663" />
+      <point x="-0.77018416" y="0.18421593" />
+      <point x="-0.7335543" y="0.21313763" />
+      <point x="-0.7086148" y="0.23482892" />
+      <point x="-0.74056846" y="0.19970974" />
+      <point x="-0.7694048" y="0.18318307" />
+      <point x="-0.7951237" y="0.17182098" />
+      <point x="-0.81928384" y="0.18008423" />
+      <point x="-0.8512375" y="0.1945452" />
+      <point x="-0.8800737" y="0.2885406" />
+      <point x="-0.8738389" y="0.23999345" />
+      <point x="-0.86604536" y="0.20074281" />
+      <point x="-0.8325329" y="0.19041349" />
+      <point x="-0.7733016" y="0.18008423" />
+      <point x="-0.7561557" y="0.1945452" />
+      <point x="-0.7397892" y="0.2017755" />
+      <point x="-0.72965753" y="0.23586184" />
+      <point x="-0.7148497" y="0.23586178" />
+      <point x="-0.732775" y="0.2193351" />
+      <point x="-0.71562904" y="0.23482886" />
+      <point x="-0.70237994" y="0.23896056" />
+      <point x="-0.7000419" y="0.20694007" />
+      <point x="-0.69692445" y="0.18938047" />
+      <point x="-0.7132909" y="0.17078798" />
+      <point x="-0.7319956" y="0.15219553" />
+      <point x="-0.7483622" y="0.13980049" />
+      <point x="-0.7265401" y="0.1315372" />
+      <point x="-0.70082116" y="0.10571422" />
+      <point x="-0.69068956" y="0.07266085" />
+      <point x="-0.69536567" y="0.03650876" />
+      <point x="-0.71251166" y="0.017916214" />
+    </shape>
+  </PropClass>
+  <PropClass id="7086aa66-ab27-4817-a7c8-60d3d0410139" BulbShape="Square" ChannelGrid="Regular,7C,4,4,0,Green" Comment="Kingsbury Panel" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="LinearCurve 50%" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-04 Kingsbury" Parm1="73" Parm2="1000">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.32241833" y="0.85074127" />
+      <point x="-0.3019302" y="0.7938887" />
+      <point x="-0.31036612" y="0.7827654" />
+      <point x="-0.32603374" y="0.8420899" />
+      <point x="-0.3392915" y="0.78770834" />
+      <point x="-0.34853038" y="0.78276545" />
+      <point x="-0.32161495" y="0.9038869" />
+      <point x="-0.32964945" y="0.90574074" />
+      <point x="-0.3248286" y="0.91315657" />
+      <point x="-0.31117067" y="0.9156284" />
+      <point x="-0.32402545" y="0.8593937" />
+      <point x="-0.29349428" y="0.91439265" />
+      <point x="-0.28746828" y="0.9020333" />
+      <point x="-0.32201728" y="0.85074127" />
+      <point x="-0.3051442" y="0.85506827" />
+      <point x="-0.2963062" y="0.85692084" />
+      <point x="-0.30434066" y="0.82293296" />
+      <point x="-0.29590467" y="0.82478756" />
+      <point x="-0.2810402" y="0.8606291" />
+      <point x="-0.288272" y="0.8241702" />
+      <point x="-0.28345105" y="0.84765285" />
+      <point x="-0.27461326" y="0.8593937" />
+      <point x="-0.2681854" y="0.85753953" />
+      <point x="-0.2738097" y="0.83591133" />
+      <point x="-0.2705957" y="0.8322031" />
+      <point x="-0.2641679" y="0.84023625" />
+      <point x="-0.25412548" y="0.86804587" />
+      <point x="-0.24568895" y="0.8773149" />
+      <point x="-0.23966281" y="0.87855166" />
+      <point x="-0.2505098" y="0.87360704" />
+      <point x="-0.26015085" y="0.8513602" />
+      <point x="-0.25894582" y="0.83900034" />
+      <point x="-0.25251815" y="0.84208995" />
+      <point x="-0.24568897" y="0.8606291" />
+      <point x="-0.2585441" y="0.80439436" />
+      <point x="-0.25332135" y="0.82725954" />
+      <point x="-0.23002173" y="0.874226" />
+      <point x="-0.223594" y="0.8865839" />
+      <point x="-0.22078198" y="0.8946175" />
+      <point x="-0.22720985" y="0.8989436" />
+      <point x="-0.22881642" y="0.8884391" />
+      <point x="-0.223594" y="0.873607" />
+      <point x="-0.22078198" y="0.86124676" />
+      <point x="-0.22319244" y="0.84950614" />
+      <point x="-0.23403908" y="0.8427086" />
+      <point x="-0.21837132" y="0.8538317" />
+      <point x="-0.20029396" y="0.9100667" />
+      <point x="-0.21314922" y="0.86433625" />
+      <point x="-0.20832852" y="0.84765285" />
+      <point x="-0.20109747" y="0.85568696" />
+      <point x="-0.19708005" y="0.86742604" />
+      <point x="-0.19507152" y="0.87545997" />
+      <point x="-0.19788353" y="0.8847314" />
+      <point x="-0.20913185" y="0.88225883" />
+      <point x="-0.18342139" y="0.8915278" />
+      <point x="-0.18824239" y="0.85877603" />
+      <point x="-0.18181446" y="0.8618653" />
+      <point x="-0.1757886" y="0.87113506" />
+      <point x="-0.17016432" y="0.89523494" />
+      <point x="-0.17739557" y="0.86989933" />
+      <point x="-0.17418173" y="0.86248344" />
+      <point x="-0.16936114" y="0.8655732" />
+      <point x="-0.15449744" y="0.9026511" />
+      <point x="-0.14726597" y="0.8989442" />
+      <point x="-0.15248856" y="0.8729886" />
+      <point x="-0.14967652" y="0.8692811" />
+      <point x="-0.14204378" y="0.877934" />
+      <point x="-0.13883021" y="0.8853485" />
+      <point x="-0.13360767" y="0.90450597" />
+      <point x="-0.13923156" y="0.8847313" />
+      <point x="-0.13722306" y="0.87545997" />
+      <point x="-0.12798318" y="0.8828754" />
+      <point x="-0.12115389" y="0.9100667" />
+      <point x="-0.134009" y="0.8420899" />
+    </shape>
+  </PropClass>
+  <PropClass id="f9d1f3da-1f51-4136-bc37-9eaa3129dde9" BulbShape="Square" ChannelGrid="Regular,7C,4,4,0,Green" Comment="Kingsbury Panel" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="7086aa66-ab27-4817-a7c8-60d3d0410139" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-04 Kingsbury Outline" Parm1="4" Parm2="150">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.37263426" y="0.742598" />
+      <point x="-0.11633341" y="0.82107854" />
+      <point x="-0.08258827" y="0.58007103" />
+      <point x="-0.34290615" y="0.5009705" />
+      <point x="-0.37343705" y="0.74321544" />
+    </shape>
+  </PropClass>
+  <PropClass id="9ca983bc-2072-4960-a899-61cdd1a84d4c" BulbShape="Square" ChannelGrid="Regular,7C,4,4,0,Yellow" Comment="Kingsbury Panel" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="7086aa66-ab27-4817-a7c8-60d3d0410139" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Yellow" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-04 Kingsbury Mugs" Parm1="38" Parm2="150">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.3014052" y="0.55679965" />
+      <point x="-0.3101707" y="0.5502182" />
+      <point x="-0.32132676" y="0.5502182" />
+      <point x="-0.33009142" y="0.55560285" />
+      <point x="-0.329693" y="0.56637335" />
+      <point x="-0.33367655" y="0.5741515" />
+      <point x="-0.3384583" y="0.584921" />
+      <point x="-0.33726302" y="0.5962891" />
+      <point x="-0.3352705" y="0.6040682" />
+      <point x="-0.3288961" y="0.60705936" />
+      <point x="-0.32929447" y="0.6136412" />
+      <point x="-0.32451317" y="0.61902606" />
+      <point x="-0.3181391" y="0.62141883" />
+      <point x="-0.31056863" y="0.62201756" />
+      <point x="-0.3077801" y="0.62381274" />
+      <point x="-0.30538973" y="0.6291975" />
+      <point x="-0.2994137" y="0.62441117" />
+      <point x="-0.28706276" y="0.6327876" />
+      <point x="-0.2806878" y="0.63637745" />
+      <point x="-0.27710214" y="0.6297963" />
+      <point x="-0.2731183" y="0.63039494" />
+      <point x="-0.26913387" y="0.6285992" />
+      <point x="-0.26475137" y="0.62141883" />
+      <point x="-0.2611654" y="0.6136412" />
+      <point x="-0.26275936" y="0.6046664" />
+      <point x="-0.26435325" y="0.5962891" />
+      <point x="-0.2591735" y="0.5867164" />
+      <point x="-0.26315796" y="0.5771426" />
+      <point x="-0.26833713" y="0.5705611" />
+      <point x="-0.2763053" y="0.5639796" />
+      <point x="-0.28267986" y="0.5639796" />
+      <point x="-0.2858674" y="0.5645779" />
+      <point x="-0.2854691" y="0.56876653" />
+      <point x="-0.2966242" y="0.5980845" />
+      <point x="-0.30060875" y="0.5986829" />
+      <point x="-0.3026008" y="0.5980845" />
+      <point x="-0.30180392" y="0.560988" />
+      <point x="-0.30060875" y="0.55679965" />
+      <point x="-0.30618608" y="0.55261123" />
+    </shape>
+  </PropClass>
+  <PropClass id="fc25a8fa-1669-44bf-8ed4-2ec0bddbf5bf" BulbShape="Square" ChannelGrid="Regular,7C,4,4,0,Green" Comment="Kingsbury Panel" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="7086aa66-ab27-4817-a7c8-60d3d0410139" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-04 Kingsbury Holly L" Parm1="129" Parm2="156">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.32519472" y="0.7602317" />
+      <point x="-0.32969663" y="0.76699257" />
+      <point x="-0.33059683" y="0.77983826" />
+      <point x="-0.34140277" y="0.77240103" />
+      <point x="-0.34185296" y="0.77983826" />
+      <point x="-0.35265717" y="0.7683452" />
+      <point x="-0.35490844" y="0.7764588" />
+      <point x="-0.36121118" y="0.7500898" />
+      <point x="-0.364813" y="0.77578264" />
+      <point x="-0.36256233" y="0.7906572" />
+      <point x="-0.35670912" y="0.80553126" />
+      <point x="-0.34995633" y="0.81229204" />
+      <point x="-0.35625887" y="0.81972915" />
+      <point x="-0.35625887" y="0.82919514" />
+      <point x="-0.35490844" y="0.84068906" />
+      <point x="-0.36256233" y="0.84068906" />
+      <point x="-0.36391267" y="0.8440693" />
+      <point x="-0.366164" y="0.8542109" />
+      <point x="-0.37111604" y="0.85353535" />
+      <point x="-0.3751682" y="0.8589442" />
+      <point x="-0.37921926" y="0.8690853" />
+      <point x="-0.37921926" y="0.84745014" />
+      <point x="-0.38192087" y="0.84204125" />
+      <point x="-0.37921926" y="0.833252" />
+      <point x="-0.3801198" y="0.8271667" />
+      <point x="-0.38597327" y="0.82311016" />
+      <point x="-0.37966973" y="0.8156732" />
+      <point x="-0.37696862" y="0.80688363" />
+      <point x="-0.37651792" y="0.80282646" />
+      <point x="-0.3801198" y="0.80215037" />
+      <point x="-0.3688652" y="0.7805154" />
+      <point x="-0.36841458" y="0.7764588" />
+      <point x="-0.37561786" y="0.7771342" />
+      <point x="-0.37876928" y="0.78389597" />
+      <point x="-0.38102034" y="0.7913332" />
+      <point x="-0.3882239" y="0.7886284" />
+      <point x="-0.3922764" y="0.7913332" />
+      <point x="-0.39497727" y="0.8007989" />
+      <point x="-0.39587805" y="0.7872755" />
+      <point x="-0.39992917" y="0.782543" />
+      <point x="-0.39632732" y="0.76699257" />
+      <point x="-0.40218052" y="0.76361245" />
+      <point x="-0.39542696" y="0.75549924" />
+      <point x="-0.38867438" y="0.74806184" />
+      <point x="-0.3855224" y="0.7419761" />
+      <point x="-0.3841722" y="0.72913045" />
+      <point x="-0.38912433" y="0.7325109" />
+      <point x="-0.39497727" y="0.73927194" />
+      <point x="-0.39812824" y="0.75076646" />
+      <point x="-0.4071328" y="0.7440051" />
+      <point x="-0.40578198" y="0.7325109" />
+      <point x="-0.39632732" y="0.72304606" />
+      <point x="-0.39812824" y="0.7176368" />
+      <point x="-0.40578198" y="0.7189886" />
+      <point x="-0.40353066" y="0.70952266" />
+      <point x="-0.403981" y="0.6980299" />
+      <point x="-0.40623224" y="0.6919438" />
+      <point x="-0.40308046" y="0.6872113" />
+      <point x="-0.40127996" y="0.67842215" />
+      <point x="-0.40623224" y="0.66151905" />
+      <point x="-0.39947966" y="0.65746313" />
+      <point x="-0.40488145" y="0.6554346" />
+      <point x="-0.40803325" y="0.6527302" />
+      <point x="-0.40803325" y="0.6466446" />
+      <point x="-0.40488145" y="0.6405599" />
+      <point x="-0.39947966" y="0.6412358" />
+      <point x="-0.39722753" y="0.6466446" />
+      <point x="-0.39497727" y="0.6378555" />
+      <point x="-0.39407733" y="0.6432642" />
+      <point x="-0.3882239" y="0.63853115" />
+      <point x="-0.3904753" y="0.6331227" />
+      <point x="-0.38912433" y="0.62974244" />
+      <point x="-0.393626" y="0.63109416" />
+      <point x="-0.39767855" y="0.6283895" />
+      <point x="-0.39992917" y="0.6223054" />
+      <point x="-0.39542696" y="0.61486804" />
+      <point x="-0.3904753" y="0.61486804" />
+      <point x="-0.3990282" y="0.6047263" />
+      <point x="-0.39497727" y="0.59661204" />
+      <point x="-0.4017296" y="0.57970977" />
+      <point x="-0.40308046" y="0.5770057" />
+      <point x="-0.39587805" y="0.5702442" />
+      <point x="-0.39587805" y="0.5648353" />
+      <point x="-0.40218052" y="0.5492842" />
+      <point x="-0.39632732" y="0.54996115" />
+      <point x="-0.39272556" y="0.54996115" />
+      <point x="-0.3904753" y="0.5418471" />
+      <point x="-0.38597327" y="0.5492842" />
+      <point x="-0.3814706" y="0.5513131" />
+      <point x="-0.3783192" y="0.55266535" />
+      <point x="-0.37696862" y="0.5655113" />
+      <point x="-0.37471712" y="0.5715962" />
+      <point x="-0.37156639" y="0.5702442" />
+      <point x="-0.37021598" y="0.5594265" />
+      <point x="-0.37246677" y="0.5519891" />
+      <point x="-0.37561786" y="0.54996115" />
+      <point x="-0.37021598" y="0.5438761" />
+      <point x="-0.36706445" y="0.52900136" />
+      <point x="-0.37291667" y="0.51615524" />
+      <point x="-0.36256233" y="0.5249448" />
+      <point x="-0.35490844" y="0.52764934" />
+      <point x="-0.35310757" y="0.53846693" />
+      <point x="-0.35130686" y="0.545904" />
+      <point x="-0.35355806" y="0.55266535" />
+      <point x="-0.35490844" y="0.5702442" />
+      <point x="-0.35490844" y="0.5770057" />
+      <point x="-0.36076134" y="0.59052765" />
+      <point x="-0.364813" y="0.5932319" />
+      <point x="-0.3675144" y="0.6040495" />
+      <point x="-0.37741834" y="0.61486804" />
+      <point x="-0.3778692" y="0.6270376" />
+      <point x="-0.37876928" y="0.6378555" />
+      <point x="-0.3823712" y="0.6473213" />
+      <point x="-0.38777402" y="0.6554346" />
+      <point x="-0.38327166" y="0.66151905" />
+      <point x="-0.38507274" y="0.67571783" />
+      <point x="-0.3823712" y="0.6818022" />
+      <point x="-0.37696862" y="0.6709848" />
+      <point x="-0.36796483" y="0.6621954" />
+      <point x="-0.3688652" y="0.6716606" />
+      <point x="-0.37336743" y="0.6770696" />
+      <point x="-0.37741834" y="0.69464844" />
+      <point x="-0.37696862" y="0.7047902" />
+      <point x="-0.37381744" y="0.7108758" />
+      <point x="-0.37336743" y="0.7135801" />
+      <point x="-0.37696862" y="0.71831316" />
+      <point x="-0.37606862" y="0.74670917" />
+      <point x="-0.37291667" y="0.76361245" />
+      <point x="-0.37021598" y="0.77240103" />
+      <point x="-0.36121118" y="0.75076646" />
+    </shape>
+  </PropClass>
+  <PropClass id="3a36219a-3021-4b41-8aca-b6e089436a23" BulbShape="Square" ChannelGrid="Regular,7C,4,4,0,Green" Comment="Kingsbury Panel" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="7086aa66-ab27-4817-a7c8-60d3d0410139" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Green" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7C-04 Kingsbury Holly R" Parm1="100" Parm2="156">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.1721241" y="0.8075589" />
+      <point x="-0.16987312" y="0.8136447" />
+      <point x="-0.17437504" y="0.82851917" />
+      <point x="-0.17122369" y="0.8312237" />
+      <point x="-0.17392488" y="0.84474564" />
+      <point x="-0.16807203" y="0.84542125" />
+      <point x="-0.16311991" y="0.8508309" />
+      <point x="-0.15636662" y="0.84068906" />
+      <point x="-0.1491634" y="0.84204125" />
+      <point x="-0.14691252" y="0.8325754" />
+      <point x="-0.13745804" y="0.8190534" />
+      <point x="-0.12215084" y="0.8244624" />
+      <point x="-0.123051286" y="0.833252" />
+      <point x="-0.11899936" y="0.83933645" />
+      <point x="-0.11674836" y="0.85962003" />
+      <point x="-0.11044525" y="0.8575919" />
+      <point x="-0.10549335" y="0.86300063" />
+      <point x="-0.10189167" y="0.8555631" />
+      <point x="-0.096039" y="0.85353535" />
+      <point x="-0.09198715" y="0.8528583" />
+      <point x="-0.08523406" y="0.88328385" />
+      <point x="-0.07938117" y="0.87855166" />
+      <point x="-0.06497416" y="0.89883435" />
+      <point x="-0.06857578" y="0.87990314" />
+      <point x="-0.061372705" y="0.8711145" />
+      <point x="-0.064073786" y="0.8623242" />
+      <point x="-0.061372705" y="0.84609866" />
+      <point x="-0.06857578" y="0.8264911" />
+      <point x="-0.067675754" y="0.81972915" />
+      <point x="-0.062272877" y="0.8217577" />
+      <point x="-0.065424725" y="0.80215037" />
+      <point x="-0.064073786" y="0.7933614" />
+      <point x="-0.07577949" y="0.7906572" />
+      <point x="-0.08253275" y="0.7832198" />
+      <point x="-0.084783815" y="0.77375436" />
+      <point x="-0.083883405" y="0.76428807" />
+      <point x="-0.0802816" y="0.760908" />
+      <point x="-0.08073182" y="0.7703735" />
+      <point x="-0.07667981" y="0.77578264" />
+      <point x="-0.07172771" y="0.7771342" />
+      <point x="-0.06902645" y="0.7690214" />
+      <point x="-0.06857578" y="0.7602317" />
+      <point x="-0.07487892" y="0.75685084" />
+      <point x="-0.078480735" y="0.7575268" />
+      <point x="-0.07352832" y="0.7527946" />
+      <point x="-0.06902645" y="0.75414646" />
+      <point x="-0.064524196" y="0.76225954" />
+      <point x="-0.060021996" y="0.7615839" />
+      <point x="-0.05506987" y="0.75549924" />
+      <point x="-0.0573211" y="0.74806184" />
+      <point x="-0.059572056" y="0.7419761" />
+      <point x="-0.064073786" y="0.7440051" />
+      <point x="-0.067675754" y="0.7500898" />
+      <point x="-0.067675754" y="0.73927194" />
+      <point x="-0.061822936" y="0.73048323" />
+      <point x="-0.057771005" y="0.7284549" />
+      <point x="-0.061372705" y="0.71019983" />
+      <point x="-0.059572056" y="0.6987054" />
+      <point x="-0.067225546" y="0.7122272" />
+      <point x="-0.07082707" y="0.7129045" />
+      <point x="-0.067675754" y="0.6980299" />
+      <point x="-0.05912198" y="0.6892393" />
+      <point x="-0.062272877" y="0.6865351" />
+      <point x="-0.065874584" y="0.6811265" />
+      <point x="-0.065424725" y="0.6736891" />
+      <point x="-0.061372705" y="0.6682805" />
+      <point x="-0.05822131" y="0.6649002" />
+      <point x="-0.064524196" y="0.65746313" />
+      <point x="-0.067675754" y="0.6486729" />
+      <point x="-0.069476575" y="0.63853115" />
+      <point x="-0.07217757" y="0.6270376" />
+      <point x="-0.075329155" y="0.62298095" />
+      <point x="-0.07758027" y="0.6358268" />
+      <point x="-0.0802816" y="0.6419117" />
+      <point x="-0.08343317" y="0.64394027" />
+      <point x="-0.08118205" y="0.6554346" />
+      <point x="-0.083883405" y="0.6635475" />
+      <point x="-0.0874852" y="0.667605" />
+      <point x="-0.091086596" y="0.6662518" />
+      <point x="-0.08973623" y="0.6736891" />
+      <point x="-0.091537" y="0.6872113" />
+      <point x="-0.09558875" y="0.69397247" />
+      <point x="-0.09513843" y="0.69938105" />
+      <point x="-0.094238095" y="0.707495" />
+      <point x="-0.09468816" y="0.7142556" />
+      <point x="-0.08883573" y="0.714932" />
+      <point x="-0.08613431" y="0.7189886" />
+      <point x="-0.0874852" y="0.7264258" />
+      <point x="-0.09063647" y="0.72980607" />
+      <point x="-0.09513843" y="0.7277787" />
+      <point x="-0.09783988" y="0.72372174" />
+      <point x="-0.096939445" y="0.7162845" />
+      <point x="-0.09919016" y="0.72304606" />
+      <point x="-0.09919016" y="0.7325109" />
+      <point x="-0.09783988" y="0.7460337" />
+      <point x="-0.10549335" y="0.76225954" />
+      <point x="-0.106843576" y="0.78524756" />
+      <point x="-0.10369268" y="0.7980943" />
+      <point x="-0.10099131" y="0.8075589" />
+      <point x="-0.11539775" y="0.8251382" />
+      <point x="-0.1730244" y="0.8089114" />
+    </shape>
+  </PropClass>
+  <PropClass id="57c4ccc1-0f98-4e1f-a23e-58c585a9083a" BulbShape="Square" ChannelGrid="Regular,7A,16,16,0,White" Comment="Snowman Child" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="7" RgbOrder="RGB order" MasterPropId="601ae2ad-1eea-4eac-803c-497c0b1b93d5" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-16 Snowman Child" Parm1="74" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.08162159" y="-0.6600319" />
+      <point x="-0.094539076" y="-0.6744544" />
+      <point x="-0.09997812" y="-0.7019886" />
+      <point x="-0.09861833" y="-0.7295229" />
+      <point x="-0.09045996" y="-0.75574625" />
+      <point x="-0.078902155" y="-0.7832803" />
+      <point x="-0.06666447" y="-0.7885252" />
+      <point x="-0.054426804" y="-0.7885252" />
+      <point x="-0.03742996" y="-0.78590274" />
+      <point x="-0.028591774" y="-0.774102" />
+      <point x="-0.02247294" y="-0.7570574" />
+      <point x="-0.02043331" y="-0.74001235" />
+      <point x="-0.017713744" y="-0.7190336" />
+      <point x="-0.021113042" y="-0.6875659" />
+      <point x="-0.026552225" y="-0.67183244" />
+      <point x="-0.032670967" y="-0.6574099" />
+      <point x="-0.039469667" y="-0.64691985" />
+      <point x="-0.05102742" y="-0.6574099" />
+      <point x="-0.060545646" y="-0.66658753" />
+      <point x="-0.07210344" y="-0.67052096" />
+      <point x="-0.078902155" y="-0.66658753" />
+      <point x="-0.08298129" y="-0.6600319" />
+      <point x="-0.09249951" y="-0.64429784" />
+      <point x="-0.09725854" y="-0.6206971" />
+      <point x="-0.09793849" y="-0.59709626" />
+      <point x="-0.09521894" y="-0.58398485" />
+      <point x="-0.09045996" y="-0.56825066" />
+      <point x="-0.086380675" y="-0.56038404" />
+      <point x="-0.09045996" y="-0.5380943" />
+      <point x="-0.09317939" y="-0.51842695" />
+      <point x="-0.08842036" y="-0.5053156" />
+      <point x="-0.078902155" y="-0.5013821" />
+      <point x="-0.063265115" y="-0.4948261" />
+      <point x="-0.051707335" y="-0.49744847" />
+      <point x="-0.040829375" y="-0.50662655" />
+      <point x="-0.03742996" y="-0.5158047" />
+      <point x="-0.03811007" y="-0.5000708" />
+      <point x="-0.046268407" y="-0.48433697" />
+      <point x="-0.063265115" y="-0.4817146" />
+      <point x="-0.07210344" y="-0.46991414" />
+      <point x="-0.078902155" y="-0.4817146" />
+      <point x="-0.085020915" y="-0.4817146" />
+      <point x="-0.09793849" y="-0.48695934" />
+      <point x="-0.09725854" y="-0.49875978" />
+      <point x="-0.094539076" y="-0.51711583" />
+      <point x="-0.09725854" y="-0.4935151" />
+      <point x="-0.08706057" y="-0.47778118" />
+      <point x="-0.078902155" y="-0.45680267" />
+      <point x="-0.07346321" y="-0.4502468" />
+      <point x="-0.055106644" y="-0.4502468" />
+      <point x="-0.04286906" y="-0.46729183" />
+      <point x="-0.035390563" y="-0.48564827" />
+      <point x="-0.032670967" y="-0.49875978" />
+      <point x="-0.030631468" y="-0.5118713" />
+      <point x="-0.028591774" y="-0.51973814" />
+      <point x="-0.02247294" y="-0.52236044" />
+      <point x="-0.02043331" y="-0.5079376" />
+      <point x="-0.024512533" y="-0.49613723" />
+      <point x="-0.027232017" y="-0.49613723" />
+      <point x="-0.031991094" y="-0.5013821" />
+      <point x="-0.040149547" y="-0.5118713" />
+      <point x="-0.03742996" y="-0.5249828" />
+      <point x="-0.040149547" y="-0.5407169" />
+      <point x="-0.045588527" y="-0.55120575" />
+      <point x="-0.055106644" y="-0.55907285" />
+      <point x="-0.070743665" y="-0.5577619" />
+      <point x="-0.080261886" y="-0.55645025" />
+      <point x="-0.08774047" y="-0.55513966" />
+      <point x="-0.06122552" y="-0.5577619" />
+      <point x="-0.046268407" y="-0.5630062" />
+      <point x="-0.03811007" y="-0.57611823" />
+      <point x="-0.033350773" y="-0.59709626" />
+      <point x="-0.03403081" y="-0.6167638" />
+      <point x="-0.03742996" y="-0.62987524" />
+      <point x="-0.038789812" y="-0.64691985" />
+    </shape>
+  </PropClass>
+  <PropClass id="601ae2ad-1eea-4eac-803c-497c0b1b93d5" BulbShape="Square" ChannelGrid="Regular,7A,16,16,0,White" Comment="Snowman Dad" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="7" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-16 Snowman Dad" Parm1="67" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="-0.27198514" y="-0.58398485" />
+      <point x="-0.28082332" y="-0.61545265" />
+      <point x="-0.28966236" y="-0.64954257" />
+      <point x="-0.2862629" y="-0.70067793" />
+      <point x="-0.273345" y="-0.76099074" />
+      <point x="-0.26586676" y="-0.7977029" />
+      <point x="-0.25226888" y="-0.825237" />
+      <point x="-0.22711363" y="-0.83703715" />
+      <point x="-0.20535797" y="-0.82654834" />
+      <point x="-0.19176047" y="-0.7977029" />
+      <point x="-0.1849618" y="-0.76361316" />
+      <point x="-0.17952284" y="-0.7203448" />
+      <point x="-0.18020274" y="-0.66921014" />
+      <point x="-0.18292233" y="-0.6311866" />
+      <point x="-0.18768127" y="-0.59578526" />
+      <point x="-0.19515997" y="-0.56825066" />
+      <point x="-0.20127869" y="-0.55513966" />
+      <point x="-0.20875715" y="-0.5774288" />
+      <point x="-0.22371414" y="-0.59447396" />
+      <point x="-0.2379916" y="-0.5997187" />
+      <point x="-0.26110697" y="-0.58398485" />
+      <point x="-0.27402455" y="-0.5616952" />
+      <point x="-0.27810398" y="-0.535472" />
+      <point x="-0.27742392" y="-0.5040043" />
+      <point x="-0.27130526" y="-0.47647017" />
+      <point x="-0.2651861" y="-0.46335864" />
+      <point x="-0.25702822" y="-0.45942515" />
+      <point x="-0.25362876" y="-0.45549157" />
+      <point x="-0.2692663" y="-0.4332021" />
+      <point x="-0.27402455" y="-0.40697885" />
+      <point x="-0.27402455" y="-0.37682208" />
+      <point x="-0.27130526" y="-0.3663328" />
+      <point x="-0.26450637" y="-0.3781334" />
+      <point x="-0.25158864" y="-0.38075602" />
+      <point x="-0.24547024" y="-0.3702666" />
+      <point x="-0.24139082" y="-0.36108837" />
+      <point x="-0.24547024" y="-0.35846585" />
+      <point x="-0.25294873" y="-0.34928817" />
+      <point x="-0.25702822" y="-0.3335544" />
+      <point x="-0.26450637" y="-0.3401099" />
+      <point x="-0.2706253" y="-0.35846585" />
+      <point x="-0.25702822" y="-0.3335544" />
+      <point x="-0.25906777" y="-0.31126437" />
+      <point x="-0.25566834" y="-0.2915972" />
+      <point x="-0.2509091" y="-0.27848583" />
+      <point x="-0.2407116" y="-0.27586335" />
+      <point x="-0.22711363" y="-0.28766364" />
+      <point x="-0.22303425" y="-0.30995372" />
+      <point x="-0.22575384" y="-0.32962054" />
+      <point x="-0.21555589" y="-0.3401099" />
+      <point x="-0.20875715" y="-0.3401099" />
+      <point x="-0.20603797" y="-0.3519101" />
+      <point x="-0.21215644" y="-0.3650219" />
+      <point x="-0.22303425" y="-0.35322142" />
+      <point x="-0.22575384" y="-0.3440432" />
+      <point x="-0.21011703" y="-0.3702666" />
+      <point x="-0.20467794" y="-0.3899336" />
+      <point x="-0.20603797" y="-0.40566754" />
+      <point x="-0.20943704" y="-0.42795736" />
+      <point x="-0.21827519" y="-0.44893587" />
+      <point x="-0.22643374" y="-0.45811388" />
+      <point x="-0.24003153" y="-0.46991414" />
+      <point x="-0.25226888" y="-0.45811388" />
+      <point x="-0.22303425" y="-0.46991414" />
+      <point x="-0.20467794" y="-0.4686032" />
+      <point x="-0.19719996" y="-0.49613723" />
+      <point x="-0.19719996" y="-0.51711583" />
+      <point x="-0.19991891" y="-0.5407169" />
+    </shape>
+  </PropClass>
+  <PropClass id="1439ccd4-48c9-41a2-9c2d-f23eed11f614" BulbShape="Square" ChannelGrid="Regular,7A,16,16,0,White" Comment="Snowman Mom" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="7" RgbOrder="RGB order" MasterPropId="601ae2ad-1eea-4eac-803c-497c0b1b93d5" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="TC 7A-16 Snowman Mom" Parm1="75" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.074068606" y="-0.5879185" />
+      <point x="0.06862963" y="-0.60627437" />
+      <point x="0.061830886" y="-0.6416757" />
+      <point x="0.057071373" y="-0.66789865" />
+      <point x="0.06251061" y="-0.69543314" />
+      <point x="0.073388696" y="-0.7269007" />
+      <point x="0.08834605" y="-0.7373903" />
+      <point x="0.11418052" y="-0.74919057" />
+      <point x="0.12505911" y="-0.74001235" />
+      <point x="0.13797636" y="-0.7308341" />
+      <point x="0.14545524" y="-0.7216562" />
+      <point x="0.15157412" y="-0.69936657" />
+      <point x="0.15429316" y="-0.66789865" />
+      <point x="0.15497348" y="-0.64429784" />
+      <point x="0.15157412" y="-0.62331915" />
+      <point x="0.14613469" y="-0.5997187" />
+      <point x="0.14069568" y="-0.5892292" />
+      <point x="0.12845844" y="-0.58005095" />
+      <point x="0.12505911" y="-0.58005095" />
+      <point x="0.116900325" y="-0.59578526" />
+      <point x="0.10738176" y="-0.6023412" />
+      <point x="0.0903855" y="-0.5984074" />
+      <point x="0.08018729" y="-0.5905408" />
+      <point x="0.076108515" y="-0.5852959" />
+      <point x="0.06998922" y="-0.5656284" />
+      <point x="0.064550236" y="-0.5380943" />
+      <point x="0.064550236" y="-0.5118713" />
+      <point x="0.065230235" y="-0.49744847" />
+      <point x="0.06862963" y="-0.4908927" />
+      <point x="0.06794974" y="-0.4817146" />
+      <point x="0.07542844" y="-0.46335864" />
+      <point x="0.073388696" y="-0.44369113" />
+      <point x="0.06998922" y="-0.42271268" />
+      <point x="0.07134922" y="-0.40697885" />
+      <point x="0.06930953" y="-0.3899336" />
+      <point x="0.07542844" y="-0.38862288" />
+      <point x="0.086985976" y="-0.39255595" />
+      <point x="0.09174536" y="-0.3860003" />
+      <point x="0.097863644" y="-0.37682208" />
+      <point x="0.10058324" y="-0.3663328" />
+      <point x="0.09718403" y="-0.35715505" />
+      <point x="0.09310445" y="-0.3623997" />
+      <point x="0.09582469" y="-0.37419972" />
+      <point x="0.08290702" y="-0.3860003" />
+      <point x="0.076787904" y="-0.37551075" />
+      <point x="0.07814795" y="-0.3440432" />
+      <point x="0.08562644" y="-0.34535456" />
+      <point x="0.096503824" y="-0.35715505" />
+      <point x="0.10330291" y="-0.35715505" />
+      <point x="0.11282094" y="-0.3466658" />
+      <point x="0.12165962" y="-0.33617628" />
+      <point x="0.12913811" y="-0.37551075" />
+      <point x="0.118940026" y="-0.37944475" />
+      <point x="0.101943" y="-0.37157792" />
+      <point x="0.12301941" y="-0.384689" />
+      <point x="0.12913811" y="-0.3951785" />
+      <point x="0.1325375" y="-0.41484576" />
+      <point x="0.13049771" y="-0.43582422" />
+      <point x="0.13117768" y="-0.45549157" />
+      <point x="0.12845844" y="-0.47647017" />
+      <point x="0.11486082" y="-0.48695934" />
+      <point x="0.10262303" y="-0.4908927" />
+      <point x="0.08358672" y="-0.48695934" />
+      <point x="0.07270902" y="-0.47778118" />
+      <point x="0.08834605" y="-0.4908927" />
+      <point x="0.11078125" y="-0.48958158" />
+      <point x="0.12777823" y="-0.48958158" />
+      <point x="0.13389719" y="-0.50662655" />
+      <point x="0.13797636" y="-0.5328497" />
+      <point x="0.13797636" y="-0.55513966" />
+      <point x="0.13389719" y="-0.5656284" />
+      <point x="0.12641886" y="-0.5787405" />
+      <point x="0.116900325" y="-0.5931631" />
+      <point x="0.108061954" y="-0.60102975" />
+      <point x="0.09582469" y="-0.60365224" />
+      <point x="0.07814795" y="-0.5852959" />
+    </shape>
+  </PropClass>
+  <PropGroup id="5ad27050-0661-4cf7-b289-2e6a2b555fdb" Arrangement="None" PreviewResFactor="1" EffectBulbSize="1" Tag="" Name="Panel Animation TC 7A 05-10 Nutcracker">
+    <member id="ab4ddfc2-a6dc-4102-a103-b9d2c5895bda" orientation="normal" top="0" left="0" />
+    <member id="9cddf6b0-3c4a-4873-8bb1-f9d2e3890ec8" orientation="normal" top="0" left="0" />
+    <member id="93ac337f-d249-4724-a465-e8951fdb0c54" orientation="normal" top="0" left="0" />
+    <member id="21a06f18-d5f6-4bdf-a186-0ed29e6106dc" orientation="normal" top="0" left="0" />
+    <member id="74c85070-1323-4b7f-a420-f8399bd12cb8" orientation="normal" top="0" left="0" />
+    <member id="690fff71-d123-435b-919c-fd619f736f4b" orientation="normal" top="0" left="0" />
+  </PropGroup>
+  <PropGroup id="fc5f1d5c-281a-4951-9f38-c70df25be0aa" Arrangement="None" PreviewResFactor="1" EffectBulbSize="1" Tag="" Name="Panel Animation TC 7A Stocking">
+    <member id="f5d160b3-3d45-456a-a973-501c33af5970" orientation="normal" top="0" left="0" />
+    <member id="407a43dd-d612-4663-b3ce-29c6ae492934" orientation="normal" top="0" left="0" />
+    <member id="aa9d3894-c5c3-479b-aa3c-42c18bf55c41" orientation="normal" top="0" left="0" />
+    <member id="cdeba879-033f-4f70-8dc5-a8d267146909" orientation="normal" top="0" left="0" />
+  </PropGroup>
+  <PropGroup id="4de41f7a-a9b9-4b10-b0e5-a106f07bae22" Arrangement="None" PreviewResFactor="1" EffectBulbSize="1" Tag="" Name="Animation Stage 23 TC3 7C 01-16">
+    <member id="bfc6613a-a94b-450e-afef-d42c3f33ae57" orientation="normal" top="0" left="0" />
+    <member id="20373e37-6a14-4549-b8ed-1e761935663f" orientation="normal" top="0" left="0" />
+    <member id="57da5a03-3d1c-4c35-bac2-96ea9f350cac" orientation="normal" top="0" left="0" />
+    <member id="2c7e448b-9cb0-4c2a-8232-fb0778e5f7a5" orientation="normal" top="0" left="0" />
+  </PropGroup>
+  <PropGroup id="ed71eb8d-0122-48d2-8e4d-4bd1ef4fdd51" Arrangement="None" PreviewResFactor="1" EffectBulbSize="1" Tag="" Name="Panel Animation TC 7B Carolers">
+    <member id="20074f9a-59c9-406f-9c3a-e812e1b37b3d" orientation="normal" top="0" left="0" />
+    <member id="22ba6b24-57ff-4b65-abec-acbd7e2da30c" orientation="normal" top="0" left="0" />
+    <member id="5ecb242b-624a-44ac-ae29-ad5f3497b0bd" orientation="normal" top="0" left="0" />
+  </PropGroup>
+  <PropGroup id="2ec56404-1108-4890-81d1-5e44ae403bc9" Arrangement="None" PreviewResFactor="1" EffectBulbSize="1" Tag="" Name="Panel Animation TC Hippo">
+    <member id="85dd6de5-fdff-4333-925d-4ab16f38e400" orientation="normal" top="0" left="0" />
+    <member id="12fb402e-17c8-4356-9b44-ae4d32b6e2d1" orientation="normal" top="0" left="0" />
+    <member id="2e7b8382-6697-4605-82ea-38d0fcce2221" orientation="normal" top="0" left="0" />
+    <member id="5977b62c-44e1-4375-929e-6f5e78bcf2e6" orientation="normal" top="0" left="0" />
+    <member id="8798629c-2101-421c-9714-035a5ee82a87" orientation="normal" top="0" left="0" />
+    <member id="17acbe8f-52a3-44e7-876b-0e90147c37b1" orientation="normal" top="0" left="0" />
+    <member id="dfab8983-10c5-487d-951e-70cce2196d48" orientation="normal" top="0" left="0" />
+  </PropGroup>
+  <PropGroup id="c7b786be-bc09-47f5-9a2b-c77b0c5d199d" Arrangement="None" PreviewResFactor="1" EffectBulbSize="1" Tag="" Name="Panel Sign TC 7C-04 Kingsbury">
+    <member id="7086aa66-ab27-4817-a7c8-60d3d0410139" orientation="normal" top="0" left="0" />
+  </PropGroup>
+</PreviewClass>
