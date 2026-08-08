@@ -8,21 +8,22 @@ V7 is the current supported breakpoint. Superseded V6, spreadsheet, Excel-report
 
 | Path | System | Status |
 |---|---|---|
-| `LOR/` | LOR authoring output, V7 parsing/ingest, and FormView | Production; FormView is transitional |
+| `LOR/` | LOR-side applications and tools, including Preview Merger and FormView | Production support; FormView is transitional |
 | `Database/` | PostgreSQL schema, queries, database tools, and engineering resources | Production authority |
-| `LOR2DB/` | Snapshot reconciliation, operator application, promotion, validation, and reporting | Production |
+| `LOR2DB/` | V7 ingest, reconciliation, operator application, promotion, validation, and reporting | Production |
 | `Docs/` | Authoritative system definitions, engineering documents, and operator procedures | Current documentation |
 | `Utilities/` | Current cross-system utilities | Active support |
+| `System_Documentation/` | Documentation standards, maintenance rules, and automation planning | Documentation control |
 | `archive/` | Superseded workflows, completed migrations, old versions, and historical evidence | Nonproduction |
 
 ## Production LOR-to-database flow
 
 ```text
 Authoritative LOR previews
-    -> LOR/ingest/parse_props_v7_scene_parser.py
+    -> LOR2DB/01_Ingest/parse_props_v7_scene_parser.py
     -> lor_output_v7_scene.db
-    -> LOR/ingest/postgres_run_ingest_v7.ps1
-    -> LOR/ingest/postgres_ingest_from_lor_sqlite_v7.py
+    -> LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1
+    -> LOR2DB/01_Ingest/postgres_ingest_from_lor_sqlite_v7.py
     -> immutable lor_snap snapshot
     -> LOR2DB reconciliation and operator decisions
     -> controlled P1-P4 promotion
@@ -33,13 +34,14 @@ The parser and PostgreSQL snapshot ingest remain manual. Operators never enter o
 
 ## Documentation entry points
 
-- [Documentation index](Docs/README.md)
-- [LOR system overview](Docs/01_LOR_System/00_Project_Overview/00_LOR_System_Overview.md)
-- [Production database architecture](Docs/02_Production_Database/01_System_Architecture/)
-- [LOR production import and reconciliation procedure](LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md)
+- [Documentation portal](Docs/README.md)
+- [Project overview](Docs/00_Project_Overview/README.md)
+- [LOR system documentation](Docs/01_LOR_System/README.md)
+- [Production database documentation](Docs/02_Production_Database/README.md)
 - [LOR subsystem](LOR/README.md)
 - [PostgreSQL database subsystem](Database/README.md)
 - [LOR2DB subsystem](LOR2DB/README.md)
+- [Documentation standards and maintenance](System_Documentation/README.md)
 
 Selected operator manuals are linked from the Production Committee landing page. Backend engineering documents remain authoritative here even when they are not exposed on that page.
 
