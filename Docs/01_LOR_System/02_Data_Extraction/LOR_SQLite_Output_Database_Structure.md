@@ -396,6 +396,7 @@ The SQLite output database forms the engineering interface between the LOR Previ
 
 | System | Purpose |
 |---|---|
+
 | [LOR Preview Authoring](../01_Preview_Authoring/README.md) | Defines how approved Light-O-Rama previews are created, named, and managed before parsing. |
 | [LOR Data Extraction](README.md) | Engineering documentation for the parser, `.lorprev` format, SQLite output database, and compatibility review process. |
 | [LOR2DB Ingest](../../../LOR2DB/01_Ingest/README.md) | Imports the parser-generated SQLite snapshot into PostgreSQL and creates the production snapshot used by reconciliation. |
