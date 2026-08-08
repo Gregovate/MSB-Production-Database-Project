@@ -15,19 +15,28 @@ The audit is based on the MSB documentation standards under `System_Documentatio
 
 ## Current Findings
 
-1. Create `Docs/01_LOR_System/README.md` as the LOR documentation portal.
-2. Create `Docs/02_Production_Database/README.md` as the Production Database documentation portal.
-3. Create `Docs/02_Production_Database/01_System_Architecture/README.md` as the engineering architecture portal.
-4. Create `Docs/02_Production_Database/02_Operational_SOPs/README.md` as the operator-procedure portal.
-5. Create `LOR2DB/01_Ingest/README.md` as the ingest implementation/operation portal.
-6. Update stale paths and navigation in `LOR2DB/README.md`, `LOR2DB/03_Reporting/README.md`, `LOR/README.md`, and `Database/README.md`.
-7. Refactor `Docs/README.md` to primarily link to immediate child portals rather than deep documents.
-8. Complete the empty `System_Documentation/README.md`, `System_Documentation/Standards/README.md`, and `System_Documentation/Automation/README.md` portals.
-9. Add a minimal `Utilities/README.md` describing the purpose and ownership rule for cross-system utilities.
-10. Review the remaining `Docs/01_LOR_System/01_Preview_Authoring/preview_merger_reference.md` now that Preview Merger has its own `03_Preview_Merger` documentation area.
-11. Document known Production Database engineering gaps, especially the Wiring System, and review whether Work Orders and Controller Inventory need stronger subsystem-level engineering documentation.
-12. Regenerate `RepositoryTree.txt` after the current documentation cleanup; the committed tree can become stale as soon as files are added or moved.
-13. Rebuild the repository root `readme.md` only after the middle-layer portals and stale links are corrected.
+1. ✅ Created `Docs/01_LOR_System/README.md` as the LOR documentation portal.
+2. ✅ Created `Docs/02_Production_Database/README.md` as the Production Database documentation portal.
+3. ✅ Created `Docs/02_Production_Database/01_System_Architecture/README.md` as the engineering architecture portal.
+4. ✅ Created `Docs/02_Production_Database/02_Operational_SOPs/README.md` as the operator-procedure portal.
+5. ✅ Created `LOR2DB/01_Ingest/README.md` as the ingest implementation/operation portal.
+6. ⏳ Update stale paths and navigation in `LOR2DB/README.md`, `LOR2DB/03_Reporting/README.md`, `LOR/README.md`, and `Database/README.md`.
+7. ⏳ Refactor `Docs/README.md` to primarily link to immediate child portals rather than deep documents.
+8. ✅ Completed `System_Documentation/README.md`, `System_Documentation/Standards/README.md`, and `System_Documentation/Automation/README.md` portals.
+9. ✅ Added `Utilities/README.md` describing the purpose and ownership rule for cross-system utilities.
+10. ⏳ Review the remaining `Docs/01_LOR_System/01_Preview_Authoring/preview_merger_reference.md` now that Preview Merger has its own `03_Preview_Merger` documentation area.
+11. ⏳ Document known Production Database engineering gaps, especially the Wiring System, and review whether Work Orders and Controller Inventory need stronger subsystem-level engineering documentation.
+12. ⏳ Regenerate `RepositoryTree.txt` after the current documentation cleanup; the committed tree can become stale as soon as files are added or moved.
+13. ⏳ Rebuild the repository root `readme.md` only after the middle-layer portals and stale links are corrected.
+
+## Additional README Portals Completed During Review
+
+The repository-wide README verification found two existing documentation destinations that were not listed in the first audit pass. These have also been completed without changing the folder structure:
+
+- ✅ `Docs/00_Project_Overview/README.md` — 5,000-foot project overview portal.
+- ✅ `Docs/01_LOR_System/01_Preview_Authoring/README.md` — volunteer-facing preview authoring portal.
+
+`Docs/0_Contributing/README.md` was verified and already contained a complete contributor-training portal, so it was left unchanged.
 
 ## Additional Stale Navigation Found
 
