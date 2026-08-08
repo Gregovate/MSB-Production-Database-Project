@@ -1,28 +1,47 @@
-# V7 Data Extraction and Reconciliation
+# LOR Data Extraction Engineering
 
-This directory is the current documentation entry point for LOR extraction.
-The former V6 quickstart, processing rules, troubleshooting guide, SQLite
-cheat sheet, comparison logic, and import instructions are preserved under
-`archive/v6/Docs/01_LOR_System/02_Data_Extraction/`.
+This area documents how Light-O-Rama preview files are structured, how the MSB parser interprets them, and how new Light-O-Rama versions must be reviewed before entering the production workflow.
 
-## Current workflow
+The current parser and ingest programs are maintained under `LOR2DB/01_Ingest/`.
 
-1. Export the clean authoritative V7 preview set from the approved Master PC.
-2. Run `LOR/ingest/parse_props_v7_scene_parser.py`.
-3. Verify parser preflight and completion against `lor_output_v7_scene.db`.
-4. Run the protected `LOR/ingest/postgres_run_ingest_v7.ps1` snapshot ingest.
-5. Open `https://lortodb.sheboyganlights.org/lor2db/`.
-6. Start or resume reconciliation for the snapshot detected by the page.
-7. Review decisions, Finish, validate, and open the immutable report.
+## Start Here
 
-The exact production controls, stop conditions, Run 4 baseline, and future
-feature boundary are maintained in:
+| I want to... | Go to |
+|---|---|
+| Understand the engineering logic behind the current V7 parser | [LOR Preview Parser Architecture](LOR_Preview_Parser_Architecture.md) |
+| Understand the `.lorprev` structure the parser depends on | [LOR Preview File Structure Specification](LOR_Preview_File_Structure_Specification.md) |
+| Evaluate a new Light-O-Rama version such as 6.6.8 | [LOR Preview Version Compatibility Review](LOR_Preview_Version_Compatibility_Review.md) |
+| Review or run the current parser/ingest implementation | [LOR2DB Ingest](../../../LOR2DB/01_Ingest/README.md) |
 
-`LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md`
+## Engineering Boundary
 
-The SQL-only fallback and recovery sequence is maintained in:
+The parser converts approved `.lorprev` files into the scene-aware SQLite snapshot used by LOR2DB ingest.
 
-`LOR2DB/Reconciliation/02_LOR_Manual_Reconciliation_Runbook.md`
+```text
+.lorprev files
+      |
+      v
+V7 preview parser
+      |
+      v
+lor_output_v7_scene.db
+      |
+      v
+LOR2DB PostgreSQL ingest
+```
 
-Do not enter or infer an `import_run_id`, run P1-P4 directly, or use archived V6
-instructions to perform a current import.
+The parser owns interpretation of Light-O-Rama preview structure. PostgreSQL ingest consumes the completed SQLite snapshot and should not reinterpret the source XML.
+
+## Current Baseline
+
+The current functional parser is `parse_props_v7_scene_parser.py` V7.0.7 and was developed against the known-good Light-O-Rama 6.6.4 preview format.
+
+Light-O-Rama 6.6.8 must be reviewed using the compatibility procedure before it replaces that baseline.
+
+## Historical Documentation
+
+The former V6 quickstart, processing rules, troubleshooting guide, SQLite cheat sheet, comparison logic, and import instructions are retained under:
+
+`archive/v6/Docs/01_LOR_System/02_Data_Extraction/`
+
+Those files are historical reference only. Do not use archived V6 operating instructions for the current production workflow.
