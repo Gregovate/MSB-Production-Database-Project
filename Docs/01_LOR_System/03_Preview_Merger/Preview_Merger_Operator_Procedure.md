@@ -28,7 +28,45 @@ The current workflow uses **Master Musical Preview** as the shared musical-previ
 
 The previous V6 workflow that relied on separate `RGB Plus Stage xx` previews for individual musical previews is obsolete and must not be followed as current operating guidance.
 
-The merger still must protect any preview files that remain independently managed, but operators should not recreate the older per-musical-preview synchronization process.
+However, the approved production preview set still contains other previews that must remain independently managed because they serve different operational purposes.
+
+| Preview Type | Purpose | Current Status |
+|---|---|---|
+| **Master Musical Preview** | Primary programming preview for musical sequences. This is the shared musical-preview authority and replaces the former requirement for separate `RGB Plus Stage xx` musical previews. | Current production workflow |
+| **Show Background Stage xx** | Individual stage previews required to build and schedule background sequences for each stage. | Required |
+| **Show Animation xx** | Individual previews required to build and schedule animation sequences for the show. | Required |
+| **Show Stage 39 - Parade Float** | Specialized preview for the Parade Float. It does not follow the normal musical/background/animation preview pattern and is intentionally maintained as a separate approved preview. | Required engineering exception |
+
+The merger must protect all of these independently managed preview classes while avoiding a return to the obsolete per-musical-preview synchronization model.
+
+### Preview Classes
+
+```text
+                Individual Programmer Preview
+                           |
+                           v
+                   Preview Merger
+                           |
+          +----------------+----------------+
+          |                |                |
+          v                v                v
+     Master Musical   Show Background   Show Animation
+        Preview         Stage xx             xx
+          |                |                |
+          |                |                |
+          +----------------+----------------+
+                           |
+                           v
+             Approved Production Preview Set
+                           |
+          +----------------+----------------+
+          |                                 |
+          v                                 v
+ Show Stage 39 - Parade Float           LOR2DB Ingest
+   (engineering exception)
+```
+
+**Engineering note:** `Show Stage 39 - Parade Float` is intentionally maintained as a separate approved preview because its physical installation and programming requirements differ from the standard show preview classes. It should not be removed or folded into another preview class merely because it appears to be an exception.
 
 ## Current Production Status
 
@@ -104,6 +142,8 @@ If the comparison is unclear, stop and resolve the conflict before the controlle
 For musical preview work, confirm that the proposed change is being evaluated against the **Master Musical Preview** workflow rather than the obsolete separate `RGB Plus Stage xx` model.
 
 Do not create or update separate musical-stage previews merely because the old V6 procedure instructed operators to do so.
+
+Stage-specific Background and Animation previews, and the `Show Stage 39 - Parade Float` engineering exception, remain independently managed and must continue to be protected by the merger workflow.
 
 ### 6. Apply only after engineering approval
 
