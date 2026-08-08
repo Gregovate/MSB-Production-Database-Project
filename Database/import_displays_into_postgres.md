@@ -1,3 +1,6 @@
+# Obsolete Document
+this is an obsolete document no longer used to update PostgreSQL From the old Display tab of Google Sheets/Excel and belongs in the Archive Section
+
 Good call. Do both:
 
 Stored procedures give you a repeatable, DB-native pipeline you can run from pgAdmin.
