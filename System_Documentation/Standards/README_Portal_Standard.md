@@ -71,6 +71,6 @@ Technical depth belongs one level deeper in procedures, design documents, runboo
 
 ## Maintenance
 
-Portal links should remain as local as practical. When a child folder has its own README, parent portals should link to that folder or README rather than maintaining links to documents several levels below it.
-
-Screenshots should follow the repository screenshot standard and be stored in the designated documentation image location.
+- Portal links should remain as local as practical. When a child folder has its own README, parent portals should link to that folder or README rather than maintaining links to documents several levels below it.
+- Screenshots should follow the repository screenshot standard and be stored in the designated documentation image location.
+- When linking users to a portal from email or other external communication, link directly to the portal README.md so GitHub opens the portal content without the repository file listing above it.
