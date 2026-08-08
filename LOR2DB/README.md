@@ -14,20 +14,20 @@ The landing page shows the current LOR snapshot, reconciliation status, and the 
 
 **Completed reconciliation reports:** [Open the report archive](https://my.sheboyganlights.org/lor2db/reports/)
 
-For procedures, recovery, and reconciliation details, go to [Reconciliation](Reconciliation/).
+For production reconciliation procedures and recovery guidance, go to [Reconciliation](Reconciliation/README.md).
 
 ## What Do You Need To Do?
 
-- [Run or understand reconciliation](Reconciliation/)
-- [Work on the LOR2DB application](Application/)
-- [Work on reconciliation reporting](Reporting/)
+- [Run or understand reconciliation](Reconciliation/README.md)
+- [Work on the LOR2DB application](Application/README.md)
+- [View and understand reconciliation reports](Reporting/README.md)
 
 ## Folder Guide
 
 | Folder | What it contains |
 |---|---|
-| [Application](Application/) | LOR2DB browser application, secured API, deployment files, and application tests |
-| [Reconciliation](Reconciliation/) | Production workflow, reconciliation procedures, recovery runbook, promotion logic, SQL implementation, and validation |
-| [Reporting](Reporting/) | Reconciliation report publishing code and tests |
+| [Application](Application/README.md) | Engineering documentation for the LOR2DB browser application, secured API, deployment, and testing |
+| [Reconciliation](Reconciliation/README.md) | Production reconciliation procedures, recovery guidance, and supporting engineering documentation |
+| [Reporting](Reporting/README.md) | How to view, use, and understand production reconciliation reports |
 
 The detailed technical documentation remains in these subsystem folders. This README is only the LOR2DB navigation portal.

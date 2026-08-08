@@ -10,6 +10,8 @@
 >
 > This document is retained only as historical implementation reference and should be moved to the repository archive during documentation cleanup.
 
+---
+
 Good call. Do both:
 
 Stored procedures give you a repeatable, DB-native pipeline you can run from pgAdmin.

@@ -21,9 +21,9 @@
 
 This directory contains the reusable browser interface for production LOR
 reconciliation review. It replaces the hard-coded Run 4 mockup with a run-data
-contract. The browser must be published under the protected route:
+contract. The browser is published under the protected route:
 
-`https://lortodb.sheboyganlights.org/lor2db/preflight/`
+`https://my.sheboyganlights.org/lor2db/preflight/`
 
 The browser never contains PostgreSQL credentials or writes reconciliation
 tables directly. `backend.py` implements the same-origin API and invokes only
@@ -39,7 +39,7 @@ identity header and independently restricts access to the comma-separated
 
 Publish the files in `landing/` at:
 
-`https://lortodb.sheboyganlights.org/lor2db/`
+`https://my.sheboyganlights.org/lor2db/`
 
 The page calls the existing authenticated backend through
 `/lor2db/preflight/api/`. It shows:
@@ -213,13 +213,13 @@ The Linux runtime account is a third, separate identity:
 | Runtime environment file | `/etc/msb/lor-preflight-api.env`, owned by `root:msbadmin`, mode `0640` | PostgreSQL URL, operator allowlist, report output directory, and report base URL configured without exposing credentials. |
 | systemd service | `lor-preflight-api.service` | Installed, verified, enabled at boot, and active with two Gunicorn workers. |
 | API listener | `192.168.5.9:8784` | Backend V0.3.0: `GET /health` returned `{"status":"ok","version":"V0.3.0"}` on 2026-08-06. Do not expose this port to the Internet. |
-| Public static path | `https://lortodb.sheboyganlights.org/lor2db/preflight/` | Secured Run 4 browser workflow production validated. |
+| Public static path | `https://my.sheboyganlights.org/lor2db/preflight/` | Secured Run 4 browser workflow production validated. |
 | NAS SMB source | `//192.168.5.4/web` | Authentication and share access validated with `smbclient`. |
 | Linux mount point | `/mnt/msb-web` | systemd automount successfully activated and directory contents listed. |
 | SMB credentials file | `/etc/samba/credentials/lor_preflight_app` | Stored credentials successfully authenticated after correction. Do not record the password in documentation or shell history. |
 | Report output | `/mnt/msb-web/my/lor2db/reports` | Configured by `LOR_REPORT_OUTPUT_DIR`. |
 | Report publisher | `/opt/lor-preflight/publish_lor_reconciliation_report.py` | Configured explicitly by `LOR_REPORT_PUBLISHER_PATH`; the backend and publisher are deployed together. |
-| Report base URL | `https://lortodb.sheboyganlights.org/lor2db/reports/` | Run 4 report and report archive links validated on 2026-08-06. |
+| Report base URL | `https://my.sheboyganlights.org/lor2db/reports/` | Run 4 report and report archive links validated on 2026-08-06. |
 | Reconciliation operator | `gliebig@sheboyganlights.org` | Configured as the current sole member of `LOR_PREFLIGHT_OPERATORS`; future operators must be explicitly added. |
 | Synology access group | `web_maintainers` | Normal ACL and Advanced Share Permissions both set to Read/Write. |
 
@@ -295,78 +295,6 @@ Synology applies two independent permission layers to the `web` share. Both are
 required for the service account:
 
 1. **Shared Folder ACL:** `web_maintainers` must have **Read/Write**.
-2. **Advanced Share Permissions:** `web_maintainers` must also have
-   **Read/Write**.
+2. **Advanced Share Permissions:** `web_maintainers` must also have **Read/Write**.
 
-Membership in `web_maintainers` and a correct normal ACL are not sufficient if
-the group is absent from Advanced Share Permissions. In that condition,
-authentication succeeds but connecting to `//192.168.5.4/web` fails with:
-
-```text
-tree connect failed: NT_STATUS_ACCESS_DENIED
-```
-
-Use the status returned by `smbclient` to distinguish the failure class:
-
-| Status | Meaning |
-|---|---|
-| `NT_STATUS_LOGON_FAILURE` | The username/password was rejected. Verify ambiguous characters and then update the Synology account and credentials file consistently. |
-| `NT_STATUS_ACCESS_DENIED` | Authentication succeeded, but the `web` share denied access. Verify both Synology permission layers above. |
-
-The installation encountered both failures in sequence: an ambiguous password
-character caused `NT_STATUS_LOGON_FAILURE`, and the missing
-`web_maintainers` entry in Advanced Share Permissions then caused
-`NT_STATUS_ACCESS_DENIED`. Passwords and password characters are intentionally
-not recorded here.
-
-### Safe validation sequence
-
-Validate the stored SMB credentials and Synology authorization before testing
-the systemd automount:
-
-```bash
-sudo smbclient //192.168.5.4/web \
-  -A /etc/samba/credentials/lor_preflight_app \
-  -c 'ls'
-```
-
-Only after that command lists the share, restart the automount and trigger it:
-
-```bash
-sudo systemctl stop 'mnt-msb\x2dweb.automount'
-sudo systemctl reset-failed 'mnt-msb\x2dweb.mount'
-sudo systemctl start 'mnt-msb\x2dweb.automount'
-ls -la /mnt/msb-web
-```
-
-### Completed on 2026-08-06
-
-- Applied `grant_lor_preflight_app.sql` revision V0.2.0 as
-  `2026-08-06-lor-preflight-app-grants-v2`.
-- Deployed `backend.py` V0.3.0 and restarted the service successfully.
-- Deployed `landing/` to the protected `/lor2db/` directory.
-- Validated snapshot 45 and completed Run 4 as `RECONCILED`, validation passed,
-  all exception counts zero, report links present, and Start unavailable.
-
-Start remains intentionally unexercised until a real newer snapshot is manually
-parsed and ingested. Do not create a synthetic reconciliation run for that test.
-
-Run the non-database safety tests from this directory with:
-
-```text
-python -m unittest -v test_backend.py
-```
-
-## Run 4 production acceptance record
-
-Run 4 captured ingest 45 and completed through the secured browser workflow.
-Its five display decisions were:
-
-- `FE-TuneRadio-2CH-01`: automatic exact-name UUID relink.
-- `QV-Making-01`, `QV-Bright-01`, and `QV-Spirits-01`: `SET_RECYCLED`.
-- `QV-ToolBox`: `ADD_NEW_DISPLAY`.
-
-The run finished `COMPLETED`, validation passed, and the timestamped report was
-published. The report predates migration `0029`; its provenance-only P1/P3/P4
-rows are retained as immutable historical evidence and are not material
-production changes.
+If either layer is read-only, the Linux mount may succeed but report publication will fail with a permission error.

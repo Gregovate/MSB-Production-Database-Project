@@ -37,13 +37,14 @@ Use only the sections that help the reader navigate.
 
 - Keep the portal focused on navigation, not technical explanation.
 - Link primarily to immediate child folders or documents.
+- When an immediate child has its own README portal, link directly to that `README.md` so GitHub opens the portal content instead of placing the directory file listing above it.
 - Use plain-language link labels that describe what the reader will find or accomplish.
 - Do not duplicate procedures, design explanations, or technical reference material in a portal.
 - Prefer relative Markdown links for repository content.
 - Do not list every file when a child folder has its own README portal.
 - Do not require volunteers to understand implementation terms before they can choose where to go.
 - A reader should normally know where to go next within about ten seconds.
-- When a subsystem is primarily accessed through a user interface, include a current screenshot near the beginning of the portal to help readers confirm they are in the correct location.
+- When a subsystem is primarily accessed through a user interface, include a current screenshot near the beginning of the portal when it helps readers confirm they are in the correct location.
 
 ## Match the Portal to Its Audience
 
@@ -71,6 +72,7 @@ Technical depth belongs one level deeper in procedures, design documents, runboo
 
 ## Maintenance
 
-- Portal links should remain as local as practical. When a child folder has its own README, parent portals should link to that folder or README rather than maintaining links to documents several levels below it.
+- Portal links should remain as local as practical. When a child folder has its own README portal, parent portals should link directly to that README rather than maintaining links to documents several levels below it.
 - Screenshots should follow the repository screenshot standard and be stored in the designated documentation image location.
-- When linking users to a portal from email or other external communication, link directly to the portal README.md so GitHub opens the portal content without the repository file listing above it.
+- When linking users to a portal from email or other external communication, link directly to the portal `README.md` so GitHub opens the portal content without the repository file listing above it.
+- Current internal and external application links must be maintained in engineering documentation as well as user-facing documentation. Historical URLs may remain only when they are clearly identified as historical evidence rather than current access instructions.
