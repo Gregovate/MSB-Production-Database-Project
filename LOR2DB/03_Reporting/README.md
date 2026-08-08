@@ -83,5 +83,6 @@ Each completed reconciliation report is retained as a permanent historical recor
 ## Related LOR2DB Areas
 
 - [LOR2DB Portal](../README.md)
-- [Reconciliation](../Reconciliation/README.md)
+- [Ingest](../01_Ingest/README.md)
+- [Reconciliation](../02_Reconciliation/README.md)
 - [Application](../Application/README.md)
