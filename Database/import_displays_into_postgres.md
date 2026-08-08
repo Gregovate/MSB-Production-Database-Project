@@ -1,5 +1,16 @@
-# Obsolete Document
-this is an obsolete document no longer used to update PostgreSQL From the old Display tab of Google Sheets/Excel and belongs in the Archive Section
+# OBSOLETE — Import Displays into PostgreSQL
+
+> **Status: OBSOLETE**
+>
+> This document describes the retired spreadsheet/CSV workflow that imported display data from the former Google Sheets/Excel Display tab into PostgreSQL.
+>
+> **Do not use this procedure for production work.**
+>
+> Display data is now managed through the current LOR snapshot and LOR2DB reconciliation workflow.
+>
+> This document is retained only as historical implementation reference and should be moved to the repository archive during documentation cleanup.
+
+---
 
 Good call. Do both:
 
