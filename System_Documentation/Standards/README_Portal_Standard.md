@@ -43,6 +43,7 @@ Use only the sections that help the reader navigate.
 - Do not list every file when a child folder has its own README portal.
 - Do not require volunteers to understand implementation terms before they can choose where to go.
 - A reader should normally know where to go next within about ten seconds.
+- When a subsystem is primarily accessed through a user interface, include a current screenshot near the beginning of the portal to help readers confirm they are in the correct location.
 
 ## Match the Portal to Its Audience
 
@@ -71,3 +72,5 @@ Technical depth belongs one level deeper in procedures, design documents, runboo
 ## Maintenance
 
 Portal links should remain as local as practical. When a child folder has its own README, parent portals should link to that folder or README rather than maintaining links to documents several levels below it.
+
+Screenshots should follow the repository screenshot standard and be stored in the designated documentation image location.
