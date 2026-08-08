@@ -80,8 +80,8 @@ assumed safe merely because it exists in the active tree.
 | `report_preview_history.cmd` | History-report launcher |
 | `open_reports_folder.cmd` | Opens the report folder |
 
-The detailed report fields and review rules are documented in
-[Preview Merger Reference](../../Docs/01_LOR_System/01_Preview_Authoring/preview_merger_reference.md).
+Current Preview Merger engineering and operator documentation is maintained in the
+[Preview Merger documentation portal](../../Docs/01_LOR_System/03_Preview_Merger/README.md).
 
 ## LOR 6.6.8 compatibility boundary
 
