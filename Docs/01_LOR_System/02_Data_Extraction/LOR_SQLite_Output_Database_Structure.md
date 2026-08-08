@@ -392,14 +392,17 @@ Changes to SQL implementation alone do **not** require modification unless they 
 
 # Related Systems
 
-This SQLite database forms the interface between the LOR Preview Parser and the LOR2DB production ingest process.
+The SQLite output database forms the engineering interface between the LOR Preview Parser and the LOR2DB production ingest process.
 
-- Upstream: LOR Preview Parser
-- Downstream: LOR2DB Ingest
-- Consumer Applications:
-  - FormView
-  - LOR2DB
-  - Future Wiring System
+| System | Purpose |
+|---|---|
+| [LOR Preview Authoring](../01_Preview_Authoring/README.md) | Defines how approved Light-O-Rama previews are created, named, and managed before parsing. |
+| [LOR Data Extraction](README.md) | Engineering documentation for the parser, `.lorprev` format, SQLite output database, and compatibility review process. |
+| [LOR2DB Ingest](../../../LOR2DB/01_Ingest/README.md) | Imports the parser-generated SQLite snapshot into PostgreSQL and creates the production snapshot used by reconciliation. |
+| [LOR2DB Reconciliation](../../../LOR2DB/02_Reconciliation/README.md) | Reviews the imported snapshot, applies controlled production changes, and validates the results. |
+| [LOR2DB Reporting](../../../LOR2DB/03_Reporting/README.md) | Publishes the immutable reconciliation reports and production evidence. |
+| [FormView](../../../LOR/FormView/README.md) | Stand-alone engineering application that consumes parser output for display and wiring visualization. |
+| Preview Merger | Engineering subsystem that protects the approved preview set before parser execution. *(Add README link when the subsystem portal is completed.)* |
 
 ---
 
