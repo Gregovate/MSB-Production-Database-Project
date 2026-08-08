@@ -8,8 +8,8 @@ These reports document the approved LOR preview source, the reconciliation proce
 
 | I want to... | Go to |
 |---|---|
-| View the latest reconciliation report | Open the latest report from the LOR2DB application |
-| Browse previous reconciliation reports | https://my.sheboyganlights.org/lor2db/reports/ |
+| View the latest reconciliation report | [Open LOR2DB](https://my.sheboyganlights.org/lor2db/) and open the current report |
+| Browse previous reconciliation reports | [Open the report archive](https://my.sheboyganlights.org/lor2db/reports/) |
 | Understand the information contained in a reconciliation report | Review the report overview below |
 
 Cloudflare authentication is required to access the LOR2DB application and report archive.
@@ -83,5 +83,5 @@ Each completed reconciliation report is retained as a permanent historical recor
 ## Related LOR2DB Areas
 
 - [LOR2DB Portal](../README.md)
-- [Reconciliation](../Reconciliation/)
-- [Application](../Application/)
+- [Reconciliation](../Reconciliation/README.md)
+- [Application](../Application/README.md)
