@@ -25,6 +25,9 @@ Use this procedure after a container test session has been started and its Displ
 
 1. Open **Containers In Progress**.
 2. Find and open the container you are testing.
+
+![In Progress test session showing Display Checks](../../../images/test_session_in_progress.png)
+
 3. Scroll to **Display Checks**.
 4. Open one display test record.
 5. Confirm whether the display is physically present on the container.
