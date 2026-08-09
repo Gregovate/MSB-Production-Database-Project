@@ -8,6 +8,7 @@ Use this page to go directly to the testing task you are doing now.
 |---|---|
 | Start testing a container | [Start a Container Test Session](Start_a_Container_Test_Session.md) |
 | Test the displays on a container | [Test the Displays on a Container](Test_the_Displays_on_a_Container.md) |
+| Handle a display that needs repair | [Handle a Display That Needs Repair](Handle_a_Display_That_Needs_Repair.md) |
 | Choose the correct display test result | [Display Test Status Reference](Display_Test_Status_Reference.md) |
 | Correct a wrong or missing display | [Handle a Wrong or Missing Display](Handle_a_Wrong_or_Missing_Display.md) |
 | Refresh the displays included in a test session | [Refresh Displays to Test](Refresh_Displays_to_Test.md) |
@@ -16,6 +17,8 @@ Use this page to go directly to the testing task you are doing now.
 | Finish testing a container | [Finish a Container Test Session](Finish_a_Container_Test_Session.md) |
 | Prepare a new annual testing season | [Manager Annual Test Season Setup](Manager_Annual_Test_Season_Setup.md) |
 | Correct an exceptional test-session assignment problem involving existing Work Orders | [Manager Correction — Wrong Display Container With Existing Work Orders](Troubleshooting.md) |
+
+Each task procedure has navigation at the top and bottom so you can return here or move to the previous/next procedure without browsing the GitHub folder.
 
 ## Documentation Status
 
