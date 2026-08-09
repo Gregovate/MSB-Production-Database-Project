@@ -23,12 +23,15 @@ Repository boundaries do not determine data authority. Dedicated applications an
 | Understand wiring presentation and LOR topology integration | [09 — Wiring System](09_Wiring_System/README.md) |
 | Understand physical network infrastructure and cable-test history | [10 — Network Infrastructure](10_Network_Infrastructure/README.md) |
 | Understand GPS/GIS, receptacles, power, and site infrastructure | [11 — Site Infrastructure / GIS](11_Site_Infrastructure_GIS/README.md) |
+| Understand planned setup scheduling, pick lists, load order, and deployment scanning | [12 — Setup and Deployment](12_Setup_and_Deployment/README.md) |
 
 ## Architecture Flow
 
 The current high-level dependency/data flow is:
 
 `PostgreSQL foundation -> LOR2DB ingest -> People/Identity -> Containers/Storage -> Testing -> Work Orders -> Labeling/Scanning`
+
+Setup and Deployment is a planned downstream operational subsystem that will consume tested/ready inventory, container/storage relationships, identity, and scanning capabilities to schedule and control movement from storage to the park.
 
 Controller Inventory, Wiring, Network Infrastructure, and Site Infrastructure/GIS extend the same permanent-identity and history model into the physical production environment.
 
@@ -44,6 +47,7 @@ Current relationship patterns include:
 - **Core database subsystem with dedicated operational UI — Work Orders:** PostgreSQL owns Work Order identities, relationships, lifecycle, and business rules. A separate task-focused Work Order application may replace inadequate Directus workflows without creating another Work Order database.
 - **Database-backed presentation/field application — Wiring:** a future dedicated Wiring application should consume PostgreSQL rather than a separate SQLite operational copy. LOR remains upstream topology authority through LOR2DB.
 - **External supporting subsystem — LabelPrintService:** consumes Production Database information to produce labels. It has its own repository and dedicated print server. If it is unavailable, printing stops but the Production Database remains authoritative and usable.
+- **Planned Directus-managed operational subsystem — Setup and Deployment:** PostgreSQL will remain authoritative for deployment scheduling/history. Directus is expected to provide the initial management interface, with a dedicated field/scanning UI only if required by forklift operations.
 
 This model allows application development to remain isolated from the Production Database repository without fragmenting system ownership.
 
@@ -62,6 +66,7 @@ This model allows application development to remain isolated from the Production
 | [09_Wiring_System](09_Wiring_System/README.md) | Wiring presentation, PostgreSQL-backed field application, and LOR-authoritative topology integration |
 | [10_Network_Infrastructure](10_Network_Infrastructure/README.md) | Physical network cables/nodes, CableIQ history, structured topology relationships |
 | [11_Site_Infrastructure_GIS](11_Site_Infrastructure_GIS/README.md) | GPS/GIS, receptacles, power/site assets, physical-location history |
+| [12_Setup_and_Deployment](12_Setup_and_Deployment/README.md) | Planned setup season/session, pull scheduling, pick/load lists, repeatable load order, forklift scanning, and deployment history |
 | [90_Project Hour Log](90_Project%20Hour%20Log/) | Project effort and development history |
 
 ## Documentation Ownership Rules
