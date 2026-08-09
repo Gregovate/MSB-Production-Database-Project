@@ -40,6 +40,9 @@ If a display is assigned to the wrong container, correct the Display record firs
 1. Open the affected container test session.
 2. Verify that the Production Database container assignments are correct.
 3. Select **Refresh Displays to Test**.
+
+![Wrong container display test record](../../../images/test_session_wrong_container.png)
+
 4. Save the test-session record.
 5. Review **Display Checks** after the refresh completes.
 
