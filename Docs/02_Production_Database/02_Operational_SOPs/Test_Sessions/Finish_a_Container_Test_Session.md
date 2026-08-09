@@ -1,5 +1,7 @@
 # Finish a Container Test Session
 
+[← Previous: Resume an In-Progress Container](Resume_an_In_Progress_Container.md) | [↑ Test Sessions Home](README.md)
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
@@ -51,3 +53,7 @@ If any display still requires repair, is deferred, is assigned to the wrong cont
 - [Test the Displays on a Container](Test_the_Displays_on_a_Container.md)
 - [Resume an In-Progress Container](Resume_an_In_Progress_Container.md)
 - [Refresh Displays to Test](Refresh_Displays_to_Test.md)
+
+---
+
+[← Previous: Resume an In-Progress Container](Resume_an_In_Progress_Container.md) | [↑ Test Sessions Home](README.md)
