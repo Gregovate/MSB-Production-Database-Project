@@ -22,11 +22,11 @@ Each task procedure has navigation at the top and bottom so you can return here 
 
 ## Documentation Status
 
-The task-sized procedures above are currently **DRAFT** while the exact Directus vocabulary is audited against the production interface.
+The task-sized operator procedures above are **CURRENT** and are the released procedures for normal container/display testing.
 
-The previous [Container Testing & Repair SOP](A_Container_Testing_and_Repair_SOP.md) remains in place temporarily as the migration source. It will be retired or archived only after all valid workflow content has been transferred and verified.
+The previous [Container Testing & Repair SOP](A_Container_Testing_and_Repair_SOP.md) remains in place temporarily as the migration source while the old long-form document is retired from normal use.
 
-The annual test-season setup procedure is also DRAFT because the 2026 season was launched manually and the repeatable manager process has not yet been fully documented.
+The annual test-season setup procedure remains **DRAFT** because the 2026 season was launched manually and the repeatable manager process has not yet been fully documented.
 
 ## Related Operational Procedures
 
