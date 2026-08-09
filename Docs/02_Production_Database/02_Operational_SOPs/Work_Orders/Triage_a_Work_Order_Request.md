@@ -8,7 +8,7 @@
 | System | Production Database — Work Orders |
 | Task | Review and triage a submitted Work Order Request |
 | Audience | Managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | work order intake, triage, promote, submitted, delete |
@@ -32,11 +32,12 @@ Work Orders created automatically by a Test Session are already active Work Orde
    - supporting notes;
    - Urgency; and
    - Target Year.
-5. Choose the appropriate triage outcome:
+5. Review the submitted Priority and assign the correct Work Order Urgency using [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md).
+6. Choose the appropriate triage outcome:
    - **Delete** — no action is required;
    - **Submitted** — keep the request in intake for later review; or
    - **Promote** — create an active Work Order.
-6. Save the record.
+7. Save the record.
 
 ## Location Rule
 
