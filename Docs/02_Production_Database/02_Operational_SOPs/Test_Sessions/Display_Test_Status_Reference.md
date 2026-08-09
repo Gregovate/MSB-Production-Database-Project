@@ -1,5 +1,7 @@
 # Display Test Status Reference
 
+[← Previous: Handle a Display That Needs Repair](Handle_a_Display_That_Needs_Repair.md) | [↑ Test Sessions Home](README.md) | [Next: Handle a Wrong or Missing Display →](Handle_a_Wrong_or_Missing_Display.md)
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
@@ -42,5 +44,10 @@ Use when the display test record is associated with a container where the displa
 ## Related Documents
 
 - [Test the Displays on a Container](Test_the_Displays_on_a_Container.md)
+- [Handle a Display That Needs Repair](Handle_a_Display_That_Needs_Repair.md)
 - [Handle a Wrong or Missing Display](Handle_a_Wrong_or_Missing_Display.md)
 - [Defer Testing](Defer_Testing.md)
+
+---
+
+[← Previous: Handle a Display That Needs Repair](Handle_a_Display_That_Needs_Repair.md) | [↑ Test Sessions Home](README.md) | [Next: Handle a Wrong or Missing Display →](Handle_a_Wrong_or_Missing_Display.md)
