@@ -24,10 +24,16 @@ Use this procedure when a container is pulled from storage and testing is ready 
 ## Procedure
 
 1. Open **Containers Not Started**.
+
+![Test Session menu showing Containers Not Started](../../../images/test_session.png)
+
 2. Find the container you are testing.
    - Search by container number, or
    - search using part of the container description.
 3. Open the container test-session record.
+
+![Not Started test-session record](../../../images/test_session_not_started.png)
+
 4. Change **Container Test Status ID** to **In Progress**.
 5. Select the correct **Work Location**. This cannot be blank.
 6. Save the record.
