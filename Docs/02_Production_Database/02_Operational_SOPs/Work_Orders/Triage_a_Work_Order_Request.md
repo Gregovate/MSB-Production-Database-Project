@@ -15,7 +15,9 @@
 
 ## Purpose
 
-Use this procedure to review a request in **Work Order Intake** and decide whether it should become an active Work Order.
+Use this procedure to review a request submitted through the Work Order Request Form and decide whether it should become an active Work Order.
+
+Work Orders created automatically by a Test Session are already active Work Orders and do **not** go through this triage process.
 
 ## Procedure
 
@@ -54,6 +56,7 @@ If the request does not contain enough information to make a safe decision, leav
 
 - [Assign a Work Order](Assign_a_Work_Order.md)
 - [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md)
+- [Test Session Operational SOPs](../Test_Sessions/README.md)
 
 ---
 
