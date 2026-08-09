@@ -4,7 +4,7 @@ This subsystem documents the Production Database work-order system, including in
 
 ## Current State
 
-Work Orders are implemented and actively evolving. PostgreSQL is the system of record. Google Forms currently participates in intake. Directus currently handles triage/completion interaction and several workflow automations.
+Work Orders are implemented and actively evolving. PostgreSQL is the system of record. A public Google Form participates in intake. Directus currently handles triage/completion interaction and several workflow automations.
 
 Directus is not required to remain the permanent operator interface. Its general-purpose data interface is inadequate for some repeated Work Order tasks, particularly helping assigned volunteers reliably find and complete their work.
 
@@ -48,11 +48,48 @@ If the dedicated application is unavailable, the Production Database remains aut
 - stage/work-area location model
 - task type, urgency, and target year
 - assignee relationships
-- Google Form intake and triage
+- public Google Form intake and manager triage
 - assignment and notification behavior
 - display/test-session linkage
 - completion and repair feedback
 - current work-order visibility/navigation limitations
+
+## Public Intake Integration
+
+The public **Work Order Request** is available from the top of `my.sheboyganlights.org` and may be used by anyone. It has two current paths: **Park** and **Workshop**.
+
+Current intake flow:
+
+**my.sheboyganlights.org -> Google Work Order Request Form -> attached Apps Script -> Work Order Intake -> manager triage -> active Work Order**
+
+The form currently stores Priority as a number from 1 through 5. That number is an intake estimate. During triage, a manager reviews it and assigns the appropriate Work Order Urgency.
+
+The Google Form has an attached **Apps Script**. Before changing form question titles, answer values, branching, or other structure, inspect the attached script for dependencies on the current form fields. In particular, preserve the existing Priority values unless the script and downstream intake behavior have first been reviewed.
+
+A planned usability improvement is to add the urgency meanings directly to the form while retaining the current numeric values:
+
+- 1 — Immediate / Critical
+- 2 — High
+- 3 — Normal
+- 4 — Low
+- 5 — Planning
+
+The authoritative public instructions are [Submit a Work Order Request](../../02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md). The MSB Backbone should link to that document rather than duplicate its instructions.
+
+## Operational Flow
+
+There are two entry paths:
+
+1. **Public Work Order Request Form -> manager triage -> active Work Order**
+2. **Test Session -> automatically generated active Work Order**
+
+Test Session-generated Work Orders bypass Work Order Intake triage.
+
+Once an active Work Order exists, the normal operational flow is:
+
+**Assign -> perform work -> add Completion Notes -> mark Complete -> save**
+
+A Work Order generated from a container Test Session must be completed before the related container Test Session can be closed.
 
 ## Directus Flow Ownership
 
@@ -75,7 +112,7 @@ The design source is not considered obsolete merely because it still has a legac
 
 - current PostgreSQL work-order tables, constraints, procedures, and triggers
 - current production Directus flows
-- current Google Form/intake workflow
+- current Google Form and attached Apps Script/intake workflow
 - current operational Work Order SOPs
 
 ## Related Systems
@@ -87,6 +124,8 @@ The design source is not considered obsolete merely because it still has a legac
 
 ## Resume Development
 
-Begin by inspecting the current PostgreSQL implementation and current Directus flows. Reconcile `G_Work_Order_Design_Plan.md` against that implementation, move the resulting engineering document into this subsystem, then update this README as the final handoff.
+Before changing the public Work Order Request form, inspect its attached Apps Script and document any dependencies on question titles, answer values, branching, or response processing.
+
+For broader Work Order engineering, inspect the current PostgreSQL implementation and current Directus flows. Reconcile `G_Work_Order_Design_Plan.md` against that implementation, move the resulting engineering document into this subsystem, then update this README as the final handoff.
 
 When the dedicated Work Order application is started, create or use its separate implementation repository and link it here. Keep the Production Database schema/business contract in this subsystem and application implementation in the application repository.
