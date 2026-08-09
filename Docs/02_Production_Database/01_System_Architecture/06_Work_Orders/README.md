@@ -4,7 +4,37 @@ This subsystem documents the Production Database work-order system, including in
 
 ## Current State
 
-Work Orders are implemented and actively evolving. PostgreSQL is the system of record. Google Forms currently participates in intake. Directus currently handles triage/completion interaction and several workflow automations. A dedicated task-focused Work Order application may eventually replace parts of the Directus user experience without changing the PostgreSQL ownership model.
+Work Orders are implemented and actively evolving. PostgreSQL is the system of record. Google Forms currently participates in intake. Directus currently handles triage/completion interaction and several workflow automations.
+
+Directus is not required to remain the permanent operator interface. Its general-purpose data interface is inadequate for some repeated Work Order tasks, particularly helping assigned volunteers reliably find and complete their work.
+
+A dedicated task-focused Work Order application may replace parts of the Directus user experience without changing the PostgreSQL ownership model.
+
+## System Boundary
+
+**Relationship Class:** Core Database Subsystem with a future Dedicated Database-Backed Operational Application.
+
+PostgreSQL owns the Work Order identity, relationships, lifecycle state, and database-enforced business rules. A dedicated Work Order application may live in a separate repository and provide the operator/manager user experience while continuing to use the Production Database as the system of record.
+
+A dedicated Work Order application must not create a second Work Order database or competing lifecycle model.
+
+### Production Database responsibility
+
+- Work Order identity and lifecycle
+- Work Order relationships to People, Testing, Displays, Stages, and Work Areas
+- database constraints, procedures, triggers, and shared workflow rules
+- durable history and audit attribution
+- integration contract consumed by the operator application
+
+### Dedicated Work Order application responsibility
+
+- task-focused operator and manager UI
+- finding assigned work reliably
+- guided intake/triage/assignment/completion workflows as approved
+- application-specific API/client code
+- application deployment, configuration, and tests
+
+If the dedicated application is unavailable, the Production Database remains authoritative and internally consistent. Operators may temporarily lose the preferred task interface, but Work Order data is not lost or transferred to another source of truth.
 
 ## Dependencies
 
@@ -53,7 +83,10 @@ The design source is not considered obsolete merely because it still has a legac
 - [People and Identity](../03_People_and_Identity/README.md)
 - [Testing System](../05_Testing_System/README.md)
 - [Operational SOPs](../../02_Operational_SOPs/README.md)
+- [System Boundary and Repository Ownership Standard](../../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md)
 
 ## Resume Development
 
 Begin by inspecting the current PostgreSQL implementation and current Directus flows. Reconcile `G_Work_Order_Design_Plan.md` against that implementation, move the resulting engineering document into this subsystem, then update this README as the final handoff.
+
+When the dedicated Work Order application is started, create or use its separate implementation repository and link it here. Keep the Production Database schema/business contract in this subsystem and application implementation in the application repository.
