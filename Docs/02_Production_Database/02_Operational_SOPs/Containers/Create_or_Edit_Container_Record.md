@@ -49,7 +49,9 @@ Open the container record and complete or verify the main fields.
 
 ![Directus main Container fields](../../../images/directus_container_section_01.png)
 
-- **ID** — permanent database container number. Do not change an existing ID.
+Fields shown greyed out in Directus are read-only and cannot be changed by the operator.
+
+- **ID** — permanent database container number. This field is read-only in Directus.
 - **Home Location** — the normal storage location for the container.
 - **Description** — clear description used to identify the container. This description prints on the container label.
 - **Label Required** — leave enabled when the container requires an MSB container label.
