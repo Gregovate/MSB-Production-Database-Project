@@ -6,7 +6,7 @@
 | System | Production Database — Containers |
 | Task | Create or edit a container record |
 | Audience | Production Database operators and managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | MSB Database Administrator |
 | Last Reviewed | 2026-08-09 |
 | Keywords | container, Directus, storage, home location, container type, dimensions, label, display assignment |
@@ -55,7 +55,7 @@ Fields shown greyed out in Directus are read-only and cannot be changed by the o
 - **Home Location** — the normal storage location for the container.
 - **Description** — clear description used to identify the container. This description prints on the container label.
 - **Label Required** — leave enabled when the container requires an MSB container label.
-- **Print Label** — check this when you want the container labels to print when the record is saved. A container prints **2 labels** so it can be identified from either side.
+- **Print Label** — check this when you want the container labels to print when the record is saved. A container prints **2 labels**.
 
 Container labels can also be printed later from the **Print Container Labels** view.
 
