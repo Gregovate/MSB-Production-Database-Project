@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Test displays assigned to a container |
 | Audience | Testing volunteers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | testing, display checks, container, display test |
@@ -50,7 +50,7 @@ The current testing workflow uses results for displays that are:
 - deferred
 - assigned to the wrong container
 
-The exact screen vocabulary is being audited. Use the labels currently shown in Directus.
+Use the labels shown in Directus and the [Display Test Status Reference](Display_Test_Status_Reference.md) when choosing a result.
 
 ## Expected Result
 
