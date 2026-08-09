@@ -2,6 +2,21 @@
 
 Use this page to go directly to the Work Order task you are doing now.
 
+## Work Order Flow
+
+A Work Order can enter the system in either of two ways:
+
+1. **Work Order Request Form** -> manager triage -> active Work Order
+2. **Automatically from a Test Session** -> active Work Order
+
+A Work Order created automatically from a Test Session does **not** go through Work Order Intake triage.
+
+After an active Work Order exists, the normal workflow is:
+
+**Assign Work Order -> perform the work -> add Completion Notes -> mark Complete -> save**
+
+If the Work Order was created automatically by a container Test Session, that Work Order must be completed before the related container Test Session can be closed.
+
 ## What Do You Need To Do?
 
 | I want to... | Go to |
