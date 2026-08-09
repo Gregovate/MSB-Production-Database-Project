@@ -28,6 +28,37 @@ Do not place an operator procedure inside `01_System_Architecture/` merely becau
 
 Each task-area folder should have a `README.md` portal when it contains more than one procedure or when the folder represents an ongoing operational area.
 
+## Task Granularity and Workflow Portals
+
+Prefer one plain-language procedure for each real operator task or decision point rather than one large end-to-end manual when the workflow can be safely divided.
+
+A task-area `README.md` should act as the workflow map. It should help the operator answer **What am I trying to do right now?** and lead directly to the appropriate short procedure.
+
+For example, a testing workflow may have separate procedures for starting a test session, testing displays, handling a repair, refreshing the displays to test, resuming deferred work, and finishing a container.
+
+Each procedure should contain enough information to complete its task without requiring the operator to read the entire workflow documentation first. Use Related Documents to connect the procedures in the normal sequence.
+
+Do not split a task so finely that an operator must constantly switch documents to complete one normal action. The goal is understandable task-sized instructions, not the largest or smallest possible number of files.
+
+## Print and Hard-Copy Usability
+
+Operator procedures should be usable both digitally and as printed hard copies when practical.
+
+A printed procedure cannot depend on clickable navigation to explain the task. The core instructions needed to perform the task must appear in the procedure itself.
+
+For procedures likely to be printed:
+
+- use a clear task title;
+- state the purpose and intended audience;
+- list anything required before starting;
+- keep numbered actions in the order performed;
+- make warnings and required values easy to find;
+- state what successful completion looks like;
+- keep essential instructions complete even when links are unavailable on paper;
+- place Related Documents at the end for digital navigation and follow-up work.
+
+Screenshots may be used when they materially help the operator identify a screen, field, or action, but a procedure should not become unusable solely because a screenshot prints poorly or is unavailable.
+
 ## Required Document Control
 
 Every current SOP should begin with a short Document Control table using these exact field names:
