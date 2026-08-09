@@ -36,13 +36,13 @@ LOR remains authoritative for show topology and wiring configuration. LOR2DB is 
 
 | Subsystem | Engineering responsibility |
 |---|---|
-| [01_Database_Foundation](01_Database_Foundation/README.md) | Shared PostgreSQL identities, schema boundaries, audit rules, integrity, shared procedures/triggers |
+| [01_Database_Foundation](01_Database_Foundation/README.md) | Shared PostgreSQL identities, schema boundaries, audit rules, integrity, shared database-wide mechanisms |
 | [02_LOR2DB_Ingest](02_LOR2DB_Ingest/README.md) | Production Database dependency on the separate LOR2DB parser/ingest/reconciliation project |
 | [03_People_and_Identity](03_People_and_Identity/README.md) | Person identity, authentication linkage, Directus users/roles, onboarding, actor attribution |
 | [04_Containers_and_Storage](04_Containers_and_Storage/README.md) | Containers, display assignment, storage locations, physical state/history |
-| [05_Testing_System](05_Testing_System/README.md) | Test sessions, display testing, repair outcomes, testing lifecycle |
+| [05_Testing_System](05_Testing_System/README.md) | Test sessions, display testing, repair outcomes, testing lifecycle, testing-specific procedures/triggers |
 | [06_Work_Orders](06_Work_Orders/README.md) | Intake, triage, assignment, notifications, repair linkage, completion |
-| [07_Labeling_and_Scanning](07_Labeling_and_Scanning/README.md) | Permanent labels, LabelPrintService integration, QR/barcodes, scan workflows |
+| [07_Labeling_and_Scanning](07_Labeling_and_Scanning/README.md) | Permanent labels, LabelPrintService integration, QR/barcodes, scanner hardware, scan workflows |
 | [08_Controller_Inventory](08_Controller_Inventory/README.md) | Permanent physical controller identity, inventory, lifecycle, deployment/history |
 | [09_Wiring_System](09_Wiring_System/README.md) | Wiring presentation, field documentation, and LOR-authoritative topology integration |
 | [10_Network_Infrastructure](10_Network_Infrastructure/README.md) | Physical network cables/nodes, CableIQ history, structured topology relationships |
@@ -59,6 +59,6 @@ LOR remains authoritative for show topology and wiring configuration. LOR2DB is 
 
 ## Legacy Architecture Cleanup
 
-Older root lettered documents and the previous `01_Stored_Proceedures` through `06_Scan_Workflows_and_Forklift_Operations` layout are being reconciled into this numbered subsystem tree. They remain temporarily available while valid current engineering contracts are transferred and links are repaired.
+The previous competing numbered folders (`01_Stored_Proceedures` through `06_Scan_Workflows_and_Forklift_Operations`) have been migrated into their owning current subsystems and removed from the active tree.
 
-Do not treat the older folder numbering or the A–H lettered documents as the target architecture. Historical material will be archived only after current responsibilities have an authoritative owner in this tree.
+The remaining loose A–H architecture documents are being reconciled separately. Historical material will be archived only after current responsibilities have an authoritative owner in this tree.
