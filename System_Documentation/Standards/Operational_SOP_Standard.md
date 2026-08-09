@@ -28,6 +28,24 @@ Do not place an operator procedure inside `01_System_Architecture/` merely becau
 
 Each task-area folder should have a `README.md` portal when it contains more than one procedure or when the folder represents an ongoing operational area.
 
+## Operator Navigation Boundary
+
+The normal browsing path for operators must remain operational by default.
+
+An operator moving through README portals should normally follow:
+
+```text
+Operational SOP portal -> task-area portal -> plain-language task procedure
+```
+
+Do not place engineering documents, SQL procedures, trigger documentation, architecture handoffs, implementation notes, or other technical references in the normal operator procedure-selection table.
+
+Engineering material may still be linked when it is useful to someone who wants to understand how the system works. Put those links in a clearly labeled section such as **Related Engineering** or **Related Documents**, separate from the normal task-navigation table.
+
+The operator should have to deliberately choose to leave the operational documentation path and enter engineering documentation.
+
+This boundary applies even when the engineering document describes the database behavior behind the operator task. The operator portal should answer **What do I need to do?**, while engineering navigation answers **How does this system work?**
+
 ## Task Granularity and Workflow Portals
 
 Prefer one plain-language procedure for each real operator task or decision point rather than one large end-to-end manual when the workflow can be safely divided.
@@ -174,6 +192,7 @@ When adding a new current SOP:
 6. Add meaningful `Keywords` for likely operator searches.
 7. Verify all relative links and images.
 8. Keep engineering detail in the responsible engineering documents and link to it when useful.
+9. Keep the normal operator browse path operational; place engineering links in a separate related-information section rather than the task-selection table.
 
 A future automatic indexer should be able to discover current SOPs by scanning `02_Operational_SOPs/`, reading the Document Control table, and following the README portal structure.
 
