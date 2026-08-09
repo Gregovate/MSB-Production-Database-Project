@@ -1,5 +1,7 @@
 # Start a Container Test Session
 
+[↑ Test Sessions Home](README.md) | [Next: Test the Displays on a Container →](Test_the_Displays_on_a_Container.md)
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
@@ -25,14 +27,14 @@ Use this procedure when a container is pulled from storage and testing is ready 
 
 1. Open **Containers Not Started**.
 
-![Test Session menu showing Containers Not Started](../../../images/test_session.png)
+![Test Session menu](../../../images/test_session.png)
 
 2. Find the container you are testing.
    - Search by container number, or
    - search using part of the container description.
 3. Open the container test-session record.
 
-![Not Started test-session record](../../../images/test_session_not_started.png)
+![Container test session not started](../../../images/test_session_not_started.png)
 
 4. Change **Container Test Status ID** to **In Progress**.
 5. Select the correct **Work Location**. This cannot be blank.
@@ -57,3 +59,7 @@ If no Display Checks appear after saving, stop and ask a manager for help before
 
 - [Test the Displays on a Container](Test_the_Displays_on_a_Container.md)
 - [Resume an In-Progress Container](Resume_an_In_Progress_Container.md)
+
+---
+
+[↑ Test Sessions Home](README.md) | [Next: Test the Displays on a Container →](Test_the_Displays_on_a_Container.md)
