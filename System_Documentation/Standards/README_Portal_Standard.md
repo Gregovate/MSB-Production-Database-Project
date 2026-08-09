@@ -6,6 +6,8 @@ README files are navigation portals. Their job is to help a reader quickly under
 
 A portal should be short, plain-language, and useful to the least technical audience that needs it.
 
+For an active engineering subsystem, the README also serves as the durable handoff point between development sessions. It must preserve enough current-state context that work can resume from repository documentation instead of reconstructing decisions from conversation history.
+
 ## Required Structure
 
 Use only the sections that help the reader navigate.
@@ -65,6 +67,40 @@ The structure of the portal remains consistent throughout the repository, but th
 - **Standards portals** describe how the documentation system is organized and maintained.
 
 Choose the portal style based on the primary audience, not the types of documents contained within the folder.
+
+## Engineering Subsystem Handoff
+
+An active engineering or development subsystem README has an additional responsibility: it is the current handoff point for future work.
+
+Use concise sections when applicable to identify:
+
+- **Current State** — what is implemented, deployed, approved, legacy, partial, or planned now.
+- **Design Intent** — the direction of the subsystem, while clearly separating approved architecture from future ideas.
+- **Authoritative Sources** — the code, SQL, database objects, applications, drawings, spreadsheets, exports, equipment datasets, or other artifacts that must be reviewed before changing the subsystem.
+- **System Boundaries and Dependencies** — what this subsystem owns and which related systems own adjacent information.
+- **Known Limitations / Open Work** — material unresolved work and the point where development stopped.
+- **Resume Development** — the subsystem-specific documents and evidence that must be reviewed before continuing engineering work.
+- **Related Systems / Related Documents** — navigable links to the responsible neighboring systems and detailed documents rather than duplicated explanations.
+
+These sections are not required on simple volunteer-facing portals when they would add unnecessary technical detail. They are required where omission would force future engineering work to rediscover the subsystem state.
+
+The README is not a development diary. Preserve historical implementation detail in Git history, revision history, incident reports, engineering history, or archive material as appropriate. The README records the current handoff state.
+
+## Mandatory Closeout Rule
+
+Material subsystem work is not complete until the responsible README has been reviewed and, when necessary, updated to reflect the resulting current state.
+
+This applies to development, migrations, workflow changes, deployment changes, architecture decisions, significant documentation changes, and other work that changes how the subsystem operates or should be resumed.
+
+Before closing the work:
+
+1. Update the responsible detailed engineering, procedure, SOP, or reference documents when their owned information changed.
+2. Review the subsystem README after those updates.
+3. Update the README so its current state, authoritative sources, dependencies, known limitations, and next development starting point remain accurate.
+4. Verify its navigation and related-system links.
+5. Commit the README handoff update with the work rather than leaving it for a later cleanup pass.
+
+The intended result is that the next work session can begin by reading the repository and continue from the documented state without rehashing or reinvestigating settled decisions.
 
 ## Technical Detail
 
