@@ -2,31 +2,6 @@
 
 Use this page to go directly to the Work Order task you are doing now.
 
-## Public Work Order Request Instructions
-
-The [Submit a Work Order Request](Submit_a_Work_Order_Request.md) procedure is **public-facing** and is intended for anyone using the **Work Order Request** link at the top of `my.sheboyganlights.org`.
-
-It does not require Production Database or Directus access. It documents both current Google Form paths:
-
-- Park requests
-- Workshop requests
-
-### MSB Backbone Reference
-
-The MSB Web Backbone should link directly to the public procedure rather than duplicate the instructions.
-
-Canonical document:
-
-`Docs/02_Production_Database/02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md`
-
-GitHub document target:
-
-`https://github.com/Gregovate/MSB-Production-Database-Project/blob/main/Docs/02_Production_Database/02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md`
-
-Suggested Backbone link text:
-
-**Work Order Request Instructions**
-
 ## Work Order Flow
 
 A Work Order can enter the system in either of two ways:
@@ -40,7 +15,28 @@ After an active Work Order exists, the normal workflow is:
 
 **Assign Work Order -> perform the work -> add Completion Notes -> mark Complete -> save**
 
-If the Work Order was created automatically by a container Test Session, that Work Order must be completed before the related container Test Session can be closed.
+If the Work Order was created automatically by a Test Session, that Work Order must be completed before the related container Test Session can be closed.
+
+## Public Work Order Request Instructions
+
+The [Submit a Work Order Request](Submit_a_Work_Order_Request.md) procedure is **public-facing**. The Work Order Request is available from the top of `my.sheboyganlights.org` and may be used by anyone without Directus or Production Database access.
+
+The procedure documents both current form paths:
+
+- Park
+- Workshop
+
+It also includes a plain-language reference for the numbered Priority field. The submitted Priority is an intake estimate; a manager reviews it and assigns the correct Work Order Urgency during triage.
+
+### MSB Backbone Reference
+
+The MSB Backbone repository should link to the authoritative public procedure rather than duplicate its instructions.
+
+**Canonical repository path:**
+
+`Docs/02_Production_Database/02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md`
+
+**Suggested public link text:** **Work Order Request Instructions**
 
 ## What Do You Need To Do?
 
@@ -53,9 +49,23 @@ If the Work Order was created automatically by a container Test Session, that Wo
 | Complete a Work Order | [Complete a Work Order](Complete_a_Work_Order.md) |
 | Choose urgency or target year | [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md) |
 
-The public Work Order Request procedure is **CURRENT**. The internal Work Order procedures remain **DRAFT** while the large legacy Work Order SOP is split and checked against the current Directus workflow.
+The task-sized procedures above are **CURRENT** and are the released procedures for the current Work Order workflow.
 
-The existing `B_Work_Order_System_SOP.md` remains temporarily as the migration source. It will be archived after all valid operator instructions have been transferred and verified.
+## Known Follow-Up
+
+The public Google Work Order Request form has an attached **Apps Script**. Before changing question titles, answer values, or branching behavior, inspect that script for dependencies on the current form structure.
+
+A future form improvement is to add the urgency meanings directly beside the numbered Priority field while preserving the values expected by the existing intake process and attached Apps Script.
+
+This form improvement is not required to complete the documentation audit.
+
+## Archived Legacy SOPs
+
+The former lettered Work Order documents have been removed from normal operator navigation and preserved under:
+
+`archive/operational_sops/Work_Orders/`
+
+The archived long-form SOP is historical reference only. The CURRENT task-sized procedures on this page are authoritative for normal operations.
 
 ## Related Operational Procedures
 
