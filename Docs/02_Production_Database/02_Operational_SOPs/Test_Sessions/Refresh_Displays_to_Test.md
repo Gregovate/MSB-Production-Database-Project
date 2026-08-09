@@ -1,5 +1,7 @@
 # Refresh Displays to Test
 
+[← Previous: Handle a Wrong or Missing Display](Handle_a_Wrong_or_Missing_Display.md) | [↑ Test Sessions Home](README.md) | [Next: Defer Testing →](Defer_Testing.md)
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
@@ -66,3 +68,7 @@ If an old display remains after refresh because it has protected history or a li
 
 - [Handle a Wrong or Missing Display](Handle_a_Wrong_or_Missing_Display.md)
 - [Test the Displays on a Container](Test_the_Displays_on_a_Container.md)
+
+---
+
+[← Previous: Handle a Wrong or Missing Display](Handle_a_Wrong_or_Missing_Display.md) | [↑ Test Sessions Home](README.md) | [Next: Defer Testing →](Defer_Testing.md)
