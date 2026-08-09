@@ -24,7 +24,7 @@ The audit is based on the MSB documentation standards under `System_Documentatio
 7. ✅ Refactored `Docs/README.md` to primarily link to immediate child portals rather than deep documents.
 8. ✅ Completed `System_Documentation/README.md`, `System_Documentation/Standards/README.md`, and `System_Documentation/Automation/README.md` portals.
 9. ✅ Added `Utilities/README.md` describing the purpose and ownership rule for cross-system utilities.
-10. ⏳ Review the remaining `Docs/01_LOR_System/01_Preview_Authoring/preview_merger_reference.md` now that Preview Merger has its own `03_Preview_Merger` documentation area.
+10. ✅ Reviewed `Docs/01_LOR_System/01_Preview_Authoring/preview_merger_reference.md`. Relevant engineering and operator content is preserved in the current Preview Merger architecture/procedure; the superseded reference was moved to `archive/docs/preview_merger_reference.md` and removed from active Preview Authoring.
 11. ⏳ Document known Production Database engineering gaps, especially the Wiring System, and review whether Work Orders and Controller Inventory need stronger subsystem-level engineering documentation.
 12. ⏳ Regenerate `RepositoryTree.txt` after the current documentation cleanup; the committed tree can become stale as soon as files are added or moved.
 13. ✅ Repaired the repository root `readme.md` against the current folder layout. A broader root-portal redesign may still follow the Project Overview review.
