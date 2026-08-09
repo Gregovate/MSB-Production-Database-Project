@@ -8,7 +8,7 @@
 | System | Production Database — Work Orders |
 | Task | Assign a Work Order to volunteers |
 | Audience | Managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | work order, assignment, assignee, volunteer, notification |
@@ -24,11 +24,11 @@ Confirm the Work Order has been reviewed and contains enough information for the
 ## Procedure
 
 1. Open the Work Order.
-2. Review the problem, location, priority, notes, and any related Display information.
+2. Review the problem, location, urgency, notes, and any related Display information.
 3. Assign the appropriate volunteer or volunteers.
 4. Save the Work Order.
 
-Choose assignees based on the needs of the work, including skill, availability, priority, dependencies, safety, and required tools or materials.
+Choose assignees based on the needs of the work, including skill, availability, urgency, dependencies, safety, and required tools or materials.
 
 More than one volunteer may be assigned when appropriate.
 
@@ -36,7 +36,7 @@ More than one volunteer may be assigned when appropriate.
 
 The Work Order is linked to the assigned volunteer or volunteers.
 
-The current system may send assignment notification email containing a direct link to the Work Order.
+The current Directus assignment flow sends assignment notification email to the assigned person or people. The notification includes a direct link to the Work Order.
 
 ## If Something Is Wrong
 
