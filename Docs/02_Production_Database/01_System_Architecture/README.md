@@ -1,10 +1,12 @@
 # Production Database System Architecture
 
-This area contains the engineering design for the PostgreSQL Production Database and the operational systems built on it.
+This area contains the engineering design for the PostgreSQL Production Database and the operational systems built on it or consuming it.
 
 The numbered subsystem tree follows the logical data/dependency flow of the current Production Database. It is not a chronology of old documents and does not preserve obsolete systems merely because they existed during development.
 
 Operator procedures and manuals remain separate under [Operational SOPs](../02_Operational_SOPs/README.md).
+
+Repository boundaries do not determine data authority. Dedicated applications and services may live in separate repositories while PostgreSQL, LOR, or another explicitly documented source remains authoritative. See the [System Boundary and Repository Ownership Standard](../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md).
 
 ## Start Here
 
@@ -32,6 +34,19 @@ Controller Inventory, Wiring, Network Infrastructure, and Site Infrastructure/GI
 
 LOR remains authoritative for show topology and wiring configuration. LOR2DB is the controlled bridge that brings LOR-derived data into PostgreSQL. PostgreSQL and downstream applications may store, reconcile, enrich, present, and operationally use that data without independently redefining LOR controller/channel/network topology.
 
+## Application and Repository Boundaries
+
+The Production Database is intentionally allowed to have dedicated applications and services in separate repositories. The important rule is to preserve the authority and dependency contract.
+
+Current relationship patterns include:
+
+- **Integrated upstream dependency — LOR/LOR2DB:** the Production Database relies on controlled LOR-derived data. LOR remains authoritative for show topology and wiring configuration.
+- **Core database subsystem with dedicated operational UI — Work Orders:** PostgreSQL owns Work Order identities, relationships, lifecycle, and business rules. A separate task-focused Work Order application may replace inadequate Directus workflows without creating another Work Order database.
+- **Database-backed presentation/field application — Wiring:** a future dedicated Wiring application should consume PostgreSQL rather than a separate SQLite operational copy. LOR remains upstream topology authority through LOR2DB.
+- **External supporting subsystem — LabelPrintService:** consumes Production Database information to produce labels. It has its own repository and dedicated print server. If it is unavailable, printing stops but the Production Database remains authoritative and usable.
+
+This model allows application development to remain isolated from the Production Database repository without fragmenting system ownership.
+
 ## Subsystem Guide
 
 | Subsystem | Engineering responsibility |
@@ -41,10 +56,10 @@ LOR remains authoritative for show topology and wiring configuration. LOR2DB is 
 | [03_People_and_Identity](03_People_and_Identity/README.md) | Person identity, authentication linkage, Directus users/roles, onboarding, actor attribution |
 | [04_Containers_and_Storage](04_Containers_and_Storage/README.md) | Containers, display assignment, storage locations, physical state/history |
 | [05_Testing_System](05_Testing_System/README.md) | Test sessions, display testing, repair outcomes, testing lifecycle, testing-specific procedures/triggers |
-| [06_Work_Orders](06_Work_Orders/README.md) | Intake, triage, assignment, notifications, repair linkage, completion |
+| [06_Work_Orders](06_Work_Orders/README.md) | Intake, triage, assignment, notifications, repair linkage, completion, and dedicated application boundary |
 | [07_Labeling_and_Scanning](07_Labeling_and_Scanning/README.md) | Permanent labels, LabelPrintService integration, QR/barcodes, scanner hardware, scan workflows |
 | [08_Controller_Inventory](08_Controller_Inventory/README.md) | Permanent physical controller identity, inventory, lifecycle, deployment/history |
-| [09_Wiring_System](09_Wiring_System/README.md) | Wiring presentation, field documentation, and LOR-authoritative topology integration |
+| [09_Wiring_System](09_Wiring_System/README.md) | Wiring presentation, PostgreSQL-backed field application, and LOR-authoritative topology integration |
 | [10_Network_Infrastructure](10_Network_Infrastructure/README.md) | Physical network cables/nodes, CableIQ history, structured topology relationships |
 | [11_Site_Infrastructure_GIS](11_Site_Infrastructure_GIS/README.md) | GPS/GIS, receptacles, power/site assets, physical-location history |
 | [90_Project Hour Log](90_Project%20Hour%20Log/) | Project effort and development history |
@@ -54,7 +69,8 @@ LOR remains authoritative for show topology and wiring configuration. LOR2DB is 
 - This tree is the engineering side of the Production Database documentation.
 - Procedures/manuals belong under [Operational SOPs](../02_Operational_SOPs/README.md), even when they operate one of the systems above.
 - Directus is a shared implementation platform, not a top-level business subsystem. Business-specific Directus Flows are documented with the subsystem whose process they implement.
-- Separate implementation projects such as [LOR2DB](../../../LOR2DB/README.md), and future dedicated Work Order or Wiring applications, may maintain their own implementation trees. The subsystem README here documents how that project fits into the Production Database architecture.
+- Dedicated application/service projects may maintain their own implementation repositories. The responsible subsystem README here documents how that project fits into Production Database architecture, what data it consumes or changes, and where authority remains.
+- A separate application repository must not create a competing source of truth merely because a task-focused UI is needed.
 - Shared database mechanisms belong under Database Foundation only when they are truly cross-system. Business-specific procedures/triggers belong with their owning subsystem.
 
 ## Legacy Architecture Cleanup
