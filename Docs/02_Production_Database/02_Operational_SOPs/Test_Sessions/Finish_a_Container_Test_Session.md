@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Complete testing for a container |
 | Audience | Testing volunteers / managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | finish testing, done, container, display testing, green tag |
