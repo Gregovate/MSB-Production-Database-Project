@@ -1,5 +1,7 @@
 # Resume an In-Progress Container
 
+[← Previous: Defer Testing](Defer_Testing.md) | [↑ Test Sessions Home](README.md) | [Next: Finish a Container Test Session →](Finish_a_Container_Test_Session.md)
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
@@ -33,3 +35,7 @@ Testing continues from the existing test-session records without creating a new 
 - [Test the Displays on a Container](Test_the_Displays_on_a_Container.md)
 - [Defer Testing](Defer_Testing.md)
 - [Finish a Container Test Session](Finish_a_Container_Test_Session.md)
+
+---
+
+[← Previous: Defer Testing](Defer_Testing.md) | [↑ Test Sessions Home](README.md) | [Next: Finish a Container Test Session →](Finish_a_Container_Test_Session.md)
