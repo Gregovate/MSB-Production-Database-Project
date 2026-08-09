@@ -77,6 +77,14 @@ Write numbered steps in the order the task is actually performed.
 - Explain why only when the explanation prevents a likely mistake.
 - Do not bury required actions inside long paragraphs.
 
+### Operator Language
+
+Use the exact system or interface term when the operator needs to recognize it on screen, but explain what it means in plain language the first time the meaning matters.
+
+For example, keep field names such as **Display ID**, **Container ID**, **Frame ID**, and **Print Label** because those are the names shown in Directus. Avoid unnecessary engineering language when a simpler operator description is enough.
+
+When screenshots show greyed-out fields that are read-only, say so when that prevents the operator from trying to edit them.
+
 ### 4. Expected Result
 
 Tell the operator how to recognize successful completion.
