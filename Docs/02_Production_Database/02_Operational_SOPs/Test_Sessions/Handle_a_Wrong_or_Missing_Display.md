@@ -1,5 +1,7 @@
 # Handle a Wrong or Missing Display
 
+[← Previous: Display Test Status Reference](Display_Test_Status_Reference.md) | [↑ Test Sessions Home](README.md) | [Next: Refresh Displays to Test →](Refresh_Displays_to_Test.md)
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
@@ -29,7 +31,7 @@ Determine which condition is true:
 2. Correct the display's container assignment so the Production Database matches the physical container.
 3. For an incorrect Display Check, mark the display as not present and use the current **Wrong Container** testing result.
 
-![Wrong Container display test result](../../../images/test_session_wrong_container.png)
+![Wrong container display test record](../../../images/test_session_wrong_container.png)
 
 4. Do not create a repair Work Order just because the display is assigned to the wrong container.
 5. Save the display test record.
@@ -47,3 +49,7 @@ If an existing Work Order prevents a stale test record from being removed, stop 
 
 - [Refresh Displays to Test](Refresh_Displays_to_Test.md)
 - [Test the Displays on a Container](Test_the_Displays_on_a_Container.md)
+
+---
+
+[← Previous: Display Test Status Reference](Display_Test_Status_Reference.md) | [↑ Test Sessions Home](README.md) | [Next: Refresh Displays to Test →](Refresh_Displays_to_Test.md)
