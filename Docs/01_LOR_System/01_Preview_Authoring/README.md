@@ -8,7 +8,10 @@ This area contains the user-facing rules and procedures for creating and maintai
 |---|---|
 | Understand required display and channel naming | [Naming Conventions](A_Naming_Conventions.md) |
 | Build or update a preview | [Building Preview How-To](B_Building_Preview_Howto.md) |
+| Review the February 2026 origin of the LOR-to-database naming contract | [Historical LOR Naming Data Contract](C_LOR_Naming_Data_Contract.md) |
 | Import the current approved preview set | [Preview Import Workflow](Preview_Import_Workflow.md) |
+
+The historical naming contract is preserved here because it records the early engineering decisions that connected LOR Comment naming, stage codes, parser output, and Production Database ingestion. It is not the current authoring authority; current naming rules are maintained in [Naming Conventions](A_Naming_Conventions.md).
 
 ## Important Boundary
 
