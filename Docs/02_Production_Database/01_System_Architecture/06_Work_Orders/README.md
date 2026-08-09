@@ -35,14 +35,18 @@ Work-order-specific Directus flows belong in this subsystem. Current production 
 
 These flows must be documented from the current production configuration rather than reconstructed from legacy design notes.
 
+## Current Engineering Source
+
+- [G_Work_Order_Design_Plan.md](../G_Work_Order_Design_Plan.md) — current engineering foundation being reconciled against the implemented Work Order system before relocation into this subsystem.
+
+The design source is not considered obsolete merely because it still has a legacy filename. Its still-valid contracts must be preserved while stale implementation assumptions are corrected.
+
 ## Authoritative Sources
 
 - current PostgreSQL work-order tables, constraints, procedures, and triggers
 - current production Directus flows
 - current Google Form/intake workflow
 - current operational Work Order SOPs
-
-The legacy `G_Work_Order_Design_Plan.md` remains an important engineering source until its valid contracts are reconciled into this subsystem.
 
 ## Related Systems
 
@@ -52,4 +56,4 @@ The legacy `G_Work_Order_Design_Plan.md` remains an important engineering source
 
 ## Resume Development
 
-Begin by inspecting the current PostgreSQL implementation and current Directus flows. Update detailed engineering documentation first, then this README as the final subsystem handoff.
+Begin by inspecting the current PostgreSQL implementation and current Directus flows. Reconcile `G_Work_Order_Design_Plan.md` against that implementation, move the resulting engineering document into this subsystem, then update this README as the final handoff.
