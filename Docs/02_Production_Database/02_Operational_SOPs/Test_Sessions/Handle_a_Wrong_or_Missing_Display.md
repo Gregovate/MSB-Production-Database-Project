@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Correct a wrong or missing display during testing |
 | Audience | Testing volunteers / managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | wrong container, missing display, container assignment, testing |
