@@ -14,6 +14,11 @@ Label printing crosses a repository and service boundary:
 
 The LabelPrintService is an external supporting subsystem. If it is unavailable, printing stops, but the Production Database remains authoritative and usable.
 
+## Start Here
+
+- [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules and the boundary between implemented label printing and planned/evolving scanning workflows.
+- [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md) — current operator instructions.
+
 ## Design Intent
 
 Labels must use durable Production Database identities rather than brittle application-specific URLs. Printing and scanning should remain usable by non-technical volunteers while preserving traceability and reprint control.
@@ -74,12 +79,13 @@ A failure of LabelPrintService must not transfer data authority to the service o
 
 ## Authoritative Sources
 
+- [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md)
 - current PostgreSQL label-printing objects and request/batch records
 - current Directus Display and Container print workflows
 - current `MSB_LabelPrintService` implementation and operator documentation
 - current field scanning workflows
 
-The legacy `H_Asset_ID_Labeling_and_Scanning_Plan.md` still requires reconciliation into this subsystem before archival/removal. It is not automatically obsolete merely because current label printing is already implemented.
+The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled into this subsystem and archived as historical planning evidence.
 
 ## Related Systems
 
@@ -91,6 +97,6 @@ The legacy `H_Asset_ID_Labeling_and_Scanning_Plan.md` still requires reconciliat
 
 ## Resume Development
 
-For label printing, begin with the current PostgreSQL request/batch objects and the current LabelPrintService implementation. Verify the actor-attribution contract and any retry/reprint behavior before changing the database or service.
+For label printing, begin with the current PostgreSQL request/batch objects, [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md), and the current LabelPrintService implementation. Verify the actor-attribution contract and any retry/reprint behavior before changing the database or service.
 
-For scanning, continue by reconciling scanner/tablet workflows and the remaining valid contracts from `H_Asset_ID_Labeling_and_Scanning_Plan.md`.
+For scanning, treat the approved payload/hardware/workflow direction as planned or evolving until the actual field application and deployed scan behavior are verified.
