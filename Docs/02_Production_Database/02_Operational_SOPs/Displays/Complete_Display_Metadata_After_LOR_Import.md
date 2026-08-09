@@ -44,7 +44,7 @@ Open **Sorted by Display Name** or the Display collection so you can locate the 
 
 ### 2. Find the new display
 
-Use the search control in the upper-right corner of the Display list to search for the new display by name or ID.
+Use the search control in the upper-right corner of the Display list to search for the new display by name or ID. By default containers are not assigned in Light O Rama so new displays will have blank Container_id's.
 
 ![Directus Display search and list](../../../images/directus_display_search.png)
 
@@ -59,12 +59,12 @@ At the top of the display record, verify:
 
 ![Directus display identity fields](../../../images/directus_display_section_01.png)
 
-Do not change these fields as part of metadata entry.
+Do not change these fields as part of metadata entry. These fields are only editable in Light O Rama Preview Editor.
 
 Also verify the label controls:
 
 - **Label Required** should normally remain enabled for a new physical display that requires an MSB display label.
-- **Print Label** is not part of this procedure. Label printing is handled through the Label Printing procedure.
+- **Print Label** is not part of this procedure. Label printing is handled through the Label Printing procedure. Selecting Print Label will print the label for this display when this is checked and record is saved.
 
 ### 4. Confirm status and container assignment
 
@@ -75,9 +75,7 @@ Open **Display Status and Container Assigned**.
 For a new display that is part of the current show:
 
 1. Confirm **Display Status ID** is **ACTIVE**.
-2. Set **Container ID** to the container where the display is physically stored, if the correct container is known.
-
-The container assignment must match the physical location of the display. Do not guess a container.
+2. Set **Container ID** to the container where the display is physically stored, if the correct container is known. A Widow will appear on the right side of the screen to search and select the container this display will get assigned to.
 
 If the correct container is not known, leave the assignment for a manager or responsible operator to resolve rather than assigning an incorrect container.
 
@@ -90,19 +88,19 @@ Open **Display Details** and enter the known Production Database metadata.
 Complete the applicable fields:
 
 - **Year Built** — year the display was first introduced into the show.
-- **Frame ID** — select the correct physical frame type.
+- **Frame ID** — select the correct physical frame type. 
 - **Designer ID** — select the person who designed the display.
 - **Theme ID** — select the appropriate display theme/category.
 - **Amps Measured** — enter when a measured value is available.
 - **Est Light Count** — enter when an estimated light count is available.
-- **Dumb Controller** — complete only when applicable to a display animated without a normal controller.
-- **Notes** — add useful Production Database information that does not belong in LOR naming/topology fields.
+- **Dumb Controller** — complete only when applicable to a display animated without a normal controller or has a dumb controller for added special effects Like Woodstock.
+- **Notes** — add useful Production Database information that is not available in LOR fields.
 
 If a required Frame, Designer, Theme, or other reference value does not exist in the selection list, do not substitute an incorrect value. Have the missing reference value added by the database administrator or responsible manager.
 
 ### 6. Save the display record
 
-Review the record for obvious errors, then save it in Directus.
+Review the record for obvious errors, then save it in Directus. If Print Label is checked the 2 Labels will automatically print.
 
 ## Expected Result
 
