@@ -34,11 +34,11 @@ Before completing the metadata:
 
 In Directus, locate the **Display** section in the left menu.
 
-![Directus main menu showing Display](/Docs/images/directus_menu_full.jpg)
+![Directus main menu showing Display](../../../images/directus_menu_full.jpg)
 
 The Display section currently includes operator bookmarks such as **Print Display Labels** and **Sorted by Display Name**.
 
-![Directus Display menu](/Docs/images/directus_menu_container-displays.jpg)
+![Directus Display menu](../../../images/directus_menu_container-displays.jpg)
 
 Open **Sorted by Display Name** or the Display collection so you can locate the new display.
 
@@ -46,7 +46,7 @@ Open **Sorted by Display Name** or the Display collection so you can locate the 
 
 Use the search control in the upper-right corner of the Display list to search for the new display by name or ID.
 
-![Directus Display search and list](/Docs/images/directus_display_search.png)
+![Directus Display search and list](../../../images/directus_display_search.png)
 
 Open the correct display record.
 
@@ -57,7 +57,7 @@ At the top of the display record, verify:
 - **Display ID** — assigned automatically by the Production Database.
 - **Display Name** — defined from the LOR source data.
 
-![Directus display identity fields](/Docs/images/directus_display_section_01.png)
+![Directus display identity fields](../../../images/directus_display_section_01.png)
 
 Do not change these fields as part of metadata entry.
 
@@ -70,7 +70,7 @@ Also verify the label controls:
 
 Open **Display Status and Container Assigned**.
 
-![Directus display status and container assignment](/Docs/images/directus_display_section_02.png)
+![Directus display status and container assignment](../../../images/directus_display_section_02.png)
 
 For a new display that is part of the current show:
 
@@ -85,7 +85,7 @@ If the correct container is not known, leave the assignment for a manager or res
 
 Open **Display Details** and enter the known Production Database metadata.
 
-![Directus Display Details fields](/Docs/images/directus_display_section_03.png)
+![Directus Display Details fields](../../../images/directus_display_section_03.png)
 
 Complete the applicable fields:
 
