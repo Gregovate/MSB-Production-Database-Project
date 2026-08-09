@@ -58,6 +58,30 @@ Each procedure should contain enough information to complete its task without re
 
 Do not split a task so finely that an operator must constantly switch documents to complete one normal action. The goal is understandable task-sized instructions, not the largest or smallest possible number of files.
 
+## Workflow Navigation Inside Procedures
+
+When a task area contains a sequence of related procedures, each procedure must make it easy to move through that workflow without returning to the GitHub folder view.
+
+Place a compact navigation line near the **top** of the procedure and repeat it at the **bottom**.
+
+Use this pattern when applicable:
+
+```markdown
+[← Previous: Previous Task](Previous_Task.md) | [↑ Test Sessions Home](README.md) | [Next: Next Task →](Next_Task.md)
+```
+
+Navigation rules:
+
+- **Previous** returns to the preceding task in the documented workflow.
+- **Home** returns to the task-area `README.md` portal.
+- **Next** moves to the next task or reference in the documented workflow.
+- The top and bottom navigation should use the same destinations.
+- Do not force a false linear sequence where the workflow branches. For a branch task, use the most useful return/continuation destination and keep the task-area portal available in the middle.
+- Reference documents may participate in the browse sequence when that makes the documentation easier to review, but they should not be presented as mandatory operational steps unless they truly are required.
+- Manager-only procedures should not be inserted into the normal volunteer previous/next sequence unless the workflow actually requires a manager handoff.
+
+A reader should be able to move to the previous task, return to the task-area portal, or continue to the next task from either end of a procedure.
+
 ## Print and Hard-Copy Usability
 
 Operator procedures should be usable both digitally and as printed hard copies when practical.
@@ -193,6 +217,7 @@ When adding a new current SOP:
 7. Verify all relative links and images.
 8. Keep engineering detail in the responsible engineering documents and link to it when useful.
 9. Keep the normal operator browse path operational; place engineering links in a separate related-information section rather than the task-selection table.
+10. For multi-step workflow documentation, add previous/home/next navigation at both the top and bottom of each task procedure.
 
 A future automatic indexer should be able to discover current SOPs by scanning `02_Operational_SOPs/`, reading the Document Control table, and following the README portal structure.
 
@@ -200,6 +225,8 @@ A future automatic indexer should be able to discover current SOPs by scanning `
 
 ```markdown
 # Task Name
+
+[← Previous: Previous Task](Previous_Task.md) | [↑ Task Area Home](README.md) | [Next: Next Task →](Next_Task.md)
 
 | Document Control | Value |
 |---|---|
@@ -239,6 +266,10 @@ Describe the safe next action for likely problems.
 
 - [Related procedure](relative-link.md)
 - [Engineering subsystem](../../01_System_Architecture/subsystem/README.md)
+
+---
+
+[← Previous: Previous Task](Previous_Task.md) | [↑ Task Area Home](README.md) | [Next: Next Task →](Next_Task.md)
 ```
 
 ## Writing Goal
