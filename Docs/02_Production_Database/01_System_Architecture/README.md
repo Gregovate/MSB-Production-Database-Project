@@ -84,4 +84,13 @@ The previous competing numbered folders (`01_Stored_Proceedures` through `06_Sca
 
 The legacy `A_System_Blueprint.md` has been reconciled into the current [Production Database System Overview](../../00_Project_Overview/01_Production_Database_System_Overview.md) and archived as engineering history.
 
-The remaining loose legacy architecture documents are being reconciled one at a time. Historical material will be archived only after current responsibilities have an authoritative owner in this tree.
+The legacy Directus MVP documents `E_Directus_DB_Dev.md` and `F_Directus_UI_md` have been archived after their still-relevant responsibilities were assigned to the current business subsystems and Directus was documented as a shared implementation platform rather than a top-level subsystem.
+
+The legacy `G_Work_Order_Design_Plan.md` has been reconciled into [06 — Work Orders](06_Work_Orders/README.md) and archived. The legacy `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled into [07 — Labeling and Scanning](07_Labeling_and_Scanning/README.md) and archived.
+
+Two loose legacy architecture documents remain active during the audit:
+
+- `B_Infrastructure.md` — retained until the Database audit is complete; server build/administration material is marked for later reconciliation in the separate `MSB-Server-Management` repository.
+- `D_Database_Structure.md` — retained until its still-valid database-wide and subsystem contracts have been fully decomposed into the current numbered architecture tree.
+
+Historical material will be archived only after current responsibilities have an authoritative owner.
