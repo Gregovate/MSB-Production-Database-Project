@@ -2,6 +2,31 @@
 
 Use this page to go directly to the Work Order task you are doing now.
 
+## Public Work Order Request Instructions
+
+The [Submit a Work Order Request](Submit_a_Work_Order_Request.md) procedure is **public-facing** and is intended for anyone using the **Work Order Request** link at the top of `my.sheboyganlights.org`.
+
+It does not require Production Database or Directus access. It documents both current Google Form paths:
+
+- Park requests
+- Workshop requests
+
+### MSB Backbone Reference
+
+The MSB Web Backbone should link directly to the public procedure rather than duplicate the instructions.
+
+Canonical document:
+
+`Docs/02_Production_Database/02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md`
+
+GitHub document target:
+
+`https://github.com/Gregovate/MSB-Production-Database-Project/blob/main/Docs/02_Production_Database/02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md`
+
+Suggested Backbone link text:
+
+**Work Order Request Instructions**
+
 ## Work Order Flow
 
 A Work Order can enter the system in either of two ways:
@@ -28,9 +53,9 @@ If the Work Order was created automatically by a container Test Session, that Wo
 | Complete a Work Order | [Complete a Work Order](Complete_a_Work_Order.md) |
 | Choose urgency or target year | [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md) |
 
-The task procedures are currently **DRAFT** while the large legacy Work Order SOP is split and checked against the current Directus workflow.
+The public Work Order Request procedure is **CURRENT**. The internal Work Order procedures remain **DRAFT** while the large legacy Work Order SOP is split and checked against the current Directus workflow.
 
-The existing `B_Work_Order_System_SOP.md` remains temporarily as the migration source. It will not be removed until all valid operator instructions have been transferred and verified.
+The existing `B_Work_Order_System_SOP.md` remains temporarily as the migration source. It will be archived after all valid operator instructions have been transferred and verified.
 
 ## Related Operational Procedures
 
