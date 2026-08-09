@@ -11,6 +11,7 @@ Start with [Documentation Standards](Documentation_Standards.md) for the project
 | I want to... | Go to |
 |---|---|
 | Understand the overall documentation rules | [Documentation Standards](Documentation_Standards.md) |
+| Decide what belongs in the core repository versus a dedicated subsystem/application repository | [System Boundary and Repository Ownership Standard](System_Boundary_and_Repository_Ownership_Standard.md) |
 | Create or revise a README portal or engineering handoff | [README Portal Standard](README_Portal_Standard.md) |
 | Create or revise an operator procedure / SOP | [Operational SOP Standard](Operational_SOP_Standard.md) |
 | Add document control or revision history | [Document Control Standard](Document_Control_Standard.md) |
