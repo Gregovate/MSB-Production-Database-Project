@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Resume testing on a container already in progress |
 | Audience | Testing volunteers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | resume testing, in progress, container, display testing |
