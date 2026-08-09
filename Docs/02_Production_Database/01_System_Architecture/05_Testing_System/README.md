@@ -12,6 +12,16 @@ The operator documentation is being reconciled to the current Operational SOP St
 
 Testing validates more than whether a display lights. It also verifies container contents, display identity, placement, repair needs, and readiness for setup.
 
+## Display Lifecycle Boundary
+
+Testing must distinguish between displays that are **RETIRED** and displays that are **RECYCLED**.
+
+- **RETIRED** means the display still physically exists but is no longer used in the current show. A retired display may remain assigned to a storage container, including a container used for retired displays. Retirement by itself is not a reason to remove the display from inventory or delete its container relationship.
+- **RECYCLED** means the display physically no longer exists. Recycled displays are excluded from active testing and may be removed from active test-session relationships when the cleanup can be performed safely.
+- When a RECYCLED display uses a synthetic **Standalone Display** container, the Testing cleanup process may also remove that synthetic container and its active testing relationships when no protected work-order or historical dependency prevents cleanup.
+
+The refresh/cleanup process must preserve historical testing and work-order records when dependencies still exist.
+
 ## Dependencies
 
 - [Database Foundation](../01_Database_Foundation/README.md)
@@ -27,6 +37,7 @@ Testing validates more than whether a display lights. It also verifies container
 - repair handoff to Work Orders
 - completion feedback from Work Orders to testing
 - annual test-season initialization contract and validation
+- lifecycle-aware cleanup of RECYCLED displays and synthetic Standalone Display containers
 
 ## Current Engineering Documents
 
