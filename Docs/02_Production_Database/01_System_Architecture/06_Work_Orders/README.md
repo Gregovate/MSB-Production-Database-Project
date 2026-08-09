@@ -10,6 +10,11 @@ Directus is not required to remain the permanent operator interface. Its general
 
 A dedicated task-focused Work Order application may replace parts of the Directus user experience without changing the PostgreSQL ownership model.
 
+## Start Here
+
+- [Work Order System Design](Work_Order_System_Design.md) — current engineering contract for Work Order identity, intake, triage, assignment, completion, testing integration, and application boundaries.
+- [Work Order Operational SOPs](../../02_Operational_SOPs/Work_Orders/README.md) — current operator procedures.
+
 ## System Boundary
 
 **Relationship Class:** Core Database Subsystem with a future Dedicated Database-Backed Operational Application.
@@ -102,18 +107,15 @@ Work-order-specific Directus flows belong in this subsystem. Current production 
 
 These flows must be documented from the current production configuration rather than reconstructed from legacy design notes.
 
-## Current Engineering Source
-
-- [G_Work_Order_Design_Plan.md](../G_Work_Order_Design_Plan.md) — current engineering foundation being reconciled against the implemented Work Order system before relocation into this subsystem.
-
-The design source is not considered obsolete merely because it still has a legacy filename. Its still-valid contracts must be preserved while stale implementation assumptions are corrected.
-
 ## Authoritative Sources
 
+- [Work Order System Design](Work_Order_System_Design.md)
 - current PostgreSQL work-order tables, constraints, procedures, and triggers
 - current production Directus flows
 - current Google Form and attached Apps Script/intake workflow
 - current operational Work Order SOPs
+
+The former loose `G_Work_Order_Design_Plan.md` has been reconciled into this subsystem and archived as historical engineering evidence.
 
 ## Related Systems
 
@@ -126,6 +128,6 @@ The design source is not considered obsolete merely because it still has a legac
 
 Before changing the public Work Order Request form, inspect its attached Apps Script and document any dependencies on question titles, answer values, branching, or response processing.
 
-For broader Work Order engineering, inspect the current PostgreSQL implementation and current Directus flows. Reconcile `G_Work_Order_Design_Plan.md` against that implementation, move the resulting engineering document into this subsystem, then update this README as the final handoff.
+For broader Work Order engineering, inspect the current PostgreSQL implementation, current Directus flows, and [Work Order System Design](Work_Order_System_Design.md) before making changes.
 
 When the dedicated Work Order application is started, create or use its separate implementation repository and link it here. Keep the Production Database schema/business contract in this subsystem and application implementation in the application repository.
