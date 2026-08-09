@@ -25,9 +25,19 @@ Testing validates more than whether a display lights. It also verifies container
 - repair handoff to Work Orders
 - completion feedback from Work Orders to testing
 
+## Current Engineering Documents
+
+The following current production documents still live in the former procedure/trigger folders and are being migrated into this subsystem as part of the architecture cleanup:
+
+- [P_Refresh_Test_Session](../01_Stored_Proceedures/P_Refresh_Test_Session.md)
+- [P_Cleanup_Recycled_Standalone_Display](../01_Stored_Proceedures/P_Cleanup_Recycled_Standalone_Display.md)
+- [T_After_Refresh_Test_Session](../02_Triggers/T_After_Refresh_Test_Session.md)
+
+These are Testing-system implementation documents, not generic database-foundation documentation.
+
 ## Authoritative Sources
 
-Current PostgreSQL procedures/triggers and current Directus configuration are implementation truth. Existing operational procedures remain under the separate Operational SOP tree.
+Current PostgreSQL procedures/triggers and current Directus configuration are implementation truth. Existing operator procedures remain under the separate Operational SOP tree.
 
 ## Related Systems
 
@@ -36,4 +46,4 @@ Current PostgreSQL procedures/triggers and current Directus configuration are im
 
 ## Known Open Work
 
-Reconcile the current testing procedures, triggers, views, and Directus behavior into this subsystem and document the current refresh/repair lifecycle without relying on archived testing documents as active authority.
+Move the current Testing-specific procedure/trigger documents into this subsystem, repair their cross-links, then reconcile the remaining testing views and Directus behavior into the handoff. Archived testing documents are historical evidence, not current authority.
