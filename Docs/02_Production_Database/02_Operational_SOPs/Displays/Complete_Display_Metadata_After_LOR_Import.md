@@ -80,7 +80,9 @@ For a new display that is part of the current show:
 1. Confirm **Display Status ID** is **ACTIVE**.
 2. Set **Container ID** to the container where the display is physically stored, if the correct container is known. A window will appear on the right side of the screen where you can search for and select the container.
 
-If the correct container does not exist yet, stop and create or edit the container using the Container procedure before assigning the display. Do not assign a different container just to complete this field.
+A display can also be assigned from the **Container** record by adding the display to that container. Both methods update the same display-to-container assignment.
+
+If the correct container does not exist yet, stop and create or edit the container using the [Create or Edit a Container Record](../Containers/Create_or_Edit_Container_Record.md) procedure before assigning the display. Do not assign a different container just to complete this field.
 
 ### 5. Complete Display Details
 
@@ -141,7 +143,7 @@ The source name **must** be corrected through the responsible LOR/LOR2DB process
 
 Do not choose a different container just to complete the field.
 
-Use the Container creation/editing procedure to add or correct the container first, then return to this display and assign it.
+Use the [Create or Edit a Container Record](../Containers/Create_or_Edit_Container_Record.md) procedure to add or correct the container first, then return to this display and assign it. You may also make the assignment from the Container record.
 
 ### The Designer is not listed
 
@@ -156,6 +158,7 @@ Do not use a near match. Ask the database administrator or responsible manager t
 ## Related Documents
 
 - [Display Operational SOPs](README.md)
+- [Create or Edit a Container Record](../Containers/Create_or_Edit_Container_Record.md)
 - [Production Database Operational SOPs](../README.md)
 - [Label Printing](../Label_Printing/)
 - [LOR2DB Ingest Engineering Handoff](../../01_System_Architecture/02_LOR2DB_Ingest/README.md)
