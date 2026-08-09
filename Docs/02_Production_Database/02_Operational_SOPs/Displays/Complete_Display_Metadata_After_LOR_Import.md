@@ -6,7 +6,7 @@
 | System | Production Database — Displays |
 | Task | Complete Production Database metadata for a display after LOR/LOR2DB ingest |
 | Audience | Production Database operators and managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | MSB Database Administrator |
 | Last Reviewed | 2026-08-09 |
 | Keywords | display metadata, new display, LOR ingest, Directus, year built, frame, designer, theme, container |
@@ -60,6 +60,8 @@ At the top of the display record, verify:
 - **Display Name** — comes from the LOR source data.
 
 ![Directus display identity fields](../../../images/directus_display_section_01.png)
+
+Fields shown greyed out in Directus are read-only and cannot be changed by the operator.
 
 **Display ID** and **Display Name** are read-only in Directus. Display Name changes must be made in the Light-O-Rama Preview Editor and then brought into the Production Database through the normal LOR2DB process.
 
