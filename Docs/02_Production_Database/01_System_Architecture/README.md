@@ -82,4 +82,6 @@ This model allows application development to remain isolated from the Production
 
 The previous competing numbered folders (`01_Stored_Proceedures` through `06_Scan_Workflows_and_Forklift_Operations`) have been migrated into their owning current subsystems and removed from the active tree.
 
-The remaining loose A–H architecture documents are being reconciled separately. Historical material will be archived only after current responsibilities have an authoritative owner in this tree.
+The legacy `A_System_Blueprint.md` has been reconciled into the current [Production Database System Overview](../../00_Project_Overview/01_Production_Database_System_Overview.md) and archived as engineering history.
+
+The remaining loose legacy architecture documents are being reconciled one at a time. Historical material will be archived only after current responsibilities have an authoritative owner in this tree.
