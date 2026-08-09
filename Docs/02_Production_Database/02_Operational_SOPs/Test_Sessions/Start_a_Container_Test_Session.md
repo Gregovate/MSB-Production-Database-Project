@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Start testing a container |
 | Audience | Testing volunteers / forklift operators |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | testing, container, test session, in progress, work location |
