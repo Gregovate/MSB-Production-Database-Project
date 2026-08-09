@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Choose the correct display test result |
 | Audience | Testing volunteers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | test status, OK, repaired, repair, defer, wrong container |
@@ -16,8 +16,6 @@
 ## Purpose
 
 Use this reference when you need help choosing the correct result for a display test.
-
-The testing workflow is correct, but the exact Directus vocabulary is still being audited. Use the labels currently shown on screen if they differ from this draft.
 
 ## Test Results
 
