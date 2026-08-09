@@ -12,6 +12,7 @@ Start with [Documentation Standards](Documentation_Standards.md) for the project
 |---|---|
 | Understand the overall documentation rules | [Documentation Standards](Documentation_Standards.md) |
 | Create or revise a README portal or engineering handoff | [README Portal Standard](README_Portal_Standard.md) |
+| Create or revise an operator procedure / SOP | [Operational SOP Standard](Operational_SOP_Standard.md) |
 | Add document control or revision history | [Document Control Standard](Document_Control_Standard.md) |
 | Create or repair navigation and links | [Linking and Navigation Standard](Linking_and_Navigation_Standard.md) |
 | Format Markdown consistently | [Markdown Style Guide](Markdown_Style_Guide.md) |
