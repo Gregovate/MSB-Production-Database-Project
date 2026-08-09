@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Pause testing when more resources are needed |
 | Audience | Testing volunteers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | deferred testing, container, display testing, yellow tag |
