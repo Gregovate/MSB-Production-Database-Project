@@ -1,5 +1,7 @@
 # Test the Displays on a Container
 
+[← Previous: Start a Container Test Session](Start_a_Container_Test_Session.md) | [↑ Test Sessions Home](README.md) | [Next: Handle a Display That Needs Repair →](Handle_a_Display_That_Needs_Repair.md)
+
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
@@ -26,7 +28,7 @@ Use this procedure after a container test session has been started and its Displ
 1. Open **Containers In Progress**.
 2. Find and open the container you are testing.
 
-![In Progress test session showing Display Checks](../../../images/test_session_in_progress.png)
+![Container test session in progress](../../../images/test_session_in_progress.png)
 
 3. Scroll to **Display Checks**.
 4. Open one display test record.
@@ -65,3 +67,7 @@ Every display shown in Display Checks has been physically checked and has an acc
 - [Start a Container Test Session](Start_a_Container_Test_Session.md)
 - [Display Test Status Reference](Display_Test_Status_Reference.md)
 - [Finish a Container Test Session](Finish_a_Container_Test_Session.md)
+
+---
+
+[← Previous: Start a Container Test Session](Start_a_Container_Test_Session.md) | [↑ Test Sessions Home](README.md) | [Next: Handle a Display That Needs Repair →](Handle_a_Display_That_Needs_Repair.md)
