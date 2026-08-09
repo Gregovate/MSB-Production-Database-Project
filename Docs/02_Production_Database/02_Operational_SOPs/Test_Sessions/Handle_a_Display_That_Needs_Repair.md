@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Record and route a display that needs repair |
 | Audience | Testing volunteers / repair volunteers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | repair, work order, display testing, yellow tag, repair notes |
