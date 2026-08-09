@@ -97,6 +97,8 @@ Displays can be assigned from either side of the relationship:
 
 Both methods update the same display-to-container assignment.
 
+![Directus Container display assignments](../../../images/directus_container_section_03.png)
+
 The database should match the physical container. Only assign displays that are actually stored on that container.
 
 If a display is already assigned to another container, verify the physical location before changing the assignment.
