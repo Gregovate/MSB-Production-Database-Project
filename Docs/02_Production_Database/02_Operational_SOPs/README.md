@@ -10,7 +10,7 @@ These procedures are for people performing day-to-day production database tasks.
 | Complete or maintain Production Database information about displays | [Displays](Displays/README.md) |
 | Print display or container labels | [Label Printing](Label_Printing/) |
 | Test displays and record repairs | [Test Sessions](Test_Sessions/README.md) |
-| Create, review, or complete work orders | [Work Orders](Work_Orders/) |
+| Create, review, assign, work, or complete Work Orders | [Work Orders](Work_Orders/README.md) |
 
 ## Folder Guide
 
@@ -20,6 +20,6 @@ These procedures are for people performing day-to-day production database tasks.
 | [Displays](Displays/README.md) | Procedures for completing and maintaining Production Database display information |
 | [Label_Printing](Label_Printing/) | Procedures for creating and printing operational labels |
 | [Test_Sessions](Test_Sessions/README.md) | Container/display testing procedures and manager testing procedures |
-| [Work_Orders](Work_Orders/) | Work-order intake, triage, assignment, and completion procedures |
+| [Work_Orders](Work_Orders/README.md) | Work-order request, triage, assignment, work, and completion procedures |
 
 For technical design and database behavior, use the [System Architecture portal](../01_System_Architecture/README.md).
