@@ -24,9 +24,7 @@ Each task procedure has navigation at the top and bottom so you can return here 
 
 The task-sized operator procedures above are **CURRENT** and are the released procedures for normal container/display testing.
 
-The previous [Container Testing & Repair SOP](A_Container_Testing_and_Repair_SOP.md) remains in place temporarily as the migration source while the old long-form document is retired from normal use.
-
-The annual test-season setup procedure remains **DRAFT** because the 2026 season was launched manually and the repeatable manager process has not yet been fully documented.
+The annual test-season setup procedure remains **DRAFT** because the repeatable annual-start mechanism has not yet been engineered and cannot currently be tested. It is not a blocker for the released testing procedures.
 
 ## Related Operational Procedures
 
