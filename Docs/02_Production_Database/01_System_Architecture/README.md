@@ -24,6 +24,7 @@ Repository boundaries do not determine data authority. Dedicated applications an
 | Understand physical network infrastructure and cable-test history | [10 — Network Infrastructure](10_Network_Infrastructure/README.md) |
 | Understand GPS/GIS, receptacles, power, and site infrastructure | [11 — Site Infrastructure / GIS](11_Site_Infrastructure_GIS/README.md) |
 | Understand planned setup scheduling, pick lists, load order, and deployment scanning | [12 — Setup and Deployment](12_Setup_and_Deployment/README.md) |
+| Review project effort and estimated engineering hours | [90 — Project Hour Log](90_Project%20Hour%20Log/README.md) |
 
 ## Architecture Flow
 
@@ -67,7 +68,7 @@ This model allows application development to remain isolated from the Production
 | [10_Network_Infrastructure](10_Network_Infrastructure/README.md) | Physical network cables/nodes, CableIQ history, structured topology relationships |
 | [11_Site_Infrastructure_GIS](11_Site_Infrastructure_GIS/README.md) | GPS/GIS, receptacles, power/site assets, physical-location history |
 | [12_Setup_and_Deployment](12_Setup_and_Deployment/README.md) | Planned setup season/session, pull scheduling, pick/load lists, repeatable load order, forklift scanning, and deployment history |
-| [90_Project Hour Log](90_Project%20Hour%20Log/) | Project effort and development history |
+| [90_Project Hour Log](90_Project%20Hour%20Log/README.md) | Milestone-level engineering effort, historical hour estimates, and board-reporting support |
 
 ## Documentation Ownership Rules
 
@@ -77,12 +78,15 @@ This model allows application development to remain isolated from the Production
 - Dedicated application/service projects may maintain their own implementation repositories. The responsible subsystem README here documents how that project fits into Production Database architecture, what data it consumes or changes, and where authority remains.
 - A separate application repository must not create a competing source of truth merely because a task-focused UI is needed.
 - Shared database mechanisms belong under Database Foundation only when they are truly cross-system. Business-specific procedures/triggers belong with their owning subsystem.
+- Project-hour reporting uses milestone-level estimated effort rather than pretending that reconstructed history is a precise timecard. See [90 — Project Hour Log](90_Project%20Hour%20Log/README.md).
 
 ## Legacy Architecture Cleanup
 
 The previous competing numbered folders (`01_Stored_Proceedures` through `06_Scan_Workflows_and_Forklift_Operations`) have been migrated into their owning current subsystems and removed from the active tree.
 
 The legacy `A_System_Blueprint.md` has been reconciled into the current [Production Database System Overview](../../00_Project_Overview/01_Production_Database_System_Overview.md) and archived as engineering history.
+
+The legacy LOR naming contract has been moved into [LOR Preview Authoring](../../01_LOR_System/01_Preview_Authoring/README.md), where its February 2026 origin is preserved as historical engineering context while the current Naming Conventions remain authoritative.
 
 The legacy Directus MVP documents `E_Directus_DB_Dev.md` and `F_Directus_UI_md` have been archived after their still-relevant responsibilities were assigned to the current business subsystems and Directus was documented as a shared implementation platform rather than a top-level subsystem.
 
@@ -91,6 +95,6 @@ The legacy `G_Work_Order_Design_Plan.md` has been reconciled into [06 — Work O
 Two loose legacy architecture documents remain active during the audit:
 
 - `B_Infrastructure.md` — retained until the Database audit is complete; server build/administration material is marked for later reconciliation in the separate `MSB-Server-Management` repository.
-- `D_Database_Structure.md` — retained until its still-valid database-wide and subsystem contracts have been fully decomposed into the current numbered architecture tree.
+- `D_Database_Structure.md` — retained until its still-valid database-wide and subsystem contracts have been fully decomposed into the current numbered architecture tree. Its detailed early implementation narrative is also useful historical evidence for reconstructing project milestones and effort.
 
 Historical material will be archived only after current responsibilities have an authoritative owner.
