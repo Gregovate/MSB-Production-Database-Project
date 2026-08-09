@@ -8,7 +8,7 @@
 | System | Production Database — Work Orders |
 | Task | Complete a Work Order |
 | Audience | Volunteers / Managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | work order, complete, completion notes, repair complete, test session |
