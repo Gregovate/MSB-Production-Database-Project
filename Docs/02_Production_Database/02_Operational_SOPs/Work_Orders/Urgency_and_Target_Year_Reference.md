@@ -8,7 +8,7 @@
 | System | Production Database — Work Orders |
 | Task | Choose Work Order urgency and target year |
 | Audience | Managers / Authorized Operators |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | work order, urgency, priority, target year, planning |
@@ -26,6 +26,8 @@ Urgency indicates how quickly the work should be addressed.
 - **3 — Normal** — normal operational work.
 - **4 — Low** — work that can wait behind more important tasks.
 - **5 — Planning** — future or planning work that should remain visible but is not an immediate operational task.
+
+The public Work Order Request form currently asks for a numbered Priority. That submitted number is an intake estimate. During triage, a manager reviews it and assigns the correct Work Order Urgency.
 
 If you are not authorized or do not know the correct urgency, leave the decision to the manager reviewing the Work Order.
 
