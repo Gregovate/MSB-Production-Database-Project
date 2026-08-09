@@ -8,7 +8,7 @@
 | System | Production Database — Testing |
 | Task | Refresh the displays included in a test session |
 | Audience | Testing volunteers / managers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | refresh displays, testing, wrong container, recycled display, standalone display |
