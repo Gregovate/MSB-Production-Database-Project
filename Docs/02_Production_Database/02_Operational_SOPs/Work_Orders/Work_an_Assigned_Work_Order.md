@@ -8,7 +8,7 @@
 | System | Production Database — Work Orders |
 | Task | Find and work an assigned Work Order |
 | Audience | Volunteers |
-| Status | DRAFT |
+| Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-08-09 |
 | Keywords | assigned work order, my work orders, volunteer, repair, notes |
