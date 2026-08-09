@@ -31,7 +31,7 @@ Determine which condition is true:
 2. Correct the display's container assignment so the Production Database matches the physical container.
 3. For an incorrect Display Check, mark the display as not present and use the current **Wrong Container** testing result.
 
-![Wrong container display test record](../../../images/test_session_wrong_container.png)
+![Container test showing wrong displays](../../../images/container_test_wrong_displays.jpg)
 
 4. Do not create a repair Work Order just because the display is assigned to the wrong container.
 5. Save the display test record.
