@@ -4,7 +4,7 @@ This subsystem documents the shared PostgreSQL architecture that all Production 
 
 ## Current State
 
-PostgreSQL is the durable identity, relationship, history, and operational integration layer for the MSB Production Database. Shared schema boundaries, permanent-key rules, audit behavior, procedures, triggers, and database-wide engineering contracts belong here.
+PostgreSQL is the durable identity, relationship, history, and operational integration layer for the MSB Production Database. Shared schema boundaries, permanent-key rules, audit behavior, functions, procedures, triggers, and database-wide engineering contracts belong here.
 
 ## Design Intent
 
@@ -23,12 +23,27 @@ LOR remains authoritative for show topology and wiring configuration. The Produc
 - schema boundaries (`lor_snap`, `ref`, `ops`, `stage`, `dev` where currently applicable)
 - permanent internal identities and foreign-key rules
 - audit attribution and timestamp conventions
-- shared PostgreSQL procedures and triggers
+- PostgreSQL functions, procedures, and triggers
 - database-wide integrity and history rules
+
+## Database Object Documentation
+
+Database-level PostgreSQL functions, procedures, and triggers have one canonical documentation home under Database Foundation:
+
+- [Functions and Procedures](01_Functions_and_Procedures/README.md)
+- [Triggers](02_Triggers/README.md)
+
+This central index exists so database objects do not become scattered or lost as business workflows and user interfaces evolve.
+
+A subsystem such as Testing, Work Orders, People and Identity, Containers and Storage, or Setup and Deployment may depend on these objects and should link to the authoritative database-object document. It should not maintain a second authoritative copy merely because that workflow invokes the object.
+
+This rule is especially important for shared mechanisms such as auditing, actor attribution, Directus-to-`ref.person` lookup/mapping, integrity helpers, and lifecycle logic used by more than one system.
+
+Standalone systems may own their own implementation artifacts when the database object or executable artifact is specific to that standalone system. LOR2DB is the primary example: LOR2DB-specific parser, reconciliation, promotion, validation, and reporting implementation remains with LOR2DB.
 
 ## Boundaries
 
-Business-specific procedures, triggers, Directus flows, and application behavior should be documented with the subsystem that owns the business process. This area owns only genuinely shared database behavior.
+Business workflow design, Directus flows, application behavior, and operator procedures remain with the subsystem that owns the business process. PostgreSQL function/procedure/trigger engineering documentation remains centralized here when the object is implemented in the shared Production Database.
 
 ## Related Systems
 
@@ -38,4 +53,4 @@ Business-specific procedures, triggers, Directus flows, and application behavior
 
 ## Resume Development
 
-Before changing shared database contracts, inspect the current PostgreSQL implementation and the responsible subsystem documentation. Do not infer current behavior from legacy architecture documents alone.
+Before changing a Production Database function, procedure, or trigger, inspect the live PostgreSQL implementation and its canonical document under Database Foundation, then review every subsystem that links to or depends on that object. Do not infer current behavior from legacy architecture documents alone.
