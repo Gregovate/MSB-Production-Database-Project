@@ -17,7 +17,7 @@ LOR remains authoritative for show topology and wiring configuration. The Produc
 - The live PostgreSQL database is runtime implementation truth.
 - The newest dated schema-only export under [`Database/Schema_Snapshots`](../../../../../Database/Schema_Snapshots/README.md) is the durable point-in-time implementation reference used for table/column/FK/constraint/function/trigger/view verification during engineering and documentation work.
 - Current LOR ingestion/reconciliation implementation is maintained under [`LOR2DB`](../../../../LOR2DB/README.md).
-- Historical architecture documents in this directory are being reconciled into the numbered subsystem structure before archival.
+- Historical architecture documents may preserve design history, but they are not implementation authority after reconciliation into the numbered subsystem tree.
 
 ## Shared Responsibilities
 
@@ -26,6 +26,20 @@ LOR remains authoritative for show topology and wiring configuration. The Produc
 - audit attribution and timestamp conventions
 - PostgreSQL functions, procedures, and triggers
 - database-wide integrity and history rules
+
+## History and Lifecycle Contract
+
+History tables are purposeful, not automatic. Current state stays on the owning record unless a workflow genuinely requires a reconstructable event/history trail. Standard audit fields provide normal accountability for changes that do not need separate event history.
+
+This means the database does **not** create generic movement or assignment history merely because a current relationship changes. A subsystem may preserve history when the real operational workflow requires it, such as a yearly deployment sequence, work-order lifecycle, testing history, or another explicitly engineered business event.
+
+Display lifecycle currently uses three operational meanings:
+
+- **ACTIVE** — currently in service and deployable.
+- **RETIRED** — the physical display still exists but is no longer part of the current show/use.
+- **RECYCLED** — the original display no longer exists as a display; some or all components such as frames, lights, or hardware may have been reused elsewhere.
+
+The current implementation conservatively retains `ref.display` after RECYCLED because existing foreign-key relationships make deletion unsafe. Cleanup removes only eligible operational structures and preserves protected relationships. A preferred future direction is to preserve sufficient historical display identity separately so a physically RECYCLED display could eventually be removed from current inventory, but that is a future engineering item and is not part of the present schema contract.
 
 ## Database Object Documentation
 
@@ -45,6 +59,8 @@ Standalone systems may own their own implementation artifacts when the database 
 ## Schema Snapshot Rule
 
 The current production schema snapshot is a required engineering artifact, not disposable documentation. Repository cleanup or reorganization must never remove the only current schema snapshot without first establishing its replacement under [`Database/Schema_Snapshots`](../../../../../Database/Schema_Snapshots/README.md).
+
+A new schema-only export should be captured after significant schema changes so repository documentation and engineering work have a trustworthy point-in-time reference.
 
 Before documenting or changing a table, field, relationship, function, procedure, trigger, constraint, or view, verify names and implementation against the newest schema snapshot or the live database rather than relying on memory or an older design document.
 
