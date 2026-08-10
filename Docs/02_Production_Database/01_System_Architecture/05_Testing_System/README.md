@@ -41,13 +41,13 @@ The refresh/cleanup process must preserve historical testing and work-order reco
 
 ## Current Engineering Documents
 
-The Testing-specific procedure and trigger documentation now lives in this subsystem:
+Testing depends on PostgreSQL procedures and triggers whose canonical engineering documentation is centralized under Database Foundation:
 
-- [P_Refresh_Test_Session](P_Refresh_Test_Session.md)
-- [P_Cleanup_Recycled_Standalone_Display](P_Cleanup_Recycled_Standalone_Display.md)
-- [T_After_Refresh_Test_Session](T_After_Refresh_Test_Session.md)
+- [P_Refresh_Test_Session](../01_Database_Foundation/01_Functions_and_Procedures/P_Refresh_Test_Session.md)
+- [P_Cleanup_Recycled_Standalone_Display](../01_Database_Foundation/01_Functions_and_Procedures/P_Cleanup_Recycled_Standalone_Display.md)
+- [T_After_Refresh_Test_Session](../01_Database_Foundation/02_Triggers/T_After_Refresh_Test_Session.md)
 
-These are Testing-system implementation documents, not generic database-foundation documentation.
+Testing owns the business workflow and links to these database objects; it does not maintain duplicate authoritative copies of their engineering documentation.
 
 ## Authoritative Sources
 
