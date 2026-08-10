@@ -75,7 +75,6 @@ Thumbs.db
 # PROJECT WORKING DATA (not source code)
 # =========================================================
 
-/database/**
 /Spreadsheet/**
 /Database Previews/**
 /UserPreviewStaging/**
