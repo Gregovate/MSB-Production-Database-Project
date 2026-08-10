@@ -25,6 +25,10 @@ Labels must use durable Production Database identities rather than brittle appli
 
 The operator-facing Production Database procedure should stop at requesting labels and basic first-line checks. Service startup/restart, print-server operation, and service-specific troubleshooting belong in the LabelPrintService repository.
 
+Display-linked documents and field information are not intended to become a generic database document-management system. Their operational purpose is to support QR-based lookup from the physical Display or Container to the information needed in the field. The subsystem that owns the actual content remains authoritative for that content.
+
+For example, Wiring owns wiring information, Setup and Deployment owns setup/takedown instructions, and Site Infrastructure/GIS owns location/GPS context. Labeling and Scanning owns the QR/payload and lookup boundary that connects the physical asset to those systems.
+
 ## Dependencies
 
 - [Database Foundation](../01_Database_Foundation/README.md)
@@ -40,6 +44,7 @@ The operator-facing Production Database procedure should stop at requesting labe
 - QR/barcode lookup behavior
 - scanner and rugged-tablet integration
 - forklift/field scan workflows
+- routing scanned assets to authoritative operational information without duplicating that content in a generic document registry
 
 ## Label Print Request and Actor Contract
 
@@ -91,6 +96,9 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
+- [Wiring System](../09_Wiring_System/README.md)
+- [Setup and Deployment](../12_Setup_and_Deployment/README.md)
+- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md)
 - [Operational SOPs](../../02_Operational_SOPs/README.md)
 - [LabelPrintService Operator Guide](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Operator_Label_Printing.md)
@@ -99,4 +107,4 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 For label printing, begin with the current PostgreSQL request/batch objects, [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md), and the current LabelPrintService implementation. Verify the actor-attribution contract and any retry/reprint behavior before changing the database or service.
 
-For scanning, treat the approved payload/hardware/workflow direction as planned or evolving until the actual field application and deployed scan behavior are verified.
+For scanning, treat the approved payload/hardware/workflow direction as planned or evolving until the actual field application and deployed scan behavior are verified. Any future asset lookup should route to authoritative subsystem information instead of rebuilding a generic document registry in the database.
