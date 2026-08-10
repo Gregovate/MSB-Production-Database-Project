@@ -4,14 +4,13 @@
 #   Run the current read-only Google Shared Drive folder-alignment report
 #   from the repository root.
 #
-# The alignment implementation currently remains under LOR2DB/03_Reporting
-# while the Folder_Alignment mini-project is being revised and validated.
+# The alignment implementation belongs to the LOR data-extraction system.
 # This launcher intentionally contains no alignment logic.
 
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = $PSScriptRoot
-$AlignmentScript = Join-Path $RepoRoot 'LOR2DB\03_Reporting\generate_google_drive_alignment_report.py'
+$AlignmentScript = Join-Path $RepoRoot 'Docs\01_LOR_System\02_Data_Extraction\Folder_Alignment\generate_folder_alignment_report.py'
 
 if (-not (Test-Path -LiteralPath $AlignmentScript -PathType Leaf)) {
     Write-Error "Folder alignment script not found: $AlignmentScript"
