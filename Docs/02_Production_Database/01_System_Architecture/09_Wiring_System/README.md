@@ -10,6 +10,8 @@ The future Wiring application should use PostgreSQL as its operational data sour
 
 A dedicated PostgreSQL-backed Wiring application may live in a separate repository while the Production Database repository continues to own the database integration and authority contract.
 
+The existing Stage-oriented folder structure is also part of the current documentation workflow. Wiring material and Setup/Takedown instructions use the same Stage folder/path convention so field documentation is organized around the physical area crews work in rather than split into unrelated document trees.
+
 ## Design Intent
 
 Provide task-focused wiring documentation and field access without creating a second topology-authoring system.
@@ -61,6 +63,12 @@ The Wiring application must not become an independent topology-authoring system 
 
 If the Wiring application is unavailable, PostgreSQL and the imported LOR-derived data remain intact. Field users may temporarily lose the preferred presentation interface, but the shared Production Database data remains available to other systems.
 
+## Stage Folder / Documentation Boundary
+
+The existing Stage folder structure is the shared human-facing location for wiring and setup documentation. The Stage `folder_path` convention should remain the navigation anchor rather than creating separate unrelated paths for Wiring and Setup.
+
+Wiring owns wiring content placed or referenced there. [Setup and Deployment](../12_Setup_and_Deployment/README.md) owns setup/takedown instructions placed or referenced in the same Stage-oriented structure. QR-based lookup may route field users to this material, but QR/scanning does not become the content authority.
+
 ## Dependencies
 
 - [LOR2DB Ingest](../02_LOR2DB_Ingest/README.md)
@@ -73,10 +81,13 @@ If the Wiring application is unavailable, PostgreSQL and the imported LOR-derive
 - display/controller wiring lookup
 - generated HTML/PDF field documentation
 - links to schematics and supporting engineering information
+- shared Stage-folder documentation convention with Setup and Deployment
 - future task-focused wiring workflow/application
 
 ## Related Systems
 
+- [Setup and Deployment](../12_Setup_and_Deployment/README.md)
+- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
 - [Network Infrastructure](../10_Network_Infrastructure/README.md)
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [System Boundary and Repository Ownership Standard](../../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md)
@@ -86,5 +97,7 @@ If the Wiring application is unavailable, PostgreSQL and the imported LOR-derive
 Before designing a replacement application, inventory current FormView behavior, parser-produced SQLite dependencies, PostgreSQL wiring fields/views, Draw.io artifacts, and LOR-derived topology.
 
 Define the PostgreSQL-backed application data contract before changing FormView or building the replacement UI. Preserve the LOR authority boundary in every design decision.
+
+When working on human-facing field documentation, preserve the existing Stage folder/path convention shared with Setup/Takedown documentation rather than creating a parallel folder system.
 
 When the dedicated Wiring application is started, create or use its separate implementation repository and link it here. Keep the Production Database integration/authority contract in this subsystem and application implementation in the application repository.
