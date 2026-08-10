@@ -18,10 +18,26 @@ V7 is the current supported breakpoint. Superseded V6, spreadsheet, Excel-report
 
 ## Production LOR-to-database flow
 
+The repository root provides two operator launchers for the two separate manual steps:
+
+```powershell
+.\run_parse_props.ps1
+.\run_ingest.ps1
+```
+
+They are intentionally separate. Running the parser does **not** automatically ingest anything into PostgreSQL.
+
 ```text
 Authoritative LOR previews
-    -> LOR2DB/01_Ingest/parse_props_v7_scene_parser.py
+    -> run_parse_props.ps1
+    -> Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py
     -> lor_output_v7_scene.db
+
+       STOP / REVIEW CHECKPOINT
+       Inspect the SQLite snapshot.
+       Correct LOR source data and rerun the parser as many times as needed.
+
+    -> run_ingest.ps1
     -> LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1
     -> LOR2DB/01_Ingest/postgres_ingest_from_lor_sqlite_v7.py
     -> immutable lor_snap snapshot
@@ -30,7 +46,9 @@ Authoritative LOR previews
     -> validation and immutable HTML report
 ```
 
-The parser and PostgreSQL snapshot ingest remain manual. Operators never enter or select an `import_run_id`; LOR2DB captures the latest completed ingest at reconciliation start and preserves it for the entire run.
+The parser and PostgreSQL snapshot ingest remain manual and independent. `run_parse_props.ps1` is the root entry point for rebuilding the SQLite snapshot. `run_ingest.ps1` is used only after that SQLite snapshot has been reviewed and accepted for ingest.
+
+Operators never enter or select an `import_run_id`; LOR2DB captures the latest completed ingest at reconciliation start and preserves it for the entire run.
 
 ## Documentation entry points
 
