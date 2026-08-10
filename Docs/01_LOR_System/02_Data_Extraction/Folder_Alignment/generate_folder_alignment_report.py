@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Read-only LOR vs Google Drive Stage/Scene/Display alignment report.
+"""Read-only LOR vs Google Shared Drive Stage/Scene/Display folder alignment report.
 
-Windows V1.0.1. Designed for Google Drive for Desktop mounted as G:.
-The Drive is inventoried once; no folder is created, moved, renamed, or deleted.
+Windows V1.1.0. Uses the current parser SQLite output as the LOR source of truth.
+Google Drive is inventoried read-only; no folder is created, moved, renamed, or deleted.
 """
 from __future__ import annotations
 
@@ -16,14 +16,20 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
 
-VERSION = "V1.0.1"
+VERSION = "V1.1.0"
 DEFAULT_DB = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
 DEFAULT_ROOT = Path(r"G:\Shared drives\Display Folders")
 DEFAULT_OUTPUT = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment")
 STAGE_RE = re.compile(r"^(?P<stage>\d{2}[A-Za-z]?)-")
-RESERVED = {"photos", "procedures", "wiring", "sourcedocs", "historical", "archive", "archives"}
+
+INFRA_ROOTS = {"photos", "procedures", "wiring"}
+PRUNE_EXACT = {
+    "sourcedocs", "corelautopreserve", "obsolete", "archive", "archives",
+    "historical", "debug", "templates", "libraries", "workspaces",
+}
 
 
 @dataclass(frozen=True)
@@ -34,13 +40,24 @@ class ExpectedDisplay:
 
 
 @dataclass(frozen=True)
+class Candidate:
+    path: Path
+    score: float
+    reason: str
+
+
+@dataclass(frozen=True)
 class Finding:
     stage_id: str
     kind: str
-    name: str
-    expected_parent: str
+    lor_name: str
+    current_path: str
+    recommended_name: str
+    recommended_parent: str
+    recommended_path: str
     status: str
-    found_path: str
+    confidence: str
+    action: str
     note: str
 
 
@@ -48,10 +65,41 @@ def norm(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", "", (value or "").casefold())
 
 
+def words(value: str | None) -> list[str]:
+    s = (value or "").strip()
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", s)
+    s = re.sub(r"[^A-Za-z0-9]+", " ", s)
+    return [x.casefold() for x in s.split() if x]
+
+
 def stage_key(value: str | None) -> str:
     value = (value or "").strip().casefold()
     m = re.fullmatch(r"(\d{1,2})([a-z]?)", value)
     return f"{int(m.group(1)):02d}{m.group(2)}" if m else value
+
+
+def strip_display_stage_code(value: str) -> str:
+    return re.sub(r"^[A-Za-z]{2}-", "", value.strip(), count=1)
+
+
+def strip_scene_stage_id(value: str) -> str:
+    return re.sub(r"^\d{2}[A-Za-z]?-", "", value.strip(), count=1)
+
+
+def compare_form(value: str, kind: str) -> str:
+    if kind == "DISPLAY":
+        value = strip_display_stage_code(value)
+    elif kind == "SCENE":
+        value = strip_scene_stage_id(value)
+    return norm(value)
+
+
+def token_set(value: str, kind: str) -> set[str]:
+    if kind == "DISPLAY":
+        value = strip_display_stage_code(value)
+    elif kind == "SCENE":
+        value = strip_scene_stage_id(value)
+    return set(words(value))
 
 
 def qi(name: str) -> str:
@@ -85,8 +133,9 @@ def load_expected(conn: sqlite3.Connection):
     p_name = pick(pc, "Name", "PreviewName")
     pr_prev = pick(prc, "PreviewId", "PreviewID")
     pr_disp = pick(prc, "LORComment", "DisplayName", "Display_Name")
-    if not all((p_id, p_stage, p_name, pr_prev, pr_disp)):
-        raise RuntimeError("Could not resolve current previews/props columns.")
+    pr_type = pick(prc, "DeviceType", "Device_Type")
+    if not all((p_id, p_stage, p_name, pr_prev, pr_disp, pr_type)):
+        raise RuntimeError("Could not resolve current previews/props columns including DeviceType.")
 
     previews: dict[str, list[str]] = defaultdict(list)
     for sid, name in conn.execute(
@@ -97,12 +146,15 @@ def load_expected(conn: sqlite3.Connection):
         if name and str(name) not in previews[key]:
             previews[key].append(str(name))
 
-    stage_displays: dict[str, set[str]] = defaultdict(set)
-    sql = f"SELECT DISTINCT v.{qi(p_stage)}, p.{qi(pr_disp)} FROM props p JOIN previews v ON v.{qi(p_id)}=p.{qi(pr_prev)} WHERE NULLIF(TRIM(v.{qi(p_stage)}),'') IS NOT NULL AND NULLIF(TRIM(p.{qi(pr_disp)}),'') IS NOT NULL"
-    for sid, display in conn.execute(sql):
-        stage_displays[stage_key(str(sid))].add(str(display).strip())
+    lor_names: set[str] = set()
+    for (display,) in conn.execute(
+        f"SELECT DISTINCT {qi(pr_disp)} FROM props "
+        f"WHERE UPPER(TRIM(COALESCE({qi(pr_type)},'')))='LOR' "
+        f"AND NULLIF(TRIM({qi(pr_disp)}),'') IS NOT NULL"
+    ):
+        lor_names.add(str(display).strip())
+    lor_norm = {norm(x) for x in lor_names}
 
-    scenes: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     if not exists(conn, "scene_displays_vw"):
         raise RuntimeError("Current snapshot does not contain scene_displays_vw; run the current V7 parser first.")
 
@@ -113,14 +165,38 @@ def load_expected(conn: sqlite3.Connection):
     if not all((s_stage, s_name, s_disp)):
         raise RuntimeError("Could not resolve columns in scene_displays_vw.")
 
-    scene_sql = f"SELECT DISTINCT {qi(s_stage)}, {qi(s_name)}, {qi(s_disp)} FROM scene_displays_vw WHERE NULLIF(TRIM({qi(s_stage)}),'') IS NOT NULL AND NULLIF(TRIM({qi(s_name)}),'') IS NOT NULL AND NULLIF(TRIM({qi(s_disp)}),'') IS NOT NULL ORDER BY 1,2,3"
+    scenes: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     display_scenes: dict[tuple[str, str], set[str]] = defaultdict(set)
+    scene_assigned_norms: set[str] = set()
+    scene_sql = (
+        f"SELECT DISTINCT {qi(s_stage)}, {qi(s_name)}, {qi(s_disp)} FROM scene_displays_vw "
+        f"WHERE NULLIF(TRIM({qi(s_stage)}),'') IS NOT NULL "
+        f"AND NULLIF(TRIM({qi(s_name)}),'') IS NOT NULL "
+        f"AND NULLIF(TRIM({qi(s_disp)}),'') IS NOT NULL ORDER BY 1,2,3"
+    )
     for sid, scene, display in conn.execute(scene_sql):
+        display_name = str(display).strip()
+        if norm(display_name) not in lor_norm:
+            continue
         key = stage_key(str(sid))
         scene_name = str(scene).strip()
-        display_name = str(display).strip()
         scenes[key][scene_name].add(display_name)
         display_scenes[(key, display_name)].add(scene_name)
+        scene_assigned_norms.add(norm(display_name))
+
+    stage_displays: dict[str, set[str]] = defaultdict(set)
+    sql = (
+        f"SELECT DISTINCT v.{qi(p_stage)}, p.{qi(pr_disp)} FROM props p "
+        f"JOIN previews v ON v.{qi(p_id)}=p.{qi(pr_prev)} "
+        f"WHERE UPPER(TRIM(COALESCE(p.{qi(pr_type)},'')))='LOR' "
+        f"AND NULLIF(TRIM(v.{qi(p_stage)}),'') IS NOT NULL "
+        f"AND NULLIF(TRIM(p.{qi(pr_disp)}),'') IS NOT NULL"
+    )
+    for sid, display in conn.execute(sql):
+        display_name = str(display).strip()
+        if norm(display_name) in scene_assigned_norms:
+            continue
+        stage_displays[stage_key(str(sid))].add(display_name)
 
     all_stages = set(previews) | set(stage_displays) | set(scenes)
     displays: list[ExpectedDisplay] = []
@@ -129,7 +205,11 @@ def load_expected(conn: sqlite3.Connection):
         for values in scenes.get(sid, {}).values():
             names.update(values)
         for name in sorted(names, key=str.casefold):
-            displays.append(ExpectedDisplay(sid, name, tuple(sorted(display_scenes.get((sid, name), set()), key=str.casefold))))
+            displays.append(ExpectedDisplay(
+                sid,
+                name,
+                tuple(sorted(display_scenes.get((sid, name), set()), key=str.casefold)),
+            ))
 
     provenance = {}
     if exists(conn, "parser_run"):
@@ -148,6 +228,13 @@ def rel(path: Path, root: Path) -> str:
         return str(path)
 
 
+def prune_branch(name: str) -> bool:
+    n = norm(name)
+    if n in PRUNE_EXACT:
+        return True
+    return n.startswith("archive") or n.startswith("archived")
+
+
 def inventory_drive(root: Path, expected_stage_ids: set[str]):
     print("[INFO] Reading Stage folders from Google Drive...", flush=True)
     stages: dict[str, list[Path]] = defaultdict(list)
@@ -157,122 +244,183 @@ def inventory_drive(root: Path, expected_stage_ids: set[str]):
             if m:
                 stages[stage_key(m.group("stage"))].append(child)
 
-    index: dict[str, dict[str, list[Path]]] = {}
-    direct: dict[str, dict[str, list[Path]]] = {}
+    candidates: dict[str, list[Path]] = defaultdict(list)
+    direct: dict[str, list[Path]] = defaultdict(list)
+
     for n, sid in enumerate(sorted(expected_stage_ids), 1):
         matches = stages.get(sid, [])
         if len(matches) != 1:
             continue
         stage = matches[0]
         print(f"[INFO] Scanning Stage {sid} ({n}/{len(expected_stage_ids)}): {stage.name}", flush=True)
-        name_index: dict[str, list[Path]] = defaultdict(list)
-        direct_index: dict[str, list[Path]] = defaultdict(list)
 
         try:
             for child in stage.iterdir():
-                if child.is_dir() and child.name.casefold() not in RESERVED:
-                    direct_index[norm(child.name)].append(child)
+                if child.is_dir() and norm(child.name) not in INFRA_ROOTS:
+                    direct[sid].append(child)
         except OSError:
             pass
 
         try:
             for current, dirs, _files in os.walk(stage):
                 current_path = Path(current)
-                dirs[:] = [d for d in dirs if d.casefold() not in RESERVED]
                 if current_path == stage:
+                    dirs[:] = [d for d in dirs if norm(d) not in INFRA_ROOTS and not prune_branch(d)]
                     continue
-                name_index[norm(current_path.name)].append(current_path)
+                dirs[:] = [d for d in dirs if not prune_branch(d)]
+                candidates[sid].append(current_path)
         except OSError:
             pass
 
-        index[sid] = dict(name_index)
-        direct[sid] = dict(direct_index)
-
     print("[INFO] Google Drive inventory complete.", flush=True)
-    return dict(stages), index, direct
+    return dict(stages), dict(candidates), dict(direct)
+
+
+def score_name(lor_name: str, folder_name: str, kind: str) -> tuple[float, str]:
+    a = compare_form(lor_name, kind)
+    b = compare_form(folder_name, kind)
+    if not a or not b:
+        return 0.0, ""
+    if a == b:
+        return 1.0, "normalized name match"
+
+    seq = SequenceMatcher(None, a, b).ratio()
+    ta = token_set(lor_name, kind)
+    tb = token_set(folder_name, kind)
+    jaccard = (len(ta & tb) / len(ta | tb)) if (ta or tb) else 0.0
+
+    containment = 0.0
+    shorter, longer = sorted((a, b), key=len)
+    if len(shorter) >= 5 and shorter in longer:
+        containment = min(0.92, 0.72 + 0.20 * (len(shorter) / len(longer)))
+
+    score = max(seq, 0.55 * seq + 0.45 * jaccard, containment)
+    return score, f"name similarity {score:.2f}"
+
+
+def best_candidates(lor_name: str, paths: list[Path], kind: str, limit: int = 3) -> list[Candidate]:
+    scored: list[Candidate] = []
+    for p in paths:
+        score, reason = score_name(lor_name, p.name, kind)
+        if score >= 0.58:
+            scored.append(Candidate(p, score, reason))
+    scored.sort(key=lambda x: (-x.score, len(x.path.parts), str(x.path).casefold()))
+    return scored[:limit]
+
+
+def confidence(score: float) -> str:
+    if score >= 0.93:
+        return "HIGH"
+    if score >= 0.78:
+        return "MEDIUM"
+    if score >= 0.65:
+        return "LOW"
+    return ""
 
 
 def audit(root: Path, previews, scenes, displays):
     expected_stage_ids = set(previews) | set(scenes) | {d.stage_id for d in displays}
-    stage_folders, index, direct = inventory_drive(root, expected_stage_ids)
+    stage_folders, candidates, direct = inventory_drive(root, expected_stage_ids)
     findings: list[Finding] = []
-    scene_paths: dict[tuple[str, str], Path | None] = {}
 
     for sid in sorted(expected_stage_ids):
         sm = stage_folders.get(sid, [])
         if len(sm) == 0:
-            findings.append(Finding(sid, "STAGE", sid, str(root), "MISSING", "", "No Stage folder with this StageID was found."))
+            findings.append(Finding(sid, "STAGE", sid, "", sid, str(root), str(root / sid), "MISSING", "", "CREATE_STAGE_REVIEW", "No Stage folder with this StageID was found."))
             continue
         if len(sm) > 1:
-            findings.append(Finding(sid, "STAGE", sid, str(root), "AMBIGUOUS", "; ".join(rel(p, root) for p in sm), "More than one Stage folder has this StageID."))
+            findings.append(Finding(sid, "STAGE", sid, "; ".join(rel(p, root) for p in sm), sid, str(root), "", "AMBIGUOUS", "", "REVIEW_MULTIPLE", "More than one Stage folder has this StageID."))
             continue
         stage = sm[0]
-        findings.append(Finding(sid, "STAGE", sid, str(root), "MATCH", rel(stage, root), ""))
+        findings.append(Finding(sid, "STAGE", sid, rel(stage, root), stage.name, str(root), rel(stage, root), "MATCH", "HIGH", "NONE", "Stage matched by two-digit StageID."))
 
         for scene in sorted(scenes.get(sid, {}), key=str.casefold):
-            dm = direct.get(sid, {}).get(norm(scene), [])
-            if len(dm) == 1:
-                scene_paths[(sid, scene)] = dm[0]
-                findings.append(Finding(sid, "SCENE", scene, rel(stage, root), "MATCH", rel(dm[0], root), ""))
-            elif len(dm) > 1:
-                scene_paths[(sid, scene)] = None
-                findings.append(Finding(sid, "SCENE", scene, rel(stage, root), "AMBIGUOUS", "; ".join(rel(p, root) for p in dm), "Duplicate direct Scene folder matches."))
+            rec_name = scene
+            rec_parent = rel(stage, root)
+            rec_path = f"{rec_parent}\\{rec_name}"
+            matches = best_candidates(scene, direct.get(sid, []), "SCENE")
+            if matches and matches[0].score >= 0.93:
+                p = matches[0].path
+                exact_name = p.name == rec_name
+                status = "MATCH" if exact_name else "LIKELY_MATCH"
+                action = "NONE" if exact_name else "RENAME"
+                findings.append(Finding(sid, "SCENE", scene, rel(p, root), rec_name, rec_parent, rec_path, status, confidence(matches[0].score), action, matches[0].reason))
+            elif matches and matches[0].score >= 0.78:
+                p = matches[0].path
+                findings.append(Finding(sid, "SCENE", scene, rel(p, root), rec_name, rec_parent, rec_path, "POSSIBLE_MATCH", confidence(matches[0].score), "REVIEW", matches[0].reason))
             else:
-                allm = index.get(sid, {}).get(norm(scene), [])
-                if len(allm) == 1:
-                    scene_paths[(sid, scene)] = allm[0]
-                    findings.append(Finding(sid, "SCENE", scene, rel(stage, root), "WRONG_LOCATION", rel(allm[0], root), "Scene exists below the Stage but is not directly under it."))
-                elif len(allm) > 1:
-                    scene_paths[(sid, scene)] = None
-                    findings.append(Finding(sid, "SCENE", scene, rel(stage, root), "AMBIGUOUS", "; ".join(rel(p, root) for p in allm), "More than one possible Scene folder match."))
-                else:
-                    scene_paths[(sid, scene)] = None
-                    findings.append(Finding(sid, "SCENE", scene, rel(stage, root), "MISSING", "", "LOR Scene has no matching folder under the Stage."))
+                findings.append(Finding(sid, "SCENE", scene, "", rec_name, rec_parent, rec_path, "MISSING", "", "CREATE_SCENE_FOLDER", "LOR Scene has no likely direct folder match under the Stage."))
+
+    display_findings: list[Finding] = []
+    candidate_usage: dict[str, list[int]] = defaultdict(list)
 
     for d in displays:
         sm = stage_folders.get(d.stage_id, [])
+        rec_name = d.name
         if len(sm) != 1:
-            findings.append(Finding(d.stage_id, "DISPLAY", d.name, "", "BLOCKED", "", "Stage folder is missing or ambiguous."))
+            display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, "", rec_name, "", "", "BLOCKED", "", "REVIEW_STAGE", "Stage folder is missing or ambiguous."))
             continue
         stage = sm[0]
-        allm = index.get(d.stage_id, {}).get(norm(d.name), [])
-
-        if len(d.scenes) > 1:
-            findings.append(Finding(d.stage_id, "DISPLAY", d.name, "Multiple LOR Scenes", "AMBIGUOUS", "; ".join(rel(p, root) for p in allm), "Display appears in more than one LOR Scene: " + ", ".join(d.scenes)))
-            continue
 
         if len(d.scenes) == 1:
             scene = d.scenes[0]
-            sp = scene_paths.get((d.stage_id, scene))
-            expected_parent = f"{rel(stage, root)}\\{scene}"
-            if sp is not None:
-                try:
-                    dm = [p for p in sp.iterdir() if p.is_dir() and norm(p.name) == norm(d.name)]
-                except OSError:
-                    dm = []
-                if len(dm) == 1:
-                    findings.append(Finding(d.stage_id, "DISPLAY", d.name, rel(sp, root), "MATCH", rel(dm[0], root), ""))
-                    continue
-            if len(allm) == 1:
-                findings.append(Finding(d.stage_id, "DISPLAY", d.name, expected_parent, "WRONG_LOCATION", rel(allm[0], root), f"LOR places this Display in Scene '{scene}'."))
-            elif len(allm) > 1:
-                findings.append(Finding(d.stage_id, "DISPLAY", d.name, expected_parent, "AMBIGUOUS", "; ".join(rel(p, root) for p in allm), "More than one possible Display folder match."))
-            else:
-                findings.append(Finding(d.stage_id, "DISPLAY", d.name, expected_parent, "MISSING", "", f"LOR places this Display in Scene '{scene}'."))
+            rec_parent = f"{rel(stage, root)}\\{scene}"
+            rec_path = f"{rec_parent}\\{rec_name}"
+        elif len(d.scenes) > 1:
+            rec_parent = "Multiple LOR Scenes"
+            rec_path = ""
+        else:
+            rec_parent = rel(stage, root)
+            rec_path = f"{rec_parent}\\{rec_name}"
+
+        matches = best_candidates(d.name, candidates.get(d.stage_id, []), "DISPLAY")
+
+        if len(d.scenes) > 1:
+            current = rel(matches[0].path, root) if matches else ""
+            display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, current, rec_name, rec_parent, rec_path, "REVIEW_MULTIPLE_SCENES", confidence(matches[0].score) if matches else "", "REVIEW", "Display appears in more than one LOR Scene: " + ", ".join(d.scenes)))
             continue
 
-        dm = direct.get(d.stage_id, {}).get(norm(d.name), [])
-        if len(dm) == 1:
-            findings.append(Finding(d.stage_id, "DISPLAY", d.name, rel(stage, root), "MATCH", rel(dm[0], root), ""))
-        elif len(dm) > 1:
-            findings.append(Finding(d.stage_id, "DISPLAY", d.name, rel(stage, root), "AMBIGUOUS", "; ".join(rel(p, root) for p in dm), "Duplicate direct Display folder matches."))
-        elif len(allm) == 1:
-            findings.append(Finding(d.stage_id, "DISPLAY", d.name, rel(stage, root), "WRONG_LOCATION", rel(allm[0], root), "LOR does not assign this Display to a Scene."))
-        elif len(allm) > 1:
-            findings.append(Finding(d.stage_id, "DISPLAY", d.name, rel(stage, root), "AMBIGUOUS", "; ".join(rel(p, root) for p in allm), "More than one possible Display folder match."))
-        else:
-            findings.append(Finding(d.stage_id, "DISPLAY", d.name, rel(stage, root), "MISSING", "", "LOR does not assign this Display to a Scene."))
+        if not matches:
+            display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, "", rec_name, rec_parent, rec_path, "NO_FOLDER_MATCH", "", "REVIEW_FOLDER_NEED", "No likely existing documentation folder was found. This does not mean a folder must be created."))
+            continue
 
+        top = matches[0]
+        current = rel(top.path, root)
+        c = confidence(top.score)
+        if top.score >= 0.93:
+            status = "LIKELY_MATCH"
+            action = "REVIEW_RENAME_OR_MOVE"
+        elif top.score >= 0.78:
+            status = "POSSIBLE_MATCH"
+            action = "REVIEW"
+        else:
+            status = "WEAK_MATCH"
+            action = "REVIEW"
+
+        note = top.reason
+        if len(matches) > 1 and matches[1].score >= top.score - 0.04:
+            status = "REVIEW_MULTIPLE"
+            action = "REVIEW"
+            note += "; competing candidates: " + "; ".join(f"{rel(x.path, root)} ({x.score:.2f})" for x in matches[1:])
+
+        idx = len(display_findings)
+        display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, current, rec_name, rec_parent, rec_path, status, c, action, note))
+        if top.score >= 0.65:
+            candidate_usage[current.casefold()].append(idx)
+
+    for indexes in candidate_usage.values():
+        if len(indexes) < 2:
+            continue
+        for idx in indexes:
+            f = display_findings[idx]
+            display_findings[idx] = Finding(
+                f.stage_id, f.kind, f.lor_name, f.current_path, f.recommended_name,
+                f.recommended_parent, f.recommended_path, "LIKELY_SHARED_GROUP",
+                f.confidence, "REVIEW_SHARED_GROUP",
+                (f.note + f"; {len(indexes)} LOR Displays point to this same historical folder").strip("; "),
+            )
+
+    findings.extend(display_findings)
     return findings
 
 
@@ -282,11 +430,18 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
     csv_path = output / f"lor-google-drive-alignment-{stamp}.csv"
     html_path = output / f"lor-google-drive-alignment-{stamp}.html"
 
+    headers = [
+        "stage_id", "entity_type", "lor_name", "current_path", "recommended_name",
+        "recommended_parent", "recommended_path", "status", "confidence", "action", "note",
+    ]
     with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
-        w.writerow(["stage_id", "entity_type", "expected_name", "expected_parent", "status", "found_path", "note"])
+        w.writerow(headers)
         for x in findings:
-            w.writerow([x.stage_id, x.kind, x.name, x.expected_parent, x.status, x.found_path, x.note])
+            w.writerow([
+                x.stage_id, x.kind, x.lor_name, x.current_path, x.recommended_name,
+                x.recommended_parent, x.recommended_path, x.status, x.confidence, x.action, x.note,
+            ])
 
     by_stage: dict[str, list[Finding]] = defaultdict(list)
     counts: dict[str, int] = defaultdict(int)
@@ -295,20 +450,28 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
         counts[x.status] += 1
 
     esc = lambda v: html.escape(str(v or ""))
-    parts = ["<!doctype html><html><head><meta charset='utf-8'><title>LOR / Google Drive Alignment</title><style>body{font-family:Segoe UI,Arial;margin:24px;color:#222}table{border-collapse:collapse;width:100%;margin:10px 0 28px}th,td{border:1px solid #ccc;padding:7px;text-align:left;vertical-align:top}th{background:#eee}.MATCH{background:#edf8ed}.MISSING{background:#fff0f0}.WRONG_LOCATION{background:#fff7e6}.AMBIGUOUS,.BLOCKED{background:#f3efff}code{font-family:Consolas,monospace}.warn{padding:10px;background:#fff8d6;border:1px solid #d5a400}</style></head><body>"]
-    parts.append("<h1>LOR Stage / Scene / Display — Google Drive Alignment Report</h1><p class='warn'><strong>READ-ONLY AUDIT.</strong> No Google Drive folders were changed.</p>")
+    parts = ["<!doctype html><html><head><meta charset='utf-8'><title>LOR / Google Drive Folder Alignment</title>"]
+    parts.append("<style>body{font-family:Segoe UI,Arial;margin:24px;color:#222}table{border-collapse:collapse;width:100%;margin:10px 0 28px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{background:#eee}.MATCH{background:#edf8ed}.MISSING,.NO_FOLDER_MATCH{background:#fff0f0}.LIKELY_MATCH,.LIKELY_SHARED_GROUP{background:#eef7ff}.POSSIBLE_MATCH,.WEAK_MATCH,.REVIEW_MULTIPLE,.REVIEW_MULTIPLE_SCENES,.BLOCKED{background:#fff7e6}code{font-family:Consolas,monospace}.warn{padding:10px;background:#fff8d6;border:1px solid #d5a400}</style></head><body>")
+    parts.append("<h1>LOR / Google Shared Drive Folder Alignment</h1>")
+    parts.append("<p class='warn'><strong>READ-ONLY.</strong> No Google Drive folders were changed. A missing Display folder is not automatically a recommendation to create one.</p>")
     parts.append(f"<p><strong>Version:</strong> {VERSION}<br><strong>Generated:</strong> {esc(datetime.now().astimezone())}<br><strong>SQLite:</strong> <code>{esc(db)}</code><br><strong>Drive:</strong> <code>{esc(root)}</code></p>")
-    parts.append("<h2>Summary</h2><p>" + " &nbsp; ".join(f"<strong>{s}:</strong> {counts.get(s,0)}" for s in ["MATCH","MISSING","WRONG_LOCATION","AMBIGUOUS","BLOCKED"]) + "</p>")
+    parts.append("<h2>Summary</h2><p>" + " &nbsp; ".join(f"<strong>{esc(k)}:</strong> {v}" for k, v in sorted(counts.items())) + "</p>")
+
     for sid in sorted(by_stage):
         parts.append(f"<h2>Stage {esc(sid)}</h2>")
         if previews.get(sid):
             parts.append("<p><strong>LOR Preview(s):</strong> " + "; ".join(esc(v) for v in previews[sid]) + "</p>")
         if scenes.get(sid):
             parts.append("<p><strong>LOR Scenes:</strong> " + "; ".join(esc(v) for v in sorted(scenes[sid], key=str.casefold)) + "</p>")
-        parts.append("<table><tr><th>Type</th><th>LOR Name</th><th>Expected Parent</th><th>Status</th><th>Found</th><th>Notes</th></tr>")
-        order={"STAGE":0,"SCENE":1,"DISPLAY":2}
-        for x in sorted(by_stage[sid], key=lambda z:(order.get(z.kind,9),z.expected_parent.casefold(),z.name.casefold())):
-            parts.append(f"<tr class='{esc(x.status)}'><td>{esc(x.kind)}</td><td>{esc(x.name)}</td><td><code>{esc(x.expected_parent)}</code></td><td><strong>{esc(x.status)}</strong></td><td><code>{esc(x.found_path)}</code></td><td>{esc(x.note)}</td></tr>")
+        parts.append("<table><tr><th>Type</th><th>LOR Name</th><th>Current Drive Path</th><th>Recommended Name</th><th>Recommended Location</th><th>Status</th><th>Confidence</th><th>Action</th><th>Notes</th></tr>")
+        order = {"STAGE": 0, "SCENE": 1, "DISPLAY": 2}
+        for x in sorted(by_stage[sid], key=lambda z: (order.get(z.kind, 9), z.lor_name.casefold())):
+            parts.append(
+                f"<tr class='{esc(x.status)}'><td>{esc(x.kind)}</td><td>{esc(x.lor_name)}</td>"
+                f"<td><code>{esc(x.current_path)}</code></td><td>{esc(x.recommended_name)}</td>"
+                f"<td><code>{esc(x.recommended_path)}</code></td><td><strong>{esc(x.status)}</strong></td>"
+                f"<td>{esc(x.confidence)}</td><td>{esc(x.action)}</td><td>{esc(x.note)}</td></tr>"
+            )
         parts.append("</table>")
     parts.append("</body></html>")
     html_path.write_text("".join(parts), encoding="utf-8")
@@ -316,13 +479,13 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Read-only LOR vs Google Drive folder alignment audit")
+    ap = argparse.ArgumentParser(description="Read-only LOR vs Google Shared Drive folder alignment audit")
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--drive-root", type=Path, default=DEFAULT_ROOT)
     ap.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     args = ap.parse_args()
 
-    print(f"[INFO] LOR / Google Drive Alignment {VERSION}", flush=True)
+    print(f"[INFO] LOR / Google Drive Folder Alignment {VERSION}", flush=True)
     print(f"[INFO] SQLite: {args.db}", flush=True)
     print(f"[INFO] Drive:  {args.drive_root}", flush=True)
     if not args.db.is_file():
@@ -337,7 +500,7 @@ def main() -> int:
         uri = args.db.resolve().as_uri() + "?mode=ro"
         with sqlite3.connect(uri, uri=True) as conn:
             previews, scenes, displays, _provenance = load_expected(conn)
-        print(f"[INFO] LOR snapshot loaded: {len(previews)} Stage IDs, {sum(len(v) for v in scenes.values())} Scenes, {len(displays)} Displays", flush=True)
+        print(f"[INFO] LOR snapshot loaded: {len(previews)} Stage IDs, {sum(len(v) for v in scenes.values())} Scenes, {len(displays)} LOR Displays", flush=True)
         findings = audit(args.drive_root, previews, scenes, displays)
         print("[INFO] Writing reports...", flush=True)
         hp, cp, counts = write_reports(args.output_dir, args.drive_root, args.db, previews, scenes, findings)
@@ -348,7 +511,7 @@ def main() -> int:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 4
 
-    print("[INFO] " + " | ".join(f"{s}={counts.get(s,0)}" for s in ["MATCH","MISSING","WRONG_LOCATION","AMBIGUOUS","BLOCKED"]), flush=True)
+    print("[INFO] " + " | ".join(f"{s}={n}" for s, n in sorted(counts.items())), flush=True)
     print(f"[INFO] HTML: {hp}", flush=True)
     print(f"[INFO] CSV:  {cp}", flush=True)
     print("[INFO] Read-only audit complete. No Google Drive folders were changed.", flush=True)
