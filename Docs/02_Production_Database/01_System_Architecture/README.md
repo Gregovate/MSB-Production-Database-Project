@@ -56,11 +56,11 @@ This model allows application development to remain isolated from the Production
 
 | Subsystem | Engineering responsibility |
 |---|---|
-| [01_Database_Foundation](01_Database_Foundation/README.md) | Shared PostgreSQL identities, schema boundaries, audit rules, integrity, shared database-wide mechanisms |
+| [01_Database_Foundation](01_Database_Foundation/README.md) | Shared PostgreSQL identities, schema boundaries, audit rules, integrity, and the canonical index for Production Database functions/procedures/triggers |
 | [02_LOR2DB_Ingest](02_LOR2DB_Ingest/README.md) | Production Database dependency on the separate LOR2DB parser/ingest/reconciliation project |
 | [03_People_and_Identity](03_People_and_Identity/README.md) | Person identity, authentication linkage, Directus users/roles, onboarding, actor attribution |
 | [04_Containers_and_Storage](04_Containers_and_Storage/README.md) | Containers, display assignment, storage locations, physical state/history |
-| [05_Testing_System](05_Testing_System/README.md) | Test sessions, display testing, repair outcomes, testing lifecycle, testing-specific procedures/triggers |
+| [05_Testing_System](05_Testing_System/README.md) | Test sessions, display testing, repair outcomes, testing lifecycle, and links to the PostgreSQL objects that implement the workflow |
 | [06_Work_Orders](06_Work_Orders/README.md) | Intake, triage, assignment, notifications, repair linkage, completion, and dedicated application boundary |
 | [07_Labeling_and_Scanning](07_Labeling_and_Scanning/README.md) | Permanent labels, LabelPrintService integration, QR/barcodes, scanner hardware, scan workflows |
 | [08_Controller_Inventory](08_Controller_Inventory/README.md) | Permanent physical controller identity, inventory, lifecycle, deployment/history |
@@ -77,12 +77,14 @@ This model allows application development to remain isolated from the Production
 - Directus is a shared implementation platform, not a top-level business subsystem. Business-specific Directus Flows are documented with the subsystem whose process they implement.
 - Dedicated application/service projects may maintain their own implementation repositories. The responsible subsystem README here documents how that project fits into Production Database architecture, what data it consumes or changes, and where authority remains.
 - A separate application repository must not create a competing source of truth merely because a task-focused UI is needed.
-- Shared database mechanisms belong under Database Foundation only when they are truly cross-system. Business-specific procedures/triggers belong with their owning subsystem.
+- **Production Database functions, procedures, and triggers have one canonical documentation home under [01 — Database Foundation](01_Database_Foundation/README.md).** Business subsystems link to those documents instead of maintaining scattered authoritative copies.
+- Shared/cross-system objects such as audit helpers, actor attribution, Directus-to-`ref.person` mapping, integrity helpers, and lifecycle logic must be indexed there so they remain discoverable as systems evolve.
+- Standalone systems may keep implementation-specific artifacts with the standalone system when those artifacts are not shared Production Database objects. LOR2DB is the primary example.
 - Project-hour reporting uses milestone-level estimated effort rather than pretending that reconstructed history is a precise timecard. See [90 — Project Hour Log](90_Project%20Hour%20Log/README.md).
 
 ## Legacy Architecture Cleanup
 
-The previous competing numbered folders (`01_Stored_Proceedures` through `06_Scan_Workflows_and_Forklift_Operations`) have been migrated into their owning current subsystems and removed from the active tree.
+The previous competing top-level numbered folders (`01_Stored_Proceedures` through `06_Scan_Workflows_and_Forklift_Operations`) have been migrated out of the active top-level tree. Centralized replacements for Production Database functions/procedures and triggers now live under [01 — Database Foundation](01_Database_Foundation/README.md), while business subsystem documentation links back to those canonical object documents.
 
 The legacy `A_System_Blueprint.md` has been reconciled into the current [Production Database System Overview](../../00_Project_Overview/01_Production_Database_System_Overview.md) and archived as engineering history.
 
