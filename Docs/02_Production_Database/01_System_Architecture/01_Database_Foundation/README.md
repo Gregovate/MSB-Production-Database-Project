@@ -14,7 +14,8 @@ LOR remains authoritative for show topology and wiring configuration. The Produc
 
 ## Authoritative Sources
 
-- Current PostgreSQL schema, constraints, functions, procedures, and triggers are implementation truth.
+- The live PostgreSQL database is runtime implementation truth.
+- The newest dated schema-only export under [`Database/Schema_Snapshots`](../../../../../Database/Schema_Snapshots/README.md) is the durable point-in-time implementation reference used for table/column/FK/constraint/function/trigger/view verification during engineering and documentation work.
 - Current LOR ingestion/reconciliation implementation is maintained under [`LOR2DB`](../../../../LOR2DB/README.md).
 - Historical architecture documents in this directory are being reconciled into the numbered subsystem structure before archival.
 
@@ -41,16 +42,23 @@ This rule is especially important for shared mechanisms such as auditing, actor 
 
 Standalone systems may own their own implementation artifacts when the database object or executable artifact is specific to that standalone system. LOR2DB is the primary example: LOR2DB-specific parser, reconciliation, promotion, validation, and reporting implementation remains with LOR2DB.
 
+## Schema Snapshot Rule
+
+The current production schema snapshot is a required engineering artifact, not disposable documentation. Repository cleanup or reorganization must never remove the only current schema snapshot without first establishing its replacement under [`Database/Schema_Snapshots`](../../../../../Database/Schema_Snapshots/README.md).
+
+Before documenting or changing a table, field, relationship, function, procedure, trigger, constraint, or view, verify names and implementation against the newest schema snapshot or the live database rather than relying on memory or an older design document.
+
 ## Boundaries
 
 Business workflow design, Directus flows, application behavior, and operator procedures remain with the subsystem that owns the business process. PostgreSQL function/procedure/trigger engineering documentation remains centralized here when the object is implemented in the shared Production Database.
 
 ## Related Systems
 
+- [PostgreSQL Schema Snapshots](../../../../../Database/Schema_Snapshots/README.md)
 - [LOR2DB Ingest](../02_LOR2DB_Ingest/README.md)
 - [People and Identity](../03_People_and_Identity/README.md)
 - [Production Database Architecture](../README.md)
 
 ## Resume Development
 
-Before changing a Production Database function, procedure, or trigger, inspect the live PostgreSQL implementation and its canonical document under Database Foundation, then review every subsystem that links to or depends on that object. Do not infer current behavior from legacy architecture documents alone.
+Before changing a Production Database function, procedure, trigger, or shared schema contract, inspect the live PostgreSQL implementation and/or newest schema snapshot, then review its canonical Database Foundation documentation and every subsystem that links to or depends on that object. Do not infer current behavior from legacy architecture documents alone.
