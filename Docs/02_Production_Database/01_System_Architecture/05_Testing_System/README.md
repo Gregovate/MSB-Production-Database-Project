@@ -17,10 +17,10 @@ Testing validates more than whether a display lights. It also verifies container
 Testing must distinguish between displays that are **RETIRED** and displays that are **RECYCLED**.
 
 - **RETIRED** means the display still physically exists but is no longer used in the current show. A retired display may remain assigned to a storage container, including a container used for retired displays. Retirement by itself is not a reason to remove the display from inventory or delete its container relationship.
-- **RECYCLED** means the display physically no longer exists. Recycled displays are excluded from active testing and may be removed from active test-session relationships when the cleanup can be performed safely.
+- **RECYCLED** means the original display no longer physically exists as a display. Some or all components such as frames, lights, or hardware may have been reused elsewhere. Recycled displays are excluded from active testing and may be removed from active test-session relationships when cleanup can be performed safely.
 - When a RECYCLED display uses a synthetic **Standalone Display** container, the Testing cleanup process may also remove that synthetic container and its active testing relationships when no protected work-order or historical dependency prevents cleanup.
 
-The refresh/cleanup process must preserve historical testing and work-order records when dependencies still exist.
+The current implementation conservatively retains the `ref.display` record after RECYCLED because existing foreign-key relationships make deletion unsafe. This is a current implementation limitation, not a requirement that recycled display identities must remain in current inventory forever. Any future historical-display/archive redesign is outside the scope of the current Testing workflow and must preserve protected operational history.
 
 ## Dependencies
 
@@ -59,6 +59,7 @@ The current operator testing SOP predates the documentation standard and must be
 
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
 - [Work Orders](../06_Work_Orders/README.md)
+- [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 - [Test Session Operational SOPs](../../02_Operational_SOPs/Test_Sessions/README.md)
 
 ## Known Open Work
