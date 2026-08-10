@@ -76,6 +76,14 @@ When source code, SQL, configuration, or another controlled artifact is the auth
 
 For example, the LOR parser source owns the executable SQLite `CREATE TABLE` and `CREATE VIEW` definitions. Engineering documentation describes why those tables and views exist, how they relate, and what downstream systems depend on them.
 
+### Centralized implementation-object documentation
+
+When a project has a class of shared implementation objects that can be used by multiple subsystems, maintain one predictable canonical documentation home and index for that class of objects. Subsystem documentation should link to the canonical object document instead of keeping competing copies.
+
+For the MSB Production Database, PostgreSQL functions, procedures, and triggers are centralized under `01_Database_Foundation`. This keeps shared objects such as audit helpers, actor attribution, identity lookup/mapping, integrity helpers, and lifecycle logic discoverable as applications and workflows change.
+
+Standalone systems may own their own implementation-specific artifacts when those artifacts are truly part of that standalone system rather than shared project infrastructure. The owning system must still be linked from related project architecture so the boundary remains visible.
+
 ## Link Quality
 
 All current documentation should use current, navigable links.
