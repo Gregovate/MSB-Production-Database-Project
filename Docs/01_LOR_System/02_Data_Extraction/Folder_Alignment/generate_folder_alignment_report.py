@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Read-only LOR vs Google Shared Drive documentation alignment report.
 
-Windows V1.2.0. Uses the current parser SQLite output as the LOR source of truth.
+Windows V1.3.0. Uses the current parser SQLite output as the LOR source of truth.
 Google Drive is inventoried read-only; no folder or document is created, moved,
 renamed, or deleted.
+
+V1.3 adds Preview-aware Stage resolution:
+- Background Previews continue to use their Stage and Scene organization.
+- Master Musical Preview scenes resolve to the real top-level Stage first.
+- A Master Musical Scene name may identify the Stage directly.
+- Otherwise the Scene BackgroundFile path may identify the top-level Stage folder.
+- Musical Scene names are not automatically treated as child Drive folders.
 """
 from __future__ import annotations
 
@@ -18,13 +25,14 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from difflib import SequenceMatcher
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
-VERSION = "V1.2.0"
+VERSION = "V1.3.0"
 DEFAULT_DB = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
 DEFAULT_ROOT = Path(r"G:\Shared drives\Display Folders")
 DEFAULT_OUTPUT = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment")
 STAGE_RE = re.compile(r"^(?P<stage>\d{2}[A-Za-z]?)-")
+MASTER_MUSICAL_RE = re.compile(r"^\s*\d{4}\s+Master\s+Musical\s+Preview\b", re.IGNORECASE)
 
 INFRA_ROOTS = {"photos", "procedures", "wiring"}
 PRUNE_EXACT = {
@@ -32,6 +40,16 @@ PRUNE_EXACT = {
     "historical", "debug", "templates", "libraries", "workspaces",
 }
 LEGACY_INSTRUCTION_NAMES = {"000instructions", "000instruction"}
+
+
+@dataclass(frozen=True)
+class SceneInfo:
+    preview_name: str
+    preview_stage_id: str
+    scene_stage_id: str
+    scene_name: str
+    background_file: str
+    is_master_musical: bool
 
 
 @dataclass(frozen=True)
@@ -74,6 +92,7 @@ class HelperContext:
     published_files: list[Path]
     legacy_instruction_dirs: list[Path]
     legacy_files: list[Path]
+    resolution_method: str = ""
 
 
 def norm(value: str | None) -> str:
@@ -134,23 +153,43 @@ def pick(columns: list[str], *names: str) -> str | None:
 
 
 def exists(conn: sqlite3.Connection, obj: str) -> bool:
-    return conn.execute("SELECT 1 FROM sqlite_master WHERE lower(name)=lower(?)", (obj,)).fetchone() is not None
+    return conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE lower(name)=lower(?)", (obj,)
+    ).fetchone() is not None
 
 
 def load_expected(conn: sqlite3.Connection):
     if not exists(conn, "previews") or not exists(conn, "props"):
         raise RuntimeError("This is not a current V7 LOR SQLite snapshot (previews/props missing).")
+    if not exists(conn, "scenes") or not exists(conn, "scene_displays_vw"):
+        raise RuntimeError("Current snapshot does not contain V7 scene data; run the current V7 parser first.")
 
     pc = cols(conn, "previews")
     prc = cols(conn, "props")
+    scn = cols(conn, "scenes")
+    vw = cols(conn, "scene_displays_vw")
+
     p_id = pick(pc, "id", "PreviewID", "PreviewId")
     p_stage = pick(pc, "StageID", "StageId")
     p_name = pick(pc, "Name", "PreviewName")
     pr_prev = pick(prc, "PreviewId", "PreviewID")
     pr_disp = pick(prc, "LORComment", "DisplayName", "Display_Name")
     pr_type = pick(prc, "DeviceType", "Device_Type")
+
+    s_prev = pick(scn, "PreviewId", "PreviewID")
+    s_stage = pick(scn, "StageID", "StageId")
+    s_name = pick(scn, "Name", "SceneName")
+    s_bg = pick(scn, "BackgroundFile")
+
+    v_stage = pick(vw, "SceneStageID", "StageID", "StageId")
+    v_name = pick(vw, "SceneName", "Name")
+    v_disp = pick(vw, "DisplayName", "Display_Name", "LORComment")
+    v_preview = pick(vw, "PreviewName")
+
     if not all((p_id, p_stage, p_name, pr_prev, pr_disp, pr_type)):
         raise RuntimeError("Could not resolve current previews/props columns including DeviceType.")
+    if not all((s_prev, s_name, s_bg, v_stage, v_name, v_disp)):
+        raise RuntimeError("Could not resolve current scene columns.")
 
     previews: dict[str, list[str]] = defaultdict(list)
     for sid, name in conn.execute(
@@ -161,6 +200,25 @@ def load_expected(conn: sqlite3.Connection):
         if name and str(name) not in previews[key]:
             previews[key].append(str(name))
 
+    scene_infos: list[SceneInfo] = []
+    scene_sql = (
+        f"SELECT p.{qi(p_name)}, p.{qi(p_stage)}, s.{qi(s_stage)}, "
+        f"s.{qi(s_name)}, s.{qi(s_bg)} "
+        f"FROM scenes s JOIN previews p ON p.{qi(p_id)}=s.{qi(s_prev)} "
+        f"WHERE NULLIF(TRIM(s.{qi(s_name)}),'') IS NOT NULL "
+        f"ORDER BY p.{qi(p_name)}, s.{qi(s_name)}"
+    )
+    for preview_name, preview_stage, scene_stage, scene_name, bg in conn.execute(scene_sql):
+        info = SceneInfo(
+            preview_name="" if preview_name is None else str(preview_name).strip(),
+            preview_stage_id="" if preview_stage is None else stage_key(str(preview_stage)),
+            scene_stage_id="" if scene_stage is None else stage_key(str(scene_stage)),
+            scene_name=str(scene_name).strip(),
+            background_file="" if bg is None else str(bg).strip(),
+            is_master_musical=bool(MASTER_MUSICAL_RE.search("" if preview_name is None else str(preview_name))),
+        )
+        scene_infos.append(info)
+
     lor_names: set[str] = set()
     for (display,) in conn.execute(
         f"SELECT DISTINCT {qi(pr_disp)} FROM props "
@@ -170,26 +228,19 @@ def load_expected(conn: sqlite3.Connection):
         lor_names.add(str(display).strip())
     lor_norm = {norm(x) for x in lor_names}
 
-    if not exists(conn, "scene_displays_vw"):
-        raise RuntimeError("Current snapshot does not contain scene_displays_vw; run the current V7 parser first.")
-
-    sc = cols(conn, "scene_displays_vw")
-    s_stage = pick(sc, "SceneStageID", "StageID", "StageId")
-    s_name = pick(sc, "SceneName", "Name")
-    s_disp = pick(sc, "DisplayName", "Display_Name", "LORComment")
-    if not all((s_stage, s_name, s_disp)):
-        raise RuntimeError("Could not resolve columns in scene_displays_vw.")
-
     scenes: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     display_scenes: dict[tuple[str, str], set[str]] = defaultdict(set)
     scene_assigned_norms: set[str] = set()
-    scene_sql = (
-        f"SELECT DISTINCT {qi(s_stage)}, {qi(s_name)}, {qi(s_disp)} FROM scene_displays_vw "
-        f"WHERE NULLIF(TRIM({qi(s_stage)}),'') IS NOT NULL "
-        f"AND NULLIF(TRIM({qi(s_name)}),'') IS NOT NULL "
-        f"AND NULLIF(TRIM({qi(s_disp)}),'') IS NOT NULL ORDER BY 1,2,3"
+
+    preview_expr = qi(v_preview) if v_preview else "''"
+    vw_sql = (
+        f"SELECT DISTINCT {qi(v_stage)}, {qi(v_name)}, {qi(v_disp)}, {preview_expr} "
+        f"FROM scene_displays_vw "
+        f"WHERE NULLIF(TRIM({qi(v_stage)}),'') IS NOT NULL "
+        f"AND NULLIF(TRIM({qi(v_name)}),'') IS NOT NULL "
+        f"AND NULLIF(TRIM({qi(v_disp)}),'') IS NOT NULL ORDER BY 1,2,3"
     )
-    for sid, scene, display in conn.execute(scene_sql):
+    for sid, scene, display, _preview in conn.execute(vw_sql):
         display_name = str(display).strip()
         if norm(display_name) not in lor_norm:
             continue
@@ -233,7 +284,7 @@ def load_expected(conn: sqlite3.Connection):
         if row:
             provenance = {c[i]: "" if row[i] is None else str(row[i]) for i in range(len(c))}
 
-    return dict(previews), {k: dict(v) for k, v in scenes.items()}, displays, provenance
+    return dict(previews), {k: dict(v) for k, v in scenes.items()}, displays, scene_infos, provenance
 
 
 def rel(path: Path, root: Path) -> str:
@@ -250,24 +301,29 @@ def prune_branch(name: str) -> bool:
     return n.startswith("archive") or n.startswith("archived")
 
 
-def inventory_drive(root: Path, expected_stage_ids: set[str]):
+def inventory_drive(root: Path):
     print("[INFO] Reading Stage folders from Google Drive...", flush=True)
     stages: dict[str, list[Path]] = defaultdict(list)
+    by_name: dict[str, Path] = {}
+
     for child in root.iterdir():
-        if child.is_dir():
-            m = STAGE_RE.match(child.name)
-            if m:
-                stages[stage_key(m.group("stage"))].append(child)
+        if not child.is_dir():
+            continue
+        m = STAGE_RE.match(child.name)
+        if not m:
+            continue
+        stages[stage_key(m.group("stage"))].append(child)
+        by_name[norm(child.name)] = child
 
     candidates: dict[str, list[Path]] = defaultdict(list)
     direct: dict[str, list[Path]] = defaultdict(list)
 
-    for n, sid in enumerate(sorted(expected_stage_ids), 1):
-        matches = stages.get(sid, [])
+    for sid in sorted(stages):
+        matches = stages[sid]
         if len(matches) != 1:
             continue
         stage = matches[0]
-        print(f"[INFO] Scanning Stage {sid} ({n}/{len(expected_stage_ids)}): {stage.name}", flush=True)
+        print(f"[INFO] Scanning Stage {sid}: {stage.name}", flush=True)
 
         try:
             for child in stage.iterdir():
@@ -280,7 +336,10 @@ def inventory_drive(root: Path, expected_stage_ids: set[str]):
             for current, dirs, _files in os.walk(stage):
                 current_path = Path(current)
                 if current_path == stage:
-                    dirs[:] = [d for d in dirs if norm(d) not in INFRA_ROOTS and not prune_branch(d)]
+                    dirs[:] = [
+                        d for d in dirs
+                        if norm(d) not in INFRA_ROOTS and not prune_branch(d)
+                    ]
                     continue
                 dirs[:] = [d for d in dirs if not prune_branch(d)]
                 candidates[sid].append(current_path)
@@ -288,7 +347,7 @@ def inventory_drive(root: Path, expected_stage_ids: set[str]):
             pass
 
     print("[INFO] Google Drive inventory complete.", flush=True)
-    return dict(stages), dict(candidates), dict(direct)
+    return dict(stages), by_name, dict(candidates), dict(direct)
 
 
 def score_name(lor_name: str, folder_name: str, kind: str) -> tuple[float, str]:
@@ -331,6 +390,65 @@ def confidence(score: float) -> str:
     if score >= 0.65:
         return "LOW"
     return ""
+
+
+def top_stage_from_background(background_file: str, stage_folders: dict[str, list[Path]]) -> Path | None:
+    """Resolve only the top-level Stage folder from a stored Windows BackgroundFile path."""
+    if not background_file:
+        return None
+    try:
+        bg = PureWindowsPath(background_file)
+    except (TypeError, ValueError):
+        return None
+
+    bg_parts = [norm(p) for p in bg.parts]
+    for matches in stage_folders.values():
+        if len(matches) != 1:
+            continue
+        stage = matches[0]
+        if norm(stage.name) in bg_parts:
+            return stage
+    return None
+
+
+def direct_stage_from_scene_name(scene_name: str, stage_folders: dict[str, list[Path]]) -> Path | None:
+    """Exact normalized Stage-folder identity only; no fuzzy Stage inference."""
+    target = norm(scene_name)
+    matches = [
+        paths[0] for paths in stage_folders.values()
+        if len(paths) == 1 and norm(paths[0].name) == target
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def resolve_scene_stage(
+    info: SceneInfo,
+    stage_folders: dict[str, list[Path]],
+) -> tuple[Path | None, str]:
+    """Resolve the real top-level Stage for one parsed Scene."""
+    if info.is_master_musical:
+        by_name = direct_stage_from_scene_name(info.scene_name, stage_folders)
+        if by_name is not None:
+            return by_name, "Master Musical Scene matches Stage folder"
+
+        by_path = top_stage_from_background(info.background_file, stage_folders)
+        if by_path is not None:
+            return by_path, "Master Musical BackgroundFile path"
+
+        sm = stage_folders.get(info.scene_stage_id, [])
+        if len(sm) == 1:
+            return sm[0], "SceneStageID fallback"
+        return None, "Master Musical Stage unresolved"
+
+    sid = info.preview_stage_id or info.scene_stage_id
+    sm = stage_folders.get(sid, [])
+    if len(sm) == 1:
+        return sm[0], "Background Preview StageID"
+
+    by_path = top_stage_from_background(info.background_file, stage_folders)
+    if by_path is not None:
+        return by_path, "BackgroundFile Stage fallback"
+    return None, "Stage unresolved"
 
 
 def find_scene_folder(scene: str, direct_paths: list[Path]) -> Path | None:
@@ -378,118 +496,186 @@ def list_recursive_files(folder: Path) -> list[Path]:
     return sorted(files, key=lambda p: str(p).casefold())
 
 
-def build_helper_contexts(root: Path, scenes, stage_folders, direct) -> dict[str, list[HelperContext]]:
-    result: dict[str, list[HelperContext]] = defaultdict(list)
-    for sid in sorted(set(stage_folders) | set(scenes)):
-        sm = stage_folders.get(sid, [])
-        if len(sm) != 1:
-            continue
-        stage = sm[0]
-
-        stage_setup = stage / "Procedures" / "Setup"
-        stage_legacy = find_legacy_instruction_dirs(stage)
-        result[sid].append(HelperContext(
-            stage_id=sid,
-            scope_type="STAGE",
-            scope_name=stage.name,
-            base_path=stage,
-            setup_path=stage_setup,
-            setup_exists=stage_setup.is_dir(),
-            published_files=list_direct_files(stage_setup),
-            legacy_instruction_dirs=stage_legacy,
-            legacy_files=[f for d in stage_legacy for f in list_recursive_files(d)],
-        ))
-
-        for scene in sorted(scenes.get(sid, {}), key=str.casefold):
-            scene_path = find_scene_folder(scene, direct.get(sid, []))
-            if scene_path is None:
-                scene_path = stage / scene
-            scene_setup = scene_path / "Procedures" / "Setup"
-            scene_legacy = find_legacy_instruction_dirs(scene_path) if scene_path.is_dir() else []
-            result[sid].append(HelperContext(
-                stage_id=sid,
-                scope_type="SCENE",
-                scope_name=scene,
-                base_path=scene_path,
-                setup_path=scene_setup,
-                setup_exists=scene_setup.is_dir(),
-                published_files=list_direct_files(scene_setup),
-                legacy_instruction_dirs=scene_legacy,
-                legacy_files=[f for d in scene_legacy for f in list_recursive_files(d)],
-            ))
-    return dict(result)
+def helper_context(
+    root: Path,
+    stage_id: str,
+    scope_type: str,
+    scope_name: str,
+    base_path: Path,
+    resolution_method: str,
+) -> HelperContext:
+    setup_path = base_path / "Procedures" / "Setup"
+    legacy = find_legacy_instruction_dirs(base_path)
+    return HelperContext(
+        stage_id=stage_id,
+        scope_type=scope_type,
+        scope_name=scope_name,
+        base_path=base_path,
+        setup_path=setup_path,
+        setup_exists=setup_path.is_dir(),
+        published_files=list_direct_files(setup_path),
+        legacy_instruction_dirs=legacy,
+        legacy_files=[f for d in legacy for f in list_recursive_files(d)],
+        resolution_method=resolution_method,
+    )
 
 
-def audit(root: Path, previews, scenes, displays):
-    expected_stage_ids = set(previews) | set(scenes) | {d.stage_id for d in displays}
-    stage_folders, candidates, direct = inventory_drive(root, expected_stage_ids)
+def audit(root: Path, previews, scenes, displays, scene_infos):
+    stage_folders, _stage_by_name, candidates, direct = inventory_drive(root)
     findings: list[Finding] = []
+    helpers: dict[str, list[HelperContext]] = defaultdict(list)
+    stage_path_to_id: dict[str, str] = {}
+    for sid, paths in stage_folders.items():
+        if len(paths) == 1:
+            stage_path_to_id[str(paths[0]).casefold()] = sid
 
-    for sid in sorted(expected_stage_ids):
+    scene_resolution: dict[tuple[str, str], tuple[Path | None, str, bool]] = {}
+    for info in scene_infos:
+        stage, method = resolve_scene_stage(info, stage_folders)
+        scene_resolution[(info.scene_stage_id, info.scene_name)] = (stage, method, info.is_master_musical)
+
+    used_stage_ids: set[str] = set(previews)
+    for stage, _method, _musical in scene_resolution.values():
+        if stage is not None:
+            sid = stage_path_to_id.get(str(stage).casefold())
+            if sid:
+                used_stage_ids.add(sid)
+
+    for sid in sorted(used_stage_ids):
         sm = stage_folders.get(sid, [])
         if len(sm) == 0:
-            findings.append(Finding(sid, "STAGE", sid, "", sid, str(root), str(root / sid), "MISSING", "", "CREATE_STAGE_REVIEW", "No Stage folder with this StageID was found."))
+            findings.append(Finding(
+                sid, "STAGE", sid, "", sid, str(root), str(root / sid),
+                "MISSING", "", "CREATE_STAGE_REVIEW",
+                "No Stage folder with this StageID was found."
+            ))
             continue
         if len(sm) > 1:
-            findings.append(Finding(sid, "STAGE", sid, "; ".join(rel(p, root) for p in sm), sid, str(root), "", "AMBIGUOUS", "", "REVIEW_MULTIPLE", "More than one Stage folder has this StageID."))
+            findings.append(Finding(
+                sid, "STAGE", sid, "; ".join(rel(p, root) for p in sm),
+                sid, str(root), "", "AMBIGUOUS", "", "REVIEW_MULTIPLE",
+                "More than one Stage folder has this StageID."
+            ))
             continue
-        stage = sm[0]
-        findings.append(Finding(sid, "STAGE", sid, rel(stage, root), stage.name, str(root), rel(stage, root), "MATCH", "HIGH", "NONE", "Stage matched by two-digit StageID."))
 
-        for scene in sorted(scenes.get(sid, {}), key=str.casefold):
-            rec_name = scene
-            rec_parent = rel(stage, root)
-            rec_path = f"{rec_parent}\\{rec_name}"
-            matches = best_candidates(scene, direct.get(sid, []), "SCENE")
-            if matches and matches[0].score >= 0.93:
-                p = matches[0].path
-                exact_name = p.name == rec_name
-                status = "MATCH" if exact_name else "LIKELY_MATCH"
-                action = "NONE" if exact_name else "RENAME"
-                findings.append(Finding(sid, "SCENE", scene, rel(p, root), rec_name, rec_parent, rec_path, status, confidence(matches[0].score), action, matches[0].reason))
-            elif matches and matches[0].score >= 0.78:
-                p = matches[0].path
-                findings.append(Finding(sid, "SCENE", scene, rel(p, root), rec_name, rec_parent, rec_path, "POSSIBLE_MATCH", confidence(matches[0].score), "REVIEW", matches[0].reason))
-            else:
-                findings.append(Finding(sid, "SCENE", scene, "", rec_name, rec_parent, rec_path, "MISSING", "", "CREATE_SCENE_FOLDER", "LOR Scene has no likely direct folder match under the Stage."))
+        stage = sm[0]
+        findings.append(Finding(
+            sid, "STAGE", sid, rel(stage, root), stage.name, str(root),
+            rel(stage, root), "MATCH", "HIGH", "NONE",
+            "Stage matched by top-level two-digit StageID."
+        ))
+        helpers[sid].append(helper_context(
+            root, sid, "STAGE", stage.name, stage, "Top-level Stage folder"
+        ))
+
+    for info in scene_infos:
+        stage, method, is_musical = scene_resolution[(info.scene_stage_id, info.scene_name)]
+        if stage is None:
+            findings.append(Finding(
+                info.scene_stage_id or "?", "SCENE", info.scene_name, "",
+                info.scene_name, "", "", "SCENE_STAGE_REVIEW", "",
+                "REVIEW", f"{method}; no top-level Stage could be resolved."
+            ))
+            continue
+
+        sid = stage_path_to_id.get(str(stage).casefold(), info.scene_stage_id)
+        stage_rel = rel(stage, root)
+
+        if is_musical:
+            findings.append(Finding(
+                sid, "MUSICAL_GROUP", info.scene_name, stage_rel,
+                stage.name, stage_rel, stage_rel, "STAGE_SCOPE",
+                "HIGH", "NONE",
+                f"{method}. Master Musical Scene is used to resolve Stage membership; "
+                "it is not automatically a child Google Drive folder."
+            ))
+            continue
+
+        scene_path = find_scene_folder(info.scene_name, direct.get(sid, []))
+        if scene_path is not None:
+            findings.append(Finding(
+                sid, "SCENE", info.scene_name, rel(scene_path, root),
+                scene_path.name, stage_rel, rel(scene_path, root),
+                "MATCH", "HIGH", "NONE",
+                f"{method}; existing Scene folder matched."
+            ))
+            helpers[sid].append(helper_context(
+                root, sid, "SCENE", info.scene_name, scene_path,
+                "Existing Background Scene folder match"
+            ))
+        else:
+            findings.append(Finding(
+                sid, "SCENE", info.scene_name, "", info.scene_name,
+                stage_rel, f"{stage_rel}\\{info.scene_name}",
+                "SCENE_SCOPE_REVIEW", "", "REVIEW",
+                f"{method}; no one-to-one existing Scene folder match. "
+                "Review before creating or moving folders."
+            ))
 
     display_findings: list[Finding] = []
     candidate_usage: dict[str, list[int]] = defaultdict(list)
 
     for d in displays:
-        sm = stage_folders.get(d.stage_id, [])
-        rec_name = d.name
-        if len(sm) != 1:
-            display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, "", rec_name, "", "", "BLOCKED", "", "REVIEW_STAGE", "Stage folder is missing or ambiguous."))
-            continue
-        stage = sm[0]
+        resolved_stage: Path | None = None
+        musical_scope = False
+        resolution_note = ""
 
         if len(d.scenes) == 1:
-            scene = d.scenes[0]
-            rec_parent = f"{rel(stage, root)}\\{scene}"
-            rec_path = f"{rec_parent}\\{rec_name}"
-        elif len(d.scenes) > 1:
-            rec_parent = "Multiple LOR Scenes"
-            rec_path = ""
-        else:
-            rec_parent = rel(stage, root)
-            rec_path = f"{rec_parent}\\{rec_name}"
+            key = (d.stage_id, d.scenes[0])
+            resolved_stage, resolution_note, musical_scope = scene_resolution.get(
+                key, (None, "Scene resolution not found", False)
+            )
 
-        matches = best_candidates(d.name, candidates.get(d.stage_id, []), "DISPLAY")
+        if resolved_stage is None:
+            sm = stage_folders.get(d.stage_id, [])
+            if len(sm) == 1:
+                resolved_stage = sm[0]
+                resolution_note = "StageID"
+            elif len(d.scenes) > 1:
+                display_findings.append(Finding(
+                    d.stage_id, "DISPLAY", d.name, "", d.name,
+                    "Multiple LOR Scenes", "", "REVIEW_MULTIPLE_SCENES", "",
+                    "REVIEW", "Display appears in more than one LOR Scene: " + ", ".join(d.scenes)
+                ))
+                continue
+            else:
+                display_findings.append(Finding(
+                    d.stage_id, "DISPLAY", d.name, "", d.name, "", "",
+                    "BLOCKED", "", "REVIEW_STAGE",
+                    "Top-level Stage could not be resolved."
+                ))
+                continue
 
-        if len(d.scenes) > 1:
-            current = rel(matches[0].path, root) if matches else ""
-            display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, current, rec_name, rec_parent, rec_path, "REVIEW_MULTIPLE_SCENES", confidence(matches[0].score) if matches else "", "REVIEW", "Display appears in more than one LOR Scene: " + ", ".join(d.scenes)))
-            continue
+        sid = stage_path_to_id.get(str(resolved_stage).casefold(), d.stage_id)
+        stage_rel = rel(resolved_stage, root)
+
+        rec_parent = stage_rel
+        if len(d.scenes) == 1 and not musical_scope:
+            scene_path = find_scene_folder(d.scenes[0], direct.get(sid, []))
+            if scene_path is not None:
+                rec_parent = rel(scene_path, root)
+
+        rec_path = f"{rec_parent}\\{d.name}"
+        matches = best_candidates(d.name, candidates.get(sid, []), "DISPLAY")
 
         if not matches:
-            display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, "", rec_name, rec_parent, rec_path, "NO_FOLDER_MATCH", "", "REVIEW_FOLDER_NEED", "No likely existing documentation folder was found. This does not mean a folder must be created."))
+            display_findings.append(Finding(
+                sid, "DISPLAY", d.name, "", d.name, rec_parent, rec_path,
+                "NO_FOLDER_MATCH", "", "REVIEW_FOLDER_NEED",
+                f"No likely existing documentation folder was found. "
+                f"Resolved Stage by {resolution_note}. This does not mean a folder must be created."
+            ))
             continue
 
         top = matches[0]
         current = rel(top.path, root)
         c = confidence(top.score)
-        if top.score >= 0.93:
+
+        target_path = root / rec_path
+        if top.path == target_path:
+            status = "MATCH"
+            action = "NONE"
+        elif top.score >= 0.93:
             status = "LIKELY_MATCH"
             action = "REVIEW_RENAME_OR_MOVE"
         elif top.score >= 0.78:
@@ -499,14 +685,19 @@ def audit(root: Path, previews, scenes, displays):
             status = "WEAK_MATCH"
             action = "REVIEW"
 
-        note = top.reason
+        note = f"{top.reason}; Stage resolved by {resolution_note}"
         if len(matches) > 1 and matches[1].score >= top.score - 0.04:
             status = "REVIEW_MULTIPLE"
             action = "REVIEW"
-            note += "; competing candidates: " + "; ".join(f"{rel(x.path, root)} ({x.score:.2f})" for x in matches[1:])
+            note += "; competing candidates: " + "; ".join(
+                f"{rel(x.path, root)} ({x.score:.2f})" for x in matches[1:]
+            )
 
         idx = len(display_findings)
-        display_findings.append(Finding(d.stage_id, "DISPLAY", d.name, current, rec_name, rec_parent, rec_path, status, c, action, note))
+        display_findings.append(Finding(
+            sid, "DISPLAY", d.name, current, d.name, rec_parent,
+            rec_path, status, c, action, note
+        ))
         if top.score >= 0.65:
             candidate_usage[current.casefold()].append(idx)
 
@@ -523,8 +714,7 @@ def audit(root: Path, previews, scenes, displays):
             )
 
     findings.extend(display_findings)
-    helpers = build_helper_contexts(root, scenes, stage_folders, direct)
-    return findings, helpers
+    return findings, dict(helpers)
 
 
 def file_href(path: Path) -> str:
@@ -555,7 +745,7 @@ def render_file_list(paths: list[Path], root: Path) -> str:
     return "<ul>" + "".join(items) + "</ul>"
 
 
-def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings, helpers, provenance):
+def write_reports(output: Path, root: Path, db: Path, previews, findings, helpers, provenance):
     output.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     csv_path = output / f"lor-google-drive-alignment-{stamp}.csv"
@@ -582,20 +772,61 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
 
     esc = lambda v: html.escape(str(v or ""))
     parts = ["<!doctype html><html><head><meta charset='utf-8'><title>MSB Documentation Alignment Worklist</title>"]
-    parts.append("<style>body{font-family:Segoe UI,Arial;margin:24px;color:#222}table{border-collapse:collapse;width:100%;margin:10px 0 28px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{background:#eee}.MATCH{background:#edf8ed}.MISSING,.NO_FOLDER_MATCH{background:#fff0f0}.LIKELY_MATCH,.LIKELY_SHARED_GROUP{background:#eef7ff}.POSSIBLE_MATCH,.WEAK_MATCH,.REVIEW_MULTIPLE,.REVIEW_MULTIPLE_SCENES,.BLOCKED{background:#fff7e6}code{font-family:Consolas,monospace}.warn{padding:10px;background:#fff8d6;border:1px solid #d5a400}.roadmap{padding:12px;border:2px solid #6a8fb3;background:#f7fbff;margin:14px 0}.ok{color:#176b22;font-weight:700}.missing{color:#a40000;font-weight:700}.legacy{background:#fff4e5;padding:8px;border-left:4px solid #d98a00}ul{margin-top:5px}</style></head><body>")
+    parts.append(
+        "<style>"
+        "body{font-family:Segoe UI,Arial;margin:24px;color:#222}"
+        "table{border-collapse:collapse;width:100%;margin:10px 0 28px;font-size:13px}"
+        "th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}"
+        "th{background:#eee}"
+        ".MATCH,.STAGE_SCOPE{background:#edf8ed}"
+        ".MISSING,.NO_FOLDER_MATCH{background:#fff0f0}"
+        ".LIKELY_MATCH,.LIKELY_SHARED_GROUP{background:#eef7ff}"
+        ".POSSIBLE_MATCH,.WEAK_MATCH,.REVIEW_MULTIPLE,.REVIEW_MULTIPLE_SCENES,"
+        ".BLOCKED,.SCENE_SCOPE_REVIEW,.SCENE_STAGE_REVIEW{background:#fff7e6}"
+        "code{font-family:Consolas,monospace}"
+        ".warn{padding:10px;background:#fff8d6;border:1px solid #d5a400}"
+        ".roadmap{padding:12px;border:2px solid #6a8fb3;background:#f7fbff;margin:14px 0}"
+        ".ok{color:#176b22;font-weight:700}.missing{color:#a40000;font-weight:700}"
+        ".legacy{background:#fff4e5;padding:8px;border-left:4px solid #d98a00}"
+        "ul{margin-top:5px}</style></head><body>"
+    )
     parts.append("<h1>MSB Documentation Alignment Worklist</h1>")
-    parts.append("<p class='warn'><strong>READ-ONLY.</strong> This is a roadmap generated from the current LOR parser snapshot and the current Google Shared Drive. It does not change any folders or documents. Regenerate it after LOR or folder changes.</p>")
-    parts.append(f"<p><strong>Version:</strong> {VERSION}<br><strong>Generated:</strong> {esc(datetime.now().astimezone())}<br><strong>SQLite snapshot:</strong> <code>{esc(db)}</code><br><strong>Drive:</strong> <code>{esc(root)}</code></p>")
+    parts.append(
+        "<p class='warn'><strong>READ-ONLY.</strong> This is a roadmap generated from the current "
+        "LOR parser snapshot and the current Google Shared Drive. It does not change any folders or "
+        "documents. Regenerate it after LOR or folder changes.</p>"
+    )
+    parts.append(
+        "<p><strong>V1.3 Preview rule:</strong> The root is always the top-level Stage. "
+        "Background Preview Scenes may use established Scene folders for grouping. "
+        "Master Musical Preview scenes resolve Stage membership first and are not automatically "
+        "treated as child folders.</p>"
+    )
+    parts.append(
+        f"<p><strong>Version:</strong> {VERSION}<br>"
+        f"<strong>Generated:</strong> {esc(datetime.now().astimezone())}<br>"
+        f"<strong>SQLite snapshot:</strong> <code>{esc(db)}</code><br>"
+        f"<strong>Drive:</strong> <code>{esc(root)}</code></p>"
+    )
     if provenance:
-        parts.append("<p><strong>Parser snapshot details:</strong> " + "; ".join(f"{esc(k)}={esc(v)}" for k, v in provenance.items() if v) + "</p>")
-    parts.append("<h2>Summary</h2><p>" + " &nbsp; ".join(f"<strong>{esc(k)}:</strong> {v}" for k, v in sorted(counts.items())) + "</p>")
+        parts.append(
+            "<p><strong>Parser snapshot details:</strong> " +
+            "; ".join(f"{esc(k)}={esc(v)}" for k, v in provenance.items() if v) +
+            "</p>"
+        )
+    parts.append(
+        "<h2>Summary</h2><p>" +
+        " &nbsp; ".join(f"<strong>{esc(k)}:</strong> {v}" for k, v in sorted(counts.items())) +
+        "</p>"
+    )
 
     for sid in sorted(by_stage):
         parts.append(f"<h2>Stage {esc(sid)}</h2>")
         if previews.get(sid):
-            parts.append("<p><strong>LOR Preview(s):</strong> " + "; ".join(esc(v) for v in previews[sid]) + "</p>")
-        if scenes.get(sid):
-            parts.append("<p><strong>LOR Scenes:</strong> " + "; ".join(esc(v) for v in sorted(scenes[sid], key=str.casefold)) + "</p>")
+            parts.append(
+                "<p><strong>Background/Stage Preview(s):</strong> " +
+                "; ".join(esc(v) for v in previews[sid]) + "</p>"
+            )
 
         parts.append("<div class='roadmap'><h3>Documentation Roadmap</h3>")
         contexts = helpers.get(sid, [])
@@ -603,23 +834,49 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
             parts.append("<p>No single Stage folder is available for helper-folder inventory.</p>")
         for ctx in contexts:
             parts.append(f"<h4>{esc(ctx.scope_type.title())}: {esc(ctx.scope_name)}</h4>")
+            if ctx.resolution_method:
+                parts.append(f"<p><strong>Why this location:</strong> {esc(ctx.resolution_method)}</p>")
             base_link_target = ctx.base_path if ctx.base_path.is_dir() else ctx.base_path.parent
-            parts.append(f"<p><strong>Location:</strong> <code>{esc(rel(ctx.base_path, root))}</code> &nbsp; {folder_link(base_link_target)}</p>")
+            parts.append(
+                f"<p><strong>Location:</strong> <code>{esc(rel(ctx.base_path, root))}</code> "
+                f"&nbsp; {folder_link(base_link_target)}</p>"
+            )
             if ctx.setup_exists:
-                parts.append(f"<p><span class='ok'>Setup folder exists</span>: <code>{esc(rel(ctx.setup_path, root))}</code> &nbsp; {folder_link(ctx.setup_path, 'Open Setup Folder')}</p>")
+                parts.append(
+                    f"<p><span class='ok'>Setup folder exists</span>: "
+                    f"<code>{esc(rel(ctx.setup_path, root))}</code> &nbsp; "
+                    f"{folder_link(ctx.setup_path, 'Open Setup Folder')}</p>"
+                )
             else:
-                parts.append(f"<p><span class='missing'>Setup folder missing</span>: expected <code>{esc(rel(ctx.setup_path, root))}</code>. Open the nearest existing location: {folder_link(base_link_target)}</p>")
-            parts.append(f"<p><strong>Published Setup Documents ({len(ctx.published_files)}):</strong></p>{render_file_list(ctx.published_files, root)}")
+                parts.append(
+                    f"<p><span class='missing'>Setup folder missing</span>: expected "
+                    f"<code>{esc(rel(ctx.setup_path, root))}</code>. "
+                    f"Open the nearest existing location: {folder_link(base_link_target)}</p>"
+                )
+            parts.append(
+                f"<p><strong>Published Setup Documents ({len(ctx.published_files)}):</strong></p>"
+                f"{render_file_list(ctx.published_files, root)}"
+            )
             if ctx.legacy_instruction_dirs:
                 parts.append("<div class='legacy'><strong>Legacy Instructions Found</strong><br>")
                 for d in ctx.legacy_instruction_dirs:
-                    parts.append(f"<p><code>{esc(rel(d, root))}</code> &nbsp; {folder_link(d, 'Open Legacy Instructions')}</p>")
-                parts.append(f"<p><strong>Legacy files ({len(ctx.legacy_files)}):</strong></p>{render_file_list(ctx.legacy_files, root)}</div>")
+                    parts.append(
+                        f"<p><code>{esc(rel(d, root))}</code> &nbsp; "
+                        f"{folder_link(d, 'Open Legacy Instructions')}</p>"
+                    )
+                parts.append(
+                    f"<p><strong>Legacy files ({len(ctx.legacy_files)}):</strong></p>"
+                    f"{render_file_list(ctx.legacy_files, root)}</div>"
+                )
         parts.append("</div>")
 
-        parts.append("<details><summary><strong>Stage / Scene / Display Alignment Detail</strong></summary>")
-        parts.append("<table><tr><th>Type</th><th>LOR Name</th><th>Current Drive Path</th><th>Recommended Name</th><th>Recommended Location</th><th>Status</th><th>Confidence</th><th>Action</th><th>Notes</th></tr>")
-        order = {"STAGE": 0, "SCENE": 1, "DISPLAY": 2}
+        parts.append("<details><summary><strong>Stage / Group / Scene / Display Alignment Detail</strong></summary>")
+        parts.append(
+            "<table><tr><th>Type</th><th>LOR Name</th><th>Current Drive Path</th>"
+            "<th>Recommended Name</th><th>Recommended Location</th><th>Status</th>"
+            "<th>Confidence</th><th>Action</th><th>Notes</th></tr>"
+        )
+        order = {"STAGE": 0, "MUSICAL_GROUP": 1, "SCENE": 2, "DISPLAY": 3}
         for x in sorted(by_stage[sid], key=lambda z: (order.get(z.kind, 9), z.lor_name.casefold())):
             current_html = f"<code>{esc(x.current_path)}</code>"
             if x.current_path:
@@ -629,17 +886,21 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
             parts.append(
                 f"<tr class='{esc(x.status)}'><td>{esc(x.kind)}</td><td>{esc(x.lor_name)}</td>"
                 f"<td>{current_html}</td><td>{esc(x.recommended_name)}</td>"
-                f"<td><code>{esc(x.recommended_path)}</code></td><td><strong>{esc(x.status)}</strong></td>"
+                f"<td><code>{esc(x.recommended_path)}</code></td>"
+                f"<td><strong>{esc(x.status)}</strong></td>"
                 f"<td>{esc(x.confidence)}</td><td>{esc(x.action)}</td><td>{esc(x.note)}</td></tr>"
             )
         parts.append("</table></details>")
+
     parts.append("</body></html>")
     html_path.write_text("".join(parts), encoding="utf-8")
     return html_path, csv_path, counts
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Read-only LOR vs Google Shared Drive documentation alignment audit")
+    ap = argparse.ArgumentParser(
+        description="Read-only LOR vs Google Shared Drive documentation alignment audit"
+    )
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--drive-root", type=Path, default=DEFAULT_ROOT)
     ap.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
@@ -648,6 +909,7 @@ def main() -> int:
     print(f"[INFO] MSB Documentation Alignment {VERSION}", flush=True)
     print(f"[INFO] SQLite: {args.db}", flush=True)
     print(f"[INFO] Drive:  {args.drive_root}", flush=True)
+
     if not args.db.is_file():
         print(f"[ERROR] SQLite snapshot not found: {args.db}", file=sys.stderr)
         return 2
@@ -659,11 +921,21 @@ def main() -> int:
         print("[INFO] Reading current LOR snapshot...", flush=True)
         uri = args.db.resolve().as_uri() + "?mode=ro"
         with sqlite3.connect(uri, uri=True) as conn:
-            previews, scenes, displays, provenance = load_expected(conn)
-        print(f"[INFO] LOR snapshot loaded: {len(previews)} Stage IDs, {sum(len(v) for v in scenes.values())} Scenes, {len(displays)} LOR Displays", flush=True)
-        findings, helpers = audit(args.drive_root, previews, scenes, displays)
+            previews, scenes, displays, scene_infos, provenance = load_expected(conn)
+
+        master_count = sum(1 for s in scene_infos if s.is_master_musical)
+        print(
+            f"[INFO] LOR snapshot loaded: {len(previews)} Stage IDs, "
+            f"{len(scene_infos)} parsed Scenes ({master_count} Master Musical), "
+            f"{len(displays)} LOR Displays",
+            flush=True,
+        )
+        findings, helpers = audit(args.drive_root, previews, scenes, displays, scene_infos)
         print("[INFO] Writing reports...", flush=True)
-        hp, cp, counts = write_reports(args.output_dir, args.drive_root, args.db, previews, scenes, findings, helpers, provenance)
+        hp, cp, counts = write_reports(
+            args.output_dir, args.drive_root, args.db,
+            previews, findings, helpers, provenance
+        )
     except KeyboardInterrupt:
         print("\n[STOPPED] Audit cancelled by user. No folders were changed.", file=sys.stderr)
         return 130
