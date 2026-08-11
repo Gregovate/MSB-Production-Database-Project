@@ -9,6 +9,7 @@ Detailed engineering and operator instructions belong in the subsystem documenta
 - [LOR System Overview](00_LOR_System_Overview.md) — high-level view of the current LOR-to-production-database workflow.
 - [Production Database System Overview](01_Production_Database_System_Overview.md) — current purpose, authority boundaries, permanent-identity model, major operational areas, and application model.
 - [Google Drive](00-Google_Drive.md) — shared-drive structure and external file locations the project depends on.
+- [Organize Google Drive Documents](01-Google_Drive_Document_Organization_Procedure.md) — volunteer procedure for placing current Setup, Takedown, Maintenance, Operations, Wiring, and Photos in the standardized Stage/Scene helper folders.
 
 The current subsystem documentation remains authoritative for detailed operating and engineering rules.
 
