@@ -627,6 +627,12 @@ The `.leprop` file creates a **PropID** that can be reused inside larger preview
 - `Show Background Stage xx` (`BackgroundStage`)
 - `Show Animation xx` *(Not implemented)*
 
+### Master Musical Preview — use the dedicated procedure
+
+The **Master Musical Preview** does not follow the same Stage-identification rule as a normal Background Stage Preview. Its annual/versioned Preview name is shared by every musical Scene, so the parser derives Stage context from each Scene. A Scene's external background-image path can also intentionally identify whether its documentation belongs to the Stage root or to an established nested Scene/Substage folder.
+
+Before creating or changing musical Scenes, follow [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md). In particular, do not create a Google Drive Scene folder merely because a sequencing Scene exists in LOR, and make sure any Scene background or temporary placeholder is assigned from below the intended documentation root.
+
 ---
 
 ## Background
@@ -777,7 +783,6 @@ Applies only to:
 ## Field Wiring Images (Basic)
 
 Fastest method, but limited detail.
-
 - Only `.jpg` files directly inside the stage folders are used by FormView.
 - ALL images in these folders will be included in Field Wiring documentation.
 
@@ -985,5 +990,6 @@ This ensures the system stays consistent for all users.
 
 # Changelog
 
+2026-08-11 - Added Master Musical Preview authoring handoff and documentation-root rule
 2026-05-10 - Updated Recommended Software Tools
 2025-10-05 - Intial Release
