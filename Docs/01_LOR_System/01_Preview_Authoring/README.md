@@ -8,6 +8,7 @@ This area contains the user-facing rules and procedures for creating and maintai
 |---|---|
 | Understand required display and channel naming | [Naming Conventions](A_Naming_Conventions.md) |
 | Build or update a preview | [Building Preview How-To](B_Building_Preview_Howto.md) |
+| Build or update the Master Musical Preview | [Master Musical Preview How-To](E_Master_Musical_Preview_Howto.md) |
 | Create and organize Stage wiring background images | [Create Wiring Backgrounds for Stage Previews](D_Create_Wiring_Backgrounds..md) |
 | Review the February 2026 origin of the LOR-to-database naming contract | [Historical LOR Naming Data Contract](C_LOR_Naming_Data_Contract.md) |
 | Import the current approved preview set | [Preview Import Workflow](Preview_Import_Workflow.md) |
@@ -20,7 +21,7 @@ Preview Authoring explains how to create and maintain previews. The controlled p
 
 Parser engineering and `.lorprev` structure are documented separately under [Data Extraction](../02_Data_Extraction/README.md).
 
-The Stage wiring-background procedure documents the operator-facing folder/path convention used by the existing FormView field-wiring workflow. Detailed FormView implementation and wiring-system engineering remain separate from this operator procedure.
+The Stage wiring-background procedure documents the operator-facing folder/path convention used by the existing FormView field-wiring workflow. The [Master Musical Preview How-To](E_Master_Musical_Preview_Howto.md) documents how musical Scene names and Scene background-image paths provide Stage/documentation context without requiring every musical Scene to become a Google Drive folder. Detailed FormView implementation and wiring-system engineering remain separate from these operator procedures.
 
 ## Related Systems
 
