@@ -2,14 +2,14 @@
 
 **Project:** Making Spirits Bright Production Database
 
-
 | Item | Value |
 |------|-------|
 | Document | 00 - Google Drive Folder Structure |
-| Revision | 1.1 Draft |
-| Date | 2026-07-29 |
+| Revision | 1.2 Draft |
+| Date | 2026-08-11 |
 | Author | Greg Liebig |
 | Status | Draft |
+
 ---
 
 # Purpose
@@ -23,15 +23,14 @@ Instead, LOR is one component of a larger engineering information system consist
 - Google Shared Drive – Display Folders
 - Google Shared Drive – Seasonal Folders
 - LOR Preview Authoring
-- V7 Import Parser
+- V7 Parser
 - Production PostgreSQL Database
 - Operational Applications
+- `my.sheboyganlights.org` field access
 
 Each system has a specific responsibility. Together they provide the complete engineering and operational information system used to design, build, install, maintain, and operate the annual display.
 
-This document provides the architectural overview of those systems and establishes the governing principles used to organize engineering information. It defines where engineering information belongs rather than how individual engineering documents are created.
-
-Detailed implementation standards are documented elsewhere.
+This document provides the architectural overview of the Google Drive engineering repository and establishes the governing principles used to organize and locate engineering information. It defines where engineering information belongs and the filesystem contracts that applications may rely upon. It does not define the detailed content of individual engineering documents.
 
 ---
 
@@ -40,99 +39,68 @@ Detailed implementation standards are documented elsewhere.
 The following principles apply throughout the project.
 
 1. Organize by physical location first.
-2. Documentation belongs with the asset it describes.
-3. Every active display should have one authoritative Display Folder.
-4. Stage wiring markups are stored in the standardized Wiring folder.
-5. Historical information remains with the Stage or Display it documents.
-6. The Production Database indexes engineering information but does not replace it.
-7. New documentation should follow this organizational standard even when legacy material has not yet been reorganized.
+2. Documentation belongs at the organizational level to which it applies: Stage, Substage, Scene, shared Display group, or individual Display.
+3. Not every LOR Display requires its own Google Drive folder. Multiple Displays may legitimately use one shared documentation folder, and some Displays may require no dedicated folder.
+4. Stage and Scene helper folders use standardized locations so applications can locate published documentation reliably.
+5. Stage wiring markups are stored in the standardized `Wiring` structure.
+6. Procedures are stored in the standardized `Procedures` structure.
+7. Photographs are stored in the standardized `Photos` structure.
+8. Historical information remains with the Stage, Scene, shared group, or Display it documents until it can be reorganized safely.
+9. The Production Database indexes identities, relationships, and document access information but does not replace the Google Drive engineering repository.
+10. QR codes identify stable MSB records; they must not encode fragile Google Drive paths or individual document URLs.
+11. New documentation should follow this organizational standard even when legacy material has not yet been reorganized.
 
 ---
 
 # System Architecture
 
 ```text
-Physical Park
-      │
-      ▼
-Google Drive
-      │
-      ├──────────────────┐
-      ▼                  │
-LOR Preview Authoring    │
-      │                  │
-      ▼                  │
-V7 Parser                │
-      │                  │
-      └─────────► Production Database
-                         │
-                         ▼
-                   Applications
+Physical Display / QR code
+        |
+        v
+my.sheboyganlights.org
+        |
+        v
+Production Database
+        |
+        +-----------------------------+
+        |                             |
+        v                             v
+LOR-derived relationships      Google Drive document index
+                                      |
+                                      v
+                           Google Drive engineering documents
 ```
 
-The Production Database serves as the integration point between the engineering repository and operational applications.
+LOR remains the authoring source for current Stage / Scene / Display organization. The Google Shared Drive remains the permanent engineering-document repository. PostgreSQL provides stable identities and relationships needed by operational applications. `my.sheboyganlights.org` is the field-access presentation layer.
+
+The QR code is the stable entry point into that system. It is not the document locator itself.
 
 ---
 
 # Information Repositories on the Google Drive
 
-The MSB project maintains two primary information repositories.
+## Google Shared Drive: Display Folders
 
-## Google Drive
+The Engineering Repository is stored within the Google Shared Drive named **Display Folders**.
 
-The Google Drive is the permanent home for documentation related to the Making Spirits Bright display.
+Although the shared drive retains its historical name, it contains much more than individual Display folders. It is the primary engineering repository for the Making Spirits Bright project and contains engineering information for Stages, Substages, Scenes, shared Display groups, individual Displays, wiring documentation, procedures, photographs, fabrication drawings, and supporting engineering resources.
 
-Although the shared drive is named **Display Folders**, it contains much more than individual display folders. It is organized to support the construction, installation, operation, and maintenance of the entire display.
+Information stored within the Engineering Repository evolves over many years and remains valid across multiple show seasons.
 
-Information stored in the Google Drive remains valid across multiple show seasons and serves as the permanent record for the display.
+At a high level:
 
 ```text
 Display Folders
 └── Stage
     ├── Optional Substage
-    │   └── Optional Scene
-    └── Display Folders
+    ├── Optional Scene
+    ├── Standard helper folders
+    ├── Shared documentation folders
+    └── Individual Display folders when required
 ```
 
-### Google Shared Drive: Display Folders
-
-The Engineering Repository is stored within the Google Shared Drive named **Display Folders**.
-
-Although the shared drive retains its historical name, it serves as the primary engineering repository for the Making Spirits Bright project. It contains engineering information for the entire display system, including stage infrastructure, substages, scenes, display engineering records, wiring documentation, fabrication drawings, and shared engineering resources.
-
-Information stored within the Engineering Repository evolves over many years and remains valid across multiple show seasons.
-
-The repository is organized hierarchically:
-
-- Stage
-  - Optional Substage
-  - Optional Scene
-  - Display Folders
-
-Both **Stages** and **Scenes** follow the same standardized organizational structure for shared documentation, including:
-
-- Wiring
-- Procedures
-- Photos
-
-Display Folders contain documentation specific to an individual physical display.
-
-Additional engineering resources stored within the repository include:
-
-- CAD drawings
-- Inkscape artwork
-- Visio diagrams
-- Workshop drawings
-- GPS information
-- Arduino projects
-- Logos
-- Fonts
-- Licenses
-- Shared engineering resources
-
 The Google Drive is the authoritative source for engineering documentation.
-
----
 
 ## Seasonal Repository - Shared Drive - Seasonal Folders
 
@@ -153,11 +121,11 @@ Unlike the Engineering Repository, these assets naturally belong to a specific s
 
 # Physical Organization
 
-The physical display is organized by **Stages** (for example, `05-Festive Trees-FT`).
+The physical display is organized by **Stages** such as `05-Festive Trees-FT`.
 
-Large stages may optionally contain **Substages** and/or **Scenes**.
+Large Stages may optionally contain **Substages** and/or **Scenes**.
 
-Stages and Scenes share the same standardized folder structure shown below.
+Stages and Scenes use the same standardized helper-folder structure:
 
 ```text
 Stage / Scene
@@ -182,24 +150,23 @@ Stage / Scene
 │   ├── Reference/
 │   └── Historical/
 │
-└── Display Folders...
+└── Display / shared-documentation folders as required
 ```
 
 Each Stage represents a physical area within the park and serves as the primary organizational unit of the Engineering Repository.
 
 Within a Stage may exist:
 
-- Display folders
-- Formal Substages
-- Optional Scene folders
+- individual Display folders
+- shared Display/documentation folders
+- formal Substages
+- optional Scene folders
 - Stage wiring
 - Stage procedures
 - Stage photographs
-- Historical archives
+- historical archives
 
-Not every Stage currently follows the same internal organization.
-
-This document defines the organizational standard toward which the repository will evolve.
+Not every Stage currently follows the same internal organization. The repository contains historical structures accumulated over many years. Those structures remain evidence and must not be reorganized automatically.
 
 ---
 
@@ -207,23 +174,24 @@ This document defines the organizational standard toward which the repository wi
 
 A Stage represents a physical location within the park.
 
-Stages are permanent identities used throughout the engineering repository and production database.
+Stages are durable identities used throughout the engineering repository and production database.
+
+Stage-level documentation applies to the Stage as a whole and should be accessible from any Display currently assigned to that Stage.
 
 ---
 
 # Substages
 
-Some large stages are divided into formal physical substages.
+Some large Stages are divided into formal physical Substages.
 
 Example:
 
+```text
 07-Whoville-WV
+└── 07a-Who Forest-WF
+```
 
-contains
-
-07a-Who Forest-WF
-
-Substages represent real physical divisions.
+Substages represent real physical divisions and may have their own standardized helper folders.
 
 ---
 
@@ -231,11 +199,11 @@ Substages represent real physical divisions.
 
 Scenes are authoring and organizational units used by LOR.
 
-Scenes are organizational workspaces that may represent:
+Scenes may represent:
 
 - an entire Stage
 - a formal Substage
-- a logical grouping of displays
+- a logical grouping of Displays
 
 Examples include:
 
@@ -245,50 +213,242 @@ Examples include:
 - Throwing Bears
 - Sliding Penguins
 
-Scenes simplify preview authoring by dividing large or complex areas of the display into manageable workspaces.
+Scenes simplify Preview authoring and provide a useful documentation scope when wiring, procedures, photographs, or other engineering information applies to a Scene as a whole rather than to one Display.
 
-As the engineering documentation continues to evolve, Scene folders also provide an appropriate location for scene-specific wiring documentation, background images, procedures, photographs, and other engineering information that applies to the scene as a whole rather than to an individual display.
-
-Scenes improve preview authoring and documentation organization.
-
-Scenes do not define physical display identity.
+Scenes do not define physical Display identity.
 
 ---
 
-# Display Folders
+# Display and Shared Documentation Folders
 
-Every active display should ultimately have a corresponding Display Folder.
-
-The Display Folder is the engineering record for one physical display.
+An individual Display folder is the engineering record for one physical Display when that Display requires dedicated documentation.
 
 It may contain:
 
 - engineering drawings
 - fabrication information
-- display-specific wiring
-- display-specific procedures
+- Display-specific wiring
+- Display-specific procedures
 - photographs
 - manuals
 - supporting documentation
 
-Procedures should be stored at the organizational level to which they apply:
+However, the repository must **not** assume a one-to-one relationship between an LOR Display and a Google Drive folder.
 
-- Stage-wide procedures belong in the Stage folder.
-- Substage-wide procedures belong in the Substage folder.
-- Scene-specific procedures may belong in the Scene folder.
-- Display-specific procedures belong in the Display folder.
+Valid cases include:
 
-Display folders may exist directly beneath a Stage, beneath a Substage, or within an optional Scene folder.
+1. one Display with one dedicated folder;
+2. multiple Displays sharing one documentation folder;
+3. a Display documented entirely at Stage or Scene level and therefore requiring no dedicated folder.
+
+This distinction is important for repeated or highly similar elements such as large groups of tree wraps or other components that are individual LOR Displays but are installed and documented as one Stage-level system.
+
+Folder paths must therefore not be treated as Display identity.
 
 ---
 
-# Wiring
+# Standard Helper Folders Are Application Contracts
 
-Each Stage contains a standardized Wiring folder.
+The standardized `Wiring`, `Procedures`, and `Photos` structures are not merely organizational preferences. They are application-facing filesystem contracts.
 
-Applications may rely upon this location. This location is intentionally standardized so software applications can reliably locate field wiring documentation.
+Applications may use a known Stage or Scene context together with these standardized relative locations to discover the engineering material that applies to that context.
 
-The Wiring folder contains both published field documentation and the source documents used to generate those documents.
+The general pattern is:
+
+```text
+known Stage / Scene context
+        |
+        v
+standard helper folder
+        |
+        v
+published engineering material
+```
+
+This allows software to locate documentation without storing a fragile full Windows path for every file.
+
+## Wiring helper paths
+
+FormView established the proven wiring-location contract.
+
+The LOR Preview contains a `BackgroundFile` reference. The parser preserves that value. FormView uses the selected Preview and `BackgroundFile` to resolve the active published wiring-image directory.
+
+The standardized wiring branches are:
+
+```text
+<Stage or Scene>\Wiring\BackgroundStage\
+<Stage or Scene>\Wiring\MusicalStage\
+```
+
+`SourceDocs` contains working/source material and is not part of the published field-image set.
+
+Wiring remains context-specific because Background/Static and Musical wiring can legitimately be different.
+
+## Procedure helper paths
+
+Procedure discovery follows the same location-contract principle, but procedures normally apply to the physical Stage or Scene rather than to an LOR Preview type.
+
+Standard procedure locations are:
+
+```text
+<Stage or Scene>\Procedures\Setup\
+<Stage or Scene>\Procedures\Takedown\
+<Stage or Scene>\Procedures\Maintenance\
+<Stage or Scene>\Procedures\Operations\
+```
+
+There may be more than one procedure document in any of these folders.
+
+The system must support a **list of applicable documents**, not a single Setup/Takedown/Maintenance/Operations URL field.
+
+`Procedures\SourceDocs` contains working/source material and is not intended for direct presentation to field users.
+
+## Photo helper paths
+
+The standardized photo locations are:
+
+```text
+<Stage or Scene>\Photos\Current\
+<Stage or Scene>\Photos\Setup\
+<Stage or Scene>\Photos\Takedown\
+<Stage or Scene>\Photos\Reference\
+<Stage or Scene>\Photos\Historical\
+```
+
+These paths allow applications and operators to distinguish current field references from historical or source material.
+
+---
+
+# Google Docs: Authoring vs Presentation
+
+Google Docs are currently useful as the collaborative authoring format for many procedures. They are not the presentation standard for the future field application.
+
+The architecture separates those responsibilities:
+
+```text
+Google Doc
+    = editable source/published document
+
+Standard Procedures folder
+    = discovery/location contract
+
+my.sheboyganlights.org
+    = standardized field presentation and navigation
+```
+
+A procedure may remain a Google Doc while the application presents a consistent Stage/Scene page containing links to all applicable procedures.
+
+Document formatting inside Google Docs may be standardized separately. The ability to find and present the correct document must not depend upon perfect Google Doc formatting.
+
+---
+
+# QR-Based Internet Access Requirement
+
+A primary project goal is to make engineering records available through `my.sheboyganlights.org` from the park or anywhere Internet access is available.
+
+Each physical Display may carry a QR code representing its stable MSB Display identity.
+
+The QR code shall **not** encode:
+
+- a mapped-drive path;
+- a current Google Drive folder path;
+- an individual Google Doc URL; or
+- an LOR Preview filename.
+
+Instead:
+
+```text
+QR code
+    |
+    v
+stable Display identity
+    |
+    v
+current database relationships
+    |
+    +--> Display record
+    +--> current Stage
+    +--> applicable Scene/Substage when relevant
+    |
+    v
+my.sheboyganlights.org documentation page
+```
+
+Moving or renaming a folder must not invalidate the physical QR code.
+
+## Stage-level inheritance
+
+Scanning the QR code on any Display assigned to a Stage shall provide access to the applicable Stage-level engineering records.
+
+For Setup and similar procedures, the volunteer normally thinks in terms of the entire physical Stage. The application shall therefore present Stage-level Setup information without requiring the volunteer to understand the distinction between LOR Musical and Background Preview types.
+
+Multiple Setup instructions are valid and shall be presented as a list.
+
+## Wiring context
+
+Wiring is more specific.
+
+When both wiring contexts exist, the field interface shall present a plain-language choice rather than requiring the volunteer to understand LOR Preview terminology.
+
+Conceptually:
+
+```text
+Wiring
+├── Background / Static Displays
+│   └── uses the BackgroundStage wiring context
+└── Musical Displays
+    └── uses the MusicalStage wiring context
+```
+
+Internal engineering names such as `BackgroundStage` and `MusicalStage` may remain in the filesystem and data model, but the field UI should explain the choice in task-oriented language.
+
+A single Display QR code is sufficient. The user selects the applicable wiring context after reaching the Stage documentation interface.
+
+---
+
+# Procedures: Publishing Rule
+
+For the standardized procedure structure, files placed directly in the applicable operational folder are considered published procedure material for that scope:
+
+```text
+Procedures\Setup
+Procedures\Takedown
+Procedures\Maintenance
+Procedures\Operations
+```
+
+Working/source material belongs under:
+
+```text
+Procedures\SourceDocs
+```
+
+Applications should not present `SourceDocs` as normal field instructions.
+
+This rule allows volunteers to maintain multiple procedure documents while giving applications a predictable discovery boundary.
+
+---
+
+# FormView as the Proven Predecessor
+
+FormView is the proven predecessor for filesystem-assisted field documentation.
+
+Its important architectural pattern is not its Windows desktop interface. The reusable pattern is:
+
+```text
+structured LOR context
+        +
+standardized Google Drive helper location
+        |
+        v
+field-oriented presentation
+```
+
+The future Internet-accessible applications should preserve this successful separation while removing FormView's dependency on a mapped `G:` drive and direct local SQLite access.
+
+The FormView engineering contract is documented under:
+
+`Docs/01_LOR_System/04_FormView/`
 
 ---
 
@@ -300,16 +460,18 @@ It does not replace engineering documentation.
 
 Engineering drawings, wiring documentation, procedures, photographs, manuals, and other engineering records remain within the Google Shared Drive where they can be maintained independently of the database.
 
-Instead, the Production Database provides operational access to that information through applications such as:
+The database provides stable identities and relationships needed by operational applications such as:
 
 - QR scanning
-- FormView
+- Internet-accessible field documentation
+- FormView successor functionality
+- Setup/Procedure access
 - Reports
 - Work Orders
 - Label Printing
 - GPS
 
-This approach allows engineering documentation and operational data to work together while preserving a single authoritative location for engineering information.
+Where Google Drive documents are exposed through the web application, the database may maintain stable document/folder identifiers or an index required for Internet access. Fragile full mounted-drive paths must not become the primary relational identity.
 
 ---
 
@@ -317,11 +479,13 @@ This approach allows engineering documentation and operational data to work toge
 
 The Engineering Repository has evolved over many years.
 
-Existing stages may not fully conform to the standards described in this document.
+Existing Stages may contain historical folder names, nested groupings, archived material, and older organizational patterns that do not fully conform to the current standard.
 
-Legacy structures remain valid until they can be reorganized without loss of historical information.
+Legacy structures remain valid evidence until they can be reorganized without loss of historical information.
 
-All new engineering documentation should follow the organizational principles defined herein.
+Folder-alignment tools may identify and recommend changes, but filesystem changes remain human decisions.
+
+All new engineering documentation should follow the organizational principles defined here.
 
 ---
 
@@ -329,24 +493,21 @@ All new engineering documentation should follow the organizational principles de
 
 - [LOR System Overview](01_LOR_System/00_Project_Overview/00_LOR_System_Overview.md)
 - [Preview Authoring](01_LOR_System/01_Preview_Authoring/B_Building_Preview_Howto.md)
-- [V7 LOR Data Extraction and Reconciliation](01_LOR_System/02_Data_Extraction/README.md)
+- [V7 LOR Data Extraction](01_LOR_System/02_Data_Extraction/README.md)
+- [FormView](01_LOR_System/04_FormView/README.md)
 - [Production Database System Blueprint](02_Production_Database/01_System_Architecture/A_System_Blueprint.md)
-- [LOR Naming Data Contract](02_Production_Database/01_System_Architecture/C_LOR%20Naming%20Data%20Contract.md)
-- [Production Database Structure](02_Production_Database/01_System_Architecture/D_Database_Structure.md)
 - [Documentation Index](README.md)
-
----
 
 ---
 
 # Summary
 
-The Google Shared Drive provides the permanent engineering record for the Making Spirits Bright display.
+The Google Shared Drive provides the permanent engineering record for Making Spirits Bright.
 
-The Light-O-Rama system provides preview authoring for the annual display.
+LOR provides the current authoring organization for Stages, Scenes, and Displays. The parser materializes that structure for downstream systems. The Production Database provides stable identities and relationships. `my.sheboyganlights.org` provides the field-access presentation layer.
 
-The V7 Import Parser extracts authoritative preview information from LOR into the Production Database.
+Standard `Wiring`, `Procedures`, and `Photos` helper folders form a deliberate application-facing location contract. They allow software to discover the correct engineering material without treating human-readable full paths as permanent identity.
 
-The Production Database integrates engineering information with operational data to support field applications, reporting, QR code access, labeling, maintenance, and future operational tools.
+A Display QR code is the stable entry point. Stage-level Setup information is presented as a Stage-oriented list. Wiring remains context-specific and presents a plain-language Background/Static versus Musical choice when both contexts exist.
 
-Together, these systems form the complete engineering information system used to design, build, install, maintain, and operate the Making Spirits Bright Christmas display.
+Together these rules preserve the useful engineering-document architecture proven by FormView while making the system suitable for Internet-accessible field use.
