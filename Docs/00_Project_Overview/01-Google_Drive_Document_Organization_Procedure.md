@@ -14,11 +14,50 @@ The Shared Drive is the permanent home for MSB engineering documents. Applicatio
 
 ---
 
+# Start With the Current Documentation Alignment Worklist
+
+**Do not begin by wandering through the Shared Drive and guessing what should be there.**
+
+Before organizing a Stage, use the current **Documentation Alignment Worklist** produced by the Folder Alignment tool. The worklist is generated from the current LOR parser SQLite snapshot and the current Google Shared Drive folder tree.
+
+The worklist is your roadmap. For each Stage it should tell you:
+
+- the Stage LOR currently expects;
+- the Scenes LOR currently expects;
+- the standard documentation helper folders that should exist;
+- whether the current `Procedures\Setup` folder exists;
+- the current published files already found there;
+- a link to open the applicable Stage, Scene, or helper folder; and
+- legacy instruction locations such as `000-Instructions` that need review.
+
+The report is a **snapshot**. If LOR Stage or Scene organization changes, the parser and Folder Alignment report must be run again before relying on it as the current roadmap.
+
+The normal operator workflow is:
+
+```text
+Current LOR previews
+        ↓
+run_parse_props.ps1
+        ↓
+current SQLite snapshot
+        ↓
+run_folder_check.ps1
+        ↓
+Documentation Alignment Worklist
+        ↓
+organize the Shared Drive using this procedure
+```
+
+The report is read-only. It does not move, rename, create, or delete any Google Drive folders or documents.
+
+---
+
 ## What You Need Before Starting
 
 You should have:
 
 - access to the Google Shared Drive named **Display Folders**;
+- the current Documentation Alignment Worklist;
 - the Stage you are working on;
 - the Google Docs or other engineering files that belong to that Stage; and
 - enough knowledge of the Stage to know whether an instruction applies to the whole Stage, to one Scene, or to one individual Display.
@@ -77,6 +116,18 @@ Procedures\Operations
 
 `SourceDocs` is for source or working material that volunteers should not normally be presented as the current field instruction.
 
+### Legacy instruction folder
+
+Older Stages may contain a folder named something like:
+
+```text
+000-Instructions
+```
+
+This is a historical location, not the current standard. The Documentation Alignment Worklist may identify these folders so you know where older instructions are currently stored.
+
+**Do not delete or empty a legacy instruction folder simply because the report found it.** Review the documents and move only material whose current purpose and correct destination are understood.
+
 ---
 
 # Standard Stage and Scene Folders
@@ -108,6 +159,25 @@ Stage or Scene
 ```
 
 These folder names are standardized. Do not rename them for personal preference.
+
+---
+
+# How to Use the Worklist for One Stage
+
+Work through one Stage at a time.
+
+1. Find the Stage in the Documentation Alignment Worklist.
+2. Review the **LOR Scenes** shown for that Stage. These are the current Scene names to expect.
+3. Use the report's **Open Folder** links to open the Stage, Scene, or `Procedures\Setup` location instead of searching the entire Shared Drive manually.
+4. Review the **Published Setup Documents** inventory already found in the standard folder.
+5. Review any **Legacy Instructions** locations reported, including `000-Instructions`.
+6. Decide which legacy Google Docs are current setup instructions.
+7. Move only clearly current Stage-wide instructions to the Stage `Procedures\Setup` folder.
+8. Move only clearly current Scene-specific instructions to that Scene's `Procedures\Setup` folder.
+9. Leave uncertain, historical, duplicate, or source material in place and flag it for review.
+10. When the Stage is complete, regenerate the report if you need a fresh verification of the resulting folder structure.
+
+The worklist tells you what to look for. This procedure tells you what to do with what you find.
 
 ---
 
@@ -176,13 +246,13 @@ The future setup application will present a list of available instructions. It i
 
 ## What to do
 
-1. Open the Stage folder.
-2. Open `Procedures`.
-3. Open `Setup`.
+1. Use the Documentation Alignment Worklist to open the Stage's current Setup destination.
+2. Review the published documents the report already found in `Procedures\Setup`.
+3. Open any reported legacy `000-Instructions` folder and compare its contents with the current published inventory.
 4. Identify the current Google Docs that volunteers should use during setup.
 5. Move those current documents into `Procedures\Setup` when they belong to the whole Stage.
 6. If an instruction applies only to a Scene, place it in that Scene's `Procedures\Setup` folder instead.
-7. Leave source material, drafts, or working files out of the published `Setup` folder.
+7. Leave source material, drafts, obsolete copies, or working files out of the published `Setup` folder.
 8. If you cannot determine whether a document is current, leave it in place and flag it for review.
 
 ---
@@ -296,16 +366,18 @@ Do not delete historical photographs simply because newer photos exist.
 
 # Important Rules
 
-1. **Do not rename Stage folders.**
-2. **Do not invent or rename Scene folders unless the current LOR structure has been confirmed.**
-3. **Do not rename the standard `Wiring`, `Procedures`, or `Photos` helper folders.**
-4. **Do not delete old engineering information merely because it looks outdated.** Move or classify it only when its purpose is understood.
-5. **Do not create duplicate copies of the same current instruction just to place it under several Displays.**
-6. **Do not assume every LOR Display needs its own Google Drive folder.**
-7. **Do not place drafts or source material among the current published instructions.**
-8. **Do not change BackgroundStage and MusicalStage wiring organization without review.**
-9. **Do not worry about QR codes, database links, or web URLs while organizing the files.** The system will use the standardized structure to find the documents later.
-10. **When unsure, stop and flag the item for review rather than guessing.**
+1. **Use the current Documentation Alignment Worklist as your roadmap.** Do not reorganize from memory.
+2. **Do not rename Stage folders.**
+3. **Do not invent or rename Scene folders unless the current LOR structure has been confirmed.**
+4. **Do not rename the standard `Wiring`, `Procedures`, or `Photos` helper folders.**
+5. **Treat `000-Instructions` as a legacy review location, not the current standard.**
+6. **Do not delete old engineering information merely because it looks outdated.** Move or classify it only when its purpose is understood.
+7. **Do not create duplicate copies of the same current instruction just to place it under several Displays.**
+8. **Do not assume every LOR Display needs its own Google Drive folder.**
+9. **Do not place drafts or source material among the current published instructions.**
+10. **Do not change BackgroundStage and MusicalStage wiring organization without review.**
+11. **Do not worry about QR codes, database links, or web URLs while organizing the files.** The system will use the standardized structure to find the documents later.
+12. **When unsure, stop and flag the item for review rather than guessing.**
 
 ---
 
@@ -331,10 +403,12 @@ The QR code will not depend on a Google Drive folder path. Your job while organi
 
 Check the following:
 
+- [ ] The Stage and Scenes were checked against the current Documentation Alignment Worklist.
 - [ ] Current Stage-wide setup instructions are in `Procedures\Setup`.
 - [ ] Current Stage-wide takedown instructions are in `Procedures\Takedown`.
 - [ ] Current Stage-wide maintenance instructions are in `Procedures\Maintenance` when applicable.
 - [ ] Current Stage-wide operating instructions are in `Procedures\Operations` when applicable.
+- [ ] Reported legacy `000-Instructions` material was reviewed without deleting uncertain records.
 - [ ] Source or working procedure files are not mixed with current published instructions.
 - [ ] Scene-specific information is stored under the correct Scene when known.
 - [ ] Display-specific engineering records remain with the Display they describe.
@@ -348,19 +422,21 @@ Check the following:
 
 # If the Existing Stage Is Messy
 
-Many Stage folders contain engineering information collected over many years. Older folders may not follow the current standard.
+Many Stage folders contain engineering information collected over many years. Older folders may not follow the current standard. In particular, many instructions were historically collected together under folders such as `000-Instructions`.
 
 Do not try to make an entire Stage look perfect in one pass.
 
 Start with the information volunteers need now:
 
-1. identify the current setup instructions;
-2. place them in the correct `Procedures\Setup` location;
-3. identify other clearly current procedures and place them in their proper helper folders;
-4. leave uncertain historical information alone; and
-5. record anything that needs review.
+1. use the report to identify the current Stage, Scenes, and standard Setup destinations;
+2. use the report to find any legacy `000-Instructions` folder and see what it contains;
+3. identify the current setup instructions;
+4. place only clearly current instructions in the correct `Procedures\Setup` location;
+5. identify other clearly current procedures and place them in their proper helper folders;
+6. leave uncertain historical information alone; and
+7. record anything that needs review.
 
-The Folder Alignment report and later cleanup work will help reconcile the remaining historical structure.
+The Folder Alignment report remains the roadmap for reconciling the remaining historical structure.
 
 ---
 
