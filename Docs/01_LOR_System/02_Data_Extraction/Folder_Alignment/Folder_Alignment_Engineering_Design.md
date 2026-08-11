@@ -4,11 +4,12 @@
 
 Folder Alignment is a read-only LOR-side data extraction/alignment tool used to compare the current LOR parser snapshot with the actual engineering-document structure on the Google Shared Drive.
 
-It is intended to answer three different questions without changing the filesystem:
+It is intended to answer four different questions without changing the filesystem:
 
 1. What top-level Stage does current LOR data belong to?
 2. What Stage, Sub-stage, or Background Scene documentation scope should be used for helper folders such as `Procedures`, `Wiring`, and `Photos`?
 3. Which historical Display/shared-documentation folders plausibly correspond to current LOR Display identities?
+4. Which legacy procedure documents already exist in the central `000-Instructions` repository and appear to belong to each Stage?
 
 The tool does not create, move, rename, or delete folders. All filesystem changes remain human decisions.
 
@@ -83,7 +84,7 @@ The parser SQLite snapshot provides:
 
 Only `DeviceType = 'LOR'` Displays are included in Display-folder reconciliation.
 
-### Google Drive source
+### Google Drive engineering source
 
 Primary root:
 
@@ -92,6 +93,40 @@ G:\Shared drives\Display Folders
 ```
 
 The Shared Drive is the permanent engineering-document repository. Historical nesting is evidence, not automatically the expected hierarchy.
+
+### Central legacy procedure source
+
+Folder Alignment also recognizes a central historical procedure repository when a single top-level folder named `000-Instructions` exists directly beneath `Display Folders`:
+
+```text
+G:\Shared drives\Display Folders\000-Instructions
+```
+
+This source is distinct from legacy `000-Instructions` or generic `Instructions` folders found inside individual Stage trees.
+
+The central repository is scanned recursively. Historical category folders may include structures such as:
+
+```text
+000-Instructions
+├── 0 - Setup Procedures
+├── 1 - Takedown Procedures
+├── 2 - Testing & Repair Procedures
+└── other historical categories
+```
+
+A central legacy file is associated to a Stage only when its filename begins with a two-digit Stage number. For example, a filename beginning with `07` is reported as legacy material associated with Stage 07.
+
+This filename association is discovery evidence only. It is not permission to move, rename, replace, or publish the file automatically.
+
+The report must preserve:
+
+- the original file name;
+- the full original path;
+- the central legacy category;
+- the Stage association derived from the leading two-digit filename prefix; and
+- files that cannot be associated to a Stage.
+
+The existence of historical material moved from categories such as `0 - Setup Procedures` into Stage engineering folders is evidence that this central repository was part of the previous documentation workflow and should be treated as an explicit migration/review source.
 
 ---
 
@@ -132,12 +167,6 @@ Background Previews can use Scenes to divide a Stage into meaningful physical/do
 
 If a Background Preview Scene has a strong existing folder match under the resolved Stage, that folder may be used as the Scene documentation root.
 
-Example:
-
-```text
-13-Winter Wonderland-WW\Christmas Story
-```
-
 A missing Background Scene folder is not automatically safe to create. If the relationship is not established strongly enough, Folder Alignment must report a review condition rather than inventing hierarchy.
 
 ---
@@ -153,7 +182,7 @@ For Master Musical Preview Scenes:
 3. Parser-derived Scene Stage identity remains a fallback for Stage membership.
 4. The Scene name itself must not automatically become a child Drive folder.
 
-This distinction is required because some Master Musical Scenes exist primarily to make sequencing easier.
+Some Master Musical Scenes exist primarily to make sequencing easier.
 
 ---
 
@@ -189,7 +218,7 @@ Documentation root: 07-Whoville-WV\07a-Who Forest-WF
 
 The image content or filename is not the identity. The important information for Folder Alignment is the stored filesystem location.
 
-A temporary background image is acceptable as an authoring placeholder when its path intentionally establishes the correct documentation root. Replacing the image later does not change the model as long as the new background remains under the intended root.
+A temporary background image is acceptable as an authoring placeholder when its path intentionally establishes the correct documentation root.
 
 ---
 
@@ -227,8 +256,6 @@ Photos/
 └── Historical/
 ```
 
-Not every helper subfolder must exist merely because it is standardized; the report should identify current structure and useful gaps without implying unsafe automatic creation.
-
 ---
 
 ## Displays do not require individual Setup folders
@@ -250,29 +277,29 @@ Therefore Folder Alignment must not generate or recommend:
 
 simply because the Display exists in LOR.
 
-For field documentation, Setup is normally inherited from the applicable Stage, Scene, or Sub-stage documentation scope.
+Setup is normally inherited from the applicable Stage, Scene, or Sub-stage documentation scope.
 
-Display-specific drawings, fabrication records, maintenance notes, or other engineering records may still justify a dedicated Display folder, but that is a separate documentation decision.
-
-An unmatched LOR Display is always a review item, not an automatic folder-creation requirement.
+An unmatched LOR Display is a review item, not an automatic folder-creation requirement.
 
 ---
 
 # Legacy Instruction Discovery
 
-Older Stage structures may contain a historical instruction folder named:
+Folder Alignment performs two separate legacy searches.
 
-```text
-000-Instructions
-```
+## Local legacy search
 
-Folder Alignment treats this as a legacy source/review location, not the current published destination.
+Resolved Stage, Scene, and Sub-stage documentation scopes are searched recursively for folders named `000-Instructions` after normalization.
 
-The scanner normalizes the folder name so typical punctuation/case variations of `000-Instructions` are recognized.
+Generic folders named only `Instructions` are not automatically treated as equivalent because existing Stage trees contain historically ambiguous uses of that name.
 
-The current report must explicitly state whether the recursive legacy scan found any such folders. If found, their paths are listed for review. If none are found in the included documentation scopes, the report must say so rather than silently omitting the feature.
+## Central legacy repository search
 
-Generic folders named only `Instructions` are not automatically treated as equivalent to `000-Instructions`; they require separate human review because older Stage trees contain many historically ambiguous folders.
+A top-level `Display Folders\000-Instructions` repository is scanned recursively as a separate historical source.
+
+Files beginning with a two-digit Stage number are grouped into that Stage's worklist while retaining their original category and path.
+
+Files without a recognized Stage prefix remain visible as unassigned legacy material rather than being discarded or guessed.
 
 Current published procedure destinations remain:
 
@@ -293,18 +320,6 @@ Historical Display documentation can exist at arbitrary depth beneath a Stage.
 
 The matcher recursively inventories non-helper portions of each Stage tree and preserves the full current relative path for review.
 
-A historical folder may represent:
-
-- one physical Display;
-- several Displays sharing documentation;
-- a Scene/Sub-stage grouping;
-- archive/history;
-- application-generated material;
-- source material; or
-- an unknown grouping requiring review.
-
-Depth alone is never sufficient to classify a folder.
-
 Once a recognized helper branch such as `Wiring`, `Procedures`, or `Photos` is entered, that branch is excluded from Display fuzzy matching.
 
 ---
@@ -313,18 +328,7 @@ Once a recognized helper branch such as `Wiring`, `Procedures`, or `Photos` is e
 
 > Matching may be forgiving. Recommendations must be authoritative.
 
-Loose matching may be used to discover plausible historical candidates inside the already-resolved top-level Stage.
-
-Possible evidence includes:
-
-- correct two-digit Stage context;
-- normalized words despite punctuation/case differences;
-- omitted two-letter Display Stage prefix;
-- Scene/Sub-stage context;
-- recursive path context; and
-- strong name similarity.
-
-Cross-Stage fuzzy matching must not be used when a reliable Stage can be resolved.
+Loose matching may be used to discover plausible historical candidates inside the already-resolved top-level Stage. Cross-Stage fuzzy matching must not be used when a reliable Stage can be resolved.
 
 ---
 
@@ -340,13 +344,13 @@ It should make these concepts distinct:
 - resolution method;
 - standard Setup destination;
 - published Setup documents;
-- legacy `000-Instructions` source locations;
+- local legacy instruction locations;
+- central legacy procedure files grouped to Stage by filename prefix;
+- central legacy files that could not be assigned to a Stage;
 - Display/shared-folder reconciliation; and
 - review conditions.
 
 Master Musical group rows must not imply that every musical Scene should become a Drive Scene folder.
-
-Background Scene rows may represent real nested documentation scopes when an existing relationship is established.
 
 ---
 
@@ -355,15 +359,16 @@ Background Scene rows may represent real nested documentation scopes when an exi
 Folder Alignment must:
 
 - remain read-only;
-- never create, move, rename, or delete Google Drive folders;
+- never create, move, rename, or delete Google Drive folders or legacy files;
 - use current parser SQLite output rather than PostgreSQL as its working source;
 - preserve the distinction between top-level Stage and nested documentation root;
 - use Master Musical `BackgroundFile` as explicit filesystem evidence when available;
 - not equate every Master Musical Scene with a Drive Scene folder;
 - not equate every LOR Display with a dedicated Drive folder;
 - not create or recommend individual Display Setup folders by default;
-- keep helper-folder descendants out of Display candidate matching;
-- preserve historical current paths in the report; and
+- preserve original paths for all central and local legacy source material;
+- treat leading Stage-number filenames as discovery evidence rather than automatic migration authority;
+- keep helper-folder descendants out of Display candidate matching; and
 - report uncertainty instead of inventing structure.
 
 ---
@@ -372,43 +377,11 @@ Folder Alignment must:
 
 Changes to the resolver should be checked against these real structures:
 
-### Stage 02 — Triangle
-
-Fred's Stars can be a Master Musical Scene while its `BackgroundFile` points to:
-
-```text
-02-Triangle-TR\Wiring\MusicalStage
-```
-
-Expected result: top-level Stage and documentation root are both Stage 02.
-
-### Stage 05 — Festive Trees
-
-A Master Musical Scene whose name is the actual Stage identity must resolve directly to the Stage root without producing a duplicate:
-
-```text
-05-Festive Trees-FT\05-Festive Trees-FT
-```
-
-### Stage 07 — Whoville
-
-Master Musical groups such as Who Characters and Who Spiral Tree may resolve to the Stage root through their background paths.
-
-Who Forest is a formal nested Sub-stage:
-
-```text
-07-Whoville-WV\07a-Who Forest-WF
-```
-
-Its `BackgroundFile` must preserve that nested documentation root while top-level Stage identity remains 07 Whoville.
-
-### Stage 13 — Winter Wonderland
-
-Background Scenes and historical shared groupings such as Christmas Story, Christmas Vacation, and Polar Express must remain intelligible and must not be flattened solely because Musical Preview behavior differs.
-
-### Stage 18 — Dancing Forest
-
-Many legitimate LOR Displays have no expectation of one folder per Display. The tool must not turn unmatched Displays into automatic folder creation requests.
+- Stage 02 Triangle — Fred's Stars resolves to the Stage root from its Master Musical wiring path.
+- Stage 05 Festive Trees — exact Stage identity must not create a duplicate nested Stage folder.
+- Stage 07 Whoville — Who Characters/Who Spiral Tree can resolve to Stage root while Who Forest preserves `07-Whoville-WV\07a-Who Forest-WF` as its documentation root.
+- Stage 13 Winter Wonderland — Background Scene/shared groupings must remain intelligible.
+- Stage 18 Dancing Forest — many LOR Displays legitimately share Stage-level documentation; historical material includes evidence of files moved from `0 - Setup Procedures`.
 
 ---
 
@@ -423,7 +396,10 @@ The current test implementation should:
 5. use Master Musical `BackgroundFile` paths to recover documentation roots where available;
 6. preserve nested Sub-stage roots beneath a top-level Stage;
 7. use Stage/Scene/Sub-stage helper contexts for Setup/Wiring/Photos rather than Display helper folders;
-8. recursively scan for legacy `000-Instructions` folders and explicitly report whether any were found;
-9. recursively inventory historical non-helper folders for Display/shared-document matching;
-10. report unmatched Displays as review items rather than automatic creation requirements; and
-11. remain completely read-only.
+8. recursively scan local legacy `000-Instructions` folders;
+9. recursively scan the central top-level `000-Instructions` repository;
+10. associate central legacy files to Stages only by a recognized leading two-digit filename prefix while preserving category and original path;
+11. retain central legacy files without a Stage prefix as unassigned review material;
+12. recursively inventory historical non-helper folders for Display/shared-document matching;
+13. report unmatched Displays as review items rather than automatic creation requirements; and
+14. remain completely read-only.
