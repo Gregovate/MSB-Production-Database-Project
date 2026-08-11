@@ -2,119 +2,208 @@
 
 ## Purpose
 
-Folder Alignment is a read-only LOR-side data extraction/alignment tool used to compare the current Stage / Scene / Display structure produced by the LOR parser with the actual folder structure on the Google Shared Drive.
+Folder Alignment is a read-only LOR-side data extraction/alignment tool used to compare the current LOR parser snapshot with the actual engineering-document structure on the Google Shared Drive.
 
-Its purpose is broader than Display-name reconciliation. It must also validate the standardized helper-folder structure that applications rely upon for wiring, procedures, and photos.
+It is intended to answer three different questions without changing the filesystem:
+
+1. What top-level Stage does current LOR data belong to?
+2. What Stage, Sub-stage, or Background Scene documentation scope should be used for helper folders such as `Procedures`, `Wiring`, and `Photos`?
+3. Which historical Display/shared-documentation folders plausibly correspond to current LOR Display identities?
 
 The tool does not create, move, rename, or delete folders. All filesystem changes remain human decisions.
 
-## System boundary
+---
+
+## System Boundary
 
 Folder Alignment belongs to the LOR data-extraction side of the system.
 
 ```text
 LOR preview files
-    -> LOR parser
+    -> run_parse_props.ps1
     -> lor_output_v7_scene.db
+    -> run_folder_check.ps1
     -> Folder Alignment
-    -> read-only alignment report
+    -> read-only Documentation Alignment Worklist
 ```
 
-PostgreSQL and LOR2DB are not data sources for this tool. Folder Alignment uses the current SQLite parser output so the report reflects the current LOR state even when that SQLite snapshot has not yet been ingested into PostgreSQL.
+PostgreSQL and LOR2DB are not data sources for this tool. The current parser SQLite output is deliberately used so Preview and filesystem changes can be inspected repeatedly before any PostgreSQL ingest is accepted.
 
-## Data sources
+---
+
+## How to Run Folder Alignment
+
+Run from the repository root in the project virtual environment:
+
+```powershell
+.\run_parse_props.ps1
+.\run_folder_check.ps1
+```
+
+`run_parse_props.ps1` refreshes the current parser SQLite snapshot.
+
+`run_folder_check.ps1` runs the current read-only Folder Alignment implementation and opens the report folder when the run succeeds.
+
+Default SQLite source:
+
+```text
+G:\Shared drives\MSB Database\database\lor_output_v7_scene.db
+```
+
+Default Drive root:
+
+```text
+G:\Shared drives\Display Folders
+```
+
+Default report folder:
+
+```text
+G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment
+```
+
+The Folder Alignment launcher is the operator entry point. Versioned Python files under `Folder_Alignment` are implementation/test artifacts and should not be run directly unless specifically debugging the tool.
+
+---
+
+## Data Sources
 
 ### LOR-side source
 
-Primary source:
+The parser SQLite snapshot provides:
 
-`G:\Shared drives\MSB Database\database\lor_output_v7_scene.db`
+- Preview identity and Preview name;
+- Stage ID fields;
+- Scene name and parser-derived Scene Stage identity;
+- Scene `BackgroundFile` paths;
+- Display identity;
+- Display Scene membership;
+- Device type; and
+- parser provenance.
 
-The tool reads the current parser output for:
-
-- Stage identity
-- Scene identity and Stage membership
-- Display identity
-- Display Scene membership
-- Device type
-- Preview/background wiring context where applicable
+Only `DeviceType = 'LOR'` Displays are included in Display-folder reconciliation.
 
 ### Google Drive source
 
-Primary folder root:
+Primary root:
 
-`G:\Shared drives\Display Folders`
+```text
+G:\Shared drives\Display Folders
+```
 
-The Shared Drive is the existing engineering-document repository. Its historical structure is evidence for reconciliation, but current application-facing helper folders follow the documented Google Drive contract.
+The Shared Drive is the permanent engineering-document repository. Historical nesting is evidence, not automatically the expected hierarchy.
 
-## Scope
+---
 
-### Displays included
+# Core Resolution Model
 
-For the current alignment project, only Displays whose LOR `DeviceType` is `LOR` are included in Display matching.
+## 1. The root is always the top-level Stage
 
-DMX devices and `DeviceType = None` records are excluded from Display-folder matching.
+Every documentation relationship ultimately belongs to one top-level Stage folder under `Display Folders`.
 
-### Entities and structures compared
+The top-level Stage is identified primarily by the existing two-digit Stage ID folder.
 
-The report compares or audits:
+Example:
 
-1. Stage folders
-2. Scene folders
-3. standardized helper folders
-4. existing Display/shared-documentation folders
-5. LOR Display identities against plausible historical Drive candidates
+```text
+07-Whoville-WV
+```
 
-## Authority rules
+A nested Sub-stage such as:
 
-### 1. LOR determines current Stage / Scene organization
+```text
+07-Whoville-WV\07a-Who Forest-WF
+```
 
-The parser-derived LOR structure is authoritative for current Stage and Scene relationships.
+is still part of top-level Stage 07.
 
-The Google Drive may contain legacy names and legacy locations accumulated over many years. Existing Drive structure is evidence for matching, not authority over current Stage / Scene organization.
+The tool must preserve both concepts when they differ:
 
-### 2. Two-digit Stage ID is the strongest existing Drive anchor
+```text
+Top-level Stage:       07-Whoville-WV
+Documentation root:    07-Whoville-WV\07a-Who Forest-WF
+```
 
-The two-digit Stage ID is expected to be highly reliable in existing Google Drive Stage folders.
+---
 
-The two-letter Stage code used in Display names is sparse or absent in many historical Google Drive folders and must not be required for matching an existing folder.
+## 2. Background Previews may use Scenes as real documentation grouping
 
-Therefore:
+Background Previews can use Scenes to divide a Stage into meaningful physical/documentation groupings.
 
-- 2-digit Stage ID = strong structural match
-- 2-letter Stage code = optional/weak evidence when searching historical Display folders
+If a Background Preview Scene has a strong existing folder match under the resolved Stage, that folder may be used as the Scene documentation root.
 
-### 3. Scene structure comes from LOR
+Example:
 
-Scenes are comparatively new and may not yet exist as folders on the Shared Drive.
+```text
+13-Winter Wonderland-WW\Christmas Story
+```
 
-When LOR identifies a Scene, Folder Alignment should report whether the corresponding Scene folder exists in the correct Stage location. A missing Scene may receive a `CREATE_SCENE_FOLDER` recommendation because the Scene structure itself is current LOR-derived organization.
+A missing Background Scene folder is not automatically safe to create. If the relationship is not established strongly enough, Folder Alignment must report a review condition rather than inventing hierarchy.
 
-### 4. Display identity does not imply one Display folder
+---
 
-The current LOR Display name remains the authoritative Display identity used for matching.
+## 3. Master Musical Preview Scenes are interpreted differently
 
-However, the tool must **not** assume a one-to-one relationship between a LOR Display and a Google Drive folder.
+The annual Master Musical Preview contains many Scenes in one shared Preview. Its Preview name is provenance, not a Stage identifier for each Scene.
 
-Valid documentation relationships include:
+For Master Musical Preview Scenes:
 
-- one Display with one dedicated folder;
-- multiple Displays sharing one documentation folder;
-- a Display documented entirely at Stage or Scene scope and requiring no dedicated folder.
+1. If the Scene name directly matches an existing Stage folder identity, that Stage is used.
+2. Otherwise the Scene `BackgroundFile` path may identify the Stage and a more specific documentation root.
+3. Parser-derived Scene Stage identity remains a fallback for Stage membership.
+4. The Scene name itself must not automatically become a child Drive folder.
 
-Therefore an unmatched LOR Display is not automatically a folder-creation requirement.
+This distinction is required because some Master Musical Scenes exist primarily to make sequencing easier.
 
-### 5. Historical Drive path is evidence, not identity
+---
 
-Existing Drive folders may be moved, renamed, or reorganized. A full mounted-drive path must not be treated as stable Display identity.
+## 4. BackgroundFile is an explicit filesystem anchor
 
-The report should preserve the full current path for human review while keeping the LOR identity and recommended current Stage/Scene structure separate.
+When a Master Musical Scene stores a `BackgroundFile` under the standardized Wiring hierarchy, Folder Alignment may derive the documentation root from the path immediately above `\Wiring\`.
 
-## Standard helper-folder contract
+Example — Stage-root documentation:
 
-The standardized helper folders are application-facing filesystem contracts and require deterministic auditing separate from fuzzy Display matching.
+```text
+G:\Shared drives\Display Folders\02-Triangle-TR\Wiring\MusicalStage\...
+```
 
-For each applicable Stage and Scene, the standard structure is:
+resolves as:
+
+```text
+Top-level Stage:    02-Triangle-TR
+Documentation root: 02-Triangle-TR
+```
+
+Example — nested Sub-stage documentation:
+
+```text
+G:\Shared drives\Display Folders\07-Whoville-WV\07a-Who Forest-WF\Wiring\MusicalStage\WhoForest-Tagged.jpg
+```
+
+resolves as:
+
+```text
+Top-level Stage:    07-Whoville-WV
+Documentation root: 07-Whoville-WV\07a-Who Forest-WF
+```
+
+The image content or filename is not the identity. The important information for Folder Alignment is the stored filesystem location.
+
+A temporary background image is acceptable as an authoring placeholder when its path intentionally establishes the correct documentation root. Replacing the image later does not change the model as long as the new background remains under the intended root.
+
+---
+
+# Documentation Scope and Display Folders
+
+## Stage / Scene / Sub-stage helper folders
+
+Standard helper folders belong at an applicable documentation scope such as:
+
+- top-level Stage;
+- established Background Scene; or
+- established nested Sub-stage/documentation root.
+
+Standard structure:
 
 ```text
 Wiring/
@@ -138,258 +227,203 @@ Photos/
 └── Historical/
 ```
 
-### Wiring helper audit
+Not every helper subfolder must exist merely because it is standardized; the report should identify current structure and useful gaps without implying unsafe automatic creation.
 
-FormView established the proven wiring-directory contract. The active wiring context resolves to either:
+---
 
-```text
-<Stage or Scene>\Wiring\BackgroundStage
-<Stage or Scene>\Wiring\MusicalStage
-```
+## Displays do not require individual Setup folders
 
-The report should show whether these helper paths exist.
+A LOR Display does not imply an individual `Procedures\Setup` folder.
 
-`SourceDocs` is working/source material and must not be treated as a published image directory.
+Valid relationships include:
 
-### Procedure helper audit
+- many Displays using one Stage-wide Setup procedure;
+- many Displays using one Scene or Sub-stage Setup procedure;
+- one Display having Display-specific engineering records; or
+- a Display having no dedicated folder at all.
 
-The report should validate:
-
-```text
-<Stage or Scene>\Procedures\Setup
-<Stage or Scene>\Procedures\Takedown
-<Stage or Scene>\Procedures\Maintenance
-<Stage or Scene>\Procedures\Operations
-<Stage or Scene>\Procedures\SourceDocs
-```
-
-There may be multiple published documents in any operational procedure folder. The report should be able to count/list those documents without assuming one file per Stage or Scene.
-
-`SourceDocs` must be excluded from normal field-document presentation.
-
-### Photo helper audit
-
-The report should validate:
+Therefore Folder Alignment must not generate or recommend:
 
 ```text
-<Stage or Scene>\Photos\Current
-<Stage or Scene>\Photos\Setup
-<Stage or Scene>\Photos\Takedown
-<Stage or Scene>\Photos\Reference
-<Stage or Scene>\Photos\Historical
+<Display Folder>\Procedures\Setup
 ```
 
-### Helper branches are not Display candidates
+simply because the Display exists in LOR.
 
-Once a Stage/Scene helper branch is recognized as `Wiring`, `Procedures`, or `Photos`, the entire branch must be excluded from Display-folder fuzzy matching.
+For field documentation, Setup is normally inherited from the applicable Stage, Scene, or Sub-stage documentation scope.
 
-This is a structural exclusion, not merely a folder-name blacklist.
+Display-specific drawings, fabrication records, maintenance notes, or other engineering records may still justify a dedicated Display folder, but that is a separate documentation decision.
 
-## FormView precedent and future document linking
+An unmatched LOR Display is always a review item, not an automatic folder-creation requirement.
 
-FormView is the proven predecessor for filesystem-assisted field documentation.
+---
 
-Its reusable architecture is:
+# Legacy Instruction Discovery
+
+Older Stage structures may contain a historical instruction folder named:
 
 ```text
-structured LOR context
-        +
-standardized Google Drive helper location
-        -> field-oriented presentation
+000-Instructions
 ```
 
-The future Internet-accessible applications at `my.sheboyganlights.org` should retain this location-contract principle while removing FormView's mapped-drive/direct-SQLite dependency.
+Folder Alignment treats this as a legacy source/review location, not the current published destination.
 
-Folder Alignment therefore helps establish whether the filesystem is ready for reliable document discovery.
+The scanner normalizes the folder name so typical punctuation/case variations of `000-Instructions` are recognized.
 
-## QR access implication
+The current report must explicitly state whether the recursive legacy scan found any such folders. If found, their paths are listed for review. If none are found in the included documentation scopes, the report must say so rather than silently omitting the feature.
 
-A physical Display QR code represents stable Display identity. It must not depend on a current Google Drive path.
+Generic folders named only `Instructions` are not automatically treated as equivalent to `000-Instructions`; they require separate human review because older Stage trees contain many historically ambiguous folders.
 
-The future application can resolve:
+Current published procedure destinations remain:
 
 ```text
-Display QR
-    -> Display identity
-    -> current Stage
-    -> applicable Scene/Substage when relevant
-    -> standardized helper locations / indexed documents
+Procedures\Setup
+Procedures\Takedown
+Procedures\Maintenance
+Procedures\Operations
 ```
 
-For Stage-oriented Setup procedures, any Display in the Stage should provide access to the same applicable Stage procedure list.
+`SourceDocs` remains working/source material and is not a published field-document folder.
 
-For Wiring, Background/Static and Musical contexts remain distinct. The future field UI should present those choices in plain language rather than requiring the volunteer to understand LOR Preview terminology.
+---
 
-## Matching philosophy
+# Historical Drive Discovery
 
-### Loose discovery, strict recommendation
+Historical Display documentation can exist at arbitrary depth beneath a Stage.
 
-The central rule is:
+The matcher recursively inventories non-helper portions of each Stage tree and preserves the full current relative path for review.
+
+A historical folder may represent:
+
+- one physical Display;
+- several Displays sharing documentation;
+- a Scene/Sub-stage grouping;
+- archive/history;
+- application-generated material;
+- source material; or
+- an unknown grouping requiring review.
+
+Depth alone is never sufficient to classify a folder.
+
+Once a recognized helper branch such as `Wiring`, `Procedures`, or `Photos` is entered, that branch is excluded from Display fuzzy matching.
+
+---
+
+# Matching Philosophy
 
 > Matching may be forgiving. Recommendations must be authoritative.
 
-Existing non-helper Drive folders may be matched using relaxed comparison rules so historical naming drift does not cause every folder to appear missing.
+Loose matching may be used to discover plausible historical candidates inside the already-resolved top-level Stage.
 
-Possible matching evidence includes:
+Possible evidence includes:
 
-- correct 2-digit Stage folder
-- equivalent words despite spaces, hyphens, underscores, punctuation, or case
-- Display name text with the two-letter Stage prefix omitted
-- Scene context
-- recursive historical path context
-- partial but strong name similarity within the already-correct Stage
+- correct two-digit Stage context;
+- normalized words despite punctuation/case differences;
+- omitted two-letter Display Stage prefix;
+- Scene/Sub-stage context;
+- recursive path context; and
+- strong name similarity.
 
-The tool must avoid broad cross-Stage fuzzy matching when a reliable Stage ID is available.
+Cross-Stage fuzzy matching must not be used when a reliable Stage can be resolved.
 
-## Recursive historical discovery
+---
 
-Historical Display documentation may exist at arbitrary depth below a Stage.
+# Report Model
 
-The tool should recursively inventory non-helper portions of the Stage tree while retaining the full relative path for every candidate.
+The HTML report is a **Documentation Alignment Worklist**, not a migration script.
 
-A folder may represent:
+It should make these concepts distinct:
 
-- a dedicated physical Display folder;
-- a shared documentation grouping;
-- a historical/archive grouping;
-- application/tool output;
-- supporting/source material;
-- an unknown item requiring review.
+- top-level Stage;
+- LOR grouping/Scene;
+- resolved documentation root;
+- resolution method;
+- standard Setup destination;
+- published Setup documents;
+- legacy `000-Instructions` source locations;
+- Display/shared-folder reconciliation; and
+- review conditions.
 
-Arbitrary depth alone must not be used to classify a folder as a Display.
+Master Musical group rows must not imply that every musical Scene should become a Drive Scene folder.
 
-Strong matches at child level can provide evidence that a parent is a shared documentation grouping. For example, several LOR Displays matching separate children beneath one historical parent can justify flagging that parent as a likely shared group rather than forcing the parent to match one Display.
+Background Scene rows may represent real nested documentation scopes when an existing relationship is established.
 
-## Recommended hierarchy
+---
 
-### Stage-level Display
-
-If LOR does not assign a Display to a Scene, its current organizational context is the Stage.
-
-This does **not** automatically mean a dedicated Display folder must be created directly under the Stage.
-
-### Scene-level Display
-
-If LOR assigns a Display to one Scene, its current organizational context is:
-
-```text
-<Stage Folder>\<LOR Scene Name>
-```
-
-If the Display is known to require a dedicated folder, the recommended dedicated-folder location would be beneath that Scene. Until the documentation relationship is known, an unmatched Display remains a review item.
-
-### Multiple Scene membership
-
-If a Display appears in multiple LOR Scenes, the tool must not invent a single folder destination. It should flag the item for review unless a separate documented rule is adopted later.
-
-## Report requirements
-
-The report should contain separate sections/classes for deterministic helper-folder auditing and historical Display-folder reconciliation.
-
-### Stage / Scene structure
-
-Show at minimum:
-
-- Stage ID
-- Stage folder
-- Scene name where applicable
-- current path
-- expected path
-- status/action
-
-### Helper-folder audit
-
-Show at minimum:
-
-- Stage / Scene scope
-- helper class (`Wiring`, `Procedures`, `Photos`)
-- expected helper path
-- status
-- published item count where useful
-- note
-
-For Procedures, the report should be capable of listing/counting published documents in Setup/Takedown/Maintenance/Operations folders.
-
-### Display/shared-folder reconciliation
-
-For each included LOR Display, show at minimum:
-
-- Stage ID
-- Scene, when applicable
-- LOR Display name
-- current Google Drive candidate folder/path when found
-- match confidence/reason
-- likely shared-group context when detected
-- current organizational context
-- status/action
-- explanatory note
-
-## Status philosophy
-
-Helper-folder statuses can be deterministic, for example:
-
-- `MATCH`
-- `CREATE_SCENE_FOLDER`
-- `HELPER_EXISTS`
-- `HELPER_MISSING`
-- `BLOCKED`
-
-Display reconciliation must remain conservative, for example:
-
-- `MATCH`
-- `LIKELY_MATCH_RENAME`
-- `LIKELY_MATCH_MOVE`
-- `LIKELY_MATCH_MOVE_AND_RENAME`
-- `LIKELY_SHARED_GROUP`
-- `NO_FOLDER_MATCH`
-- `REVIEW_FOLDER_NEED`
-- `MULTIPLE_CANDIDATES_REVIEW`
-- `MULTIPLE_SCENES_REVIEW`
-- `BLOCKED`
-
-`NO_FOLDER_MATCH` means only that no plausible existing Drive folder was found. It does **not** mean `CREATE`.
-
-## Safety rules
+# Safety Rules
 
 Folder Alignment must:
 
-- remain read-only
-- never create folders automatically
-- never rename folders automatically
-- never move folders automatically
-- never delete folders automatically
-- never use PostgreSQL state as a substitute for the current SQLite parser output
-- never use `previews.StageID` as authoritative Stage identity for Scene-assigned Musical Displays when parser-derived Scene Stage identity is available
-- never treat a loose match as authority for a filesystem change
-- never treat every `DeviceType = 'LOR'` Display as requiring an individual folder
-- never treat helper-folder descendants as Display candidates
-- preserve existing historical paths in the report for human review
+- remain read-only;
+- never create, move, rename, or delete Google Drive folders;
+- use current parser SQLite output rather than PostgreSQL as its working source;
+- preserve the distinction between top-level Stage and nested documentation root;
+- use Master Musical `BackgroundFile` as explicit filesystem evidence when available;
+- not equate every Master Musical Scene with a Drive Scene folder;
+- not equate every LOR Display with a dedicated Drive folder;
+- not create or recommend individual Display Setup folders by default;
+- keep helper-folder descendants out of Display candidate matching;
+- preserve historical current paths in the report; and
+- report uncertainty instead of inventing structure.
 
-## Regression fixtures
+---
 
-The following real Stage structures should be used as regression examples when changing the matcher:
+# Regression Fixtures
 
-- Stage 02 Triangle — nested historical grouping (`Claymation`) and deep archives
-- Stage 07 Whoville — formal Substage and mixed historical folders
-- Stage 13 Winter Wonderland — deep shared groupings such as Christmas Story / Christmas Vacation / Polar Express
-- Stage 18 Dancing Forest — many legitimate LOR Displays with Stage-level documentation and no expectation of one folder per Display
+Changes to the resolver should be checked against these real structures:
 
-A matching change that makes these examples less intelligible should be treated as a regression.
+### Stage 02 — Triangle
 
-## Current implementation direction
+Fred's Stars can be a Master Musical Scene while its `BackgroundFile` points to:
 
-The implementation should:
+```text
+02-Triangle-TR\Wiring\MusicalStage
+```
 
-1. read `lor_output_v7_scene.db` directly
-2. include only `DeviceType = 'LOR'` Displays in Display reconciliation
-3. anchor Stage discovery primarily on the 2-digit Stage ID
-4. use parser-derived Scene Stage identity for Scene-assigned Displays
-5. inventory the historical non-helper tree recursively
-6. structurally exclude `Wiring`, `Procedures`, and `Photos` helper branches from Display fuzzy matching
-7. audit the standardized helper folders deterministically
-8. count/list published procedure documents by operational procedure folder
-9. loosely match historical Display/shared-documentation names only inside the correct Stage
-10. identify likely shared documentation groupings when multiple Displays map into one historical branch
-11. recommend Scene creation from current LOR Scene structure where needed
-12. report unmatched Displays as review items rather than automatic folder creation
-13. remain completely read-only
+Expected result: top-level Stage and documentation root are both Stage 02.
+
+### Stage 05 — Festive Trees
+
+A Master Musical Scene whose name is the actual Stage identity must resolve directly to the Stage root without producing a duplicate:
+
+```text
+05-Festive Trees-FT\05-Festive Trees-FT
+```
+
+### Stage 07 — Whoville
+
+Master Musical groups such as Who Characters and Who Spiral Tree may resolve to the Stage root through their background paths.
+
+Who Forest is a formal nested Sub-stage:
+
+```text
+07-Whoville-WV\07a-Who Forest-WF
+```
+
+Its `BackgroundFile` must preserve that nested documentation root while top-level Stage identity remains 07 Whoville.
+
+### Stage 13 — Winter Wonderland
+
+Background Scenes and historical shared groupings such as Christmas Story, Christmas Vacation, and Polar Express must remain intelligible and must not be flattened solely because Musical Preview behavior differs.
+
+### Stage 18 — Dancing Forest
+
+Many legitimate LOR Displays have no expectation of one folder per Display. The tool must not turn unmatched Displays into automatic folder creation requests.
+
+---
+
+# Current Implementation Direction
+
+The current test implementation should:
+
+1. read `lor_output_v7_scene.db` directly;
+2. include only `DeviceType = 'LOR'` Displays in Display reconciliation;
+3. inventory top-level Stage folders by reliable Stage ID;
+4. distinguish Background Preview Scene behavior from Master Musical Preview Scene behavior;
+5. use Master Musical `BackgroundFile` paths to recover documentation roots where available;
+6. preserve nested Sub-stage roots beneath a top-level Stage;
+7. use Stage/Scene/Sub-stage helper contexts for Setup/Wiring/Photos rather than Display helper folders;
+8. recursively scan for legacy `000-Instructions` folders and explicitly report whether any were found;
+9. recursively inventory historical non-helper folders for Display/shared-document matching;
+10. report unmatched Displays as review items rather than automatic creation requirements; and
+11. remain completely read-only.
