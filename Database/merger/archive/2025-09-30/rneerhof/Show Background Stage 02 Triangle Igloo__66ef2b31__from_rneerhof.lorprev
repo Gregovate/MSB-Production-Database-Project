@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PreviewClass id="66ef2b31-11fa-4eb0-8700-892189434e04" BackgroundFile="" Brightness="20" Revision="26" Name="Show Background Stage 02 Triangle Igloo">
+  <PropClass id="7f285405-7be4-4665-ba50-eab8734494fb" BulbShape="Square" ChannelGrid="Regular,0B,13,13,0,White" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="2" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE 0B-13 Igloo Mini LED Lights" Parm1="1" Parm2="50" Parm3="1" Parm4="1">
+    <shape ShapeName="Wreath" OffsetX="-0.2945248" OffsetY="0.009080648" ScaleX="0.36696082" ScaleY="0.5724143" Radians="0" />
+  </PropClass>
+  <PropClass id="afe2de36-5bac-416d-aab1-2ca44e1d15ff" BulbShape="Flood" ChannelGrid="Regular,E1,1,1,0,Red;Regular,E1,2,2,0,Green;Regular,E1,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="24" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E1" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.34801129" y="-0.1832689" />
+    </shape>
+  </PropClass>
+  <PropClass id="ab18a59a-1117-4661-a6a3-a0512acabbd5" BulbShape="Flood" ChannelGrid="Regular,E2,1,1,0,Red;Regular,E2,2,2,0,Green;Regular,E2,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="24" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E2" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.41933924" y="-0.08387056" />
+    </shape>
+  </PropClass>
+  <PropClass id="03492f56-c4fd-4815-9654-723c0c783473" BulbShape="Flood" ChannelGrid="Regular,E3,1,1,0,Red;Regular,E3,2,2,0,Green;Regular,E3,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="5" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E3" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.41933924" y="0.11768454" />
+    </shape>
+  </PropClass>
+  <PropClass id="553c2bd0-37e8-49e6-8e12-c1ecbbd930cc" BulbShape="Flood" ChannelGrid="Regular,E4,1,1,0,Red;Regular,E4,2,2,0,Green;Regular,E4,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="5" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E4" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.34801129" y="0.20978439" />
+    </shape>
+  </PropClass>
+  <PropClass id="ef51bc4a-5dcb-4721-aab6-563d69c5cb46" BulbShape="Flood" ChannelGrid="Regular,E5,1,1,0,Red;Regular,E5,2,2,0,Green;Regular,E5,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="5" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E5" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.22990555" y="0.20751423" />
+    </shape>
+  </PropClass>
+  <PropClass id="3fc47009-fb37-4c25-a537-9fa699696e39" BulbShape="Flood" ChannelGrid="Regular,E6,1,1,0,Red;Regular,E6,2,2,0,Green;Regular,E6,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="5" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E6" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.16612965" y="0.108604014" />
+    </shape>
+  </PropClass>
+  <PropClass id="52bca1f7-b5e5-4723-a489-df99f633edc1" BulbShape="Flood" ChannelGrid="Regular,E7,1,1,0,Red;Regular,E7,2,2,0,Green;Regular,E7,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="5" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E7" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.16612965" y="-0.09295109" />
+    </shape>
+  </PropClass>
+  <PropClass id="2d33bbcb-b97b-4143-908b-921da8e39a67" BulbShape="Flood" ChannelGrid="Regular,E8,1,1,0,Red;Regular,E8,2,2,0,Green;Regular,E8,3,3,0,Blue" Comment="Igloo" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="False" LegacySequenceMethod="" MaxChannels="5" Opacity="255" MasterDimmable="True" PreviewBulbSize="34" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="DumbRGB" TraditionalColors="" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="FE Igloo LED E8" Parm1="1">
+    <shape ShapeName="Bulbs">
+      <point x="-0.23619878" y="-0.19007933" />
+    </shape>
+  </PropClass>
+  <PropGroup id="283e4c0b-f090-4da5-815d-bbd5781d5c09" Arrangement="None" PreviewResFactor="1" PreviewSinglePointPerProp="False" EffectBulbSize="1" Tag="" Name="Animation Stage 01 FE Igloo">
+    <member id="7f285405-7be4-4665-ba50-eab8734494fb" orientation="normal" top="0" left="0" />
+    <member id="553c2bd0-37e8-49e6-8e12-c1ecbbd930cc" orientation="normal" top="0" left="0" />
+    <member id="afe2de36-5bac-416d-aab1-2ca44e1d15ff" orientation="normal" top="0" left="0" />
+    <member id="ab18a59a-1117-4661-a6a3-a0512acabbd5" orientation="normal" top="0" left="0" />
+    <member id="03492f56-c4fd-4815-9654-723c0c783473" orientation="normal" top="0" left="0" />
+    <member id="ef51bc4a-5dcb-4721-aab6-563d69c5cb46" orientation="normal" top="0" left="0" />
+    <member id="3fc47009-fb37-4c25-a537-9fa699696e39" orientation="normal" top="0" left="0" />
+    <member id="52bca1f7-b5e5-4723-a489-df99f633edc1" orientation="normal" top="0" left="0" />
+    <member id="2d33bbcb-b97b-4143-908b-921da8e39a67" orientation="normal" top="0" left="0" />
+  </PropGroup>
+</PreviewClass>

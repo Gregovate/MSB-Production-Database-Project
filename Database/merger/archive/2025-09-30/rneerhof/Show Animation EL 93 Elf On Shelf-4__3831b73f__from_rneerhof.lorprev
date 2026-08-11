@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PreviewClass id="3831b73f-a5db-4bec-841e-5ab939a51080" BackgroundFile="" Brightness="20" Revision="24" Name="Show Animation EL 93 Elf On Shelf-4">
+  <PropClass id="52dc0035-4197-4f26-abcc-ca12253091dc" BulbShape="Square" ChannelGrid="Regular,93,1,1,0,White" Comment="ElfonShelf-04" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Channel_per_color" EffectBulbSize="1" Tag="" Name="Elf-4 On Shelf 93-01" Parm1="58" Parm2="500">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.26027393" y="-0.38454863" />
+      <point x="0.2121546" y="-0.3169951" />
+      <point x="0.08872412" y="-0.31904325" />
+      <point x="0.05106733" y="-0.33337238" />
+      <point x="0.04060875" y="-0.5462712" />
+      <point x="-0.028429925" y="-0.58926195" />
+      <point x="-0.32131624" y="-0.62815815" />
+      <point x="-0.55144143" y="-0.66705227" />
+      <point x="-0.65185916" y="-0.7059518" />
+      <point x="-0.7355427" y="-0.7673626" />
+      <point x="-0.7083458" y="-0.80011654" />
+      <point x="-0.64558434" y="-0.78169364" />
+      <point x="0.02177719" y="-0.7141383" />
+      <point x="0.028059818" y="-0.81240106" />
+      <point x="0.05734107" y="-0.88404775" />
+      <point x="0.07617394" y="-0.8963288" />
+      <point x="0.11592195" y="-0.8410592" />
+      <point x="0.14730299" y="-0.7120897" />
+      <point x="0.42345262" y="-0.7120897" />
+      <point x="0.4694779" y="-0.6772882" />
+      <point x="0.4694779" y="-0.624064" />
+      <point x="0.46738437" y="-0.4623414" />
+      <point x="0.4527407" y="-0.3374658" />
+      <point x="0.4632" y="-0.057009146" />
+      <point x="0.5155042" y="-0.07133927" />
+      <point x="0.38788766" y="0.04329838" />
+      <point x="0.44855696" y="0.08014816" />
+      <point x="0.4862171" y="0.08219494" />
+      <point x="0.49667132" y="0.11290228" />
+      <point x="0.49248847" y="0.15589179" />
+      <point x="0.5217805" y="0.21935174" />
+      <point x="0.5155042" y="0.3053335" />
+      <point x="0.36487728" y="0.39950085" />
+      <point x="0.21006192" y="0.42201746" />
+      <point x="0.14311877" y="0.28690943" />
+      <point x="0.14311877" y="0.2275418" />
+      <point x="0.15567107" y="0.19069256" />
+      <point x="0.14102638" y="0.18659781" />
+      <point x="0.13265777" y="0.14975178" />
+      <point x="0.14730299" y="0.10471365" />
+      <point x="0.21006192" y="0.051488675" />
+      <point x="0.05734107" y="0.01873482" />
+      <point x="0.10127794" y="0.002357237" />
+      <point x="0.1054612" y="-0.08362156" />
+      <point x="0.17031504" y="-0.050867468" />
+      <point x="0.2121546" y="-0.120470315" />
+      <point x="0.29165226" y="-0.07338647" />
+      <point x="0.37533668" y="-0.110235214" />
+      <point x="0.3460478" y="-0.120470315" />
+      <point x="0.36278525" y="-0.3272304" />
+      <point x="-0.08072881" y="-0.6220171" />
+      <point x="-0.101652" y="-0.67319405" />
+      <point x="-0.06399405" y="-0.70799583" />
+      <point x="-0.022153262" y="-0.70390034" />
+      <point x="0.030147705" y="-0.66909945" />
+      <point x="0.24562746" y="-0.5278484" />
+      <point x="0.3502332" y="-0.46029314" />
+      <point x="0.39834934" y="-0.40911552" />
+      <point x="0.44437218" y="-0.35793647" />
+    </shape>
+  </PropClass>
+  <PropClass id="223f3b35-1139-4032-8423-6a66f87cc3fa" BulbShape="Square" ChannelGrid="Regular,93,2,2,0,White" Comment="ElfonShelf-04" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="White" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Elf-4 On Shelf 93-02" Parm1="4" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.20797037" y="0.4261123" />
+      <point x="0.18914281" y="0.72909075" />
+      <point x="0.06989804" y="0.84781826" />
+      <point x="0.37324414" y="0.7004286" />
+      <point x="0.5175937" y="0.31556857" />
+    </shape>
+  </PropClass>
+  <PropClass id="bf8cc3a4-ee08-4d64-9e65-0c0851aea399" BulbShape="Square" ChannelGrid="Regular,93,3,3,0,Red" Comment="ElfonShelf-04" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Red" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Elf-4 On Shelf 93-03" Parm1="2" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.2121546" y="0.4261123" />
+      <point x="0.5092236" y="0.85600716" />
+      <point x="0.5196883" y="0.31556857" />
+    </shape>
+  </PropClass>
+  <PropClass id="899bdfc5-abab-4d19-b4f1-6fb812c060dc" BulbShape="Square" ChannelGrid="Regular,93,4,4,0,Blue" Comment="ElfonShelf-04" CustomBulbColor="FFFFFF80" DeviceType="LOR" DimmingCurveName="None" IndividualChannels="True" LegacySequenceMethod="" MaxChannels="16" Opacity="255" MasterDimmable="True" PreviewBulbSize="12" RgbOrder="RGB order" MasterPropId="" SeparateIds="False" StartLocation="n/a" StringType="Traditional" TraditionalColors="Blue" TraditionalType="Multicolor_string_1_ch" EffectBulbSize="1" Tag="" Name="Elf-4 On Shelf 93-04" Parm1="4" Parm2="100">
+    <shape ShapeName="Lines-Connected">
+      <point x="0.20378505" y="0.4199707" />
+      <point x="0.49039885" y="0.68814117" />
+      <point x="0.7309864" y="0.7577479" />
+      <point x="0.5991829" y="0.6185423" />
+      <point x="0.5217805" y="0.3053335" />
+    </shape>
+  </PropClass>
+  <PropGroup id="dc0c8e29-efd2-4c97-9e68-bcb9d629067a" Arrangement="None" PreviewResFactor="1" PreviewSinglePointPerProp="False" EffectBulbSize="1" Tag="" Name="Panel Prop Elf-4 93">
+    <member id="52dc0035-4197-4f26-abcc-ca12253091dc" orientation="normal" top="0" left="0" />
+    <member id="bf8cc3a4-ee08-4d64-9e65-0c0851aea399" orientation="normal" top="0" left="0" />
+    <member id="899bdfc5-abab-4d19-b4f1-6fb812c060dc" orientation="normal" top="0" left="0" />
+    <member id="223f3b35-1139-4032-8423-6a66f87cc3fa" orientation="normal" top="0" left="0" />
+  </PropGroup>
+</PreviewClass>
