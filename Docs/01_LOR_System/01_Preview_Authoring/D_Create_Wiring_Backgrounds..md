@@ -100,6 +100,8 @@ Store the images used for **Musical Stage** Preview field-wiring instructions he
 
 The `SourceDocs\` subfolder is the working location for source material used to build those field-wiring background images.
 
+For the **Master Musical Preview**, the Scene's background-image path can also be used to identify the Scene's documentation root. A musical Scene that belongs to the whole Stage should reference an image below the Stage's `Wiring\MusicalStage` branch. A Scene that has an established one-to-one nested documentation folder should reference an image below that folder's `Wiring\MusicalStage` branch. See [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md) before assigning musical Scene backgrounds.
+
 ### `Props-Displays`
 
 Use this area for images needed to build individual Display/Prop previews in LOR. These are distinct from the Stage-level field-wiring instruction images.
@@ -109,6 +111,8 @@ Use this area for images needed to build individual Display/Prop previews in LOR
 The Stage wiring background should provide a useful visual map for field installation. Depending on the Stage, it may be created from Draw.io, PaintShop Pro, Inkscape, GIMP, photographs, layout drawings, or other source material.
 
 The working/source files belong in the appropriate `SourceDocs\` folder. The final image used by the LOR Preview belongs directly in the designated `BackgroundStage\` or `MusicalStage\` folder.
+
+For a Master Musical Preview Scene, a temporary placeholder image may be used while the final field-wiring image is still being developed. In that case, the important requirement is that the placeholder is stored below the correct Stage or nested Scene documentation root before it is assigned in LOR. The placeholder can later be replaced while preserving the intended documentation-root relationship.
 
 The final background should show enough information to make the generated field-wiring instructions useful to the setup crew. The exact drawing content varies by Stage.
 
@@ -185,7 +189,7 @@ The image should remain readable when viewed on screen and when incorporated int
 
 Verify:
 
-1. The Preview references the final image from the correct Stage `Wiring\` folder.
+1. The Preview references the final image from the correct Stage `Wiring\` folder, or follows the documented Master Musical Preview Scene-root rule when a musical Scene uses a placeholder or nested documentation root.
 2. The background image opens correctly from the shared-drive location.
 3. The designated wiring-image folder contains only current field-use images.
 4. Source/working files are kept in `SourceDocs\` where applicable.
@@ -203,6 +207,7 @@ The Wiring folder and its images provide the visual field-documentation layer. F
 ## Related Documents
 
 - [Building a Preview](B_Building_Preview_Howto.md)
+- [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
 - [Naming Conventions](A_Naming_Conventions.md)
 - [LOR Preview Authoring](README.md)
 - [Wiring System Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
