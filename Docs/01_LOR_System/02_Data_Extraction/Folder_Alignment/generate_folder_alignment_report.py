@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Read-only LOR vs Google Shared Drive Stage/Scene/Display folder alignment report.
+"""Read-only LOR vs Google Shared Drive documentation alignment report.
 
-Windows V1.1.0. Uses the current parser SQLite output as the LOR source of truth.
-Google Drive is inventoried read-only; no folder is created, moved, renamed, or deleted.
+Windows V1.2.0. Uses the current parser SQLite output as the LOR source of truth.
+Google Drive is inventoried read-only; no folder or document is created, moved,
+renamed, or deleted.
 """
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 
-VERSION = "V1.1.0"
+VERSION = "V1.2.0"
 DEFAULT_DB = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
 DEFAULT_ROOT = Path(r"G:\Shared drives\Display Folders")
 DEFAULT_OUTPUT = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment")
@@ -30,6 +31,7 @@ PRUNE_EXACT = {
     "sourcedocs", "corelautopreserve", "obsolete", "archive", "archives",
     "historical", "debug", "templates", "libraries", "workspaces",
 }
+LEGACY_INSTRUCTION_NAMES = {"000instructions", "000instruction"}
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,19 @@ class Finding:
     confidence: str
     action: str
     note: str
+
+
+@dataclass
+class HelperContext:
+    stage_id: str
+    scope_type: str
+    scope_name: str
+    base_path: Path
+    setup_path: Path
+    setup_exists: bool
+    published_files: list[Path]
+    legacy_instruction_dirs: list[Path]
+    legacy_files: list[Path]
 
 
 def norm(value: str | None) -> str:
@@ -318,6 +333,93 @@ def confidence(score: float) -> str:
     return ""
 
 
+def find_scene_folder(scene: str, direct_paths: list[Path]) -> Path | None:
+    matches = best_candidates(scene, direct_paths, "SCENE")
+    if matches and matches[0].score >= 0.93:
+        return matches[0].path
+    return None
+
+
+def list_direct_files(folder: Path) -> list[Path]:
+    if not folder.is_dir():
+        return []
+    try:
+        return sorted([p for p in folder.iterdir() if p.is_file()], key=lambda p: p.name.casefold())
+    except OSError:
+        return []
+
+
+def find_legacy_instruction_dirs(base: Path) -> list[Path]:
+    found: list[Path] = []
+    if not base.is_dir():
+        return found
+    try:
+        for current, dirs, _files in os.walk(base):
+            current_path = Path(current)
+            for d in dirs:
+                if norm(d) in LEGACY_INSTRUCTION_NAMES:
+                    found.append(current_path / d)
+    except OSError:
+        pass
+    return sorted(set(found), key=lambda p: str(p).casefold())
+
+
+def list_recursive_files(folder: Path) -> list[Path]:
+    files: list[Path] = []
+    if not folder.is_dir():
+        return files
+    try:
+        for current, _dirs, names in os.walk(folder):
+            current_path = Path(current)
+            for name in names:
+                files.append(current_path / name)
+    except OSError:
+        pass
+    return sorted(files, key=lambda p: str(p).casefold())
+
+
+def build_helper_contexts(root: Path, scenes, stage_folders, direct) -> dict[str, list[HelperContext]]:
+    result: dict[str, list[HelperContext]] = defaultdict(list)
+    for sid in sorted(set(stage_folders) | set(scenes)):
+        sm = stage_folders.get(sid, [])
+        if len(sm) != 1:
+            continue
+        stage = sm[0]
+
+        stage_setup = stage / "Procedures" / "Setup"
+        stage_legacy = find_legacy_instruction_dirs(stage)
+        result[sid].append(HelperContext(
+            stage_id=sid,
+            scope_type="STAGE",
+            scope_name=stage.name,
+            base_path=stage,
+            setup_path=stage_setup,
+            setup_exists=stage_setup.is_dir(),
+            published_files=list_direct_files(stage_setup),
+            legacy_instruction_dirs=stage_legacy,
+            legacy_files=[f for d in stage_legacy for f in list_recursive_files(d)],
+        ))
+
+        for scene in sorted(scenes.get(sid, {}), key=str.casefold):
+            scene_path = find_scene_folder(scene, direct.get(sid, []))
+            if scene_path is None:
+                scene_path = stage / scene
+            scene_setup = scene_path / "Procedures" / "Setup"
+            scene_legacy = find_legacy_instruction_dirs(scene_path) if scene_path.is_dir() else []
+            result[sid].append(HelperContext(
+                stage_id=sid,
+                scope_type="SCENE",
+                scope_name=scene,
+                base_path=scene_path,
+                setup_path=scene_setup,
+                setup_exists=scene_setup.is_dir(),
+                published_files=list_direct_files(scene_setup),
+                legacy_instruction_dirs=scene_legacy,
+                legacy_files=[f for d in scene_legacy for f in list_recursive_files(d)],
+            ))
+    return dict(result)
+
+
 def audit(root: Path, previews, scenes, displays):
     expected_stage_ids = set(previews) | set(scenes) | {d.stage_id for d in displays}
     stage_folders, candidates, direct = inventory_drive(root, expected_stage_ids)
@@ -421,10 +523,39 @@ def audit(root: Path, previews, scenes, displays):
             )
 
     findings.extend(display_findings)
-    return findings
+    helpers = build_helper_contexts(root, scenes, stage_folders, direct)
+    return findings, helpers
 
 
-def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings):
+def file_href(path: Path) -> str:
+    try:
+        return path.resolve().as_uri()
+    except (OSError, ValueError):
+        return ""
+
+
+def folder_link(path: Path, label: str = "Open Folder") -> str:
+    href = file_href(path)
+    if not href:
+        return html.escape(label)
+    return f"<a href='{html.escape(href, quote=True)}'>{html.escape(label)}</a>"
+
+
+def render_file_list(paths: list[Path], root: Path) -> str:
+    if not paths:
+        return "<em>None found</em>"
+    items = []
+    for p in paths:
+        href = file_href(p)
+        label = html.escape(rel(p, root))
+        if href:
+            items.append(f"<li><a href='{html.escape(href, quote=True)}'>{label}</a></li>")
+        else:
+            items.append(f"<li>{label}</li>")
+    return "<ul>" + "".join(items) + "</ul>"
+
+
+def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings, helpers, provenance):
     output.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     csv_path = output / f"lor-google-drive-alignment-{stamp}.csv"
@@ -450,11 +581,13 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
         counts[x.status] += 1
 
     esc = lambda v: html.escape(str(v or ""))
-    parts = ["<!doctype html><html><head><meta charset='utf-8'><title>LOR / Google Drive Folder Alignment</title>"]
-    parts.append("<style>body{font-family:Segoe UI,Arial;margin:24px;color:#222}table{border-collapse:collapse;width:100%;margin:10px 0 28px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{background:#eee}.MATCH{background:#edf8ed}.MISSING,.NO_FOLDER_MATCH{background:#fff0f0}.LIKELY_MATCH,.LIKELY_SHARED_GROUP{background:#eef7ff}.POSSIBLE_MATCH,.WEAK_MATCH,.REVIEW_MULTIPLE,.REVIEW_MULTIPLE_SCENES,.BLOCKED{background:#fff7e6}code{font-family:Consolas,monospace}.warn{padding:10px;background:#fff8d6;border:1px solid #d5a400}</style></head><body>")
-    parts.append("<h1>LOR / Google Shared Drive Folder Alignment</h1>")
-    parts.append("<p class='warn'><strong>READ-ONLY.</strong> No Google Drive folders were changed. A missing Display folder is not automatically a recommendation to create one.</p>")
-    parts.append(f"<p><strong>Version:</strong> {VERSION}<br><strong>Generated:</strong> {esc(datetime.now().astimezone())}<br><strong>SQLite:</strong> <code>{esc(db)}</code><br><strong>Drive:</strong> <code>{esc(root)}</code></p>")
+    parts = ["<!doctype html><html><head><meta charset='utf-8'><title>MSB Documentation Alignment Worklist</title>"]
+    parts.append("<style>body{font-family:Segoe UI,Arial;margin:24px;color:#222}table{border-collapse:collapse;width:100%;margin:10px 0 28px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top}th{background:#eee}.MATCH{background:#edf8ed}.MISSING,.NO_FOLDER_MATCH{background:#fff0f0}.LIKELY_MATCH,.LIKELY_SHARED_GROUP{background:#eef7ff}.POSSIBLE_MATCH,.WEAK_MATCH,.REVIEW_MULTIPLE,.REVIEW_MULTIPLE_SCENES,.BLOCKED{background:#fff7e6}code{font-family:Consolas,monospace}.warn{padding:10px;background:#fff8d6;border:1px solid #d5a400}.roadmap{padding:12px;border:2px solid #6a8fb3;background:#f7fbff;margin:14px 0}.ok{color:#176b22;font-weight:700}.missing{color:#a40000;font-weight:700}.legacy{background:#fff4e5;padding:8px;border-left:4px solid #d98a00}ul{margin-top:5px}</style></head><body>")
+    parts.append("<h1>MSB Documentation Alignment Worklist</h1>")
+    parts.append("<p class='warn'><strong>READ-ONLY.</strong> This is a roadmap generated from the current LOR parser snapshot and the current Google Shared Drive. It does not change any folders or documents. Regenerate it after LOR or folder changes.</p>")
+    parts.append(f"<p><strong>Version:</strong> {VERSION}<br><strong>Generated:</strong> {esc(datetime.now().astimezone())}<br><strong>SQLite snapshot:</strong> <code>{esc(db)}</code><br><strong>Drive:</strong> <code>{esc(root)}</code></p>")
+    if provenance:
+        parts.append("<p><strong>Parser snapshot details:</strong> " + "; ".join(f"{esc(k)}={esc(v)}" for k, v in provenance.items() if v) + "</p>")
     parts.append("<h2>Summary</h2><p>" + " &nbsp; ".join(f"<strong>{esc(k)}:</strong> {v}" for k, v in sorted(counts.items())) + "</p>")
 
     for sid in sorted(by_stage):
@@ -463,29 +596,56 @@ def write_reports(output: Path, root: Path, db: Path, previews, scenes, findings
             parts.append("<p><strong>LOR Preview(s):</strong> " + "; ".join(esc(v) for v in previews[sid]) + "</p>")
         if scenes.get(sid):
             parts.append("<p><strong>LOR Scenes:</strong> " + "; ".join(esc(v) for v in sorted(scenes[sid], key=str.casefold)) + "</p>")
+
+        parts.append("<div class='roadmap'><h3>Documentation Roadmap</h3>")
+        contexts = helpers.get(sid, [])
+        if not contexts:
+            parts.append("<p>No single Stage folder is available for helper-folder inventory.</p>")
+        for ctx in contexts:
+            parts.append(f"<h4>{esc(ctx.scope_type.title())}: {esc(ctx.scope_name)}</h4>")
+            base_link_target = ctx.base_path if ctx.base_path.is_dir() else ctx.base_path.parent
+            parts.append(f"<p><strong>Location:</strong> <code>{esc(rel(ctx.base_path, root))}</code> &nbsp; {folder_link(base_link_target)}</p>")
+            if ctx.setup_exists:
+                parts.append(f"<p><span class='ok'>Setup folder exists</span>: <code>{esc(rel(ctx.setup_path, root))}</code> &nbsp; {folder_link(ctx.setup_path, 'Open Setup Folder')}</p>")
+            else:
+                parts.append(f"<p><span class='missing'>Setup folder missing</span>: expected <code>{esc(rel(ctx.setup_path, root))}</code>. Open the nearest existing location: {folder_link(base_link_target)}</p>")
+            parts.append(f"<p><strong>Published Setup Documents ({len(ctx.published_files)}):</strong></p>{render_file_list(ctx.published_files, root)}")
+            if ctx.legacy_instruction_dirs:
+                parts.append("<div class='legacy'><strong>Legacy Instructions Found</strong><br>")
+                for d in ctx.legacy_instruction_dirs:
+                    parts.append(f"<p><code>{esc(rel(d, root))}</code> &nbsp; {folder_link(d, 'Open Legacy Instructions')}</p>")
+                parts.append(f"<p><strong>Legacy files ({len(ctx.legacy_files)}):</strong></p>{render_file_list(ctx.legacy_files, root)}</div>")
+        parts.append("</div>")
+
+        parts.append("<details><summary><strong>Stage / Scene / Display Alignment Detail</strong></summary>")
         parts.append("<table><tr><th>Type</th><th>LOR Name</th><th>Current Drive Path</th><th>Recommended Name</th><th>Recommended Location</th><th>Status</th><th>Confidence</th><th>Action</th><th>Notes</th></tr>")
         order = {"STAGE": 0, "SCENE": 1, "DISPLAY": 2}
         for x in sorted(by_stage[sid], key=lambda z: (order.get(z.kind, 9), z.lor_name.casefold())):
+            current_html = f"<code>{esc(x.current_path)}</code>"
+            if x.current_path:
+                p = root / x.current_path
+                if p.exists():
+                    current_html += " &nbsp; " + folder_link(p)
             parts.append(
                 f"<tr class='{esc(x.status)}'><td>{esc(x.kind)}</td><td>{esc(x.lor_name)}</td>"
-                f"<td><code>{esc(x.current_path)}</code></td><td>{esc(x.recommended_name)}</td>"
+                f"<td>{current_html}</td><td>{esc(x.recommended_name)}</td>"
                 f"<td><code>{esc(x.recommended_path)}</code></td><td><strong>{esc(x.status)}</strong></td>"
                 f"<td>{esc(x.confidence)}</td><td>{esc(x.action)}</td><td>{esc(x.note)}</td></tr>"
             )
-        parts.append("</table>")
+        parts.append("</table></details>")
     parts.append("</body></html>")
     html_path.write_text("".join(parts), encoding="utf-8")
     return html_path, csv_path, counts
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Read-only LOR vs Google Shared Drive folder alignment audit")
+    ap = argparse.ArgumentParser(description="Read-only LOR vs Google Shared Drive documentation alignment audit")
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--drive-root", type=Path, default=DEFAULT_ROOT)
     ap.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
     args = ap.parse_args()
 
-    print(f"[INFO] LOR / Google Drive Folder Alignment {VERSION}", flush=True)
+    print(f"[INFO] MSB Documentation Alignment {VERSION}", flush=True)
     print(f"[INFO] SQLite: {args.db}", flush=True)
     print(f"[INFO] Drive:  {args.drive_root}", flush=True)
     if not args.db.is_file():
@@ -499,11 +659,11 @@ def main() -> int:
         print("[INFO] Reading current LOR snapshot...", flush=True)
         uri = args.db.resolve().as_uri() + "?mode=ro"
         with sqlite3.connect(uri, uri=True) as conn:
-            previews, scenes, displays, _provenance = load_expected(conn)
+            previews, scenes, displays, provenance = load_expected(conn)
         print(f"[INFO] LOR snapshot loaded: {len(previews)} Stage IDs, {sum(len(v) for v in scenes.values())} Scenes, {len(displays)} LOR Displays", flush=True)
-        findings = audit(args.drive_root, previews, scenes, displays)
+        findings, helpers = audit(args.drive_root, previews, scenes, displays)
         print("[INFO] Writing reports...", flush=True)
-        hp, cp, counts = write_reports(args.output_dir, args.drive_root, args.db, previews, scenes, findings)
+        hp, cp, counts = write_reports(args.output_dir, args.drive_root, args.db, previews, scenes, findings, helpers, provenance)
     except KeyboardInterrupt:
         print("\n[STOPPED] Audit cancelled by user. No folders were changed.", file=sys.stderr)
         return 130
@@ -512,9 +672,9 @@ def main() -> int:
         return 4
 
     print("[INFO] " + " | ".join(f"{s}={n}" for s, n in sorted(counts.items())), flush=True)
-    print(f"[INFO] HTML: {hp}", flush=True)
-    print(f"[INFO] CSV:  {cp}", flush=True)
-    print("[INFO] Read-only audit complete. No Google Drive folders were changed.", flush=True)
+    print(f"[INFO] HTML worklist: {hp}", flush=True)
+    print(f"[INFO] CSV detail:    {cp}", flush=True)
+    print("[INFO] Read-only audit complete. No Google Drive folders or documents were changed.", flush=True)
     return 0
 
 
