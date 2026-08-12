@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Keep repository navigation simple and reduce link maintenance as the project grows.
+Keep repository navigation simple and reduce link maintenance as projects grow, while allowing user-facing systems to present a simpler navigation model than the underlying source repository.
 
 ## Rules
 
@@ -14,6 +14,23 @@ Keep repository navigation simple and reduce link maintenance as the project gro
 - Cross-system links are allowed when they are genuinely needed to understand a dependency, complete a task, or reach a responsible engineering reference.
 - Do not move or rename files only to make links look cleaner without first discussing the change.
 - Current internal and external application links must remain current in engineering documentation as well as user-facing documentation.
+
+## Repository Structure vs. User-Facing Navigation
+
+Repository structure determines ownership, maintenance location, and version-control organization. A user-facing portal, intranet, scraper, or application does not need to reproduce that hierarchy literally.
+
+When repository-controlled content is presented through a user-facing interface:
+
+- present navigation appropriate to the intended audience and task;
+- keep ordinary users inside the user-facing interface whenever practical;
+- do not require users to understand repository folder structure merely to find the information they need;
+- do not unintentionally send ordinary users into GitHub or another source-control interface while they follow normal navigation;
+- translate repository-relative navigation into the corresponding rendered/user-facing destination when the publishing system supports it;
+- provide repository/source access as an explicit contributor or engineering action rather than the default field/operator path;
+- preserve a clear return path to the user's current task, Stage, subsystem, or portal context;
+- exclude archive/historical material from normal user navigation unless the user deliberately chooses to view it.
+
+A repository README may therefore be the controlled navigation source for a scraper without being the exact interface shown to field users.
 
 ## Related Systems
 
@@ -54,6 +71,16 @@ Repository portal
 Cross-system engineering navigation may supplement this model when a document needs to show an actual dependency chain. It should not replace the normal portal hierarchy.
 
 Most readers should not need to understand the complete repository structure to find the document they need.
+
+For user-facing systems, the visible navigation may be shorter, for example:
+
+```text
+Field portal
+    -> Stage
+        -> current Setup instruction
+```
+
+The shorter visible path does not change repository ownership of the underlying standards, engineering contracts, templates, or source metadata.
 
 ## Repository Link Cleanup Procedure
 
