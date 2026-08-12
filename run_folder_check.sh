@@ -17,11 +17,14 @@
 #     --db "/path/to/lor_output_v7_scene.db" \
 #     --drive-root "/path/to/Display Folders" \
 #     --output-dir "/path/to/google-drive-alignment"
+#
+# Add --include-displays only when Display-folder engineering diagnostics are
+# intentionally needed. The normal Setup Alignment report suppresses Displays.
 
 set -u
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ALIGNMENT_SCRIPT="$REPO_ROOT/Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/generate_folder_alignment_report_v1_3_4.py"
+ALIGNMENT_SCRIPT="$REPO_ROOT/Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/generate_folder_alignment_report_v1_3_5.py"
 
 if [[ ! -f "$ALIGNMENT_SCRIPT" ]]; then
     echo "[ERROR] Folder Alignment script not found: $ALIGNMENT_SCRIPT" >&2
@@ -37,8 +40,6 @@ else
     exit 3
 fi
 
-# Build optional defaults from environment. Explicit command-line arguments are
-# appended last so they override environment-provided values in argparse.
 PY_ARGS=()
 
 if [[ -n "${MSB_FOLDER_ALIGNMENT_DB:-}" ]]; then
@@ -51,9 +52,6 @@ if [[ -n "${MSB_FOLDER_ALIGNMENT_OUTPUT_DIR:-}" ]]; then
     PY_ARGS+=(--output-dir "$MSB_FOLDER_ALIGNMENT_OUTPUT_DIR")
 fi
 
-# On Linux the Python script's built-in defaults are Windows G: paths. Require
-# Linux callers to provide DB and Drive paths either as environment variables or
-# explicit command-line options instead of failing later on a misleading G: path.
 has_db=false
 has_drive=false
 for arg in "${PY_ARGS[@]}" "$@"; do
@@ -88,8 +86,6 @@ status=$?
 if [[ $status -eq 0 ]]; then
     echo "[INFO] Folder Alignment completed successfully."
 
-    # If an output directory was explicitly configured and xdg-open exists,
-    # open the report folder. Failure to open a desktop window is non-fatal.
     output_dir="${MSB_FOLDER_ALIGNMENT_OUTPUT_DIR:-}"
     args=("$@")
     for ((i=0; i<${#args[@]}; i++)); do
