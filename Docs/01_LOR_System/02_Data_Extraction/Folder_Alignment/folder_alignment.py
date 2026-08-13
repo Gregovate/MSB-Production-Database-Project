@@ -239,37 +239,91 @@ def inventory_drive(root: Path):
 
 
 def background_scope(info: SceneInfo, root: Path, stages: dict[str, Path]) -> Path | None:
+    """
+    Resolve the Stage / Sub-stage / Scene that owns a BackgroundFile.
+
+    Infrastructure folders are never documentation scopes.
+
+    Examples:
+
+        Stage\\PreviewBackground\\image
+            -> Stage
+
+        Stage\\Scene\\PreviewBackground\\image
+            -> Scene
+
+        Stage\\Wiring\\BackgroundStage\\image
+            -> Stage
+
+        Stage\\Scene\\Wiring\\BackgroundStage\\image
+            -> Scene
+    """
     if not info.background_file:
         return None
+
     try:
         parts = list(PureWindowsPath(info.background_file).parts)
     except (TypeError, ValueError):
         return None
 
     normalized = [norm(p) for p in parts]
+
     stage_index = None
     stage_path = None
-    for sid, stage in stages.items():
+
+    for _sid, stage in stages.items():
         try:
             idx = normalized.index(norm(stage.name))
         except ValueError:
             continue
+
         stage_index = idx
         stage_path = stage
         break
+
     if stage_index is None or stage_path is None:
         return None
 
     after = parts[stage_index + 1:]
+
     if not after:
         return stage_path
-    if "previewbackground" in [norm(x) for x in after]:
-        idx = [norm(x) for x in after].index("previewbackground")
-        scope_parts = after[:idx]
+
+    normalized_after = [norm(p) for p in after]
+
+    # These folders belong to an existing Stage / Sub-stage / Scene.
+    # They can never become a documentation scope themselves.
+    infrastructure = {
+        "previewbackground",
+        "photos",
+        "procedures",
+        "wiring",
+    }
+
+    boundary = next(
+        (
+            index
+            for index, part in enumerate(normalized_after)
+            if part in infrastructure
+        ),
+        None,
+    )
+
+    if boundary is not None:
+        # Everything before the infrastructure folder identifies the
+        # owning Stage / Sub-stage / Scene.
+        scope_parts = after[:boundary]
     else:
+        # No infrastructure folder is present. The final component is
+        # assumed to be the background image/file itself.
         scope_parts = after[:-1]
 
-    candidate = stage_path.joinpath(*scope_parts) if scope_parts else stage_path
+    candidate = (
+        stage_path.joinpath(*scope_parts)
+        if scope_parts
+        else stage_path
+    )
+
     return candidate if candidate.is_dir() else None
 
 
@@ -326,28 +380,75 @@ def resolve_scopes(root: Path, stages: dict[str, Path], dirs_by_stage, direct_by
             scopes[str(target).casefold()] = Scope(sid, "SUB_STAGE", target.name, target, "OK")
             continue
 
-        # Scene. If BackgroundFile points to an existing scope, keep that as the
-        # filesystem evidence. Otherwise look for an exact folder name.
+        # Scene.
+        #
+        # A BackgroundFile that resolves to an actual child folder is strong
+        # evidence that the child folder is the Scene scope.
+        #
+        # A BackgroundFile that resolves only to the Stage root does NOT mean
+        # a child Scene folder is missing. Some LOR Scenes are simply views of
+        # the Stage-level background/documentation scope.
         target = bg_scope if bg_scope is not None and bg_scope != stage else None
+
         if target is None:
-            if len(token) == 3:  # e.g. 07a-Scene -> child of the 07a sub-stage
-                substage = next((p for p in direct_by_stage.get(sid, []) if p.name.casefold().startswith(token.casefold() + "-")), None)
+            if len(token) == 3:
+                # Example: 07a-Scene belongs beneath Sub-stage 07a.
+                substage = next(
+                    (
+                        p
+                        for p in direct_by_stage.get(sid, [])
+                        if p.name.casefold().startswith(
+                            token.casefold() + "-"
+                        )
+                    ),
+                    None,
+                )
+
                 if substage is not None:
                     try:
-                        target = find_exact([p for p in substage.iterdir() if p.is_dir()], expected_name)
+                        target = find_exact(
+                            [
+                                p
+                                for p in substage.iterdir()
+                                if p.is_dir()
+                            ],
+                            expected_name,
+                        )
                     except OSError:
                         target = None
             else:
-                target = find_exact(direct_by_stage.get(sid, []), expected_name)
+                target = find_exact(
+                    direct_by_stage.get(sid, []),
+                    expected_name,
+                )
 
         if target is None:
-            issues[sid].append(f"Missing Scene folder expected from LOR: <code>{html.escape(expected_name)}</code>.")
+            # If the stored BackgroundFile resolves to the Stage itself,
+            # this LOR Scene is using Stage-level documentation/background
+            # storage. Do not invent a missing Scene folder.
+            if bg_scope == stage:
+                continue
+
+            issues[sid].append(
+                "Missing Scene folder expected from LOR: "
+                f"<code>{html.escape(expected_name)}</code>."
+            )
             continue
 
-        scopes[str(target).casefold()] = Scope(sid, "SCENE", target.name, target, "OK")
+        scopes[str(target).casefold()] = Scope(
+            sid,
+            "SCENE",
+            target.name,
+            target,
+            "OK",
+        )
+
         if norm(target.name) != norm(expected_name):
             issues[sid].append(
-                f"Review Scene name <code>{html.escape(info.scene_name)}</code>; current folder is <code>{html.escape(rel(target, root))}</code>."
+                "Review Scene name "
+                f"<code>{html.escape(info.scene_name)}</code>; "
+                "current folder is "
+                f"<code>{html.escape(rel(target, root))}</code>."
             )
 
     return list(scopes.values()), dict(issues)
