@@ -4,15 +4,17 @@
 
 Use this procedure when organizing MSB engineering documents in the Google Shared Drive named **Display Folders**.
 
-The goal is to put current, usable information in predictable Stage, Sub-stage, Scene, and Display locations so volunteers and future MSB applications can find it without relying on tribal knowledge.
+The goal is to put current, usable information in predictable Stage/Sub-stage/Scene locations so volunteers and future MSB applications can find it without relying on tribal knowledge.
 
-The Shared Drive remains the permanent home for field-facing engineering documents. Folder Alignment remains the read-only worklist/validator used to reconcile current LOR structure with the Drive.
+The Shared Drive remains the permanent home for the field-facing engineering documents. The current Folder Alignment worklist is the roadmap for reconciling historical material into that structure.
 
 ---
 
 # Start With the Current Documentation Alignment Worklist
 
-Before organizing a Stage, run the current Folder Alignment workflow and use the resulting Documentation Alignment Worklist.
+Do not begin by browsing the Shared Drive and guessing where historical material belongs.
+
+Before organizing a Stage, run the current Folder Alignment workflow and use the resulting **Documentation Alignment Worklist**.
 
 Normal workflow:
 
@@ -30,149 +32,57 @@ Documentation Alignment Worklist
 human review and document alignment
 ```
 
-Folder Alignment is read-only. It does not move, rename, create, or delete Google Drive folders or documents.
+The report is read-only. It does not move, rename, create, or delete Google Drive folders or documents.
 
 ---
 
-# Current Folder Contracts
+# Standard Stage / Sub-stage / Scene Documentation Structure
 
-## Stage / Sub-stage / Scene
-
-Stage, Sub-stage, and Scene roots use one identical structure:
+The established Stage/Sub-stage/Scene structure remains authoritative.
 
 ```text
-<Stage / Sub-stage / Scene>\
+<Stage, Sub-stage, or Scene>
+├── PreviewBackground
 │
-├── PreviewBackground\
+├── Photos
+│   ├── Current
+│   └── Historical
 │
-├── Photos\
-│   ├── Current\
-│   └── Historical\
+├── Procedures
+│   ├── Inspection
+│   ├── Setup
+│   │   ├── Archive
+│   │   ├── images
+│   │   └── SourceDocs
+│   └── Takedown
+│       ├── Archive
+│       ├── images
+│       └── SourceDocs
 │
-├── Procedures\
-│   ├── Inspection\
-│   │
-│   ├── Setup\
-│   │   ├── Archive\
-│   │   ├── images\
-│   │   └── SourceDocs\
-│   │
-│   └── Takedown\
-│       ├── Archive\
-│       ├── images\
-│       └── SourceDocs\
-│
-└── Wiring\
-    ├── BackgroundStage\
-    │   └── SourceDocs\
-    └── MusicalStage\
-        └── SourceDocs\
+└── Wiring
+    ├── BackgroundStage
+    │   └── SourceDocs
+    └── MusicalStage
+        └── SourceDocs
 ```
 
 `Procedures\Inspection` is intentionally unstructured.
 
-Do not create a generic `Procedures\SourceDocs` folder under the Procedures root. Setup and Takedown each own their own `SourceDocs` location.
-
-## Display
-
-A Display folder uses a smaller structure:
+Display folders use a smaller standard structure:
 
 ```text
-<Display>\
-├── PreviewBackground\
-└── Photos\
-    ├── Current\
-    └── Historical\
+<Display>
+├── PreviewBackground
+└── Photos
+    ├── Current
+    └── Historical
 ```
 
-A Display does not automatically receive `Procedures` or `Wiring` folders.
+A Display may exist directly under a Stage or under a Scene/Sub-stage. A Display does not automatically receive `Procedures` or `Wiring` folders.
 
-A Display may exist directly under a Stage or under a Scene/Sub-stage. Its parent documentation scope is used for shared Procedures/Wiring discovery.
+Do not redesign the Stage/Sub-stage/Scene hierarchy while performing document cleanup.
 
----
-
-# PreviewBackground
-
-`PreviewBackground` is the stable location for images intentionally referenced by LOR as Preview/Scene background files.
-
-It is expected at all four scope types:
-
-```text
-Stage\PreviewBackground\
-Sub-stage\PreviewBackground\
-Scene\PreviewBackground\
-Display\PreviewBackground\
-```
-
-This prevents LOR `BackgroundFile` paths from depending on arbitrary loose image files that may later be renamed, deleted, or moved.
-
-The folder may contain one or more images as required by LOR authoring. The presence of `PreviewBackground` on a Display does not make the Display a full Stage/Scene documentation root.
-
----
-
-# Additive PreviewBackground Update Tool
-
-A separate updater exists because Folder Alignment must remain read-only.
-
-Windows launcher:
-
-```powershell
-.\run_previewbackground_update.ps1
-```
-
-The default run is a **dry-run**. It reports which missing `PreviewBackground` folders would be added but makes no Drive changes.
-
-After reviewing the dry-run output:
-
-```powershell
-.\run_previewbackground_update.ps1 --apply
-```
-
-The updater is intentionally narrow. It may only create:
-
-```text
-<existing resolved scope>\PreviewBackground
-```
-
-It must never:
-
-- create a Stage, Sub-stage, Scene, or Display parent folder;
-- move files or folders;
-- rename files or folders;
-- delete files or folders;
-- overwrite an existing item;
-- treat a non-folder item named `PreviewBackground` as safe to replace.
-
-Only already-existing scopes resolved from the current V7 parser snapshot and current Drive tree are eligible.
-
-The updater writes a CSV audit log to the Folder Alignment report output directory.
-
----
-
-# Legacy Tree Migration Safety
-
-The Google Drive tree contains older standardized structures and historical material. The current structure is different from some earlier folder conventions.
-
-Do **not** delete old folders simply because they are no longer part of the current contract.
-
-Examples that may still exist include:
-
-```text
-Photos\Setup
-Photos\Takedown
-Photos\Reference
-Procedures\Maintenance
-Procedures\Operations
-Procedures\SourceDocs
-```
-
-These may contain useful files. Until reviewed, they remain historical evidence.
-
-The migration rule is:
-
-> Add the current canonical structure where safe; preserve existing material until its contents have been reviewed.
-
-The current `PreviewBackground` updater follows that rule by creating only the missing approved folder and leaving all existing content untouched.
+Not every LOR Display needs its own Google Drive folder, and not every Display needs its own Setup procedure. Shared Stage or Scene instructions should remain shared rather than being duplicated under every Display.
 
 ---
 
@@ -180,39 +90,66 @@ The current `PreviewBackground` updater follows that rule by creating only the m
 
 ## Central legacy source
 
-Historical Setup documents are currently being reconciled from:
+Historical Setup documents are currently being reconciled from the central legacy repository:
 
 ```text
 G:\Shared drives\Display Folders\000-Instructions\0 - Setup Procedures
 ```
 
-Folder Alignment inventories this source so the remaining backlog can be seen while work progresses.
+The Folder Alignment report inventories this source so the remaining backlog can be seen while work progresses.
 
-A filename or fuzzy name match is not final ownership authority.
+A filename or fuzzy name match is **not** final ownership authority.
 
 ## Human ownership decision
+
+Eric is reviewing the legacy material and determining the correct current Stage, Sub-stage, or Scene based on the real field organization and the Folder Alignment worklist.
 
 When the ownership of a legacy Setup document is understood, move the original legacy Google Doc into the applicable Stage/Sub-stage/Scene Setup archive:
 
 ```text
-<Stage / Sub-stage / Scene>\
+<Stage, Sub-stage, or Scene>\
     Procedures\
         Setup\
             Archive\
                 <legacy document>.gdoc
 ```
 
-This move records a human-audited ownership decision.
+Example:
 
-Once a legacy document is located under the correct `Procedures\Setup\Archive`, Folder Alignment should use that filesystem location as stronger evidence than a fuzzy historical filename.
+```text
+01-Front Entrance-FE\
+    Procedures\
+        Setup\
+            Archive\
+                01 - Front Arch.gdoc
+```
 
-Do not automatically move a document merely because its name resembles a Display, Stage, or Scene name.
+This move is important because it records a **human-audited ownership decision**.
+
+Once the legacy document is located under a Stage/Sub-stage/Scene `Procedures\Setup\Archive` folder, Folder Alignment no longer needs to infer ownership from a fuzzy historical filename. The current folder location is stronger evidence of where that legacy procedure belongs.
+
+## What remains in `000-Instructions`
+
+As reviewed legacy files are moved out of the central `000-Instructions\0 - Setup Procedures` backlog, the number of unresolved historical Setup documents should steadily decrease.
+
+At the same time, the applicable Stage/Sub-stage/Scene `Procedures\Setup\Archive` folders should become populated with the legacy documents that have been deliberately assigned there.
+
+The Folder Alignment worklist should therefore support both sides of the migration:
+
+- remaining legacy Setup files still under `000-Instructions`;
+- human-audited legacy Setup files now under the correct Stage/Sub-stage/Scene `Procedures\Setup\Archive` location.
+
+Do not automatically move a document merely because its name resembles a Display, Stage, Sub-stage, or Scene name.
 
 ---
 
-# Procedure Audit and Publication
+# Procedure Audit and Reformatting — Next Step
 
-Moving a legacy Google Doc into `Procedures\Setup\Archive` does not make it the current field instruction.
+Moving a legacy Google Doc into `Procedures\Setup\Archive` does **not** make it the current field instruction.
+
+It means only that its Stage/Sub-stage/Scene ownership has been reviewed and accepted.
+
+The next phase is to audit each archived legacy Setup procedure and convert useful current information into the controlled Stage Setup Instruction format.
 
 The intended workflow is:
 
@@ -221,146 +158,182 @@ legacy .gdoc in Procedures\Setup\Archive
         ↓
 review content
         ↓
-apply the controlled Stage Setup Instruction template
+apply the approved Stage Setup Instruction template
         ↓
 field review / approval
         ↓
 publish current field PDF
         ↓
-place current PDF directly in Procedures\Setup
+place current PDF in Procedures\Setup
 ```
 
-The controlled Stage Setup Instruction template is maintained under:
+The controlled Stage Setup Instruction template is maintained in the Production Database repository under:
 
 ```text
 System_Documentation\Templates\Stage_Setup_Instruction_Template.md
 ```
 
-Do not invent historical revision numbers or approvals while converting legacy documents.
+The exact contributor workflow and final template formatting are controlled separately. Do not invent historical revision numbers or approvals while converting legacy documents.
 
 ---
 
-# Current Procedure Publication Locations
+# Current Setup Publication Location
 
-Current approved field-facing Setup material belongs directly in:
-
-```text
-<Stage / Sub-stage / Scene>\Procedures\Setup
-```
-
-Current approved field-facing Takedown material belongs directly in:
+The current field-facing Setup document belongs in the applicable Stage, Sub-stage, or Scene:
 
 ```text
-<Stage / Sub-stage / Scene>\Procedures\Takedown
+<Stage, Sub-stage, or Scene>\Procedures\Setup
 ```
 
-Within either branch:
+Example target state:
 
 ```text
-Archive\
-images\
-SourceDocs\
+01-Front Entrance-FE\
+    Procedures\
+        Setup\
+            Archive\
+                01 - Front Arch.gdoc
+            images\
+            SourceDocs\
+            Front Entrance Setup.pdf
 ```
 
-are support/source areas and must not be treated as the current field presentation set.
+`Archive` contains superseded or historical source material and must not be treated as current field authority.
 
-`Inspection` remains a direct unstructured procedure area:
+`images` contains image assets used by the Setup instructions.
 
-```text
-<Stage / Sub-stage / Scene>\Procedures\Inspection
-```
+`SourceDocs` contains Setup working/source material and is not intended for direct field presentation.
+
+Current PDFs or other approved rendered field documents belong in the normal `Procedures\Setup` presentation area.
+
+Do not delete the archived legacy Google Doc merely because a current PDF has been produced. The archive preserves the historical source and migration evidence.
 
 ---
 
-# Photos
+# Future Setup Application Discovery
 
-Current photo locations are deliberately simple.
-
-At Stage/Sub-stage/Scene scope:
+The Setup application should use the same general location-resolution principle already proven by FormView for Wiring:
 
 ```text
-Photos\Current
-Photos\Historical
+structured Stage / Sub-stage / Scene identity
+        +
+standardized Google Drive documentation location
+        ↓
+field-facing presentation
 ```
 
-At Display scope:
+For Setup, once the correct Stage, Sub-stage, or Scene is resolved, the application can locate the current field documents under:
 
 ```text
-Photos\Current
-Photos\Historical
+<Stage, Sub-stage, or Scene>\Procedures\Setup
 ```
 
-Legacy Photo categories may remain until reviewed. Do not delete or move their contents automatically.
+Archive and SourceDocs content must be excluded from normal field presentation.
+
+Normal field users should not need to know the Google Drive hierarchy. The long-term presentation path remains:
+
+```text
+Display QR
+    ↓
+Production Database Display identity
+    ↓
+Stage / Sub-stage / Scene relationships
+    ↓
+applicable current Setup document
+    ↓
+my.sheboyganlights.org
+```
+
+The durable database/document-ID relationship is a separate engineering problem. Do not make the QR code depend directly on a Google Drive path.
+
+---
+
+# How to Work One Stage
+
+1. Run or open the current Documentation Alignment Worklist.
+2. Select one Stage.
+3. Confirm the Stage/Sub-stage/Scene organization shown by the current Folder Alignment data.
+4. Review the remaining legacy Setup files reported from `000-Instructions\0 - Setup Procedures`.
+5. Human-review the legacy file and determine its correct Stage, Sub-stage, or Scene ownership.
+6. If ownership is understood, move the original legacy `.gdoc` into that Stage/Sub-stage/Scene `Procedures\Setup\Archive` folder.
+7. If ownership is uncertain, leave the file in the central legacy source and flag it for review.
+8. Continue until the Stage/Sub-stage/Scene legacy material has been reconciled.
+9. Re-run Folder Alignment when a fresh snapshot of migration progress is needed.
+10. In the procedure-audit phase, process each archived legacy document through the controlled Setup Instruction template.
+11. After review/approval, publish the current field PDF in the applicable `Procedures\Setup` folder.
+12. Keep the superseded source in `Archive`.
+
+---
+
+# Where Other Engineering Material Belongs
+
+The central historical Setup tree may contain drawings, photographs, references, and other engineering material in addition to actual Setup instructions.
+
+Do not assume every file historically stored under `0 - Setup Procedures` must become a Setup Instruction.
+
+During human review:
+
+- actual legacy Setup instructions may move to `Procedures\Setup\Archive`;
+- Display-specific drawings or fabrication material should remain with the responsible Display engineering records;
+- photos should use the appropriate Stage/Sub-stage/Scene/Display `Photos\Current` or `Photos\Historical` location when understood;
+- uncertain material should remain in place until its purpose is known.
+
+The old location is evidence, not final classification authority.
 
 ---
 
 # Wiring Remains Separate
 
-Wiring uses:
+Do not reorganize Wiring as though it were a Setup procedure.
+
+Wiring continues to use:
 
 ```text
 Wiring\BackgroundStage
 Wiring\MusicalStage
 ```
 
-with working/source material under the corresponding `SourceDocs` folder.
-
-Do not reorganize Wiring as though it were a Setup/Takedown procedure.
+with working/source material under the corresponding `SourceDocs` location.
 
 The existing FormView architecture remains the precedent for resolving standardized field documentation from structured Stage/LOR context.
 
 ---
 
-# How to Work One Stage
-
-1. Run the current V7 parser.
-2. Run Folder Alignment and review the Stage/Scene classification.
-3. If `PreviewBackground` folders need to be added, run `run_previewbackground_update.ps1` in dry-run mode.
-4. Review every proposed `WOULD_CREATE` entry.
-5. Run the updater with `--apply` only when the proposed scope list is correct.
-6. Place/relocate LOR background images into the appropriate stable `PreviewBackground` locations as the Preview paths are completed.
-7. Continue human review of legacy Setup files from `000-Instructions\0 - Setup Procedures`.
-8. Move a legacy Setup document into the correct `Procedures\Setup\Archive` only when ownership is understood.
-9. Preserve uncertain or old material until its purpose is known.
-10. Re-run the parser and Folder Alignment whenever LOR Scene names, background paths, or Drive structure changes materially.
-
----
-
 # Important Rules
 
-1. Folder Alignment remains read-only.
-2. `PreviewBackground` is standard at Stage, Sub-stage, Scene, and Display scope.
-3. Stage, Sub-stage, and Scene use the same full root structure.
-4. Display uses only `PreviewBackground` plus `Photos\Current` and `Photos\Historical` as the current standard structure.
-5. `Inspection` remains unstructured.
-6. Setup and Takedown each contain `Archive`, `images`, and `SourceDocs`.
-7. Do not create a generic `Procedures\SourceDocs` root folder.
-8. Do not delete legacy folders merely because the standard changed.
-9. Do not move legacy content automatically.
-10. Do not create a Display folder just because an LOR Display exists.
-11. Use the current parser snapshot and current Drive tree for scope resolution.
-12. When uncertain, preserve the material and flag it for review instead of guessing.
+1. Use the current Documentation Alignment Worklist as the migration roadmap.
+2. Keep the established Stage/Sub-stage/Scene folder structure.
+3. Treat the central `000-Instructions\0 - Setup Procedures` tree as the unresolved legacy backlog.
+4. A human-audited move into `Procedures\Setup\Archive` establishes the accepted Stage/Sub-stage/Scene ownership of that legacy document.
+5. Do not rely on fuzzy filename matching once the document has been human-assigned to an Archive location.
+6. Do not publish an archived legacy `.gdoc` as though it were the current field instruction.
+7. Audit and reformat the legacy procedure using the controlled Setup Instruction template before publishing a current version.
+8. Keep the current field PDF or other approved presentation directly available from `Procedures\Setup`.
+9. Exclude `Archive` and `SourceDocs` material from normal field-user navigation.
+10. Do not delete useful historical engineering material merely to make the folder tree look clean.
+11. Do not assume every Display requires a Setup procedure.
+12. Do not assume every file in the legacy Setup repository is actually a procedure.
+13. When uncertain, preserve the material and flag it for review instead of guessing.
 
 ---
 
 # Completion Goal
 
-The migration is progressing correctly when:
+The migration phase is progressing correctly when:
 
-- stable `PreviewBackground` locations exist where needed at Stage, Sub-stage, Scene, and existing Display scopes;
-- LOR background paths increasingly point to those stable asset locations;
-- Stage/Sub-stage/Scene roots converge on one standard structure;
-- existing Display folders converge on the smaller Display structure;
-- legacy folders/files remain protected until reviewed;
-- reviewed Setup/Takedown source material is placed under the appropriate controlled branch; and
-- applications can resolve current engineering information without depending on fragile ad-hoc paths.
+- the unresolved central legacy Setup backlog becomes smaller;
+- reviewed legacy procedures appear under the correct Stage/Sub-stage/Scene `Procedures\Setup\Archive` folders;
+- Folder Alignment can verify those human-audited locations without fuzzy ownership inference;
+- audited current field PDFs begin appearing in the corresponding `Procedures\Setup` folders; and
+- archive documents remain preserved but are excluded from normal field presentation.
+
+The end goal is simple: a volunteer should eventually be able to scan a Display QR code and reach the current Setup information that applies to that Display's Stage/Sub-stage/Scene without needing to know where someone stored the document years ago.
 
 ---
 
 ## Related Documents
 
 - [Google Drive Folder Structure](00-Google_Drive.md) — engineering architecture and folder-location contract.
-- [Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md) — parser/Drive resolution and validation behavior.
 - [LOR System Documentation](../01_LOR_System/README.md) — LOR-side system documentation.
 - [FormView](../01_LOR_System/04_FormView/README.md) — proven field-wiring application and location-resolution precedent.
 - [Stage Setup Documentation Standard](../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md) — governance for controlled field-facing Setup Instructions.
