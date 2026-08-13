@@ -19,7 +19,7 @@
 set -u
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ALIGNMENT_SCRIPT="$REPO_ROOT/Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/generate_folder_alignment_report_v1_3_7.py"
+ALIGNMENT_SCRIPT="$REPO_ROOT/Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/folder_alignment.py"
 if [[ ! -f "$ALIGNMENT_SCRIPT" ]]; then
     echo "[ERROR] Folder Alignment script not found: $ALIGNMENT_SCRIPT" >&2
     exit 2
