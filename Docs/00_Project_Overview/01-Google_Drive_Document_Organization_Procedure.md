@@ -40,7 +40,10 @@ The report is read-only. It does not move, rename, create, or delete Google Driv
 
 # Standard Stage / Sub-stage / Scene Documentation Structure
 
-The established Stage/Sub-stage/Scene structure remains authoritative.
+The established Stage/Sub-stage/Scene structure defined in [Google Drive Folder Structure](00-Google_Drive.md) remains authoritative.
+
+Folder and Scene naming used by Folder Alignment and documentation lookup must also follow the current
+[Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md).
 
 The Photos Folder are to be used for general documentation `Not for Instructions!` These folders appear in the Stage and Scene Folders
 
