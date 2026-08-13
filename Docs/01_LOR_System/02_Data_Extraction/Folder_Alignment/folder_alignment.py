@@ -371,24 +371,59 @@ def resolve_scopes(root: Path, stages: dict[str, Path], dirs_by_stage, direct_by
             continue
 
         if kind == "SUB_STAGE":
-            target = find_exact(direct_by_stage.get(sid, []), expected_name)
+            target = find_exact(
+                direct_by_stage.get(sid, []),
+                expected_name,
+            )
+
             if target is None and bg_scope is not None and bg_scope != stage:
-                target = bg_scope
+                bg_kind, bg_token, _bg_name = classify_scene(bg_scope.name)
+
+                # BackgroundFile may confirm a Sub-stage only when the
+                # actual Drive folder is itself named as that Sub-stage.
+                if bg_kind == "SUB_STAGE" and bg_token.casefold() == token.casefold():
+                    target = bg_scope
+
             if target is None:
-                issues[sid].append(f"Missing Sub-stage folder expected from LOR: <code>{html.escape(expected_name)}</code>.")
+                issues[sid].append(
+                    "Missing Sub-stage folder expected from LOR: "
+                    f"<code>{html.escape(expected_name)}</code>."
+                )
                 continue
-            scopes[str(target).casefold()] = Scope(sid, "SUB_STAGE", target.name, target, "OK")
+
+            scopes[str(target).casefold()] = Scope(
+                sid,
+                "SUB_STAGE",
+                target.name,
+                target,
+                "OK",
+            )
             continue
 
         # Scene.
         #
-        # A BackgroundFile that resolves to an actual child folder is strong
-        # evidence that the child folder is the Scene scope.
+        # The LOR Scene name identifies a possible structured Scene, but the
+        # actual Google Drive folder must also satisfy the Scene naming rule.
         #
-        # A BackgroundFile that resolves only to the Stage root does NOT mean
-        # a child Scene folder is missing. Some LOR Scenes are simply views of
-        # the Stage-level background/documentation scope.
-        target = bg_scope if bg_scope is not None and bg_scope != stage else None
+        # A BackgroundFile path may locate a folder, but it must never promote
+        # an unprefixed Display/group folder into a Scene documentation scope.
+        target = None
+        background_is_non_scene_scope = False
+
+        if bg_scope is not None and bg_scope != stage:
+            bg_kind, bg_token, _bg_name = classify_scene(bg_scope.name)
+
+            if bg_kind == "SCENE" and bg_token.casefold() == token.casefold():
+                target = bg_scope
+            else:
+                # Examples:
+                #
+                #   Making Spirits Bright
+                #   Open-Close
+                #
+                # These may legitimately be Display/group folders even when an
+                # LOR sequencing Scene passes through them.
+                background_is_non_scene_scope = True
 
         if target is None:
             if len(token) == 3:
@@ -400,6 +435,7 @@ def resolve_scopes(root: Path, stages: dict[str, Path], dirs_by_stage, direct_by
                         if p.name.casefold().startswith(
                             token.casefold() + "-"
                         )
+                        and classify_scene(p.name)[0] == "SUB_STAGE"
                     ),
                     None,
                 )
@@ -423,16 +459,28 @@ def resolve_scopes(root: Path, stages: dict[str, Path], dirs_by_stage, direct_by
                 )
 
         if target is None:
-            # If the stored BackgroundFile resolves to the Stage itself,
-            # this LOR Scene is using Stage-level documentation/background
-            # storage. Do not invent a missing Scene folder.
+            # Background at the owning Stage means this LOR Scene uses
+            # Stage-level documentation. No child Scene folder is required.
             if bg_scope == stage:
+                continue
+
+            # A BackgroundFile through an unprefixed Display/group does not
+            # make that folder a Scene and does not require the full
+            # Stage/Scene Procedures/Wiring structure.
+            if background_is_non_scene_scope:
                 continue
 
             issues[sid].append(
                 "Missing Scene folder expected from LOR: "
                 f"<code>{html.escape(expected_name)}</code>."
             )
+            continue
+
+        # Final safety gate: even an exact/path-resolved target must itself
+        # satisfy the established Scene folder naming rule.
+        target_kind, target_token, _target_name = classify_scene(target.name)
+
+        if target_kind != "SCENE" or target_token.casefold() != token.casefold():
             continue
 
         scopes[str(target).casefold()] = Scope(
@@ -450,9 +498,7 @@ def resolve_scopes(root: Path, stages: dict[str, Path], dirs_by_stage, direct_by
                 "current folder is "
                 f"<code>{html.escape(rel(target, root))}</code>."
             )
-
     return list(scopes.values()), dict(issues)
-
 
 def scan_legacy(root: Path):
     legacy_root = next((p for p in root.iterdir() if p.is_dir() and norm(p.name) == "000instructions"), None)
