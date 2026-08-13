@@ -99,6 +99,21 @@ The parser searches the complete XML tree and accepts a `PreviewClass` element a
 
 The parser additionally records the actual `.lorprev` filename as `SourceFilename`; that value comes from the filesystem, not from a PreviewClass attribute.
 
+### Master Musical identity and operator version name
+
+The Master Musical Preview has two intentionally different identity layers:
+
+- `PreviewClass.id` is its stable machine identity and does not change merely
+  because the file is renamed;
+- the Master Musical filename and `PreviewClass.Name` include the LOR version
+  and working date so operators can identify the correct version to use.
+
+When channels, props, Displays, Scenes, or other Master Musical content change,
+the version/date name may be advanced while the stable PreviewID remains the
+same. The parser preserves the exact filename in `SourceFilename`. Compatibility
+checking matches the logical preview by PreviewID and separately reports the
+human-facing version/date filename change for review.
+
 ### Compatibility risks
 
 The parser can be affected if a new LOR release:
