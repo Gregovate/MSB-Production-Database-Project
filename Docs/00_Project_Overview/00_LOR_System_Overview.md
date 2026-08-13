@@ -4,7 +4,7 @@
 |---|---|
 | Status | ACTIVE — V7 scene-aware production workflow |
 | Owner | MSB Database Administrator |
-| Current revision | 2026-08-08 |
+| Current revision | 2026-08-13 |
 
 ## Purpose
 
@@ -17,7 +17,9 @@ The current workflow is V7. V6 parser and PostgreSQL ingest material is archived
 - A **stage** is a permanent physical park area.
 - A **display** is one permanent physical object tracked by `display_id`.
 - An LOR **prop** or **subprop** is sequencing structure and is not itself the permanent production identity.
-- A **scene** is a V7 presentation/workspace view associated with a stage.
+- A raw LOR **Scene** is a presentation/workspace row. Folder Alignment
+  separately classifies Stage roots, Sub-stage roots, true Scenes, `Root`
+  markers, and Display/group locators from the Scene name.
 - `raw_prop_id` is the current LOR association; it may change without creating a new physical display.
 
 ## Current production flow
@@ -27,7 +29,8 @@ Isolated programmer previews
     -> controlled dry-run comparison and reviewed merge
     -> Office PC designated master during LOR 6.6.4/V7 development
     -> authoritative V7 preview exports
-    -> LOR2DB/01_Ingest/parse_props_v7_scene_parser.py
+    -> LOR2DB website / Windows V7 parser runner
+    -> Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py
     -> lor_output_v7_scene.db
     -> LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1
     -> immutable lor_snap snapshot
@@ -37,11 +40,17 @@ Isolated programmer previews
     -> validation and immutable HTML report
 ```
 
-For the current release, the Office PC is the designated master during LOR 6.6.4/V7 development. The Show PC held the master historically and must not be treated as current authority until a deliberate handoff. The parser and PostgreSQL snapshot ingest are run manually from the approved master set. The LOR2DB page detects the latest committed snapshot and never asks the operator to enter an ingest ID.
+For the current release, the Office PC is the designated master during LOR
+6.6.4/V7 development. The Show PC held the master historically and must not be
+treated as current authority until a deliberate handoff. The LOR2DB page runs
+the parser through the restricted Office PC runner. PostgreSQL ingest remains
+separate, manual, and locked to the exact reviewed SQLite SHA-256. The page
+detects the committed snapshot and never asks the operator for an ingest ID.
 
 ## Current source and entry points
 
-- Parser: [`LOR2DB/01_Ingest/parse_props_v7_scene_parser.py`](../../LOR2DB/01_Ingest/parse_props_v7_scene_parser.py).
+- Parser: [`Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py`](../01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py).
+- XML version checker and runner: [`LOR Data Extraction`](../01_LOR_System/02_Data_Extraction/README.md).
 - SQLite snapshot: `lor_output_v7_scene.db`.
 - PostgreSQL ingest: [`LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1`](../../LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1).
 - Preview ownership and merge control: [Preview Merger](../01_LOR_System/03_Preview_Merger/README.md).
@@ -54,4 +63,7 @@ For the current release, the Office PC is the designated master during LOR 6.6.4
 
 Do not use `parse_props_v6.py`, `lor_output_v6.db`, or V6 workflow instructions for a production run. They are retained only under `archive/v6/` so earlier decisions and troubleshooting evidence remain available.
 
-FormView's current `lor_output_v6.db` and `_v6` names are documented compatibility dependencies, not authorization to run the archived V6 parser. LOR 6.6.8 compatibility is unverified and must follow the [LOR Preview Version Compatibility Review](../01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md).
+FormView's current `lor_output_v6.db` and `_v6` names are documented
+compatibility dependencies, not authorization to run the archived V6 parser.
+LOR 6.6.10 is the pending candidate and must follow the [LOR Preview Version
+Compatibility Review](../01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md).

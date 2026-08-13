@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-06  V0.3.3
+Current Version : 2026-08-13  V0.4.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,10 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-13  GAL / OpenAI  V0.4.0
+        Added authenticated proxy endpoints for the Windows-side LOR version
+        checker/parser runner. The Linux API never accepts filesystem or
+        executable paths from the browser.
     2026-08-06  GAL / OpenAI  V0.3.3
         Return the immutable published report URL after Finish so the browser
         opens the completed run report instead of the report archive.
@@ -54,13 +58,15 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 from urllib.parse import unquote, urlparse
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import psycopg2
 from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.3.3"
+APP_VERSION = "V0.4.0"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
@@ -89,6 +95,37 @@ def required_setting(name: str) -> str:
     if not value:
         raise RuntimeError(f"Required setting {name} is missing")
     return value
+
+
+def runner_request(path: str, payload: dict[str, Any] | None = None,
+                   timeout: int = 30) -> dict[str, Any]:
+    """Call the internal Windows/G-drive runner through its fixed API."""
+    base_url = required_setting("LOR_RUNNER_URL").rstrip("/")
+    token = required_setting("LOR_RUNNER_TOKEN")
+    body = None if payload is None else json.dumps(payload).encode("utf-8")
+    request_object = Request(
+        f"{base_url}/{path.lstrip('/')}",
+        data=body,
+        method="GET" if payload is None else "POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urlopen(request_object, timeout=timeout) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        try:
+            detail = json.loads(error.read().decode("utf-8")).get("error")
+        except Exception:
+            detail = None
+        raise ApiError(detail or f"LOR runner rejected the operation ({error.code})", 409) from error
+    except (URLError, TimeoutError) as error:
+        raise ApiError(f"LOR runner is unavailable: {error}", 503) from error
+    if not isinstance(result, dict):
+        raise ApiError("LOR runner returned an invalid response", 502)
+    return result
 
 
 def operator_email() -> str:
@@ -291,7 +328,10 @@ def load_dashboard(conn: Any) -> dict[str, Any]:
                    scene_count, prop_count, sub_prop_count,
                    dmx_channel_count, scene_lor_prop_count,
                    ingest_script_version, ingest_actor, ingest_host,
-                   ingest_started_at, ingest_completed_at
+                   ingest_started_at, ingest_completed_at,
+                   parser_run_mode, source_lor_version,
+                   parser_validation_status, source_manifest_sha256,
+                   compatibility_manifest_sha256, source_sqlite_sha256
             FROM lor_snap.v_current_run
         """)
         row = cur.fetchone()
@@ -324,6 +364,13 @@ def load_dashboard(conn: Any) -> dict[str, Any]:
         snapshot_run = dict(row) if row else None
 
     state = dashboard_state(snapshot, snapshot_run)
+    runner_state = None
+    runner_error = None
+    if os.environ.get("LOR_RUNNER_URL") and os.environ.get("LOR_RUNNER_TOKEN"):
+        try:
+            runner_state = runner_request("state")
+        except ApiError as error:
+            runner_error = str(error)
     return {
         "snapshot": snapshot,
         # Retain the response key for the deployed browser contract. Its value
@@ -332,7 +379,9 @@ def load_dashboard(conn: Any) -> dict[str, Any]:
         "workflow": state,
         "reports_url": "reports/",
         "operator": operator_email(),
-        "parser_ingest_mode": "MANUAL",
+        "parser_ingest_mode": "WEBSITE_RUNNER" if runner_state else "MANUAL",
+        "parser_runner": runner_state,
+        "parser_runner_error": runner_error,
     }
 
 
@@ -426,6 +475,59 @@ def get_dashboard() -> Response:
     operator_email()
     with database() as conn:
         return jsonify(load_dashboard(conn))
+
+
+@app.post("/parser/candidate")
+def select_parser_candidate() -> Response:
+    operator = operator_email()
+    version = str(json_body().get("new_lor_version") or "").strip()
+    if not version:
+        raise ApiError("New LOR version is required")
+    return jsonify(runner_request(
+        "candidate", {"new_lor_version": version, "actor": operator}
+    ))
+
+
+@app.post("/parser/check")
+def run_parser_compatibility_check() -> Response:
+    operator = operator_email()
+    return jsonify(runner_request(
+        "candidate/check", {"actor": operator}, timeout=300
+    ))
+
+
+@app.post("/parser/run")
+def run_lor_parser() -> Response:
+    operator = operator_email()
+    target = str(json_body().get("target") or "").strip().lower()
+    if target not in {"current", "candidate"}:
+        raise ApiError("Parser target must be current or candidate")
+    return jsonify(runner_request(
+        "parser/run", {"target": target, "actor": operator}, timeout=920
+    ))
+
+
+@app.post("/parser/approve")
+def approve_lor_candidate() -> Response:
+    operator = operator_email()
+    version = str(json_body().get("confirm_lor_version") or "").strip()
+    if not version:
+        raise ApiError("Exact new LOR version confirmation is required")
+    return jsonify(runner_request(
+        "candidate/approve",
+        {"confirm_lor_version": version, "actor": operator},
+    ))
+
+
+@app.post("/parser/resolve")
+def resolve_lor_candidate_findings() -> Response:
+    operator = operator_email()
+    notes = str(json_body().get("notes") or "").strip()
+    if not notes:
+        raise ApiError("Engineering resolution notes are required")
+    return jsonify(runner_request(
+        "candidate/resolve", {"notes": notes, "actor": operator}
+    ))
 
 
 @app.post("/runs/start")

@@ -4,10 +4,10 @@
 |---|---|
 | Repository path | `LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md` |
 | Document type | Controlled production procedure |
-| Status | ACTIVE — Run 4 and the lor2db workflow are production validated |
+| Status | ACTIVE — reconciliation validated; parser runner pending deployment acceptance |
 | Owner / author | GAL |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-06 |
+| Current revision | 2026-08-13 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-13 | GAL / OpenAI | Added the website-accessible V7 parser and complete XML version checker through a restricted Windows/G-drive runner. Added Current/New LOR version management, atomic SQLite publication, required finding resolution, and exact reviewed-SQLite SHA-256 ingest enforcement. Ingest remains separate and manual. |
 | 2026-08-06 | GAL / OpenAI | Recorded completed production reconciliation Run 4, the subsequent `0029` true-no-op correction, application grants V0.2.0, backend V0.3.0, and successful `/lor2db/` deployment validation. Parser and snapshot ingest remain manual until the controlled app-server runner is implemented. |
 | 2026-08-05 | GAL / OpenAI | Implemented the secured preflight backend, restricted operator authorization, persisted-decision endpoints, final-review concurrency check, Cancel, and retry-safe Finish/report publication. Deployment and Run 4 acceptance remain pending. |
 | 2026-08-04 | GAL / OpenAI | Activated the validated manual workflow, linked the executable runbook, and updated implementation status through report publication and evaluation/index support. |
@@ -56,13 +57,16 @@ It contains the exact SQL and PowerShell commands, decision templates, result ch
 
 The secured reconciliation application is implemented under `LOR2DB/Application/`. The `/lor2db/` landing page reports the latest committed snapshot and reconciliation state, links the immutable report, starts reconciliation only when the latest snapshot is eligible, and routes an open run back to its persisted review. It calls the same installed boundaries and preserves the same safeguards.
 
-For the current release, the parser and PostgreSQL snapshot ingest remain manual on the approved Master PC. After ingest commits, the operator opens `/lor2db/`; the page detects the snapshot automatically. The operator never enters or chooses an `import_run_id`.
-
-The future app-server phase may invoke the approved Python parser and protected ingest runner before reconciliation. That future control must use a configured Python environment, retain the current parser/ingest preflight checks, and must not expose arbitrary commands or direct P1-P4 execution.
+The LOR2DB page now invokes the approved parser through a restricted Windows
+runner on the approved Master PC. PostgreSQL snapshot ingest remains a separate
+manual action. The operator must review the parser result and supply the exact
+displayed SQLite SHA-256 to ingest. After ingest commits, the page detects the
+snapshot automatically. The operator never enters an `import_run_id`.
 
 ```text
-Run V7 parser manually on the approved Master PC
-    -> run the password-protected PostgreSQL snapshot ingest manually
+Run V7 parser from LOR2DB through the approved Master PC runner
+    -> inspect SQLite and record its SHA-256
+    -> run the password-protected, digest-locked PostgreSQL snapshot ingest manually
     -> open /lor2db/
     -> review the detected latest completed snapshot
     -> select Start reconciliation when enabled
@@ -129,9 +133,9 @@ The three documents describe one workflow at different levels and must not defin
 
 | Procedure component | Status |
 |---|---|
-| Master PC and preview-folder controls | Procedure defined; parser/ingest blocking checks active; parser and ingest remain deliberate manual steps |
-| `LOR/ingest/parse_props_v7_scene_parser.py` | Implemented and production exercised through V7.0.7 |
-| `LOR/ingest/postgres_run_ingest_v7.ps1` | Implemented and tested |
+| Master PC and preview-folder controls | Current/New LOR version state and versioned folder checks implemented; Windows runner deployment acceptance pending |
+| `Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py` | V7.0.8 implemented and validated against all 33 current 6.6.4 previews; production deployment pending |
+| `LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1` | V0.4.0 implemented with required reviewed-SQLite SHA-256; migration/deployment pending |
 | Latest-ingest capture and frozen preflight | Installed and production validated; manual operation documented in `02_LOR_Manual_Reconciliation_Runbook.md` |
 | Persistent reconciliation-run and display-candidate tables | Installed and live-validated from `reconciliation/0014_create_lor_reconciliation_decision_layer.sql` on 2026-08-02 |
 | Persistent stage candidate and binding tables | Installed from `0015` and rollback-validated by `11`; multi-preview metadata preservation installed from `0016` and rollback-validated by `12` |
@@ -144,7 +148,7 @@ The three documents describe one workflow at different levels and must not defin
 | P3/P4 | Installed from `0018` and rollback-validated by `14`; these remain internal engine phases |
 | Controlled manual workflow | Active and documented in `02_LOR_Manual_Reconciliation_Runbook.md` |
 | `/lor2db/` snapshot/reconciliation landing page | Deployed and production validated on 2026-08-06 against snapshot 45 and completed Run 4 |
-| App-server parser and ingest invocation | Future phase; parser and ingest remain manual for this release |
+| Website parser invocation | Implemented through restricted Windows runner; deployment/acceptance pending. Ingest intentionally remains separate and manual. |
 | Timestamped HTML report publication | Installed and production validated; immutable publication, evaluation copies, and generated report index are implemented |
 | True no-op protection | Migration `0029` V4 installed; validation `25` and the seven-part post-install definition/guard check passed on 2026-08-05 |
 
@@ -228,8 +232,8 @@ Before editing previews on a replacement computer:
 - Exactly one current production background preview for every expected stage.
 - Every current authoritative standalone stage preview, including the Parade Float preview.
 - Exactly one current Master Musical Preview.
-- Current `LOR/ingest/parse_props_v7_scene_parser.py`.
-- Current `LOR/ingest/postgres_run_ingest_v7.ps1` and its associated PostgreSQL ingest SQL.
+- Current `Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py`.
+- Current `LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1` and its associated PostgreSQL ingest program.
 - Access to the production PostgreSQL database.
 - A database operator identity for reconciliation audit records.
 - Access to the SQL client and report publisher required by the active manual runbook.
@@ -655,14 +659,14 @@ The operator-facing application for the current release must provide:
 - a clickable report link;
 - permissions preventing routine direct execution of P1/P2/P3.
 
-The future app-server phase may add a secured **Run parser and ingest** action
-before Start. It must not weaken any current validation, credential, or
-procedure-execution boundary.
+The secured page may run the parser but must not combine parser and ingest into
+one action. Ingest remains the distinct digest-locked authority handoff and
+must not weaken any validation, credential, or procedure-execution boundary.
 
 ## Related Files and Objects
 
-- `LOR/ingest/parse_props_v7_scene_parser.py`
-- `LOR/ingest/postgres_run_ingest_v7.ps1`
+- `Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py`
+- `LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1`
 - `lor_snap.import_run`
 - `ref.display`
 - `ref.display_status`

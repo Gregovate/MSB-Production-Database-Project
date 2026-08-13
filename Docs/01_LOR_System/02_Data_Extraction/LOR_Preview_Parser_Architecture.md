@@ -4,8 +4,8 @@
 |---|---|
 | Status | CURRENT — engineering architecture |
 | System | LOR Preview Parser / LOR2DB Ingest |
-| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.7 |
-| Current revision | 2026-08-08 |
+| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.8 |
+| Current revision | 2026-08-13 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -16,9 +16,11 @@ The parser converts approved Light-O-Rama `.lorprev` preview files into a comple
 
 The current implementation is:
 
-`LOR2DB/01_Ingest/parse_props_v7_scene_parser.py`
+`Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py`
 
-The initial content of this document was derived directly from the functional V7.0.7 parser. Future parser changes must be reviewed against this architecture and this document must be updated when an intentional engineering rule changes.
+The initial content was derived from V7.0.7. V7.0.8 adds the website-runner
+contract, atomic publication, full output validation, and complete provenance.
+Future parser changes must be reviewed against this architecture.
 
 ## System Boundary
 
@@ -245,6 +247,20 @@ Only preview-level Scenes contained in the `.lorprev` file are database-authorit
 
 Sequence-level Scenes are sequencing helpers and are intentionally excluded because they are not part of the approved Preview export contract used to build the production snapshot.
 
+The `scenes` table preserves every preview-level LOR `<Scene>` row. Its row
+count is therefore a raw LOR count, not the count of operational documentation
+Scenes. Folder Alignment owns the separate deterministic classification:
+
+- `NN-Name-XY` — Stage root;
+- `NNa-Name-XY` — Sub-stage root;
+- `NN-Name` or `NNa-Name` — true Scene/documentation group;
+- unprefixed non-`Root` name — Display or shared Display/group locator;
+- `Root` — owning Background Preview Stage marker where that rule applies.
+
+These classifications are hooks for wiring, setup, takedown, and inspection
+procedure discovery. They do not change parser extraction or physical display
+identity.
+
 ### Positional Scene structure
 
 LOR V6.6 preview Scenes are represented by Scene markers followed by PropClass rows.
@@ -300,7 +316,10 @@ If a nonblank Scene PropClass cannot be resolved to a materialized record, the p
 
 ## SQLite Snapshot Schema
 
-Every run drops and recreates the parser-owned tables.
+Every run builds a new sibling temporary database. It recreates the
+parser-owned objects inside that build, runs every audit, executes every
+published view, and atomically replaces the requested SQLite file only after
+validation passes. Failure preserves the last known-good published SQLite.
 
 ### `parser_run`
 
@@ -314,6 +333,12 @@ Contains provenance for the single current parser execution:
 - SourcePreviewFolder;
 - SQLiteDatabasePath;
 - Status.
+- RunMode (`PRODUCTION`, `VERSION_CHECK`, or `TEST`);
+- SourceLORVersion;
+- ParserSHA256;
+- SourceManifestSHA256;
+- CompatibilityManifestSHA256 (the approved complete XML contract);
+- ValidationStatus and ValidationDetail.
 
 Because the SQLite file is disposable, parser_run intentionally contains only the provenance for the current snapshot.
 
@@ -351,7 +376,11 @@ These compatibility names do not make the V6 parser current.
 
 The parser also creates Scene validation/reporting views including the current Scene membership and display-level Scene reporting contract.
 
-Business-facing reporting should consume display-level Scene views rather than treating raw `scene_lor_props` PropID membership as a Directus business object.
+Business-facing reporting should consume `scene_displays_vw` rather than
+treating raw `scene_lor_props` PropID membership as a Directus business object.
+That view publishes `SceneBackgroundFile`, `PreviewBackgroundFile`, and the
+effective `BackgroundFile` so missing-path audits remain available without
+losing the source level.
 
 ## Parser Provenance
 
@@ -436,4 +465,5 @@ Do not change these behaviors solely to accommodate one unusual preview without 
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-13 | GAL / OpenAI | Documented V7.0.8 atomic publication, full output validation/provenance, canonical ownership, background-path view fields, and the Folder Alignment/raw Scene-row boundary. |
 | 2026-08-08 | GAL / OpenAI | Created standalone V7 parser engineering architecture from the functional V7.0.7 implementation and preserved V7 design decisions previously embedded in source comments and project history. |

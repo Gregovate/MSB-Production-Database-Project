@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-03  V7.0.7
+# Current Version : 2026-08-13  V7.0.8
 #
 # Author:
 #   Greg Liebig
@@ -47,6 +47,18 @@
 #
 # Changelog
 # ---------
+## 2026-08-13  V7.0.8  (GAL / OpenAI)
+# • Added explicit command-line arguments for the LOR2DB operator runner while
+#   preserving the no-argument interactive workflow.
+# • Build to a sibling temporary SQLite file and atomically publish only after
+#   all parser audits and schema/view validation pass; a failed run preserves
+#   the last known-good SQLite snapshot.
+# • Removed hard-coded V6.6.4 report/database targeting from runtime helpers.
+# • Added the missing scene_displays_vw implementation and validated every
+#   published parser view before recording COMPLETE.
+# • Added run mode, declared LOR version, parser/source hashes, validation
+#   status, and validation detail to parser_run provenance.
+#
 ## 2026-08-03  V7.0.7  (GAL)
 # • Added SourceFilename to the disposable previews table.
 # • Record the exact .lorprev filename used to create each preview row.
@@ -219,6 +231,9 @@
 
 import os
 import sys
+import argparse
+import hashlib
+import json
 import xml.etree.ElementTree as ET
 import sqlite3
 import pathlib
@@ -259,10 +274,10 @@ except Exception:
     PREVIEW_FIELDS = LOR_FIELDS = DMX_FIELDS = []
 
 
-# ============================= G: ONLY ============================= #
+# ========================= PRODUCTION DEFAULTS ========================= #
 G = Path(r"G:\Shared drives\MSB Database")
-# GAL 25-10-23 reports directory for collision CSVs and audits
-REPORTS_DIR = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports")
+# The command-line runner may override this for version-check and test runs.
+REPORTS_DIR = Path(r"G:\Shared drives\MSB Database\reports")
 def require_g():
     if not G.exists():
         print("[FATAL] G: drive not available. All data lives on the shared drive.")
@@ -293,12 +308,12 @@ def get_reports_dir() -> str:
     os.makedirs(reports_dir, exist_ok=True)
     return reports_dir
 
-# ============================= G: ONLY ============================= #
+# ===================================================================== #
 
 
 
 # ---- Global flags & defaults (must be defined before functions) ----
-PARSER_VERSION = "V7.0.7"  # GAL 2026-08-03: authoritative runtime version
+PARSER_VERSION = "V7.0.8"  # GAL 2026-08-13: authoritative runtime version
 
 DEBUG = False  # Global debug flag
 
@@ -311,13 +326,8 @@ SCENE_DEBUG = False  # set True only when you want the full scene diagnostics
 # ------------------------------------------------------------
 # V7 default paths
 # ------------------------------------------------------------
-# This file lives in:
-#   <repo_root>/LOR/ingest/parse_props_v7_scene_parser.py
-#
-# parents[0] = ingest
-# parents[1] = LOR
-# parents[2] = repo root
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# The canonical parser lives under Docs/01_LOR_System/02_Data_Extraction/Parser.
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 DEFAULT_DB_FILE = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
 
@@ -328,6 +338,11 @@ DEFAULT_PREVIEW_PATH = Path(
 # Globals that existing functions use; will be set/confirmed in main()
 DB_FILE = DEFAULT_DB_FILE
 PREVIEW_PATH = DEFAULT_PREVIEW_PATH
+OUTPUT_DB_FILE = DEFAULT_DB_FILE
+RUN_MODE = "PRODUCTION"
+SOURCE_LOR_VERSION = ""
+SOURCE_MANIFEST_SHA256 = ""
+COMPATIBILITY_MANIFEST_SHA256 = ""
 
 # GAL 25-11-02 — ensure compare_displays_vs_db and legacy calls see same DB reference
 DB_PATH = DB_FILE
@@ -650,6 +665,9 @@ def validate_previews(preview_root: Path):
 
     # NOTE: non-recursive by design (production folder only)
     lorprev_files = list(preview_root.glob("*.lorprev"))
+    if not lorprev_files:
+        print(f"[FATAL] No .lorprev files found in: {preview_root}")
+        raise SystemExit(2)
 
     for file_path in lorprev_files:
         try:
@@ -1027,11 +1045,41 @@ PREVIEW_ID_COL  = "PreviewId"    # FK to previews.id
 PROP_ID_COL     = "PropID"       # LOR-generated prop GUID (join key downstream)
 PROP_NAME_COL   = "Name"         # Human channel name (from XML Name)
 
+PARSER_TABLES = {
+    "parser_run", "previews", "props", "subProps", "dmxChannels",
+    "scenes", "scene_lor_props",
+}
+
+PARSER_VIEWS = {
+    "preview_wiring_map_v6",
+    "preview_wiring_sorted_v6",
+    "preview_wiring_fieldmap_v6",
+    "preview_wiring_fieldlead_v6",
+    "preview_wiring_circuit_rollup_v6",
+    "preview_wiring_fieldonly_v6",
+    "scene_prop_count_vw",
+    "scene_duplicate_prop_assignment_vw",
+    "scene_null_stage_review_vw",
+    "scene_displays_vw",
+    "scene_display_count_vw",
+    "stage_display_assets_v1",
+    "stage_display_inventory_only_v1",
+    "stage_display_assets_all_v1",
+    "stage_display_list_all_v1",
+    "stage_display_unassigned_v1",
+}
+
 
 def setup_database():
     """Initialize the database schema, dropping tables if they already exist."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+
+    # Views must be removed before their backing tables. This also makes a
+    # direct/repeated developer invocation deterministic even though the
+    # production run normally builds into a new temporary database.
+    for view_name in sorted(PARSER_VIEWS):
+        cursor.execute(f'DROP VIEW IF EXISTS "{view_name}"')
 
     # Drop tables if they exist
     cursor.execute("DROP TABLE IF EXISTS parser_run")
@@ -1071,7 +1119,14 @@ def setup_database():
         HostName TEXT,
         SourcePreviewFolder TEXT,
         SQLiteDatabasePath TEXT,
-        Status TEXT
+        Status TEXT,
+        RunMode TEXT,
+        SourceLORVersion TEXT,
+        ParserSHA256 TEXT,
+        SourceManifestSHA256 TEXT,
+        CompatibilityManifestSHA256 TEXT,
+        ValidationStatus TEXT,
+        ValidationDetail TEXT
     )
     """)
 
@@ -1756,6 +1811,25 @@ def _parser_host() -> str:
     ).strip()
 
 
+def sha256_file(path: Path) -> str:
+    """Return a streaming SHA-256 digest for an audit artifact."""
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def source_manifest_sha256(preview_path: Path) -> str:
+    """Hash the ordered filenames and file hashes for the complete input set."""
+    entries = [
+        {"filename": path.name, "sha256": sha256_file(path)}
+        for path in sorted(Path(preview_path).glob("*.lorprev"), key=lambda p: p.name.casefold())
+    ]
+    payload = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def start_parser_run() -> None:
     """
     Insert the single current parser-run provenance row.
@@ -1776,24 +1850,42 @@ def start_parser_run() -> None:
                 HostName,
                 SourcePreviewFolder,
                 SQLiteDatabasePath,
-                Status
+                Status,
+                RunMode,
+                SourceLORVersion,
+                ParserSHA256,
+                SourceManifestSHA256,
+                CompatibilityManifestSHA256,
+                ValidationStatus,
+                ValidationDetail
             )
-            VALUES (?, ?, NULL, ?, ?, ?, ?, ?)
+            VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             PARSER_VERSION,
             started_at,
             _parser_actor(),
             _parser_host(),
             str(PREVIEW_PATH),
-            str(DB_FILE),
+            str(OUTPUT_DB_FILE),
             "RUNNING",
+            RUN_MODE,
+            SOURCE_LOR_VERSION or None,
+            sha256_file(Path(__file__)),
+            SOURCE_MANIFEST_SHA256,
+            COMPATIBILITY_MANIFEST_SHA256 or None,
+            "PENDING",
+            None,
         ))
         conn.commit()
     finally:
         conn.close()
 
 
-def complete_parser_run(status: str = "COMPLETE") -> None:
+def complete_parser_run(
+    status: str = "COMPLETE",
+    validation_status: str = "PASSED",
+    validation_detail: str | None = None,
+) -> None:
     """Finalize the current parser-run provenance row."""
     completed_at = datetime.now().astimezone().isoformat(timespec="seconds")
 
@@ -1802,8 +1894,10 @@ def complete_parser_run(status: str = "COMPLETE") -> None:
         conn.execute("""
             UPDATE parser_run
             SET CompletedAt = ?,
-                Status = ?
-        """, (completed_at, status))
+                Status = ?,
+                ValidationStatus = ?,
+                ValidationDetail = ?
+        """, (completed_at, status, validation_status, validation_detail))
         conn.commit()
     finally:
         conn.close()
@@ -3731,16 +3825,65 @@ WHERE slp.SceneStageID IS NULL
 GROUP BY
     p.Name, s.SceneID, s.Name, slp.PreviewStageID;
 
+DROP VIEW IF EXISTS scene_displays_vw;
+CREATE VIEW scene_displays_vw AS
+SELECT DISTINCT
+    pv.Name AS PreviewName,
+    s.SceneID,
+    s.Name AS SceneName,
+    COALESCE(slp.SceneStageID, s.StageID) AS SceneStageID,
+    slp.PreviewStageID,
+    s.BackgroundFile AS SceneBackgroundFile,
+    pv.BackgroundFile AS PreviewBackgroundFile,
+    COALESCE(
+        NULLIF(TRIM(s.BackgroundFile), ''),
+        NULLIF(TRIM(pv.BackgroundFile), '')
+    ) AS BackgroundFile,
+    COALESCE(
+        NULLIF(TRIM(p.LORComment), ''),
+        NULLIF(TRIM(sp.LORComment), ''),
+        NULLIF(TRIM(master.LORComment), '')
+    ) AS DisplayName,
+    slp.PropID,
+    slp.RawPropID,
+    slp.ScenePropOrdinal,
+    slp.SceneRole,
+    slp.Source
+FROM scene_lor_props slp
+JOIN scenes s
+  ON s.SceneID = slp.SceneID
+ AND s.PreviewId = slp.PreviewId
+JOIN previews pv
+  ON pv.id = slp.PreviewId
+LEFT JOIN props p
+  ON p.PropID = slp.PropID
+ AND p.PreviewId = slp.PreviewId
+LEFT JOIN subProps sp
+  ON sp.SubPropID = slp.PropID
+ AND sp.PreviewId = slp.PreviewId
+LEFT JOIN props master
+  ON master.PropID = sp.MasterPropId
+ AND master.PreviewId = sp.PreviewId
+WHERE COALESCE(
+        NULLIF(TRIM(p.LORComment), ''),
+        NULLIF(TRIM(sp.LORComment), ''),
+        NULLIF(TRIM(master.LORComment), '')
+      ) IS NOT NULL;
+
 DROP VIEW IF EXISTS scene_display_count_vw;
 CREATE VIEW scene_display_count_vw AS
 SELECT
     PreviewName,
+    SceneID,
     SceneName,
-    COUNT(*) AS DisplayRows
+    SceneStageID,
+    COUNT(DISTINCT DisplayName) AS DisplayRows
 FROM scene_displays_vw
 GROUP BY
     PreviewName,
-    SceneName;
+    SceneID,
+    SceneName,
+    SceneStageID;
 """
 
     conn = sqlite3.connect(db_file)
@@ -3751,121 +3894,238 @@ GROUP BY
     finally:
         conn.close()
 
-def main():
-    """Main entry point for the script."""
-    require_g()  # fail fast if G:\ isn’t mounted
+def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build and validate the authoritative V7 LOR SQLite snapshot."
+    )
+    parser.add_argument("--db-file", type=Path, help="SQLite snapshot to publish")
+    parser.add_argument("--preview-folder", type=Path, help="Folder containing .lorprev files")
+    parser.add_argument("--reports-folder", type=Path, help="Audit/report output folder")
+    parser.add_argument(
+        "--run-mode", choices=("PRODUCTION", "VERSION_CHECK", "TEST"),
+        default="PRODUCTION", help="Provenance and path-safety mode",
+    )
+    parser.add_argument("--source-lor-version", help="Declared LOR version that exported the files")
+    parser.add_argument(
+        "--compatibility-manifest-sha256",
+        help="Approved XML compatibility manifest digest",
+    )
+    parser.add_argument("--result-json", type=Path, help="Write machine-readable run evidence")
+    parser.add_argument(
+        "--non-interactive", action="store_true",
+        help="Require explicit paths; intended for the authenticated LOR2DB runner",
+    )
+    return parser.parse_args(argv)
 
-    global DB_FILE, PREVIEW_PATH  # keep other functions happy
 
-    # Prompt, but default always to G:\ paths
-    db_in = input(f"Enter database path [{DEFAULT_DB_FILE}]: ").strip()
-    prev_in = input(f"Enter the folder path containing .lorprev files [{DEFAULT_PREVIEW_PATH}]: ").strip()
+def _is_on_g(path: Path) -> bool:
+    drive = getattr(path, "drive", "")
+    return drive.upper() == "G:" or str(path)[:2].upper() == "G:"
 
-    DB_FILE = Path(db_in) if db_in else DEFAULT_DB_FILE
-    PREVIEW_PATH = Path(prev_in) if prev_in else DEFAULT_PREVIEW_PATH
 
-    # Enforce both on G:\
-    def _is_on_g(p: Path) -> bool:
-        drv = getattr(p, "drive", "")
-        return (drv.upper() == "G:") or str(p)[:2].upper() == "G:"
+def configure_run(arguments: argparse.Namespace) -> None:
+    global DB_FILE, DB_PATH, OUTPUT_DB_FILE, PREVIEW_PATH, REPORTS_DIR
+    global RUN_MODE, SOURCE_LOR_VERSION, SOURCE_MANIFEST_SHA256
+    global COMPATIBILITY_MANIFEST_SHA256
 
-    for label, p in [("DB_FILE", DB_FILE), ("PREVIEW_PATH", PREVIEW_PATH)]:
-        if not _is_on_g(p):
-            print(f"[FATAL] {label} must be on G:\\ — got: {p}")
-            sys.exit(2)
+    if arguments.non_interactive and (not arguments.db_file or not arguments.preview_folder):
+        raise ValueError("--non-interactive requires --db-file and --preview-folder")
 
-    print(f"[INFO] Using database: {DB_FILE}")
-    print(f"[INFO] Using preview folder: {PREVIEW_PATH}")
+    if arguments.non_interactive:
+        output_db = arguments.db_file
+        preview_folder = arguments.preview_folder
+    else:
+        db_in = input(f"Enter database path [{arguments.db_file or DEFAULT_DB_FILE}]: ").strip()
+        preview_in = input(
+            f"Enter the folder path containing .lorprev files "
+            f"[{arguments.preview_folder or DEFAULT_PREVIEW_PATH}]: "
+        ).strip()
+        output_db = Path(db_in) if db_in else (arguments.db_file or DEFAULT_DB_FILE)
+        preview_folder = Path(preview_in) if preview_in else (
+            arguments.preview_folder or DEFAULT_PREVIEW_PATH
+        )
 
+    OUTPUT_DB_FILE = Path(output_db).expanduser().resolve()
+    PREVIEW_PATH = Path(preview_folder).expanduser().resolve()
+    REPORTS_DIR = Path(
+        arguments.reports_folder or OUTPUT_DB_FILE.parent / "reports"
+    ).expanduser().resolve()
+    RUN_MODE = arguments.run_mode
+    SOURCE_LOR_VERSION = (arguments.source_lor_version or "").strip()
+    COMPATIBILITY_MANIFEST_SHA256 = (
+        arguments.compatibility_manifest_sha256 or ""
+    ).strip().lower()
+
+    if RUN_MODE == "PRODUCTION":
+        require_g()
+        for label, path in (("db file", OUTPUT_DB_FILE), ("preview folder", PREVIEW_PATH)):
+            if not _is_on_g(path):
+                raise ValueError(f"Production {label} must be on G:\\: {path}")
+    if arguments.non_interactive and RUN_MODE != "TEST" and not SOURCE_LOR_VERSION:
+        raise ValueError("--source-lor-version is required outside TEST mode")
+    if RUN_MODE != "TEST" and (
+        len(COMPATIBILITY_MANIFEST_SHA256) != 64
+        or any(character not in "0123456789abcdef" for character in COMPATIBILITY_MANIFEST_SHA256)
+    ):
+        raise ValueError(
+            "--compatibility-manifest-sha256 must identify the approved XML manifest outside TEST mode"
+        )
     if not PREVIEW_PATH.is_dir():
-        print(f"[ERROR] '{PREVIEW_PATH}' is not a valid directory.")
-        return
+        raise ValueError(f"Preview folder is not a directory: {PREVIEW_PATH}")
 
-    # ---------------------------------------------------------------------
-    # Preflight validation (no DB writes)
-    # Ensures:
-    #   • Preview UUIDs are unique
-    #   • No structural collisions
-    #   • No duplicate internal GUIDs per preview
-    # Fails fast before wiping DB.
-    # Added 26/02/23 — we want to catch basic problems before any DB writes, and this also serves as a sanity check on the input data.
-    # ---------------------------------------------------------------------
-    validate_previews(PREVIEW_PATH)
+    OUTPUT_DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    SOURCE_MANIFEST_SHA256 = source_manifest_sha256(PREVIEW_PATH)
 
-    # Set up the database
-    setup_database()
-
-    # Record provenance for the disposable SQLite snapshot.
-    start_parser_run()
-
-    # Process all files in the folder
-    process_folder(PREVIEW_PATH)
-
-    # Collapse any duplicate masters first (this fixes the CarCounterDS/PS case)
-    collapse_duplicate_masters(DB_FILE)
-
-    # Reconciler (canon master snap)
-    reconcile_subprops_to_canonical_master(DB_FILE)
-
-    # Every materialized row must preserve the exact source PropClass UUID.
-    audit_raw_prop_identity(DB_FILE)
-
-    # A scene membership must resolve to a parsed prop/subprop before reports
-    # or downstream ingest are allowed to use this database.
-    audit_scene_membership_integrity(DB_FILE)
-
-    # ✅ Build the wiring views in the SAME DB file the parser just wrote
-    create_wiring_views_v6(DB_FILE)
-
-    create_scene_views_v7(DB_FILE)
-
-    # ✅ Build the Stage Display views and write printable report (includes “no wiring” items)
-    write_stage_display_report(DEFAULT_DB_FILE)   # GAL 25-10-23
-    
-    # 🚨 Fail-fast audit: a DisplayName can be mastered in ONLY one preview
-    audit_displayname_masters_unique_across_previews(DB_FILE)
-
-    # All parser materialization, audits, views, and reports completed.
-    complete_parser_run()
+    build_name = f".{OUTPUT_DB_FILE.stem}.{uuid.uuid4().hex}.building{OUTPUT_DB_FILE.suffix}"
+    DB_FILE = OUTPUT_DB_FILE.with_name(build_name)
+    DB_PATH = DB_FILE
 
 
-    # # 🚨 Fail-fast audits (write CSV + exit non-zero if problems)
-    # audit_duplicate_display_names(DB_FILE)   # required
-    # # audit_prop_id_crosspreview(DB_FILE)    # optional but recommended during transition
+def validate_output_database(db_file: Path, require_complete: bool = False) -> dict[str, int]:
+    """Fail closed unless the entire published SQLite contract is usable."""
+    with sqlite3.connect(db_file) as conn:
+        integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        if integrity != "ok":
+            raise RuntimeError(f"SQLite integrity_check failed: {integrity}")
+        foreign_keys = conn.execute("PRAGMA foreign_key_check").fetchall()
+        if foreign_keys:
+            raise RuntimeError(f"SQLite foreign_key_check found {len(foreign_keys)} violation(s)")
 
-    print("Processing complete. Check the database.")
+        objects = {
+            (row[0], row[1])
+            for row in conn.execute(
+                "SELECT name, type FROM sqlite_master WHERE type IN ('table','view')"
+            )
+        }
+        missing_tables = sorted(name for name in PARSER_TABLES if (name, "table") not in objects)
+        missing_views = sorted(name for name in PARSER_VIEWS if (name, "view") not in objects)
+        if missing_tables or missing_views:
+            raise RuntimeError(
+                f"Published schema incomplete; missing tables={missing_tables}, views={missing_views}"
+            )
+
+        # Preparing and executing every view catches invalid dependencies that
+        # sqlite_master alone does not detect.
+        for view_name in sorted(PARSER_VIEWS):
+            conn.execute(f'SELECT * FROM "{view_name}" LIMIT 1').fetchall()
+
+        counts = {
+            name: conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+            for name in ("previews", "props", "subProps", "dmxChannels", "scenes", "scene_lor_props")
+        }
+        source_count = len(list(PREVIEW_PATH.glob("*.lorprev")))
+        if not source_count or counts["previews"] != source_count:
+            raise RuntimeError(
+                f"Preview materialization mismatch: source={source_count}, sqlite={counts['previews']}"
+            )
+        if counts["props"] == 0:
+            raise RuntimeError("No props were materialized from the selected preview set")
+
+        run = conn.execute(
+            "SELECT Status, ValidationStatus, SourceManifestSHA256, "
+            "CompatibilityManifestSHA256 FROM parser_run"
+        ).fetchall()
+        if len(run) != 1 or run[0][2] != SOURCE_MANIFEST_SHA256:
+            raise RuntimeError("parser_run provenance is missing or does not match the source manifest")
+        if run[0][3] != (COMPATIBILITY_MANIFEST_SHA256 or None):
+            raise RuntimeError("parser_run does not match the approved compatibility manifest")
+        if require_complete and run[0][:2] != ("COMPLETE", "PASSED"):
+            raise RuntimeError(f"parser_run did not finalize successfully: {run[0][:2]}")
+        return counts
 
 
-    # -----------------------------------------------------------------------------
-    # GAL 25-10-22: End-of-run reporting (collision CSVs + notice)
-    # We open a short-lived connection here just to resolve preview names in reports.
-    # -----------------------------------------------------------------------------
+def _write_collision_reports() -> None:
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        try:
+            write_propid_collisions_csv(cursor)
+        except Exception as error:
+            WARN(f"Unable to write PropID collision CSV: {error}")
+        try:
+            write_subprop_collisions_csv(cursor)
+        except Exception as error:
+            WARN(f"Unable to write SubPropID collision CSV: {error}")
+
+
+def execute_parser_run(arguments: argparse.Namespace) -> dict[str, object]:
+    configure_run(arguments)
+    print(f"[INFO] Parser: {PARSER_VERSION} ({RUN_MODE})")
+    print(f"[INFO] Source LOR version: {SOURCE_LOR_VERSION or 'not declared'}")
+    print(f"[INFO] Preview folder: {PREVIEW_PATH}")
+    print(f"[INFO] Output database: {OUTPUT_DB_FILE}")
+
     try:
-        _conn = sqlite3.connect(DB_FILE)
-        _cursor = _conn.cursor()
-        try:
-            write_propid_collisions_csv(_cursor)
-        except Exception as _e:
-            WARN(f"Unable to write PropID collision CSV: {_e}")
-        try:
-            write_subprop_collisions_csv(_cursor)
-        except Exception as _e:
-            WARN(f"Unable to write SubPropID collision CSV: {_e}")
-    finally:
-        try:
-            _conn.close()
-        except Exception:
-            pass
+        # Preflight remains first and performs no database writes.
+        validate_previews(PREVIEW_PATH)
+        setup_database()
+        start_parser_run()
+        process_folder(PREVIEW_PATH)
+        collapse_duplicate_masters(DB_FILE)
+        reconcile_subprops_to_canonical_master(DB_FILE)
+        audit_raw_prop_identity(DB_FILE)
+        audit_scene_membership_integrity(DB_FILE)
+        create_wiring_views_v6(DB_FILE)
+        create_scene_views_v7(DB_FILE)
+        write_stage_display_report(DB_FILE, str(REPORTS_DIR))
+        audit_displayname_masters_unique_across_previews(DB_FILE)
+        _write_collision_reports()
 
-    # === Notice breadcrumb (FILE ONLY; no webhook required) ===
+        counts = validate_output_database(DB_FILE)
+        detail = json.dumps(counts, sort_keys=True, separators=(",", ":"))
+        complete_parser_run("COMPLETE", "PASSED", detail)
+        validate_output_database(DB_FILE, require_complete=True)
+        os.replace(DB_FILE, OUTPUT_DB_FILE)
+
+        result = {
+            "status": "COMPLETE",
+            "validation_status": "PASSED",
+            "parser_version": PARSER_VERSION,
+            "run_mode": RUN_MODE,
+            "source_lor_version": SOURCE_LOR_VERSION or None,
+            "source_manifest_sha256": SOURCE_MANIFEST_SHA256,
+            "compatibility_manifest_sha256": COMPATIBILITY_MANIFEST_SHA256 or None,
+            "sqlite_path": str(OUTPUT_DB_FILE),
+            "sqlite_sha256": sha256_file(OUTPUT_DB_FILE),
+            "counts": counts,
+        }
+        if arguments.result_json:
+            arguments.result_json.parent.mkdir(parents=True, exist_ok=True)
+            arguments.result_json.write_text(
+                json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+        try:
+            actor = _who_ran()
+            notice = _notice_text(PREVIEW_PATH, OUTPUT_DB_FILE, actor=actor)
+            print(f"[notify] Wrote notice file → {write_notice_file(PREVIEW_PATH, notice)}")
+        except Exception as error:
+            WARN(f"Notice file was not written: {error}")
+        print("[OK] Processing and SQLite contract validation complete.")
+        return result
+    except BaseException as error:
+        if Path(DB_FILE).exists():
+            try:
+                complete_parser_run("FAILED", "FAILED", str(error))
+            except Exception:
+                pass
+        if Path(DB_FILE).exists():
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            failed_path = REPORTS_DIR / f"{OUTPUT_DB_FILE.stem}.failed-{timestamp}.db"
+            os.replace(DB_FILE, failed_path)
+            print(f"[ERROR] Failed build retained for diagnosis: {failed_path}")
+        print(f"[ERROR] Previous published SQLite snapshot was preserved: {OUTPUT_DB_FILE}")
+        raise
+
+
+def main(argv: list[str] | None = None) -> int:
     try:
-        actor = _who_ran()
-        text = _notice_text(PREVIEW_PATH, DB_FILE, actor=actor)  # pass actor for clarity
-        notice_path = write_notice_file(PREVIEW_PATH, text)
-        print(f"[notify] Wrote notice file → {notice_path}")
-    except Exception as e:
-        print(f"[notify] failed: {e}")
-        import traceback; traceback.print_exc()
+        execute_parser_run(parse_arguments(argv))
+        return 0
+    except SystemExit as error:
+        return int(error.code or 2)
+    except Exception as error:
+        print(f"[FATAL] {error}", file=sys.stderr)
+        return 2
 
 
 # === Wiring views for V6 (map + sorted) GAL 25-08-23 ===
@@ -4132,33 +4392,6 @@ WHERE ConnectionType = 'FIELD';
     # Legacy spreadsheet comparison removed from V7.
     # Display validation now belongs in parser validation and PostgreSQL import review.
 
-    # # (Optional) Kick off the display-name comparison report Remove when done with spreadsheet GAL
-    # try:
-    #     import subprocess, sys, os
-
-    #     # --- Only run this compare when:
-    #     #     1) We are writing to the production DB, AND
-    #     #     2) The caller did not explicitly disable it via env var.
-    #     DEFAULT_PROD_DB = r"G:\Shared drives\MSB Database\database\lor_output_v6.db"
-    #     _db_norm = os.path.normcase(os.path.normpath(str(DB_PATH)))
-    #     _prod_norm = os.path.normcase(os.path.normpath(DEFAULT_PROD_DB))
-    #     _skip = os.environ.get("MSB_SKIP_DISPLAYS_COMPARE", "0") == "1"
-
-    #     if not _skip and _db_norm == _prod_norm:
-    #         compare_script = r"G:\Shared drives\MSB Database\Spreadsheet\compare_displays_vs_db.py"
-    #         if os.path.exists(compare_script):
-    #             print("[INFO] Running compare_displays_vs_db.py …")
-    #             subprocess.run([sys.executable, compare_script], check=False)
-    #         else:
-    #             print(f"[INFO] Compare script not found at: {compare_script} (skipping)")
-    #     else:
-    #         reason = "env flag" if _skip else "non-production DB"
-    #         print(f"[INFO] Skipping compare_displays_vs_db ({reason}).")
-
-    # except Exception as e:
-    #     print(f"[WARN] Could not run compare script: {e}")
-
-
 # === Stage Display views + printable report (GAL 25-10-23) ===================
 # Purpose: include BOTH wired and inventory-only assets so stages like
 #          "Santa's Station Generator" (no wiring) appear in rollups.
@@ -4295,11 +4528,7 @@ WHERE StageBucket='Unassigned';
 def _ensure_stage_views(db_file: str) -> None:
     """Create/refresh Stage Display SQL views (safe to run every parse).  GAL 25-10-23"""
     import sqlite3, os
-    # Always target the same DB the parser uses (DEFAULT_DB_FILE)
-    db_path = os.fspath(DEFAULT_DB_FILE)   # GAL 25-10-23: Path → str
-    if db_file and os.fspath(db_file) != db_path:
-        # Log only; we still write to DEFAULT_DB_FILE to avoid split-brain
-        print(f"[WARN] Stage views requested on {db_file!r} — using DEFAULT_DB_FILE instead: {db_path}")
+    db_path = os.fspath(db_file or DB_FILE)
     conn = sqlite3.connect(db_path)
     try:
         conn.executescript(STAGE_VIEW_SQL)
@@ -4317,7 +4546,7 @@ def write_stage_display_report(db_file: str, out_dir_hint: str | None = None) ->
     from pathlib import Path
     from collections import defaultdict, OrderedDict
 
-    db_path = os.fspath(DEFAULT_DB_FILE)  # GAL 25-10-23: hard-lock to production DB
+    db_path = os.fspath(db_file or DB_FILE)
     print(f"[INFO] Stage report using DB: {db_path}")
 
     # Ensure the stage views exist
@@ -4327,7 +4556,7 @@ def write_stage_display_report(db_file: str, out_dir_hint: str | None = None) ->
     try:
         reports_dir = Path(get_reports_dir())
     except Exception:
-        reports_dir = Path(out_dir_hint or DEFAULT_DB_FILE.parent) / "reports"  # same folder as DB
+        reports_dir = Path(out_dir_hint or Path(db_path).parent) / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     out_path = reports_dir / "stage_display_list.html"
 
@@ -4512,4 +4741,4 @@ def audit_prop_id_crosspreview(db_path: str) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

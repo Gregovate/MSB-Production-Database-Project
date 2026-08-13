@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """V1.3.6 test patch for MSB Folder Alignment.
 
-Implements the provisional deterministic naming/documentation-scope contract from
+Implements the deterministic naming/documentation-scope contract from
 Folder_Alignment_Engineering_Design.md without changing the V7 parser.
 
-Classification under test:
+Current classification:
   Root            -> owning Background Preview Stage root
   NN-Name-XY      -> Stage root
   NNa-Name-XY     -> Sub-stage root
@@ -372,7 +372,7 @@ def _scope_validation_html(rows: list[ScopeRow], root: Path) -> str:
 
     return (
         "<div class='roadmap'><h3>Deterministic Documentation-Scope Validation</h3>"
-        "<p>This is the V1.3.6 provisional naming-contract test. It does not change LOR or Drive folders. "
+        "<p>This is the V1.3.6 deterministic naming contract. It does not change LOR or Drive folders. "
         "<code>SceneSection</code> is not used as folder identity.</p>"
         "<table><tr><th>Raw LOR Scene Name</th><th>Classification</th><th>Token</th>"
         "<th>Expected Path</th><th>Resolved Path</th><th>Evidence</th><th>Status</th>"
@@ -405,7 +405,7 @@ def write_reports(output: Path, root: Path, db: Path, previews, findings, helper
             text = text.replace(marker, marker + _scope_validation_html(rows, root), 1)
 
     header_note = (
-        "<div class='roadmap'><h3>V1.3.6 Provisional Contract Test</h3>"
+        "<div class='roadmap'><h3>V1.3.6 Deterministic Contract</h3>"
         "<p>Folder scope is classified from raw LOR Scene <code>Name</code>, Preview context, and "
         "authoritative <code>BackgroundFile</code> evidence. Parser behavior has not been changed. "
         "The reserved Background Preview Scene name <code>Root</code> means the owning Stage root "
