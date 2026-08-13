@@ -8,6 +8,8 @@ The goal is to put current, usable information in predictable Stage/Sub-stage/Sc
 
 The Shared Drive remains the permanent home for the field-facing engineering documents. The current Folder Alignment worklist is the roadmap for reconciling historical material into that structure.
 
+Provides a consistent location for `PreviewBackground` at the Stage/Scene/Display levels used to build the previews in Light O Rama. **DO NOT MOVE, RENAME, DELETE these folders or any files in them. It will break Light O Rama Preview Editor!!**
+
 ---
 
 # Start With the Current Documentation Alignment Worklist
@@ -39,6 +41,10 @@ The report is read-only. It does not move, rename, create, or delete Google Driv
 # Standard Stage / Sub-stage / Scene Documentation Structure
 
 The established Stage/Sub-stage/Scene structure remains authoritative.
+
+The Photos Folder are to be used for general documentation `Not for Instructions!` These folders appear in the Stage and Scene Folders
+
+Images needed for `Setup` or `Takedown` must be placed in the `images` folder under the respective procedure location `Not under the Stage or Scene Photos Folders!`
 
 ```text
 <Stage, Sub-stage, or Scene>
@@ -167,7 +173,7 @@ publish current field PDF
 place current PDF in Procedures\Setup
 ```
 
-The controlled Stage Setup Instruction template is maintained in the Production Database repository under:
+The controlled Stage Setup Instruction template is maintained in the `Shared Drives/Display Folders` under:
 
 ```text
 System_Documentation\Templates\Stage_Setup_Instruction_Template.md
@@ -268,6 +274,8 @@ The durable database/document-ID relationship is a separate engineering problem.
 # Where Other Engineering Material Belongs
 
 The central historical Setup tree may contain drawings, photographs, references, and other engineering material in addition to actual Setup instructions.
+
+Drawings, images, sketches for each individual display belong in the display folder preferably organized into sensible folders.
 
 Do not assume every file historically stored under `0 - Setup Procedures` must become a Setup Instruction.
 
