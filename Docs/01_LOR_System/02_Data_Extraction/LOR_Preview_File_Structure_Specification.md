@@ -25,7 +25,7 @@ The current production parser is:
 
 Functional parser baseline:
 
-`V7.0.9`
+`V7.0.10`
 
 Known-good LOR preview baseline:
 

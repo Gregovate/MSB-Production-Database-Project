@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-13  V7.0.9
+# Current Version : 2026-08-13  V7.0.10
 #
 # Author:
 #   Greg Liebig
@@ -47,6 +47,14 @@
 #
 # Changelog
 # ---------
+## 2026-08-13  V7.0.10  (GAL / OpenAI)
+# • Explicitly close the final validation and collision-report SQLite
+#   connections before attempting to publish the completed database.
+# • Retry only transient Windows sharing violations during atomic publication,
+#   accommodating short Google Drive/antivirus inspection locks.
+# • Preserve the original parser exception if failed-build retention is also
+#   blocked, and clearly report the exact build file left for diagnosis.
+#
 ## 2026-08-13  V7.0.9  (GAL / OpenAI)
 # • Prevent Windows legacy console/log encodings from aborting a parser run
 #   when an informational message contains a Unicode character.
@@ -252,6 +260,9 @@ import csv
 import getpass
 import platform
 import socket
+import errno
+import time
+from contextlib import closing
 
 
 def configure_console_output() -> None:
@@ -340,7 +351,7 @@ def get_reports_dir() -> str:
 
 
 # ---- Global flags & defaults (must be defined before functions) ----
-PARSER_VERSION = "V7.0.9"  # GAL 2026-08-13: authoritative runtime version
+PARSER_VERSION = "V7.0.10"  # GAL 2026-08-13: authoritative runtime version
 
 DEBUG = False  # Global debug flag
 
@@ -4009,9 +4020,45 @@ def configure_run(arguments: argparse.Namespace) -> None:
     DB_PATH = DB_FILE
 
 
+def _is_transient_file_lock(error: OSError) -> bool:
+    """Return True only for retryable sharing/permission locks."""
+    return (
+        getattr(error, "winerror", None) in (32, 33)
+        or error.errno in (errno.EACCES, errno.EBUSY, errno.EPERM)
+    )
+
+
+def replace_with_lock_retry(
+    source: Path,
+    destination: Path,
+    *,
+    attempts: int = 8,
+    initial_delay_seconds: float = 0.25,
+) -> None:
+    """Atomically replace a file, tolerating only short-lived sharing locks."""
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+
+    for attempt in range(1, attempts + 1):
+        try:
+            os.replace(source, destination)
+            return
+        except OSError as error:
+            if attempt == attempts or not _is_transient_file_lock(error):
+                raise
+            delay = min(initial_delay_seconds * (2 ** (attempt - 1)), 2.0)
+            print(
+                f"[WARN] File handoff is temporarily locked; retrying "
+                f"{attempt}/{attempts - 1} in {delay:.2f}s: {source}"
+            )
+            time.sleep(delay)
+
+
 def validate_output_database(db_file: Path, require_complete: bool = False) -> dict[str, int]:
     """Fail closed unless the entire published SQLite contract is usable."""
-    with sqlite3.connect(db_file) as conn:
+    # sqlite3.Connection.__exit__ commits/rolls back but does not close. The
+    # explicit closing is required before Windows can atomically publish a DB.
+    with closing(sqlite3.connect(db_file)) as conn:
         integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
         if integrity != "ok":
             raise RuntimeError(f"SQLite integrity_check failed: {integrity}")
@@ -4063,7 +4110,7 @@ def validate_output_database(db_file: Path, require_complete: bool = False) -> d
 
 
 def _write_collision_reports() -> None:
-    with sqlite3.connect(DB_FILE) as conn:
+    with closing(sqlite3.connect(DB_FILE)) as conn:
         cursor = conn.cursor()
         try:
             write_propid_collisions_csv(cursor)
@@ -4102,7 +4149,7 @@ def execute_parser_run(arguments: argparse.Namespace) -> dict[str, object]:
         detail = json.dumps(counts, sort_keys=True, separators=(",", ":"))
         complete_parser_run("COMPLETE", "PASSED", detail)
         validate_output_database(DB_FILE, require_complete=True)
-        os.replace(DB_FILE, OUTPUT_DB_FILE)
+        replace_with_lock_retry(DB_FILE, OUTPUT_DB_FILE)
 
         result = {
             "status": "COMPLETE",
@@ -4138,8 +4185,15 @@ def execute_parser_run(arguments: argparse.Namespace) -> dict[str, object]:
         if Path(DB_FILE).exists():
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             failed_path = REPORTS_DIR / f"{OUTPUT_DB_FILE.stem}.failed-{timestamp}.db"
-            os.replace(DB_FILE, failed_path)
-            print(f"[ERROR] Failed build retained for diagnosis: {failed_path}")
+            try:
+                replace_with_lock_retry(DB_FILE, failed_path)
+            except OSError as retention_error:
+                print(
+                    f"[ERROR] Failed build remains at {DB_FILE}; could not move it "
+                    f"to {failed_path}: {retention_error}"
+                )
+            else:
+                print(f"[ERROR] Failed build retained for diagnosis: {failed_path}")
         print(f"[ERROR] Previous published SQLite snapshot was preserved: {OUTPUT_DB_FILE}")
         raise
 
