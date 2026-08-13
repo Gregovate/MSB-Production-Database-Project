@@ -30,24 +30,25 @@ Instead, LOR is one component of a larger engineering information system consist
 
 Each system has a specific responsibility. Together they provide the complete engineering and operational information system used to design, build, install, maintain, and operate the annual display.
 
-This document provides the architectural overview of the Google Drive engineering repository and establishes the governing filesystem contracts used to organize and locate engineering information.
+This document provides the architectural overview of the Google Drive engineering repository and establishes the governing principles used to organize and locate engineering information. It defines where engineering information belongs and the filesystem contracts that applications may rely upon. It does not define the detailed content of individual engineering documents.
 
 ---
 
 # Governing Principles
 
+The following principles apply throughout the project.
+
 1. Organize by physical location first.
-2. Stage, Sub-stage, and Scene roots use one identical standardized structure.
-3. Display folders use a smaller standardized structure.
-4. `PreviewBackground` is a stable LOR preview-background asset location and is expected at Stage, Sub-stage, Scene, and Display scope.
-5. Stage/Scene helper folders use standardized locations so applications can locate published documentation reliably.
-6. Stage wiring markups are stored in the standardized `Wiring` structure.
-7. Procedures are stored in the standardized `Procedures` structure.
-8. Photographs are stored in the standardized `Photos` structure.
-9. Historical information must be preserved while the legacy Google Drive tree is reconciled. Existing files must not be deleted merely because an older folder no longer belongs to the current standard.
-10. The Production Database indexes identities, relationships, and document access information but does not replace the Google Drive engineering repository.
-11. QR codes identify stable MSB records; they must not encode fragile Google Drive paths or individual document URLs.
-12. New documentation should follow this organizational standard even when legacy material has not yet been reorganized.
+2. Documentation belongs at the organizational level to which it applies: Stage, Substage, Scene, shared Display group, or individual Display.
+3. Not every LOR Display requires its own Google Drive folder. Multiple Displays may legitimately use one shared documentation folder, and some Displays may require no dedicated folder.
+4. Stage, Substage, and Scene roots use the same standardized helper-folder structure so applications can locate published documentation reliably. Display folders use a smaller standardized helper structure.
+5. Stage wiring markups are stored in the standardized `Wiring` structure.
+6. Procedures are stored in the standardized `Procedures` structure.
+7. Photographs are stored in the standardized `Photos` structure.
+8. Historical information remains with the Stage, Scene, shared group, or Display it documents until it can be reorganized safely.
+9. The Production Database indexes identities, relationships, and document access information but does not replace the Google Drive engineering repository.
+10. QR codes identify stable MSB records; they must not encode fragile Google Drive paths or individual document URLs.
+11. New documentation should follow this organizational standard even when legacy material has not yet been reorganized.
 
 ---
 
@@ -73,6 +74,8 @@ LOR-derived relationships      Google Drive document index
 
 LOR remains the authoring source for current Stage / Scene / Display organization. The Google Shared Drive remains the permanent engineering-document repository. PostgreSQL provides stable identities and relationships needed by operational applications. `my.sheboyganlights.org` is the field-access presentation layer.
 
+The QR code is the stable entry point into that system. It is not the document locator itself.
+
 ---
 
 # Information Repositories on the Google Drive
@@ -81,7 +84,9 @@ LOR remains the authoring source for current Stage / Scene / Display organizatio
 
 The Engineering Repository is stored within the Google Shared Drive named **Display Folders**.
 
-Although the shared drive retains its historical name, it contains engineering information for Stages, Sub-stages, Scenes, individual Displays, wiring documentation, procedures, photographs, fabrication drawings, and supporting engineering resources.
+Although the shared drive retains its historical name, it contains much more than individual Display folders. It is the primary engineering repository for the Making Spirits Bright project and contains engineering information for Stages, Substages, Scenes, shared Display groups, individual Displays, wiring documentation, procedures, photographs, fabrication drawings, and supporting engineering resources.
+
+Information stored within the Engineering Repository evolves over many years and remains valid across multiple show seasons.
 
 At a high level:
 
@@ -89,172 +94,111 @@ At a high level:
 Display Folders
 └── Stage
     ├── Standard Stage structure
-    ├── Optional Sub-stage using the same structure
+    ├── Optional Substage using the same structure
     ├── Optional Scene using the same structure
-    └── Display folders using the Display structure
+    ├── Shared documentation folders when required
+    └── Individual Display folders using the Display structure when required
 ```
 
 The Google Drive is the authoritative source for engineering documentation.
 
 ## Seasonal Repository - Shared Drive - Seasonal Folders
 
-The Seasonal Repository contains information specific to an individual operating season, such as sequences, videos, statistics, event planning, and other annual operational files.
+The Seasonal Repository contains information specific to an individual operating season.
+
+Examples include:
+
+- LOR Sequences
+- Show Videos
+- Car Counter Data
+- Annual statistics
+- Event planning
+- Other seasonal operational files
+
+Unlike the Engineering Repository, these assets naturally belong to a specific show year.
 
 ---
 
-# Standard Stage / Sub-stage / Scene Structure
+# Physical Organization
 
-A Stage, formal Sub-stage, and real Scene use the **same root-level structure**.
+The physical display is organized by **Stages** such as `05-Festive Trees-FT`.
 
-```text
-<Stage / Sub-stage / Scene>\
-│
-├── PreviewBackground\
-│
-├── Photos\
-│   ├── Current\
-│   └── Historical\
-│
-├── Procedures\
-│   ├── Inspection\
-│   │
-│   ├── Setup\
-│   │   ├── Archive\
-│   │   ├── images\
-│   │   └── SourceDocs\
-│   │
-│   └── Takedown\
-│       ├── Archive\
-│       ├── images\
-│       └── SourceDocs\
-│
-└── Wiring\
-    ├── BackgroundStage\
-    │   └── SourceDocs\
-    └── MusicalStage\
-        └── SourceDocs\
-```
+Large Stages may optionally contain **Substages** and/or **Scenes**.
 
-`Procedures\Inspection` is intentionally unstructured. Standard child folders are not defined beneath it.
-
-`Procedures\SourceDocs` does not exist as a generic Procedures-root contract. Source documents that belong to Setup or Takedown belong inside that procedure branch.
-
-Stage, Sub-stage, and Scene may also contain child Display folders.
-
----
-
-# Standard Display Structure
-
-A Display folder uses a smaller standard structure and does **not** automatically receive the Stage/Scene `Procedures` or `Wiring` trees.
+Stages, Substages, and Scenes use the same standardized helper-folder structure:
 
 ```text
-<Display>\
-├── PreviewBackground\
-└── Photos\
-    ├── Current\
-    └── Historical\
+Stage / Substage / Scene
+│
+├── PreviewBackground/
+│
+├── Photos/
+│   ├── Current/
+│   └── Historical/
+│
+├── Procedures/
+│   ├── Inspection/
+│   ├── Setup/
+│   │   ├── Archive/
+│   │   ├── images/
+│   │   └── SourceDocs/
+│   └── Takedown/
+│       ├── Archive/
+│       ├── images/
+│       └── SourceDocs/
+│
+├── Wiring/
+│   ├── BackgroundStage/
+│   │   └── SourceDocs/
+│   └── MusicalStage/
+│       └── SourceDocs/
+│
+└── Display / shared-documentation folders as required
 ```
 
-A Display may exist directly beneath a Stage or beneath a real Scene/Sub-stage.
+`Procedures\Inspection` is intentionally unstructured.
 
-A Display's parent scope determines where shared Stage/Scene procedures and wiring are resolved. The Display folder itself remains lightweight unless a future approved contract adds other Display-specific branches.
-
----
-
-# Example Complete Hierarchy
-
-One Stage with one Stage-level Display, one Scene, and one Display inside that Scene looks like this:
+Display folders use the smaller standardized helper structure:
 
 ```text
-24-Traditional Christmas-TC\
+Display
 │
-├── PreviewBackground\
-├── Photos\
-│   ├── Current\
-│   └── Historical\
-├── Procedures\
-│   ├── Inspection\
-│   ├── Setup\
-│   │   ├── Archive\
-│   │   ├── images\
-│   │   └── SourceDocs\
-│   └── Takedown\
-│       ├── Archive\
-│       ├── images\
-│       └── SourceDocs\
-├── Wiring\
-│   ├── BackgroundStage\
-│   │   └── SourceDocs\
-│   └── MusicalStage\
-│       └── SourceDocs\
-│
-├── Stage-Level Display\
-│   ├── PreviewBackground\
-│   └── Photos\
-│       ├── Current\
-│       └── Historical\
-│
-└── 24-Example Scene\
-    ├── PreviewBackground\
-    ├── Photos\
-    │   ├── Current\
-    │   └── Historical\
-    ├── Procedures\
-    │   ├── Inspection\
-    │   ├── Setup\
-    │   │   ├── Archive\
-    │   │   ├── images\
-    │   │   └── SourceDocs\
-    │   └── Takedown\
-    │       ├── Archive\
-    │       ├── images\
-    │       └── SourceDocs\
-    ├── Wiring\
-    │   ├── BackgroundStage\
-    │   │   └── SourceDocs\
-    │   └── MusicalStage\
-    │       └── SourceDocs\
-    └── Scene-Level Display\
-        ├── PreviewBackground\
-        └── Photos\
-            ├── Current\
-            └── Historical\
+├── PreviewBackground/
+└── Photos/
+    ├── Current/
+    └── Historical/
 ```
 
----
+Each Stage represents a physical area within the park and serves as the primary organizational unit of the Engineering Repository.
 
-# PreviewBackground Contract
+Within a Stage may exist:
 
-`PreviewBackground` is the stable location for images intentionally used as LOR Preview/Scene background files.
+- individual Display folders
+- shared Display/documentation folders
+- formal Substages
+- optional Scene folders
+- Stage wiring
+- Stage procedures
+- Stage photographs
+- historical archives
 
-It is expected at all four scope types:
-
-```text
-Stage\PreviewBackground\
-Sub-stage\PreviewBackground\
-Scene\PreviewBackground\
-Display\PreviewBackground\
-```
-
-The purpose is to prevent LOR `BackgroundFile` paths from depending on arbitrary loose images that may later be renamed, deleted, or relocated.
-
-`PreviewBackground` is a local asset folder. Its presence on a Display does **not** make that Display a full documentation scope and does not imply `Procedures` or `Wiring` beneath the Display.
-
-The current additive updater may create a missing `PreviewBackground` folder only inside an already-existing deterministically resolved Stage, Sub-stage, Scene, or Display folder. It must never create the parent scope, move content, rename content, delete content, or overwrite content.
+Not every Stage currently follows the same internal organization. The repository contains historical structures accumulated over many years. Those structures remain evidence and must not be reorganized automatically.
 
 ---
 
 # Stage
 
-A Stage represents a physical location within the park and serves as the primary organizational unit of the Engineering Repository.
+A Stage represents a physical location within the park.
+
+Stages are durable identities used throughout the engineering repository and production database.
 
 Stage-level documentation applies to the Stage as a whole and should be accessible from any Display currently assigned to that Stage.
 
 ---
 
-# Sub-stages
+# Substages
 
-Some large Stages are divided into formal physical Sub-stages.
+Some large Stages are divided into formal physical Substages.
 
 Example:
 
@@ -263,129 +207,201 @@ Example:
 └── 07a-Who Forest-WF
 ```
 
-A Sub-stage uses the same standardized root structure as a Stage and Scene.
+Substages represent real physical divisions and use the same standardized helper-folder structure as Stages and Scenes.
 
 ---
 
 # Scenes
 
-Scenes are authoring and organizational units used by LOR. A real Scene may be a useful engineering-documentation scope when wiring, procedures, photographs, or preview-background assets apply to the Scene as a whole.
+Scenes are authoring and organizational units used by LOR.
+
+Scenes may represent:
+
+- an entire Stage
+- a formal Substage
+- a logical grouping of Displays
+
+Examples include:
+
+- Christmas Vacation
+- Christmas Story
+- Nightmare Before Christmas
+- Throwing Bears
+- Sliding Penguins
+
+Scenes simplify Preview authoring and provide a useful documentation scope when wiring, procedures, photographs, or other engineering information applies to a Scene as a whole rather than to one Display.
 
 Scenes do not define physical Display identity.
 
-The current deterministic Scene naming/resolution contract is being validated by Folder Alignment before it is promoted into parser or broader naming standards.
+---
+
+# Display and Shared Documentation Folders
+
+An individual Display folder is the engineering record for one physical Display when that Display requires dedicated documentation.
+
+The standardized Display helper structure is intentionally smaller than the Stage / Substage / Scene structure:
+
+```text
+Display
+│
+├── PreviewBackground/
+└── Photos/
+    ├── Current/
+    └── Historical/
+```
+
+Display folders do not receive the standardized `Procedures` or `Wiring` helper trees.
+
+Existing Display-specific engineering drawings, fabrication information, manuals, supporting documentation, or other historical material remain valid engineering records and must not be deleted merely because the standardized Display helper structure is smaller.
+
+However, the repository must **not** assume a one-to-one relationship between an LOR Display and a Google Drive folder.
+
+Valid cases include:
+
+1. one Display with one dedicated folder;
+2. multiple Displays sharing one documentation folder;
+3. a Display documented entirely at Stage or Scene level and therefore requiring no dedicated folder.
+
+This distinction is important for repeated or highly similar elements such as large groups of tree wraps or other components that are individual LOR Displays but are installed and documented as one Stage-level system.
+
+Folder paths must therefore not be treated as Display identity.
 
 ---
 
-# Display Folders
+# Standard Helper Folders Are Application Contracts
 
-A Display folder represents one physical Display when a dedicated folder exists.
+The standardized `PreviewBackground`, `Wiring`, `Procedures`, and `Photos` structures are not merely organizational preferences. They are application-facing filesystem contracts.
 
-The standard Display root is intentionally small:
+Applications may use a known Stage or Scene context together with these standardized relative locations to discover the engineering material that applies to that context.
 
-```text
-PreviewBackground\
-Photos\Current\
-Photos\Historical\
-```
-
-Not every LOR Display is required to have a Google Drive folder. The system must not create a Display folder merely because the parser contains a Display identity.
-
-When a Display folder already exists, the standardized Display structure may be validated and added according to controlled migration rules.
-
-Folder paths must not be treated as permanent Display identity.
-
----
-
-# Procedures Contract
-
-Standard procedure locations at Stage/Sub-stage/Scene scope are:
+The general pattern is:
 
 ```text
-Procedures\Inspection\
-Procedures\Setup\
-Procedures\Takedown\
+known Stage / Scene context
+        |
+        v
+standard helper folder
+        |
+        v
+published engineering material
 ```
 
-`Inspection` is intentionally unstructured.
+This allows software to locate documentation without storing a fragile full Windows path for every file.
 
-Setup and Takedown use the same internal pattern:
+## PreviewBackground helper path
+
+`PreviewBackground` is the stable location for images intentionally used as LOR Preview/Scene background files.
+
+It exists at every scope that may own a preview background:
 
 ```text
-Setup\
-├── Archive\
-├── images\
-└── SourceDocs\
-
-Takedown\
-├── Archive\
-├── images\
-└── SourceDocs\
+<Stage>\PreviewBackground\
+<Substage>\PreviewBackground\
+<Scene>\PreviewBackground\
+<Display>\PreviewBackground\
 ```
 
-Current approved field-facing files belong directly in the applicable `Setup` or `Takedown` folder. `Archive`, `images`, and `SourceDocs` are support/source areas and are not the normal field presentation set.
+The purpose is to prevent LOR `BackgroundFile` paths from depending on arbitrary loose images that may later be renamed, deleted, or relocated.
 
-Legacy folders named `Maintenance`, `Operations`, generic `Procedures\SourceDocs`, or older Photo categories may still exist. They must be preserved until their contents are reviewed. The current standard does not authorize automatic deletion or relocation of those files.
+## Wiring helper paths
 
----
+FormView established the proven wiring-location contract.
 
-# Wiring Contract
+The LOR Preview contains a `BackgroundFile` reference. The parser preserves that value. FormView uses the selected Preview and `BackgroundFile` to resolve the active published wiring-image directory.
 
-The standardized wiring branches remain:
+The standardized wiring branches are:
 
 ```text
-<Stage / Sub-stage / Scene>\Wiring\BackgroundStage\
-<Stage / Sub-stage / Scene>\Wiring\MusicalStage\
+<Stage or Scene>\Wiring\BackgroundStage\
+<Stage or Scene>\Wiring\MusicalStage\
 ```
 
-Each branch may contain a `SourceDocs` subfolder for working/source material.
+`SourceDocs` contains working/source material and is not part of the published field-image set.
 
-FormView established the proven pattern of resolving wiring from structured LOR context and stable Google Drive locations.
+Wiring remains context-specific because Background/Static and Musical wiring can legitimately be different.
 
----
+## Procedure helper paths
 
-# Photo Contract
+Procedure discovery follows the same location-contract principle, but procedures normally apply to the physical Stage or Scene rather than to an LOR Preview type.
 
-The standardized photo structure is intentionally simple.
-
-For Stage/Sub-stage/Scene and Display:
+Standard procedure locations are:
 
 ```text
-Photos\Current\
-Photos\Historical\
+<Stage or Scene>\Procedures\Inspection\
+<Stage or Scene>\Procedures\Setup\
+<Stage or Scene>\Procedures\Takedown\
 ```
 
-Legacy `Photos\Setup`, `Photos\Takedown`, `Photos\Reference`, or other historical categories may remain during migration and must not be deleted automatically.
+There may be more than one procedure document in any of these folders.
 
----
+The system must support a **list of applicable documents**, not a single Setup/Takedown/Inspection URL field.
 
-# Legacy Organization and Migration Safety
+`Procedures\Inspection` is intentionally unstructured.
 
-The Engineering Repository has evolved over many years. Existing Stages may contain historical folder names, nested groupings, archived material, and earlier standardized structures that no longer match the current contract.
+Setup and Takedown source material belongs under the corresponding branch:
 
-The migration principle is:
+```text
+<Stage or Scene>\Procedures\Setup\SourceDocs\
+<Stage or Scene>\Procedures\Takedown\SourceDocs\
+```
 
-> Add the new canonical structure where safe; preserve existing material until its contents are reviewed.
+`SourceDocs` material is not intended for direct presentation to field users.
 
-Current automation may therefore create an approved missing folder such as `PreviewBackground` without deleting any old folder.
+## Photo helper paths
 
-Any later cleanup of obsolete folder names must be content-aware and separately reviewed.
+The standardized photo locations are:
+
+```text
+<Stage or Scene>\Photos\Current\
+<Stage or Scene>\Photos\Historical\
+```
+
+Display folders use the same two photo categories:
+
+```text
+<Display>\Photos\Current\
+<Display>\Photos\Historical\
+```
+
+These paths allow applications and operators to distinguish current field references from historical material.
 
 ---
 
 # Google Docs: Authoring vs Presentation
 
-Google Docs remain useful as collaborative authoring material. The architecture separates editable source documents, standardized filesystem discovery, and future field presentation through `my.sheboyganlights.org`.
+Google Docs are currently useful as the collaborative authoring format for many procedures. They are not the presentation standard for the future field application.
 
-Normal field users should not need to know the Google Drive hierarchy.
+The architecture separates those responsibilities:
+
+```text
+Google Doc
+    = editable source/published document
+
+Standard Procedures folder
+    = discovery/location contract
+
+my.sheboyganlights.org
+    = standardized field presentation and navigation
+```
+
+A procedure may remain a Google Doc while the application presents a consistent Stage/Scene page containing links to all applicable procedures.
+
+Document formatting inside Google Docs may be standardized separately. The ability to find and present the correct document must not depend upon perfect Google Doc formatting.
 
 ---
 
 # QR-Based Internet Access Requirement
 
+A primary project goal is to make engineering records available through `my.sheboyganlights.org` from the park or anywhere Internet access is available.
+
 Each physical Display may carry a QR code representing its stable MSB Display identity.
 
-The QR code shall not encode a mapped-drive path, current Google Drive folder path, individual Google Doc URL, or LOR Preview filename.
+The QR code shall **not** encode:
+
+- a mapped-drive path;
+- a current Google Drive folder path;
+- an individual Google Doc URL; or
+- an LOR Preview filename.
 
 Instead:
 
@@ -400,7 +416,7 @@ current database relationships
     |
     +--> Display record
     +--> current Stage
-    +--> applicable Scene/Sub-stage when relevant
+    +--> applicable Scene/Substage when relevant
     |
     v
 my.sheboyganlights.org documentation page
@@ -408,23 +424,126 @@ my.sheboyganlights.org documentation page
 
 Moving or renaming a folder must not invalidate the physical QR code.
 
+## Stage-level inheritance
+
+Scanning the QR code on any Display assigned to a Stage shall provide access to the applicable Stage-level engineering records.
+
+For Setup and similar procedures, the volunteer normally thinks in terms of the entire physical Stage. The application shall therefore present Stage-level Setup information without requiring the volunteer to understand the distinction between LOR Musical and Background Preview types.
+
+Multiple Setup instructions are valid and shall be presented as a list.
+
+## Wiring context
+
+Wiring is more specific.
+
+When both wiring contexts exist, the field interface shall present a plain-language choice rather than requiring the volunteer to understand LOR Preview terminology.
+
+Conceptually:
+
+```text
+Wiring
+├── Background / Static Displays
+│   └── uses the BackgroundStage wiring context
+└── Musical Displays
+    └── uses the MusicalStage wiring context
+```
+
+Internal engineering names such as `BackgroundStage` and `MusicalStage` may remain in the filesystem and data model, but the field UI should explain the choice in task-oriented language.
+
+A single Display QR code is sufficient. The user selects the applicable wiring context after reaching the Stage documentation interface.
+
+---
+
+# Procedures: Publishing Rule
+
+For the standardized procedure structure, files placed directly in the applicable operational folder are considered published procedure material for that scope:
+
+```text
+Procedures\Inspection
+Procedures\Setup
+Procedures\Takedown
+```
+
+`Procedures\Inspection` is intentionally unstructured.
+
+Working/source material for Setup and Takedown belongs under:
+
+```text
+Procedures\Setup\SourceDocs
+Procedures\Takedown\SourceDocs
+```
+
+Applications should not present `SourceDocs` as normal field instructions.
+
+This rule allows volunteers to maintain multiple procedure documents while giving applications a predictable discovery boundary.
+
+---
+
+# FormView as the Proven Predecessor
+
+FormView is the proven predecessor for filesystem-assisted field documentation.
+
+Its important architectural pattern is not its Windows desktop interface. The reusable pattern is:
+
+```text
+structured LOR context
+        +
+standardized Google Drive helper location
+        |
+        v
+field-oriented presentation
+```
+
+The future Internet-accessible applications should preserve this successful separation while removing FormView's dependency on a mapped `G:` drive and direct local SQLite access.
+
+The FormView engineering contract is documented under:
+
+`Docs/01_LOR_System/04_FormView/`
+
 ---
 
 # Production Database
 
-The Production Database indexes and relates information contained within the Google Shared Drive. It does not replace engineering documentation.
+The Production Database indexes and relates information contained within the Google Shared Drive.
 
-Where Google Drive documents are exposed through the web application, the database may maintain stable identifiers or an index required for Internet access. Fragile full mounted-drive paths must not become the primary relational identity.
+It does not replace engineering documentation.
+
+Engineering drawings, wiring documentation, procedures, photographs, manuals, and other engineering records remain within the Google Shared Drive where they can be maintained independently of the database.
+
+The database provides stable identities and relationships needed by operational applications such as:
+
+- QR scanning
+- Internet-accessible field documentation
+- FormView successor functionality
+- Setup/Procedure access
+- Reports
+- Work Orders
+- Label Printing
+- GPS
+
+Where Google Drive documents are exposed through the web application, the database may maintain stable document/folder identifiers or an index required for Internet access. Fragile full mounted-drive paths must not become the primary relational identity.
+
+---
+
+# Legacy Organization
+
+The Engineering Repository has evolved over many years.
+
+Existing Stages may contain historical folder names, nested groupings, archived material, and older organizational patterns that do not fully conform to the current standard.
+
+Legacy structures remain valid evidence until they can be reorganized without loss of historical information.
+
+Folder-alignment tools may identify and recommend changes, but filesystem changes remain human decisions.
+
+All new engineering documentation should follow the organizational principles defined here.
 
 ---
 
 # Related Documentation
 
-- [Google Drive Document Organization Procedure](01-Google_Drive_Document_Organization_Procedure.md)
 - [LOR System Overview](01_LOR_System/00_Project_Overview/00_LOR_System_Overview.md)
 - [Preview Authoring](01_LOR_System/01_Preview_Authoring/B_Building_Preview_Howto.md)
 - [V7 LOR Data Extraction](01_LOR_System/02_Data_Extraction/README.md)
-- [Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
 - [FormView](01_LOR_System/04_FormView/README.md)
 - [Production Database System Blueprint](02_Production_Database/01_System_Architecture/A_System_Blueprint.md)
 - [Documentation Index](README.md)
@@ -435,6 +554,10 @@ Where Google Drive documents are exposed through the web application, the databa
 
 The Google Shared Drive provides the permanent engineering record for Making Spirits Bright.
 
-Stage, Sub-stage, and Scene roots use one standard structure containing `PreviewBackground`, `Photos`, `Procedures`, and `Wiring`. Display folders use the smaller `PreviewBackground` plus `Photos\Current` and `Photos\Historical` structure.
+LOR provides the current authoring organization for Stages, Scenes, and Displays. The parser materializes that structure for downstream systems. The Production Database provides stable identities and relationships. `my.sheboyganlights.org` provides the field-access presentation layer.
 
-`PreviewBackground` gives LOR a stable background-image location at every scope that may own a Preview/Scene background. Existing historical folders and files remain protected during migration; additive automation must not delete or reorganize them automatically.
+Standard `PreviewBackground`, `Wiring`, `Procedures`, and `Photos` helper folders form a deliberate application-facing location contract. They allow software to discover the correct engineering material without treating human-readable full paths as permanent identity.
+
+A Display QR code is the stable entry point. Stage-level Setup information is presented as a Stage-oriented list. Wiring remains context-specific and presents a plain-language Background/Static versus Musical choice when both contexts exist.
+
+Together these rules preserve the useful engineering-document architecture proven by FormView while making the system suitable for Internet-accessible field use.
