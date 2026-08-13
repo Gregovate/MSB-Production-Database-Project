@@ -38,7 +38,7 @@ The parser owns interpretation of Light-O-Rama preview structure. PostgreSQL ing
 ## Current Baseline
 
 The current functional parser is
-`Parser/parse_props_v7_scene_parser.py` V7.0.8. The current approved LOR version
+`Parser/parse_props_v7_scene_parser.py` V7.0.9. The current approved LOR version
 is an operator-controlled record initialized from the known-good 6.6.4 preview
 set; it is not a hard-coded parser assumption.
 

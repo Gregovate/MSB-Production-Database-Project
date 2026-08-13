@@ -5,7 +5,7 @@
 | Status | CURRENT — Engineering Design |
 | System | LOR Preview Parser |
 | Database | `lor_output_v7_scene.db` |
-| Current Parser Baseline | V7.0.8 |
+| Current Parser Baseline | V7.0.9 |
 | Owner | MSB Database Administrator |
 | Initial Release | 2026-08-08 |
 
