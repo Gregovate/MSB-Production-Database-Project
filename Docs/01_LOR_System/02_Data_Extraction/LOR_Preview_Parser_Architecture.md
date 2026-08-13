@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — engineering architecture |
 | System | LOR Preview Parser / LOR2DB Ingest |
-| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.9 |
+| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.10 |
 | Current revision | 2026-08-13 |
 | Owner | MSB Database Administrator |
 
@@ -21,7 +21,9 @@ The current implementation is:
 The initial content was derived from V7.0.7. V7.0.8 adds the website-runner
 contract, atomic publication, full output validation, and complete provenance.
 V7.0.9 makes diagnostics non-fatal when Windows PowerShell redirects parser
-logs through a legacy console encoding.
+logs through a legacy console encoding. V7.0.10 explicitly releases final
+SQLite connections and retries bounded, transient Windows sharing locks before
+atomic publication, including short-lived Google Drive inspection locks.
 Future parser changes must be reviewed against this architecture.
 
 ## System Boundary
