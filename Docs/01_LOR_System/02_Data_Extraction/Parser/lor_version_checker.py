@@ -23,8 +23,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-CHECKER_VERSION = "V1.2.0"
-MANIFEST_VERSION = 3
+CHECKER_VERSION = "V1.3.0"
+MANIFEST_VERSION = 4
 CRITICAL_ELEMENTS = {"PreviewClass", "Scene", "PropClass"}
 UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
@@ -296,6 +296,23 @@ def preview_identity(contract: dict[str, Any]) -> str:
     return f"Filename:{contract['filename'].casefold()}"
 
 
+def manifest_source_signature(manifest: dict[str, Any]) -> str:
+    """Return a deterministic digest of the exact reviewed preview files."""
+    source_files = sorted(
+        (
+            {
+                "filename": item["filename"],
+                "identity": preview_identity(item),
+                "sha256": item["sha256"],
+            }
+            for item in manifest["files"]
+        ),
+        key=lambda item: (item["identity"], item["filename"].casefold()),
+    )
+    payload = json.dumps(source_files, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
 def build_manifest(
     folder: Path,
     lor_version: str,
@@ -339,6 +356,7 @@ def build_manifest(
         "aggregate": merge_contracts(file_contracts),
         "deep_contract": deep,
     }
+    manifest["source_signature_sha256"] = manifest_source_signature(manifest)
     manifest_payload = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
     manifest["manifest_sha256"] = hashlib.sha256(manifest_payload.encode()).hexdigest()
     return manifest

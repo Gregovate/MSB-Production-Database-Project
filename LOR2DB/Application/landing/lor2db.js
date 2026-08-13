@@ -1,4 +1,4 @@
-/* MSB LOR landing page — 2026-08-13 V0.2.0 */
+/* MSB LOR landing page — 2026-08-13 V0.3.0 */
 (function () {
   "use strict";
 
@@ -73,16 +73,23 @@
       </section>`;
     }
     const check = runner.candidate_check;
+    const baselineRun = runner.baseline_parser_run;
     const candidateRun = runner.candidate_parser_run;
+    const comparison = runner.candidate_output_comparison;
     const resolution = runner.candidate_resolution;
     const productionRun = runner.production_parser_run;
     const candidate = runner.new_lor_version;
     const checkStatus = check?.status || "Not run";
+    const xmlFindings = check?.findings || [];
     const modifications = check?.parser_modifications_required || [];
     const findingsAccepted = checkStatus === "PASSED" || resolution?.status === "RESOLVED";
-    const mayResolve = candidate && check && checkStatus !== "PASSED" &&
-      candidateRun?.status === "COMPLETE" && candidateRun?.validation_status === "PASSED";
-    const mayApprove = candidate && findingsAccepted &&
+    const comparisonStatus = comparison?.status || "Not run";
+    const comparisonAccepted = comparisonStatus === "PASSED" || resolution?.status === "RESOLVED";
+    const baselinePassed = baselineRun?.status === "COMPLETE" && baselineRun?.validation_status === "PASSED";
+    const candidatePassed = candidateRun?.status === "COMPLETE" && candidateRun?.validation_status === "PASSED";
+    const mayResolve = candidate && check && comparison &&
+      (checkStatus !== "PASSED" || comparisonStatus !== "PASSED") && baselinePassed && candidatePassed;
+    const mayApprove = candidate && findingsAccepted && comparisonAccepted && baselinePassed &&
       candidateRun?.status === "COMPLETE" && candidateRun?.validation_status === "PASSED";
     return `<section class="card parser-card">
       <div class="card-title"><h2>LOR version and parser</h2><span class="pill">Runner ${esc(runner.runner_version)}</span></div>
@@ -90,16 +97,21 @@
         <div><dt>Current LOR version</dt><dd>${esc(runner.current_lor_version)}</dd></div>
         <div><dt>New LOR version</dt><dd>${esc(candidate || "Not selected")}</dd></div>
         <div><dt>Compatibility check</dt><dd>${esc(checkStatus)}</dd></div>
+        <div><dt>Approved-version baseline</dt><dd>${esc(baselineRun?.validation_status || "Not built")}</dd></div>
         <div><dt>Candidate parser</dt><dd>${esc(candidateRun?.validation_status || "Not run")}</dd></div>
+        <div><dt>SQLite output comparison</dt><dd>${esc(comparisonStatus)}</dd></div>
         <div><dt>Finding resolution</dt><dd>${esc(resolution?.status || "Not required/recorded")}</dd></div>
         <div><dt>Current parser</dt><dd>${esc(productionRun?.validation_status || "Not run")}</dd></div>
         <div><dt>Current SQLite SHA-256</dt><dd class="digest">${esc(productionRun?.sqlite_sha256 || "Not built in this runner state")}</dd></div>
       </dl>
+      ${xmlFindings.length ? `<div class="blocking"><strong>XML compatibility findings</strong><ul>${xmlFindings.map((item) => `<li><strong>${esc(item.severity)} — ${esc(item.area)}:</strong> ${esc(item.message)}</li>`).join("")}</ul></div>` : ""}
+      ${comparison?.findings?.length ? `<div class="blocking"><strong>SQLite output findings</strong><ul>${comparison.findings.map((item) => `<li><strong>${esc(item.severity)} — ${esc(item.area)}:</strong> ${esc(item.message)}</li>`).join("")}</ul></div>` : ""}
       ${modifications.length ? `<div class="blocking"><strong>Parser modifications required</strong><ul>${modifications.map((item) => `<li>${esc(item)}</li>`).join("")}</ul></div>` : ""}
       <div class="operator-actions">
         <button id="set-candidate" type="button">Set new LOR version</button>
         <button id="check-candidate" type="button" ${candidate ? "" : "disabled"}>Check XML compatibility</button>
-        <button id="run-candidate-parser" type="button" ${check ? "" : "disabled"}>Run candidate parser</button>
+        <button id="run-baseline-parser" type="button">Build approved-version baseline</button>
+        <button id="run-candidate-parser" type="button" ${check && baselinePassed ? "" : "disabled"}>Run and compare candidate parser</button>
         <button id="resolve-candidate" type="button" ${mayResolve ? "" : "disabled"}>Record findings resolved</button>
         <button id="approve-candidate" class="primary" type="button" ${mayApprove ? "" : "disabled"}>Approve new version</button>
         <button id="run-current-parser" class="primary" type="button">Run current parser</button>
@@ -155,10 +167,11 @@
       versionInput.focus();
     });
     document.querySelector("#check-candidate")?.addEventListener("click", (event) => runParserAction(event.currentTarget, "parser/check", {}));
+    document.querySelector("#run-baseline-parser")?.addEventListener("click", (event) => runParserAction(event.currentTarget, "parser/run", { target: "baseline" }));
     document.querySelector("#run-candidate-parser")?.addEventListener("click", (event) => runParserAction(event.currentTarget, "parser/run", { target: "candidate" }));
     document.querySelector("#run-current-parser")?.addEventListener("click", (event) => runParserAction(event.currentTarget, "parser/run", { target: "current" }));
     document.querySelector("#resolve-candidate")?.addEventListener("click", async (event) => {
-      const notes = window.prompt("Describe the parser modifications and validation that resolved every finding:");
+      const notes = window.prompt("Explain every XML and SQLite output finding, including intentional metadata changes and any parser modifications:");
       if (notes?.trim()) await runParserAction(event.currentTarget, "parser/resolve", { notes: notes.trim() });
     });
     document.querySelector("#approve-candidate")?.addEventListener("click", () => {

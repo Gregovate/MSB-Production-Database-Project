@@ -10,9 +10,9 @@ tools for operator convenience but does not own their XML interpretation.
 |---|---|
 | `parse_props_v7_scene_parser.py` | Canonical V7 parser; atomically publishes only a fully validated SQLite snapshot |
 | `lor_version_checker.py` | Parser-independent complete XML manifest and Current/New LOR compatibility comparison |
-| `lor_operator_runner.py` | Restricted Windows/G-drive API used by the authenticated LOR2DB website |
+| `lor_operator_runner.py` | Restricted Windows/G-drive API, stale-manifest guard, and same-parser SQLite output comparison used by the authenticated LOR2DB website |
 | `test_lor_version_checker.py` | Regression tests for Scene count/structure, unused fields, ChannelGrid, and other delimiter-position changes |
-| `test_lor_operator_runner.py` | Regression tests for version-scoped paths, approved-manifest retention, and approval history |
+| `test_lor_operator_runner.py` | Regression tests for version-scoped paths, stale manifests, SQLite output comparison, Revision handling, and approval history |
 | `test_parse_props_console_encoding.py` | Regression test preventing Windows console/log encoding from aborting parser execution |
 | `test_parse_props_atomic_publish.py` | Regression tests for transient Windows file-lock retry and fail-closed atomic publication |
 

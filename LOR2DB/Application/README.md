@@ -9,6 +9,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-13 | Added the mandatory same-parser approved-version/candidate SQLite comparison. Approval now requires equal schemas and explained output differences; automatic LOR Revision increments are retained as informational evidence rather than treated as content changes. Candidate folders changed after XML review are rejected as stale. |
 | 2026-08-13 | Added the LOR version-of-record, complete XML compatibility gate, validated parser controls, and Windows/G-drive runner boundary. PostgreSQL ingest remains a separate manual approval step and requires the reviewed SQLite SHA-256. |
 | 2026-08-06 | Browser V0.4.3 opens the newly published run's immutable `report_url`, with the archive index only as a fallback. Backend V0.3.3 returns that URL after publication. Report framework V0.4.2 displays the authenticated Cloudflare email as the operator. Directus person resolution and role-based authorization remain a future enhancement. |
 | 2026-08-06 | Enforced permanent one-to-one snapshot ownership. The landing page now continues any unfinished run first and uses the existing `import_run_id` link instead of numeric run recency. Start is hidden and rejected when the snapshot already owns any reconciliation row; cancelled and failed runs also consume their snapshot. |
@@ -93,16 +94,22 @@ The workflow is intentionally gated:
 2. Run the parser-independent complete XML compatibility check.
 3. If the check fails, review the recorded parser modifications required and
    update the parser.
-4. Run the candidate parser into an isolated `VERSION_CHECK` SQLite file. A
-   check failure may proceed to this test only after the raw check has run.
-5. When structural findings were expected and the modified parser passes,
-   record the engineering resolution notes for every finding.
-6. Approve the version only after both gates pass or all findings are resolved.
-   The previous version folder
-   remains unchanged.
-7. Run the current parser in `PRODUCTION` mode. Inspect the resulting SQLite as
+4. Build the approved-version comparison baseline in isolated `VERSION_CHECK`
+   mode. The approved folder must still match its retained XML manifest.
+5. Run the candidate parser into a separate `VERSION_CHECK` SQLite file. The
+   runner verifies that the candidate folder still matches the just-reviewed
+   XML manifest, then compares both SQLite schemas and authoritative content.
+6. LOR-generated `Revision` changes are recorded as informational. Preview
+   identity metadata changes require review; authoritative prop, channel,
+   Scene, or membership differences block approval until explained.
+7. Record one engineering resolution that addresses every XML and SQLite
+   output finding.
+8. Approve the version only after the XML check, both parser runs, and output
+   comparison pass or all review findings are resolved. The previous version
+   folder remains unchanged.
+9. Run the current parser in `PRODUCTION` mode. Inspect the resulting SQLite as
    often as needed; no ingest is automatic.
-8. Supply its displayed SHA-256 to the separate manual PostgreSQL ingest.
+10. Supply its displayed SHA-256 to the separate manual PostgreSQL ingest.
 
 The raw SQLite `scenes` count is labeled **raw LOR Scene rows**. Operational
 true Scenes are classified by Folder Alignment naming rules and are not a
