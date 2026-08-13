@@ -14,11 +14,14 @@
 #   MSB_FOLDER_ALIGNMENT_OUTPUT_DIR
 # Explicit command-line arguments are appended last and therefore override the
 # environment-provided values.
+#
+# Add --include-displays only when Display/group engineering diagnostics are
+# intentionally needed. The normal Setup Alignment report suppresses Displays.
 
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = $PSScriptRoot
-$AlignmentScript = Join-Path $RepoRoot 'Docs\01_LOR_System\02_Data_Extraction\Folder_Alignment\generate_folder_alignment_report_v1_3_5.py'
+$AlignmentScript = Join-Path $RepoRoot 'Docs\01_LOR_System\02_Data_Extraction\Folder_Alignment\generate_folder_alignment_report_v1_3_6.py'
 $DefaultOutputDir = 'G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment'
 
 if (-not (Test-Path -LiteralPath $AlignmentScript -PathType Leaf)) {
@@ -46,7 +49,6 @@ if ($env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR) {
     $PythonArgs += @('--output-dir', $env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR)
 }
 
-# Track the output folder so Explorer opens the location actually used.
 $OutputDir = if ($env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR) {
     $env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR
 }
@@ -64,8 +66,6 @@ for ($i = 0; $i -lt $args.Count; $i++) {
 Write-Host "[INFO] Folder Alignment: $AlignmentScript"
 Write-Host "[INFO] Python: $($PythonCommand.Source)"
 
-# Environment-derived defaults first; explicit arguments last so argparse uses
-# the explicit value when the same option is supplied more than once.
 & $PythonCommand.Source $AlignmentScript @PythonArgs @args
 $AlignmentExitCode = $LASTEXITCODE
 
