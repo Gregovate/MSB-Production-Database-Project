@@ -18,13 +18,13 @@
 #     --drive-root "/path/to/Display Folders" \
 #     --output-dir "/path/to/google-drive-alignment"
 #
-# Add --include-displays only when Display-folder engineering diagnostics are
+# Add --include-displays only when Display/group engineering diagnostics are
 # intentionally needed. The normal Setup Alignment report suppresses Displays.
 
 set -u
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-ALIGNMENT_SCRIPT="$REPO_ROOT/Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/generate_folder_alignment_report_v1_3_5.py"
+ALIGNMENT_SCRIPT="$REPO_ROOT/Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/generate_folder_alignment_report_v1_3_6.py"
 
 if [[ ! -f "$ALIGNMENT_SCRIPT" ]]; then
     echo "[ERROR] Folder Alignment script not found: $ALIGNMENT_SCRIPT" >&2
