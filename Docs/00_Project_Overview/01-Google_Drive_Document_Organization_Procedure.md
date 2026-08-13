@@ -78,7 +78,7 @@ Display folders use a smaller standard structure:
     └── Historical
 ```
 
-A Display may exist directly under a Stage or under a Scene/Sub-stage. A Display does not automatically receive `Procedures` or `Wiring` folders.
+A Display may exist directly under a Stage or under a Scene/Sub-stage. A Display does not automatically receive `Procedures` or `Wiring` folders. Use the Display Name to name the folder. Do not use the 2 letter prefix. Use the name only from the Comment field in the preview editor. This will make moving displays easier in the future.
 
 Do not redesign the Stage/Sub-stage/Scene hierarchy while performing document cleanup.
 
