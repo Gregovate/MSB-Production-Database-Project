@@ -2,17 +2,19 @@
 """Align Procedures helper folders at existing Stage/Sub-stage/Scene scopes.
 
 Authorized behavior only:
+- create the complete current Procedures structure when missing;
 - create Procedures/Inspection when missing;
-- create Procedures/Setup/images and Procedures/Setup/SourceDocs when missing;
-- create Procedures/Takedown/images and Procedures/Takedown/SourceDocs when missing;
+- create Procedures/Setup/{Archive,images,SourceDocs} when missing;
+- create Procedures/Takedown/{Archive,images,SourceDocs} when missing;
 - delete Procedures/Maintenance only when empty;
 - delete Procedures/Operations only when empty.
 
-Explicitly NOT authorized:
-- touching any Archive folder or its contents;
-- creating Procedures, Setup, or Takedown parent folders;
-- moving, renaming, or deleting non-empty folders/files;
-- operating on Display folders.
+Safety rules:
+- existing Archive folders and their contents are never modified;
+- no files are moved, renamed, deleted, or overwritten;
+- non-empty Maintenance/Operations folders are preserved;
+- only already-resolved Stage/Sub-stage/Scene scope folders are eligible;
+- Display folders are never touched.
 
 Default mode is dry-run. Pass --apply only after reviewing the proposed changes.
 """
@@ -28,7 +30,7 @@ from pathlib import Path
 import update_previewbackground_folders as scope_source
 
 base = scope_source.base
-VERSION = "V1.0.0"
+VERSION = "V1.1.0"
 
 
 @dataclass(frozen=True)
@@ -57,23 +59,27 @@ def result(target, path: Path, action: str, status: str, message: str) -> Result
                   str(target.scope_path), str(path), action, status, message)
 
 
-def ensure_child(target, parent: Path, name: str, do_apply: bool) -> Result:
-    path = parent / name
-    if not parent.is_dir():
-        return result(target, path, "CREATE", "SKIPPED_PARENT_MISSING",
-                      f"Required existing parent is missing: {parent}")
+def ensure_dir(target, path: Path, do_apply: bool) -> Result:
+    """Ensure one authorized directory exists without replacing anything."""
     if path.exists():
         if path.is_dir():
-            return result(target, path, "CREATE", "ALREADY_EXISTS", f"{name} already exists.")
+            return result(target, path, "CREATE", "ALREADY_EXISTS", "Folder already exists; contents left untouched.")
         return result(target, path, "CREATE", "ERROR_NAME_CONFLICT",
-                      f"A non-folder item named {name} already exists; no write attempted.")
+                      "A non-folder item exists at this path; no write attempted.")
+
+    parent = path.parent
+    if not parent.is_dir():
+        return result(target, path, "CREATE", "SKIPPED_PARENT_MISSING",
+                      f"Parent does not yet exist: {parent}")
+
     if not do_apply:
         return result(target, path, "CREATE", "WOULD_CREATE", "Dry-run only; folder was not created.")
+
     try:
         path.mkdir(parents=False, exist_ok=False)
-        return result(target, path, "CREATE", "CREATED", f"Created {name}.")
+        return result(target, path, "CREATE", "CREATED", "Folder created.")
     except FileExistsError:
-        return result(target, path, "CREATE", "ALREADY_EXISTS", f"{name} appeared during execution.")
+        return result(target, path, "CREATE", "ALREADY_EXISTS", "Folder appeared during execution; contents left untouched.")
     except OSError as exc:
         return result(target, path, "CREATE", "ERROR", f"Could not create folder: {exc}")
 
@@ -90,6 +96,7 @@ def remove_if_empty(target, path: Path, do_apply: bool) -> Result:
                           "Legacy folder contains one or more items and was left untouched.")
     except OSError as exc:
         return result(target, path, "DELETE_EMPTY", "ERROR", f"Could not inspect folder: {exc}")
+
     if not do_apply:
         return result(target, path, "DELETE_EMPTY", "WOULD_DELETE_EMPTY",
                       "Dry-run only; empty legacy folder was not deleted.")
@@ -102,25 +109,63 @@ def remove_if_empty(target, path: Path, do_apply: bool) -> Result:
 
 def process_scope(target, do_apply: bool) -> list[Result]:
     scope = target.scope_path
-    procedures = scope / "Procedures"
-    if not procedures.is_dir():
-        return [result(target, procedures, "VALIDATE", "SKIPPED_PROCEDURES_MISSING",
-                       "Procedures folder is missing; parent creation was not authorized.")]
+    if not scope.is_dir():
+        return [result(target, scope, "VALIDATE", "SKIPPED_SCOPE_MISSING",
+                       "Resolved scope no longer exists; no write attempted.")]
 
     rows: list[Result] = []
-    rows.append(ensure_child(target, procedures, "Inspection", do_apply))
+    procedures = scope / "Procedures"
 
-    setup = procedures / "Setup"
-    rows.append(ensure_child(target, setup, "images", do_apply))
-    rows.append(ensure_child(target, setup, "SourceDocs", do_apply))
+    # Build the complete current procedure contract in dependency order.
+    required = [
+        procedures,
+        procedures / "Inspection",
+        procedures / "Setup",
+        procedures / "Setup" / "Archive",
+        procedures / "Setup" / "images",
+        procedures / "Setup" / "SourceDocs",
+        procedures / "Takedown",
+        procedures / "Takedown" / "Archive",
+        procedures / "Takedown" / "images",
+        procedures / "Takedown" / "SourceDocs",
+    ]
 
-    takedown = procedures / "Takedown"
-    rows.append(ensure_child(target, takedown, "images", do_apply))
-    rows.append(ensure_child(target, takedown, "SourceDocs", do_apply))
+    # In dry-run mode a missing parent is still reported as WOULD_CREATE in the
+    # planned hierarchy, even though it is not physically present yet.
+    if not do_apply:
+        planned = {scope}
+        for path in required:
+            if path.exists():
+                if path.is_dir():
+                    rows.append(result(target, path, "CREATE", "ALREADY_EXISTS",
+                                       "Folder already exists; contents left untouched."))
+                    planned.add(path)
+                else:
+                    rows.append(result(target, path, "CREATE", "ERROR_NAME_CONFLICT",
+                                       "A non-folder item exists at this path; no write attempted."))
+            elif path.parent in planned or path.parent.is_dir():
+                rows.append(result(target, path, "CREATE", "WOULD_CREATE",
+                                   "Dry-run only; folder was not created."))
+                planned.add(path)
+            else:
+                rows.append(result(target, path, "CREATE", "SKIPPED_PARENT_MISSING",
+                                   f"Parent cannot be resolved in planned hierarchy: {path.parent}"))
+    else:
+        for path in required:
+            rows.append(ensure_dir(target, path, True))
 
-    # Archive is deliberately never inspected, created, moved, renamed, or deleted.
-    rows.append(remove_if_empty(target, procedures / "Maintenance", do_apply))
-    rows.append(remove_if_empty(target, procedures / "Operations", do_apply))
+    # Only inspect/delete legacy folders if Procedures exists now (apply) or
+    # already existed before the dry-run. A newly planned Procedures tree cannot
+    # contain legacy folders.
+    if procedures.is_dir():
+        rows.append(remove_if_empty(target, procedures / "Maintenance", do_apply))
+        rows.append(remove_if_empty(target, procedures / "Operations", do_apply))
+    else:
+        rows.append(result(target, procedures / "Maintenance", "DELETE_EMPTY", "NOT_PRESENT",
+                           "Procedures did not exist; legacy Maintenance cannot be present."))
+        rows.append(result(target, procedures / "Operations", "DELETE_EMPTY", "NOT_PRESENT",
+                           "Procedures did not exist; legacy Operations cannot be present."))
+
     return rows
 
 
@@ -159,7 +204,6 @@ def main() -> int:
         return 4
 
     structured, preliminary = scope_source.collect_structured_scope_targets(args.drive_root, scene_infos)
-    # Procedure migration is only for structured scopes. No Display folders.
     targets = sorted(structured, key=lambda x: (x.stage_id, x.scope_type, scope_source.canonical(x.scope_path)))
     rows: list[Result] = []
 
@@ -188,7 +232,7 @@ def main() -> int:
         print(f"[INFO]   {status}: {counts[status]}")
 
     if args.apply:
-        print("[INFO] Apply completed. Archive folders were not touched. Non-empty Maintenance/Operations folders were preserved.")
+        print("[INFO] Apply completed. Existing Archive contents were untouched. Non-empty Maintenance/Operations folders were preserved.")
     else:
         print("[INFO] Dry-run completed. Review WOULD_CREATE and WOULD_DELETE_EMPTY before using --apply.")
 
