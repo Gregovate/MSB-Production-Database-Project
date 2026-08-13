@@ -76,6 +76,53 @@ Images needed for `Setup` or `Takedown` must be placed in the `images` folder un
 ```
 
 `Procedures\Inspection` is intentionally unstructured.
+## When a Scene Should Be Used
+
+A Scene should be created when a group of Displays is installed and wired as one physical unit and therefore shares a common wiring harness or common field setup.
+
+This creates one meaningful documentation scope for both Wiring and Setup.
+
+Examples include a group of Displays that:
+
+- use one common wiring harness;
+- are installed together as one field assembly;
+- share one wiring diagram;
+- share common Setup or Takedown instructions; or
+- need to be treated as one recognizable field area even though they contain
+  multiple individual Displays.
+
+When such a Scene is created, its name must begin with the owning Stage ID:
+
+    NN-Scene Name
+
+or, when owned by a Sub-stage:
+
+    NNa-Scene Name
+
+Example:
+
+    01-Entrance Arch
+
+The corresponding Google Drive Scene folder uses the same Stage-prefixed name and receives the standard Stage/Sub-stage/Scene documentation structure.
+
+A child folder without the Stage/Sub-stage ID prefix remains a Display or shared Display/group folder. It is not a Scene documentation scope and does not receive the standard Procedures and Wiring trees.
+
+## Procedure Lookup
+
+Procedure lookup uses the same Stage/Sub-stage/Scene hierarchy.
+
+For a Display contained in a defined Scene:
+
+    Display
+        -> owning Scene
+        -> owning Sub-stage, when applicable
+        -> owning Stage
+
+The Scene is therefore the preferred location for procedures that apply to the group as a whole.
+
+If a Display is not contained in a defined Scene, procedure lookup falls back to the applicable Stage or Sub-stage.
+
+An unprefixed Display/group folder must not be promoted to a Scene merely because an LOR BackgroundFile path passes through that folder.
 
 Display folders use a smaller standard structure:
 
