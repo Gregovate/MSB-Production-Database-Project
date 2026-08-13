@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-13  V7.0.8
+# Current Version : 2026-08-13  V7.0.9
 #
 # Author:
 #   Greg Liebig
@@ -47,6 +47,12 @@
 #
 # Changelog
 # ---------
+## 2026-08-13  V7.0.9  (GAL / OpenAI)
+# • Prevent Windows legacy console/log encodings from aborting a parser run
+#   when an informational message contains a Unicode character.
+# • Preserve the active console encoding and escape only unsupported output
+#   characters so PowerShell redirection remains readable and reliable.
+#
 ## 2026-08-13  V7.0.8  (GAL / OpenAI)
 # • Added explicit command-line arguments for the LOR2DB operator runner while
 #   preserving the no-argument interactive workflow.
@@ -248,6 +254,27 @@ import platform
 import socket
 
 
+def configure_console_output() -> None:
+    """Make diagnostic output non-fatal on legacy Windows code pages.
+
+    Windows PowerShell may give redirected native processes a strict legacy
+    encoding such as cp1252. Parser diagnostics must never be able to abort an
+    otherwise valid database build merely because that encoding cannot render
+    an arrow, dash, or other informational character.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(errors="backslashreplace")
+            except (AttributeError, OSError, ValueError):
+                # Embedded/test streams may not support runtime reconfiguration.
+                pass
+
+
+configure_console_output()
+
+
 # GAL 25-10-16: Align parser docs with Core Model v1.0 (no logic changes)
 # - Declares LOR→DB naming map inline for clarity (Comment→DisplayName, Name→ChannelName, etc.)
 # - Attempts to import field lists from lor_core for documentation parity only
@@ -313,7 +340,7 @@ def get_reports_dir() -> str:
 
 
 # ---- Global flags & defaults (must be defined before functions) ----
-PARSER_VERSION = "V7.0.8"  # GAL 2026-08-13: authoritative runtime version
+PARSER_VERSION = "V7.0.9"  # GAL 2026-08-13: authoritative runtime version
 
 DEBUG = False  # Global debug flag
 

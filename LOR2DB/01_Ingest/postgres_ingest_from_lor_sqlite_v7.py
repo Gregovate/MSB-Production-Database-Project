@@ -20,7 +20,7 @@
 # - V0.3.1 preserves the exact source .lorprev filename in
 #   lor_snap.previews.source_filename.
 # - V0.3.2 refuses to ingest unless parser_run.Status is COMPLETE.
-# - V0.4.0 requires the exact operator-reviewed SQLite SHA-256 and V7.0.8
+# - V0.4.0 requires the exact operator-reviewed SQLite SHA-256 and a current V7
 #   production/validation provenance before any PostgreSQL write.
 # (GAL)
 #

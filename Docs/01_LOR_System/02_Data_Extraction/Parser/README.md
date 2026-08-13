@@ -13,6 +13,7 @@ tools for operator convenience but does not own their XML interpretation.
 | `lor_operator_runner.py` | Restricted Windows/G-drive API used by the authenticated LOR2DB website |
 | `test_lor_version_checker.py` | Regression tests for Scene count/structure, unused fields, ChannelGrid, and other delimiter-position changes |
 | `test_lor_operator_runner.py` | Regression tests for version-scoped paths, approved-manifest retention, and approval history |
+| `test_parse_props_console_encoding.py` | Regression test preventing Windows console/log encoding from aborting parser execution |
 
 ## Operating Boundary
 
