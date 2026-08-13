@@ -68,6 +68,18 @@ the parser. It scans every `.lorprev` file and compares:
 - raw PreviewClass, Scene, and PropClass ID/count changes in every preview; and
 - focused identity/position review in the selected deep preview.
 
+Preview files are matched across LOR versions by the stable
+`PreviewClass.id`, not by filename. An expected filename change is recorded for
+review while the same logical comprehensive preview is selected automatically.
+Do not rename a version-specific candidate file merely to match the baseline
+filename.
+
+The Master Musical Preview is intentionally versioned in both its filename and
+operator-facing `PreviewClass.Name`. Its LOR version and date tell field and
+sequencing personnel which copy to use. That human-facing change must remain
+visible in the compatibility report even though the unchanged PreviewID proves
+it is the same logical preview.
+
 Any added/removed structure, attribute, value shape, ordering contract, or
 ChannelGrid position is blocking until it is explicitly reviewed. A failed
 report records `parser_modifications_required`. Candidate parser testing may

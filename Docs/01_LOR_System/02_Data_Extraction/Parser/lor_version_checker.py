@@ -23,8 +23,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-CHECKER_VERSION = "V1.1.0"
-MANIFEST_VERSION = 2
+CHECKER_VERSION = "V1.2.0"
+MANIFEST_VERSION = 3
 CRITICAL_ELEMENTS = {"PreviewClass", "Scene", "PropClass"}
 UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
@@ -288,15 +288,44 @@ def merge_contracts(files: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def build_manifest(folder: Path, lor_version: str, deep_preview: str | None) -> dict[str, Any]:
+def preview_identity(contract: dict[str, Any]) -> str:
+    """Return the stable per-preview identity, falling back only when LOR omitted it."""
+    preview_ids = contract.get("ids", {}).get("PreviewClass", [])
+    if len(preview_ids) == 1:
+        return f"PreviewClass:{preview_ids[0].casefold()}"
+    return f"Filename:{contract['filename'].casefold()}"
+
+
+def build_manifest(
+    folder: Path,
+    lor_version: str,
+    deep_preview: str | None,
+    deep_identity: str | None = None,
+) -> dict[str, Any]:
     paths = sorted(folder.glob("*.lorprev"), key=lambda item: item.name.casefold())
     if not paths:
         raise ValueError(f"No .lorprev files found in {folder}")
     file_contracts = [one_file_contract(path) for path in paths]
+    identities = Counter(preview_identity(contract) for contract in file_contracts)
+    duplicates = sorted(identity for identity, count in identities.items() if count > 1)
+    if duplicates:
+        raise ValueError(
+            "Duplicate PreviewClass identity across preview files: " + ", ".join(duplicates)
+        )
     deep_name = deep_preview or max(paths, key=lambda item: item.stat().st_size).name
     deep = next((item for item in file_contracts if item["filename"] == deep_name), None)
+    if deep is None and deep_identity:
+        matches = [
+            item for item in file_contracts if preview_identity(item) == deep_identity
+        ]
+        if len(matches) == 1:
+            deep = matches[0]
+            deep_name = deep["filename"]
     if deep is None:
-        raise ValueError(f"Deep preview is not present in the selected folder: {deep_name}")
+        expected = f" ({deep_identity})" if deep_identity else ""
+        raise ValueError(
+            f"Deep preview is not present in the selected folder: {deep_name}{expected}"
+        )
     manifest = {
         "manifest_version": MANIFEST_VERSION,
         "checker_version": CHECKER_VERSION,
@@ -305,6 +334,7 @@ def build_manifest(folder: Path, lor_version: str, deep_preview: str | None) -> 
         "preview_folder": str(folder.resolve()),
         "file_count": len(file_contracts),
         "deep_preview": deep_name,
+        "deep_preview_identity": preview_identity(deep),
         "files": file_contracts,
         "aggregate": merge_contracts(file_contracts),
         "deep_contract": deep,
@@ -407,17 +437,33 @@ def compare_delimited_fields(
 def compare_file_contracts(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[Finding]:
     """Compare every matching preview, not only the aggregate/deep preview."""
     findings: list[Finding] = []
-    old_files = {item["filename"]: item for item in baseline["files"]}
-    new_files = {item["filename"]: item for item in candidate["files"]}
-    for filename in sorted(set(old_files) | set(new_files), key=str.casefold):
-        if filename not in old_files:
-            findings.append(Finding("REVIEW", "preview set", f"New preview file: {filename}"))
+    old_files = {preview_identity(item): item for item in baseline["files"]}
+    new_files = {preview_identity(item): item for item in candidate["files"]}
+    for identity in sorted(set(old_files) | set(new_files), key=str.casefold):
+        if identity not in old_files:
+            findings.append(Finding(
+                "REVIEW", "preview set",
+                f"New preview identity/file: {new_files[identity]['filename']} ({identity}).",
+            ))
             continue
-        if filename not in new_files:
-            findings.append(Finding("BLOCKING", "preview set", f"Approved preview file removed: {filename}"))
+        if identity not in new_files:
+            findings.append(Finding(
+                "BLOCKING", "preview set",
+                f"Approved preview identity removed: {old_files[identity]['filename']} ({identity}).",
+            ))
             continue
-        old, new = old_files[filename], new_files[filename]
-        prefix = f"{filename}: "
+        old, new = old_files[identity], new_files[identity]
+        old_filename, new_filename = old["filename"], new["filename"]
+        if old_filename != new_filename:
+            findings.append(Finding(
+                "REVIEW", "preview filename",
+                f"Preview filename changed from {old_filename} to {new_filename}; "
+                f"stable identity {identity} was preserved.",
+            ))
+        prefix = (
+            f"{old_filename}: " if old_filename == new_filename
+            else f"{old_filename} -> {new_filename}: "
+        )
         findings.extend(set_difference_findings(
             [old["root_element"]], [new["root_element"]], prefix + "document", "root element"
         ))
@@ -623,9 +669,15 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         baseline = json.loads(arguments.baseline.read_text(encoding="utf-8"))
+        baseline_deep_identity = (
+            baseline.get("deep_preview_identity")
+            or preview_identity(baseline["deep_contract"])
+        )
         candidate = build_manifest(
-            arguments.preview_folder, arguments.new_lor_version,
+            arguments.preview_folder,
+            arguments.new_lor_version,
             arguments.deep_preview or baseline.get("deep_preview"),
+            deep_identity=baseline_deep_identity,
         )
         if arguments.candidate_manifest:
             write_json(arguments.candidate_manifest, candidate)
