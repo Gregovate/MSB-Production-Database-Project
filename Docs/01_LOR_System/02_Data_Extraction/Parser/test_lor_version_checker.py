@@ -30,11 +30,13 @@ BASELINE_XML = """<?xml version="1.0"?>
 
 
 class CompatibilityCheckerTests(unittest.TestCase):
-    def manifest(self, xml: str, version: str = "6.6.3"):
+    def manifest(
+        self, xml: str, version: str = "6.6.3", filename: str = "test.lorprev"
+    ):
         temporary = tempfile.TemporaryDirectory()
         folder = Path(temporary.name)
-        write_preview(folder, "test.lorprev", xml)
-        manifest = checker.build_manifest(folder, version, "test.lorprev")
+        write_preview(folder, filename, xml)
+        manifest = checker.build_manifest(folder, version, filename)
         return temporary, manifest
 
     def test_identical_xml_contract_passes(self) -> None:
@@ -117,6 +119,52 @@ class CompatibilityCheckerTests(unittest.TestCase):
             and item.area == "PropClass.TraditionalColors"
             for item in findings
         ))
+
+    def test_renamed_preview_matches_by_stable_previewclass_id(self) -> None:
+        old_temp, baseline = self.manifest(
+            BASELINE_XML,
+            filename="Master Musical Preview v6.6.lorprev",
+        )
+        new_temp, candidate = self.manifest(
+            BASELINE_XML,
+            "6.6.10",
+            filename="Master Musical Preview v6.6.10.lorprev",
+        )
+        self.addCleanup(old_temp.cleanup)
+        self.addCleanup(new_temp.cleanup)
+        findings = checker.compare_manifests(baseline, candidate)
+        self.assertTrue(any(
+            item.severity == "REVIEW"
+            and item.area == "preview filename"
+            and "stable identity PreviewClass:11111111" in item.message
+            for item in findings
+        ))
+        self.assertFalse(any(
+            item.severity == "BLOCKING" and item.area == "preview set"
+            for item in findings
+        ))
+
+    def test_deep_preview_rename_resolves_by_stable_identity(self) -> None:
+        old_temp, baseline = self.manifest(
+            BASELINE_XML,
+            filename="Master Musical Preview v6.6.lorprev",
+        )
+        self.addCleanup(old_temp.cleanup)
+        new_temp = tempfile.TemporaryDirectory()
+        self.addCleanup(new_temp.cleanup)
+        new_folder = Path(new_temp.name)
+        new_name = "Master Musical Preview v6.6.10.lorprev"
+        write_preview(new_folder, new_name, BASELINE_XML)
+        candidate = checker.build_manifest(
+            new_folder,
+            "6.6.10",
+            baseline["deep_preview"],
+            deep_identity=baseline["deep_preview_identity"],
+        )
+        self.assertEqual(candidate["deep_preview"], new_name)
+        self.assertEqual(
+            candidate["deep_preview_identity"], baseline["deep_preview_identity"]
+        )
 
     def test_channel_grid_position_change_is_blocking(self) -> None:
         candidate_xml = BASELINE_XML.replace(
