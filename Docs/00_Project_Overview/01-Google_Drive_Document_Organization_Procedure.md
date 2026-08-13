@@ -182,6 +182,14 @@ Example:
 
 This move is important because it records a **human-audited ownership decision**.
 
+If a stage has the old 2 digit StageID be sure to update it to the current stage and remove the spaces that surrround the -
+
+Example:
+
+```text
+ 25 - Magic Igloo.gdoc Gets changed to 26-Magic Igloo.gdoc
+```
+
 Once the legacy document is located under a Stage/Sub-stage/Scene `Procedures\Setup\Archive` folder, Folder Alignment no longer needs to infer ownership from a fuzzy historical filename. The current folder location is stronger evidence of where that legacy procedure belongs.
 
 ## What remains in `000-Instructions`
