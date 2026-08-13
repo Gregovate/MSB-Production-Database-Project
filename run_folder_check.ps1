@@ -2,26 +2,17 @@
 #
 # Purpose:
 #   Run the current read-only Google Shared Drive folder-alignment report
-#   from the repository root, then open the report folder for inspection.
+#   from the repository root, then open the newest generated HTML report.
 #
-# The alignment implementation belongs to the LOR data-extraction system.
-# This launcher intentionally contains no alignment logic.
-#
-# Optional cross-platform path configuration uses the same environment variable
-# names as run_folder_check.sh:
+# Optional environment variables:
 #   MSB_FOLDER_ALIGNMENT_DB
 #   MSB_FOLDER_ALIGNMENT_DRIVE_ROOT
 #   MSB_FOLDER_ALIGNMENT_OUTPUT_DIR
-# Explicit command-line arguments are appended last and therefore override the
-# environment-provided values.
-#
-# Add --include-displays only when Display/group engineering diagnostics are
-# intentionally needed. The normal Setup Alignment report suppresses Displays.
 
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = $PSScriptRoot
-$AlignmentScript = Join-Path $RepoRoot 'Docs\01_LOR_System\02_Data_Extraction\Folder_Alignment\generate_folder_alignment_report_v1_3_6.py'
+$AlignmentScript = Join-Path $RepoRoot 'Docs\01_LOR_System\02_Data_Extraction\Folder_Alignment\generate_folder_alignment_report_v1_3_7.py'
 $DefaultOutputDir = 'G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment'
 
 if (-not (Test-Path -LiteralPath $AlignmentScript -PathType Leaf)) {
@@ -30,21 +21,26 @@ if (-not (Test-Path -LiteralPath $AlignmentScript -PathType Leaf)) {
 }
 
 $PythonCommand = Get-Command python -ErrorAction SilentlyContinue
+
 if (-not $PythonCommand) {
     $PythonCommand = Get-Command python3 -ErrorAction SilentlyContinue
 }
+
 if (-not $PythonCommand) {
-    Write-Error "Python 3 was not found in the current PowerShell environment. Activate the project virtual environment or install Python 3 and try again."
+    Write-Error "Python 3 was not found in the current PowerShell environment."
     exit 3
 }
 
 $PythonArgs = @()
+
 if ($env:MSB_FOLDER_ALIGNMENT_DB) {
     $PythonArgs += @('--db', $env:MSB_FOLDER_ALIGNMENT_DB)
 }
+
 if ($env:MSB_FOLDER_ALIGNMENT_DRIVE_ROOT) {
     $PythonArgs += @('--drive-root', $env:MSB_FOLDER_ALIGNMENT_DRIVE_ROOT)
 }
+
 if ($env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR) {
     $PythonArgs += @('--output-dir', $env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR)
 }
@@ -56,6 +52,7 @@ else {
     $DefaultOutputDir
 }
 
+# Explicit command-line --output-dir overrides the environment/default value.
 for ($i = 0; $i -lt $args.Count; $i++) {
     if ($args[$i] -eq '--output-dir' -and ($i + 1) -lt $args.Count) {
         $OutputDir = $args[$i + 1]
@@ -66,6 +63,8 @@ for ($i = 0; $i -lt $args.Count; $i++) {
 Write-Host "[INFO] Folder Alignment: $AlignmentScript"
 Write-Host "[INFO] Python: $($PythonCommand.Source)"
 
+$RunStarted = Get-Date
+
 & $PythonCommand.Source $AlignmentScript @PythonArgs @args
 $AlignmentExitCode = $LASTEXITCODE
 
@@ -74,12 +73,34 @@ if ($null -eq $AlignmentExitCode) {
 }
 
 if ($AlignmentExitCode -eq 0) {
+
     if (Test-Path -LiteralPath $OutputDir -PathType Container) {
-        Write-Host "[INFO] Opening report folder: $OutputDir"
-        Start-Process explorer.exe -ArgumentList $OutputDir
+
+        # Prefer an HTML file created/updated during this run.
+        $HtmlReport = Get-ChildItem -LiteralPath $OutputDir -File -Filter '*.html' |
+        Where-Object {
+            $_.LastWriteTime -ge $RunStarted.AddSeconds(-2)
+        } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+
+        # Fallback to newest HTML report in the directory.
+        if (-not $HtmlReport) {
+            $HtmlReport = Get-ChildItem -LiteralPath $OutputDir -File -Filter '*.html' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+        }
+
+        if ($HtmlReport) {
+            Write-Host "[INFO] Opening HTML report: $($HtmlReport.FullName)"
+            Start-Process $HtmlReport.FullName
+        }
+        else {
+            Write-Warning "Folder Alignment completed, but no HTML report was found in: $OutputDir"
+        }
     }
     else {
-        Write-Warning "Report completed, but the output folder was not found: $OutputDir"
+        Write-Warning "Folder Alignment completed, but the output folder was not found: $OutputDir"
     }
 }
 
