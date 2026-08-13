@@ -26,52 +26,64 @@ LOR preview files
 
 PostgreSQL and LOR2DB are not working data sources for Folder Alignment. The current V7 parser SQLite output is deliberately used so LOR organization and document alignment can be inspected repeatedly before any PostgreSQL ingest or downstream document-index work.
 
----
-
-## How to Run
-
-From the repository root in the project virtual environment:
-
-```powershell
-.\run_parse_props.ps1
-.\run_folder_check.ps1
-```
-
-Default SQLite source:
-
-```text
-G:\Shared drives\MSB Database\database\lor_output_v7_scene.db
-```
-
-Default Drive root:
-
-```text
-G:\Shared drives\Display Folders
-```
-
-The repository-root launcher is the operator entry point. Versioned Python files under `Folder_Alignment` are implementation/test artifacts and should not normally be run directly.
+The parser snapshot provenance in `parser_run` identifies the exact production Preview folder used to build the current SQLite snapshot. Folder Alignment must preserve that provenance and must not guess which versioned production Preview folder produced the database.
 
 ---
 
-# Stage / Scene Resolution Contract
+## Validation Status of the Naming Rules
 
-## Top-level Stage
+The naming/resolution rules in the next section are a **provisional Folder Alignment contract under validation**.
 
-The root documentation identity is always the top-level Stage under `Display Folders`.
+They are being tested first in this read-only alignment tool against the current production parser snapshot and current Google Drive tree.
+
+Until testing is accepted:
+
+- do not change parser extraction behavior solely to implement these rules;
+- do not update the parser architecture to claim these classifications are parser-owned behavior;
+- do not promote these rules into a broader project naming standard;
+- do not move Google Drive content automatically.
+
+If the test proves the contract, corresponding parser documentation and applicable naming standards may then be updated through normal change control.
+
+---
+
+# Stage / Scene / Display Resolution Contract — Provisional
+
+## Parser evidence vs Folder Alignment classification
+
+The V7 parser preserves the raw LOR Scene `Name`, derives a Stage token into `scenes.StageID`, derives descriptive text into `SceneSection`, preserves `Scene.BackgroundFile`, and records Scene membership.
+
+The parser does **not** currently classify a Scene row as a filesystem Stage, Sub-stage, Scene, or Display folder.
+
+Folder Alignment performs that downstream documentation-scope classification without changing parser data.
+
+`SceneSection` is descriptive only. It must not be treated as an authoritative folder identity.
+
+## Top-level Stage and Sub-stage
+
+The root documentation identity is a Stage or parser-recognized Sub-stage.
+
+The parser already supports Stage tokens in the established forms:
+
+```text
+NN
+NNa
+```
+
+Examples:
+
+```text
+07
+07a
+```
+
+A Sub-stage may have its own documentation root while still belonging beneath a top-level Stage.
 
 Example:
 
 ```text
-07-Whoville-WV
-```
-
-A nested Sub-stage such as:
-
-```text
 07-Whoville-WV\07a-Who Forest-WF
 ```
-
-still belongs to top-level Stage 07.
 
 The tool must preserve both concepts when they differ:
 
@@ -80,9 +92,142 @@ Top-level Stage:       07-Whoville-WV
 Documentation root:    07-Whoville-WV\07a-Who Forest-WF
 ```
 
+## Provisional deterministic Scene-name classification
+
+For Folder Alignment testing, the raw LOR Scene `Name` is classified using the following convention.
+
+### Stage root
+
+```text
+NN-Name-XY
+```
+
+where `NN` is the Stage token and `XY` is the established two-letter Stage suffix.
+
+Example:
+
+```text
+07-Whoville-WV
+```
+
+Classification:
+
+```text
+STAGE_ROOT
+```
+
+The expected Drive location is the top-level Stage folder matching that identity.
+
+### Sub-stage root
+
+```text
+NNa-Name-XY
+```
+
+Example:
+
+```text
+07a-Who Forest-WF
+```
+
+Classification:
+
+```text
+SUB_STAGE_ROOT
+```
+
+The expected Drive location is the established Sub-stage root beneath its owning top-level Stage.
+
+### Scene under a Stage or Sub-stage
+
+```text
+NN-Name
+NNa-Name
+```
+
+with no trailing two-letter Stage/Sub-stage suffix.
+
+Examples:
+
+```text
+13-Christmas Story
+30-Santa's Station Entrance
+```
+
+Classification:
+
+```text
+SCENE
+```
+
+The Stage token identifies the owning Stage/Sub-stage root. The raw Scene name is the expected child Scene folder name.
+
+### Unprefixed Scene name
+
+A Scene name with no parser-recognized `NN` or `NNa` prefix is not a Stage/Scene documentation folder by default.
+
+Example:
+
+```text
+Abominable
+```
+
+Classification for Folder Alignment:
+
+```text
+DISPLAY_OR_GROUP
+```
+
+Display/group classifications remain useful for engineering validation but are suppressed from the normal Setup documentation worklist. They do not receive standardized Stage/Scene helper folders.
+
+## Reserved `Root` Scene name for Background Previews
+
+A Background Preview already has a definitive Stage identity from `previews.StageID`.
+
+For a Background Preview, the reserved Scene name:
+
+```text
+Root
+```
+
+means:
+
+> use the owning Preview's Stage documentation root.
+
+`Root` is a scope marker, **not** a physical child folder name.
+
+Therefore:
+
+```text
+Preview StageID: 06
+Scene Name: Root
+```
+
+resolves to the Stage 06 root folder and must **not** create or expect:
+
+```text
+<Stage 06>\Root
+```
+
+Existing Background Preview Scene names such as `Scene 1` or `Background` may remain visible as migration/normalization findings until the LOR Previews are intentionally renamed. The long-term deterministic target is `Root`.
+
+Bare `Root` is not sufficient to assign a Stage inside a multi-Stage Master Musical Preview and must not be used there as a substitute for Stage identity.
+
+---
+
+# Preview-Type Resolution Rules — Provisional
+
 ## Background Preview behavior
 
-Background Previews may use Scenes as real physical/documentation groupings, but a Scene-name match alone is not sufficient to create a Scene documentation scope.
+A Background Preview's `previews.StageID` is definitive parent Stage evidence.
+
+Resolution order for the Folder Alignment test is:
+
+1. identify the owning Stage from `previews.StageID`;
+2. if Scene `Name = Root`, resolve directly to that Stage root;
+3. if the Scene name follows a Stage/Sub-stage root naming form, classify it accordingly;
+4. if the Scene name follows the `NN-Name` / `NNa-Name` Scene form, resolve it beneath the matching owning Stage/Sub-stage;
+5. an unprefixed non-`Root` Scene name is a Display/group classification, not a new documentation root.
 
 A Background Scene that is actually a current Display must not be promoted into a fake Scene helper scope or be used to imply a Display-specific `Procedures\Setup` folder.
 
@@ -90,16 +235,20 @@ A Background Scene that is actually a current Display must not be promoted into 
 
 The annual Master Musical Preview name is provenance, not per-Scene Stage identity.
 
-For Master Musical Scenes:
+For Master Musical Scenes, the raw Scene name must explicitly carry enough identity to classify the intended documentation scope unless an authoritative filesystem path already establishes it.
 
-1. direct Stage identity may resolve the top-level Stage;
-2. `Scene.BackgroundFile` may resolve the Stage and a more-specific documentation root;
-3. parser-derived Scene Stage identity remains fallback evidence;
-4. the Scene name itself must not automatically become a child Drive folder.
+Resolution evidence is:
+
+1. `Scene.BackgroundFile`, when present and valid, is authoritative filesystem evidence for the documentation root;
+2. otherwise the deterministic raw Scene-name classification above identifies Stage root, Sub-stage root, Scene, or Display/group;
+3. parser-derived `SceneStageID` is supporting Stage-token evidence but is not itself proof that the Scene row is a Stage folder;
+4. unprefixed names do not establish a Stage/Scene documentation root.
+
+The Master Musical Preview's own Preview name must not be used as the per-Scene Stage identity.
 
 ## BackgroundFile as filesystem evidence
 
-For an applicable Master Musical Scene, the documentation root may be derived from the path immediately above `\Wiring\`.
+When a Scene `BackgroundFile` points into the established Shared Drive hierarchy, Folder Alignment derives the documentation root from the folder immediately above the recognized `\Wiring\` branch.
 
 Example — Stage root:
 
@@ -115,11 +264,49 @@ G:\Shared drives\Display Folders\07-Whoville-WV\07a-Who Forest-WF\Wiring\Musical
 
 The stored path is the important filesystem evidence; the background image filename itself is not identity.
 
+The derived path must resolve to a valid Stage/Sub-stage/Scene documentation root. A Display folder must not be promoted into a structured documentation root merely because an image path exists beneath it.
+
+---
+
+# Documentation Root and Calling-System Contract
+
+Folder Alignment resolves a **documentation root** first.
+
+Examples:
+
+```text
+G:\Shared drives\Display Folders\01-Front Entrance-FE
+```
+
+or:
+
+```text
+G:\Shared drives\Display Folders\07-Whoville-WV\07a-Who Forest-WF
+```
+
+A calling workflow then looks below that root for the branch it owns.
+
+Examples:
+
+```text
+Setup workflow  -> <documentation root>\Procedures\Setup
+Wiring workflow -> <documentation root>\Wiring
+Photos workflow -> <documentation root>\Photos
+```
+
+The classification layer should not hard-code every consuming application's detailed file-selection behavior.
+
+Whether a Scene consumer should present only Scene-local documents, inherit Stage documents, or present both is **not yet decided by this Folder Alignment contract**. Do not implement implicit fallback/inheritance until that user-facing behavior is separately reviewed.
+
 ---
 
 # Standard Documentation Scope
 
-Standard helpers belong at an applicable Stage / Scene / Sub-stage documentation root:
+Standard structured helper folders belong **only** at applicable Stage / Scene / Sub-stage documentation roots.
+
+Display folders do not receive this standard helper structure.
+
+The standard Stage/Scene/Sub-stage structure is:
 
 ```text
 Wiring/
@@ -130,6 +317,8 @@ Wiring/
 
 Procedures/
 ├── Setup/
+│   ├── Archive/
+│   └── images/
 ├── Takedown/
 ├── Maintenance/
 ├── Operations/
@@ -143,9 +332,25 @@ Photos/
 └── Historical/
 ```
 
-Not every Display requires an individual documentation folder, and a LOR Display never implies a required `Display\Procedures\Setup` path by itself.
+Current field-facing Setup PDFs belong directly in:
 
-Setup is normally inherited from the applicable Stage / Scene / Sub-stage documentation scope.
+```text
+<Stage or Scene>\Procedures\Setup
+```
+
+Legacy/superseded Setup source documents belong in:
+
+```text
+<Stage or Scene>\Procedures\Setup\Archive
+```
+
+Setup-supporting images belong in:
+
+```text
+<Stage or Scene>\Procedures\Setup\images
+```
+
+Display folders may exist directly beneath a Stage or beneath a real Scene/Sub-stage. Their presence does not make them documentation roots and does not imply standardized `Procedures`, `Wiring`, or `Photos` helpers.
 
 ---
 
@@ -212,8 +417,6 @@ As alignment proceeds:
 - more document ownership becomes deterministic from filesystem location;
 - dependence on fuzzy matching decreases.
 
-This is the desired migration direction.
-
 ---
 
 # Procedure Audit / Publication Contract
@@ -238,79 +441,46 @@ publish current field PDF
 <Stage or Scene>\Procedures\Setup\<current PDF>
 ```
 
-The current Setup publication area is therefore:
-
-```text
-<Stage or Scene>\Procedures\Setup
-```
-
-while historical/superseded sources belong under:
-
-```text
-<Stage or Scene>\Procedures\Setup\Archive
-```
-
-Folder Alignment should distinguish current published files from Archive material.
-
 The exact controlled template, revision rules, durable Google document identifier, PDF publication workflow, and database relationship are governed outside this LOR-side alignment tool.
 
 ---
 
-# Future Folder Alignment Report Model
+# Folder Alignment Report Model
 
 The report is a **worklist and validator**, not a migration script.
 
-For Setup documentation it should eventually show, per resolved Stage/Scene documentation scope:
+The normal Setup-alignment report should focus on Stage / Sub-stage / Scene documentation scopes.
 
-- Stage;
-- Scene / Sub-stage where applicable;
+Display/group reconciliation is an optional engineering diagnostic and should be suppressed by default.
+
+For Setup documentation the report should eventually show, per resolved Stage/Scene documentation scope:
+
+- classification (`STAGE_ROOT`, `SUB_STAGE_ROOT`, `SCENE`);
+- raw LOR Scene name and Preview context;
+- parser Stage evidence;
+- resolved top-level Stage;
 - resolved documentation root;
+- resolution reason/evidence (`BackgroundFile`, deterministic name contract, or `Root` marker);
 - `Procedures\Setup` location;
+- `Archive` status;
+- `images` status;
 - current field-facing Setup files found directly in the current presentation area;
 - legacy `.gdoc` files found under `Procedures\Setup\Archive`;
 - remaining central legacy Setup files still under `000-Instructions\0 - Setup Procedures`;
 - migration status;
-- duplicate/ambiguous current-document warnings;
-- future durable document-ID status when that contract is engineered;
-- future PDF/current-publication status when that contract is engineered.
+- unresolved/contract-violation warnings.
 
-Useful migration-oriented states may include:
-
-```text
-LEGACY_UNRESOLVED
-LEGACY_ALIGNED_ARCHIVE
-CURRENT_SETUP_FOUND
-NO_CURRENT_SETUP
-DUPLICATE_CURRENT_REVIEW
-MISSING_DURABLE_ID
-```
-
-Names are illustrative until implementation is reviewed. The important behavior is deterministic reporting based on the human-audited Archive location rather than continuing to depend on fuzzy legacy-name inference after migration.
-
----
-
-# Historical Engineering Discovery
-
-The central historical procedure repository can contain material that is not actually a Setup procedure, including drawings, photographs, reference files, and other engineering records.
-
-Folder Alignment must not convert historical category membership into current document classification automatically.
-
-During human review:
-
-- legitimate legacy Setup instructions can be moved to `Procedures\Setup\Archive`;
-- Display-specific engineering records can remain with the responsible Display documentation;
-- photos and reference material can be relocated only when their ownership/purpose is understood;
-- uncertain material remains preserved for review.
-
-Historical location is evidence, not final classification authority.
+The report should make contract violations visible rather than silently falling back to fuzzy interpretation.
 
 ---
 
 # Matching Philosophy
 
-> Matching may be forgiving. Recommendations must be authoritative.
+> Deterministic naming and explicit paths establish documentation scope. Fuzzy matching is limited to unresolved historical discovery.
 
-Loose matching is useful while discovering plausible historical relationships inside the correct Stage.
+Loose matching may remain useful while discovering plausible historical relationships inside the central legacy backlog.
+
+It must not be used to classify current parser Scene rows as Stage/Scene/Display when the deterministic naming contract or explicit path provides the answer.
 
 Once a human-audited migration has placed a document under a Stage/Scene `Procedures\Setup\Archive`, the filesystem location becomes authoritative migration evidence and the tool should stop trying to re-infer ownership from the legacy filename.
 
@@ -323,53 +493,68 @@ Folder Alignment must:
 - remain read-only;
 - never create, move, rename, or delete Google Drive folders/documents;
 - use the current V7 parser SQLite snapshot as its LOR-side working source;
+- preserve `parser_run.SourcePreviewFolder` as production-snapshot provenance;
 - preserve the distinction between top-level Stage and nested documentation root;
-- preserve Background vs Master Musical Scene semantics;
-- never infer a Display-specific Setup folder merely because a Display exists;
+- classify current Scene names deterministically under the provisional contract instead of inventing folder identity from `SceneSection`;
+- recognize `Root` as a Stage-root scope marker for Background Previews, not a child folder;
+- never infer a Display-specific Setup folder merely because a Display/group exists;
+- apply standard helper-folder validation only to Stage / Sub-stage / Scene documentation roots;
 - preserve original legacy paths while they remain in the unresolved central backlog;
 - recognize `Procedures\Setup\Archive` as human-audited legacy ownership evidence;
+- recognize `Procedures\Setup\images` as the Setup image-support location at Stage/Scene scope;
 - keep Archive material out of current field-document counts/presentation;
-- report uncertainty rather than inventing structure;
-- not alter PostgreSQL schema or document identity contracts.
+- report uncertainty or naming-contract violations rather than inventing structure;
+- not alter PostgreSQL schema or parser behavior as part of Folder Alignment testing.
 
 ---
 
-# Regression Fixtures
+# Regression Fixtures for the Provisional Contract
 
-Changes should continue to be checked against:
+Testing must include at least:
 
-- Stage 01 Front Entrance — Background group names can be current Displays and must not become fake Scene Setup scopes; human-audited legacy Setup files should eventually appear in `Procedures\Setup\Archive`.
-- Stage 02 Triangle — Fred's Stars resolves to Stage root from its Master Musical wiring path.
-- Stage 05 Festive Trees — exact Stage identity must not create a duplicate nested Stage folder.
-- Stage 07 Whoville — Who Characters/Who Spiral Tree may resolve to Stage root while Who Forest preserves `07-Whoville-WV\07a-Who Forest-WF` as a nested documentation root.
-- Stage 13 Winter Wonderland — real Background Scene/shared groupings must remain intelligible.
-- Stage 18 Dancing Forest — many LOR Displays legitimately share Stage-level documentation and do not require one folder/procedure per Display.
+- Background Preview with definitive Preview StageID and Scene `Root` -> resolves to Stage root; no `Root` child folder expected.
+- Existing Background Preview still using `Scene 1` or `Background` -> reported as a normalization finding until intentionally renamed.
+- `07-Whoville-WV` -> `STAGE_ROOT`.
+- `07a-Who Forest-WF` -> `SUB_STAGE_ROOT`, nested under top-level Stage 07.
+- `13-Christmas Story` -> `SCENE`, expected beneath Stage 13.
+- unprefixed names such as `Abominable` -> `DISPLAY_OR_GROUP`, not a structured Setup scope.
+- Stage 01 Front Entrance -> Display/group names must not become fake Scene Setup scopes.
+- Stage 02 Triangle -> existing authoritative Musical `BackgroundFile` Stage-root evidence must continue to resolve correctly.
+- Stage 07 Whoville -> authoritative paths and deterministic names must agree or produce a review finding.
+- Stage 13 -> multiple `NN-Name` Scene names must resolve beneath the Stage 13 root without being mistaken for Stage roots.
 
 ---
 
 # Implementation Sequencing
 
-## Current behavior to preserve
+## Step 1 — current document change
 
-- V7 parser Stage/Scene resolution;
-- `BackgroundFile` documentation-root resolution;
-- recursive Shared Drive inventory;
-- central `000-Instructions` visibility;
-- conservative review-only historical matching;
-- read-only operation.
+This document records the provisional Folder Alignment naming/documentation-scope contract before implementation.
 
-## Next report change after review
+## Step 2 — alignment-tool test implementation
 
-Add deterministic scanning of:
+Implement the contract only in a new test version of Folder Alignment.
 
-```text
-<resolved Stage/Scene>\Procedures\Setup\Archive
-```
+The test implementation must:
 
-so the report can show which legacy documents have already been human-aligned and which remain in the central backlog.
+- remain read-only;
+- not change the V7 parser;
+- classify current Scene rows using raw `Name`, Preview context, and `BackgroundFile` evidence;
+- suppress Display/group rows from the normal Setup worklist;
+- report naming/path conflicts explicitly;
+- validate `Procedures\Setup\Archive` and `Procedures\Setup\images` only at Stage/Scene/Sub-stage roots.
 
-Do not automatically move any files.
+## Step 3 — validate against current production snapshot and Drive
 
-## Later work
+Run against the current production SQLite snapshot and current Shared Drive tree. Review exceptions before accepting the contract.
 
-Only after the human migration/audit workflow is established should Folder Alignment be extended to validate current Setup PDFs, per-instruction asset packaging, durable Google document IDs, or database/intranet integration.
+## Step 4 — only after successful validation
+
+If the contract is proven:
+
+1. update parser documentation to explain the downstream naming semantics where appropriate without falsely claiming the parser performs classifications it does not perform;
+2. review whether a broader naming-contract standard should be created or amended;
+3. update operator documentation with the proven workflow;
+4. only then treat the naming convention as established production governance.
+
+Do not skip directly from proposed convention to parser/global-standard changes without the Folder Alignment validation step.
