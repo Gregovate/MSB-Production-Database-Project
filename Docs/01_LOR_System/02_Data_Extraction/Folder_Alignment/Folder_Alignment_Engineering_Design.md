@@ -32,18 +32,15 @@ The parser snapshot provenance in `parser_run` identifies the exact Preview fold
 
 ---
 
-# Validation Status of the Naming Rules
+# Status of the Naming Rules
 
-The Scene naming/resolution rules in this document remain a **provisional Folder Alignment contract under validation**.
+The Scene naming/resolution rules in this document are the current
+project-specific Folder Alignment contract.
 
-They are tested first against the current parser snapshot and current Google Drive tree.
-
-Until accepted:
-
-- do not change parser extraction behavior solely to implement these classifications;
-- do not claim these classifications are parser-owned behavior;
-- do not promote them into a broader naming standard;
-- report conflicts instead of guessing.
+They are applied against the current parser snapshot and Google Drive tree.
+They classify LOR Scene-name hooks for documentation lookup; they do not change
+parser extraction behavior and are not parser-owned physical identity rules.
+Conflicts are reported instead of guessed.
 
 The Google Drive root-folder structure documented below is the current target structure for this alignment work.
 
@@ -65,7 +62,7 @@ The parser does not currently classify a Scene row as a filesystem Stage, Sub-st
 
 ---
 
-# Provisional Deterministic Scene-Name Classification
+# Deterministic Scene-Name Classification
 
 ## Stage root
 

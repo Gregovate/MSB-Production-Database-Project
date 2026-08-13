@@ -1,6 +1,9 @@
 # LOR2DB Ingest
 
-LOR2DB Ingest contains the parser and PostgreSQL ingest programs that turn the approved LOR preview set into a committed PostgreSQL snapshot for reconciliation.
+LOR2DB Ingest owns the controlled handoff from an approved V7 SQLite file into
+the append-only PostgreSQL snapshot. The parser itself is owned by LOR Data
+Extraction and is exposed here only for operator convenience through the
+LOR2DB website.
 
 In this documentation, **ingest** refers to the parser and import programs that prepare a snapshot for LOR2DB reconciliation.
 
@@ -8,10 +11,17 @@ In this documentation, **ingest** refers to the parser and import programs that 
 
 The normal sequence is:
 
-1. Run `parse_props_v7_scene_parser.py` against the approved preview set.
-2. Review the parser result and generated SQLite snapshot.
-3. Run `postgres_run_ingest_v7.ps1` to load the snapshot into PostgreSQL.
-4. Continue to [LOR2DB Reconciliation](../02_Reconciliation/README.md).
+1. In LOR2DB, confirm **Current LOR version** and use **Run current parser**.
+2. Inspect the generated SQLite repeatedly as needed; parser runs never ingest.
+3. Record the displayed SHA-256 for the exact approved SQLite file.
+4. Apply migration `0031_preserve_lor_sqlite_authority_chain.sql` before the
+   first V0.4.0 ingest.
+5. Run `postgres_run_ingest_v7.ps1`, supplying that exact digest to the V0.4.0
+   ingest command.
+6. Continue to [LOR2DB Reconciliation](../02_Reconciliation/README.md).
+
+The ingest rejects a modified/replaced SQLite file and rejects any snapshot
+that was not produced in `PRODUCTION` mode with `ValidationStatus=PASSED`.
 
 The exact engineering rules behind the parser are documented under [LOR Data Extraction](../../Docs/01_LOR_System/02_Data_Extraction/README.md). This README does not duplicate those rules.
 
@@ -19,7 +29,6 @@ The exact engineering rules behind the parser are documented under [LOR Data Ext
 
 | File | Purpose |
 |---|---|
-| `parse_props_v7_scene_parser.py` | Parses approved `.lorprev` files and creates the V7 scene-aware SQLite output database |
 | `postgres_run_ingest_v7.ps1` | Operator entry point for the PostgreSQL ingest step |
 | `postgres_ingest_from_lor_sqlite_v7.py` | Loads the parser output into the PostgreSQL snapshot schema |
 | `requirements.txt` | Python dependencies required by the ingest programs |

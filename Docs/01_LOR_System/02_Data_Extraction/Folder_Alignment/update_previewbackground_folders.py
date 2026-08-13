@@ -118,7 +118,7 @@ def collect_structured_scope_targets(root: Path, scene_infos) -> tuple[list[Scop
             "STAGE", sid, stage.name, stage, "Existing top-level Stage folder"
         )
 
-    # Use the same deterministic Scene contract currently under validation in
+    # Use the current deterministic Scene contract in
     # Folder Alignment. Only existing resolved folders are eligible for writes.
     for info in scene_infos:
         row = alignment._make_scope_row(info, stage_folders)

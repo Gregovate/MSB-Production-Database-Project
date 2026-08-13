@@ -1,5 +1,8 @@
 param (
     [string]$SQLitePath = "G:\Shared drives\MSB Database\database\lor_output_v7_scene.db",
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-fA-F]{64}$')]
+    [string]$ExpectedSQLiteSHA256,
     [string]$Notes = "V7 scene-aware LOR snapshot ingest"
 )
 
@@ -9,7 +12,7 @@ param (
 #
 # Initial Release : 2026-02-23  V0.1.0
 # Version         : 2026-07-29  V0.3.0
-# Current Version : 2026-08-02  V0.3.1
+# Current Version : 2026-08-13  V0.4.0
 #
 # Purpose:
 #   Secure wrapper for the V7 scene-aware SQLite-to-Postgres snapshot ingest.
@@ -21,6 +24,8 @@ param (
 #   - Prompts securely for the Postgres password.
 #
 # Change Log:
+#   2026-08-13  GAL / OpenAI  V0.4.0
+#     Requires the SHA-256 recorded for the exact reviewed SQLite artifact.
 #   2026-07-29  GAL  V0.3.0
 #     Updated for V7 scene-aware snapshot ingestion.
 #
@@ -37,6 +42,7 @@ $pgUser = "msbadmin"
 
 Write-Host "MSB Postgres Snapshot Ingest"
 Write-Host "SQLite: $SQLitePath"
+Write-Host "Expected SHA-256: $ExpectedSQLiteSHA256"
 Write-Host ""
 
 # Safety check: only allow the approved V7 scene-aware database.
@@ -77,6 +83,7 @@ try {
 
     & python $pythonScript `
         --sqlite $SQLitePath `
+        --expected-sqlite-sha256 ($ExpectedSQLiteSHA256.ToLowerInvariant()) `
         --pg-host $pgHost `
         --pg-db $pgDb `
         --pg-user $pgUser `

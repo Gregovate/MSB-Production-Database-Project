@@ -2,7 +2,7 @@
 # postgres_ingest_from_lor_sqlite_v7.py
 # Initial Release : 2026-02-21  V0.1.0
 # Version         : 2026-02-21  V0.1.0
-# Current Version : 2026-08-03  V0.3.2
+# Current Version : 2026-08-13  V0.4.0
 #
 # Changes:
 # - Initial append-only ingestion layer (SQLite → Postgres)
@@ -20,6 +20,8 @@
 # - V0.3.1 preserves the exact source .lorprev filename in
 #   lor_snap.previews.source_filename.
 # - V0.3.2 refuses to ingest unless parser_run.Status is COMPLETE.
+# - V0.4.0 requires the exact operator-reviewed SQLite SHA-256 and V7.0.8
+#   production/validation provenance before any PostgreSQL write.
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
@@ -102,6 +104,11 @@
 #
 # -----------------------------------------------------------------------------
 # Change Log
+# 2026-08-13  GAL / OpenAI  V0.4.0
+#   - Requires --expected-sqlite-sha256 and rejects any byte-level change.
+#   - Requires parser_run RunMode=PRODUCTION, ValidationStatus=PASSED,
+#     SourceLORVersion, ParserSHA256, and SourceManifestSHA256.
+#   - Carries the complete authority chain into lor_snap.import_run.
 # 2026-08-03  GAL  V0.3.2
 #   - Added a pre-ingest parser lifecycle guard.
 #   - Requires parser_run.Status = COMPLETE before creating import_run.
@@ -152,19 +159,21 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import hashlib
 import os
 import platform
 import socket
 import sqlite3
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
 import psycopg2
 import psycopg2.extras
 
 
-INGEST_SCRIPT_VERSION = "V0.3.2"
+INGEST_SCRIPT_VERSION = "V0.4.0"
 
 
 # ---------------------------
@@ -174,6 +183,28 @@ INGEST_SCRIPT_VERSION = "V0.3.2"
 def norm_name(s: str) -> str:
     """Normalize a column name for matching: lowercase and remove underscores/spaces."""
     return "".join(ch for ch in s.lower() if ch.isalnum())
+
+
+def sha256_file(path: str) -> str:
+    """Return a streaming digest for the exact reviewed SQLite artifact."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify_reviewed_sqlite(path: str, expected_sha256: str) -> str:
+    expected = expected_sha256.strip().lower()
+    if len(expected) != 64 or any(character not in "0123456789abcdef" for character in expected):
+        raise RuntimeError("Expected SQLite SHA-256 must be exactly 64 hexadecimal characters")
+    actual = sha256_file(path)
+    if actual != expected:
+        raise RuntimeError(
+            "SQLite authority check failed: the selected file is not the exact "
+            f"operator-reviewed artifact (expected {expected}, found {actual})"
+        )
+    return actual
 
 
 def get_sqlite_columns(conn: sqlite3.Connection, table: str) -> List[str]:
@@ -370,7 +401,10 @@ def read_parser_run(sqlite_conn: sqlite3.Connection) -> Dict[str, Any]:
 
     cur = sqlite_conn.execute(
         'SELECT ParserVersion, StartedAt, CompletedAt, Actor, HostName, '
-        'SourcePreviewFolder, SQLiteDatabasePath, Status FROM parser_run LIMIT 2'
+        'SourcePreviewFolder, SQLiteDatabasePath, Status, RunMode, '
+        'SourceLORVersion, ParserSHA256, SourceManifestSHA256, '
+        'CompatibilityManifestSHA256, ValidationStatus, ValidationDetail '
+        'FROM parser_run LIMIT 2'
     )
     rows = cur.fetchall()
     if len(rows) != 1:
@@ -387,6 +421,13 @@ def read_parser_run(sqlite_conn: sqlite3.Connection) -> Dict[str, Any]:
         "source_preview_folder",
         "source_sqlite_path",
         "parser_status",
+        "parser_run_mode",
+        "source_lor_version",
+        "parser_sha256",
+        "source_manifest_sha256",
+        "compatibility_manifest_sha256",
+        "parser_validation_status",
+        "parser_validation_detail",
     ]
     parser_run = dict(zip(keys, rows[0]))
     parser_status = parser_run.get("parser_status")
@@ -397,6 +438,26 @@ def read_parser_run(sqlite_conn: sqlite3.Connection) -> Dict[str, Any]:
             f"parser_run.Status must be exactly COMPLETE; found {displayed_status}. "
             "Run the parser successfully before starting PostgreSQL ingest."
         )
+
+    required = {
+        "parser_run_mode": "PRODUCTION",
+        "parser_validation_status": "PASSED",
+    }
+    for field, expected in required.items():
+        if parser_run.get(field) != expected:
+            raise RuntimeError(
+                f"Parser snapshot is not eligible for ingest: {field} must be "
+                f"{expected}; found {parser_run.get(field)!r}"
+            )
+    if not str(parser_run.get("parser_version") or "").startswith("V7."):
+        raise RuntimeError("Parser snapshot is not eligible for ingest: a current V7 parser is required")
+    for field in (
+        "source_lor_version", "parser_sha256", "source_manifest_sha256",
+        "compatibility_manifest_sha256",
+        "parser_completed_at",
+    ):
+        if not str(parser_run.get(field) or "").strip():
+            raise RuntimeError(f"Parser snapshot is not eligible for ingest: {field} is missing")
 
     return parser_run
 
@@ -425,6 +486,7 @@ def insert_import_run(
     ingest_actor: str,
     ingest_host: str,
     ingest_started_at: datetime,
+    sqlite_sha256: str,
 ) -> int:
     """Create the append-only import_run row with parser and ingest provenance."""
     with pg_conn.cursor() as cur:
@@ -439,6 +501,14 @@ def insert_import_run(
                 parser_host,
                 source_preview_folder,
                 source_sqlite_path,
+                parser_run_mode,
+                source_lor_version,
+                parser_sha256,
+                source_manifest_sha256,
+                compatibility_manifest_sha256,
+                parser_validation_status,
+                parser_validation_detail,
+                source_sqlite_sha256,
                 preview_count,
                 scene_count,
                 prop_count,
@@ -451,6 +521,7 @@ def insert_import_run(
                 ingest_started_at
             )
             VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
@@ -465,6 +536,14 @@ def insert_import_run(
                 parser_run.get("parser_host"),
                 parser_run.get("source_preview_folder"),
                 parser_run.get("source_sqlite_path"),
+                parser_run.get("parser_run_mode"),
+                parser_run.get("source_lor_version"),
+                parser_run.get("parser_sha256"),
+                parser_run.get("source_manifest_sha256"),
+                parser_run.get("compatibility_manifest_sha256"),
+                parser_run.get("parser_validation_status"),
+                parser_run.get("parser_validation_detail"),
+                sqlite_sha256,
                 source_counts["preview_count"],
                 source_counts["scene_count"],
                 source_counts["prop_count"],
@@ -591,6 +670,10 @@ def ingest_table(
 def main() -> int:
     ap = argparse.ArgumentParser(description="Ingest LOR SQLite snapshot into Postgres lor_snap (append-only by run).")
     ap.add_argument("--sqlite", required=True, help="Path to lor_output_v7_scene.db (SQLite).")
+    ap.add_argument(
+        "--expected-sqlite-sha256", required=True,
+        help="SHA-256 recorded when the exact SQLite file was approved for ingest.",
+    )
     ap.add_argument("--pg-host", required=True, help="Postgres host (e.g., db.sheboyganlights.org).")
     ap.add_argument("--pg-port", type=int, default=5432, help="Postgres port (default 5432).")
     ap.add_argument("--pg-db", required=True, help="Postgres database name (e.g., msb).")
@@ -604,13 +687,23 @@ def main() -> int:
         print(f"[FATAL] SQLite file not found: {sqlite_path}", file=sys.stderr)
         return 2
 
+    try:
+        reviewed_sqlite_sha256 = verify_reviewed_sqlite(
+            sqlite_path, args.expected_sqlite_sha256
+        )
+    except RuntimeError as error:
+        print(f"[FATAL] {error}", file=sys.stderr)
+        return 2
+
     pg_password = args.pg_password or os.environ.get("PGPASSWORD")
     if not pg_password:
         print("[FATAL] Missing Postgres password. Use --pg-password or set PGPASSWORD env var.", file=sys.stderr)
         return 2
 
-    # Connect SQLite
-    sqlite_conn = sqlite3.connect(sqlite_path)
+    # Open the approved artifact read-only. Recheck its digest immediately
+    # before the PostgreSQL commit to close the parser/review/ingest handoff.
+    sqlite_uri = Path(sqlite_path).resolve().as_uri() + "?mode=ro&immutable=1"
+    sqlite_conn = sqlite3.connect(sqlite_uri, uri=True)
     sqlite_conn.row_factory = None  # tuples
 
     # Connect Postgres
@@ -641,12 +734,15 @@ def main() -> int:
             ingest_actor,
             ingest_host,
             ingest_started_at,
+            reviewed_sqlite_sha256,
         )
         print(
             f"[INFO] Created import_run_id={import_run_id} | "
             f"parser={parser_run.get('parser_version')} | "
             f"parser_completed={parser_run.get('parser_completed_at')} | "
             f"parser_actor={parser_run.get('parser_actor')}@{parser_run.get('parser_host')} | "
+            f"lor={parser_run.get('source_lor_version')} | "
+            f"sqlite_sha256={reviewed_sqlite_sha256} | "
             f"ingest_actor={ingest_actor}@{ingest_host}"
         )
 
@@ -715,6 +811,12 @@ def main() -> int:
 
         # Complete the permanent handoff record inside the same transaction.
         complete_import_run(pg_conn, import_run_id, datetime.now().astimezone())
+
+        final_sqlite_sha256 = verify_reviewed_sqlite(
+            sqlite_path, reviewed_sqlite_sha256
+        )
+        if final_sqlite_sha256 != reviewed_sqlite_sha256:
+            raise RuntimeError("SQLite changed while the ingest transaction was running")
 
         # One commit at the end = atomic run
         pg_conn.commit()

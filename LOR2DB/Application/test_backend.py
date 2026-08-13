@@ -170,6 +170,34 @@ class BackendSafetyTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_parser_candidate_forwards_only_version_and_authenticated_actor(self) -> None:
+        with patch.object(backend, "runner_request", return_value={"ok": True}) as runner:
+            response = backend.app.test_client().post(
+                "/parser/candidate",
+                json={"new_lor_version": "6.6.10", "preview_folder": "C:\\unsafe"},
+                headers={
+                    "Cf-Access-Authenticated-User-Email": "greg@sheboyganlights.org"
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        runner.assert_called_once_with(
+            "candidate",
+            {
+                "new_lor_version": "6.6.10",
+                "actor": "greg@sheboyganlights.org",
+            },
+        )
+
+    def test_parser_run_rejects_arbitrary_target(self) -> None:
+        response = backend.app.test_client().post(
+            "/parser/run",
+            json={"target": "C:\\arbitrary\\command.exe"},
+            headers={
+                "Cf-Access-Authenticated-User-Email": "greg@sheboyganlights.org"
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

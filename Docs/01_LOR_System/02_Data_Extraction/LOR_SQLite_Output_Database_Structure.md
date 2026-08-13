@@ -5,7 +5,7 @@
 | Status | CURRENT — Engineering Design |
 | System | LOR Preview Parser |
 | Database | `lor_output_v7_scene.db` |
-| Current Parser Baseline | V7.0.7 |
+| Current Parser Baseline | V7.0.8 |
 | Owner | MSB Database Administrator |
 | Initial Release | 2026-08-08 |
 
@@ -81,7 +81,7 @@ The SQLite database exists only to normalize Light-O-Rama preview information in
 
 The SQLite schema is implemented exclusively within:
 
-`LOR2DB/01_Ingest/parse_props_v7_scene_parser.py`
+`Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py`
 
 The parser source code is the authoritative implementation of:
 
@@ -138,8 +138,15 @@ Responsibilities
 - source preview folder
 - database location
 - parser status
+- parser run mode and declared LOR version
+- parser source SHA-256 and complete preview-manifest SHA-256
+- approved complete XML compatibility-manifest SHA-256
+- output validation status and detail
 
 This table documents the engineering provenance of the generated snapshot.
+
+`Status=COMPLETE` is legal only with `ValidationStatus=PASSED`. The final file
+is published atomically after the parser reopens and validates this row.
 
 ---
 
@@ -192,6 +199,12 @@ Important Engineering Rule
 Scenes are organizational workspace objects.
 
 Scenes are **not** permanent display identities.
+
+The table stores every preview-level LOR `<Scene>` row. A table count must be
+reported as **raw LOR Scene rows**, not as the number of operational Scenes.
+Stage roots, Sub-stage roots, `Root` markers, true Scenes, and unprefixed
+Display/group locators are classified downstream by Folder Alignment without
+changing parser extraction.
 
 ---
 
@@ -413,4 +426,3 @@ The SQLite output database forms the engineering interface between the LOR Previ
 - [LOR Preview Parser Architecture](LOR_Preview_Parser_Architecture.md)
 - [LOR Preview Version Compatibility Review](LOR_Preview_Version_Compatibility_Review.md)
 - [LOR2DB Ingest](../../../LOR2DB/01_Ingest/README.md)
-

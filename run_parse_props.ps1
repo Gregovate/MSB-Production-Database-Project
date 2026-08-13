@@ -1,8 +1,7 @@
 # MSB LOR Parser launcher
 #
 # Purpose:
-#   Run the current parser copy from its proposed LOR-side home while leaving
-#   the existing parser under LOR2DB/01_Ingest untouched during validation.
+#   Run the canonical current parser owned by LOR Data Extraction.
 #
 # This launcher intentionally contains no parser or ingest logic.
 

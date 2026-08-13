@@ -3,8 +3,8 @@
 | Document control | Value |
 |---|---|
 | Status | CURRENT — reverse-engineered engineering reference |
-| Baseline | Light-O-Rama 6.6.4 `.lorprev` format as consumed by MSB parser V7.0.7 |
-| Current revision | 2026-08-08 |
+| Baseline | Approved Light-O-Rama `.lorprev` manifest; initialized from 6.6.4 |
+| Current revision | 2026-08-13 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -21,17 +21,20 @@ Where the parser does not consume an element or attribute, this document does no
 
 The current production parser is:
 
-`LOR2DB/01_Ingest/parse_props_v7_scene_parser.py`
+`Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py`
 
 Functional parser baseline:
 
-`V7.0.7`
+`V7.0.8`
 
 Known-good LOR preview baseline:
 
 `Light-O-Rama 6.6.4`
 
-The parser source is the implementation authority for the current production behavior. This specification is the engineering map used to determine whether a later `.lorprev` format can still satisfy that behavior.
+The parser source is the implementation authority for materialization. The
+approved XML manifest is the compatibility authority for the complete exported
+structure, including fields the parser does not currently use. The manifest is
+created and compared by `Parser/lor_version_checker.py`.
 
 ## File Type
 
@@ -135,7 +138,7 @@ The current parser uses preview-level Scenes exported in `.lorprev` files. Seque
 |---|---|
 | `id` | Scene identity |
 | `Name` | Scene name; source for derived Scene StageID and SceneSection |
-| `BackgroundFile` | Scene background reference |
+| `BackgroundFile` | Scene background reference; published separately and as the effective background in `scene_displays_vw` |
 | `HScroll` | Horizontal view state |
 | `VScroll` | Vertical view state |
 | `Zoom` | Zoom/view state |
@@ -365,14 +368,16 @@ When a new `.lorprev` version is examined, update a comparison record containing
 
 Use the controlled procedure in [LOR Preview Version Compatibility Review](LOR_Preview_Version_Compatibility_Review.md).
 
-## Known Baseline Limitation
+## Approved Baseline Manifest
 
-This first specification was reconstructed from the functional parser and retained parser-engineering history. It intentionally does not invent a complete catalog of every XML node Light-O-Rama may emit.
-
-When the known-good LOR 6.6.4 baseline `.lorprev` file is available for a formal compatibility test, this document should be expanded with raw element/attribute inventory and representative XML fragments. That becomes the frozen structural baseline for automated future comparisons.
+The approved baseline is no longer limited to the parser's consumed fields.
+`lor_version_checker.py` creates a complete machine-readable manifest from all
+approved previews and stores the deep-preview contract. The Windows runner
+preserves that manifest with the Current LOR version record.
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-13 | GAL / OpenAI | Established the complete all-preview XML manifest, V7.0.8 ownership path, and parser-independent compatibility authority. |
 | 2026-08-08 | GAL / OpenAI | Created the standalone reverse-engineered `.lorprev` structure specification from the functional V7.0.7 parser and documented the structural assumptions required for future LOR-version compatibility review. |

@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — controlled engineering procedure |
 | Applies to | Any new Light-O-Rama release that can change `.lorprev` output |
-| Current revision | 2026-08-08 |
+| Current revision | 2026-08-13 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -40,9 +40,65 @@ Do not:
 
 Use copied test files and a separate test output database.
 
-## Preferred Test Method
+## Operator Version Record
 
-The strongest comparison uses the same logical preview exported from both versions of Light-O-Rama.
+LOR2DB maintains two explicit fields:
+
+- **Current LOR version** — the approved production version of record;
+- **New LOR version** — the candidate being evaluated.
+
+The approved record identifies the versioned preview folder, for example
+`Database Previews V6.6.4`. A candidate such as 6.6.10 uses `Database Previews
+V6.6.10`. Approval changes the record; it does not rename or delete the
+previous versioned folder.
+
+## Mandatory Automated Gate
+
+`Parser/lor_version_checker.py` inventories the complete XML independently of
+the parser. It scans every `.lorprev` file and compares:
+
+- every element/local name and namespace;
+- every element path, parent/child edge, and sibling-order transition;
+- every PreviewClass, Scene, and PropClass attribute, including fields the
+  parser does not consume;
+- observed value shapes;
+- ChannelGrid record boundaries, token counts, and every positional value;
+- record boundaries, token counts, and positional value shapes for every other
+  comma/semicolon-encoded XML field, including non-descript PropClass fields;
+- raw PreviewClass, Scene, and PropClass ID/count changes in every preview; and
+- focused identity/position review in the selected deep preview.
+
+Any added/removed structure, attribute, value shape, ordering contract, or
+ChannelGrid position is blocking until it is explicitly reviewed. A failed
+report records `parser_modifications_required`. Candidate parser testing may
+then prove the required code changes; approval remains blocked until every
+finding is explicitly recorded as resolved.
+
+The XML check occurs before the parser. A successful parser run cannot override
+a failed XML compatibility check.
+
+## Test Preview Selection
+
+Use the entire versioned preview folder for the complete structural scan. For
+the focused manual per-record identity and positional review, use one
+comprehensive preview rather than manually inspecting all production previews.
+The automated positional inventory and critical ID/count scan still cover every
+file.
+
+For the 6.6.4 baseline, the selected deep preview is:
+
+`2026 Master Musical Preview v6.6 2026-07-30.lorprev`
+
+It exercises all observed six-position ChannelGrid record layouts, multiple
+Scenes, LOR/DMX/None props, manual relationships, multi-grid props, tags, and
+parameter fields. The complete scan of all 33 files remains mandatory because
+other previews expose additional attributes and higher Parm positions.
+
+## Preferred Logical Comparison
+
+The strongest content comparison additionally uses the same logical preview
+exported from both versions of Light-O-Rama. It supplements the complete-folder
+contract scan; it does not replace it.
 
 Example:
 
@@ -151,6 +207,11 @@ Compare:
 
 Determine whether Scene membership is still positionally recoverable using the current parser rule.
 
+Do not equate raw `<Scene>` count with operational true Scenes. Preserve all
+raw rows for compatibility, while Folder Alignment separately classifies
+`NN-Name-XY` Stage roots, `NNa-Name-XY` Sub-stage roots, prefixed true Scenes,
+`Root` markers, and unprefixed Display/group locators.
+
 ### PropClass
 
 Compare:
@@ -238,7 +299,8 @@ Do not modify parser code during this phase. First establish the complete impact
 
 Only after the raw XML comparison is documented should the current parser be tested against the copied new-version previews.
 
-Use a separate test SQLite database and test preview folder.
+Use the website's candidate parser action. It runs with `VERSION_CHECK` mode and
+writes a separate test SQLite database under the candidate evidence folder.
 
 Record:
 
@@ -248,7 +310,7 @@ Record:
 - parser warnings/errors;
 - row counts;
 - collision reports;
-- Scene counts;
+- raw LOR Scene-row counts (not operational true-Scene counts);
 - Scene membership counts;
 - unassigned or unresolved rows;
 - parser completion status.
@@ -340,6 +402,11 @@ The decision record should identify:
 - validation evidence;
 - final approval.
 
+Approval is permitted only when the candidate parser run is `COMPLETE` with
+`ValidationStatus=PASSED` and either the XML report is `PASSED` or every failed
+finding has a recorded engineering resolution tied to that parser version.
+Unresolved findings remain attached to and block the candidate.
+
 ## Standard ChatGPT Compatibility Review Prompt
 
 Use the following prompt when a representative preview exported by a new Light-O-Rama version is uploaded for review.
@@ -360,7 +427,7 @@ Use the current repository versions of:
 
 Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_File_Structure_Specification.md
 Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Parser_Architecture.md
-LOR2DB/01_Ingest/parse_props_v7_scene_parser.py
+Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py
 
 as the current MSB baseline.
 
@@ -441,12 +508,13 @@ If the new LOR version is approved:
 
 ## Current Pending Review
 
-Light-O-Rama 6.6.8 is available and has not yet been established as the approved MSB parser baseline.
-
-It must be reviewed using this procedure before replacing the known-good LOR 6.6.4 compatibility baseline.
+Light-O-Rama 6.6.10 is the next candidate. It must be exported into `Database
+Previews V6.6.10` and reviewed through the website checker/parser gates before
+replacing the approved 6.6.4 version record.
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-13 | GAL / OpenAI | Added Current/New version records, complete all-preview XML manifests, the selected deep preview, blocking modification records/resolution, and website approval gates for the 6.6.10 review. |
 | 2026-08-08 | GAL / OpenAI | Created controlled LOR-version compatibility review procedure, regression checklist, decision model, and reusable ChatGPT engineering comparison prompt. |

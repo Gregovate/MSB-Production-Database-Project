@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | PRODUCTION VALIDATED — Run 4 and lor2db landing page accepted |
-| Initial release / current revision | 2026-08-04 / 2026-08-06 |
+| Status | CURRENT production reconciliation; parser runner pending deployment acceptance |
+| Initial release / current revision | 2026-08-04 / 2026-08-13 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-13 | Added the LOR version-of-record, complete XML compatibility gate, validated parser controls, and Windows/G-drive runner boundary. PostgreSQL ingest remains a separate manual approval step and requires the reviewed SQLite SHA-256. |
 | 2026-08-06 | Browser V0.4.3 opens the newly published run's immutable `report_url`, with the archive index only as a fallback. Backend V0.3.3 returns that URL after publication. Report framework V0.4.2 displays the authenticated Cloudflare email as the operator. Directus person resolution and role-based authorization remain a future enhancement. |
 | 2026-08-06 | Enforced permanent one-to-one snapshot ownership. The landing page now continues any unfinished run first and uses the existing `import_run_id` link instead of numeric run recency. Start is hidden and rejected when the snapshot already owns any reconciliation row; cancelled and failed runs also consume their snapshot. |
 | 2026-08-06 | Corrected report-writer deployment after Run 5 exposed a stale repository-layout path. Backend V0.3.1 requires the absolute deployed publisher path and verifies the file before execution. Browser V0.4.2 replaces the production-write confirmation with an explicit report-only retry when a run is already in `REPORTING`. |
@@ -73,9 +74,66 @@ function, repeats eligibility inside that transaction, and captures the
 current snapshot through `ops.f_start_lor_reconciliation(text)`. No request
 parameter accepts an ingest number.
 
-Parser and PostgreSQL ingest remain manual for this release. A future
-app-server runner may precede this page, but it must invoke only the approved
-parser/ingest commands and preserve the current prerequisite checks.
+The parser is now available from this landing page through the separately
+deployed Windows/G-drive runner. PostgreSQL ingest remains separate and manual.
+The page never starts ingest and the Linux API never executes a user-supplied
+path or command.
+
+## LOR version and parser workspace
+
+The landing page exposes two operator-controlled version fields:
+
+- **Current LOR version** — the approved version of record;
+- **New LOR version** — the candidate version folder under review.
+
+The workflow is intentionally gated:
+
+1. Select the new LOR version. The runner resolves only `Database Previews
+   V<version>` beneath its configured preview root.
+2. Run the parser-independent complete XML compatibility check.
+3. If the check fails, review the recorded parser modifications required and
+   update the parser.
+4. Run the candidate parser into an isolated `VERSION_CHECK` SQLite file. A
+   check failure may proceed to this test only after the raw check has run.
+5. When structural findings were expected and the modified parser passes,
+   record the engineering resolution notes for every finding.
+6. Approve the version only after both gates pass or all findings are resolved.
+   The previous version folder
+   remains unchanged.
+7. Run the current parser in `PRODUCTION` mode. Inspect the resulting SQLite as
+   often as needed; no ingest is automatic.
+8. Supply its displayed SHA-256 to the separate manual PostgreSQL ingest.
+
+The raw SQLite `scenes` count is labeled **raw LOR Scene rows**. Operational
+true Scenes are classified by Folder Alignment naming rules and are not a
+parser table-count interpretation.
+
+### Windows runner deployment boundary
+
+`Docs/01_LOR_System/02_Data_Extraction/Parser/lor_operator_runner.py` runs on a
+restricted Windows host/service account with the Shared Drive mounted as `G:`.
+It listens on the internal interface only and requires a bearer token shared
+with the Linux API. Configure its environment from
+`lor-operator-runner.env.example`, initialize the 6.6.4 approved state once,
+and then run its `serve` command.
+
+```powershell
+python lor_operator_runner.py init `
+  --state-file "G:\Shared drives\MSB Database\LOR Version Reviews\runner-state.json" `
+  --current-lor-version 6.6.4 `
+  --current-preview-folder "G:\Shared drives\MSB Database\Database Previews V6.6.4" `
+  --deep-preview "2026 Master Musical Preview v6.6 2026-07-30.lorprev"
+
+python lor_operator_runner.py serve `
+  --state-file "G:\Shared drives\MSB Database\LOR Version Reviews\runner-state.json" `
+  --host REPLACE_INTERNAL_WINDOWS_IP `
+  --port 8791
+```
+
+The Linux API uses `LOR_RUNNER_URL` and `LOR_RUNNER_TOKEN`. The reverse proxy
+continues to expose only the Linux LOR2DB API; do not publish port 8791 to the
+Internet. Deploy migration `0031_preserve_lor_sqlite_authority_chain.sql`
+before deploying ingest V0.4.0 or the expanded dashboard query.
 
 ## Required API
 
