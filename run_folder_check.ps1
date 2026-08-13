@@ -12,7 +12,7 @@
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = $PSScriptRoot
-$AlignmentScript = Join-Path $RepoRoot 'Docs\01_LOR_System\02_Data_Extraction\Folder_Alignment\generate_folder_alignment_report_v1_3_7.py'
+$AlignmentScript = Join-Path $RepoRoot 'Docs\01_LOR_System\02_Data_Extraction\Folder_Alignment\folder_alignment.py'
 $DefaultOutputDir = 'G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment'
 
 if (-not (Test-Path -LiteralPath $AlignmentScript -PathType Leaf)) {
