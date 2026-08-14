@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 import json
 import os
 import sqlite3
@@ -151,7 +152,9 @@ class ParserOutputComparisonTests(unittest.TestCase):
         self._create_database(self.candidate, revision="2", name="Master 6.6.10", source="new.lorprev")
 
     def _create_database(self, path: Path, revision: str, name: str, source: str) -> None:
-        with sqlite3.connect(path) as connection:
+        # sqlite3.Connection.__exit__ commits/rolls back but does not close.
+        # Explicit closure is required before TemporaryDirectory cleanup on Windows.
+        with closing(sqlite3.connect(path)) as connection:
             connection.execute(
                 "CREATE TABLE previews (IntPreviewID INTEGER PRIMARY KEY, id TEXT UNIQUE, "
                 "StageID TEXT, Name TEXT, Revision TEXT, Brightness REAL, "
@@ -180,6 +183,7 @@ class ParserOutputComparisonTests(unittest.TestCase):
                     )
                     connection.execute(f'INSERT INTO "{table}" VALUES (1, "same")')
             connection.execute("CREATE VIEW props_review_vw AS SELECT Value FROM props")
+            connection.commit()
 
     def compare(self) -> dict:
         return runner_module.compare_parser_outputs(
@@ -203,8 +207,9 @@ class ParserOutputComparisonTests(unittest.TestCase):
             self.assertEqual(report["tables"][table]["candidate_only"], 0)
 
     def test_authoritative_content_difference_is_blocking(self) -> None:
-        with sqlite3.connect(self.candidate) as connection:
+        with closing(sqlite3.connect(self.candidate)) as connection:
             connection.execute('UPDATE props SET Value = "changed"')
+            connection.commit()
         report = self.compare()
         self.assertEqual(report["status"], "BLOCKED")
         self.assertEqual(report["blocking_count"], 1)
@@ -212,8 +217,9 @@ class ParserOutputComparisonTests(unittest.TestCase):
         self.assertEqual(report["tables"]["props"]["candidate_only"], 1)
 
     def test_individual_channels_is_not_mistaken_for_surrogate_integer_key(self) -> None:
-        with sqlite3.connect(self.candidate) as connection:
+        with closing(sqlite3.connect(self.candidate)) as connection:
             connection.execute('UPDATE props SET IndividualChannels = "False"')
+            connection.commit()
         report = self.compare()
         self.assertEqual(report["status"], "BLOCKED")
         self.assertEqual(report["tables"]["props"]["baseline_only"], 1)
