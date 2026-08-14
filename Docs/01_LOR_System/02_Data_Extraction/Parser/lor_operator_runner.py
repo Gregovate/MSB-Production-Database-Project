@@ -26,10 +26,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from lor_version_checker import build_manifest, manifest_source_signature, write_json
+from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.1.0"
+RUNNER_VERSION = "V1.2.0"
 
 AUTHORITATIVE_OUTPUT_TABLES = (
     "props",
@@ -510,9 +510,25 @@ class Runner:
                 approved_manifest.get("deep_preview"),
                 deep_identity=approved_manifest.get("deep_preview_identity"),
             )
-            if manifest_source_signature(current_manifest) != manifest_source_signature(approved_manifest):
+            # Approved LOR compatibility is a structural contract, not a ban on
+            # routine preview authoring.  Current-version production previews
+            # are expected to change between parser runs.  Rebuild their live
+            # manifest and block only a parser-breaking XML contract change.
+            # Candidate-version runs retain the exact-source guard below so a
+            # checked candidate cannot change between Check and Run Parser.
+            blocking = [
+                finding for finding in compare_manifests(
+                    approved_manifest, current_manifest
+                )
+                if finding.severity == "BLOCKING"
+            ]
+            if blocking:
+                detail = "; ".join(
+                    f"{finding.area}: {finding.message}" for finding in blocking
+                )
                 raise ValueError(
-                    "The approved preview folder changed after approval; restore it or perform a new compatibility review"
+                    "The current preview folder contains parser-breaking XML "
+                    f"changes relative to approved LOR {version}: {detail}"
                 )
             compatibility_manifest_sha256 = state["current_manifest_sha256"]
             if target == "current":

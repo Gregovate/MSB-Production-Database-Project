@@ -1,7 +1,7 @@
 /* ============================================================================
 Object:       LOR preflight application least-privilege grants
 Filename:     grant_lor_preflight_app.sql
-Revision:     2026-08-06 V0.2.0
+Revision:     2026-08-14 V0.3.0
 
 Purpose:
   Grant the existing login role lor_preflight_app only the reads and secured
@@ -9,6 +9,8 @@ Purpose:
   publisher. This script does not create the login or store its password.
 
 Revision history:
+  2026-08-14  GAL / OpenAI  Added the evidence-gated stage authority action
+                           recorder introduced by migration 0032.
   2026-08-06  GAL / OpenAI  Added current-snapshot read access and the unified
                            reconciliation Start function for the lor2db page.
   2026-08-05  GAL / OpenAI  Initial application-role grant set.
@@ -50,6 +52,8 @@ GRANT SELECT ON lor_snap.v_current_run TO lor_preflight_app;
 
 GRANT EXECUTE ON FUNCTION
     ops.f_record_lor_reconciliation_action(bigint,bigint,text,text,jsonb,text),
+    ops.f_record_lor_stage_authority_action(bigint,bigint,text,text,text),
+    ops.f_record_lor_stage_preserve_metadata_action(bigint,bigint,text,text),
     ops.f_record_lor_reconciliation_bulk_action(bigint,bigint[],text,text,text),
     ops.f_lor_reconciliation_display_name_changes_report(bigint),
     ops.f_start_lor_reconciliation(text)
@@ -64,5 +68,5 @@ TO lor_preflight_app;
 COMMIT;
 
 SELECT
-    '2026-08-06-lor-preflight-app-grants-v2' AS applied_revision,
+    '2026-08-14-lor-preflight-app-grants-v3' AS applied_revision,
     current_user AS applied_by;

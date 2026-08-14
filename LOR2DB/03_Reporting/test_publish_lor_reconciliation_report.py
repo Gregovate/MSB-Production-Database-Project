@@ -163,7 +163,28 @@ class ReportRenderingTests(unittest.TestCase):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
     def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.4.2")
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.5.0")
+
+    def test_cancelled_report_is_terminal_and_has_no_required_actions(self):
+        data = self.base_data()
+        data["run"].update({
+            "cancelled_at": datetime.now(timezone.utc),
+            "cancellation_reason": "Correct the LOR source and re-ingest.",
+            "validation_state": None,
+        })
+        data["problems"] = [{
+            "entity_type": "DISPLAY", "entity_key": "1",
+            "result_class": "BLOCKED", "reason_code": "CORRECT_SOURCE_REQUIRED",
+            "operator_message": "Fix source", "recorded_at": None,
+        }]
+
+        output = REPORT.render_report(data, datetime.now(timezone.utc))
+
+        self.assertIn('data-report-outcome="CANCELLED"', output)
+        self.assertIn("CANCELLED — NO PRODUCTION CHANGES COMMITTED", output)
+        self.assertIn("captured ingest snapshot was removed", output)
+        self.assertIn("Not applicable — reconciliation cancelled", output)
+        self.assertNotIn("Review listed items", output)
 
     def test_decision_operator_uses_authenticated_cloudflare_email(self):
         data = self.base_data()
@@ -185,11 +206,11 @@ class ReportRenderingTests(unittest.TestCase):
             published = directory / "lor-reconciliation-20260803-233221-run-3.html"
             evaluation = directory / "lor-reconciliation-20260804-170000-run-3-evaluation.html"
             published.write_text(
-                '<p class="meta">Generated 2026-08-03 23:32:21 CDT · '
+                '<body data-report-outcome="COMPLETED"><p class="meta">Generated 2026-08-03 23:32:21 CDT · '
                 'Report framework V0.1.0 · Captured ingest 44</p>', encoding="utf-8"
             )
             evaluation.write_text(
-                '<p class="meta">Generated 2026-08-04 17:00:00 CDT · '
+                '<body data-report-outcome="CANCELLED"><p class="meta">Generated 2026-08-04 17:00:00 CDT · '
                 'Report framework V0.3.0 · Captured ingest 44</p>', encoding="utf-8"
             )
 
@@ -200,6 +221,8 @@ class ReportRenderingTests(unittest.TestCase):
             self.assertIn("Published report", index)
             self.assertIn("Evaluation copy", index)
             self.assertIn("Captured ingest", index)
+            self.assertIn("Outcome", index)
+            self.assertIn("CANCELLED", index)
             self.assertLess(index.index(evaluation.name), index.index(published.name))
 
     def test_index_ignores_unrecognized_html_files(self):
@@ -211,6 +234,21 @@ class ReportRenderingTests(unittest.TestCase):
 
             self.assertNotIn("unrelated.html", index)
             self.assertIn("No reconciliation reports are available", index)
+
+    def test_index_recovers_cancelled_outcome_from_legacy_report(self):
+        with TemporaryDirectory() as output_dir:
+            path = Path(output_dir) / "lor-reconciliation-20260814-011807-run-6.html"
+            path.write_text(
+                '<p class="meta">Generated 2026-08-14 01:18:07 UTC · '
+                'Report framework V0.4.2 · Captured ingest 47</p>'
+                '<table><tr><td>6</td><td>CANCELLED</td></tr></table>',
+                encoding="utf-8",
+            )
+
+            index = REPORT.refresh_report_index(output_dir).read_text(encoding="utf-8")
+
+            self.assertIn("CANCELLED", index)
+            self.assertNotIn("UNKNOWN", index)
 
     def test_refresh_index_cli_needs_no_database_arguments(self):
         with TemporaryDirectory() as output_dir:

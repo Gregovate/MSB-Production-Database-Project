@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT production reconciliation; parser runner pending deployment acceptance |
-| Initial release / current revision | 2026-08-04 / 2026-08-13 |
+| Status | CURRENT code; V0.5.0 combined reconciliation/parser-runner deployment pending acceptance |
+| Initial release / current revision | 2026-08-04 / 2026-08-14 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-14 | Added safe `APPROVE_STAGE_CHANGE` and `ADD_NEW_STAGE` paths gated by complete frozen evidence; contradictory stage groups remain non-approvable. The browser now shows every stage-group member. Cancellation now renders a terminal proof screen, cancelled reports have no misleading required actions, and the archive shows Outcome. Current-version parser runs permit structurally compatible authoring edits while candidate runs retain their exact checked-source guard. |
 | 2026-08-13 | Added the mandatory same-parser approved-version/candidate SQLite comparison. Approval now requires equal schemas and explained output differences; automatic LOR Revision increments are retained as informational evidence rather than treated as content changes. Candidate folders changed after XML review are rejected as stale. |
 | 2026-08-13 | Added the LOR version-of-record, complete XML compatibility gate, validated parser controls, and Windows/G-drive runner boundary. PostgreSQL ingest remains a separate manual approval step and requires the reviewed SQLite SHA-256. |
 | 2026-08-06 | Browser V0.4.3 opens the newly published run's immutable `report_url`, with the archive index only as a fallback. Backend V0.3.3 returns that URL after publication. Report framework V0.4.2 displays the authenticated Cloudflare email as the operator. Directus person resolution and role-based authorization remain a future enhancement. |
@@ -95,7 +96,9 @@ The workflow is intentionally gated:
 3. If the check fails, review the recorded parser modifications required and
    update the parser.
 4. Build the approved-version comparison baseline in isolated `VERSION_CHECK`
-   mode. The approved folder must still match its retained XML manifest.
+   mode. Routine authoring changes in the approved folder are allowed only
+   when the live XML remains structurally compatible with its retained
+   approved manifest; parser-breaking contract changes are rejected.
 5. Run the candidate parser into a separate `VERSION_CHECK` SQLite file. The
    runner verifies that the candidate folder still matches the just-reviewed
    XML manifest, then compares both SQLite schemas and authoritative content.
@@ -121,15 +124,16 @@ parser table-count interpretation.
 restricted Windows host/service account with the Shared Drive mounted as `G:`.
 It listens on the internal interface only and requires a bearer token shared
 with the Linux API. Configure its environment from
-`lor-operator-runner.env.example`, initialize the 6.6.4 approved state once,
-and then run its `serve` command.
+`lor-operator-runner.env.example`. Production already has an approved 6.6.10
+state and must retain it. Use `init` only on a new installation that has no
+state file; never initialize over approval history. Then run `serve`.
 
 ```powershell
 python lor_operator_runner.py init `
   --state-file "G:\Shared drives\MSB Database\LOR Version Reviews\runner-state.json" `
-  --current-lor-version 6.6.4 `
-  --current-preview-folder "G:\Shared drives\MSB Database\Database Previews V6.6.4" `
-  --deep-preview "2026 Master Musical Preview v6.6 2026-07-30.lorprev"
+  --current-lor-version 6.6.10 `
+  --current-preview-folder "G:\Shared drives\MSB Database\Database Previews V6.6.10" `
+  --deep-preview "2026 Master Musical Preview v6.6.10 2026-08-11.lorprev"
 
 python lor_operator_runner.py serve `
   --state-file "G:\Shared drives\MSB Database\LOR Version Reviews\runner-state.json" `
@@ -202,8 +206,17 @@ Body:
 
 The backend verifies the authenticated operator, run status, run/group
 relationship, allowed action, and optimistic `expected_action_id`; then calls
-`ops.f_record_lor_reconciliation_action`. It returns the complete refreshed run
-document as `{ "run": { ... } }`.
+the appropriate protected recorder. Display/scene decisions use
+`ops.f_record_lor_reconciliation_action`; evidence-gated stage decisions use
+`ops.f_record_lor_stage_authority_action`, and the existing multi-preview
+preservation choice uses its dedicated stage recorder. It returns the complete
+refreshed run document as `{ "run": { ... } }`.
+
+Stage candidates include the complete frozen `members` array and the browser
+renders every member. `APPROVE_STAGE_CHANGE` appears only when all members
+resolve to one permanent `stage_id` and agree on the proposed metadata.
+`ADD_NEW_STAGE` appears only when one authoritative source defines one new
+stage key/name/folder/order. Contradictory groups expose neither action.
 
 ### `POST api/runs/{run_id}/decisions/bulk`
 
@@ -215,7 +228,10 @@ allow the selected action. Reassociation cannot use this endpoint.
 
 Requires a nonblank reason and a second browser confirmation. The backend calls
 `ops.p_cancel_lor_reconciliation`, publishes the cancellation report, and never
-runs Finish.
+runs Finish. Its response includes the immutable cancellation `report_url`,
+snapshot-removal proof, and `production_changed: false`. The browser replaces
+the editable page with a terminal **Reconciliation cancelled** screen and an
+explicit **Safe to close browser: YES** result.
 
 ### `POST api/runs/{run_id}/finish`
 
@@ -228,6 +244,13 @@ If production promotion commits but report publication fails, the run remains
 `REPORTING`. The landing page must present **Continue previous reconciliation**;
 the run page presents **Retry report publication**. Repeating Finish does not
 repeat P1-P4; it retries only publication.
+
+### `POST api/runs/{run_id}/report`
+
+Retries report publication only for a run in `REPORTING`. This endpoint never
+repeats Cancel, Finish, or P1-P4 and returns the run's actual terminal status
+plus immutable `report_url`. It is used for both completed production updates
+and cancellations whose initial report publication failed.
 
 ## Deployment boundary
 
@@ -246,6 +269,36 @@ report publication function used by the existing publisher. It must not receive
 direct write privileges on `ref`, `lor_snap`, or the reconciliation tables.
 After creating the login separately with a secured password, apply
 `grant_lor_preflight_app.sql` to install this exact grant set.
+
+## V0.5.0 combined deployment order
+
+This release intentionally deploys the reconciliation corrections and the
+already-implemented Version Check / Run Parser controls as one acceptance
+unit. Do not deploy only the static page or only `backend.py`.
+
+1. Back up the current application files and record their hashes.
+2. Apply
+   `0032_add_safe_stage_authority_and_terminal_cancel.sql`, then run
+   `27_safe_stage_authority_and_cancel_terminal_validation.sql`.
+3. Reapply `grant_lor_preflight_app.sql` V0.3.0 so the restricted API role can
+   invoke only the two stage decision recorders in addition to its existing
+   entry points.
+4. On the approved Windows host, deploy the canonical parser directory,
+   including runner V1.2.0, version checker, parser V7.0.10, and tests. Retain
+   the existing `runner-state.json` whose current approved LOR is 6.6.10; do
+   not initialize over it. Configure and start the internal runner on port
+   8791, which must remain inaccessible from the public web.
+5. On `msb-prod-db`, deploy backend V0.5.0 and report publisher V0.5.0 together,
+   add `LOR_RUNNER_URL` and the matching `LOR_RUNNER_TOKEN` to the protected
+   environment file, and restart `lor-preflight-api.service`.
+6. Publish `landing/` plus the `preflight` HTML/CSS/JavaScript files to the NAS
+   web path.
+7. Verify the Linux `/health` response, Windows runner health, dashboard runner
+   status, cancellation terminal flow, archive Outcome column, and a no-write
+   stage decision review before production use.
+
+PostgreSQL ingest remains password-protected, digest-locked, and manual. This
+deployment does not add a browser ingest endpoint.
 
 ## Production deployment and acceptance record — 2026-08-05 through 2026-08-06
 
@@ -346,7 +399,7 @@ sudo -u lor-preflight test -r /opt/lor-preflight/publish_lor_reconciliation_repo
 curl -s http://192.168.5.9:8784/health
 ```
 
-The health response must report `V0.3.3`. Retrying Finish for a run already in
+The V0.5.0 health response must report `V0.5.0`. Retrying Finish for a run already in
 `REPORTING` does not execute P1-P4 again; it retries report publication only.
 
 The successful final mount showed the NAS `web` share at `/mnt/msb-web`,

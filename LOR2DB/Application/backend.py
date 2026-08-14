@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-13  V0.4.0
+Current Version : 2026-08-14  V0.5.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,9 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-14  GAL / OpenAI  V0.5.0
+        Added explicit safe stage authority decisions, complete stage-group
+        evidence, and a terminal cancellation response with its report URL.
     2026-08-13  GAL / OpenAI  V0.4.0
         Added authenticated proxy endpoints for the Windows-side LOR version
         checker/parser runner. The Linux API never accepts filesystem or
@@ -66,8 +69,12 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.4.0"
+APP_VERSION = "V0.5.0"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
+STAGE_AUTHORITY_ACTIONS = {
+    "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
+    "PRESERVE_EXISTING_STAGE_METADATA",
+}
 ACCEPTED_RUN_STATES = {"AWAITING_DECISIONS", "READY_TO_FINISH"}
 ENTITY_VIEWS = {
     "DISPLAY": "ops.v_lor_reconciliation_operator_display_review",
@@ -199,7 +206,8 @@ def load_run(conn: Any, run_id: int) -> dict[str, Any]:
         run = fetch_one(cur, """
             SELECT lor_reconciliation_run_id, import_run_id, status,
                    validation_state, unresolved_count, deferred_count,
-                   blocked_count
+                   blocked_count, completed_at, report_url, report_published_at,
+                   cancelled_at, cancellation_reason
             FROM ops.lor_reconciliation_run
             WHERE lor_reconciliation_run_id = %s
         """, (run_id,))
@@ -235,7 +243,11 @@ def load_run(conn: Any, run_id: int) -> dict[str, Any]:
             "entity_type": group["entity_type"],
             "entity_key": group["logical_group_key"],
             "classification_label": human_label(first.get("classification_code") or group.get("group_kind")),
-            "operator_message": first.get("operator_message") or group.get("operator_message") or "Operator decision required.",
+            "operator_message": (
+                group.get("operator_message")
+                if group["entity_type"] == "STAGE"
+                else first.get("operator_message")
+            ) or group.get("operator_message") or "Operator decision required.",
             "allowed_actions": actions,
             "proposed_action": proposed_action(actions),
             "effective_action_id": group.get("effective_action_id"),
@@ -256,9 +268,18 @@ def load_run(conn: Any, run_id: int) -> dict[str, Any]:
         "unresolved_count": run["unresolved_count"],
         "deferred_count": run["deferred_count"],
         "blocked_count": run["blocked_count"],
+        "completed_at": run.get("completed_at"),
+        "report_url": run.get("report_url"),
+        "report_published_at": run.get("report_published_at"),
+        "cancelled_at": run.get("cancelled_at"),
+        "cancellation_reason": run.get("cancellation_reason"),
         "candidates": candidates,
         "operator": operator_email(),
     }
+    if run["status"] == "CANCELLED":
+        document["snapshot_removed"] = True
+        document["production_changed"] = False
+        document["safe_to_close"] = True
     document["decision_version"] = decision_version(groups)
     return document
 
@@ -436,7 +457,7 @@ def publish_report(run_id: int) -> None:
     )
     if completed.returncode:
         detail = (completed.stderr or completed.stdout).strip()
-        raise ApiError(f"Production update committed, but report publication failed: {detail}", 500)
+        raise ApiError(f"Database lifecycle completed, but report publication failed: {detail}", 500)
 
 
 @app.errorhandler(ApiError)
@@ -573,15 +594,15 @@ def record_decision(run_id: int, group_id: int) -> Response:
     with database() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT g.allowed_action_types,
+                SELECT gr.allowed_action_types, gr.entity_type,
                        (SELECT a.lor_reconciliation_action_id
                         FROM ops.lor_reconciliation_action AS a
-                        WHERE a.lor_reconciliation_group_id = g.lor_reconciliation_group_id
+                        WHERE a.lor_reconciliation_group_id = gr.lor_reconciliation_group_id
                         ORDER BY a.acted_at DESC, a.lor_reconciliation_action_id DESC
                         LIMIT 1) AS effective_action_id
-                FROM ops.lor_reconciliation_group AS g
-                WHERE g.lor_reconciliation_run_id = %s
-                  AND g.lor_reconciliation_group_id = %s
+                FROM ops.v_lor_reconciliation_group_review AS gr
+                WHERE gr.lor_reconciliation_run_id = %s
+                  AND gr.lor_reconciliation_group_id = %s
             """, (run_id, group_id))
             group = cur.fetchone()
             if group is None:
@@ -590,10 +611,21 @@ def record_decision(run_id: int, group_id: int) -> Response:
                 raise ApiError("This decision changed after the page loaded; the run has been refreshed", 409)
             if action not in group["allowed_action_types"]:
                 raise ApiError("The selected action is not allowed for this group")
-            cur.execute(
-                "SELECT ops.f_record_lor_reconciliation_action(%s,%s,%s,%s,NULL,%s)",
-                (run_id, group_id, action, reason, f"lor-preflight-api:{operator}"),
-            )
+            if action == "PRESERVE_EXISTING_STAGE_METADATA":
+                cur.execute(
+                    "SELECT ops.f_record_lor_stage_preserve_metadata_action(%s,%s,%s,%s)",
+                    (run_id, group_id, reason, f"lor-preflight-api:{operator}"),
+                )
+            elif group["entity_type"] == "STAGE" and action in STAGE_AUTHORITY_ACTIONS:
+                cur.execute(
+                    "SELECT ops.f_record_lor_stage_authority_action(%s,%s,%s,%s,%s)",
+                    (run_id, group_id, action, reason, f"lor-preflight-api:{operator}"),
+                )
+            else:
+                cur.execute(
+                    "SELECT ops.f_record_lor_reconciliation_action(%s,%s,%s,%s,NULL,%s)",
+                    (run_id, group_id, action, reason, f"lor-preflight-api:{operator}"),
+                )
         conn.commit()
         return jsonify(run=load_run(conn, run_id))
 
@@ -646,7 +678,19 @@ def cancel_run(run_id: int) -> Response:
                         (run_id, reason, f"lor-preflight-api:{operator}"))
         conn.commit()
     publish_report(run_id)
-    return jsonify(run_id=run_id, status="CANCELLED")
+    with database() as conn:
+        cancelled = load_run(conn, run_id)
+    return jsonify(
+        run_id=run_id,
+        status="CANCELLED",
+        report_url=cancelled["report_url"],
+        cancelled_at=cancelled["cancelled_at"],
+        completed_at=cancelled["completed_at"],
+        cancellation_reason=cancelled["cancellation_reason"],
+        snapshot_removed=True,
+        production_changed=False,
+        safe_to_close=True,
+    )
 
 
 @app.post("/runs/<int:run_id>/finish")
@@ -673,7 +717,25 @@ def finish_run(run_id: int) -> Response:
         completed = load_run(conn, run_id)
     return jsonify(
         run_id=run_id,
-        status="COMPLETED",
+        status=completed["status"],
+        report_url=completed["report_url"],
+    )
+
+
+@app.post("/runs/<int:run_id>/report")
+def retry_run_report(run_id: int) -> Response:
+    """Retry publication only; never rerun Cancel, Finish, or P1-P4."""
+    operator_email()
+    with database() as conn:
+        document = load_run(conn, run_id)
+    if document["status"] != "REPORTING":
+        raise ApiError("The run is not waiting for report publication", 409)
+    publish_report(run_id)
+    with database() as conn:
+        completed = load_run(conn, run_id)
+    return jsonify(
+        run_id=run_id,
+        status=completed["status"],
         report_url=completed["report_url"],
     )
 

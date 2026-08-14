@@ -140,6 +140,37 @@ class OperatorRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "changed after its XML check"):
             self.runner.run_parser("candidate", "operator@example.com")
 
+    @patch("lor_operator_runner.subprocess.run")
+    def test_current_parser_allows_compatible_preview_edits(self, run) -> None:
+        """Approved-version authoring changes must not make Run Parser stale."""
+        (self.current / "test.lorprev").write_text(
+            PREVIEW_XML.replace('Name="Stage 01"', 'Name="Stage 01 revised"'),
+            encoding="utf-8",
+        )
+
+        def complete(command, **_kwargs):
+            result_path = Path(command[command.index("--result-json") + 1])
+            result_path.parent.mkdir(parents=True, exist_ok=True)
+            result_path.write_text(json.dumps({
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+                "source_lor_version": "6.6.4",
+                "sqlite_sha256": "a" * 64,
+            }), encoding="utf-8")
+            return argparse.Namespace(returncode=0, stdout="", stderr="")
+
+        run.side_effect = complete
+        result = self.runner.run_parser("current", "operator@example.com")
+        self.assertEqual(result["status"], "COMPLETE")
+
+    def test_current_parser_blocks_new_xml_contract(self) -> None:
+        (self.current / "test.lorprev").write_text(
+            PREVIEW_XML.replace("</PreviewClass>", '<UnknownField value="1" /></PreviewClass>'),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "parser-breaking XML changes"):
+            self.runner.run_parser("current", "operator@example.com")
+
 
 class ParserOutputComparisonTests(unittest.TestCase):
     def setUp(self) -> None:

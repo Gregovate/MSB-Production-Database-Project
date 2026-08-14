@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-06 V0.4.3
+ * Current version: 2026-08-14 V0.5.0
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -58,6 +58,9 @@
       SET_RETIRED: `Mark ${current} as RETIRED`,
       RESTORE_TO_LOR_REQUIRED: "LOR source needs correction — leave production unchanged",
       CORRECT_SOURCE_REQUIRED: "Source information is incorrect — leave production unchanged",
+      APPROVE_STAGE_CHANGE: "Approve this source StageID change and preserve its permanent Stage ID",
+      ADD_NEW_STAGE: "Add this source stage as a new permanent stage",
+      PRESERVE_EXISTING_STAGE_METADATA: "Approve all bindings and preserve the existing permanent stage metadata",
       DEFER: "Defer — leave production unchanged for this run"
     };
     if (labels[action]) return labels[action];
@@ -66,6 +69,22 @@
 
   function displayName(candidate) {
     return candidate.current_display_name || candidate.proposed_display_name || candidate.entity_key;
+  }
+
+  function stageMemberEvidence(candidate) {
+    if (candidate.entity_type !== "STAGE" || !candidate.members?.length) return "";
+    const rows = candidate.members.map((member) => `<tr>
+      <td>${esc(member.binding_type)}</td>
+      <td>${esc(member.source_name || "Unnamed")}</td>
+      <td>${esc(member.source_stage_key || "—")}</td>
+      <td>${esc(member.current_stage_key || "—")}</td>
+      <td>${esc(member.proposed_stage_name || "—")}</td>
+      <td>${esc(member.classification_code || "—")}</td>
+    </tr>`).join("");
+    return `<details class="member-evidence" open>
+      <summary>Complete stage evidence (${candidate.members.length} member${candidate.members.length === 1 ? "" : "s"})</summary>
+      <div class="table-scroll"><table><thead><tr><th>Binding</th><th>Source name</th><th>Source StageID</th><th>Current key</th><th>Proposed stage name</th><th>Finding</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </details>`;
   }
 
   function openPublishedReport(result) {
@@ -90,6 +109,7 @@
           <div class="title"><h3>${esc(displayName(candidate))}</h3><span class="badge">${esc(candidate.classification_label)}</span></div>
           <div>${esc(candidate.operator_message)}</div>
           <div class="facts">${facts}</div>
+          ${stageMemberEvidence(candidate)}
         </div>
       </div>
       <div class="decision-panel">
@@ -109,7 +129,7 @@
     const complete = model.candidates.filter((candidate) => candidate.effective_action_type).length;
     const remaining = model.candidates.length - complete;
     const bulkActions = [...new Set(model.candidates.flatMap((candidate) => candidate.allowed_actions))]
-      .filter((action) => action !== "REASSOCIATE_DISPLAY");
+      .filter((action) => !["REASSOCIATE_DISPLAY", "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE", "PRESERVE_EXISTING_STAGE_METADATA"].includes(action));
     app.innerHTML = `<div class="card">
       <header class="header">
         <div><h1>Preflight review</h1><div class="meta"><span>Reconciliation run ${model.run_id}</span><span>Captured ingest ${model.import_run_id}</span><span class="badge">${model.candidates.length} decisions required</span></div></div>
@@ -193,8 +213,24 @@
     dialogConfirm.onclick = async (event) => {
       event.preventDefault();
       if (!dialogReason.value.trim()) return;
-      try { await request(`api/runs/${model.run_id}/cancel`, { method: "POST", body: JSON.stringify({ reason: dialogReason.value.trim() }) }); location.reload(); }
-      catch (failure) { dialogBody.textContent = failure.message; }
+      try {
+        const result = await request(`api/runs/${model.run_id}/cancel`, {
+          method: "POST", body: JSON.stringify({ reason: dialogReason.value.trim() })
+        });
+        dialog.close();
+        model = result;
+        renderTerminal();
+      }
+      catch (failure) {
+        if (failure.message.includes("report publication failed:")) {
+          model.status = "REPORTING";
+          model.cancellation_report_pending = true;
+          dialog.close();
+          renderReportingRetry(failure.message);
+          return;
+        }
+        dialogBody.textContent = failure.message;
+      }
     };
     dialog.showModal();
   }
@@ -221,7 +257,7 @@
         openPublishedReport(result);
       }
       catch (failure) {
-        if (failure.message.startsWith("Production update committed, but report publication failed:")) {
+        if (failure.message.includes("report publication failed:")) {
           model.status = "REPORTING";
           dialog.close();
           renderReportingRetry(failure.message);
@@ -233,14 +269,16 @@
     dialog.showModal();
   }
 
-  function renderReportingRetry(detail = "Production changes are committed, but the report has not been published.") {
-    app.innerHTML = `<div class="card"><h1>Report publication required</h1><p>Reconciliation run ${model.run_id} is in <strong>REPORTING</strong>. Production changes are already committed. P1–P4 will not run again.</p><p class="error">${esc(detail)}</p><div class="footer-actions"><button id="retry-report" class="primary">Retry report publication</button></div></div>`;
+  function renderReportingRetry(detail = "The database lifecycle completed, but the report has not been published.") {
+    const lifecycle = model.cancellation_report_pending || model.cancelled_at
+      ? "Cancellation is committed: the captured snapshot was removed and production was unchanged."
+      : "Production changes are already committed.";
+    app.innerHTML = `<div class="card"><h1>Report publication required</h1><p>Reconciliation run ${model.run_id} is in <strong>REPORTING</strong>. ${esc(lifecycle)} Cancel, Finish, and P1–P4 will not run again.</p><p class="error">${esc(detail)}</p><div class="footer-actions"><button id="retry-report" class="primary">Retry report publication</button></div></div>`;
     document.querySelector("#retry-report").addEventListener("click", async (event) => {
       event.currentTarget.disabled = true;
       try {
-        const result = await request(`api/runs/${model.run_id}/finish`, {
-          method: "POST",
-          body: JSON.stringify({ expected_decision_version: model.decision_version })
+        const result = await request(`api/runs/${model.run_id}/report`, {
+          method: "POST", body: "{}"
         });
         openPublishedReport(result);
       } catch (failure) {
@@ -249,10 +287,33 @@
     });
   }
 
+  function renderTerminal() {
+    const cancelled = model.status === "CANCELLED";
+    const report = model.report_url
+      ? `<a class="primary button-link" href="${esc(model.report_url)}">Open ${cancelled ? "cancellation" : "completed run"} report</a>`
+      : `<a class="button-link" href="../reports/">Open report archive</a>`;
+    app.innerHTML = `<div class="card terminal ${cancelled ? "is-cancelled" : ""}">
+      <p class="eyebrow">Reconciliation run ${esc(model.run_id)}</p>
+      <h1>${cancelled ? "Reconciliation cancelled" : "Reconciliation complete"}</h1>
+      <p>${cancelled
+        ? "The captured ingest snapshot was removed. No production reconciliation changes were committed."
+        : "The reconciliation is closed and its immutable report is available."}</p>
+      ${cancelled && model.cancellation_reason ? `<p><strong>Cancellation reason:</strong> ${esc(model.cancellation_reason)}</p>` : ""}
+      <div class="terminal-proof">
+        <span><strong>Status</strong><br>${esc(model.status)}</span>
+        <span><strong>Closed</strong><br>${esc(model.completed_at || model.cancelled_at || "Recorded")}</span>
+        <span><strong>Production changed</strong><br>${model.production_changed === false ? "NO" : "See report"}</span>
+        <span><strong>Safe to close browser</strong><br>YES</span>
+      </div>
+      <div class="footer-actions">${report}<a class="button-link" href="../">Return to LOR2DB</a></div>
+    </div>`;
+  }
+
   async function load() {
     if (!runId || !/^\d+$/.test(runId)) throw new Error("Open the page with a numeric reconciliation run, for example ?run=4.");
     model = await request(`api/runs/${runId}`);
     if (model.status === "REPORTING") renderReportingRetry();
+    else if (["CANCELLED", "COMPLETED", "COMPLETED_WITH_EXCEPTIONS"].includes(model.status)) renderTerminal();
     else renderReview();
   }
 
