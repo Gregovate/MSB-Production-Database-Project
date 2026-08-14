@@ -198,6 +198,22 @@ class BackendSafetyTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_parser_run_forwards_restricted_baseline_target(self) -> None:
+        with patch.object(backend, "runner_request", return_value={"ok": True}) as runner:
+            response = backend.app.test_client().post(
+                "/parser/run",
+                json={"target": "baseline"},
+                headers={
+                    "Cf-Access-Authenticated-User-Email": "greg@sheboyganlights.org"
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        runner.assert_called_once_with(
+            "parser/run",
+            {"target": "baseline", "actor": "greg@sheboyganlights.org"},
+            timeout=920,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

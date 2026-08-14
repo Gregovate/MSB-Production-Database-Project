@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -71,8 +72,19 @@ class OperatorRunnerTests(unittest.TestCase):
             state["candidate_parser_run"] = {
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
-                "parser_version": "V7.0.8",
+                "parser_version": "V7.0.10",
+                "source_lor_version": "6.6.10",
                 "sqlite_sha256": "a" * 64,
+            }
+            state["baseline_parser_run"] = {
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+                "source_lor_version": "6.6.4",
+                "sqlite_sha256": "b" * 64,
+            }
+            state["candidate_output_comparison"] = {
+                "status": "PASSED",
+                "report_json": str(self.root / "reports" / "output-comparison.json"),
             }
 
         self.store.update(prepare)
@@ -85,7 +97,127 @@ class OperatorRunnerTests(unittest.TestCase):
             candidate_manifest["manifest_sha256"],
         )
         self.assertEqual(len(state["approval_history"]), 1)
-        self.assertEqual(state["last_approval"]["parser_version"], "V7.0.8")
+        self.assertEqual(state["last_approval"]["parser_version"], "V7.0.10")
+        self.assertEqual(state["last_approval"]["baseline_sqlite_sha256"], "b" * 64)
+        self.assertEqual(state["baseline_parser_run"]["source_lor_version"], "6.6.10")
+
+    def test_approval_requires_output_comparison(self) -> None:
+        self.runner.select_candidate("6.6.10", "operator@example.com")
+
+        def prepare(state):
+            state["candidate_check"] = {"status": "PASSED"}
+            state["baseline_parser_run"] = {
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+            }
+            state["candidate_parser_run"] = {
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+            }
+
+        self.store.update(prepare)
+        with self.assertRaisesRegex(ValueError, "output differences"):
+            self.runner.approve_candidate("6.6.10", "operator@example.com")
+
+    def test_changed_candidate_folder_invalidates_checked_manifest(self) -> None:
+        self.runner.select_candidate("6.6.10", "operator@example.com")
+        manifest = build_manifest(self.candidate, "6.6.10", "test.lorprev")
+        manifest_path = self.root / "reports" / "candidate-manifest.json"
+        write_json(manifest_path, manifest)
+
+        def prepare(state):
+            state["candidate_check"] = {
+                "status": "PASSED",
+                "candidate_manifest_path": str(manifest_path),
+            }
+
+        self.store.update(prepare)
+        (self.candidate / "test.lorprev").write_text(
+            PREVIEW_XML.replace('Name="Stage 01"', 'Name="Stage 01 changed"'),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "changed after its XML check"):
+            self.runner.run_parser("candidate", "operator@example.com")
+
+
+class ParserOutputComparisonTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.baseline = self.root / "baseline.db"
+        self.candidate = self.root / "candidate.db"
+        self._create_database(self.baseline, revision="1", name="Master 6.6.4", source="old.lorprev")
+        self._create_database(self.candidate, revision="2", name="Master 6.6.10", source="new.lorprev")
+
+    def _create_database(self, path: Path, revision: str, name: str, source: str) -> None:
+        with sqlite3.connect(path) as connection:
+            connection.execute(
+                "CREATE TABLE previews (IntPreviewID INTEGER PRIMARY KEY, id TEXT UNIQUE, "
+                "StageID TEXT, Name TEXT, Revision TEXT, Brightness REAL, "
+                "BackgroundFile TEXT, SourceFilename TEXT)"
+            )
+            connection.execute(
+                "INSERT INTO previews VALUES (1, 'preview-id', '01', ?, ?, 100.0, 'background.jpg', ?)",
+                (name, revision, source),
+            )
+            connection.execute(
+                "CREATE TABLE parser_run (ParserVersion TEXT, RunMode TEXT, ValidationStatus TEXT)"
+            )
+            connection.execute(
+                "INSERT INTO parser_run VALUES ('V7.0.10', 'VERSION_CHECK', 'PASSED')"
+            )
+            for table in runner_module.AUTHORITATIVE_OUTPUT_TABLES:
+                if table == "props":
+                    connection.execute(
+                        'CREATE TABLE props (IntPropID INTEGER PRIMARY KEY, '
+                        'Value TEXT, IndividualChannels TEXT)'
+                    )
+                    connection.execute('INSERT INTO props VALUES (1, "same", "True")')
+                else:
+                    connection.execute(
+                        f'CREATE TABLE "{table}" (IntRowID INTEGER PRIMARY KEY, Value TEXT)'
+                    )
+                    connection.execute(f'INSERT INTO "{table}" VALUES (1, "same")')
+            connection.execute("CREATE VIEW props_review_vw AS SELECT Value FROM props")
+
+    def compare(self) -> dict:
+        return runner_module.compare_parser_outputs(
+            self.baseline,
+            self.candidate,
+            "6.6.4",
+            "6.6.10",
+            self.root / "comparison.json",
+            self.root / "comparison.md",
+        )
+
+    def test_revision_is_informational_and_name_file_changes_require_review(self) -> None:
+        report = self.compare()
+        self.assertEqual(report["status"], "REVIEW_REQUIRED")
+        self.assertEqual(report["blocking_count"], 0)
+        self.assertEqual(report["review_count"], 2)
+        self.assertEqual(report["information_count"], 1)
+        self.assertEqual(report["preview_metadata_change_counts"]["Revision"], 1)
+        for table in runner_module.AUTHORITATIVE_OUTPUT_TABLES:
+            self.assertEqual(report["tables"][table]["baseline_only"], 0)
+            self.assertEqual(report["tables"][table]["candidate_only"], 0)
+
+    def test_authoritative_content_difference_is_blocking(self) -> None:
+        with sqlite3.connect(self.candidate) as connection:
+            connection.execute('UPDATE props SET Value = "changed"')
+        report = self.compare()
+        self.assertEqual(report["status"], "BLOCKED")
+        self.assertEqual(report["blocking_count"], 1)
+        self.assertEqual(report["tables"]["props"]["baseline_only"], 1)
+        self.assertEqual(report["tables"]["props"]["candidate_only"], 1)
+
+    def test_individual_channels_is_not_mistaken_for_surrogate_integer_key(self) -> None:
+        with sqlite3.connect(self.candidate) as connection:
+            connection.execute('UPDATE props SET IndividualChannels = "False"')
+        report = self.compare()
+        self.assertEqual(report["status"], "BLOCKED")
+        self.assertEqual(report["tables"]["props"]["baseline_only"], 1)
+        self.assertEqual(report["tables"]["props"]["candidate_only"], 1)
 
 
 if __name__ == "__main__":

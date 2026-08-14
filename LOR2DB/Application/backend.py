@@ -500,8 +500,8 @@ def run_parser_compatibility_check() -> Response:
 def run_lor_parser() -> Response:
     operator = operator_email()
     target = str(json_body().get("target") or "").strip().lower()
-    if target not in {"current", "candidate"}:
-        raise ApiError("Parser target must be current or candidate")
+    if target not in {"current", "baseline", "candidate"}:
+        raise ApiError("Parser target must be current, baseline, or candidate")
     return jsonify(runner_request(
         "parser/run", {"target": target, "actor": operator}, timeout=920
     ))

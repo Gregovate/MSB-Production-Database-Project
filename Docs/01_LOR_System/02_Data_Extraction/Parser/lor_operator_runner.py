@@ -10,10 +10,12 @@ callers cannot submit arbitrary executable or output paths.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hmac
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -24,10 +26,26 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from lor_version_checker import build_manifest, write_json
+from lor_version_checker import build_manifest, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.0.0"
+RUNNER_VERSION = "V1.1.0"
+
+AUTHORITATIVE_OUTPUT_TABLES = (
+    "props",
+    "subProps",
+    "dmxChannels",
+    "scenes",
+    "scene_lor_props",
+)
+PREVIEW_METADATA_FIELDS = (
+    "StageID",
+    "Name",
+    "Revision",
+    "Brightness",
+    "BackgroundFile",
+    "SourceFilename",
+)
 
 
 def required_environment(name: str) -> str:
@@ -47,6 +65,298 @@ def path_within(path: Path, root: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _table_contract(connection: sqlite3.Connection, table: str) -> list[tuple[Any, ...]]:
+    return [
+        (row[1], row[2], row[3], row[4], row[5])
+        for row in connection.execute(f'PRAGMA table_info("{table}")')
+    ]
+
+
+def _content_columns(contract: list[tuple[Any, ...]]) -> list[str]:
+    # Exclude only disposable integer primary keys. A prefix-only test would
+    # incorrectly omit authoritative fields such as IndividualChannels.
+    return [
+        str(row[0])
+        for row in contract
+        if not (
+            str(row[0]).startswith("Int")
+            and str(row[1]).upper() == "INTEGER"
+            and int(row[4]) > 0
+        )
+    ]
+
+
+def _quoted(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _rows(
+    connection: sqlite3.Connection,
+    table: str,
+    columns: list[str],
+) -> Counter[tuple[Any, ...]]:
+    selected = ", ".join(_quoted(column) for column in columns)
+    return Counter(connection.execute(f'SELECT {selected} FROM {_quoted(table)}').fetchall())
+
+
+def _write_output_comparison_markdown(path: Path, report: dict[str, Any]) -> None:
+    lines = [
+        "# LOR Parser Output Comparison",
+        "",
+        f"- Current LOR version: {report['current_lor_version']}",
+        f"- New LOR version: {report['new_lor_version']}",
+        f"- Status: **{report['status']}**",
+        f"- Approval blocked: **{'YES' if report['approval_blocked'] else 'NO'}**",
+        f"- Blocking findings: {report['blocking_count']}",
+        f"- Review findings: {report['review_count']}",
+        f"- Informational findings: {report['information_count']}",
+        f"- Parser version: {report['parser_contract']['baseline_version']}",
+        f"- View contracts equal: **{'YES' if report['view_contract']['contracts_equal'] else 'NO'}**",
+        "",
+        "## Authoritative table comparison",
+        "",
+        "| Table | Baseline only | Candidate only | Schema equal |",
+        "|---|---:|---:|---|",
+    ]
+    for table, detail in report["tables"].items():
+        lines.append(
+            f"| {table} | {detail['baseline_only']} | {detail['candidate_only']} | "
+            f"{'YES' if detail['schema_equal'] else 'NO'} |"
+        )
+    lines.extend([
+        "",
+        "## Preview metadata changes",
+        "",
+        "| Field | Changed previews |",
+        "|---|---:|",
+    ])
+    for field, count in report["preview_metadata_change_counts"].items():
+        lines.append(f"| {field} | {count} |")
+    lines.extend([
+        "",
+        "## Findings",
+        "",
+        "| Severity | Area | Finding |",
+        "|---|---|---|",
+    ])
+    if report["findings"]:
+        for finding in report["findings"]:
+            message = str(finding["message"]).replace("|", "\\|")
+            lines.append(f"| {finding['severity']} | {finding['area']} | {message} |")
+    else:
+        lines.append("| — | — | No differences found. |")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def compare_parser_outputs(
+    baseline_db: Path,
+    candidate_db: Path,
+    current_lor_version: str,
+    new_lor_version: str,
+    report_json: Path,
+    report_markdown: Path,
+) -> dict[str, Any]:
+    """Compare same-parser SQLite outputs and fail closed on unexplained content."""
+    for label, path in (("Baseline", baseline_db), ("Candidate", candidate_db)):
+        if not path.is_file():
+            raise ValueError(f"{label} parser database does not exist: {path}")
+
+    baseline = sqlite3.connect(baseline_db)
+    candidate = sqlite3.connect(candidate_db)
+    try:
+        findings: list[dict[str, str]] = []
+        tables: dict[str, dict[str, Any]] = {}
+        for table in ("previews", *AUTHORITATIVE_OUTPUT_TABLES):
+            baseline_contract = _table_contract(baseline, table)
+            candidate_contract = _table_contract(candidate, table)
+            schema_equal = bool(baseline_contract) and baseline_contract == candidate_contract
+            if not schema_equal:
+                findings.append({
+                    "severity": "BLOCKING",
+                    "area": f"{table} schema",
+                    "message": "Baseline and candidate SQLite table contracts differ.",
+                })
+            columns = _content_columns(baseline_contract)
+            if not columns or not schema_equal:
+                baseline_only = candidate_only = 0
+            else:
+                baseline_rows = _rows(baseline, table, columns)
+                candidate_rows = _rows(candidate, table, columns)
+                baseline_only = sum((baseline_rows - candidate_rows).values())
+                candidate_only = sum((candidate_rows - baseline_rows).values())
+            tables[table] = {
+                "schema_equal": schema_equal,
+                "baseline_only": baseline_only,
+                "candidate_only": candidate_only,
+            }
+            if table != "previews" and (baseline_only or candidate_only):
+                findings.append({
+                    "severity": "BLOCKING",
+                    "area": table,
+                    "message": (
+                        f"Authoritative content differs: baseline-only={baseline_only}; "
+                        f"candidate-only={candidate_only}."
+                    ),
+                })
+
+        baseline_parser_contract = _table_contract(baseline, "parser_run")
+        candidate_parser_contract = _table_contract(candidate, "parser_run")
+        if baseline_parser_contract != candidate_parser_contract:
+            findings.append({
+                "severity": "BLOCKING",
+                "area": "parser_run schema",
+                "message": "Baseline and candidate parser provenance contracts differ.",
+            })
+        baseline_parser_rows = baseline.execute(
+            "SELECT ParserVersion, RunMode, ValidationStatus FROM parser_run"
+        ).fetchall()
+        candidate_parser_rows = candidate.execute(
+            "SELECT ParserVersion, RunMode, ValidationStatus FROM parser_run"
+        ).fetchall()
+        baseline_parser_version = baseline_parser_rows[0][0] if len(baseline_parser_rows) == 1 else None
+        candidate_parser_version = candidate_parser_rows[0][0] if len(candidate_parser_rows) == 1 else None
+        if (
+            len(baseline_parser_rows) != 1
+            or len(candidate_parser_rows) != 1
+            or baseline_parser_version != candidate_parser_version
+            or baseline_parser_rows[0][1:] != ("VERSION_CHECK", "PASSED")
+            or candidate_parser_rows[0][1:] != ("VERSION_CHECK", "PASSED")
+        ):
+            findings.append({
+                "severity": "BLOCKING",
+                "area": "parser provenance",
+                "message": "Outputs were not produced by the same passing parser in VERSION_CHECK mode.",
+            })
+
+        baseline_views = {
+            row[0]: row[1]
+            for row in baseline.execute(
+                "SELECT name, sql FROM sqlite_master WHERE type='view' ORDER BY name"
+            )
+        }
+        candidate_views = {
+            row[0]: row[1]
+            for row in candidate.execute(
+                "SELECT name, sql FROM sqlite_master WHERE type='view' ORDER BY name"
+            )
+        }
+        view_names_equal = set(baseline_views) == set(candidate_views)
+        common_views = sorted(set(baseline_views) & set(candidate_views))
+        differing_view_contracts = [
+            name
+            for name in common_views
+            if baseline_views[name] != candidate_views[name]
+            or _table_contract(baseline, name) != _table_contract(candidate, name)
+        ]
+        view_contracts_equal = bool(baseline_views) and view_names_equal and not differing_view_contracts
+        if not view_contracts_equal:
+            findings.append({
+                "severity": "BLOCKING",
+                "area": "SQLite views",
+                "message": (
+                    f"View contracts differ: baseline={len(baseline_views)}; "
+                    f"candidate={len(candidate_views)}; changed={len(differing_view_contracts)}."
+                ),
+            })
+
+        preview_columns = [row[0] for row in _table_contract(baseline, "previews")]
+        if "id" not in preview_columns:
+            raise RuntimeError("previews table does not contain stable id identity")
+        selected = ", ".join(_quoted(column) for column in preview_columns)
+        baseline_previews = {
+            row[preview_columns.index("id")]: dict(zip(preview_columns, row))
+            for row in baseline.execute(f'SELECT {selected} FROM "previews"')
+        }
+        candidate_previews = {
+            row[preview_columns.index("id")]: dict(zip(preview_columns, row))
+            for row in candidate.execute(f'SELECT {selected} FROM "previews"')
+        }
+        missing = sorted(set(baseline_previews) - set(candidate_previews))
+        added = sorted(set(candidate_previews) - set(baseline_previews))
+        if missing or added:
+            findings.append({
+                "severity": "BLOCKING",
+                "area": "preview identity",
+                "message": f"Stable PreviewID sets differ: missing={len(missing)}; added={len(added)}.",
+            })
+
+        changes: list[dict[str, Any]] = []
+        change_counts = {field: 0 for field in PREVIEW_METADATA_FIELDS}
+        for preview_id in sorted(set(baseline_previews) & set(candidate_previews)):
+            before = baseline_previews[preview_id]
+            after = candidate_previews[preview_id]
+            for field in PREVIEW_METADATA_FIELDS:
+                if before.get(field) == after.get(field):
+                    continue
+                change_counts[field] += 1
+                changes.append({
+                    "preview_id": preview_id,
+                    "preview_name": after.get("Name") or before.get("Name"),
+                    "field": field,
+                    "baseline": before.get(field),
+                    "candidate": after.get(field),
+                })
+
+        revision_count = change_counts["Revision"]
+        if revision_count:
+            findings.append({
+                "severity": "INFO",
+                "area": "preview Revision",
+                "message": (
+                    f"LOR changed Revision metadata for {revision_count} preview(s). "
+                    "Revision is recorded but is not treated as proof of a content change."
+                ),
+            })
+        for field in PREVIEW_METADATA_FIELDS:
+            count = change_counts[field]
+            if not count or field == "Revision":
+                continue
+            findings.append({
+                "severity": "REVIEW",
+                "area": f"preview {field}",
+                "message": f"{field} changed for {count} stable PreviewID row(s); operator resolution is required.",
+            })
+
+        blocking_count = sum(item["severity"] == "BLOCKING" for item in findings)
+        review_count = sum(item["severity"] == "REVIEW" for item in findings)
+        information_count = sum(item["severity"] == "INFO" for item in findings)
+        status = "BLOCKED" if blocking_count else "REVIEW_REQUIRED" if review_count else "PASSED"
+        report = {
+            "current_lor_version": current_lor_version,
+            "new_lor_version": new_lor_version,
+            "status": status,
+            "approval_blocked": status != "PASSED",
+            "blocking_count": blocking_count,
+            "review_count": review_count,
+            "information_count": information_count,
+            "tables": tables,
+            "parser_contract": {
+                "schema_equal": baseline_parser_contract == candidate_parser_contract,
+                "baseline_version": baseline_parser_version,
+                "candidate_version": candidate_parser_version,
+            },
+            "view_contract": {
+                "baseline_count": len(baseline_views),
+                "candidate_count": len(candidate_views),
+                "names_equal": view_names_equal,
+                "contracts_equal": view_contracts_equal,
+                "changed_views": differing_view_contracts,
+            },
+            "preview_metadata_change_counts": change_counts,
+            "preview_metadata_changes": changes,
+            "findings": findings,
+            "report_json": str(report_json),
+            "report_markdown": str(report_markdown),
+        }
+        write_json(report_json, report)
+        _write_output_comparison_markdown(report_markdown, report)
+        return report
+    finally:
+        baseline.close()
+        candidate.close()
 
 
 class StateStore:
@@ -106,7 +416,9 @@ class Runner:
             "new_lor_version": state.get("new_lor_version"),
             "new_preview_folder": state.get("new_preview_folder"),
             "candidate_check": state.get("candidate_check"),
+            "baseline_parser_run": state.get("baseline_parser_run"),
             "candidate_parser_run": state.get("candidate_parser_run"),
+            "candidate_output_comparison": state.get("candidate_output_comparison"),
             "candidate_resolution": state.get("candidate_resolution"),
             "production_parser_run": state.get("production_parser_run"),
             "last_approval": state.get("last_approval"),
@@ -129,6 +441,7 @@ class Runner:
                 "new_preview_folder": str(folder),
                 "candidate_check": None,
                 "candidate_parser_run": None,
+                "candidate_output_comparison": None,
                 "candidate_resolution": None,
                 "candidate_selected_at": utc_now(),
                 "candidate_selected_by": actor,
@@ -176,6 +489,8 @@ class Runner:
             if current.get("new_lor_version") != version:
                 raise RuntimeError("Candidate changed while the compatibility check was running")
             current["candidate_check"] = record
+            current["candidate_parser_run"] = None
+            current["candidate_output_comparison"] = None
             current["candidate_resolution"] = None
 
         self.store.update(operation)
@@ -183,12 +498,29 @@ class Runner:
 
     def run_parser(self, target: str, actor: str) -> dict[str, Any]:
         state = self.store.read()
-        if target == "current":
+        if target in {"current", "baseline"}:
             version = state["current_lor_version"]
             folder = Path(state["current_preview_folder"])
-            db_file = self.production_db
-            run_mode = "PRODUCTION"
+            approved_manifest = json.loads(
+                Path(state["current_manifest_path"]).read_text(encoding="utf-8")
+            )
+            current_manifest = build_manifest(
+                folder,
+                version,
+                approved_manifest.get("deep_preview"),
+                deep_identity=approved_manifest.get("deep_preview_identity"),
+            )
+            if manifest_source_signature(current_manifest) != manifest_source_signature(approved_manifest):
+                raise ValueError(
+                    "The approved preview folder changed after approval; restore it or perform a new compatibility review"
+                )
             compatibility_manifest_sha256 = state["current_manifest_sha256"]
+            if target == "current":
+                db_file = self.production_db
+                run_mode = "PRODUCTION"
+            else:
+                db_file = self.reports_root / f"V{version}" / "parser" / "lor_output_v7_scene.db"
+                run_mode = "VERSION_CHECK"
         elif target == "candidate":
             version = state.get("new_lor_version")
             if not version:
@@ -204,9 +536,19 @@ class Runner:
             candidate_manifest = json.loads(
                 Path(check["candidate_manifest_path"]).read_text(encoding="utf-8")
             )
+            live_manifest = build_manifest(
+                folder,
+                version,
+                candidate_manifest.get("deep_preview"),
+                deep_identity=candidate_manifest.get("deep_preview_identity"),
+            )
+            if manifest_source_signature(live_manifest) != manifest_source_signature(candidate_manifest):
+                raise ValueError(
+                    "The candidate preview folder changed after its XML check; rerun XML compatibility"
+                )
             compatibility_manifest_sha256 = candidate_manifest["manifest_sha256"]
         else:
-            raise ValueError("Parser target must be current or candidate")
+            raise ValueError("Parser target must be current, baseline, or candidate")
         if not folder.is_dir():
             raise ValueError(f"Preview folder does not exist: {folder}")
 
@@ -235,13 +577,50 @@ class Runner:
         }
 
         def operation(current: dict[str, Any]) -> None:
-            expected = current["current_lor_version"] if target == "current" else current.get("new_lor_version")
+            expected = (
+                current["current_lor_version"]
+                if target in {"current", "baseline"}
+                else current.get("new_lor_version")
+            )
             if expected != version:
                 raise RuntimeError("LOR version changed while the parser was running; result was not recorded")
-            key = "production_parser_run" if target == "current" else "candidate_parser_run"
+            if target == "current":
+                key = "production_parser_run"
+            elif target == "baseline":
+                key = "baseline_parser_run"
+                current["candidate_output_comparison"] = None
+                current["candidate_resolution"] = None
+            else:
+                key = "candidate_parser_run"
+                current["candidate_output_comparison"] = None
+                current["candidate_resolution"] = None
             current[key] = record
 
         self.store.update(operation)
+        if target == "candidate":
+            refreshed = self.store.read()
+            baseline_run = refreshed.get("baseline_parser_run") or {}
+            if (
+                baseline_run.get("status") == "COMPLETE"
+                and baseline_run.get("validation_status") == "PASSED"
+                and baseline_run.get("source_lor_version") == refreshed["current_lor_version"]
+            ):
+                comparison_dir = self.reports_root / f"V{version}" / "comparison"
+                comparison = compare_parser_outputs(
+                    Path(baseline_run["sqlite_path"]),
+                    Path(record["sqlite_path"]),
+                    refreshed["current_lor_version"],
+                    version,
+                    comparison_dir / "parser-output-comparison.json",
+                    comparison_dir / "parser-output-comparison.md",
+                )
+
+                def save_comparison(current: dict[str, Any]) -> None:
+                    if current.get("new_lor_version") != version:
+                        raise RuntimeError("Candidate changed while parser outputs were compared")
+                    current["candidate_output_comparison"] = comparison
+
+                self.store.update(save_comparison)
         return record
 
     def resolve_candidate_findings(self, notes: str, actor: str) -> dict[str, Any]:
@@ -250,13 +629,19 @@ class Runner:
             raise ValueError("Engineering resolution notes are required")
         state = self.store.read()
         check = state.get("candidate_check") or {}
+        baseline_run = state.get("baseline_parser_run") or {}
         parser_run = state.get("candidate_parser_run") or {}
-        if check.get("status") == "PASSED":
-            raise ValueError("The compatibility check already passed; no resolution is required")
+        comparison = state.get("candidate_output_comparison") or {}
+        if check.get("status") == "PASSED" and comparison.get("status") == "PASSED":
+            raise ValueError("The compatibility and output checks passed; no resolution is required")
         if not check:
             raise ValueError("Run the compatibility check first")
+        if baseline_run.get("status") != "COMPLETE" or baseline_run.get("validation_status") != "PASSED":
+            raise ValueError("A validated approved-version baseline parser run is required")
         if parser_run.get("status") != "COMPLETE" or parser_run.get("validation_status") != "PASSED":
             raise ValueError("A validated candidate parser run is required before resolving findings")
+        if not comparison:
+            raise ValueError("Run the baseline/candidate SQLite output comparison first")
         resolution = {
             "status": "RESOLVED",
             "resolved_at": utc_now(),
@@ -264,6 +649,8 @@ class Runner:
             "parser_version": parser_run["parser_version"],
             "notes": notes,
             "parser_modifications_required": check.get("parser_modifications_required", []),
+            "xml_status": check.get("status"),
+            "output_comparison_status": comparison.get("status"),
         }
 
         def operation(current: dict[str, Any]) -> None:
@@ -279,13 +666,22 @@ class Runner:
         if version != state.get("new_lor_version"):
             raise ValueError("Approval confirmation does not match the selected new LOR version")
         check = state.get("candidate_check") or {}
+        baseline_run = state.get("baseline_parser_run") or {}
         parser_run = state.get("candidate_parser_run") or {}
+        comparison = state.get("candidate_output_comparison") or {}
         resolution = state.get("candidate_resolution") or {}
         check_accepted = check.get("status") == "PASSED" or resolution.get("status") == "RESOLVED"
+        comparison_accepted = (
+            comparison.get("status") == "PASSED" or resolution.get("status") == "RESOLVED"
+        )
         if not check_accepted:
             raise ValueError("Compatibility findings have not passed or been resolved")
+        if baseline_run.get("status") != "COMPLETE" or baseline_run.get("validation_status") != "PASSED":
+            raise ValueError("Approved-version comparison baseline has not passed")
         if parser_run.get("status") != "COMPLETE" or parser_run.get("validation_status") != "PASSED":
             raise ValueError("Candidate parser run has not passed")
+        if not comparison_accepted:
+            raise ValueError("Parser output differences have not passed or been resolved")
         candidate_manifest = Path(check["candidate_manifest_path"])
         manifest = json.loads(candidate_manifest.read_text(encoding="utf-8"))
         approved_manifest = self.store.path.with_name("current-lor-manifest.json")
@@ -302,7 +698,9 @@ class Runner:
                 "compatibility_report": check["report_json"],
                 "compatibility_manifest_sha256": manifest["manifest_sha256"],
                 "parser_version": parser_run["parser_version"],
+                "baseline_sqlite_sha256": baseline_run["sqlite_sha256"],
                 "candidate_sqlite_sha256": parser_run["sqlite_sha256"],
+                "output_comparison_report": comparison["report_json"],
                 "compatibility_resolution": resolution or None,
             }
             current["last_approval"] = approval
@@ -311,10 +709,14 @@ class Runner:
             current["current_preview_folder"] = current["new_preview_folder"]
             current["current_manifest_path"] = str(approved_manifest)
             current["current_manifest_sha256"] = manifest["manifest_sha256"]
+            current["deep_preview"] = manifest["deep_preview"]
+            current["deep_preview_identity"] = manifest["deep_preview_identity"]
             current["new_lor_version"] = None
             current["new_preview_folder"] = None
             current["candidate_check"] = None
+            current["baseline_parser_run"] = parser_run
             current["candidate_parser_run"] = None
+            current["candidate_output_comparison"] = None
             current["candidate_resolution"] = None
             current["production_parser_run"] = None
 
@@ -417,10 +819,13 @@ def initialize(arguments: argparse.Namespace) -> None:
         "current_manifest_path": str(manifest_path),
         "current_manifest_sha256": manifest["manifest_sha256"],
         "deep_preview": manifest["deep_preview"],
+        "deep_preview_identity": manifest["deep_preview_identity"],
         "new_lor_version": None,
         "new_preview_folder": None,
         "candidate_check": None,
+        "baseline_parser_run": None,
         "candidate_parser_run": None,
+        "candidate_output_comparison": None,
         "candidate_resolution": None,
         "production_parser_run": None,
         "last_approval": None,

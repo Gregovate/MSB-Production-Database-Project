@@ -311,8 +311,10 @@ Do not modify parser code during this phase. First establish the complete impact
 
 Only after the raw XML comparison is documented should the current parser be tested against the copied new-version previews.
 
-Use the website's candidate parser action. It runs with `VERSION_CHECK` mode and
-writes a separate test SQLite database under the candidate evidence folder.
+Use the website to build both the approved-version baseline and candidate with
+the same parser in `VERSION_CHECK` mode. Each writes a separate test SQLite
+database under its versioned evidence folder. The runner rejects either source
+folder if it no longer matches the XML manifest used for the review.
 
 Record:
 
@@ -331,7 +333,8 @@ A successful process exit is not sufficient acceptance evidence.
 
 ## Phase 7 — Compare Parser Outputs
 
-Compare the known-good and new-version SQLite results for equivalent previews.
+The website automatically compares the known-good and new-version SQLite
+results by stable identity after the candidate parser passes.
 
 Review at least:
 
@@ -345,6 +348,13 @@ Review at least:
 - parser-run provenance.
 
 Compare both schema and content.
+
+LOR increments `PreviewClass.Revision` when a preview is opened or saved even
+when no meaningful content changes. Revision-only differences must be retained
+as informational evidence but must not, by themselves, block approval. Name,
+SourceFilename, StageID, Brightness, and BackgroundFile changes require review.
+Any difference in props, subProps, DMX channels, raw Scene rows, or positional
+Scene membership is blocking until its cause and downstream effect are resolved.
 
 Expected differences caused only by the LOR version should be distinguishable from unintended parser differences.
 
@@ -414,10 +424,11 @@ The decision record should identify:
 - validation evidence;
 - final approval.
 
-Approval is permitted only when the candidate parser run is `COMPLETE` with
-`ValidationStatus=PASSED` and either the XML report is `PASSED` or every failed
-finding has a recorded engineering resolution tied to that parser version.
-Unresolved findings remain attached to and block the candidate.
+Approval is permitted only when both approved-version and candidate parser runs
+are `COMPLETE` with `ValidationStatus=PASSED`, the automated SQLite comparison
+exists, and both the XML report and SQLite comparison either pass or have a
+recorded engineering resolution tied to that parser version. Unresolved
+findings remain attached to and block the candidate.
 
 ## Standard ChatGPT Compatibility Review Prompt
 
