@@ -4,10 +4,10 @@
 |---|---|
 | Repository path | `LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md` |
 | Document type | Controlled production procedure |
-| Status | ACTIVE — reconciliation validated; parser runner pending deployment acceptance |
+| Status | ACTIVE — V0.5.0 combined stage/cancellation/parser-runner deployment pending acceptance |
 | Owner / author | GAL |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-13 |
+| Current revision | 2026-08-14 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ The parser and snapshot ingest do **not** update production reference data by th
 
 | Date | Author | Revision |
 |---|---|---|
+| 2026-08-14 | GAL / OpenAI | Recorded the approved LOR 6.6.10 / parser V7.0.10 / digest-locked ingest 47 authority chain and cancelled reconciliation Run 6. Added evidence-gated existing/new stage approval paths, complete stage-group evidence, terminal cancellation confirmation/report/archive outcomes, and the combined Version Check / Run Parser deployment boundary. |
 | 2026-08-13 | GAL / OpenAI | Added the website-accessible V7 parser and complete XML version checker through a restricted Windows/G-drive runner. Added Current/New LOR version management, atomic SQLite publication, required finding resolution, and exact reviewed-SQLite SHA-256 ingest enforcement. Ingest remains separate and manual. |
 | 2026-08-06 | GAL / OpenAI | Recorded completed production reconciliation Run 4, the subsequent `0029` true-no-op correction, application grants V0.2.0, backend V0.3.0, and successful `/lor2db/` deployment validation. Parser and snapshot ingest remain manual until the controlled app-server runner is implemented. |
 | 2026-08-05 | GAL / OpenAI | Implemented the secured preflight backend, restricted operator authorization, persisted-decision endpoints, final-review concurrency check, Cancel, and retry-safe Finish/report publication. Deployment and Run 4 acceptance remain pending. |
@@ -133,23 +134,23 @@ The three documents describe one workflow at different levels and must not defin
 
 | Procedure component | Status |
 |---|---|
-| Master PC and preview-folder controls | Current/New LOR version state and versioned folder checks implemented; Windows runner deployment acceptance pending |
-| `Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py` | V7.0.8 implemented and validated against all 33 current 6.6.4 previews; production deployment pending |
-| `LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1` | V0.4.0 implemented with required reviewed-SQLite SHA-256; migration/deployment pending |
+| Master PC and preview-folder controls | Current approved LOR state is 6.6.10; Current/New versioned-folder controls are implemented; Windows runner V1.2.0 deployment acceptance pending |
+| `Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py` | V7.0.10 production SQLite completed and validated against all 33 current 6.6.10 previews |
+| `LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1` | V0.4.0 and migration `0031` production-applied; digest-locked ingest 47 completed successfully |
 | Latest-ingest capture and frozen preflight | Installed and production validated; manual operation documented in `02_LOR_Manual_Reconciliation_Runbook.md` |
 | Persistent reconciliation-run and display-candidate tables | Installed and live-validated from `reconciliation/0014_create_lor_reconciliation_decision_layer.sql` on 2026-08-02 |
 | Persistent stage candidate and binding tables | Installed from `0015` and rollback-validated by `11`; multi-preview metadata preservation installed from `0016` and rollback-validated by `12` |
 | Persistent scene and scene-membership candidate tables | Installed from `0018` and rollback-validated by `14` |
 | Operator decision database contract | Installed and live-validated for append-only group decisions, atomic reassociation assignments, `DEFER`, and review views; exercised by the application through Run 4 |
-| Operator decision application interface | Implemented, deployed, and production exercised through Run 4 |
-| Finish and cancel workflow actions | Installed from `0019`, rollback-validated by `15`, and Finish production-validated through Run 4; `0026`/`22` counter correction installed and passed |
-| P1 | Installed, rollback-validated, and executed only through controlled Finish |
+| Operator decision application interface | Existing interface deployed and production-exercised through Run 6; V0.5.0 complete stage evidence and safe stage decisions pending combined deployment acceptance |
+| Finish and cancel workflow actions | Installed from `0019`; Finish validated through Run 5 and Cancel production-validated by Run 6. V0.5.0 terminal cancellation confirmation/report/archive UX pending deployment acceptance |
+| P1 | Existing-stage P1 installed and controlled by Finish; migration `0032` evidence-gated stage change/new-stage extension pending installation and validation `27` |
 | P2 | Installed from `0017` and rollback-validated by `13`; legacy procedure remains prohibited |
 | P3/P4 | Installed from `0018` and rollback-validated by `14`; these remain internal engine phases |
 | Controlled manual workflow | Active and documented in `02_LOR_Manual_Reconciliation_Runbook.md` |
 | `/lor2db/` snapshot/reconciliation landing page | Deployed and production validated on 2026-08-06 against snapshot 45 and completed Run 4 |
-| Website parser invocation | Implemented through restricted Windows runner; deployment/acceptance pending. Ingest intentionally remains separate and manual. |
-| Timestamped HTML report publication | Installed and production validated; immutable publication, evaluation copies, and generated report index are implemented |
+| Website parser invocation | Implemented through restricted Windows runner V1.2.0; combined API/static/runner deployment acceptance pending. Ingest intentionally remains separate and manual. |
+| Timestamped HTML report publication | V0.4.2 installed and production validated; V0.5.0 cancelled outcome/banner/action corrections pending combined deployment acceptance |
 | True no-op protection | Migration `0029` V4 installed; validation `25` and the seven-part post-install definition/guard check passed on 2026-08-05 |
 
 ## Production Validation Record — Reconciliation Run 4
@@ -169,6 +170,24 @@ Run 4 is the first completed production exercise of the secured browser workflow
 
 The immutable Run 4 report was generated before migration `0029`. Its **Other Changes** table therefore includes provenance-only P1 stage bindings, P3 scenes, and P4 scene memberships that were evaluated but materially unchanged. Those rows are historical evidence of the defect and must not be interpreted as genuine changes. Migration `0029` V4 subsequently removed ingest IDs as change evidence, installed database no-op guards, passed validation `25`, and passed the post-install check for all four corrected procedures and three guards. The Run 4 report remains immutable; future reports use the corrected behavior.
 
+## Production Cancellation Record — Reconciliation Run 6
+
+Run 6 captured digest-locked ingest 47 from approved LOR 6.6.10 and parser
+V7.0.10. Preflight correctly identified two source display-name errors, one
+stage-key change, and one new stage, but the deployed interface had no safe
+approval paths for the stage items. The operator recorded source correction
+for the two display items and cancelled the run with a reason.
+
+The database cancellation completed: Run 6 is `CANCELLED`, no production
+promotion was committed, captured snapshot 47 was removed, and the current
+database snapshot returned to reconciled import 46 / Run 5. The immutable
+report is `lor-reconciliation-20260814-011807-run-6.html`.
+
+Run 6 exposed two application defects corrected by the V0.5.0 release: the
+browser reloaded the editable preflight instead of showing terminal proof, and
+the archive/report presentation did not clearly label cancellation. It also
+confirmed the need for evidence-gated stage decisions in migration `0032`.
+
 ## Production Application Deployment Record — 2026-08-06
 
 The production application deployment was validated in this order:
@@ -180,7 +199,7 @@ The production application deployment was validated in this order:
    `192.168.5.9:8784`.
 4. `GET /health` returned `{"status":"ok","version":"V0.3.0"}`.
 5. The landing-page files were deployed under `/mnt/msb-web/my/lor2db/`.
-6. `https://lortodb.sheboyganlights.org/lor2db/` displayed snapshot 45 and
+6. `https://my.sheboyganlights.org/lor2db/` displayed snapshot 45 and
    reconciliation Run 4 as reconciled, validation passed, all exception counts
    zero, the Run 4 report and archive links present, and no Start action for an
    already reconciled snapshot.

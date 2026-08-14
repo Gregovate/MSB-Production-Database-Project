@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -29,6 +30,69 @@ class BackendSafetyTests(unittest.TestCase):
         source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
         self.assertIn('result.report_url || "../reports/"', source)
         self.assertEqual(source.count("openPublishedReport(result);"), 2)
+
+    def test_browser_renders_terminal_cancellation_proof(self) -> None:
+        source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
+        self.assertIn("Reconciliation cancelled", source)
+        self.assertIn("captured ingest snapshot was removed", source)
+        self.assertIn("Safe to close browser", source)
+        self.assertNotIn("location.reload();", source)
+
+    def test_browser_exposes_safe_stage_authority_labels_and_full_evidence(self) -> None:
+        source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
+        self.assertIn("APPROVE_STAGE_CHANGE", source)
+        self.assertIn("ADD_NEW_STAGE", source)
+        self.assertIn("Complete stage evidence", source)
+        self.assertIn("candidate.members.map", source)
+
+    def test_cancel_endpoint_returns_terminal_proof_and_report_url(self) -> None:
+        class Cursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def execute(self, *_args):
+                return None
+
+        class Connection:
+            def cursor(self, **_kwargs):
+                return Cursor()
+
+            def commit(self):
+                return None
+
+        @contextmanager
+        def fake_database():
+            yield Connection()
+
+        cancelled = {
+            "report_url": "https://example.test/reports/run-6.html",
+            "cancelled_at": "2026-08-14T01:18:07Z",
+            "completed_at": "2026-08-14T01:18:08Z",
+            "cancellation_reason": "Correct LOR source",
+        }
+        with patch.object(backend, "database", fake_database), \
+             patch.object(backend, "publish_report") as publish, \
+             patch.object(backend, "load_run", return_value=cancelled):
+            response = backend.app.test_client().post(
+                "/runs/6/cancel",
+                json={"reason": "Correct LOR source"},
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["status"], "CANCELLED")
+        self.assertTrue(response.json["snapshot_removed"])
+        self.assertFalse(response.json["production_changed"])
+        self.assertTrue(response.json["safe_to_close"])
+        self.assertEqual(response.json["report_url"], cancelled["report_url"])
+        self.assertEqual(response.json["completed_at"], cancelled["completed_at"])
+        publish.assert_called_once_with(6)
 
     def test_dashboard_marks_completed_snapshot_consumed(self) -> None:
         state = backend.dashboard_state(

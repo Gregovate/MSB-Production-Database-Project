@@ -1,4 +1,4 @@
-/* MSB LOR landing page — 2026-08-13 V0.3.0 */
+/* MSB LOR landing page — 2026-08-14 V0.4.0 */
 (function () {
   "use strict";
 

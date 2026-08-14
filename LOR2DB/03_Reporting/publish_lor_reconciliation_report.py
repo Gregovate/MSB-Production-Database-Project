@@ -3,7 +3,7 @@ MSB Database - LOR Reconciliation Report Publisher
 publish_lor_reconciliation_report.py
 
 Initial Release : 2026-08-03  V0.1.0
-Current Version : 2026-08-04  V0.4.1
+Current Version : 2026-08-14  V0.5.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -21,6 +21,9 @@ Operation:
       revised without changing the production audit row.
 
 Revision History:
+    2026-08-14  GAL / OpenAI  V0.5.0
+        Made cancelled runs unmistakable, marked validation not applicable,
+        removed misleading follow-up actions, and added Outcome to the archive.
     2026-08-04  GAL / OpenAI  V0.4.1
         Changed the default NAS publication folder from lortodb to lor2db.
 
@@ -45,7 +48,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.4.2"
+REPORT_VERSION = "V0.5.0"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
@@ -175,6 +178,14 @@ def report_index_entry(path: Path) -> dict[str, str] | None:
         r"\s+·\s+Captured ingest\s+([^<]+)",
         content,
     )
+    outcome_match = re.search(r'data-report-outcome="([A-Z_]+)"', content)
+    if outcome_match is None:
+        # Reports published before V0.5.0 already contain the durable final
+        # status in their ingest table. Recover it without rewriting the
+        # immutable report so the refreshed archive labels historical runs.
+        outcome_match = re.search(
+            r">(COMPLETED_WITH_EXCEPTIONS|CANCELLED|COMPLETED)<", content
+        )
     return {
         "filename": path.name,
         "run_id": match.group("run"),
@@ -182,6 +193,7 @@ def report_index_entry(path: Path) -> dict[str, str] | None:
         "generated": meta_match.group(1).strip() if meta_match else generated.strftime("%Y-%m-%d %H:%M:%S"),
         "framework": meta_match.group(2).strip() if meta_match else "—",
         "captured_ingest": meta_match.group(3).strip() if meta_match else "—",
+        "outcome": outcome_match.group(1).replace("_", " ") if outcome_match else "UNKNOWN",
         "sort_key": match.group("stamp"),
     }
 
@@ -200,6 +212,7 @@ def refresh_report_index(output_dir: str) -> Path:
         f'<td><a href="{html.escape(entry["filename"], quote=True)}">'
         f'{html.escape(entry["filename"])}</a></td>'
         f'<td>{html.escape(entry["report_type"])}</td>'
+        f'<td>{html.escape(entry["outcome"])}</td>'
         f'<td>{html.escape(entry["run_id"])}</td>'
         f'<td>{html.escape(entry["captured_ingest"])}</td>'
         f'<td>{html.escape(entry["generated"])}</td>'
@@ -208,13 +221,13 @@ def refresh_report_index(output_dir: str) -> Path:
         for entry in entries
     )
     if not rows_html:
-        rows_html = '<tr><td colspan="6" class="empty">No reconciliation reports are available.</td></tr>'
+        rows_html = '<tr><td colspan="7" class="empty">No reconciliation reports are available.</td></tr>'
     generated = datetime.now().astimezone()
     document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>LOR Reconciliation Reports</title>
 <style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}.meta{{color:#475569}}table{{width:100%;border-collapse:collapse;margin-top:18px}}th,td{{border:1px solid #cbd5e1;padding:8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}a{{color:#075985}}.empty{{font-style:italic;color:#475569}}</style></head><body>
 <h1>LOR Reconciliation Reports</h1><p class="meta">Index refreshed {html.escape(display(generated))} · {len(entries)} report(s)</p>
-<table><thead><tr><th>Report</th><th>Type</th><th>Reconciliation run</th><th>Captured ingest</th><th>Generated</th><th>Framework</th></tr></thead><tbody>{rows_html}</tbody></table>
+<table><thead><tr><th>Report</th><th>Type</th><th>Outcome</th><th>Reconciliation run</th><th>Captured ingest</th><th>Generated</th><th>Framework</th></tr></thead><tbody>{rows_html}</tbody></table>
 </body></html>"""
     destination = directory / "index.html"
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as tmp:
@@ -338,7 +351,8 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
     for preview in previews:
         preview["preview_revision"] = integer_display(preview.get("preview_revision"))
         preview["brightness"] = integer_display(preview.get("brightness"))
-    if r.get("cancelled_at") is not None:
+    cancelled = r.get("cancelled_at") is not None
+    if cancelled:
         final_status = "CANCELLED"
     elif any(int(r.get(key) or 0) != 0 for key in (
         "blocked_count", "deferred_count", "unresolved_count"
@@ -401,13 +415,20 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         ("reason", "Reason"), ("operator", "Operator"),
         ("acted_at", "Date/time"),
     ], decision_rows, "No operator decisions were required.")
-    validation = table([
-        ("validation_check", "Validation check"), ("result", "Result"),
-        ("detail", "Detail"), ("recorded_at", "Date/time"),
-    ], data["validations"], "No validation result was recorded.")
-    change_action = "Print replacement labels" if data["names"] else "NONE"
-    problem_action = "Review listed items" if data["problems"] else "NONE"
-    validation_action = "Investigate failed validation" if any(v["result"] != "PASS" for v in data["validations"]) else "NONE"
+    if cancelled:
+        validation = '<p class="not-applicable"><strong>Not applicable — reconciliation cancelled before production validation.</strong></p>'
+    else:
+        validation = table([
+            ("validation_check", "Validation check"), ("result", "Result"),
+            ("detail", "Detail"), ("recorded_at", "Date/time"),
+        ], data["validations"], "No validation result was recorded.")
+    change_action = "NONE" if cancelled else ("Print replacement labels" if data["names"] else "NONE")
+    problem_action = "NONE" if cancelled else ("Review listed items" if data["problems"] else "NONE")
+    validation_action = "NONE" if cancelled else (
+        "Investigate failed validation"
+        if any(v["result"] != "PASS" for v in data["validations"])
+        else "NONE"
+    )
     body = "".join([
         section(1, "Parser Run", parser, "NONE"),
         section(2, "PostgreSQL Ingest", ingest, "NONE"),
@@ -416,11 +437,22 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         section(5, "Problems and Operator Decisions", '<h3>Problems</h3>' + issues + '<h3>Operator Decisions</h3>' + decisions, problem_action),
         section(6, "Final Validation", validation, validation_action),
     ])
-    title = f'LOR Production Reconciliation Report — Run {r["lor_reconciliation_run_id"]}'
+    title = (
+        f'LOR Reconciliation Cancellation Record — Run {r["lor_reconciliation_run_id"]}'
+        if cancelled else
+        f'LOR Production Reconciliation Report — Run {r["lor_reconciliation_run_id"]}'
+    )
+    banner = ""
+    if cancelled:
+        banner = (
+            '<div class="cancelled-banner"><strong>CANCELLED — NO PRODUCTION CHANGES COMMITTED</strong><br>'
+            'The captured ingest snapshot was removed and this run is closed. '
+            f'Cancellation reason: {html.escape(display(r.get("cancellation_reason")))}</div>'
+        )
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title>
-<style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}h2{{border-bottom:2px solid #334155;padding-bottom:5px;margin-top:30px}}h3{{margin-top:20px}}.meta{{color:#475569}}.action{{display:inline-block;padding:6px 10px;border-radius:4px}}.none{{background:#dcfce7}}.required{{background:#fef3c7}}table{{width:100%;border-collapse:collapse;margin:10px 0 18px}}th,td{{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}.empty td{{font-style:italic;color:#475569}}@media print{{body{{margin:0;max-width:none}}section{{break-inside:avoid}}}}</style></head><body>
-<h1>{html.escape(title)}</h1><p class="meta">Generated {html.escape(display(generated_at))} · Report framework {REPORT_VERSION} · Captured ingest {r["import_run_id"]}</p>{body}</body></html>"""
+<style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}h2{{border-bottom:2px solid #334155;padding-bottom:5px;margin-top:30px}}h3{{margin-top:20px}}.meta{{color:#475569}}.action{{display:inline-block;padding:6px 10px;border-radius:4px}}.none{{background:#dcfce7}}.required{{background:#fef3c7}}.cancelled-banner{{margin:18px 0;padding:14px;border:2px solid #991b1b;background:#fee2e2;color:#7f1d1d}}.not-applicable{{padding:10px;background:#e2e8f0}}table{{width:100%;border-collapse:collapse;margin:10px 0 18px}}th,td{{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}.empty td{{font-style:italic;color:#475569}}@media print{{body{{margin:0;max-width:none}}section{{break-inside:avoid}}}}</style></head><body data-report-outcome="{html.escape(final_status, quote=True)}">
+<h1>{html.escape(title)}</h1><p class="meta">Generated {html.escape(display(generated_at))} · Report framework {REPORT_VERSION} · Captured ingest {r["import_run_id"]}</p>{banner}{body}</body></html>"""
 
 
 def publish(conn: Any, run_id: int, output_dir: str, base_url: str | None) -> Path:
