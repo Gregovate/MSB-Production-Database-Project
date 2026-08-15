@@ -16,6 +16,11 @@ tools for operator convenience but does not own their XML interpretation.
 | `test_parse_props_console_encoding.py` | Regression test preventing Windows console/log encoding from aborting parser execution |
 | `test_parse_props_atomic_publish.py` | Regression tests for transient Windows file-lock retry and fail-closed atomic publication |
 
+The repository-root `run_lor_runner.ps1` is the canonical deployment and
+runtime launcher. It owns DPAPI secret storage, the logged-in-user Scheduled
+Task, authenticated status checks, and SSH pairing to the Linux API. Do not
+assemble runner environment variables or tokens manually.
+
 ## Operating Boundary
 
 Use the LOR2DB website for normal version checks and parser runs. Direct command
@@ -27,6 +32,12 @@ be parsed repeatedly. Each run rebuilds the live manifest and rejects only a
 parser-breaking XML contract change relative to the approved LOR manifest. A
 New LOR candidate remains stricter: changing any reviewed candidate file after
 Version Check invalidates that check and requires it to be rerun.
+
+The production runner task uses the logged-in Greg account because that Windows
+session owns the mapped `G:` drive. Screen locking does not stop the task. After
+a reboot, the runner remains unavailable until Greg signs in and Google Drive
+restores `G:`; the website reports the runner as unavailable without affecting
+command-line parser use or PostgreSQL.
 
 See:
 

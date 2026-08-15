@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+import hashlib
 import hmac
 import json
 import os
@@ -29,7 +30,7 @@ from urllib.parse import urlparse
 from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.2.0"
+RUNNER_VERSION = "V1.3.0"
 
 AUTHORITATIVE_OUTPUT_TABLES = (
     "props",
@@ -53,6 +54,13 @@ def required_environment(name: str) -> str:
     if not value:
         raise RuntimeError(f"Required setting {name} is missing")
     return value
+
+
+def credential_fingerprint(value: str) -> str:
+    """Return a non-secret diagnostic identifier for a credential value."""
+    if not value:
+        return "missing"
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
 
 
 def utc_now() -> str:
@@ -752,7 +760,16 @@ class RequestHandler(BaseHTTPRequestHandler):
     def authorized(self) -> bool:
         expected = f"Bearer {required_environment('LOR_RUNNER_TOKEN')}"
         provided = self.headers.get("Authorization", "")
-        return hmac.compare_digest(provided, expected)
+        authorized = hmac.compare_digest(provided, expected)
+        if not authorized:
+            self.log_error(
+                "Runner authentication rejected; expected fingerprint=%s; "
+                "provided fingerprint=%s; provided length=%d",
+                credential_fingerprint(expected),
+                credential_fingerprint(provided),
+                len(provided),
+            )
+        return authorized
 
     def body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"))
@@ -873,7 +890,15 @@ def main(argv: list[str] | None = None) -> int:
     runner = Runner(StateStore(arguments.state_file.resolve()))
     server = ThreadingHTTPServer((arguments.host, arguments.port), RequestHandler)
     server.runner = runner  # type: ignore[attr-defined]
-    print(f"[INFO] LOR runner {RUNNER_VERSION} listening on {arguments.host}:{arguments.port}")
+    token = required_environment("LOR_RUNNER_TOKEN")
+    print(
+        f"[INFO] LOR runner {RUNNER_VERSION} listening on "
+        f"{arguments.host}:{arguments.port}"
+    )
+    print(
+        "[INFO] Runner credential fingerprint: "
+        f"{credential_fingerprint(f'Bearer {token}')}"
+    )
     server.serve_forever()
     return 0
 

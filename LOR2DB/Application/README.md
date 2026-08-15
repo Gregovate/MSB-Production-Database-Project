@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT code; V0.5.0 combined reconciliation/parser-runner deployment pending acceptance |
+| Status | CURRENT code; V0.5.1 reliable runner deployment pending acceptance |
 | Initial release / current revision | 2026-08-04 / 2026-08-14 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-14 | Replaced manual runner-token commands with the root `run_lor_runner.ps1` installer. The token is generated once, protected with Windows DPAPI, paired to Linux through SSH, and verified by a non-secret fingerprint. Runner V1.3.0 logs rejected-header fingerprints; backend V0.5.1 bypasses HTTP proxies for the fixed private runner connection. |
 | 2026-08-14 | Added safe `APPROVE_STAGE_CHANGE` and `ADD_NEW_STAGE` paths gated by complete frozen evidence; contradictory stage groups remain non-approvable. The browser now shows every stage-group member. Cancellation now renders a terminal proof screen, cancelled reports have no misleading required actions, and the archive shows Outcome. Current-version parser runs permit structurally compatible authoring edits while candidate runs retain their exact checked-source guard. |
 | 2026-08-13 | Added the mandatory same-parser approved-version/candidate SQLite comparison. Approval now requires equal schemas and explained output differences; automatic LOR Revision increments are retained as informational evidence rather than treated as content changes. Candidate folders changed after XML review are rejected as stale. |
 | 2026-08-13 | Added the LOR version-of-record, complete XML compatibility gate, validated parser controls, and Windows/G-drive runner boundary. PostgreSQL ingest remains a separate manual approval step and requires the reviewed SQLite SHA-256. |
@@ -120,31 +121,41 @@ parser table-count interpretation.
 
 ### Windows runner deployment boundary
 
-`Docs/01_LOR_System/02_Data_Extraction/Parser/lor_operator_runner.py` runs on a
-restricted Windows host/service account with the Shared Drive mounted as `G:`.
-It listens on the internal interface only and requires a bearer token shared
-with the Linux API. Configure its environment from
-`lor-operator-runner.env.example`. Production already has an approved 6.6.10
-state and must retain it. Use `init` only on a new installation that has no
-state file; never initialize over approval history. Then run `serve`.
+`Docs/01_LOR_System/02_Data_Extraction/Parser/lor_operator_runner.py` runs on the
+restricted Office PC under the logged-in Greg account because that session owns
+the Shared Drive mounted as `G:`. It listens on the internal interface only and
+requires a bearer token shared with the Linux API. Production already has an
+approved 6.6.10 state and must retain it. Never run `init` over that state.
+
+Use only the repository-root launcher. `Install` generates one random token,
+protects it with Windows DPAPI, and registers the **MSB LOR Operator Runner**
+task at Greg's logon. It never starts the parser. `PairServer` transfers the
+same token over SSH to a mode-0600 pending file without displaying or placing
+the secret in command history.
 
 ```powershell
-python lor_operator_runner.py init `
-  --state-file "G:\Shared drives\MSB Database\LOR Version Reviews\runner-state.json" `
-  --current-lor-version 6.6.10 `
-  --current-preview-folder "G:\Shared drives\MSB Database\Database Previews V6.6.10" `
-  --deep-preview "2026 Master Musical Preview v6.6.10 2026-08-11.lorprev"
-
-python lor_operator_runner.py serve `
-  --state-file "G:\Shared drives\MSB Database\LOR Version Reviews\runner-state.json" `
-  --host REPLACE_INTERNAL_WINDOWS_IP `
-  --port 8791
+.\run_lor_runner.ps1 -Action Install
+.\run_lor_runner.ps1 -Action PairServer
+.\run_lor_runner.ps1 -Action Status
 ```
 
-The Linux API uses `LOR_RUNNER_URL` and `LOR_RUNNER_TOKEN`. The reverse proxy
-continues to expose only the Linux LOR2DB API; do not publish port 8791 to the
-Internet. Deploy migration `0031_preserve_lor_sqlite_authority_chain.sql`
-before deploying ingest V0.4.0 or the expanded dashboard query.
+From the repository root on `msb-prod-db`, consume the pending token with:
+
+```bash
+sudo python3 LOR2DB/Application/install_lor_runner_pairing.py
+```
+
+The installer backs up `/etc/msb/lor-preflight-api.env`, atomically installs
+`LOR_RUNNER_URL` and `LOR_RUNNER_TOKEN`, preserves its ownership/mode, reports
+the same non-secret fingerprint as Windows, and deletes the pending plaintext
+file. The reverse proxy continues to expose only the Linux LOR2DB API; do not
+publish port 8791 to the Internet.
+
+The task runs while Greg remains logged in, including while the screen is
+locked. After a Windows update or reboot, the runner remains unavailable until
+Greg signs in and `G:` is restored. This is an explicit availability boundary:
+the website reports the runner offline, while command-line parser operation,
+the existing SQLite snapshot, PostgreSQL, and reconciliation remain unaffected.
 
 ## Required API
 
@@ -270,7 +281,7 @@ direct write privileges on `ref`, `lor_snap`, or the reconciliation tables.
 After creating the login separately with a secured password, apply
 `grant_lor_preflight_app.sql` to install this exact grant set.
 
-## V0.5.0 combined deployment order
+## V0.5.1 combined deployment order
 
 This release intentionally deploys the reconciliation corrections and the
 already-implemented Version Check / Run Parser controls as one acceptance
@@ -284,13 +295,13 @@ unit. Do not deploy only the static page or only `backend.py`.
    invoke only the two stage decision recorders in addition to its existing
    entry points.
 4. On the approved Windows host, deploy the canonical parser directory,
-   including runner V1.2.0, version checker, parser V7.0.10, and tests. Retain
-   the existing `runner-state.json` whose current approved LOR is 6.6.10; do
-   not initialize over it. Configure and start the internal runner on port
-   8791, which must remain inaccessible from the public web.
-5. On `msb-prod-db`, deploy backend V0.5.0 and report publisher V0.5.0 together,
-   add `LOR_RUNNER_URL` and the matching `LOR_RUNNER_TOKEN` to the protected
-   environment file, and restart `lor-preflight-api.service`.
+   including runner V1.3.0, version checker, parser V7.0.10, tests, and the root
+   runner launcher. Retain the existing `runner-state.json` whose current
+   approved LOR is 6.6.10; do not initialize over it. Run launcher `Install`
+   and `PairServer`; do not manually create or paste a token.
+5. On `msb-prod-db`, run `install_lor_runner_pairing.py`, confirm its fingerprint
+   matches Windows, deploy backend V0.5.1 and report publisher V0.5.0 together,
+   and restart `lor-preflight-api.service`.
 6. Publish `landing/` plus the `preflight` HTML/CSS/JavaScript files to the NAS
    web path.
 7. Verify the Linux `/health` response, Windows runner health, dashboard runner
@@ -399,7 +410,7 @@ sudo -u lor-preflight test -r /opt/lor-preflight/publish_lor_reconciliation_repo
 curl -s http://192.168.5.9:8784/health
 ```
 
-The V0.5.0 health response must report `V0.5.0`. Retrying Finish for a run already in
+The V0.5.1 health response must report `V0.5.1`. Retrying Finish for a run already in
 `REPORTING` does not execute P1-P4 again; it retries report publication only.
 
 The successful final mount showed the NAS `web` share at `/mnt/msb-web`,

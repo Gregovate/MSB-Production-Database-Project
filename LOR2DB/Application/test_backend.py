@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("LOR_PREFLIGHT_OPERATORS", "greg@sheboyganlights.org")
 
@@ -15,6 +15,29 @@ import backend  # noqa: E402  (environment must exist before app import)
 
 
 class BackendSafetyTests(unittest.TestCase):
+    def test_runner_request_uses_direct_opener_and_bearer_header(self) -> None:
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = b'{"status":"ok","version":"V1.3.0"}'
+        settings = {
+            "LOR_RUNNER_URL": "http://192.168.5.55:8791",
+            "LOR_RUNNER_TOKEN": "a" * 64,
+        }
+        with patch.dict(os.environ, settings), patch.object(
+            backend.DIRECT_RUNNER_OPENER,
+            "open",
+            return_value=response,
+        ) as direct_open:
+            result = backend.runner_request("health")
+
+        self.assertEqual(result["status"], "ok")
+        request_object = direct_open.call_args.args[0]
+        self.assertEqual(
+            request_object.get_header("Authorization"),
+            f"Bearer {settings['LOR_RUNNER_TOKEN']}",
+        )
+        self.assertEqual(direct_open.call_args.kwargs["timeout"], 30)
+
     def test_publish_report_requires_an_absolute_publisher_path(self) -> None:
         with patch.dict(os.environ, {"LOR_REPORT_PUBLISHER_PATH": "publisher.py"}):
             with self.assertRaisesRegex(RuntimeError, "must be an absolute path"):
