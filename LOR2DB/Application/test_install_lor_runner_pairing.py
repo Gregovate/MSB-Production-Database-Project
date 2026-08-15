@@ -29,6 +29,10 @@ class RunnerPairingInstallerTests(unittest.TestCase):
         self.assertEqual(result.count("LOR_RUNNER_URL="), 1)
         self.assertIn("KEEP=value", result)
 
+    @unittest.skipUnless(
+        hasattr(os, "getuid") and hasattr(os, "chown"),
+        "requires POSIX ownership semantics",
+    )
     def test_installer_is_atomic_preserves_mode_and_consumes_pending(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
