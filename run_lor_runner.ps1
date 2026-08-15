@@ -325,7 +325,7 @@ switch ($Action) {
             Write-Host "Runner version: $($health.version)"
         }
         catch {
-            Write-Host "Runner health: OFFLINE OR REJECTED — $($_.Exception.Message)"
+            Write-Host "Runner health: OFFLINE OR REJECTED - $($_.Exception.Message)"
             if (Test-Path -LiteralPath $ServiceLogPath -PathType Leaf) {
                 Write-Host "Recent runner log: $ServiceLogPath"
                 Get-Content -LiteralPath $ServiceLogPath -Tail 10
