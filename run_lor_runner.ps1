@@ -183,7 +183,8 @@ function Test-AuthenticatedHealth {
 
 function Install-ScheduledRunner {
     $account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" " +
+    $arguments = "-NoProfile -WindowStyle Hidden " +
+        "-ExecutionPolicy Bypass -File `"$PSCommandPath`" " +
         "-Action Start -RunnerHost $RunnerHost -Port $Port " +
         "-StateFile `"$StateFile`""
     $taskAction = New-ScheduledTaskAction `
