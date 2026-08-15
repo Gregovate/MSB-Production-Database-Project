@@ -11,7 +11,7 @@
 
 [CmdletBinding()]
 param(
-    [ValidateSet('Install', 'PairServer', 'Start', 'Status')]
+    [ValidateSet('Install', 'PairServer', 'Start', 'Stop', 'Status')]
     [string]$Action = 'Status',
 
     [string]$RunnerHost = '192.168.5.55',
@@ -214,6 +214,67 @@ function Install-ScheduledRunner {
         -Force | Out-Null
 }
 
+function Stop-InstalledRunner {
+    $state = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
+    if ($state.parser_activity -and $state.parser_activity.status -eq 'RUNNING') {
+        throw 'The LOR parser is running. Wait for it to finish before reinstalling the runner.'
+    }
+
+    $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($existingTask -and $existingTask.State -eq 'Running') {
+        Stop-ScheduledTask -TaskName $TaskName
+        Start-Sleep -Seconds 2
+    }
+
+    $listeners = @(
+        Get-NetTCPConnection `
+            -LocalPort $Port `
+            -State Listen `
+            -ErrorAction SilentlyContinue
+    )
+    $listenerProcessIds = @(
+        $listeners | Select-Object -ExpandProperty OwningProcess -Unique
+    )
+    foreach ($listenerProcessId in $listenerProcessIds) {
+        $process = Get-CimInstance Win32_Process `
+            -Filter "ProcessId = $listenerProcessId" `
+            -ErrorAction SilentlyContinue
+        $commandLine = [string]$process.CommandLine
+        $isManagedRunner = $process -and `
+            ($process.Name -ieq 'python.exe') -and `
+            ($commandLine.IndexOf(
+                $RunnerPath,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -ge 0) -and `
+            ($commandLine -match '(?i)(?:^|\s)serve(?:\s|$)') -and `
+            ($commandLine -match "(?i)--host\s+$([regex]::Escape($RunnerHost))(?:\s|$)") -and `
+            ($commandLine -match "(?i)--port\s+$Port(?:\s|$)")
+        if (-not $isManagedRunner) {
+            throw (
+                "Port $Port is held by PID $listenerProcessId, " +
+                'which is not the managed LOR runner. No process was stopped.'
+            )
+        }
+        Stop-Process -Id $listenerProcessId -Force
+        Write-Host (
+            '[INFO] Stopped existing managed runner process ' +
+            "(PID $listenerProcessId)."
+        )
+    }
+
+    foreach ($attempt in 1..10) {
+        $remaining = Get-NetTCPConnection `
+            -LocalPort $Port `
+            -State Listen `
+            -ErrorAction SilentlyContinue
+        if (-not $remaining) {
+            return
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    throw "Port $Port did not become available after stopping the managed runner."
+}
+
 function Start-InstalledRunner {
     param([Parameter(Mandatory = $true)][string]$Token)
 
@@ -240,18 +301,7 @@ function Start-InstalledRunner {
 switch ($Action) {
     'Install' {
         Assert-RunnerPrerequisites | Out-Null
-        $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-        if ($existingTask -and $existingTask.State -eq 'Running') {
-            Stop-ScheduledTask -TaskName $TaskName
-            Start-Sleep -Seconds 1
-        }
-        $listener = Get-NetTCPConnection `
-            -LocalPort $Port `
-            -State Listen `
-            -ErrorAction SilentlyContinue
-        if ($listener) {
-            throw "Port $Port is already in use. Stop the manually started runner first."
-        }
+        Stop-InstalledRunner
         if ((Test-Path -LiteralPath $SecretPath) -and -not $RotateToken) {
             $token = Read-ProtectedToken
             Write-Host '[INFO] Existing protected runner token retained.'
@@ -347,6 +397,12 @@ switch ($Action) {
             Remove-Item Env:\LOR_RUNNER_TOKEN -ErrorAction SilentlyContinue
             Remove-Variable token -ErrorAction SilentlyContinue
         }
+    }
+
+    'Stop' {
+        Assert-RunnerPrerequisites | Out-Null
+        Stop-InstalledRunner
+        Write-Host '[OK] Managed LOR runner is stopped and its port is free.'
     }
 
     'Status' {
