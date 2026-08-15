@@ -152,8 +152,16 @@ the secret in command history.
 ```powershell
 .\run_lor_runner.ps1 -Action Install
 .\run_lor_runner.ps1 -Action PairServer
+.\run_lor_runner.ps1 -Action Stop
 .\run_lor_runner.ps1 -Action Status
 ```
+
+`Install` safely replaces an existing managed runner, including an orphaned
+runner process left listening after its Scheduled Task has exited. It will stop
+only a Python listener whose command line matches this repository's runner,
+host, and port. It refuses to interrupt a parser recorded as `RUNNING` and
+refuses to terminate an unrelated process using port 8791. `Stop` applies the
+same checks without reinstalling the task.
 
 From the repository root on `msb-prod-db`, consume the pending token with:
 
