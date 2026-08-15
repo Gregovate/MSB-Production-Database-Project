@@ -301,6 +301,47 @@ class BackendSafetyTests(unittest.TestCase):
             timeout=920,
         )
 
+    def test_parser_activity_is_authenticated_and_read_only(self) -> None:
+        expected = {
+            "activity": {
+                "status": "PASSED",
+                "console_output": "[OK] complete",
+            }
+        }
+        with patch.object(backend, "runner_request", return_value=expected) as runner:
+            response = backend.app.test_client().get(
+                "/parser/activity",
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, expected)
+        runner.assert_called_once_with("parser/activity")
+
+    def test_landing_page_separates_parser_and_version_workflows(self) -> None:
+        landing = Path(__file__).with_name("landing")
+        source = (landing / "lor2db.js").read_text(encoding="utf-8")
+        version_source = (
+            landing / "version-check" / "version-check.js"
+        ).read_text(encoding="utf-8")
+        parser_source = (
+            landing / "parser" / "parser.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('href="parser/"', source)
+        self.assertIn('href="version-check/"', source)
+        self.assertNotIn("run-baseline-parser", source)
+        self.assertNotIn("approve-candidate", source)
+        self.assertIn("Current approved preview folder", version_source)
+        self.assertIn("Run version check", version_source)
+        self.assertIn('target: "baseline"', version_source)
+        self.assertIn('target: "candidate"', version_source)
+        self.assertIn("Read-only console output", parser_source)
+        self.assertIn('target: "current"', parser_source)
+        self.assertIn("only; PostgreSQL remains unchanged", parser_source)
+
 
 if __name__ == "__main__":
     unittest.main()

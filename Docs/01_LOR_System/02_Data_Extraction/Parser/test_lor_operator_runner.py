@@ -10,6 +10,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from http import HTTPStatus
 from pathlib import Path
 from unittest.mock import patch
 
@@ -86,6 +87,28 @@ class OperatorRunnerTests(unittest.TestCase):
 
         self.assertIn('"GET /health HTTP/1.1" 200 -', stdout.getvalue())
         self.assertEqual(stderr.getvalue(), "")
+
+    def test_second_runner_operation_is_rejected_instead_of_queued(self) -> None:
+        """Two browser tabs cannot schedule sequential parser executions."""
+        handler = object.__new__(runner_module.RequestHandler)
+        handler.command = "POST"
+        handler.path = "/parser/run"
+        handler.headers = {
+            "Authorization": "Bearer " + ("a" * 64),
+            "Content-Length": "0",
+        }
+        handler.rfile = io.BytesIO()
+        handler.server = argparse.Namespace(runner=self.runner)
+
+        with patch.dict(os.environ, {"LOR_RUNNER_TOKEN": "a" * 64}):
+            self.runner.operation_lock.acquire()
+            try:
+                status, payload = handler.dispatch()
+            finally:
+                self.runner.operation_lock.release()
+
+        self.assertEqual(status, HTTPStatus.CONFLICT)
+        self.assertIn("already running", payload["error"])
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.10", "operator@example.com")
@@ -193,11 +216,53 @@ class OperatorRunnerTests(unittest.TestCase):
                 "source_lor_version": "6.6.4",
                 "sqlite_sha256": "a" * 64,
             }), encoding="utf-8")
-            return argparse.Namespace(returncode=0, stdout="", stderr="")
+            return argparse.Namespace(
+                returncode=0,
+                stdout="[OK] parser complete\n",
+                stderr="",
+            )
 
         run.side_effect = complete
         result = self.runner.run_parser("current", "operator@example.com")
         self.assertEqual(result["status"], "COMPLETE")
+        activity = self.runner.public_parser_activity()
+        self.assertEqual(activity["status"], "PASSED")
+        self.assertEqual(activity["target"], "current")
+        self.assertIn("[OK] parser complete", activity["console_output"])
+        self.assertNotIn("console_log_path", self.runner.public_state()["parser_activity"])
+
+    @patch("lor_operator_runner.subprocess.run")
+    def test_failed_parser_records_console_and_preserves_terminal_status(self, run) -> None:
+        """Browser diagnostics must survive a failed parser request."""
+        run.return_value = argparse.Namespace(
+            returncode=2,
+            stdout="[INFO] parser started\n",
+            stderr="[FATAL] invalid preview\n",
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "invalid preview"):
+            self.runner.run_parser("current", "operator@example.com")
+
+        activity = self.runner.public_parser_activity()
+        self.assertEqual(activity["status"], "FAILED")
+        self.assertIn("[INFO] parser started", activity["console_output"])
+        self.assertIn("[FATAL] invalid preview", activity["console_output"])
+        self.assertIn("invalid preview", activity["error"])
+
+    def test_runner_restart_marks_incomplete_parser_activity_interrupted(self) -> None:
+        """A process restart cannot leave the browser claiming RUNNING forever."""
+        def prepare(state):
+            state["parser_activity"] = {
+                "activity_id": "current-stale",
+                "status": "RUNNING",
+                "console_log_path": str(self.root / "missing.log"),
+            }
+
+        self.store.update(prepare)
+        runner_module.Runner(self.store)
+        activity = self.runner.public_parser_activity()
+        self.assertEqual(activity["status"], "INTERRUPTED")
+        self.assertIn("restarted", activity["error"])
 
     def test_current_parser_blocks_new_xml_contract(self) -> None:
         (self.current / "test.lorprev").write_text(

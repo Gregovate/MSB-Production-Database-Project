@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LOR production database</title>
-  <link rel="stylesheet" href="lor2db.css?v=0.4.0">
+  <link rel="stylesheet" href="lor2db.css?v=0.5.0">
 </head>
 <body>
   <main class="shell">
@@ -33,33 +33,6 @@
     </form>
   </dialog>
 
-  <dialog id="version-dialog">
-    <form method="dialog">
-      <h2>Select new LOR version</h2>
-      <p>The runner will use the versioned folder <code>Database Previews V&lt;version&gt;</code>.</p>
-      <label for="new-lor-version">New LOR version</label>
-      <input id="new-lor-version" name="new_lor_version" placeholder="6.6.10" autocomplete="off" required>
-      <p id="version-error" class="error" role="alert"></p>
-      <div class="dialog-actions">
-        <button value="cancel">Back</button>
-        <button id="confirm-version" class="primary" value="confirm">Set candidate</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="approve-dialog">
-    <form method="dialog">
-      <h2>Approve new LOR version?</h2>
-      <p>This changes the approved version of record. The previous versioned preview folder is preserved.</p>
-      <label for="approve-lor-version">Type the exact new LOR version</label>
-      <input id="approve-lor-version" name="confirm_lor_version" autocomplete="off" required>
-      <p id="approve-error" class="error" role="alert"></p>
-      <div class="dialog-actions">
-        <button value="cancel">Back</button>
-        <button id="confirm-approval" class="primary danger-button" value="confirm">Approve version</button>
-      </div>
-    </form>
-  </dialog>
-  <script src="lor2db.js?v=0.4.0" defer></script>
+  <script src="lor2db.js?v=0.5.0" defer></script>
 </body>
 </html>

@@ -10,7 +10,7 @@ tools for operator convenience but does not own their XML interpretation.
 |---|---|
 | `parse_props_v7_scene_parser.py` | Canonical V7 parser; atomically publishes only a fully validated SQLite snapshot |
 | `lor_version_checker.py` | Parser-independent complete XML manifest and Current/New LOR compatibility comparison |
-| `lor_operator_runner.py` | Restricted Windows/G-drive API, candidate stale-manifest guard, approved-version structural guard, and same-parser SQLite output comparison used by the authenticated LOR2DB website |
+| `lor_operator_runner.py` | Restricted Windows/G-drive API, single-operation lock, durable read-only parser console record, candidate stale-manifest guard, approved-version structural guard, and same-parser SQLite output comparison used by the authenticated LOR2DB website |
 | `test_lor_version_checker.py` | Regression tests for Scene count/structure, unused fields, ChannelGrid, and other delimiter-position changes |
 | `test_lor_operator_runner.py` | Regression tests for version-scoped paths, stale manifests, SQLite output comparison, Revision handling, and approval history |
 | `test_parse_props_console_encoding.py` | Regression test preventing Windows console/log encoding from aborting parser execution |
@@ -23,9 +23,17 @@ assemble runner environment variables or tokens manually.
 
 ## Operating Boundary
 
-Use the LOR2DB website for normal version checks and parser runs. Direct command
-line execution remains supported for engineering and recovery. Parser execution
-never starts PostgreSQL ingest.
+Use the main LOR2DB parser page for normal repeatable production SQLite builds.
+Use the separate guided version-check page only when evaluating a different LOR
+software version. Direct command-line execution remains supported for
+engineering and recovery. Parser execution never starts PostgreSQL ingest.
+
+The runner accepts only one state-changing or parser request at a time. A
+second request is rejected instead of queued. Each browser parser attempt
+records its terminal status and complete console output in the version review
+tree; the API returns a bounded read-only copy for diagnosis. Restarting the
+runner changes any stale `RUNNING` marker to `INTERRUPTED` rather than leaving
+the website in a false running state.
 
 An approved Current LOR folder may receive ordinary preview-authoring edits and
 be parsed repeatedly. Each run rebuilds the live manifest and rejects only a

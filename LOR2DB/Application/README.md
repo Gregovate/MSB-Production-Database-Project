@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT code; V0.5.1 reliable runner deployment pending acceptance |
-| Initial release / current revision | 2026-08-04 / 2026-08-14 |
+| Status | CURRENT code; V0.6.0 workflow separation pending review/deployment |
+| Initial release / current revision | 2026-08-04 / 2026-08-15 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-15 | Separated routine parser execution from infrequent LOR-version approval. The landing page now has distinct parser, version, and reconciliation boxes; dedicated parser and version-check pages own their respective workflows. Runner V1.4.0 preserves bounded read-only console output, records failures, rejects concurrent operations, and marks interrupted work truthfully after restart. |
 | 2026-08-14 | Replaced manual runner-token commands with the root `run_lor_runner.ps1` installer. The token is generated once, protected with Windows DPAPI, paired to Linux through SSH, and verified by a non-secret fingerprint. Runner V1.3.0 logs rejected-header fingerprints; backend V0.5.1 bypasses HTTP proxies for the fixed private runner connection. |
 | 2026-08-14 | Added safe `APPROVE_STAGE_CHANGE` and `ADD_NEW_STAGE` paths gated by complete frozen evidence; contradictory stage groups remain non-approvable. The browser now shows every stage-group member. Cancellation now renders a terminal proof screen, cancelled reports have no misleading required actions, and the archive shows Outcome. Current-version parser runs permit structurally compatible authoring edits while candidate runs retain their exact checked-source guard. |
 | 2026-08-13 | Added the mandatory same-parser approved-version/candidate SQLite comparison. Approval now requires equal schemas and explained output differences; automatic LOR Revision increments are retained as informational evidence rather than treated as content changes. Candidate folders changed after XML review are rejected as stale. |
@@ -46,9 +47,15 @@ Publish the files in `landing/` at:
 `https://my.sheboyganlights.org/lor2db/`
 
 The page calls the existing authenticated backend through
-`/lor2db/preflight/api/`. It shows:
+`/lor2db/preflight/api/`. Its separate function boxes show:
 
-- the current committed snapshot, parser/ingest provenance, and row counts;
+- the normal repeatable **Run LOR parser** workflow;
+- the current approved LOR version and a link to the separate infrequent
+  **Check new version** workflow;
+- PostgreSQL reconciliation status, with no action button when no action is
+  valid;
+- the current reconciled PostgreSQL snapshot, parser/ingest provenance, and
+  row counts;
 - the persistent reconciliation run that owns or blocks the current snapshot;
 - the immutable report for a published run;
 - **Continue previous reconciliation** whenever any run is unfinished;
@@ -77,30 +84,36 @@ function, repeats eligibility inside that transaction, and captures the
 current snapshot through `ops.f_start_lor_reconciliation(text)`. No request
 parameter accepts an ingest number.
 
-The parser is now available from this landing page through the separately
-deployed Windows/G-drive runner. PostgreSQL ingest remains separate and manual.
-The page never starts ingest and the Linux API never executes a user-supplied
-path or command.
+The parser page is published at `/lor2db/parser/`. It permits repeated
+production SQLite builds, shows the last result, and displays the runner's
+bounded read-only console record. A parser failure retains the last valid
+SQLite database. Only one runner operation is accepted at a time; a second
+request is rejected rather than queued.
 
-## LOR version and parser workspace
+The version-check page is published at `/lor2db/version-check/`. It shows the
+current approved LOR version and exact preview-folder path, resolves a candidate
+only beneath the configured versioned preview root, and runs the XML check,
+approved-version baseline, candidate parser, and SQLite comparison in order.
+Approval returns to the landing page with the new approved version and folder
+and marks the production parser as requiring a deliberate rebuild.
 
-The landing page exposes two operator-controlled version fields:
+PostgreSQL ingest remains separate and manual. No browser page starts ingest,
+and the Linux API never executes a user-supplied path or command.
 
-- **Current LOR version** — the approved version of record;
-- **New LOR version** — the candidate version folder under review.
+## LOR version-check workspace
 
-The workflow is intentionally gated:
+The infrequent version workflow is intentionally gated:
 
 1. Select the new LOR version. The runner resolves only `Database Previews
    V<version>` beneath its configured preview root.
 2. Run the parser-independent complete XML compatibility check.
 3. If the check fails, review the recorded parser modifications required and
    update the parser.
-4. Build the approved-version comparison baseline in isolated `VERSION_CHECK`
-   mode. Routine authoring changes in the approved folder are allowed only
-   when the live XML remains structurally compatible with its retained
-   approved manifest; parser-breaking contract changes are rejected.
-5. Run the candidate parser into a separate `VERSION_CHECK` SQLite file. The
+4. The guided page builds the approved-version comparison baseline in isolated
+   `VERSION_CHECK` mode. Routine authoring changes in the approved folder are
+   allowed only when the live XML remains structurally compatible with its
+   retained approved manifest; parser-breaking contract changes are rejected.
+5. The guided page runs the candidate parser into a separate `VERSION_CHECK` SQLite file. The
    runner verifies that the candidate folder still matches the just-reviewed
    XML manifest, then compares both SQLite schemas and authoritative content.
 6. LOR-generated `Revision` changes are recorded as informational. Preview
@@ -111,9 +124,12 @@ The workflow is intentionally gated:
 8. Approve the version only after the XML check, both parser runs, and output
    comparison pass or all review findings are resolved. The previous version
    folder remains unchanged.
-9. Run the current parser in `PRODUCTION` mode. Inspect the resulting SQLite as
-   often as needed; no ingest is automatic.
-10. Supply its displayed SHA-256 to the separate manual PostgreSQL ingest.
+9. Return to the landing page. The approved version and preview-folder path now
+   identify the new source, while production SQLite is explicitly marked for
+   rebuild.
+10. Use the normal parser page to run the current parser in `PRODUCTION` mode.
+   Inspect the resulting SQLite as often as needed; no ingest is automatic.
+11. Supply its displayed SHA-256 to the separate manual PostgreSQL ingest.
 
 The raw SQLite `scenes` count is labeled **raw LOR Scene rows**. Operational
 true Scenes are classified by Folder Alignment naming rules and are not a
@@ -281,7 +297,31 @@ direct write privileges on `ref`, `lor_snap`, or the reconciliation tables.
 After creating the login separately with a secured password, apply
 `grant_lor_preflight_app.sql` to install this exact grant set.
 
-## V0.5.1 combined deployment order
+## V0.6.0 incremental deployment order
+
+This release changes the Windows runner, Linux API, and NAS browser files as
+one interface contract. It requires no PostgreSQL migration, grant change,
+token rotation, or runner re-pairing.
+
+1. Back up `/opt/lor-preflight/backend.py` and the published
+   `/mnt/msb-web/my/lor2db` landing-page files; record their hashes.
+2. On the approved Windows host, pull the reviewed commit and run the complete
+   parser/runner tests. Retain the existing DPAPI token and `runner-state.json`.
+3. Reinstall the logged-in-user runner task with `run_lor_runner.ps1 -Action
+   Install`. Confirm hidden runner V1.4.0 health. Do not run `PairServer`.
+4. Deploy backend V0.6.0 to `/opt/lor-preflight/backend.py`, restart
+   `lor-preflight-api.service`, and verify `/health` reports V0.6.0.
+5. Publish the complete `landing/` tree, including `parser/` and
+   `version-check/`, to `/mnt/msb-web/my/lor2db/`. Preserve the existing
+   `preflight/` and `reports/` trees.
+6. Verify the three distinct landing-page boxes, open both dedicated workflow
+   pages, and confirm the parser console endpoint can read the last activity.
+   Do not run the parser or select a candidate during deployment acceptance.
+
+PostgreSQL ingest remains password-protected, digest-locked, and manual. This
+deployment adds no browser ingest endpoint.
+
+## Historical V0.5.1 combined deployment order
 
 This release intentionally deploys the reconciliation corrections and the
 already-implemented Version Check / Run Parser controls as one acceptance

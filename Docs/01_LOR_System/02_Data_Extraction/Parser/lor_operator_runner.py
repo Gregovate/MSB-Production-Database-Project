@@ -30,7 +30,8 @@ from urllib.parse import urlparse
 from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.3.0"
+RUNNER_VERSION = "V1.4.0"
+MAX_BROWSER_CONSOLE_CHARACTERS = 500_000
 
 AUTHORITATIVE_OUTPUT_TABLES = (
     "props",
@@ -413,9 +414,107 @@ class Runner:
         for script in (self.parser_path, self.checker_path):
             if not script.is_file():
                 raise RuntimeError(f"Runner executable is missing: {script}")
+        self._mark_interrupted_parser_activity()
+
+    def _mark_interrupted_parser_activity(self) -> None:
+        """Make a stale RUNNING marker truthful after a runner restart."""
+        state = self.store.read()
+        activity = state.get("parser_activity") or {}
+        if activity.get("status") != "RUNNING":
+            return
+
+        def operation(current: dict[str, Any]) -> None:
+            stale = current.get("parser_activity") or {}
+            if stale.get("status") == "RUNNING":
+                stale.update({
+                    "status": "INTERRUPTED",
+                    "completed_at": utc_now(),
+                    "error": "The runner restarted before this parser operation completed.",
+                })
+                current["parser_activity"] = stale
+
+        self.store.update(operation)
+
+    def _start_parser_activity(
+        self, target: str, version: str, folder: Path, actor: str
+    ) -> tuple[dict[str, Any], Path]:
+        """Record one recoverable browser-visible parser attempt."""
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        log_path = (
+            self.reports_root / f"V{version}" / "browser-parser-runs" /
+            f"{target}-{stamp}.log"
+        )
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        activity = {
+            "activity_id": f"{target}-{stamp}",
+            "target": target,
+            "status": "RUNNING",
+            "source_lor_version": version,
+            "source_preview_folder": str(folder),
+            "started_at": utc_now(),
+            "completed_at": None,
+            "run_by": actor,
+            "console_log_path": str(log_path),
+            "error": None,
+            "result": None,
+        }
+
+        def operation(current: dict[str, Any]) -> None:
+            current["parser_activity"] = activity
+
+        self.store.update(operation)
+        return activity, log_path
+
+    def _finish_parser_activity(
+        self,
+        activity: dict[str, Any],
+        status: str,
+        log_path: Path,
+        console_output: str,
+        *,
+        result: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Persist the terminal parser result and its complete console log."""
+        log_path.write_text(console_output, encoding="utf-8")
+
+        def operation(current: dict[str, Any]) -> None:
+            latest = current.get("parser_activity") or {}
+            if latest.get("activity_id") != activity["activity_id"]:
+                raise RuntimeError("A newer parser activity replaced this run")
+            latest.update({
+                "status": status,
+                "completed_at": utc_now(),
+                "error": error,
+                "result": result,
+            })
+            current["parser_activity"] = latest
+
+        self.store.update(operation)
+
+    def public_parser_activity(self) -> dict[str, Any] | None:
+        """Return the latest parser attempt with bounded read-only output."""
+        activity = (self.store.read().get("parser_activity") or None)
+        if not activity:
+            return None
+        public = dict(activity)
+        log_path = Path(str(public.pop("console_log_path", "")))
+        console_output = ""
+        truncated = False
+        if log_path.is_file():
+            console_output = log_path.read_text(encoding="utf-8", errors="replace")
+            if len(console_output) > MAX_BROWSER_CONSOLE_CHARACTERS:
+                console_output = console_output[-MAX_BROWSER_CONSOLE_CHARACTERS:]
+                truncated = True
+        public["console_output"] = console_output
+        public["console_truncated"] = truncated
+        return public
 
     def public_state(self) -> dict[str, Any]:
         state = self.store.read()
+        parser_activity = dict(state.get("parser_activity") or {}) or None
+        if parser_activity:
+            parser_activity.pop("console_log_path", None)
         return {
             "runner_version": RUNNER_VERSION,
             "current_lor_version": state["current_lor_version"],
@@ -429,6 +528,7 @@ class Runner:
             "candidate_output_comparison": state.get("candidate_output_comparison"),
             "candidate_resolution": state.get("candidate_resolution"),
             "production_parser_run": state.get("production_parser_run"),
+            "parser_activity": parser_activity,
             "last_approval": state.get("last_approval"),
             "approval_history": state.get("approval_history", []),
         }
@@ -589,10 +689,37 @@ class Runner:
             "--result-json", str(result_json),
             "--non-interactive",
         ]
-        completed = subprocess.run(command, capture_output=True, text=True, timeout=900, check=False)
+        activity, console_log = self._start_parser_activity(target, version, folder, actor)
+        try:
+            completed = subprocess.run(
+                command, capture_output=True, text=True, timeout=900,
+                check=False,
+            )
+        except Exception as error:
+            detail = f"[FATAL] Parser process could not complete: {error}"
+            self._finish_parser_activity(
+                activity, "FAILED", console_log, detail, error=str(error)
+            )
+            raise RuntimeError(detail) from error
+        console_output = "\n".join(
+            part.strip() for part in (completed.stdout, completed.stderr)
+            if part and part.strip()
+        )
         if completed.returncode or not result_json.is_file():
-            raise RuntimeError((completed.stderr or completed.stdout).strip() or "Parser run failed")
-        result = json.loads(result_json.read_text(encoding="utf-8"))
+            detail = console_output or "Parser run failed"
+            self._finish_parser_activity(
+                activity, "FAILED", console_log, detail, error=detail
+            )
+            raise RuntimeError(detail)
+        try:
+            result = json.loads(result_json.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            detail = f"[FATAL] Parser result file is invalid: {error}"
+            diagnostic = "\n".join(part for part in (console_output, detail) if part)
+            self._finish_parser_activity(
+                activity, "FAILED", console_log, diagnostic, error=detail
+            )
+            raise RuntimeError(detail) from error
         record = {
             **result,
             "run_by": actor,
@@ -645,6 +772,9 @@ class Runner:
                     current["candidate_output_comparison"] = comparison
 
                 self.store.update(save_comparison)
+        self._finish_parser_activity(
+            activity, "PASSED", console_log, console_output, result=record
+        )
         return record
 
     def resolve_candidate_findings(self, notes: str, actor: str) -> dict[str, Any]:
@@ -743,6 +873,7 @@ class Runner:
             current["candidate_output_comparison"] = None
             current["candidate_resolution"] = None
             current["production_parser_run"] = None
+            current["parser_activity"] = None
 
         return self.store.update(operation)
 
@@ -801,13 +932,20 @@ class RequestHandler(BaseHTTPRequestHandler):
             return HTTPStatus.OK, {"status": "ok", "version": RUNNER_VERSION}
         if self.command == "GET" and path == "/state":
             return HTTPStatus.OK, self.runner.public_state()
+        if self.command == "GET" and path == "/parser/activity":
+            return HTTPStatus.OK, {"activity": self.runner.public_parser_activity()}
         payload = self.body()
         actor = str(payload.get("actor") or "unknown-operator")
         if self.command == "POST":
             # Only one state-changing/check/parser operation may run at a time.
             # This prevents concurrent website clicks from targeting the same
-            # candidate database or changing the version record mid-run.
-            with self.runner.operation_lock:
+            # candidate database or changing the version record mid-run. A
+            # second request is rejected rather than queued to run later.
+            if not self.runner.operation_lock.acquire(blocking=False):
+                return HTTPStatus.CONFLICT, {
+                    "error": "Another parser or version-check operation is already running"
+                }
+            try:
                 if path == "/candidate":
                     self.runner.select_candidate(
                         str(payload.get("new_lor_version") or ""), actor
@@ -828,6 +966,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                         str(payload.get("confirm_lor_version") or ""), actor
                     )
                     return HTTPStatus.OK, self.runner.public_state()
+            finally:
+                self.runner.operation_lock.release()
         return HTTPStatus.NOT_FOUND, {"error": "Runner endpoint was not found"}
 
     def handle_request(self) -> None:
@@ -866,6 +1006,7 @@ def initialize(arguments: argparse.Namespace) -> None:
         "candidate_output_comparison": None,
         "candidate_resolution": None,
         "production_parser_run": None,
+        "parser_activity": None,
         "last_approval": None,
         "approval_history": [],
     })
