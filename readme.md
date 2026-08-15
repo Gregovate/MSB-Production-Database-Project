@@ -18,7 +18,8 @@ V7 is the current supported breakpoint. Superseded V6, spreadsheet, Excel-report
 
 ## Production LOR-to-database flow
 
-The repository root provides two operator launchers for the two separate manual steps:
+The repository root provides two operator launchers for the two separate manual
+data steps:
 
 ```powershell
 .\run_parse_props.ps1
@@ -26,6 +27,17 @@ The repository root provides two operator launchers for the two separate manual 
 ```
 
 They are intentionally separate. Running the parser does **not** automatically ingest anything into PostgreSQL.
+
+The restricted website runner has its own root management launcher:
+
+```powershell
+.\run_lor_runner.ps1 -Action Status
+```
+
+`run_lor_runner.ps1` installs and starts the internal Windows service boundary;
+it does not run the parser merely because the runner starts. Its protected
+token is generated once, stored with Windows DPAPI, and paired to the Linux API
+through SSH without copying the secret through operator commands.
 
 ```text
 Authoritative LOR previews

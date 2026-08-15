@@ -51,6 +51,15 @@ class OperatorRunnerTests(unittest.TestCase):
         self.store = runner_module.StateStore(self.state_file)
         self.runner = runner_module.Runner(self.store)
 
+    def test_credential_fingerprint_is_stable_and_does_not_reveal_token(self) -> None:
+        token = "a" * 64
+        first = runner_module.credential_fingerprint(f"Bearer {token}")
+        second = runner_module.credential_fingerprint(f"Bearer {token}")
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 16)
+        self.assertNotIn(token, first)
+        self.assertEqual(runner_module.credential_fingerprint(""), "missing")
+
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.10", "operator@example.com")
         self.assertEqual(state["new_lor_version"], "6.6.10")

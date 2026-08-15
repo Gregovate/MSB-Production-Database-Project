@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-14  V0.5.0
+Current Version : 2026-08-14  V0.5.1
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,9 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-14  GAL / OpenAI  V0.5.1
+        Forced internal Windows-runner requests to bypass process and system
+        HTTP proxies so the bearer credential cannot be stripped in transit.
     2026-08-14  GAL / OpenAI  V0.5.0
         Added explicit safe stage authority decisions, complete stage-group
         evidence, and a terminal cancellation response with its report URL.
@@ -62,14 +65,14 @@ from pathlib import Path
 from typing import Any, Iterator
 from urllib.parse import unquote, urlparse
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 
 import psycopg2
 from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.5.0"
+APP_VERSION = "V0.5.1"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -84,6 +87,7 @@ ENTITY_VIEWS = {
 }
 
 app = Flask(__name__)
+DIRECT_RUNNER_OPENER = build_opener(ProxyHandler({}))
 
 OPEN_RUN_STATES = {
     "STARTING", "PREFLIGHT", "AWAITING_DECISIONS", "READY_TO_FINISH",
@@ -120,7 +124,9 @@ def runner_request(path: str, payload: dict[str, Any] | None = None,
         },
     )
     try:
-        with urlopen(request_object, timeout=timeout) as response:
+        # The runner is a fixed private-LAN dependency.  Never allow ambient
+        # HTTP_PROXY/HTTPS_PROXY settings to relay or rewrite its bearer header.
+        with DIRECT_RUNNER_OPENER.open(request_object, timeout=timeout) as response:
             result = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
         try:
