@@ -60,6 +60,11 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertNotIn(token, first)
         self.assertEqual(runner_module.credential_fingerprint(""), "missing")
 
+    def test_windows_launcher_is_ascii_for_powershell_51(self) -> None:
+        """Windows PowerShell 5.1 misreads BOM-less UTF-8 punctuation."""
+        launcher = Path(__file__).resolve().parents[4] / "run_lor_runner.ps1"
+        launcher.read_bytes().decode("ascii")
+
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.10", "operator@example.com")
         self.assertEqual(state["new_lor_version"], "6.6.10")
