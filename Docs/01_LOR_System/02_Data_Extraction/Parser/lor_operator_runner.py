@@ -755,7 +755,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         return self.server.runner  # type: ignore[attr-defined]
 
     def log_message(self, format_string: str, *args: Any) -> None:
-        sys.stderr.write(f"[{self.log_date_time_string()}] {format_string % args}\n")
+        """Write normal HTTP access records to the managed stdout log."""
+        print(
+            f"{self.address_string()} - - [{self.log_date_time_string()}] "
+            f"{format_string % args}",
+            flush=True,
+        )
 
     def authorized(self) -> bool:
         expected = f"Bearer {required_environment('LOR_RUNNER_TOKEN')}"

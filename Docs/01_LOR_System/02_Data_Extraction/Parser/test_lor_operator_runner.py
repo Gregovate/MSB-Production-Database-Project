@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import closing
+from contextlib import closing, redirect_stderr, redirect_stdout
+import io
 import json
 import os
 import sqlite3
@@ -70,6 +71,21 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("DontStopIfGoingOnBatteries", source)
         self.assertIn("savedErrorActionPreference", source)
         self.assertIn("native process exit code remains authoritative", source)
+        self.assertIn("WindowStyle Hidden", source)
+
+    def test_http_access_log_uses_stdout_not_stderr(self) -> None:
+        """A successful request must not become a PowerShell native error."""
+        handler = object.__new__(runner_module.RequestHandler)
+        handler.address_string = lambda: "192.168.5.9"
+        handler.log_date_time_string = lambda: "15/Aug/2026 09:08:51"
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            handler.log_message('"GET /health HTTP/1.1" %d -', 200)
+
+        self.assertIn('"GET /health HTTP/1.1" 200 -', stdout.getvalue())
+        self.assertEqual(stderr.getvalue(), "")
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.10", "operator@example.com")
