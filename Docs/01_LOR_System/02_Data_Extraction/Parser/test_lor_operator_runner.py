@@ -68,6 +68,8 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("START FAILED", source)
         self.assertIn("AllowStartIfOnBatteries", source)
         self.assertIn("DontStopIfGoingOnBatteries", source)
+        self.assertIn("savedErrorActionPreference", source)
+        self.assertIn("native process exit code remains authoritative", source)
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.10", "operator@example.com")

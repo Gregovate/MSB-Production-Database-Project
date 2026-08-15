@@ -316,11 +316,23 @@ switch ($Action) {
                 "Starting runner V1.3.0; credential fingerprint=" +
                 "$(Get-TokenFingerprint -Token $token)."
             )
-            & $PythonPath -u $RunnerPath serve `
-                --state-file $StateFile `
-                --host $RunnerHost `
-                --port $Port 2>&1 | Tee-Object -FilePath $ServiceLogPath -Append
-            $runnerExitCode = $LASTEXITCODE
+            # BaseHTTPRequestHandler writes normal HTTP access records to
+            # stderr. Windows PowerShell converts redirected native stderr to
+            # ErrorRecord objects; the global Stop preference would otherwise
+            # terminate this healthy long-running process after its first
+            # request. The native process exit code remains authoritative.
+            $savedErrorActionPreference = $ErrorActionPreference
+            try {
+                $ErrorActionPreference = 'Continue'
+                & $PythonPath -u $RunnerPath serve `
+                    --state-file $StateFile `
+                    --host $RunnerHost `
+                    --port $Port 2>&1 | Tee-Object -FilePath $ServiceLogPath -Append
+                $runnerExitCode = $LASTEXITCODE
+            }
+            finally {
+                $ErrorActionPreference = $savedErrorActionPreference
+            }
             Write-ServiceLog "Runner process exited with code $runnerExitCode."
             exit $runnerExitCode
         }
