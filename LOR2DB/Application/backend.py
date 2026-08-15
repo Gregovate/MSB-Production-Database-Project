@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-14  V0.5.1
+Current Version : 2026-08-15  V0.6.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,10 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-15  GAL / OpenAI  V0.6.0
+        Separated routine parser execution from the infrequent LOR version
+        approval workflow and exposed the runner's latest read-only console
+        record through an authenticated fixed endpoint.
     2026-08-14  GAL / OpenAI  V0.5.1
         Forced internal Windows-runner requests to bypass process and system
         HTTP proxies so the bearer credential cannot be stripped in transit.
@@ -72,7 +76,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.5.1"
+APP_VERSION = "V0.6.0"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -513,6 +517,13 @@ def select_parser_candidate() -> Response:
     return jsonify(runner_request(
         "candidate", {"new_lor_version": version, "actor": operator}
     ))
+
+
+@app.get("/parser/activity")
+def get_parser_activity() -> Response:
+    """Return only the runner's bounded, read-only parser console record."""
+    operator_email()
+    return jsonify(runner_request("parser/activity"))
 
 
 @app.post("/parser/check")

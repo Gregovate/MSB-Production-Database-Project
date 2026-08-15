@@ -314,7 +314,7 @@ switch ($Action) {
             $env:LOR_CHECKER_PATH = $CheckerPath
             $env:PYTHONUNBUFFERED = '1'
             Write-ServiceLog (
-                "Starting runner V1.3.0; credential fingerprint=" +
+                "Starting runner V1.4.0; credential fingerprint=" +
                 "$(Get-TokenFingerprint -Token $token)."
             )
             # BaseHTTPRequestHandler writes normal HTTP access records to
