@@ -73,6 +73,9 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("savedErrorActionPreference", source)
         self.assertIn("native process exit code remains authoritative", source)
         self.assertIn("WindowStyle Hidden", source)
+        self.assertIn("function Stop-InstalledRunner", source)
+        self.assertIn("not the managed LOR runner", source)
+        self.assertIn("parser_activity.status -eq 'RUNNING'", source)
 
     def test_http_access_log_uses_stdout_not_stderr(self) -> None:
         """A successful request must not become a PowerShell native error."""
