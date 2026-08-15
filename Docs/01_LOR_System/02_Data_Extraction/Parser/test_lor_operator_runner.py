@@ -63,7 +63,11 @@ class OperatorRunnerTests(unittest.TestCase):
     def test_windows_launcher_is_ascii_for_powershell_51(self) -> None:
         """Windows PowerShell 5.1 misreads BOM-less UTF-8 punctuation."""
         launcher = Path(__file__).resolve().parents[4] / "run_lor_runner.ps1"
-        launcher.read_bytes().decode("ascii")
+        source = launcher.read_bytes().decode("ascii")
+        self.assertIn("PYTHONUNBUFFERED", source)
+        self.assertIn("START FAILED", source)
+        self.assertIn("AllowStartIfOnBatteries", source)
+        self.assertIn("DontStopIfGoingOnBatteries", source)
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.10", "operator@example.com")

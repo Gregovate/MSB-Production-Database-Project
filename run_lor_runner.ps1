@@ -40,6 +40,17 @@ $SecretPath = Join-Path $SecretRoot 'runner-token.dpapi'
 $ServiceLogPath = Join-Path $SecretRoot 'runner-service.log'
 $PendingRemotePath = '~/.msb-lor-runner-token.pending'
 
+function Write-ServiceLog {
+    param([Parameter(Mandatory = $true)][string]$Message)
+
+    New-Item -ItemType Directory -Force -Path $SecretRoot | Out-Null
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Add-Content `
+        -LiteralPath $ServiceLogPath `
+        -Value "[$timestamp] $Message" `
+        -Encoding UTF8
+}
+
 function Get-TokenFingerprint {
     param([Parameter(Mandatory = $true)][string]$Token)
 
@@ -186,6 +197,8 @@ function Install-ScheduledRunner {
         -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet `
         -StartWhenAvailable `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries `
         -RestartCount 3 `
         -RestartInterval (New-TimeSpan -Minutes 1) `
         -ExecutionTimeLimit ([TimeSpan]::Zero) `
@@ -275,32 +288,52 @@ switch ($Action) {
     }
 
     'Start' {
-        $state = Assert-RunnerPrerequisites
-        $listener = Get-NetTCPConnection `
-            -LocalPort $Port `
-            -State Listen `
-            -ErrorAction SilentlyContinue
-        if ($listener) {
-            throw "Port $Port already has a listener; a second runner was not started."
+        Write-ServiceLog "Start requested for ${RunnerHost}:$Port."
+        try {
+            $state = Assert-RunnerPrerequisites
+            Write-ServiceLog (
+                "Prerequisites passed for approved LOR " +
+                "$($state.current_lor_version)."
+            )
+            $listener = Get-NetTCPConnection `
+                -LocalPort $Port `
+                -State Listen `
+                -ErrorAction SilentlyContinue
+            if ($listener) {
+                throw "Port $Port already has a listener; a second runner was not started."
+            }
+            $token = Read-ProtectedToken
+            $env:LOR_RUNNER_TOKEN = $token
+            $env:LOR_PREVIEW_PARENT = 'G:\Shared drives\MSB Database'
+            $env:LOR_SQLITE_OUTPUT =
+                'G:\Shared drives\MSB Database\database\lor_output_v7_scene.db'
+            $env:LOR_RUNNER_REPORTS_ROOT =
+                'G:\Shared drives\MSB Database\LOR Version Reviews'
+            $env:LOR_PARSER_PATH = $ParserPath
+            $env:LOR_CHECKER_PATH = $CheckerPath
+            $env:PYTHONUNBUFFERED = '1'
+            Write-ServiceLog (
+                "Starting runner V1.3.0; credential fingerprint=" +
+                "$(Get-TokenFingerprint -Token $token)."
+            )
+            & $PythonPath -u $RunnerPath serve `
+                --state-file $StateFile `
+                --host $RunnerHost `
+                --port $Port 2>&1 | Tee-Object -FilePath $ServiceLogPath -Append
+            $runnerExitCode = $LASTEXITCODE
+            Write-ServiceLog "Runner process exited with code $runnerExitCode."
+            exit $runnerExitCode
         }
-        $token = Read-ProtectedToken
-        $env:LOR_RUNNER_TOKEN = $token
-        $env:LOR_PREVIEW_PARENT = 'G:\Shared drives\MSB Database'
-        $env:LOR_SQLITE_OUTPUT =
-            'G:\Shared drives\MSB Database\database\lor_output_v7_scene.db'
-        $env:LOR_RUNNER_REPORTS_ROOT =
-            'G:\Shared drives\MSB Database\LOR Version Reviews'
-        $env:LOR_PARSER_PATH = $ParserPath
-        $env:LOR_CHECKER_PATH = $CheckerPath
-        Write-Host "[INFO] Approved Current LOR: $($state.current_lor_version)"
-        Write-Host "[INFO] Credential fingerprint: $(Get-TokenFingerprint -Token $token)"
-        Write-Host '[INFO] Starting restricted runner. Parser and ingest remain idle.'
-        New-Item -ItemType Directory -Force -Path $SecretRoot | Out-Null
-        & $PythonPath $RunnerPath serve `
-            --state-file $StateFile `
-            --host $RunnerHost `
-            --port $Port 2>&1 | Tee-Object -FilePath $ServiceLogPath -Append
-        exit $LASTEXITCODE
+        catch {
+            $failure = $_.Exception.Message
+            Write-ServiceLog "START FAILED: $failure"
+            Write-Error $failure
+            exit 1
+        }
+        finally {
+            Remove-Item Env:\LOR_RUNNER_TOKEN -ErrorAction SilentlyContinue
+            Remove-Variable token -ErrorAction SilentlyContinue
+        }
     }
 
     'Status' {
