@@ -1,4 +1,4 @@
-/* MSB LOR landing page - 2026-08-15 V0.6.0 */
+/* MSB LOR landing page - 2026-08-16 V0.6.1 */
 (function () {
   "use strict";
 
@@ -67,7 +67,7 @@
         <div><dt>Production SQLite</dt><dd class="path-value">${esc(run?.sqlite_path || "Not built in the current approved-version state")}</dd></div>
         <div><dt>SQLite SHA-256</dt><dd class="digest">${esc(run?.sqlite_sha256 || "Not available until a validated parser run completes")}</dd></div>
       </dl>
-      <a class="primary" href="parser/">${runner.parser_activity?.target === "current" && runner.parser_activity?.status === "PASSED" ? "Review parser output" : "Run parser"}</a>
+      <a class="primary" href="parser/">Run parser</a>
     </section>`;
   }
 

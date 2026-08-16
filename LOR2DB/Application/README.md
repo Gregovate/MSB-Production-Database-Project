@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT code; web ingest workflow pending review/deployment |
-| Initial release / current revision | 2026-08-04 / 2026-08-15 |
+| Status | CURRENT code; web ingest workflow deployed; V0.6.1 action-clarity hotfix pending deployment |
+| Initial release / current revision | 2026-08-04 / 2026-08-16 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-16 | Kept `Run parser` permanently available after successful runs and made `Review parser output` an additional action instead of a replacement. Corrected the Windows installer message so an unchanged protected token does not instruct the operator to pair the server again. |
 | 2026-08-15 | Added the complete browser-operated parser-to-ingest workflow. The idempotent parser remains repeatable until the operator approves the exact displayed SQLite digest. The Windows runner then performs the fixed digest-locked PostgreSQL ingest and exposes read-only console output on the same page. Ingest never starts reconciliation automatically. |
 | 2026-08-15 | Separated routine parser execution from infrequent LOR-version approval. The landing page now has distinct parser, version, and reconciliation boxes; dedicated parser and version-check pages own their respective workflows. Runner V1.4.0 preserves bounded read-only console output, records failures, rejects concurrent operations, and marks interrupted work truthfully after restart. |
 | 2026-08-14 | Replaced manual runner-token commands with the root `run_lor_runner.ps1` installer. The token is generated once, protected with Windows DPAPI, paired to Linux through SSH, and verified by a non-secret fingerprint. Runner V1.3.0 logs rejected-header fingerprints; backend V0.5.1 bypasses HTTP proxies for the fixed private runner connection. |

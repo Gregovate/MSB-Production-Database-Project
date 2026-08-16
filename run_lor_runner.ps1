@@ -355,6 +355,7 @@ switch ($Action) {
     'Install' {
         Assert-RunnerPrerequisites | Out-Null
         Stop-InstalledRunner
+        $pairingRequired = $false
         if ((Test-Path -LiteralPath $SecretPath) -and -not $RotateToken) {
             $token = Read-ProtectedToken
             Write-Host '[INFO] Existing protected runner token retained.'
@@ -362,6 +363,7 @@ switch ($Action) {
         else {
             $token = New-RunnerToken
             Save-ProtectedToken -Token $token
+            $pairingRequired = $true
             Write-Host '[OK] New runner token generated and protected with Windows DPAPI.'
         }
         if (Test-Path -LiteralPath $IngestSecretPath -PathType Leaf) {
@@ -381,7 +383,12 @@ switch ($Action) {
         Write-Host "[OK] Scheduled Task installed for logged-in account: $TaskName"
         Write-Host "[OK] Credential fingerprint: $(Get-TokenFingerprint -Token $token)"
         Start-InstalledRunner -Token $token
-        Write-Host '[NEXT] Run: .\run_lor_runner.ps1 -Action PairServer'
+        if ($pairingRequired) {
+            Write-Host '[NEXT] Run: .\run_lor_runner.ps1 -Action PairServer'
+        }
+        else {
+            Write-Host '[OK] Existing server pairing remains valid; PairServer is not required.'
+        }
         Remove-Variable token -ErrorAction SilentlyContinue
     }
 
