@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import os
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -21,6 +23,32 @@ SPEC.loader.exec_module(ingest)
 
 
 class IngestAuthorityTests(unittest.TestCase):
+    def test_ascii_redirect_cannot_abort_unicode_diagnostic(self) -> None:
+        script = (
+            "import runpy, sys, types; "
+            "pg=types.ModuleType('psycopg2'); "
+            "extras=types.ModuleType('psycopg2.extras'); "
+            "pg.extras=extras; "
+            "sys.modules['psycopg2']=pg; "
+            "sys.modules['psycopg2.extras']=extras; "
+            f"runpy.run_path({str(MODULE_PATH)!r}, run_name='ingest_encoding_test'); "
+            "print('ingest output \\u2192 browser log')"
+        )
+        environment = os.environ.copy()
+        environment["PYTHONIOENCODING"] = "ascii:strict"
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            env=environment,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            completed.stderr.decode(errors="replace"),
+        )
+        self.assertIn(b"ingest output \\u2192 browser log", completed.stdout)
+
     def test_reviewed_sqlite_hash_accepts_exact_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "lor_output_v7_scene.db"
@@ -124,6 +152,31 @@ class IngestAuthorityTests(unittest.TestCase):
             "d" * 64,
         )
         self.assertEqual(import_run_id, 41)
+
+    def test_completed_exact_digest_is_reused(self) -> None:
+        class Cursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def execute(self, statement, parameters):
+                self.statement = statement
+                self.parameters = parameters
+
+            def fetchone(self):
+                return (48,)
+
+        class Connection:
+            def cursor(self):
+                return Cursor()
+
+        digest = "d" * 64
+        self.assertEqual(
+            ingest.find_completed_import_run(Connection(), digest),
+            48,
+        )
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-16 | Added ingest V0.4.1 / runner V1.5.1 recovery for a Windows console encoding failure after PostgreSQL commit. The exact completed SQLite digest is reused without creating a duplicate import run, and post-commit failures can no longer claim rollback. |
 | 2026-08-16 | Kept `Run parser` permanently available after successful runs and made `Review parser output` an additional action instead of a replacement. Corrected the Windows installer message so an unchanged protected token does not instruct the operator to pair the server again. |
 | 2026-08-15 | Added the complete browser-operated parser-to-ingest workflow. The idempotent parser remains repeatable until the operator approves the exact displayed SQLite digest. The Windows runner then performs the fixed digest-locked PostgreSQL ingest and exposes read-only console output on the same page. Ingest never starts reconciliation automatically. |
 | 2026-08-15 | Separated routine parser execution from infrequent LOR-version approval. The landing page now has distinct parser, version, and reconciliation boxes; dedicated parser and version-check pages own their respective workflows. Runner V1.4.0 preserves bounded read-only console output, records failures, rejects concurrent operations, and marks interrupted work truthfully after restart. |
