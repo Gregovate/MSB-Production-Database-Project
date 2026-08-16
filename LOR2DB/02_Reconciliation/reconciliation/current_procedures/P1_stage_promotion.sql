@@ -1,16 +1,17 @@
 /* ============================================================================
 Object:       Current P1 stage promotion entry procedure
-Revision:     2026-08-14-after-0032
+Revision:     2026-08-16-after-0033
 
 Purpose:
   Canonical repair/inspection definition of the public P1 entry procedure
-  installed by migration 0032. The preserved existing-stage implementation
-  remains `ref.p1_promote_stage_from_reconciliation_before_0032(bigint)`.
+  installed by migration 0033. The migration 0032 implementation remains
+  `ref.p1_promote_stage_from_reconciliation_before_0033(bigint)`.
 
 Safety:
-  Installing this definition does not call P1 or modify production rows. New
-  stages are inserted only when Finish calls P1 for an explicitly approved,
-  unambiguous ADD_NEW_STAGE group.
+  Installing this definition does not call P1 or modify production rows. Finish
+  calls P1 only after all operator decisions have been recorded. Explicitly
+  approved canonical StageID changes preserve permanent stage_id, and accepted
+  per-binding source StageIDs prevent the same alias from reopening later.
 ============================================================================ */
 
 BEGIN;
@@ -24,9 +25,8 @@ SET search_path = pg_catalog, ops, lor_snap, ref
 AS $procedure$
 DECLARE
     v_import_run_id bigint;
-    v_group record;
-    v_binding record;
-    v_stage_id integer;
+    v_change record;
+    v_old_stage_key text;
 BEGIN
     SELECT r.import_run_id INTO v_import_run_id
     FROM ops.lor_reconciliation_run AS r
@@ -37,101 +37,108 @@ BEGIN
             p_lor_reconciliation_run_id;
     END IF;
 
-    FOR v_group IN
+    CALL ref.p1_promote_stage_from_reconciliation_before_0033(
+        p_lor_reconciliation_run_id
+    );
+
+    FOR v_change IN
         SELECT
             gr.lor_reconciliation_group_id,
-            min(c.proposed_stage_key) AS stage_key,
-            min(ops.f_normalize_lor_stage_name(
-                c.source_name, c.proposed_stage_key))
-                FILTER (WHERE c.metadata_authoritative)
-                AS stage_name,
-            min(c.proposed_stage_key || '-' ||
-                ops.f_normalize_lor_stage_name(
-                    c.source_name, c.proposed_stage_key))
-                FILTER (WHERE c.metadata_authoritative)
-                AS folder_name,
-            min(c.proposed_park_order) AS park_order,
-            min(c.proposed_sub_order) AS sub_order
+            min(c.resolved_stage_id) AS stage_id,
+            a.action_payload ->> 'target_stage_key' AS target_stage_key,
+            min(c.proposed_park_order) FILTER (
+                WHERE c.proposed_stage_key =
+                    a.action_payload ->> 'target_stage_key'
+            ) AS park_order,
+            min(c.proposed_sub_order) FILTER (
+                WHERE c.proposed_stage_key =
+                    a.action_payload ->> 'target_stage_key'
+            ) AS sub_order
         FROM ops.v_lor_reconciliation_group_review AS gr
+        JOIN ops.lor_reconciliation_action AS a
+          ON a.lor_reconciliation_action_id = gr.effective_action_id
         JOIN ops.lor_reconciliation_stage_candidate AS c
           ON c.lor_reconciliation_group_id = gr.lor_reconciliation_group_id
         WHERE gr.lor_reconciliation_run_id = p_lor_reconciliation_run_id
-          AND gr.effective_action_type = 'ADD_NEW_STAGE'
+          AND gr.effective_action_type = 'APPROVE_STAGE_CHANGE'
           AND gr.effective_resolution_state = 'APPROVED'
-          AND ops.f_stage_group_can_add_new_stage(
-                gr.lor_reconciliation_group_id)
-        GROUP BY gr.lor_reconciliation_group_id
+        GROUP BY gr.lor_reconciliation_group_id, a.action_payload
     LOOP
-        IF EXISTS (
-            SELECT 1 FROM ref.stage_lor_binding AS b
-            JOIN ops.lor_reconciliation_stage_candidate AS c
-              ON c.binding_type = b.binding_type
-             AND c.preview_id = b.preview_id
-             AND c.scene_id IS NOT DISTINCT FROM b.scene_id
-            WHERE c.lor_reconciliation_group_id =
-                v_group.lor_reconciliation_group_id
-        ) THEN
-            RAISE EXCEPTION 'A stable LOR binding for new stage group % was created after preflight',
-                v_group.lor_reconciliation_group_id;
+        IF nullif(btrim(v_change.target_stage_key), '') IS NULL THEN
+            RAISE EXCEPTION 'Approved stage group % has no target StageID',
+                v_change.lor_reconciliation_group_id;
         END IF;
 
-        INSERT INTO ref.stage (
-            stage_key, stage_name, folder_name, park_order, sub_order
-        ) VALUES (
-            v_group.stage_key, v_group.stage_name, v_group.folder_name,
-            v_group.park_order, v_group.sub_order
-        ) RETURNING stage_id INTO v_stage_id;
+        SELECT s.stage_key INTO v_old_stage_key
+        FROM ref.stage AS s
+        WHERE s.stage_id = v_change.stage_id
+        FOR UPDATE;
 
-        INSERT INTO ops.lor_reconciliation_result (
-            lor_reconciliation_run_id, import_run_id, entity_type,
-            entity_key, result_class, reason_code, operator_message, committed
-        ) VALUES (
-            p_lor_reconciliation_run_id, v_import_run_id, 'STAGE',
-            v_stage_id::text, 'ADDED', 'P1_ADD_NEW_STAGE',
-            format('ADDED: Stage %s as permanent stage_id %s.',
-                v_group.stage_key, v_stage_id), true
-        );
+        IF EXISTS (
+            SELECT 1 FROM ref.stage AS s
+            WHERE s.stage_key = v_change.target_stage_key
+              AND s.stage_id <> v_change.stage_id
+        ) THEN
+            RAISE EXCEPTION 'Approved StageID % already belongs to another permanent stage',
+                v_change.target_stage_key;
+        END IF;
 
-        FOR v_binding IN
-            SELECT c.*
-            FROM ops.lor_reconciliation_stage_candidate AS c
-            WHERE c.lor_reconciliation_group_id =
-                v_group.lor_reconciliation_group_id
-            ORDER BY c.lor_reconciliation_stage_candidate_id
-        LOOP
-            INSERT INTO ref.stage_lor_binding (
-                stage_id, binding_type, preview_id, scene_id, source_name,
-                first_seen_import_run_id, last_seen_import_run_id
-            ) VALUES (
-                v_stage_id, v_binding.binding_type, v_binding.preview_id,
-                v_binding.scene_id, v_binding.source_name,
-                v_import_run_id, v_import_run_id
-            );
+        UPDATE ref.stage AS s
+           SET stage_key = v_change.target_stage_key,
+               folder_name = CASE
+                   WHEN s.folder_name LIKE v_old_stage_key || '-%'
+                   THEN v_change.target_stage_key ||
+                        substr(s.folder_name, length(v_old_stage_key) + 1)
+                   ELSE s.folder_name
+               END,
+               park_order = v_change.park_order,
+               sub_order = v_change.sub_order,
+               updated_at = now(),
+               updated_by = current_user
+         WHERE s.stage_id = v_change.stage_id
+           AND (
+               s.stage_key IS DISTINCT FROM v_change.target_stage_key
+               OR s.park_order IS DISTINCT FROM v_change.park_order
+               OR s.sub_order IS DISTINCT FROM v_change.sub_order
+           );
 
+        IF FOUND THEN
             INSERT INTO ops.lor_reconciliation_result (
                 lor_reconciliation_run_id, import_run_id, entity_type,
                 entity_key, result_class, reason_code,
                 operator_message, committed
             ) VALUES (
                 p_lor_reconciliation_run_id, v_import_run_id, 'STAGE',
-                v_binding.candidate_key, 'ADDED', 'P1_STAGE_LOR_BINDING',
-                format('ADDED: %s binding %s%s to new permanent stage_id %s.',
-                    v_binding.binding_type, v_binding.preview_id,
-                    CASE WHEN v_binding.scene_id IS NULL THEN ''
-                         ELSE '/' || v_binding.scene_id END,
-                    v_stage_id), true
+                v_change.stage_id::text, 'UPDATED',
+                'P1_APPROVED_STAGE_KEY_CHANGE',
+                format(
+                    'UPDATED: Stage %s to canonical StageID %s and preserved permanent stage_id %s.',
+                    v_old_stage_key, v_change.target_stage_key,
+                    v_change.stage_id
+                ),
+                true
             );
-        END LOOP;
+        END IF;
     END LOOP;
 
-    CALL ref.p1_promote_stage_from_reconciliation_before_0032(
-        p_lor_reconciliation_run_id
-    );
+    UPDATE ref.stage_lor_binding AS b
+       SET accepted_source_stage_key = c.source_stage_key,
+           updated_at = now(),
+           updated_by = current_user
+    FROM ops.lor_reconciliation_stage_candidate AS c
+    JOIN ops.v_lor_reconciliation_group_review AS gr
+      ON gr.lor_reconciliation_group_id = c.lor_reconciliation_group_id
+    WHERE gr.lor_reconciliation_run_id = p_lor_reconciliation_run_id
+      AND gr.effective_resolution_state IN ('AUTO_APPROVED', 'APPROVED')
+      AND b.binding_type = c.binding_type
+      AND b.preview_id = c.preview_id
+      AND b.scene_id IS NOT DISTINCT FROM c.scene_id
+      AND b.accepted_source_stage_key IS DISTINCT FROM c.source_stage_key;
 END;
 $procedure$;
 
 COMMENT ON PROCEDURE ref.p1_promote_stage_from_reconciliation(bigint) IS
-'Reconciliation-gated P1. Adds explicitly approved unambiguous new stages, then delegates existing-stage metadata/binding promotion to the preserved implementation.';
+'Reconciliation-gated P1. Preserves permanent stage identity, applies explicitly approved canonical StageID/substage changes, remembers accepted per-binding source StageIDs, and delegates established/new-stage promotion to the preserved implementation.';
 
 REVOKE EXECUTE ON PROCEDURE
     ref.p1_promote_stage_from_reconciliation(bigint) FROM PUBLIC;

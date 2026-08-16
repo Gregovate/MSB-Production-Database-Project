@@ -349,10 +349,13 @@ unit. Do not deploy only the static page or only `backend.py`.
 2. Apply
    `0032_add_safe_stage_authority_and_terminal_cancel.sql`, then run
    `27_safe_stage_authority_and_cancel_terminal_validation.sql`.
-3. Reapply `grant_lor_preflight_app.sql` V0.3.0 so the restricted API role can
-   invoke only the two stage decision recorders in addition to its existing
-   entry points.
-4. On the approved Windows host, deploy the canonical parser directory,
+3. Apply
+   `0033_approve_stage_key_changes_with_stable_aliases.sql`, then run
+   `28_complete_stage_decision_evidence_validation.sql`.
+4. Reapply `grant_lor_preflight_app.sql` V0.3.1 so the restricted API role can
+   read the evidence-gating predicates and invoke the stage decision recorders
+   in addition to its existing entry points.
+5. On the approved Windows host, deploy the canonical parser directory,
    including runner V1.3.0, version checker, parser V7.0.10, tests, and the root
    runner launcher. Retain the existing `runner-state.json` whose current
    approved LOR is 6.6.10; do not initialize over it. Run launcher `Install`
