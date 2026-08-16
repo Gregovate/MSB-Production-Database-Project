@@ -320,6 +320,44 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertEqual(response.json, expected)
         runner.assert_called_once_with("parser/activity")
 
+    def test_ingest_forwards_only_validated_digest_and_authenticated_actor(self) -> None:
+        digest = "a" * 64
+        with patch.object(backend, "runner_request", return_value={"status": "COMPLETE"}) as runner:
+            response = backend.app.test_client().post(
+                "/ingest/run",
+                json={
+                    "expected_sqlite_sha256": digest,
+                    "sqlite_path": "C:\\unsafe.db",
+                    "command": "arbitrary",
+                },
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        runner.assert_called_once_with(
+            "ingest/run",
+            {
+                "expected_sqlite_sha256": digest,
+                "actor": "greg@sheboyganlights.org",
+            },
+            timeout=920,
+        )
+
+    def test_ingest_rejects_invalid_digest_before_runner_use(self) -> None:
+        with patch.object(backend, "runner_request") as runner:
+            response = backend.app.test_client().post(
+                "/ingest/run",
+                json={"expected_sqlite_sha256": "not-a-digest"},
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+        self.assertEqual(response.status_code, 400)
+        runner.assert_not_called()
+
     def test_landing_page_separates_parser_and_version_workflows(self) -> None:
         landing = Path(__file__).with_name("landing")
         source = (landing / "lor2db.js").read_text(encoding="utf-8")
@@ -338,9 +376,16 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn("Run version check", version_source)
         self.assertIn('target: "baseline"', version_source)
         self.assertIn('target: "candidate"', version_source)
-        self.assertIn("Read-only console output", parser_source)
+        self.assertIn("Parser console output", parser_source)
+        self.assertIn("PostgreSQL ingest console output", parser_source)
         self.assertIn('target: "current"', parser_source)
-        self.assertIn("only; PostgreSQL remains unchanged", parser_source)
+        self.assertIn("Each run rebuilds and replaces the SQLite output", parser_source)
+        self.assertIn("Parser output looks correct — ready for ingest", parser_source)
+        self.assertIn("Ingest to PostgreSQL", parser_source)
+        self.assertIn('request("ingest/run"', parser_source)
+        self.assertIn("Start reconciliation", parser_source)
+        self.assertIn('request("runs/start"', parser_source)
+        self.assertIn("Review parser output", source)
 
 
 if __name__ == "__main__":

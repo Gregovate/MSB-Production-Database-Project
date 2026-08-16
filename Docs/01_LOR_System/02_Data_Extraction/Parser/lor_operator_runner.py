@@ -1,6 +1,12 @@
-"""Authenticated Windows-side runner for LOR2DB parser operations.
+"""Authenticated Windows-side runner for LOR2DB parser and ingest operations.
 
 Initial release: 2026-08-13 V1.0.0
+
+Current version: 2026-08-15 V1.5.0
+
+V1.5.0 adds the fixed, digest-locked PostgreSQL ingest operation and bounded
+read-only ingest console. Parser execution remains repeatable and never starts
+ingest automatically.
 
 The production LOR2DB API runs on Linux. This small internal service owns the
 Windows/G-drive execution boundary and exposes only version-scoped operations;
@@ -30,7 +36,7 @@ from urllib.parse import urlparse
 from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.4.0"
+RUNNER_VERSION = "V1.5.0"
 MAX_BROWSER_CONSOLE_CHARACTERS = 500_000
 
 AUTHORITATIVE_OUTPUT_TABLES = (
@@ -408,13 +414,20 @@ class Runner:
             os.environ.get("LOR_CHECKER_PATH")
             or Path(__file__).with_name("lor_version_checker.py")
         ).resolve()
+        self.ingest_path = Path(
+            os.environ.get("LOR_INGEST_PATH")
+            or Path(__file__).resolve().parents[4]
+            / "LOR2DB" / "01_Ingest"
+            / "postgres_ingest_from_lor_sqlite_v7.py"
+        ).resolve()
         self.preview_parent = Path(required_environment("LOR_PREVIEW_PARENT")).resolve()
         self.production_db = Path(required_environment("LOR_SQLITE_OUTPUT")).resolve()
         self.reports_root = Path(required_environment("LOR_RUNNER_REPORTS_ROOT")).resolve()
-        for script in (self.parser_path, self.checker_path):
+        for script in (self.parser_path, self.checker_path, self.ingest_path):
             if not script.is_file():
                 raise RuntimeError(f"Runner executable is missing: {script}")
         self._mark_interrupted_parser_activity()
+        self._mark_interrupted_ingest_activity()
 
     def _mark_interrupted_parser_activity(self) -> None:
         """Make a stale RUNNING marker truthful after a runner restart."""
@@ -432,6 +445,25 @@ class Runner:
                     "error": "The runner restarted before this parser operation completed.",
                 })
                 current["parser_activity"] = stale
+
+        self.store.update(operation)
+
+    def _mark_interrupted_ingest_activity(self) -> None:
+        """Make a stale RUNNING ingest marker truthful after a restart."""
+        state = self.store.read()
+        activity = state.get("ingest_activity") or {}
+        if activity.get("status") != "RUNNING":
+            return
+
+        def operation(current: dict[str, Any]) -> None:
+            stale = current.get("ingest_activity") or {}
+            if stale.get("status") == "RUNNING":
+                stale.update({
+                    "status": "INTERRUPTED",
+                    "completed_at": utc_now(),
+                    "error": "The runner restarted before this ingest completed.",
+                })
+                current["ingest_activity"] = stale
 
         self.store.update(operation)
 
@@ -510,11 +542,191 @@ class Runner:
         public["console_truncated"] = truncated
         return public
 
+    def _start_ingest_activity(
+        self, digest: str, actor: str
+    ) -> tuple[dict[str, Any], Path]:
+        """Record one recoverable browser-visible PostgreSQL ingest attempt."""
+        state = self.store.read()
+        version = state["current_lor_version"]
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        log_path = (
+            self.reports_root / f"V{version}" / "browser-ingest-runs" /
+            f"ingest-{stamp}.log"
+        )
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        activity = {
+            "activity_id": f"ingest-{stamp}",
+            "status": "RUNNING",
+            "source_lor_version": version,
+            "sqlite_sha256": digest,
+            "started_at": utc_now(),
+            "completed_at": None,
+            "run_by": actor,
+            "console_log_path": str(log_path),
+            "error": None,
+            "result": None,
+        }
+
+        def operation(current: dict[str, Any]) -> None:
+            current["ingest_activity"] = activity
+
+        self.store.update(operation)
+        return activity, log_path
+
+    def _finish_ingest_activity(
+        self,
+        activity: dict[str, Any],
+        status: str,
+        log_path: Path,
+        console_output: str,
+        *,
+        result: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Persist the terminal ingest result and its complete console log."""
+        log_path.write_text(console_output, encoding="utf-8")
+
+        def operation(current: dict[str, Any]) -> None:
+            latest = current.get("ingest_activity") or {}
+            if latest.get("activity_id") != activity["activity_id"]:
+                raise RuntimeError("A newer ingest activity replaced this run")
+            latest.update({
+                "status": status,
+                "completed_at": utc_now(),
+                "error": error,
+                "result": result,
+            })
+            current["ingest_activity"] = latest
+            if result:
+                current["production_ingest_run"] = result
+
+        self.store.update(operation)
+
+    def public_ingest_activity(self) -> dict[str, Any] | None:
+        """Return the latest ingest attempt with bounded read-only output."""
+        activity = self.store.read().get("ingest_activity") or None
+        if not activity:
+            return None
+        public = dict(activity)
+        log_path = Path(str(public.pop("console_log_path", "")))
+        console_output = ""
+        truncated = False
+        if log_path.is_file():
+            console_output = log_path.read_text(
+                encoding="utf-8", errors="replace"
+            )
+            if len(console_output) > MAX_BROWSER_CONSOLE_CHARACTERS:
+                console_output = console_output[-MAX_BROWSER_CONSOLE_CHARACTERS:]
+                truncated = True
+        public["console_output"] = console_output
+        public["console_truncated"] = truncated
+        return public
+
+    def run_ingest(self, expected_digest: str, actor: str) -> dict[str, Any]:
+        """Run the one fixed, parser-authorized SQLite-to-PostgreSQL ingest."""
+        digest = expected_digest.strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError("Expected SQLite SHA-256 must contain 64 hexadecimal characters")
+        state = self.store.read()
+        parser_run = state.get("production_parser_run") or {}
+        if (
+            parser_run.get("status") != "COMPLETE"
+            or parser_run.get("validation_status") != "PASSED"
+        ):
+            raise ValueError("Run and validate the production parser before ingest")
+        if str(parser_run.get("sqlite_sha256") or "").lower() != digest:
+            raise ValueError("The requested SQLite digest is not the latest validated parser output")
+        if Path(str(parser_run.get("sqlite_path") or "")).resolve() != self.production_db:
+            raise ValueError("The validated parser output is not the production SQLite file")
+        if parser_run.get("source_lor_version") != state["current_lor_version"]:
+            raise ValueError("The validated parser output does not use the approved LOR version")
+        if not self.production_db.is_file():
+            raise ValueError(f"Production SQLite file does not exist: {self.production_db}")
+        with self.production_db.open("rb") as source:
+            actual_digest = hashlib.file_digest(source, "sha256").hexdigest()
+        if actual_digest != digest:
+            raise ValueError("Production SQLite changed after the validated parser run")
+        previous = state.get("production_ingest_run") or {}
+        if (
+            previous.get("status") == "COMPLETE"
+            and previous.get("sqlite_sha256") == digest
+        ):
+            raise ValueError("This exact SQLite digest was already ingested")
+
+        password = required_environment("LOR_INGEST_PG_PASSWORD")
+        version = state["current_lor_version"]
+        activity, console_log = self._start_ingest_activity(digest, actor)
+        command = [
+            sys.executable,
+            str(self.ingest_path),
+            "--sqlite", str(self.production_db),
+            "--expected-sqlite-sha256", digest,
+            "--pg-host", "192.168.5.9",
+            "--pg-db", "msb",
+            "--pg-user", "msbadmin",
+            "--notes", (
+                f"LOR2DB web ingest for approved LOR {version}; "
+                f"requested by {actor}"
+            ),
+        ]
+        child_environment = os.environ.copy()
+        child_environment["PGPASSWORD"] = password
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=900,
+                check=False,
+                env=child_environment,
+            )
+        except Exception as error:
+            detail = f"[FATAL] PostgreSQL ingest could not complete: {error}"
+            self._finish_ingest_activity(
+                activity, "FAILED", console_log, detail, error=str(error)
+            )
+            raise RuntimeError(detail) from error
+        console_output = "\n".join(
+            part.strip() for part in (completed.stdout, completed.stderr)
+            if part and part.strip()
+        )
+        if completed.returncode:
+            detail = console_output or "PostgreSQL ingest failed"
+            self._finish_ingest_activity(
+                activity, "FAILED", console_log, detail, error=detail
+            )
+            raise RuntimeError(detail)
+        match = re.search(r"import_run_id=(\d+)", console_output)
+        if not match:
+            detail = "Ingest completed without reporting its import_run_id"
+            diagnostic = "\n".join(
+                part for part in (console_output, f"[FATAL] {detail}") if part
+            )
+            self._finish_ingest_activity(
+                activity, "FAILED", console_log, diagnostic, error=detail
+            )
+            raise RuntimeError(detail)
+        result = {
+            "status": "COMPLETE",
+            "sqlite_sha256": digest,
+            "source_lor_version": version,
+            "import_run_id": int(match.group(1)),
+            "completed_at": utc_now(),
+            "run_by": actor,
+        }
+        self._finish_ingest_activity(
+            activity, "PASSED", console_log, console_output, result=result
+        )
+        return result
+
     def public_state(self) -> dict[str, Any]:
         state = self.store.read()
         parser_activity = dict(state.get("parser_activity") or {}) or None
         if parser_activity:
             parser_activity.pop("console_log_path", None)
+        ingest_activity = dict(state.get("ingest_activity") or {}) or None
+        if ingest_activity:
+            ingest_activity.pop("console_log_path", None)
         return {
             "runner_version": RUNNER_VERSION,
             "current_lor_version": state["current_lor_version"],
@@ -529,6 +741,11 @@ class Runner:
             "candidate_resolution": state.get("candidate_resolution"),
             "production_parser_run": state.get("production_parser_run"),
             "parser_activity": parser_activity,
+            "production_ingest_run": state.get("production_ingest_run"),
+            "ingest_activity": ingest_activity,
+            "ingest_configured": bool(
+                os.environ.get("LOR_INGEST_PG_PASSWORD", "").strip()
+            ),
             "last_approval": state.get("last_approval"),
             "approval_history": state.get("approval_history", []),
         }
@@ -737,6 +954,10 @@ class Runner:
                 raise RuntimeError("LOR version changed while the parser was running; result was not recorded")
             if target == "current":
                 key = "production_parser_run"
+                previous_ingest = current.get("production_ingest_run") or {}
+                if previous_ingest.get("sqlite_sha256") != record.get("sqlite_sha256"):
+                    current["production_ingest_run"] = None
+                    current["ingest_activity"] = None
             elif target == "baseline":
                 key = "baseline_parser_run"
                 current["candidate_output_comparison"] = None
@@ -874,6 +1095,8 @@ class Runner:
             current["candidate_resolution"] = None
             current["production_parser_run"] = None
             current["parser_activity"] = None
+            current["production_ingest_run"] = None
+            current["ingest_activity"] = None
 
         return self.store.update(operation)
 
@@ -934,16 +1157,18 @@ class RequestHandler(BaseHTTPRequestHandler):
             return HTTPStatus.OK, self.runner.public_state()
         if self.command == "GET" and path == "/parser/activity":
             return HTTPStatus.OK, {"activity": self.runner.public_parser_activity()}
+        if self.command == "GET" and path == "/ingest/activity":
+            return HTTPStatus.OK, {"activity": self.runner.public_ingest_activity()}
         payload = self.body()
         actor = str(payload.get("actor") or "unknown-operator")
         if self.command == "POST":
-            # Only one state-changing/check/parser operation may run at a time.
+            # Only one state-changing/check/parser/ingest operation may run at a time.
             # This prevents concurrent website clicks from targeting the same
             # candidate database or changing the version record mid-run. A
             # second request is rejected rather than queued to run later.
             if not self.runner.operation_lock.acquire(blocking=False):
                 return HTTPStatus.CONFLICT, {
-                    "error": "Another parser or version-check operation is already running"
+                    "error": "Another parser, ingest, or version-check operation is already running"
                 }
             try:
                 if path == "/candidate":
@@ -956,6 +1181,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if path == "/parser/run":
                     return HTTPStatus.OK, self.runner.run_parser(
                         str(payload.get("target") or ""), actor
+                    )
+                if path == "/ingest/run":
+                    return HTTPStatus.OK, self.runner.run_ingest(
+                        str(payload.get("expected_sqlite_sha256") or ""), actor
                     )
                 if path == "/candidate/resolve":
                     return HTTPStatus.OK, self.runner.resolve_candidate_findings(
@@ -1007,6 +1236,8 @@ def initialize(arguments: argparse.Namespace) -> None:
         "candidate_resolution": None,
         "production_parser_run": None,
         "parser_activity": None,
+        "production_ingest_run": None,
+        "ingest_activity": None,
         "last_approval": None,
         "approval_history": [],
     })

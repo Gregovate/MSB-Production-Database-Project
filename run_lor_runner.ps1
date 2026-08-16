@@ -8,10 +8,14 @@
 #   The shared bearer token is generated once and stored with Windows DPAPI.
 #   It is never printed or accepted as a command-line argument. PairServer
 #   transfers it through SSH to a mode-0600 pending file for root installation.
+#   The PostgreSQL ingest password is also stored with account-bound DPAPI and
+#   is available only to the managed runner and fixed ingest child process. It
+#   is never returned to the browser, Linux API, runner state, console output,
+#   or command line.
 
 [CmdletBinding()]
 param(
-    [ValidateSet('Install', 'PairServer', 'Start', 'Stop', 'Status')]
+    [ValidateSet('Install', 'ConfigureIngest', 'PairServer', 'Start', 'Stop', 'Status')]
     [string]$Action = 'Status',
 
     [string]$RunnerHost = '192.168.5.55',
@@ -34,9 +38,12 @@ $ParserPath = Join-Path $RepoRoot `
     'Docs\01_LOR_System\02_Data_Extraction\Parser\parse_props_v7_scene_parser.py'
 $CheckerPath = Join-Path $RepoRoot `
     'Docs\01_LOR_System\02_Data_Extraction\Parser\lor_version_checker.py'
+$IngestPath = Join-Path $RepoRoot `
+    'LOR2DB\01_Ingest\postgres_ingest_from_lor_sqlite_v7.py'
 $PythonPath = Join-Path $RepoRoot '.venv\Scripts\python.exe'
 $SecretRoot = Join-Path $env:LOCALAPPDATA 'MSB\LORRunner'
 $SecretPath = Join-Path $SecretRoot 'runner-token.dpapi'
+$IngestSecretPath = Join-Path $SecretRoot 'postgres-ingest-password.dpapi'
 $ServiceLogPath = Join-Path $SecretRoot 'runner-service.log'
 $PendingRemotePath = '~/.msb-lor-runner-token.pending'
 
@@ -128,12 +135,55 @@ function Read-ProtectedToken {
     return $token
 }
 
+function Save-ProtectedIngestCredential {
+    param(
+        [Parameter(Mandatory = $true)]
+        [Security.SecureString]$Credential
+    )
+
+    if ($Credential.Length -eq 0) {
+        throw 'PostgreSQL ingest password cannot be blank.'
+    }
+    New-Item -ItemType Directory -Force -Path $SecretRoot | Out-Null
+    $encrypted = ConvertFrom-SecureString -SecureString $Credential
+    Set-Content `
+        -LiteralPath $IngestSecretPath `
+        -Value $encrypted `
+        -Encoding ASCII `
+        -NoNewline
+    Set-SecretAcl -Path $IngestSecretPath
+}
+
+function Read-ProtectedIngestCredential {
+    if (-not (Test-Path -LiteralPath $IngestSecretPath -PathType Leaf)) {
+        throw 'PostgreSQL ingest credential is not configured.'
+    }
+    $encrypted = (Get-Content -LiteralPath $IngestSecretPath -Raw).Trim()
+    $secureCredential = ConvertTo-SecureString -String $encrypted
+    $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR(
+        $secureCredential
+    )
+    try {
+        $credential = [Runtime.InteropServices.Marshal]::PtrToStringBSTR(
+            $pointer
+        )
+    }
+    finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
+    }
+    if (-not $credential) {
+        throw 'Protected PostgreSQL ingest credential is invalid.'
+    }
+    return $credential
+}
+
 function Assert-RunnerPrerequisites {
     foreach ($requiredPath in @(
         $StateFile,
         $RunnerPath,
         $ParserPath,
         $CheckerPath,
+        $IngestPath,
         $PythonPath
     )) {
         if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
@@ -210,7 +260,7 @@ function Install-ScheduledRunner {
         -Trigger $trigger `
         -Principal $principal `
         -Settings $settings `
-        -Description 'Restricted LOR2DB parser/version-check runner; requires Greg logon and G: drive.' `
+        -Description 'Restricted LOR2DB parser/ingest/version-check runner; requires Greg logon and G: drive.' `
         -Force | Out-Null
 }
 
@@ -218,6 +268,9 @@ function Stop-InstalledRunner {
     $state = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
     if ($state.parser_activity -and $state.parser_activity.status -eq 'RUNNING') {
         throw 'The LOR parser is running. Wait for it to finish before reinstalling the runner.'
+    }
+    if ($state.ingest_activity -and $state.ingest_activity.status -eq 'RUNNING') {
+        throw 'The PostgreSQL ingest is running. Wait for it to finish before reinstalling the runner.'
     }
 
     $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -311,11 +364,38 @@ switch ($Action) {
             Save-ProtectedToken -Token $token
             Write-Host '[OK] New runner token generated and protected with Windows DPAPI.'
         }
+        if (Test-Path -LiteralPath $IngestSecretPath -PathType Leaf) {
+            Write-Host '[INFO] Existing protected PostgreSQL ingest credential retained.'
+        }
+        else {
+            Write-Host '[SETUP] Enter the PostgreSQL msbadmin password once for web ingest.'
+            $secureIngestCredential = Read-Host `
+                'PostgreSQL ingest password' `
+                -AsSecureString
+            Save-ProtectedIngestCredential `
+                -Credential $secureIngestCredential
+            Write-Host '[OK] PostgreSQL ingest credential protected with Windows DPAPI.'
+            Remove-Variable secureIngestCredential -ErrorAction SilentlyContinue
+        }
         Install-ScheduledRunner
         Write-Host "[OK] Scheduled Task installed for logged-in account: $TaskName"
         Write-Host "[OK] Credential fingerprint: $(Get-TokenFingerprint -Token $token)"
         Start-InstalledRunner -Token $token
         Write-Host '[NEXT] Run: .\run_lor_runner.ps1 -Action PairServer'
+        Remove-Variable token -ErrorAction SilentlyContinue
+    }
+
+    'ConfigureIngest' {
+        Assert-RunnerPrerequisites | Out-Null
+        $secureIngestCredential = Read-Host `
+            'Enter the PostgreSQL msbadmin password for web ingest' `
+            -AsSecureString
+        Save-ProtectedIngestCredential -Credential $secureIngestCredential
+        Remove-Variable secureIngestCredential -ErrorAction SilentlyContinue
+        Stop-InstalledRunner
+        $token = Read-ProtectedToken
+        Start-InstalledRunner -Token $token
+        Write-Host '[OK] PostgreSQL ingest credential updated and runner restarted.'
         Remove-Variable token -ErrorAction SilentlyContinue
     }
 
@@ -354,7 +434,9 @@ switch ($Action) {
                 throw "Port $Port already has a listener; a second runner was not started."
             }
             $token = Read-ProtectedToken
+            $ingestCredential = Read-ProtectedIngestCredential
             $env:LOR_RUNNER_TOKEN = $token
+            $env:LOR_INGEST_PG_PASSWORD = $ingestCredential
             $env:LOR_PREVIEW_PARENT = 'G:\Shared drives\MSB Database'
             $env:LOR_SQLITE_OUTPUT =
                 'G:\Shared drives\MSB Database\database\lor_output_v7_scene.db'
@@ -362,9 +444,10 @@ switch ($Action) {
                 'G:\Shared drives\MSB Database\LOR Version Reviews'
             $env:LOR_PARSER_PATH = $ParserPath
             $env:LOR_CHECKER_PATH = $CheckerPath
+            $env:LOR_INGEST_PATH = $IngestPath
             $env:PYTHONUNBUFFERED = '1'
             Write-ServiceLog (
-                "Starting runner V1.4.0; credential fingerprint=" +
+                "Starting runner V1.5.0; credential fingerprint=" +
                 "$(Get-TokenFingerprint -Token $token)."
             )
             # BaseHTTPRequestHandler writes normal HTTP access records to
@@ -395,7 +478,9 @@ switch ($Action) {
         }
         finally {
             Remove-Item Env:\LOR_RUNNER_TOKEN -ErrorAction SilentlyContinue
+            Remove-Item Env:\LOR_INGEST_PG_PASSWORD -ErrorAction SilentlyContinue
             Remove-Variable token -ErrorAction SilentlyContinue
+            Remove-Variable ingestCredential -ErrorAction SilentlyContinue
         }
     }
 
@@ -420,6 +505,12 @@ switch ($Action) {
         }
         $token = Read-ProtectedToken
         Write-Host 'Protected token: AVAILABLE'
+        if (Test-Path -LiteralPath $IngestSecretPath -PathType Leaf) {
+            Write-Host 'Protected PostgreSQL ingest credential: AVAILABLE'
+        }
+        else {
+            Write-Host 'Protected PostgreSQL ingest credential: NOT CONFIGURED'
+        }
         Write-Host "Credential fingerprint: $(Get-TokenFingerprint -Token $token)"
         try {
             $health = Test-AuthenticatedHealth -Token $token

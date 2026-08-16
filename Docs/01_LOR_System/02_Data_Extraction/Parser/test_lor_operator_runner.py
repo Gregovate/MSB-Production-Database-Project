@@ -76,6 +76,9 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("function Stop-InstalledRunner", source)
         self.assertIn("not the managed LOR runner", source)
         self.assertIn("parser_activity.status -eq 'RUNNING'", source)
+        self.assertIn("ConfigureIngest", source)
+        self.assertIn("postgres-ingest-password.dpapi", source)
+        self.assertIn("LOR_INGEST_PG_PASSWORD", source)
 
     def test_http_access_log_uses_stdout_not_stderr(self) -> None:
         """A successful request must not become a PowerShell native error."""
@@ -264,6 +267,77 @@ class OperatorRunnerTests(unittest.TestCase):
         self.store.update(prepare)
         runner_module.Runner(self.store)
         activity = self.runner.public_parser_activity()
+        self.assertEqual(activity["status"], "INTERRUPTED")
+        self.assertIn("restarted", activity["error"])
+
+    @patch("lor_operator_runner.subprocess.run")
+    def test_web_ingest_is_locked_to_latest_validated_sqlite_digest(self, run) -> None:
+        database = self.root / "lor_output_v7_scene.db"
+        database.write_bytes(b"reviewed sqlite")
+        digest = runner_module.hashlib.sha256(database.read_bytes()).hexdigest()
+
+        def prepare(state):
+            state["production_parser_run"] = {
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+                "source_lor_version": "6.6.4",
+                "sqlite_path": str(database),
+                "sqlite_sha256": digest,
+            }
+
+        self.store.update(prepare)
+        run.return_value = argparse.Namespace(
+            returncode=0,
+            stdout="[DONE] Snapshot ingest complete. import_run_id=47\n",
+            stderr="",
+        )
+        with patch.dict(os.environ, {"LOR_INGEST_PG_PASSWORD": "secret"}):
+            result = self.runner.run_ingest(digest, "operator@example.com")
+
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertEqual(result["import_run_id"], 47)
+        command = run.call_args.args[0]
+        self.assertIn("--expected-sqlite-sha256", command)
+        self.assertIn(digest, command)
+        self.assertNotIn("secret", command)
+        self.assertEqual(run.call_args.kwargs["env"]["PGPASSWORD"], "secret")
+        activity = self.runner.public_ingest_activity()
+        self.assertEqual(activity["status"], "PASSED")
+        self.assertIn("import_run_id=47", activity["console_output"])
+        with patch.dict(os.environ, {"LOR_INGEST_PG_PASSWORD": "secret"}):
+            with self.assertRaisesRegex(ValueError, "already ingested"):
+                self.runner.run_ingest(digest, "operator@example.com")
+        self.assertEqual(run.call_count, 1)
+
+    def test_web_ingest_rejects_digest_not_approved_by_parser(self) -> None:
+        database = self.root / "lor_output_v7_scene.db"
+        database.write_bytes(b"reviewed sqlite")
+        digest = runner_module.hashlib.sha256(database.read_bytes()).hexdigest()
+
+        def prepare(state):
+            state["production_parser_run"] = {
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+                "source_lor_version": "6.6.4",
+                "sqlite_path": str(database),
+                "sqlite_sha256": digest,
+            }
+
+        self.store.update(prepare)
+        with self.assertRaisesRegex(ValueError, "not the latest validated"):
+            self.runner.run_ingest("0" * 64, "operator@example.com")
+
+    def test_runner_restart_marks_incomplete_ingest_activity_interrupted(self) -> None:
+        def prepare(state):
+            state["ingest_activity"] = {
+                "activity_id": "ingest-stale",
+                "status": "RUNNING",
+                "console_log_path": str(self.root / "missing-ingest.log"),
+            }
+
+        self.store.update(prepare)
+        restarted = runner_module.Runner(self.store)
+        activity = restarted.public_ingest_activity()
         self.assertEqual(activity["status"], "INTERRUPTED")
         self.assertIn("restarted", activity["error"])
 
