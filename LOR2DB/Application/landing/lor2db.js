@@ -1,4 +1,4 @@
-/* MSB LOR landing page - 2026-08-15 V0.5.0 */
+/* MSB LOR landing page - 2026-08-15 V0.6.0 */
 (function () {
   "use strict";
 
@@ -31,6 +31,21 @@
     return payload;
   }
 
+  function parserHandoff(document) {
+    const run = document?.parser_runner?.production_parser_run;
+    const activity = document?.parser_runner?.parser_activity;
+    const digest = String(run?.sqlite_sha256 || "").toLowerCase();
+    if (run?.validation_status !== "PASSED" || !/^[0-9a-f]{64}$/.test(digest)) return null;
+    if (
+      activity?.target !== "current"
+      || activity?.status !== "PASSED"
+      || String(activity?.result?.sqlite_sha256 || "").toLowerCase() !== digest
+    ) return null;
+    const ingested = document?.parser_runner?.production_ingest_run;
+    if (ingested?.status === "COMPLETE" && ingested.sqlite_sha256 === digest) return null;
+    return { sqlite_sha256: digest };
+  }
+
   function parserWorkflowCard(runner, runnerError) {
     if (!runner) {
       return `<section class="card task-card">
@@ -43,7 +58,7 @@
     const parserStatus = run?.validation_status || "Rebuild required";
     return `<section class="card task-card">
       <div class="card-title"><h2>Run LOR parser</h2><span class="pill">Runner ${esc(runner.runner_version)}</span></div>
-      <p>Build the production SQLite database from the currently approved preview folder. You may run this repeatedly before the separate PostgreSQL ingest.</p>
+      <p>Build and inspect production SQLite from the approved preview folder. Repeat the parser until the results look correct, then approve the web-based PostgreSQL ingest.</p>
       <dl class="stacked-facts">
         <div><dt>Approved LOR version</dt><dd>${esc(runner.current_lor_version)}</dd></div>
         <div><dt>Preview source folder</dt><dd class="path-value">${esc(runner.current_preview_folder)}</dd></div>
@@ -52,7 +67,7 @@
         <div><dt>Production SQLite</dt><dd class="path-value">${esc(run?.sqlite_path || "Not built in the current approved-version state")}</dd></div>
         <div><dt>SQLite SHA-256</dt><dd class="digest">${esc(run?.sqlite_sha256 || "Not available until a validated parser run completes")}</dd></div>
       </dl>
-      <a class="primary" href="parser/">Run parser or view output</a>
+      <a class="primary" href="parser/">${runner.parser_activity?.target === "current" && runner.parser_activity?.status === "PASSED" ? "Review parser output" : "Run parser"}</a>
     </section>`;
   }
 
@@ -120,7 +135,18 @@
     </section>`;
   }
 
-  function workflowCard(workflow) {
+  function workflowCard(workflow, handoff) {
+    if (handoff) {
+      return `<section class="card workflow next-step-card">
+        <div>
+          <p class="eyebrow">Next step</p>
+          <h2>REVIEW PARSER OUTPUT</h2>
+          <p>The parser passed, but nothing has been ingested. Review the parser console, reports, counts, and SQLite results. Make corrections and rerun the parser as many times as needed.</p>
+        </div>
+        <div class="workflow-action"><a class="primary" href="parser/#parser-console">Review parser output</a></div>
+        <div class="manual-note"><strong>PostgreSQL remains unchanged.</strong> Ingest becomes available on the parser page only after you confirm that the displayed output looks correct.</div>
+      </section>`;
+    }
     const headings = {
       SNAPSHOT_CONSUMED: "NO NEW SNAPSHOT TO RECONCILE",
       READY_TO_START: "NEW SNAPSHOT READY FOR REVIEW",
@@ -136,12 +162,13 @@
     return `<section class="card workflow">
       <div><p class="eyebrow">PostgreSQL reconciliation status</p><h2>${esc(headings[workflow.state] || workflow.state.replaceAll("_", " "))}</h2><p>${esc(workflow.message)}</p></div>
       <div class="workflow-action">${action}</div>
-      <div class="manual-note"><strong>PostgreSQL ingest remains separate.</strong> Run and inspect the approved parser output first, then perform the digest-locked ingest. This page never starts an ingest.</div>
+      <div class="manual-note"><strong>Parser, ingest, and reconciliation are separate approvals.</strong> Each action appears only when its prior step is complete.</div>
     </section>`;
   }
 
   function render() {
-    app.innerHTML = `<div class="task-grid">${parserWorkflowCard(model.parser_runner, model.parser_runner_error)}${versionWorkflowCard(model.parser_runner, model.parser_runner_error)}</div>${workflowCard(model.workflow)}<div class="grid">${snapshotCard(model.snapshot)}${runCard(model.latest_run)}</div>`;
+    const handoff = parserHandoff(model);
+    app.innerHTML = `<div class="task-grid">${parserWorkflowCard(model.parser_runner, model.parser_runner_error)}${versionWorkflowCard(model.parser_runner, model.parser_runner_error)}</div>${workflowCard(model.workflow, handoff)}<div class="grid">${snapshotCard(model.snapshot)}${runCard(model.latest_run)}</div>`;
     document.querySelector("#start-run")?.addEventListener("click", () => {
       dialogError.textContent = "";
       startMessage.textContent = `Snapshot ${model.snapshot.import_run_id} will be captured for a new reconciliation run.`;

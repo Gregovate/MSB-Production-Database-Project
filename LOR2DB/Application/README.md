@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT code; V0.6.0 workflow separation pending review/deployment |
+| Status | CURRENT code; web ingest workflow pending review/deployment |
 | Initial release / current revision | 2026-08-04 / 2026-08-15 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-15 | Added the complete browser-operated parser-to-ingest workflow. The idempotent parser remains repeatable until the operator approves the exact displayed SQLite digest. The Windows runner then performs the fixed digest-locked PostgreSQL ingest and exposes read-only console output on the same page. Ingest never starts reconciliation automatically. |
 | 2026-08-15 | Separated routine parser execution from infrequent LOR-version approval. The landing page now has distinct parser, version, and reconciliation boxes; dedicated parser and version-check pages own their respective workflows. Runner V1.4.0 preserves bounded read-only console output, records failures, rejects concurrent operations, and marks interrupted work truthfully after restart. |
 | 2026-08-14 | Replaced manual runner-token commands with the root `run_lor_runner.ps1` installer. The token is generated once, protected with Windows DPAPI, paired to Linux through SSH, and verified by a non-secret fingerprint. Runner V1.3.0 logs rejected-header fingerprints; backend V0.5.1 bypasses HTTP proxies for the fixed private runner connection. |
 | 2026-08-14 | Added safe `APPROVE_STAGE_CHANGE` and `ADD_NEW_STAGE` paths gated by complete frozen evidence; contradictory stage groups remain non-approvable. The browser now shows every stage-group member. Cancellation now renders a terminal proof screen, cancelled reports have no misleading required actions, and the archive shows Outcome. Current-version parser runs permit structurally compatible authoring edits while candidate runs retain their exact checked-source guard. |
@@ -50,6 +51,8 @@ The page calls the existing authenticated backend through
 `/lor2db/preflight/api/`. Its separate function boxes show:
 
 - the normal repeatable **Run LOR parser** workflow;
+- the explicit parser review and **Ingest to PostgreSQL** step whenever a
+  successful parser output has not yet been ingested;
 - the current approved LOR version and a link to the separate infrequent
   **Check new version** workflow;
 - PostgreSQL reconciliation status, with no action button when no action is
@@ -305,29 +308,34 @@ direct write privileges on `ref`, `lor_snap`, or the reconciliation tables.
 After creating the login separately with a secured password, apply
 `grant_lor_preflight_app.sql` to install this exact grant set.
 
-## V0.6.0 incremental deployment order
+## Web ingest incremental deployment order
 
-This release changes the Windows runner, Linux API, and NAS browser files as
-one interface contract. It requires no PostgreSQL migration, grant change,
-token rotation, or runner re-pairing.
+This release changes the Windows runner, Linux API, and NAS browser files. It
+requires no PostgreSQL migration, grant change, runner-token rotation, or
+runner re-pairing. The Office PC records the existing PostgreSQL ingest
+password once in a Windows DPAPI-protected file; the password is never sent to
+the browser or Linux API.
 
-1. Back up `/opt/lor-preflight/backend.py` and the published
-   `/mnt/msb-web/my/lor2db` landing-page files; record their hashes.
-2. On the approved Windows host, pull the reviewed commit and run the complete
-   parser/runner tests. Retain the existing DPAPI token and `runner-state.json`.
-3. Reinstall the logged-in-user runner task with `run_lor_runner.ps1 -Action
-   Install`. Confirm hidden runner V1.4.0 health. Do not run `PairServer`.
-4. Deploy backend V0.6.0 to `/opt/lor-preflight/backend.py`, restart
-   `lor-preflight-api.service`, and verify `/health` reports V0.6.0.
+1. Back up the runner launcher/state and the deployed Linux/static application
+   files; record their hashes.
+2. Pull the reviewed commit on the Office PC and run the parser/runner and
+   application tests plus PowerShell and JavaScript syntax checks.
+3. Run `run_lor_runner.ps1 -Action Install`. Retain the existing runner token,
+   enter the PostgreSQL `msbadmin` password once at the secure prompt, and
+   verify runner V1.5.0. Do not run `PairServer`.
+4. Deploy backend V0.6.1, restart `lor-preflight-api.service`, and verify its
+   health response plus the existing backend-to-runner connection.
 5. Publish the complete `landing/` tree, including `parser/` and
    `version-check/`, to `/mnt/msb-web/my/lor2db/`. Preserve the existing
    `preflight/` and `reports/` trees.
-6. Verify the three distinct landing-page boxes, open both dedicated workflow
-   pages, and confirm the parser console endpoint can read the last activity.
-   Do not run the parser or select a candidate during deployment acceptance.
+6. Verify that parser review approval is tied to the displayed digest, the
+   ingest button is disabled until that approval is checked, and both parser
+   and ingest consoles load. Do not run a production ingest during deployment
+   acceptance.
 
-PostgreSQL ingest remains password-protected, digest-locked, and manual. This
-deployment adds no browser ingest endpoint.
+PostgreSQL ingest remains password-protected, digest-locked, and explicitly
+operator-approved. The browser starts only the fixed ingest operation and
+cannot provide a path, command, database account, or executable.
 
 ## Historical V0.5.1 combined deployment order
 

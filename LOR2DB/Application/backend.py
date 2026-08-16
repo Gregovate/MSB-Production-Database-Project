@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-15  V0.6.0
+Current Version : 2026-08-15  V0.6.1
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,9 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-08-15  GAL / OpenAI  V0.6.1
+        Added authenticated fixed endpoints for the Windows runner's
+        digest-locked PostgreSQL ingest and its read-only console output.
     2026-08-15  GAL / OpenAI  V0.6.0
         Separated routine parser execution from the infrequent LOR version
         approval workflow and exposed the runner's latest read-only console
@@ -61,6 +64,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -76,7 +80,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.0"
+APP_VERSION = "V0.6.1"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -526,6 +530,13 @@ def get_parser_activity() -> Response:
     return jsonify(runner_request("parser/activity"))
 
 
+@app.get("/ingest/activity")
+def get_ingest_activity() -> Response:
+    """Return only the runner's bounded, read-only ingest console record."""
+    operator_email()
+    return jsonify(runner_request("ingest/activity"))
+
+
 @app.post("/parser/check")
 def run_parser_compatibility_check() -> Response:
     operator = operator_email()
@@ -542,6 +553,22 @@ def run_lor_parser() -> Response:
         raise ApiError("Parser target must be current, baseline, or candidate")
     return jsonify(runner_request(
         "parser/run", {"target": target, "actor": operator}, timeout=920
+    ))
+
+
+@app.post("/ingest/run")
+def run_postgresql_ingest() -> Response:
+    """Run only the latest validated SQLite digest through the fixed runner."""
+    operator = operator_email()
+    digest = str(
+        json_body().get("expected_sqlite_sha256") or ""
+    ).strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ApiError("Expected SQLite SHA-256 must contain 64 hexadecimal characters")
+    return jsonify(runner_request(
+        "ingest/run",
+        {"expected_sqlite_sha256": digest, "actor": operator},
+        timeout=920,
     ))
 
 
