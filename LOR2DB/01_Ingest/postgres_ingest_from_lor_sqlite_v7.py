@@ -2,7 +2,7 @@
 # postgres_ingest_from_lor_sqlite_v7.py
 # Initial Release : 2026-02-21  V0.1.0
 # Version         : 2026-02-21  V0.1.0
-# Current Version : 2026-08-13  V0.4.0
+# Current Version : 2026-08-16  V0.4.1
 #
 # Changes:
 # - Initial append-only ingestion layer (SQLite → Postgres)
@@ -22,6 +22,9 @@
 # - V0.3.2 refuses to ingest unless parser_run.Status is COMPLETE.
 # - V0.4.0 requires the exact operator-reviewed SQLite SHA-256 and a current V7
 #   production/validation provenance before any PostgreSQL write.
+# - V0.4.1 makes console diagnostics safe on legacy Windows code pages, reports
+#   post-commit failures truthfully, and treats an already-completed matching
+#   SQLite digest as a successful idempotent recovery instead of duplicating it.
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
@@ -104,6 +107,11 @@
 #
 # -----------------------------------------------------------------------------
 # Change Log
+# 2026-08-16  GAL / OpenAI  V0.4.1
+#   - Prevented Unicode diagnostics from aborting a committed Windows ingest.
+#   - Detects an already-completed exact SQLite digest and returns its existing
+#     import_run_id without creating a duplicate snapshot.
+#   - Never claims that a committed transaction was rolled back.
 # 2026-08-13  GAL / OpenAI  V0.4.0
 #   - Requires --expected-sqlite-sha256 and rejects any byte-level change.
 #   - Requires parser_run RunMode=PRODUCTION, ValidationStatus=PASSED,
@@ -173,12 +181,26 @@ import psycopg2
 import psycopg2.extras
 
 
-INGEST_SCRIPT_VERSION = "V0.4.0"
+INGEST_SCRIPT_VERSION = "V0.4.1"
 
 
 # ---------------------------
 # Helpers
 # ---------------------------
+
+def configure_console_output() -> None:
+    """Make diagnostics non-fatal on legacy Windows console code pages."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(errors="backslashreplace")
+            except (AttributeError, OSError, ValueError):
+                # Embedded and test streams may not support reconfiguration.
+                pass
+
+
+configure_console_output()
 
 def norm_name(s: str) -> str:
     """Normalize a column name for matching: lowercase and remove underscores/spaces."""
@@ -572,6 +594,24 @@ def complete_import_run(pg_conn, import_run_id: int, completed_at: datetime) -> 
         )
 
 
+def find_completed_import_run(pg_conn, sqlite_sha256: str) -> int | None:
+    """Return the completed run for an exact SQLite digest, if it exists."""
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT import_run_id
+            FROM lor_snap.import_run
+            WHERE lower(source_sqlite_sha256) = %s
+              AND ingest_completed_at IS NOT NULL
+            ORDER BY import_run_id DESC
+            LIMIT 1
+            """,
+            (sqlite_sha256.lower(),),
+        )
+        row = cur.fetchone()
+    return int(row[0]) if row else None
+
+
 def bulk_insert(
     pg_conn,
     target_schema: str,
@@ -687,6 +727,7 @@ def main() -> int:
         print(f"[FATAL] SQLite file not found: {sqlite_path}", file=sys.stderr)
         return 2
 
+    committed = False
     try:
         reviewed_sqlite_sha256 = verify_reviewed_sqlite(
             sqlite_path, args.expected_sqlite_sha256
@@ -725,6 +766,17 @@ def main() -> int:
         source_counts = get_sqlite_snapshot_counts(sqlite_conn)
         ingest_actor, ingest_host = get_actor_host()
         ingest_started_at = datetime.now().astimezone()
+
+        existing_import_run_id = find_completed_import_run(
+            pg_conn, reviewed_sqlite_sha256
+        )
+        if existing_import_run_id is not None:
+            pg_conn.rollback()
+            print(
+                "[DONE] Snapshot already ingested; using existing "
+                f"import_run_id={existing_import_run_id}"
+            )
+            return 0
 
         import_run_id = insert_import_run(
             pg_conn,
@@ -820,6 +872,7 @@ def main() -> int:
 
         # One commit at the end = atomic run
         pg_conn.commit()
+        committed = True
         print(f"[DONE] Snapshot ingest complete. import_run_id={import_run_id}")
 
         # -----------------------------------------------------------------
@@ -840,7 +893,7 @@ def main() -> int:
             row = cur.fetchone()
 
             print(
-                "[INFO] Run summary → "
+                "[INFO] Run summary -> "
                 f"run={row[0]} | "
                 f"previews={row[1]} | "
                 f"scenes={row[2]} | "
@@ -851,14 +904,21 @@ def main() -> int:
                 f"field_wiring={row[7]}"
             )
         if row[7] == 0:
-            print("[WARN] wiring_field_rows is 0 — views likely failed or current_run is empty.", file=sys.stderr)
+            print("[WARN] wiring_field_rows is 0; views likely failed or current_run is empty.", file=sys.stderr)
 
         return 0
     
 
     except Exception as e:
-        pg_conn.rollback()
-        print("[FATAL] Ingest failed; transaction rolled back.", file=sys.stderr)
+        if committed:
+            print(
+                "[FATAL] Ingest committed, but post-commit reporting failed; "
+                "do not retry without checking PostgreSQL.",
+                file=sys.stderr,
+            )
+        else:
+            pg_conn.rollback()
+            print("[FATAL] Ingest failed; transaction rolled back.", file=sys.stderr)
         print(f"        {type(e).__name__}: {e}", file=sys.stderr)
         return 1
 

@@ -2,11 +2,14 @@
 
 Initial release: 2026-08-13 V1.0.0
 
-Current version: 2026-08-15 V1.5.0
+Current version: 2026-08-16 V1.5.1
 
 V1.5.0 adds the fixed, digest-locked PostgreSQL ingest operation and bounded
 read-only ingest console. Parser execution remains repeatable and never starts
 ingest automatically.
+
+V1.5.1 pairs that operation with ingest V0.4.1, whose digest-idempotent recovery
+recognizes an already-committed snapshot after a console/reporting failure.
 
 The production LOR2DB API runs on Linux. This small internal service owns the
 Windows/G-drive execution boundary and exposes only version-scoped operations;
@@ -36,7 +39,7 @@ from urllib.parse import urlparse
 from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.5.0"
+RUNNER_VERSION = "V1.5.1"
 MAX_BROWSER_CONSOLE_CHARACTERS = 500_000
 
 AUTHORITATIVE_OUTPUT_TABLES = (

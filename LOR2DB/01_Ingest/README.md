@@ -11,17 +11,20 @@ In this documentation, **ingest** refers to the parser and import programs that 
 
 The normal sequence is:
 
-1. In LOR2DB, confirm **Current LOR version** and use **Run current parser**.
+1. In LOR2DB, confirm **Current LOR version** and use **Run parser**.
 2. Inspect the generated SQLite repeatedly as needed; parser runs never ingest.
-3. Record the displayed SHA-256 for the exact approved SQLite file.
+3. Mark the exact displayed SQLite SHA-256 as ready for ingest only after its
+   console, counts, reports, and data look correct.
 4. Apply migration `0031_preserve_lor_sqlite_authority_chain.sql` before the
    first V0.4.0 ingest.
-5. Run `postgres_run_ingest_v7.ps1`, supplying that exact digest to the V0.4.0
-   ingest command.
+5. Use **Ingest to PostgreSQL** on the same page and review its console output.
 6. Continue to [LOR2DB Reconciliation](../02_Reconciliation/README.md).
 
 The ingest rejects a modified/replaced SQLite file and rejects any snapshot
 that was not produced in `PRODUCTION` mode with `ValidationStatus=PASSED`.
+V0.4.1 also makes retry recovery digest-idempotent: if the exact SQLite digest
+was already committed, the existing completed `import_run_id` is returned and
+no duplicate snapshot is created.
 
 The exact engineering rules behind the parser are documented under [LOR Data Extraction](../../Docs/01_LOR_System/02_Data_Extraction/README.md). This README does not duplicate those rules.
 
