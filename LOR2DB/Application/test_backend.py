@@ -386,6 +386,9 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn("Start reconciliation", parser_source)
         self.assertIn('request("runs/start"', parser_source)
         self.assertIn("Review parser output", source)
+        self.assertIn('<a class="primary" href="parser/">Run parser</a>', source)
+        self.assertIn('id="run-parser"', parser_source)
+        self.assertIn('href="#parser-console">Review parser output</a>', parser_source)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-/* MSB parser and ingest workflow - 2026-08-15 V0.6.0 */
+/* MSB parser and ingest workflow - 2026-08-16 V0.6.1 */
 (function () {
   "use strict";
 
@@ -170,9 +170,10 @@
       </dl>
       ${targetNote}${counts(run)}
       <div class="page-actions">
+        <button id="run-parser" class="primary" type="button" ${parserRunning || ingestRunning ? "disabled" : ""}>${parserRunning ? "Parser is running..." : "Run parser"}</button>
         ${digest && !parserRunning && !ingestRunning
-          ? '<a class="primary" href="#parser-console">Review parser output</a>'
-          : `<button id="run-parser" class="primary" type="button" ${parserRunning || ingestRunning ? "disabled" : ""}>${parserRunning ? "Parser is running..." : "Run parser"}</button>`}
+          ? '<a class="secondary" href="#parser-console">Review parser output</a>'
+          : ""}
         <button id="refresh-output" type="button">Refresh output</button>
         <a class="secondary" href="../">Return to dashboard</a>
       </div>
