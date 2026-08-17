@@ -56,6 +56,11 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertNotIn('location.href = result.report_url || "../reports/"', source)
         self.assertEqual(source.count("openPublishedReport(result);"), 2)
 
+    def test_preflight_page_loads_current_navigation_script(self) -> None:
+        source = Path(__file__).with_name("index.html").read_text(encoding="utf-8")
+        self.assertIn('src="preflight.js?v=0.5.2"', source)
+        self.assertNotIn('src="preflight.js?v=0.5.1"', source)
+
     def test_browser_renders_terminal_cancellation_proof(self) -> None:
         source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
         self.assertIn("Reconciliation cancelled", source)
