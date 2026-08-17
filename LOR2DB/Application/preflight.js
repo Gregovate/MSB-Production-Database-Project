@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-14 V0.5.0
+ * Current version: 2026-08-16 V0.5.1
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -237,7 +237,7 @@
 
   function renderFinalReview() {
     const applied = model.candidates.filter((candidate) => candidate.effective_action_type && candidate.effective_action_type !== "DEFER");
-    app.innerHTML = `<div class="card"><h1>Final application review</h1><p>Only the following recorded actions will be applied to production. Deferred items are excluded.</p><ul class="final-list">${applied.map((candidate) => `<li><strong>${esc(displayName(candidate))}</strong><br>${esc(actionLabel(candidate.effective_action_type))}<br><span class="muted">${esc(candidate.effective_reason)}</span></li>`).join("")}</ul><p class="error">Proceed is the production-write boundary. It invokes Finish for reconciliation run ${model.run_id}.</p><div class="footer-actions"><button id="back">Back to review</button><button id="proceed" class="danger">Proceed</button></div></div>`;
+    app.innerHTML = `<div class="card"><h1>Final application review</h1><p>Only the following recorded actions will be applied to production. Deferred items are excluded.</p><ul class="final-list">${applied.map((candidate) => `<li><strong>${esc(displayName(candidate))}</strong><br>${esc(actionLabel(candidate.effective_action_type))}<br><span class="muted">${esc(candidate.effective_reason)}</span></li>`).join("")}</ul><p class="production-warning">Proceed is the production-write boundary. It invokes Finish for reconciliation run ${model.run_id}.</p><div class="footer-actions"><button id="back">Back to review</button><button id="proceed" class="primary">Proceed</button></div></div>`;
     document.querySelector("#back").addEventListener("click", renderReview);
     document.querySelector("#proceed").addEventListener("click", confirmProceed);
   }
@@ -246,7 +246,7 @@
     dialogTitle.textContent = "Apply these changes to production?";
     dialogBody.textContent = `This will invoke Finish for reconciliation run ${model.run_id}. This action cannot be undone from this screen.`;
     dialogReasonWrap.hidden = true;
-    dialogConfirm.textContent = "Proceed with production update"; dialogConfirm.className = "danger";
+    dialogConfirm.textContent = "Proceed with production update"; dialogConfirm.className = "primary";
     dialogConfirm.onclick = async (event) => {
       event.preventDefault();
       try {

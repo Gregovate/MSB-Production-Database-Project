@@ -7,6 +7,9 @@
   --line: #d8dee5;
   --accent: #145a8d;
   --danger: #a12622;
+  --warning: #7a5100;
+  --warning-bg: #fff7df;
+  --warning-line: #d6a43a;
   --ok: #2c6e49;
 }
 * { box-sizing: border-box; }
@@ -51,6 +54,13 @@ select, textarea { border: 1px solid #aeb8c2; border-radius: 4px; background: #f
 .save-state.is-saved { color: var(--ok); font-weight: 650; }
 .save-state.is-unsaved { color: #9a5a00; font-weight: 650; }
 .error { color: var(--danger); font-weight: 650; }
+.production-warning {
+  border-left: 4px solid var(--warning-line);
+  background: var(--warning-bg);
+  color: var(--warning);
+  padding: 10px 12px;
+  font-weight: 650;
+}
 .eyebrow { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .terminal.is-cancelled { border-top: 6px solid var(--danger); }
 .terminal-proof { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }

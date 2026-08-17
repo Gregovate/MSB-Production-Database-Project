@@ -2,13 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT code; web ingest workflow deployed; V0.6.1 action-clarity hotfix pending deployment |
+| Status | CURRENT code; web ingest workflow deployed; preflight browser V0.5.1 pending deployment |
 | Initial release / current revision | 2026-08-04 / 2026-08-16 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-16 | Changed the successful final production-application boundary from failure-red styling to an amber notice with standard blue confirmation controls. Cancellation and actual failures remain red. |
 | 2026-08-16 | Added ingest V0.4.1 / runner V1.5.1 recovery for a Windows console encoding failure after PostgreSQL commit. The exact completed SQLite digest is reused without creating a duplicate import run, and post-commit failures can no longer claim rollback. |
 | 2026-08-16 | Kept `Run parser` permanently available after successful runs and made `Review parser output` an additional action instead of a replacement. Corrected the Windows installer message so an unchanged protected token does not instruct the operator to pair the server again. |
 | 2026-08-15 | Added the complete browser-operated parser-to-ingest workflow. The idempotent parser remains repeatable until the operator approves the exact displayed SQLite digest. The Windows runner then performs the fixed digest-locked PostgreSQL ingest and exposes read-only console output on the same page. Ingest never starts reconciliation automatically. |
