@@ -11,8 +11,8 @@ change, or merely reports evidence.
 | Path | Contents | Execution rule |
 |---|---|---|
 | `current_procedures/` | Canonical standalone P1, P2, P3, and P4 definitions matching the latest accepted migration chain | Inspection or explicitly authorized repair only; these files do not call promotion |
-| `migrations/` | Immutable installation history `0011` through `0034` | Run only the specifically authorized next migration; never rerun the folder as a batch |
-| `validation/` | Validation `10` through `29` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `migrations/` | Immutable installation history `0011` through `0035` | Run only the specifically authorized next migration; never rerun the folder as a batch |
+| `validation/` | Validation `10` through `30` | Follow each file's header; several are transaction-wrapped rollback tests |
 | `operator_queries/preflight/` | Read-only latest-ingest reports `01` through `09` | Run individually; no operator-supplied `import_run_id` |
 | `incidents/` | Production incident report and its incident-specific forensic SQL | Historical evidence; not part of routine reconciliation |
 
@@ -22,8 +22,8 @@ The root Markdown files are this index and the current design specification.
 
 | Phase | Database object | Canonical file | Definition lineage |
 |---|---|---|---|
-| P1 | `ref.p1_promote_stage_from_reconciliation(bigint)` | `current_procedures/P1_stage_promotion.sql` | Existing-stage definition from `0016`/`0029 v4`, wrapped by `0032` for new-stage creation and by `0033` for approved canonical StageID/substage changes and accepted binding aliases |
-| P2 | `ref.p2_promote_display_from_reconciliation(bigint)` | `current_procedures/P2_display_promotion.sql` | Full definition from `0017`; unchanged by `0029` |
+| P1 | `ref.p1_promote_stage_from_reconciliation(bigint)` | `current_procedures/P1_stage_promotion.sql` | Migration `0035` distinguishes simultaneous main/substage keys, moves only the approved new-key bindings, and requires unanimous evidence for a true rename |
+| P2 | `ref.p2_promote_display_from_reconciliation(bigint)` | `current_procedures/P2_display_promotion.sql` | Migration `0035` resolves P1-created stages by source key and refuses unresolved/null stage assignments |
 | P3 | `ref.p3_promote_scene_from_reconciliation(bigint)` | `current_procedures/P3_scene_promotion.sql` | Full definition from `0018`, then no-op correction from `0029 v4` |
 | P4 | `ref.p4_promote_scene_display_from_reconciliation(bigint)` | `current_procedures/P4_scene_display_promotion.sql` | Full definition from `0018`, then no-op correction from `0029 v4` |
 
@@ -67,7 +67,7 @@ is retained only as incident evidence. It is not step 8A of the normal workflow.
 
 ## Migration and validation status
 
-The current installation chain is `0011` through `0034`.
+The current installation chain is `0011` through `0035`.
 Migration `0029` must be revision
 `2026-08-05-true-noop-reconciliation-writes-v4`; its corresponding validation
 is `validation/25_true_noop_reconciliation_write_validation.sql`. Migration
@@ -83,6 +83,12 @@ Migration `0034` synchronizes effective counters and decision-state readiness
 after every persisted action, repairs already-open runs whose saved decisions
 and lifecycle diverged, and is paired with
 `validation/29_decision_readiness_sync_validation.sql`.
+Migration `0035` repairs the Stage 05/05a collapse without changing captured
+snapshot or frozen candidate evidence. It establishes the general rule that
+simultaneous source keys such as `NN` and `NNa` are distinct permanent stages,
+not a rename of one stage. It also prevents P2 from clearing a production
+`stage_id` when a source key cannot be resolved. Validate it with
+`validation/30_distinct_substage_and_stage_assignment_validation.sql`.
 
 Do not infer that a numbered validation is harmless from its filename alone.
 Read its header. In particular,
@@ -96,6 +102,10 @@ not an installation script.
 - Start captures the latest committed ingest internally and freezes evidence.
 - Operators and Directus users do not select `import_run_id`.
 - Contradictory stage evidence cannot expose an approval action.
+- Main and substage source keys (`NN` and `NNa`) retain separate permanent
+  stage identities, bindings, and display assignments.
+- Captured `lor_snap` rows and frozen reconciliation candidates are never
+  rewritten to repair a production-reference defect.
 - A new permanent stage is inserted only by P1 after an explicit, evidence-
   gated `ADD_NEW_STAGE` decision.
 - P1-P4 are internal and execute only through authorized Finish processing.

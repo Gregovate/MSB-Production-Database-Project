@@ -2,7 +2,7 @@
 Object group: Current installed reconciliation promotion procedures
 Repository:   LOR2DB/Reconciliation/reconciliation/current_procedures/
 Filename:     P2_display_promotion.sql
-Revision:     2026-08-03-reconciliation-safe-p2-v1
+Revision:     2026-08-17-stage-safe-p2-v2
 
 Purpose:
   Canonical standalone definition of the P2 procedure currently installed in
@@ -88,6 +88,8 @@ BEGIN
     )
     SELECT
         c.*,
+        coalesce(stage_by_key.stage_id, c.proposed_stage_id)
+            AS effective_stage_id,
         la.lor_reconciliation_action_id,
         la.action_type,
         CASE
@@ -103,6 +105,8 @@ BEGIN
       ON aa.lor_reconciliation_action_id = la.lor_reconciliation_action_id
      AND aa.lor_reconciliation_display_candidate_id =
             c.lor_reconciliation_display_candidate_id
+    LEFT JOIN ref.stage AS stage_by_key
+      ON stage_by_key.stage_key = nullif(btrim(c.proposed_stage_key), '')
     WHERE c.lor_reconciliation_run_id = p_lor_reconciliation_run_id
       AND c.candidate_class = 'PHYSICAL_DISPLAY'
       AND (
@@ -119,6 +123,17 @@ BEGIN
           AND p.target_display_id IS NULL
     ) THEN
         RAISE EXCEPTION 'An approved reassociation is missing a frozen target mapping';
+    END IF;
+
+    /* A stage created by P1 in this same Finish transaction is resolved by
+       source StageID here.  Never turn a known assignment into NULL merely
+       because the frozen preflight row predates that permanent stage. */
+    IF EXISTS (
+        SELECT 1 FROM pg_temp._lor_p2_plan AS p
+        WHERE nullif(btrim(p.proposed_stage_key), '') IS NOT NULL
+          AND p.effective_stage_id IS NULL
+    ) THEN
+        RAISE EXCEPTION 'P2 cannot resolve one or more approved source StageIDs to permanent stages';
     END IF;
 
     /* Final write guard: every source-backed plan row must still match Run N. */
@@ -185,7 +200,7 @@ BEGIN
                 stage_id, string_type
             ) VALUES (
                 v_row.lor_prop_id, v_row.proposed_display_name, 'LOR',
-                v_active_status_id, v_row.proposed_stage_id,
+                v_active_status_id, v_row.effective_stage_id,
                 v_row.proposed_string_type
             ) RETURNING display_id INTO v_display_id;
 
@@ -225,13 +240,13 @@ BEGIN
             UPDATE ref.display AS d
                SET lor_prop_id = v_row.lor_prop_id,
                    display_name = v_row.proposed_display_name,
-                   stage_id = v_row.proposed_stage_id,
+                   stage_id = v_row.effective_stage_id,
                    string_type = v_row.proposed_string_type
              WHERE d.display_id = v_display_id
                AND (
                    d.lor_prop_id IS DISTINCT FROM v_row.lor_prop_id
                    OR d.display_name IS DISTINCT FROM v_row.proposed_display_name
-                   OR d.stage_id IS DISTINCT FROM v_row.proposed_stage_id
+                   OR d.stage_id IS DISTINCT FROM v_row.effective_stage_id
                    OR d.string_type IS DISTINCT FROM v_row.proposed_string_type
                );
         END IF;
@@ -261,7 +276,7 @@ END;
 $procedure$;
 
 COMMENT ON PROCEDURE ref.p2_promote_display_from_reconciliation(bigint) IS
-'Internal reconciliation-gated P2. Revalidates exact raw source rows, rejects nonphysical names, preserves display_id and production-owned metadata, and applies only approved atomic groups. Canonical revision 2026-08-03-reconciliation-safe-p2-v1.';
+'Internal reconciliation-gated P2. Resolves P1-created stages by approved source StageID, refuses unresolved stage assignments, preserves display_id and production-owned metadata, and applies only approved atomic groups. Canonical revision 2026-08-17-stage-safe-p2-v2.';
 
 REVOKE EXECUTE ON PROCEDURE
     ref.p2_promote_display_from_reconciliation(bigint) FROM PUBLIC;
