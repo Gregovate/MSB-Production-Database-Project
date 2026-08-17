@@ -187,6 +187,17 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("effective_resolution_state", problem_query)
         self.assertNotIn("is_blocking", problem_query)
 
+    def test_display_evidence_uses_restricted_review_view(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        evidence_query = source.split("display_evidence_rows = rows(cur,", 1)[1].split(
+            "problems = rows(cur,", 1
+        )[0]
+
+        self.assertIn(
+            "ops.v_lor_reconciliation_operator_display_review", evidence_query
+        )
+        self.assertNotIn("ops.lor_reconciliation_display_candidate", evidence_query)
+
     def test_evaluation_copy_renders_completed_run_without_database_write(self):
         data = self.base_data()
         data["run"]["status"] = "COMPLETED"
@@ -218,7 +229,7 @@ class ReportRenderingTests(unittest.TestCase):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
     def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.6.0")
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.6.1")
 
     def test_changes_are_sorted_in_natural_stage_order_and_show_exact_fields(self):
         data = self.base_data()
@@ -226,9 +237,9 @@ class ReportRenderingTests(unittest.TestCase):
         data["stage_keys"] = {"2": "02", "10": "10"}
         data["display_change_evidence"] = {
             "10": {"display_id": 10, "changed_fields": ["stage_id"],
-                   "current_stage_id": 2, "proposed_stage_key": "10"},
+                   "current_stage_key": "02", "proposed_stage_key": "10"},
             "2": {"display_id": 2, "changed_fields": ["string_type"],
-                  "current_stage_id": 2, "proposed_stage_key": "02"},
+                  "current_stage_key": "02", "proposed_stage_key": "02"},
         }
         data["changes"] = [
             {"entity_type": "DISPLAY", "entity_key": "10",

@@ -3,7 +3,7 @@ MSB Database - LOR Reconciliation Report Publisher
 publish_lor_reconciliation_report.py
 
 Initial Release : 2026-08-03  V0.1.0
-Current Version : 2026-08-17  V0.6.0
+Current Version : 2026-08-17  V0.6.1
 Author          : GAL / OpenAI
 
 Purpose:
@@ -21,6 +21,10 @@ Operation:
       revised without changing the production audit row.
 
 Revision History:
+    2026-08-17  GAL / OpenAI  V0.6.1
+        Read display-change evidence through the approved restricted review
+        view instead of requiring direct candidate-table access.
+
     2026-08-17  GAL / OpenAI  V0.6.0
         Show every captured Scene background path, sort production changes in
         natural Stage order, and expose the exact frozen fields changed by P2.
@@ -60,7 +64,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.6.0"
+REPORT_VERSION = "V0.6.1"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
@@ -134,15 +138,13 @@ def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
             evidence = display_evidence.get(key, {})
             row["report_stage_id"] = (
                 evidence.get("proposed_stage_key")
-                or stage_keys.get(str(evidence.get("current_stage_id") or ""))
+                or evidence.get("current_stage_key")
             )
             row["changed_fields_display"] = display(
                 evidence.get("changed_fields") or []
             )
             if "stage_id" in (evidence.get("changed_fields") or []):
-                before_key = stage_keys.get(
-                    str(evidence.get("current_stage_id") or ""), "Unassigned"
-                )
+                before_key = evidence.get("current_stage_key") or "Unassigned"
                 after_key = evidence.get("proposed_stage_key") or "Unassigned"
                 row["before_after"] = f"Stage {before_key} -> Stage {after_key}"
             elif "display_name" in (evidence.get("changed_fields") or []):
@@ -355,9 +357,9 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
             SELECT DISTINCT ON (c.display_id)
                    c.display_id, c.changed_fields,
                    c.current_display_name, c.proposed_display_name,
-                   c.current_stage_id, c.proposed_stage_id,
+                   c.current_stage_key,
                    c.proposed_stage_key
-            FROM ops.lor_reconciliation_display_candidate AS c
+            FROM ops.v_lor_reconciliation_operator_display_review AS c
             WHERE c.lor_reconciliation_run_id = %s
               AND c.display_id IS NOT NULL
             ORDER BY c.display_id,
@@ -501,9 +503,7 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         )
         row["report_stage_id"] = (
             evidence.get("proposed_stage_key")
-            or data.get("stage_keys", {}).get(
-                str(evidence.get("current_stage_id") or "")
-            )
+            or evidence.get("current_stage_key")
         )
         name_rows.append(row)
     name_rows.sort(key=stage_sort_key)
