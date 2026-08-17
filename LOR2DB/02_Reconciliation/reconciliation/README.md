@@ -11,8 +11,8 @@ change, or merely reports evidence.
 | Path | Contents | Execution rule |
 |---|---|---|
 | `current_procedures/` | Canonical standalone P1, P2, P3, and P4 definitions matching the latest accepted migration chain | Inspection or explicitly authorized repair only; these files do not call promotion |
-| `migrations/` | Immutable installation history `0011` through `0035` | Run only the specifically authorized next migration; never rerun the folder as a batch |
-| `validation/` | Validation `10` through `30` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `migrations/` | Immutable installation history `0011` through `0036` | Run only the specifically authorized next migration; never rerun the folder as a batch |
+| `validation/` | Validation `10` through `31` | Follow each file's header; several are transaction-wrapped rollback tests |
 | `operator_queries/preflight/` | Read-only latest-ingest reports `01` through `09` | Run individually; no operator-supplied `import_run_id` |
 | `incidents/` | Production incident report and its incident-specific forensic SQL | Historical evidence; not part of routine reconciliation |
 
@@ -67,7 +67,7 @@ is retained only as incident evidence. It is not step 8A of the normal workflow.
 
 ## Migration and validation status
 
-The current installation chain is `0011` through `0035`.
+The current installation chain is `0011` through `0036`.
 Migration `0029` must be revision
 `2026-08-05-true-noop-reconciliation-writes-v4`; its corresponding validation
 is `validation/25_true_noop_reconciliation_write_validation.sql`. Migration
@@ -89,6 +89,10 @@ simultaneous source keys such as `NN` and `NNa` are distinct permanent stages,
 not a rename of one stage. It also prevents P2 from clearing a production
 `stage_id` when a source key cannot be resolved. Validate it with
 `validation/30_distinct_substage_and_stage_assignment_validation.sql`.
+Migration `0036` completes the incident repair by moving the existing Mega Star
+permanent Scene from Stage 05 to the distinct Stage 05a identity. It changes no
+snapshot or frozen reconciliation evidence and is paired with
+`validation/31_complete_stage05a_scene_repair_validation.sql`.
 
 Do not infer that a numbered validation is harmless from its filename alone.
 Read its header. In particular,
