@@ -49,6 +49,27 @@ class ReportRenderingTests(unittest.TestCase):
                 "brightness": 100,
                 "background_file": None,
             }],
+            "scene_backgrounds": [{
+                "preview_id": "preview-uuid",
+                "scene_id": "scene-uuid-1",
+                "preview_name": "Stage 01",
+                "scene_name": "Scene with background",
+                "preview_stage_id": "01",
+                "scene_stage_id": "01",
+                "report_stage_id": "01",
+                "background_file": r"G:\Backgrounds\stage-01.jpg",
+                "stage_name": "Stage 01",
+            }, {
+                "preview_id": "preview-uuid",
+                "scene_id": "scene-uuid-2",
+                "preview_name": "Stage 01",
+                "scene_name": "Scene without background",
+                "preview_stage_id": "01",
+                "scene_stage_id": "01",
+                "report_stage_id": "01",
+                "background_file": None,
+                "stage_name": "Stage 01",
+            }],
             "changes": [], "names": [], "problems": [],
             "display_names": {}, "preview_names": {"preview-uuid": "Stage 01"},
             "stage_names": {}, "scene_names": {},
@@ -95,6 +116,34 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertNotIn("Preview UUID", output)
         self.assertNotIn("20.0", output)
         self.assertIn(">20<", output)
+
+    def test_manifest_is_sorted_naturally_by_stage(self):
+        data = self.base_data()
+        data["previews"] = [
+            {"source_filename": "Stage 10.lorprev", "preview_revision": 1,
+             "preview_name": "Stage 10", "stage_id": "10", "preview_id": "p10",
+             "brightness": 20, "background_file": None},
+            {"source_filename": "Stage 05a.lorprev", "preview_revision": 1,
+             "preview_name": "Stage 05a", "stage_id": "05a", "preview_id": "p05a",
+             "brightness": 20, "background_file": None},
+            {"source_filename": "Stage 02.lorprev", "preview_revision": 1,
+             "preview_name": "Stage 02", "stage_id": "02", "preview_id": "p02",
+             "brightness": 20, "background_file": None},
+        ]
+
+        output = REPORT.render_report(data, datetime.now(timezone.utc))
+
+        self.assertLess(output.index("Stage 02.lorprev"), output.index("Stage 05a.lorprev"))
+        self.assertLess(output.index("Stage 05a.lorprev"), output.index("Stage 10.lorprev"))
+
+    def test_report_uses_scene_background_coverage_not_preview_background(self):
+        output = REPORT.render_report(self.base_data(), datetime.now(timezone.utc))
+
+        self.assertIn("1 of 2 Scenes", output)
+        self.assertIn("Scene without an assigned background", output)
+        self.assertIn("Scene without background", output)
+        self.assertNotIn("G:\\Backgrounds\\stage-01.jpg", output)
+        self.assertNotIn("<th>Background file</th>", output)
 
     def test_changes_use_human_readable_display_and_scene_keys(self):
         data = self.base_data()
@@ -163,7 +212,7 @@ class ReportRenderingTests(unittest.TestCase):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
     def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.5.0")
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.5.1")
 
     def test_cancelled_report_is_terminal_and_has_no_required_actions(self):
         data = self.base_data()
