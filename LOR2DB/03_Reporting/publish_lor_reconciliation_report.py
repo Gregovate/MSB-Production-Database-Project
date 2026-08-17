@@ -3,7 +3,7 @@ MSB Database - LOR Reconciliation Report Publisher
 publish_lor_reconciliation_report.py
 
 Initial Release : 2026-08-03  V0.1.0
-Current Version : 2026-08-17  V0.5.2
+Current Version : 2026-08-17  V0.6.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -21,6 +21,10 @@ Operation:
       revised without changing the production audit row.
 
 Revision History:
+    2026-08-17  GAL / OpenAI  V0.6.0
+        Show every captured Scene background path, sort production changes in
+        natural Stage order, and expose the exact frozen fields changed by P2.
+
     2026-08-17  GAL / OpenAI  V0.5.2
         Added explicit navigation from published reports and the report archive
         back to the LOR2DB dashboard.
@@ -56,7 +60,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.5.2"
+REPORT_VERSION = "V0.6.0"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
@@ -115,6 +119,8 @@ def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
     scenes = data.get("scene_names", {})
     previews = data.get("preview_names", {})
     stages = data.get("stage_names", {})
+    stage_keys = data.get("stage_keys", {})
+    display_evidence = data.get("display_change_evidence", {})
     readable = []
 
     for source in data["changes"]:
@@ -125,6 +131,27 @@ def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
 
         if entity_type == "DISPLAY" and key.isdigit():
             row["entity_key"] = f"{key}-{displays.get(key, 'Unknown display')}"
+            evidence = display_evidence.get(key, {})
+            row["report_stage_id"] = (
+                evidence.get("proposed_stage_key")
+                or stage_keys.get(str(evidence.get("current_stage_id") or ""))
+            )
+            row["changed_fields_display"] = display(
+                evidence.get("changed_fields") or []
+            )
+            if "stage_id" in (evidence.get("changed_fields") or []):
+                before_key = stage_keys.get(
+                    str(evidence.get("current_stage_id") or ""), "Unassigned"
+                )
+                after_key = evidence.get("proposed_stage_key") or "Unassigned"
+                row["before_after"] = f"Stage {before_key} -> Stage {after_key}"
+            elif "display_name" in (evidence.get("changed_fields") or []):
+                row["before_after"] = (
+                    f'{evidence.get("current_display_name") or "—"} -> '
+                    f'{evidence.get("proposed_display_name") or "—"}'
+                )
+            else:
+                row["before_after"] = "—"
 
         elif entity_type == "SCENE" and len(parts) >= 3:
             scene = scenes.get((parts[1], parts[2]), {})
@@ -136,6 +163,7 @@ def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
                 target += f' / stage "{stage_name}"'
             row["entity_key"] = f"SCENE: {scene_name}"
             row["operator_message"] = f'Synchronized scene "{scene_name}" to {target}.'
+            row["report_stage_id"] = scene.get("report_stage_id")
 
         elif entity_type == "SCENE_DISPLAY":
             match = re.search(r"display_id\s+(\d+)", str(row.get("operator_message") or ""))
@@ -148,6 +176,11 @@ def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
             )
             row["entity_key"] = f"{display_key} -> SCENE: {scene_name}"
             row["operator_message"] = f'Synchronized display {display_key} to scene "{scene_name}".'
+            row["report_stage_id"] = scene.get("report_stage_id")
+
+        elif entity_type == "STAGE" and key.isdigit():
+            row["report_stage_id"] = stage_keys.get(key)
+            row["entity_key"] = f"{key}-{stages.get(key, 'Unknown stage')}"
 
         elif entity_type == "STAGE" and len(parts) >= 2:
             source_name = previews.get(parts[1]) if parts[0] == "PREVIEW" else None
@@ -161,9 +194,16 @@ def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
                 f'Synchronized {parts[0].lower()} "{source_name or "Unnamed source"}" '
                 f'to stage "{stage_name}".'
             )
+            row["report_stage_id"] = scene.get("report_stage_id") if parts[0] == "SCENE" else None
 
         readable.append(row)
-    return readable
+    return sorted(
+        readable,
+        key=lambda item: stage_sort_key(item) + (
+            str(item.get("entity_type") or ""),
+            str(item.get("entity_key") or ""),
+        ),
+    )
 
 
 def table(columns: Sequence[tuple[str, str]], data: Iterable[dict[str, Any]], empty: str) -> str:
@@ -311,6 +351,18 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
                    "After" AS after_name, "Follow-up" AS action_required
             FROM ops.f_lor_reconciliation_display_name_changes_report(%s)
         """, (run_id,))
+        display_evidence_rows = rows(cur, """
+            SELECT DISTINCT ON (c.display_id)
+                   c.display_id, c.changed_fields,
+                   c.current_display_name, c.proposed_display_name,
+                   c.current_stage_id, c.proposed_stage_id,
+                   c.proposed_stage_key
+            FROM ops.lor_reconciliation_display_candidate AS c
+            WHERE c.lor_reconciliation_run_id = %s
+              AND c.display_id IS NOT NULL
+            ORDER BY c.display_id,
+                     c.lor_reconciliation_display_candidate_id DESC
+        """, (run_id,))
         problems = rows(cur, """
             /* Current problems come from effective state, not historical flags. */
             SELECT gr.entity_type, gr.logical_group_key AS entity_key,
@@ -351,7 +403,7 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
             ORDER BY recorded_at, lor_reconciliation_result_id
         """, (run_id,))
         display_rows = rows(cur, "SELECT display_id, display_name FROM ref.display", ())
-        stage_rows = rows(cur, "SELECT stage_id, stage_name FROM ref.stage", ())
+        stage_rows = rows(cur, "SELECT stage_id, stage_key, stage_name FROM ref.stage", ())
         scene_rows = rows(cur, """
             SELECT s.preview_id, s.scene_id, s.scene_name, p.preview_name,
                    p.stage_id AS preview_stage_id,
@@ -379,6 +431,10 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
             "validations": validations,
             "display_names": {str(x["display_id"]): x["display_name"] for x in display_rows},
             "stage_names": {str(x["stage_id"]): x["stage_name"] for x in stage_rows},
+            "stage_keys": {str(x["stage_id"]): x["stage_key"] for x in stage_rows},
+            "display_change_evidence": {
+                str(x["display_id"]): x for x in display_evidence_rows
+            },
             "preview_names": {str(x["preview_id"]): x["preview_name"] for x in previews},
             "scene_names": {(str(x["preview_id"]), str(x["scene_id"])): x for x in scene_rows}}
 
@@ -420,15 +476,6 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         row for row in scene_backgrounds
         if str(row.get("background_file") or "").strip()
     ]
-    missing_backgrounds = [
-        {
-            "report_stage_id": row.get("report_stage_id"),
-            "preview_name": row.get("preview_name"),
-            "scene_name": row.get("scene_name"),
-        }
-        for row in scene_backgrounds
-        if not str(row.get("background_file") or "").strip()
-    ]
     coverage = (
         f'<h3>Scene background coverage</h3>'
         f'<p><strong>{len(assigned_backgrounds)} of {len(scene_backgrounds)} Scenes</strong> '
@@ -437,18 +484,34 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         + table([
             ("report_stage_id", "Stage"),
             ("preview_name", "Preview name"),
-            ("scene_name", "Scene without an assigned background"),
-        ], missing_backgrounds, "Every captured Scene has an assigned background file.")
+            ("scene_name", "Scene"),
+            ("background_file", "Background file"),
+        ], scene_backgrounds, "No captured Scene rows were recorded.")
     )
     manifest = f'<p><strong>Source folder:</strong> {html.escape(display(r["source_preview_folder"]))}</p>' + table([
         ("source_filename", "Preview filename"), ("preview_revision", "Revision"),
         ("preview_name", "Preview name"), ("stage_id", "Stage"),
         ("brightness", "Brightness"),
     ], previews, "No frozen preview manifest rows were recorded.") + coverage
+    name_rows = []
+    for source in data["names"]:
+        row = dict(source)
+        evidence = data.get("display_change_evidence", {}).get(
+            str(row.get("display_id")), {}
+        )
+        row["report_stage_id"] = (
+            evidence.get("proposed_stage_key")
+            or data.get("stage_keys", {}).get(
+                str(evidence.get("current_stage_id") or "")
+            )
+        )
+        name_rows.append(row)
+    name_rows.sort(key=stage_sort_key)
     name_table = table([
+        ("report_stage_id", "Stage"),
         ("display_id", "Display_id"), ("before_name", "Before"),
         ("after_name", "After"), ("action_required", "Action Required"),
-    ], data["names"], "No display-name changes were committed.")
+    ], name_rows, "No display-name changes were committed.")
     changed_name_ids = {str(n["display_id"]) for n in data["names"]}
     other_change_data = dict(data)
     other_change_data["changes"] = [x for x in data["changes"] if not (
@@ -456,8 +519,11 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
     )]
     readable_changes = humanize_changes(other_change_data)
     other_changes = table([
+        ("report_stage_id", "Stage"),
         ("entity_type", "Object"), ("entity_key", "Permanent key"),
         ("result_class", "Change"), ("reason_code", "Reason"),
+        ("changed_fields_display", "Fields changed"),
+        ("before_after", "Before -> After"),
         ("operator_message", "Detail"),
     ], readable_changes, "No other production changes were committed.")
     changes_body = '<h3>Display Name Changes</h3>' + name_table + '<h3>Other Changes</h3>' + other_changes
