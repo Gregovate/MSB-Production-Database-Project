@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — controlled engineering procedure |
 | Applies to | Any new Light-O-Rama release that can change `.lorprev` output |
-| Current revision | 2026-08-13 |
+| Current revision | 2026-08-17 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -42,15 +42,19 @@ Use copied test files and a separate test output database.
 
 ## Operator Version Record
 
+Normal operation begins at the separate **Check new version** page reached from
+[LOR2DB](https://my.sheboyganlights.org/lor2db/). Do not use the routine parser
+page to approve a different Light-O-Rama software version.
+
 LOR2DB maintains two explicit fields:
 
 - **Current LOR version** — the approved production version of record;
 - **New LOR version** — the candidate being evaluated.
 
-The approved record identifies the versioned preview folder, for example
-`Database Previews V6.6.4`. A candidate such as 6.6.10 uses `Database Previews
-V6.6.10`. Approval changes the record; it does not rename or delete the
-previous versioned folder.
+The approved record currently identifies LOR 6.6.10 and `Database Previews
+V6.6.10`. A later candidate must use its own `Database Previews V<version>`
+folder. Approval changes the record; it does not rename or delete the previous
+versioned folder.
 
 ## Mandatory Automated Gate
 
@@ -97,7 +101,8 @@ comprehensive preview rather than manually inspecting all production previews.
 The automated positional inventory and critical ID/count scan still cover every
 file.
 
-For the 6.6.4 baseline, the selected deep preview is:
+For the historical 6.6.4-to-6.6.10 approval, the selected baseline deep preview
+was:
 
 `2026 Master Musical Preview v6.6 2026-07-30.lorprev`
 
@@ -529,15 +534,17 @@ If the new LOR version is approved:
 5. retain the comparison evidence for future LOR upgrades;
 6. update the approved LOR baseline only after the production transition is intentionally authorized.
 
-## Current Pending Review
+## Current Approved Version
 
-Light-O-Rama 6.6.10 is the next candidate. It must be exported into `Database
-Previews V6.6.10` and reviewed through the website checker/parser gates before
-replacing the approved 6.6.4 version record.
+Light-O-Rama 6.6.10 is the approved production version of record. Its approved
+preview source is `Database Previews V6.6.10`. No newer candidate is currently
+recorded. A later candidate must complete this entire isolated website workflow
+before it can replace 6.6.10.
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-17 | GAL / OpenAI | Recorded LOR 6.6.10 as the approved production version and clarified that the separate website version-check page is the normal approval interface. |
 | 2026-08-13 | GAL / OpenAI | Added Current/New version records, complete all-preview XML manifests, the selected deep preview, blocking modification records/resolution, and website approval gates for the 6.6.10 review. |
 | 2026-08-08 | GAL / OpenAI | Created controlled LOR-version compatibility review procedure, regression checklist, decision model, and reusable ChatGPT engineering comparison prompt. |

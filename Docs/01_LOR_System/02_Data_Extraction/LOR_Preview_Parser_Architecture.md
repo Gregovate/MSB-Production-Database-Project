@@ -5,7 +5,7 @@
 | Status | CURRENT — engineering architecture |
 | System | LOR Preview Parser / LOR2DB Ingest |
 | Functional baseline | `parse_props_v7_scene_parser.py` V7.0.10 |
-| Current revision | 2026-08-13 |
+| Current revision | 2026-08-17 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -438,7 +438,9 @@ In particular, a changed RawPropID with the same physical display can be reconci
 
 ## Compatibility Contract
 
-The current functional baseline was developed and validated against the LOR 6.6.4 preview format.
+The current functional parser and approved compatibility manifest are validated
+against the LOR 6.6.10 preview format. The earlier 6.6.4 baseline remains
+historical evidence, not the current production authority.
 
 A newer LOR version must not be assumed compatible merely because the parser runs without raising an exception. Structural changes can cause silent omissions or different materialization.
 

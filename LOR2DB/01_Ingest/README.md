@@ -13,12 +13,11 @@ The normal sequence is:
 
 1. In LOR2DB, confirm **Current LOR version** and use **Run parser**.
 2. Inspect the generated SQLite repeatedly as needed; parser runs never ingest.
-3. Mark the exact displayed SQLite SHA-256 as ready for ingest only after its
-   console, counts, reports, and data look correct.
-4. Apply migration `0031_preserve_lor_sqlite_authority_chain.sql` before the
-   first V0.4.0 ingest.
-5. Use **Ingest to PostgreSQL** on the same page and review its console output.
-6. Continue to [LOR2DB Reconciliation](../02_Reconciliation/README.md).
+3. Select **Parser output looks correct — ready for ingest** only after the
+   console, counts, reports, SHA-256, and data look correct.
+4. Use **Ingest to PostgreSQL** on the same page and review its console output.
+5. Select **Start reconciliation** only after the completed PostgreSQL import is
+   shown, then continue to [LOR2DB Reconciliation](../02_Reconciliation/README.md).
 
 The ingest rejects a modified/replaced SQLite file and rejects any snapshot
 that was not produced in `PRODUCTION` mode with `ValidationStatus=PASSED`.
@@ -35,6 +34,10 @@ The exact engineering rules behind the parser are documented under [LOR Data Ext
 | `postgres_run_ingest_v7.ps1` | Operator entry point for the PostgreSQL ingest step |
 | `postgres_ingest_from_lor_sqlite_v7.py` | Loads the parser output into the PostgreSQL snapshot schema |
 | `requirements.txt` | Python dependencies required by the ingest programs |
+
+The PowerShell entry point is retained for engineering and recovery use. Normal
+operators use the secured LOR2DB parser page; they do not enter the SQLite path,
+digest, database command, or `import_run_id` manually.
 
 ## Related Systems
 

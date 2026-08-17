@@ -37,10 +37,10 @@ The controlled path is:
 5. Run the comparison again and require `noop` to prove idempotence.
 6. Use only the approved master set as V7 parser input.
 
-Historically the Show PC held the master. During LOR 6.6.4/V7 development, the
-Office PC is the designated master. No programmer may overwrite it with their
-local preview. See the active
-[Preview Merger Reference](preview_merger_reference.md).
+Historically the Show PC held the master. The Office PC is the designated
+master for the approved LOR 6.6.10 preview set. No programmer may overwrite it
+with their local preview. See the active
+[Preview Merger documentation](../03_Preview_Merger/README.md).
 
 ---
 
@@ -977,10 +977,12 @@ Remove any temporary, draft, or unrelated images before finalizing.
 After **any changes** to previews, export the authoritative preview set from the
 approved Master PC and run the controlled V7 production workflow:
 
-1. V7 scene-aware parser.
-2. Protected PostgreSQL snapshot ingest.
-3. Reconciliation from `https://lortodb.sheboyganlights.org/lor2db/`.
-4. Finish, validation, and immutable report review.
+1. Open `https://my.sheboyganlights.org/lor2db/` and select **Run parser**.
+2. Review the parser output; correct the previews and rerun as often as needed.
+3. Confirm the exact parser output and select **Ingest to PostgreSQL**.
+4. Review the ingest console and select **Start reconciliation**.
+5. Record required decisions, complete final review, apply, and review the
+   immutable report.
 
 Use `LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md`
 for the current stop conditions and exact workflow. The V6 merger/parser/compare

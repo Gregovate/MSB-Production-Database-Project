@@ -3,8 +3,8 @@
 | Document control | Value |
 |---|---|
 | Status | CURRENT — reverse-engineered engineering reference |
-| Baseline | Approved Light-O-Rama `.lorprev` manifest; initialized from 6.6.4 |
-| Current revision | 2026-08-13 |
+| Baseline | Approved Light-O-Rama `.lorprev` manifest for LOR 6.6.10 |
+| Current revision | 2026-08-17 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -29,7 +29,7 @@ Functional parser baseline:
 
 Known-good LOR preview baseline:
 
-`Light-O-Rama 6.6.4`
+`Light-O-Rama 6.6.10`
 
 The parser source is the implementation authority for materialization. The
 approved XML manifest is the compatibility authority for the complete exported

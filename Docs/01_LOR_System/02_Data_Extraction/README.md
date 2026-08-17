@@ -14,6 +14,7 @@ separate SQLite-to-PostgreSQL ingest.
 | Understand the `.lorprev` structure the parser depends on | [LOR Preview File Structure Specification](LOR_Preview_File_Structure_Specification.md) |
 | Evaluate and approve a new Light-O-Rama version | [LOR Preview Version Compatibility Review](LOR_Preview_Version_Compatibility_Review.md) |
 | Review the current parser/checker implementation | [Parser](Parser/) |
+| Install, restart, or recover the Office PC listener | [Office PC Runner Operations and Disaster Recovery](../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md) |
 | Review the separate PostgreSQL ingest | [LOR2DB Ingest](../../../LOR2DB/01_Ingest/README.md) |
 
 ## Engineering Boundary
@@ -39,8 +40,8 @@ The parser owns interpretation of Light-O-Rama preview structure. PostgreSQL ing
 
 The current functional parser is
 `Parser/parse_props_v7_scene_parser.py` V7.0.10. The current approved LOR version
-is an operator-controlled record initialized from the known-good 6.6.4 preview
-set; it is not a hard-coded parser assumption.
+of record is 6.6.10. The approved version remains an operator-controlled record;
+it is not a hard-coded parser assumption.
 
 Every later Light-O-Rama version must pass the complete XML checker and the V7
 parser validation run before it can replace that approved record.

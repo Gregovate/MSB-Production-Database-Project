@@ -2,12 +2,12 @@
 
 | Document control | Value |
 |---|---|
-| Repository path | `LOR2DB/Reconciliation/01_LOR_Production_Promotion_Pipeline_Design.md` |
+| Repository path | `LOR2DB/02_Reconciliation/01_LOR_Production_Promotion_Pipeline_Design.md` |
 | Document type | Database design specification |
-| Status | IMPLEMENTED AND PRODUCTION VALIDATED — Run 4 complete |
+| Status | IMPLEMENTED AND PRODUCTION VALIDATED — Run 7 complete |
 | Owner | MSB Database Administrator |
 | Initial release | 2026-07-31 |
-| Current revision | 2026-08-06 |
+| Current revision | 2026-08-17 |
 
 ## Purpose
 
@@ -30,6 +30,7 @@ in `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`.
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-17 | GAL / OpenAI | Aligned the design with the browser-operated parser, digest approval, ingest console, explicit reconciliation start, Run 7 production acceptance, and the Office PC listener service boundary. |
 | 2026-08-06 | GAL / OpenAI | Recorded completed P1-P4 implementation, production reconciliation Run 4, post-write validation, immutable report publication, and production acceptance of the secured lor2db workflow. |
 | 2026-08-03 | GAL / OpenAI | Implemented the repository P3/P4 checkpoint: frozen scene and physical-membership candidates, captured-source revalidation, guarded current-state synchronization, permanent display identity resolution after P2, and rollback validation. Production promotion remains disabled. |
 | 2026-08-03 | GAL / OpenAI | Added reconciliation-safe P2 and rollback validation: frozen action consumption, exact captured raw-source revalidation, nonphysical guards, atomic chained reassociation, exact write authority, and same-run idempotency checks. Production promotion remains disabled. |
@@ -49,12 +50,16 @@ The production import is one stateful workflow even though parser, ingest,
 preflight, operator review, promotion, validation, and reporting are separate
 implementation phases.
 
-The finished operator experience is:
+The implemented operator experience is:
 
 ```text
-Start LOR Production Import
-    -> parser
-    -> password-protected snapshot ingest
+Open the authenticated LOR2DB website
+    -> run parser one or more times
+    -> review parser console, counts, reports, SQLite, and SHA-256
+    -> approve the exact SQLite digest for ingest
+    -> digest-locked snapshot ingest through the Office PC runner
+    -> review ingest console
+    -> explicitly Start reconciliation
     -> capture latest completed ingest
     -> build persistent reconciliation working sets
     -> automatic preflight
@@ -64,6 +69,13 @@ Start LOR Production Import
     -> generate and publish timestamped HTML report
     -> complete
 ```
+
+The browser communicates with the Linux API, which calls the restricted Office
+PC listener for version checking, parser execution, and ingest. Reconciliation
+itself is database-controlled and remains available after an ingest even if the
+Office PC listener later goes offline. Installation, restart, credential, IP,
+and replacement-PC recovery are defined in
+[`../Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md`](../Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md).
 
 If no operator decisions are required, the workflow continues automatically
 through promotion, validation, report publication, and completion. If review is

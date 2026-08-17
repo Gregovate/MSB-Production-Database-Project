@@ -5,7 +5,8 @@
 | Status | CURRENT — engineering architecture; implementation review still required |
 | System | LOR Preview Merger |
 | Current workflow model | Master Musical Preview |
-| Current revision | 2026-08-08 |
+| Current approved LOR version | 6.6.10 |
+| Current revision | 2026-08-17 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -56,7 +57,9 @@ Programmers do not edit the controlled master preview directly. Each programmer 
 
 There must be one clearly designated master authority for the preview set.
 
-Historically the Show PC held the master preview set. During the LOR 6.6.4/V7 development period the Office PC became the designated master. Authority must be deliberately transferred; it must never be inferred from whichever copy appears newest.
+Historically the Show PC held the master preview set. The Office PC is now the
+designated master for approved LOR 6.6.10. Authority must be deliberately
+transferred; it must never be inferred from whichever copy appears newest.
 
 `Master_Musical_Preview` is the stable logical role for the musical-preview master. Dated exported files are snapshots, not permanent identities.
 
@@ -242,7 +245,7 @@ Known implementation issues include:
 - some launchers and report paths reflect older folder layouts;
 - the historical apply-policy defaults require review;
 - the Master Musical Preview simplification is not fully reflected in the old operator workflow;
-- LOR 6.6.8 compatibility has not yet been established.
+- every version after approved LOR 6.6.10 requires a new compatibility review.
 
 The presence of code in the active tree does not by itself make an `--apply` run production-approved.
 
@@ -250,14 +253,15 @@ The presence of code in the active tree does not by itself make an `--apply` run
 
 Before the Preview Merger is approved for this season's production programming workflow, engineering review must establish:
 
-1. the current master-preview authority and exact controlled source locations;
+1. safe integration with the current Office PC master authority and exact
+   controlled source locations;
 2. the Master Musical Preview workflow and which remaining previews are independently managed;
 3. the current comparison/winner policy;
 4. the required conflict and identity guardrails;
 5. the minimum audit evidence that must survive each comparison/apply;
 6. whether `preview_history.db` is retained, replaced, or reduced now that PostgreSQL/LOR2DB exists;
 7. current report locations and operator-facing report format;
-8. LOR 6.6.8 compatibility;
+8. compatibility handling for versions after approved LOR 6.6.10;
 9. dry-run and apply idempotency tests;
 10. the final operator procedure.
 

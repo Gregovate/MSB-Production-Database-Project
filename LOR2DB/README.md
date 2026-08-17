@@ -10,10 +10,11 @@ Cloudflare authentication is required, just as it is for [my.sheboyganlights.org
 
 ![LOR2DB landing page](../Docs/images/lor2db_landing_page.jpg)
 
-The landing page shows the approved/current and candidate LOR versions, XML
-compatibility and parser controls, the current PostgreSQL snapshot,
-reconciliation status, and the current reconciliation report. Use **Report
-archive** to view all completed reconciliation reports, newest first.
+The landing page separates the routine parser workflow, the infrequent LOR
+version-approval workflow, and reconciliation status. Use **Run parser** for
+normal preview changes. Use **Check new version** only when evaluating a
+different Light-O-Rama software version. Use **Report archive** to view
+completed and cancelled reconciliation reports, newest first.
 
 **Completed reconciliation reports:** [Open the report archive](https://my.sheboyganlights.org/lor2db/reports/)
 
@@ -21,9 +22,10 @@ For production reconciliation procedures and recovery guidance, go to [Reconcili
 
 ## What Do You Need To Do?
 
-- [Run/check the parser and then perform the separate PostgreSQL ingest](01_Ingest/README.md)
+- [Run the repeatable parser, approve its output, and ingest it from the web interface](01_Ingest/README.md)
 - [Run or understand reconciliation](02_Reconciliation/README.md)
 - [Work on the LOR2DB application](Application/README.md)
+- [Install, restart, or recover the Office PC runner](Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
 - [View and understand reconciliation reports](03_Reporting/README.md)
 
 ## Folder Guide

@@ -19,7 +19,7 @@ A separate narrow updater may add an approved missing `PreviewBackground` folder
 
 ```text
 LOR preview files
-    -> run_parse_props.ps1
+    -> repeatable parser run and review in the LOR2DB website
     -> lor_output_v7_scene.db
     -> run_folder_check.ps1
     -> Folder Alignment
@@ -27,6 +27,11 @@ LOR preview files
 ```
 
 PostgreSQL and LOR2DB are not working data sources for Folder Alignment. The current V7 parser SQLite output is deliberately used so LOR organization and document alignment can be inspected repeatedly before PostgreSQL ingest.
+
+The website is the normal parser entry point. The repository-root
+`run_parse_props.ps1` launcher is an engineering/recovery fallback only; either
+entry point must produce the same validated SQLite contract before Folder
+Alignment is run.
 
 The parser snapshot provenance in `parser_run` identifies the exact Preview folder used to build the current SQLite snapshot.
 
