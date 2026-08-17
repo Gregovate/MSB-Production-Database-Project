@@ -52,6 +52,8 @@ class BackendSafetyTests(unittest.TestCase):
     def test_browser_opens_run_report_with_archive_fallback(self) -> None:
         source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
         self.assertIn('result.report_url || "../reports/"', source)
+        self.assertIn('location.replace(result.report_url || "../reports/")', source)
+        self.assertNotIn('location.href = result.report_url || "../reports/"', source)
         self.assertEqual(source.count("openPublishedReport(result);"), 2)
 
     def test_browser_renders_terminal_cancellation_proof(self) -> None:

@@ -260,7 +260,10 @@ relationship, allowed action, and optimistic `expected_action_id`; then calls
 the appropriate protected recorder. Display/scene decisions use
 `ops.f_record_lor_reconciliation_action`; evidence-gated stage decisions use
 `ops.f_record_lor_stage_authority_action`, and the existing multi-preview
-preservation choice uses its dedicated stage recorder. It returns the complete
+preservation choice uses its dedicated stage recorder. Migration `0034` uses
+the persisted action as the common synchronization point: it recalculates the
+effective counters and changes an open run to `READY_TO_FINISH` only when no
+unresolved or blocked group remains. The endpoint then returns the complete
 refreshed run document as `{ "run": { ... } }`.
 
 Stage candidates include the complete frozen `members` array and the browser

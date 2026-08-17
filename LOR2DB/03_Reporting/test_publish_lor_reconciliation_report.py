@@ -96,6 +96,11 @@ class ReportRenderingTests(unittest.TestCase):
         self.assertIn("No blocked, deferred, unresolved, or failed items.", output)
         self.assertIn("No operator decisions were required.", output)
 
+    def test_report_has_dashboard_navigation(self):
+        output = REPORT.render_report(self.base_data(), datetime.now(timezone.utc))
+
+        self.assertIn('href="../">Return to LOR2DB dashboard</a>', output)
+
     def test_name_change_produces_label_action(self):
         data = self.base_data()
         data["names"] = [{
@@ -212,7 +217,7 @@ class ReportRenderingTests(unittest.TestCase):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
     def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.5.1")
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.5.2")
 
     def test_cancelled_report_is_terminal_and_has_no_required_actions(self):
         data = self.base_data()
@@ -272,6 +277,7 @@ class ReportRenderingTests(unittest.TestCase):
             self.assertIn("Captured ingest", index)
             self.assertIn("Outcome", index)
             self.assertIn("CANCELLED", index)
+            self.assertIn("Return to LOR2DB dashboard", index)
             self.assertLess(index.index(evaluation.name), index.index(published.name))
 
     def test_index_ignores_unrecognized_html_files(self):

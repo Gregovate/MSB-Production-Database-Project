@@ -3,7 +3,7 @@ MSB Database - LOR Reconciliation Report Publisher
 publish_lor_reconciliation_report.py
 
 Initial Release : 2026-08-03  V0.1.0
-Current Version : 2026-08-17  V0.5.1
+Current Version : 2026-08-17  V0.5.2
 Author          : GAL / OpenAI
 
 Purpose:
@@ -21,6 +21,10 @@ Operation:
       revised without changing the production audit row.
 
 Revision History:
+    2026-08-17  GAL / OpenAI  V0.5.2
+        Added explicit navigation from published reports and the report archive
+        back to the LOR2DB dashboard.
+
     2026-08-17  GAL / OpenAI  V0.5.1
         Sorted the source Preview manifest by Stage and replaced the misleading
         Preview-level BackgroundFile column with Scene background coverage.
@@ -52,7 +56,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.5.1"
+REPORT_VERSION = "V0.5.2"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
@@ -248,8 +252,8 @@ def refresh_report_index(output_dir: str) -> Path:
     generated = datetime.now().astimezone()
     document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>LOR Reconciliation Reports</title>
-<style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}.meta{{color:#475569}}table{{width:100%;border-collapse:collapse;margin-top:18px}}th,td{{border:1px solid #cbd5e1;padding:8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}a{{color:#075985}}.empty{{font-style:italic;color:#475569}}</style></head><body>
-<h1>LOR Reconciliation Reports</h1><p class="meta">Index refreshed {html.escape(display(generated))} · {len(entries)} report(s)</p>
+<style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}.report-nav{{float:right;padding:9px 13px;border:1px solid #94a3b8;border-radius:4px;text-decoration:none}}.meta{{color:#475569}}table{{width:100%;border-collapse:collapse;margin-top:18px}}th,td{{border:1px solid #cbd5e1;padding:8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}a{{color:#075985}}.empty{{font-style:italic;color:#475569}}@media print{{.report-nav{{display:none}}}}</style></head><body>
+<a class="report-nav" href="../">Return to LOR2DB dashboard</a><h1>LOR Reconciliation Reports</h1><p class="meta">Index refreshed {html.escape(display(generated))} · {len(entries)} report(s)</p>
 <table><thead><tr><th>Report</th><th>Type</th><th>Outcome</th><th>Reconciliation run</th><th>Captured ingest</th><th>Generated</th><th>Framework</th></tr></thead><tbody>{rows_html}</tbody></table>
 </body></html>"""
     destination = directory / "index.html"
@@ -512,8 +516,8 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         )
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title>
-<style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}h2{{border-bottom:2px solid #334155;padding-bottom:5px;margin-top:30px}}h3{{margin-top:20px}}.meta{{color:#475569}}.action{{display:inline-block;padding:6px 10px;border-radius:4px}}.none{{background:#dcfce7}}.required{{background:#fef3c7}}.cancelled-banner{{margin:18px 0;padding:14px;border:2px solid #991b1b;background:#fee2e2;color:#7f1d1d}}.not-applicable{{padding:10px;background:#e2e8f0}}table{{width:100%;border-collapse:collapse;margin:10px 0 18px}}th,td{{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}.empty td{{font-style:italic;color:#475569}}@media print{{body{{margin:0;max-width:none}}section{{break-inside:avoid}}}}</style></head><body data-report-outcome="{html.escape(final_status, quote=True)}">
-<h1>{html.escape(title)}</h1><p class="meta">Generated {html.escape(display(generated_at))} · Report framework {REPORT_VERSION} · Captured ingest {r["import_run_id"]}</p>{banner}{body}</body></html>"""
+<style>body{{font:14px/1.4 Arial,sans-serif;color:#1f2937;max-width:1400px;margin:24px auto;padding:0 18px}}h1{{margin-bottom:4px}}h2{{border-bottom:2px solid #334155;padding-bottom:5px;margin-top:30px}}h3{{margin-top:20px}}.report-nav{{float:right;padding:9px 13px;border:1px solid #94a3b8;border-radius:4px;color:#075985;text-decoration:none}}.meta{{color:#475569}}.action{{display:inline-block;padding:6px 10px;border-radius:4px}}.none{{background:#dcfce7}}.required{{background:#fef3c7}}.cancelled-banner{{margin:18px 0;padding:14px;border:2px solid #991b1b;background:#fee2e2;color:#7f1d1d}}.not-applicable{{padding:10px;background:#e2e8f0}}table{{width:100%;border-collapse:collapse;margin:10px 0 18px}}th,td{{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top}}th{{background:#e2e8f0}}tr:nth-child(even) td{{background:#f8fafc}}.empty td{{font-style:italic;color:#475569}}@media print{{body{{margin:0;max-width:none}}section{{break-inside:avoid}}.report-nav{{display:none}}}}</style></head><body data-report-outcome="{html.escape(final_status, quote=True)}">
+<a class="report-nav" href="../">Return to LOR2DB dashboard</a><h1>{html.escape(title)}</h1><p class="meta">Generated {html.escape(display(generated_at))} · Report framework {REPORT_VERSION} · Captured ingest {r["import_run_id"]}</p>{banner}{body}</body></html>"""
 
 
 def publish(conn: Any, run_id: int, output_dir: str, base_url: str | None) -> Path:

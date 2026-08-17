@@ -442,6 +442,11 @@ Immediately after a successful ingest, the workflow must:
 
 The operator does not enter an ingest number.
 
+After every persisted decision, the database recalculates the effective
+unresolved, deferred, and blocked counts. When the last required decision is
+saved and no blocked group remains, the same transaction advances the run to
+`READY_TO_FINISH`; the operator must not run a manual counter or status update.
+
 ### 5. Review Candidates Requiring Decisions
 
 Exact matches and other candidates requiring no operator action are not shown as decisions and are not listed as production changes in the final report.

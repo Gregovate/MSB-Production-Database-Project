@@ -225,6 +225,10 @@ WHERE lor_reconciliation_run_id = :run_id;
 ```
 
 `READY_TO_FINISH` means every decision-required group has an action. Deferred or source-correction groups remain exceptions and will be left unchanged.
+Migration `0034` synchronizes these counters and this lifecycle state whenever
+an action is saved. If the website reports that all decisions are recorded but
+the final-review button remains disabled, stop and investigate; do not manually
+change the run status during normal operation.
 
 ## 6. Pre-Finish Gate — Read Only
 
