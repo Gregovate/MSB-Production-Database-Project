@@ -3,7 +3,7 @@ MSB Database - LOR Reconciliation Report Publisher
 publish_lor_reconciliation_report.py
 
 Initial Release : 2026-08-03  V0.1.0
-Current Version : 2026-08-14  V0.5.0
+Current Version : 2026-08-17  V0.5.1
 Author          : GAL / OpenAI
 
 Purpose:
@@ -21,6 +21,10 @@ Operation:
       revised without changing the production audit row.
 
 Revision History:
+    2026-08-17  GAL / OpenAI  V0.5.1
+        Sorted the source Preview manifest by Stage and replaced the misleading
+        Preview-level BackgroundFile column with Scene background coverage.
+
     2026-08-14  GAL / OpenAI  V0.5.0
         Made cancelled runs unmistakable, marked validation not applicable,
         removed misleading follow-up actions, and added Outcome to the archive.
@@ -48,7 +52,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.5.0"
+REPORT_VERSION = "V0.5.1"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
@@ -80,6 +84,25 @@ def integer_display(value: Any) -> Any:
     except (TypeError, ValueError):
         return value
     return int(number) if number.is_integer() else value
+
+
+def stage_sort_key(row: dict[str, Any]) -> tuple[int, str, str, str]:
+    """Sort Stage identifiers naturally while leaving unassigned rows last."""
+    stage_id = str(row.get("report_stage_id") or row.get("stage_id") or "").strip()
+    match = re.match(r"^(\d+)(.*)$", stage_id)
+    if match:
+        return (
+            int(match.group(1)),
+            match.group(2).casefold(),
+            str(row.get("preview_name") or "").casefold(),
+            str(row.get("scene_name") or row.get("source_filename") or "").casefold(),
+        )
+    return (
+        2_147_483_647,
+        stage_id.casefold(),
+        str(row.get("preview_name") or "").casefold(),
+        str(row.get("scene_name") or row.get("source_filename") or "").casefold(),
+    )
 
 
 def humanize_changes(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -268,7 +291,7 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
                    preview_id, brightness, background_file
             FROM ops.lor_reconciliation_source_preview
             WHERE lor_reconciliation_run_id = %s
-            ORDER BY source_filename, preview_name
+            ORDER BY stage_id NULLS LAST, preview_name, source_filename
         """, (run_id,))
         changes = rows(cur, """
             SELECT entity_type, entity_key, result_class, reason_code,
@@ -327,16 +350,27 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
         stage_rows = rows(cur, "SELECT stage_id, stage_name FROM ref.stage", ())
         scene_rows = rows(cur, """
             SELECT s.preview_id, s.scene_id, s.scene_name, p.preview_name,
+                   p.stage_id AS preview_stage_id,
+                   s.stage_id AS scene_stage_id,
+                   coalesce(
+                       nullif(btrim(s.stage_id), ''),
+                       nullif(btrim(p.stage_id), '')
+                   ) AS report_stage_id,
+                   s.background_file,
                    st.stage_name
             FROM ops.lor_reconciliation_source_scene AS s
             LEFT JOIN ops.lor_reconciliation_source_preview AS p
               ON p.lor_reconciliation_run_id = s.lor_reconciliation_run_id
              AND p.preview_id = s.preview_id
             LEFT JOIN ref.stage AS st
-              ON st.stage_key = s.stage_id
+              ON st.stage_key = coalesce(
+                  nullif(btrim(s.stage_id), ''),
+                  nullif(btrim(p.stage_id), '')
+              )
             WHERE s.lor_reconciliation_run_id = %s
         """, (run_id,))
-    return {"run": run[0], "previews": previews, "changes": changes,
+    return {"run": run[0], "previews": previews, "scene_backgrounds": scene_rows,
+            "changes": changes,
             "names": names, "problems": problems, "decisions": decisions,
             "validations": validations,
             "display_names": {str(x["display_id"]): x["display_name"] for x in display_rows},
@@ -347,7 +381,7 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
 
 def render_report(data: dict[str, Any], generated_at: datetime) -> str:
     r = data["run"]
-    previews = [dict(x) for x in data["previews"]]
+    previews = sorted((dict(x) for x in data["previews"]), key=stage_sort_key)
     for preview in previews:
         preview["preview_revision"] = integer_display(preview.get("preview_revision"))
         preview["brightness"] = integer_display(preview.get("brightness"))
@@ -374,12 +408,39 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         ("ingest_host", "Computer"), ("lor_reconciliation_run_id", "Reconciliation run"),
         ("report_status", "Final status"), ("validation_state", "Validation"),
     ], [report_run], "Ingest metadata unavailable.")
+    scene_backgrounds = sorted(
+        (dict(x) for x in data.get("scene_backgrounds", [])),
+        key=stage_sort_key,
+    )
+    assigned_backgrounds = [
+        row for row in scene_backgrounds
+        if str(row.get("background_file") or "").strip()
+    ]
+    missing_backgrounds = [
+        {
+            "report_stage_id": row.get("report_stage_id"),
+            "preview_name": row.get("preview_name"),
+            "scene_name": row.get("scene_name"),
+        }
+        for row in scene_backgrounds
+        if not str(row.get("background_file") or "").strip()
+    ]
+    coverage = (
+        f'<h3>Scene background coverage</h3>'
+        f'<p><strong>{len(assigned_backgrounds)} of {len(scene_backgrounds)} Scenes</strong> '
+        'have an assigned background file. Folder alignment uses these Scene-level paths; '
+        'Preview-level background metadata is not shown here.</p>'
+        + table([
+            ("report_stage_id", "Stage"),
+            ("preview_name", "Preview name"),
+            ("scene_name", "Scene without an assigned background"),
+        ], missing_backgrounds, "Every captured Scene has an assigned background file.")
+    )
     manifest = f'<p><strong>Source folder:</strong> {html.escape(display(r["source_preview_folder"]))}</p>' + table([
         ("source_filename", "Preview filename"), ("preview_revision", "Revision"),
         ("preview_name", "Preview name"), ("stage_id", "Stage"),
         ("brightness", "Brightness"),
-        ("background_file", "Background file"),
-    ], previews, "No frozen preview manifest rows were recorded.")
+    ], previews, "No frozen preview manifest rows were recorded.") + coverage
     name_table = table([
         ("display_id", "Display_id"), ("before_name", "Before"),
         ("after_name", "After"), ("action_required", "Action Required"),
