@@ -11,8 +11,8 @@ change, or merely reports evidence.
 | Path | Contents | Execution rule |
 |---|---|---|
 | `current_procedures/` | Canonical standalone P1, P2, P3, and P4 definitions matching the latest accepted migration chain | Inspection or explicitly authorized repair only; these files do not call promotion |
-| `migrations/` | Immutable installation history `0011` through `0033` | Run only the specifically authorized next migration; never rerun the folder as a batch |
-| `validation/` | Validation `10` through `28` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `migrations/` | Immutable installation history `0011` through `0034` | Run only the specifically authorized next migration; never rerun the folder as a batch |
+| `validation/` | Validation `10` through `29` | Follow each file's header; several are transaction-wrapped rollback tests |
 | `operator_queries/preflight/` | Read-only latest-ingest reports `01` through `09` | Run individually; no operator-supplied `import_run_id` |
 | `incidents/` | Production incident report and its incident-specific forensic SQL | Historical evidence; not part of routine reconciliation |
 
@@ -67,7 +67,7 @@ is retained only as incident evidence. It is not step 8A of the normal workflow.
 
 ## Migration and validation status
 
-The current installation chain is `0011` through `0033`.
+The current installation chain is `0011` through `0034`.
 Migration `0029` must be revision
 `2026-08-05-true-noop-reconciliation-writes-v4`; its corresponding validation
 is `validation/25_true_noop_reconciliation_write_validation.sql`. Migration
@@ -79,6 +79,10 @@ Migration `0033` applies operator-approved canonical StageID/substage changes
 without replacing permanent stage identity, records accepted StageID aliases
 for stable bindings, exposes every frozen decision-group member, and is paired
 with `validation/28_complete_stage_decision_evidence_validation.sql`.
+Migration `0034` synchronizes effective counters and decision-state readiness
+after every persisted action, repairs already-open runs whose saved decisions
+and lifecycle diverged, and is paired with
+`validation/29_decision_readiness_sync_validation.sql`.
 
 Do not infer that a numbered validation is harmless from its filename alone.
 Read its header. In particular,

@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-16 V0.5.1
+ * Current version: 2026-08-17 V0.5.2
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -90,7 +90,9 @@
   function openPublishedReport(result) {
     // The API returns the immutable URL written to the completed run. Keep the
     // report archive only as a defensive fallback for older API responses.
-    location.href = result.report_url || "../reports/";
+    // Replace the approval workflow in browser history. After Finish, Back
+    // must not reopen a stale pre-production decision or confirmation screen.
+    location.replace(result.report_url || "../reports/");
   }
 
   function renderCandidate(candidate) {
