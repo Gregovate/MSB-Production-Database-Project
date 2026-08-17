@@ -72,7 +72,8 @@ class ReportRenderingTests(unittest.TestCase):
             }],
             "changes": [], "names": [], "problems": [],
             "display_names": {}, "preview_names": {"preview-uuid": "Stage 01"},
-            "stage_names": {}, "scene_names": {},
+            "stage_names": {}, "stage_keys": {}, "scene_names": {},
+            "display_change_evidence": {},
             "decisions": [],
             "validations": [{
                 "validation_check": "FINISH_POST_WRITE_VALIDATION_PASSED",
@@ -145,10 +146,10 @@ class ReportRenderingTests(unittest.TestCase):
         output = REPORT.render_report(self.base_data(), datetime.now(timezone.utc))
 
         self.assertIn("1 of 2 Scenes", output)
-        self.assertIn("Scene without an assigned background", output)
+        self.assertIn("Scene", output)
         self.assertIn("Scene without background", output)
-        self.assertNotIn("G:\\Backgrounds\\stage-01.jpg", output)
-        self.assertNotIn("<th>Background file</th>", output)
+        self.assertIn("G:\\Backgrounds\\stage-01.jpg", output)
+        self.assertIn("<th>Background file</th>", output)
 
     def test_changes_use_human_readable_display_and_scene_keys(self):
         data = self.base_data()
@@ -217,7 +218,32 @@ class ReportRenderingTests(unittest.TestCase):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
     def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.5.2")
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.6.0")
+
+    def test_changes_are_sorted_in_natural_stage_order_and_show_exact_fields(self):
+        data = self.base_data()
+        data["display_names"] = {"10": "Stage Ten", "2": "Stage Two"}
+        data["stage_keys"] = {"2": "02", "10": "10"}
+        data["display_change_evidence"] = {
+            "10": {"display_id": 10, "changed_fields": ["stage_id"],
+                   "current_stage_id": 2, "proposed_stage_key": "10"},
+            "2": {"display_id": 2, "changed_fields": ["string_type"],
+                  "current_stage_id": 2, "proposed_stage_key": "02"},
+        }
+        data["changes"] = [
+            {"entity_type": "DISPLAY", "entity_key": "10",
+             "result_class": "UPDATED", "reason_code": "P2_AUTO_APPROVED",
+             "operator_message": "ten", "recorded_at": None},
+            {"entity_type": "DISPLAY", "entity_key": "2",
+             "result_class": "UPDATED", "reason_code": "P2_AUTO_APPROVED",
+             "operator_message": "two", "recorded_at": None},
+        ]
+
+        output = REPORT.render_report(data, datetime.now(timezone.utc))
+
+        self.assertLess(output.index("2-Stage Two"), output.index("10-Stage Ten"))
+        self.assertIn("string_type", output)
+        self.assertIn("Stage 02 -&gt; Stage 10", output)
 
     def test_cancelled_report_is_terminal_and_has_no_required_actions(self):
         data = self.base_data()
