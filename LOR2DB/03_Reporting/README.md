@@ -13,6 +13,11 @@ The LOR2DB Reporting subsystem provides permanent reconciliation reports for eac
 
 Cloudflare authentication is required to access the LOR2DB application and published reconciliation report archive.
 
+Report framework V0.6.0 lists every captured Scene-level background path,
+sorts manifests and committed changes by natural Stage order (`05`, `05a`,
+`06`, ...), and shows the exact frozen fields changed by automatic display
+promotion. Evaluated no-op rows do not appear as production changes.
+
 ---
 
 # Google Drive Folder Alignment Report
