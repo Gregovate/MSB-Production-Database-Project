@@ -4,8 +4,9 @@
 |---|---|
 | Process status | ACTIVE — required preview-integrity control |
 | Implementation status | REVIEW REQUIRED before production apply |
-| Current master location | Office PC during LOR 6.6.4/V7 development |
-| Current revision | 2026-08-06 |
+| Current master location | Office PC |
+| Current approved LOR version | 6.6.10 |
+| Current revision | 2026-08-17 |
 
 ## Purpose
 
@@ -22,8 +23,8 @@ multi-programmer integrity requirement.
 ## Master authority
 
 - Historically, the Show PC held the master preview set.
-- During the LOR 6.6.4 and V7 development period, the **Office PC is the
-  designated master**.
+- The **Office PC is the designated master** for the approved LOR 6.6.10
+  production preview set.
 - The Show PC must not be described or used as current authority until
   development is complete and responsibility is deliberately transferred.
 - `Master_Musical_Preview` is the stable logical role. Dated exported files are
@@ -61,7 +62,7 @@ Known blockers include:
   permissive apply profile. The intended production guardrails must be decided
   and validated before apply.
 - Some launchers and report paths reflect older folder layouts.
-- LOR 6.6.8 compatibility has not been established.
+- Any version after LOR 6.6.10 requires a new controlled compatibility review.
 
 Until those blockers are closed, the ownership, isolation, dry-run review, and
 controlled-master rules remain mandatory, but the recovered script must not be
@@ -83,24 +84,24 @@ assumed safe merely because it exists in the active tree.
 Current Preview Merger engineering and operator documentation is maintained in the
 [Preview Merger documentation portal](../../Docs/01_LOR_System/03_Preview_Merger/README.md).
 
-## LOR 6.6.8 compatibility boundary
+## New LOR version compatibility boundary
 
-LOR 6.6.8 is a separate compatibility project. Do not update the master set,
-production parser, PostgreSQL ingest, or reconciliation based on an assumption
-that 6.6.8 is schema-compatible.
+Every version after approved LOR 6.6.10 is a separate compatibility project.
+Do not update the master set, production parser, PostgreSQL ingest, or
+reconciliation based on an assumption that a later release is schema-compatible.
 
 The compatibility branch must:
 
-1. Preserve known-good LOR 6.6.4 previews and V7 outputs as the baseline.
-2. Export representative 6.6.8 previews to a separate test location.
+1. Preserve the approved LOR 6.6.10 preview manifest and V7 outputs as the baseline.
+2. Export representative previews from the new version to a separate versioned location.
 3. Compare XML elements, attributes, identifiers, scenes, preview-level versus
    sequence-level scene behavior, props, subprops, DMX, backgrounds, and channel
    data.
-4. Run the V7 parser only against copied 6.6.8 test inputs.
+4. Run the V7 parser only against the isolated candidate inputs.
 5. Compare SQLite schema, row counts, identities, relationships, warnings,
    omissions, collisions, and unassigned records with the baseline.
 6. Review Preview Merger field/signature logic against any XML changes.
-7. Preserve the V7 snapshot contract and LOR 6.6.4 compatibility unless a
+7. Preserve the V7 snapshot contract and LOR 6.6.10 compatibility unless a
    controlled database change is explicitly approved.
 8. Leave production ingest and reconciliation unchanged until compatibility is
    demonstrated and documented.

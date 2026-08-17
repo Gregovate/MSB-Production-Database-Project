@@ -5,7 +5,8 @@
 | Status | DRAFT — NOT YET APPROVED FOR PRODUCTION APPLY |
 | System | LOR Preview Merger |
 | Current workflow model | Master Musical Preview |
-| Current revision | 2026-08-08 |
+| Current approved LOR version | 6.6.10 |
+| Current revision | 2026-08-17 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -76,12 +77,13 @@ Do not run a production apply merely because the launcher or `--apply` option ex
 
 Current engineering review still needs to confirm:
 
-- the exact controlled master location;
+- that merger apply targets the designated Office PC's controlled, versioned
+  master without overwriting unrelated approved previews;
 - which previews are independently managed under the Master Musical Preview model;
 - final winner/comparison policy;
 - current report locations;
 - audit/history implementation;
-- LOR 6.6.8 compatibility;
+- compatibility behavior for versions after approved LOR 6.6.10;
 - idempotent dry-run/apply behavior.
 
 ## Intended Operator Workflow

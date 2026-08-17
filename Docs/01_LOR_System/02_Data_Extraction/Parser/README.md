@@ -54,3 +54,4 @@ See:
 - [Version compatibility procedure](../LOR_Preview_Version_Compatibility_Review.md)
 - [SQLite output contract](../LOR_SQLite_Output_Database_Structure.md)
 - [LOR2DB ingest handoff](../../../../LOR2DB/01_Ingest/README.md)
+- [Office PC runner operations and disaster recovery](../../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)

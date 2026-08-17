@@ -23,7 +23,7 @@ Normal workflow:
 ```text
 Current LOR previews
         ↓
-run_parse_props.ps1
+Run and review the parser in LOR2DB
         ↓
 current V7 parser SQLite snapshot
         ↓

@@ -8,7 +8,7 @@ LOR is the critical input-side system for the MSB production database. It includ
 programmer preview islands
     -> individual UserPreviewStaging folders
     -> controlled comparison and merge
-    -> Office PC designated master during 6.6.4/V7 development
+    -> Office PC designated master
     -> approved master preview set
     -> LOR2DB V7 parser and SQLite snapshot
     -> FormView (standalone SQLite application)
@@ -21,7 +21,7 @@ The Show PC historically held the master. It is not the current authority while 
 ## Production entry points
 
 1. Follow the [Preview Merger process](preview_merger/README.md) to establish the reviewed master input set. The process remains required, although the recovered implementation is blocked from production apply pending review.
-2. Continue to the [LOR2DB Ingest portal](../LOR2DB/01_Ingest/README.md) for the current V7 parser and PostgreSQL snapshot ingest.
+2. Continue to the [LOR2DB operator workflow](../Docs/02_Production_Database/02_Operational_SOPs/LOR2DB/Run_an_LOR_Production_Update.md) for the current V7 parser, review, and PostgreSQL snapshot ingest.
 3. Continue in LOR2DB. Ingest does not directly promote snapshot data into permanent production identities.
 
 ## FormView
@@ -32,7 +32,12 @@ See [FormView](FormView/README.md) for its build, deployment, launcher, data con
 
 ## Version compatibility
 
-The current V7 workflow was validated against LOR 6.6.4. LOR 6.6.8 requires a separate compatibility review before it can replace the known-good input baseline. The controlled checklist is maintained in the [LOR Preview Version Compatibility Review](../Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md). Do not assume parser, merger, or snapshot compatibility and do not modify production ingest or reconciliation until the review is complete.
+The current V7 workflow and approved XML manifest are validated for LOR 6.6.10.
+Every later LOR software version requires a separate compatibility review before
+it can replace that known-good input baseline. Use the website's **Check new
+version** workflow and the controlled [LOR Preview Version Compatibility
+Review](../Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md).
+Do not infer compatibility merely because the parser starts.
 
 ## Authoritative documentation
 
@@ -42,5 +47,6 @@ The current V7 workflow was validated against LOR 6.6.4. LOR 6.6.8 requires a se
 - [Data extraction engineering](../Docs/01_LOR_System/02_Data_Extraction/README.md)
 - [Preview Merger documentation](../Docs/01_LOR_System/03_Preview_Merger/README.md)
 - [LOR2DB Ingest](../LOR2DB/01_Ingest/README.md)
+- [Office PC runner operations and disaster recovery](../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
 
 V6 and spreadsheet-era parser/ingest/report workflows are historical only and are stored under `archive/`. The Preview Merger's multi-programmer integrity process is active; it was not made obsolete by V7.

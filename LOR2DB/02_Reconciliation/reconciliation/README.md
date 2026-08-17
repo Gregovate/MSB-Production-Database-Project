@@ -46,9 +46,11 @@ is authoritative for the named object only.
 
 ## Operator preflight suite
 
-Run files in `operator_queries/preflight/` individually in numeric order when a
-manual SQL preflight is required. They select the latest committed ingest and
-do not call P1, P2, P3, P4, or Finish.
+The secured LOR2DB website is the normal preflight and decision interface. Run
+files in `operator_queries/preflight/` individually in numeric order only when
+an authorized engineering investigation or manual recovery requires SQL
+evidence. They select the latest committed ingest and do not call P1, P2, P3,
+P4, or Finish.
 
 1. `01_latest_ingest_context.sql`
 2. `02_latest_ingest_p1_stage_preflight.sql`

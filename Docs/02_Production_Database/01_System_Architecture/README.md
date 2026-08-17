@@ -14,6 +14,7 @@ Repository boundaries do not determine data authority. Dedicated applications an
 |---|---|
 | Understand shared PostgreSQL architecture and database-wide contracts | [01 — Database Foundation](01_Database_Foundation/README.md) |
 | Understand how LOR data enters PostgreSQL | [02 — LOR2DB Ingest](02_LOR2DB_Ingest/README.md) |
+| Recover the Office PC listener behind LOR2DB parser and ingest | [Office PC Runner Operations and Disaster Recovery](../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md) |
 | Understand user onboarding, identity, roles, and audit attribution | [03 — People and Identity](03_People_and_Identity/README.md) |
 | Understand containers, display storage, KIT containers, and physical locations | [04 — Containers and Storage](04_Containers_and_Storage/README.md) |
 | Understand container/display testing | [05 — Testing System](05_Testing_System/README.md) |
@@ -95,7 +96,7 @@ The legacy Directus MVP documents `E_Directus_DB_Dev.md` and `F_Directus_UI_md` 
 
 The legacy `G_Work_Order_Design_Plan.md` has been reconciled into [06 — Work Orders](06_Work_Orders/README.md) and archived. The legacy `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled into [07 — Labeling and Scanning](07_Labeling_and_Scanning/README.md) and archived.
 
-The legacy `D_Database_Structure.md` has now been fully reconciled into the current numbered subsystem architecture and removed from the active tree. Its historical reconciliation record is preserved at [`archive/architecture/D_Database_Structure.md`](../../../../archive/architecture/D_Database_Structure.md), while the complete original remains available in Git history.
+The legacy `D_Database_Structure.md` has now been fully reconciled into the current numbered subsystem architecture and removed from the active tree. Its historical reconciliation record is preserved at [`archive/architecture/D_Database_Structure.md`](../../../archive/architecture/D_Database_Structure.md), while the complete original remains available in Git history.
 
 One loose legacy architecture document remains active during the audit:
 

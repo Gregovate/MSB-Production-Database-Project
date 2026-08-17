@@ -4,11 +4,11 @@
 |---|---|
 | Status | ACTIVE FALLBACK — secured operator application is the normal workflow |
 | Owner | GAL |
-| Initial release / current revision | 2026-08-04 / 2026-08-06 |
+| Initial release / current revision | 2026-08-04 / 2026-08-17 |
 
 The reusable screen and its secured backend are defined in
 `LOR2DB/Application/` and were deployed and production validated with Run 4.
-Normal operation begins at `https://lortodb.sheboyganlights.org/lor2db/`. This
+Normal operation begins at `https://my.sheboyganlights.org/lor2db/`. This
 runbook is retained only for controlled fallback and recovery when the secured
 application cannot perform the normal workflow.
 
@@ -142,6 +142,23 @@ SELECT ops.f_record_lor_stage_preserve_metadata_action(
     'Manual reconciliation via SQL client'
 ) AS action_id;
 ```
+
+Evidence-gated existing StageID change or new permanent stage, only when the
+selected action appears in the group's `allowed_action_types`:
+
+```sql
+SELECT ops.f_record_lor_stage_authority_action(
+    :run_id,
+    :group_id,
+    'APPROVE_STAGE_CHANGE', -- or ADD_NEW_STAGE
+    'Specific operator reason supported by the complete frozen stage evidence.',
+    'Manual reconciliation via SQL client'
+) AS action_id;
+```
+
+Never substitute either stage-authority action for a contradictory group. The
+database evidence gates must return true, and every frozen group member must be
+reviewed before recording the action.
 
 For display reassociation, first retrieve exact candidate IDs and possible permanent identities:
 
@@ -364,6 +381,7 @@ The run advances to `REPORTING`; publish its cancellation report using Step 9. C
 
 ## Related Documents
 
-- `00_LOR_Production_Import_and_Reconciliation_Procedure.md`
-- `01_LOR_Production_Promotion_Pipeline_Design.md`
-- `reconciliation/LOR_Display_Reconciliation_SQL_Design.md`
+- [Normal LOR2DB operator SOP](../../Docs/02_Production_Database/02_Operational_SOPs/LOR2DB/Run_an_LOR_Production_Update.md)
+- [LOR Production Import and Reconciliation Procedure](00_LOR_Production_Import_and_Reconciliation_Procedure.md)
+- [Production Promotion Pipeline Design](01_LOR_Production_Promotion_Pipeline_Design.md)
+- [Reconciliation SQL Design](reconciliation/LOR_Display_Reconciliation_SQL_Design.md)

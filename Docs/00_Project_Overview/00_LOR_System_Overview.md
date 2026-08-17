@@ -4,7 +4,7 @@
 |---|---|
 | Status | ACTIVE — V7 scene-aware production workflow |
 | Owner | MSB Database Administrator |
-| Current revision | 2026-08-13 |
+| Current revision | 2026-08-17 |
 
 ## Purpose
 
@@ -27,37 +27,42 @@ The current workflow is V7. V6 parser and PostgreSQL ingest material is archived
 ```text
 Isolated programmer previews
     -> controlled dry-run comparison and reviewed merge
-    -> Office PC designated master during LOR 6.6.4/V7 development
+    -> Office PC designated master
     -> authoritative V7 preview exports
-    -> LOR2DB website / Windows V7 parser runner
+    -> Run and review the parser in the LOR2DB website
     -> Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py
     -> lor_output_v7_scene.db
-    -> LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1
+    -> approve the exact SQLite digest in the LOR2DB website
+    -> digest-locked PostgreSQL ingest from the same page
     -> immutable lor_snap snapshot
-    -> https://my.sheboyganlights.org/lor2db/
-    -> persistent reconciliation and operator decisions
+    -> Start reconciliation in the LOR2DB website
+    -> persistent operator decisions and final review
     -> controlled P1-P4 promotion
     -> validation and immutable HTML report
 ```
 
-For the current release, the Office PC is the designated master during LOR
-6.6.4/V7 development. The Show PC held the master historically and must not be
+For the current release, the Office PC is the designated master for the
+approved LOR 6.6.10 preview set. The Show PC held the master historically and must not be
 treated as current authority until a deliberate handoff. The LOR2DB page runs
-the parser through the restricted Office PC runner. PostgreSQL ingest remains
-separate, manual, and locked to the exact reviewed SQLite SHA-256. The page
-detects the committed snapshot and never asks the operator for an ingest ID.
+the parser and the fixed PostgreSQL ingest through the restricted Office PC
+runner. They remain separate operator approvals: the parser may be repeated
+until the output looks correct, ingest is locked to the exact approved SQLite
+SHA-256, and reconciliation starts only after another explicit operator action.
+The page never asks the operator for an ingest ID.
 
 ## Current source and entry points
 
 - Parser: [`Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py`](../01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py).
 - XML version checker and runner: [`LOR Data Extraction`](../01_LOR_System/02_Data_Extraction/README.md).
 - SQLite snapshot: `lor_output_v7_scene.db`.
-- PostgreSQL ingest: [`LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1`](../../LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1).
+- Normal production workflow: [LOR2DB](https://my.sheboyganlights.org/lor2db/).
+- PostgreSQL ingest implementation and recovery entry point: [`LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1`](../../LOR2DB/01_Ingest/postgres_run_ingest_v7.ps1).
 - Preview ownership and merge control: [Preview Merger](../01_LOR_System/03_Preview_Merger/README.md).
 - FormView executable application: [FormView](../../LOR/FormView/README.md).
 - Controlled production procedure: [LOR Production Import and Reconciliation Procedure](../../LOR2DB/02_Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md).
 - Reconciliation landing page: [LOR2DB](https://my.sheboyganlights.org/lor2db/).
 - Manual recovery runbook: [LOR Manual Reconciliation Runbook](../../LOR2DB/02_Reconciliation/02_LOR_Manual_Reconciliation_Runbook.md).
+- Office PC service dependency and recovery: [Office PC Runner Operations and Disaster Recovery](../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md).
 
 ## Noncurrent material
 
@@ -65,5 +70,5 @@ Do not use `parse_props_v6.py`, `lor_output_v6.db`, or V6 workflow instructions 
 
 FormView's current `lor_output_v6.db` and `_v6` names are documented
 compatibility dependencies, not authorization to run the archived V6 parser.
-LOR 6.6.10 is the pending candidate and must follow the [LOR Preview Version
-Compatibility Review](../01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md).
+LOR 6.6.10 is the current approved version of record. Every later version must
+follow the [LOR Preview Version Compatibility Review](../01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md).

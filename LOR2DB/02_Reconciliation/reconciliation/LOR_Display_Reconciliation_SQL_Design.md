@@ -299,18 +299,17 @@ The operator interface is a run-driven view of the persisted reconciliation
 state, not a generated SQL workflow and not a browser-only form.
 
 - The active route is
-  `https://lortodb.sheboyganlights.org/lor2db/preflight/?run={reconciliation_run_id}`.
-- Cloudflare authentication protects the entire `lortodb.sheboyganlights.org`
+  `https://my.sheboyganlights.org/lor2db/preflight/?run={reconciliation_run_id}`.
+- Cloudflare authentication protects the entire `my.sheboyganlights.org`
   route. Application authorization must further restrict reconciliation access
   to the smaller approved operator group.
 - One reusable template renders display, stage, scene, and scene-display groups
   from the installed persisted review views.
 - Every line shows its frozen evidence and only the action types allowed for its
   logical group.
-- **Accept** resolves to the single proposed production action. It is disabled
-  when reconciliation cannot propose one safe action, such as deciding whether
-  a missing active display is retired or recycled.
-- **Change** exposes the other allowed actions; **Defer** records `DEFER`.
+- Each decision list exposes only actions proven safe for that complete frozen
+  logical group. Approval is absent when the group evidence is contradictory or
+  incomplete. **Defer** records `DEFER` without changing production.
 - Saving calls the existing append-only reconciliation action function through
   a same-origin secured backend. Reopening the page displays the persisted
   effective decision rather than browser state.

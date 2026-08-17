@@ -8,12 +8,16 @@ It is part of the **LOR2DB technical workflow**. Operational Directus SOPs are m
 
 | I want to... | Go to |
 |---|---|
-| Run the normal production reconciliation workflow | [00_LOR_Production_Import_and_Reconciliation_Procedure.md](00_LOR_Production_Import_and_Reconciliation_Procedure.md) |
+| Run the normal production update | [Operator SOP](../../Docs/02_Production_Database/02_Operational_SOPs/LOR2DB/Run_an_LOR_Production_Update.md) |
+| Administer the full production workflow | [00_LOR_Production_Import_and_Reconciliation_Procedure.md](00_LOR_Production_Import_and_Reconciliation_Procedure.md) |
 | Understand how the production workflow is organized | [01_LOR_Production_Promotion_Pipeline_Design.md](01_LOR_Production_Promotion_Pipeline_Design.md) |
 | Recover when the normal application cannot be used | [02_LOR_Manual_Reconciliation_Runbook.md](02_LOR_Manual_Reconciliation_Runbook.md) |
 | View the reconciliation engineering documentation | [reconciliation/README.md](reconciliation/README.md) |
 
-For normal operation, begin with the Production Import and Reconciliation Procedure. The secured LOR2DB application is the normal operator interface. The manual reconciliation procedure is intended only for controlled recovery situations.
+For normal operation, begin with the Operator SOP. The secured LOR2DB
+application is the normal operator interface. The controlled production
+procedure supplies administrative detail, and the manual reconciliation
+procedure is intended only for controlled recovery situations.
 
 ## Folder Guide
 

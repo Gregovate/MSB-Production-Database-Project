@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT code; web ingest workflow deployed; preflight browser V0.5.1 pending deployment |
-| Initial release / current revision | 2026-08-04 / 2026-08-16 |
+| Status | CURRENT — production deployed and validated through reconciliation Run 7 |
+| Initial release / current revision | 2026-08-04 / 2026-08-17 |
 
 ## Revision history
 
@@ -103,8 +103,11 @@ approved-version baseline, candidate parser, and SQLite comparison in order.
 Approval returns to the landing page with the new approved version and folder
 and marks the production parser as requiring a deliberate rebuild.
 
-PostgreSQL ingest remains separate and manual. No browser page starts ingest,
-and the Linux API never executes a user-supplied path or command.
+PostgreSQL ingest remains a separate, explicit operator approval. The parser
+page starts only the fixed digest-locked ingest operation after the operator
+approves the exact displayed SQLite SHA-256. The browser cannot supply a path,
+command, database account, or executable, and ingest never starts
+reconciliation automatically.
 
 ## LOR version-check workspace
 
@@ -135,7 +138,8 @@ The infrequent version workflow is intentionally gated:
    rebuild.
 10. Use the normal parser page to run the current parser in `PRODUCTION` mode.
    Inspect the resulting SQLite as often as needed; no ingest is automatic.
-11. Supply its displayed SHA-256 to the separate manual PostgreSQL ingest.
+11. Review the production parser output, approve its displayed SHA-256, and use
+    **Ingest to PostgreSQL** on the parser page.
 
 The raw SQLite `scenes` count is labeled **raw LOR Scene rows**. Operational
 true Scenes are classified by Folder Alignment naming rules and are not a
@@ -184,8 +188,14 @@ publish port 8791 to the Internet.
 The task runs while Greg remains logged in, including while the screen is
 locked. After a Windows update or reboot, the runner remains unavailable until
 Greg signs in and `G:` is restored. This is an explicit availability boundary:
-the website reports the runner offline, while command-line parser operation,
-the existing SQLite snapshot, PostgreSQL, and reconciliation remain unaffected.
+the website reports the runner offline, while the existing SQLite snapshot,
+PostgreSQL, and any already-started reconciliation remain unaffected.
+
+Installation, restart, credential recovery, network requirements, and transfer
+to a replacement Office PC are controlled by the
+[Office PC Runner Operations and Disaster Recovery](Office_PC_Runner_Operations_and_Disaster_Recovery.md)
+runbook. Do not improvise token transfer or copy DPAPI files to another account
+or computer.
 
 ## Required API
 
@@ -325,7 +335,8 @@ the browser or Linux API.
    application tests plus PowerShell and JavaScript syntax checks.
 3. Run `run_lor_runner.ps1 -Action Install`. Retain the existing runner token,
    enter the PostgreSQL `msbadmin` password once at the secure prompt, and
-   verify runner V1.5.0. Do not run `PairServer`.
+   verify runner V1.5.1. Do not run `PairServer` when the existing protected
+   token is retained.
 4. Deploy backend V0.6.1, restart `lor-preflight-api.service`, and verify its
    health response plus the existing backend-to-runner connection.
 5. Publish the complete `landing/` tree, including `parser/` and
