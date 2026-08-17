@@ -68,6 +68,30 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn("Complete stage evidence", source)
         self.assertIn("candidate.members.map", source)
 
+    def test_production_confirmation_is_a_warning_not_an_error(self) -> None:
+        application = Path(__file__).parent
+        source = (application / "preflight.js").read_text(encoding="utf-8")
+        styles = (application / "preflight.css").read_text(encoding="utf-8")
+
+        # Production application remains explicit without using failure-red styling.
+        self.assertIn('class="production-warning"', source)
+        self.assertIn('id="proceed" class="primary"', source)
+        self.assertIn(
+            'dialogConfirm.textContent = "Proceed with production update"; '
+            'dialogConfirm.className = "primary";',
+            source,
+        )
+        self.assertIn(".production-warning", styles)
+        self.assertIn(
+            'dialogConfirm.textContent = "Cancel reconciliation"; '
+            'dialogConfirm.className = "danger";',
+            source,
+        )
+        self.assertNotIn(
+            '<p class="error">Proceed is the production-write boundary.',
+            source,
+        )
+
     def test_cancel_endpoint_returns_terminal_proof_and_report_url(self) -> None:
         class Cursor:
             def __enter__(self):
