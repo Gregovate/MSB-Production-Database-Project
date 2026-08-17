@@ -230,6 +230,16 @@ an action is saved. If the website reports that all decisions are recorded but
 the final-review button remains disabled, stop and investigate; do not manually
 change the run status during normal operation.
 
+### Main stage and substage identity
+
+Stage keys such as `05` and `05a` (likewise `07` and `07a`) are separate
+permanent stages. If the frozen evidence contains both keys at the same time,
+do not approve a canonical rename. The interface must offer creation of the
+new substage and P1 must move only bindings whose captured source key matches
+that new substage. The main-stage bindings and displays remain assigned to the
+main stage. Migration `0035` enforces this rule and preserves the captured
+snapshot/frozen evidence unchanged.
+
 ## 6. Pre-Finish Gate — Read Only
 
 ```sql
