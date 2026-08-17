@@ -11,6 +11,14 @@ VALIDATION = (
     ROOT / "02_Reconciliation" / "reconciliation" / "validation"
     / "30_distinct_substage_and_stage_assignment_validation.sql"
 )
+FOLLOWUP_MIGRATION = (
+    ROOT / "02_Reconciliation" / "reconciliation" / "migrations"
+    / "0036_complete_stage05a_scene_repair.sql"
+)
+FOLLOWUP_VALIDATION = (
+    ROOT / "02_Reconciliation" / "reconciliation" / "validation"
+    / "31_complete_stage05a_scene_repair_validation.sql"
+)
 P1 = (
     ROOT / "02_Reconciliation" / "reconciliation" / "current_procedures"
     / "P1_stage_promotion.sql"
@@ -72,6 +80,23 @@ class DistinctSubstageRepairTests(unittest.TestCase):
         self.assertIn("source_stage_key = '05'", source)
         self.assertIn("source_stage_key = '05a'", source)
         self.assertIn("display_id = 869", source)
+        self.assertNotIn("UPDATE ", source.upper())
+
+    def test_followup_moves_only_the_exact_permanent_scene(self):
+        source = FOLLOWUP_MIGRATION.read_text(encoding="utf-8")
+        repair = source.split("DO $repair$", 1)[1]
+        self.assertIn("UPDATE ref.lor_scene", repair)
+        self.assertIn("d57761f7-3527-4b00-a8ce-2eeb70eb3d8c", repair)
+        self.assertIn("05a-Mega Star-MS", repair)
+        self.assertIn("v_updated_count <> 1", repair)
+        self.assertNotIn("UPDATE lor_snap.", repair)
+        self.assertNotIn("UPDATE ops.lor_reconciliation_", repair)
+
+    def test_followup_validation_checks_scene_and_remains_read_only(self):
+        source = FOLLOWUP_VALIDATION.read_text(encoding="utf-8")
+        self.assertIn("FROM ref.lor_scene", source)
+        self.assertIn("ls.stage_id = v_stage_05a", source)
+        self.assertIn("ls.stage_id = v_stage_05", source)
         self.assertNotIn("UPDATE ", source.upper())
 
 
