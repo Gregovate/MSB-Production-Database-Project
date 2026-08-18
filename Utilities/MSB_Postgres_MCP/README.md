@@ -1,31 +1,34 @@
 # MSB PostgreSQL Read-Only MCP
 
-**Status:** DRAFT scaffold — not deployed and not connected to production.
+**Status:** ENGINEERING VALIDATION — the read-only MCP server and Secure MCP Tunnel have been validated on `msb-prod-db`. ChatGPT Pro currently does not expose the documented custom-MCP/tunnel registration control in this account, so the SQLite FieldWiring snapshot exporter below is the active engineering bridge.
 
 ## Purpose
 
-This utility provides a deliberately narrow Model Context Protocol (MCP) server for read-only engineering access to the current MSB PostgreSQL state.
+This utility provides deliberately narrow read-only engineering access to the current MSB PostgreSQL state.
 
 It exists to remove the repeated copy/paste loop between ChatGPT and database tools while preserving the Production Database authority and safety boundaries.
 
-This is **not** the FieldWiring application. It is a cross-system engineering connector that can support FieldWiring verification and other approved Production Database inspection work.
+This is **not** the FieldWiring application. It is a cross-system engineering connector that supports FormView-to-FieldWiring verification and other approved Production Database inspection work.
+
+The intended long-term path remains the MCP server. The SQLite snapshot exporter is a temporary engineering bridge while the ChatGPT custom-MCP registration surface is unavailable.
 
 ## Safety Boundary
 
-The server is intentionally limited:
+The MCP server and snapshot exporter are intentionally limited:
 
 - no arbitrary SQL tool;
-- no `INSERT`, `UPDATE`, `DELETE`, `MERGE`, DDL, or procedure-call tool;
-- every exposed MCP tool is marked read-only/non-destructive;
-- every PostgreSQL connection sets new transactions to read-only;
-- every query has a short statement timeout and lock timeout;
-- the service never commits a database transaction;
-- deployment must use a dedicated PostgreSQL role whose grants are SELECT-only;
-- credentials are supplied through environment configuration and are never committed to Git.
+- no `INSERT`, `UPDATE`, `DELETE`, `MERGE`, DDL, or procedure-call tool against PostgreSQL;
+- MCP tools are marked read-only/non-destructive;
+- PostgreSQL connections use read-only transactions;
+- the deployed PostgreSQL account is the dedicated SELECT-only `msb_mcp_readonly` role;
+- queries use short statement and lock timeouts;
+- PostgreSQL transactions are rolled back, never committed;
+- credentials are supplied through protected runtime configuration and are never committed to Git;
+- the snapshot exporter writes only to its local SQLite output file.
 
-The MCP annotations are descriptive hints, not the security boundary. The real security controls are the fixed SELECT queries, read-only transaction mode, and the future dedicated PostgreSQL SELECT-only role.
+The MCP annotations are descriptive hints, not the security boundary. The real security controls are the fixed SELECT queries, read-only PostgreSQL transaction mode, and the dedicated SELECT-only database role.
 
-## Current Tools
+## Current MCP Tools
 
 ### `get_current_snapshot_summary`
 
@@ -33,40 +36,19 @@ Returns the current `lor_snap` import run and counts for current previews, scene
 
 ### `find_display`
 
-Searches the permanent `ref.display` collection by human-facing Display Name, optionally constrained by Stage key.
-
-Returns normal operator context such as:
-
-- `display_id`;
-- Display Name;
-- Stage key/name/short code;
-- Display status.
-
-It does not expose LOR UUIDs.
+Searches permanent `ref.display` identity by human-facing Display Name, optionally constrained to one Stage key.
 
 ### `get_display_current_context`
 
-Uses the existing current reconciliation/occurrence layer to resolve a permanent `display_id` into its current LOR Preview and Scene occurrences.
-
-Normal output is human-facing:
-
-- Display Name;
-- Stage;
-- Preview Name;
-- Scene Name when applicable;
-- current identity/reconciliation classification.
-
-LOR UUIDs remain internal plumbing and are not returned.
+Uses the existing reconciliation/occurrence layer to resolve a permanent `display_id` into current LOR Preview and Scene occurrences.
 
 ### `get_current_field_wiring`
 
-Returns the current `preview_wiring_fieldlead_v6` rows for one permanent `display_id`, optionally for one Preview Name.
+Returns current `preview_wiring_fieldlead_v6` rows for one permanent `display_id`, optionally for one Preview Name.
 
 ### `get_scene_field_wiring`
 
-Starts from one permanent `display_id`, resolves its current Scene membership from the current snapshot, and returns the field-lead wiring package for the Displays in that Scene.
-
-This is an engineering verification tool for the FormView-to-FieldWiring conversion. It does not define the final FieldWiring API contract.
+Starts from one permanent `display_id`, resolves current Scene membership, and returns the field-lead wiring package for the Displays in that Scene.
 
 ### `describe_relation`
 
@@ -80,7 +62,7 @@ It cannot execute arbitrary SQL.
 
 ## Existing Database Objects Reused
 
-This scaffold intentionally uses the objects that already exist:
+Both the MCP tools and the snapshot exporter reuse the current database objects that already exist:
 
 ```text
 lor_snap.v_current_run
@@ -98,7 +80,85 @@ ref.display_status
 ref.stage
 ```
 
-The connector does not create a new wiring table or a second identity system.
+The utility does not create a new PostgreSQL wiring table or a second identity system.
+
+## FieldWiring SQLite Snapshot Export
+
+`export_fieldwiring_snapshot.py` exports the current engineering read model into one portable SQLite database so FieldWiring analysis and testing can continue without repeated manual PostgreSQL query relays.
+
+The export is intentionally a **snapshot**, not a replacement database and not a new history model.
+
+### Consistency
+
+The exporter uses one PostgreSQL `REPEATABLE READ`, read-only transaction for the complete export. This keeps all exported relations on one consistent PostgreSQL source snapshot.
+
+Current-state views are exported as-is. Relations that can contain multiple import runs are explicitly filtered to the `import_run_id` returned by `lor_snap.v_current_run`:
+
+```text
+lor_snap.v_display_lor_occurrence
+ops.v_lor_display_reconciliation
+```
+
+### SQLite table names
+
+PostgreSQL schema-qualified relation names are stored with a double underscore:
+
+```text
+lor_snap.v_current_previews
+    -> lor_snap__v_current_previews
+
+ops.v_lor_display_reconciliation
+    -> ops__v_lor_display_reconciliation
+
+ref.display
+    -> ref__display
+```
+
+### Snapshot metadata
+
+Every output database also contains:
+
+```text
+_snapshot_manifest
+_snapshot_relations
+_snapshot_columns
+_snapshot_view_definitions
+```
+
+These tables record the source database/user, export time, current `import_run_id`, source row counts, PostgreSQL column metadata, and deployed view definitions. `PRAGMA integrity_check` must pass before the temporary export file is promoted to the final `.db` file.
+
+### Run on `msb-prod-db`
+
+The exporter uses the same protected `MSB_PG_DSN` configuration as the MCP service.
+
+```bash
+cd /opt/msb-postgres-mcp
+set -a
+source config.env
+set +a
+./.venv/bin/python export_fieldwiring_snapshot.py
+```
+
+With no `--output`, it creates a file such as:
+
+```text
+fieldwiring_snapshot_run_50_20260818T213000Z.db
+```
+
+To choose a path explicitly:
+
+```bash
+./.venv/bin/python export_fieldwiring_snapshot.py \
+  --output /opt/msb-postgres-mcp/fieldwiring_snapshot.db
+```
+
+Existing files are not overwritten unless `--force` is explicitly supplied.
+
+### When to regenerate
+
+Regenerate the snapshot after an approved PostgreSQL/LOR import changes `lor_snap.v_current_run`. A single exported file can be reused for analysis and application testing while that source import remains current.
+
+The snapshot is an engineering bridge only. FieldWiring production behavior must ultimately read the authoritative current PostgreSQL state rather than treating an exported SQLite copy as the production source of truth.
 
 ## Human vs Internal Identity
 
@@ -117,22 +177,17 @@ internal database resolution
     -> current snapshot
 ```
 
-Normal MCP output should use Display Name, Stage, Preview Name, and Scene Name where useful. Raw LOR Prop/Scene/Preview UUIDs are not intended as operator-facing information.
+Normal field-facing output should use Display Name, Stage, Preview Name, and Scene Name where useful. Raw LOR Prop/Scene/Preview UUIDs are internal plumbing. The engineering SQLite snapshot may retain those internal identifiers where required to preserve current joins, but they are not intended for the FieldWiring user interface.
 
-## Prerequisites
-
-Deployment target should be a host that can reach `msb-prod-db`. The preferred first deployment is directly on the database host with the MCP server bound to localhost.
-
-Runtime requirements:
+## Runtime Requirements
 
 - Python 3.10 or newer;
 - MCP Python SDK v2;
 - Psycopg 3;
-- a PostgreSQL credential that will later be replaced/confirmed as a dedicated SELECT-only MCP role.
+- Python standard-library `sqlite3` for the snapshot exporter;
+- dedicated PostgreSQL SELECT-only credentials.
 
-## Local Installation
-
-From this folder:
+Install from this folder with:
 
 ```bash
 python3 -m venv .venv
@@ -141,15 +196,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-On Windows PowerShell, activate with:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-## Configuration
-
-Copy the values in `config.example.env` into the protected runtime environment. The application does not automatically load that example file.
+## MCP Configuration
 
 Required:
 
@@ -166,46 +213,21 @@ MSB_MCP_PORT=8000
 
 Do not commit a populated password or DSN.
 
-## Run Locally
-
-```bash
-python server.py
-```
-
 The default MCP endpoint is:
 
 ```text
 http://127.0.0.1:8000/mcp
 ```
 
-The service uses Streamable HTTP and is intended to remain bound to localhost when Secure MCP Tunnel runs on the same host.
+It is intended to remain bound to localhost while Secure MCP Tunnel runs on the same host.
 
-## Development Test
+## Current Deployment Note
 
-With the MCP CLI/Inspector available from `mcp[cli]`, the server can be inspected before any ChatGPT connection is created.
+The localhost MCP server, six read-only tools, dedicated PostgreSQL role, Secure MCP Tunnel authentication, and tunnel runtime health have been validated on `msb-prod-db`.
 
-Do not test against production with a write-capable credential as the long-term configuration. The deployment gate is a dedicated PostgreSQL SELECT-only role.
+The remaining MCP blocker is on the ChatGPT product side: this Pro account currently redirects the documented connector settings route into the Plugins UI without exposing the documented custom MCP `Create` / `Connection: Tunnel` control.
 
-## Secure MCP Tunnel — Later Deployment Gate
-
-No tunnel is configured by this scaffold.
-
-After the local MCP server is validated and the dedicated read-only PostgreSQL role is in place, OpenAI `tunnel-client` can connect the private localhost MCP endpoint to ChatGPT without opening a new inbound public firewall rule.
-
-That is a separate deployment step and must not be performed until the database grants and service behavior have been reviewed.
-
-## Not Yet Done
-
-This scaffold does **not**:
-
-- create or modify a PostgreSQL role;
-- change grants;
-- install Python packages on `msb-prod-db`;
-- install or configure `tunnel-client`;
-- create a ChatGPT custom MCP connection;
-- change the FieldWiring database schema;
-- change FormView;
-- change the V7 parser.
+Do not redesign the PostgreSQL connector or open a public inbound MCP port to work around that UI issue. Continue engineering work through the snapshot exporter until the supported ChatGPT registration surface is available.
 
 ## Related Documentation
 
