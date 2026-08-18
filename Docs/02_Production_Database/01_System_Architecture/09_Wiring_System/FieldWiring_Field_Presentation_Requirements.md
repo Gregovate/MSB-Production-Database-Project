@@ -27,34 +27,38 @@ The browser UI must prioritize that task over exposing every engineering field a
 
 ## FormView Controls to Preserve Functionally
 
-FormView currently provides three useful wiring filters:
+FormView currently provides three useful and independent wiring controls:
 
-- **Field wiring mode** — reduce the detailed wiring model to one practical field lead per Display/circuit relationship;
-- **Displays only** — restrict to master `PROP` rows when an engineering/operator use case requires it;
-- **Hide SPAREs** — suppress intentionally unused channels.
+- **Field wiring mode** — when checked, reduce the detailed wiring model to the practical FIELD connection set; when unchecked, show the fuller wiring map;
+- **Displays only** — restrict to master Display/`PROP` rows when an engineering/operator use case requires it;
+- **Hide SPAREs** — suppress intentionally unused spare channels.
 
 FieldWiring does not need to reproduce the Tkinter checkboxes literally, but equivalent behavior must remain available.
 
-### Important distinction: Field Wiring is not PROP-only
+### Field Wiring checked versus unchecked
 
-Field Wiring mode removes duplicate/internal wiring detail. It must not be implemented simply as `Source = 'PROP'`.
+The two FormView modes must not be conflated.
 
-A surviving practical field connection may legitimately have:
+**Field Wiring unchecked** presents the fuller wiring map. It may contain Display/master rows, SubProp rows, shared/internal relationships, and other detailed channel records useful for engineering or troubleshooting.
+
+**Field Wiring checked** presents the reduced practical field-connection set. The surviving rows are the connections the technician needs for field hookup.
+
+A surviving field connection may legitimately originate from either a master Display row or a SubProp row. Therefore Field Wiring must not be implemented as `Source = 'PROP'`.
+
+A valid field row can legitimately have:
 
 ```text
 Source = SUBPROP
 ConnectionType = FIELD
 ```
 
-when that SubProp row contains the physical channel leg that must be connected.
+The practical distinction is:
 
-Therefore:
+- **Field Wiring** controls whether the operator sees the reduced FIELD connection set or the fuller wiring map;
+- **Displays only** is a separate optional Display/master-row filter;
+- **Hide SPAREs** is a separate spare-channel filter.
 
-- **Field Wiring** means one practical field connection per Display/circuit relationship;
-- **Displays only** is a separate optional `PROP` filter;
-- internal/subordinate rows that do not represent another practical connection are suppressed by the field-lead data contract.
-
-## Primary Field Columns
+## Primary Field Information
 
 The normal FieldWiring screen should emphasize only the information required during setup:
 
@@ -63,8 +67,7 @@ The normal FieldWiring screen should emphasize only the information required dur
 3. **Channel Name**
 4. **Display Name**
 5. **Network**
-
-These are the primary field-use columns.
+6. **Source classification** — compact visual treatment only
 
 ### Controller
 
@@ -90,7 +93,7 @@ The physical Display identity/name.
 
 Display Name does not need to be repeated on every line when consecutive rows belong to the same Display. The UI may group rows under one Display heading or visually merge/suppress repeated Display Name values.
 
-The underlying data must remain row-complete even when the display label is presented once per group.
+The underlying data must remain row-complete even when the Display label is presented once per group.
 
 ### Network
 
@@ -117,9 +120,9 @@ Controller   Ch   Channel Name                    Network
 70           4    PB LH-1 70-04                   Regular
 ```
 
-This is a presentation grouping only.
+This is presentation grouping only.
 
-It must not alter the field-lead identity or collapse separate circuit rows.
+It must not alter field-lead identity or collapse separate circuit rows.
 
 ### Shared-circuit requirement
 
@@ -127,19 +130,65 @@ If more than one Display legitimately uses the same controller/channel, each Dis
 
 Grouping by Display must therefore not deduplicate rows merely because Controller + Channel are the same.
 
-## Source
+## Source Classification
 
-`Source` (`PROP`, `SUBPROP`, `DMX`, etc.) is useful engineering provenance but is not a primary field instruction.
+Source is useful to distinguish the kind of wiring row, but it should not consume a wide text column in the normal field view.
 
-Preferred presentation options, in order of field compactness:
+For field presentation, the useful source concepts are:
 
-1. omit Source from the normal field table and expose it in row details/engineering mode;
-2. show Source as a very small badge/icon;
-3. use restrained source-specific visual coding with a legend.
+- **Display** — underlying master `PROP` row;
+- **SubProp** — underlying `SUBPROP` row;
+- **Spare** — intentionally unused spare channel/row when SPAREs are being shown.
 
-If color is used, color must be supplemental rather than the only way Source is communicated. The interface must remain understandable for users with color-vision limitations and on monochrome/poor-quality printouts.
+The browser may translate raw engineering values into these plain-language labels without changing the underlying data.
 
-Source must never be used to imply that a `SUBPROP` field-lead row is invalid. A SubProp may be the source of a legitimate FIELD connection.
+`Spare` is a field presentation classification; the existing FormView data may identify SPARE status from the Display/Channel naming and the Hide SPAREs filter rather than from a literal `Source = 'SPARE'` database value.
+
+### Compact Source presentation
+
+Preferred approach:
+
+- do not dedicate a normal full-width `Source` column;
+- use a narrow badge, symbol, or restrained row marker for **Display**, **SubProp**, and **Spare**;
+- provide the full underlying engineering value in optional details.
+
+A small textual abbreviation may accompany any color treatment so color is not the only indicator.
+
+Example concept:
+
+```text
+D   Display/master row
+S   SubProp row
+SP  Spare row
+```
+
+The exact badge letters/colors are a later UI design decision.
+
+When **Hide SPAREs** is enabled, Spare rows disappear entirely.
+
+## ConnectionType / Field Classification
+
+`ConnectionType` is not a normal field column.
+
+Its practical purpose is to support the Field Wiring reduction logic.
+
+When Field Wiring is checked, the visible result is the FIELD connection set, so repeating `FIELD` on every row wastes horizontal space.
+
+When Field Wiring is unchecked, the operator is intentionally looking at the fuller wiring map; the UI should communicate that mode globally rather than relying on a repetitive ConnectionType column.
+
+Therefore:
+
+- hide `ConnectionType` from the normal compact table;
+- show a clear global indication of whether **Field Wiring** is ON or OFF;
+- retain ConnectionType in engineering details/data export where useful.
+
+## DeviceType
+
+`DeviceType` is not required in the normal field connection view.
+
+Values such as `LOR` are engineering/device metadata and consume space without helping the normal hookup task.
+
+Therefore DeviceType should be hidden from the normal table and available only in engineering/details views when needed.
 
 ## Tag
 
@@ -150,33 +199,37 @@ It should not consume permanent horizontal space in the normal field wiring view
 Preferred behavior:
 
 - hidden by default;
-- available through an **Engineering details**, expandable row, tooltip/popover, or optional column control;
+- available through **Engineering details**, expandable row, tooltip/popover, or an optional column control;
 - available in engineering/data export where useful.
-
-## ConnectionType and DeviceType
-
-`ConnectionType` and `DeviceType` are useful for validation and troubleshooting but are not normal setup columns.
-
-Normal Field Wiring mode already implies the user is looking at practical FIELD connections.
-
-Therefore these fields should normally be hidden from the compact field table and made available through details/engineering mode.
 
 ## Recommended Normal Field Layout
 
-The compact table should target approximately:
+The compact visible data should target approximately:
 
 ```text
-Controller | Ch | Channel Name | Display | Network
+Src | Controller | Ch | Channel Name | Display | Network
 ```
 
-or, when grouped by Display:
+where `Src` is only a very narrow source marker, not a full text column.
+
+When grouped by Display, the preferred form is:
 
 ```text
 Display: <Display Name>
-Controller | Ch | Channel Name | Network
+Src | Controller | Ch | Channel Name | Network
 ```
 
-The grouped version is preferred when it materially reduces repeated text and improves phone/tablet readability.
+This removes the largest repeated field from every line while retaining the full connection detail.
+
+On the normal Field Wiring screen:
+
+```text
+ConnectionType   hidden
+DeviceType       hidden
+LORTag           hidden by default
+Source           compact marker/badge
+Display Name     group heading when practical
+```
 
 ## Sorting
 
@@ -206,11 +259,12 @@ The normal view should avoid forcing technicians to horizontally scroll across e
 
 On narrow screens:
 
+- Source should be a very narrow marker;
 - Controller and Channel should remain immediately visible;
 - Channel Name should receive the largest available width;
-- Display may become the group heading rather than a repeated column;
+- Display should become the group heading rather than a repeated column when practical;
 - Network may use a compact badge/short field;
-- Source, ConnectionType, DeviceType, and Tag should move to optional details.
+- ConnectionType, DeviceType, and Tag should move to optional details.
 
 The wiring drawing/image remains part of the same field context and must remain practically accessible without consuming all table space.
 
@@ -228,7 +282,7 @@ Channel Name
 Network
 ```
 
-Engineering provenance such as Source or Tag may be included only when it materially helps the report and does not compromise field readability.
+A compact Source marker may be included when useful. ConnectionType, DeviceType, and Tag should normally be omitted from the field printout unless an engineering report explicitly requests them.
 
 Every FieldWiring hard report remains subject to the FieldWiring expiration/currentness contract.
 
@@ -236,14 +290,17 @@ Every FieldWiring hard report remains subject to the FieldWiring expiration/curr
 
 FieldWiring presentation testing should include at minimum:
 
-1. one Display with several sequential channels;
-2. one Display whose surviving field leads originate from both `PROP` and `SUBPROP` rows;
-3. two Displays sharing the same controller/channel;
-4. a Stage with SPARE rows, confirming they are hidden in the normal field view;
-5. Displays-only mode, confirming it is distinct from Field Wiring mode;
-6. Regular and auxiliary network examples;
-7. a narrow phone/tablet viewport;
-8. a printed/hard report using the compact grouping model.
+1. Field Wiring unchecked, confirming the fuller wiring map remains available;
+2. Field Wiring checked, confirming the reduced practical FIELD set;
+3. one Display with several sequential channels;
+4. one Display whose surviving field connections originate from both `PROP` and `SUBPROP` rows;
+5. two Displays sharing the same controller/channel;
+6. a Stage with SPARE rows, confirming Hide SPAREs removes them and that they can be identified as Spare when shown;
+7. Displays-only mode, confirming it is distinct from Field Wiring mode;
+8. Regular and auxiliary network examples;
+9. a narrow phone/tablet viewport;
+10. a printed/hard report using the compact grouping model;
+11. Engineering details showing raw Source, ConnectionType, DeviceType, and LORTag without forcing those fields into the normal view.
 
 ## Related Documents
 
