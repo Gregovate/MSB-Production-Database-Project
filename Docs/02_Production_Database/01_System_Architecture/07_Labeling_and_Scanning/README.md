@@ -18,6 +18,7 @@ The LabelPrintService is an external supporting subsystem. If it is unavailable,
 
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules and the boundary between implemented label printing and planned/evolving scanning workflows.
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) — shared scan-to-Display/hierarchy contract used by Work Orders, FieldWiring, Setup, Takedown, Testing, and future field functions.
+- [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md) — shared browser/PDF/offline/currentness rules for field documents reached through the scan/task workflow.
 - [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md) — current operator instructions.
 
 ## Design Intent
@@ -29,6 +30,8 @@ The operator-facing Production Database procedure should stop at requesting labe
 Display-linked documents and field information are not intended to become a generic database document-management system. Their operational purpose is to support QR-based lookup from the physical Display or Container to the information needed in the field. The subsystem that owns the actual content remains authoritative for that content.
 
 A Display scan should establish the permanent Display identity and current field context, then allow the operator to choose the task they need. Work Orders, FieldWiring, Setup, Takedown, Testing, and future field functions consume that shared context rather than maintaining separate QR-resolution logic.
+
+For document-style task results, the shared field publication contract defines the common current browser presentation, self-contained PDF/offline direction, visible expiration/currentness metadata, and supersession behavior. The responsible subsystem still owns the actual document/data content and its task-specific expiration interval.
 
 For example, Wiring owns wiring information, Setup and Deployment owns setup/takedown instructions, Work Orders owns the Work Order lifecycle, Testing owns testing procedures/state, and Site Infrastructure/GIS owns location/GPS context. Labeling and Scanning owns the QR/payload and shared lookup boundary that connects the physical asset to those systems.
 
@@ -46,6 +49,7 @@ For example, Wiring owns wiring information, Setup and Deployment owns setup/tak
 - print/reprint state and history
 - QR/barcode lookup behavior
 - shared Display/field-context resolution for task routing
+- shared field-document publication/currentness contract
 - scanner and rugged-tablet integration
 - forklift/field scan workflows
 - routing scanned assets to authoritative operational information without duplicating that content in a generic document registry
@@ -91,6 +95,7 @@ A failure of LabelPrintService must not transfer data authority to the service o
 
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md)
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md)
+- [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md)
 - current PostgreSQL label-printing objects and request/batch records
 - current Directus Display and Container print workflows
 - current `MSB_LabelPrintService` implementation and operator documentation
@@ -116,5 +121,7 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 For label printing, begin with the current PostgreSQL request/batch objects, [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md), and the current LabelPrintService implementation. Verify the actor-attribution contract and any retry/reprint behavior before changing the database or service.
 
 For scanning, use the [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) as the common Display-scan/navigation boundary. Preserve existing working task destinations such as Work Orders and add new task consumers without embedding task-specific destinations in the physical QR identity.
+
+For field documents reached through that task menu, use the [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md) for common browser/PDF/offline/currentness behavior while leaving content ownership and expiration policy with the responsible subsystem.
 
 Treat planned/evolving scan behavior as planned until the actual field application and deployed scan behavior are verified. Any future asset lookup should route to authoritative subsystem information instead of rebuilding a generic document registry in the database.
