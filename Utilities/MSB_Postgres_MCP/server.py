@@ -117,7 +117,7 @@ def find_display(search_text: str, stage_key: str | None = None, limit: int = 25
         LEFT JOIN ref.stage AS st ON st.stage_id = d.stage_id
         LEFT JOIN ref.display_status AS ds ON ds.display_status_id = d.display_status_id
         WHERE d.display_name ILIKE %s
-          AND (%s IS NULL OR lower(st.stage_key) = %s)
+          AND (CAST(%s AS text) IS NULL OR lower(st.stage_key) = CAST(%s AS text))
         ORDER BY lower(d.display_name), st.stage_key
         LIMIT %s
         """,
@@ -192,7 +192,7 @@ def get_current_field_wiring(display_id: int, preview_name: str | None = None) -
             JOIN lor_snap.v_display_lor_occurrence AS o
               ON o.import_run_id = cm.import_run_id
              AND o.lor_prop_id = cm.lor_prop_id
-            WHERE (%s IS NULL OR o.preview_name = %s)
+            WHERE (CAST(%s AS text) IS NULL OR o.preview_name = CAST(%s AS text))
         )
         SELECT DISTINCT
             cp.display_id,
@@ -291,7 +291,7 @@ def get_scene_field_wiring(display_id: int, preview_name: str | None = None) -> 
         JOIN lor_snap.preview_wiring_fieldlead_v6 AS fw
           ON fw.preview_name = p.name
          AND fw.display_name = replace(btrim(sm.lor_display_name), ' ', '-')
-        WHERE (%s IS NULL OR p.name = %s)
+        WHERE (CAST(%s AS text) IS NULL OR p.name = CAST(%s AS text))
         ORDER BY p.name, s.name, fw.network, fw.controller, fw.start_channel, sm.display_id
         """,
         (display_id, preview_name, preview_name),
