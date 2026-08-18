@@ -1,72 +1,119 @@
 # Preview Import Workflow
 
-Use the **latest LOR2DB reconciliation report** to identify the current approved show-preview source before importing previews.
+| Document control | Value |
+|---|---|
+| Status | CURRENT |
+| System | LOR Preview Authoring |
+| Revision | 2026-08-17 |
+
+## Purpose
+
+Use this procedure to obtain the current approved Preview source before beginning authoring work.
+
+The latest completed LOR2DB reconciliation report identifies the Preview source used for the current approved production snapshot.
 
 The report is available from the [LOR2DB Reporting portal](../../../LOR2DB/Reporting/README.md).
 
-⚠️ The approved Source folder is the production preview set. **Do not edit, overwrite, or save files in that folder.** Make changes only in your own working copy.
+**Do not edit, overwrite, or save files in the approved source folder.** Import/copy from it into your own working environment.
 
 ---
 
-## Step 1 – Find the Current Approved Preview Source
+## Step 1 — Find the Current Approved Preview Source
 
-Open the latest reconciliation report.
+Open the latest completed reconciliation report.
 
-Section 3 identifies the **Source folder** used for the current approved production import.
+Use the report's **Source folder** and Preview/revision information to identify the current approved production input set.
 
-Use that Source folder when importing the current show previews.
-
-The report also lists the approved revision of each preview included in that reconciliation.
+Do not assume an older local `Database Previews` folder is current merely because it exists on your PC.
 
 ---
 
-## Step 2 – Import a Preview
+## Step 2 — Import the Needed Preview
 
-When you import a `.lorprev` file, LOR will prompt you depending on whether your system already has that preview:
+Import the required `.lorprev` file into LOR.
 
-- **Case A – Same Version (No Update Needed)**  
-  You’ll see a message like this:  
- ![Import – Same Version](images/import_01.png) 
-  ➡️ If the version matches, no action is needed. Click **Cancel** to avoid creating duplicates.
+When LOR reports that the same Preview identity already exists:
 
-- **Case B – Newer Version (Update Recommended)**  
-  If the approved preview has a newer revision, you’ll see:  
-  ![Import – Newer Version](images/import_02.png)  
-  ➡️ Click **Yes** to update your existing preview with the latest data.  
-  ➡️ Click **No** only if you need to keep your older version as a separate copy (rare).
+- if the revision/content already matches the approved source, do not create an unnecessary duplicate;
+- if the approved source is newer, update your local working copy from the approved source; and
+- if the identity/revision relationship is unclear, stop and review it before authoring.
+
+Do not deliberately create a second Preview identity merely to avoid an import/update warning.
 
 ---
 
-## Step 3 – Verify Revision Numbers
+## Step 3 — Verify the Preview
 
-After importing, open the preview. The **revision number** is displayed in the upper right corner:  
-![Preview Revision](images/import_03.png)
+After importing, verify:
 
-- Confirm the revision matches the latest reconciliation report.
-- This ensures you are sequencing with the latest approved design.
+- Preview name;
+- Preview revision;
+- expected Preview identity/context; and
+- any external background paths needed for the work you are about to perform.
+
+For Master Musical Preview work, also follow [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md) before changing Scene names or Scene backgrounds.
 
 ---
 
-## Important – Do Not Save to the Approved Source Folder
+## Step 4 — Work Only in Your Own Copy
 
-The Source folder shown in the reconciliation report contains the approved production preview set.
+The approved production source is read-only from the author's perspective.
 
-- Import or copy previews from that folder.
-- Do **not** edit files in that folder.
-- Do **not** overwrite files in that folder.
-- Do **not** save new or experimental previews in that folder.
-- Make all changes in your own working location.
+Do not:
 
-The Preview Merger system is under development and is not yet part of the production workflow.
+- edit files directly in the approved source folder;
+- overwrite the controlled master;
+- save experiments into the approved source folder; or
+- point the production parser at your personal working/staging folder.
+
+Make changes in your normal LOR working copy.
+
+---
+
+## Step 5 — Export the Candidate to UserPreviewStaging
+
+When authoring is complete, export the candidate `.lorprev` to:
+
+```text
+G:\Shared drives\MSB Database\UserPreviewStaging\<username>
+```
+
+Allow Google Drive synchronization to complete.
+
+`UserPreviewStaging` is the controlled handoff point for a programmer candidate. It is not the approved production Preview set.
+
+---
+
+## Preview Merger Boundary
+
+The Preview Merger remains the required integrity-control design for comparing independent programmer candidates against the controlled master.
+
+Current production status:
+
+- dry comparison/review principles are current;
+- the recovered implementation is still being reviewed against the current Master Musical Preview model; and
+- production `--apply` is **not yet approved**.
+
+Therefore, exporting to `UserPreviewStaging` does not authorize the author to replace the master or run production apply.
+
+Follow the current [Preview Merger documentation](../03_Preview_Merger/README.md) for status and stop conditions.
 
 ---
 
 ## Summary
 
-1. Open the latest LOR2DB reconciliation report.
-2. Use Section 3 to find the current approved Source folder.
-3. Import previews from that folder without modifying it.
-4. Verify preview revisions against the reconciliation report.
-5. Make any changes only in your own working copy.
+1. Open the latest completed LOR2DB reconciliation report.
+2. Identify the current approved source folder and Preview revision.
+3. Import/copy the needed Preview without modifying the approved source.
+4. Verify Preview identity/revision before editing.
+5. Perform authoring work only in your own copy.
+6. Export the finished candidate to `UserPreviewStaging\<username>`.
+7. Do not overwrite the controlled master or run an unapproved merger apply.
+8. Only the approved controlled Preview set may feed the production V7 parser.
 
-Keeping previews aligned avoids mismatches in sequencing and database exports.
+## Related Documents
+
+- [Building a Preview](B_Building_Preview_Howto.md)
+- [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
+- [Preview Merger](../03_Preview_Merger/README.md)
+- [LOR2DB Reporting](../../../LOR2DB/Reporting/README.md)
