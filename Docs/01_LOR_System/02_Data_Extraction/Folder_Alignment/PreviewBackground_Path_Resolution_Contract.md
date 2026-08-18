@@ -1,4 +1,4 @@
-# PreviewBackground Path Resolution Contract
+# BackgroundFile and Documentation Scope Resolution Contract
 
 | Document control | Value |
 |---|---|
@@ -10,114 +10,202 @@
 
 ## Purpose
 
-This document makes explicit the path-resolution rule that the standardized `PreviewBackground` folder was designed to support.
+This document makes explicit how an LOR `BackgroundFile` path, the standardized Google Drive folder structure, and the established Stage/Scene naming rules work together to locate Wiring and Procedure documentation.
 
-The current Google Drive structure deliberately places `PreviewBackground` at every level that may own an LOR Preview/Scene background:
+There is **not** a requirement that every Display have its own `PreviewBackground` image or even its own Google Drive Display folder.
 
-```text
-Stage\PreviewBackground\
-Sub-stage\PreviewBackground\
-Scene\PreviewBackground\
-Display\PreviewBackground\
-```
-
-The LOR `BackgroundFile` path is therefore more than an image locator. When it points into the standardized `PreviewBackground` structure, it also provides filesystem evidence showing how deep in the physical Stage/Scene/Display hierarchy the current LOR context belongs.
-
-The intended downstream application model is:
+A current LOR background may legitimately be owned at:
 
 ```text
-LOR Preview / Scene BackgroundFile
-        |
-        v
-...\<owner>\PreviewBackground\<background image>
-        |
-        v
-identify the folder immediately above PreviewBackground
-        |
-        v
-classify that owner as Stage / Sub-stage / Scene / Display
-        |
-        v
-resolve the applicable documentation root
-        |
-        +--> Wiring\BackgroundStage
-        +--> Wiring\MusicalStage
-        +--> Procedures\Setup
-        +--> Procedures\Takedown
-        +--> Procedures\Inspection
-        +--> other standardized task branches
+Stage / Preview level
+Sub-stage level
+Scene level
+Display level
 ```
 
-This contract formalizes the filesystem relationship. It does not make a mounted Windows path the permanent Production Database identity and does not authorize storing engineering documents as database blobs.
+and, when useful, an LOR background may also deliberately point directly into an applicable Wiring folder.
 
-## Why `PreviewBackground` Exists at Multiple Depths
+The resolver therefore uses the path as **explicit filesystem evidence**, determines how deep in the established hierarchy that evidence points, and then resolves the applicable task/documentation scope.
 
-The LOR background may legitimately belong to different physical/documentation depths.
+The path is evidence and navigation context. It is not permanent Production Database identity.
+
+## Accepted Path Patterns
+
+### Standard `PreviewBackground` anchor
+
+The current Drive structure supports:
+
+```text
+<Stage>\PreviewBackground\...
+<Stage>\<Sub-stage>\PreviewBackground\...
+<Stage>\<Scene>\PreviewBackground\...
+<Stage>\<Scene>\<Display>\PreviewBackground\...
+<Stage>\<Display>\PreviewBackground\...
+```
+
+`PreviewBackground` is a fixed helper-folder name that makes path depth deterministic.
+
+When the path uses this form, the folder immediately above `PreviewBackground` is the **background owner**.
+
+### Direct Wiring path
+
+A valid LOR `BackgroundFile` may also point directly into a standardized Wiring branch when that is the easiest and most useful authoring relationship:
+
+```text
+<Stage>\Wiring\BackgroundStage\...
+<Stage>\Wiring\MusicalStage\...
+
+<Sub-stage>\Wiring\BackgroundStage\...
+<Sub-stage>\Wiring\MusicalStage\...
+
+<Scene>\Wiring\BackgroundStage\...
+<Scene>\Wiring\MusicalStage\...
+```
+
+This is valid explicit filesystem evidence.
+
+For Field Wiring, such a path may identify both:
+
+- the owning Stage/Sub-stage/Scene; and
+- the exact applicable Wiring branch.
+
+It must not be treated as an obsolete path merely because a `PreviewBackground` folder also exists.
+
+### Other explicit infrastructure paths
+
+Folder Alignment already recognizes infrastructure components such as:
+
+```text
+PreviewBackground
+Photos
+Procedures
+Wiring
+```
+
+as belonging to an enclosing Stage/Sub-stage/Scene/Display scope rather than becoming scopes themselves.
+
+The same principle applies to future field-document resolution: strip the recognized infrastructure branch to determine its owning physical/documentation folder.
+
+## Background Ownership Is Not Always Display Ownership
+
+A Display does not need its own background.
 
 Examples:
 
-### Stage / Preview-level background
-
 ```text
-<Stage>\PreviewBackground\stage-background.jpg
+Display A -----\
+Display B ------+--> Scene 21-Polar Bears
+Display C -----/         |
+                         v
+             Scene\PreviewBackground\image.jpg
 ```
 
-The immediate owner is the Stage root.
+All three Displays may legitimately use the Scene-level background/path evidence.
 
-Applicable shared task roots are resolved at that Stage:
+Likewise, a Stage-level background can provide the applicable scope for Displays that do not have a subordinate Scene or more specific background.
+
+Therefore the resolver must not interpret the absence of:
+
+```text
+<Display>\PreviewBackground
+```
+
+as missing documentation.
+
+The applicable Scene/Sub-stage/Stage context may intentionally own the background and the shared field documentation.
+
+## Path Depth and Documentation Scope
+
+The important rule is **how deep the valid path resolves in the established physical hierarchy**.
+
+### Stage / Preview-level path
+
+Example:
+
+```text
+<Stage>\PreviewBackground\image.jpg
+```
+
+or:
+
+```text
+<Stage>\Wiring\BackgroundStage\image.jpg
+```
+
+Resolved documentation owner:
+
+```text
+<Stage>
+```
+
+Applicable task branches can then include:
 
 ```text
 <Stage>\Wiring\...
 <Stage>\Procedures\...
 ```
 
-### Sub-stage-level background
+### Sub-stage-level path
+
+Example:
 
 ```text
-<Stage>\<Sub-stage>\PreviewBackground\substage-background.jpg
-```
-
-The immediate owner is the Sub-stage root.
-
-Applicable shared task roots are resolved at that Sub-stage:
-
-```text
-<Sub-stage>\Wiring\...
-<Sub-stage>\Procedures\...
-```
-
-### Scene-level background
-
-```text
-<Stage>\<Scene>\PreviewBackground\scene-background.jpg
-```
-
-The immediate owner is the Scene root.
-
-Applicable shared task roots are resolved at that Scene:
-
-```text
-<Scene>\Wiring\...
-<Scene>\Procedures\...
-```
-
-### Display-level background
-
-```text
-<Stage>\<Scene>\<Display>\PreviewBackground\display-background.jpg
+<Stage>\<Sub-stage>\PreviewBackground\image.jpg
 ```
 
 or:
 
 ```text
-<Stage>\<Display>\PreviewBackground\display-background.jpg
+<Stage>\<Sub-stage>\Wiring\BackgroundStage\image.jpg
 ```
 
-The immediate owner is the Display folder.
+Resolved documentation owner:
 
-A Display folder intentionally uses the smaller Display structure and does not automatically own standardized `Wiring` or `Procedures` trees.
+```text
+<Sub-stage>
+```
 
-Therefore a Display-level `PreviewBackground` establishes the Display's exact place in the filesystem hierarchy, after which shared task resolution climbs upward to the nearest established Stage/Sub-stage/Scene documentation root.
+### Scene-level path
+
+Example:
+
+```text
+<Stage>\<Scene>\PreviewBackground\image.jpg
+```
+
+or:
+
+```text
+<Stage>\<Scene>\Wiring\BackgroundStage\image.jpg
+```
+
+Resolved documentation owner:
+
+```text
+<Scene>
+```
+
+This is the normal shared scope for all member Displays when the Scene represents one physical installation/wiring group.
+
+### Display-level `PreviewBackground`
+
+Example:
+
+```text
+<Stage>\<Scene>\<Display>\PreviewBackground\image.jpg
+```
+
+or:
+
+```text
+<Stage>\<Display>\PreviewBackground\image.jpg
+```
+
+The immediate background owner is the Display folder.
+
+However, the standardized Display root intentionally does **not** automatically contain `Wiring` or `Procedures`.
+
+For shared Wiring/Procedure lookup, resolution therefore walks upward through the actual folder hierarchy to the nearest valid Scene, Sub-stage, or Stage documentation root.
 
 Examples:
 
@@ -128,7 +216,7 @@ Stage\Scene\Display\PreviewBackground\image
                Display owner
                     |
                     v
-            parent Scene root
+            enclosing Scene root
                     |
                     +--> Scene\Wiring\...
                     +--> Scene\Procedures\...
@@ -149,156 +237,187 @@ Stage\Display\PreviewBackground\image
               +--> Stage\Procedures\...
 ```
 
-The Display background path must not cause the application to invent `Wiring` or `Procedures` under the Display merely to satisfy lookup.
+The application must not invent `Wiring` or `Procedures` under a Display merely because that Display owns an LOR background.
 
-## Deterministic Resolution Algorithm
+## Stage and Scene Naming Rules Remain Part of Resolution
 
-For a current standardized background path, the intended algorithm is:
+Filesystem path evidence is strong when it is valid, but it is not the only resolution evidence.
 
-1. obtain the applicable LOR `BackgroundFile` from the current Preview/Scene evidence;
-2. locate the `PreviewBackground` path component;
-3. treat its parent folder as the **background owner**;
-4. classify that owner using the accepted Folder Alignment hierarchy rules;
-5. if the owner is a Stage, Sub-stage, or Scene, use that same folder as the shared documentation root;
-6. if the owner is a Display/shared Display-group folder, walk upward through the established hierarchy until the nearest valid Scene, Sub-stage, or Stage documentation root is reached;
-7. append only the standardized relative branch owned by the selected task;
-8. if the hierarchy is missing, contradictory, or ambiguous, report the condition rather than guessing.
+The current Folder Alignment naming rules remain contractual:
+
+```text
+NN-Name-XY       = Stage root
+NNa-Name-XY      = Sub-stage root
+NN-Name          = Scene
+NNa-Name         = Scene under Sub-stage
+unprefixed name  = Display/shared group evidence
+Root             = owning Stage root for a Background Preview with definitive Preview StageID
+```
+
+These rules are used to:
+
+- classify the folder/path owner;
+- resolve a scope when no usable explicit background path exists;
+- validate that an explicit path is consistent with the LOR Scene/Preview identity; and
+- detect conflicts that require review.
+
+An explicit path and the naming classification should agree.
+
+If they conflict materially, the resolver must surface the disagreement rather than choosing whichever answer is more convenient.
+
+## Resolution Evidence Order
+
+For field-document discovery, the evidence should be applied conservatively.
 
 Conceptually:
 
+1. start from the permanent Display and current Production Database relationships when the request comes from Scan/Find;
+2. identify the applicable current LOR Preview/Scene context for the selected task;
+3. use a valid `BackgroundFile` as explicit filesystem evidence when one exists;
+4. determine the deepest valid Stage/Sub-stage/Scene/Display owner represented by that path;
+5. use the established Stage/Scene naming rules to classify and validate that owner;
+6. if the path is absent or unusable, use the current hierarchy/naming relationships rather than requiring a Display-level background;
+7. resolve the nearest valid Stage/Sub-stage/Scene documentation root for shared task content;
+8. select the task-specific relative branch;
+9. fail visibly when the evidence is contradictory or ambiguous.
+
+The path is therefore a **location pointer and scope clue**, not the only source of truth.
+
+## Field Wiring Resolution
+
+Field Wiring has one additional useful behavior: a direct Wiring `BackgroundFile` can already identify the applicable Wiring branch.
+
+Examples:
+
 ```text
-BackgroundFile
-    -> PreviewBackground
-    -> background owner
-    -> documentation owner
-    -> selected task branch
+Scene\Wiring\BackgroundStage\image.jpg
 ```
 
-The depth of the `PreviewBackground` path supplies filesystem evidence; the task determines which relative branch to present.
-
-## Relationship to Database Identity
-
-The Production Database remains responsible for permanent identity and current relationships.
-
-For normal scan/manual lookup, the preferred application path is still:
+resolves directly to:
 
 ```text
-permanent Display identity
-    -> current Stage/Scene/Preview relationships
-    -> applicable current BackgroundFile/path evidence
-    -> standardized documentation root
-    -> task content
+Scene
++ Background/Static Wiring context
 ```
 
-A QR code must not embed the Google Drive path.
-
-The full `G:\...` path is filesystem evidence and traceability, not permanent asset identity.
-
-Where a browser/service cannot consume a mapped-drive path directly, the service may resolve the same standardized hierarchy through a controlled Drive/file-serving mechanism. That implementation must preserve the scope and branch rules in this contract.
-
-## Relationship to FormView
-
-Historical FormView used `Preview.BackgroundFile` more directly.
-
-In the proven FormView workflow, the background itself was commonly placed in or pointed at the active Wiring directory so FormView could use the image's containing directory as the published wiring-image directory.
-
-The standardized `PreviewBackground` model separates those concerns:
+while:
 
 ```text
-BackgroundFile
-    = hierarchy/location anchor and LOR visual background
-
-Wiring\...
-    = published wiring documentation
-
-Procedures\...
-    = published procedure documentation
+Scene\PreviewBackground\image.jpg
 ```
 
-This is why the current V7 database can remain wiring-compatible with FormView's table views while the old FormView image lookup can fail against the new folder model.
-
-The new field applications should resolve the hierarchy and then select the appropriate standardized task branch rather than forcing the LOR background path itself to point directly into `Wiring`.
-
-## Legacy Compatibility
-
-Historical LOR backgrounds may still point directly into folders such as:
+resolves to:
 
 ```text
-Wiring\BackgroundStage
-Wiring\MusicalStage
+Scene
 ```
 
-Folder Alignment may continue recognizing those paths as legacy filesystem evidence while migration is incomplete.
-
-However, the target current contract is the fixed scope-local `PreviewBackground` anchor.
-
-Do not move or rewrite a functioning LOR `BackgroundFile` path automatically merely to satisfy this contract. Folder/path changes remain controlled human decisions because moving the referenced image can break LOR Preview Editor.
-
-## Task Resolution Examples
-
-Once the documentation root is resolved, the task adapter selects only its owned relative branch.
-
-### Field Wiring
+and FieldWiring then selects the required standardized branch:
 
 ```text
-<documentation root>\Wiring\BackgroundStage
+Scene\Wiring\BackgroundStage
 ```
 
 or:
 
 ```text
-<documentation root>\Wiring\MusicalStage
+Scene\Wiring\MusicalStage
 ```
 
-The application still must preserve the applicable LOR Preview/context distinction.
+based on the applicable LOR/field context.
 
-### Setup
+Both patterns are valid.
+
+## Procedure Resolution
+
+Procedures use the resolved Stage/Sub-stage/Scene owner but do not depend on the background file itself being a procedure document.
+
+After scope resolution:
 
 ```text
-<documentation root>\Procedures\Setup
+Setup      -> <documentation root>\Procedures\Setup
+Takedown   -> <documentation root>\Procedures\Takedown
+Inspection -> <documentation root>\Procedures\Inspection
 ```
 
-### Takedown
+A direct Wiring background path may still provide useful evidence that the owner is a particular Scene; the Procedure adapter then uses that same Scene root and chooses its own Procedure branch.
+
+This is the reusable benefit of the folder structure: **resolve scope once, then choose the task branch.**
+
+## Relationship to FormView
+
+Historical FormView had a simpler requirement: the selected Preview's `BackgroundFile` needed to lead to the image directory FormView should display and paginate.
+
+Pointing the LOR background directly into a Wiring directory was therefore often the easiest solution and remains valid filesystem evidence.
+
+The new Scene-aware model is broader:
 
 ```text
-<documentation root>\Procedures\Takedown
+BackgroundFile
+    -> explicit path/scope evidence
+
+Production Database + Scene/Stage naming
+    -> durable identity and current hierarchy
+
+standardized helper folders
+    -> task content discovery
 ```
 
-### Inspection
+The future browser resolver should not require every LOR background to be moved into `PreviewBackground` merely to make the application work.
+
+## Relationship to Database Identity
+
+The QR/manual lookup starts from permanent Production Database identity, not a path.
+
+Conceptually:
 
 ```text
-<documentation root>\Procedures\Inspection
+Display identity
+    -> current Stage/Scene relationships
+    -> applicable Preview/Scene
+    -> BackgroundFile/path evidence when available
+    -> resolved documentation root
+    -> selected task branch
 ```
 
-The standardized branch is appended after scope resolution; the application must not maintain a separate hard-coded full path for each individual document.
+A mapped `G:\...` path must not become permanent asset identity.
+
+Where a browser/service cannot consume the mapped-drive path directly, it must reproduce the same scope-resolution rules through the controlled Google Drive/file-serving integration.
 
 ## Safety Rules
 
 Path resolution must:
 
-- preserve the existing Stage/Sub-stage/Scene/Display hierarchy;
-- treat `PreviewBackground` as an infrastructure/helper folder, never as the scope itself;
-- distinguish a Display background owner from a Stage/Sub-stage/Scene documentation root;
-- climb only through actual established parent folders, not fuzzy name guesses;
-- not create missing `Wiring` or `Procedures` branches as a side effect of lookup;
+- preserve the current Stage/Sub-stage/Scene/Display hierarchy;
+- accept both standardized `PreviewBackground` paths and deliberate direct Wiring paths as valid evidence;
+- never require every Display to own a `PreviewBackground` image;
+- allow a Scene/Sub-stage/Stage background to serve its member Displays;
+- treat infrastructure folders such as `PreviewBackground`, `Wiring`, `Procedures`, and `Photos` as branches, not physical scopes;
+- use the accepted Stage/Scene naming rules to classify and validate path ownership;
+- distinguish Display background ownership from shared documentation ownership;
+- climb only through actual established parent folders, not fuzzy guesses;
+- not create missing folders as a side effect of lookup;
 - not move or rename LOR background images during lookup;
-- expose ambiguity instead of silently choosing a neighboring Scene or Stage;
+- expose path/naming/hierarchy conflicts instead of silently choosing one;
 - keep archive/source folders out of normal field publication; and
-- keep Google Drive documents/images editable in the filesystem rather than copying them into a non-editable database blob.
+- keep Google Drive documents/images editable in the filesystem instead of copying them into a non-editable database blob.
 
 ## Regression Cases
 
 Future resolver testing should include at minimum:
 
 1. Stage-level `PreviewBackground` -> Stage Wiring/Procedures;
-2. Sub-stage-level `PreviewBackground` -> Sub-stage Wiring/Procedures;
-3. Scene-level `PreviewBackground` -> Scene Wiring/Procedures;
-4. Display under Scene -> Display background owner, then parent Scene Wiring/Procedures;
-5. Display directly under Stage -> Display background owner, then Stage Wiring/Procedures;
-6. Display under Sub-stage -> Display background owner, then Sub-stage Wiring/Procedures;
-7. legacy background located directly under `Wiring\BackgroundStage` -> recognized as legacy evidence but not treated as the target folder contract;
-8. missing `PreviewBackground` component in a new/current path -> explicit review condition;
-9. ambiguous or nonexistent parent hierarchy -> fail visibly rather than guess.
+2. Scene-level `PreviewBackground` -> Scene Wiring/Procedures for every member Display;
+3. Sub-stage-level `PreviewBackground` -> Sub-stage Wiring/Procedures;
+4. Display under Scene with Display-level `PreviewBackground` -> Display background owner, then parent Scene shared Wiring/Procedures;
+5. Display directly under Stage with Display-level `PreviewBackground` -> Stage shared Wiring/Procedures;
+6. Display with no `PreviewBackground` but current Scene-level background -> Scene Wiring/Procedures;
+7. Display with no background and no Scene -> controlled Stage/Sub-stage hierarchy fallback;
+8. direct `Scene\Wiring\BackgroundStage\image` -> Scene + Background Wiring branch;
+9. direct `Stage\Wiring\MusicalStage\image` -> Stage + Musical Wiring branch;
+10. valid path whose owner conflicts with deterministic Scene naming -> explicit review condition;
+11. missing/unusable BackgroundFile but deterministic Scene relationship -> resolve from current hierarchy without inventing a Display background;
+12. ambiguous or nonexistent parent hierarchy -> fail visibly rather than guess.
 
 ## Related Documents
 
