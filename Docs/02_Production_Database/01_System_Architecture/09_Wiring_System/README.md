@@ -11,6 +11,7 @@ The active replacement/recovery sub-project is named **FieldWiring**. FieldWirin
 Start with:
 
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
+- [FieldWiring PostgreSQL Readiness Audit](FieldWiring_PostgreSQL_Readiness_Audit.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
 
@@ -112,7 +113,9 @@ Wiring owns wiring content placed or referenced there. [Setup and Deployment](..
 
 ## Resume Development
 
-The FormView architecture has now been recovered into the FieldWiring compatibility contract, and the scan-to-Display/hierarchy behavior is owned by the shared Field Context Resolution contract. Before designing or implementing FieldWiring, verify the live PostgreSQL objects that can satisfy those contracts, define the read-only application data/query surface, and define how the existing Stage wiring images will be securely resolved and served to browsers.
+The FormView architecture has now been recovered into the FieldWiring compatibility contract, the repository-defined PostgreSQL wiring layer has been compared against the current V7 parser, and scan-to-Display/hierarchy behavior is owned by the shared Field Context Resolution contract.
+
+Before designing or implementing FieldWiring, verify the **live** PostgreSQL objects that can satisfy those contracts, define the read-only application data/query surface, and define how the existing Stage wiring images will be securely resolved and served to browsers.
 
 Do not change FormView or database schema merely to simplify the browser implementation. Preserve the LOR authority boundary and demonstrate any real schema gap before proposing a migration.
 
