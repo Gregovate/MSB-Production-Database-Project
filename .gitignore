@@ -107,3 +107,6 @@ Thumbs.db
 # This allows tiny baseline DBs while still ignoring
 # generated parser outputs.
 # =========================================================
+
+# FieldWiring engineering snapshots
+fieldwiring_snapshot*.db
