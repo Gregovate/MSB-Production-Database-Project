@@ -12,7 +12,7 @@ Use this procedure to obtain the current approved Preview source before beginnin
 
 The latest completed LOR2DB reconciliation report identifies the Preview source used for the current approved production snapshot.
 
-The report is available from the [LOR2DB Reporting portal](../../../LOR2DB/Reporting/README.md).
+The report is available from the [LOR2DB Reporting portal](../../../LOR2DB/03_Reporting/README.md).
 
 **Do not edit, overwrite, or save files in the approved source folder.** Import/copy from it into your own working environment.
 
@@ -116,4 +116,4 @@ Follow the current [Preview Merger documentation](../03_Preview_Merger/README.md
 - [Building a Preview](B_Building_Preview_Howto.md)
 - [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
 - [Preview Merger](../03_Preview_Merger/README.md)
-- [LOR2DB Reporting](../../../LOR2DB/Reporting/README.md)
+- [LOR2DB Reporting](../../../LOR2DB/03_Reporting/README.md)
