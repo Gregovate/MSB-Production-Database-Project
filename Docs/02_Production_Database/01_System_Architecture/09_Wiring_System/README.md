@@ -6,9 +6,18 @@ This subsystem documents how MSB presents, enriches, and operationally uses wiri
 
 FormView currently provides wiring presentation and generated field documentation from parser-produced SQLite data. Draw.io is also used for wiring diagrams. PostgreSQL contains wiring-related data derived from LOR snapshots.
 
-The future Wiring application should use PostgreSQL as its operational data source rather than maintaining a second independent SQLite operational database. FormView remains important as the existing presentation implementation and must be inventoried before replacement or migration.
+The active replacement/recovery sub-project is named **FieldWiring**. FieldWiring is intended to be a PostgreSQL-backed, browser-accessible field application, but implementation is gated on documenting and validating the proven FormView contract first.
 
-A dedicated PostgreSQL-backed Wiring application may live in a separate repository while the Production Database repository continues to own the database integration and authority contract.
+Start with:
+
+- [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
+- [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
+
+FormView remains an active transitional production application and must remain available until FieldWiring has proven the operational behavior it replaces and an explicit cutover is accepted.
+
+FieldWiring should use PostgreSQL as its operational data source rather than maintaining a second independent SQLite operational database.
+
+A dedicated PostgreSQL-backed FieldWiring application may live in a separate repository while the Production Database repository continues to own the database integration and authority contract.
 
 The existing Stage-oriented folder structure is also part of the current documentation workflow. Wiring material and Setup/Takedown instructions use the same Stage folder/path convention so field documentation is organized around the physical area crews work in rather than split into unrelated document trees.
 
@@ -22,7 +31,8 @@ The intended data path is:
 Light-O-Rama
     -> LOR2DB
         -> PostgreSQL Production Database
-            -> Wiring application
+            -> FieldWiring
+                -> browser / tablet / phone
 ```
 
 ## System Boundary
@@ -40,28 +50,29 @@ LOR remains authoritative for:
 
 LOR2DB is the controlled path that brings this topology into PostgreSQL.
 
-PostgreSQL becomes the shared operational source used by the Wiring application and may add database-owned information such as permanent identities, inventory relationships, field notes, and other operational relationships.
+PostgreSQL becomes the shared operational source used by FieldWiring and may add database-owned information such as permanent identities, inventory relationships, field notes, and other operational relationships.
 
-FormView, PostgreSQL, Draw.io, and future Wiring applications consume, enrich, visualize, and present LOR-authoritative topology. They do not independently redefine it.
+FormView, PostgreSQL, Draw.io, and FieldWiring consume, enrich, visualize, and present LOR-authoritative topology. They do not independently redefine it.
 
 ### Production Database responsibility
 
 - storing the controlled LOR-derived wiring snapshot needed by downstream systems
 - linking wiring information to permanent Production Database identities and related inventory
 - preserving database-owned operational data and relationships
-- providing the integration contract consumed by the Wiring application
+- providing the integration contract consumed by FieldWiring
 
-### Dedicated Wiring application responsibility
+### FieldWiring application responsibility
 
 - task-focused wiring lookup and presentation
-- field-friendly navigation and documentation
+- field-friendly browser navigation and documentation
 - generated field views/documents as required
+- conspicuous generation/currentness and hard-copy expiration information
 - application-specific API/client code
 - application deployment, configuration, and tests
 
-The Wiring application must not become an independent topology-authoring system and must not maintain a competing operational copy of wiring truth when PostgreSQL already provides the shared operational source.
+FieldWiring must not become an independent topology-authoring system and must not maintain a competing operational copy of wiring truth when PostgreSQL already provides the shared operational source.
 
-If the Wiring application is unavailable, PostgreSQL and the imported LOR-derived data remain intact. Field users may temporarily lose the preferred presentation interface, but the shared Production Database data remains available to other systems.
+If FieldWiring is unavailable, PostgreSQL and the imported LOR-derived data remain intact. During the transition, FormView also remains available as the proven field-wiring fallback until its replaced functions are formally accepted in FieldWiring.
 
 ## Stage Folder / Documentation Boundary
 
@@ -82,7 +93,7 @@ Wiring owns wiring content placed or referenced there. [Setup and Deployment](..
 - generated HTML/PDF field documentation
 - links to schematics and supporting engineering information
 - shared Stage-folder documentation convention with Setup and Deployment
-- future task-focused wiring workflow/application
+- FieldWiring recovery, data-contract definition, and future task-focused browser workflow
 
 ## Related Systems
 
@@ -94,10 +105,10 @@ Wiring owns wiring content placed or referenced there. [Setup and Deployment](..
 
 ## Resume Development
 
-Before designing a replacement application, inventory current FormView behavior, parser-produced SQLite dependencies, PostgreSQL wiring fields/views, Draw.io artifacts, and LOR-derived topology.
+The FormView architecture has now been recovered into the FieldWiring compatibility contract. Before designing or implementing FieldWiring, verify the live PostgreSQL objects that can satisfy that contract, define the read-only application data/query surface, and define how the existing Stage wiring images will be securely resolved and served to browsers.
 
-Define the PostgreSQL-backed application data contract before changing FormView or building the replacement UI. Preserve the LOR authority boundary in every design decision.
+Do not change FormView or database schema merely to simplify the browser implementation. Preserve the LOR authority boundary and demonstrate any real schema gap before proposing a migration.
 
 When working on human-facing field documentation, preserve the existing Stage folder/path convention shared with Setup/Takedown documentation rather than creating a parallel folder system.
 
-When the dedicated Wiring application is started, create or use its separate implementation repository and link it here. Keep the Production Database integration/authority contract in this subsystem and application implementation in the application repository.
+When the dedicated FieldWiring application implementation is started, create or use its separate implementation repository if that remains the selected boundary and link it here. Keep the Production Database integration/authority contract in this subsystem and application implementation in the application repository.
