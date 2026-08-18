@@ -11,7 +11,10 @@ The active replacement/recovery sub-project is named **FieldWiring**. FieldWirin
 Start with:
 
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
+- [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
+
+The shared Field Context resolver owns scan-to-Display/hierarchy resolution. FieldWiring consumes that resolved context after the operator chooses **Field Wiring**; it must not create a second QR/Stage/Scene resolution engine.
 
 FormView remains an active transitional production application and must remain available until FieldWiring has proven the operational behavior it replaces and an explicit cutover is accepted.
 
@@ -19,7 +22,7 @@ FieldWiring should use PostgreSQL as its operational data source rather than mai
 
 A dedicated PostgreSQL-backed FieldWiring application may live in a separate repository while the Production Database repository continues to own the database integration and authority contract.
 
-The existing Stage-oriented folder structure is also part of the current documentation workflow. Wiring material and Setup/Takedown instructions use the same Stage folder/path convention so field documentation is organized around the physical area crews work in rather than split into unrelated document trees.
+The existing Stage-oriented folder structure is also part of the current documentation workflow. Wiring material and Setup/Takedown instructions use the same Stage-oriented convention already used by field documentation so field information is organized around the physical area crews work in rather than split into unrelated document trees.
 
 ## Design Intent
 
@@ -28,12 +31,15 @@ Provide task-focused wiring documentation and field access without creating a se
 The intended data path is:
 
 ```text
-Light-O-Rama
-    -> LOR2DB
-        -> PostgreSQL Production Database
-            -> FieldWiring
-                -> browser / tablet / phone
+Display QR
+    -> shared Field Context resolver
+        -> operator chooses Field Wiring
+            -> PostgreSQL Production Database wiring contract
+                -> FieldWiring
+                    -> browser / tablet / phone
 ```
+
+LOR remains the upstream authority for wiring topology and enters PostgreSQL through the controlled LOR2DB pipeline.
 
 ## System Boundary
 
@@ -63,7 +69,7 @@ FormView, PostgreSQL, Draw.io, and FieldWiring consume, enrich, visualize, and p
 
 ### FieldWiring application responsibility
 
-- task-focused wiring lookup and presentation
+- task-focused wiring lookup and presentation after shared scan/context resolution
 - field-friendly browser navigation and documentation
 - generated field views/documents as required
 - conspicuous generation/currentness and hard-copy expiration information
@@ -78,13 +84,14 @@ If FieldWiring is unavailable, PostgreSQL and the imported LOR-derived data rema
 
 The existing Stage folder structure is the shared human-facing location for wiring and setup documentation. The Stage `folder_path` convention should remain the navigation anchor rather than creating separate unrelated paths for Wiring and Setup.
 
-Wiring owns wiring content placed or referenced there. [Setup and Deployment](../12_Setup_and_Deployment/README.md) owns setup/takedown instructions placed or referenced in the same Stage-oriented structure. QR-based lookup may route field users to this material, but QR/scanning does not become the content authority.
+Wiring owns wiring content placed or referenced there. [Setup and Deployment](../12_Setup_and_Deployment/README.md) owns setup/takedown instructions placed or referenced in the same Stage-oriented structure. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) owns the scan/payload boundary and shared field-context resolution contract. QR/scanning does not become the content authority.
 
 ## Dependencies
 
 - [LOR2DB Ingest](../02_LOR2DB_Ingest/README.md)
 - [Database Foundation](../01_Database_Foundation/README.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
+- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
 
 ## Current Responsibilities
 
@@ -105,7 +112,7 @@ Wiring owns wiring content placed or referenced there. [Setup and Deployment](..
 
 ## Resume Development
 
-The FormView architecture has now been recovered into the FieldWiring compatibility contract. Before designing or implementing FieldWiring, verify the live PostgreSQL objects that can satisfy that contract, define the read-only application data/query surface, and define how the existing Stage wiring images will be securely resolved and served to browsers.
+The FormView architecture has now been recovered into the FieldWiring compatibility contract, and the scan-to-Display/hierarchy behavior is owned by the shared Field Context Resolution contract. Before designing or implementing FieldWiring, verify the live PostgreSQL objects that can satisfy those contracts, define the read-only application data/query surface, and define how the existing Stage wiring images will be securely resolved and served to browsers.
 
 Do not change FormView or database schema merely to simplify the browser implementation. Preserve the LOR authority boundary and demonstrate any real schema gap before proposing a migration.
 
