@@ -8,6 +8,10 @@ A utility should live here only when it is genuinely cross-system.
 
 If a tool primarily serves one subsystem, keep it with that subsystem instead. This prevents `Utilities/` from becoming a miscellaneous storage area and keeps implementation close to the documentation and system that own it.
 
+## Current Utilities
+
+- [MSB PostgreSQL Read-Only MCP](MSB_Postgres_MCP/README.md) — draft cross-system engineering connector for safe read-only access to current Production Database state. It is not deployed and does not authorize database writes or schema changes.
+
 ## Maintenance
 
 When adding a current utility:
