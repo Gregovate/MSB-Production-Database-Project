@@ -54,6 +54,55 @@ Examples:
 
 The shared presentation layer resolves and presents current information. It does not become the authority for the underlying content.
 
+## Standard Folder Structure Is an Application Contract
+
+The standardized Google Shared Drive Stage/Sub-stage/Scene folder structure is deliberately part of the engineering architecture.
+
+Its consistency allows applications to combine a resolved physical scope with a known relative content branch instead of storing every field document or image inside PostgreSQL.
+
+Conceptually:
+
+```text
+resolved Stage / Sub-stage / Scene
+        |
+        +--> Wiring\BackgroundStage
+        +--> Wiring\MusicalStage
+        +--> Procedures\Setup
+        +--> Procedures\Takedown
+        +--> Procedures\Inspection
+        +--> other controlled helper branches
+```
+
+The exact task owns which branch is applicable, but the shared principle is that predictable folder organization remains the editable document/content layer.
+
+Changing the standardized folder contract is therefore an application-impacting architectural change, not merely a cosmetic file-organization change.
+
+## Do Not Turn PostgreSQL Into a Binary Document Store
+
+PostgreSQL should store the durable identity, relationships, currentness metadata, and references needed to resolve field content. It should not become the editing/storage authority for copies of every procedure, PDF, wiring image, photograph, or other engineering file as opaque binary blobs.
+
+The preferred separation is:
+
+```text
+PostgreSQL
+    = identity + relationships + scope + currentness + durable references
+
+Google Drive / controlled document storage
+    = editable engineering documents + source images + published field assets
+
+Browser application
+    = resolution + presentation
+
+Generated PDF
+    = disposable/self-contained field publication
+```
+
+This preserves normal editing and document maintenance while allowing the database to determine what is current and applicable.
+
+If implementation requires caching or generated-file storage for performance or offline delivery, that cache remains a derived delivery artifact. It must not silently become the authoritative editable source.
+
+The database may store useful reference metadata such as a durable document/file/folder identifier, publication identity, revision, status, content hash, or generated-artifact reference when justified. Those references are not substitutes for the editable source content.
+
 ## Browser Presentation
 
 When connected, the normal field experience should present the current approved content through `my.sheboyganlights.org` using the resolved Display/Scene/Stage context.
