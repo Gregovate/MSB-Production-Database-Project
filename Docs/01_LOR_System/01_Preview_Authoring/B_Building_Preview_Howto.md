@@ -1,997 +1,400 @@
 ---
 title: Building a Preview (Operator How-To)
-version: See Changelog
+status: CURRENT
+revision: 2026-08-17
 author: Greg Liebig / Engineering Innovations, LLC
 ---
 
 # Building a Preview (Operator How-To)
 
-This guide explains how to build, edit, and export a preview in **Light‑O‑Rama (LOR)** for integration with the MSB Database. 
-This is a multi-step process where:
-1. A concept is dreamed up
-2. Drawings/sketches created to describe the concept
-3. [Display Design-Approval Form](https://docs.google.com/spreadsheets/d/1Pw91W724KTUcvG1HdSYsTuLY1Mo-2JRPdKq7nziDz8M/edit?usp=sharing)
-    - Is used to document the display including
-      - Controller
-      - Stage
-      - Channels
-      - Colors
-      - Lighting types
-4. After the drawings are finalized a preview must be created in LOR
-   - This is done on the programmer's PC
-   - Channel Namimg conventions must be used
-   - When Finished the final preview is exported to the individual's preview folder
-   - G:\Shared drives\MSB Database\UserPreviewStaging\username
+## Purpose
 
-## Preview ownership and master protection
+This guide explains the current operator workflow for creating, editing, and exporting Light-O-Rama (LOR) previews used by the MSB production workflow.
 
-Each programmer's preview is an isolated working copy. Exporting it to the
-individual staging folder does not authorize direct replacement of the master.
+It covers Preview authoring. It does **not** redefine the Display design contract, Google Drive engineering-repository architecture, Preview Merger engineering, parser behavior, or FormView/FieldWiring implementation.
 
-The controlled path is:
+Use the specialized procedures linked below when the work reaches those boundaries.
 
-1. Export to `UserPreviewStaging\<username>`.
-2. Run and review the Preview Merger dry comparison.
-3. Resolve identifier, revision, semantic, comment, or ownership conflicts.
-4. Apply only reviewed changes through the controlled merge process.
-5. Run the comparison again and require `noop` to prove idempotence.
-6. Use only the approved master set as V7 parser input.
-
-Historically the Show PC held the master. The Office PC is the designated
-master for the approved LOR 6.6.10 preview set. No programmer may overwrite it
-with their local preview. See the active
-[Preview Merger documentation](../03_Preview_Merger/README.md).
-
----
-
-## Folder Layout — Wiring Images and Examples
-```
-G:
-└── Shared drives
-└── Display Folders
-└── 21-Polar Bear Playground-PB -> **Each Stage has single unique folder**
-└── Wiring -> **Folder used to store all images needed for LOR Previews**
-├── BackgroundStage -> **Only store images here needed for the Field Wiring Instructions here for Background Previews**
-│ ├── Show Background Stage 21 PolarBears-Tagged.jpg
-│ ├── Show Background Stage 21 Sliding Penguins-Tagged.jpg
-│ └── SourceDocs **Location to build the background images for Field Wiring Instructions**
-│ ├── polar_bears_map.drawio
-│ ├── polar_bears_wiring.pspimage
-│ └── sliding_penguins_layout.jpg
-│
-├── MusicalStage -> **Only store images here needed for the Field Wiring Instructions here for Musical Previews**
-│ ├── Show Musical Stage 21 PolarBears-Tagged.jpg
-│ ├── Show Musical Stage 21 Sliding Penguins-Wired.jpg
-│ └── SourceDocs **Location to build the background images for Field Wiring Instructions**
-│ ├── polar_bears_musical_map.drawio
-│ ├── penguins_musical_layers.pspimage
-│ └── penguins_overview_layout.jpg
-│
-└── Props-Displays -> **Only store images here to build the Display/Prop for LOR**
-│ ├── polar_bears_musical_map.drawio
-│ ├── penguins_musical_layers.pspimage
-│ └── penguins_overview_layout.jpg
-```
-# Display Drawing and Preview Creation
-
-## Overview
-
-To build a display, we need a plottable **vector drawing**.
-
-Scaling a bitmap image (such as *.jpg or *.png) will NOT work for fabrication because bitmap images lose quality when enlarged. A 4 ft × 8 ft panel requires a full-scale vector drawing that can be accurately resized without distortion.
-
-Vector drawings are used for:
-
-- CNC cutting
-- Plotting
-- Wiring overlays
-- Panel layout verification
-- Full-scale printing
-- Documentation
-- Preview background generation
-
-Bitmap images are still important for:
-
-- Documentation
-- Preview images
-- Tracing source artwork
-- Wiring references
-
-Both vector and bitmap workflows are required for building displays.
-
----
-
-# Recommended Software Tools
-
-## AutoCAD
-
-https://www.autodesk.com/products/autocad/
-
-- Works well with DXF formats
-- Suitable for precise dimensional work
-- Best suited for fabrication and dimensional accuracy
-- We have a limited number of licenses available
-
----
-
-## Inkscape — Free Vector Graphics Editor
-
-https://inkscape.org/
-
-- Free and open-source vector drawing program
-- Can import bitmap images and trace them into vector graphics
-- Exports scalable vector formats such as *.svg
-- Ideal for signage, outlines, overlays, and panel layouts
-- Works well for organizing display wiring layers
-
-### IMPORTANT — Full Scale Document Setup
-
-When creating a new display drawing in Inkscape:
-
-- The document size MUST match the actual panel size being built
-- Always start the drawing at full scale
-
-Examples:
-
-- 4 ft × 8 ft panel
-- 8 ft × 4 ft panel
-- 3 ft × 6 ft coro panel
-
-This ensures:
-
-- Artwork fits correctly on stock frames
-- Layout dimensions remain accurate
-- Wiring overlays align correctly
-- Exported files remain usable for fabrication
-
----
-
-## GIMP — GNU Image Manipulation Program (Raster Editor)
-
-https://www.gimp.org/
-
-- Free bitmap image editor
-- Useful for cleaning up photos or artwork before vector tracing
-- Helpful for removing backgrounds or increasing contrast
-- Commonly used before importing artwork into Inkscape
-- NOT suitable for final scalable fabrication drawings
-- Can be used to create *.gif files to preview animation
-
-Typical workflow:
-
-1. Clean up artwork in GIMP
-2. Import image into Inkscape
-3. Trace bitmap into vector artwork
-4. Organize drawing into layers
-5. Export production SVG files
-
----
-
-# Layer Requirements
-
-Layers are extremely important for display construction.
-
-Each layer should represent a logical wiring or construction group.
-
-Examples:
-
-- Outline
-- Cut Lines
-- Channel 1
-- Channel 2
-- Roofline
-- Eyes
-- Mouth
-- Floods
-- Mounting Holes
-- Wiring Overlay
-
-Proper layer organization allows:
-
-- Easier troubleshooting
-- Cleaner fabrication files
-- Wiring overlays to be generated
-- Cleaner exported documentation
-- Selective printing and exporting
-
-Poor layer organization makes future maintenance extremely difficult.
-
----
-
-# File Naming Standards
-
-Inkscape uses special SVG features that are NOT fully compatible with many other programs.
-
-Because of this, TWO SVG versions must be preserved.
-
----
-
-## 1. Inkscape MASTER File
-
-This file preserves:
-
-- Layers
-- Guides
-- Inkscape effects
-- Editable objects
-- Internal metadata
-
-### Naming Format
-
-`DisplayName-inkscape.svg`
-
-### Example
-
-`TC-SnowmanPanel-inkscape.svg`
-
-This is the MASTER working file and should always be preserved.
-
----
-
-## 2. Production / Working Export
-
-Once the drawing is finalized for production, export a simplified SVG version for compatibility with other programs.
-
-### Naming Format
-
-`DisplayName-plain.svg`
-
-### Example
-
-`TC-SnowmanPanel-plain.svg`
-
-This version is typically used for:
-
-- CNC software
-- Plotters
-- Sharing with other programs
-- Production workflows
-
----
-
-# JPG / PNG Export Rules
-
-Bitmap images such as *.jpg and *.png are ONLY used for:
-
-- Documentation
-- Wiring previews
-- Web pages
-- Printed instructions
-- Preview backgrounds
-- Quick reference images
-
-Bitmap formats are:
-
-- NOT scalable
-- NOT suitable for fabrication
-- NOT suitable for plotting or CNC work
-
-Because bitmap images are resolution-dependent:
-
-- Export sizes matter
-- Low-resolution exports become blurry when enlarged
-- Large images consume excessive storage space
-
----
-
-# Folder Structure Requirements
-
-Each approved display must have its files stored under the proper stage folder structure.
-
-## Standard Stage Folder Location
+## Current Workflow at a Glance
 
 ```text
-G:\Shared drives\Display Folders\StageID-StageName-Prefix\
+Display Design Worksheet / approved design intent
+        |
+        v
+Display artwork and LOR Preview work
+        |
+        v
+external Preview / Scene background from the correct Google Drive scope
+        |
+        v
+export candidate .lorprev
+        |
+        v
+G:\Shared drives\MSB Database\UserPreviewStaging\<username>
+        |
+        v
+controlled Preview review / merger process
+        |
+        v
+approved production Preview set
+        |
+        v
+V7 parser -> LOR2DB ingest / reconciliation
 ```
 
-Example:
+The current Preview Merger implementation is still under engineering review for production `--apply`. Exporting a candidate to `UserPreviewStaging` does **not** authorize replacement of the controlled master.
+
+---
+
+# 1. Start with the Existing Display Design Worksheet
+
+Preview authoring begins only after the Display concept and engineering intent are sufficiently defined.
+
+The existing [Display Design Worksheet](https://docs.google.com/spreadsheets/d/1Pw91W724KTUcvG1HdSYsTuLY1Mo-2JRPdKq7nziDz8M/edit?usp=sharing) is the upstream prerequisite/prototype for that work.
+
+This Preview Authoring procedure does not redesign the worksheet or create a competing Display contract. Use the worksheet and the established design process to determine the intended Stage, controller/channel plan, lighting type, colors, and other design inputs needed to build the LOR Preview.
+
+---
+
+# 2. Work from the Current Approved Preview Source
+
+Before editing an existing Preview, use [Preview Import Workflow](Preview_Import_Workflow.md) to identify and import the current approved source.
+
+Rules:
+
+- do not edit the approved production source folder;
+- do not overwrite the controlled master;
+- make changes only in your own working copy;
+- verify the Preview revision before beginning work; and
+- preserve the existing Preview identity unless there is an intentional engineering reason to replace it.
+
+Each programmer's copy is an isolated working copy. Another programmer may have valid changes that are not present in yours.
+
+---
+
+# 3. Use the Current Google Drive Scope and Helper Folders
+
+The Google Shared Drive named **Display Folders** is the engineering-document repository.
+
+Do not assume that every LOR Display must have a dedicated Google Drive Display folder.
+
+Valid documentation ownership can be:
+
+1. the Stage root;
+2. an established Sub-stage root;
+3. an established Scene root;
+4. an existing shared Display/group folder; or
+5. an existing individual Display folder.
+
+A Display may also be documented entirely at Stage or Scene level and therefore have no dedicated folder.
+
+See [Google Drive Folder Structure](../../00_Project_Overview/00-Google_Drive.md) and [Folder Alignment Engineering Design](../02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md) for the controlled folder and path-resolution contracts.
+
+## Stage / Sub-stage / Scene helper structure
+
+Stage, Sub-stage, and true Scene roots use the full helper structure, including:
 
 ```text
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\
+<Stage / Sub-stage / Scene>\
+├── PreviewBackground\
+├── Photos\
+├── Procedures\
+└── Wiring\
+    ├── BackgroundStage\
+    │   └── SourceDocs\
+    └── MusicalStage\
+        └── SourceDocs\
 ```
 
----
+## Display helper structure
 
-# Display Folder Organization
-
-Under each stage folder, there should be a dedicated folder for each display.
-
-This folder should contain:
-
-- Inkscape drawings
-- AutoCAD drawings
-- Working SVG files
-- Source artwork
-- Preview images
-- Documentation images
-- Related fabrication files
-
-Example:
+An existing Display folder uses the smaller contract:
 
 ```text
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Snowman\
+<Display>\
+├── PreviewBackground\
+└── Photos\
 ```
+
+Do **not** add `Procedures` or `Wiring` to a Display folder merely because a Display exists in LOR.
 
 ---
 
-# Display Groups for Large Projects
+# 4. Choose the Correct Background Location
 
-For larger multi-part displays, a display group folder may be created to organize related displays together.
+LOR background paths are external filesystem references. Do not embed the image into the Preview.
 
-This is commonly used when multiple props belong to a larger themed scene.
+The correct location depends on what the image is for.
 
-Example:
+| Use | Current location | Notes |
+|---|---|---|
+| Individual Display/Prop authoring background | `<resolved scope>\PreviewBackground\` | Use the scope that actually owns the Display documentation. |
+| Master Musical Preview Scene background / scope anchor | `<resolved Stage/Sub-stage/Scene/Display scope>\PreviewBackground\` | Follow the dedicated Master Musical procedure and Scene naming rules. |
+| Show Background Stage field-wiring background used by current FormView | `<Stage or Scene>\Wiring\BackgroundStage\` | The primary image must be in the published wiring-image directory; working material belongs in `SourceDocs`. |
+| Current published Musical wiring images | `<Stage or Scene>\Wiring\MusicalStage\` | This is the field-wiring publication branch. Do not treat it as the general-purpose Preview-background folder. |
+
+The old `Wiring\Props-Displays` location is not the current Display background contract.
+
+The distinction matters:
+
+- `PreviewBackground` is the stable scope-local location for authoring backgrounds and filesystem-resolution evidence;
+- `Wiring\BackgroundStage` and `Wiring\MusicalStage` are published field-wiring image directories; and
+- current FormView depends on its documented Wiring-folder behavior until the separate FieldWiring/FormView conversion is proven.
+
+---
+
+# 5. Prepare Display Artwork
+
+A physical Display normally begins with a scalable drawing that can support fabrication and later documentation.
+
+Use vector artwork for work that must scale accurately, such as:
+
+- CNC cutting;
+- plotting;
+- full-scale panel layouts;
+- wiring overlays; and
+- dimensional fabrication work.
+
+Bitmap images such as JPG/PNG remain useful for:
+
+- LOR Preview backgrounds;
+- documentation;
+- tracing source artwork;
+- wiring references; and
+- web/printed reference images.
+
+## Inkscape file convention
+
+When Inkscape is used, preserve both:
 
 ```text
-G:\Shared drives\Display Folders\13-Winter Wonderland-WW\Christmas Vacation\
+DisplayName-inkscape.svg
 ```
 
-Inside the display group folder, individual display folders may then be created:
+for the editable Inkscape master, and:
 
 ```text
-13-Winter Wonderland-WW\
-└── Christmas Vacation\
-    ├── RV\
-    ├── Cousin Eddie\
-    ├── Clark\
-    ├── Garbage Can\
-    └── Uncle Louis\
+DisplayName-plain.svg
 ```
 
-This helps keep:
+for the simplified production/compatibility export.
 
-- Related artwork together
-- Wiring documentation organized
-- Preview assets grouped logically
-- Fabrication files easier to manage
-- Multi-display scenes easier to maintain
+Keep source/fabrication files with the engineering scope that owns them. Do not place general artwork or fabrication files into published `Wiring` image directories.
 
 ---
 
-# IMPORTANT — Avoid Loose Files
+# 6. Create a Single-Display / Prop Preview
 
-Do NOT store unrelated drawing files directly under the stage root folder.
+## Background image
 
-Every display should have its own dedicated folder structure.
+Typical image guidance:
 
-This prevents:
+- single horizontal panel: approximately `800 x 600`;
+- single vertical panel: approximately `600 x 800`;
+- full Stage reference image: approximately `3840 x 2160`;
+- maximum historical guidance: approximately `4000 x 3000`.
 
-- Lost artwork
-- Duplicate files
-- Broken preview references
-- Wiring documentation confusion
-- Difficulty locating fabrication assets later
+Use JPG for normal Preview background images.
 
-# Wiring Documentation Folder
-
-⚠️ IMPORTANT:
-
-The `Wiring\` folder is a RESERVED folder structure used for **field installation documentation**.
-
-This folder is NOT intended for storing:
-
-- Raw artwork
-- Working SVG files
-- Fabrication files
-- General preview assets
-- Temporary exports
-
-The Wiring folder exists specifically to support:
-
-- Field setup documentation
-- Controller connection diagrams
-- DrawIO wiring documents
-- FormView-generated wiring PDFs
-- Visual field reference images
-
----
-
-# FormView Integration
-
-The FormView application automatically scans the Wiring folder structure and generates printable field setup documentation.
-
-This documentation is used by setup crews to identify:
-
-- Which controller plugs into which display
-- Wiring paths
-- Display locations
-- Port assignments
-- Visual setup references
-
----
-
-# IMPORTANT — Preview Name Controls Folder Linking
-
-The Preview Name is extremely important because it controls how the FormView application locates the correct Wiring folders.
-
-The Preview Name acts as the pointer between:
-
-- LOR Preview files
-- Wiring documentation folders
-- Background images
-- FormView-generated PDFs
-
-If the Preview Name does NOT match the expected folder structure:
-
-- FormView may fail to locate images
-- Wiring PDFs may generate incorrectly
-- Field setup documentation may be incomplete
-- Wrong displays may appear in generated packets
-
-Because of this, Preview Names must remain standardized and consistent.
-
----
-
-# IMPORTANT — Keep Wiring Folders Clean
-
-The FormView application scans these folders automatically.
-
-⚠️ Any extra images or unrelated files may appear in generated wiring PDFs.
-
-Because of this:
-
-- ONLY place files needed for field setup into these folders
-- Do NOT use the Wiring folders for general artwork storage
-- Do NOT leave old exports or temporary images in these folders
-- Remove obsolete images when displays are updated
-
-If these folders become cluttered, the generated field documentation becomes difficult to use.
-
----
-
-# Typical Wiring Folder Structure
+Place the image in the correct scope's `PreviewBackground` folder, then in LOR use:
 
 ```text
-Wiring\
-Wiring\BackgroundStage\
-Wiring\MusicalStage\
-Wiring\DrawIO\
+Background -> Set Image
 ```
 
-Additional folders may be added later as the workflow evolves.
+Select the external shared-drive image. Do **not** embed it.
+
+## Draw and assign channels
+
+1. Draw the strings/elements required to represent the Display.
+2. Assign the correct controller/network/channel information from the approved design intent.
+3. Verify scaling and placement.
+4. Apply the current [Prop and Display Naming Conventions](A_Naming_Conventions.md).
+5. Keep the LOR `Comment` value aligned with the physical Display Name.
+6. Use the required padded controller-channel naming in the LOR `Name` field.
+7. Include unused controller channels as explicit SPARE channels following the naming procedure.
+
+When a Display moves away from an old channel, follow the SPARE recreation rule in the naming document. Do not simply rename or hide the old PropClass and leave its UUID behind.
 
 ---
 
-# Future Direction
+# 7. Export Reusable `.leprop` Files When Needed
 
-The current FormView workflow is considered temporary.
+When a reusable LOR Prop is required:
 
-Future plans are to migrate the wiring and setup documentation system into the new MSB Database workflow. That system is not yet implemented.
-
-Until then, the existing Wiring folder structure remains critical for field setup operations.
-
-# Prerequisites Before Creating a Preview
-
-Complete the following steps before beginning wiring or preview creation:
-
-1. Start with the approved Display Approval Form
-2. Create the concept drawing of the display
-3. Create the display folder under the correct Stage ID
-4. Create the vector artwork
-5. Create the preview background image (*.jpg)
-6. Save all files into the proper Display folders
-
----
-
-# Open Light O Rama and on the Right Side Click the + to create a New Preview
-
-## Name
+1. select the completed channels/elements;
+2. create the appropriate group/Prop;
+3. export the `.leprop` file;
+4. retain the Preview/Prop identity intentionally; and
+5. place the approved reusable Prop file in the established shared Prop location:
 
 ```text
-PreviewPropFile [SC-] DisplayName [UID] [StartChannel - EndChannel]
-```    
-
-
-# Image Requirements
-
-## Size Limits
-
-### Maximum
-
-- 4000 × 3000 pixels
-
-### Recommended — Single Panel
-
-- Horizontal: 800 × 600 px
-- Vertical: 600 × 800 px
-
-### Recommended — Full Stage
-
-- 3840 × 2160 px
-
----
-
-# Image Format Requirements
-
-- Save preview images as JPG
-- Optimize with approximately 20% compression
-- PaintShop Pro, GIMP, or similar software may be used
-
----
-
-# Background Image File Naming
-
-Use the display name exactly.
-
-Example:
-
-```text
-SnowmanPanel.jpg
-```
-
----
-
-# Creating a Single-Panel Preview for a New Display
-
-## 1. Open LOR Sequence Editor
-
-All previews are built within Light-O-Rama 
----
-
-## 2. Set the Background Image
-
-In the lower-left panel:
-
-```text
-Background → Set Image
-```
-
-Browse to the background image located under the display stage folder.
-
-Example:
-
-```text
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Wiring\Props-Displays
-```
-
-Use the JPG background image created during the design phase.
-
-⚠️ IMPORTANT:
-
-- Do NOT embed the image into the preview
-- The preview should reference the image externally
-- This keeps preview files smaller and easier to maintain
-
----
-
-## 3. Draw Strings and Assign Channels
-
-- Draw the display strings
-- Assign controllers
-- Assign channels
-- Verify scaling and placement
-- Save the preview file into the correct stage folder
-
-### Naming Guidance
-
-📘 See  
-[Prop and Display Naming Conventions](../01_Preview_Authoring/A_Naming_Conventions.md)  
-for full rules on channel grouping, display IDs, and comment field requirements.
-
----
-
-### Channel Naming Convention
-
-Use the following format:
-
-SC UID-Channel Name
-
-Where:
-
-- **SC** — Stage Code abbreviation of the stage  
-- **UID** — Controller ID assigned to the display  
-- **Channel** — Controller port or channel number  
-- **Name** — Brief description of the channel  
-  - Channel lists sort alphabetically
-
----
-
-5. When channel setup is complete:
-
-   - Select all channels → **Create Group**
-   - Save the group using the **Display Name**
-
-6. Export the group as a `.leprop` file
-
-   - Exported props are saved by default to the author’s local `ImportExport` folder
-   - Copy the `.leprop` file to:
-
-
-G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
-
-
-- Use the **Preview Name** as the file name
-
-7. Save the preview as:
-
-
-Display Prop <Display Name> UID StartChannel-EndChannel
-
-
-8. Export the preview (`.lorprev`) to the same  
-   `PreviewsForProps` folder
-
----
-
-## Example — Display Prop with Channel Grid
-
-[<img src="/Docs/images/ChristmasHippo.jpg" width="600" alt="Display Prop ChristmasHippo TC 7B 01-07 (scaled)">](/Docs/images/ChristmasHippo.jpg)
-
----
-
-## Creating Previews for Stages
-
-The `.leprop` file creates a **PropID** that can be reused inside larger previews, such as:
-
-- `RGB Plus Prop Stage xx` (`MusicalStage`)
-- `Show Background Stage xx` (`BackgroundStage`)
-- `Show Animation xx` *(Not implemented)*
-
-### Master Musical Preview — use the dedicated procedure
-
-The **Master Musical Preview** does not follow the same Stage-identification rule as a normal Background Stage Preview. Its annual/versioned Preview name is shared by every musical Scene, so the parser derives Stage context from each Scene. A Scene's external background-image path can also intentionally identify whether its documentation belongs to the Stage root or to an established nested Scene/Substage folder.
-
-Before creating or changing musical Scenes, follow [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md). In particular, do not create a Google Drive Scene folder merely because a sequencing Scene exists in LOR, and make sure any Scene background or temporary placeholder is assigned from below the intended documentation root.
-
----
-
-## Background
-
-- When exporting props, they are saved by default to the author’s local **ImportExport** folder
-- Copy the prop file to:
-
-G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
-
-- These props can then be added to a Stage Preview and will be available to everyone
-- Import all required props into the stage preview
-- Verify channel names comply with naming conventions and controller assignments
-- If there are **spare channels**:
-- Include them in the preview
-- Use **SPARE** as the Display Name (Comment field)
-- Color them **orange** as placeholders for future development
-
-## Duplicated Displays
-
-If there are multiple identical displays (such as arrow signs, speed limit signs, or Making Spirits Bright signs), they **MUST** be created together in a single preview so that each display receives a unique **PropID**.
-
-The database will generate errors if more than one display shares the same PropID.
-
-- ❌ Never copy a `.leprop` file from one preview into another preview
-
----
-
-### Example
-
-[<img src="/Docs/images/combined_duplicated_displays.png" width="600" alt="Combined Duplicate Displays">](/Docs/images/combined_duplicated_displays.png)
-
----
-
-### Export Procedure
-
-- Each display group is exported to its own `.leprop` file:
-
-  - `MSB-01.leprop`
-  - `MSB-02.leprop`
-  - `MSB-03.leprop`
-  - `MSB-04.leprop`
-
-- These props can then be safely imported into other previews
-
----
-
-## Editing an Existing Preview
-
-1. Import the preview from the canonical folder:
-
-```
-G:\Shared drives\MSB Database\Database Previews
-```
-
-   This ensures you have the latest version.
-
----
-
-### If the preview does NOT contain a background image
-
-We need to create and add one.
-
-#### Capture the image
-
-- If the show is running, take a photo of the stage.
-- Ensure lighting is sufficient so displays are clearly visible.
-- Capture ALL elements if possible (needed for Field Wiring documentation).
-
-#### Save location depends on stage type
-
-**Musical Stage**
-
-Save to:
-
-```
-G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs
-```
-
-File name:
-
-
-RGB Plus Stage <Stage#> <Name> Background.jpg
-
-
----
-
-**Background Stage**
-
-Save to:
-
-```
-G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs
-```
-
-File name:
-
-
-Show Background Stage <Stage#> <Name> Background.jpg
-
-
----
-
-### Edit the Image
-
-1. Open the image in an editor  
-   - Corel PaintShop Pro is available on the Show PC
-2. Set canvas size to:
-    - 3840 × 2160 pixels
-3. Save as JPG with approximately 20% compression
-
----
-
-### Import Props into the Preview
-
-1. Begin importing the prop files created for the stage.
-2. To add a prop:
-    - **Add → LOR Prop file**
-3. Select props from:
-
-```
 G:\Shared drives\MSB Database\Database Previews\PreviewsForProps
 ```
 
----
+Do not use reusable Prop files as a way to create accidental duplicate physical identities.
 
-### After Editing
+## Duplicate physical Displays
 
-1. Save the preview.
-2. Export the updated `.lorprev` file to your staging folder:
+Where several identical physical Displays must exist, create them intentionally so each physical instance receives its own LOR identity.
 
-```
-G:\Shared drives\MSB Database\UserPreviewStaging<Author>
-```
+Do not blindly copy one `.leprop` object between unrelated Preview contexts when that would duplicate the same PropClass identity for different physical Displays.
 
 ---
 
-## Create Wiring Backgrounds for Stage Previews
+# 8. Current Preview Classes
 
-This allows Field Wiring documentation to include images.
+The current workflow includes several independently managed Preview classes.
 
-Applies only to:
+## Master Musical Preview
 
-- Musical Stage previews
-- Background Stage previews
+The **Master Musical Preview** is the musical programming authority. The former model of maintaining separate `RGB Plus Stage xx` musical previews is obsolete as the current authoring model.
+
+Use [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md) for:
+
+- Scene naming;
+- Stage/Sub-stage/Scene classification;
+- Scene `BackgroundFile` scope anchors; and
+- the rule that not every sequencing Scene creates a Google Drive Scene folder.
+
+## Show Background Stage previews
+
+These remain independently managed Stage previews used for background/static show operation and the current FormView background-wiring workflow.
+
+Their field-wiring background is prepared under:
+
+```text
+<Stage or Scene>\Wiring\BackgroundStage\
+```
+
+Follow [Create Wiring Backgrounds for Stage Previews](D_Create_Wiring_Backgrounds..md).
+
+## Show Animation previews
+
+Show Animation previews remain independently managed where required by the current show workflow.
+
+## Engineering exceptions
+
+Specialized approved Previews such as the Parade Float remain separate when the current Preview Merger documentation identifies them as engineering exceptions.
+
+Do not fold an exception into another Preview class merely to make the naming pattern look uniform.
 
 ---
 
-## Field Wiring Images (Basic)
+# 9. Editing an Existing Preview
 
-Fastest method, but limited detail.
-- Only `.jpg` files directly inside the stage folders are used by FormView.
-- ALL images in these folders will be included in Field Wiring documentation.
+1. Import the current approved Preview using [Preview Import Workflow](Preview_Import_Workflow.md).
+2. Work only in your own copy.
+3. Preserve Preview identity unless an intentional engineering change requires otherwise.
+4. Make the required Prop/channel/Scene/background changes.
+5. Verify all external background paths still resolve to the intended Google Drive scope.
+6. For wiring-image changes, verify only current published field images are present in the applicable Wiring branch.
+7. Save your working Preview.
+8. Export the candidate `.lorprev` to your user staging folder.
 
-⚠️ Remove any files that should not appear.
-
-### File Naming Pattern
-
->Show <Category> <StageType> <Stage#> <DisplayName>-<Tag>.jpg
-
-Examples:
-
-- Show Background Stage 21 PolarBears-Tagged.jpg
-- Show Background Stage 21 Sliding Penguins-Wired.jpg
-- RGB Plus Prop Stage 15 Wired.jpg
+Do not save the edited file back into the approved source folder.
 
 ---
 
-## How to Create a Basic Wiring Image
+# 10. Create or Update Stage Wiring Images
 
-1. Open the complete preview in the Preview Editor.
-2. Capture the entire preview using the Windows Snip Tool (Full Screen).
-3. Save the image to the SourceDocs folder for the stage type.
+Stage field-wiring diagrams are a separate publication workflow from ordinary Display/Scene `PreviewBackground` images.
 
----
+For current operator steps, use:
 
-### Save Locations
+[Create Wiring Backgrounds for Stage Previews](D_Create_Wiring_Backgrounds..md)
 
-**Musical Stage**
+That procedure owns:
 
+- `Wiring\BackgroundStage`;
+- `Wiring\MusicalStage`;
+- `SourceDocs` separation;
+- tagged wiring diagrams;
+- additional published wiring images; and
+- the current FormView filesystem dependency.
 
-G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring\MusicalStage\SourceDocs
-
-
-File example:
-- RGB Plus Prop Stage <Stage#> LOR Preview-Wired.jpg
-
----
-
-**Background Stage**
-
-```
-G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring\BackgroundStage\SourceDocs
-```
-
-File example:
-
-- Show Background Stage <Stage#> LOR Preview-Wired.jpg
+Detailed FormView engineering and the browser-based FieldWiring conversion remain separate projects.
 
 ---
 
-4. If stopping here, copy the image to the main stage folder:
+# 11. Export the Candidate to UserPreviewStaging
 
+When authoring is complete, export the candidate `.lorprev` to:
+
+```text
+G:\Shared drives\MSB Database\UserPreviewStaging\<username>
 ```
-G:\Shared drives\Display Folders<StageID-StageName-Prefix>\Wiring<StageType>
-```
 
-5. Re-open the preview and set this image as the background.
-6. Adjust props if needed to align correctly.
-7. Save the preview.
+Then allow Google Drive synchronization to complete.
 
-The basic wiring diagram is now complete.
+This folder is a **candidate staging area**, not the production master.
+
+Current rules:
+
+- never overwrite the controlled master from your local copy;
+- do not point the production parser at `UserPreviewStaging`;
+- use the Preview Merger dry-review process to inspect candidate differences; and
+- do not run production merger `--apply` until the Preview Merger engineering review explicitly approves it.
+
+See [Preview Merger](../03_Preview_Merger/README.md) for the current status and stop conditions.
 
 ---
 
-## Tagged Wiring Images (Recommended)
+# 12. Downstream Production Handoff
 
-Creates a detailed diagram showing Display Names.
+Only after a candidate has become part of the **approved controlled Preview set** through the currently approved master-update process may it feed the production parser.
 
-This cannot be generated inside LOR — use draw.io.
+The downstream database workflow is separate from authoring:
+
+```text
+approved controlled Preview set
+    -> V7 parser
+    -> reviewed SQLite snapshot
+    -> PostgreSQL ingest
+    -> reconciliation
+    -> production promotion/reporting
+```
+
+Use the current LOR2DB procedure for the exact parser/ingest/reconciliation steps and stop conditions.
+
+Preview authors should not treat successful export to staging as proof that a production database update has occurred.
 
 ---
 
-### Create Tagged Diagram in draw.io
+# Authoring Checklist
 
-1. Open draw.io and create a Blank Diagram.
-2. Open Page Properties:
-   - Orientation: Landscape
-   - Page Size: Custom
-   - Set to match the background image (typically 3840 × 2160)
-3. Insert the wired image as the background.
-4. Add shapes (arrows, boxes, etc.) to label each display.
-5. Double-click shapes and enter the **Display Name**.
-   ⚠️ Do NOT use Channel Names  
-   Channel assignments may change over time.
-6. Formatting guidelines:
-   - Font: Helvetica
-   - Minimum size: 18 pt bold
-   - Recommended: 24 pt bold
-7. Repeat until all displays are labeled.
+Before exporting a candidate Preview, verify:
 
----
-
-### Save the draw.io File
-
-**Musical Stage**
-
-```
-G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage\SourceDocs
-```
-
-Example:
-- RGB Plus Prop Stage <Stage#> <Name>-Tagged.drawio
+- [ ] The work began from current approved design/Preview inputs.
+- [ ] The Display Design Worksheet was treated as the existing upstream design prerequisite rather than recreated here.
+- [ ] Display and channel names follow the current naming rules.
+- [ ] Any moved Display channels were deleted/recreated correctly rather than leaving stale UUIDs behind.
+- [ ] The selected Google Drive scope already exists or has been intentionally established outside this procedure.
+- [ ] Normal authoring backgrounds are stored in the correct `PreviewBackground` helper folder.
+- [ ] Stage field-wiring images are stored only in the applicable published Wiring branch.
+- [ ] Background images are external references, not embedded.
+- [ ] Master Musical Scene names follow the current Scene classification rules.
+- [ ] No unnecessary Google Drive Scene/Display folder was created merely because an LOR object exists.
+- [ ] The candidate was exported to `UserPreviewStaging\<username>`.
+- [ ] The controlled master was not overwritten.
+- [ ] Production parser/ingest work will use only the approved controlled Preview set.
 
 ---
 
-**Background Stage**
+## Related Documents
 
-```
-G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage\SourceDocs
-```
-
-Example:
-
-- Show Background Stage <Stage#> <Name>-Tagged.drawio
-
----
-
-### Export Tagged Image
-
-Export as JPG and save to the stage folder:
-
-**Musical Stage**
-
-```
-G:\Shared drives\Display Folders\Stage Folder\Wiring\MusicalStage
-```
-
-Example:
-
-- RGB Plus Prop Stage <Stage#> <Name>-Tagged.jpg
-
----
-
-**Background Stage**
-
-```
-G:\Shared drives\Display Folders\Stage Folder\Wiring\BackgroundStage
-```
-
-Examples:
-- Show Background Stage <Stage#> PolarBears-Tagged.jpg
-- Show Background Stage <Stage#> Sliding Penguins-Tagged.jpg
-
----
-
-### Final Step
-
-Re-open the preview and assign the tagged image as the background file.
-
-Save the preview.
-
-Field Wiring documentation will now use the tagged diagram.
-
-## ⚠️ IMPORTANT — Large Displays and Field Wiring Images
-
-For large displays, a single preview image may not provide enough detail for wiring documentation.
-
-A preview in LOR can only have **one background image**, but the FormView application supports multiple images for a stage.
-
-FormView will automatically scan the following folders and include **all images found** when generating Field Wiring documentation:
-
-- `MusicalStage`
-- `BackgroundStage`
-
-Example:
-
-```
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Wiring\BackgroundStage
-```
-
-Multiple images may be required to fully document complex stages.
-
-### 🚨 Critical Requirement
-
-**Only keep the images that are REQUIRED for Field Wiring documentation in these folders.**
-
-FormView will print **EVERY image** found.
-
-If unnecessary files are present, the wiring documentation will become cluttered and difficult to use.
-
-Remove any temporary, draft, or unrelated images before finalizing.
-
----
-
-### Example — Tagged Wiring Image
-
-![Show Background Stage 15 Tagged](/Docs/images/Show_Background_Stage_15_Preview_Background_Tagged.jpg)
-
----
-
-## Reminder
-After **any changes** to previews, export the authoritative preview set from the
-approved Master PC and run the controlled V7 production workflow:
-
-1. Open `https://my.sheboyganlights.org/lor2db/` and select **Run parser**.
-2. Review the parser output; correct the previews and rerun as often as needed.
-3. Confirm the exact parser output and select **Ingest to PostgreSQL**.
-4. Review the ingest console and select **Start reconciliation**.
-5. Record required decisions, complete final review, apply, and review the
-   immutable report.
-
-Use `LOR2DB/Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md`
-for the current stop conditions and exact workflow. The V6 merger/parser/compare
-pipeline is archived and is not a production procedure.
-
-This ensures the system stays consistent for all users.
+- [Prop and Display Naming Conventions](A_Naming_Conventions.md)
+- [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
+- [Create Wiring Backgrounds for Stage Previews](D_Create_Wiring_Backgrounds..md)
+- [Preview Import Workflow](Preview_Import_Workflow.md)
+- [Preview Merger](../03_Preview_Merger/README.md)
+- [Google Drive Folder Structure](../../00_Project_Overview/00-Google_Drive.md)
+- [Folder Alignment Engineering Design](../02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
+- [FormView](../04_FormView/README.md)
 
 # Changelog
 
-2026-08-11 - Added Master Musical Preview authoring handoff and documentation-root rule
-2026-05-10 - Updated Recommended Software Tools
-2025-10-05 - Intial Release
+- 2026-08-17 — Reconciled the operator workflow with the current Display-folder hierarchy, `PreviewBackground` contract, Master Musical Preview model, Scene naming/path-resolution rules, `UserPreviewStaging` boundary, Preview Merger production status, and current FormView wiring-image workflow.
+- 2026-08-11 — Added Master Musical Preview authoring handoff and documentation-root rule.
+- 2026-05-10 — Updated recommended software tools.
+- 2025-10-05 — Initial release.
