@@ -42,6 +42,32 @@ The remainder of the file is personalized for the folder type and may include lo
 
 ---
 
+## Structured Scope Root Rule — Folders Only
+
+A Stage, Sub-stage, or Scene root is a **structural container**. Under the settled current scaffold, files do not belong directly in that root.
+
+For example:
+
+```text
+15-Church-Bells-CH/
+├── PreviewBackground/
+├── Procedures/
+├── Wiring/
+├── Photos/
+├── Scene / Sub-stage / Display folders as applicable
+└── other approved folders as applicable
+```
+
+There should be **no loose files directly under the Stage, Sub-stage, or Scene root**.
+
+This is why the database-source marker is not placed at the Stage/Scene root. It belongs inside the specific helper folder that is actually used as a database/application source.
+
+Applications and resolver tools must therefore treat the structured root as a navigation/container level and must not search for or present loose files from that root as a fallback. Published or application-used content belongs in the applicable controlled child folder such as `PreviewBackground`, `Procedures`, or `Wiring`.
+
+`Photos` remains a normal documentation helper folder but is not currently a Production Database/application source folder.
+
+---
+
 ## Folders Marked in the Current Scaffold
 
 The current Stage / Sub-stage / Scene scaffold places the marker at the root of these database/application source folders:
@@ -89,6 +115,7 @@ It:
 - identifies existing `PreviewBackground`, `Procedures`, and `Wiring` source folders;
 - creates only the approved marker `.txt` file;
 - never creates, renames, moves, or deletes folders;
+- never places a file directly in a Stage/Sub-stage/Scene root;
 - never places the marker in `Photos`;
 - does not recurse into `SourceDocs`, `Archive`, `Photos`, `PreviewBackground`, `Procedures`, or `Wiring` branches;
 - does not overwrite an existing exact marker file, so local notes are preserved; and
@@ -241,18 +268,21 @@ Applications may use the presence of the exact marker filename as supporting evi
 
 A missing marker on a legacy folder is a documentation/alignment condition. It does not authorize an application to guess the folder's role.
 
+Applications must also preserve the structured-root rule: Stage/Sub-stage/Scene roots are navigation containers, not file-publishing locations. Do not introduce a fallback that searches loose files directly under those roots.
+
 ---
 
 ## Using the Scaffold
 
 When creating a new controlled Stage/Sub-stage/Scene structure from the approved scaffold:
 
-1. Keep the marker files already present in `PreviewBackground`, `Procedures`, and `Wiring`.
-2. Do not place the marker in `Photos`.
-3. Review the personalized text for the helper folder.
-4. Add local notes only when useful.
-5. Keep the standard opening text and standard rules intact.
-6. Do not rename the Stage/Scene folder merely to make the marker or database integration easier.
+1. Keep the Stage/Sub-stage/Scene root free of loose files.
+2. Keep the marker files already present in `PreviewBackground`, `Procedures`, and `Wiring`.
+3. Do not place the marker in `Photos`.
+4. Review the personalized text for the helper folder.
+5. Add local notes only when useful.
+6. Keep the standard opening text and standard rules intact.
+7. Do not rename the Stage/Scene folder merely to make the marker or database integration easier.
 
 For existing current Stage trees, use the automated utility in preview mode first. The marker identifies an existing database/application source folder; it must not be used as a reason to rename or restructure the surrounding Stage/Scene hierarchy.
 
