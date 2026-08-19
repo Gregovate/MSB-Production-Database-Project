@@ -25,6 +25,33 @@ The operator-facing presentation must describe the physical hookup the volunteer
 
 ---
 
+## `device_type = DMX` Does Not Define One Physical Family
+
+Current MSB data also contains reviewed dense RGB Displays whose LOR representation is:
+
+```text
+device_type = DMX
+string_type = RGB
+```
+
+Those Displays use the E1.31 network and intelligent pixel controllers such as AlphaPix/PixCon hardware. They are **not** the same physical hookup as the Northern Lights DumbRGB fixtures.
+
+Therefore FieldWiring must not use `device_type = DMX` by itself as the normal-presentation discriminator.
+
+For the reviewed current cases:
+
+```text
+DMX + DumbRGB
+    -> DMX fixture/network presentation
+
+DMX + RGB
+    -> E1.31 dense RGB / intelligent pixel-controller presentation
+```
+
+The E1.31 rules are defined separately in [FieldWiring E1.31 Dense RGB Field Presentation Contract](FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md).
+
+---
+
 ## Northern Lights Is the Initial Acceptance Case
 
 Stage / Scene:
@@ -94,6 +121,9 @@ RGB LOR
 
 DMX + DumbRGB
     -> DMX network / fixture presentation
+
+DMX + RGB — reviewed dense RGB cases
+    -> E1.31 network / intelligent pixel-controller presentation
 ```
 
 The DMX/DumbRGB presentation must not teach the operator that DMX universe values are physical controller identities or that DMX channel numbers are numbered controller plugs.
@@ -130,7 +160,7 @@ source/device metadata
 
 belongs in Engineering Details or a troubleshooting view unless a specific field workflow proves that the installer needs it.
 
-The current V7 snapshot uses LOR network aliases such as `Aux A` / `Aux B` alongside DMX universe data. FieldWiring must not automatically relabel those values without first defining how the physical DMX network is labeled in the park.
+The current V7 snapshot uses LOR network aliases alongside DMX universe data. FieldWiring must not automatically relabel those values without first defining how the physical DMX network is labeled in the park.
 
 ---
 
@@ -170,6 +200,10 @@ Pixie RGB row
 DMX/DumbRGB row
     generic Controller / StartChannel may represent DMX universe/channel addressing,
     not a physical controller/output hookup
+
+E1.31 dense RGB row
+    generic Controller may also be universe addressing across one or more
+    intelligent pixel controllers, not a physical controller identity
 ```
 
 FieldWiring must interpret the row using current Prop/SubProp/device metadata before rendering the normal operator view.
@@ -180,13 +214,14 @@ FieldWiring must interpret the row using current Prop/SubProp/device metadata be
 
 At minimum, DMX/DumbRGB FieldWiring testing must prove:
 
-1. `16-Northern Lights-NL` is classified as a DMX/DumbRGB presentation family rather than A/C or Pixie;
+1. `16-Northern Lights-NL` is classified as a DMX/DumbRGB presentation family rather than A/C, Pixie, or E1.31 dense RGB;
 2. values such as DMX universe `145` / `146` are not presented as physical controller labels;
 3. DMX channel values are not presented as numbered physical output plugs unless a separate device-specific contract proves that relationship;
 4. the operator can identify the applicable Display/fixture and DMX-network hookup without understanding the raw addressing model;
 5. raw universe/channel/network information remains available under Engineering Details for troubleshooting;
-6. a missing wiring image does not invalidate the DMX field result; and
-7. no change is made to the authoritative LOR topology merely to simplify presentation.
+6. `device_type = DMX` + `string_type = RGB` reviewed dense Displays route to the separate E1.31 presentation contract rather than this DumbRGB contract;
+7. a missing wiring image does not invalidate the DMX field result; and
+8. no change is made to the authoritative LOR topology merely to simplify presentation.
 
 ---
 
@@ -194,6 +229,7 @@ At minimum, DMX/DumbRGB FieldWiring testing must prove:
 
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
 - [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
+- [FieldWiring E1.31 Dense RGB Field Presentation Contract](FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md)
 - [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
