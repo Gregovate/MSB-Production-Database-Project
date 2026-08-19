@@ -46,12 +46,9 @@ def required_source_marker(candidate_path: Path) -> Path:
     """Return the marker that authorizes this candidate source branch."""
     name = candidate_path.name.casefold()
 
-    # FieldWiring candidate paths point at Wiring/BackgroundStage or
-    # Wiring/MusicalStage. The controlled source marker belongs at Wiring root.
     if name in {"backgroundstage", "musicalstage"} and candidate_path.parent.name.casefold() == "wiring":
         return candidate_path.parent / MARKER_NAME
 
-    # PreviewBackground is itself the controlled source folder.
     if name == "previewbackground":
         return candidate_path / MARKER_NAME
 
@@ -63,8 +60,6 @@ def marked_make_candidate(label: str, path: Path):
     marker_path = required_source_marker(path)
 
     if not marker_path.is_file():
-        # Keep the physical-folder evidence visible in the report while making
-        # the candidate unusable for selection.
         candidate.label = f"{candidate.label} [UNMARKED - EXCLUDED]"
         candidate.image_count = 0
         candidate.images = []
@@ -77,13 +72,7 @@ def top_level_stage_from_pointer(
     drive_root: Path,
     stage_key: str | None,
 ) -> Path | None:
-    """Recover one top-level Stage root from exact current pointer evidence.
-
-    This is deliberately narrow. It is used only when ref.stage.folder_path is
-    stale/non-resolving. The pointer must be beneath the configured Display
-    Folders root, the first relative component must match the numeric Stage key,
-    the folder must exist, and it must carry the structural marker.
-    """
+    """Recover one top-level Stage root from exact current pointer evidence."""
     if not pointer_text or not stage_key:
         return None
 
@@ -145,6 +134,20 @@ def rebuild_candidates(result, stage_root: Path):
     result.selected_candidate = selected.label if selected else None
     result.selected_path = selected.path if selected else None
     result.status = "RESOLVED" if selected else "UNRESOLVED"
+
+    # The base resolver may have emitted this warning before the stale Stage
+    # anchor was recovered. Recompute it from the rebuilt current candidates so
+    # a successful recovery does not retain a contradictory warning.
+    result.warnings = [
+        warning
+        for warning in result.warnings
+        if warning != "No candidate folder contained a directly published .jpg/.jpeg/.png image."
+    ]
+    if selected is None:
+        result.warnings.append(
+            "No candidate folder contained a directly published .jpg/.jpeg/.png image."
+        )
+
     return result
 
 
@@ -161,9 +164,6 @@ def recover_stale_stage_anchor(result, safe_pointer: str | None, drive_root: Pat
     result.stage_root = str(recovered)
     result.stage_root_exists = True
 
-    # For a Stage-level result, the recovered top-level folder is also the
-    # resolved structured scope. For Scene/Substage results, preserve the more
-    # specific resolved scope and use the recovered Stage only for inheritance.
     if result.resolved_scope_type == "STAGE":
         result.resolved_scope_root = str(recovered)
 
@@ -225,7 +225,6 @@ def guarded_resolve_one(conn, row, drive_root, drive_root_text):
     safe_pointer, blocked = truncate_before_sourcedocs(raw_pointer)
 
     if blocked:
-        # sqlite3.Row is immutable, but the resolver only needs mapping access.
         safe_row = dict(row)
         if raw_scene_pointer:
             safe_row["scene_background_file"] = safe_pointer
@@ -234,8 +233,6 @@ def guarded_resolve_one(conn, row, drive_root, drive_root_text):
 
         result = _original_resolve_one(conn, safe_row, drive_root, drive_root_text)
 
-        # Preserve the actual stored pointer in the report while making it
-        # explicit that SourceDocs itself was never traversed.
         result.scene_background_file = raw_pointer
         result.exact_pointer_resolves = False
         result.warnings = [
@@ -256,8 +253,6 @@ def guarded_resolve_one(conn, row, drive_root, drive_root_text):
     return enforce_structural_markers(result)
 
 
-# The base resolver dynamically uses these module globals, so patch them before
-# running main().
 base.make_candidate = marked_make_candidate
 base.resolve_one = guarded_resolve_one
 
