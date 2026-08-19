@@ -76,6 +76,47 @@ Images needed for `Setup` or `Takedown` must be placed in the `images` folder un
 ```
 
 `Procedures\Inspection` is intentionally unstructured.
+
+## Protected Names and the Database-Source Boundary
+
+The current Stage, Sub-stage, and Scene folder names are part of the LOR/Production Database/Google Drive alignment. **Do not rename them during ordinary cleanup.** Renaming a current structured root can break stored LOR `BackgroundFile` pointers, database path evidence, and application resolution.
+
+The following helper-folder names are also protected because they are part of the application-facing contract:
+
+```text
+PreviewBackground
+Procedures
+Wiring
+```
+
+Do not rename those helper folders.
+
+Each active database/application source helper folder contains:
+
+```text
+_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+The marker defines the current application-source boundary. For current database-backed discovery, **only content inside approved marked source folders is considered**. Loose files and unmarked legacy folders elsewhere under a Stage or Scene are not current application-source content merely because they are physically nearby.
+
+This rule is intentionally compatible with gradual cleanup. Existing Stage and Scene folders contain many years of loose files, legacy folders, and other engineering material. Do not move, rename, or delete that material just to make the root look like the current scaffold. Preserve it until its purpose and correct destination are understood.
+
+Conceptually:
+
+```text
+Stage / Scene root
+├── PreviewBackground/   <- marked current DB/application source
+├── Procedures/          <- marked current DB/application source
+├── Wiring/              <- marked current DB/application source
+├── Photos/              <- general documentation; not DB source currently
+├── legacy folder(s)     <- preserve; ignored by application discovery
+└── loose legacy files   <- preserve; ignored by application discovery
+```
+
+As legacy material is reviewed, it may be deliberately moved into the appropriate marked source structure. Until then, applications must ignore it rather than guess based on filename, folder name, or proximity.
+
+See [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) for marker use, local notes, and the automated population utility.
+
 ## When a Scene Should Be Used
 
 A Scene should be created when a group of Displays is installed and wired as one physical unit and therefore shares a common wiring harness or common field setup.
@@ -292,6 +333,8 @@ For Setup, once the correct Stage, Sub-stage, or Scene is resolved, the applicat
 <Stage, Sub-stage, or Scene>\Procedures\Setup
 ```
 
+The `Procedures` source root must be an approved marked database-source folder before the application treats its content as current application-source material.
+
 Archive and SourceDocs content must be excluded from normal field presentation.
 
 Normal field users should not need to know the Google Drive hierarchy. The long-term presentation path remains:
@@ -315,17 +358,19 @@ The durable database/document-ID relationship is a separate engineering problem.
 # How to Work One Stage
 
 1. Run or open the current Documentation Alignment Worklist.
-2. Select one Stage.
-3. Confirm the Stage/Sub-stage/Scene organization shown by the current Folder Alignment data.
-4. Review the remaining legacy Setup files reported from `000-Instructions\0 - Setup Procedures`.
-5. Human-review the legacy file and determine its correct Stage, Sub-stage, or Scene ownership.
-6. If ownership is understood, move the original legacy `.gdoc` into that Stage/Sub-stage/Scene `Procedures\Setup\Archive` folder.
-7. If ownership is uncertain, leave the file in the central legacy source and flag it for review.
-8. Continue until the Stage/Sub-stage/Scene legacy material has been reconciled.
-9. Re-run Folder Alignment when a fresh snapshot of migration progress is needed.
-10. In the procedure-audit phase, process each archived legacy document through the controlled Setup Instruction template.
-11. After review/approval, publish the current field PDF in the applicable `Procedures\Setup` folder.
-12. Keep the superseded source in `Archive`.
+2. Select one Stage and preserve its current aligned Stage folder name.
+3. Preserve the marked `PreviewBackground`, `Procedures`, and `Wiring` helper-folder names.
+4. Treat material outside the marked source folders as legacy/general engineering material unless and until it is deliberately aligned.
+5. Review the remaining legacy Setup files reported from `000-Instructions\0 - Setup Procedures`.
+6. Human-review the legacy file and determine its correct Stage, Sub-stage, or Scene ownership.
+7. If ownership is understood, move the original legacy `.gdoc` into that Stage/Sub-stage/Scene `Procedures\Setup\Archive` folder.
+8. If ownership is uncertain, leave the file in the central legacy source and flag it for review.
+9. Do not clean unrelated loose Stage/Scene files or legacy folders merely because they are outside the marked source structure.
+10. Continue until the Stage/Sub-stage/Scene legacy material has been reconciled.
+11. Re-run Folder Alignment when a fresh snapshot of migration progress is needed.
+12. In the procedure-audit phase, process each archived legacy document through the controlled Setup Instruction template.
+13. After review/approval, publish the current field PDF in the applicable `Procedures\Setup` folder.
+14. Keep the superseded source in `Archive`.
 
 ---
 
@@ -361,6 +406,8 @@ Wiring\MusicalStage
 
 with working/source material under the corresponding `SourceDocs` location.
 
+The `Wiring` root is a protected marked database-source folder. Do not rename it. FieldWiring should consider published wiring only through the marked `Wiring` source structure and must ignore unrelated loose Stage/Scene files and unmarked legacy folders.
+
 The existing FormView architecture remains the precedent for resolving standardized field documentation from structured Stage/LOR context.
 
 ---
@@ -368,18 +415,21 @@ The existing FormView architecture remains the precedent for resolving standardi
 # Important Rules
 
 1. Use the current Documentation Alignment Worklist as the migration roadmap.
-2. Keep the established Stage/Sub-stage/Scene folder structure.
-3. Treat the central `000-Instructions\0 - Setup Procedures` tree as the unresolved legacy backlog.
-4. A human-audited move into `Procedures\Setup\Archive` establishes the accepted Stage/Sub-stage/Scene ownership of that legacy document.
-5. Do not rely on fuzzy filename matching once the document has been human-assigned to an Archive location.
-6. Do not publish an archived legacy `.gdoc` as though it were the current field instruction.
-7. Audit and reformat the legacy procedure using the controlled Setup Instruction template before publishing a current version.
-8. Keep the current field PDF or other approved presentation directly available from `Procedures\Setup`.
-9. Exclude `Archive` and `SourceDocs` material from normal field-user navigation.
-10. Do not delete useful historical engineering material merely to make the folder tree look clean.
-11. Do not assume every Display requires a Setup procedure.
-12. Do not assume every file in the legacy Setup repository is actually a procedure.
-13. When uncertain, preserve the material and flag it for review instead of guessing.
+2. Keep the established Stage/Sub-stage/Scene folder structure and do not rename an aligned Stage/Sub-stage/Scene root during ordinary cleanup.
+3. Do not rename the marked `PreviewBackground`, `Procedures`, or `Wiring` helper folders.
+4. Treat only approved marked source folders as current database/application source locations.
+5. Preserve loose files and unmarked legacy folders until they have been deliberately reviewed; applications must ignore them for current discovery.
+6. Treat the central `000-Instructions\0 - Setup Procedures` tree as the unresolved legacy backlog.
+7. A human-audited move into `Procedures\Setup\Archive` establishes the accepted Stage/Sub-stage/Scene ownership of that legacy document.
+8. Do not rely on fuzzy filename matching once the document has been human-assigned to an Archive location.
+9. Do not publish an archived legacy `.gdoc` as though it were the current field instruction.
+10. Audit and reformat the legacy procedure using the controlled Setup Instruction template before publishing a current version.
+11. Keep the current field PDF or other approved presentation directly available from `Procedures\Setup`.
+12. Exclude `Archive` and `SourceDocs` material from normal field-user navigation.
+13. Do not delete useful historical engineering material merely to make the folder tree look clean.
+14. Do not assume every Display requires a Setup procedure.
+15. Do not assume every file in the legacy Setup repository is actually a procedure.
+16. When uncertain, preserve the material and flag it for review instead of guessing.
 
 ---
 
@@ -387,6 +437,8 @@ The existing FormView architecture remains the precedent for resolving standardi
 
 The migration phase is progressing correctly when:
 
+- the current aligned Stage/Sub-stage/Scene and marked source-folder names remain stable;
+- applications can ignore unmarked legacy material and use only the controlled marked source structure;
 - the unresolved central legacy Setup backlog becomes smaller;
 - reviewed legacy procedures appear under the correct Stage/Sub-stage/Scene `Procedures\Setup\Archive` folders;
 - Folder Alignment can verify those human-audited locations without fuzzy ownership inference;
@@ -400,6 +452,7 @@ The end goal is simple: a volunteer should eventually be able to scan a Display 
 ## Related Documents
 
 - [Google Drive Folder Structure](00-Google_Drive.md) — engineering architecture and folder-location contract.
+- [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) — identifies the current database/application source boundary inside existing Stage/Scene trees.
 - [LOR System Documentation](../01_LOR_System/README.md) — LOR-side system documentation.
 - [FormView](../01_LOR_System/04_FormView/README.md) — proven field-wiring application and location-resolution precedent.
 - [Stage Setup Documentation Standard](../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md) — governance for controlled field-facing Setup Instructions.
