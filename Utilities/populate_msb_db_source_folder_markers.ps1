@@ -1,24 +1,25 @@
 <#
 .SYNOPSIS
-Populates MSB database/source marker files in the existing Display Folders tree.
+Adds the standard MSB database-source marker file to existing Google Drive source folders.
 
 .DESCRIPTION
-PREVIEW ONLY by default. Use -Apply to write files.
+PREVIEW ONLY by default. Use -Apply to create marker files.
 
 Creates ONLY:
   _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 
-Targets:
-- every detected Stage root;
-- every detected Substage root;
-- every detected Scene root;
-- existing PreviewBackground folders;
-- existing Procedures folders at Stage/Substage/Scene scope;
-- existing Wiring folders at Stage/Substage/Scene scope.
+Approved current targets:
+- PreviewBackground folders at any legitimate Stage/Substage/Scene/Display/shared-folder scope;
+- Procedures folders at structured Stage/Substage/Scene scope;
+- Wiring folders at structured Stage/Substage/Scene scope.
 
-It does NOT create, rename, move, or delete folders.
-It does NOT overwrite an existing exact marker, preserving LOCAL NOTES.
-Photos is not marked.
+IMPORTANT:
+- Stage/Substage/Scene ROOT folders are NOT marker targets.
+- Photos is NOT a marker target.
+- The script does not create, rename, move, or delete folders.
+- The script does not overwrite an existing exact marker, preserving LOCAL NOTES.
+- The script does not recurse into SourceDocs, Archive, Photos, PreviewBackground,
+  Procedures, or Wiring after those helper folders are encountered.
 #>
 
 [CmdletBinding()]
@@ -53,22 +54,19 @@ function Test-TopLevelStage {
     return ($Dir.Name -match '^\d{2}-.+')
 }
 
-function Get-ScopeKind {
+function Test-StructuredScope {
     param(
         [IO.DirectoryInfo]$Dir,
         [IO.DirectoryInfo]$StageRoot
     )
 
-    if ($Dir.FullName -eq $StageRoot.FullName) { return 'STAGE' }
+    if ($Dir.FullName -eq $StageRoot.FullName) { return $true }
 
     # Governing folder rules:
     # NNa-Name-XY = Substage
     # NN-Name     = Scene
     # NNa-Name    = Scene under Substage
-    if ($Dir.Name -match '^\d{2}[A-Za-z]-.+-[A-Za-z]{2,3}$') { return 'SUBSTAGE' }
-    if ($Dir.Name -match '^\d{2}[A-Za-z]?-.+') { return 'SCENE' }
-
-    return $null
+    return ($Dir.Name -match '^\d{2}[A-Za-z]?-.+')
 }
 
 function Get-StandardHeader {
@@ -101,53 +99,6 @@ Notes:
 '@
 }
 
-function Get-RootMarkerText {
-    param([string]$ScopeKind,[string]$FolderName)
-
-    $label = switch ($ScopeKind) {
-        'STAGE'    { 'STAGE ROOT' }
-        'SUBSTAGE' { 'SUBSTAGE ROOT' }
-        'SCENE'    { 'SCENE ROOT' }
-        default    { 'STRUCTURED ROOT' }
-    }
-
-    return (Get-StandardHeader) + @"
-FOLDER PURPOSE — $label
-
-Folder:
-$FolderName
-
-This folder is an aligned structural scope used by the MSB Production Database,
-Light-O-Rama (LOR), Folder Alignment, and database-backed applications.
-
-IMPORTANT — DO NOT RENAME OR MOVE THIS FOLDER
-- Do not rename or move this Stage, Substage, or Scene folder unless an approved
-  alignment change specifically requires it.
-- LOR BackgroundFile pointers, database path evidence, and application resolution
-  may depend on this folder name and hierarchy.
-- Keep this marker file in this folder.
-
-LEGACY CONTENT BOUNDARY
-This root may contain loose files and legacy folders accumulated over many years.
-Those items may remain in place while cleanup continues.
-
-Loose files and unmarked folders under this root are NOT automatically current
-database/application source content.
-
-Current application source content is limited to approved marked child folders,
-including as applicable:
-- PreviewBackground
-- Procedures
-- Wiring
-
-Photos is not currently a database/application source folder.
-
-Preserve uncertain legacy material until it is deliberately reviewed and aligned.
-Do not reorganize the root merely to make it look clean.
-
-"@ + (Get-LinksAndNotes)
-}
-
 function Get-HelperMarkerText {
     param([string]$FolderType)
 
@@ -160,7 +111,7 @@ This folder contains current background images used by Light-O-Rama Previews
 and Scenes and as navigation/context evidence by MSB database-backed applications.
 
 Important:
-- Do not rename or move this folder.
+- Do not rename or move this folder without following the folder-alignment procedure.
 - Do not casually rename, move, or delete an image referenced by LOR.
 - Referenced BackgroundFile paths must be deliberately realigned when changed.
 
@@ -174,7 +125,7 @@ This folder is the controlled source root for field procedures associated with
 this Stage, Substage, or Scene.
 
 Important:
-- Do not rename or move this folder.
+- Do not rename or move this folder without following the folder-alignment procedure.
 - Keep current field-facing material in approved procedure locations.
 - Archive and SourceDocs material is not normal field-facing content.
 
@@ -188,7 +139,7 @@ This folder is the controlled source root for published field wiring information
 associated with this Stage, Substage, or Scene.
 
 Important:
-- Do not rename or move this folder.
+- Do not rename or move this folder without following the folder-alignment procedure.
 - Published field wiring belongs in BackgroundStage or MusicalStage as applicable.
 - SourceDocs is working/source material and must not be traversed or presented by
   database-backed field applications.
@@ -207,7 +158,6 @@ function Add-Target {
         [hashtable]$Seen,
         [IO.DirectoryInfo]$Folder,
         [string]$TargetType,
-        [string]$ScopeKind,
         [IO.DirectoryInfo]$StageRoot
     )
 
@@ -218,7 +168,6 @@ function Add-Target {
     $List.Add([pscustomobject]@{
         Stage        = $StageRoot.Name
         TargetType   = $TargetType
-        ScopeKind    = $ScopeKind
         FolderPath   = $Folder.FullName
         RelativePath = Get-RelativePathSafe -Base $DriveRoot -Child $Folder.FullName
     })
@@ -236,12 +185,7 @@ function Find-TargetsForStage {
 
     while ($queue.Count -gt 0) {
         $current = $queue.Dequeue()
-        $scopeKind = Get-ScopeKind -Dir $current -StageRoot $StageRoot
-
-        if ($scopeKind) {
-            Add-Target -List $Targets -Seen $Seen -Folder $current `
-                -TargetType 'ScopeRoot' -ScopeKind $scopeKind -StageRoot $StageRoot
-        }
+        $isStructuredScope = Test-StructuredScope -Dir $current -StageRoot $StageRoot
 
         try {
             $children = @(Get-ChildItem -LiteralPath $current.FullName -Directory -Force)
@@ -254,21 +198,23 @@ function Find-TargetsForStage {
         foreach ($child in $children) {
             switch ($child.Name) {
                 'PreviewBackground' {
+                    # PreviewBackground may be a legitimate LOR/database source
+                    # beneath Stage, Substage, Scene, Display, or shared folders.
                     Add-Target -List $Targets -Seen $Seen -Folder $child `
-                        -TargetType 'PreviewBackground' -ScopeKind $null -StageRoot $StageRoot
+                        -TargetType 'PreviewBackground' -StageRoot $StageRoot
                     continue
                 }
                 'Procedures' {
-                    if ($scopeKind) {
+                    if ($isStructuredScope) {
                         Add-Target -List $Targets -Seen $Seen -Folder $child `
-                            -TargetType 'Procedures' -ScopeKind $null -StageRoot $StageRoot
+                            -TargetType 'Procedures' -StageRoot $StageRoot
                     }
                     continue
                 }
                 'Wiring' {
-                    if ($scopeKind) {
+                    if ($isStructuredScope) {
                         Add-Target -List $Targets -Seen $Seen -Folder $child `
-                            -TargetType 'Wiring' -ScopeKind $null -StageRoot $StageRoot
+                            -TargetType 'Wiring' -StageRoot $StageRoot
                     }
                     continue
                 }
@@ -305,7 +251,6 @@ if ($stageRoots.Count -eq 0) {
 
 $targets = New-Object 'Collections.Generic.List[object]'
 $seen = @{}
-
 foreach ($stageRoot in $stageRoots) {
     Find-TargetsForStage -StageRoot $stageRoot -Targets $targets -Seen $seen
 }
@@ -333,14 +278,7 @@ foreach ($target in ($targets | Sort-Object Stage,RelativePath)) {
         $message = 'Preview only.'
     }
     else {
-        if ($target.TargetType -eq 'ScopeRoot') {
-            $content = Get-RootMarkerText -ScopeKind $target.ScopeKind `
-                -FolderName (Split-Path -Leaf $target.FolderPath)
-        }
-        else {
-            $content = Get-HelperMarkerText -FolderType $target.TargetType
-        }
-
+        $content = Get-HelperMarkerText -FolderType $target.TargetType
         Set-Content -LiteralPath $markerPath -Value $content -Encoding UTF8
         $action = 'CREATED'
         $message = 'Marker created.'
@@ -349,7 +287,6 @@ foreach ($target in ($targets | Sort-Object Stage,RelativePath)) {
     $results.Add([pscustomobject]@{
         Stage        = $target.Stage
         TargetType   = $target.TargetType
-        ScopeKind    = $target.ScopeKind
         RelativePath = $target.RelativePath
         MarkerPath   = $markerPath
         Action       = $action
@@ -377,7 +314,7 @@ Write-Host "Report: $ReportPath"
 Write-Host ''
 
 $results |
-    Select-Object Stage,TargetType,ScopeKind,RelativePath,Action |
+    Select-Object Stage,TargetType,RelativePath,Action |
     Format-Table -AutoSize
 
 if (-not $Apply) {
