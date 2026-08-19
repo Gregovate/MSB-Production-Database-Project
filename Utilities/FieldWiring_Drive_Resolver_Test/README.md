@@ -25,6 +25,16 @@ It reads:
 - `G:\Shared drives\Display Folders`; and
 - direct image filenames in candidate published folders.
 
+### `SourceDocs` traversal guard
+
+`SourceDocs` is a hard source-only boundary.
+
+The normal PowerShell entry point runs `guarded_resolver_test.py`, which inspects `BackgroundFile` path text before filesystem navigation. If the pointer contains a `SourceDocs` segment, the raw pointer is retained only for reporting and navigation is truncated before `SourceDocs`.
+
+The harness must never descend into, enumerate, open, fetch, or present files under `SourceDocs`.
+
+A pointer into `SourceDocs` is reported as a folder-alignment/data-quality condition rather than being accepted as a published field-document endpoint.
+
 ## Default Acceptance Cases
 
 The default run tests:
@@ -32,9 +42,11 @@ The default run tests:
 - `15-Church-CH` — direct Musical Wiring pointer;
 - `05a-Mega Star-MS` — deep arbitrary image beneath a formal Substage;
 - `03-Mega Cube-MC` — Scene PreviewBackground with possible Stage Wiring fallback;
-- `07-Who Characters` — pointer inside `SourceDocs`;
+- current snapshot `07-Who Characters` — stale Scene identity plus pointer entering `SourceDocs`;
 - `02-Fred's Stars` — stale stored folder path requiring deterministic current hierarchy resolution; and
 - Stage 15 `Root` in `Show Background Stage 15 Church` — Background/Static Stage-root resolution.
+
+The LOR Scene formerly represented in the development snapshot as `07-Who Characters` has been corrected by the operator to `07-Who People`. That corrected name will appear in the test data after a later parser/snapshot run; an immediate parser run is not required while folder-alignment review is still underway.
 
 ## Run
 
@@ -92,7 +104,7 @@ Each tested Scene records:
 - Stage key;
 - current `BackgroundFile` pointer;
 - whether the pointer is beneath the configured Shared Drive root;
-- whether the exact stored pointer resolves;
+- whether the allowed exact stored pointer resolves;
 - current Stage root;
 - resolved structured scope and resolution basis;
 - applicable `BackgroundStage` or `MusicalStage` branch;
@@ -101,7 +113,7 @@ Each tested Scene records:
 - Stage Wiring folder and direct published images;
 - Stage PreviewBackground and direct images;
 - the selected candidate under the current fallback hypothesis; and
-- warnings/unresolved conditions.
+- warnings/unresolved conditions, including blocked `SourceDocs` pointers.
 
 ## Exit Codes
 
@@ -125,6 +137,6 @@ resolved Scene/Substage Wiring branch
     -> unresolved
 ```
 
-Only folders containing at least one directly published `.jpg`, `.jpeg`, or `.png` file are treated as usable by the current harness. `SourceDocs` is never recursively scanned as published field content.
+Only folders containing at least one directly published `.jpg`, `.jpeg`, or `.png` file are treated as usable by the current harness. `SourceDocs` is excluded from traversal and publication entirely.
 
 Do not promote this fallback order to final production behavior until the acceptance evidence has been reviewed and the engineering design is updated accordingly.
