@@ -67,7 +67,74 @@ Do not add the marker to `Photos` at this time. The current Production Database/
 
 Do not add extra copies inside `BackgroundStage`, `MusicalStage`, `Setup`, `Takedown`, `SourceDocs`, `Archive`, `images`, or other child folders unless a future approved application contract specifically makes that child folder a separately controlled database source.
 
-If another helper folder becomes a database/application source in the future, add the marker only after the governing engineering/operator documentation has been updated.
+`PreviewBackground` may legitimately exist at Stage, Sub-stage, Scene, Display, or shared-documentation scope. A `PreviewBackground` folder under a current Stage tree is therefore a valid marker target even when the immediate parent is an unprefixed Display/shared folder.
+
+If another helper folder becomes a database/application source in the future, add the marker only after the governing engineering/operator documentation and the population utility have been updated.
+
+---
+
+## Automated Population Utility
+
+Use the repository utility to populate the marker into the **existing** Google Drive structure:
+
+```text
+Utilities\populate_msb_db_source_folder_markers.ps1
+```
+
+The utility is intentionally conservative.
+
+It:
+
+- scans top-level Stage folders beneath `G:\Shared drives\Display Folders`;
+- identifies existing `PreviewBackground`, `Procedures`, and `Wiring` source folders;
+- creates only the approved marker `.txt` file;
+- never creates, renames, moves, or deletes folders;
+- never places the marker in `Photos`;
+- does not recurse into `SourceDocs`, `Archive`, `Photos`, `PreviewBackground`, `Procedures`, or `Wiring` branches;
+- does not overwrite an existing exact marker file, so local notes are preserved; and
+- stops for review when a differently named `_MSB-DB-Source-Folder*.txt` marker already exists.
+
+### Preview first
+
+The default run is **preview only** and makes no Drive changes:
+
+```powershell
+.\Utilities\populate_msb_db_source_folder_markers.ps1
+```
+
+The script prints the planned targets and writes a CSV report to the current user's Desktop.
+
+For a first controlled test, limit the preview to one Stage:
+
+```powershell
+.\Utilities\populate_msb_db_source_folder_markers.ps1 -StageFilter '15-*'
+```
+
+Review the listed `PreviewBackground`, `Procedures`, and `Wiring` targets before applying the change.
+
+### Apply to one Stage
+
+After the preview is correct:
+
+```powershell
+.\Utilities\populate_msb_db_source_folder_markers.ps1 -StageFilter '15-*' -Apply
+```
+
+### Apply to all current Stage trees
+
+After the all-Stage preview has been reviewed:
+
+```powershell
+.\Utilities\populate_msb_db_source_folder_markers.ps1 -Apply
+```
+
+The script creates only missing exact marker files. If the exact marker is already present, it reports `SKIPPED_EXISTING` and leaves the file untouched.
+
+This is important because the existing file may contain useful `LOCAL NOTES` that must not be lost.
+
+A result of `REVIEW_EXISTING_MARKER` means another `_MSB-DB-Source-Folder*.txt` file already exists with a different filename. Review that folder manually rather than allowing the utility to create a duplicate marker.
+
+The generated CSV report records the Stage, source-folder type, relative path, marker path, action, and explanation.
 
 ---
 
@@ -83,7 +150,7 @@ A normal marker includes:
 - `FOLDER PURPOSE — PREVIEW BACKGROUND`;
 - a short explanation of LOR/Scene background use;
 - a warning not to rename/move referenced material without deliberate alignment work;
-- a link to the Google Drive Document Organization Procedure; and
+- links to the marker and Google Drive organization procedures; and
 - an optional local-notes section.
 
 ---
@@ -100,7 +167,7 @@ A normal marker includes:
 - `FOLDER PURPOSE — PROCEDURES`;
 - a short explanation of field-procedure discovery;
 - the current publication/source-material boundary;
-- a link to the Google Drive Document Organization Procedure; and
+- links to the marker and Google Drive organization procedures; and
 - an optional local-notes section.
 
 ---
@@ -124,7 +191,7 @@ A normal marker includes:
 - `FOLDER PURPOSE — WIRING`;
 - a short explanation of Background/Static and Musical published wiring branches;
 - the `SourceDocs` exclusion rule;
-- a link to the Google Drive Document Organization Procedure; and
+- links to the marker and Google Drive organization procedures; and
 - an optional local-notes section.
 
 ---
@@ -154,6 +221,8 @@ Do not remove the current folder until the next LOR/parser alignment run is comp
 Do not use the notes section for passwords, credentials, API keys, private personal information, or application configuration secrets.
 
 Do not delete or rewrite the standard purpose/rule text above the notes merely to make the marker shorter.
+
+The automated population utility never overwrites the exact marker filename. This is deliberate so notes added by operators remain intact.
 
 ---
 
@@ -185,13 +254,15 @@ When creating a new controlled Stage/Sub-stage/Scene structure from the approved
 5. Keep the standard opening text and standard rules intact.
 6. Do not rename the Stage/Scene folder merely to make the marker or database integration easier.
 
-During legacy Folder Alignment work, do not mass-add markers to every folder merely because its name resembles a standard helper folder. First confirm the current Stage/Scene ownership and intended helper-folder role. The marker should identify a reviewed source folder, not create authority by itself.
+For existing current Stage trees, use the automated utility in preview mode first. The marker identifies an existing database/application source folder; it must not be used as a reason to rename or restructure the surrounding Stage/Scene hierarchy.
+
+During legacy Folder Alignment work, review unusual targets reported by the utility rather than assuming every legacy folder with a familiar name is already aligned. The marker documents a source-folder role; it does not create Stage/Scene identity authority by itself.
 
 ---
 
 ## More Information
 
-Main operator procedure:
+Main Google Drive organization procedure:
 
 https://github.com/Gregovate/MSB-Production-Database-Project/blob/main/Docs/00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md
 
