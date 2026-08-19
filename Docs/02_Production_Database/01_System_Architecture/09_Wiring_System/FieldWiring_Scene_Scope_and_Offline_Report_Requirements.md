@@ -5,67 +5,124 @@
 | Status | DRAFT — accepted field UX direction |
 | Sub-project | FieldWiring |
 | Predecessor reference | FormView 0.3.1 Wiring View |
-| Current revision | 2026-08-17 |
+| Current revision | 2026-08-19 |
 | Owner | MSB Database Administrator |
-| Code/schema change status | DOCUMENTATION ONLY |
+| Code/schema change status | DOCUMENTATION / TEST CONTRACT |
 
 ## Purpose
 
 This document records the Scene-aware wiring-image and offline-report behavior required for FieldWiring.
 
-FormView proved the usefulness of combining wiring rows with one or more annotated field images and exporting a printable HTML document. Its limitation is that the application is Preview/Stage oriented: additional images discovered under the selected published wiring directory are presented as one paginated image set even when the physical work is more naturally organized into separate Scenes.
+FormView proved the usefulness of combining wiring rows with one or more annotated field images and exporting a printable HTML document. FieldWiring preserves that practical field outcome while using current Production Database Scene/Sub-stage/Stage relationships and the controlled Google Drive source structure.
 
-FieldWiring should preserve the useful multi-image and offline-document behavior while using the Production Database Scene relationships to narrow the field context when a defined Scene exists.
+A critical distinction is now explicit:
 
-This document defines presentation and resolution requirements only. It does not authorize a database-schema or application-code change.
+> **Procedure inheritance and Wiring inheritance are not the same rule.**
 
-## Proven FormView Behavior
+A Procedure may legitimately apply at a parent Stage/Sub-stage level. FieldWiring must not silently substitute a parent wiring image for a more-specific Scene/Sub-stage whose own wiring image is missing.
 
-For a selected Preview, FormView currently:
-
-1. reads the Preview `BackgroundFile`;
-2. displays that image as the primary wiring image;
-3. discovers additional published images from the same wiring directory;
-4. presents them using Page X/Y pagination;
-5. combines the image set with the selected Preview wiring rows; and
-6. can export printable HTML for field use.
-
-This behavior is useful and must not be lost merely because FieldWiring becomes browser based.
+---
 
 ## Scene-Aware FieldWiring Scope
 
-A Display scan resolves the permanent Display and its current field hierarchy.
-
-Conceptually:
+A Display scan or operator lookup resolves the permanent Display and its current hierarchy:
 
 ```text
-Display QR
-    -> display_id
-    -> current Display record
-    -> owning Scene, when defined
-    -> owning Sub-stage, when applicable
-    -> owning Stage
+Display
+    -> defined Scene, when applicable
+    -> formal Sub-stage, when applicable
+    -> Stage
 ```
 
-The task selected by the operator then determines the applicable presentation scope.
+For FieldWiring, the resolved wiring scope is the **most-specific current structured scope that owns the selected wiring context**.
 
-For FieldWiring, the preferred wiring scope is:
+Examples:
 
 ```text
-Defined Scene
-    -> Scene wiring context
+Display in Scene X
+    -> Scene X wiring scope
 
-No defined Scene
-    -> applicable Sub-stage or Stage wiring context
+Display in formal Sub-stage with no separate Scene wiring scope
+    -> Sub-stage wiring scope
+
+Display with no defined Scene/Sub-stage wiring scope
+    -> Stage wiring scope
 ```
 
-The scan itself does not create, move, or change any Scene/Stage assignment.
+Once that wiring scope is resolved, FieldWiring stays inside it for wiring-image discovery.
+
+---
+
+## No Parent Wiring-Image Inheritance
+
+When a Scene or Sub-stage is the resolved FieldWiring scope, FieldWiring must **not crawl upward to the parent Stage to borrow a wiring image** merely because the Scene/Sub-stage wiring branch is empty.
+
+That would mix two different physical/documentation scopes and could show the operator a wiring drawing that does not describe the selected Scene.
+
+Therefore:
+
+```text
+Resolved Scene
+    -> Scene Wiring only
+    -> optional Scene PreviewBackground for visual context only
+    -> otherwise NO WIRING IMAGE AVAILABLE
+
+Resolved Sub-stage
+    -> Sub-stage Wiring only
+    -> optional Sub-stage PreviewBackground for visual context only
+    -> otherwise NO WIRING IMAGE AVAILABLE
+
+Resolved Stage
+    -> Stage Wiring
+    -> optional Stage PreviewBackground for visual context only
+    -> otherwise NO WIRING IMAGE AVAILABLE
+```
+
+A missing Scene/Sub-stage wiring image is a documentation gap to expose and fill, not a reason to use the parent Stage wiring drawing.
+
+This rule applies to **Wiring**. It does not prohibit Setup/Takedown/Inspection procedures from using their separately defined parent-scope inheritance rules.
+
+---
+
+## PreviewBackground Is Context, Not Wiring
+
+`PreviewBackground` may be useful when no published wiring drawing exists at the resolved scope because it can show the operator what the Scene/Sub-stage/Stage looks like.
+
+However, it must be labeled honestly.
+
+The operator presentation should distinguish:
+
+```text
+WIRING IMAGE
+    published image from Wiring\BackgroundStage or Wiring\MusicalStage
+
+CONTEXT IMAGE
+    image from the same scope's PreviewBackground
+
+NO WIRING IMAGE AVAILABLE
+    no published wiring image exists at the resolved scope
+```
+
+If a context image is available, the preferred presentation is:
+
+```text
+NO WIRING IMAGE AVAILABLE
+
+Context image:
+    <same-scope PreviewBackground image>
+```
+
+The context image must never receive a badge or caption that implies it is a published wiring drawing.
+
+This makes missing documentation visible while still giving the field user useful visual orientation when possible.
+
+---
 
 ## Scene-Scoped Wiring Rows
 
-When the scanned Display belongs to a defined current Scene, the normal FieldWiring result should show the requisite wiring for that Scene rather than every wiring row from the complete Stage Preview.
+When the scanned Display belongs to a defined current Scene, the normal FieldWiring result shows the requisite wiring rows for that Scene rather than every row from the complete Stage Preview.
 
-This makes the scan result idempotent at the Scene level:
+This creates idempotent Scene behavior:
 
 ```text
 scan Display A in Scene X -> Field Wiring -> Scene X wiring
@@ -73,60 +130,74 @@ scan Display B in Scene X -> Field Wiring -> Scene X wiring
 scan Display C in Scene X -> Field Wiring -> Scene X wiring
 ```
 
-The scanned Display may be highlighted or identified in the result, but it must not reduce a shared Scene wiring package to only that one Display.
+The scanned Display may be highlighted, but it must not reduce a shared Scene wiring package to only that one Display.
 
-If a Display is not assigned to a defined Scene, FieldWiring falls back to the applicable Sub-stage/Stage wiring scope.
+Shared controller/channel relationships within the resolved Scene remain visible according to the established field-lead semantics.
 
-### Shared-circuit preservation
+The wiring-row scope is independent of whether a wiring image currently exists.
 
-Scene filtering must occur without changing the established field-lead semantics.
-
-If multiple Displays within the resolved Scene legitimately share one controller/channel, every applicable Display relationship remains visible.
-
-## Scene-Scoped Wiring Images
-
-When a defined Scene owns the wiring documentation for the selected wiring context, FieldWiring should present the images belonging to that Scene as the default image set.
-
-A Scene may legitimately have more than one published wiring image.
-
-Those images remain one paginated set for that Scene:
+A Scene can therefore legitimately present:
 
 ```text
 Scene X
-    Wiring
-        BackgroundStage or MusicalStage
-            image 1
-            image 2
-            image 3
-
-FieldWiring
-    << Page 1/3 >>
+    wiring rows: AVAILABLE
+    wiring image: MISSING
+    context image: AVAILABLE or MISSING
 ```
 
-The important change from FormView is the scope of the image set, not the elimination of pagination.
+---
 
-FieldWiring should not normally combine images from unrelated sibling Scenes into one Stage-wide image carousel merely because they ultimately belong to the same Stage.
+## Published Wiring Images
 
-## Stage/Sub-stage Fallback
+For the resolved wiring scope and selected context, FieldWiring inspects only the corresponding published branch:
 
-Not every Display belongs to a defined Scene, and not every Scene necessarily has its own published wiring package.
+```text
+<resolved scope>\Wiring\BackgroundStage
+```
 
-Resolution must therefore be deterministic and conservative.
+or:
 
-The intended lookup order is:
+```text
+<resolved scope>\Wiring\MusicalStage
+```
 
-1. use the defined Scene wiring package when the Scene owns current wiring material for the selected context;
-2. otherwise use the applicable Sub-stage wiring package when one exists;
-3. otherwise use the owning Stage wiring package;
-4. if the expected documentation cannot be resolved unambiguously, report the missing/ambiguous condition instead of silently choosing a different sibling folder.
+Only directly published image files in that branch are normal wiring-image candidates.
 
-This follows the existing project rule that uncertain documentation ownership must be surfaced rather than guessed.
+Current expected extensions include:
 
-## Background / Static versus Musical Context
+```text
+.jpg
+.jpeg
+.png
+```
 
-Scene scope does not eliminate the distinction between the established wiring contexts.
+`SourceDocs` is never field content and is a hard traversal boundary.
 
-The operator may still need a plain-language choice such as:
+FieldWiring must not combine images from a parent Stage, sibling Scene, or unrelated folder merely to avoid a missing-image condition.
+
+---
+
+## Multiple Images Remain a First-Class Requirement
+
+A resolved wiring scope may contain more than one published wiring image.
+
+FieldWiring must support:
+
+- all published images from the resolved wiring branch;
+- deterministic page order;
+- previous/next navigation;
+- Page X/Y indication;
+- zoom or image enlargement;
+- clear Stage/Sub-stage/Scene and wiring-context identification; and
+- the same image set in the offline report.
+
+Images from sibling or parent scopes are not added to that set.
+
+---
+
+## Background / Static Versus Musical
+
+The operator may choose:
 
 ```text
 Field Wiring
@@ -134,149 +205,123 @@ Field Wiring
     Musical
 ```
 
-The selected context determines whether the Scene/Stage wiring presentation resolves through the Background or Musical branch.
+The selected context determines the branch within the already resolved wiring scope:
 
-The browser UI should use field-oriented wording while retaining traceability to the underlying LOR Preview/context.
+```text
+Background / Static -> Wiring\BackgroundStage
+Musical             -> Wiring\MusicalStage
+```
 
-## Multiple Images Remain a First-Class Requirement
+Changing wiring context does not authorize changing the resolved Scene/Sub-stage/Stage scope.
 
-A single image is not sufficient as a general FieldWiring assumption.
+---
 
-The browser application must support:
+## Procedure Inheritance Is Separate
 
-- one or more images for a resolved Scene/Stage wiring package;
-- deterministic page order;
-- previous/next navigation;
-- Page X/Y indication;
-- usable zoom or image enlargement;
-- clear identification of the current Scene/Stage and wiring context; and
-- inclusion of every current published image in the corresponding offline report.
+Setup, Takedown, Inspection, and other procedure applications may have valid parent-scope inheritance because a Stage-level procedure can intentionally apply to child Scenes or Displays.
 
-The implementation does not need to reproduce the exact Tkinter controls, but it must preserve equivalent field usability.
+That behavior is owned by the Procedure subsystem documentation.
+
+Conceptually:
+
+```text
+Procedures
+    Scene procedure if applicable
+        else Sub-stage / Stage procedure according to Procedure rules
+```
+
+FieldWiring does **not** reuse that fallback behavior for wiring images.
+
+The shared Drive resolver may resolve hierarchy for both callers, but each task adapter applies its own task-specific ownership rules after the structured scope is known.
+
+---
+
+## Operator Missing-Image Behavior
+
+When the resolved FieldWiring scope has no published wiring image, the browser should clearly display:
+
+```text
+NO WIRING IMAGE AVAILABLE
+```
+
+If the same resolved scope has one or more `PreviewBackground` images, FieldWiring may also show them under a separate label such as:
+
+```text
+Scene / Area Context
+```
+
+The UI must make clear that the context image is not the wiring drawing.
+
+This missing-image state is useful operationally because it exposes documentation holes that should be filled before setup season.
+
+The wiring table should still display when authoritative wiring rows are available even if the visual is missing.
+
+---
 
 ## Offline Field Requirement
 
-Internet access is not reliable in every part of the park.
+FieldWiring must preserve an offline path equivalent to the practical FormView printable HTML behavior.
 
-FieldWiring therefore cannot assume that a technician will always have a live browser connection while performing setup.
-
-The existing FormView printable HTML is operationally valuable because it can be generated while connected and then used as a portable field document.
-
-FieldWiring must preserve an equivalent offline path.
-
-## Self-Contained Offline HTML
-
-FieldWiring should provide a **single-file printable HTML export** for the resolved wiring package.
-
-The exported HTML must remain usable after the device loses network access.
-
-At minimum it must contain locally within the exported artifact:
+The preferred export remains a self-contained printable HTML file containing:
 
 - resolved Stage/Sub-stage/Scene identity;
-- selected wiring context;
+- selected Background/Static or Musical context;
 - all applicable field-wiring rows;
-- all applicable published wiring images;
+- all published wiring images from the resolved wiring scope;
+- a clearly labeled same-scope context image when one is intentionally included;
+- `NO WIRING IMAGE AVAILABLE` when published wiring imagery is missing;
 - generation timestamp;
-- explicit expiration timestamp;
-- source snapshot/provenance sufficient to identify the data used; and
-- the FieldWiring stale-document warning.
+- expiration timestamp;
+- source snapshot/provenance; and
+- stale-document warning.
 
-The HTML must not depend on:
+The offline package must not depend on a mapped `G:` drive, live PostgreSQL, live Google Drive fetching, or live `my.sheboyganlights.org` access after export.
 
-- a mapped `G:` drive;
-- `file:///G:/...` image references;
-- live calls back to PostgreSQL;
-- live calls to `my.sheboyganlights.org`; or
-- live Google Drive image fetching after the export has been created.
+The current accepted default remains expiration at the end of the local calendar day in which the report is generated. A newer approved wiring snapshot supersedes an older package immediately.
 
-Images may be embedded directly in the HTML or packaged by another method only if the resulting artifact remains reliably portable and offline. A single self-contained file is preferred for field simplicity.
-
-## PDF
-
-PDF may also be offered if useful, but PDF does not replace the requirement to preserve the practical offline/export behavior already proven by FormView unless the replacement is explicitly tested and accepted as operationally superior.
-
-The current priority is the field outcome: generate while connected, then retain a current portable package that can be viewed or printed without Internet access.
-
-## Offline Report Scope
-
-The exported document must correspond to the same resolved package shown on screen.
-
-Examples:
-
-```text
-Display in Scene X
-    -> Field Wiring / Background
-    -> Scene X wiring rows
-    -> Scene X Background wiring images
-    -> one offline HTML package
-```
-
-and:
-
-```text
-Display with no Scene
-    -> Field Wiring / Background
-    -> Stage wiring rows
-    -> Stage Background wiring images
-    -> one offline HTML package
-```
-
-The report must not silently expand a Scene-scoped browser result into a complete Stage-wide report unless the operator deliberately chooses a Stage-wide report.
-
-## Expiration / Stale Document Rule
-
-Offline capability increases the stale-document risk, so expiration markings are mandatory.
-
-Every generated offline package must prominently show:
-
-```text
-Generated: <absolute local date/time>
-Expires:   <absolute local date/time>
-```
-
-The current accepted default remains expiration at the end of the local calendar day in which the report is generated.
-
-The report is also superseded immediately by a newer approved wiring snapshot/Preview build.
-
-The document should identify the source import/snapshot and Preview/context so an operator or lead can determine which data created the package.
+---
 
 ## FormView Transition Requirement
 
-FormView remains available during FieldWiring development.
+FormView remains available during FieldWiring development until the replacement behavior is explicitly accepted.
 
-Scene-aware filtering and offline export must be validated against known-good Stages before FieldWiring replaces FormView for field wiring.
+Comparison must include:
 
-Comparison should include:
-
-1. the full Stage/Preview wiring result in FormView;
-2. the corresponding Scene membership in the Production Database;
-3. the FieldWiring Scene-filtered wiring result;
-4. the Scene's image set and page order;
-5. fallback behavior for Displays without Scenes;
-6. Background/Static versus Musical context;
+1. wiring rows;
+2. resolved Scene/Sub-stage/Stage scope;
+3. published wiring images;
+4. missing wiring-image behavior;
+5. same-scope context-image behavior;
+6. Background/Static versus Musical selection;
 7. shared circuits;
 8. SPARE filtering; and
-9. the exported offline HTML opened with network access disabled.
+9. offline HTML opened without network access.
+
+---
 
 ## Acceptance Cases
 
 At minimum, test:
 
-- a Stage with several defined Scenes;
-- two or more Displays in the same Scene, proving identical base FieldWiring results;
-- a Scene containing more than one wiring image;
-- sibling Scenes with different image sets, proving they are not mixed together;
-- a Display with no Scene, proving Stage/Sub-stage fallback;
-- a Scene with no own wiring package, proving controlled fallback;
-- a shared circuit involving multiple Displays in the same Scene;
-- offline HTML with all images embedded/available after disconnecting from the network; and
-- expiration/currentness markings on both screen and print.
+- a Stage-level wiring scope with a published wiring image;
+- a Scene with its own published wiring image;
+- a Scene with no wiring image but with a Scene `PreviewBackground` context image;
+- a Scene with neither wiring nor context image, proving `NO WIRING IMAGE AVAILABLE`;
+- a Scene whose parent Stage has a wiring image, proving the Stage image is **not** substituted;
+- a Sub-stage whose parent Stage has a wiring image, proving the Stage image is **not** substituted;
+- sibling Scenes with different image sets, proving they are never mixed;
+- a Scene containing multiple published wiring images;
+- shared circuits within a Scene;
+- wiring rows displayed even when the image is missing; and
+- offline HTML preserving the same missing/context/wiring distinction.
+
+---
 
 ## Related Documents
 
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
+- [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
-- [FieldWiring PostgreSQL Readiness Audit](FieldWiring_PostgreSQL_Readiness_Audit.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [Folder Alignment Engineering Design](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
 - [Google Drive Folder Structure](../../../00_Project_Overview/00-Google_Drive.md)
