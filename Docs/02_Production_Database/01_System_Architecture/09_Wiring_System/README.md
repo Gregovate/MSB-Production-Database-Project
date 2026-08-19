@@ -14,6 +14,7 @@ Start with:
 - [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring PostgreSQL Readiness Audit](FieldWiring_PostgreSQL_Readiness_Audit.md)
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
+- [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
@@ -79,6 +80,7 @@ FormView, PostgreSQL, Draw.io, and FieldWiring consume, enrich, visualize, and p
 - task-focused wiring lookup and presentation after shared scan/context resolution
 - field-friendly browser navigation and documentation
 - Scene-aware wiring/image scoping with controlled Stage/Sub-stage fallback
+- physical-controller/output presentation that does not expose raw LOR addressing as though it were always the physical hookup model
 - multiple-image paging within the resolved wiring scope
 - generated field views/documents as required
 - self-contained offline HTML suitable for disconnected field use
@@ -107,6 +109,7 @@ Wiring owns wiring content placed or referenced there. [Setup and Deployment](..
 
 - field wiring presentation
 - display/controller wiring lookup
+- physical-output presentation for conventional A/C and RGB/Pixie controller models
 - Scene-aware field package resolution
 - generated HTML/PDF field documentation
 - disconnected/offline field-document support
@@ -126,9 +129,9 @@ Wiring owns wiring content placed or referenced there. [Setup and Deployment](..
 
 The FormView architecture has now been recovered into the FieldWiring compatibility contract, the repository-defined PostgreSQL wiring layer has been compared against the current V7 parser, scan-to-Display/hierarchy behavior is owned by the shared Field Context Resolution contract, Scene-aware image/report behavior is captured in the FieldWiring presentation requirements, and the V7+ Scene `BackgroundFile` navigation-pointer model is now captured in the [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md).
 
-The next implementation gate is the read-only Drive resolver harness defined in that engineering design. It must prove current V7 Scene/Stage scope resolution against the actual `Display Folders` hierarchy, including exact paths, stale paths, deep legacy paths, `SourceDocs` pointers, Scene/Stage fallback candidates, and unresolved/ambiguous conditions. The candidate wiring visual fallback order remains under test and must not be treated as final merely because it produces a usable result.
+The Drive resolver has demonstrated current marked-folder discovery and live wiring-image pickup. The next field-presentation work must preserve the reduced field wiring data while translating raw LOR addressing into physical controller/output terms. In particular, [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md) records that current V7 `string_type` distinguishes conventional `Traditional` LOR hookup from `RGB` Pixie/pixel hookup, while Controller Inventory remains necessary for permanent physical-controller identity and authoritative grouping of address ranges across Displays.
 
-After that resolver gate passes, verify the **live** PostgreSQL objects that satisfy the read contract, define the read-only application data/query surface, and define how the resolved Google Drive wiring images will be securely served to browsers and embedded in offline exports.
+After the resolver gate, verify the **live** PostgreSQL objects that satisfy the read contract, define the read-only application data/query surface, and define how the resolved Google Drive wiring images will be securely served to browsers and embedded in offline exports.
 
 Do not change FormView or database schema merely to simplify the browser implementation. Preserve the LOR authority boundary and demonstrate any real schema gap before proposing a migration.
 
