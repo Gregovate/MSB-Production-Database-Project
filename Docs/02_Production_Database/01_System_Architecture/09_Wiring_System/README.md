@@ -17,6 +17,7 @@ Start with:
 - [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
 - [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md)
 - [FieldWiring E1.31 Dense RGB Field Presentation Contract](FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md)
+- [FieldWiring Channel / Plug Label Printing Requirements](FieldWiring_Channel_Plug_Label_Printing_Requirements.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
@@ -96,6 +97,7 @@ FieldWiring interprets and presents that topology. It does not independently red
 - task-focused hookup lookup and presentation after shared context resolution;
 - Stage/Sub-stage/Scene-aware data and image scoping;
 - device-family-aware physical hookup presentation;
+- controlled channel/plug label requests sourced from current wiring data;
 - multiple-image paging within the resolved wiring scope;
 - field-friendly browser navigation and documentation;
 - self-contained offline HTML suitable for disconnected field use;
@@ -103,6 +105,8 @@ FieldWiring interprets and presents that topology. It does not independently red
 - application-specific API/client code, deployment, configuration, and tests.
 
 FieldWiring must not become an independent topology-authoring system.
+
+Printer-specific rendering and Brother printer communication remain responsibilities of the existing Labeling / MSB_LabelPrintService subsystem rather than a second printer implementation inside FieldWiring.
 
 ## Stage Folder / Documentation Boundary
 
@@ -128,6 +132,7 @@ Wiring images are supplemental rough-location guidance. The hookup data remains 
 - physical-output interpretation for A/C and Pixie controllers;
 - DMX/DumbRGB presentation that does not confuse universe/channel addressing with physical plugs;
 - E1.31 dense RGB presentation that does not confuse universes with physical AlphaPix/PixCon controllers;
+- future controlled channel/plug label printing through LabelPrintService without hand-keying Channel Names;
 - generated HTML/PDF field documentation;
 - disconnected/offline field-document support; and
 - FieldWiring recovery, data-contract definition, and future task-focused browser workflow.
@@ -152,8 +157,9 @@ Current engineering focus is now the **operator read/presentation layer**:
 2. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
 3. classify the physical presentation family from current device/string metadata;
 4. translate raw topology into the hookup terms the field installer sees;
-5. keep raw Unit ID, DMX/E1.31 universe/channel, Source, DeviceType, and similar engineering values available under details; and
-6. integrate permanent Controller Inventory identities later without blocking current FieldWiring development.
+5. keep raw Unit ID, DMX/E1.31 universe/channel, Source, DeviceType, and similar engineering values available under details;
+6. integrate permanent Controller Inventory identities later without blocking current FieldWiring development; and
+7. preserve the future Channel Name -> 1/2-inch plug-label workflow as a controlled LabelPrintService integration rather than a manual printer-software task.
 
 Current acceptance examples include Church A/C + Pixie patterns, Candyland repeated Pixie 4 blocks, Who Forest Pixie 8 blocks, Santa's Workshop Pixie 8 blocks, Northern Lights as the first DMX/DumbRGB network-hookup case, and the dense RGB E1.31 cases: Mega Tree, Mega Ball, Mega Cube, Mega Star, and Mt. Crumpit Matrix.
 
