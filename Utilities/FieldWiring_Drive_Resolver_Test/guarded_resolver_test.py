@@ -2,12 +2,15 @@
 """
 Safety/contract guard for the FieldWiring Drive-context resolver test harness.
 
-This wrapper enforces two current Google Drive rules without modifying data:
+This wrapper enforces current Google Drive rules without modifying data:
 
 1. SourceDocs is a hard traversal boundary.
 2. Current application content may be selected only from approved marked source
    folders, and resolved Stage/Substage/Scene roots must carry the structural
    marker.
+3. A stale ref.stage.folder_path may be recovered for test purposes only when
+   the current LOR pointer resolves beneath Display Folders to one deterministic
+   marked top-level Stage root matching the Stage number.
 
 Legacy BackgroundFile paths may still be used as navigation evidence, but loose
 legacy files and unmarked folders cannot become published FieldWiring content.
@@ -67,6 +70,119 @@ def marked_make_candidate(label: str, path: Path):
         candidate.images = []
 
     return candidate
+
+
+def top_level_stage_from_pointer(
+    pointer_text: str | None,
+    drive_root: Path,
+    stage_key: str | None,
+) -> Path | None:
+    """Recover one top-level Stage root from exact current pointer evidence.
+
+    This is deliberately narrow. It is used only when ref.stage.folder_path is
+    stale/non-resolving. The pointer must be beneath the configured Display
+    Folders root, the first relative component must match the numeric Stage key,
+    the folder must exist, and it must carry the structural marker.
+    """
+    if not pointer_text or not stage_key:
+        return None
+
+    pointer = Path(pointer_text)
+    if not pointer.exists():
+        return None
+
+    try:
+        relative = pointer.relative_to(drive_root)
+    except ValueError:
+        return None
+
+    if not relative.parts:
+        return None
+
+    candidate = drive_root / relative.parts[0]
+    numeric_stage = stage_key[:2]
+    if not candidate.name.casefold().startswith(numeric_stage.casefold() + "-"):
+        return None
+    if not candidate.is_dir():
+        return None
+    if not (candidate / MARKER_NAME).is_file():
+        return None
+    return candidate
+
+
+def rebuild_candidates(result, stage_root: Path):
+    """Rebuild candidate paths after a stale Stage anchor is recovered."""
+    branch = result.wiring_branch
+    if not branch:
+        return result
+
+    candidates = []
+    scope_root = Path(result.resolved_scope_root) if result.resolved_scope_root else stage_root
+
+    if str(scope_root).casefold() != str(stage_root).casefold():
+        candidates.extend(
+            [
+                marked_make_candidate(
+                    f"{result.resolved_scope_type.title()} Wiring {branch}",
+                    scope_root / "Wiring" / branch,
+                ),
+                marked_make_candidate(
+                    f"{result.resolved_scope_type.title()} PreviewBackground",
+                    scope_root / "PreviewBackground",
+                ),
+            ]
+        )
+
+    candidates.extend(
+        [
+            marked_make_candidate(f"Stage Wiring {branch}", stage_root / "Wiring" / branch),
+            marked_make_candidate("Stage PreviewBackground", stage_root / "PreviewBackground"),
+        ]
+    )
+
+    result.candidates = candidates
+    selected = base.select_candidate(candidates)
+    result.selected_candidate = selected.label if selected else None
+    result.selected_path = selected.path if selected else None
+    result.status = "RESOLVED" if selected else "UNRESOLVED"
+    return result
+
+
+def recover_stale_stage_anchor(result, safe_pointer: str | None, drive_root: Path):
+    """Use exact marked pointer evidence when the persisted Stage path is stale."""
+    if result.stage_root_exists:
+        return result
+
+    recovered = top_level_stage_from_pointer(safe_pointer, drive_root, result.stage_key)
+    if recovered is None:
+        return result
+
+    old_stage_root = result.stage_root
+    result.stage_root = str(recovered)
+    result.stage_root_exists = True
+
+    # For a Stage-level result, the recovered top-level folder is also the
+    # resolved structured scope. For Scene/Substage results, preserve the more
+    # specific resolved scope and use the recovered Stage only for inheritance.
+    if result.resolved_scope_type == "STAGE":
+        result.resolved_scope_root = str(recovered)
+
+    result.warnings = [
+        warning
+        for warning in result.warnings
+        if not warning.startswith("Stage root does not resolve on the mapped Drive:")
+    ]
+    result.warnings.insert(
+        0,
+        "Persisted Stage folder_path did not resolve. Recovered current marked "
+        f"Stage root from exact LOR pointer evidence: {recovered} "
+        f"(stored Stage path: {old_stage_root})",
+    )
+    result.resolution_basis = (
+        "Stale persisted Stage folder_path recovered from exact marked current "
+        "LOR pointer evidence. " + result.resolution_basis
+    )
+    return rebuild_candidates(result, recovered)
 
 
 def enforce_structural_markers(result):
@@ -136,6 +252,7 @@ def guarded_resolve_one(conn, row, drive_root, drive_root_text):
     else:
         result = _original_resolve_one(conn, row, drive_root, drive_root_text)
 
+    result = recover_stale_stage_anchor(result, safe_pointer, drive_root)
     return enforce_structural_markers(result)
 
 
