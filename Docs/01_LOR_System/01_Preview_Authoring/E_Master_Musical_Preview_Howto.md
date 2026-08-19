@@ -17,7 +17,7 @@ The Master Musical Preview is different from a normal Background Stage Preview:
 - each Scene provides the Stage context needed by the parser; and
 - a Scene's background-image path can also identify the Google Drive documentation root that belongs to that Scene.
 
-This relationship is important to the parser, Folder Alignment, FormView-style wiring documentation, and future field applications.
+This relationship is important to the parser, Folder Alignment, FieldWiring, and future field applications.
 
 ---
 
@@ -41,13 +41,12 @@ The Preview name identifies the master musical working set. Stage membership is 
 
 Each musical Scene must retain enough Stage information in its Scene name for the parser to derive the correct `SceneStageID`.
 
-Examples include Scene names such as:
+Examples include:
 
 ```text
 05-Festive Trees-FT
 07-Whoville-WV
-07-Who Characters-WV
-07-Who Spiral Tree-WV
+07-Who People
 07a-Who Forest-WF
 ```
 
@@ -63,46 +62,65 @@ Some musical Scenes represent the whole Stage. Some represent a meaningful physi
 
 A musical Scene can use its LOR `BackgroundFile` path to identify the correct Google Drive documentation root.
 
-This is more than a visual-background setting. The stored path provides an explicit filesystem anchor that downstream tools can use to determine where Stage or Scene documentation belongs.
+This is more than a visual-background setting. The stored path provides filesystem evidence that downstream tools can use together with current Stage/Scene identity.
 
-The **image itself may be temporary**. The important authoring decision is that the image is stored below the correct documentation root before it is assigned to the Scene.
+For **new authoring**, the Scene background should be selected from an approved marked database/application source location below the intended documentation root. Do not create new Scene pointers into loose legacy files or `SourceDocs`.
+
+Approved new-authoring anchors are normally:
+
+```text
+<documentation root>\PreviewBackground\<image>
+```
+
+or, when the published musical wiring drawing is itself the appropriate background:
+
+```text
+<documentation root>\Wiring\MusicalStage\<published image>
+```
+
+The `PreviewBackground` or `Wiring` root must carry the standard MSB database-source marker.
+
+Existing legacy Scene pointers may temporarily use older locations while Folder Alignment cleanup continues. That does not make those old locations valid for new authoring.
 
 ## Stage-level musical Scene
 
-When the Scene belongs to the Stage as a whole, place or select its background image somewhere below the Stage's musical wiring branch:
+When the Scene belongs to the Stage as a whole, use a marked Stage-level source location.
+
+Example using `PreviewBackground`:
 
 ```text
-G:\Shared drives\Display Folders\<Stage Folder>\Wiring\MusicalStage\...
+G:\Shared drives\Display Folders\07-Whoville-WV\
+└── PreviewBackground\
+    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    └── WhoPeople.jpg
 ```
 
-Example:
+Example using a published wiring drawing:
 
 ```text
 G:\Shared drives\Display Folders\07-Whoville-WV\
 └── Wiring\
+    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     └── MusicalStage\
-        └── SourceDocs\
-            └── WhoPeople.jpg
+        └── Stage-07-Musical-Tagged.jpg
 ```
 
-That path identifies this documentation root:
+Both identify Stage 07 as the documentation root.
 
-```text
-07-Whoville-WV
-```
+**Do not use `Wiring\MusicalStage\SourceDocs` as a new Scene background endpoint.** `SourceDocs` is working/source material and is excluded from normal FieldWiring presentation.
 
-The background image may later be replaced by a better wiring image without changing the intended Stage-level documentation scope.
+## Scene or Sub-stage with its own documentation root
 
-## Scene or Substage with its own documentation root
-
-When a musical Scene has a real one-to-one Google Drive folder that owns its own Wiring, Procedures, Photos, or other shared documentation, place or select the background image below that folder's musical wiring branch.
+When a musical Scene has a real one-to-one Google Drive folder that owns its own Wiring, Procedures, PreviewBackground, or other shared documentation, use that folder as the documentation root.
 
 Example:
 
 ```text
 G:\Shared drives\Display Folders\07-Whoville-WV\
 └── 07a-Who Forest-WF\
+    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     └── Wiring\
+        ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
         └── MusicalStage\
             └── WhoForest-Tagged.jpg
 ```
@@ -113,45 +131,56 @@ That path identifies this documentation root:
 07-Whoville-WV\07a-Who Forest-WF
 ```
 
-This is how the author can intentionally tell downstream tools that `07a-Who Forest-WF` has its own documentation scope inside Stage 07.
+---
+
+# If a New Scene Documentation Folder Is Needed
+
+Do not create an empty or one-off Scene folder and add helper folders later.
+
+If review determines that a Scene genuinely needs its own Google Drive documentation root, create the **complete controlled Stage/Sub-stage/Scene scaffold immediately**.
+
+Use:
+
+[Stage / Sub-stage / Scene Folder Scaffold](../../00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md)
+
+The new Scene root includes:
+
+- the structural root marker;
+- marked `PreviewBackground`;
+- marked `Procedures`;
+- marked `Wiring`;
+- the standard procedure and wiring branches; and
+- the standard `Photos` structure, which is not currently a database/application source folder.
+
+This requirement is especially important for Scenes because new Scene documentation scopes are more likely to be created than entirely new Stages.
+
+A new Scene folder should begin clean. The legacy-tolerance rules that allow loose files to remain in old Stage/Scene roots do not justify putting new loose files into a newly created Scene root.
 
 ---
 
 # Why the Path Matters
 
-Downstream tooling can recognize the standardized helper portion of the path:
+For current controlled authoring, downstream tooling can recognize marked source folders and the standardized path structure.
+
+Example:
 
 ```text
-\Wiring\MusicalStage\
+07-Whoville-WV\PreviewBackground\WhoPeople.jpg
 ```
 
-and treat the folder immediately above `Wiring` as the resolved Stage/Scene documentation root.
+identifies Stage 07 as the background/documentation context.
 
-Examples:
-
-```text
-07-Whoville-WV\Wiring\MusicalStage\SourceDocs\WhoPeople.jpg
-```
-
-resolves to:
-
-```text
-07-Whoville-WV
-```
-
-while:
+A direct published wiring path:
 
 ```text
 07-Whoville-WV\07a-Who Forest-WF\Wiring\MusicalStage\WhoForest-Tagged.jpg
 ```
 
-resolves to:
+identifies the nested `07a-Who Forest-WF` documentation root and the Musical wiring context.
 
-```text
-07-Whoville-WV\07a-Who Forest-WF
-```
+The file name is not permanent identity. Current database/LOR relationships plus the controlled folder relationship establish context.
 
-The file name is not the permanent identity. The folder relationship is the important part of this contract.
+Legacy path text outside the marked structure may still be useful as navigation evidence during cleanup, but applications return to the marked source structure before selecting published field content.
 
 ---
 
@@ -159,14 +188,16 @@ The file name is not the permanent identity. The folder relationship is the impo
 
 When the final musical wiring image does not yet exist, a temporary background image may be used to establish the correct documentation-root path.
 
+For new authoring, put the placeholder in the marked `PreviewBackground` folder for the intended Stage/Sub-stage/Scene root.
+
 The placeholder should:
 
-1. be stored below the correct Stage or Scene documentation root;
+1. be stored in the correct marked `PreviewBackground` folder;
 2. be assigned as the Scene background in LOR;
 3. remain an external file reference rather than being embedded into the Preview; and
-4. later be replaced with the proper field-wiring image without changing the intended documentation root unless the Scene's physical/documentation scope has intentionally changed.
+4. later be replaced deliberately while preserving the intended documentation root unless the Scene's physical/documentation scope has changed.
 
-A placeholder background is therefore a temporary visual file but a useful explicit path anchor.
+Do not use `SourceDocs` for placeholder Scene backgrounds.
 
 ---
 
@@ -176,15 +207,11 @@ Use the existing physical/documentation organization as the primary guide.
 
 ## If the musical Scene represents the entire Stage
 
-Use the Stage root:
-
-```text
-<Stage Folder>\Wiring\MusicalStage\...
-```
+Use the existing Stage root and one of its marked source folders.
 
 Do **not** create a duplicate child folder merely because the LOR Scene name matches the Stage name.
 
-For example, this is wrong:
+Wrong:
 
 ```text
 05-Festive Trees-FT\
@@ -192,30 +219,33 @@ For example, this is wrong:
     └── Wiring\MusicalStage
 ```
 
-The correct Stage-level location is:
+Correct Stage-level context:
 
 ```text
-05-Festive Trees-FT\
-└── Wiring\MusicalStage
+05-Festive Trees-FT\PreviewBackground\...
 ```
 
-## If there is an established one-to-one Scene folder
-
-Use that existing Scene/Substage folder as the documentation root.
-
-Example:
+or:
 
 ```text
-07-Whoville-WV\07a-Who Forest-WF\Wiring\MusicalStage
+05-Festive Trees-FT\Wiring\MusicalStage\...
 ```
+
+## If there is an established one-to-one Scene/Sub-stage folder
+
+Use that existing structured root and its marked source folders.
+
+## If a new Scene documentation root is genuinely required
+
+Create it using the complete controlled scaffold before assigning new LOR background references to it.
 
 ## If the Scene exists only for sequencing clarity
 
 Do not create a new Google Drive folder simply because the Scene exists in LOR.
 
-If the Scene's documentation belongs to the whole Stage, anchor its background under the Stage's `Wiring\MusicalStage` branch.
+Use the applicable Stage or Sub-stage documentation root.
 
-If the intended documentation scope is unclear, stop and review it before creating a new folder.
+If the intended documentation scope is unclear, stop and review it before creating a folder or changing the Scene background.
 
 ---
 
@@ -223,34 +253,29 @@ If the intended documentation scope is unclear, stop and review it before creati
 
 Stage 07 demonstrates why this distinction matters.
 
-The Master Musical Preview can contain Scenes including:
+The Master Musical Preview can contain Stage-level, Sub-stage, and sequencing Scenes such as:
 
 ```text
 07-Whoville-WV
-07-Who Characters-WV
-07-Who Spiral Tree-WV
+07-Who People
 07a-Who Forest-WF
 ```
 
-All belong to Stage 07, but they do not all require separate Google Drive documentation folders.
+They do not all require separate Google Drive documentation folders.
 
-Current intended behavior:
+Conceptually:
 
 ```text
 07-Whoville-WV
     -> Stage 07 documentation root
 
-07-Who Characters-WV
-    -> Stage 07 documentation root when its BackgroundFile is under
-       07-Whoville-WV\Wiring\MusicalStage\...
-
-07-Who Spiral Tree-WV
-    -> Stage 07 documentation root when its BackgroundFile is under
-       07-Whoville-WV\Wiring\MusicalStage\...
+07-Who People
+    -> Stage 07 documentation root when its current controlled background
+       is under Stage 07 PreviewBackground or published MusicalStage Wiring
 
 07a-Who Forest-WF
-    -> nested documentation root when its BackgroundFile is under
-       07-Whoville-WV\07a-Who Forest-WF\Wiring\MusicalStage\...
+    -> nested documentation root when its current controlled background
+       is under 07a-Who Forest-WF PreviewBackground or published Wiring
 ```
 
 This allows LOR Scenes to remain useful for musical sequencing without forcing the Google Drive hierarchy to duplicate every Scene.
@@ -261,18 +286,20 @@ This allows LOR Scenes to remain useful for musical sequencing without forcing t
 
 For each Scene that needs an explicit documentation-root anchor:
 
-1. Determine whether its documentation belongs to the whole Stage or to an established Scene/Substage folder.
-2. Place the current background image or temporary placeholder below that root's `Wiring\MusicalStage` branch.
-3. In the LOR Preview editor, use:
+1. Determine whether its documentation belongs to the whole Stage, a formal Sub-stage, or an established Scene documentation folder.
+2. If a new Scene documentation folder is required, create the complete controlled scaffold first.
+3. Choose the current background image from that root's **marked `PreviewBackground`** folder or directly from the published `Wiring\MusicalStage` branch when that drawing is the intended background.
+4. Do not select a new background from `SourceDocs` or from loose legacy material.
+5. In the LOR Preview editor, use:
 
 ```text
 Background -> Set Image
 ```
 
-4. Select the image from the intended shared-drive location.
-5. Do **not** embed the image into the Preview.
-6. Save the Preview.
-7. Repeat for other Scenes where the filesystem/documentation scope needs to be explicit.
+6. Select the image from the intended shared-drive location.
+7. Do **not** embed the image into the Preview.
+8. Save the Preview.
+9. Repeat for other Scenes where filesystem/documentation scope needs to be explicit.
 
 The image may later change. Preserve the correct documentation-root relationship when replacing it.
 
@@ -284,14 +311,18 @@ Verify:
 
 - [ ] The Preview name follows the current annual/versioned Master Musical Preview convention.
 - [ ] Scene names retain the Stage information needed by the parser.
-- [ ] Stage-level musical Scenes use a BackgroundFile below the correct Stage root when a filesystem anchor is needed.
-- [ ] Scenes with an established one-to-one documentation folder use a BackgroundFile below that folder's `Wiring\MusicalStage` branch.
+- [ ] A new Google Drive Scene folder was created only when the Scene represents a real documentation scope.
+- [ ] Any newly created Stage/Sub-stage/Scene folder uses the complete controlled scaffold.
+- [ ] The structural root marker is present.
+- [ ] `PreviewBackground`, `Procedures`, and `Wiring` carry their required markers.
+- [ ] Stage-level musical Scenes use a current BackgroundFile below the correct marked Stage source folder when a filesystem anchor is needed.
+- [ ] Scenes with their own documentation folder use a current BackgroundFile below that folder's marked source structure.
+- [ ] New Scene background pointers do not enter `SourceDocs` or loose legacy material.
 - [ ] Sequencing-only Scenes have not caused unnecessary Google Drive Scene folders to be created.
 - [ ] Background images remain external references.
-- [ ] Placeholder images are understood to be temporary and may be replaced later.
 - [ ] The Preview is exported through the normal controlled Preview Authoring / Preview Merger workflow.
 
-After the approved Preview set changes, rerun the current parser so Folder Alignment and other LOR-side tools see the current Scene and BackgroundFile relationships.
+After the approved Preview set changes, rerun the current parser when appropriate so Folder Alignment and other LOR-side tools see the current Scene and `BackgroundFile` relationships.
 
 Parser output is a working snapshot of the current approved LOR structure. PostgreSQL ingest remains a separate later production step.
 
@@ -302,6 +333,7 @@ Parser output is a working snapshot of the current approved LOR structure. Postg
 - [Building a Preview](B_Building_Preview_Howto.md) — general LOR Preview authoring procedure.
 - [Create Wiring Backgrounds for Stage Previews](D_Create_Wiring_Backgrounds..md) — wiring-image folder and publication procedure.
 - [Naming Conventions](A_Naming_Conventions.md) — current Display and channel naming rules.
+- [Stage / Sub-stage / Scene Folder Scaffold](../../00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md) — required scaffold when creating a new structured documentation root.
+- [MSB Database Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) — root/source marker rules and local notes.
 - [LOR Preview Authoring](README.md) — Preview Authoring navigation portal.
-- [FormView](../04_FormView/README.md) — existing field-wiring application that demonstrates the background-path/document-location contract.
 - [LOR Data Extraction](../02_Data_Extraction/README.md) — parser and Folder Alignment engineering documentation.
