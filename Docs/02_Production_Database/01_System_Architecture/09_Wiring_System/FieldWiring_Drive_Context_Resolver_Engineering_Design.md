@@ -100,10 +100,34 @@ The pointer may refer to:
 - a Scene `PreviewBackground` image;
 - a Display-level `PreviewBackground` image;
 - a deeper legacy engineering image;
-- a file inside a `SourceDocs` branch; or
+- a legacy path that currently enters a `SourceDocs` branch; or
 - another current LOR-referenced image whose path still provides useful hierarchy evidence.
 
 The application uses the pointer to navigate into the correct Stage / Substage / Scene part of the Drive, then the calling task applies its own branch rules.
+
+### `SourceDocs` is a hard traversal boundary
+
+`SourceDocs` contains engineering/source material and is never part of the normal field-document navigation space.
+
+FieldWiring and the shared Drive resolver must **never descend into, enumerate, open, fetch, or present files from a `SourceDocs` folder** while resolving field documentation.
+
+If a current or legacy LOR `BackgroundFile` pointer contains a `SourceDocs` path segment, the resolver may use the path text above that segment as hierarchy/context evidence, but runtime navigation must stop before entering `SourceDocs`.
+
+For example:
+
+```text
+...\Wiring\MusicalStage\SourceDocs\WhoPeople.jpg
+```
+
+may establish that the current path evidence points into the Stage's Musical Wiring branch, but the resolver must stop at:
+
+```text
+...\Wiring\MusicalStage
+```
+
+It must not test, enumerate, download, or present `WhoPeople.jpg` from `SourceDocs`.
+
+A Scene pointer that enters `SourceDocs` is therefore a folder-alignment/data-quality condition to be reported for cleanup. It is not a valid published-field-document endpoint.
 
 ## Google Shared Drive Root
 
@@ -160,13 +184,14 @@ The first resolver implementation should operate conservatively in this order:
 1. Start with the permanent/current Stage, Scene, and Preview facts supplied by the field-context resolver or direct PC browse selection.
 2. Obtain the applicable current V7 `BackgroundFile` evidence. For Master Musical this normally means the selected Scene's `background_file`.
 3. Normalize the known mapped-drive prefix without treating that prefix as identity.
-4. Attempt to walk the exact stored relative path beneath the `Display Folders` Shared Drive root.
-5. If the exact stored path resolves, use its hierarchy as strong current filesystem evidence.
-6. Walk upward from the pointed file as necessary to identify the nearest valid structured Scene, Substage, or Stage context under the governing naming/hierarchy rules.
-7. A pointer inside `SourceDocs` may identify the correct scope or Wiring context, but `SourceDocs` itself is not normal published field content.
-8. If the stored path no longer resolves, use the known current Stage + Scene identity and the actual folder hierarchy to locate the deterministic current structured folder.
-9. Do not repair or rewrite the LOR `BackgroundFile` as a side effect of viewing documentation.
-10. If current identity, path evidence, naming, and hierarchy do not produce one safe answer, return an unresolved/review result instead of guessing.
+4. Inspect the pointer path text for excluded source/archive branches before performing filesystem navigation.
+5. If the pointer contains `SourceDocs`, stop navigation at the parent published/context branch and report the pointer as needing alignment cleanup. Never descend into `SourceDocs`.
+6. Otherwise attempt to walk the exact stored relative path beneath the `Display Folders` Shared Drive root.
+7. If the allowed portion of the stored path resolves, use its hierarchy as strong current filesystem evidence.
+8. Walk upward from the allowed pointed location as necessary to identify the nearest valid structured Scene, Substage, or Stage context under the governing naming/hierarchy rules.
+9. If the stored path no longer resolves, use the known current Stage + Scene identity and the actual folder hierarchy to locate the deterministic current structured folder.
+10. Do not repair or rewrite the LOR `BackgroundFile` as a side effect of viewing documentation.
+11. If current identity, path evidence, naming, and hierarchy do not produce one safe answer, return an unresolved/review result instead of guessing.
 
 This design intentionally supports legacy cleanup. As folders and Scene backgrounds become better aligned, the resolver should naturally take simpler paths without requiring a new application architecture.
 
@@ -187,6 +212,25 @@ fragile historical path text
 An exact path failure therefore triggers controlled hierarchy resolution; it does not authorize fuzzy guessing.
 
 A deterministic unique match based on current Stage/Scene identity and the governing folder rules may be accepted by the resolver test. Multiple plausible matches or contradictory evidence must be reported for review.
+
+## Folder Alignment and Data Cleanup
+
+The resolver is intentionally designed to tolerate current legacy misalignment without making the application responsible for repairing authoring data.
+
+Folder alignment work may change:
+
+- Scene names;
+- Scene `BackgroundFile` pointers;
+- folder names;
+- placement of published Wiring images;
+- placement of `PreviewBackground` images; and
+- whether a Scene owns a dedicated Wiring branch or inherits from its Stage/Substage.
+
+As those items are aligned, resolver behavior should become simpler and more deterministic.
+
+A new parser/snapshot run is required before FieldWiring development data reflects LOR Scene-name or `BackgroundFile` corrections. The resolver test should not force an immediate parser run merely to test code while alignment review is still underway.
+
+The 2026-08-19 first resolver run exposed one such known current-snapshot condition: the snapshot still contains Scene name `07-Who Characters` and a `BackgroundFile` pointer entering `Wiring\MusicalStage\SourceDocs\WhoPeople.jpg`. The LOR Scene has since been corrected by the operator to `07-Who People`, but that change is intentionally not yet represented in the development snapshot pending a later parser run.
 
 ## FieldWiring Task Adapter
 
@@ -257,7 +301,9 @@ Current published image extensions are expected to include:
 .png
 ```
 
-`SourceDocs` is not normal published field content regardless of whether it appears nested beneath a Wiring branch or as a legacy sibling folder.
+Only files directly in the selected published branch are candidates for normal FieldWiring presentation.
+
+`SourceDocs` is excluded completely from normal resolver traversal and field presentation regardless of whether it appears nested beneath a Wiring branch or as a legacy sibling folder.
 
 Additional archive/source/engineering folders must not become visible merely because they are physically nearby in the Drive hierarchy.
 
@@ -299,7 +345,8 @@ Preview
 Scene
 Stage
 Scene BackgroundFile pointer
-whether exact stored pointer resolves
+whether pointer path contains an excluded SourceDocs branch
+whether the allowed pointer path resolves
 resolved Stage/Substage/Scene root
 candidate Scene Wiring branch
 candidate Scene PreviewBackground
@@ -332,17 +379,36 @@ Purpose: Scene-level `PreviewBackground` context where Scene-level Wiring may no
 
 Expected behavior: report the available Scene/Stage candidates and show which fallback step would be selected by the current test rule.
 
-### `07-Who Characters`
+### Current snapshot `07-Who Characters` / corrected LOR Scene `07-Who People`
 
-Purpose: pointer inside a `SourceDocs` branch.
+Purpose: stale Scene identity plus a pointer that enters a `SourceDocs` branch.
 
-Expected behavior: use the pointer as scope/context evidence but do not treat `SourceDocs` itself as published field content.
+Expected behavior: identify the current-snapshot alignment problem, stop before `SourceDocs`, use only the allowed parent hierarchy as context evidence, and never enumerate or present the source file. The harness must not treat successful access to a file inside `SourceDocs` as a valid resolver success condition.
+
+The corrected `07-Who People` Scene name will become testable from the development snapshot after a later parser/snapshot run.
 
 ### `02-Fred's Stars`
 
 Purpose: stored path text that may no longer exactly match the current actual folder name.
 
 Expected behavior: exact pointer failure must trigger controlled Stage/Scene hierarchy resolution. The harness must report whether one unique safe current folder can be resolved; it must not silently use fuzzy matching.
+
+## First Resolver Run Findings — 2026-08-19
+
+The first six-case read-only harness run resolved all six cases under the initial candidate-selection rule, proving that the current V7 snapshot plus the actual mapped Drive can support deterministic Stage/Scene scope navigation.
+
+That run is **not yet final acceptance of the fallback ladder**.
+
+Important findings:
+
+1. `15-Church-CH` resolved directly to Stage 15 `Wiring\MusicalStage`.
+2. `05a-Mega Star-MS` resolved the Substage context from a deep path and then selected Stage Musical Wiring because the Substage Wiring/PreviewBackground branches contained no directly published images.
+3. `03-Mega Cube-MC` resolved the Scene and selected its `PreviewBackground` because no Scene Musical Wiring branch existed.
+4. Current snapshot `07-Who Characters` exposed an invalid field-navigation pattern because its raw pointer enters `SourceDocs`. This finding established the hard `SourceDocs` traversal boundary documented above.
+5. `02-Fred's Stars` demonstrated successful deterministic recovery from a stale folder suffix in the stored pointer.
+6. Stage 15 `Root` demonstrated the Background/Static Stage-root case and selected `Wiring\BackgroundStage`.
+
+These findings are engineering evidence for refining the resolver while folder alignment work continues. They do not require an immediate parser run or imply that current Scene pointers are already fully aligned.
 
 ## Church Dual-Context Acceptance Case
 
@@ -371,7 +437,7 @@ The V6 FormView reports remain comparison evidence for the final field result, b
 
 The resolver is accepted only when it can demonstrate:
 
-> Given current V7/PostgreSQL identity, Scene/Preview relationships, current Scene path evidence, and the actual Google Drive hierarchy, the application can deterministically locate the correct structured documentation context without relying on V6 runtime data, hard-coded per-Stage paths, or unsafe folder guessing.
+> Given current V7/PostgreSQL identity, Scene/Preview relationships, current Scene path evidence, and the actual Google Drive hierarchy, the application can deterministically locate the correct structured documentation context without relying on V6 runtime data, hard-coded per-Stage paths, unsafe folder guessing, or traversal into source-only branches.
 
 Only after that gate passes should FieldWiring browser implementation proceed to wiring rows + images + filters + offline report behavior.
 
