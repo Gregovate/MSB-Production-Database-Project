@@ -38,9 +38,12 @@ RGB LOR
 
 DMX + DumbRGB
     -> DMX network / fixture hookup
+
+DMX + RGB — reviewed dense RGB cases
+    -> E1.31 network / intelligent pixel-controller hookup
 ```
 
-FieldWiring must not force all three into one generic `Controller / Channel` interpretation merely because the compatibility wiring view uses those column names.
+FieldWiring must not force these families into one generic `Controller / Channel` interpretation merely because the compatibility wiring view uses those column names.
 
 ---
 
@@ -93,7 +96,7 @@ The hexadecimal LOR Unit ID is engineering/configuration information and should 
 
 ### RGB / Pixie
 
-For `string_type = RGB`, raw Unit IDs may represent logical pixel-output addressing rather than separate physical controllers.
+For LOR-controlled `string_type = RGB`, raw Unit IDs may represent logical pixel-output addressing rather than separate physical controllers.
 
 The normal field result should emphasize:
 
@@ -114,6 +117,30 @@ For current `device_type = DMX` and `string_type = DumbRGB` cases, generic `Cont
 The normal field result should emphasize the fixture/Display and DMX-network hookup rather than pretending the raw universe/channel is an A/C or Pixie controller/output pair.
 
 The initial acceptance case is `16-Northern Lights-NL` and is defined in [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md).
+
+### E1.31 Dense RGB
+
+For the reviewed dense RGB Displays, current V7 data is represented as:
+
+```text
+device_type = DMX
+string_type = RGB
+```
+
+These are not the same field hookup as Northern Lights.
+
+The operator-facing model is:
+
+```text
+Display / Display section
+E1.31 network
+physical intelligent pixel controller
+physical output/port when known
+```
+
+The compatibility-view `Controller` value is universe/addressing information for these rows, not the physical AlphaPix/PixCon controller identity.
+
+Current acceptance examples include Mega Tree, Mega Ball, Mega Cube, Mega Star, and Mt. Crumpit Matrix. Their requirements are defined in [FieldWiring E1.31 Dense RGB Field Presentation Contract](FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md).
 
 ---
 
@@ -187,6 +214,9 @@ Pixie RGB
 
 DMX/DumbRGB
     raw Controller value can represent DMX universe addressing
+
+E1.31 dense RGB
+    raw Controller value can also represent universe addressing across one or more physical pixel controllers
 ```
 
 The normal UI must translate rather than merely rename the raw columns.
@@ -201,6 +231,8 @@ LOR network aliases such as `Regular`, `Aux A`, `Aux N`, and similar values are 
 
 For DMX/DumbRGB, the physical field terminology for the DMX network/cable must be confirmed before automatically substituting a friendly label for the raw LOR network alias.
 
+For reviewed dense RGB cases, the field-facing transport is E1.31. The current compatibility materialization may still expose a generic LOR network alias, so FieldWiring must not mistake that compatibility value for the physical controller identity or the complete physical network contract.
+
 ---
 
 ## Source Classification
@@ -211,7 +243,7 @@ Useful concepts include:
 
 - Display/master Prop;
 - SubProp;
-- DMX source; and
+- DMX/E1.31 source; and
 - Spare when SPAREs are shown.
 
 The browser may use a narrow badge/marker or Engineering Details rather than a full-width Source column.
@@ -230,9 +262,16 @@ These fields remain important for interpretation and troubleshooting but should 
 - used by the Field Wiring reduction logic; and
 - available under Engineering Details/export.
 
-### DeviceType
+### DeviceType and StringType
 
-DeviceType is normally hidden, but FieldWiring may use it internally to choose the presentation family. In particular, `device_type = DMX` is significant for DMX/DumbRGB handling.
+DeviceType is normally hidden, but FieldWiring may use it internally to choose the presentation family.
+
+`device_type = DMX` alone is **not sufficient** to distinguish Northern Lights from dense E1.31 pixel Displays. Current reviewed cases require `string_type` as part of classification:
+
+```text
+DMX + DumbRGB -> DMX fixture/network family
+DMX + RGB     -> E1.31 dense-pixel family for reviewed MSB examples
+```
 
 ### LORTag
 
@@ -267,6 +306,18 @@ Connection: DMX network
 
 Raw DMX universe/channel information is available under Engineering Details unless a later field workflow proves it belongs in the normal view.
 
+### E1.31 dense RGB example
+
+```text
+Display: <dense RGB Display>
+Connection: E1.31
+Controller: <physical AlphaPix/PixCon identity when available>
+Output: <physical port when known>
+Display section/string: <field-facing label>
+```
+
+Raw universe/channel information remains under Engineering Details.
+
 The UI does not need to use one identical table for all device families.
 
 ---
@@ -275,7 +326,7 @@ The UI does not need to use one identical table for all device families.
 
 Where a table is appropriate, Display grouping is preferred to avoid repeating the largest label on every row.
 
-For conventional/Pixie hookups, the group may be arranged by physical controller/output when that relationship is known.
+For conventional/Pixie/E1.31 hookups, the group may be arranged by physical controller/output when that relationship is known.
 
 Shared-circuit or repeated-address relationships must remain visible and must not be deduplicated merely because technical addresses repeat.
 
@@ -311,7 +362,9 @@ Pixie results normally sort by physical/temporary Pixie group then Output.
 
 DMX/DumbRGB may sort by fixture/Display unless a reviewed field workflow establishes a more useful physical chain order.
 
-Raw hexadecimal-aware address sorting remains available in Engineering Details.
+E1.31 dense RGB should sort by physical controller/output when Controller Inventory supplies that relationship. Until then, it should remain Display-oriented rather than sorting universe values as though they were controller labels.
+
+Raw hexadecimal/unit/universe address sorting remains available in Engineering Details.
 
 ---
 
@@ -323,8 +376,9 @@ On narrow screens:
 - physical Output/Plug remains immediately visible when applicable;
 - Channel Name receives space when it is useful to field hookup;
 - engineering-only fields move to optional details;
-- images are collapsible or placed after primary hookup information; and
-- DMX/DumbRGB results are not forced into wide controller/channel tables when the physical task is simply a network connection.
+- images are collapsible or placed after primary hookup information;
+- DMX/DumbRGB results are not forced into wide controller/channel tables when the physical task is simply a network connection; and
+- E1.31 results emphasize physical controller/output hookup when known rather than universe lists.
 
 ---
 
@@ -349,6 +403,15 @@ Display / Fixture
 DMX network connection
 ```
 
+An E1.31 dense RGB report may emphasize:
+
+```text
+Display / Display section
+E1.31 network connection
+physical controller
+physical output/port
+```
+
 with raw universe/channel information in a technical appendix/details section if needed.
 
 A missing image does not prevent a valid report from being generated.
@@ -371,11 +434,14 @@ FieldWiring presentation testing must include at minimum:
 8. Hide SPAREs behavior;
 9. Displays Only behavior distinct from Field Wiring;
 10. `16-Northern Lights-NL`, proving DMX/DumbRGB is not rendered as physical controller `145/146` with numbered plugs;
-11. narrow phone/tablet layout;
-12. printable/hard report using the applicable presentation family;
-13. Engineering Details exposing raw Source, ConnectionType, DeviceType, LORTag, Unit ID, DMX universe/channel, and other technical addressing as applicable;
-14. a resolved wiring scope with no image, proving the primary field result remains usable; and
-15. a same-scope PreviewBackground shown only as clearly labeled context.
+11. Mega Tree and Mega Ball, proving E1.31 universes are not rendered as physical controllers;
+12. Mega Cube, proving physical controller count does not come from compatibility-view row count;
+13. Mega Star and Mt. Crumpit Matrix, proving E1.31 universe/channel data remains engineering addressing until physical controller mapping is available;
+14. narrow phone/tablet layout;
+15. printable/hard report using the applicable presentation family;
+16. Engineering Details exposing raw Source, ConnectionType, DeviceType, StringType, LORTag, Unit ID, DMX/E1.31 universe/channel, and other technical addressing as applicable;
+17. a resolved wiring scope with no image, proving the primary field result remains usable; and
+18. a same-scope PreviewBackground shown only as clearly labeled context.
 
 ---
 
@@ -383,6 +449,7 @@ FieldWiring presentation testing must include at minimum:
 
 - [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
 - [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md)
+- [FieldWiring E1.31 Dense RGB Field Presentation Contract](FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md)
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
 - [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
