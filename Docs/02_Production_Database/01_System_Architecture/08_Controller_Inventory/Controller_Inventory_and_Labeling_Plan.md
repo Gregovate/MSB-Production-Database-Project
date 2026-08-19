@@ -72,15 +72,18 @@ The current V7 LOR-derived data already carries `string_type`, which FieldWiring
 
 Controller Inventory is required for a different responsibility: identifying the **actual physical controller asset** and authoritatively relating its current LOR addressing to its numbered physical outputs.
 
-That distinction is particularly important for Pixie controllers. One physical Pixie may own several contiguous LOR Unit IDs—one logical address per RGB output—so FieldWiring must not treat every Unit ID as a separate physical controller. The physical controller record/deployment relationship must eventually provide the grouping authority.
+That distinction is particularly important for Pixie controllers. One physical Pixie may own several contiguous LOR Unit IDs—one logical address per RGB output—so FieldWiring must not treat every Unit ID as a separate physical controller.
 
 For a conventional A/C controller, physical Output 1-16 maps directly to the LOR channel/output number. For Pixie 2/4/8/16 controllers, one physical controller has 2/4/8/16 numbered RGB outputs while LOR may use a Unit-ID range across those outputs.
 
 See [FieldWiring Physical Controller / Output Presentation Contract](../09_Wiring_System/FieldWiring_Physical_Controller_Output_Presentation_Contract.md).
 
-## 7. Duplicate LOR Address Ranges Are Valid
+## 7. Duplicate RGB Addresses Are Valid and Informative
 
-FieldWiring engineering review exposed a critical physical-controller requirement: **LOR Unit IDs are not unique physical-controller identifiers.**
+FieldWiring engineering review exposed two related requirements:
+
+1. **LOR Unit IDs are not unique physical-controller identifiers.**
+2. **When separate RGB Props in the same current wiring context reuse the same Unit ID, the duplication is positive evidence that another physical Pixie controller instance exists.**
 
 The Church RGB Candy Cane installation intentionally uses two separate Pixie 4 physical controllers with the same LOR Unit-ID range:
 
@@ -88,6 +91,8 @@ The Church RGB Candy Cane installation intentionally uses two separate Pixie 4 p
 Pixie A -> 21-24
 Pixie B -> 21-24
 ```
+
+The repeated `21-24` block is the signal that the second physical controller exists.
 
 This is deliberate so paired Candy Canes receive the same programmed signals:
 
@@ -102,10 +107,14 @@ Therefore future Controller Inventory design must preserve these facts:
 
 - permanent controller identity is independent of LOR Unit ID;
 - the same Unit ID/range may be assigned to more than one physical controller in the same show design;
+- duplicate RGB addresses can be used as evidence that multiple physical controller instances exist;
+- duplicate addresses do not by themselves provide the permanent controller asset identity or always define the complete grouping/order;
 - network + Unit ID/range must not be assumed to be a unique physical-controller key;
 - deployment/history relationships must be able to associate distinct controller assets with identical LOR address ranges;
 - physical output/port mapping must remain tied to the correct controller asset/deployment relationship; and
 - valid duplicated addressing must not be treated automatically as a reconciliation error.
+
+The current `17-Candyland-CL` musical data also contains repeated RGB Candy Cane Unit IDs, confirming that this is a general controller-model requirement rather than a Church-only exception.
 
 This requirement is planning guidance only. The current spreadsheet and real controller inventory must still be inspected before any PostgreSQL schema is designed.
 
@@ -176,5 +185,6 @@ Before database implementation:
 6. define a permanent controller identity that preserves existing useful identifiers without depending on LOR Unit ID uniqueness;
 7. define how one physical controller is related to its current LOR Unit ID or Unit-ID range and numbered physical outputs;
 8. design lifecycle/deployment history without overwriting evidence;
-9. define how physical controller/output assignments enrich FieldWiring without competing with LOR topology; and
-10. reconcile controller labeling with the current LabelPrintService.
+9. define how duplicate-address evidence can assist FieldWiring/controller grouping without replacing authoritative physical-controller identity;
+10. define how physical controller/output assignments enrich FieldWiring without competing with LOR topology; and
+11. reconcile controller labeling with the current LabelPrintService.
