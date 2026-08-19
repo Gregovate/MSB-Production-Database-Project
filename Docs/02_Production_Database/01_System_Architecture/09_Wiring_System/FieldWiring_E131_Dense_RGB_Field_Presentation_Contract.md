@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — accepted field UX direction; controller-inventory mapping pending |
+| Status | DRAFT — accepted field UX direction; inventory reconciliation pending |
 | Sub-project | FieldWiring |
 | Current revision | 2026-08-19 |
 | Owner | MSB Database Administrator |
@@ -19,17 +19,15 @@ device_type = DMX
 string_type = RGB
 ```
 
-and materializes their universe/channel topology through the current DMX-channel relations and the legacy-compatible wiring views.
+and materializes their universe/channel topology through the current DMX-channel relations and legacy-compatible wiring views.
 
 For these Displays, the compatibility-view `Controller` value is a universe/addressing value, **not the physical AlphaPix/PixCon controller identity** the installer sees.
 
-FieldWiring must therefore translate the current LOR/E1.31 topology into physical controller/network/output language instead of simply rendering the compatibility `Controller / StartChannel` columns.
-
----
+FieldWiring must translate the current LOR/E1.31 topology into physical controller/network/output language instead of simply rendering the compatibility `Controller / StartChannel` columns.
 
 ## E1.31 Is a Separate Field Presentation Family
 
-The accepted FieldWiring families now include:
+The accepted FieldWiring families include:
 
 ```text
 Traditional LOR
@@ -47,19 +45,15 @@ DMX + RGB — reviewed dense RGB examples
 
 The last two families both use `device_type = DMX` in the current parser model, but their physical hookup is not the same.
 
-`string_type` is therefore important:
-
 ```text
 device_type = DMX + string_type = DumbRGB
     -> DMX fixture/network presentation
 
 device_type = DMX + string_type = RGB
-    -> dense-pixel/E1.31 presentation for the reviewed MSB examples
+    -> reviewed dense-pixel/E1.31 presentation
 ```
 
-Do not generalize every possible `DMX + RGB` Prop outside the reviewed MSB cases without confirming the physical design.
-
----
+Do not generalize every possible `DMX + RGB` Prop outside reviewed MSB cases without confirming the physical design.
 
 ## Physical Field Model
 
@@ -76,25 +70,35 @@ E1.31 network connection
 
 Raw universe/channel ranges remain essential engineering/configuration data but should not be presented as though each universe were a separate physical controller.
 
-The current controller inventory is still needed to supply permanent physical controller identities, controller models, and authoritative port/output mapping where those facts cannot be derived safely from reviewed current topology.
+## Current Source Evidence
 
----
-
-## Historical / Engineering Source Artifact — `DMX Control Addressing.xlsx`
-
-A user-supplied workbook named:
+FieldWiring now has three complementary E1.31 sources:
 
 ```text
+current V7 / PostgreSQL topology
+    -> current LOR-authoritative universe/channel topology
+
 DMX Control Addressing.xlsx
+    -> universe / physical-output / IP mapping history and current planning evidence
+
+Controller Inventory & Firmware 2025 - Inventory.csv
+Controller Inventory & Firmware 2025 - Lookup Table.csv
+    -> 2025 physical model / deployment / firmware evidence
 ```
 
-was historically used to track E1.31/DMX universes, physical controller outputs, and IP addresses.
+The 2025 controller inventory has now been inspected. It is useful, but incomplete/stale relative to current 2026 topology and does not provide a permanent physical-controller asset key.
 
-This workbook is valuable engineering evidence because it records the physical controller grouping that the generic LOR compatibility rows do not expose clearly.
+See [Controller Inventory 2025 Source Audit — 2026-08-19](../08_Controller_Inventory/Controller_Inventory_2025_Source_Audit_2026-08-19.md).
 
-It is **not** being declared the permanent Controller Inventory authority. The workbook contains multiple configuration eras, including columns such as `IP 2023`, `IP 2024`, `Original Config`, and `2023 Config`, so values must be treated as historical/configuration evidence until reconciled with the current physical inventory held separately.
+No one source should be silently promoted over the others. They must be reconciled according to authority:
 
-The workbook currently records this E1.31 IP/controller map:
+- LOR/V7 owns current show topology;
+- controller inventory owns/should own physical hardware identity after reconciliation; and
+- addressing workbooks preserve network/output configuration evidence.
+
+## `DMX Control Addressing.xlsx`
+
+The addressing workbook records this E1.31 IP/controller map:
 
 ```text
 Show PC
@@ -102,7 +106,7 @@ Show PC
 
 Mega Tree
     10.10.5.10
-    Alpha Pix / Flex48 Controller
+    Alpha Pix / Flex48
 
 Mega Ball
     10.10.5.11
@@ -136,29 +140,55 @@ Northern Lights / PixieLink
     10.10.5.30
 ```
 
-The Northern Lights entry is network-infrastructure evidence only. Northern Lights remains the DMX/DumbRGB presentation family rather than the dense E1.31 RGB controller family.
+The workbook also contains historical configuration columns such as `IP 2023`, `IP 2024`, `Original Config`, and `2023 Config`.
 
-### Why this workbook matters to FieldWiring
+IP address is configuration data, not permanent controller identity.
 
-The workbook demonstrates that the physical controller grouping was already tracked outside LOR using three kinds of information together:
+## 2025 Controller Inventory E1.31 Evidence
+
+The 2025 inventory contains six populated `E1.31` rows:
 
 ```text
-physical controller / controller output
-IP address
-universe/channel assignment
+19-Santas Workshop
+    Pixicon-16
+    Gift Conveyor
+
+19-Santas Workshop
+    Pixicon-16
+    Gift Bag & Conveyor Rollers
+
+07- Mt Crumpet
+    Pixicon-16
+    Matrix
+
+03-MT Globe
+    Pixiecon 16
+    Controller Type 16
+    legacy IP evidence 192.168.5.103
+
+03-MT Tree Pixiecon
+    model recorded as Coro
+    Controller Type 48
+    legacy IP evidence 192.168.5.110
+
+Mega Cube
+    model recorded as Coro
+    Controller Type 48
+    incomplete legacy IP text 192.168.5.
 ```
 
-That is close to the enrichment FieldWiring ultimately needs from Controller Inventory and Network Infrastructure.
+These rows provide useful model/deployment evidence but do not fully encode the current physical controller layout.
 
-The workbook should therefore be retained as a source artifact for later reconciliation rather than manually transcribed into a new schema without review.
+Important consequences:
 
----
+- the 2025 inventory's older `192.168.5.x` addressing must not override the newer `10.10.5.x` addressing workbook evidence;
+- Mega Cube's single aggregate `48` row cannot represent the known three physical PixCon controllers as separate assets;
+- Mega Star is absent from the 2025 E1.31 inventory rows; and
+- the source contains model-name variants (`Pixicon-16`, `Pixiecon 16`, `Coro`) that require controlled normalization.
 
-## Mega Tree and Mega Ball
+## Mega Tree
 
-The Master Musical Preview currently contains:
-
-### Mega Tree
+Current V7:
 
 ```text
 lor_comment = TR-MegaTreeRGBTree
@@ -166,61 +196,50 @@ device_type = DMX
 string_type = RGB
 parm1 = 48
 parm2 = 100
+Universes 1-48
 ```
 
-The current V7 DMX materialization exposes 48 universe rows:
+Accepted physical evidence:
 
 ```text
-Universes 1 through 48
-Start channel 1
-End channel 300
+one 48-output AlphaPix / Flex48-style controller
+DMX addressing workbook IP: 10.10.5.10
+Outputs 1-48 -> Universes 1-48
 ```
 
-Operator-confirmed physical hardware:
+The 2025 inventory contains a corresponding 48-type E1.31 row for `03-MT Tree Pixiecon`, recorded with model `Coro` and legacy IP evidence `192.168.5.110`.
 
-> the Mega Tree uses one 48-output AlphaPix controller.
+The two source labels must be reconciled; FieldWiring must not guess that the source model strings are already normalized permanent identities.
 
-The addressing workbook agrees with that physical model. Its Mega Tree sheet maps AlphaPix Outputs 1 through 48 to Universes 1 through 48.
+The 48 universe values are E1.31 addressing for one physical controller context, not 48 physical controllers.
 
-The workbook also records configuration-history columns from prior controller/IP arrangements. Those historical columns must not be confused with the current permanent controller identity.
+## Mega Ball
 
-This is a strong example of why the compatibility `Controller` column must not be interpreted literally. The 48 universe values represent E1.31 addressing for one physical 48-output controller, not 48 physical controllers.
-
-### Mega Ball
+Current V7:
 
 ```text
 lor_comment = TR-MegaTreeRGBBall
 device_type = DMX
 string_type = RGB
 parm1 = 16
+Universes 49-64
 ```
 
-The current V7 DMX materialization exposes 16 universe rows:
+Accepted physical evidence:
 
 ```text
-Universes 49 through 64
+one PixCon 16
+DMX addressing workbook IP: 10.10.5.11
+Outputs 1-16 -> Universes 49-64
 ```
 
-Operator-confirmed physical hardware:
+The 2025 inventory independently contains `03-MT Globe`, model `Pixiecon 16`, Controller Type `16`, with older IP evidence `192.168.5.103`.
 
-> the Mega Ball uses one PixCon 16 controller.
+This is useful corroboration of the physical controller model while also proving that IP address is historical/configuration data.
 
-The workbook agrees and maps physical controller Outputs 1 through 16 to Universes 49 through 64.
+## Mega Cube
 
-The current topology therefore preserves a clean boundary immediately after the Mega Tree universe block:
-
-```text
-Mega Tree -> 1-48
-Mega Ball -> 49-64
-```
-
-The permanent controller labels/asset identities still come from Controller Inventory when that source becomes available.
-
----
-
-## Mega Cube — Three Physical PixCon Controllers Confirmed by Addressing Workbook
-
-The current Master Musical Preview contains:
+Current V7:
 
 ```text
 lor_comment = WA-MegaCube
@@ -228,21 +247,16 @@ device_type = DMX
 string_type = RGB
 ```
 
-Operator-confirmed physical hardware:
-
-> the Mega Cube uses three PixCon controllers.
-
-The addressing workbook independently records three PixCon 16 controller IPs:
+Accepted physical evidence from the addressing workbook:
 
 ```text
-Controller 1 -> 10.10.5.12
-Controller 2 -> 10.10.5.13
-Controller 3 -> 10.10.5.14
+three PixCon 16 controllers
+10.10.5.12
+10.10.5.13
+10.10.5.14
 ```
 
-and maps physical PixCon outputs to the Mega Cube row/top sections and universe ranges.
-
-The current V7 DMX materialization for the master Prop exposes generic start-universe records at:
+The current V7 materialization exposes generic start-universe records at:
 
 ```text
 65
@@ -251,88 +265,88 @@ The current V7 DMX materialization for the master Prop exposes generic start-uni
 101
 ```
 
-with large channel spans.
+The 2025 controller inventory has only one aggregate `Mega Cube` E1.31 row with model `Coro`, Controller Type `48`, and incomplete legacy IP text.
 
-The legacy-compatible field-lead view exposes those values as generic `Controller` rows, but that row shape does **not** directly identify the three physical PixCon controller boxes.
+Therefore:
 
-This is now a stronger acceptance case:
+> FieldWiring must not derive physical controller count from either generic compatibility row count or the aggregate 2025 `Controller Type 48` row.
 
-> FieldWiring must not derive physical controller count by counting compatibility-view `Controller` rows for E1.31 Displays.
+The three physical controller identities/labels remain a reconciliation task.
 
-The workbook provides useful physical grouping evidence until the permanent Controller Inventory source is available.
+## Mega Star
 
----
-
-## Mega Star — Two PixCon 16 Controllers
-
-The current Master Musical Preview contains:
+Current V7:
 
 ```text
 lor_comment = FT-MegaStar
 device_type = DMX
 string_type = RGB
-parm1 = 4
-parm2 = 150
+Universes 113-140 active
 ```
 
-The current V7 DMX materialization exposes active universe rows spanning:
+The addressing workbook records:
 
 ```text
-113 through 140
+Mega Star Controller 1 -> PixCon 16 -> 10.10.5.15
+Mega Star Controller 2 -> PixCon 16 -> 10.10.5.16
 ```
 
-The addressing workbook records two physical PixCon 16 controllers:
-
-```text
-Mega Star Controller 1 -> 10.10.5.15
-Mega Star Controller 2 -> 10.10.5.16
-```
-
-Its Mega Star sheet maps:
+and maps:
 
 ```text
 Controller 1 outputs 1-16 -> Universes 113-128
 Controller 2 outputs 1-12 -> Universes 129-140
 ```
 
-and shows controller outputs 13-16 / Universes 141-144 without current Display-section labels in that historical configuration sheet.
+Mega Star is absent from the 2025 E1.31 inventory rows.
 
-For FieldWiring, Universes 113-140 are addressing details. The operator-facing result should use the two physical controller contexts and physical outputs when that mapping is accepted/current.
+That absence is a concrete controller-inventory reconciliation gap, not permission to invent a permanent asset identity from the workbook or universes.
 
----
+## Mt. Crumpit Matrix
 
-## Mt. Crumpit Matrix — One PixCon 16 Controller in the Addressing Workbook
-
-The current Master Musical Preview contains:
+Current V7:
 
 ```text
 lor_comment = WV-WhoMatrix
 device_type = DMX
 string_type = RGB
+large blocks beginning at Universes 147 and 155
 ```
 
-The current V7 DMX materialization contains large channel blocks beginning at universes:
+The addressing workbook records:
 
 ```text
-147
-155
+one PixCon 16
+IP 10.10.5.17
+Outputs 1-16
+Universes 147-162
 ```
 
-The addressing workbook provides the missing physical interpretation:
+The 2025 inventory independently records:
 
 ```text
-Mt. Crumpit
-    PixCon 16
-    IP 10.10.5.17
-    Outputs 1-16
-    Universes 147-162
+07- Mt Crumpet
+E1.31
+Pixicon-16
+Controller Type 16
+On back of Panel
+For Matrix top of MT
 ```
 
-Therefore the generic compatibility rows must not be interpreted as multiple physical controllers. The workbook indicates one physical PixCon 16 controller spanning that universe range.
+This is strong corroboration that Mt. Crumpit is one physical 16-output PixCon-style controller context, while the exact current permanent controller identity still requires the future controller master.
 
-This remains historical/configuration evidence until reconciled with the current Controller Inventory, but it is strong enough to use as an engineering acceptance example.
+## Santa's Workshop E1.31 Devices
 
----
+The 2025 inventory also reveals two E1.31 devices at Santa's Workshop that were not part of the initial dense-RGB examples:
+
+```text
+Pixicon-16 -> Gift Conveyor
+Pixicon-16 -> Gift Bag & Conveyor Rollers
+```
+
+These should be included in later E1.31 FieldWiring/controller-inventory reconciliation rather than ignored simply because the initial discussion focused on Mega Tree/Cube/Star and Mt. Crumpit.
+
+They are separate from the two current LOR/Pixie 8 RGB Tree controller blocks at Santa's Workshop.
 
 ## What the Operator Should See
 
@@ -356,132 +370,60 @@ Output: <physical port number>
 Display section/string: <field-facing connection label>
 ```
 
-Raw configuration values such as:
+Raw configuration values such as universe, start/end channel, legacy compatibility `Controller`, IP address, Source, and DeviceType belong under Engineering Details unless a specific field/troubleshooting workflow requires them in the main view.
 
-```text
-universe
-start channel
-end channel
-LOR compatibility Controller value
-source/device metadata
-IP address
-```
+## What Can Be Done Now
 
-belong under Engineering Details unless a specific field or troubleshooting workflow requires them in the main view.
+FieldWiring development does not need to stop for controller-inventory schema work.
 
----
+The combined evidence is sufficient to:
 
-## What Can Be Done Before Controller Inventory Is Available
-
-FieldWiring development does not need to stop while the current controller inventory is delayed.
-
-The current V7 topology plus the addressing workbook are already sufficient to:
-
-- classify reviewed `device_type = DMX` + `string_type = RGB` dense Displays into the E1.31 presentation family;
+- classify reviewed `DMX + RGB` dense Displays into the E1.31 presentation family;
 - avoid presenting universe numbers as physical controller identities;
-- preserve current universe/channel topology for engineering details;
-- use operator-confirmed and workbook-supported physical hardware facts for acceptance prototypes; and
-- expose where permanent physical-controller identity still remains missing.
+- preserve universe/channel topology for engineering details;
+- use accepted physical controller/output mappings in prototypes where corroborated; and
+- explicitly mark where permanent asset identity or current mapping remains unresolved.
 
-The current accepted physical facts/evidence are:
-
-```text
-Mega Tree
-    one 48-output AlphaPix / Flex48 controller
-    IP evidence: 10.10.5.10
-    V7 universe block 1-48
-
-Mega Ball
-    one PixCon 16
-    IP evidence: 10.10.5.11
-    V7 universe block 49-64
-
-Mega Cube
-    three PixCon 16 controllers
-    IP evidence: 10.10.5.12 / .13 / .14
-    generic V7 row shape does not directly encode those three boxes
-
-Mega Star
-    two PixCon 16 controllers
-    IP evidence: 10.10.5.15 / .16
-    active V7 universe block 113-140
-
-Mt. Crumpit Matrix
-    one PixCon 16 in the addressing workbook
-    IP evidence: 10.10.5.17
-    workbook universe/output map 147-162
-```
-
-Do not invent permanent controller IDs while the actual Controller Inventory source is unavailable.
-
----
-
-## Relationship to DMX / DumbRGB
-
-Northern Lights and the dense E1.31 Displays demonstrate why `device_type = DMX` cannot by itself select the field presentation.
-
-```text
-Northern Lights
-    device_type = DMX
-    string_type = DumbRGB
-    field task = DMX-network fixture hookup
-
-Mega Tree / Mega Ball / Mega Cube / Mega Star / Mt. Crumpit Matrix
-    device_type = DMX
-    string_type = RGB
-    field task = E1.31 network + intelligent pixel-controller hookup
-```
-
-The addressing workbook includes a Northern Lights/PixieLink IP record, but that is a network-device record and does not convert Northern Lights into the dense E1.31 RGB presentation family.
-
-The shared compatibility view can remain useful for topology/parity testing, but FieldWiring must use current Prop/SubProp metadata plus accepted physical-controller evidence to produce the normal operator view.
-
----
+Do not create permanent controller IDs from Unit ID, universe, IP address, Display name, Park Location, or source row position.
 
 ## Controller Inventory Requirements Exposed by E1.31
 
-The future Controller Inventory/deployment model must be able to represent at least:
+The future controller master/deployment model must represent at least:
 
 - permanent physical controller identity;
-- controller family/model, including AlphaPix and PixCon where used;
+- normalized controller family/model;
 - physical output/port count;
-- current Stage/Scene/Display deployment;
+- Stage/Scene/Display deployment;
 - E1.31 network relationship;
-- current controller-management IP address where operationally required;
-- current universe/address ranges used by that controller/deployment; and
-- physical output/port to Display/string/section mapping.
+- current management IP address when operationally required;
+- current universe/address range;
+- physical output/port to Display/string/section mapping; and
+- deployment/history so changed IPs/universe mappings do not overwrite prior evidence.
 
-Universe number is not the physical-controller primary identity.
+Universe and IP address are configuration attributes, not permanent controller identity.
 
-IP address is also not the permanent controller identity; it is deployment/configuration data that may change.
+One Display may use multiple physical controllers (Mega Cube, Mega Star).
 
-One Display may use multiple physical controllers, as demonstrated by Mega Cube and Mega Star.
-
-One physical controller may serve many E1.31 universes, as demonstrated by Mega Tree.
-
-The historical addressing workbook should be compared with the current Controller Inventory source when that source becomes available rather than treated as a replacement for it.
-
----
+One physical controller may serve many universes (Mega Tree).
 
 ## Acceptance Requirements
 
 At minimum, E1.31 FieldWiring testing must prove:
 
-1. reviewed `device_type = DMX` + `string_type = RGB` dense Displays are not rendered as DMX/DumbRGB fixtures;
-2. Mega Tree universe values `1-48` are not rendered as 48 physical controllers and may be presented as one AlphaPix 48-output context when the workbook/physical mapping is accepted;
-3. Mega Ball universe values `49-64` are not rendered as 16 physical controllers and may be presented as one PixCon 16 context;
-4. Mega Cube can be presented as three physical PixCon controllers using accepted physical mapping rather than generic compatibility row count;
-5. Mega Star can be presented as two physical PixCon 16 controller contexts, with active outputs/universes mapped according to the accepted current configuration;
-6. Mt. Crumpit Matrix can be presented as one PixCon 16 context when the workbook mapping is confirmed current;
-7. E1.31 network hookup is visible to the operator;
+1. reviewed `DMX + RGB` dense Displays are not rendered as DMX/DumbRGB fixtures;
+2. Mega Tree Universes `1-48` are presented as one accepted 48-output controller context, not 48 controllers;
+3. Mega Ball Universes `49-64` are presented as one accepted PixCon 16 context;
+4. Mega Cube can be presented as three physical PixCon controller contexts using accepted mapping rather than generic row count or the aggregate 2025 inventory row;
+5. Mega Star can be presented as two physical PixCon 16 contexts using accepted addressing evidence while remaining an inventory reconciliation gap;
+6. Mt. Crumpit can be presented as one PixCon 16 context, corroborated by both the addressing workbook and 2025 inventory;
+7. Santa's Workshop E1.31 Gift Conveyor / Gift Bag controller records are retained for reconciliation;
 8. raw universe/channel/IP information remains available for engineering/troubleshooting without becoming the primary field instruction;
-9. permanent controller labels/output ports are supplied from Controller Inventory when available rather than invented from universe or IP values; and
-10. no current LOR/E1.31 topology is rewritten merely to simplify the browser presentation.
-
----
+9. permanent controller labels/output ports are supplied from reconciled Controller Inventory rather than invented from universe or IP values; and
+10. no current LOR/E1.31 topology is rewritten merely to simplify browser presentation.
 
 ## Related Documents
 
+- [Controller Inventory 2025 Source Audit — 2026-08-19](../08_Controller_Inventory/Controller_Inventory_2025_Source_Audit_2026-08-19.md)
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
 - [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
 - [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md)
