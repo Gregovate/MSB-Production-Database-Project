@@ -8,292 +8,346 @@
 | Owner | MSB Database Administrator |
 | Runtime data authority | Current V7+ PostgreSQL/LOR snapshot |
 | Legacy comparison authority | FormView / V6 reports are validation evidence only |
-| Code/schema status | Design and test contract; no schema change authorized |
+| Code/schema status | Design and read-only test contract; no schema change authorized |
 
 ## Purpose
 
-This document records the durable engineering design for resolving the current Google Drive documentation context used by FieldWiring and related field applications.
+This document records the durable engineering design for resolving the current Google Drive context used by FieldWiring.
 
-The resolver exists because the V7+ LOR model is Scene-aware. FormView historically used a selected Preview and Preview-level `BackgroundFile`, but that is not sufficient for the current model. In particular, the Master Musical Preview does not normally carry the useful background path at Preview level; its individual Scenes carry the current `BackgroundFile` path evidence.
+The V7+ LOR model is Scene-aware. The Master Musical Preview normally carries useful path evidence at the Scene level rather than at Preview level, so FieldWiring must resolve Stage/Sub-stage/Scene context from current V7/PostgreSQL identity plus Scene/Preview path evidence before presenting wiring information.
 
-The first implementation task is therefore to prove Scene/Stage path resolution against the current V7 snapshot and the real Google Shared Drive hierarchy before building the FieldWiring browser application around it.
+The resolver has two distinct responsibilities:
+
+1. resolve the correct structured scope — Stage, formal Sub-stage, or Scene; and
+2. allow the FieldWiring task adapter to inspect only the current marked source folders belonging to that resolved scope.
+
+The wiring-row result is the primary FieldWiring product. Images are supplemental guidance only.
+
+---
 
 ## Runtime Authority Beginning With 2026
 
-Beginning with the 2026 FieldWiring implementation, runtime resolution must use the current V7+/PostgreSQL state.
-
-Conceptually:
+FieldWiring runtime resolution uses the current V7+/PostgreSQL state:
 
 ```text
 approved current LOR previews
-        -> V7 parser
-        -> approved PostgreSQL snapshot
-        -> current Preview / Scene / Display relationships
-        -> FieldWiring resolver
+    -> V7 parser
+    -> approved PostgreSQL snapshot
+    -> current Preview / Scene / Display relationships
+    -> FieldWiring
 ```
 
-The development export `fieldwiring_snapshot.db` is a read-only representation of the current PostgreSQL state and may be used for resolver development and acceptance testing.
+The development `fieldwiring_snapshot.db` is a read-only representation used for resolver testing.
 
-The V6 SQLite database and FormView are not runtime authorities for FieldWiring. They remain useful as known-good historical comparison evidence for expected wiring rows, drawings, and operator outcomes.
+V6 SQLite/FormView remains historical comparison evidence only and is never runtime authority for FieldWiring.
+
+---
 
 ## Entry Methods
 
-The Drive resolver must not depend on how the operator reached the field context.
-
-Supported entry paths are:
+The resolver is independent of the operator entry method:
 
 ```text
-physical Display QR scan
-        OR
-PC Display lookup
-        OR
-PC Scene browse/lookup
-        OR
-PC Stage browse/lookup
-        |
-        v
-shared field context resolution
-        |
-        v
-current permanent identity + Stage / Scene / Preview facts
-        |
-        v
-Drive context resolver
+Display QR
+    OR Display lookup
+    OR Scene browse
+    OR Stage browse
+        -> shared current field context
+        -> current identity / hierarchy / Preview facts
+        -> Drive context resolver
 ```
 
-A Display QR identifies the permanent Production Database Display. It does not contain a Google Drive path or task-specific document URL.
+A physical QR identifies permanent Display identity. It does not encode a Google Drive path, LOR UUID, task-specific document, or FieldWiring URL.
 
-A PC user may begin directly from a Display, Scene, or Stage without requiring a physical scan.
+---
 
 ## V7+ Background Path Model
 
-### Show Background Stage Previews
-
-Show Background Stage previews may still have useful Preview-level background context, but the resolver must use the current V7 Scene/Preview evidence rather than assuming Preview-level population.
-
-A Background Preview may also use a `Root` Scene. In that case `Root` means the owning Preview Stage root; it does not imply a literal `Root` folder.
-
 ### Master Musical Preview
 
-The Master Musical Preview is not expected to use a Preview-level `BackgroundFile` as the operational path anchor.
-
-Its individual Scenes carry the useful current path evidence:
+The normal V7 musical path is:
 
 ```text
 Master Musical Preview
-        -> Scene
-        -> Scene.background_file
-        -> Google Drive navigation pointer
+    -> Scene
+    -> Scene.background_file
+    -> Google Drive navigation evidence
 ```
 
-This Scene-level `BackgroundFile` behavior is the key V7+ replacement for the former RGB Plus Preview-level image/path organization.
+The Preview-level background is not expected to be the operational path anchor for the Master Musical Preview.
 
-## Scene `BackgroundFile` Is a Navigation Pointer
+### Show Background Stage Previews
 
-The current Scene `BackgroundFile` is an integration pointer/anchor into the Google Drive engineering hierarchy.
+Background Previews may still provide useful Preview-level path evidence and may use a `Root` Scene.
 
-It is **not necessarily the final image or document that the calling application will present**.
+`Root` means the owning Preview Stage root. It is not a literal child folder.
+
+---
+
+## `BackgroundFile` Is Navigation Evidence
+
+A Scene/Preview `BackgroundFile` is an integration pointer into the Google Drive hierarchy. It is not automatically the image FieldWiring should present.
 
 The pointer may refer to:
 
-- a published Wiring image;
-- a Scene `PreviewBackground` image;
-- a Display-level `PreviewBackground` image;
-- a deeper legacy engineering image;
-- a legacy path that currently enters a `SourceDocs` branch; or
-- another current LOR-referenced image whose path still provides useful hierarchy evidence.
+- a published wiring image;
+- a marked `PreviewBackground` image;
+- a Display/shared-folder background image;
+- a deep legacy engineering file;
+- a stale path;
+- or a legacy `SourceDocs` path.
 
-The application uses the pointer to navigate into the correct Stage / Substage / Scene part of the Drive, then the calling task applies its own branch rules.
+The resolver uses allowed path evidence to find the correct current Stage/Sub-stage/Scene scope. Once the scope is known, FieldWiring returns to the controlled marked source folders for published/current content.
 
-### `SourceDocs` is a hard traversal boundary
+Loose legacy files may remain valid path evidence without becoming FieldWiring content.
 
-`SourceDocs` contains engineering/source material and is never part of the normal field-document navigation space.
+---
 
-FieldWiring and the shared Drive resolver must **never descend into, enumerate, open, fetch, or present files from a `SourceDocs` folder** while resolving field documentation.
+## Marker Boundary
 
-If a current or legacy LOR `BackgroundFile` pointer contains a `SourceDocs` path segment, the resolver may use the path text above that segment as hierarchy/context evidence, but runtime navigation must stop before entering `SourceDocs`.
+The standard marker is:
 
-For example:
+```text
+_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+Every current Stage, formal Sub-stage, and Scene root carries the structural marker.
+
+Current application-source helpers are marked separately:
+
+```text
+PreviewBackground
+Procedures
+Wiring
+```
+
+`Photos` is not currently an application-source helper.
+
+The structural marker supports validation of the resolved hierarchy. The helper marker confirms that the helper folder participates in the current application-source contract.
+
+Loose files and unmarked legacy folders are ignored for current published-content discovery.
+
+---
+
+## `SourceDocs` Is a Hard Traversal Boundary
+
+FieldWiring and the shared resolver must never descend into, enumerate, open, fetch, or present files from `SourceDocs`.
+
+For example, a stored pointer such as:
 
 ```text
 ...\Wiring\MusicalStage\SourceDocs\WhoPeople.jpg
 ```
 
-may establish that the current path evidence points into the Stage's Musical Wiring branch, but the resolver must stop at:
+may provide path-text evidence above `SourceDocs`, but navigation stops before the `SourceDocs` folder.
 
-```text
-...\Wiring\MusicalStage
-```
+The raw pointer may be retained in an engineering report as a cleanup finding. The source file itself is not accessed or presented.
 
-It must not test, enumerate, download, or present `WhoPeople.jpg` from `SourceDocs`.
-
-A Scene pointer that enters `SourceDocs` is therefore a folder-alignment/data-quality condition to be reported for cleanup. It is not a valid published-field-document endpoint.
+---
 
 ## Google Shared Drive Root
 
-The current Google Workspace Shared Drive is **Display Folders**.
-
-Current mapped Windows root used by LOR/Google Drive for desktop:
+Mapped Windows root:
 
 ```text
 G:\Shared drives\Display Folders\
 ```
 
-Current Google Shared Drive/root identifier:
+Shared Drive identifier:
 
 ```text
 0AGgL6E6xJQh3Uk9PVA
 ```
 
-`Display Folders` contains many non-Stage engineering repositories in addition to Stage folders. Therefore:
+`Display Folders` contains non-Stage repositories in addition to Stage folders. The resolver must never enumerate the Shared Drive root and assume every child is a Stage.
 
-> The resolver must never enumerate the Shared Drive root and assume that every child folder is a Stage.
+Current database identity and bounded LOR path evidence constrain navigation.
 
-Permanent Stage/Scene identity and the current LOR path pointer constrain navigation.
+---
 
-## Common Drive Context Resolver
+## Common Structured-Scope Resolver
 
-The Drive context resolver is shared infrastructure. FieldWiring, Setup, Takedown, Inspection, and future field-document applications should consume the same resolved structured scope rather than independently inventing path rules.
-
-Conceptually:
+The structured-scope resolver may be shared by FieldWiring and Procedure applications:
 
 ```text
-current Display / Scene / Stage context
-        +
-current Scene/Preview BackgroundFile path evidence
-        |
-        v
-DRIVE CONTEXT RESOLVER
-        |
-        v
-resolved structured root
-(Stage / Substage / Scene)
-        |
-        +--> Wiring task adapter
-        +--> Procedures task adapter
-        +--> Photos task adapter
-        +--> future task adapters
+current identity + allowed path evidence
+        -> DRIVE CONTEXT RESOLVER
+        -> Stage / Sub-stage / Scene
+        -> task adapter
 ```
 
-The common resolver owns scope discovery. The calling application owns which standardized branch to inspect after the scope is known.
+The common resolver owns **which structured root applies**.
 
-## Resolver Behavior
+The task adapter owns **what to do with that root**.
 
-The first resolver implementation should operate conservatively in this order:
+This is important because Wiring and Procedures are different tasks. FieldWiring must not import a Procedure-style parent fallback rule merely because both use the same hierarchy resolver.
 
-1. Start with the permanent/current Stage, Scene, and Preview facts supplied by the field-context resolver or direct PC browse selection.
-2. Obtain the applicable current V7 `BackgroundFile` evidence. For Master Musical this normally means the selected Scene's `background_file`.
-3. Normalize the known mapped-drive prefix without treating that prefix as identity.
-4. Inspect the pointer path text for excluded source/archive branches before performing filesystem navigation.
-5. If the pointer contains `SourceDocs`, stop navigation at the parent published/context branch and report the pointer as needing alignment cleanup. Never descend into `SourceDocs`.
-6. Otherwise attempt to walk the exact stored relative path beneath the `Display Folders` Shared Drive root.
-7. If the allowed portion of the stored path resolves, use its hierarchy as strong current filesystem evidence.
-8. Walk upward from the allowed pointed location as necessary to identify the nearest valid structured Scene, Substage, or Stage context under the governing naming/hierarchy rules.
-9. If the stored path no longer resolves, use the known current Stage + Scene identity and the actual folder hierarchy to locate the deterministic current structured folder.
-10. Do not repair or rewrite the LOR `BackgroundFile` as a side effect of viewing documentation.
-11. If current identity, path evidence, naming, and hierarchy do not produce one safe answer, return an unresolved/review result instead of guessing.
+Procedure presentation/availability is governed separately and is not part of the FieldWiring wiring-image fallback contract.
 
-This design intentionally supports legacy cleanup. As folders and Scene backgrounds become better aligned, the resolver should naturally take simpler paths without requiring a new application architecture.
+---
 
-## Path Evidence Can Be Stale Without Invalidating Current Identity
+## Resolver Order
 
-A stored Scene background path may no longer exactly match the current Google Drive folder name.
+The resolver operates conservatively:
 
-For example, a Scene may still point to a prior folder spelling or suffix while the Production Database correctly identifies the current Stage and Scene.
+1. Start with current permanent Stage, Scene, Display, and Preview facts.
+2. Obtain current V7 path evidence; for Master Musical this normally means `Scene.background_file`.
+3. Confirm filesystem evidence is beneath the configured `Display Folders` root.
+4. Inspect the path text for excluded branches before traversal.
+5. Stop before `SourceDocs` when present.
+6. Attempt the exact allowed path where appropriate.
+7. Use allowed exact hierarchy evidence when it resolves.
+8. Walk upward only as needed to identify the nearest valid current structured Stage/Sub-stage/Scene root.
+9. If the stored path is stale, use current identity plus deterministic actual hierarchy rules to find one safe current marked root.
+10. Use structural markers as supporting validation.
+11. Do not rewrite LOR, PostgreSQL, or Drive as a side effect.
+12. If current identity/path/hierarchy evidence does not yield one safe result, report review/unresolved rather than guess.
 
-The resolver must distinguish:
+---
+
+## Stale Path Recovery
+
+A stale path does not invalidate current identity.
+
+Current proven recovery examples include:
 
 ```text
-permanent/current identity
-    !=
-fragile historical path text
+02-Fred's Stars-TR
+    -> current 02-Fred's Stars
+
+17-Candy Land-CL
+    -> current marked 17-Candyland-CL
 ```
 
-An exact path failure therefore triggers controlled hierarchy resolution; it does not authorize fuzzy guessing.
+Recovery is allowed only when one deterministic current marked hierarchy can be established. The stale stored value remains visible as a warning and is not silently rewritten.
 
-A deterministic unique match based on current Stage/Scene identity and the governing folder rules may be accepted by the resolver test. Multiple plausible matches or contradictory evidence must be reported for review.
+---
 
-## Folder Alignment and Data Cleanup
+## FieldWiring Scope Is Fixed Before Image Discovery
 
-The resolver is intentionally designed to tolerate current legacy misalignment without making the application responsible for repairing authoring data.
-
-Folder alignment work may change:
-
-- Scene names;
-- Scene `BackgroundFile` pointers;
-- folder names;
-- placement of published Wiring images;
-- placement of `PreviewBackground` images; and
-- whether a Scene owns a dedicated Wiring branch or inherits from its Stage/Substage.
-
-As those items are aligned, resolver behavior should become simpler and more deterministic.
-
-A new parser/snapshot run is required before FieldWiring development data reflects LOR Scene-name or `BackgroundFile` corrections. The resolver test should not force an immediate parser run merely to test code while alignment review is still underway.
-
-The 2026-08-19 first resolver run exposed one such known current-snapshot condition: the snapshot still contains Scene name `07-Who Characters` and a `BackgroundFile` pointer entering `Wiring\MusicalStage\SourceDocs\WhoPeople.jpg`. The LOR Scene has since been corrected by the operator to `07-Who People`, but that change is intentionally not yet represented in the development snapshot pending a later parser run.
-
-## FieldWiring Task Adapter
-
-After the common resolver identifies the applicable structured scope, FieldWiring selects the wiring context requested by the operator:
+After the structured resolver identifies the applicable scope, that scope is fixed for FieldWiring image discovery:
 
 ```text
-Background / Static
-        -> Wiring\BackgroundStage
+Resolved Scene
+    -> Scene
 
-Musical
-        -> Wiring\MusicalStage
+Resolved Sub-stage
+    -> Sub-stage
+
+Resolved Stage
+    -> Stage
 ```
 
-The Drive/image resolution is separate from electrical wiring-row authority.
-
-Current controller/channel/network rows continue to come from the current V7/PostgreSQL wiring model and Scene membership. The Drive resolver supplies the associated visual/documentation package.
-
-## Candidate Wiring Visual Fallback Order — Under Test
-
-The following most-specific-to-less-specific order reflects the current operator hypothesis and **must be tested before being treated as final production behavior**:
+The operator's wiring-context choice selects only the child branch:
 
 ```text
-resolved Scene
-    |
-    |-- 1. applicable Scene Wiring branch exists?
-    |       YES -> use Scene Wiring
-    |
-    |-- 2. usable Scene PreviewBackground exists?
-    |       YES -> use Scene visual context
-    |
-    |-- 3. applicable Stage Wiring branch exists?
-    |       YES -> use Stage Wiring
-    |
-    |-- 4. usable Stage PreviewBackground exists?
-            YES -> use Stage visual context
-
-otherwise -> unresolved / missing documentation
+Background / Static -> Wiring\BackgroundStage
+Musical             -> Wiring\MusicalStage
 ```
 
-The exact treatment of a formal Substage within this fallback ladder remains subject to testing under the already-established Google Drive hierarchy rules. Do not silently invent a Substage fallback order merely to make a test pass.
+Changing wiring context does not change the resolved structured scope.
 
-The test must make clear whether the selected result came from:
+---
 
-- exact Scene Wiring;
-- Scene PreviewBackground fallback;
-- Stage Wiring fallback;
-- Stage PreviewBackground fallback; or
-- unresolved/review.
+## No Parent Wiring-Image Fallback
 
-This fallback ladder concerns the **visual/document package**. It does not change or broaden the V7 Scene-filtered electrical wiring rows.
+This rule is now accepted:
+
+> **FieldWiring must not crawl from a resolved Scene or Sub-stage back to its parent Stage to borrow a wiring image.**
+
+If a Scene/Sub-stage owns the current wiring scope but has no published wiring image, the missing image is a documentation gap.
+
+Example:
+
+```text
+05a-Mega Star-MS
+    resolved scope = SUBSTAGE
+
+05a-Mega Star-MS\Wiring\MusicalStage
+    no published image
+
+Stage 05\Wiring\MusicalStage
+    published image exists
+```
+
+FieldWiring result:
+
+```text
+wiring rows: AVAILABLE when current V7 wiring data exists
+wiring image: NO WIRING IMAGE AVAILABLE
+```
+
+FieldWiring must **not** show the Stage 05 wiring image as though it describes the Mega Star Sub-stage.
+
+This behavior intentionally exposes missing documentation that should be filled.
+
+---
+
+## Wiring Data Is Primary; Images Are Supplemental
+
+FieldWiring remains usable without a wiring image.
+
+The primary field output is the current wiring data, including:
+
+```text
+Controller
+Channel
+Channel Name
+Display Name
+Network
+```
+
+A published image is rough field/layout guidance. Its absence does not make the wiring data unresolved.
+
+Therefore the resolver/test/report must distinguish:
+
+```text
+scope resolution
+wiring-row availability
+published wiring-image availability
+same-scope context-image availability
+```
+
+Do not collapse those into one `RESOLVED/UNRESOLVED` result merely based on whether an image exists.
+
+---
+
+## Same-Scope `PreviewBackground` May Be Context Only
+
+If the resolved scope has no published wiring image, FieldWiring may show a marked `PreviewBackground` image from the **same resolved scope** as visual context.
+
+It must be labeled as context rather than wiring.
+
+Preferred field presentation:
+
+```text
+NO WIRING IMAGE AVAILABLE
+
+Scene / Area Context:
+    <same-scope PreviewBackground image>
+
+Field Wiring:
+    <Controller / Channel / Channel Name / Display / Network rows>
+```
+
+If no same-scope context image exists, FieldWiring simply shows `NO WIRING IMAGE AVAILABLE` and continues with the wiring data.
+
+A parent Stage `PreviewBackground` is not substituted for a resolved Scene/Sub-stage context.
+
+---
 
 ## Published Wiring Folder Rule
 
-When an applicable published Wiring branch is selected, FieldWiring should inspect that exact folder rather than recursively crawling the complete Stage tree.
-
-Published branches are:
+FieldWiring inspects only the applicable branch inside the fixed resolved scope:
 
 ```text
-Wiring\BackgroundStage
-Wiring\MusicalStage
+<resolved scope>\Wiring\BackgroundStage
+<resolved scope>\Wiring\MusicalStage
 ```
 
-Current published image extensions are expected to include:
+Only files directly in that branch are published wiring-image candidates.
+
+Expected image extensions include:
 
 ```text
 .jpg
@@ -301,145 +355,62 @@ Current published image extensions are expected to include:
 .png
 ```
 
-Only files directly in the selected published branch are candidates for normal FieldWiring presentation.
+Do not recursively crawl the Stage tree. Do not mix parent, sibling, loose legacy, archive, or source images into the package.
 
-`SourceDocs` is excluded completely from normal resolver traversal and field presentation regardless of whether it appears nested beneath a Wiring branch or as a legacy sibling folder.
+Multiple directly published images in the selected branch remain one paginated image set.
 
-Additional archive/source/engineering folders must not become visible merely because they are physically nearby in the Drive hierarchy.
+---
 
-## Procedure Applications Use the Same Scope Resolver
+## Current All-Master Test Findings
 
-Procedure applications should use the same Stage/Substage/Scene context resolver and then apply their own branch.
+The 2026-08-19 all-Master resolver test enumerated 18 current Master Musical Scenes.
 
-Conceptually:
+After stale Stage-path recovery, the harness reached the correct structured scope in the expected 18-Scene test set, while the old image-driven result reported 14/18 because four Stages had no published image in their marked source structure.
 
-```text
-resolved structured scope
-        |
-        +--> Procedures\Setup
-        +--> Procedures\Takedown
-        +--> Procedures\Inspection
-```
-
-The common Drive resolver should not contain Setup-, Takedown-, or Inspection-specific content rules.
-
-Likewise, the Procedure application must not independently reinterpret the Scene background path or create another competing Stage/Scene folder resolver.
-
-The exact Procedure inheritance/fallback behavior remains owned by the applicable Procedure subsystem documentation. The common resolver supplies the structured scope and filesystem evidence.
-
-## First Test Gate — Resolver Before Browser
-
-Before implementing the FieldWiring browser page, build and run a read-only resolver test harness against:
-
-- the current `fieldwiring_snapshot.db` development snapshot / equivalent current PostgreSQL relations; and
-- the actual mapped `G:\Shared drives\Display Folders` folder hierarchy.
-
-The first test does **not** need to prove the final browser UI, QR scanner, wiring table layout, or report export.
-
-It must first prove that V7 Scene path evidence can navigate to the correct structured Drive scope and expose the correct candidate task folders.
-
-For every test Scene, record at minimum:
+Those four image gaps were:
 
 ```text
-Preview
-Scene
-Stage
-Scene BackgroundFile pointer
-whether pointer path contains an excluded SourceDocs branch
-whether the allowed pointer path resolves
-resolved Stage/Substage/Scene root
-candidate Scene Wiring branch
-candidate Scene PreviewBackground
-candidate Stage Wiring branch
-candidate Stage PreviewBackground
-selected candidate under the current test rule
-resolution basis
-warnings / conflicts / unresolved condition
+16-Northern Lights-NL
+18-Dancing Forest-DF
+19-Santa's Workshop-SW
+22-Glistening Grove-GG
 ```
 
-## Initial Resolver Acceptance Cases
+Under the clarified FieldWiring contract, those are **missing-image findings**, not failures to resolve the Stage or wiring data.
 
-The first harness should include at least these current V7 cases because they exercise different path shapes:
+The all-Master test also exposed `05a-Mega Star-MS`, which incorrectly inherited the Stage 05 wiring image under the earlier candidate ladder. That behavior is now rejected by the no-parent-wiring-image rule.
 
-### `15-Church-CH`
+Stage 07 cases demonstrated that generic Stage `PreviewBackground` images also must not be treated as wiring images for more-specific Scene scopes.
 
-Purpose: direct published Musical Wiring path.
+---
 
-Expected behavior: path evidence should resolve Stage 15 / Church scope and the applicable `Wiring\MusicalStage` branch without using V6 runtime data.
+## Procedures Are a Separate Caller
 
-### `05a-Mega Star-MS`
+The shared hierarchy resolver can also support Setup/Takedown/Inspection discovery, but Procedure behavior is separately governed.
 
-Purpose: deep arbitrary image path beneath a formal Substage.
+FieldWiring should not attempt to present Procedure documents as part of its wiring-image resolution logic.
 
-Expected behavior: walk upward from the pointed image to the valid `05a-Mega Star-MS` structured root and identify the applicable task candidates there.
+A broader field interface may later show which procedures are available for the resolved Stage/Scene context, but whether/how those documents open is a Procedure subsystem concern rather than a FieldWiring wiring rule.
 
-### `03-Mega Cube-MC`
-
-Purpose: Scene-level `PreviewBackground` context where Scene-level Wiring may not exist.
-
-Expected behavior: report the available Scene/Stage candidates and show which fallback step would be selected by the current test rule.
-
-### Current snapshot `07-Who Characters` / corrected LOR Scene `07-Who People`
-
-Purpose: stale Scene identity plus a pointer that enters a `SourceDocs` branch.
-
-Expected behavior: identify the current-snapshot alignment problem, stop before `SourceDocs`, use only the allowed parent hierarchy as context evidence, and never enumerate or present the source file. The harness must not treat successful access to a file inside `SourceDocs` as a valid resolver success condition.
-
-The corrected `07-Who People` Scene name will become testable from the development snapshot after a later parser/snapshot run.
-
-### `02-Fred's Stars`
-
-Purpose: stored path text that may no longer exactly match the current actual folder name.
-
-Expected behavior: exact pointer failure must trigger controlled Stage/Scene hierarchy resolution. The harness must report whether one unique safe current folder can be resolved; it must not silently use fuzzy matching.
-
-## First Resolver Run Findings — 2026-08-19
-
-The first six-case read-only harness run resolved all six cases under the initial candidate-selection rule, proving that the current V7 snapshot plus the actual mapped Drive can support deterministic Stage/Scene scope navigation.
-
-That run is **not yet final acceptance of the fallback ladder**.
-
-Important findings:
-
-1. `15-Church-CH` resolved directly to Stage 15 `Wiring\MusicalStage`.
-2. `05a-Mega Star-MS` resolved the Substage context from a deep path and then selected Stage Musical Wiring because the Substage Wiring/PreviewBackground branches contained no directly published images.
-3. `03-Mega Cube-MC` resolved the Scene and selected its `PreviewBackground` because no Scene Musical Wiring branch existed.
-4. Current snapshot `07-Who Characters` exposed an invalid field-navigation pattern because its raw pointer enters `SourceDocs`. This finding established the hard `SourceDocs` traversal boundary documented above.
-5. `02-Fred's Stars` demonstrated successful deterministic recovery from a stale folder suffix in the stored pointer.
-6. Stage 15 `Root` demonstrated the Background/Static Stage-root case and selected `Wiring\BackgroundStage`.
-
-These findings are engineering evidence for refining the resolver while folder alignment work continues. They do not require an immediate parser run or imply that current Scene pointers are already fully aligned.
-
-## Church Dual-Context Acceptance Case
-
-Stage 15 Church is also the first complete two-context FieldWiring acceptance case after the resolver itself is proven.
-
-The same permanent physical Stage must resolve two independent current V7 wiring contexts:
-
-```text
-Stage 15 Church
-    |
-    +--> Background / Static
-    |       -> current Show Background Preview / Scene context
-    |       -> BackgroundStage visual package
-    |       -> current background wiring rows
-    |
-    +--> Musical
-            -> Master Musical Preview
-            -> Scene 15-Church-CH
-            -> MusicalStage visual package
-            -> current musical wiring rows
-```
-
-The V6 FormView reports remain comparison evidence for the final field result, but neither branch may depend on the V6 database at runtime.
+---
 
 ## Acceptance Principle
 
-The resolver is accepted only when it can demonstrate:
+The Drive/scope resolver gate is accepted when it can demonstrate:
 
-> Given current V7/PostgreSQL identity, Scene/Preview relationships, current Scene path evidence, and the actual Google Drive hierarchy, the application can deterministically locate the correct structured documentation context without relying on V6 runtime data, hard-coded per-Stage paths, unsafe folder guessing, or traversal into source-only branches.
+> Given current V7/PostgreSQL identity, current Scene/Preview relationships, current path evidence, structural/source markers, and the actual Google Drive hierarchy, the application can deterministically locate the correct Stage/Sub-stage/Scene scope without V6 runtime data, unsafe folder guessing, or traversal into source-only branches.
 
-Only after that gate passes should FieldWiring browser implementation proceed to wiring rows + images + filters + offline report behavior.
+Image completeness is evaluated separately from scope resolution.
+
+FieldWiring presentation acceptance additionally requires that:
+
+- current wiring rows remain the primary result;
+- published images are restricted to the fixed resolved scope;
+- a missing image is clearly reported rather than hidden by parent fallback;
+- same-scope `PreviewBackground` is context only; and
+- no parent/sibling/source image is substituted merely to produce a visual.
+
+---
 
 ## Related Documents
 
@@ -447,6 +418,7 @@ Only after that gate passes should FieldWiring browser implementation proceed to
 - [FieldWiring View Inventory and Read-Model Decision](FieldWiring_View_Inventory_and_Read_Model_Decision.md)
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
+- [FieldWiring Drive Resolver All-Master Test Findings](FieldWiring_Drive_Resolver_All_Master_Test_Findings_2026-08-19.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [Google Drive Path Resolution Contract](../../../00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md)
 - [Google Drive Folder Structure](../../../00_Project_Overview/00-Google_Drive.md)
