@@ -6,47 +6,54 @@
 | Test | `run_resolver_test.ps1 -AllMasterScenes` |
 | Snapshot | Current development `fieldwiring_snapshot.db` based on V7 parser state |
 | Scope | Read-only resolver test against current mapped `Display Folders` hierarchy |
-| Result before harness correction | 18 Scenes tested; 12 RESOLVED; 6 UNRESOLVED |
+| First run | 18 Scenes tested; 12 RESOLVED; 6 UNRESOLVED |
+| Confirming rerun after Stage-anchor recovery fix | 18 Scenes tested; 14 RESOLVED; 4 UNRESOLVED |
 | Browser implementation status | Still gated; visual fallback order remains under test |
 
 ## Purpose
 
-This document records the first full-Master-Musical resolver test after the controlled Stage/Scene structural markers and marked application-source folders were populated across the current Google Drive hierarchy.
+This document records the full-Master-Musical resolver testing after the controlled Stage/Scene structural markers and marked application-source folders were populated across the current Google Drive hierarchy.
 
-The test is intended to separate four different kinds of conditions:
+The test separates four different kinds of conditions:
 
 1. valid current resolver behavior;
 2. stale LOR/Drive path evidence that can be recovered deterministically;
-3. stale Production Database Stage folder-path evidence;
+3. stale Production Database Stage folder-path evidence; and
 4. genuinely missing published material in the marked source structure.
 
 The test must not convert legacy loose files into current FieldWiring content merely because the file still exists and LOR points to it.
 
-## High-Level Result
+## Confirmed High-Level Result
 
-The first all-Master run tested 18 Scenes.
+After correcting the stale persisted Stage-anchor handling, the all-Master rerun tested 18 Scenes:
 
 ```text
-12 RESOLVED
- 6 UNRESOLVED
+14 RESOLVED
+ 4 UNRESOLVED
 ```
 
-The six unresolved results are not all the same type. Two exposed a harness/Stage-anchor handling issue with stale persisted `ref.stage.folder_path` evidence. Four correctly exposed current folders that have no published `.jpg/.jpeg/.png` image in their marked `Wiring\MusicalStage` or marked `PreviewBackground` source locations.
+The rerun confirmed the expected behavior:
 
-The result therefore proves the value of the marker boundary: the resolver no longer succeeds merely because a loose legacy image exists somewhere under the Stage root.
+- `07a-Who Forest-WF` now resolves through exact current marked pointer evidence while still reporting the stale persisted Stage/Substage path.
+- `17-Candyland-CL` now resolves through exact current marked pointer evidence while still reporting the stale persisted Stage folder spelling.
+- `16-Northern Lights-NL`, `18-Dancing Forest-DF`, `19-Santa's Workshop-SW`, and `22-Glistening Grove-GG` remain unresolved because the marked current source structure contains no directly published image.
 
-## Conditions That Resolved Correctly
+This confirms that the earlier 12/18 result contained two false negatives caused by stale persisted Stage-path anchors, while the remaining four gaps are real publication/alignment gaps under the new source-folder contract.
 
-Examples that resolved cleanly include:
+## Conditions That Resolve Correctly
+
+Examples include:
 
 - `02-Fred's Stars` — stale stored folder suffix recovered to the current Scene; Scene Musical Wiring selected.
 - `02-Mega Tree` — same stale-suffix recovery pattern; Scene Musical Wiring selected.
-- `03-Mega Cube-MC` — Scene resolved and its marked `Wiring\MusicalStage` now contains the published `Mega Cube Wiring.jpg`, which was selected ahead of PreviewBackground.
+- `03-Mega Cube-MC` — Scene resolved and its marked `Wiring\MusicalStage` contains `Mega Cube Wiring.jpg`, selected ahead of PreviewBackground.
 - `05-Festive Trees-FT` — Stage Musical Wiring selected directly.
-- `05a-Mega Star-MS` — Substage resolved from the deep legacy pointer; no Substage published image exists, so the current test rule selected Stage Musical Wiring.
+- `05a-Mega Star-MS` — Substage resolved from the deep legacy pointer; no Substage published image exists, so the current test rule selects Stage Musical Wiring.
+- `07a-Who Forest-WF` — stale persisted Substage path is tolerated; exact marked current pointer resolves the Substage and selects `WhoForest-Tagged.jpg`.
 - `08-Elf Choir-EC` — Stage Musical Wiring selected directly.
-- `10-Stars-ST` — the current LOR pointer is still a loose Stage-root image, but the resolver used it only as navigation evidence and selected the marked Stage Musical Wiring source instead.
+- `10-Stars-ST` — current LOR pointer is still a loose Stage-root image, but the resolver uses it only as navigation evidence and selects the marked Stage Musical Wiring source instead.
 - `15-Church-CH` — Stage Musical Wiring selected directly.
+- `17-Candyland-CL` — stale persisted Stage folder spelling is tolerated; current marked Stage Wiring is recovered from exact pointer evidence and contains five published images.
 - `25-Racing Arches-RA` — Stage Musical Wiring selected directly.
 
 These cases demonstrate that a legacy/loose LOR pointer does not itself become FieldWiring content. Once scope is known, the resolver returns to the marked source structure.
@@ -66,77 +73,68 @@ that enter:
 Wiring\MusicalStage\SourceDocs
 ```
 
-The guard stopped before `SourceDocs` and did not use the source images as published FieldWiring content.
+The guard stops before `SourceDocs` and does not use the source images as published FieldWiring content.
 
-Both cases then fell through under the current visual fallback hypothesis to the marked Stage `PreviewBackground` folder.
+Both cases then fall through under the current visual fallback hypothesis to the marked Stage `PreviewBackground` folder.
 
-This is mechanically valid under the current test order, but it is **not accepted as final FieldWiring behavior**. The Stage `PreviewBackground` contains generic Stage images (`Matrix-House.jpg`, `NorthHwySigns.jpg`) that may not be an appropriate field-wiring visual for those specific musical Scenes.
+This is mechanically valid under the current test order, but it is **not accepted as final FieldWiring behavior**. The Stage `PreviewBackground` contains generic Stage images (`Matrix-House.jpg`, `NorthHwySigns.jpg`) that may not be an appropriate field-wiring visual for those musical Scenes.
 
-These cases are strong evidence that the visual fallback order remains too permissive to finalize without operator review.
+The Stage-level `07-Whoville-WV` Scene also currently resolves to the same Stage PreviewBackground because no published Musical Wiring image exists.
 
-## Unresolved Type 1 — Stale Persisted Stage Folder Path
+These three Stage-PreviewBackground selections are the strongest evidence that the current binary resolver result is conflating two different questions:
 
-Two cases exposed stale `ref.stage.folder_path` evidence rather than missing current Drive content.
+1. did the resolver find the correct Stage/Substage/Scene context; and
+2. does that context contain an appropriate published FieldWiring visual package?
+
+The scope can be correct even when the wiring visual is missing or unsuitable.
+
+## Confirmed Stale Persisted Stage Folder Recovery
 
 ### `07a-Who Forest-WF`
 
-Current exact LOR pointer resolves beneath:
-
-```text
-07-Whoville-WV\07a-Who Forest-WF
-```
-
-and the marked Substage `Wiring\MusicalStage` contains:
-
-```text
-WhoForest-Tagged.jpg
-```
-
-However, the persisted Stage/Substage folder anchor used by the harness was:
+Stored Stage/Substage anchor:
 
 ```text
 07-Whoville-WV\07a-Who Forest
 ```
 
-which does not exist.
+Current exact marked pointer/root:
 
-The first marked-source guard required both the stale persisted anchor and the correctly resolved Substage root to have structural markers, causing a false UNRESOLVED result even though the current exact pointer and current marked Substage source were usable.
+```text
+07-Whoville-WV\07a-Who Forest-WF
+```
+
+The rerun recovers the top-level Stage from the exact current marked pointer, retains the more-specific Substage scope, and selects:
+
+```text
+07a-Who Forest-WF\Wiring\MusicalStage\WhoForest-Tagged.jpg
+```
+
+while preserving a warning that the persisted folder path is stale.
 
 ### `17-Candyland-CL`
 
-The current exact LOR pointer resolves beneath:
-
-```text
-17-Candyland-CL
-```
-
-while the persisted Stage folder path used by the harness was:
+Stored Stage anchor:
 
 ```text
 17-Candy Land-CL
 ```
 
-The persisted path does not exist, so the first guard rejected the valid current marked folder reached by the exact pointer.
+Current exact marked pointer/root:
 
-### Harness correction
+```text
+17-Candyland-CL
+```
 
-The test guard was corrected after this run so that when a persisted Stage folder path does not resolve, it may recover the top-level Stage anchor from the exact current LOR pointer **only when all of the following are true**:
+The rerun recovers the current Stage and selects the marked Stage `Wiring\MusicalStage`, which currently contains five published images.
 
-- the pointer itself resolves;
-- it is beneath the configured `Display Folders` root;
-- the first folder beneath `Display Folders` matches the numeric Stage key;
-- that Stage folder exists; and
-- that Stage folder carries the structural marker.
+The rerun also exposed a minor harness-reporting issue: the successful Candyland recovery retained the old pre-recovery warning `No candidate folder contained...` even though the rebuilt candidates contained five images and a candidate was selected. The harness was corrected after the rerun so that stale pre-recovery candidate warnings are recalculated after Stage-anchor recovery.
 
-The recovery is reported as a warning and does not rewrite PostgreSQL, LOR, or Google Drive.
+This reporting cleanup does not change the 14/18 result or any Drive resolution decision.
 
-This keeps stale Production Database path evidence visible for Folder Alignment cleanup while preventing the browser resolver from failing solely because a persisted path spelling is stale.
+## Four Genuine Current Publication Gaps
 
-A rerun is required to confirm that `07a-Who Forest-WF` and `17-Candyland-CL` now resolve under this corrected test behavior.
-
-## Unresolved Type 2 — No Published Image in Marked Source Structure
-
-Four Stage-level Scenes correctly remained unresolved because their current marked source folders contain no directly published image:
+These four Stage-level Scenes remain unresolved under the current test rule:
 
 ```text
 16-Northern Lights-NL
@@ -145,7 +143,7 @@ Four Stage-level Scenes correctly remained unresolved because their current mark
 22-Glistening Grove-GG
 ```
 
-Each currently has an exact LOR `BackgroundFile` pointing to a loose legacy image directly beneath the Stage root, for example:
+Each has an exact LOR `BackgroundFile` pointing to a loose legacy image directly beneath the Stage root:
 
 ```text
 16-Northern Lights-NL\66 Light Layout.JPG
@@ -154,24 +152,22 @@ Each currently has an exact LOR `BackgroundFile` pointing to a loose legacy imag
 22-Glistening Grove-GG\2020-11-05 16.44.53.jpg
 ```
 
-Those loose images remain valid legacy/navigation evidence, but under the new controlled source contract they are **not current FieldWiring content**.
+Those files remain usable as legacy/navigation evidence, but under the new controlled source contract they are **not current FieldWiring content**.
 
-For all four Stages, the marked candidates currently contain no directly published image in:
+For all four Stages, the marked current candidates contain no directly published image in:
 
 ```text
 Wiring\MusicalStage
 PreviewBackground
 ```
 
-Therefore UNRESOLVED is the correct result until Folder Alignment or wiring-document cleanup places an appropriate current visual in the marked source structure.
+Therefore the missing-visual condition is real until Folder Alignment or wiring-document cleanup places an appropriate current visual in the marked source structure.
 
 The resolver must not restore the old behavior of presenting these loose root files merely to make the test pass.
 
 ## Fallback Order Still Not Accepted
 
-The all-Master run gives enough evidence to keep the current fallback ladder explicitly under test.
-
-Particularly important cases are:
+The all-Master tests give enough evidence to keep the current fallback ladder explicitly under test.
 
 ### `05a-Mega Star-MS`
 
@@ -179,44 +175,40 @@ The Substage is correctly resolved, but neither Substage Musical Wiring nor Subs
 
 That may be the correct inheritance behavior, but it should be accepted deliberately rather than assumed.
 
-### `07-Who Characters` and `07-Who Spiral Tree`
+### Stage 07 PreviewBackground fallthrough
 
-The current test rule ultimately selects generic Stage PreviewBackground images after SourceDocs is blocked and no published Musical Wiring image exists.
+`07-Who Characters`, `07-Who Spiral Tree`, and `07-Whoville-WV` currently select Stage PreviewBackground because no usable published Musical Wiring image is available under the selected scope/fallback chain.
 
-This proves that "find the first marked folder with an image" is not sufficient by itself to establish that the visual is appropriate for FieldWiring.
+The available Stage PreviewBackground images are generic context images rather than proven wiring drawings.
 
-The FieldWiring visual fallback contract therefore remains unresolved even though Stage/Scene/Substage scope resolution and marker enforcement are working.
+This demonstrates that "find the first marked folder with an image" is not sufficient to establish a successful **FieldWiring visual** result.
 
-## What This Test Proves
+A likely next design refinement is to report **scope resolution** and **published wiring-visual availability** separately instead of using one binary `RESOLVED/UNRESOLVED` status. That design change is not yet accepted merely by this test report.
 
-The all-Master run supports the following conclusions:
+## What the Confirming Rerun Proves
 
 ```text
-V7 Master Musical Scene enumeration:         PROVEN
-Stage/Scene/Substage scope resolution:        WORKING
-Structural root marker enforcement:           WORKING
-Marked helper-source enforcement:             WORKING
-SourceDocs exclusion:                         WORKING
-Loose legacy file exclusion:                  WORKING
-Stale Scene-folder recovery:                   WORKING
-Stale persisted Stage folder recovery:         HARNESS CORRECTED; RERUN REQUIRED
-Published visual completeness:                 GAPS FOUND
-Visual fallback order:                         STILL UNDER TEST
-Browser implementation gate:                   NOT YET
+V7 Master Musical Scene enumeration:          PROVEN
+Stage/Scene/Substage scope resolution:         PROVEN FOR CURRENT TEST SET
+Structural root marker enforcement:            PROVEN
+Marked helper-source enforcement:              PROVEN
+SourceDocs exclusion:                          PROVEN
+Loose legacy file exclusion:                   PROVEN
+Stale Scene-folder recovery:                    PROVEN
+Stale persisted Stage folder recovery:          PROVEN FOR CURRENT TEST CASES
+Published visual completeness:                  GAPS FOUND (16, 18, 19, 22)
+Visual fallback order:                          STILL UNDER TEST
+Browser implementation gate:                    NOT YET
 ```
 
-## Next Test
+## Next Engineering Decision
 
-After pulling the harness correction, rerun:
+Do not run a new parser merely to improve this test result.
 
-```powershell
-.\Utilities\FieldWiring_Drive_Resolver_Test\run_resolver_test.ps1 -AllMasterScenes
-```
+The next decision is semantic rather than another path-resolution fix:
 
-Expected engineering question for the rerun:
+- whether `PreviewBackground` should count as a successful FieldWiring visual fallback or only as context/navigation material;
+- whether Stage/Substage Wiring inheritance such as `05a-Mega Star-MS -> Stage Wiring` is the intended field behavior; and
+- whether the resolver/test status should separate `scope resolved` from `published wiring visual found`.
 
-- do `07a-Who Forest-WF` and `17-Candyland-CL` now resolve through the exact marked current pointer evidence while still reporting the stale persisted folder path;
-- do `16`, `18`, `19`, and `22` remain unresolved because their marked source locations genuinely have no published image; and
-- do any additional candidate selections change unexpectedly.
-
-Do not perform a new parser run solely for this retest. The current stale `07-Who Characters` snapshot remains useful for proving the legacy-boundary behavior until the operator is ready for the next controlled parser/snapshot cycle.
+Only after that is decided should the harness candidate-selection/result model be changed and the browser implementation gate reconsidered.
