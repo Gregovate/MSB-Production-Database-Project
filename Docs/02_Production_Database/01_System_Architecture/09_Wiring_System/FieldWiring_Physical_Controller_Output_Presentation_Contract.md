@@ -23,7 +23,7 @@ FieldWiring must not assume that one raw LOR `Controller`/Unit ID always equals 
 
 ## Existing V7 Discriminator — `string_type`
 
-The current V7 snapshot already carries `string_type` on current Props and SubProps.
+The current V7 snapshot carries `string_type` on current Props and SubProps.
 
 For the two LOR cases covered by this contract:
 
@@ -119,11 +119,9 @@ A clarified MSB operating rule is:
 
 > **When separate RGB Props in the same current wiring context reuse the same LOR Unit ID, that duplication is positive evidence that more than one physical Pixie controller is present.**
 
-One physical Pixie output cannot simultaneously be two separate field pigtails on two different physical controller boxes. Therefore repeated RGB Unit IDs across separate physical Displays are not merely an ambiguity; they indicate another physical controller instance carrying the same programmed address.
+Repeated RGB Unit IDs across separate physical Displays are not merely an ambiguity; they indicate another physical controller instance carrying the same programmed address.
 
 What duplication does **not** provide by itself is the permanent controller identity, physical label, model, or complete grouping of every Display into every controller. Those facts still belong to Controller Inventory/deployment mapping when they cannot be established from an accepted physical pattern.
-
-This produces an important distinction:
 
 ```text
 Duplicate RGB Unit ID across separate Props
@@ -245,8 +243,6 @@ Candy Cane 04 and 08 -> same programmed signal
 
 This duplication is intentional and must not be "fixed" by FieldWiring or reconciliation.
 
-The current V7 snapshot accurately preserves the duplicate addressing.
-
 Because the physical pattern is operator-confirmed, the desired field presentation is:
 
 ```text
@@ -267,11 +263,11 @@ Both physical controllers legitimately retain the same LOR address range `21-24`
 
 Controller Inventory will eventually replace `Pixie group 1/2` with the real permanent controller identities/labels.
 
-## Candyland Musical — Repeated RGB Address Pattern Also Present
+## Candyland Musical — Three Repeated Pixie 4 Address Blocks
 
-The current `17-Candyland-CL` Master Musical Scene contains the same general phenomenon: separate RGB Candy Cane Props reuse the same Unit IDs.
+`17-Candyland-CL` uses the same repeated-address technique for twelve RGB Candy Cane Displays.
 
-Current V7 snapshot evidence includes:
+The intended/current live Preview pattern is:
 
 ```text
 CL-RGBCandyCane-01 -> 21
@@ -287,14 +283,47 @@ CL-RGBCandyCane-08 -> 24
 CL-RGBCandyCane-09 -> 21
 CL-RGBCandyCane-10 -> 22
 CL-RGBCandyCane-11 -> 23
-CL-RGBCandyCane-12 -> 22
+CL-RGBCandyCane-12 -> 24
 ```
 
-This confirms that repeated RGB Unit-ID patterns are not unique to Church and must be a supported FieldWiring/controller-inventory condition.
+The three `21-24` blocks are positive evidence of three physical Pixie 4 controllers, each with Outputs 1 through 4.
 
-The first two four-Display blocks are clean `21-24` repeats. The current third block is not a complete `21-24` repeat because Candy Cane 12 currently carries Unit ID `22` in the snapshot. FieldWiring must preserve and report that current topology rather than silently changing it to `24` or assuming a complete Pixie grouping.
+During the 2026-08-19 FieldWiring review, the development V7 snapshot showed `CL-RGBCandyCane-12 -> 22`. Operator review of the live LOR Prop Definition identified that as an authoring mistake. The live Preview was corrected so Candy Cane 12 now uses Unit ID `24` and the third block correctly matches the `21-24` pattern.
 
-The repeated IDs still provide positive evidence of multiple physical controllers. The exact physical grouping/controller labels for Candyland should remain pending until the current controller inventory or an operator-confirmed physical mapping is available.
+This is an important validation example:
+
+```text
+FieldWiring / snapshot review
+    -> exposed a repeated-pattern inconsistency
+    -> operator inspected the live LOR Prop Definition
+    -> live Preview corrected 22 -> 24
+```
+
+The current development snapshot remains stale for Candy Cane 12 until the next controlled parser/snapshot cycle. FieldWiring test code must not patch or override that stale snapshot in place; the corrected value becomes authoritative in development only after the normal parser/import process is run.
+
+Before permanent Controller Inventory identity is available, the accepted temporary physical presentation may therefore be:
+
+```text
+Pixie group 1
+    Output 1 -> Candy Cane 01
+    Output 2 -> Candy Cane 02
+    Output 3 -> Candy Cane 03
+    Output 4 -> Candy Cane 04
+
+Pixie group 2
+    Output 1 -> Candy Cane 05
+    Output 2 -> Candy Cane 06
+    Output 3 -> Candy Cane 07
+    Output 4 -> Candy Cane 08
+
+Pixie group 3
+    Output 1 -> Candy Cane 09
+    Output 2 -> Candy Cane 10
+    Output 3 -> Candy Cane 11
+    Output 4 -> Candy Cane 12
+```
+
+The controller inventory will later replace the temporary group labels with the actual permanent controller identities.
 
 ## What Can Be Done Before Controller Inventory Exists
 
@@ -313,7 +342,9 @@ RGB LOR
 
 For an RGB Display whose own LOR Prop/field-lead structure clearly contains multiple ordered logical output rows, an output ordinal may be tested **within that Display** when the physical design has been validated. The Tree and Cross examples are current acceptance cases.
 
-For repeated blocks across separate RGB Props, FieldWiring may derive temporary controller groups only when the repeated pattern and physical grouping are operator-confirmed. Otherwise it should expose the duplicate-address evidence and wait for Controller Inventory/deployment mapping rather than inventing a grouping.
+For repeated blocks across separate RGB Props, FieldWiring may derive temporary controller groups when the repeated pattern and physical grouping are operator-confirmed. Church and Candyland are current acceptance examples.
+
+The current controller inventory is still required before temporary controller groups become permanent controller identities.
 
 ## Controller Inventory Integration
 
@@ -390,7 +421,7 @@ FieldWiring controller/output presentation testing must include at minimum:
 2. `CH-RGBTree-16x100-180`, proving raw Unit IDs `30-3F` are presented as one Pixie 16 with Outputs 1-16 rather than sixteen controllers;
 3. `CH-RGBCross-LH` and `CH-RGBCross-RH`, proving two logical RGB rows can represent Outputs 1-2 of one Pixie 2 per Cross;
 4. all eight Church RGB Candy Canes, proving the repeated `21-24` block means two physical Pixie 4 controllers and can be presented as two temporary groups before permanent controller identity exists;
-5. `17-Candyland-CL`, proving repeated RGB Unit IDs are detected as multiple-controller evidence without fabricating a complete grouping when the current pattern is not uniform;
+5. all twelve `17-Candyland-CL` RGB Candy Canes, proving three repeated `21-24` blocks represent three physical Pixie 4 groups and that stale snapshot data is not silently corrected outside the normal parser/import cycle;
 6. two distinct physical Pixie controller records eventually carrying the same address range without violating Controller Inventory identity rules;
 7. engineering-details access to the raw LOR Unit ID/address and other topology fields; and
 8. no regression to the LOR-authoritative wiring topology or field-lead row relationships.
