@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$ScriptPath = Join-Path $PSScriptRoot 'test_drive_context_resolver.py'
+$ScriptPath = Join-Path $PSScriptRoot 'guarded_resolver_test.py'
 
 if (-not (Test-Path -LiteralPath $ScriptPath)) {
     throw "Resolver test script was not found: $ScriptPath"
@@ -55,6 +55,7 @@ if ($OutputDir) {
 
 Write-Host ''
 Write-Host 'Running read-only FieldWiring Drive resolver test...'
+Write-Host 'SourceDocs traversal guard: ON'
 Write-Host "Python: $Python"
 Write-Host "Drive root: $DriveRoot"
 if ($SnapshotPath) {
