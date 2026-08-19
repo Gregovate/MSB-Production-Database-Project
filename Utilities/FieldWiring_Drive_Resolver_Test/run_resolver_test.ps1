@@ -72,7 +72,7 @@ if ($ExitCode -eq 0) {
     Write-Host ''
     Write-Host 'Resolver test completed with all tested cases RESOLVED.'
 }
-elif ($ExitCode -eq 2) {
+elseif ($ExitCode -eq 2) {
     Write-Host ''
     Write-Warning 'Resolver test completed, but one or more cases are UNRESOLVED. Review the generated report; do not treat this as a script failure.'
 }
