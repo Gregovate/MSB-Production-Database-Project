@@ -16,6 +16,7 @@ Start with:
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
 - [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
 - [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md)
+- [FieldWiring E1.31 Dense RGB Field Presentation Contract](FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
@@ -55,9 +56,14 @@ RGB LOR
 
 DMX + DumbRGB
     -> DMX network / fixture hookup
+
+DMX + RGB — reviewed dense RGB cases
+    -> E1.31 network / intelligent pixel-controller hookup
 ```
 
-The generic compatibility-view `Controller` and `StartChannel` columns do not have one universal physical meaning across all three families.
+The generic compatibility-view `Controller` and `StartChannel` columns do not have one universal physical meaning across these families.
+
+In particular, the current parser uses DMX/universe materialization for both the reviewed DumbRGB/DMX fixture cases and the reviewed dense RGB/E1.31 cases. FieldWiring must use the current device/string metadata plus physical controller relationships to distinguish the field task.
 
 LOR remains the upstream authority for show topology and enters PostgreSQL through the controlled LOR2DB pipeline.
 
@@ -71,7 +77,7 @@ LOR remains authoritative for:
 
 - controller and addressing assignments;
 - channel numbers/ranges;
-- DMX/network assignments; and
+- DMX/E1.31/network assignments; and
 - show wiring topology.
 
 PostgreSQL provides the shared operational snapshot used by FieldWiring and may add database-owned permanent identities, controller inventory relationships, field notes, and other operational relationships.
@@ -112,6 +118,7 @@ Wiring images are supplemental rough-location guidance. The hookup data remains 
 - [Database Foundation](../01_Database_Foundation/README.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
+- [Network Infrastructure](../10_Network_Infrastructure/README.md)
 
 ## Current Responsibilities
 
@@ -120,6 +127,7 @@ Wiring images are supplemental rough-location guidance. The hookup data remains 
 - Scene-aware field package resolution;
 - physical-output interpretation for A/C and Pixie controllers;
 - DMX/DumbRGB presentation that does not confuse universe/channel addressing with physical plugs;
+- E1.31 dense RGB presentation that does not confuse universes with physical AlphaPix/PixCon controllers;
 - generated HTML/PDF field documentation;
 - disconnected/offline field-document support; and
 - FieldWiring recovery, data-contract definition, and future task-focused browser workflow.
@@ -144,9 +152,9 @@ Current engineering focus is now the **operator read/presentation layer**:
 2. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
 3. classify the physical presentation family from current device/string metadata;
 4. translate raw topology into the hookup terms the field installer sees;
-5. keep raw Unit ID, DMX universe/channel, Source, DeviceType, and similar engineering values available under details; and
+5. keep raw Unit ID, DMX/E1.31 universe/channel, Source, DeviceType, and similar engineering values available under details; and
 6. integrate permanent Controller Inventory identities later without blocking current FieldWiring development.
 
-Current acceptance examples include Church A/C + Pixie patterns, Candyland repeated Pixie 4 blocks, Who Forest Pixie 8 blocks, Santa's Workshop Pixie 8 blocks, and Northern Lights as the first DMX/DumbRGB network-hookup case.
+Current acceptance examples include Church A/C + Pixie patterns, Candyland repeated Pixie 4 blocks, Who Forest Pixie 8 blocks, Santa's Workshop Pixie 8 blocks, Northern Lights as the first DMX/DumbRGB network-hookup case, and the dense RGB E1.31 cases: Mega Tree, Mega Ball, Mega Cube, Mega Star, and Mt. Crumpit Matrix.
 
 Do not change FormView or database schema merely to simplify the browser implementation. Demonstrate any real schema gap before proposing a migration.
