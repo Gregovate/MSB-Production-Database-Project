@@ -2,23 +2,23 @@
 
 | Item | Value |
 |---|---|
-| Status | ENGINEERING FINDINGS — current V7 snapshot evidence |
+| Status | ENGINEERING FINDINGS — V7 + controller-inventory evidence |
 | Sub-project | FieldWiring |
 | Scope | RGB/Pixie physical-output interpretation |
-| Controller Inventory | Current source artifact not yet available for inspection |
+| Controller Inventory | 2025 source inspected; reconciliation required |
 | Schema status | No schema change authorized |
 
 ## Purpose
 
-This document records additional real MSB RGB/Pixie patterns found while validating the FieldWiring physical-controller/output presentation contract.
+This document records real MSB RGB/Pixie patterns used to validate the FieldWiring physical-controller/output presentation contract.
 
-The goal is to distinguish what current LOR/V7 topology already proves from what must wait for the physical Controller Inventory source.
+The 2025 controller inventory source has now been inspected in addition to current V7 topology.
 
-These findings supplement [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md).
+See [Controller Inventory 2025 Source Audit — 2026-08-19](../08_Controller_Inventory/Controller_Inventory_2025_Source_Audit_2026-08-19.md).
 
-## Who Forest — Eight Distinct Pixie 8 Address Blocks
+## Who Forest — Eight Pixie 8 Controllers Confirmed by Two Sources
 
-The current Master Musical Scene `07a-Who Forest-WF` contains eight RGB Tree Props. Each Tree is `string_type = RGB`, uses `parm1 = 8`, and occupies its own non-overlapping eight-Unit-ID block on `Aux I`:
+The current Master Musical Scene `07a-Who Forest-WF` contains eight RGB Tree Props, each occupying a non-overlapping eight-Unit-ID block:
 
 ```text
 WF-Tree-01 -> 50-57
@@ -31,63 +31,65 @@ WF-Tree-07 -> 80-87
 WF-Tree-08 -> 88-8F
 ```
 
-The field-lead rows expose eight logical output rows per Tree, all beginning at circuit/channel 1. This is a clean topology shape for eight distinct Pixie 8 controller blocks.
+The 2025 controller inventory independently records eight `Pixie8` physical controller rows at Tree 1 through Tree 8 with those same eight address ranges.
 
-Each Tree also has a corresponding RGB Star using the second half of the last Unit ID in that Tree's block:
+This is strong confirmation that FieldWiring may treat these as eight distinct Pixie 8 physical controller contexts and present Outputs 1-8 rather than exposing each Unit ID as a separate controller.
 
-```text
-WF-TreeStar-01 -> 57, circuits 151-300
-WF-TreeStar-02 -> 5F, circuits 151-300
-WF-TreeStar-03 -> 67, circuits 151-300
-WF-TreeStar-04 -> 6F, circuits 151-300
-WF-TreeStar-05 -> 77, circuits 151-300
-WF-TreeStar-06 -> 7F, circuits 151-300
-WF-TreeStar-07 -> 87, circuits 151-300
-WF-TreeStar-08 -> 8F, circuits 151-300
-```
+Each Tree also has a corresponding RGB Star inside the same LOR address block, using the second half of the final Unit ID in that block.
 
-This keeps each Star inside the same non-overlapping address block as its corresponding Tree. The exact physical string/port connection of the Star should remain a field/controller-inventory detail unless separately documented, but the current addressing clearly preserves eight separate controller blocks.
+### Reconciliation item — Tree 4 network
 
-### FieldWiring implication
+The current V7 topology reviewed for Who Forest uses `Aux-I` for the Tree block.
 
-For normal field presentation, the raw Unit IDs should not be shown as eight separate physical controllers inside each Tree. The Tree should be presented as one Pixie 8-style physical controller context with numbered Outputs 1-8 when the physical mapping is accepted.
+The 2025 controller inventory records Tree 4 (`68-6F`) on `Aux-F` while Trees 1-3 and 5-8 are recorded on `Aux-I`.
 
-The eight Tree address blocks are already separated well enough in LOR that FieldWiring does not need duplicate-address detection to discover that eight controller instances are present.
+Do not silently change either source. This is now a concrete source-reconciliation item.
 
-## Santa's Workshop — Two Distinct Pixie 8 Address Blocks
+## Santa's Workshop — Current Pixie 8 Topology Exists but 2025 Inventory Is Missing the Two Tree Controllers
 
-The current Master Musical Scene `19-Santa's Workshop-SW` contains two RGB Tree Props on `Aux D`:
+The current Master Musical Scene `19-Santa's Workshop-SW` contains two RGB Tree Props:
 
 ```text
 SW-TreeRGB-LH -> 10-17
 SW-TreeRGB-RH -> 18-1F
 ```
 
-Both are `string_type = RGB` and carry `parm1 = 8`, producing eight logical output rows per Tree.
+Both are `string_type = RGB` and produce eight logical output rows per Tree, consistent with two Pixie 8 controller contexts.
 
-The corresponding Stars use the second half of the last Unit ID in each block:
+The 2025 controller inventory does not contain matching `Pixie8` rows for these two Tree controllers.
+
+It does contain other Santa's Workshop controller records, including two E1.31 `Pixicon-16` devices for the Gift Conveyor / Gift Bag and conveyor rollers.
+
+Therefore FieldWiring can continue using the accepted V7 physical interpretation for the two Tree blocks, but the missing inventory rows must be resolved during controller-inventory reconciliation.
+
+## Church and Candyland — Current RGB Controllers Are Newer/Absent from 2025 Inventory
+
+Current reviewed FieldWiring patterns include:
 
 ```text
-SW-StarRGB-LH -> 17, circuits 151-300
-SW-StarRGB-RH -> 1F, circuits 151-300
+Church Tree
+    one Pixie 16
+    30-3F
+
+Church Crosses
+    Pixie 2 controllers
+
+Church Candy Canes
+    two Pixie 4 controllers
+    repeated 21-24 blocks
+
+Candyland Candy Canes
+    three Pixie 4 controllers
+    repeated 21-24 blocks
 ```
 
-This is a clean current topology shape for two distinct Pixie 8 controller blocks:
+These current RGB controller patterns are not represented as corresponding physical Pixie rows in the 2025 inventory source.
 
-```text
-Left controller block  -> 10-17
-Right controller block -> 18-1F
-```
-
-### FieldWiring implication
-
-FieldWiring can treat these as two separate Pixie 8-style controller contexts for operator presentation once the physical mapping is accepted. The operator should work in physical Output 1-8 terms rather than raw Unit IDs `10-17` / `18-1F`.
-
-The raw Unit-ID blocks remain available in engineering details.
+This confirms that the 2025 inventory is valuable but incomplete relative to the current 2026 Preview topology.
 
 ## Pattern Classes Now Observed
 
-Current MSB examples now demonstrate several distinct valid RGB controller patterns:
+Current MSB examples demonstrate several distinct valid RGB controller patterns:
 
 ```text
 1. One RGB Prop spans one controller's outputs
@@ -98,35 +100,39 @@ Current MSB examples now demonstrate several distinct valid RGB controller patte
 
 3. Multiple physical controllers intentionally repeat one address block
    Church Candy Canes: two Pixie 4 controllers, both 21-24
-   Candyland Candy Canes: three Pixie 4 controllers, each 21-24 after live correction
+   Candyland Candy Canes: three Pixie 4 controllers, each 21-24
 
 4. Multiple physical controllers use clean non-overlapping address blocks
-   Who Forest: eight Pixie 8 blocks
-   Santa's Workshop: two Pixie 8 blocks
+   Who Forest: eight Pixie 8 blocks, independently confirmed in 2025 inventory
+   Santa's Workshop: two Pixie 8 blocks in current V7, missing from 2025 inventory
 ```
 
-FieldWiring therefore cannot use one universal `Controller = Unit ID` rule for RGB. It must interpret the physical-output pattern while preserving LOR as the topology authority.
+FieldWiring therefore cannot use one universal `Controller = Unit ID` rule for RGB.
+
+It must interpret the physical-output pattern while preserving LOR as the topology authority and use controller inventory as physical-asset enrichment rather than as competing topology.
 
 ## Controller Inventory Boundary
 
-The current Controller Inventory source has not yet been inspected in this workstream.
+The 2025 controller inventory has now been inspected, but it does not yet provide the permanent physical controller identity model FieldWiring ultimately needs.
 
-Until that source is available:
+The source uses deployment/addressing values such as single Unit IDs, ranges, paired IDs, `IP`, Display assignment, and Park Location. It also contains model naming variants and missing/currently stale rows.
 
-- do not design the final controller PostgreSQL schema;
+Until reconciliation is complete:
+
+- do not design the final controller PostgreSQL schema from the 2025 source alone;
 - do not invent permanent controller identities;
 - do not make LOR Unit ID/range the controller primary identity;
-- continue using accepted current topology patterns for FieldWiring prototypes where the physical interpretation is clear; and
-- keep raw LOR addressing available for engineering traceability.
-
-Controller Inventory will ultimately replace temporary controller-group descriptions with permanent physical controller identities, models, output counts, labels, and deployment relationships.
+- continue using accepted current topology patterns for FieldWiring prototypes where the physical interpretation is clear;
+- use inventory rows as corroborating physical/deployment evidence; and
+- keep source conflicts visible for review.
 
 ## Acceptance Use
 
-These cases should be retained as FieldWiring controller/output presentation tests:
+Retain these FieldWiring controller/output presentation tests:
 
-- `07a-Who Forest-WF` — eight independent Pixie 8-style address blocks;
-- `19-Santa's Workshop-SW` — two independent Pixie 8-style address blocks;
+- `07a-Who Forest-WF` — eight independent Pixie 8 physical controller contexts, confirmed by V7 + inventory;
+- Who Forest Tree 4 — explicit inventory/V7 network reconciliation case;
+- `19-Santa's Workshop-SW` — two independent Pixie 8 current V7 blocks missing from 2025 inventory;
 - Church Tree — Pixie 16 output derivation;
 - Church Crosses — Pixie 2 output derivation;
 - Church Candy Canes — repeated-address Pixie 4 grouping; and
