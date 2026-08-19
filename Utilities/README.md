@@ -11,6 +11,7 @@ If a tool primarily serves one subsystem, keep it with that subsystem instead. T
 ## Current Utilities
 
 - [MSB PostgreSQL Read-Only MCP](MSB_Postgres_MCP/README.md) — draft cross-system engineering connector for safe read-only access to current Production Database state. It is not deployed and does not authorize database writes or schema changes.
+- [FieldWiring Drive Resolver Test Harness](FieldWiring_Drive_Resolver_Test/README.md) — read-only engineering harness that tests the shared V7+ Stage/Scene Google Drive context-resolution rules against `fieldwiring_snapshot.db` and the mapped `Display Folders` hierarchy before FieldWiring browser implementation.
 
 ## Maintenance
 
