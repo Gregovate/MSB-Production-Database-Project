@@ -131,6 +131,7 @@ Stages, Substages, and Scenes use the same standardized helper-folder structure:
 Stage / Substage / Scene
 │
 ├── PreviewBackground/
+│   └── archive/
 │
 ├── Photos/
 │   ├── Current/
@@ -164,6 +165,7 @@ Display folders use the smaller standardized helper structure:
 Display
 │
 ├── PreviewBackground/
+│   └── archive/
 └── Photos/
     ├── Current/
     └── Historical/
