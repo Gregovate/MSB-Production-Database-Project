@@ -33,7 +33,7 @@ MSB DATABASE SOURCE FOLDER
 READ ME — DO NOT DELETE
 
 This file identifies this folder as a source location used by the
-MSB Production Database or an MSB database-backed application.
+MSB Production Database or an MSB database-backed application
 ```
 
 Keep this opening text unchanged.
