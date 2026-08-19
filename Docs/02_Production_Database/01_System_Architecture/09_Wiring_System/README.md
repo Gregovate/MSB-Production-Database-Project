@@ -11,6 +11,7 @@ The active replacement/recovery sub-project is named **FieldWiring**. FieldWirin
 Start with:
 
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
+- [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring PostgreSQL Readiness Audit](FieldWiring_PostgreSQL_Readiness_Audit.md)
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
@@ -123,9 +124,11 @@ Wiring owns wiring content placed or referenced there. [Setup and Deployment](..
 
 ## Resume Development
 
-The FormView architecture has now been recovered into the FieldWiring compatibility contract, the repository-defined PostgreSQL wiring layer has been compared against the current V7 parser, scan-to-Display/hierarchy behavior is owned by the shared Field Context Resolution contract, and Scene-aware image/report behavior is captured in the FieldWiring presentation requirements.
+The FormView architecture has now been recovered into the FieldWiring compatibility contract, the repository-defined PostgreSQL wiring layer has been compared against the current V7 parser, scan-to-Display/hierarchy behavior is owned by the shared Field Context Resolution contract, Scene-aware image/report behavior is captured in the FieldWiring presentation requirements, and the V7+ Scene `BackgroundFile` navigation-pointer model is now captured in the [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md).
 
-Before designing or implementing FieldWiring, verify the **live** PostgreSQL objects that can satisfy those contracts, define the read-only application data/query surface, and define how the existing Scene/Stage wiring images will be securely resolved, served to browsers, and embedded in offline exports.
+The next implementation gate is the read-only Drive resolver harness defined in that engineering design. It must prove current V7 Scene/Stage scope resolution against the actual `Display Folders` hierarchy, including exact paths, stale paths, deep legacy paths, `SourceDocs` pointers, Scene/Stage fallback candidates, and unresolved/ambiguous conditions. The candidate wiring visual fallback order remains under test and must not be treated as final merely because it produces a usable result.
+
+After that resolver gate passes, verify the **live** PostgreSQL objects that satisfy the read contract, define the read-only application data/query surface, and define how the resolved Google Drive wiring images will be securely served to browsers and embedded in offline exports.
 
 Do not change FormView or database schema merely to simplify the browser implementation. Preserve the LOR authority boundary and demonstrate any real schema gap before proposing a migration.
 
