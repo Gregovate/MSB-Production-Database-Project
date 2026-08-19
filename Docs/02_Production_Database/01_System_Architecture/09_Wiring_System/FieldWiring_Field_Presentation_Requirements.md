@@ -5,7 +5,7 @@
 | Status | DRAFT — accepted field UX direction |
 | Sub-project | FieldWiring |
 | Predecessor reference | FormView 0.3.1 Wiring View |
-| Current revision | 2026-08-17 |
+| Current revision | 2026-08-19 |
 | Owner | MSB Database Administrator |
 | Code/schema change status | DOCUMENTATION ONLY |
 
@@ -24,6 +24,43 @@ A technician should be able to answer quickly:
 > Which controller and channel does this Display connection use, what is the LOR channel name, and which network applies?
 
 The browser UI must prioritize that task over exposing every engineering field available in the underlying LOR model.
+
+## Wiring Data Is the Primary Field Product
+
+FieldWiring is first and foremost a **wiring-data application**.
+
+The authoritative field result is the current V7/PostgreSQL wiring-row set for the resolved Stage/Sub-stage/Scene and selected Background/Static or Musical context.
+
+The most important field information is:
+
+```text
+Controller
+Channel
+Channel Name
+Display Name
+Network
+```
+
+A wiring image is **supplemental visual guidance only**. It helps the operator understand roughly where Displays/controllers are located or how an area is laid out, but FieldWiring remains usable when no image exists.
+
+Therefore:
+
+- missing imagery must never suppress otherwise valid wiring rows;
+- a Scene/Sub-stage/Stage with valid wiring rows but no published image is still a valid FieldWiring result;
+- the screen should clearly state `NO WIRING IMAGE AVAILABLE` when appropriate;
+- a same-scope `PreviewBackground` may be shown as optional context, clearly labeled as context rather than wiring; and
+- FieldWiring must not borrow a parent Stage wiring image for a Scene/Sub-stage merely to avoid a missing-image message.
+
+Conceptually:
+
+```text
+FIELD WIRING RESULT
+    wiring rows          REQUIRED / PRIMARY
+    published wiring     OPTIONAL
+    context image        OPTIONAL
+```
+
+This distinction is important when measuring readiness. A missing image is a documentation gap, not a wiring-data failure.
 
 ## FormView Controls to Preserve Functionally
 
@@ -231,6 +268,27 @@ Source           compact marker/badge
 Display Name     group heading when practical
 ```
 
+## Image / Context Presentation
+
+The image area is secondary to the wiring table.
+
+Preferred behavior:
+
+```text
+Published wiring image exists
+    -> show it as supplemental field guidance
+
+No published wiring image
+    -> show NO WIRING IMAGE AVAILABLE
+    -> if a same-scope PreviewBackground exists, optionally show it as Scene / Area Context
+
+No published wiring image and no context image
+    -> show NO WIRING IMAGE AVAILABLE
+    -> wiring table remains fully usable
+```
+
+On phone/tablet layouts, the wiring table must not be pushed off-screen merely to reserve a large image area.
+
 ## Sorting
 
 Normal field order remains controller/plug oriented unless Display grouping is selected.
@@ -264,9 +322,9 @@ On narrow screens:
 - Channel Name should receive the largest available width;
 - Display should become the group heading rather than a repeated column when practical;
 - Network may use a compact badge/short field;
-- ConnectionType, DeviceType, and Tag should move to optional details.
-
-The wiring drawing/image remains part of the same field context and must remain practically accessible without consuming all table space.
+- ConnectionType, DeviceType, and Tag should move to optional details;
+- wiring rows remain primary even when an image is available; and
+- image/context presentation should be collapsible or placed after the wiring table when screen space is constrained.
 
 ## Printing / Hard Reports
 
@@ -284,6 +342,8 @@ Network
 
 A compact Source marker may be included when useful. ConnectionType, DeviceType, and Tag should normally be omitted from the field printout unless an engineering report explicitly requests them.
 
+A missing image does not prevent a valid wiring report from being generated. The report should state `NO WIRING IMAGE AVAILABLE` and continue with the wiring rows.
+
 Every FieldWiring hard report remains subject to the FieldWiring expiration/currentness contract.
 
 ## Acceptance Examples
@@ -300,11 +360,15 @@ FieldWiring presentation testing should include at minimum:
 8. Regular and auxiliary network examples;
 9. a narrow phone/tablet viewport;
 10. a printed/hard report using the compact grouping model;
-11. Engineering details showing raw Source, ConnectionType, DeviceType, and LORTag without forcing those fields into the normal view.
+11. Engineering details showing raw Source, ConnectionType, DeviceType, and LORTag without forcing those fields into the normal view;
+12. a resolved wiring scope with no image, proving the wiring table remains the primary usable result; and
+13. a same-scope PreviewBackground shown only as clearly labeled context.
 
 ## Related Documents
 
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
+- [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
+- [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
 - [FieldWiring PostgreSQL Readiness Audit](FieldWiring_PostgreSQL_Readiness_Audit.md)
 - [Wiring System](README.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
