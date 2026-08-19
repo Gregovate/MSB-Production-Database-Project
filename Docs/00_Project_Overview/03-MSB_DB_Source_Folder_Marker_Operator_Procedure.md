@@ -2,28 +2,23 @@
 
 ## Purpose
 
-Use this procedure when working with the Stage / Sub-stage / Scene Google Drive structure used by the MSB Production Database and database-backed applications.
+Use this procedure when working with the standardized Google Drive helper folders used by the MSB Production Database and database-backed applications.
 
-The marker file has two related uses:
+The marker file identifies a **specific helper folder whose contents are used as a database/application source location**. It exists to make those folders obvious to people browsing Google Drive without renaming the established Stage, Sub-stage, Scene, Display, or helper-folder structure.
 
-1. at a **Stage / Sub-stage / Scene root**, it identifies and protects the aligned structural scope; and
-2. inside approved helper folders such as `PreviewBackground`, `Procedures`, and `Wiring`, it identifies the folders whose contents may be used by database-backed applications.
-
-This allows legacy folders and loose files to remain in place while cleanup proceeds gradually without letting applications mistake nearby historical material for current controlled content.
-
-The marker supports human understanding and application validation. It does **not** replace Production Database identity, current LOR relationships, Scene/Preview path evidence, or the Google Drive path-resolution contract.
+The marker is human-readable guidance and may also be used by applications as supporting confirmation. It does **not** replace Production Database identity, current LOR relationships, Scene/Preview path evidence, or the Google Drive path-resolution contract.
 
 ---
 
 ## Standard File Name
 
-Use this exact file name everywhere:
+Use this exact file name:
 
 ```text
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-Do not shorten, rename, or delete it.
+Do not shorten, rename, or delete the marker after it has been placed in an approved source folder.
 
 ---
 
@@ -39,60 +34,15 @@ This file identifies this folder as a source location used by the
 MSB Production Database or an MSB database-backed application
 ```
 
-Keep this opening text unchanged. The rest of the file is personalized for the folder type and may include local notes.
+Keep this opening text unchanged.
+
+The rest of the marker is personalized for the folder type and may include local notes.
 
 ---
 
-# Stage / Sub-stage / Scene Root Marker
+# Approved Marker Locations
 
-Every current Stage, formal Sub-stage, and Scene folder must contain the marker directly in its root.
-
-Example:
-
-```text
-15-Church-Bells-CH/
-├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-├── PreviewBackground/
-├── Procedures/
-├── Wiring/
-├── Photos/
-├── legacy folders/
-└── loose legacy files
-```
-
-The root marker has a different purpose from a helper-folder marker.
-
-It means:
-
-> This folder is an aligned Stage / Sub-stage / Scene structural scope used by the MSB system. Do not rename or move it without an approved alignment change.
-
-The root marker does **not** mean that every file or folder inside the root is current application source content.
-
-## Protect the root name
-
-Do not rename or move a current Stage, Sub-stage, or Scene folder merely as part of cleanup. Its current name and hierarchy may be referenced by:
-
-- LOR `BackgroundFile` paths;
-- current database folder-path evidence;
-- Folder Alignment;
-- FieldWiring and future database-backed applications; and
-- operator procedures and expectations.
-
-If a true alignment correction requires a rename, make it as a deliberate coordinated change rather than an incidental cleanup action.
-
-## Legacy material may remain
-
-Existing Stage and Scene roots are not expected to be clean. They may contain many years of loose files, drawings, images, old folders, and other engineering material.
-
-Do not delete, rename, or reorganize uncertain legacy material merely to make the root match the current scaffold.
-
-Preserve it until its purpose and correct destination are understood.
-
----
-
-# Marked Application-Source Folders
-
-Within a Stage / Sub-stage / Scene root, the current database/application source folders are:
+The current approved database/application source folders are:
 
 ```text
 PreviewBackground
@@ -100,12 +50,12 @@ Procedures
 Wiring
 ```
 
-Each of those folders also contains the same marker file:
+The marker belongs at the **root of those source helper folders**.
+
+Example:
 
 ```text
-<Stage / Sub-stage / Scene>/
-├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt   <- structural root marker
-│
+<Stage, Sub-stage, or Scene>/
 ├── PreviewBackground/
 │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │
@@ -119,79 +69,72 @@ Each of those folders also contains the same marker file:
     └── no database-source marker at this time
 ```
 
-Do not rename the marked `PreviewBackground`, `Procedures`, or `Wiring` folders. Their names are part of the application-facing filesystem contract.
+## Stage / Sub-stage / Scene roots are NOT marker locations
 
-`Photos` remains general documentation and is not currently an application-source folder.
+Do **not** place the database-source marker directly in a Stage, Sub-stage, or Scene root merely because that scope contains database-linked material.
 
-Do not add extra markers inside `BackgroundStage`, `MusicalStage`, `Setup`, `Takedown`, `SourceDocs`, `Archive`, `images`, or other child folders unless a future approved contract specifically makes that child folder its own marked source root.
-
-`PreviewBackground` may also legitimately exist beneath a Display/shared folder and may carry its own marker because LOR can reference that folder directly.
-
----
-
-# Application Discovery Boundary
-
-For normal database-backed application discovery:
-
-> Loose files and unmarked legacy folders are ignored. Current application content is discovered only through approved marked source folders.
-
-This is the key rule that allows gradual cleanup.
-
-Example:
+For example, this is **not** correct:
 
 ```text
-existing Stage / Scene root
-    |
-    +-- root marker                -> confirms/protects structured scope
-    +-- marked PreviewBackground  -> current application source
-    +-- marked Procedures         -> current application source
-    +-- marked Wiring             -> current application source
-    +-- Photos                    -> general documentation only
-    +-- loose legacy files        -> preserve; ignore for application discovery
-    +-- legacy folders            -> preserve; ignore for application discovery
+15-Church-Bells-CH/
+└── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt   <- DO NOT PLACE HERE
 ```
 
-A legacy LOR `BackgroundFile` pointer may still pass through or point to legacy material outside the marked source folders. The resolver may use such path text as navigation evidence when permitted by the path-resolution contract, but that legacy file does **not** become published application content merely because LOR points to it.
+The Stage/Scene root may contain many other engineering, historical, fabrication, photo, and legacy folders that are not database/application source folders. The marker is intentionally used only on the helper folders that participate in the current database/application source contract.
 
-After the correct Stage / Sub-stage / Scene is resolved, the application must return to the approved marked source structure for published content.
+## Photos is not marked
+
+Do not add the marker to `Photos` at this time. The current Production Database/application contract does not use the Stage/Scene `Photos` helper as a database source folder.
+
+## Child folders are not separately marked by default
+
+Do not add extra copies inside:
+
+```text
+BackgroundStage
+MusicalStage
+Setup
+Takedown
+Inspection
+SourceDocs
+Archive
+images
+```
+
+unless a future approved application contract specifically makes that child folder its own separately controlled database source.
+
+`PreviewBackground` may legitimately exist beneath a Display/shared folder and may carry its own marker because LOR may reference that folder directly.
+
+If another helper folder becomes a database/application source in the future, update the governing documentation first and then add the marker to that helper folder.
 
 ---
 
-# Folder-Specific Marker Purpose
-
-## Stage / Sub-stage / Scene root
-
-The root marker should:
-
-- identify the folder as an aligned structural scope;
-- state the folder name;
-- say **do not rename or move**;
-- explain that loose legacy content may remain;
-- explain that loose/unmarked content is not automatically application source content; and
-- provide a local-notes section.
+# Folder-Specific Marker Content
 
 ## PreviewBackground
 
-The marker should explain that the folder contains current LOR Preview/Scene background images and path/context evidence.
+The marker explains that the folder contains current LOR Preview/Scene background images and path/context evidence used by database-backed applications.
 
 Referenced images must not be casually renamed, moved, or deleted without deliberately updating the LOR reference and alignment.
 
 ## Procedures
 
-The marker should explain that this is the controlled source root for field procedures.
+The marker explains that the folder is the controlled source root for field procedures associated with the applicable Stage, Sub-stage, or Scene.
 
 `Archive` and `SourceDocs` remain excluded from normal field presentation.
 
 ## Wiring
 
-The marker should explain the current published branches:
+The marker explains that the folder is the controlled source root for published field wiring information.
+
+Published field wiring branches are:
 
 ```text
-Wiring/BackgroundStage
-Wiring/MusicalStage
+Wiring\BackgroundStage
+Wiring\MusicalStage
 ```
 
-`SourceDocs` is working/source material and is a hard exclusion boundary for FieldWiring and other normal field applications.
+`SourceDocs` is working/source material and is a hard exclusion boundary for FieldWiring and normal field applications.
 
 ---
 
@@ -219,7 +162,7 @@ Do not remove the current folder until the next LOR/parser alignment run is comp
 
 Do not place credentials, passwords, API keys, or private personal information in the marker.
 
-The population utility never overwrites an existing exact marker so local notes are preserved.
+The population utility never overwrites an existing exact marker, so local notes are preserved.
 
 ---
 
@@ -233,18 +176,17 @@ Utilities\populate_msb_db_source_folder_markers.ps1
 
 The utility is preview-only by default.
 
-It now targets:
+It targets only:
 
-- each detected Stage root;
-- each detected formal Sub-stage root;
-- each detected Scene root;
 - existing `PreviewBackground` folders;
 - existing `Procedures` folders at Stage/Sub-stage/Scene scope; and
 - existing `Wiring` folders at Stage/Sub-stage/Scene scope.
 
-It does not create, rename, move, or delete folders. It does not mark `Photos`. It does not overwrite an existing exact marker.
+It does **not** target Stage/Sub-stage/Scene roots and does not mark `Photos`.
 
-### Preview
+It does not create, rename, move, or delete folders. It does not overwrite an existing exact marker.
+
+### Preview all current Stages
 
 ```powershell
 .\Utilities\populate_msb_db_source_folder_markers.ps1
@@ -256,13 +198,11 @@ It does not create, rename, move, or delete folders. It does not mark `Photos`. 
 .\Utilities\populate_msb_db_source_folder_markers.ps1 -StageFilter '15-*'
 ```
 
-### Apply
+### Apply after review
 
 ```powershell
 .\Utilities\populate_msb_db_source_folder_markers.ps1 -Apply
 ```
-
-Because the helper-folder markers have already been populated in much of the current structure, a later run may show many `SKIPPED_EXISTING` helper markers and new `WOULD_CREATE` / `CREATED` entries for Stage/Sub-stage/Scene roots. That is expected.
 
 Review any `REVIEW_EXISTING_MARKER` result manually.
 
@@ -272,10 +212,7 @@ Review any `REVIEW_EXISTING_MARKER` result manually.
 
 The marker `.txt` file itself is never field content and must not be listed as a Wiring image, Setup/Takedown/Inspection instruction, or other published document.
 
-Applications should use the markers in two different ways:
-
-1. **structural root marker** — supporting confirmation that the resolved Stage/Sub-stage/Scene is an aligned controlled scope;
-2. **helper-folder marker** — confirmation that the helper folder participates in the current database/application source contract.
+Applications may use the presence of the marker as supporting confirmation that an approved helper folder participates in the current database/application source contract.
 
 The marker does not replace database/LOR identity authority.
 
@@ -292,7 +229,7 @@ A missing expected marker is an alignment/review condition. It does not authoriz
 
 # Simple Rule
 
-> Keep the marker in every Stage, Sub-stage, and Scene root, and in every approved database/application source helper folder. Do not rename those structural roots or marked helper folders. Preserve other legacy material during cleanup, but applications ignore it until it is deliberately aligned into the marked source structure.
+> Put `_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt` only in the root of an approved database/application source helper folder. Today those are `PreviewBackground`, `Procedures`, and `Wiring`. Do not put it in the Stage/Scene root or `Photos`.
 
 ---
 
