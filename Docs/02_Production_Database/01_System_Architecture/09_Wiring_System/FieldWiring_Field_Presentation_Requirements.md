@@ -13,359 +13,376 @@
 
 This document records the field-facing presentation requirements for the browser-based FieldWiring application.
 
-The requirements are derived from the current FormView Wiring View and operator review of the actual field information needed while connecting Displays to controllers.
+The requirements are derived from FormView, current V7/PostgreSQL data, and operator review of the actual physical hookup tasks performed during setup.
 
-This document defines presentation behavior only. It does not authorize application-code or database-schema changes.
+FieldWiring must preserve LOR-authoritative topology while translating technical addressing into the physical language the installer sees in the park.
+
+---
 
 ## Field Objective
 
-A technician should be able to answer quickly:
+The normal FieldWiring screen should answer:
 
-> Which controller and channel does this Display connection use, what is the LOR channel name, and which network applies?
+> What physical connection does this Display require, and what information does the installer need to make that connection correctly?
 
-The browser UI must prioritize that task over exposing every engineering field available in the underlying LOR model.
+That answer is not identical for every controller/device family.
+
+Current accepted presentation families are:
+
+```text
+Traditional LOR
+    -> conventional A/C controller / numbered-output hookup
+
+RGB LOR
+    -> Pixie controller / numbered RGB-output hookup
+
+DMX + DumbRGB
+    -> DMX network / fixture hookup
+```
+
+FieldWiring must not force all three into one generic `Controller / Channel` interpretation merely because the compatibility wiring view uses those column names.
+
+---
 
 ## Wiring Data Is the Primary Field Product
 
-FieldWiring is first and foremost a **wiring-data application**.
+The authoritative result is the current V7/PostgreSQL wiring/topology set for the resolved Stage/Sub-stage/Scene and selected Background/Static or Musical context.
 
-The authoritative field result is the current V7/PostgreSQL wiring-row set for the resolved Stage/Sub-stage/Scene and selected Background/Static or Musical context.
-
-The most important field information is:
-
-```text
-Controller
-Channel
-Channel Name
-Display Name
-Network
-```
-
-A wiring image is **supplemental visual guidance only**. It helps the operator understand roughly where Displays/controllers are located or how an area is laid out, but FieldWiring remains usable when no image exists.
+A wiring image is supplemental rough-location guidance only.
 
 Therefore:
 
-- missing imagery must never suppress otherwise valid wiring rows;
-- a Scene/Sub-stage/Stage with valid wiring rows but no published image is still a valid FieldWiring result;
-- the screen should clearly state `NO WIRING IMAGE AVAILABLE` when appropriate;
-- a same-scope `PreviewBackground` may be shown as optional context, clearly labeled as context rather than wiring; and
-- FieldWiring must not borrow a parent Stage wiring image for a Scene/Sub-stage merely to avoid a missing-image message.
+- missing imagery must never suppress otherwise valid hookup data;
+- a valid field result may have no image;
+- the browser should state `NO WIRING IMAGE AVAILABLE` when appropriate;
+- a same-scope `PreviewBackground` may be shown as context only; and
+- FieldWiring must not borrow a parent Stage wiring image for a resolved Scene/Sub-stage.
 
 Conceptually:
 
 ```text
 FIELD WIRING RESULT
-    wiring rows          REQUIRED / PRIMARY
-    published wiring     OPTIONAL
-    context image        OPTIONAL
+    current hookup data    REQUIRED / PRIMARY
+    published wiring image OPTIONAL
+    context image          OPTIONAL
 ```
 
-This distinction is important when measuring readiness. A missing image is a documentation gap, not a wiring-data failure.
+---
+
+## Presentation Family Comes Before Column Labels
+
+FieldWiring must inspect current Prop/SubProp/device metadata before deciding what the normal operator columns mean.
+
+### Traditional LOR / A/C
+
+For a conventional A/C controller, the physical output is one-to-one with the LOR channel/output number.
+
+Normal field concepts are approximately:
+
+```text
+Controller
+Output
+Channel Name
+Display
+Network
+```
+
+`StartChannel` may be presented as **Output** for this family.
+
+The hexadecimal LOR Unit ID is engineering/configuration information and should not be emphasized when a permanent physical controller label becomes available.
+
+### RGB / Pixie
+
+For `string_type = RGB`, raw Unit IDs may represent logical pixel-output addressing rather than separate physical controllers.
+
+The normal field result should emphasize:
+
+```text
+Physical Pixie / accepted temporary group
+Output / pigtail number
+Display
+Channel Name when useful
+Network
+```
+
+The mapping rules are defined in [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md).
+
+### DMX + DumbRGB
+
+For current `device_type = DMX` and `string_type = DumbRGB` cases, generic `Controller` and `StartChannel` values may represent DMX universe/channel addressing rather than numbered physical hookup plugs.
+
+The normal field result should emphasize the fixture/Display and DMX-network hookup rather than pretending the raw universe/channel is an A/C or Pixie controller/output pair.
+
+The initial acceptance case is `16-Northern Lights-NL` and is defined in [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md).
+
+---
 
 ## FormView Controls to Preserve Functionally
 
-FormView currently provides three useful and independent wiring controls:
+FormView provides three useful independent wiring controls:
 
-- **Field wiring mode** — when checked, reduce the detailed wiring model to the practical FIELD connection set; when unchecked, show the fuller wiring map;
-- **Displays only** — restrict to master Display/`PROP` rows when an engineering/operator use case requires it;
-- **Hide SPAREs** — suppress intentionally unused spare channels.
+- **Field Wiring** — reduced practical FIELD connection set versus fuller wiring map;
+- **Displays Only** — optional master Display/`PROP` restriction; and
+- **Hide SPAREs** — suppress intentionally unused spare rows.
 
-FieldWiring does not need to reproduce the Tkinter checkboxes literally, but equivalent behavior must remain available.
+FieldWiring does not need to reproduce the Tkinter controls literally, but equivalent behavior must remain available where applicable.
 
 ### Field Wiring checked versus unchecked
 
-The two FormView modes must not be conflated.
+**Field Wiring OFF** presents the fuller engineering wiring map.
 
-**Field Wiring unchecked** presents the fuller wiring map. It may contain Display/master rows, SubProp rows, shared/internal relationships, and other detailed channel records useful for engineering or troubleshooting.
+**Field Wiring ON** presents the reduced practical field-connection set.
 
-**Field Wiring checked** presents the reduced practical field-connection set. The surviving rows are the connections the technician needs for field hookup.
+A valid field row may originate from either a master Prop or a SubProp. Therefore Field Wiring must not be implemented as `Source = 'PROP'`.
 
-A surviving field connection may legitimately originate from either a master Display row or a SubProp row. Therefore Field Wiring must not be implemented as `Source = 'PROP'`.
-
-A valid field row can legitimately have:
+A valid field connection can legitimately have:
 
 ```text
 Source = SUBPROP
 ConnectionType = FIELD
 ```
 
-The practical distinction is:
+The reduced FIELD view remains the default field-installation mode, but its operator rendering is device-family aware.
 
-- **Field Wiring** controls whether the operator sees the reduced FIELD connection set or the fuller wiring map;
-- **Displays only** is a separate optional Display/master-row filter;
-- **Hide SPAREs** is a separate spare-channel filter.
+---
 
-## Primary Field Information
+## Core Human-Facing Information
 
-The normal FieldWiring screen should emphasize only the information required during setup:
-
-1. **Controller**
-2. **Channel** — the current `StartChannel`
-3. **Channel Name**
-4. **Display Name**
-5. **Network**
-6. **Source classification** — compact visual treatment only
-
-### Controller
-
-Controller UID / unit identifier.
-
-This should remain compact and visually easy to scan while working through a controller.
-
-### Channel
-
-Use the shorter field-facing label **Channel** rather than `StartChannel`.
-
-For normal LOR field wiring this is the physical output/plug number the technician uses.
-
-### Channel Name
-
-The LOR sequencer channel name.
-
-This must remain distinct from Display Name because the wiring drawing uses Channel Names to identify physical connection locations.
-
-### Display Name
-
-The physical Display identity/name.
-
-Display Name does not need to be repeated on every line when consecutive rows belong to the same Display. The UI may group rows under one Display heading or visually merge/suppress repeated Display Name values.
-
-The underlying data must remain row-complete even when the Display label is presented once per group.
-
-### Network
-
-The applicable LOR network remains required field information.
-
-It may be presented compactly because values such as `Regular`, `Aux A`, and similar network identifiers are generally short.
-
-## Compact Display Grouping
-
-To reduce horizontal and vertical real estate, the preferred field presentation may group wiring rows by Display.
-
-Conceptually:
+Across the supported presentation families, the operator normally needs some combination of:
 
 ```text
-PB-MommaBear
-Controller   Ch   Channel Name                    Network
-70           1    PB zMomma Body                  Regular
-70           2    PB zMomma Head Forward          Regular
-70           3    PB zMomma Head Side             Regular
-
-PB-ThrowingBear-DS
-Controller   Ch   Channel Name                    Network
-70           1    PB 1 LH Bear Body               Regular
-70           4    PB LH-1 70-04                   Regular
+Display / Fixture
+physical controller identity or temporary group when applicable
+physical Output / Plug when applicable
+Channel Name when useful for field identification
+Network / connection type
 ```
 
-This is presentation grouping only.
+Raw engineering fields remain available but are not automatically normal operator columns.
 
-It must not alter field-lead identity or collapse separate circuit rows.
+---
 
-### Shared-circuit requirement
+## Display Name
 
-If more than one Display legitimately uses the same controller/channel, each Display relationship must remain visible.
+Display Name is the physical Display identity/name and should be prominent.
 
-Grouping by Display must therefore not deduplicate rows merely because Controller + Channel are the same.
+It does not need to repeat on every row when consecutive rows belong to the same Display. The UI may group rows under one Display heading while retaining complete underlying data.
+
+Grouping is presentation only and must not alter wiring identity or collapse shared relationships.
+
+---
+
+## Controller / Output Terminology
+
+The browser should prefer **Output** or **Plug** when referring to the numbered physical connector the installer sees.
+
+Do not assume the raw compatibility-view `Controller` field always means a physical controller:
+
+```text
+Traditional LOR
+    raw controller/unit information can closely represent controller addressing
+
+Pixie RGB
+    raw Unit IDs can represent logical output addressing within one physical Pixie
+
+DMX/DumbRGB
+    raw Controller value can represent DMX universe addressing
+```
+
+The normal UI must translate rather than merely rename the raw columns.
+
+---
+
+## Network
+
+Network remains useful field information, but its meaning must be presentation-family aware.
+
+LOR network aliases such as `Regular`, `Aux A`, `Aux N`, and similar values are retained as technical topology data.
+
+For DMX/DumbRGB, the physical field terminology for the DMX network/cable must be confirmed before automatically substituting a friendly label for the raw LOR network alias.
+
+---
 
 ## Source Classification
 
-Source is useful to distinguish the kind of wiring row, but it should not consume a wide text column in the normal field view.
+Source is useful engineering metadata but should not consume a wide normal column.
 
-For field presentation, the useful source concepts are:
+Useful concepts include:
 
-- **Display** — underlying master `PROP` row;
-- **SubProp** — underlying `SUBPROP` row;
-- **Spare** — intentionally unused spare channel/row when SPAREs are being shown.
+- Display/master Prop;
+- SubProp;
+- DMX source; and
+- Spare when SPAREs are shown.
 
-The browser may translate raw engineering values into these plain-language labels without changing the underlying data.
+The browser may use a narrow badge/marker or Engineering Details rather than a full-width Source column.
 
-`Spare` is a field presentation classification; the existing FormView data may identify SPARE status from the Display/Channel naming and the Hide SPAREs filter rather than from a literal `Source = 'SPARE'` database value.
+When Hide SPAREs is enabled, Spare rows disappear entirely.
 
-### Compact Source presentation
+---
 
-Preferred approach:
+## ConnectionType / DeviceType / LORTag
 
-- do not dedicate a normal full-width `Source` column;
-- use a narrow badge, symbol, or restrained row marker for **Display**, **SubProp**, and **Spare**;
-- provide the full underlying engineering value in optional details.
+These fields remain important for interpretation and troubleshooting but should not consume permanent horizontal space in the normal field view.
 
-A small textual abbreviation may accompany any color treatment so color is not the only indicator.
+### ConnectionType
 
-Example concept:
+- hidden from the normal compact table;
+- used by the Field Wiring reduction logic; and
+- available under Engineering Details/export.
 
-```text
-D   Display/master row
-S   SubProp row
-SP  Spare row
-```
+### DeviceType
 
-The exact badge letters/colors are a later UI design decision.
+DeviceType is normally hidden, but FieldWiring may use it internally to choose the presentation family. In particular, `device_type = DMX` is significant for DMX/DumbRGB handling.
 
-When **Hide SPAREs** is enabled, Spare rows disappear entirely.
+### LORTag
 
-## ConnectionType / Field Classification
+LORTag remains optional programming/engineering information and is hidden by default.
 
-`ConnectionType` is not a normal field column.
+---
 
-Its practical purpose is to support the Field Wiring reduction logic.
+## Recommended Operator Layouts
 
-When Field Wiring is checked, the visible result is the FIELD connection set, so repeating `FIELD` on every row wastes horizontal space.
-
-When Field Wiring is unchecked, the operator is intentionally looking at the fuller wiring map; the UI should communicate that mode globally rather than relying on a repetitive ConnectionType column.
-
-Therefore:
-
-- hide `ConnectionType` from the normal compact table;
-- show a clear global indication of whether **Field Wiring** is ON or OFF;
-- retain ConnectionType in engineering details/data export where useful.
-
-## DeviceType
-
-`DeviceType` is not required in the normal field connection view.
-
-Values such as `LOR` are engineering/device metadata and consume space without helping the normal hookup task.
-
-Therefore DeviceType should be hidden from the normal table and available only in engineering/details views when needed.
-
-## Tag
-
-`LORTag` is optional engineering/programming information.
-
-It should not consume permanent horizontal space in the normal field wiring view.
-
-Preferred behavior:
-
-- hidden by default;
-- available through **Engineering details**, expandable row, tooltip/popover, or an optional column control;
-- available in engineering/data export where useful.
-
-## Recommended Normal Field Layout
-
-The compact visible data should target approximately:
-
-```text
-Src | Controller | Ch | Channel Name | Display | Network
-```
-
-where `Src` is only a very narrow source marker, not a full text column.
-
-When grouped by Display, the preferred form is:
+### Traditional A/C example
 
 ```text
 Display: <Display Name>
-Src | Controller | Ch | Channel Name | Network
+Controller | Output | Channel Name | Network
 ```
 
-This removes the largest repeated field from every line while retaining the full connection detail.
-
-On the normal Field Wiring screen:
+### Pixie example
 
 ```text
-ConnectionType   hidden
-DeviceType       hidden
-LORTag           hidden by default
-Source           compact marker/badge
-Display Name     group heading when practical
+Display / Pixie group
+Output | Display / connection | Network
 ```
+
+Raw Unit ID/address is available under Engineering Details.
+
+### DMX/DumbRGB example
+
+```text
+Display / Fixture
+Connection: DMX network
+```
+
+Raw DMX universe/channel information is available under Engineering Details unless a later field workflow proves it belongs in the normal view.
+
+The UI does not need to use one identical table for all device families.
+
+---
+
+## Compact Display Grouping
+
+Where a table is appropriate, Display grouping is preferred to avoid repeating the largest label on every row.
+
+For conventional/Pixie hookups, the group may be arranged by physical controller/output when that relationship is known.
+
+Shared-circuit or repeated-address relationships must remain visible and must not be deduplicated merely because technical addresses repeat.
+
+---
 
 ## Image / Context Presentation
 
-The image area is secondary to the wiring table.
-
-Preferred behavior:
+The image area is secondary to the hookup information.
 
 ```text
-Published wiring image exists
-    -> show it as supplemental field guidance
+Published same-scope wiring image exists
+    -> show as supplemental field guidance
 
 No published wiring image
     -> show NO WIRING IMAGE AVAILABLE
-    -> if a same-scope PreviewBackground exists, optionally show it as Scene / Area Context
+    -> optionally show same-scope PreviewBackground as context
 
-No published wiring image and no context image
-    -> show NO WIRING IMAGE AVAILABLE
-    -> wiring table remains fully usable
+No image at all
+    -> hookup data remains usable
 ```
 
-On phone/tablet layouts, the wiring table must not be pushed off-screen merely to reserve a large image area.
+On phone/tablet layouts, a large image must not push the primary hookup information off-screen.
+
+---
 
 ## Sorting
 
-Normal field order remains controller/plug oriented unless Display grouping is selected.
+Sorting must follow the physical presentation model rather than blindly sorting raw technical addresses.
 
-Ungrouped default:
+Traditional A/C normally sorts by physical controller then Output.
 
-```text
-Controller -> Channel -> Display
-```
+Pixie results normally sort by physical/temporary Pixie group then Output.
 
-Grouped-by-Display presentation:
+DMX/DumbRGB may sort by fixture/Display unless a reviewed field workflow establishes a more useful physical chain order.
 
-```text
-Display group
-    -> Controller
-        -> Channel
-```
+Raw hexadecimal-aware address sorting remains available in Engineering Details.
 
-Controller ordering must remain hexadecimal-aware.
-
-The application may offer alternate sorts, but the normal field view must be deterministic.
+---
 
 ## Phone and Tablet Real-Estate Rule
 
-The normal view should avoid forcing technicians to horizontally scroll across engineering-only columns.
-
 On narrow screens:
 
-- Source should be a very narrow marker;
-- Controller and Channel should remain immediately visible;
-- Channel Name should receive the largest available width;
-- Display should become the group heading rather than a repeated column when practical;
-- Network may use a compact badge/short field;
-- ConnectionType, DeviceType, and Tag should move to optional details;
-- wiring rows remain primary even when an image is available; and
-- image/context presentation should be collapsible or placed after the wiring table when screen space is constrained.
+- Display/Fixture identity remains prominent;
+- physical Output/Plug remains immediately visible when applicable;
+- Channel Name receives space when it is useful to field hookup;
+- engineering-only fields move to optional details;
+- images are collapsible or placed after primary hookup information; and
+- DMX/DumbRGB results are not forced into wide controller/channel tables when the physical task is simply a network connection.
+
+---
 
 ## Printing / Hard Reports
 
-Hard reports should use the same compact field-oriented data hierarchy rather than reproducing every internal database field.
+Hard reports should reproduce the same physical hookup interpretation shown on screen.
 
-The normal printed wiring information should emphasize:
+A Traditional/Pixie report may emphasize:
 
 ```text
 Display
-Controller
-Channel
+physical controller/group
+Output
 Channel Name
 Network
 ```
 
-A compact Source marker may be included when useful. ConnectionType, DeviceType, and Tag should normally be omitted from the field printout unless an engineering report explicitly requests them.
+A DMX/DumbRGB report may instead emphasize:
 
-A missing image does not prevent a valid wiring report from being generated. The report should state `NO WIRING IMAGE AVAILABLE` and continue with the wiring rows.
+```text
+Display / Fixture
+DMX network connection
+```
 
-Every FieldWiring hard report remains subject to the FieldWiring expiration/currentness contract.
+with raw universe/channel information in a technical appendix/details section if needed.
+
+A missing image does not prevent a valid report from being generated.
+
+Every hard report remains subject to the FieldWiring expiration/currentness contract.
+
+---
 
 ## Acceptance Examples
 
-FieldWiring presentation testing should include at minimum:
+FieldWiring presentation testing must include at minimum:
 
-1. Field Wiring unchecked, confirming the fuller wiring map remains available;
-2. Field Wiring checked, confirming the reduced practical FIELD set;
-3. one Display with several sequential channels;
-4. one Display whose surviving field connections originate from both `PROP` and `SUBPROP` rows;
-5. two Displays sharing the same controller/channel;
-6. a Stage with SPARE rows, confirming Hide SPAREs removes them and that they can be identified as Spare when shown;
-7. Displays-only mode, confirming it is distinct from Field Wiring mode;
-8. Regular and auxiliary network examples;
-9. a narrow phone/tablet viewport;
-10. a printed/hard report using the compact grouping model;
-11. Engineering details showing raw Source, ConnectionType, DeviceType, and LORTag without forcing those fields into the normal view;
-12. a resolved wiring scope with no image, proving the wiring table remains the primary usable result; and
-13. a same-scope PreviewBackground shown only as clearly labeled context.
+1. Field Wiring OFF, confirming the fuller engineering map remains available;
+2. Field Wiring ON, confirming the reduced practical connection set;
+3. conventional A/C output 1-16 presentation;
+4. Pixie 16 Tree output 1-16 presentation;
+5. Pixie 2 and Pixie 4 examples;
+6. repeated Pixie address blocks without collapsing physical controllers;
+7. shared circuits and repeated technical addresses without data loss;
+8. Hide SPAREs behavior;
+9. Displays Only behavior distinct from Field Wiring;
+10. `16-Northern Lights-NL`, proving DMX/DumbRGB is not rendered as physical controller `145/146` with numbered plugs;
+11. narrow phone/tablet layout;
+12. printable/hard report using the applicable presentation family;
+13. Engineering Details exposing raw Source, ConnectionType, DeviceType, LORTag, Unit ID, DMX universe/channel, and other technical addressing as applicable;
+14. a resolved wiring scope with no image, proving the primary field result remains usable; and
+15. a same-scope PreviewBackground shown only as clearly labeled context.
+
+---
 
 ## Related Documents
 
+- [FieldWiring Physical Controller / Output Presentation Contract](FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
+- [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md)
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
 - [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
