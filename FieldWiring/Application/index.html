@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB FieldWiring</title>
+  <link rel="stylesheet" href="fieldwiring.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://webassets.sheboyganlights.org/msb-white-logo-600-plain.svg">
+      <img src="https://webassets.sheboyganlights.org/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    </picture>
+    <div>
+      <h1>Field Wiring</h1>
+      <div class="subhead">Find the Stage, Scene, and wiring information you need.</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="entry-grid">
+    <section class="card">
+      <h2>Find Display</h2>
+      <label for="display-search">Display Name or Display ID</label>
+      <input id="display-search" autocomplete="off" placeholder="Example: CH-RGBCandyCane-01 or DISP:309">
+      <div class="hint">Only Displays with current wiring are shown.</div>
+      <div id="display-results" class="results" aria-live="polite"></div>
+    </section>
+
+    <section class="card">
+      <h2>Browse Stage / Scene</h2>
+      <label for="stage-select">Stage</label>
+      <select id="stage-select">
+        <option value="">Loading Stages…</option>
+      </select>
+      <div class="hint">Choose the whole Stage or one of its wiring Scenes.</div>
+      <div id="stage-contexts" class="stage-contexts"></div>
+    </section>
+  </div>
+
+  <section id="resolved" class="card resolved-card" hidden>
+    <h2>Wiring Selection</h2>
+    <div id="resolved-grid" class="resolved-grid"></div>
+    <div class="actions">
+      <button id="open-fieldwiring" class="primary" type="button" disabled>Open Field Wiring</button>
+      <button id="clear-resolved" type="button">Clear</button>
+    </div>
+    <div id="resolved-status" class="status">Lookup milestone: wiring renderer connection comes next.</div>
+    <details class="technical-details">
+      <summary>Technical details</summary>
+      <div id="technical-grid" class="technical-grid"></div>
+    </details>
+  </section>
+</main>
+<script src="fieldwiring.js"></script>
+</body>
+</html>
