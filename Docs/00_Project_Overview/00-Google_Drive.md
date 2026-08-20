@@ -159,16 +159,20 @@ Stage / Substage / Scene
 
 `Procedures\Inspection` is intentionally unstructured.
 
-Display folders use the smaller standardized helper structure:
+Display folders use a smaller standard structure. The minimum folders are:
 
 ```text
-Display
-│
-├── PreviewBackground/
-│   └── archive/
-└── Photos/
-    ├── Current/
-    └── Historical/
+<Display>
+├── PreviewBackground
+│   ├── preview development
+│   ├── channel assignments
+│   └── archive
+├── drawings
+│   ├── current
+│   └── archive
+└── Photos
+    ├── Current
+    └── Historical
 ```
 
 Each Stage represents a physical area within the park and serves as the primary organizational unit of the Engineering Repository.
