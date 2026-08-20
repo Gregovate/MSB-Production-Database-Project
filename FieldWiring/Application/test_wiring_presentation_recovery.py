@@ -43,6 +43,19 @@ def test_presentation_family_uses_device_and_string_type_together():
     assert presentation_family(row(4, "Mega Tree", "1", device_type="DMX", string_type="RGB")) == "E131"
 
 
+def test_unreviewed_contiguous_rgb_block_fails_safe_instead_of_inventing_pixie():
+    rows = lor_rgb_rows(50, "XX-Unreviewed-RGB", ["10", "11", "12", "13"])
+    presented = apply_physical_presentation(rows, scene_name="99-Unreviewed-XX")
+
+    assert all(r["presentation_family"] == "PIXIE" for r in presented)
+    assert all(r["controller_group"] is None for r in presented)
+    assert all(r["physical_output"] is None for r in presented)
+    assert all(r["controller_model"] is None for r in presented)
+    groups = group_rows(presented)
+    assert len(groups) == 1
+    assert groups[0]["name"] == "Pixie grouping review required"
+
+
 def test_church_mixed_scene_preserves_pixie16_pixie2_and_two_pixie4_groups():
     rows: list[dict] = []
 
