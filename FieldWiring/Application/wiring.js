@@ -11,6 +11,13 @@ const imageEmptyDetail = document.getElementById('image-empty-detail');
 const imageClassification = document.getElementById('image-classification');
 const divider = document.getElementById('divider');
 const hookupPane = document.getElementById('hookup-pane');
+const contextSwitch = document.getElementById('context-switch');
+const themeToggle = document.getElementById('theme-toggle');
+const screenLogo = document.getElementById('screen-logo');
+
+const THEME_KEY = 'fieldwiring-theme';
+const LIGHT_LOGO = 'https://webassets.sheboyganlights.org/msb-blue-logo-600-plain.svg';
+const DARK_LOGO = 'https://webassets.sheboyganlights.org/msb-white-logo-600-plain.svg';
 
 let packageData = null;
 let images = [];
@@ -18,6 +25,31 @@ let imageIndex = 0;
 let zoom = 1;
 let fitMode = 'width';
 let imageVisible = window.matchMedia('(min-width: 801px)').matches;
+
+function storedTheme() {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === 'light' || value === 'dark' ? value : null;
+  } catch (_) {
+    return null;
+  }
+}
+function systemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  if (themeToggle) themeToggle.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  if (screenLogo) screenLogo.src = theme === 'dark' ? DARK_LOGO : LIGHT_LOGO;
+}
+function initTheme() {
+  applyTheme(storedTheme() || systemTheme());
+  themeToggle?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(THEME_KEY, next); } catch (_) {}
+    applyTheme(next);
+  });
+}
 
 function esc(value) {
   return String(value ?? '')
@@ -44,6 +76,19 @@ function requestedPackageUrl() {
   });
   return '/api/wiring?' + q.toString();
 }
+function stageContextPackageUrl(context) {
+  const q = new URLSearchParams();
+  q.set('stage_id', packageData.context.stage_id);
+  q.set('preview_uuid', context.preview_uuid);
+  if (context.scene_uuid) q.set('scene_uuid', context.scene_uuid);
+  return '/api/wiring?' + q.toString();
+}
+function stageContextPageUrl(context) {
+  return '/wiring?' + stageContextPackageUrl(context).split('?')[1];
+}
+function normalizedScopeRoot(value) {
+  return String(value || '').replaceAll('\\','/').replace(/\/+$/,'').toLowerCase();
+}
 function contextRows(c) {
   const rows = [
     ['Stage ID', c.stage_id],
@@ -58,10 +103,8 @@ function contextRows(c) {
 }
 function renderContext() {
   const c = packageData.context;
-  if (c.display_name) {
-    document.getElementById('trigger-wrap').hidden = false;
-    document.getElementById('trigger-display').textContent = c.display_name;
-  }
+  document.getElementById('trigger-wrap').hidden = !c.display_name;
+  document.getElementById('trigger-display').textContent = c.display_name || '—';
   document.getElementById('stage-name').textContent = `${c.stage_key ? c.stage_key + ' · ' : ''}${c.stage_name || 'Unresolved'}`;
   const isScene = c.scope_kind === 'Scene' && c.scene_name && c.scene_name.toLowerCase() !== 'root';
   document.getElementById('scene-name').textContent = isScene ? c.scene_name : 'Whole Stage';
@@ -69,6 +112,54 @@ function renderContext() {
   document.getElementById('technical-context').innerHTML = contextRows(c).map(([label,value]) => `
     <div><span>${esc(label)}</span><strong>${esc(fmt(value))}</strong></div>
   `).join('');
+}
+async function installContextSwitch() {
+  contextSwitch.hidden = true;
+  contextSwitch.innerHTML = '';
+
+  // Display lookup remains bound to that Display's resolved Preview/context.
+  // The Background/Musical switch is restored for Stage/Scene browse entry.
+  if (params.get('display_id')) return;
+
+  try {
+    const payload = await api('/api/stages');
+    const stage = (payload.stages || []).find(s => Number(s.stage_id) === Number(packageData.context.stage_id));
+    if (!stage) return;
+
+    const backgrounds = stage.contexts.filter(c => c.context_type === 'Background / Static');
+    const musicals = stage.contexts.filter(c => c.context_type === 'Musical');
+    if (backgrounds.length !== 1 || musicals.length !== 1) return;
+
+    const choices = [backgrounds[0], musicals[0]];
+    const currentRoot = normalizedScopeRoot(packageData.images?.scope_root);
+    if (!currentRoot) return;
+
+    for (const choice of choices) {
+      const isCurrent = choice.preview_uuid === packageData.context.preview_uuid &&
+        String(choice.scene_uuid || '') === String(packageData.context.scene_uuid || '');
+      if (isCurrent) continue;
+      const candidate = await api(stageContextPackageUrl(choice));
+      if (normalizedScopeRoot(candidate.wiring?.images?.scope_root) !== currentRoot) return;
+    }
+
+    contextSwitch.innerHTML = choices.map(choice => {
+      const active = choice.context_type === packageData.context.context_type;
+      return `<button type="button" class="${active ? 'active' : ''}" aria-pressed="${active ? 'true' : 'false'}"
+        data-preview-uuid="${esc(choice.preview_uuid)}" data-scene-uuid="${esc(choice.scene_uuid || '')}">${esc(choice.context_type)}</button>`;
+    }).join('');
+    contextSwitch.hidden = false;
+
+    contextSwitch.querySelectorAll('button').forEach((button, index) => {
+      button.addEventListener('click', () => {
+        const choice = choices[index];
+        if (choice.context_type === packageData.context.context_type) return;
+        location.assign(stageContextPageUrl(choice));
+      });
+    });
+  } catch (_) {
+    contextSwitch.hidden = true;
+    contextSwitch.innerHTML = '';
+  }
 }
 function renderCurrentness() {
   const p = packageData.provenance;
@@ -236,11 +327,19 @@ function installControls() {
   divider.addEventListener('pointercancel', () => { dragging=false; });
 }
 async function start() {
+  initTheme();
   try {
     const payload = await api(requestedPackageUrl());
     packageData = payload.wiring;
-    renderContext(); renderCurrentness(); renderGroups(); renderEngineering(); renderImages(); installControls();
-    loading.hidden = true; workspace.hidden = false;
+    renderContext();
+    renderCurrentness();
+    renderGroups();
+    renderEngineering();
+    renderImages();
+    installControls();
+    loading.hidden = true;
+    workspace.hidden = false;
+    await installContextSwitch();
   } catch (err) {
     loading.hidden = true;
     errorBox.hidden = false;
