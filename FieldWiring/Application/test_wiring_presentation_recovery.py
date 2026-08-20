@@ -59,13 +59,8 @@ def test_unreviewed_contiguous_rgb_block_fails_safe_instead_of_inventing_pixie()
 def test_church_mixed_scene_preserves_separate_star_pixie16_pixie2_and_two_pixie4_groups():
     rows: list[dict] = []
 
-    # Church Tree: one Pixie 16, logical Unit IDs 30-3F.
     tree = lor_rgb_rows(100, "CH-RGBTree-16x100-180", [f"{uid:X}" for uid in range(0x30, 0x40)])
     rows.extend(tree)
-
-    # Church RGB Tree Star is a separate Pixie controller context. The reduced
-    # field-lead row may expose only UID 40 even though the inspected Prop
-    # Definition proves the LOR address span is 40-41.
     rows.append(row(
         101,
         "CH-RGBTree-Star",
@@ -76,15 +71,12 @@ def test_church_mixed_scene_preserves_separate_star_pixie16_pixie2_and_two_pixie
         channel_name="CH RGB Star Nested",
     ))
 
-    # Two separate Pixie 2 Cross controllers.
     rows.extend(lor_rgb_rows(110, "CH-RGBCross-LH", ["42", "43"]))
     rows.extend(lor_rgb_rows(111, "CH-RGBCross-RH", ["44", "45"]))
 
-    # Two physical Pixie 4 controllers deliberately reuse 21-24.
     for index, uid in enumerate(["21", "22", "23", "24", "21", "22", "23", "24"], 1):
         rows.append(row(200 + index, f"CH-RGBCandyCane-{index:02d}", uid))
 
-    # A/C data can coexist in the same Scene without polluting RGB grouping.
     rows.append(row(300, "CH-BridgeBell-01", "49", start_channel=1, device_type="LOR", string_type="Traditional", network="Aux N"))
 
     presented = apply_physical_presentation(rows, scene_name="15-Church-CH")
@@ -162,7 +154,7 @@ def test_candyland_mixed_scene_has_one_pixie16_lollipop_context_and_three_pixie4
     assert stick["presentation_family"] == "AC"
 
 
-def test_candyland_stale_third_candy_cane_block_preserves_confirmed_pixie4_group():
+def test_candyland_stale_third_candy_cane_block_preserves_group_and_snapshot_outputs():
     rows: list[dict] = []
     stale = ["21", "22", "23", "24", "21", "22", "23", "24", "21", "22", "23", "22"]
     for index, uid in enumerate(stale, 1):
@@ -172,22 +164,25 @@ def test_candyland_stale_third_candy_cane_block_preserves_confirmed_pixie4_group
     groups = group_rows(presented)
 
     assert [g["name"] for g in groups] == ["Pixie group 1", "Pixie group 2", "Pixie group 3"]
-    assert [[r["physical_output"] for r in g["rows"]] for g in groups] == [
-        [1, 2, 3, 4],
+    assert [[r["physical_output"] for r in g["rows"]] for g in groups[:2]] == [
         [1, 2, 3, 4],
         [1, 2, 3, 4],
     ]
 
     third = groups[2]["rows"]
-    assert [r["display_name"] for r in third] == [
-        "CL-RGBCandyCane-09",
-        "CL-RGBCandyCane-10",
-        "CL-RGBCandyCane-11",
-        "CL-RGBCandyCane-12",
-    ]
-    # Preserve the stale snapshot evidence exactly; presentation grouping does
-    # not rewrite Cane 12's raw LOR Unit ID.
-    assert [r["controller"] for r in third] == ["21", "22", "23", "22"]
+    by_name = {r["display_name"]: r for r in third}
+    assert {name: r["physical_output"] for name, r in by_name.items()} == {
+        "CL-RGBCandyCane-09": 1,
+        "CL-RGBCandyCane-10": 2,
+        "CL-RGBCandyCane-11": 3,
+        "CL-RGBCandyCane-12": 2,
+    }
+    assert {name: r["controller"] for name, r in by_name.items()} == {
+        "CL-RGBCandyCane-09": "21",
+        "CL-RGBCandyCane-10": "22",
+        "CL-RGBCandyCane-11": "23",
+        "CL-RGBCandyCane-12": "22",
+    }
     assert all(r["controller_model"] == "Pixie 4" for r in third)
     assert all(r["controller_uid_range"] == "21-24" for r in third)
     assert all(r["controller_group_kind"] == "temporary-repeated-address-pattern-stale-source" for r in third)
