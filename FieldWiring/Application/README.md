@@ -90,6 +90,30 @@ FIELDWIRING_DRIVE_ROOT=<mapped or local test Display Folders root>
 
 The browser never receives a `G:` path. Published images are served through the read-only FieldWiring image endpoint, and `SourceDocs` is rejected as application content.
 
+## Development / test environment
+
+Runtime dependencies are listed in:
+
+```text
+FieldWiring/Application/requirements.txt
+```
+
+Development/test dependencies are kept separate so tools such as `pytest` are not added to the production runtime requirement set.
+
+From the repository virtual environment:
+
+```powershell
+python -m pip install -r .\FieldWiring\Application\requirements-dev.txt
+```
+
+Run the FieldWiring automated tests with:
+
+```powershell
+python -m pytest .\FieldWiring\Application -q
+```
+
+A JavaScript command-line syntax check is optional and is not a FieldWiring workstation prerequisite. Browser acceptance remains the final validation for the browser JavaScript behavior.
+
 ## Run locally
 
 ```powershell
