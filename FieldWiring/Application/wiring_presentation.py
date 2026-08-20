@@ -13,9 +13,6 @@ from typing import Any
 
 from wiring_common import controller_sort, natural_key
 
-# Operator-reviewed temporary physical grouping preserved from the pre-browser
-# FieldWiring engineering work. These are presentation facts, not permanent
-# Controller Inventory identities.
 _CANDYLAND_LOLLIPOP_UIDS: dict[str, tuple[str, ...]] = {
     "CL-Lollipop-Small-01": ("50",),
     "CL-Lollipop-Large-02": ("51", "52"),
@@ -34,10 +31,8 @@ _ACCEPTED_REPEATED_SERIES: dict[str, int] = {
 
 
 def presentation_family(row: dict[str, Any]) -> str:
-    """Choose the reviewed field family from both DeviceType and StringType."""
     device = (row.get("device_type") or "").strip().casefold()
     string_type = (row.get("string_type") or "").strip().casefold()
-
     if device == "lor" and string_type == "traditional":
         return "AC"
     if device == "lor" and string_type == "rgb":
@@ -74,7 +69,6 @@ def _series_key(display_name: Any) -> str | None:
 
 
 def _accepted_anchor_size(display_name: Any) -> int | None:
-    """Return a Pixie size only for patterns already reviewed in this branch."""
     name = str(display_name or "").strip()
     if name == "CH-RGBTree-16x100-180":
         return 16
@@ -103,12 +97,45 @@ def _set_pixie_group(
     row["controller_uid_range"] = uid_range
 
 
-def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: str | None) -> None:
-    """Restore the reviewed Candyland RGB Lollipop Pixie 16 context.
+def _apply_church_star_context(rows: list[dict[str, Any]], scene_name: str | None) -> None:
+    """Keep the Church RGB Tree Star as its own known Pixie context.
 
-    The authoritative Preview uses one contiguous Aux C block 50-5B across
-    eight RGB Displays. Only Outputs 1-12 are currently used.
+    Operator inspection of the LOR Prop Definition establishes:
+      - Display/comment: CH-RGBTree-Star
+      - Network: Aux N
+      - LOR address span: 40-41
+      - Separate Unit ID for each RGB string: unchecked
+
+    That proves a controller context separate from the Church Tree Pixie 16 at
+    30-3F. It does not by itself prove a Pixie model or physical output count,
+    so those fields intentionally remain unresolved.
     """
+    if (scene_name or "").strip().casefold() != "15-church-ch":
+        return
+
+    candidates = [r for r in rows if r.get("display_name") == "CH-RGBTree-Star"]
+    if not candidates:
+        return
+
+    valid = all(
+        (r.get("network") or "").strip().casefold() == "aux n"
+        and str(r.get("controller") or "").strip().upper() in {"40", "41"}
+        for r in candidates
+    )
+    if not valid:
+        for row in candidates:
+            row["controller_group_kind"] = "address-pattern-review"
+        return
+
+    for row in candidates:
+        row["physical_output"] = None
+        row["controller_group"] = "CH-RGBTree-Star"
+        row["controller_group_kind"] = "reviewed-separate-controller-context"
+        row["controller_model"] = "Pixie controller"
+        row["controller_uid_range"] = "40-41"
+
+
+def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: str | None) -> None:
     if (scene_name or "").strip().casefold() != "17-candyland-cl":
         return
 
@@ -120,8 +147,6 @@ def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: st
     for row in candidates:
         by_display[str(row.get("display_name"))].append(row)
 
-    # Fail safe unless the complete reviewed set is present with exactly the
-    # expected current LOR Unit-ID topology. FieldWiring never repairs it.
     if set(by_display) != set(_CANDYLAND_LOLLIPOP_UIDS):
         for row in candidates:
             row["controller_group_kind"] = "address-pattern-review"
@@ -132,11 +157,10 @@ def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: st
             str(r.get("controller") or "").upper()
             for r in sorted(by_display[display_name], key=lambda r: controller_sort(r.get("controller")))
         )
-        if actual != expected:
-            for row in candidates:
-                row["controller_group_kind"] = "address-pattern-review"
-            return
-        if any((r.get("network") or "").strip().casefold() != "aux c" for r in by_display[display_name]):
+        if actual != expected or any(
+            (r.get("network") or "").strip().casefold() != "aux c"
+            for r in by_display[display_name]
+        ):
             for row in candidates:
                 row["controller_group_kind"] = "address-pattern-review"
             return
@@ -144,20 +168,18 @@ def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: st
     base = 0x50
     for row in candidates:
         uid = _hex_int(row.get("controller"))
-        if uid is None:
-            continue
-        _set_pixie_group(
-            row,
-            group="RGB Lollipops",
-            output=(uid - base) + 1,
-            model="Pixie 16",
-            kind="reviewed-multi-display-pattern",
-            uid_range="50-5B",
-        )
+        if uid is not None:
+            _set_pixie_group(
+                row,
+                group="RGB Lollipops",
+                output=(uid - base) + 1,
+                model="Pixie 16",
+                kind="reviewed-multi-display-pattern",
+                uid_range="50-5B",
+            )
 
 
 def _apply_reviewed_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Create Pixie anchors only for already-reviewed multi-row Displays."""
     by_display: dict[Any, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         if row.get("presentation_family") != "PIXIE" or row.get("controller_group"):
@@ -200,25 +222,23 @@ def _apply_reviewed_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, 
                 kind="reviewed-display-pattern",
                 uid_range=uid_range,
             )
-        anchors.append(
-            {
-                "network": next(iter(networks)),
-                "base": base,
-                "end": end,
-                "group": group,
-                "model": model,
-                "uid_range": uid_range,
-            }
-        )
+        anchors.append({
+            "network": next(iter(networks)),
+            "base": base,
+            "end": end,
+            "group": group,
+            "model": model,
+            "uid_range": uid_range,
+        })
     return anchors
 
 
 def _attach_rows_to_unique_pixie_anchor(rows: list[dict[str, Any]], anchors: list[dict[str, Any]]) -> None:
-    """Attach companion RGB rows that fall inside exactly one reviewed block.
+    """Attach companion RGB rows inside exactly one reviewed Pixie block.
 
-    This preserves Who Forest Tree Stars and the Church Tree Star: their
-    StartChannel can be 151/301 while the physical plug remains the output
-    selected by their shared Unit ID.
+    This is used for reviewed shared-controller cases such as Who Forest Tree
+    Stars. Church CH-RGBTree-Star is explicitly handled as its own controller
+    context before this step and must never be attached to the Tree Pixie 16.
     """
     for row in rows:
         if row.get("presentation_family") != "PIXIE" or row.get("controller_group"):
@@ -242,7 +262,6 @@ def _attach_rows_to_unique_pixie_anchor(rows: list[dict[str, Any]], anchors: lis
 
 
 def _apply_reviewed_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
-    """Restore only the operator-confirmed repeated-address Pixie series."""
     series: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         if row.get("presentation_family") != "PIXIE" or row.get("controller_group"):
@@ -296,7 +315,6 @@ def apply_physical_presentation(
     *,
     scene_name: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Apply reviewed physical-output rules without changing LOR topology."""
     for row in rows:
         row["presentation_family"] = presentation_family(row)
         row["physical_output"] = None
@@ -305,9 +323,6 @@ def apply_physical_presentation(
         row["controller_model"] = None
         row["controller_uid_range"] = None
 
-    # Conventional A/C: one physical controller per Network + Unit ID;
-    # StartChannel is the physical Output/Plug. Multiple atomic Display rows on
-    # one output remain separate rows and are grouped only at presentation time.
     ac_groups: dict[tuple[str, str], int] = {}
     for row in rows:
         if row["presentation_family"] != "AC":
@@ -321,8 +336,6 @@ def apply_physical_presentation(
         row["controller_model"] = "A/C controller"
         row["controller_uid_range"] = str(row.get("controller") or "") or None
 
-    # DMX/DumbRGB and dense E1.31 are separate field families. Their generic
-    # compatibility Controller values are addressing, not physical identities.
     for row in rows:
         family = row["presentation_family"]
         if family == "DUMBRGB":
@@ -335,10 +348,8 @@ def apply_physical_presentation(
 
     pixie_rows = [r for r in rows if r["presentation_family"] == "PIXIE"]
 
-    # Reviewed multi-Display context first so individual two-UID Lollipops do
-    # not become separate Pixie 2 controllers.
+    _apply_church_star_context(pixie_rows, scene_name)
     _apply_candyland_lollipop_pattern(pixie_rows, scene_name)
-
     anchors = _apply_reviewed_pixie_anchors(pixie_rows)
     _attach_rows_to_unique_pixie_anchor(pixie_rows, anchors)
     _apply_reviewed_repeated_pixie_series(pixie_rows)
