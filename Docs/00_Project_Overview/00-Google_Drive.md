@@ -167,9 +167,7 @@ Display folders use a smaller standard structure. The minimum folders are:
 │   ├── preview development
 │   ├── channel assignments
 │   └── archive
-├── drawings
-│   ├── current
-│   └── archive
+├── design archive
 └── Photos
     ├── Current
     └── Historical
