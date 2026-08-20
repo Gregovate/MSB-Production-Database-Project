@@ -287,25 +287,43 @@ def _apply_reviewed_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
                 row["controller_group_kind"] = "address-pattern-review"
             continue
 
+        # The accepted Candyland physical contract is three Pixie 4 groups.
+        # The development snapshot may still contain the already-reviewed stale
+        # Cane 12 raw Unit ID (22 instead of the corrected live Preview value
+        # 24). Preserve that raw source value, but do not discard the confirmed
+        # physical controller/output grouping because of the stale fixture.
+        known_candyland_stale_third = (
+            key == "CL-RGBCandyCane"
+            and len(series_rows) == 12
+            and expected == ["21", "22", "23", "24"]
+            and sequence[8:12] == ["21", "22", "23", "22"]
+        )
+
         model = f"Pixie {period}"
         group_number = 0
         for start in range(0, len(series_rows), period):
             block_rows = series_rows[start:start + period]
             block_values = sequence[start:start + period]
-            if len(block_rows) != period or block_values != expected:
+            stale_confirmed_block = known_candyland_stale_third and start == 8
+            if len(block_rows) != period or (block_values != expected and not stale_confirmed_block):
                 for row in block_rows:
                     row["controller_group_kind"] = "address-pattern-review"
                 continue
             group_number += 1
             group = f"Pixie group {group_number}"
             uid_range = f"{expected[0]}-{expected[-1]}"
+            kind = (
+                "temporary-repeated-address-pattern-stale-source"
+                if stale_confirmed_block
+                else "temporary-repeated-address-pattern"
+            )
             for output, row in enumerate(block_rows, 1):
                 _set_pixie_group(
                     row,
                     group=group,
                     output=output,
                     model=model,
-                    kind="temporary-repeated-address-pattern",
+                    kind=kind,
                     uid_range=uid_range,
                 )
 
