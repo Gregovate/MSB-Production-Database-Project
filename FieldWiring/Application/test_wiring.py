@@ -134,7 +134,7 @@ def test_clean_repeated_pixie_block_derives_two_temporary_groups(tmp_path, monke
     assert [r['physical_output'] for r in pixie[1]['rows']] == [1,2,3,4]
 
 
-def test_inconsistent_repeated_block_is_not_silently_repaired(tmp_path, monkeypatch):
+def test_inconsistent_repeated_block_preserves_good_groups_and_flags_bad_block(tmp_path, monkeypatch):
     db = tmp_path/'fw.db'; stage = tmp_path/'17-Candyland'; stage.mkdir()
     make_db(db, str(stage))
     conn = sqlite3.connect(db)
@@ -144,7 +144,20 @@ def test_inconsistent_repeated_block_is_not_silently_repaired(tmp_path, monkeypa
     conn.commit(); conn.close()
     monkeypatch.setenv('FIELDWIRING_DRIVE_ROOT', str(tmp_path))
     package = build_wiring_package(SQLiteSnapshotRepository(db), display_id=401)
-    assert all(r['controller_group'] is None for r in package['rows'])
+
+    first = package['rows'][:4]
+    second = package['rows'][4:8]
+    third = package['rows'][8:12]
+
+    assert [r['controller_group'] for r in first] == ['Pixie group 1'] * 4
+    assert [r['physical_output'] for r in first] == [1,2,3,4]
+    assert [r['controller_group'] for r in second] == ['Pixie group 2'] * 4
+    assert [r['physical_output'] for r in second] == [1,2,3,4]
+
+    assert [r['controller'] for r in third] == ['21','22','23','22']
+    assert all(r['controller_group'] is None for r in third)
+    assert all(r['physical_output'] is None for r in third)
+    assert all(r['controller_group_kind'] == 'address-pattern-review' for r in third)
 
 
 def test_scene_does_not_borrow_stage_wiring_image(tmp_path, monkeypatch):
