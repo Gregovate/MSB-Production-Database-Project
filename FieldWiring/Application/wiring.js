@@ -191,10 +191,12 @@ function physicalRows(group, triggerId) {
   const grouped = new Map();
   for (const row of group.rows) {
     const hasOutput = row.physical_output !== null && row.physical_output !== undefined;
+    const knownContextWithoutOutput = row.controller_group_kind === 'reviewed-separate-controller-context';
     const key = hasOutput
       ? `output:${row.physical_output}`
-      : `review:${row.display_id ?? row.display_name}:${row.controller ?? ''}:${row.start_channel ?? ''}`;
-    if (!grouped.has(key)) grouped.set(key, {label: hasOutput ? String(row.physical_output) : 'Review', rows: []});
+      : `${knownContextWithoutOutput ? 'known' : 'review'}:${row.display_id ?? row.display_name}:${row.controller ?? ''}:${row.start_channel ?? ''}`;
+    const label = hasOutput ? String(row.physical_output) : (knownContextWithoutOutput ? '—' : 'Review');
+    if (!grouped.has(key)) grouped.set(key, {label, rows: []});
     grouped.get(key).rows.push(row);
   }
 
