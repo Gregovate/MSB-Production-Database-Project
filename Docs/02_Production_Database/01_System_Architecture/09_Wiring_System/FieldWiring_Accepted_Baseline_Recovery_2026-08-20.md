@@ -161,6 +161,25 @@ The live Preview correction of Candy Cane 12 from `22` to `24` is recorded in co
 
 A stale development snapshot must not be silently rewritten by FieldWiring. The corrected value becomes development authority only through the normal parser/import cycle.
 
+### Candyland RGB Lollipops — Recovered Pixie 16 Context
+
+The Master Musical Preview itself establishes one contiguous `Aux C` LOR-RGB address block for the eight RGB Lollipop Displays:
+
+```text
+CL-Lollipop-Small-01 -> UID 50       -> physical Output 1
+CL-Lollipop-Large-02 -> UIDs 51-52   -> physical Outputs 2-3
+CL-Lollipop-Large-03 -> UIDs 53-54   -> physical Outputs 4-5
+CL-Lollipop-Large-04 -> UIDs 55-56   -> physical Outputs 6-7
+CL-Lollipop-Small-05 -> UID 57       -> physical Output 8
+CL-Lollipop-Large-06 -> UIDs 58-59   -> physical Outputs 9-10
+CL-Lollipop-Small-07 -> UID 5A       -> physical Output 11
+CL-Lollipop-Small-08 -> UID 5B       -> physical Output 12
+```
+
+This is the previously reviewed **single Pixie 16 controller context with 12 currently used outputs**, not eight independent physical controllers. The unused Pixie 16 outputs remain unused; FieldWiring must not fabricate connections for them.
+
+The separate `CL-LollipopStick-01` through `CL-LollipopStick-08` Displays are `LOR + Traditional` A/C relationships and remain in the A/C presentation family. They must not be merged into the RGB Pixie controller merely because they share the word `Lollipop` in their Display names.
+
 ### Who Forest
 
 Eight distinct physical Pixie 8 controller contexts are confirmed by current V7 topology plus the 2025 controller inventory:
@@ -267,6 +286,7 @@ A `Whole Stage` option is shown only when the current source actually provides a
 | Church Pixie 2 Crosses | separate Pixie 2 contexts | Must be regression-tested in mixed Scene | VERIFY |
 | Church two Pixie 4 Candy Cane groups | two groups, Outputs 1-4 each | Collapsed to `Other hookup` in real Church Scene | FAIL |
 | Candyland three Pixie 4 Candy Cane groups | three groups, Outputs 1-4 each after controlled snapshot refresh | Collapsed to `Other hookup`; current dev snapshot may also be stale for Cane 12 | FAIL / SNAPSHOT REVIEW |
+| Candyland RGB Lollipop Pixie 16 | one Pixie 16 context, Outputs 1-12 currently used across eight RGB Displays | Generic app split by individual Display row counts | FAIL |
 | Who Forest eight Pixie 8 controllers | eight groups, Outputs 1-8 | Collapsed/misinterpreted as `Other hookup` | FAIL |
 | Santa's Workshop Pixie 8 Trees | two groups, Outputs 1-8 | Not yet revalidated in generic app | VERIFY |
 | DMX + DumbRGB family | separate DMX fixture/network family | Current classifier collapses every DMX row together | FAIL |
@@ -289,11 +309,12 @@ Before further UX improvement work, the generic application must pass these gate
 1. restore device-family discrimination, including `DMX + DumbRGB` versus `DMX + RGB`;
 2. restore mixed-Scene Pixie classification without one global repeated-RGB sequence assumption;
 3. prove Church contains its accepted A/C, Pixie 2, Pixie 4, and Pixie 16 physical presentation simultaneously;
-4. prove Who Forest resolves eight Pixie 8 contexts with Outputs 1-8;
-5. prove Candyland repeated Pixie 4 behavior against an authoritative refreshed snapshot or explicitly surface stale snapshot inconsistency without patching it;
-6. preserve every atomic field-lead connection row through grouping;
-7. only after controller-group tests pass, revalidate the accepted split-pane, narrow-screen, and print behavior;
-8. keep FormView available as fallback/reference until FieldWiring is explicitly accepted.
+4. prove Candyland contains its three repeated Pixie 4 groups and the separate RGB Lollipop Pixie 16 context without mixing the A/C Lollipop sticks into it;
+5. prove Who Forest resolves eight Pixie 8 contexts with Outputs 1-8;
+6. prove Candyland repeated Pixie 4 behavior against an authoritative refreshed snapshot or explicitly surface stale snapshot inconsistency without patching it;
+7. preserve every atomic field-lead connection row through grouping;
+8. only after controller-group tests pass, revalidate the accepted split-pane, narrow-screen, and print behavior;
+9. keep FormView available as fallback/reference until FieldWiring is explicitly accepted.
 
 ## No-Redesign Rule
 
