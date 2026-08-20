@@ -12,8 +12,8 @@ const themeToggle = document.getElementById('theme-toggle');
 const screenLogo = document.getElementById('screen-logo');
 
 const THEME_KEY = 'fieldwiring-theme';
-const LIGHT_LOGO = 'https://webassets.sheboyganlights.org/msb-blue-logo-600-plain.svg';
-const DARK_LOGO = 'https://webassets.sheboyganlights.org/msb-white-logo-600-plain.svg';
+const LIGHT_LOGO = 'https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg';
+const DARK_LOGO = 'https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg';
 
 let stages = [];
 let timer = null;
