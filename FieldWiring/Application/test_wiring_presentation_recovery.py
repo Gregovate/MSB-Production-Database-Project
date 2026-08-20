@@ -56,14 +56,25 @@ def test_unreviewed_contiguous_rgb_block_fails_safe_instead_of_inventing_pixie()
     assert groups[0]["name"] == "Pixie grouping review required"
 
 
-def test_church_mixed_scene_preserves_pixie16_pixie2_and_two_pixie4_groups():
+def test_church_mixed_scene_preserves_separate_star_pixie16_pixie2_and_two_pixie4_groups():
     rows: list[dict] = []
 
     # Church Tree: one Pixie 16, logical Unit IDs 30-3F.
     tree = lor_rgb_rows(100, "CH-RGBTree-16x100-180", [f"{uid:X}" for uid in range(0x30, 0x40)])
     rows.extend(tree)
-    # Tree Star shares the final logical Unit ID and therefore physical Output 16.
-    rows.append(row(101, "CH-RGBTree-Star", "3F", start_channel=301, end_channel=450))
+
+    # Church RGB Tree Star is a separate Pixie controller context. The reduced
+    # field-lead row may expose only UID 40 even though the inspected Prop
+    # Definition proves the LOR address span is 40-41.
+    rows.append(row(
+        101,
+        "CH-RGBTree-Star",
+        "40",
+        network="Aux N",
+        start_channel=1,
+        end_channel=240,
+        channel_name="CH RGB Star Nested",
+    ))
 
     # Two separate Pixie 2 Cross controllers.
     rows.extend(lor_rgb_rows(110, "CH-RGBCross-LH", ["42", "43"]))
@@ -84,8 +95,12 @@ def test_church_mixed_scene_preserves_pixie16_pixie2_and_two_pixie4_groups():
     assert all(r["controller_model"] == "Pixie 16" for r in tree_rows)
 
     star = next(r for r in presented if r["display_name"] == "CH-RGBTree-Star")
-    assert star["controller_group"] == tree_rows[0]["controller_group"]
-    assert star["physical_output"] == 16
+    assert star["controller_group"] == "CH-RGBTree-Star"
+    assert star["controller_group"] != tree_rows[0]["controller_group"]
+    assert star["controller_group_kind"] == "reviewed-separate-controller-context"
+    assert star["controller_model"] == "Pixie controller"
+    assert star["controller_uid_range"] == "40-41"
+    assert star["physical_output"] is None
 
     for cross_name in ("CH-RGBCross-LH", "CH-RGBCross-RH"):
         cross_rows = [r for r in presented if r["display_name"] == cross_name]
@@ -99,11 +114,14 @@ def test_church_mixed_scene_preserves_pixie16_pixie2_and_two_pixie4_groups():
     assert [[r["physical_output"] for r in g["rows"]] for g in groups] == [[1, 2, 3, 4], [1, 2, 3, 4]]
     assert all(g["controller_model"] == "Pixie 4" for g in groups)
 
+    church_pixie_groups = [g for g in group_rows(presented) if g["family"] == "PIXIE"]
+    assert any(g["name"] == "CH-RGBTree-Star" for g in church_pixie_groups)
+    assert not any(g["name"] == "Pixie grouping review required" for g in church_pixie_groups)
+
 
 def test_candyland_mixed_scene_has_one_pixie16_lollipop_context_and_three_pixie4_candy_cane_groups():
     rows: list[dict] = []
 
-    # One physical Pixie 16, Outputs 1-12 currently used across eight RGB Displays.
     lollipop_map = [
         (401, "CL-Lollipop-Small-01", ["50"]),
         (402, "CL-Lollipop-Large-02", ["51", "52"]),
@@ -117,12 +135,10 @@ def test_candyland_mixed_scene_has_one_pixie16_lollipop_context_and_three_pixie4
     for display_id, name, uids in lollipop_map:
         rows.extend(lor_rgb_rows(display_id, name, uids, network="Aux C"))
 
-    # Three accepted repeated Pixie 4 address blocks.
     candy_uids = ["21", "22", "23", "24"] * 3
     for index, uid in enumerate(candy_uids, 1):
         rows.append(row(500 + index, f"CL-RGBCandyCane-{index:02d}", uid, network="Aux C"))
 
-    # The Lollipop sticks are A/C and must remain outside the RGB controller.
     rows.append(row(600, "CL-LollipopStick-01", "62", network="Aux C", start_channel=1, device_type="LOR", string_type="Traditional"))
 
     presented = apply_physical_presentation(rows, scene_name="17-Candyland-CL")
