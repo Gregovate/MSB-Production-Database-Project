@@ -157,96 +157,108 @@ function renderCurrentness() {
     'A newer approved wiring snapshot supersedes this copy immediately.'
   ].filter(Boolean).join(' · ');
 }
-function fieldColumns(family) {
-  if (family === 'AC' || family === 'PIXIE') return ['Output','Display / Channel Name'];
-  if (family === 'DMX') return ['Channel','Display / Fixture','Network','Universe'];
-  if (family === 'DUMBRGB') return ['Channel','Display / Fixture','Network','Controller'];
-  return ['Connection','Display / Channel','Network','Controller'];
-}
-function outputValue(row) {
-  return row.physical_output ?? row.start_channel ?? '—';
-}
 function uniqueValues(rows, key) {
   return [...new Set(rows.map(row => String(row[key] ?? '').trim()).filter(Boolean))];
 }
+function groupTitle(group) {
+  if (group.family === 'AC') {
+    const uid = group.controller_uid_range || uniqueValues(group.rows, 'controller').join(', ') || '—';
+    return `A/C CONTROLLER · UNIT ID ${uid}`;
+  }
+  if (group.family === 'PIXIE') {
+    if (group.name === 'Pixie grouping review required') return 'PIXIE · GROUPING REVIEW REQUIRED';
+    const model = group.controller_model || 'Pixie';
+    return `${model.toUpperCase()} · ${group.name}`;
+  }
+  if (group.family === 'DUMBRGB') return `DMX / DUMBRGB · ${group.name}`;
+  if (group.family === 'E131') return `E1.31 · ${group.name}`;
+  if (group.family === 'DMX') return `DMX · ${group.name}`;
+  return group.name || 'Other hookup';
+}
 function groupMetadata(group) {
   const networks = uniqueValues(group.rows, 'network');
-  const controllers = uniqueValues(group.rows, 'controller');
   const items = [];
-  if (group.family === 'AC') {
-    if (controllers.length) items.push([controllers.length === 1 ? 'UID' : 'UIDs', controllers.join(', ')]);
-    if (networks.length) items.push(['Network', networks.join(', ')]);
-  } else if (group.family === 'PIXIE') {
-    if (controllers.length) items.push([controllers.length === 1 ? 'Unit ID' : 'Unit IDs', controllers.join(', ')]);
-    if (networks.length) items.push(['Network', networks.join(', ')]);
-  } else {
-    if (networks.length) items.push(['Network', networks.join(', ')]);
-    if (controllers.length) items.push([group.family === 'DMX' ? (controllers.length === 1 ? 'Universe' : 'Universes') : 'Controller', controllers.join(', ')]);
+  if (group.family === 'PIXIE' && group.controller_uid_range) {
+    items.push(['LOR Unit IDs', group.controller_uid_range]);
+  }
+  if (networks.length) items.push(['Network', networks.join(', ')]);
+  if (group.family === 'E131') {
+    items.push(['Controller', group.controller_model || 'Physical mapping pending']);
   }
   return items;
 }
-function displayGroupName(group) {
-  if (group.family === 'AC') return String(group.name || '').replace(/^A\/C controller group\s*/i, 'Controller ');
-  return group.name;
-}
-function compactRows(group, triggerId) {
+function physicalRows(group, triggerId) {
   const grouped = new Map();
   for (const row of group.rows) {
-    const output = String(outputValue(row));
-    if (!grouped.has(output)) grouped.set(output, []);
-    grouped.get(output).push(row);
+    const hasOutput = row.physical_output !== null && row.physical_output !== undefined;
+    const key = hasOutput
+      ? `output:${row.physical_output}`
+      : `review:${row.display_id ?? row.display_name}:${row.controller ?? ''}:${row.start_channel ?? ''}`;
+    if (!grouped.has(key)) grouped.set(key, {label: hasOutput ? String(row.physical_output) : 'Review', rows: []});
+    grouped.get(key).rows.push(row);
   }
-  return [...grouped.entries()].map(([output, rows]) => {
-    const trigger = rows.some(row => triggerId && Number(row.display_id) === triggerId);
-    const entries = rows.map(row => {
+
+  return [...grouped.values()].map(entry => {
+    const trigger = entry.rows.some(row => triggerId && Number(row.display_id) === triggerId);
+    const displayLines = entry.rows.map(row => {
       const selected = triggerId && Number(row.display_id) === triggerId;
-      return `<div class="output-entry ${selected ? 'selected-entry' : ''}">
-        <strong>${esc(row.display_name)}</strong>
-        <span>${esc(row.channel_name || '')}</span>
-      </div>`;
+      return `<div class="connection-line ${selected ? 'selected-connection' : ''}">${esc(row.display_name)}</div>`;
+    }).join('');
+    const channelLines = entry.rows.map(row => {
+      const selected = triggerId && Number(row.display_id) === triggerId;
+      return `<div class="connection-line ${selected ? 'selected-connection' : ''}">${esc(row.channel_name || '—')}</div>`;
     }).join('');
     return `<tr class="${trigger ? 'trigger-row' : ''}">
-      <td class="output-cell">${esc(output)}</td>
-      <td class="display-cell grouped-display-cell">${entries}</td>
+      <td class="output-cell">${esc(entry.label)}</td>
+      <td class="display-cell">${displayLines}</td>
+      <td class="channel-cell">${channelLines}</td>
     </tr>`;
   }).join('');
+}
+function physicalTable(group, triggerId) {
+  return `<table class="hookup-table physical-table">
+    <thead><tr><th>Output / Plug</th><th>Display</th><th>Plug Label / Channel Name</th></tr></thead>
+    <tbody>${physicalRows(group, triggerId)}</tbody>
+  </table>`;
+}
+function simpleFamilyTable(group, triggerId) {
+  if (group.family === 'DUMBRGB') {
+    const display = group.rows[0]?.display_name || group.name;
+    const network = uniqueValues(group.rows, 'network').join(', ') || '—';
+    return `<table class="hookup-table simple-family-table"><thead><tr><th>Display / Fixture</th><th>Connection</th><th>Network</th></tr></thead>
+      <tbody><tr><td>${esc(display)}</td><td>DMX network</td><td>${esc(network)}</td></tr></tbody></table>`;
+  }
+  if (group.family === 'E131') {
+    const display = group.rows[0]?.display_name || group.name;
+    return `<table class="hookup-table simple-family-table"><thead><tr><th>Display / Section</th><th>Connection</th><th>Physical Controller</th></tr></thead>
+      <tbody><tr><td>${esc(display)}</td><td>E1.31</td><td>${esc(group.controller_model || 'Mapping pending')}</td></tr></tbody></table>`;
+  }
+  const rows = group.rows.map(row => {
+    const trigger = triggerId && Number(row.display_id) === triggerId;
+    return `<tr class="${trigger ? 'trigger-row' : ''}">
+      <td>${esc(row.display_name)}</td><td>${esc(row.channel_name || '—')}</td><td>${esc(fmt(row.network))}</td><td>${esc(fmt(row.controller))}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="hookup-table simple-family-table"><thead><tr><th>Display</th><th>Channel Name</th><th>Network</th><th>Raw Address</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function renderGroups() {
   const triggerId = Number(packageData.context.display_id || 0);
   const html = packageData.controller_groups.map(group => {
-    const compact = group.family === 'AC' || group.family === 'PIXIE';
-    const cols = fieldColumns(group.family);
     const metadata = groupMetadata(group).map(([label,value]) => `
       <span class="controller-meta-item"><span class="controller-meta-label">${esc(label)}</span><strong class="controller-meta-value">${esc(value)}</strong></span>`).join('');
-    let rows;
-    if (compact) {
-      rows = compactRows(group, triggerId);
-    } else {
-      rows = group.rows.map(row => {
-        const trigger = triggerId && Number(row.display_id) === triggerId;
-        return `<tr class="${trigger ? 'trigger-row' : ''}">
-          <td class="output-cell">${esc(outputValue(row))}</td>
-          <td class="display-cell"><strong>${esc(row.display_name)}</strong><span>${esc(row.channel_name || '')}</span></td>
-          <td class="network-cell">${esc(fmt(row.network))}</td>
-          <td>${esc(fmt(row.controller))}</td>
-        </tr>`;
-      }).join('');
-    }
-    return `<article class="controller-card">
+    const table = group.family === 'AC' || group.family === 'PIXIE'
+      ? physicalTable(group, triggerId)
+      : simpleFamilyTable(group, triggerId);
+    return `<article class="controller-card ${group.family.toLowerCase()}-card">
       <div class="controller-head">
-        <div class="controller-title"><span class="family-badge">${esc(group.family)}</span><strong>${esc(displayGroupName(group))}</strong></div>
+        <div class="controller-title"><strong>${esc(groupTitle(group))}</strong></div>
         <div class="controller-meta">${metadata}</div>
       </div>
-      <div class="hookup-table-wrap">
-        <table class="hookup-table ${compact ? 'compact-table' : ''}">
-          <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
+      <div class="hookup-table-wrap">${table}</div>
     </article>`;
   }).join('');
   document.getElementById('controller-groups').innerHTML = html;
-  document.getElementById('row-summary').textContent = `${packageData.rows.length} field hookup ${packageData.rows.length === 1 ? 'row' : 'rows'} · ${packageData.controller_groups.length} presentation ${packageData.controller_groups.length === 1 ? 'group' : 'groups'}`;
+  document.getElementById('row-summary').textContent = `${packageData.rows.length} field hookup ${packageData.rows.length === 1 ? 'relationship' : 'relationships'} · ${packageData.controller_groups.length} physical/presentation ${packageData.controller_groups.length === 1 ? 'group' : 'groups'}`;
 }
 function renderEngineering() {
   document.getElementById('engineering-rows').innerHTML = packageData.rows.map(row => `<tr>
