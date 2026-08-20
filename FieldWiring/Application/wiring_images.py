@@ -130,23 +130,33 @@ def _resolve_scope_root(
                     if (current / MARKER_NAME).is_file():
                         return current, "SCENE", warnings
                     warnings.append(f"Scene source-folder marker is missing: {current / MARKER_NAME}")
-                    break
+                    return None, "UNRESOLVED", warnings
                 if str(current).casefold() == stage_fold:
                     break
                 current = current.parent
 
-    marked = [m for m in _bounded_scope_matches(stage_root, scene_name) if (m / MARKER_NAME).is_file()]
+    matches = _bounded_scope_matches(stage_root, scene_name)
+    marked = [m for m in matches if (m / MARKER_NAME).is_file()]
     if len(marked) == 1:
         if raw_pointer:
             warnings.append(
                 "Stored Scene BackgroundFile did not resolve exactly; one deterministic marked current Scene folder was used."
             )
         return marked[0], "SCENE", warnings
+    if len(marked) > 1:
+        warnings.append("More than one marked Scene folder matched the current Scene identity.")
+        return None, "UNRESOLVED", warnings
+    if matches:
+        warnings.append(
+            "Matching Scene folder exists but is not an approved marked source root: "
+            + "; ".join(str(match) for match in matches)
+        )
+        return None, "UNRESOLVED", warnings
+
     warnings.append(
-        "More than one marked Scene folder matched the current Scene identity."
-        if len(marked) > 1 else "No marked Scene folder matched the current Scene identity."
+        "No distinct Scene folder matched the current Scene identity; known marked Stage root retained as the FieldWiring scope."
     )
-    return None, "UNRESOLVED", warnings
+    return stage_root, "STAGE", warnings
 
 
 def _direct_images(folder: Path) -> list[Path]:
