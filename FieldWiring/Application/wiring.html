@@ -9,16 +9,14 @@
 <body>
 <header class="site-header">
   <div class="brand">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://webassets.sheboyganlights.org/msb-white-logo-600-plain.svg">
-      <img class="screen-logo" src="https://webassets.sheboyganlights.org/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
-    </picture>
+    <img id="screen-logo" class="screen-logo" src="https://webassets.sheboyganlights.org/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
     <img class="print-logo" src="https://webassets.sheboyganlights.org/msb-cmyk-logo-600px.png" alt="Making Spirits Bright">
     <div class="brand-copy">
       <h1>Field Wiring</h1>
       <div class="subhead">Physical hookup information for the resolved Stage / Scene.</div>
     </div>
     <div class="header-actions screen-only">
+      <button id="theme-toggle" type="button">Dark mode</button>
       <a class="button" href="/">Find another</a>
       <button id="print-button" type="button">Print / Save PDF</button>
     </div>
@@ -38,7 +36,11 @@
         </div>
         <div class="context-item"><span>Stage</span><strong id="stage-name">—</strong></div>
         <div class="context-item"><span>Scene / Area</span><strong id="scene-name">—</strong></div>
-        <div class="context-item"><span>Wiring</span><strong id="context-type">—</strong></div>
+        <div class="context-item wiring-context-item">
+          <span>Wiring</span>
+          <strong id="context-type">—</strong>
+          <div id="context-switch" class="context-switch screen-only" hidden></div>
+        </div>
       </div>
       <details class="technical-details screen-only">
         <summary>Technical details</summary>
