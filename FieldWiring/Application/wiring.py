@@ -47,15 +47,16 @@ def build_wiring_package(
         raise WiringError("FieldWiring requires a resolved Stage and Preview context")
 
     raw = load_wiring_data(repo, str(preview_uuid), scene_uuid, int(stage_id))
-    rows = apply_physical_presentation(raw["rows"])
-    if not rows:
-        raise WiringError("No current field wiring rows were found for the resolved context")
-
     preview = raw["preview"]
     stage = raw["stage"]
     scene = raw["scene"]
-    selected_context = context_type(preview.get("preview_name"))
     scene_name = (scene or {}).get("scene_name")
+
+    rows = apply_physical_presentation(raw["rows"], scene_name=scene_name)
+    if not rows:
+        raise WiringError("No current field wiring rows were found for the resolved context")
+
+    selected_context = context_type(preview.get("preview_name"))
     scope_kind = "Scene" if scene_name and scene_name.strip().casefold() != "root" else "Stage / Preview"
     images = resolve_images(stage, scene, preview, selected_context)
 
