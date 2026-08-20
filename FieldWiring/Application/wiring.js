@@ -10,7 +10,6 @@ const imageEmpty = document.getElementById('image-empty');
 const imageEmptyDetail = document.getElementById('image-empty-detail');
 const imageClassification = document.getElementById('image-classification');
 const divider = document.getElementById('divider');
-const hookupPane = document.getElementById('hookup-pane');
 const contextSwitch = document.getElementById('context-switch');
 const themeToggle = document.getElementById('theme-toggle');
 const screenLogo = document.getElementById('screen-logo');
@@ -30,9 +29,7 @@ function storedTheme() {
   try {
     const value = localStorage.getItem(THEME_KEY);
     return value === 'light' || value === 'dark' ? value : null;
-  } catch (_) {
-    return null;
-  }
+  } catch (_) { return null; }
 }
 function systemTheme() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -91,12 +88,9 @@ function normalizedScopeRoot(value) {
 }
 function contextRows(c) {
   const rows = [
-    ['Stage ID', c.stage_id],
-    ['Preview UUID', c.preview_uuid],
-    ['Preview revision', c.preview_revision],
-    ['Source Preview', c.preview_name],
-    ['Source file', c.source_filename],
-    ['Scene UUID', c.scene_uuid],
+    ['Stage ID', c.stage_id], ['Preview UUID', c.preview_uuid],
+    ['Preview revision', c.preview_revision], ['Source Preview', c.preview_name],
+    ['Source file', c.source_filename], ['Scene UUID', c.scene_uuid],
   ];
   if (c.display_id) rows.unshift(['Display ID', `DISP:${c.display_id}`]);
   return rows.filter(([,value]) => value !== null && value !== undefined && value !== '');
@@ -110,30 +104,22 @@ function renderContext() {
   document.getElementById('scene-name').textContent = isScene ? c.scene_name : 'Whole Stage';
   document.getElementById('context-type').textContent = c.context_type || 'Unknown';
   document.getElementById('technical-context').innerHTML = contextRows(c).map(([label,value]) => `
-    <div><span>${esc(label)}</span><strong>${esc(fmt(value))}</strong></div>
-  `).join('');
+    <div><span>${esc(label)}</span><strong>${esc(fmt(value))}</strong></div>`).join('');
 }
 async function installContextSwitch() {
   contextSwitch.hidden = true;
   contextSwitch.innerHTML = '';
-
-  // Display lookup remains bound to that Display's resolved Preview/context.
-  // The Background/Musical switch is restored for Stage/Scene browse entry.
   if (params.get('display_id')) return;
-
   try {
     const payload = await api('/api/stages');
     const stage = (payload.stages || []).find(s => Number(s.stage_id) === Number(packageData.context.stage_id));
     if (!stage) return;
-
     const backgrounds = stage.contexts.filter(c => c.context_type === 'Background / Static');
     const musicals = stage.contexts.filter(c => c.context_type === 'Musical');
     if (backgrounds.length !== 1 || musicals.length !== 1) return;
-
     const choices = [backgrounds[0], musicals[0]];
     const currentRoot = normalizedScopeRoot(packageData.images?.scope_root);
     if (!currentRoot) return;
-
     for (const choice of choices) {
       const isCurrent = choice.preview_uuid === packageData.context.preview_uuid &&
         String(choice.scene_uuid || '') === String(packageData.context.scene_uuid || '');
@@ -141,19 +127,15 @@ async function installContextSwitch() {
       const candidate = await api(stageContextPackageUrl(choice));
       if (normalizedScopeRoot(candidate.wiring?.images?.scope_root) !== currentRoot) return;
     }
-
     contextSwitch.innerHTML = choices.map(choice => {
       const active = choice.context_type === packageData.context.context_type;
-      return `<button type="button" class="${active ? 'active' : ''}" aria-pressed="${active ? 'true' : 'false'}"
-        data-preview-uuid="${esc(choice.preview_uuid)}" data-scene-uuid="${esc(choice.scene_uuid || '')}">${esc(choice.context_type)}</button>`;
+      return `<button type="button" class="${active ? 'active' : ''}" aria-pressed="${active ? 'true' : 'false'}">${esc(choice.context_type)}</button>`;
     }).join('');
     contextSwitch.hidden = false;
-
     contextSwitch.querySelectorAll('button').forEach((button, index) => {
       button.addEventListener('click', () => {
         const choice = choices[index];
-        if (choice.context_type === packageData.context.context_type) return;
-        location.assign(stageContextPageUrl(choice));
+        if (choice.context_type !== packageData.context.context_type) location.assign(stageContextPageUrl(choice));
       });
     });
   } catch (_) {
@@ -167,8 +149,7 @@ function renderCurrentness() {
   document.getElementById('expires-at').textContent = `Expires: ${fmtDate(p.expires_at)}`;
   document.getElementById('snapshot-id').textContent = `Snapshot: ${p.import_run_id ? 'Run ' + p.import_run_id : 'Unknown'}`;
   document.getElementById('print-provenance').textContent = [
-    `Generated ${fmtDate(p.generated_at)}`,
-    `Expires ${fmtDate(p.expires_at)}`,
+    `Generated ${fmtDate(p.generated_at)}`, `Expires ${fmtDate(p.expires_at)}`,
     p.import_run_id ? `LOR import run ${p.import_run_id}` : null,
     p.parser_version ? `Parser ${p.parser_version}` : null,
     p.ingest_script_version ? `Ingest ${p.ingest_script_version}` : null,
@@ -176,41 +157,60 @@ function renderCurrentness() {
   ].filter(Boolean).join(' · ');
 }
 function fieldColumns(family) {
-  if (family === 'AC') return ['Output','Display / Channel','Network','Raw Unit ID'];
-  if (family === 'PIXIE') return ['Output','Display / Channel','Network','Raw Unit ID'];
+  if (family === 'AC' || family === 'PIXIE') return ['Output','Display / Channel'];
   if (family === 'DMX') return ['Channel','Display / Fixture','Network','Universe'];
   if (family === 'DUMBRGB') return ['Channel','Display / Fixture','Network','Controller'];
   return ['Connection','Display / Channel','Network','Controller'];
 }
-function outputValue(row, family) {
-  if (row.physical_output !== null && row.physical_output !== undefined) return row.physical_output;
-  if (family === 'DMX' || family === 'DUMBRGB') return row.start_channel ?? '—';
-  return row.start_channel ?? '—';
+function outputValue(row) {
+  return row.physical_output ?? row.start_channel ?? '—';
+}
+function uniqueValues(rows, key) {
+  return [...new Set(rows.map(row => String(row[key] ?? '').trim()).filter(Boolean))];
+}
+function groupMetadata(group) {
+  const networks = uniqueValues(group.rows, 'network');
+  const controllers = uniqueValues(group.rows, 'controller');
+  const items = [];
+  if (networks.length) items.push(['Network', networks.join(', ')]);
+  if (controllers.length) {
+    let label = 'Controller';
+    if (group.family === 'AC' || group.family === 'PIXIE') label = controllers.length === 1 ? 'LOR UID' : 'LOR UIDs';
+    if (group.family === 'DMX') label = controllers.length === 1 ? 'Universe' : 'Universes';
+    items.push([label, controllers.join(', ')]);
+  }
+  return items;
 }
 function renderGroups() {
   const triggerId = Number(packageData.context.display_id || 0);
   const html = packageData.controller_groups.map(group => {
+    const compact = group.family === 'AC' || group.family === 'PIXIE';
     const cols = fieldColumns(group.family);
     const temporary = group.rows.some(r => String(r.controller_group_kind || '').startsWith('temporary'));
+    const metadata = groupMetadata(group).map(([label,value]) => `
+      <span class="controller-meta-item"><span class="controller-meta-label">${esc(label)}</span><strong class="controller-meta-value">${esc(value)}</strong></span>`).join('');
     const rows = group.rows.map(row => {
       const trigger = triggerId && Number(row.display_id) === triggerId;
-      return `<tr class="${trigger ? 'trigger-row' : ''}">
-        <td class="output-cell">${esc(outputValue(row, group.family))}</td>
-        <td class="display-cell"><strong>${esc(row.display_name)}</strong><span>${esc(row.channel_name || '')}</span></td>
+      const common = `
+        <td class="output-cell">${esc(outputValue(row))}</td>
+        <td class="display-cell"><strong>${esc(row.display_name)}</strong><span>${esc(row.channel_name || '')}</span></td>`;
+      const extra = compact ? '' : `
         <td class="network-cell">${esc(fmt(row.network))}</td>
-        <td>${esc(fmt(row.controller))}</td>
-      </tr>`;
+        <td>${esc(fmt(row.controller))}</td>`;
+      return `<tr class="${trigger ? 'trigger-row' : ''}">${common}${extra}</tr>`;
     }).join('');
     return `<article class="controller-card">
       <div class="controller-head">
-        <span class="family-badge">${esc(group.family)}</span>
-        <strong>${esc(group.name)}</strong>
+        <div class="controller-title"><span class="family-badge">${esc(group.family)}</span><strong>${esc(group.name)}</strong></div>
+        <div class="controller-meta">${metadata}</div>
         ${temporary ? '<span class="temp-badge">temporary grouping until Controller Inventory identity is available</span>' : ''}
       </div>
-      <table class="hookup-table">
-        <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+      <div class="hookup-table-wrap">
+        <table class="hookup-table ${compact ? 'compact-table' : ''}">
+          <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
     </article>`;
   }).join('');
   document.getElementById('controller-groups').innerHTML = html;
@@ -237,9 +237,8 @@ function updatePageControls() {
 function applyImageScale() {
   if (!wiringImage.naturalWidth || !wiringImage.naturalHeight) return;
   let base = 1;
-  if (fitMode === 'width') {
-    base = Math.max(.05, (imageScroll.clientWidth - 18) / wiringImage.naturalWidth);
-  } else if (fitMode === 'all') {
+  if (fitMode === 'width') base = Math.max(.05, (imageScroll.clientWidth - 18) / wiringImage.naturalWidth);
+  else if (fitMode === 'all') {
     const w = Math.max(.05, (imageScroll.clientWidth - 18) / wiringImage.naturalWidth);
     const h = Math.max(.05, (imageScroll.clientHeight - 18) / wiringImage.naturalHeight);
     base = Math.min(w, h);
@@ -253,16 +252,11 @@ function showImage() {
   const item = currentImage();
   updatePageControls();
   if (!item) {
-    wiringImage.hidden = true;
-    imageScroll.hidden = true;
-    imageClassification.hidden = true;
-    imageEmpty.hidden = false;
+    wiringImage.hidden = true; imageScroll.hidden = true; imageClassification.hidden = true; imageEmpty.hidden = false;
     imageEmptyDetail.textContent = packageData.images.warnings?.length ? packageData.images.warnings.join(' ') : 'The hookup data remains current and usable without an image.';
     return;
   }
-  imageEmpty.hidden = true;
-  imageScroll.hidden = false;
-  imageClassification.hidden = false;
+  imageEmpty.hidden = true; imageScroll.hidden = false; imageClassification.hidden = false;
   imageClassification.classList.toggle('context', Boolean(item.contextOnly));
   imageClassification.textContent = item.contextOnly ? 'NO WIRING IMAGE AVAILABLE · CONTEXT IMAGE — NOT WIRING' : 'WIRING IMAGE';
   wiringImage.hidden = false;
@@ -292,11 +286,7 @@ function renderPrintImages() {
   target.innerHTML = '<div class="print-image-page"><h3>Wiring Images</h3><strong>NO WIRING IMAGE AVAILABLE</strong></div>';
 }
 function renderImages() {
-  images = allImages();
-  imageIndex = 0;
-  showImage();
-  setImageVisible(imageVisible);
-  renderPrintImages();
+  images = allImages(); imageIndex = 0; showImage(); setImageVisible(imageVisible); renderPrintImages();
   if (!(packageData.images.wiring_images || []).length && (packageData.images.context_images || []).length) {
     imageEmptyDetail.textContent = 'No wiring image exists in this scope. A same-scope PreviewBackground image exists as context only and is not being presented as wiring.';
   }
@@ -331,14 +321,8 @@ async function start() {
   try {
     const payload = await api(requestedPackageUrl());
     packageData = payload.wiring;
-    renderContext();
-    renderCurrentness();
-    renderGroups();
-    renderEngineering();
-    renderImages();
-    installControls();
-    loading.hidden = true;
-    workspace.hidden = false;
+    renderContext(); renderCurrentness(); renderGroups(); renderEngineering(); renderImages(); installControls();
+    loading.hidden = true; workspace.hidden = false;
     await installContextSwitch();
   } catch (err) {
     loading.hidden = true;
