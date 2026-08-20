@@ -1,15 +1,16 @@
-"""MSB FieldWiring browser API and static application host — V0.1.0."""
+"""MSB FieldWiring browser API and static application host — V0.2.0."""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
+from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.1.0"
+APP_VERSION = "V0.2.0"
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__)
 
@@ -27,6 +28,15 @@ def repository() -> Repository:
     )
 
 
+def optional_int(name: str) -> int | None:
+    raw = request.args.get(name, "").strip()
+    if not raw:
+        return None
+    if not raw.isdigit():
+        raise WiringError(f"Invalid {name}")
+    return int(raw)
+
+
 @app.get("/")
 def index() -> Response:
     return send_from_directory(BASE_DIR, "index.html")
@@ -40,6 +50,21 @@ def css() -> Response:
 @app.get("/fieldwiring.js")
 def js() -> Response:
     return send_from_directory(BASE_DIR, "fieldwiring.js")
+
+
+@app.get("/wiring")
+def wiring_page() -> Response:
+    return send_from_directory(BASE_DIR, "wiring.html")
+
+
+@app.get("/wiring.css")
+def wiring_css() -> Response:
+    return send_from_directory(BASE_DIR, "wiring.css")
+
+
+@app.get("/wiring.js")
+def wiring_js() -> Response:
+    return send_from_directory(BASE_DIR, "wiring.js")
 
 
 @app.get("/api/health")
@@ -67,9 +92,32 @@ def api_stages() -> Response:
     return jsonify(stages=repository().stages())
 
 
+@app.get("/api/wiring")
+def api_wiring() -> Response:
+    package = build_wiring_package(
+        repository(),
+        display_id=optional_int("display_id"),
+        stage_id=optional_int("stage_id"),
+        preview_uuid=request.args.get("preview_uuid", "").strip() or None,
+        scene_uuid=request.args.get("scene_uuid", "").strip() or None,
+    )
+    return jsonify(wiring=package)
+
+
+@app.get("/api/wiring/image")
+def api_wiring_image() -> Response:
+    path = safe_image_path(request.args.get("path", ""))
+    return send_file(path, conditional=True, max_age=300)
+
+
 @app.errorhandler(ConfigError)
 def config_error(exc: ConfigError) -> tuple[Response, int]:
     return jsonify(error=str(exc)), 503
+
+
+@app.errorhandler(WiringError)
+def wiring_error(exc: WiringError) -> tuple[Response, int]:
+    return jsonify(error=str(exc)), 400
 
 
 if __name__ == "__main__":

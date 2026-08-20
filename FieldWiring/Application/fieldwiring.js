@@ -7,9 +7,11 @@ const resolvedGrid = document.getElementById('resolved-grid');
 const technicalGrid = document.getElementById('technical-grid');
 const openFieldWiring = document.getElementById('open-fieldwiring');
 const clearResolved = document.getElementById('clear-resolved');
+const resolvedStatus = document.getElementById('resolved-status');
 
 let stages = [];
 let timer = null;
+let resolvedContext = null;
 
 function esc(value) {
   return String(value ?? '')
@@ -65,7 +67,18 @@ async function selectDisplay(displayId) {
   }
 }
 
+function wiringHref(c) {
+  if (!c || !c.stage_id || !c.preview_uuid) return null;
+  const params = new URLSearchParams();
+  if (c.display_id) params.set('display_id', c.display_id);
+  params.set('stage_id', c.stage_id);
+  params.set('preview_uuid', c.preview_uuid);
+  if (c.scene_uuid) params.set('scene_uuid', c.scene_uuid);
+  return '/wiring?' + params.toString();
+}
+
 function showResolved(c) {
+  resolvedContext = c;
   resolved.hidden = false;
   const isScene = c.scope_kind === 'Scene' && c.scene_name && c.scene_name.toLowerCase() !== 'root';
   const rows = [];
@@ -89,9 +102,11 @@ function showResolved(c) {
     <div class="resolved-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>
   `).join('') : '<div class="hint">No additional technical details.</div>';
 
-  // Renderer hookup is the next milestone. Keep the control visible but disabled
-  // so the accepted technician workflow is not confused with a completed route.
-  openFieldWiring.disabled = true;
+  const href = wiringHref(c);
+  openFieldWiring.disabled = !href;
+  resolvedStatus.textContent = href
+    ? 'Current wiring context resolved. Open Field Wiring to view the field hookup package.'
+    : 'This selection does not have enough current context to open Field Wiring.';
   resolved.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
@@ -151,7 +166,15 @@ displaySearch.addEventListener('keydown', e => {
   }
 });
 stageSelect.addEventListener('change', renderStageContexts);
-clearResolved.addEventListener('click', () => { resolved.hidden = true; });
+openFieldWiring.addEventListener('click', () => {
+  const href = wiringHref(resolvedContext);
+  if (href) window.open(href, '_blank', 'noopener');
+});
+clearResolved.addEventListener('click', () => {
+  resolved.hidden = true;
+  resolvedContext = null;
+  openFieldWiring.disabled = true;
+});
 
 loadStages();
 searchDisplays();
