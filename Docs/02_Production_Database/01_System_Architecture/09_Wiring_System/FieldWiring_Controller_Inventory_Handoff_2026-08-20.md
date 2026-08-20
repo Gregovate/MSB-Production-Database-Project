@@ -5,7 +5,7 @@
 | Status | ENGINEERING HANDOFF — durable cross-workstream contract |
 | FieldWiring branch | `agent/fieldwiring-engineering-recovery` |
 | FieldWiring ownership | Browser wiring presentation and consumption of controller relationships |
-| Controller Inventory ownership | Permanent physical controller identity and current/historical deployment relationships |
+| Controller Inventory ownership | Permanent physical controller identity and current assignment for the current approved LOR/V7 snapshot |
 | Schema status | FieldWiring does not own or authorize Controller Inventory schema changes |
 
 ## Purpose
@@ -21,7 +21,8 @@ The Controller Inventory workstream should inspect its own source artifacts and 
 - `ref.display.display_id` is permanent Display identity; LOR Prop UUID / `lor_prop_id` is an external binding.
 - Google Shared Drive `Display Folders` remains the engineering document/image authority used by FieldWiring.
 - FieldWiring does **not** own the Controller Inventory schema.
-- Controller Inventory must eventually provide permanent physical controller identity plus current/historical deployment relationships that FieldWiring can consume.
+- Controller Inventory must eventually provide permanent physical controller identity plus the **current assignment relationship that applies to the current approved LOR/V7 snapshot**.
+- FieldWiring does **not** require historical controller deployment relationships.
 
 Permanent physical controller identity must **not** be based on:
 
@@ -33,13 +34,27 @@ Permanent physical controller identity must **not** be based on:
 
 Pixie controllers may deliberately reuse Unit-ID ranges. One E1.31 controller may span many universes, and one Display may use multiple physical controllers.
 
+## Current-State Assignment Scope
+
+FieldWiring needs to answer a current operational question:
+
+> Which permanent physical controller is assigned to the wiring relationships in the current approved LOR/V7 snapshot?
+
+The controller itself has permanent identity. Its deployment/address assignment is current-state data.
+
+There is no FieldWiring requirement to preserve each prior controller deployment as historical relationship rows. Controller assignments change infrequently. When they do change, the Controller Inventory current assignment can be reconciled to the newly approved current snapshot.
+
+Older LOR snapshots and preserved source artifacts may remain available as engineering evidence, but Controller Inventory does not need to duplicate that evidence as deployment-history relationships merely for FieldWiring.
+
+No schema design is implied here. The Controller Inventory workstream still owns the eventual PostgreSQL model and must derive it from inspected source evidence.
+
 ## Temporary FieldWiring Recovery Rules
 
 The current FieldWiring recovery classifier contains some named, operator-confirmed runtime rules for known Displays/Scenes. This is acceptable as a temporary bridge while Controller Inventory is not yet authoritative.
 
 Those rules are **presentation recovery logic**, not permanent controller identities. They must not be interpreted as the Controller Inventory data model.
 
-Named examples in FieldWiring tests/runtime currently include Church, Candyland, Who Forest, and Santa's Workshop controller patterns. Tests may freely use exact Display/Scene names as acceptance fixtures. Runtime named rules should remain limited to explicitly reviewed physical patterns and should be replaced by authoritative Controller Inventory relationships when that subsystem is ready.
+Named examples in FieldWiring tests/runtime currently include Church, Candyland, Who Forest, and Santa's Workshop controller patterns. Tests may freely use exact Display/Scene names as acceptance fixtures. Runtime named rules should remain limited to explicitly reviewed physical patterns and should be replaced by authoritative Controller Inventory current-assignment relationships when that subsystem is ready.
 
 ## Confirmed Consumer Requirements
 
@@ -148,15 +163,17 @@ This is an **implementation defect**, not a change to the consumer contract abov
 
 ## Controller Inventory Integration Direction
 
-When Controller Inventory becomes authoritative, FieldWiring should consume permanent controller identities/deployment relationships rather than relying on temporary group labels such as `Pixie group 1/2/3` or named recovery rules.
+When Controller Inventory becomes authoritative, FieldWiring should consume permanent controller identity plus the controller's **current assignment for the current approved snapshot**, rather than relying on temporary group labels such as `Pixie group 1/2/3` or named recovery rules.
 
 Controller Inventory should be able to represent, without violating identity rules:
 
-- multiple physical Pixie controllers carrying the same programmed Unit-ID range;
+- multiple physical Pixie controllers carrying the same programmed Unit-ID range in the current snapshot;
 - one physical controller spanning multiple addressing rows/ranges;
 - one Display connected through more than one physical controller where applicable;
-- current and historical deployment relationships;
-- known controller identity even when addressing or deployment changes over time.
+- the current assignment of each controller to the current approved snapshot topology; and
+- known controller identity even when addressing or deployment is later changed and the current assignment is updated.
+
+A historical deployment-relationship model is **not required** for FieldWiring.
 
 FieldWiring will remain a consumer of that model; it should not redefine Controller Inventory ownership in order to satisfy browser presentation needs.
 
