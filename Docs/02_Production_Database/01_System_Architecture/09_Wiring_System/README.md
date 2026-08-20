@@ -20,9 +20,12 @@ Start with:
 - [FieldWiring Channel / Plug Label Printing Requirements](FieldWiring_Channel_Plug_Label_Printing_Requirements.md)
 - [FieldWiring Scene Scope and Offline Report Requirements](FieldWiring_Scene_Scope_and_Offline_Report_Requirements.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
+- [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md)
 - [FormView Engineering Architecture](../../../01_LOR_System/04_FormView/FormView_Engineering_Architecture.md)
 
 The shared Field Context resolver owns scan-to-Display/hierarchy resolution. FieldWiring consumes that resolved context after the operator chooses **Field Wiring**; it must not create a second QR/Stage/Scene resolution engine.
+
+The Display QR entry point is already a deployed production capability. A Directus endpoint extension on `msb-prod-db` under `/opt/directus/extensions/directus-extension-scan/` resolves the permanent `display_id` and presents the existing Display scan hub. FieldWiring is a downstream consumer of that working scan result, not a replacement for it. Server runtime/deployment/recovery documentation is cross-referenced to the separate [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management) project.
 
 FormView remains a transitional production application until FieldWiring has proven the operational behavior it replaces and an explicit cutover is accepted.
 
@@ -35,13 +38,15 @@ Provide task-focused field hookup information without creating a second topology
 The intended data path is:
 
 ```text
-Display QR / operator lookup
-    -> shared Field Context resolver
-        -> operator chooses Field Wiring
-            -> current PostgreSQL/LOR wiring contract
-                -> device-family presentation
-                    -> browser / tablet / phone
-                    -> self-contained offline HTML when needed
+Existing Display QR / operator lookup
+    -> existing authenticated Display scan hub
+        -> permanent display_id
+            -> shared Field Context resolver
+                -> operator chooses Field Wiring
+                    -> current PostgreSQL/LOR wiring contract
+                        -> device-family presentation
+                            -> browser / tablet / phone
+                            -> self-contained offline HTML when needed
 ```
 
 FieldWiring must translate technical topology into the physical connection model the installer sees.
@@ -70,7 +75,7 @@ LOR remains the upstream authority for show topology and enters PostgreSQL throu
 
 ## System Boundary
 
-**Relationship Class:** Dedicated Database-Backed Presentation / Field Application over a Production Database subsystem with an Integrated Upstream Dependency on LOR/LOR2DB.
+**Relationship Class:** Dedicated Database-Backed Presentation / Field Application over a Production Database subsystem with an Integrated Upstream Dependency on LOR/LOR2DB and an Existing Deployed Scan-Runtime Dependency.
 
 ### Authority Boundary
 
@@ -84,6 +89,14 @@ LOR remains authoritative for:
 PostgreSQL provides the shared operational snapshot used by FieldWiring and may add database-owned permanent identities, controller inventory relationships, field notes, and other operational relationships.
 
 FieldWiring interprets and presents that topology. It does not independently redefine it.
+
+### Existing Display scan runtime
+
+The current Display QR lookup is already implemented outside FieldWiring as a deployed Directus endpoint on `msb-prod-db`.
+
+FieldWiring must consume the permanent `display_id` resolved by that existing scan hub and add Field Wiring as a downstream task destination. It must not create a competing QR payload, scanner route, or duplicate Testing/Work Order scan logic.
+
+See [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) for the cross-repository boundary. The live server/runtime is inspected and documented through [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management), whose engineering workflow includes SSH inspection of live `/opt/...` application directories.
 
 ### Production Database responsibility
 
@@ -122,7 +135,9 @@ Wiring images are supplemental rough-location guidance. The hookup data remains 
 - [Database Foundation](../01_Database_Foundation/README.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
+- [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md)
 - [Network Infrastructure](../10_Network_Infrastructure/README.md)
+- [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management) for deployed server/runtime administration and recovery documentation
 
 ## Current Responsibilities
 
@@ -143,6 +158,7 @@ Wiring images are supplemental rough-location guidance. The hookup data remains 
 - [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
 - [Network Infrastructure](../10_Network_Infrastructure/README.md)
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
+- [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management)
 - [System Boundary and Repository Ownership Standard](../../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md)
 
 ## Resume Development
@@ -151,16 +167,19 @@ The FormView architecture has been recovered, the V7/PostgreSQL wiring layer has
 
 The Drive image-discovery mechanism is working: current images added to marked `Wiring\BackgroundStage` or `Wiring\MusicalStage` source locations become visible to the resolver without a parser/database update.
 
-Current engineering focus is now the **operator read/presentation layer**:
+The current Display QR entry is also verified as an existing production dependency. Do not redesign it. FieldWiring should extend the existing Display scan hub after the live scan-extension baseline and its server-management documentation are preserved.
+
+Current engineering focus is now the **operator read/presentation layer and its integration with the existing Display identity path**:
 
 1. keep current V7 wiring/topology data authoritative;
-2. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
-3. classify the physical presentation family from current device/string metadata;
-4. translate raw topology into the hookup terms the field installer sees;
-5. keep raw Unit ID, DMX/E1.31 universe/channel, Source, DeviceType, and similar engineering values available under details;
-6. integrate permanent Controller Inventory identities later without blocking current FieldWiring development; and
-7. preserve the future Channel Name -> 1/2-inch plug-label workflow as a controlled LabelPrintService integration rather than a manual printer-software task.
+2. reuse the existing authenticated Display scan hub and permanent `display_id` entry;
+3. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
+4. classify the physical presentation family from current device/string metadata;
+5. translate raw topology into the hookup terms the field installer sees;
+6. keep raw Unit ID, DMX/E1.31 universe/channel, Source, DeviceType, and similar engineering values available under details;
+7. integrate permanent Controller Inventory identities later without blocking current FieldWiring development; and
+8. preserve the future Channel Name -> 1/2-inch plug-label workflow as a controlled LabelPrintService integration rather than a manual printer-software task.
 
 Current acceptance examples include Church A/C + Pixie patterns, Candyland repeated Pixie 4 blocks, Who Forest Pixie 8 blocks, Santa's Workshop Pixie 8 blocks, Northern Lights as the first DMX/DumbRGB network-hookup case, and the dense RGB E1.31 cases: Mega Tree, Mega Ball, Mega Cube, Mega Star, and Mt. Crumpit Matrix.
 
-Do not change FormView or database schema merely to simplify the browser implementation. Demonstrate any real schema gap before proposing a migration.
+Do not change FormView, the existing Display QR identity, or database schema merely to simplify the browser implementation. Demonstrate any real schema or integration gap before proposing a migration.
