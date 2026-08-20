@@ -1,7 +1,7 @@
 """Accepted FieldWiring physical presentation rules.
 
 This module translates current LOR/V7 topology into the already-reviewed field
-presentation families.  It intentionally does not invent permanent controller
+presentation families. It intentionally does not invent permanent controller
 asset identities; Controller Inventory will replace temporary/reviewed grouping
 labels when that subsystem is authoritative.
 """
@@ -13,11 +13,9 @@ from typing import Any
 
 from wiring_common import controller_sort, natural_key
 
-PIXIE_SIZES = (2, 4, 8, 16)
-
 # Operator-reviewed temporary physical grouping preserved from the pre-browser
-# FieldWiring engineering work.  This is topology/presentation evidence only,
-# not permanent Controller Inventory identity.
+# FieldWiring engineering work. These are presentation facts, not permanent
+# Controller Inventory identities.
 _CANDYLAND_LOLLIPOP_UIDS: dict[str, tuple[str, ...]] = {
     "CL-Lollipop-Small-01": ("50",),
     "CL-Lollipop-Large-02": ("51", "52"),
@@ -27,6 +25,11 @@ _CANDYLAND_LOLLIPOP_UIDS: dict[str, tuple[str, ...]] = {
     "CL-Lollipop-Large-06": ("58", "59"),
     "CL-Lollipop-Small-07": ("5A",),
     "CL-Lollipop-Small-08": ("5B",),
+}
+
+_ACCEPTED_REPEATED_SERIES: dict[str, int] = {
+    "CH-RGBCandyCane": 4,
+    "CL-RGBCandyCane": 4,
 }
 
 
@@ -64,20 +67,24 @@ def _uid_text(value: int) -> str:
     return f"{value:X}"
 
 
-def _pixie_model(output_count: int) -> str | None:
-    return f"Pixie {output_count}" if output_count in PIXIE_SIZES else None
-
-
 def _series_key(display_name: Any) -> str | None:
-    """Return a conservative numbered-Display series key.
-
-    This is used only for temporary repeated-address inference.  A rename that
-    no longer forms a clean series fails safe to unresolved rather than
-    fabricating a controller group.
-    """
     name = str(display_name or "").strip()
     match = re.match(r"^(.*?)-(\d+)$", name)
     return match.group(1) if match else None
+
+
+def _accepted_anchor_size(display_name: Any) -> int | None:
+    """Return a Pixie size only for patterns already reviewed in this branch."""
+    name = str(display_name or "").strip()
+    if name == "CH-RGBTree-16x100-180":
+        return 16
+    if name in {"CH-RGBCross-LH", "CH-RGBCross-RH"}:
+        return 2
+    if re.fullmatch(r"WF-Tree-\d{2}", name):
+        return 8
+    if name in {"SW-TreeRGB-LH", "SW-TreeRGB-RH"}:
+        return 8
+    return None
 
 
 def _set_pixie_group(
@@ -100,7 +107,7 @@ def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: st
     """Restore the reviewed Candyland RGB Lollipop Pixie 16 context.
 
     The authoritative Preview uses one contiguous Aux C block 50-5B across
-    eight RGB Displays.  Only Outputs 1-12 are currently used.
+    eight RGB Displays. Only Outputs 1-12 are currently used.
     """
     if (scene_name or "").strip().casefold() != "17-candyland-cl":
         return
@@ -113,20 +120,25 @@ def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: st
     for row in candidates:
         by_display[str(row.get("display_name"))].append(row)
 
-    # Fail safe unless every reviewed Display is present with exactly the
-    # expected current LOR Unit-ID set.  Do not repair topology in FieldWiring.
+    # Fail safe unless the complete reviewed set is present with exactly the
+    # expected current LOR Unit-ID topology. FieldWiring never repairs it.
     if set(by_display) != set(_CANDYLAND_LOLLIPOP_UIDS):
+        for row in candidates:
+            row["controller_group_kind"] = "address-pattern-review"
         return
+
     for display_name, expected in _CANDYLAND_LOLLIPOP_UIDS.items():
         actual = tuple(
             str(r.get("controller") or "").upper()
             for r in sorted(by_display[display_name], key=lambda r: controller_sort(r.get("controller")))
         )
         if actual != expected:
-            for row in by_display[display_name]:
+            for row in candidates:
                 row["controller_group_kind"] = "address-pattern-review"
             return
         if any((r.get("network") or "").strip().casefold() != "aux c" for r in by_display[display_name]):
+            for row in candidates:
+                row["controller_group_kind"] = "address-pattern-review"
             return
 
     base = 0x50
@@ -144,8 +156,8 @@ def _apply_candyland_lollipop_pattern(rows: list[dict[str, Any]], scene_name: st
         )
 
 
-def _apply_multirow_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Create reviewed-shape Pixie anchors from one Display spanning 2/4/8/16 UIDs."""
+def _apply_reviewed_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Create Pixie anchors only for already-reviewed multi-row Displays."""
     by_display: dict[Any, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         if row.get("presentation_family") != "PIXIE" or row.get("controller_group"):
@@ -155,15 +167,18 @@ def _apply_multirow_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, 
 
     anchors: list[dict[str, Any]] = []
     for display_rows in by_display.values():
+        display_name = display_rows[0].get("display_name")
+        expected_count = _accepted_anchor_size(display_name)
+        if expected_count is None:
+            continue
+
         uid_values = [_hex_int(r.get("controller")) for r in display_rows]
         if any(value is None for value in uid_values):
             continue
         unique_uids = sorted(set(value for value in uid_values if value is not None))
-        count = len(unique_uids)
-        model = _pixie_model(count)
-        if not model or count != len(display_rows):
+        if len(display_rows) != expected_count or len(unique_uids) != expected_count:
             continue
-        if unique_uids != list(range(unique_uids[0], unique_uids[0] + count)):
+        if unique_uids != list(range(unique_uids[0], unique_uids[0] + expected_count)):
             continue
         networks = {str(r.get("network") or "").strip().casefold() for r in display_rows}
         if len(networks) != 1:
@@ -171,7 +186,8 @@ def _apply_multirow_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, 
 
         base = unique_uids[0]
         end = unique_uids[-1]
-        group = str(display_rows[0].get("display_name") or "Pixie controller")
+        group = str(display_name or "Pixie controller")
+        model = f"Pixie {expected_count}"
         uid_range = f"{_uid_text(base)}-{_uid_text(end)}"
         for row in display_rows:
             uid = _hex_int(row.get("controller"))
@@ -181,7 +197,7 @@ def _apply_multirow_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, 
                 group=group,
                 output=(uid - base) + 1,
                 model=model,
-                kind="validated-display-pattern",
+                kind="reviewed-display-pattern",
                 uid_range=uid_range,
             )
         anchors.append(
@@ -198,11 +214,11 @@ def _apply_multirow_pixie_anchors(rows: list[dict[str, Any]]) -> list[dict[str, 
 
 
 def _attach_rows_to_unique_pixie_anchor(rows: list[dict[str, Any]], anchors: list[dict[str, Any]]) -> None:
-    """Attach companion RGB rows that fall inside exactly one validated Pixie block.
+    """Attach companion RGB rows that fall inside exactly one reviewed block.
 
-    This preserves cases such as Who Forest Tree Stars and the Church Tree Star:
-    their StartChannel can be 151/301 while the physical plug remains the
-    output selected by the shared Unit ID.
+    This preserves Who Forest Tree Stars and the Church Tree Star: their
+    StartChannel can be 151/301 while the physical plug remains the output
+    selected by their shared Unit ID.
     """
     for row in rows:
         if row.get("presentation_family") != "PIXIE" or row.get("controller_group"):
@@ -220,61 +236,44 @@ def _attach_rows_to_unique_pixie_anchor(rows: list[dict[str, Any]], anchors: lis
             group=anchor["group"],
             output=(uid - anchor["base"]) + 1,
             model=anchor["model"],
-            kind="validated-shared-controller-address",
+            kind="reviewed-shared-controller-address",
             uid_range=anchor["uid_range"],
         )
 
 
-def _apply_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
-    """Derive temporary Pixie groups from clean repeated numbered-Display blocks.
-
-    The detector operates per numbered Display series instead of across every
-    one-row RGB Display in the Scene.  This is the key mixed-Scene recovery.
-    Only complete blocks matching the first confirmed repeated block are
-    grouped.  A later inconsistent block is left unresolved and flagged for
-    review; FieldWiring never rewrites its Unit ID.
-    """
+def _apply_reviewed_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
+    """Restore only the operator-confirmed repeated-address Pixie series."""
     series: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         if row.get("presentation_family") != "PIXIE" or row.get("controller_group"):
             continue
         key = _series_key(row.get("display_name"))
-        if not key:
+        if key not in _ACCEPTED_REPEATED_SERIES:
             continue
         network = str(row.get("network") or "").strip().casefold()
         series[(network, key)].append(row)
 
-    for series_rows in series.values():
+    for (_, key), series_rows in series.items():
+        period = _ACCEPTED_REPEATED_SERIES[key]
         series_rows.sort(key=lambda r: natural_key(r.get("display_name")))
         sequence = [str(r.get("controller") or "").upper() for r in series_rows]
-        if len(sequence) < 4:
-            continue
-
-        period: int | None = None
-        for candidate in PIXIE_SIZES:
-            if len(sequence) < candidate * 2:
-                continue
-            first = sequence[:candidate]
-            second = sequence[candidate:candidate * 2]
-            if len(set(first)) != candidate:
-                continue
-            if second == first:
-                period = candidate
-                break
-        if period is None:
+        if len(sequence) < period * 2:
+            for row in series_rows:
+                row["controller_group_kind"] = "address-pattern-review"
             continue
 
         expected = sequence[:period]
+        if len(set(expected)) != period or sequence[period:period * 2] != expected:
+            for row in series_rows:
+                row["controller_group_kind"] = "address-pattern-review"
+            continue
+
         model = f"Pixie {period}"
         group_number = 0
         for start in range(0, len(series_rows), period):
             block_rows = series_rows[start:start + period]
             block_values = sequence[start:start + period]
-            if len(block_rows) != period:
-                for row in block_rows:
-                    row["controller_group_kind"] = "address-pattern-review"
-                continue
-            if block_values != expected:
+            if len(block_rows) != period or block_values != expected:
                 for row in block_rows:
                     row["controller_group_kind"] = "address-pattern-review"
                 continue
@@ -297,7 +296,7 @@ def apply_physical_presentation(
     *,
     scene_name: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Apply the already-reviewed physical-output rules without changing topology."""
+    """Apply reviewed physical-output rules without changing LOR topology."""
     for row in rows:
         row["presentation_family"] = presentation_family(row)
         row["physical_output"] = None
@@ -307,8 +306,8 @@ def apply_physical_presentation(
         row["controller_uid_range"] = None
 
     # Conventional A/C: one physical controller per Network + Unit ID;
-    # StartChannel is the physical Output/Plug.  Multiple atomic Display rows
-    # on that same Output remain separate rows for grouped presentation later.
+    # StartChannel is the physical Output/Plug. Multiple atomic Display rows on
+    # one output remain separate rows and are grouped only at presentation time.
     ac_groups: dict[tuple[str, str], int] = {}
     for row in rows:
         if row["presentation_family"] != "AC":
@@ -322,7 +321,8 @@ def apply_physical_presentation(
         row["controller_model"] = "A/C controller"
         row["controller_uid_range"] = str(row.get("controller") or "") or None
 
-    # Display-oriented families remain separate from physical Pixie inference.
+    # DMX/DumbRGB and dense E1.31 are separate field families. Their generic
+    # compatibility Controller values are addressing, not physical identities.
     for row in rows:
         family = row["presentation_family"]
         if family == "DUMBRGB":
@@ -335,20 +335,13 @@ def apply_physical_presentation(
 
     pixie_rows = [r for r in rows if r["presentation_family"] == "PIXIE"]
 
-    # Apply explicitly reviewed multi-Display physical contexts first.
+    # Reviewed multi-Display context first so individual two-UID Lollipops do
+    # not become separate Pixie 2 controllers.
     _apply_candyland_lollipop_pattern(pixie_rows, scene_name)
 
-    # Then establish controller blocks directly proven by one Display spanning
-    # a complete Pixie 2/4/8/16 address range.
-    anchors = _apply_multirow_pixie_anchors(pixie_rows)
-
-    # Companion rows sharing a Unit ID inside one unambiguous anchor belong to
-    # that same physical output even when their StartChannel is 151/301.
+    anchors = _apply_reviewed_pixie_anchors(pixie_rows)
     _attach_rows_to_unique_pixie_anchor(pixie_rows, anchors)
-
-    # Finally infer operator-confirmed repeated-address controllers per Display
-    # series, not across unrelated RGB Displays in the Scene.
-    _apply_repeated_pixie_series(pixie_rows)
+    _apply_reviewed_repeated_pixie_series(pixie_rows)
 
     return rows
 
@@ -360,7 +353,9 @@ def group_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         family = row.get("presentation_family") or "OTHER"
         group = row.get("controller_group")
         if not group:
-            if family == "DMX":
+            if family == "PIXIE":
+                group = "Pixie grouping review required"
+            elif family == "DMX":
                 group = f"DMX · Universe {row.get('controller') or '—'}"
             elif family == "DUMBRGB":
                 group = row.get("display_name") or "DMX / DumbRGB hookup"
