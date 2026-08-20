@@ -14,6 +14,9 @@ def _stage(root: Path) -> Path:
     musical = wiring / "MusicalStage"
     musical.mkdir()
     (musical / "church.png").write_bytes(b"x")
+    background = wiring / "BackgroundStage"
+    background.mkdir()
+    (background / "church-background.png").write_bytes(b"x")
     return stage
 
 
@@ -34,6 +37,31 @@ def test_no_distinct_scene_folder_retains_stage_scope(tmp_path, monkeypatch):
     assert result["scope_root"] == str(stage_root)
     assert [image["name"] for image in result["wiring_images"]] == ["church.png"]
     assert any("stage root retained" in warning.lower() for warning in result["warnings"])
+
+
+def test_direct_wiring_pointer_resolves_stage_owner_while_context_selects_branch(tmp_path, monkeypatch):
+    root = tmp_path / "Display Folders"
+    root.mkdir()
+    stage_root = _stage(root)
+    monkeypatch.setenv("FIELDWIRING_DRIVE_ROOT", str(root))
+
+    direct_pointer = stage_root / "Wiring" / "MusicalStage" / "church.png"
+    stage = {"stage_key": "15", "folder_path": str(stage_root)}
+    scene = {
+        "scene_name": "15-Church-CH",
+        "scene_background_file": str(direct_pointer),
+    }
+    preview = {"preview_background_file": None}
+
+    musical_result = resolve_images(stage, scene, preview, "Musical")
+    assert musical_result["scope_type"] == "STAGE"
+    assert musical_result["scope_root"] == str(stage_root)
+    assert [image["name"] for image in musical_result["wiring_images"]] == ["church.png"]
+
+    background_result = resolve_images(stage, scene, preview, "Background / Static")
+    assert background_result["scope_type"] == "STAGE"
+    assert background_result["scope_root"] == str(stage_root)
+    assert [image["name"] for image in background_result["wiring_images"]] == ["church-background.png"]
 
 
 def test_unmarked_matching_scene_does_not_fall_back_to_stage(tmp_path, monkeypatch):
