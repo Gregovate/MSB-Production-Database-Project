@@ -245,7 +245,7 @@ Current approved field-facing files belong directly in the applicable procedure 
 
 # Standard Display Root
 
-An existing Display folder uses the smaller standard structure:
+An existing Display folder uses the smaller standard structure. These are the minimum folders required:
 
 ```text
 <Display>
