@@ -24,6 +24,7 @@ let imageIndex = 0;
 let zoom = 1;
 let fitMode = 'width';
 let imageVisible = window.matchMedia('(min-width: 801px)').matches;
+let expandedImageBasis = '';
 
 function storedTheme() {
   try {
@@ -157,7 +158,7 @@ function renderCurrentness() {
   ].filter(Boolean).join(' · ');
 }
 function fieldColumns(family) {
-  if (family === 'AC' || family === 'PIXIE') return ['Output','Display / Channel'];
+  if (family === 'AC' || family === 'PIXIE') return ['Output','Display / Channel Name'];
   if (family === 'DMX') return ['Channel','Display / Fixture','Network','Universe'];
   if (family === 'DUMBRGB') return ['Channel','Display / Fixture','Network','Controller'];
   return ['Connection','Display / Channel','Network','Controller'];
@@ -172,38 +173,69 @@ function groupMetadata(group) {
   const networks = uniqueValues(group.rows, 'network');
   const controllers = uniqueValues(group.rows, 'controller');
   const items = [];
-  if (networks.length) items.push(['Network', networks.join(', ')]);
-  if (controllers.length) {
-    let label = 'Controller';
-    if (group.family === 'AC' || group.family === 'PIXIE') label = controllers.length === 1 ? 'LOR UID' : 'LOR UIDs';
-    if (group.family === 'DMX') label = controllers.length === 1 ? 'Universe' : 'Universes';
-    items.push([label, controllers.join(', ')]);
+  if (group.family === 'AC') {
+    if (controllers.length) items.push([controllers.length === 1 ? 'UID' : 'UIDs', controllers.join(', ')]);
+    if (networks.length) items.push(['Network', networks.join(', ')]);
+  } else if (group.family === 'PIXIE') {
+    if (controllers.length) items.push([controllers.length === 1 ? 'Unit ID' : 'Unit IDs', controllers.join(', ')]);
+    if (networks.length) items.push(['Network', networks.join(', ')]);
+  } else {
+    if (networks.length) items.push(['Network', networks.join(', ')]);
+    if (controllers.length) items.push([group.family === 'DMX' ? (controllers.length === 1 ? 'Universe' : 'Universes') : 'Controller', controllers.join(', ')]);
   }
   return items;
+}
+function displayGroupName(group) {
+  if (group.family === 'AC') return String(group.name || '').replace(/^A\/C controller group\s*/i, 'Controller ');
+  return group.name;
+}
+function compactRows(group, triggerId) {
+  const grouped = new Map();
+  for (const row of group.rows) {
+    const output = String(outputValue(row));
+    if (!grouped.has(output)) grouped.set(output, []);
+    grouped.get(output).push(row);
+  }
+  return [...grouped.entries()].map(([output, rows]) => {
+    const trigger = rows.some(row => triggerId && Number(row.display_id) === triggerId);
+    const entries = rows.map(row => {
+      const selected = triggerId && Number(row.display_id) === triggerId;
+      return `<div class="output-entry ${selected ? 'selected-entry' : ''}">
+        <strong>${esc(row.display_name)}</strong>
+        <span>${esc(row.channel_name || '')}</span>
+      </div>`;
+    }).join('');
+    return `<tr class="${trigger ? 'trigger-row' : ''}">
+      <td class="output-cell">${esc(output)}</td>
+      <td class="display-cell grouped-display-cell">${entries}</td>
+    </tr>`;
+  }).join('');
 }
 function renderGroups() {
   const triggerId = Number(packageData.context.display_id || 0);
   const html = packageData.controller_groups.map(group => {
     const compact = group.family === 'AC' || group.family === 'PIXIE';
     const cols = fieldColumns(group.family);
-    const temporary = group.rows.some(r => String(r.controller_group_kind || '').startsWith('temporary'));
     const metadata = groupMetadata(group).map(([label,value]) => `
       <span class="controller-meta-item"><span class="controller-meta-label">${esc(label)}</span><strong class="controller-meta-value">${esc(value)}</strong></span>`).join('');
-    const rows = group.rows.map(row => {
-      const trigger = triggerId && Number(row.display_id) === triggerId;
-      const common = `
-        <td class="output-cell">${esc(outputValue(row))}</td>
-        <td class="display-cell"><strong>${esc(row.display_name)}</strong><span>${esc(row.channel_name || '')}</span></td>`;
-      const extra = compact ? '' : `
-        <td class="network-cell">${esc(fmt(row.network))}</td>
-        <td>${esc(fmt(row.controller))}</td>`;
-      return `<tr class="${trigger ? 'trigger-row' : ''}">${common}${extra}</tr>`;
-    }).join('');
+    let rows;
+    if (compact) {
+      rows = compactRows(group, triggerId);
+    } else {
+      rows = group.rows.map(row => {
+        const trigger = triggerId && Number(row.display_id) === triggerId;
+        return `<tr class="${trigger ? 'trigger-row' : ''}">
+          <td class="output-cell">${esc(outputValue(row))}</td>
+          <td class="display-cell"><strong>${esc(row.display_name)}</strong><span>${esc(row.channel_name || '')}</span></td>
+          <td class="network-cell">${esc(fmt(row.network))}</td>
+          <td>${esc(fmt(row.controller))}</td>
+        </tr>`;
+      }).join('');
+    }
     return `<article class="controller-card">
       <div class="controller-head">
-        <div class="controller-title"><span class="family-badge">${esc(group.family)}</span><strong>${esc(group.name)}</strong></div>
+        <div class="controller-title"><span class="family-badge">${esc(group.family)}</span><strong>${esc(displayGroupName(group))}</strong></div>
         <div class="controller-meta">${metadata}</div>
-        ${temporary ? '<span class="temp-badge">temporary grouping until Controller Inventory identity is available</span>' : ''}
       </div>
       <div class="hookup-table-wrap">
         <table class="hookup-table ${compact ? 'compact-table' : ''}">
@@ -252,11 +284,16 @@ function showImage() {
   const item = currentImage();
   updatePageControls();
   if (!item) {
-    wiringImage.hidden = true; imageScroll.hidden = true; imageClassification.hidden = true; imageEmpty.hidden = false;
+    wiringImage.hidden = true;
+    imageScroll.hidden = true;
+    imageClassification.hidden = true;
+    imageEmpty.hidden = false;
     imageEmptyDetail.textContent = packageData.images.warnings?.length ? packageData.images.warnings.join(' ') : 'The hookup data remains current and usable without an image.';
     return;
   }
-  imageEmpty.hidden = true; imageScroll.hidden = false; imageClassification.hidden = false;
+  imageEmpty.hidden = true;
+  imageScroll.hidden = false;
+  imageClassification.hidden = false;
   imageClassification.classList.toggle('context', Boolean(item.contextOnly));
   imageClassification.textContent = item.contextOnly ? 'NO WIRING IMAGE AVAILABLE · CONTEXT IMAGE — NOT WIRING' : 'WIRING IMAGE';
   wiringImage.hidden = false;
@@ -266,8 +303,24 @@ function showImage() {
 }
 function setImageVisible(value) {
   imageVisible = Boolean(value);
-  if (imageVisible) imageSection.classList.add('image-open'); else imageSection.classList.remove('image-open');
-  if (window.matchMedia('(min-width: 801px)').matches) imagePane.style.display = imageVisible ? '' : 'none';
+  imageSection.classList.toggle('image-open', imageVisible);
+  const desktop = window.matchMedia('(min-width: 801px)').matches;
+  if (desktop) {
+    if (imageVisible) {
+      imageSection.style.flexBasis = expandedImageBasis || '44%';
+      imagePane.style.display = '';
+      divider.style.display = '';
+    } else {
+      if (imageSection.style.flexBasis && imageSection.style.flexBasis !== 'auto') expandedImageBasis = imageSection.style.flexBasis;
+      imageSection.style.flexBasis = 'auto';
+      imagePane.style.display = 'none';
+      divider.style.display = 'none';
+    }
+  } else {
+    imageSection.style.flexBasis = '';
+    imagePane.style.display = '';
+    divider.style.display = '';
+  }
   document.getElementById('image-toggle').textContent = imageVisible ? 'Hide Image' : 'Show Image';
   if (imageVisible) setTimeout(applyImageScale, 0);
 }
@@ -286,7 +339,11 @@ function renderPrintImages() {
   target.innerHTML = '<div class="print-image-page"><h3>Wiring Images</h3><strong>NO WIRING IMAGE AVAILABLE</strong></div>';
 }
 function renderImages() {
-  images = allImages(); imageIndex = 0; showImage(); setImageVisible(imageVisible); renderPrintImages();
+  images = allImages();
+  imageIndex = 0;
+  showImage();
+  setImageVisible(imageVisible);
+  renderPrintImages();
   if (!(packageData.images.wiring_images || []).length && (packageData.images.context_images || []).length) {
     imageEmptyDetail.textContent = 'No wiring image exists in this scope. A same-scope PreviewBackground image exists as context only and is not being presented as wiring.';
   }
@@ -300,7 +357,10 @@ function installControls() {
   document.getElementById('fit-all').addEventListener('click', () => { fitMode='all'; zoom=1; applyImageScale(); });
   document.getElementById('zoom-in').addEventListener('click', () => { zoom=Math.min(4, zoom*1.2); applyImageScale(); });
   document.getElementById('zoom-out').addEventListener('click', () => { zoom=Math.max(.25, zoom/1.2); applyImageScale(); });
-  window.addEventListener('resize', () => { if (imageVisible) applyImageScale(); });
+  window.addEventListener('resize', () => {
+    setImageVisible(imageVisible);
+    if (imageVisible) applyImageScale();
+  });
 
   let dragging = false;
   divider.addEventListener('pointerdown', e => { dragging=true; divider.setPointerCapture(e.pointerId); e.preventDefault(); });
@@ -310,7 +370,8 @@ function installControls() {
     const min = 160;
     const max = Math.max(min, area.height - 220);
     const px = Math.max(min, Math.min(max, e.clientY - area.top));
-    imageSection.style.flexBasis = `${px}px`;
+    expandedImageBasis = `${px}px`;
+    imageSection.style.flexBasis = expandedImageBasis;
     if (imageVisible) applyImageScale();
   });
   divider.addEventListener('pointerup', () => { dragging=false; });
@@ -321,8 +382,14 @@ async function start() {
   try {
     const payload = await api(requestedPackageUrl());
     packageData = payload.wiring;
-    renderContext(); renderCurrentness(); renderGroups(); renderEngineering(); renderImages(); installControls();
-    loading.hidden = true; workspace.hidden = false;
+    renderContext();
+    renderCurrentness();
+    renderGroups();
+    renderEngineering();
+    renderImages();
+    installControls();
+    loading.hidden = true;
+    workspace.hidden = false;
     await installContextSwitch();
   } catch (err) {
     loading.hidden = true;
