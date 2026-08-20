@@ -52,6 +52,7 @@ Images needed for `Setup` or `Takedown` must be placed in the `images` folder un
 ```text
 <Stage, Sub-stage, or Scene>
 ├── PreviewBackground
+│   └── archive
 │
 ├── Photos
 │   ├── Current
@@ -124,11 +125,17 @@ If a Display is not contained in a defined Scene, procedure lookup falls back to
 
 An unprefixed Display/group folder must not be promoted to a Scene merely because an LOR BackgroundFile path passes through that folder.
 
-Display folders use a smaller standard structure:
+Display folders use a smaller standard structure. The minimum folders are:
 
 ```text
 <Display>
 ├── PreviewBackground
+│   ├── preview development
+│   ├── channel assignments
+│   └── archive
+├── drawings
+│   ├── current
+│   └── archive
 └── Photos
     ├── Current
     └── Historical
