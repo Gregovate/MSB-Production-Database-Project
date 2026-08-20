@@ -287,11 +287,11 @@ def _apply_reviewed_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
                 row["controller_group_kind"] = "address-pattern-review"
             continue
 
-        # The accepted Candyland physical contract is three Pixie 4 groups.
-        # The development snapshot may still contain the already-reviewed stale
-        # Cane 12 raw Unit ID (22 instead of the corrected live Preview value
-        # 24). Preserve that raw source value, but do not discard the confirmed
-        # physical controller/output grouping because of the stale fixture.
+        # Candyland's physical three-Pixie-4 grouping is operator-confirmed.
+        # The development snapshot may still carry the pre-correction Cane 12
+        # raw Unit ID 22. Keep that third controller group, but derive its
+        # presented output from the snapshot's raw Unit ID so Output 2 correctly
+        # contains both Cane 10 and Cane 12 until a refreshed snapshot is imported.
         known_candyland_stale_third = (
             key == "CL-RGBCandyCane"
             and len(series_rows) == 12
@@ -317,7 +317,12 @@ def _apply_reviewed_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
                 if stale_confirmed_block
                 else "temporary-repeated-address-pattern"
             )
-            for output, row in enumerate(block_rows, 1):
+            for ordinal, row in enumerate(block_rows, 1):
+                if stale_confirmed_block:
+                    raw_uid = str(row.get("controller") or "").strip().upper()
+                    output = expected.index(raw_uid) + 1 if raw_uid in expected else ordinal
+                else:
+                    output = ordinal
                 _set_pixie_group(
                     row,
                     group=group,
