@@ -162,23 +162,36 @@ def test_candyland_mixed_scene_has_one_pixie16_lollipop_context_and_three_pixie4
     assert stick["presentation_family"] == "AC"
 
 
-def test_candyland_stale_third_candy_cane_block_is_not_silently_corrected():
+def test_candyland_stale_third_candy_cane_block_preserves_confirmed_pixie4_group():
     rows: list[dict] = []
     stale = ["21", "22", "23", "24", "21", "22", "23", "24", "21", "22", "23", "22"]
     for index, uid in enumerate(stale, 1):
         rows.append(row(700 + index, f"CL-RGBCandyCane-{index:02d}", uid, network="Aux C"))
 
     presented = apply_physical_presentation(rows, scene_name="17-Candyland-CL")
+    groups = group_rows(presented)
 
-    first_eight = presented[:8]
-    assert [r["controller_group"] for r in first_eight[:4]] == ["Pixie group 1"] * 4
-    assert [r["controller_group"] for r in first_eight[4:8]] == ["Pixie group 2"] * 4
+    assert [g["name"] for g in groups] == ["Pixie group 1", "Pixie group 2", "Pixie group 3"]
+    assert [[r["physical_output"] for r in g["rows"]] for g in groups] == [
+        [1, 2, 3, 4],
+        [1, 2, 3, 4],
+        [1, 2, 3, 4],
+    ]
 
-    third = presented[8:12]
+    third = groups[2]["rows"]
+    assert [r["display_name"] for r in third] == [
+        "CL-RGBCandyCane-09",
+        "CL-RGBCandyCane-10",
+        "CL-RGBCandyCane-11",
+        "CL-RGBCandyCane-12",
+    ]
+    # Preserve the stale snapshot evidence exactly; presentation grouping does
+    # not rewrite Cane 12's raw LOR Unit ID.
     assert [r["controller"] for r in third] == ["21", "22", "23", "22"]
-    assert all(r["controller_group"] is None for r in third)
-    assert all(r["physical_output"] is None for r in third)
-    assert all(r["controller_group_kind"] == "address-pattern-review" for r in third)
+    assert all(r["controller_model"] == "Pixie 4" for r in third)
+    assert all(r["controller_uid_range"] == "21-24" for r in third)
+    assert all(r["controller_group_kind"] == "temporary-repeated-address-pattern-stale-source" for r in third)
+    assert not any(g["name"] == "Pixie grouping review required" for g in groups)
 
 
 def test_who_forest_has_eight_pixie8_groups_and_each_star_shares_output_8():
