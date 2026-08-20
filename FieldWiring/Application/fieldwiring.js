@@ -8,10 +8,41 @@ const technicalGrid = document.getElementById('technical-grid');
 const openFieldWiring = document.getElementById('open-fieldwiring');
 const clearResolved = document.getElementById('clear-resolved');
 const resolvedStatus = document.getElementById('resolved-status');
+const themeToggle = document.getElementById('theme-toggle');
+const screenLogo = document.getElementById('screen-logo');
+
+const THEME_KEY = 'fieldwiring-theme';
+const LIGHT_LOGO = 'https://webassets.sheboyganlights.org/msb-blue-logo-600-plain.svg';
+const DARK_LOGO = 'https://webassets.sheboyganlights.org/msb-white-logo-600-plain.svg';
 
 let stages = [];
 let timer = null;
 let resolvedContext = null;
+
+function storedTheme() {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === 'light' || value === 'dark' ? value : null;
+  } catch (_) {
+    return null;
+  }
+}
+function systemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  if (themeToggle) themeToggle.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  if (screenLogo) screenLogo.src = theme === 'dark' ? DARK_LOGO : LIGHT_LOGO;
+}
+function initTheme() {
+  applyTheme(storedTheme() || systemTheme());
+  themeToggle?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(THEME_KEY, next); } catch (_) {}
+    applyTheme(next);
+  });
+}
 
 function esc(value) {
   return String(value ?? '')
@@ -176,5 +207,6 @@ clearResolved.addEventListener('click', () => {
   openFieldWiring.disabled = true;
 });
 
+initTheme();
 loadStages();
 searchDisplays();
