@@ -61,6 +61,9 @@ main { max-width:1440px; height:calc(100vh - 76px); margin:auto; padding:10px 14
 .currentness strong { letter-spacing:.04em; }
 .currentness .supersede { font-weight:700; }
 .image-section { background:var(--panel); border:1px solid var(--border); border-radius:9px; min-height:0; flex:0 0 44%; display:flex; flex-direction:column; overflow:hidden; }
+.image-section:not(.image-open) { flex:0 0 auto; }
+.image-section:not(.image-open) .image-pane,
+.image-section:not(.image-open) .divider { display:none; }
 .image-toolbar { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:7px 9px; border-bottom:1px solid var(--border); background:var(--panel-2); }
 .toolbar-group { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .image-toolbar button { padding:6px 9px; font-size:12px; }
@@ -88,7 +91,6 @@ main { max-width:1440px; height:calc(100vh - 76px); margin:auto; padding:10px 14
 .controller-meta-item { display:flex; align-items:baseline; gap:5px; white-space:nowrap; }
 .controller-meta-label { color:var(--muted); font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
 .controller-meta-value { font-size:12px; }
-.temp-badge { width:100%; color:var(--muted); font-size:10px; }
 .hookup-table-wrap { width:100%; overflow-x:auto; }
 .hookup-table { width:100%; border-collapse:collapse; font-size:12px; }
 .hookup-table th, .hookup-table td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
@@ -100,7 +102,11 @@ main { max-width:1440px; height:calc(100vh - 76px); margin:auto; padding:10px 14
 .output-cell { font-size:18px; font-weight:800; white-space:nowrap; }
 .display-cell { overflow-wrap:anywhere; }
 .display-cell strong { display:block; font-size:13px; }
-.display-cell span { color:var(--muted); font-size:11px; }
+.display-cell span { display:block; color:var(--muted); font-size:11px; }
+.grouped-display-cell { padding-top:5px; padding-bottom:5px; }
+.output-entry { padding:2px 0; }
+.output-entry + .output-entry { margin-top:6px; }
+.output-entry.selected-entry strong { color:var(--blue); }
 .network-cell { white-space:nowrap; }
 .engineering { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:7px 9px; flex:0 0 auto; }
 .engineering-scroll { overflow:auto; max-height:220px; margin-top:7px; }
@@ -127,16 +133,18 @@ main { max-width:1440px; height:calc(100vh - 76px); margin:auto; padding:10px 14
   .divider { display:none; }
   .image-toolbar { align-items:flex-start; }
   .hookup-pane { flex:none; min-height:260px; max-height:62vh; overflow:auto; overflow-x:hidden; }
+  .image-section:not(.image-open) + .hookup-pane { max-height:none; }
   .hookup-heading { position:sticky; top:0; }
   .controller-groups { padding:6px; }
   .controller-head { align-items:flex-start; }
   .controller-title { width:100%; }
   .controller-meta { width:100%; margin-left:0; justify-content:flex-start; }
-  .controller-meta-item { flex:1 1 auto; min-width:120px; }
+  .controller-meta-item { flex:1 1 auto; min-width:110px; }
   .hookup-table { table-layout:fixed; width:100%; }
   .hookup-table th { position:static; }
   .compact-table th:first-child, .compact-table td:first-child { width:58px; }
   .compact-table th, .compact-table td { padding:6px; }
+  .output-entry + .output-entry { margin-top:8px; }
   .hookup-table:not(.compact-table) th:nth-child(4), .hookup-table:not(.compact-table) td:nth-child(4) { display:none; }
 }
 
@@ -171,12 +179,13 @@ main { max-width:1440px; height:calc(100vh - 76px); margin:auto; padding:10px 14
   .controller-card { display:block; break-inside:auto; page-break-inside:auto; overflow:visible; border:1px solid #888; margin:0 0 8px; }
   .controller-head { background:#eee; break-after:avoid; page-break-after:avoid; }
   .controller-meta { margin-left:auto; }
-  .temp-badge { width:auto; }
   .hookup-table-wrap { overflow:visible; }
   .hookup-table { width:100%; font-size:9pt; page-break-inside:auto; }
   .hookup-table thead { display:table-header-group; }
   .hookup-table tr { break-inside:avoid; page-break-inside:avoid; }
   .hookup-table th, .hookup-table td { padding:4px 5px; position:static; }
   .compact-table th:first-child, .compact-table td:first-child { width:54px; }
+  .output-entry { break-inside:avoid; page-break-inside:avoid; }
+  .output-entry + .output-entry { margin-top:4px; }
   .print-footer { margin-top:12px; padding-top:6px; border-top:1px solid #777; font-size:8pt; color:#444; }
 }
