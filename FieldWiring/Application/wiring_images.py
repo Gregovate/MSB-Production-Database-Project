@@ -62,6 +62,18 @@ def _truncate_before_sourcedocs(path_text: str | None) -> tuple[str | None, bool
     return path_text, False
 
 
+def _direct_wiring_owner(pointer_text: str | None) -> Path | None:
+    """Return the folder directly above Wiring when BackgroundFile enters Wiring."""
+    if not pointer_text:
+        return None
+    pointer = Path(pointer_text)
+    current = pointer.parent if pointer.suffix else pointer
+    for candidate in (current, *current.parents):
+        if candidate.name.casefold() == "wiring":
+            return candidate.parent
+    return None
+
+
 def _recover_stage_root(pointer_text: str | None, drive_root: Path, stage_key: str | None) -> Path | None:
     if not pointer_text or not stage_key:
         return None
@@ -114,6 +126,18 @@ def _resolve_scope_root(
             else f"Stage folder_path is unavailable or unmarked on this server: {folder_path}"
         )
         return None, "UNRESOLVED", warnings
+
+    # A direct BackgroundFile inside Wiring is explicit documentation-ownership
+    # evidence. The folder above Wiring owns the field documentation. This only
+    # resolves the structured owner; resolve_images() still selects
+    # BackgroundStage versus MusicalStage from the already-resolved context.
+    direct_owner = _direct_wiring_owner(pointer)
+    if direct_owner is not None and _path_is_under_windows(str(direct_owner), str(drive_root)):
+        if str(direct_owner).casefold() == str(stage_root).casefold():
+            warnings.append(
+                "BackgroundFile points directly into the current Stage Wiring branch; the marked Stage root is the FieldWiring documentation scope."
+            )
+            return stage_root, "STAGE", warnings
 
     scene_name = (scene or {}).get("scene_name")
     if not scene_name or scene_name.strip().casefold() == "root":
