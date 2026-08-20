@@ -145,9 +145,10 @@ def test_inconsistent_repeated_block_preserves_good_groups_and_flags_bad_block(t
     monkeypatch.setenv('FIELDWIRING_DRIVE_ROOT', str(tmp_path))
     package = build_wiring_package(SQLiteSnapshotRepository(db), display_id=401)
 
-    first = package['rows'][:4]
-    second = package['rows'][4:8]
-    third = package['rows'][8:12]
+    by_name = {r['display_name']: r for r in package['rows']}
+    first = [by_name[f'CL-RGBCandyCane-{i:02d}'] for i in range(1,5)]
+    second = [by_name[f'CL-RGBCandyCane-{i:02d}'] for i in range(5,9)]
+    third = [by_name[f'CL-RGBCandyCane-{i:02d}'] for i in range(9,13)]
 
     assert [r['controller_group'] for r in first] == ['Pixie group 1'] * 4
     assert [r['physical_output'] for r in first] == [1,2,3,4]
