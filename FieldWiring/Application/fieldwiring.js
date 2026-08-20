@@ -199,7 +199,7 @@ displaySearch.addEventListener('keydown', e => {
 stageSelect.addEventListener('change', renderStageContexts);
 openFieldWiring.addEventListener('click', () => {
   const href = wiringHref(resolvedContext);
-  if (href) window.open(href, '_blank', 'noopener');
+  if (href) window.location.assign(href);
 });
 clearResolved.addEventListener('click', () => {
   resolved.hidden = true;
