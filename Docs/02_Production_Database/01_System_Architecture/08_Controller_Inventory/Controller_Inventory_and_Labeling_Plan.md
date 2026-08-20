@@ -1,11 +1,11 @@
 # MSB Controller Inventory and Labeling Plan
 
 **Status:** Planning / engineering foundation  
-**Purpose:** Define controller asset identity, inventory direction, lifecycle needs, deployment history, and labeling requirements.
+**Purpose:** Define controller asset identity, inventory direction, lifecycle needs, current assignment, and labeling requirements.
 
 ## 1. Purpose
 
-Controllers are complex technical assets that require unique identification, lifecycle tracking, configuration context, deployment history, repair history, and durable physical labeling.
+Controllers are complex technical assets that require unique identification, lifecycle tracking, configuration context, current assignment, repair history, and durable physical labeling.
 
 This document preserves the planning foundation for a dedicated Controller Inventory subsystem.
 
@@ -78,6 +78,8 @@ It includes useful controller grouping evidence for Mega Tree, Mega Ball, Mega C
 
 This workbook is configuration evidence, not permanent controller identity. It contains multiple configuration eras and must be reconciled with the 2025 inventory and current V7 topology.
 
+Historical material in source artifacts may remain preserved as engineering evidence. That does **not** create a requirement for Controller Inventory to maintain historical deployment relationships in PostgreSQL.
+
 ### Current LOR / V7 topology
 
 Current V7/PostgreSQL remains authoritative for the current show topology and controller/network/channel assignments used by FieldWiring.
@@ -97,15 +99,17 @@ A controller master record should support, at minimum:
 - lifecycle status; and
 - notes.
 
-Deployment/history relationships should carry changing values such as:
+Current assignment relationships should carry the values needed to identify how each physical controller is assigned in the **current approved LOR/V7 snapshot**, such as:
 
-- Stage/Scene/Display deployment;
+- Stage/Scene/Display assignment;
 - Park Location;
 - LOR Unit ID / Unit-ID range;
 - DMX/E1.31 universe range;
 - controller-management IP address;
 - physical output/port assignment; and
 - network relationship.
+
+FieldWiring does **not** require a deployment-history relationship model. When a controller assignment changes, the current assignment can be reconciled/updated to the current approved snapshot. Older LOR snapshots and preserved source artifacts remain available as engineering evidence; Controller Inventory does not need to duplicate them as historical deployment rows merely for FieldWiring.
 
 The inspected source also demonstrates the need for controlled model normalization. Source variants include `Pixicon-16`, `Pixiecon 16`, `PixCon16`, `Pixie-16`, `Pixie16D`, `32LD-G3`, and broad labels such as `Coro`/`CORO`.
 
@@ -131,7 +135,7 @@ DMX + RGB
     -> reviewed dense E1.31 pixel-controller hookup
 ```
 
-Controller Inventory supplies the physical asset identity and deployment mapping needed to turn raw addressing into human field instructions.
+Controller Inventory supplies the physical asset identity and **current assignment mapping** needed to turn raw addressing into human field instructions.
 
 ## 7. Duplicate RGB Addresses Are Valid and Informative
 
@@ -139,7 +143,7 @@ LOR Unit IDs are not unique physical-controller identifiers.
 
 Current Church and Candyland RGB Candy Cane patterns intentionally reuse the same Unit-ID ranges on multiple physical Pixie controllers. Duplicate RGB Unit IDs across separate Props are positive evidence that more than one physical controller instance exists, but the duplicate address alone does not provide the permanent controller identity.
 
-Future deployment/history design must therefore allow distinct controller assets to carry identical Unit-ID ranges when that is how the show is programmed.
+The current assignment design must therefore allow distinct controller assets to carry identical Unit-ID ranges when that is how the current show snapshot is programmed.
 
 Do not define `network + Unit ID/range` as a unique physical-controller key.
 
@@ -208,6 +212,8 @@ The subsystem should eventually support controller repair and maintenance histor
 
 Historical maintenance and firmware evidence must be preserved rather than overwritten by only the latest state.
 
+This maintenance/repair history is separate from controller deployment assignment. No historical deployment-relationship requirement is implied by this section.
+
 ## 11. Labeling Requirements
 
 Controller labels should support durable physical identification and technical lookup.
@@ -236,9 +242,9 @@ Before PostgreSQL controller implementation:
 4. identify current additions/removals and resolve source conflicts;
 5. normalize controller model/reference terminology without altering source evidence;
 6. define a permanent controller identity independent of Unit ID, universe, IP, Display, and location;
-7. define deployment/history relationships for current addressing, network, physical output, and location;
-8. preserve duplicate-address and historical configuration evidence;
-9. define the read relationship consumed by FieldWiring; and
+7. define **current assignment relationships** for the current approved snapshot, including current addressing, network, physical output, and location;
+8. preserve duplicate-address and source-evidence conflicts without creating a deployment-history requirement;
+9. define the current-state read relationship consumed by FieldWiring; and
 10. reconcile controller labeling with the current LabelPrintService.
 
-No PostgreSQL controller schema change is authorized until this reconciliation demonstrates the required permanent and deployment-specific fields.
+No PostgreSQL controller schema change is authorized until this reconciliation demonstrates the required permanent identity and current-assignment fields. A historical deployment relationship model is not required for FieldWiring.
