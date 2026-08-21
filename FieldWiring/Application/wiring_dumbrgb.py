@@ -53,7 +53,7 @@ def apply_dumbrgb_fixture_presentation(rows: list[dict[str, Any]]) -> list[dict[
             row["dmx_fixture_label"] = row.get("channel_name") or row.get("display_name")
             row["dmx_fixture_start"] = _positive_int(row.get("start_channel"))
             row["dmx_rgb_channels"] = ""
-            row["controller_group"] = "DMX fixture review required"
+            row["controller_group"] = "Fixture review required"
             row["controller_group_kind"] = "dmx-fixture-review"
             row["controller_model"] = None
             row["physical_output"] = None
@@ -99,8 +99,10 @@ def apply_dumbrgb_fixture_presentation(rows: list[dict[str, Any]]) -> list[dict[
             row["dmx_fixture_start"] = fixture_start
             row["dmx_rgb_channels"] = rgb_text
             row["dmx_fixture_footprint"] = 5
+            # Presentation grouping by Universe is addressing context only.  It
+            # must not be treated as a physical-controller identity.
             row["controller_group"] = (
-                f"DMX Universe {universe}" if universe is not None else "DMX fixture review required"
+                f"Universe {universe}" if universe is not None else "Fixture review required"
             )
             row["controller_group_kind"] = (
                 "dmx-cr50-universe-presentation" if valid else "dmx-fixture-review"
