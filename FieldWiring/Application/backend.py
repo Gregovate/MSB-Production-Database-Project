@@ -67,6 +67,11 @@ def wiring_sticky_context_css() -> Response:
     return send_from_directory(BASE_DIR, "wiring_sticky_context.css")
 
 
+@app.get("/wiring_workspace_focus.css")
+def wiring_workspace_focus_css() -> Response:
+    return send_from_directory(BASE_DIR, "wiring_workspace_focus.css")
+
+
 @app.get("/wiring.js")
 def wiring_js() -> Response:
     return send_from_directory(BASE_DIR, "wiring.js")
@@ -85,6 +90,11 @@ def wiring_dumbrgb_js() -> Response:
 @app.get("/wiring_disclosure.js")
 def wiring_disclosure_js() -> Response:
     return send_from_directory(BASE_DIR, "wiring_disclosure.js")
+
+
+@app.get("/wiring_workspace_focus.js")
+def wiring_workspace_focus_js() -> Response:
+    return send_from_directory(BASE_DIR, "wiring_workspace_focus.js")
 
 
 @app.get("/api/health")
