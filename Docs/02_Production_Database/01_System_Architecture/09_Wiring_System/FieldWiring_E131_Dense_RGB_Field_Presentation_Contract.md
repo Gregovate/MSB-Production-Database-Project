@@ -4,7 +4,7 @@
 |---|---|
 | Status | DRAFT — accepted field UX direction; inventory reconciliation pending |
 | Sub-project | FieldWiring |
-| Current revision | 2026-08-19 |
+| Current revision | 2026-08-21 |
 | Owner | MSB Database Administrator |
 | Schema status | No schema change authorized |
 
@@ -68,7 +68,7 @@ physical controller output/port
 E1.31 network connection
 ```
 
-Raw universe/channel ranges remain essential engineering/configuration data but should not be presented as though each universe were a separate physical controller.
+Universe and channel range are also meaningful field information for E1.31 because universe assignments are published together with pixel counts in the MSB wiring workflow. They must remain tied to the physical output/section relationship rather than being presented as though each universe were a separate physical controller.
 
 ## Current Source Evidence
 
@@ -348,29 +348,100 @@ These should be included in later E1.31 FieldWiring/controller-inventory reconci
 
 They are separate from the two current LOR/Pixie 8 RGB Tree controller blocks at Santa's Workshop.
 
+## V7.0.11 Source Preservation and Browser Read Contract
+
+Parser V7.0.11 additively preserves the originating grouped-DMX source detail on each materialized `dmxChannels` row:
+
+```text
+RawPropID
+ChannelName
+ChannelGridRowNumber
+```
+
+The canonical `PropId` relationship remains the Display/master relationship. The new fields provide the LOR-authored source identity and Channel Name needed to distinguish physical sections/strings within grouped dense-RGB Displays such as Mega Star.
+
+The E1.31 FieldWiring read model must therefore carry, at minimum:
+
+```text
+display_id
+display_name
+source_raw_prop_id
+channel_name
+channel_grid_row_number
+network
+universe
+start_channel
+end_channel
+```
+
+Physical controller identity and physical output/port are supplied by the Controller Inventory/current-assignment side of the contract or by a centralized temporary reviewed mapping during recovery. They must not be invented from universe, IP address, Display name, or source row position.
+
+## Accepted Technician-Facing E1.31 Table
+
+Where the physical controller/output relationship is accepted/current, the normal browser presentation is grouped by **physical controller** and shows one relationship per physical output/section with these columns:
+
+```text
+OUTPUT / PORT
+CHANNEL / DISPLAY SECTION
+UNIVERSE
+PIXELS
+CHANNEL RANGE
+```
+
+Conceptually:
+
+```text
+E1.31 · <Physical Controller>
+
+OUTPUT   CHANNEL / SECTION        UNIVERSE   PIXELS   CHANNEL RANGE
+1        <LOR Channel Name>       113        150      1-450
+2        <LOR Channel Name>       114        150      1-450
+```
+
+This is intentionally more field-facing than the current one-row `E1.31 controller mapping pending` summary.
+
+### Addressing and pixel-count rules
+
+`Universe`, `StartChannel`, and `EndChannel` are authoritative addressing values and must remain available on each relationship.
+
+For an RGB E1.31 relationship, FieldWiring may derive:
+
+```text
+channel_count = EndChannel - StartChannel + 1
+pixel_count   = channel_count / 3
+```
+
+only when the channel span is valid for an RGB relationship and divides cleanly by three.
+
+Examples:
+
+```text
+50 pixels  -> 150 channels
+100 pixels -> 300 channels
+150 pixels -> 450 channels
+170 pixels -> 510 channels
+```
+
+A standard 510-channel RGB universe therefore carries at most 170 RGB pixels without spillover.
+
+Pixel count is derived presentation data. It does **not** replace the authoritative start/end channel values, and FieldWiring must not assume that every relationship begins at channel `1`.
+
+Universe plus pixel count is intentionally visible in the normal technician presentation because that pairing is already published in the MSB E1.31 wiring workflow. Channel range remains visible alongside it for exact addressing and troubleshooting.
+
 ## What the Operator Should See
 
-Where the physical relationship is accepted/current, the normal E1.31 field result should look conceptually like:
+Where the physical relationship is accepted/current, the normal E1.31 field result should identify:
 
 ```text
-Display: Mega Tree
-Network: E1.31
-Controller: <physical AlphaPix label>
-Output: <physical port number>
-Display section/string: <field-facing connection label>
+Display / Display section
+physical controller
+physical output/port
+Universe
+Pixel count
+StartChannel-EndChannel
 ```
 
-or:
-
-```text
-Display: Mega Cube
-Network: E1.31
-Controller: <physical PixCon label>
-Output: <physical port number>
-Display section/string: <field-facing connection label>
-```
-
-Raw configuration values such as universe, start/end channel, legacy compatibility `Controller`, IP address, Source, and DeviceType belong under Engineering Details unless a specific field/troubleshooting workflow requires them in the main view.
+Raw source UUIDs, parser provenance, IP address, legacy compatibility `Controller`, Source, and DeviceType belong under Engineering Details unless a specific troubleshooting workflow requires them in the normal view.
 
 ## What Can Be Done Now
 
@@ -380,7 +451,9 @@ The combined evidence is sufficient to:
 
 - classify reviewed `DMX + RGB` dense Displays into the E1.31 presentation family;
 - avoid presenting universe numbers as physical controller identities;
-- preserve universe/channel topology for engineering details;
+- preserve and display universe/channel topology with the applicable physical output/section relationship;
+- derive and present RGB pixel count where the channel span supports it;
+- use V7.0.11 `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` as source wiring provenance without changing permanent Display identity;
 - use accepted physical controller/output mappings in prototypes where corroborated; and
 - explicitly mark where permanent asset identity or current mapping remains unresolved.
 
@@ -417,9 +490,11 @@ At minimum, E1.31 FieldWiring testing must prove:
 5. Mega Star can be presented as two physical PixCon 16 contexts using accepted addressing evidence while remaining an inventory reconciliation gap;
 6. Mt. Crumpit can be presented as one PixCon 16 context, corroborated by both the addressing workbook and 2025 inventory;
 7. Santa's Workshop E1.31 Gift Conveyor / Gift Bag controller records are retained for reconciliation;
-8. raw universe/channel/IP information remains available for engineering/troubleshooting without becoming the primary field instruction;
-9. permanent controller labels/output ports are supplied from reconciled Controller Inventory rather than invented from universe or IP values; and
-10. no current LOR/E1.31 topology is rewritten merely to simplify browser presentation.
+8. normal E1.31 rows show physical output/port, source Channel Name/section, universe, derived pixel count when valid, and exact start/end channel range;
+9. V7.0.11 grouped-DMX source Channel Names remain attached to the correct universe/channel relationships rather than collapsing to the canonical master Channel Name;
+10. permanent controller labels/output ports are supplied from reconciled Controller Inventory or an explicitly reviewed temporary resolver rather than invented from universe or IP values;
+11. raw UUID/provenance/IP/source metadata remains available for engineering/troubleshooting without replacing the field-facing hookup table; and
+12. no current LOR/E1.31 topology is rewritten merely to simplify browser presentation.
 
 ## Related Documents
 
