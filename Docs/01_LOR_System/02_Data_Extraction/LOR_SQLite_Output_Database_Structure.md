@@ -5,7 +5,7 @@
 | Status | CURRENT — Engineering Design |
 | System | LOR Preview Parser |
 | Database | `lor_output_v7_scene.db` |
-| Current Parser Baseline | V7.0.10 |
+| Current Parser Baseline | V7.0.11 |
 | Owner | MSB Database Administrator |
 | Initial Release | 2026-08-08 |
 
@@ -94,6 +94,8 @@ The parser source code is the authoritative implementation of:
 This document intentionally avoids duplicating those implementation details.
 
 Instead, it documents the engineering intent behind the schema.
+
+The controlled source-field terminology used by this schema is documented in [LOR XML to MSB Terminology Contract](LOR_XML_to_MSB_Terminology_Contract.md).
 
 ---
 
@@ -229,13 +231,54 @@ This table is rebuilt completely during every parser execution.
 
 Purpose
 
-Stores DMX-specific channel information.
+Stores DMX-specific Channel Grid Row information while retaining the canonical materialized Display/master relationship.
 
-Responsibilities
+Current V7.0.11 responsibilities
 
-- universes
-- channel ranges
-- parser materialization of DMX controllers
+- canonical Display/master parser identity through `PropId`;
+- DMX Network;
+- DMX Universe through `StartUniverse`;
+- channel ranges;
+- existing `Unknown` Channel Grid field;
+- Preview identity;
+- originating LOR Prop ID through `RawPropID`;
+- originating Channel Name through `ChannelName`;
+- local source Channel Grid Row Number through `ChannelGridRowNumber`;
+- parser materialization of DMX Channel Grid Rows.
+
+### Current grouped-DMX relationship
+
+Several DMX source `PropClass` rows can share one Display Name (`PropClass.Comment`). V7.0.11 intentionally chooses one canonical Display master in `props` and attaches every grouped DMX Channel Grid Row to that master through:
+
+```text
+dmxChannels.PropId -> props.PropID
+```
+
+That relationship is part of the existing parser contract and must remain unchanged during dense-RGB source-detail recovery.
+
+### V7.0.11 source-detail preservation
+
+V7.0.11 retains which source `PropClass` supplied each grouped DMX Channel Grid Row while preserving the existing canonical Display/master relationship.
+
+Current appended fields are:
+
+```text
+RawPropID
+ChannelName
+ChannelGridRowNumber
+```
+
+| Current field | Meaning |
+|---|---|
+| `RawPropID` | originating LOR Prop ID (`PropClass.id`) that supplied the DMX Channel Grid Row |
+| `ChannelName` | originating Channel Name (`PropClass.Name`) |
+| `ChannelGridRowNumber` | 1-based source position of the nonblank serialized Channel Grid entry within that PropClass; numbering restarts for the next PropClass |
+
+`PreviewId + RawPropID` identifies the originating source PropClass within the parser snapshot. `RawPropID` is wiring-row provenance and does not create another physical Display relationship or foreign key to `props`.
+
+The original eight `dmxChannels` columns remain first and retain their V7.0.10 meanings. Existing compatibility views continue to use the canonical `PropId -> props.PropID` relationship and were regression-tested unchanged.
+
+Compact/auto-numbered ChannelGrid expansion remains a separate change because it can intentionally alter materialized DMX row counts.
 
 ---
 
@@ -246,17 +289,26 @@ Conceptually the database is organized as:
 ```text
 previews
     │
-    ├──────────────┐
-    ▼              ▼
- props         scenes
-    │              │
-    ▼              ▼
-subProps   scene_lor_props
+    ├──────────────┬──────────────┐
+    ▼              ▼              ▼
+ props          scenes       dmxChannels
+    │              │              │
+    ▼              ▼              │
+subProps   scene_lor_props         │
+    ▲                             │
+    └──────── props master ◄──────┘
+```
 
-DMXChannels
+Key DMX relationships are:
+
+```text
+dmxChannels.PreviewId -> previews.id
+dmxChannels.PropId    -> props.PropID
 ```
 
 The parser maintains these relationships as a normalized engineering model.
+
+The V7.0.11 DMX source-detail fields do not replace either relationship.
 
 ---
 
@@ -310,6 +362,8 @@ Typical consumers
 - wiring reports
 - controller inventory
 - setup documentation
+
+Current DMX compatibility views use explicit existing `dmxChannels` columns and the canonical `PropId -> props.PropID` join. The V7.0.11 source-detail extension leaves these existing view shapes and rows unchanged; the grouped-DMX regression fixture verifies that compatibility contract.
 
 ---
 
@@ -367,6 +421,8 @@ Equivalent compatibility views are generated from the V7 scene-aware database to
 
 Compatibility views should remain stable until all dependent software has migrated.
 
+V7.0.11 preserves those existing compatibility view contracts; any later downstream view change requires separate review.
+
 ---
 
 # Engineering Contract
@@ -385,6 +441,8 @@ Examples include:
 
 The parser implementation may evolve internally provided that the documented engineering contract remains valid.
 
+For dense-RGB source-detail recovery, the existing canonical Display/master relationship remains authoritative while the missing source PropClass/Channel Grid Row information is added separately.
+
 ---
 
 # Maintenance
@@ -400,6 +458,8 @@ Any parser revision that changes:
 shall also update this document.
 
 Changes to SQL implementation alone do **not** require modification unless they alter the documented engineering behavior.
+
+Reverse-engineering discoveries affecting this structure must also follow the reusable [Documentation Maintenance Rule](../../../System_Documentation/Standards/Documentation_Maintenance_Rule.md).
 
 ---
 
@@ -422,7 +482,16 @@ The SQLite output database forms the engineering interface between the LOR Previ
 
 # Related Documents
 
+- [LOR XML to MSB Terminology Contract](LOR_XML_to_MSB_Terminology_Contract.md)
 - [LOR Preview File Structure Specification](LOR_Preview_File_Structure_Specification.md)
 - [LOR Preview Parser Architecture](LOR_Preview_Parser_Architecture.md)
 - [LOR Preview Version Compatibility Review](LOR_Preview_Version_Compatibility_Review.md)
+- [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
 - [LOR2DB Ingest](../../../LOR2DB/01_Ingest/README.md)
+
+---
+
+# Revision Notes
+
+- **2026-08-21:** Promoted the grouped-DMX source-detail fields to the implemented V7.0.11 SQLite contract after the focused and full 33-test parser suites passed; implementation commit `9d2bd7a`.
+- **2026-08-21:** Documented the pre-change grouped-DMX `PropId -> props.PropID` contract and the V7.0.10 source-detail gap before implementation.

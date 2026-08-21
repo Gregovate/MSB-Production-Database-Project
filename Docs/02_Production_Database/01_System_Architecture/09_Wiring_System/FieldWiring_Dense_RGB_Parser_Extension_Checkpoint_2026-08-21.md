@@ -1,0 +1,363 @@
+# FieldWiring Dense RGB DMX Parser Extension Checkpoint — 2026-08-21
+
+| Item | Value |
+|---|---|
+| Status | IMPLEMENTED AND UNIT-TESTED — V7.0.11 PARSER COMPLETE; REAL SQLITE SNAPSHOT ACCEPTANCE PENDING |
+| Sub-project | FieldWiring / Engineering Recovery |
+| Branch | `agent/fieldwiring-engineering-recovery` |
+| Parser baseline | V7.0.11 |
+| Purpose | Preserve the implemented additive-only DMX extension boundary, validation evidence, and next acceptance gate |
+
+## Why This Checkpoint Exists
+
+Dense-RGB recovery reached the point where a parser schema extension is required to preserve source wiring detail. Implementation must not proceed from conversational memory alone because the existing V7 parser, PostgreSQL ingest, identity model, FormView compatibility, and FieldWiring read model are tightly coupled.
+
+This document remains the durable handoff for the extension boundary.
+
+The dependency inspection requested by the original checkpoint is complete. The exact proposed additive change is documented in:
+
+- [FieldWiring Dense RGB DMX Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
+
+The controlled XML-to-MSB terminology is documented in:
+
+- [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
+
+The grouped-DMX regression fixture is maintained at:
+
+- [Grouped-DMX V7.0.11 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
+
+The original fixture first passed 4 tests against unchanged V7.0.10. After the additive parser change, the focused fixture again passed 4 tests and the complete Parser unittest discovery passed 33 tests. `git diff --check` was clean.
+
+V7.0.11 implementation commit: `9d2bd7af59840e983425efd1a8f0fa7ff6cc0871`.
+
+## Accepted Identity Chain — Must Not Change
+
+The current V7 parser deliberately uses preview-scoped composite IDs because raw LOR PropClass UUIDs can be reused across previews.
+
+```text
+V7 SQLite parser
+    props.PropID / subProps keys
+        = PreviewId:RawPropID
+        = parser-local preview-scoped composite identity
+
+PostgreSQL ingest
+    ref.display.display_id
+        = permanent MSB Display identity
+
+    ref.display.lor_prop_id
+        = raw LOR PropClass UUID binding
+        = NOT the V7 composite parser key
+```
+
+Do not redesign this chain as part of dense-RGB recovery.
+
+## Existing `dmxChannels` Contract — Preserve It
+
+Current table fields:
+
+```text
+IntDMXChannelID
+PropId
+Network
+StartUniverse
+StartChannel
+EndChannel
+Unknown
+PreviewId
+```
+
+`dmxChannels.PropId` currently participates in established parser/downstream relationships. For grouped DMX Displays it points to the canonical/materialized Display master composite `PropID`.
+
+That behavior must remain unchanged unless a separate architecture review proves a defect.
+
+The accepted implementation direction remains **additive only**: extend `dmxChannels` with source wiring provenance while leaving every existing column, value, join, key behavior, and downstream relationship intact.
+
+## Problem Being Fixed
+
+LOR dense-RGB authoring contains more wiring detail than current V7 DMX materialization preserves.
+
+Controlled terminology:
+
+```text
+PropClass.Comment -> Display Name
+PropClass.Name    -> Channel Name
+PropClass.id      -> LOR Prop ID
+PropClass.ChannelGrid -> Channel Grid
+```
+
+Current grouped-DMX processing preserves the Display/master relationship but can discard which original PropClass/Channel Name authored each DMX Channel Grid Row.
+
+This is especially damaging for Displays such as Mega Star and Mega Cube, where multiple channel-bearing PropClasses share the same Display Name but have distinct Channel Names and local Channel Grid Rows.
+
+## Minimum Information the Extension Must Preserve
+
+The implementation must preserve enough source information to answer:
+
+```text
+Which materialized Display/master does this DMX relationship belong to?
+Which original LOR PropClass supplied it?
+What was that PropClass's Channel Name?
+Which Channel Grid Row within that PropClass supplied it?
+What universe/channel addressing did LOR assign?
+```
+
+### Original checkpoint candidate terminology — superseded
+
+The original checkpoint used temporary engineering names:
+
+```text
+SourcePropId
+SourceName
+SourceGridOrdinal
+```
+
+Those names were intentionally marked non-final. They are now superseded by the controlled XML/MSB terminology established during the dependency inspection.
+
+### Controlled implemented field names — V7.0.11
+
+The implemented additive SQLite fields are:
+
+```text
+RawPropID
+    -> originating LOR Prop ID (`PropClass.id`)
+
+ChannelName
+    -> originating Channel Name (`PropClass.Name`)
+
+ChannelGridRowNumber
+    -> 1-based position of the serialized Channel Grid Row within that source PropClass
+```
+
+`dmxChannels.PreviewId` already exists, so:
+
+```text
+PreviewId + RawPropID
+```
+
+identifies the originating source PropClass within the parser snapshot. A second synthetic preview-scoped source-ID field is not required.
+
+Do not add a foreign key from the new DMX `RawPropID` to `props`. Grouped DMX source PropClasses can legitimately supply wiring rows without becoming separate physical Display masters.
+
+## Critical Channel Grid Row Number Rule
+
+Channel Grid Row Number is local to each source PropClass and restarts at `1` for the next Channel Name.
+
+Example:
+
+```text
+Display Name = Mega Star
+
+Channel Name = MS Long Spire 1 4x150
+    Channel Grid Row 1 -> U113
+    Channel Grid Row 2 -> U114
+    Channel Grid Row 3 -> U115
+    Channel Grid Row 4 -> U116
+
+Channel Name = MS Short Spire 1 2x150
+    Channel Grid Row 1 -> U129
+    Channel Grid Row 2 -> U130
+```
+
+Do not flatten Mega Star into one synthetic 1-N sequence across the entire Display.
+
+A later resolved physical-controller output number is a separate derived concept and must not overwrite the source Channel Grid Row Number.
+
+## Compact / Auto-Numbered ChannelGrid Constraint
+
+Some current dense-RGB custom props serialize compact ChannelGrid entries rather than one explicit semicolon-delimited record for every visible LOR controller-port/string row.
+
+Observed examples include the `2100` fifth-field pattern on Mega Cube and Whoville Matrix.
+
+The arithmetic and LOR UI strongly support an expansion route for these specific cases, but the current parser field remains named `Unknown` because the repository does not have an authoritative universal file-format definition for that fifth value.
+
+Therefore:
+
+- keep the existing `Unknown` column and semantics unchanged;
+- do not globally rename/redefine it during the additive provenance change;
+- do not combine compact-row expansion with the first provenance patch;
+- validate any compact-row expansion rule against representative current LOR UI/source evidence and tests before applying it parser-wide.
+
+## LOR Network Configuration Is a Separate Source
+
+Direct Show-PC inspection on 2026-08-21 established that LOR Network Preferences are stored in the current Windows user's registry, under a branch such as:
+
+```text
+HKEY_CURRENT_USER\SOFTWARE\Light-O-Rama\Shared\NetworkF420399CE04C4EC08C7ED0A2C62A1051
+```
+
+with per-universe `DMX<n>` subkeys containing values including:
+
+```text
+Uses E131
+Protocol
+E131 IP Address
+E131 IP Address Type
+E131 Send To Port
+Comment
+```
+
+This is a separate source adapter from `.lorprev` parsing.
+
+Do not couple registry extraction into the XML parser simply because FieldWiring ultimately consumes both layers.
+
+The registry evidence also directly established that Universes `109-112` are currently inactive/unconfigured (`Uses E131 = 0`, blank target data), resolving that previous gap.
+
+## Dense-RGB Current Physical/Authoring Context
+
+Operator-confirmed physical controller map includes:
+
+```text
+Mega Tree       -> one HolidayCoro AlphaPix Flex 48-output system
+Mega Ball       -> one physical PixCon16
+Mega Cube       -> one HolidayCoro AlphaPix Flex 48-output system
+Whoville Matrix -> one physical PixCon16
+Mega Star       -> two physical PixCon16
+```
+
+Current LOR routing context includes:
+
+```text
+Mega Tree       U1-48    -> 10.10.5.10
+Mega Ball       U49-64   -> 10.10.5.11
+Mega Cube       U65-108  -> 10.10.5.12
+U109-112                   inactive/unconfigured
+Mega Star 1     U113-128 -> 10.10.5.15
+Mega Star 2     U129-144 -> 10.10.5.16
+Northern Lights U145-146 -> 10.10.5.30
+Whoville Matrix U147-162 -> 10.10.5.17
+Gift Conveyor   U163-167 -> 10.10.5.18
+Open/Close Sign U168-169 -> 10.10.5.19
+```
+
+These routing facts are LOR configuration evidence, not permanent physical-controller identity.
+
+## Controller Inventory Boundary
+
+Controller Inventory remains responsible for permanent physical controller identity/current reviewed physical assignment facts, including future `ctrl_id` resolution.
+
+Do not use any of the following as permanent controller identity:
+
+```text
+IP address
+universe number/range
+LOR Unit ID
+network name
+Display name
+location
+controller comment/name
+```
+
+## Wiring-System Operational Metadata Boundary
+
+MSB-owned operational wiring metadata such as:
+
+```text
+assembly_required_at_setup BOOLEAN NOT NULL DEFAULT FALSE
+```
+
+must remain separate from LOR source data and must not be embedded into `.lorprev` parsing.
+
+It belongs at wiring-relationship/connection grain, should carry forward through controlled reconciliation when the same relationship remains, and should be frozen into approved wiring snapshots so later changes do not rewrite history.
+
+Exact persistent table/schema and stable wiring-relationship key remain a separate design step.
+
+## Completed Dependency Inspection
+
+The following V7.0.10 dependencies were inspected before any parser change:
+
+1. **`dmxChannels` CREATE TABLE** — confirmed the existing eight-field contract and foreign keys.
+2. **DMX insertion/update paths** — confirmed one logical direct `dmxChannels` insertion path in `process_dmx_props()` and no later DMX update/delete path.
+3. **Grouped-DMX canonical master logic** — confirmed grouping by Display Name and deterministic master selection by lowest `(StartUniverse, StartChannel)` with scoped PropID tie-break; all grouped rows retain `dmxChannels.PropId = master PropID`.
+4. **Later duplicate-master collapse** — confirmed the later demotion/deletion pass is restricted to `DeviceType='LOR'` and does not rewrite grouped-DMX masters.
+5. **Scene resolution** — confirmed grouped DMX Scene members resolve to the canonical Display master rather than each XML component becoming a Display.
+6. **SQLite views** — confirmed existing DMX consumers use explicit columns and the existing `PropId -> props.PropID` join, so appended fields can remain invisible to compatibility views initially.
+7. **Parser tests/operator comparison** — confirmed current generic output comparison treats schema changes as blocking and did not previously provide a semantic grouped-DMX regression fixture.
+8. **PostgreSQL ingest** — confirmed SQLite-to-PostgreSQL mapping is normalized-name based rather than positional; new SQLite columns require matching PostgreSQL columns only when propagation is approved.
+9. **PostgreSQL `dmx_channels` relationship** — confirmed the existing `prop_id` FK remains tied to the canonical snapshot `props` row.
+10. **Reconciliation identity** — confirmed `ref.display.lor_prop_id` continues to come from canonical `lor_snap.props.raw_prop_id`; `dmx_channels` is not part of permanent Display identity promotion.
+
+These findings are captured in the exact [Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md).
+
+## Regression and Implementation Validation
+
+The grouped-DMX regression fixture at `Docs/01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py` first froze and passed the unchanged V7.0.10 behavior, then validated V7.0.11.
+
+Validated results:
+
+```text
+pre-change V7.0.10 focused fixture -> 4 tests PASS
+post-change V7.0.11 focused fixture -> 4 tests PASS
+full Parser unittest discovery      -> 33 tests PASS
+git diff --check                    -> clean
+implementation commit               -> 9d2bd7af59840e983425efd1a8f0fa7ff6cc0871
+```
+
+The test preserves the canonical Display master, legacy DMX row values, and compatibility-view output while proving `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` are populated from the originating source PropClass/Channel Grid Row.
+
+## Required Regression Principle
+
+For the same input Preview set, excluding intentionally new additive columns/materialized rows explicitly authorized by a later compact-row change:
+
+```text
+existing parser identity behavior must remain unchanged
+existing non-DMX behavior must remain unchanged
+existing Display master selection must remain unchanged
+existing DMX row count must remain unchanged for explicitly serialized rows
+existing PostgreSQL raw PropClass UUID mapping must remain unchanged
+existing FormView/FieldWiring-compatible relationships must remain unchanged
+```
+
+If an additive extension unexpectedly changes an existing relationship, stop and review rather than compensating downstream.
+
+## Next Engineering Step
+
+The parser implementation/test gate is complete. The next gate is real-snapshot acceptance before PostgreSQL propagation:
+
+```text
+1. Run V7.0.11 against the approved Preview set and produce a new SQLite snapshot.
+2. Inspect grouped/dense-RGB rows directly for Mega Star, Mega Cube, Mega Tree, and Whoville Matrix.
+3. Confirm legacy FormView/wiring-view output remains operational against the real snapshot.
+4. If SQLite acceptance passes, extend `lor_snap.dmx_channels` additively with matching PostgreSQL fields.
+5. Inspect and control the authoritative `lor_snap.v_current_dmx_channels` definition before exposing the fields downstream.
+6. Validate ingest and preserve the canonical `prop_id` / reconciliation identity chain.
+7. Resume the FieldWiring PostgreSQL read model and browser presentation work.
+8. Review compact/auto-numbered ChannelGrid expansion separately.
+```
+
+Broad FieldWiring UX work remains downstream of accepted dense-RGB data.
+
+## Related Durable Decisions
+
+- [FieldWiring Dense RGB DMX Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
+- [Grouped-DMX V7.0.10 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
+- [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
+- `FieldWiring_Dense_RGB_LOR_Controller_Port_Recovery_2026-08-21.md`
+- `FieldWiring_E131_LOR_Controller_Definitions_2026-08-21.md`
+- `FieldWiring_DMX_Table_Purpose_and_Field_Assembly_Boundary_2026-08-21.md`
+- `FieldWiring_Wiring_Snapshot_Assembly_Required_Contract_2026-08-21.md`
+- `FieldWiring_Dense_RGB_Physical_Controller_Map_2026-08-20.md`
+- `FieldWiring_Controller_Inventory_Handoff_2026-08-20.md`
+
+## Stop Point
+
+At this updated checkpoint:
+
+- the V7.0.10 dependency inspection and baseline regression are complete;
+- parser V7.0.11 is implemented on the feature branch;
+- the original eight DMX columns and canonical `PropId` relationship remain unchanged;
+- `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` are appended and regression-tested;
+- the full Parser suite passes 33 tests and `git diff --check` is clean;
+- implementation commit is `9d2bd7af59840e983425efd1a8f0fa7ff6cc0871`;
+- PostgreSQL `lor_snap.dmx_channels` has not yet been changed for these new fields;
+- compact/auto-numbered ChannelGrid expansion remains separate.
+
+The next engineering action is to build and inspect a real V7.0.11 SQLite snapshot from the approved Preview set before any PostgreSQL propagation.
+
+## Revision History
+
+| Date | Author | Change |
+|---|---|---|
+| 2026-08-21 | GAL / OpenAI | Recorded V7.0.11 implementation and validation: pre-change 4-test PASS, full 33-test PASS, clean diff check, implementation commit `9d2bd7a`; advanced next gate to real SQLite snapshot acceptance before PostgreSQL propagation. |
+| 2026-08-21 | GAL / OpenAI | Added the grouped-DMX V7.0.10 regression fixture and advanced the implementation gate to require a successful baseline execution before parser modification; no CI/connector test result is currently available. |
+| 2026-08-21 | GAL / OpenAI | Completed the V7.0.10 dependency inspection, replaced temporary `Source*` terminology with the controlled LOR/MSB terms, linked the exact additive change map, and advanced the stop point to regression-tests-first with no parser code change. |
+| 2026-08-21 | GAL / OpenAI | Created implementation checkpoint before dense-RGB parser extension. |

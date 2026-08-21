@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Field Wiring</title>
+  <link rel="stylesheet" href="/wiring.css">
+  <link rel="stylesheet" href="/wiring_sticky_context.css">
+  <link rel="stylesheet" href="/wiring_workspace_focus.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <img id="screen-logo" class="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <img class="print-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-cmyk-logo-600px.png" alt="Making Spirits Bright">
+    <div class="brand-copy">
+      <h1>Field Wiring</h1>
+      <div class="subhead">Physical hookup information for the resolved Stage / Scene.</div>
+    </div>
+    <div class="header-actions screen-only">
+      <button id="theme-toggle" type="button">Dark mode</button>
+      <a class="button" href="/">Find another</a>
+      <button id="print-button" type="button">Print / Save PDF</button>
+    </div>
+  </div>
+</header>
+
+<main id="app" aria-live="polite">
+  <section id="loading" class="notice">Loading current Field Wiring…</section>
+  <section id="error" class="notice error" hidden></section>
+
+  <div id="workspace" hidden>
+    <section class="context-card">
+      <div class="context-main">
+        <div class="context-item trigger" id="trigger-wrap" hidden>
+          <span>Selected Display</span>
+          <strong id="trigger-display">—</strong>
+        </div>
+        <div class="context-item"><span>Stage</span><strong id="stage-name">—</strong></div>
+        <div class="context-item"><span>Scene / Area</span><strong id="scene-name">—</strong></div>
+        <div class="context-item wiring-context-item">
+          <span>Wiring</span>
+          <strong id="context-type">—</strong>
+          <div id="context-switch" class="context-switch screen-only" hidden></div>
+        </div>
+      </div>
+      <details class="technical-details screen-only">
+        <summary>Technical details</summary>
+        <div id="technical-context" class="technical-grid"></div>
+      </details>
+    </section>
+
+    <section id="currentness" class="currentness">
+      <strong>CURRENT FIELD COPY</strong>
+      <span id="generated-at"></span>
+      <span id="expires-at"></span>
+      <span id="snapshot-id"></span>
+      <span class="supersede">A newer approved wiring snapshot supersedes this copy immediately.</span>
+    </section>
+
+    <section id="print-images" class="print-images print-only"></section>
+
+    <div id="workspace-panels" class="workspace-panels">
+      <section id="image-section" class="image-section">
+        <div class="image-toolbar screen-only">
+          <div class="toolbar-group">
+            <button id="image-toggle" type="button">Hide Image</button>
+            <button id="image-prev" type="button">Previous</button>
+            <span id="image-page" class="page-counter">Page 0 / 0</span>
+            <button id="image-next" type="button">Next</button>
+          </div>
+          <div class="toolbar-group">
+            <button id="fit-width" type="button">Fit Width</button>
+            <button id="fit-all" type="button">Fit All</button>
+            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+            <span id="zoom-value" class="zoom-value">100%</span>
+            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+
+        <div id="image-pane" class="image-pane">
+          <div id="image-classification" class="image-classification" hidden></div>
+          <div id="image-empty" class="image-empty" hidden>
+            <strong>NO WIRING IMAGE AVAILABLE</strong>
+            <span id="image-empty-detail"></span>
+          </div>
+          <div id="image-scroll" class="image-scroll">
+            <img id="wiring-image" alt="Field wiring image" hidden>
+          </div>
+        </div>
+        <div id="divider" class="divider screen-only" role="separator" aria-orientation="horizontal" aria-label="Resize image and hookup panes" tabindex="0"></div>
+      </section>
+
+      <section id="hookup-pane" class="hookup-pane">
+        <div class="hookup-heading">
+          <div>
+            <h2>Field Hookup</h2>
+            <div id="row-summary" class="muted"></div>
+          </div>
+          <div class="legend screen-only">
+            <span>Field wiring is primary. Images are supplemental.</span>
+          </div>
+        </div>
+        <div id="controller-groups" class="controller-groups"></div>
+      </section>
+    </div>
+
+    <details id="engineering" class="engineering screen-only">
+      <summary>Engineering details</summary>
+      <div class="engineering-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Display</th><th>Channel Name</th><th>Network</th><th>Raw Controller / Universe</th>
+              <th>Start</th><th>End</th><th>Device</th><th>String Type</th><th>Source</th><th>LOR Tag</th>
+            </tr>
+          </thead>
+          <tbody id="engineering-rows"></tbody>
+        </table>
+      </div>
+    </details>
+
+    <footer class="print-footer print-only">
+      <div id="print-provenance"></div>
+    </footer>
+  </div>
+</main>
+<script src="/wiring.js"></script>
+<script src="/wiring_e131.js"></script>
+<script src="/wiring_dumbrgb.js"></script>
+<script src="/wiring_disclosure.js"></script>
+<script src="/wiring_workspace_focus.js"></script>
+</body>
+</html>

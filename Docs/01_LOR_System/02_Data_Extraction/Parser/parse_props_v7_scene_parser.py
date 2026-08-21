@@ -2,7 +2,7 @@
 #
 # Baseline: parse_props_v6.py V6.8.3
 # Initial Release : 2022-01-20  V0.1.0
-# Current Version : 2026-08-13  V7.0.10
+# Current Version : 2026-08-21  V7.0.11
 #
 # Author:
 #   Greg Liebig
@@ -47,6 +47,15 @@
 #
 # Changelog
 # ---------
+## 2026-08-21  V7.0.11  (GAL / OpenAI)
+# • Additive grouped-DMX source preservation in dmxChannels.
+# • Appended RawPropID, ChannelName, and ChannelGridRowNumber after the
+#   existing eight DMX columns; existing column order/meanings remain unchanged.
+# • Preserve the originating PropClass.id, PropClass.Name, and 1-based local
+#   ChannelGrid row number for each explicitly serialized DMX wiring row.
+# • Preserve grouped-DMX canonical master selection and dmxChannels.PropId.
+# • Compact/auto-numbered ChannelGrid expansion remains out of scope.
+#
 ## 2026-08-13  V7.0.10  (GAL / OpenAI)
 # • Explicitly close the final validation and collision-report SQLite
 #   connections before attempting to publish the completed database.
@@ -303,6 +312,7 @@ configure_console_output()
 #   DimmingCurveName    → props.DimmingCurveName / subProps.DimmingCurveName
 #   DeviceType          → props.DeviceType / subProps.DeviceType ("LOR" | "DMX" | "None")
 #   DMX grid (universe) → dmxChannels.(Network, StartUniverse, StartChannel, EndChannel, Unknown)
+#   DMX source detail    → dmxChannels.(RawPropID, ChannelName, ChannelGridRowNumber)
 
 try:
     # Documentation parity only; do not rely on these at runtime
@@ -351,7 +361,7 @@ def get_reports_dir() -> str:
 
 
 # ---- Global flags & defaults (must be defined before functions) ----
-PARSER_VERSION = "V7.0.10"  # GAL 2026-08-13: authoritative runtime version
+PARSER_VERSION = "V7.0.11"  # GAL 2026-08-21: additive grouped-DMX source preservation
 
 DEBUG = False  # Global debug flag
 
@@ -1318,6 +1328,9 @@ def setup_database():
         EndChannel INTEGER,
         Unknown TEXT,
         PreviewId TEXT,
+        RawPropID TEXT,
+        ChannelName TEXT,
+        ChannelGridRowNumber INTEGER,
         FOREIGN KEY (PropId) REFERENCES props (PropID),
         FOREIGN KEY (PreviewId) REFERENCES previews (id)
     );
@@ -2450,7 +2463,8 @@ def process_dmx_props(preview_id, root):
       - For each PropClass with DeviceType == "DMX":
           * Write master metadata to `props` (PropID, Name, LORComment, etc.).
           * Parse ChannelGrid; for each "network,universe,start,end,unknown" leg:
-              - Insert a row into `dmxChannels` with (PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown).
+              - Insert a row into `dmxChannels` with the existing Display/master and universe/channel values.
+              - Also preserve RawPropID, ChannelName, and local ChannelGridRowNumber from the originating PropClass.
       - Lights count:
           * If Parm2 is numeric, treat as approximate light count; store in `props.Lights`.
 
@@ -2490,14 +2504,17 @@ def process_dmx_props(preview_id, root):
         raw_id = prop.get("id") or ""
         scoped = scoped_id(preview_id, raw_id)  # keep consistent with the rest of the parser
 
-        # Parse ChannelGrid into legs
+        # Parse ChannelGrid into legs. Channel Grid Row Number is local
+        # to this source PropClass and restarts at 1 for the next PropClass.
         legs = []
         cg = norm(prop.get("ChannelGrid"))
         if cg:
+            channel_grid_row_number = 0
             for seg in cg.split(";"):
                 seg = seg.strip()
                 if not seg:
                     continue
+                channel_grid_row_number += 1
                 parts = [p.strip() for p in seg.split(",")]
                 if len(parts) >= 5:
                     legs.append({
@@ -2506,6 +2523,9 @@ def process_dmx_props(preview_id, root):
                         "StartChannel":  safe_int(parts[2], 0),
                         "EndChannel":    safe_int(parts[3], 0),
                         "Unknown":       parts[4],
+                        "RawPropID":     raw_id,
+                        "ChannelName":   prop.get("Name"),
+                        "ChannelGridRowNumber": channel_grid_row_number,
                     })
 
         # Decide sort key (lowest universe, then channel; default high if missing)
@@ -2600,11 +2620,13 @@ def process_dmx_props(preview_id, root):
             for leg in r["Legs"]:
                 cur.execute("""
                     INSERT OR REPLACE INTO dmxChannels (
-                        PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown, PreviewId
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        PropId, Network, StartUniverse, StartChannel, EndChannel, Unknown, PreviewId,
+                        RawPropID, ChannelName, ChannelGridRowNumber
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     master["PropID"], leg["Network"], leg["StartUniverse"],
-                    leg["StartChannel"], leg["EndChannel"], leg["Unknown"], preview_id
+                    leg["StartChannel"], leg["EndChannel"], leg["Unknown"], preview_id,
+                    leg["RawPropID"], leg["ChannelName"], leg["ChannelGridRowNumber"]
                 ))
                 if DEBUG:
                     print(f"[DEBUG] (DMX) +leg master={master['PropID']} U={leg['StartUniverse']} S={leg['StartChannel']} E={leg['EndChannel']}")

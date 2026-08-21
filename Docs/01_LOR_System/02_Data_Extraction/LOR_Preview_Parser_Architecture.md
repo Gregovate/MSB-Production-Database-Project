@@ -4,8 +4,8 @@
 |---|---|
 | Status | CURRENT — engineering architecture |
 | System | LOR Preview Parser / LOR2DB Ingest |
-| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.10 |
-| Current revision | 2026-08-17 |
+| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.11 |
+| Current revision | 2026-08-21 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -23,7 +23,9 @@ contract, atomic publication, full output validation, and complete provenance.
 V7.0.9 makes diagnostics non-fatal when Windows PowerShell redirects parser
 logs through a legacy console encoding. V7.0.10 explicitly releases final
 SQLite connections and retries bounded, transient Windows sharing locks before
-atomic publication, including short-lived Google Drive inspection locks.
+atomic publication, including short-lived Google Drive inspection locks. V7.0.11
+additively preserves grouped-DMX source LOR Prop ID, Channel Name, and local Channel
+Grid Row Number without changing the canonical Display/master relationship.
 Future parser changes must be reviewed against this architecture.
 
 ## System Boundary
@@ -95,16 +97,34 @@ The parser preserves the following LOR-to-MSB meanings:
 | `PreviewClass.id` | `previews.id` | Preview identity |
 | `PreviewClass.Name` | `previews.Name` | Preview/operator name |
 | `PreviewClass.BackgroundFile` | `previews.BackgroundFile` | Preview background reference |
-| `PropClass.id` | `RawPropID` | LOR source PropClass identity |
+| `PropClass.id` | `RawPropID` | LOR source PropClass identity / LOR Prop ID |
 | scoped/materialized PropClass identity | `PropID` / `SubPropID` | Parser relational identity |
 | `PropClass.Comment` | `LORComment` | Display Name |
 | `PropClass.Name` | `Name` | Channel Name / sequencer label |
 | `PropClass.DeviceType` | `DeviceType` | LOR, DMX, or None |
-| `ChannelGrid` data | wiring columns | network/controller/channel data |
+| `PropClass.ChannelGrid` | wiring columns | Channel Grid / DeviceType-specific wiring data |
 
 The parser does not treat the LOR channel `Name` as the physical Display Name. The physical Display Name is derived from the LOR `Comment` field.
 
 That distinction is a core contract shared with Preview Authoring and downstream database logic.
+
+The durable terminology translation is maintained in [LOR XML to MSB Terminology Contract](LOR_XML_to_MSB_Terminology_Contract.md). Use that contract rather than inventing conversation-specific aliases for source fields or parser concepts.
+
+### ChannelGrid interpretation is DeviceType-dependent
+
+`PropClass.ChannelGrid` is a serialized LOR wiring structure, but its field meanings are not universal across DeviceTypes.
+
+Current reverse engineering establishes different interpretations for at least the supported `LOR`, `DMX`, and `None` paths. Do not document one ChannelGrid position as having a universal meaning unless that behavior has been independently established.
+
+For DMX, the currently supported serialized row is interpreted as:
+
+```text
+Network, StartUniverse, StartChannel, EndChannel, Unknown
+```
+
+For LOR, the equivalent row uses controller/UID-oriented addressing and may also include Color.
+
+The exact human translation and row-numbering rule are controlled in the terminology contract.
 
 ## Preview Discovery and Preflight
 
@@ -191,9 +211,27 @@ Multi-grid grouping is based on the source PropClass identity rather than Displa
 
 DMX is represented by a `props` master plus channel/universe rows in `dmxChannels`.
 
-The parser preserves the parent display identity while splitting multiple DMX wiring legs into their channel records.
+The current V7.0.11 DMX path groups source `PropClass` rows by Display Name (`PropClass.Comment`). It chooses one canonical Display master deterministically by the lowest `(StartUniverse, StartChannel)` with scoped PropID as the tie-break and attaches every grouped DMX Channel Grid Row to that master through `dmxChannels.PropId`.
 
-Several XML DMX components that describe one physical display may resolve to one canonical display master. Scene membership is therefore resolved against the materialized display identity, not assumed to be one XML row equals one production display.
+That canonical relationship is intentional and must remain stable.
+
+Several XML DMX PropClasses that describe one physical Display may therefore resolve to one canonical Display master. Scene membership is resolved against the materialized Display identity, not assumed to be one XML row equals one production Display.
+
+#### V7.0.11 grouped-DMX source-detail preservation
+
+V7.0.11 preserves the existing Display/master relationship and universe/channel values and additionally stores the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number on each `dmxChannels` row.
+
+For a Display such as Mega Star, multiple source PropClasses can still share:
+
+```text
+PropClass.Comment = Mega Star
+```
+
+while retaining different Channel Names in `PropClass.Name` and separate local Channel Grid Rows. `dmxChannels.PropId` continues to identify the canonical Mega Star Display master; `dmxChannels.RawPropID`, `ChannelName`, and `ChannelGridRowNumber` preserve which source row supplied each DMX wiring relationship.
+
+The existing eight DMX columns remain first and unchanged, and the legacy wiring-view shapes remain unchanged. The V7.0.11 implementation passed the focused grouped-DMX regression and the full 33-test Parser suite.
+
+Compact/auto-numbered ChannelGrid expansion remains a separate later change and was not included in V7.0.11.
 
 ### DeviceType=None
 
@@ -223,6 +261,8 @@ For physical fan-out it becomes the source UUID plus an occurrence suffix such a
 
 `RawPropID` is the identity handed downstream so reconciliation can distinguish source identity changes from stable MSB production display identity.
 
+In V7.0.11, `dmxChannels.RawPropID` uses the same source meaning — the originating LOR Prop ID — as wiring-row provenance rather than as another physical Display master. It does not replace the canonical `dmxChannels.PropId` relationship.
+
 ### PropID and SubPropID
 
 LOR can reuse a raw PropClass UUID in different previews. The parser therefore uses preview-scoped relational identifiers for its working database.
@@ -237,11 +277,15 @@ These scoped identifiers protect SQLite relationships from cross-preview collisi
 
 The scoped parser key is not a replacement for RawPropID and is not the permanent production `display_id`.
 
+For grouped DMX, the existing `dmxChannels.PropId` continues to reference the canonical materialized `props.PropID`. Source wiring provenance must not repurpose that field.
+
 ### Permanent production identity
 
 Permanent display identity is established and maintained downstream in PostgreSQL. The parser must never infer that a changed LOR UUID means a physical display is automatically a new production display.
 
 That decision belongs to LOR2DB reconciliation.
+
+The grouped-DMX source-detail extension must not change the permanent identity path. `ref.display.lor_prop_id` continues to derive from the canonical snapshot `props.raw_prop_id`, not from DMX wiring-row provenance.
 
 ## Scene Architecture
 
@@ -318,6 +362,8 @@ This is required because one XML row can fan out into several physical records, 
 
 If a nonblank Scene PropClass cannot be resolved to a materialized record, the parser fails rather than silently dropping it.
 
+Grouped DMX source-detail preservation must not change this rule: Scene membership remains attached to the canonical materialized Display master, not to every source DMX PropClass.
+
 ## SQLite Snapshot Schema
 
 Every run builds a new sibling temporary database. It recreates the
@@ -362,6 +408,10 @@ Materialized subordinate components linked to a props master while retaining the
 
 DMX wiring legs/universe-channel data linked to the materialized prop master.
 
+V7.0.10 currently stores the canonical master `PropId`, network/universe/channel data, `Unknown`, and `PreviewId`. It does not yet preserve source LOR Prop ID, Channel Name, or local Channel Grid Row Number on each grouped DMX row.
+
+The proposed additive extension is documented separately and must not be presented as current schema until implementation is complete.
+
 ### `scenes`
 
 Preview-level Scene/workspace metadata.
@@ -385,6 +435,8 @@ treating raw `scene_lor_props` PropID membership as a Directus business object.
 That view publishes `SceneBackgroundFile`, `PreviewBackgroundFile`, and the
 effective `BackgroundFile` so missing-path audits remain available without
 losing the source level.
+
+Current DMX compatibility views use explicit existing `dmxChannels` fields and the canonical `PropId -> props.PropID` relationship. The first grouped-DMX source-preservation change is intentionally designed so those legacy view shapes and rows can remain unchanged as a regression boundary.
 
 ## Parser Provenance
 
@@ -418,6 +470,8 @@ Critical safeguards include:
 
 Collision and diagnostic reports exist to make failures reviewable rather than hidden.
 
+Before the grouped-DMX schema is extended, a dedicated regression fixture must prove the existing master selection, `PropId`, row count, universe/channel values, Scene relationship, and compatibility-view output. The current generic parser-output comparison is not a substitute because it intentionally treats same-parser schema differences as blocking and does not model grouped-DMX source semantics.
+
 ## Relationship to LOR2DB Ingest
 
 The parser's output is the input contract to `LOR2DB/01_Ingest/postgres_ingest_from_lor_sqlite_v7.py`.
@@ -428,6 +482,8 @@ The PostgreSQL ingest is responsible for copying the completed parser snapshot a
 
 The ingest must not reinterpret `.lorprev` XML or replace parser identity logic.
 
+Current V7 ingest maps SQLite and PostgreSQL columns by normalized name rather than ordinal position. An additive SQLite field therefore does not shift existing mappings, but a new value is not retained in PostgreSQL until a matching `lor_snap` column exists and the current-snapshot interface is deliberately updated.
+
 ## Relationship to Reconciliation
 
 The parser and ingest create source evidence. They do not decide permanent production identity changes.
@@ -435,6 +491,8 @@ The parser and ingest create source evidence. They do not decide permanent produ
 LOR2DB reconciliation compares the immutable snapshot with current production data, records operator decisions where required, and controls production promotion.
 
 In particular, a changed RawPropID with the same physical display can be reconciled without creating a new permanent display identity.
+
+The grouped-DMX source-preservation fields are wiring-row provenance only. They must not alter the existing reconciliation source, which uses the canonical snapshot `props` row and its raw LOR identity.
 
 ## Compatibility Contract
 
@@ -455,8 +513,10 @@ Changes to any of the following require engineering review and corresponding doc
 
 - LOR XML element/attribute interpretation;
 - naming contract;
+- ChannelGrid interpretation and row semantics;
 - stage extraction;
 - prop/subprop materialization;
+- DMX source-row preservation and grouped-master behavior;
 - DeviceType handling;
 - raw/scoped identity rules;
 - Scene interpretation or membership resolution;
@@ -467,9 +527,13 @@ Changes to any of the following require engineering review and corresponding doc
 
 Do not change these behaviors solely to accommodate one unusual preview without first deciding whether the source preview is wrong or the architecture genuinely needs to change.
 
+Reverse-engineering discoveries must also follow the reusable [Documentation Maintenance Rule](../../../System_Documentation/Standards/Documentation_Maintenance_Rule.md) so current engineering knowledge is preserved in the responsible repository documents rather than left in conversation history.
+
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Documented implemented V7.0.11 grouped-DMX source preservation and successful 33-test validation; implementation commit `9d2bd7a`. |
+| 2026-08-21 | GAL / OpenAI | Documented the controlled XML-to-MSB terminology, DeviceType-dependent ChannelGrid interpretation, current grouped-DMX source-detail limitation, completed dependency findings, proposed additive source-preservation boundary, and regression-test requirement while retaining V7.0.10 as the implemented baseline. |
 | 2026-08-13 | GAL / OpenAI | Documented V7.0.8 atomic publication, full output validation/provenance, canonical ownership, background-path view fields, and the Folder Alignment/raw Scene-row boundary. |
 | 2026-08-08 | GAL / OpenAI | Created standalone V7 parser engineering architecture from the functional V7.0.7 implementation and preserved V7 design decisions previously embedded in source comments and project history. |
