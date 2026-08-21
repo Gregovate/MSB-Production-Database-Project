@@ -135,23 +135,55 @@ SELECT
     (SELECT COUNT(*) FROM lor_snap.stage_display_assets_v1)
         AS stage_display_assets_rows;
 
--- 8. Once a V7.0.11+ run becomes current, all three source-detail fields are
---    required by ingest V0.4.2.  This query surfaces any violation without
---    falsely failing the current V7.0.10 historical snapshot.
+-- 8. V7.0.11+ runs require complete source detail.  Historical parser runs do
+--    not.  The CASE parses only controlled V<major>.<minor>.<patch> values and
+--    prevents a V7.0.10 current snapshot from being falsely reported as 508
+--    missing source-detail rows immediately after installing migration 0037.
+WITH current_dmx AS (
+    SELECT
+        r.import_run_id,
+        r.parser_version,
+        CASE
+            WHEN r.parser_version ~ '^V[0-9]+\.[0-9]+\.[0-9]+$'
+                THEN string_to_array(substr(r.parser_version, 2), '.')::integer[]
+                     >= ARRAY[7, 0, 11]
+            ELSE false
+        END AS dmx_source_detail_required,
+        dc.raw_prop_id,
+        dc.channel_name,
+        dc.channel_grid_row_number
+    FROM lor_snap.v_current_run AS r
+    LEFT JOIN lor_snap.v_current_dmx_channels AS dc
+      ON dc.import_run_id = r.import_run_id
+)
 SELECT
-    r.import_run_id,
-    r.parser_version,
+    import_run_id,
+    parser_version,
+    dmx_source_detail_required,
     count(*) FILTER (
-        WHERE dc.raw_prop_id IS NULL OR btrim(dc.raw_prop_id) = ''
+        WHERE dmx_source_detail_required
+          AND (raw_prop_id IS NULL OR btrim(raw_prop_id) = '')
     ) AS blank_raw_prop_id,
     count(*) FILTER (
-        WHERE dc.channel_name IS NULL OR btrim(dc.channel_name) = ''
+        WHERE dmx_source_detail_required
+          AND (channel_name IS NULL OR btrim(channel_name) = '')
     ) AS blank_channel_name,
     count(*) FILTER (
-        WHERE dc.channel_grid_row_number IS NULL
-           OR dc.channel_grid_row_number <= 0
+        WHERE dmx_source_detail_required
+          AND (
+              channel_grid_row_number IS NULL
+              OR channel_grid_row_number <= 0
+          )
     ) AS invalid_channel_grid_row_number
-FROM lor_snap.v_current_run AS r
-LEFT JOIN lor_snap.v_current_dmx_channels AS dc
-  ON dc.import_run_id = r.import_run_id
-GROUP BY r.import_run_id, r.parser_version;
+FROM current_dmx
+GROUP BY import_run_id, parser_version, dmx_source_detail_required;
+
+-- Expected immediately after migration 0037 while Run 50 / V7.0.10 is current:
+-- dmx_source_detail_required = false
+-- blank_raw_prop_id = 0
+-- blank_channel_name = 0
+-- invalid_channel_grid_row_number = 0
+--
+-- Expected after a reviewed V7.0.11+ production ingest becomes current:
+-- dmx_source_detail_required = true
+-- all three violation counts = 0
