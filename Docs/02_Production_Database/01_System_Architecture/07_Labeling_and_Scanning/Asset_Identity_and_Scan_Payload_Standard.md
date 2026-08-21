@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document preserves the durable identity, label, and scanning contracts from the original MSB Asset ID, Labeling, and Scanning plan while distinguishing implemented printing behavior from scanning work that is still planned or evolving.
+This document preserves the durable identity, label, and scanning contracts from the original MSB Asset ID, Labeling, and Scanning plan while distinguishing implemented behavior from scanning work that is still planned or evolving.
 
 ## Core Rule
 
@@ -41,7 +41,21 @@ A QR code used for record lookup must not encode a raw Directus admin URL such a
 
 A stable application/redirect route may wrap the canonical asset identity so the eventual destination can change without requiring physical labels to be replaced.
 
-The older planning document proposed a `/scan/<TYPE>/<KEY>` route. That route remains a design direction, not proof of a currently deployed scan application. Verify the current application endpoint before printing or documenting a live URL.
+For Displays, that design is now a verified deployed capability. The current production Directus scan extension on `msb-prod-db` implements a stable Display lookup hub including:
+
+```text
+/scan/
+/scan/DISP/:key
+/scan/DISP/:key/test
+/scan/DISP/:key/container
+/scan/DISP/:key/work-orders
+```
+
+`/scan/DISP/:key` resolves permanent `ref.display.display_id` and then presents task destinations. New Display field applications such as FieldWiring must extend that existing resolved-identity hub rather than creating another Display QR payload or lookup engine.
+
+The broader `/scan/<TYPE>/<KEY>` concept still remains partly a design direction for asset types/workflows that have not been verified as deployed. Do not infer that Container, Location, or Controller scan behavior exists merely because Display scanning does.
+
+See [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) for the verified Display implementation boundary.
 
 ## Current Label Quantities
 
@@ -78,9 +92,11 @@ Important engineering goals from the original plan include:
 
 The exact current database states and retry/reprint behavior must be verified against the current PostgreSQL objects and LabelPrintService implementation before changes are made.
 
-## Scanning — Planned / Evolving
+## Scanning — Implemented and Planned Boundaries
 
-Scanning and field workflows are not documented here as fully implemented simply because they were approved in the original plan.
+The Display QR lookup hub is implemented and verified as described above.
+
+Other scan-driven field workflows are not documented here as fully implemented simply because they were approved in the original plan.
 
 The approved direction is to support both 1-D and 2-D scanning where the workflow benefits from them:
 
@@ -96,11 +112,13 @@ Planned workflow concepts include:
 - scan Location + Container -> validate whether the move/placement matches;
 - support either scan order when the field application maintains temporary scan state.
 
-These are engineering directions for the future scanning application, not current operator SOPs until implemented and tested.
+These remain engineering directions for future scanning/application work until implemented and tested.
 
 ## Related Systems
 
 - [Labeling and Scanning engineering handoff](README.md)
+- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md)
+- [Wiring System](../09_Wiring_System/README.md)
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md)
