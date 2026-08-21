@@ -1,70 +1,101 @@
 # Controller Inventory
 
-This subsystem documents the permanent inventory and lifecycle of physical controller hardware.
+This subsystem documents the permanent inventory of physical controller hardware and the current controller assignment needed to interpret the current approved LOR/V7 wiring snapshot.
 
 ## Current State
 
 Controller inventory remains spreadsheet-based and has not yet been implemented as a PostgreSQL subsystem.
 
-The 2025 working source has now been inspected directly from:
+Current source evidence includes:
 
 ```text
 Controller Inventory & Firmware 2025 - Inventory.csv
 Controller Inventory & Firmware 2025 - Lookup Table.csv
+DMX Control Addressing.xlsx
+current approved LOR/V7 PostgreSQL snapshot
 ```
 
-The source is useful physical/deployment/firmware evidence, but it is not a finished current permanent asset register. Most populated inventory rows are still marked incomplete, current 2026 RGB hardware is missing in several areas, E1.31 rows include older IP/configuration evidence, and the source has no durable per-controller asset key independent of LOR addressing or deployment.
+The 2025 source is useful physical/controller/firmware evidence, but it is not a finished current permanent asset register. Most populated inventory rows are still marked incomplete, current RGB hardware is missing in several areas, E1.31 rows include older IP/configuration evidence, and the source has no durable per-controller asset key independent of addressing.
 
 See [Controller Inventory 2025 Source Audit — 2026-08-19](Controller_Inventory_2025_Source_Audit_2026-08-19.md).
 
-LOR identifies controllers used by current Previews, but LOR addressing likewise does not constitute permanent physical controller identity.
-
 ## Design Intent
 
-Create durable controller identities and preserve lifecycle history independently of annual LOR assignments while linking physical controllers to the systems that use them.
+Create durable physical controller identities and a current assignment relationship that can be reconciled to the current approved LOR/V7 snapshot.
+
+Controller Inventory supplies the physical-controller fact that LOR cannot represent. LOR/LOR2DB remains authoritative for current show topology, addressing, Stage/Scene/Display relationships, and wiring rows.
 
 ## Current/Future Responsibilities
 
-- permanent controller identity
-- controller type and capabilities
-- status and lifecycle
-- deployment/location history
-- current LOR addressing relationship without making LOR Unit ID the asset key
-- E1.31/IP configuration relationships where applicable
-- repair/history relationships
+- permanent controller identity (`CL-###` / `CTRL:<controller_key>` label contract)
+- exact manufacturer/model plus understandable controller classification
+- physical output/port capability
+- serial number where available
+- current controller status
+- current controller address/assignment needed to associate the physical controller with current LOR/V7 topology
+- distinguishing current group information when multiple physical controllers intentionally share the same Unit ID/range
+- firmware update history
 - labeling/scanning relationships
-- relationships to Wiring, Network Infrastructure, Site Infrastructure/GIS, and Work Orders
+- Work Order linkage for repairs/maintenance
+- FieldWiring read/interface relationship
 
-## Boundaries
+## Important Boundaries
 
-LOR remains authoritative for show controller assignments, channel numbers, DMX/network assignments, and show topology.
+### No deployment-assignment history requirement
 
-Controller Inventory tracks the physical hardware asset and its history. It must not become a competing LOR topology-authoring system.
+Controller assignment is current-state data. Controller Inventory does not need to preserve prior Stage, Scene, Display, Unit-ID, network, IP, universe, or deployment assignments as historical relationship rows.
 
-Unit ID, Unit-ID range, network, IP address, Display assignment, and Park Location are deployment/configuration attributes. None should be assumed to be the permanent physical controller identity.
+Older LOR snapshots and source artifacts remain available as engineering evidence.
 
-## Authoritative / Source Evidence
+### Repairs belong to Work Orders
 
-Current source evidence now includes:
+Repairs, troubleshooting, parts replacement, maintenance actions, and repair resolution belong in the Work Order system and should link to the permanent controller asset. Controller Inventory does not need a competing repair-history subsystem.
 
-- the 2025 Controller Inventory / Firmware CSV export;
-- its companion controller-model / firmware lookup table;
-- `DMX Control Addressing.xlsx` for historical/current E1.31 universe/output/IP mapping evidence; and
-- current V7/PostgreSQL LOR topology for current show addressing.
+### Firmware history is retained
 
-These sources must be reconciled rather than silently merged. Current physical inventory and current LOR topology do not yet align perfectly in all areas.
+Firmware updates are controller-specific history worth preserving. The system should retain firmware version, install/verification date, responsible person, and optional notes/Work Order reference.
+
+### Do not duplicate LOR relationships unnecessarily
+
+For a controller with a unique current Network + Unit ID/range, the current approved LOR/V7 snapshot already identifies the Displays and output relationships using that address. The inventory team does not need to manually recreate those Display assignments.
+
+When multiple physical controllers intentionally share the same address, record one additional distinguishing group, for example:
+
+```text
+CL-042 | 21-24 | Candy Canes 1-4
+CL-043 | 21-24 | Candy Canes 5-8
+CL-044 | 21-24 | Candy Canes 9-12
+```
+
+Do not define `network + Unit ID/range` as a unique physical-controller identity.
+
+### Exact controller models remain distinct
+
+Generic classifications are useful, but exact models must be preserved. For example, `PixCon16` and `Pixie-16` are different devices and must never be normalized into one model.
+
+## FieldWiring Integration
+
+FieldWiring is a consumer of Controller Inventory; it does not own the Controller Inventory schema.
+
+While source data is being reviewed, FieldWiring may continue using isolated, operator-confirmed temporary controller mappings. Those mappings must remain replaceable by the eventual PostgreSQL Controller Inventory read contract rather than spreading named Display/Scene hard-coding throughout presentation code.
+
+See [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md).
 
 ## Related Systems
 
 - [Controller Inventory and Labeling Plan](Controller_Inventory_and_Labeling_Plan.md)
+- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
 - [Controller Inventory 2025 Source Audit — 2026-08-19](Controller_Inventory_2025_Source_Audit_2026-08-19.md)
+- [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
 - [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
 - [Wiring System](../09_Wiring_System/README.md)
 - [Network Infrastructure](../10_Network_Infrastructure/README.md)
-- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
+- [Work Orders](../06_Work_Orders/README.md)
 
 ## Resume Development
 
 Do not design the final PostgreSQL schema from assumptions.
 
-The next controller-inventory work is reconciliation: compare the 2025 inventory against current 2026 LOR/V7 topology and the E1.31 addressing workbook, identify missing/new controllers and source conflicts, normalize model terminology, then define permanent controller identity and deployment/history relationships.
+The next work is source/data reconciliation: normalize confirmed model terminology, identify the current physical controller assets, reconcile their current addressing against the approved LOR/V7 snapshot and E1.31 evidence, identify intentional duplicate-address groups, and review the minimum FieldWiring current-assignment interface.
+
+No PostgreSQL Controller Inventory tables or migrations are authorized until that review is accepted.
