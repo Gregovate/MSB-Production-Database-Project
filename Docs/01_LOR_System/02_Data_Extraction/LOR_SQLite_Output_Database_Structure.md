@@ -5,7 +5,7 @@
 | Status | CURRENT — Engineering Design |
 | System | LOR Preview Parser |
 | Database | `lor_output_v7_scene.db` |
-| Current Parser Baseline | V7.0.10 |
+| Current Parser Baseline | V7.0.11 |
 | Owner | MSB Database Administrator |
 | Initial Release | 2026-08-08 |
 
@@ -233,7 +233,7 @@ Purpose
 
 Stores DMX-specific Channel Grid Row information while retaining the canonical materialized Display/master relationship.
 
-Current V7.0.10 responsibilities
+Current V7.0.11 responsibilities
 
 - canonical Display/master parser identity through `PropId`;
 - DMX Network;
@@ -241,11 +241,14 @@ Current V7.0.10 responsibilities
 - channel ranges;
 - existing `Unknown` Channel Grid field;
 - Preview identity;
+- originating LOR Prop ID through `RawPropID`;
+- originating Channel Name through `ChannelName`;
+- local source Channel Grid Row Number through `ChannelGridRowNumber`;
 - parser materialization of DMX Channel Grid Rows.
 
 ### Current grouped-DMX relationship
 
-Several DMX source `PropClass` rows can share one Display Name (`PropClass.Comment`). V7.0.10 intentionally chooses one canonical Display master in `props` and attaches every grouped DMX Channel Grid Row to that master through:
+Several DMX source `PropClass` rows can share one Display Name (`PropClass.Comment`). V7.0.11 intentionally chooses one canonical Display master in `props` and attaches every grouped DMX Channel Grid Row to that master through:
 
 ```text
 dmxChannels.PropId -> props.PropID
@@ -253,27 +256,11 @@ dmxChannels.PropId -> props.PropID
 
 That relationship is part of the existing parser contract and must remain unchanged during dense-RGB source-detail recovery.
 
-### Current V7.0.10 limitation
+### V7.0.11 source-detail preservation
 
-A grouped `dmxChannels` row does not currently retain which source `PropClass` supplied that specific Channel Grid Row.
+V7.0.11 retains which source `PropClass` supplied each grouped DMX Channel Grid Row while preserving the existing canonical Display/master relationship.
 
-The parser can therefore preserve:
-
-```text
-Display Name
-canonical PropId
-Network
-Universe
-Start/End Channel
-```
-
-while losing the source distinction between different Channel Names (`PropClass.Name`) that share that Display Name.
-
-The current table also does not store the local Channel Grid Row Number within the source PropClass.
-
-### Proposed additive extension — not implemented in V7.0.10
-
-The accepted proposed change appends:
+Current appended fields are:
 
 ```text
 RawPropID
@@ -281,21 +268,15 @@ ChannelName
 ChannelGridRowNumber
 ```
 
-These fields are **not current V7.0.10 schema**. They are documented here only so the current limitation and planned contract are not lost during engineering recovery.
-
-Their proposed meanings are:
-
-| Proposed field | Meaning |
+| Current field | Meaning |
 |---|---|
 | `RawPropID` | originating LOR Prop ID (`PropClass.id`) that supplied the DMX Channel Grid Row |
 | `ChannelName` | originating Channel Name (`PropClass.Name`) |
-| `ChannelGridRowNumber` | 1-based position of the serialized Channel Grid Row within that source PropClass; numbering restarts for the next PropClass |
+| `ChannelGridRowNumber` | 1-based source position of the nonblank serialized Channel Grid entry within that PropClass; numbering restarts for the next PropClass |
 
-`PreviewId + RawPropID` identifies the originating source PropClass within the parser snapshot. The proposed `RawPropID` is wiring-row provenance and does not create another physical Display relationship.
+`PreviewId + RawPropID` identifies the originating source PropClass within the parser snapshot. `RawPropID` is wiring-row provenance and does not create another physical Display relationship or foreign key to `props`.
 
-Do not add a foreign key from the proposed DMX `RawPropID` that would require every grouped source PropClass to exist as a separate `props` Display row.
-
-See [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md) for the exact controlled proposal and regression boundary.
+The original eight `dmxChannels` columns remain first and retain their V7.0.10 meanings. Existing compatibility views continue to use the canonical `PropId -> props.PropID` relationship and were regression-tested unchanged.
 
 Compact/auto-numbered ChannelGrid expansion remains a separate change because it can intentionally alter materialized DMX row counts.
 
@@ -327,7 +308,7 @@ dmxChannels.PropId    -> props.PropID
 
 The parser maintains these relationships as a normalized engineering model.
 
-The proposed DMX source-detail fields do not replace either relationship.
+The V7.0.11 DMX source-detail fields do not replace either relationship.
 
 ---
 
@@ -382,7 +363,7 @@ Typical consumers
 - controller inventory
 - setup documentation
 
-Current DMX compatibility views use explicit existing `dmxChannels` columns and the canonical `PropId -> props.PropID` join. The first source-detail extension is intentionally designed so these existing view shapes and rows can remain unchanged during regression testing.
+Current DMX compatibility views use explicit existing `dmxChannels` columns and the canonical `PropId -> props.PropID` join. The V7.0.11 source-detail extension leaves these existing view shapes and rows unchanged; the grouped-DMX regression fixture verifies that compatibility contract.
 
 ---
 
@@ -440,7 +421,7 @@ Equivalent compatibility views are generated from the V7 scene-aware database to
 
 Compatibility views should remain stable until all dependent software has migrated.
 
-The first grouped-DMX source-detail extension must preserve those existing compatibility view contracts unless a separately reviewed downstream change is approved.
+V7.0.11 preserves those existing compatibility view contracts; any later downstream view change requires separate review.
 
 ---
 
@@ -512,4 +493,5 @@ The SQLite output database forms the engineering interface between the LOR Previ
 
 # Revision Notes
 
-- **2026-08-21:** Documented the existing grouped-DMX `PropId -> props.PropID` contract, current loss of source LOR Prop ID / Channel Name / local Channel Grid Row Number, and the proposed additive source-detail fields while keeping V7.0.10 as the implemented schema baseline.
+- **2026-08-21:** Promoted the grouped-DMX source-detail fields to the implemented V7.0.11 SQLite contract after the focused and full 33-test parser suites passed; implementation commit `9d2bd7a`.
+- **2026-08-21:** Documented the pre-change grouped-DMX `PropId -> props.PropID` contract and the V7.0.10 source-detail gap before implementation.

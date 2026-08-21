@@ -2,11 +2,11 @@
 
 | Item | Value |
 |---|---|
-| Status | REGRESSION FIXTURE ADDED — BASELINE RUN REQUIRED; NO PARSER CODE CHANGE YET |
+| Status | IMPLEMENTED AND UNIT-TESTED — V7.0.11 PARSER COMPLETE; REAL SQLITE SNAPSHOT ACCEPTANCE PENDING |
 | Sub-project | FieldWiring / Engineering Recovery |
 | Branch | `agent/fieldwiring-engineering-recovery` |
-| Parser baseline | V7.0.10 |
-| Purpose | Freeze the accepted additive-only DMX extension boundary and preserve the completed dependency inspection before implementation |
+| Parser baseline | V7.0.11 |
+| Purpose | Preserve the implemented additive-only DMX extension boundary, validation evidence, and next acceptance gate |
 
 ## Why This Checkpoint Exists
 
@@ -22,13 +22,13 @@ The controlled XML-to-MSB terminology is documented in:
 
 - [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
 
-The pre-change grouped-DMX regression fixture is now committed at:
+The grouped-DMX regression fixture is maintained at:
 
-- [Grouped-DMX V7.0.10 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
+- [Grouped-DMX V7.0.11 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
 
-The fixture has **not yet been executed successfully in repository CI or the current connector runtime**, so its presence is not a passing test result. Run it against unchanged V7.0.10 before parser implementation.
+The original fixture first passed 4 tests against unchanged V7.0.10. After the additive parser change, the focused fixture again passed 4 tests and the complete Parser unittest discovery passed 33 tests. `git diff --check` was clean.
 
-No V7.0.10 parser code or schema has been changed yet.
+V7.0.11 implementation commit: `9d2bd7af59840e983425efd1a8f0fa7ff6cc0871`.
 
 ## Accepted Identity Chain — Must Not Change
 
@@ -113,9 +113,9 @@ SourceGridOrdinal
 
 Those names were intentionally marked non-final. They are now superseded by the controlled XML/MSB terminology established during the dependency inspection.
 
-### Controlled proposed field names after inspection
+### Controlled implemented field names — V7.0.11
 
-The exact proposed additive SQLite fields are:
+The implemented additive SQLite fields are:
 
 ```text
 RawPropID
@@ -278,30 +278,21 @@ The following V7.0.10 dependencies were inspected before any parser change:
 
 These findings are captured in the exact [Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md).
 
-## Regression Fixture Added
+## Regression and Implementation Validation
 
-The V7.0.10 grouped-DMX baseline fixture now exists at:
+The grouped-DMX regression fixture at `Docs/01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py` first froze and passed the unchanged V7.0.10 behavior, then validated V7.0.11.
 
-`Docs/01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py`
-
-It freezes:
-
-- one canonical Display master for two DMX Channel Names sharing one Display Name;
-- the exact existing eight-column `dmxChannels` contract;
-- all existing `PropId`, Network, Universe, channel, Unknown, and Preview values for the fixture;
-- the current FormView-compatible `preview_wiring_map_v6` shape and rows; and
-- the expected future LOR Prop ID / Channel Name / Channel Grid Row Number mapping beside the baseline fixture.
-
-The fixture has not yet been executed successfully in repository CI or the current connector runtime. There is no attached CI status/check for the test commit.
-
-Therefore the implementation gate is now:
+Validated results:
 
 ```text
-fixture committed
-    -> run against unchanged V7.0.10
-        -> require PASS
-            -> only then modify parser/schema
+pre-change V7.0.10 focused fixture -> 4 tests PASS
+post-change V7.0.11 focused fixture -> 4 tests PASS
+full Parser unittest discovery      -> 33 tests PASS
+git diff --check                    -> clean
+implementation commit               -> 9d2bd7af59840e983425efd1a8f0fa7ff6cc0871
 ```
+
+The test preserves the canonical Display master, legacy DMX row values, and compatibility-view output while proving `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` are populated from the originating source PropClass/Channel Grid Row.
 
 ## Required Regression Principle
 
@@ -320,31 +311,20 @@ If an additive extension unexpectedly changes an existing relationship, stop and
 
 ## Next Engineering Step
 
-The inspection gate is complete and the regression fixture exists.
-
-The next step is **execute the baseline fixture before parser implementation**:
+The parser implementation/test gate is complete. The next gate is real-snapshot acceptance before PostgreSQL propagation:
 
 ```text
-1. Run test_parse_props_grouped_dmx.py against unchanged V7.0.10.
-2. Require PASS for the frozen canonical master, legacy DMX rows, and compatibility view.
-3. If it fails, review/fix the fixture or architecture — do not change the parser to make the baseline test pass.
-4. Only after PASS, extend dmxChannels additively with RawPropID, ChannelName, and ChannelGridRowNumber.
+1. Run V7.0.11 against the approved Preview set and produce a new SQLite snapshot.
+2. Inspect grouped/dense-RGB rows directly for Mega Star, Mega Cube, Mega Tree, and Whoville Matrix.
+3. Confirm legacy FormView/wiring-view output remains operational against the real snapshot.
+4. If SQLite acceptance passes, extend `lor_snap.dmx_channels` additively with matching PostgreSQL fields.
+5. Inspect and control the authoritative `lor_snap.v_current_dmx_channels` definition before exposing the fields downstream.
+6. Validate ingest and preserve the canonical `prop_id` / reconciliation identity chain.
+7. Resume the FieldWiring PostgreSQL read model and browser presentation work.
+8. Review compact/auto-numbered ChannelGrid expansion separately.
 ```
 
-After approved implementation:
-
-```text
-run full parser regression tests
--> produce a new parser SQLite snapshot
--> inspect dense-RGB rows directly
--> confirm legacy view output is unchanged
--> update PostgreSQL dmx_channels/current-snapshot interface only after SQLite acceptance
--> build a new FieldWiring dev snapshot/read model
--> browser-test Mega Tree, Mega Cube, Mega Star, Whoville Matrix, etc.
--> review compact ChannelGrid expansion separately
-```
-
-Broad FieldWiring UX work remains out of scope until dense-RGB acceptance is complete.
+Broad FieldWiring UX work remains downstream of accepted dense-RGB data.
 
 ## Related Durable Decisions
 
@@ -362,18 +342,22 @@ Broad FieldWiring UX work remains out of scope until dense-RGB acceptance is com
 
 At this updated checkpoint:
 
-- the V7.0.10 dependency inspection is complete;
-- the exact additive schema/change map is documented;
-- the earlier temporary `Source*` terminology is superseded by `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`;
-- the grouped-DMX baseline regression fixture is committed but not yet execution-proven;
-- **no V7 parser code/schema change has been made for the dense-RGB provenance extension**.
+- the V7.0.10 dependency inspection and baseline regression are complete;
+- parser V7.0.11 is implemented on the feature branch;
+- the original eight DMX columns and canonical `PropId` relationship remain unchanged;
+- `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` are appended and regression-tested;
+- the full Parser suite passes 33 tests and `git diff --check` is clean;
+- implementation commit is `9d2bd7af59840e983425efd1a8f0fa7ff6cc0871`;
+- PostgreSQL `lor_snap.dmx_channels` has not yet been changed for these new fields;
+- compact/auto-numbered ChannelGrid expansion remains separate.
 
-The next engineering action is to run the grouped-DMX baseline fixture against unchanged V7.0.10.
+The next engineering action is to build and inspect a real V7.0.11 SQLite snapshot from the approved Preview set before any PostgreSQL propagation.
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Recorded V7.0.11 implementation and validation: pre-change 4-test PASS, full 33-test PASS, clean diff check, implementation commit `9d2bd7a`; advanced next gate to real SQLite snapshot acceptance before PostgreSQL propagation. |
 | 2026-08-21 | GAL / OpenAI | Added the grouped-DMX V7.0.10 regression fixture and advanced the implementation gate to require a successful baseline execution before parser modification; no CI/connector test result is currently available. |
 | 2026-08-21 | GAL / OpenAI | Completed the V7.0.10 dependency inspection, replaced temporary `Source*` terminology with the controlled LOR/MSB terms, linked the exact additive change map, and advanced the stop point to regression-tests-first with no parser code change. |
 | 2026-08-21 | GAL / OpenAI | Created implementation checkpoint before dense-RGB parser extension. |

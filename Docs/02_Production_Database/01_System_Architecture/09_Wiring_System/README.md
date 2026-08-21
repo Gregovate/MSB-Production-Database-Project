@@ -8,14 +8,14 @@ FormView currently provides wiring presentation and generated field documentatio
 
 The active replacement/recovery sub-project is named **FieldWiring**. FieldWiring is intended to be a PostgreSQL-backed, browser-accessible field application that preserves the proven field outcome while improving Scene awareness, Google Drive document resolution, and physical hookup presentation.
 
-Dense-RGB engineering recovery has now proven one parser data-preservation gap before the browser presentation layer can be considered complete: grouped DMX rows retain the canonical Display/master relationship but do not currently retain the originating LOR PropClass/Channel Name and local Channel Grid Row Number for every `dmxChannels` row. The exact additive change boundary is documented and **V7.0.10 remains unchanged**. A grouped-DMX baseline regression fixture has been added, but it must be run successfully against unchanged V7.0.10 before the parser/schema is modified.
+Dense-RGB engineering recovery has now implemented the additive parser source-preservation fix in V7.0.11. Grouped DMX rows retain the same canonical Display/master relationship and now also preserve the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number in `dmxChannels`. The unchanged V7.0.10 baseline fixture passed first, the V7.0.11 focused regression passed, and the full Parser suite passed 33 tests. PostgreSQL propagation has not yet been performed.
 
 Start with:
 
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
 - [FieldWiring Dense RGB Parser Extension Checkpoint](FieldWiring_Dense_RGB_Parser_Extension_Checkpoint_2026-08-21.md)
 - [FieldWiring Dense RGB DMX Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
-- [Grouped-DMX V7.0.10 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
+- [Grouped-DMX V7.0.11 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
 - [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
 - [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring PostgreSQL Readiness Audit](FieldWiring_PostgreSQL_Readiness_Audit.md)
@@ -175,23 +175,22 @@ The Drive image-discovery mechanism is working: current images added to marked `
 
 The current Display QR entry is also verified as an existing production dependency. Do not redesign it. FieldWiring should extend the existing Display scan hub after the live scan-extension baseline and its server-management documentation are preserved.
 
-Dense-RGB inspection has established and documented the current grouped-DMX information-loss boundary. V7.0.10 still preserves the correct canonical Display/master relationship, but each `dmxChannels` row does not currently preserve the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number. The proposed extension is additive only and is not yet implemented.
+Dense-RGB inspection established the grouped-DMX information-loss boundary and V7.0.11 now implements the approved additive source preservation. The canonical Display/master relationship remains unchanged while each explicit DMX Channel Grid Row carries `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`.
 
-A grouped-DMX baseline regression fixture now exists at `Docs/01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py`. It freezes the existing eight-column DMX schema, canonical master relationship, legacy DMX rows, and FormView-compatible view output while recording the expected future source-detail mapping. The fixture has not yet produced a passing CI/connector execution result.
+Validation is complete at the parser-unit level: the pre-change V7.0.10 focused fixture passed 4 tests, V7.0.11 focused regression passed, and the full Parser suite passed 33 tests. Implementation commit: `9d2bd7af59840e983425efd1a8f0fa7ff6cc0871`.
 
-Current engineering focus is therefore **execute the V7.0.10 grouped-DMX baseline test before parser modification**:
+Current engineering focus is therefore **real V7.0.11 SQLite snapshot acceptance before PostgreSQL propagation**:
 
-1. run `test_parse_props_grouped_dmx.py` against unchanged V7.0.10 and require PASS;
-2. if the fixture fails, review/fix the fixture or architecture rather than altering the parser to force a pass;
-3. only after baseline PASS, add `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` to `dmxChannels` exactly as documented in the change map;
-4. preserve every frozen legacy `PropId`, row-count, universe/channel, Scene, and compatibility-view expectation while adding the new source-detail assertions;
-5. validate a new SQLite snapshot directly against Mega Star, Mega Cube, Mega Tree, and Whoville Matrix;
-6. preserve the existing PostgreSQL reconciliation identity path and propagate new DMX fields to `lor_snap` only after SQLite acceptance;
-7. resume the operator read/presentation layer using the accepted dense-RGB source detail;
-8. reuse the existing authenticated Display scan hub and permanent `display_id` entry;
-9. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
-10. classify the physical presentation family from current device/string metadata and Controller Inventory relationships; and
-11. preserve the future Channel Name -> 1/2-inch plug-label workflow as a controlled LabelPrintService integration rather than a manual printer-software task.
+1. run V7.0.11 against the approved Preview set;
+2. inspect Mega Star, Mega Cube, Mega Tree, and Whoville Matrix source-detail rows directly;
+3. confirm existing FormView/wiring compatibility output remains operational;
+4. after SQLite acceptance, propagate `raw_prop_id`, `channel_name`, and `channel_grid_row_number` additively into `lor_snap.dmx_channels` and inspect the current-snapshot DMX view contract;
+5. preserve the existing PostgreSQL reconciliation identity path and canonical `prop_id` relationship;
+6. resume the FieldWiring operator read/presentation layer using the accepted PostgreSQL source detail;
+7. reuse the existing authenticated Display scan hub and permanent `display_id` entry;
+8. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
+9. classify the physical presentation family from current device/string metadata and Controller Inventory relationships; and
+10. preserve the future Channel Name -> 1/2-inch plug-label workflow as a controlled LabelPrintService integration rather than a manual printer-software task.
 
 Current acceptance examples include Church A/C + Pixie patterns, Candyland repeated Pixie 4 blocks, Who Forest Pixie 8 blocks, Santa's Workshop Pixie 8 blocks, Northern Lights as the first DMX/DumbRGB network-hookup case, and the dense RGB E1.31 cases: Mega Tree, Mega Ball, Mega Cube, Mega Star, and Mt. Crumpit Matrix.
 

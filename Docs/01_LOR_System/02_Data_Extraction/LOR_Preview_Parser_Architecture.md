@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — engineering architecture |
 | System | LOR Preview Parser / LOR2DB Ingest |
-| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.10 |
+| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.11 |
 | Current revision | 2026-08-21 |
 | Owner | MSB Database Administrator |
 
@@ -23,7 +23,9 @@ contract, atomic publication, full output validation, and complete provenance.
 V7.0.9 makes diagnostics non-fatal when Windows PowerShell redirects parser
 logs through a legacy console encoding. V7.0.10 explicitly releases final
 SQLite connections and retries bounded, transient Windows sharing locks before
-atomic publication, including short-lived Google Drive inspection locks.
+atomic publication, including short-lived Google Drive inspection locks. V7.0.11
+additively preserves grouped-DMX source LOR Prop ID, Channel Name, and local Channel
+Grid Row Number without changing the canonical Display/master relationship.
 Future parser changes must be reviewed against this architecture.
 
 ## System Boundary
@@ -209,31 +211,27 @@ Multi-grid grouping is based on the source PropClass identity rather than Displa
 
 DMX is represented by a `props` master plus channel/universe rows in `dmxChannels`.
 
-The current V7.0.10 DMX path groups source `PropClass` rows by Display Name (`PropClass.Comment`). It chooses one canonical Display master deterministically by the lowest `(StartUniverse, StartChannel)` with scoped PropID as the tie-break and attaches every grouped DMX Channel Grid Row to that master through `dmxChannels.PropId`.
+The current V7.0.11 DMX path groups source `PropClass` rows by Display Name (`PropClass.Comment`). It chooses one canonical Display master deterministically by the lowest `(StartUniverse, StartChannel)` with scoped PropID as the tie-break and attaches every grouped DMX Channel Grid Row to that master through `dmxChannels.PropId`.
 
 That canonical relationship is intentional and must remain stable.
 
 Several XML DMX PropClasses that describe one physical Display may therefore resolve to one canonical Display master. Scene membership is resolved against the materialized Display identity, not assumed to be one XML row equals one production Display.
 
-#### Current grouped-DMX source-detail limitation
+#### V7.0.11 grouped-DMX source-detail preservation
 
-V7.0.10 preserves the correct Display/master relationship and universe/channel values, but a `dmxChannels` row does not separately retain which grouped source `PropClass` supplied that row.
+V7.0.11 preserves the existing Display/master relationship and universe/channel values and additionally stores the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number on each `dmxChannels` row.
 
-For a Display such as Mega Star, multiple source PropClasses can share:
+For a Display such as Mega Star, multiple source PropClasses can still share:
 
 ```text
 PropClass.Comment = Mega Star
 ```
 
-while retaining different Channel Names in `PropClass.Name` and separate local Channel Grid Rows.
+while retaining different Channel Names in `PropClass.Name` and separate local Channel Grid Rows. `dmxChannels.PropId` continues to identify the canonical Mega Star Display master; `dmxChannels.RawPropID`, `ChannelName`, and `ChannelGridRowNumber` preserve which source row supplied each DMX wiring relationship.
 
-After grouped-DMX materialization, `dmxChannels.PropId` correctly identifies the canonical Mega Star Display master, but the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number are not independently retained on each DMX row.
+The existing eight DMX columns remain first and unchanged, and the legacy wiring-view shapes remain unchanged. The V7.0.11 implementation passed the focused grouped-DMX regression and the full 33-test Parser suite.
 
-The accepted proposed fix is additive only and is documented in [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md).
-
-The proposed fields are `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`, but **they are not part of V7.0.10 and must not be treated as implemented until the controlled parser change is made and validated**.
-
-Compact/auto-numbered ChannelGrid expansion is a separate later change and must not be combined with the first source-preservation patch.
+Compact/auto-numbered ChannelGrid expansion remains a separate later change and was not included in V7.0.11.
 
 ### DeviceType=None
 
@@ -263,7 +261,7 @@ For physical fan-out it becomes the source UUID plus an occurrence suffix such a
 
 `RawPropID` is the identity handed downstream so reconciliation can distinguish source identity changes from stable MSB production display identity.
 
-For the proposed grouped-DMX extension, `dmxChannels.RawPropID` would use the same source meaning — the originating LOR Prop ID — but as wiring-row provenance rather than as another physical Display master. That proposal remains unimplemented in V7.0.10.
+In V7.0.11, `dmxChannels.RawPropID` uses the same source meaning — the originating LOR Prop ID — as wiring-row provenance rather than as another physical Display master. It does not replace the canonical `dmxChannels.PropId` relationship.
 
 ### PropID and SubPropID
 
@@ -535,6 +533,7 @@ Reverse-engineering discoveries must also follow the reusable [Documentation Mai
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Documented implemented V7.0.11 grouped-DMX source preservation and successful 33-test validation; implementation commit `9d2bd7a`. |
 | 2026-08-21 | GAL / OpenAI | Documented the controlled XML-to-MSB terminology, DeviceType-dependent ChannelGrid interpretation, current grouped-DMX source-detail limitation, completed dependency findings, proposed additive source-preservation boundary, and regression-test requirement while retaining V7.0.10 as the implemented baseline. |
 | 2026-08-13 | GAL / OpenAI | Documented V7.0.8 atomic publication, full output validation/provenance, canonical ownership, background-path view fields, and the Folder Alignment/raw Scene-row boundary. |
 | 2026-08-08 | GAL / OpenAI | Created standalone V7 parser engineering architecture from the functional V7.0.7 implementation and preserved V7 design decisions previously embedded in source comments and project history. |

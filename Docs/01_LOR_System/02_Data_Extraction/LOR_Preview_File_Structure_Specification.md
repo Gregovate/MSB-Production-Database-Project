@@ -25,7 +25,7 @@ The current production parser is:
 
 Functional parser baseline:
 
-`V7.0.10`
+`V7.0.11`
 
 Known-good LOR preview baseline:
 
@@ -301,7 +301,7 @@ second serialized row -> Channel Grid Row 2
 next PropClass         -> restart at Channel Grid Row 1
 ```
 
-Do not flatten row numbering across all PropClasses that share one Display Name.
+Do not flatten row numbering across all PropClasses that share one Display Name. V7.0.11 increments the row number for each nonblank semicolon-delimited source entry before validating whether that entry has enough fields to materialize; a malformed nonblank source entry can therefore leave a gap. This is intentional because the number represents source position, not a synthetic count of successful database inserts.
 
 ### Multi-grid behavior
 
@@ -361,7 +361,7 @@ The parser preserves a physical DMX Display master in `props` and materializes D
 
 ### Grouped DMX behavior
 
-Several DMX source PropClasses can share one Display Name (`PropClass.Comment`). V7.0.10 groups those source rows by Display Name, chooses one canonical Display master, and attaches all grouped DMX Channel Grid Rows to the canonical master through `dmxChannels.PropId`.
+Several DMX source PropClasses can share one Display Name (`PropClass.Comment`). V7.0.11 groups those source rows by Display Name, chooses one canonical Display master, and attaches all grouped DMX Channel Grid Rows to the canonical master through `dmxChannels.PropId`.
 
 That behavior means:
 
@@ -379,13 +379,21 @@ PropClass.Name -> Channel Name
 ChannelGrid    -> local Channel Grid Rows
 ```
 
-### Current V7.0.10 source-detail limitation
+### V7.0.11 source-detail preservation
 
-The current `dmxChannels` row retains the canonical Display/master relationship and DMX addressing, but it does not separately retain which grouped source PropClass supplied that row.
+V7.0.11 keeps the canonical Display/master relationship and DMX addressing while also retaining which grouped source PropClass supplied each materialized row.
 
-For dense-RGB Displays, this can lose the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number even though the correct Display master remains intact.
+For each explicitly serialized DMX Channel Grid Row, `dmxChannels` now preserves:
 
-The proposed additive parser extension would preserve those values as `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`. Those fields are **not implemented in V7.0.10** and are documented in [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md).
+```text
+RawPropID             -> PropClass.id / LOR Prop ID
+ChannelName           -> PropClass.Name / Channel Name
+ChannelGridRowNumber  -> local source Channel Grid Row position
+```
+
+These fields are additive. `dmxChannels.PropId` still points to the canonical materialized Display master and is not repurposed as source provenance.
+
+See [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md) for the controlled implementation and regression boundary.
 
 The downstream DMX contract currently depends on correct extraction of:
 
@@ -487,6 +495,7 @@ Reverse-engineering discoveries affecting this specification must follow the reu
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Documented implemented V7.0.11 grouped-DMX source preservation, including source-position row-number semantics, after 33 parser tests passed; implementation commit `9d2bd7a`. |
 | 2026-08-21 | GAL / OpenAI | Documented the controlled XML-to-MSB naming translation, DeviceType-dependent ChannelGrid field meanings, local Channel Grid Row Number rule, compact dense-RGB ChannelGrid evidence/uncertainty, grouped-DMX source-detail limitation, and proposed additive provenance boundary while retaining V7.0.10 as the implementation baseline. |
 | 2026-08-13 | GAL / OpenAI | Established the complete all-preview XML manifest, V7.0.8 ownership path, and parser-independent compatibility authority. |
 | 2026-08-08 | GAL / OpenAI | Created the standalone reverse-engineered `.lorprev` structure specification from the functional V7.0.7 parser and documented the structural assumptions required for future LOR-version compatibility review. |

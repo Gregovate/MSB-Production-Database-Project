@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — reverse-engineered terminology reference |
 | System | LOR Preview Parser / LOR2DB / FieldWiring |
-| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.10 |
+| Functional baseline | `parse_props_v7_scene_parser.py` V7.0.11 |
 | Initial revision | 2026-08-21 |
 | Owner | MSB Database Administrator |
 
@@ -33,7 +33,7 @@ The repository is the durable record of this terminology. Future implementation 
 | `PropClass.DeviceType` | `DeviceType` | Device Type | Determines how ChannelGrid data is interpreted and materialized |
 | `PropClass.ChannelGrid` | parsed wiring fields | Channel Grid | LOR serialized wiring assignment structure |
 | one serialized entry within `ChannelGrid` | parsed wiring row | Channel Grid Row | One DeviceType-specific wiring entry within a PropClass |
-| position of a Channel Grid Row within its PropClass | not currently stored as a dedicated field | Channel Grid Row Number | Human-readable 1-based position within that PropClass; numbering restarts for the next PropClass |
+| position of a DMX Channel Grid Row within its PropClass | `dmxChannels.ChannelGridRowNumber` | Channel Grid Row Number | 1-based source position within that PropClass; numbering restarts for the next PropClass |
 | `PropClass.MasterPropId` | `MasterPropId` where applicable | LOR Master Prop ID | LOR-authored parent/master relationship |
 | `PropClass.StringType` | `StringType` | String Type | LOR string-type metadata |
 | `PropClass.Tag` | `Tag` | LOR Tag | LOR tag metadata |
@@ -148,6 +148,8 @@ When a PropClass contains multiple Channel Grid Rows, the human-readable row num
 
 Numbering starts at `1` for the first Channel Grid Row and restarts at `1` when the next PropClass begins.
 
+For DMX in V7.0.11, numbering follows each nonblank semicolon-delimited source entry before row-validity filtering. A malformed nonblank entry can therefore leave a gap; the number represents source position, not a count of successfully materialized database rows.
+
 Example:
 
 ```text
@@ -168,7 +170,7 @@ Do not flatten those rows into one synthetic 1-N sequence across the entire Disp
 
 ## Grouped DMX Terminology
 
-For grouped DMX Displays, several `PropClass` records can share one Display Name (`PropClass.Comment`). The current V7.0.10 parser intentionally materializes one canonical Display master in `props` and attaches all grouped DMX wiring rows to that master through `dmxChannels.PropId`.
+For grouped DMX Displays, several `PropClass` records can share one Display Name (`PropClass.Comment`). The current V7.0.11 parser intentionally materializes one canonical Display master in `props` and attaches all grouped DMX wiring rows to that master through `dmxChannels.PropId`. V7.0.11 additionally preserves the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number on each `dmxChannels` row.
 
 That existing master relationship is a parser/database relationship and is separate from the source terminology preserved in the XML.
 
@@ -196,19 +198,19 @@ Channel Name = MS Short Spire 1 2x150
 
 Dense-RGB parser recovery must preserve this source distinction without changing the existing canonical Display relationship.
 
-## Proposed DMX Provenance Field Names
+## Current DMX Provenance Field Names — V7.0.11
 
-Dependency inspection of V7.0.10 established that the first additive grouped-DMX extension does not need abstract source/component field names.
+V7.0.11 implements the first additive grouped-DMX source-detail extension without abstract source/component field names.
 
-The proposed fields are:
+The current fields are:
 
-| Proposed `dmxChannels` field | Controlled meaning | Source |
+| Current `dmxChannels` field | Controlled meaning | Source |
 |---|---|---|
 | `RawPropID` | LOR Prop ID of the `PropClass` that supplied the DMX Channel Grid Row | `PropClass.id` |
 | `ChannelName` | Channel Name of the `PropClass` that supplied the row | `PropClass.Name` |
 | `ChannelGridRowNumber` | 1-based position of the serialized Channel Grid Row within that source `PropClass` | row position within `PropClass.ChannelGrid` |
 
-These are proposed fields only until the parser schema is changed and validated.
+These fields are implemented in parser V7.0.11 and validated by the grouped-DMX regression fixture while preserving the existing canonical Display/master relationship.
 
 The existing `dmxChannels.PropId` continues to mean the canonical/materialized Display master Parser Prop ID. It must not be repurposed as the source LOR Prop ID.
 
@@ -222,7 +224,7 @@ is sufficient to identify the originating source `PropClass` within the parser s
 
 `RawPropID` on a DMX row is source wiring provenance. It must not be given a foreign key that forces every grouped DMX `PropClass` to become a separate physical `props` Display row.
 
-See [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md) for the controlled proposed implementation boundary.
+See [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md) for the controlled implementation and validation boundary.
 
 ## Documentation Maintenance Rule
 
@@ -252,5 +254,6 @@ The conversation in which a fact was discovered is not the durable authority. Th
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Promoted grouped-DMX provenance terminology to the implemented V7.0.11 contract after 33 parser tests passed; implementation commit `9d2bd7a`. |
 | 2026-08-21 | GAL / OpenAI | Added the post-inspection proposed grouped-DMX field names `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`; documented why `PreviewId + RawPropID` identifies the source PropClass without creating another Display relationship; linked the reusable Documentation Maintenance Rule. |
 | 2026-08-21 | GAL / OpenAI | Established the durable XML-to-MSB terminology translation, documented Display Name = `PropClass.Comment`, Channel Name = `PropClass.Name`, and recorded that ChannelGrid interpretation is DeviceType-dependent and its row numbering is local to each PropClass. |
