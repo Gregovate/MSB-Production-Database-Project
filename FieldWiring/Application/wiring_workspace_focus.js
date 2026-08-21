@@ -1,74 +1,78 @@
 (function () {
   "use strict";
 
-  const workspace = document.getElementById("workspace");
   const imageSection = document.getElementById("image-section");
   const hookupPane = document.getElementById("hookup-pane");
-  const imageToolbar = imageSection?.querySelector(".image-toolbar .toolbar-group");
-  const hookupHeading = hookupPane?.querySelector(".hookup-heading");
-  const imageToggle = document.getElementById("image-toggle");
+  const imageToolbar = imageSection?.querySelector(".image-toolbar");
+  const divider = document.getElementById("divider");
 
-  if (!workspace || !imageSection || !hookupPane || !imageToolbar || !hookupHeading) return;
+  if (!imageSection || !hookupPane || !imageToolbar || !divider) return;
 
-  const imageButton = document.createElement("button");
-  imageButton.type = "button";
-  imageButton.className = "workspace-focus-button";
-  imageButton.textContent = "Expand Image";
-  imageButton.title = "Give the image the working area";
+  const controls = document.createElement("div");
+  controls.className = "toolbar-group workspace-ratio-controls screen-only";
 
-  const hookupButton = document.createElement("button");
-  hookupButton.type = "button";
-  hookupButton.className = "workspace-focus-button screen-only";
-  hookupButton.textContent = "Expand Hookup";
-  hookupButton.title = "Give Field Hookup the working area";
+  const presets = [
+    ["image", "More Image", "68%"],
+    ["balanced", "Balanced", "50%"],
+    ["hookup", "More Hookup", "30%"],
+  ];
 
-  imageToolbar.appendChild(imageButton);
-  hookupHeading.insertBefore(hookupButton, hookupHeading.querySelector(".legend"));
-
-  function mode() {
-    if (workspace.classList.contains("workspace-focus-image")) return "image";
-    if (workspace.classList.contains("workspace-focus-hookup")) return "hookup";
-    return "split";
+  const buttons = new Map();
+  for (const [key, label] of presets) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.dataset.workspacePreset = key;
+    button.setAttribute("aria-pressed", "false");
+    controls.appendChild(button);
+    buttons.set(key, button);
   }
 
-  function applyMode(next) {
-    workspace.classList.toggle("workspace-focus-image", next === "image");
-    workspace.classList.toggle("workspace-focus-hookup", next === "hookup");
+  imageToolbar.appendChild(controls);
 
-    imageButton.textContent = next === "image" ? "Restore Split" : "Expand Image";
-    hookupButton.textContent = next === "hookup" ? "Restore Split" : "Expand Hookup";
-
-    imageButton.setAttribute("aria-pressed", String(next === "image"));
-    hookupButton.setAttribute("aria-pressed", String(next === "hookup"));
-
-    if (next === "image" && typeof setImageVisible === "function") {
-      setImageVisible(true);
-    }
-
-    if (typeof applyImageScale === "function" && next !== "hookup") {
-      setTimeout(applyImageScale, 0);
+  function setPressed(key) {
+    for (const [name, button] of buttons) {
+      button.setAttribute("aria-pressed", String(name === key));
     }
   }
 
-  imageButton.addEventListener("click", () => {
-    applyMode(mode() === "image" ? "split" : "image");
+  function applyPreset(key) {
+    const preset = presets.find(([name]) => name === key);
+    if (!preset) return;
+
+    const basis = preset[2];
+    if (typeof setImageVisible === "function") setImageVisible(true);
+
+    // Keep the base renderer's remembered split in sync so Hide/Show Image
+    // returns to the last selected preset instead of an unrelated default.
+    if (typeof expandedImageBasis !== "undefined") expandedImageBasis = basis;
+    imageSection.style.flexBasis = basis;
+    hookupPane.style.maxHeight = "none";
+    hookupPane.style.flex = "1 1 0";
+    setPressed(key);
+
+    if (typeof applyImageScale === "function") setTimeout(applyImageScale, 0);
+  }
+
+  controls.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-workspace-preset]");
+    if (!button) return;
+    applyPreset(button.dataset.workspacePreset);
   });
 
-  hookupButton.addEventListener("click", () => {
-    applyMode(mode() === "hookup" ? "split" : "hookup");
+  // The existing divider remains the fine-grained control. Once the operator
+  // starts dragging, clear the preset highlight and let wiring.js own the exact
+  // pixel split. Its parent is now the bounded image/hookup work area.
+  divider.addEventListener("pointerdown", () => {
+    setPressed(null);
+    imageSection.style.flex = "0 0 auto";
+    hookupPane.style.flex = "1 1 0";
+    hookupPane.style.maxHeight = "none";
   });
 
-  imageToggle?.addEventListener("click", () => {
-    if (mode() === "image") applyMode("split");
-  });
-
-  // The base renderer recalculates image sizing on viewport changes. Reapply
-  // focus state afterward so a resize never silently returns the workspace to
-  // the split layout.
-  window.addEventListener("resize", () => {
-    const current = mode();
-    if (current !== "split") setTimeout(() => applyMode(current), 0);
-  });
-
-  applyMode("split");
+  // Start with a true shared split on desktop/laptop. On mobile the controls are
+  // hidden and the existing page-scroll behavior remains unchanged.
+  if (window.matchMedia("(min-width: 801px)").matches) {
+    applyPreset("balanced");
+  }
 })();
