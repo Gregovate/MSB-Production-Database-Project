@@ -1,4 +1,4 @@
-# FieldWiring Dense RGB Live Preview / Run 50 Source-Dift Boundary — 2026-08-20
+# FieldWiring Dense RGB Live Preview / Run 50 Source-Drift Boundary — 2026-08-20
 
 | Item | Value |
 |---|---|
