@@ -4,7 +4,7 @@
 |---|---|
 | Status | OPERATOR-SUPPLIED CURRENT LOR CONFIGURATION EVIDENCE |
 | Sub-project | FieldWiring |
-| Source | Screenshots of LOR E1.31 (sACN) Controller setup plus direct Show-PC registry inspection supplied 2026-08-21 |
+| Source | Screenshots of LOR E1.31 (sACN) Controller setup plus direct Show-PC registry inspection and full read-only registry dump supplied 2026-08-21 |
 | Scope | LOR-side universe-range to named-controller/IP routing |
 | Schema status | No parser, PostgreSQL schema, Controller Inventory schema, or renderer change authorized by this finding |
 
@@ -42,6 +42,12 @@ Direct inspection of the Show PC established that the active LOR network prefere
 HKEY_CURRENT_USER\SOFTWARE\Light-O-Rama\Shared\NetworkF420399CE04C4EC08C7ED0A2C62A1051
 ```
 
+The root records:
+
+```text
+Created = 2026-08-21T06:11:03.5050697-05:00
+```
+
 The Sequencer trace independently showed the startup sequence:
 
 ```text
@@ -58,22 +64,49 @@ LightORama.DotNetShared.NetworkPreferences
     FinishUpdate LOR cnt=16, DMX cnt=165, enh=7FFE
 ```
 
-A registry value search then located the current Mega Tree target IP under per-universe subkeys such as:
+The full read-only registry dump confirms that LOR stores one E1.31 record per DMX universe under subkeys such as:
 
 ```text
-HKEY_CURRENT_USER\SOFTWARE\Light-O-Rama\Shared\NetworkF420399CE04C4EC08C7ED0A2C62A1051\DMX40
-    E131 IP Address    REG_SZ    10.10.5.10
-
-...\DMX41
-    E131 IP Address    REG_SZ    10.10.5.10
-
-...\DMX42
-    E131 IP Address    REG_SZ    10.10.5.10
+...\DMX1
+...\DMX2
+...
 ```
 
-and likewise through the Mega Tree universe block.
+Representative active universe keys contain:
 
-This is direct evidence that the `DMX<n>` registry subkeys are part of LOR's persisted universe/network-preference state. The complete value set stored under each `DMX<n>` key still needs to be inventoried before designing an automated extractor.
+```text
+Uses E131            REG_DWORD 0x1
+Adapter              REG_SZ
+Protocol             REG_DWORD 0x0
+E131 IP Address      REG_SZ    <target IP>
+E131 IP Address Type REG_DWORD 0x1
+E131 Send To Port    REG_DWORD 0x15c0
+AdjustArtNetUniv     REG_DWORD 0x0
+Comment              REG_SZ    <controller/context comment>
+```
+
+`0x15c0` is decimal `5568`, matching the sACN port shown in the LOR UI.
+
+The same routing values are repeated across every configured universe belonging to the same LOR controller context. A future read-only extractor can therefore preserve the raw per-universe records and derive contiguous controller routing ranges from repeated active values.
+
+### Universes 109-112 — explicitly inactive
+
+The registry dump resolves the previously unexplained gap between Mega Cube and Mega Star.
+
+The `DMX109`, `DMX110`, `DMX111`, and `DMX112` keys each contain:
+
+```text
+Uses E131         REG_DWORD 0x0
+E131 IP Address   REG_SZ    <blank>
+E131 Send To Port REG_DWORD 0x0
+Comment           REG_SZ    <blank>
+```
+
+Therefore Universes `109-112` are **not currently configured for E1.31** on the Show PC. FieldWiring must not invent a controller assignment for them.
+
+### Registry comment precision
+
+Registry `Comment` values are source configuration text and include spelling/spacing variants such as `Pixi-con` and `Pixi-Link`. They are useful evidence but are not permanent controller identity. Normal FieldWiring presentation may continue to use reviewed controller labels while preserving raw source text in engineering detail/provenance.
 
 ### Consequence for FieldWiring / future extraction
 
@@ -131,6 +164,8 @@ Top   -> starts U93 and U101
 The controller definition proves that all of those current Mega Cube universe blocks route to one named HolidayCoro AlphaPix Flex 48-output system context.
 
 The defined controller range extends through Universe 108. The source Preview inspection does not currently use every universe in the range; unused/reserved universe capacity must not be fabricated into Display wiring rows.
+
+The registry dump additionally confirms that U109-U112 are inactive rather than merely undocumented.
 
 ### Mega Star
 
@@ -235,8 +270,6 @@ The Controller Inventory current-state review remains the authority for permanen
 
 The current evidence does not yet establish:
 
-- the complete registry value schema under each `DMX<n>` key;
-- whether controller/group names are duplicated per universe or stored elsewhere in the network-preference branch;
 - permanent `ctrl_id` values;
 - serial/MAC/hardware identity;
 - firmware state; or
