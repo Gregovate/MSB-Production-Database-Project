@@ -22,6 +22,58 @@ sys.modules[SPEC.name] = ingest
 SPEC.loader.exec_module(ingest)
 
 
+class ColumnsCursor:
+    def __init__(self, columns: list[str]):
+        self.columns = columns
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def execute(self, statement, parameters):
+        self.statement = statement
+        self.parameters = parameters
+
+    def fetchall(self):
+        return [(column,) for column in self.columns]
+
+
+class ColumnsConnection:
+    def __init__(self, columns: list[str]):
+        self.columns = columns
+
+    def cursor(self):
+        return ColumnsCursor(self.columns)
+
+
+class TargetCursor:
+    def __init__(self, counts: list[int]):
+        self.counts = counts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def execute(self, statement, parameters):
+        self.statement = statement
+        self.parameters = parameters
+
+    def fetchone(self):
+        return (self.counts.pop(0),)
+
+
+class TargetConnection:
+    def __init__(self, counts: list[int]):
+        self.counts = counts
+
+    def cursor(self):
+        return TargetCursor(self.counts)
+
+
 class IngestAuthorityTests(unittest.TestCase):
     def test_ascii_redirect_cannot_abort_unicode_diagnostic(self) -> None:
         script = (
@@ -81,6 +133,20 @@ class IngestAuthorityTests(unittest.TestCase):
         """, (run_mode, "a" * 64, "b" * 64, "c" * 64, validation))
         return connection
 
+    def dmx_connection(self, *, with_columns: bool = True) -> sqlite3.Connection:
+        connection = sqlite3.connect(":memory:")
+        if with_columns:
+            connection.execute("""
+                CREATE TABLE dmxChannels (
+                    RawPropID TEXT,
+                    ChannelName TEXT,
+                    ChannelGridRowNumber INTEGER
+                )
+            """)
+        else:
+            connection.execute("CREATE TABLE dmxChannels (PropId TEXT)")
+        return connection
+
     def test_ingest_requires_production_parser_run(self) -> None:
         connection = self.parser_connection("VERSION_CHECK", "PASSED")
         self.addCleanup(connection.close)
@@ -92,6 +158,107 @@ class IngestAuthorityTests(unittest.TestCase):
         self.addCleanup(connection.close)
         with self.assertRaisesRegex(RuntimeError, "parser_validation_status must be PASSED"):
             ingest.read_parser_run(connection)
+
+    def test_dmx_source_detail_gate_starts_at_v7011(self) -> None:
+        self.assertFalse(ingest.parser_requires_dmx_source_detail("V7.0.10"))
+        self.assertTrue(ingest.parser_requires_dmx_source_detail("V7.0.11"))
+        self.assertTrue(ingest.parser_requires_dmx_source_detail("V7.1.0"))
+
+    def test_v7010_does_not_require_new_dmx_columns(self) -> None:
+        connection = sqlite3.connect(":memory:")
+        self.addCleanup(connection.close)
+        ingest.validate_dmx_source_detail_schema_contract(
+            connection,
+            object(),
+            "V7.0.10",
+        )
+        ingest.validate_dmx_source_detail_source_values(connection, "V7.0.10")
+
+    def test_v7011_rejects_missing_sqlite_dmx_source_columns(self) -> None:
+        connection = self.dmx_connection(with_columns=False)
+        self.addCleanup(connection.close)
+        pg_columns = [
+            "import_run_id",
+            "int_dmx_channel_id",
+            "prop_id",
+            "network",
+            "start_universe",
+            "start_channel",
+            "end_channel",
+            "unknown",
+            "preview_id",
+            "raw_prop_id",
+            "channel_name",
+            "channel_grid_row_number",
+        ]
+        with self.assertRaisesRegex(RuntimeError, "RawPropID"):
+            ingest.validate_dmx_source_detail_schema_contract(
+                connection,
+                ColumnsConnection(pg_columns),
+                "V7.0.11",
+            )
+
+    def test_v7011_rejects_missing_postgres_dmx_source_columns(self) -> None:
+        connection = self.dmx_connection()
+        self.addCleanup(connection.close)
+        pg_columns = [
+            "import_run_id",
+            "int_dmx_channel_id",
+            "prop_id",
+            "network",
+            "start_universe",
+            "start_channel",
+            "end_channel",
+            "unknown",
+            "preview_id",
+            "raw_prop_id",
+            "channel_grid_row_number",
+        ]
+        with self.assertRaisesRegex(RuntimeError, "channel_name"):
+            ingest.validate_dmx_source_detail_schema_contract(
+                connection,
+                ColumnsConnection(pg_columns),
+                "V7.0.11",
+            )
+
+    def test_v7011_rejects_blank_or_invalid_dmx_source_values(self) -> None:
+        connection = self.dmx_connection()
+        self.addCleanup(connection.close)
+        connection.execute(
+            "INSERT INTO dmxChannels VALUES ('', 'Channel A', 0)"
+        )
+        with self.assertRaisesRegex(RuntimeError, "source-value validation failed"):
+            ingest.validate_dmx_source_detail_source_values(connection, "V7.0.11")
+
+    def test_v7011_allows_noncontiguous_positive_grid_row_numbers(self) -> None:
+        connection = self.dmx_connection()
+        self.addCleanup(connection.close)
+        connection.executemany(
+            "INSERT INTO dmxChannels VALUES (?, ?, ?)",
+            [
+                ("raw-a", "Channel A", 1),
+                ("raw-a", "Channel A", 3),
+                ("raw-b", "Channel B", 1),
+            ],
+        )
+        ingest.validate_dmx_source_detail_source_values(connection, "V7.0.11")
+
+    def test_v7011_target_validation_rejects_missing_values(self) -> None:
+        connection = TargetConnection([1, 0, 0])
+        with self.assertRaisesRegex(RuntimeError, "target-value validation failed"):
+            ingest.validate_dmx_source_detail_target_values(
+                connection,
+                51,
+                "V7.0.11",
+            )
+
+    def test_v7011_target_validation_accepts_complete_values(self) -> None:
+        connection = TargetConnection([0, 0, 0])
+        ingest.validate_dmx_source_detail_target_values(
+            connection,
+            51,
+            "V7.0.11",
+        )
 
     def test_import_run_authority_chain_matches_sql_parameters(self) -> None:
         class Cursor:
