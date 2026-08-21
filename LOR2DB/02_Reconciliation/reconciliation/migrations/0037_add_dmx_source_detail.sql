@@ -26,6 +26,7 @@ Safety:
   - No historical backfill.
   - No change to existing primary/foreign keys.
   - No change to preview_wiring_*_v6 or stage/report compatibility views.
+  - Reasserts established current-snapshot view owner/read-grant conventions.
   - No controller-inventory identity or mapping is introduced here.
 ============================================================================ */
 
@@ -62,6 +63,9 @@ SELECT
 FROM lor_snap.dmx_channels AS dc
 JOIN lor_snap.v_current_run AS r
   ON r.import_run_id = dc.import_run_id;
+
+ALTER VIEW lor_snap.v_current_dmx_channels OWNER TO msbadmin;
+GRANT SELECT ON lor_snap.v_current_dmx_channels TO directus_app;
 
 COMMENT ON VIEW lor_snap.v_current_dmx_channels IS
 'Current imported DMX rows. prop_id remains the canonical Display-master parser relationship; raw_prop_id/channel_name/channel_grid_row_number preserve V7.0.11 originating source-row detail. Historical pre-V7.0.11 snapshots may contain NULL source-detail values.';
