@@ -6,7 +6,6 @@ Reusable rules that should apply across multiple repositories belong under [`../
 
 ## Current Project Rules
 
-- [Documentation Maintenance Rule](Documentation_Maintenance_Rule.md) — requires reverse-engineering discoveries and other durable system knowledge developed during engineering conversations to be captured in the repository, including focused maintenance of every controlled document touched by the work.
 - [Stage Setup Documentation Standard](Stage_Setup_Documentation_Standard.md) — governs how Stage/Scene setup instructions relate to the established Google Shared Drive structure, controlled templates, Production Database identity, QR resolution, and the my.sheboyganlights.org presentation layer.
 
 ## Rule Ownership
