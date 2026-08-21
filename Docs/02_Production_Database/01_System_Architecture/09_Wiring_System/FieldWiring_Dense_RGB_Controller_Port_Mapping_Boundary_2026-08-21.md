@@ -2,21 +2,54 @@
 
 | Item | Value |
 |---|---|
-| Status | ENGINEERING CONCLUSION — vendor-confirmed controller-local configuration architecture; exact MSB controller port assignments still pending direct inspection |
+| Status | ENGINEERING CONCLUSION — LOR controller routing confirmed; MSB AlphaPix Flex 48 output programming is controller-local and not retrievable by FieldWiring |
 | Sub-project | FieldWiring |
 | Schema status | No schema, parser, controller, or renderer change authorized by this conclusion |
 
 ## Purpose
 
-This record preserves the dense-RGB architecture conclusion reached after inspecting the Run 50 FieldWiring snapshot, the current live Master Musical Preview, and HolidayCoro AlphaPix product/support documentation.
+This record preserves the dense-RGB architecture conclusion reached after inspecting the Run 50 FieldWiring snapshot, the current live Master Musical Preview, the current LOR E1.31 Network Configuration, vendor documentation, and operator-confirmed behavior of the two MSB AlphaPix Flex 48 systems.
 
-The investigation has established that Light-O-Rama Preview data contains substantial logical component/string and DMX/E1.31 addressing information, while the exact mapping from that addressing to physical AlphaPix/PixCon output ports is configured at the controller layer rather than being represented as a physical-output field in the LOR Preview.
+The investigation has established that Light-O-Rama contains substantial logical component/string and DMX/E1.31 addressing information. LOR Network Configuration additionally defines which universe range is sent to each named E1.31 controller/IP target.
 
-The vendor documentation confirms that AlphaPix controllers are configured by assigning incoming E1.31/DMX universe/channel data to physical SPI outputs through the controller configuration interface. The exact current MSB output assignments still require direct inspection of the applicable controllers or an authoritative configuration export/capture.
+The final internal relationship between that incoming E1.31 data and the physical SPI outputs is controller-local.
+
+For the two MSB AlphaPix Flex 48 systems specifically, the operator confirmed that the units are programmed physically inside the controller. FieldWiring cannot retrieve or inspect an internal output configuration from them. They receive the output sent by LOR Network Configuration.
+
+Therefore FieldWiring must **not wait for an AlphaPix Flex 48 web configuration/export that is not available in the MSB installation**.
+
+## Confirmed Architecture Layers
+
+```text
+LOR Preview / V7
+    -> Display identity binding
+    -> source component/string identity where authored
+    -> custom pixel geometry where authored
+    -> DMX/E1.31 universe/channel topology
+
+LOR Network Configuration
+    -> named E1.31 controller context
+    -> universe range routed to that controller
+    -> configured target IP / port
+
+physical controller
+    -> receives the assigned E1.31 data
+    -> controller-local programming determines physical SPI output behavior
+
+Controller Inventory
+    -> permanent ctrl_id
+    -> exact model/capability
+    -> current Display/controller assignment
+    -> reviewed current configuration facts that are actually obtainable
+
+FieldWiring
+    -> joins LOR topology to the known current physical controller context
+    -> presents only physical-output facts that are supported by available evidence
+```
 
 ## Evidence From LOR Preview
 
-The live Preview exposes useful logical topology, including examples such as:
+The live Preview exposes useful logical topology, including:
 
 - Mega Tree: 48 logical DMX legs for 48 ribbons;
 - Mega Ball: 16 logical DMX legs;
@@ -24,152 +57,144 @@ The live Preview exposes useful logical topology, including examples such as:
 - Whoville Matrix: a complete custom 40 x 40 pixel map with two large DMX address blocks; and
 - Mega Star: ten named source components and 28 DMX legs.
 
-The Preview has not exposed a field equivalent to:
+The Preview does not expose a generic dense-RGB field equivalent to:
 
 ```text
 physical controller output / port number
 ```
 
-for these dense-RGB Displays.
+for the cases inspected.
 
-## Vendor Confirmation — AlphaPix Controller Configuration
+## Evidence From Current LOR E1.31 Network Configuration
 
-The operator supplied the HolidayCoro AlphaPix 16 Classic V3 product page:
-
-`https://www.holidaycoro.com/AlphaPix-16-Pixel-Controller-V3-p/721-v3.htm`
-
-HolidayCoro's current AlphaPix product/support documentation confirms the architecture relevant to FieldWiring:
-
-- the AlphaPix receives E1.31 / sACN data over Ethernet;
-- the AlphaPix Classic 16 has 16 physical SPI pixel outputs;
-- each Classic 16 SPI output can consume up to two DMX universes;
-- controller settings are configured through the controller's web interface;
-- the controller supports per-output configuration such as RGB color mapping, reverse DMX addressing, and zig-zag/matrix addressing;
-- HolidayCoro's AlphaPix support procedure explicitly instructs the operator to determine which props/pixels are connected to each physical output and then configure the controller using the web interface; and
-- HolidayCoro examples configure specific universe assignments for individual SPI outputs, demonstrating that universe-to-output association is controller configuration rather than a physical-port identity supplied by the sequencing Preview.
-
-HolidayCoro reference pages inspected:
-
-- AlphaPix Classic 16 V3 product page: `https://www.holidaycoro.com/AlphaPix-16-Pixel-Controller-V3-p/721-v3.htm`
-- AlphaPix support page: `https://www.holidaycoro.com/kb_results.asp?ID=118`
-- AlphaPix repeated-universe / SPI-output example: `https://www.holidaycoro.com/kb_results.asp?ID=150`
-
-### 48-output AlphaPix/Flex relevance
-
-The linked product is the 16-output AlphaPix Classic, not the 48-output hardware class used for the operator-confirmed Mega Tree and Mega Cube controller contexts.
-
-HolidayCoro's Flex system documentation separately confirms a modular AlphaPix Evolution/HinksPix architecture supporting up to 48 SPI outputs through three 16-port expansion boards. HolidayCoro also documents that Flex physical outputs retain explicit output numbering, including output ranges such as 33-48 on the third expansion board.
-
-Relevant HolidayCoro references:
-
-- Flex 48-output controller: `https://www.holidaycoro.com/48-Output-Pixel-Ready2Run-Assembled-Controller-p/952-8.htm`
-- Flex output numbering explanation: `https://www.holidaycoro.com/kb_results.asp?ID=207`
-
-These vendor references confirm the same architectural boundary for the 48-output class: E1.31 data enters the controller, and the controller configuration determines which physical SPI output receives which addressing/data stream.
-
-They do **not** prove the exact present-day MSB mapping for Mega Tree or Mega Cube. Those current assignments still require controller-specific inspection or an authoritative configuration capture.
-
-## Current Layering Conclusion
-
-The architecture separates naturally into these layers:
+Operator-supplied current LOR configuration screenshots establish the following routing contexts:
 
 ```text
-LOR / V7
-    -> Display identity binding
-    -> source component/string identity where authored
-    -> custom pixel geometry where authored
-    -> DMX/E1.31 universe/channel topology
-
-physical AlphaPix / PixCon controller configuration
-    -> E1.31 universe/channel data accepted by the controller
-    -> physical SPI output/port assignment
-    -> controller-local output behavior/configuration
-
-Controller Inventory current-state resolver
-    -> permanent ctrl_id
-    -> current assignment to the Display/addressing context
-    -> exact model/capability
-    -> current physical-port mapping when captured/available
-
-FieldWiring
-    -> joins the current LOR topology to the current physical controller/port context
-    -> presents the resulting field hookup
+Mega Tree Flex 48              U1-U48     -> 10.10.5.10
+Mega Tree Ball PixCon16        U49-U64    -> 10.10.5.11
+Mega Cube Flex 48              U65-U108   -> 10.10.5.12
+Mega Star 1 PixCon16           U113-U128  -> 10.10.5.15
+Mega Star 2 PixCon16           U129-U144  -> 10.10.5.16
+Northern Lights PixieLink      U145-U146  -> 10.10.5.30
+Mt Crumpit / Whoville PixCon16 U147-U162  -> 10.10.5.17
+Gift Conveyor PixCon16         U163-U167  -> 10.10.5.18
+Open/Close Sign PixCon16       U168-U169  -> 10.10.5.19
 ```
 
-## Important Boundary
+The Open/Close Sign controller definition is new for 2026 and is not yet installed.
 
-FieldWiring must not infer permanent controller identity or physical output number solely from universe order.
+These values are current LOR routing configuration evidence. IP address remains mutable configuration data, not permanent controller identity.
 
-For example, the fact that a logical block begins at Universe 147 does not by itself prove that it is connected to PixCon Output 1. Likewise, a contiguous range such as Universes 113-128 strongly supports a logical controller block but does not, without the applicable controller configuration, prove the exact physical port numbering.
+No controller definition supplied in this evidence covers Universes 109-112. Do not invent a use for that range.
 
-Vendor documentation confirms that controllers can be configured with per-output universe/address behavior, so a convenient sequential universe pattern in LOR must not be silently promoted to a permanent physical-output rule.
+## AlphaPix Flex 48 — MSB-Specific Boundary
+
+The two confirmed 48-output systems are:
+
+```text
+Mega Tree -> 1 HolidayCoro AlphaPix Flex 48-output system
+Mega Cube -> 1 HolidayCoro AlphaPix Flex 48-output system
+```
+
+Operator confirmation for the installed MSB systems:
+
+- programming is performed physically inside the controller;
+- FieldWiring cannot retrieve an internal output mapping from those units;
+- there is no AlphaPix Flex 48 configuration export that FieldWiring should wait for in this recovery work; and
+- the units receive the E1.31 output defined by LOR Network Configuration.
+
+This supersedes the earlier recovery assumption that the next required evidence for Mega Tree/Mega Cube should be a controller web/output-configuration capture.
+
+### Mega Tree
+
+Current LOR topology provides 48 logical DMX legs at Universes 1-48, and operator-confirmed physical design provides 48 ribbons on one AlphaPix Flex 48 controller with one physical controller output per ribbon.
+
+That is enough to establish the controller grouping and logical field topology. FieldWiring must not fabricate an exact `Universe N = physical Output N` rule unless that relationship is separately known and accepted.
+
+### Mega Cube
+
+Current LOR source provides:
+
+```text
+Left  -> block beginning U65
+Front -> block beginning U73
+Top   -> blocks beginning U93 and U101
+```
+
+LOR Network Configuration routes U65-U108 to the one Mega Cube AlphaPix Flex 48 system.
+
+The physical controller has 48-output capability, but the exact internal output assignment is not retrievable from the installed unit. FieldWiring should present the known component/addressing/controller context without inventing unavailable port numbers.
+
+## PixCon16 Boundary
+
+The operator confirmation above applies specifically to the two AlphaPix Flex 48 systems.
+
+The current physical PixCon16 contexts remain:
+
+```text
+Mega Ball       -> 1 PixCon16
+Whoville Matrix -> 1 PixCon16
+Mega Star       -> 2 PixCon16
+Gift Conveyor   -> PixCon16 controller context in current LOR Network Configuration
+Open/Close Sign -> PixCon16 controller context; new 2026, not yet installed
+```
+
+Where exact PixCon16 output-port mappings are unavailable, FieldWiring must likewise leave them unresolved rather than deriving them solely from universe order.
+
+A future obtainable PixCon configuration may enrich FieldWiring, but it is not a prerequisite for completing the AlphaPix Flex 48 recovery path.
 
 ## Parser / Read-Model Distinction
 
 A separate issue exists for Mega Cube and Mega Star: the raw Preview contains useful component Names, but the current DMX parser/read model consolidates same-Display source rows onto one canonical master and therefore loses those component Names from normal FieldWiring rows.
 
-That source-component preservation issue is distinct from the controller-port mapping issue documented here.
-
-FieldWiring ultimately needs both:
+Examples of useful source names currently flattened include:
 
 ```text
-LOR source component/string context
+MC Mega Cube Front
+MC Mega Cube Top
+MS Long Spire 2 4x150
+MS Short Spire 3 2x150
+MS Center Hub Back
+```
+
+That source-component preservation issue is independent of whether the exact physical controller port number can be retrieved.
+
+FieldWiring needs to preserve the LOR source component/string context even when physical port mapping remains unavailable.
+
+## Controller Inventory Requirement
+
+Controller Inventory must not be designed around the assumption that every controller exposes a retrievable per-port configuration artifact.
+
+For the AlphaPix Flex 48 systems, Controller Inventory should preserve facts that can actually be reviewed and maintained, including:
+
+- permanent `ctrl_id`;
+- exact controller family/model/capability;
+- current assignment to Mega Tree or Mega Cube;
+- current LOR E1.31 controller/range context where useful;
+- mutable management/network configuration where operationally useful; and
+- any reviewed physical-output information that can be established independently.
+
+It should not manufacture a detailed per-port map merely to satisfy a database model.
+
+LOR/V7 continues to own current Display/component/universe topology.
+
+## FieldWiring Consequence
+
+Dense-RGB completion should now proceed without waiting for unavailable AlphaPix Flex 48 internals.
+
+For Mega Tree and Mega Cube, FieldWiring can safely use:
+
+```text
+current LOR component/string topology
         +
-physical ctrl_id / controller port context
+current LOR E1.31 controller routing
+        +
+operator-confirmed physical controller model/grouping
 ```
 
-Neither layer should be forced to stand in for the other.
+and explicitly omit exact physical port numbering where it has not been independently established.
 
-## Current Physical Controller Map
-
-Operator-confirmed physical controller contexts remain:
-
-```text
-Mega Tree       -> 1 x 48-output AlphaPix
-Mega Ball       -> 1 x PixCon16
-Mega Cube       -> 1 x 48-output AlphaPix
-Whoville Matrix -> 1 x PixCon16
-Mega Star       -> 2 x PixCon16
-```
-
-These are accepted physical grouping facts. Exact permanent controller identities and current IP/controller configuration values remain part of the Controller Inventory/current configuration work.
-
-## Controller Inventory Requirement Exposed
-
-The Controller Inventory / FieldWiring return interface must eventually preserve enough current controller configuration to resolve:
-
-```text
-LOR universe/channel context
-        -> permanent ctrl_id
-        -> physical controller output/port
-```
-
-This does **not** require Controller Inventory to duplicate all LOR string/display topology. LOR/V7 continues to own the logical Display/component/addressing side.
-
-Controller Inventory needs the current physical-controller assignment/configuration facts required to bridge from LOR addressing to the permanent physical controller and its output port.
-
-This requirement is especially important for:
-
-- one controller spanning many universes;
-- one Display using multiple controllers;
-- one controller serving multiple logical Display/component relationships; and
-- configurations where universe order is not guaranteed to equal physical output order.
-
-No PostgreSQL table/column design is authorized by this finding.
-
-## Next Evidence
-
-The next authoritative evidence, when practical, should come from actual controller configuration for one or more of these devices.
-
-The purpose of that inspection is to capture:
-
-- how E1.31 universe/address ranges are assigned to physical outputs/ports;
-- whether output numbering follows universe order in the reviewed MSB configurations;
-- how unused outputs are represented;
-- whether the controller provides an export or other reusable configuration artifact; and
-- what current-state fields Controller Inventory needs so FieldWiring can later replace temporary controller-resolution rules with permanent `ctrl_id` mappings.
-
-Until an MSB controller configuration is inspected, the exact physical-port mapping remains unresolved rather than guessed.
+The immediate remaining engineering problem is therefore the parser/read-model loss of raw DMX source-component identity, not AlphaPix controller access.
 
 ## Related Documents
 
