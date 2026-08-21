@@ -31,28 +31,36 @@ The migration is additive and limited to:
 - preserving the existing `dmx_channels.prop_id` canonical Display-master relationship;
 - preserving existing primary and foreign keys;
 - adding no foreign key from source `raw_prop_id` to `lor_snap.props`;
-- changing no `preview_wiring_*_v6` compatibility view; and
+- changing no `preview_wiring_*_v6` compatibility view;
+- reasserting the established current-view owner `msbadmin` and `SELECT` grant to `directus_app`; and
 - introducing no Controller Inventory identity or physical-controller mapping.
 
 Historical pre-V7.0.11 snapshots remain valid with NULL values in the additive columns. No historical backfill is performed.
 
-Implementation commit:
+Implementation commits:
 
 ```text
 bafb3742b1d384b32e29066a7d6a98b103e1d4ea
 Add PostgreSQL DMX source detail propagation
+
+82fba6ae542af767688892c0ff02b48c0a3bd9f5
+Preserve DMX current-view ownership and grant
 ```
 
 ### Read-only validation SQL
 
 `LOR2DB/02_Reconciliation/reconciliation/validation/32_dmx_source_detail_validation.sql`
 
-The validation checks the additive column/view contract and is intended to be run after migration installation before any V7.0.11 production ingest.
+The validation checks the additive column/view contract and is intended to be run after migration installation before any V7.0.11 production ingest. It also verifies the expected view owner and `directus_app` SELECT privilege.
 
-Creation commit:
+Relevant commits:
 
 ```text
 5b2c97955add2207d78e7b31d1304270b5e7a552
+Create DMX source-detail validation
+
+71ed1a7695a4deecf554782f075d2e3061c8fb70
+Validate DMX current-view ownership and grant
 ```
 
 ### Reference DDL
@@ -148,14 +156,18 @@ The static migration tests verify that migration `0037`:
 - explicitly extends `v_current_dmx_channels`;
 - keeps the canonical `prop_id` relationship;
 - does not add a source-RawPropID foreign key;
-- does not rewrite legacy `preview_wiring_*_v6` compatibility views; and
+- does not rewrite legacy `preview_wiring_*_v6` compatibility views;
+- preserves the established `msbadmin` owner and `directus_app` SELECT grant; and
 - has a matching read-only validation artifact.
 
-Creation commit:
+Relevant commits:
 
 ```text
 b1a39cc445d63ffcf6463a46fac30e761d084174
 Test DMX propagation migration contract
+
+c8674cf0773ecd7c142ace724c57b1c7d6892c1a
+Test DMX current-view ownership and grant
 ```
 
 ## Local Test Acceptance
@@ -183,10 +195,19 @@ Ran 5 tests in 0.043s
 OK
 ```
 
-Total local automated gate:
+After the migration was tightened to reassert current-view ownership and grants, the operator pulled the follow-up and reran the migration-contract suite:
 
 ```text
-21 tests passed
+Ran 6 tests in 0.051s
+OK
+```
+
+Final local automated gate:
+
+```text
+16 ingest tests passed
+6 migration-contract tests passed
+22 tests passed total
 0 tests failed
 ```
 
@@ -238,7 +259,9 @@ Before production execution, review migration `0037` specifically for:
 5. rollback/fallback behavior while FormView remains active; and
 6. execution/validation order.
 
-Only after that review is accepted should migration `0037` be considered for production execution.
+The ownership/grant convention has now been explicitly incorporated into migration `0037` and its validation/test artifacts.
+
+Only after the remaining production preflight checks are accepted should migration `0037` be considered for production execution.
 
 Do **not** run the V7.0.11 production parser/ingest as part of the migration installation itself.
 
@@ -267,4 +290,4 @@ Stop before deployment if review finds any requirement to:
 
 | Date | Author | Change |
 |---|---|---|
-| 2026-08-21 | GAL / OpenAI | Recorded feature-branch PostgreSQL DMX propagation implementation, exporter trace, ingest V0.4.2 fail-closed boundary, and operator-run 16/16 + 5/5 local test PASS. No production deployment authorized or performed. |
+| 2026-08-21 | GAL / OpenAI | Recorded feature-branch PostgreSQL DMX propagation implementation, exporter trace, ingest V0.4.2 fail-closed boundary, tightened current-view owner/grant preservation, and operator-run final 16/16 + 6/6 local test PASS. No production deployment authorized or performed. |
