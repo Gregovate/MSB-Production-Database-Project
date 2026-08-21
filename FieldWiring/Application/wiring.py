@@ -10,6 +10,7 @@ from typing import Any
 from wiring_common import MARKER_NAME, WiringError, context_type, end_of_local_day, local_now
 from wiring_data import load_wiring_data
 from wiring_dmx_source import replace_legacy_dmx_rows
+from wiring_e131 import apply_reviewed_e131_mapping
 from wiring_images import resolve_images, safe_image_path
 from wiring_presentation import apply_physical_presentation, group_rows
 
@@ -64,6 +65,7 @@ def build_wiring_package(
         parser_version=run.get("parser_version"),
     )
     rows = apply_physical_presentation(source_rows, scene_name=scene_name)
+    rows = apply_reviewed_e131_mapping(rows)
     if not rows:
         raise WiringError("No current field wiring rows were found for the resolved context")
 
