@@ -47,8 +47,6 @@
     // returns to the last selected preset instead of an unrelated default.
     if (typeof expandedImageBasis !== "undefined") expandedImageBasis = basis;
     imageSection.style.flexBasis = basis;
-    hookupPane.style.maxHeight = "none";
-    hookupPane.style.flex = "1 1 0";
     setPressed(key);
 
     if (typeof applyImageScale === "function") setTimeout(applyImageScale, 0);
@@ -66,8 +64,6 @@
   divider.addEventListener("pointerdown", () => {
     setPressed(null);
     imageSection.style.flex = "0 0 auto";
-    hookupPane.style.flex = "1 1 0";
-    hookupPane.style.maxHeight = "none";
   });
 
   // Start with a true shared split on desktop/laptop. On mobile the controls are
