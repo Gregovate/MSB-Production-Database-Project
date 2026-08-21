@@ -196,13 +196,43 @@ Channel Name = MS Short Spire 1 2x150
 
 Dense-RGB parser recovery must preserve this source distinction without changing the existing canonical Display relationship.
 
+## Proposed DMX Provenance Field Names
+
+Dependency inspection of V7.0.10 established that the first additive grouped-DMX extension does not need abstract source/component field names.
+
+The proposed fields are:
+
+| Proposed `dmxChannels` field | Controlled meaning | Source |
+|---|---|---|
+| `RawPropID` | LOR Prop ID of the `PropClass` that supplied the DMX Channel Grid Row | `PropClass.id` |
+| `ChannelName` | Channel Name of the `PropClass` that supplied the row | `PropClass.Name` |
+| `ChannelGridRowNumber` | 1-based position of the serialized Channel Grid Row within that source `PropClass` | row position within `PropClass.ChannelGrid` |
+
+These are proposed fields only until the parser schema is changed and validated.
+
+The existing `dmxChannels.PropId` continues to mean the canonical/materialized Display master Parser Prop ID. It must not be repurposed as the source LOR Prop ID.
+
+Because `dmxChannels.PreviewId` already exists, the pair:
+
+```text
+PreviewId + RawPropID
+```
+
+is sufficient to identify the originating source `PropClass` within the parser snapshot. A second preview-scoped source-ID field is not required.
+
+`RawPropID` on a DMX row is source wiring provenance. It must not be given a foreign key that forces every grouped DMX `PropClass` to become a separate physical `props` Display row.
+
+See [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md) for the controlled proposed implementation boundary.
+
 ## Documentation Maintenance Rule
 
 Reverse-engineering discoveries made during engineering work are part of the system knowledge and must be captured in the repository.
 
-When a discovery clarifies an existing contract:
+The reusable governing rule is [Documentation Maintenance Rule](../../../System_Documentation/Standards/Documentation_Maintenance_Rule.md).
 
-1. update the existing durable documentation additively where practical;
+When a discovery clarifies this terminology contract:
+
+1. update this document additively where practical;
 2. preserve existing correct content rather than rewriting the document from scratch;
 3. distinguish confirmed behavior from hypotheses or proposed implementation;
 4. preserve the XML-to-MSB translation so future engineers do not have to rediscover terminology from parser code or old conversations;
@@ -216,9 +246,11 @@ The conversation in which a fact was discovered is not the durable authority. Th
 - [LOR Preview Parser Architecture](LOR_Preview_Parser_Architecture.md)
 - [LOR SQLite Output Database Structure](LOR_SQLite_Output_Database_Structure.md)
 - [FieldWiring Dense RGB Parser Extension Checkpoint](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_Parser_Extension_Checkpoint_2026-08-21.md)
+- [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Added the post-inspection proposed grouped-DMX field names `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`; documented why `PreviewId + RawPropID` identifies the source PropClass without creating another Display relationship; linked the reusable Documentation Maintenance Rule. |
 | 2026-08-21 | GAL / OpenAI | Established the durable XML-to-MSB terminology translation, documented Display Name = `PropClass.Comment`, Channel Name = `PropClass.Name`, and recorded that ChannelGrid interpretation is DeviceType-dependent and its row numbering is local to each PropClass. |
