@@ -47,7 +47,29 @@ SELECT pg_get_viewdef(
     true
 ) AS view_definition;
 
--- 4. Prove no foreign key was added from source raw_prop_id.  The established
+-- 4. Preserve established current-snapshot view ownership/read access.
+SELECT
+    n.nspname AS schema_name,
+    c.relname AS view_name,
+    pg_get_userbyid(c.relowner) AS owner_name
+FROM pg_class AS c
+JOIN pg_namespace AS n ON n.oid = c.relnamespace
+WHERE n.nspname = 'lor_snap'
+  AND c.relname = 'v_current_dmx_channels'
+  AND c.relkind = 'v';
+
+SELECT
+    has_table_privilege(
+        'directus_app',
+        'lor_snap.v_current_dmx_channels',
+        'SELECT'
+    ) AS directus_app_can_select_current_dmx;
+
+-- Expected:
+-- owner_name = msbadmin
+-- directus_app_can_select_current_dmx = true
+
+-- 5. Prove no foreign key was added from source raw_prop_id.  The established
 --    prop_id and preview_id foreign keys remain the only DMX foreign keys.
 SELECT
     c.conname,
@@ -60,7 +82,7 @@ WHERE n.nspname = 'lor_snap'
   AND c.contype = 'f'
 ORDER BY c.conname;
 
--- 5. Historical/current-state compatibility.  If the current run still uses
+-- 6. Historical/current-state compatibility.  If the current run still uses
 --    parser V7.0.10, NULL values in the new columns are expected and valid.
 SELECT
     r.import_run_id,
@@ -74,7 +96,7 @@ LEFT JOIN lor_snap.v_current_dmx_channels AS dc
   ON dc.import_run_id = r.import_run_id
 GROUP BY r.import_run_id, r.parser_version;
 
--- 6. The legacy compatibility views remain present and queryable.  Migration
+-- 7. The legacy compatibility views remain present and queryable.  Migration
 --    0037 deliberately does not replace or extend their column contracts.
 SELECT
     table_name,
@@ -95,7 +117,7 @@ ORDER BY table_name;
 SELECT COUNT(*) AS current_field_lead_rows
 FROM lor_snap.preview_wiring_fieldlead_v6;
 
--- 7. Once a V7.0.11+ run becomes current, all three source-detail fields are
+-- 8. Once a V7.0.11+ run becomes current, all three source-detail fields are
 --    required by ingest V0.4.2.  This query surfaces any violation without
 --    falsely failing the current V7.0.10 historical snapshot.
 SELECT
