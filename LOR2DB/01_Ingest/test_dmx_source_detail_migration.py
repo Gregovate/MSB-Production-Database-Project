@@ -47,7 +47,7 @@ class DmxSourceDetailMigrationTests(unittest.TestCase):
         source = MIGRATION.read_text(encoding="utf-8")
         view = source.split(
             "CREATE OR REPLACE VIEW lor_snap.v_current_dmx_channels AS", 1
-        )[1].split("COMMENT ON VIEW", 1)[0]
+        )[1].split("ALTER VIEW", 1)[0]
         expected_order = [
             "dc.import_run_id",
             "dc.int_dmx_channel_id",
@@ -64,6 +64,21 @@ class DmxSourceDetailMigrationTests(unittest.TestCase):
         ]
         positions = [view.index(item) for item in expected_order]
         self.assertEqual(positions, sorted(positions))
+
+    def test_current_view_reasserts_owner_and_read_grant(self) -> None:
+        migration = MIGRATION.read_text(encoding="utf-8")
+        validation = VALIDATION.read_text(encoding="utf-8")
+        self.assertIn(
+            "ALTER VIEW lor_snap.v_current_dmx_channels OWNER TO msbadmin;",
+            migration,
+        )
+        self.assertIn(
+            "GRANT SELECT ON lor_snap.v_current_dmx_channels TO directus_app;",
+            migration,
+        )
+        self.assertIn("pg_get_userbyid(c.relowner) AS owner_name", validation)
+        self.assertIn("has_table_privilege(", validation)
+        self.assertIn("'directus_app'", validation)
 
     def test_migration_does_not_replace_legacy_wiring_views(self) -> None:
         source = MIGRATION.read_text(encoding="utf-8")
