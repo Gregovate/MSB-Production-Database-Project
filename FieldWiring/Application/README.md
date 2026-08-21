@@ -1,147 +1,205 @@
 # FieldWiring Application
 
-Status: **development — renderer integration milestone**
+Status: **release candidate — server/tablet/phone deployment pending**
 
 This folder contains the browser-based FieldWiring application.
 
-## Current milestone
+For the complete recovery/development handoff, start with:
 
-V0.2.0 preserves the accepted Browser Lookup V3 behavior from V0.1.0 and connects a resolved Display / Stage / Scene context to the accepted Church V7 FieldWiring workspace.
+- `Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Release_Candidate_Handoff_and_Development_Runbook_2026-08-21.md`
+- `Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Server_Deployment_and_Scan_Integration_Plan_2026-08-21.md`
 
-The application now supports:
+## Current proven baseline
 
-- find a current wiring-bearing Display by Display Name, permanent `display_id`, or `DISP:<id>`;
-- exclude current LOR `DeviceType=None` Displays from FieldWiring search results;
-- browse Stage -> current Stage/Scene wiring contexts;
-- open the resolved context in the FieldWiring renderer;
-- use `lor_snap.preview_wiring_fieldlead_v6` semantics as the normal field-hookup source;
-- retain permanent `display_id` and current Preview/Scene identity through the renderer handoff;
-- show all current field-lead relationships in a resolved Scene package rather than reducing the result to the trigger Display;
-- apply the already-reviewed Traditional LOR and Pixie field-presentation rules without inventing permanent Controller Inventory identity;
-- present published same-scope wiring images with the accepted Church V7 image controls;
-- never borrow a parent Stage wiring image for a resolved Scene;
-- distinguish a same-scope `PreviewBackground` image as **CONTEXT IMAGE — NOT WIRING** when no published wiring image exists;
-- show `NO WIRING IMAGE AVAILABLE` when the resolved scope has no published wiring drawing;
-- support multiple published images with Previous / Next and Page X/Y;
-- provide Show / Hide, Fit Width, Fit All, image-only zoom, and the accepted draggable desktop image/table divider;
-- start the image pane collapsed on narrow/mobile layouts;
-- expose raw addressing under **Engineering details** rather than making it the primary technician instruction;
-- provide a print / Save PDF presentation with centralized MSB print branding, snapshot provenance, generation time, and an end-of-local-day expiration;
-- use the existing `webassets.sheboyganlights.org` branding assets instead of copying logo files into this project.
-
-The default FieldWiring timezone is `America/Chicago`; deployment may override it with `FIELDWIRING_TIMEZONE` if required.
-
-## Authority boundary
-
-Production data authority remains:
+The current application has been exercised on a laptop against a SHA-verified SQLite engineering export of production PostgreSQL Run 51:
 
 ```text
-LOR -> LOR2DB -> PostgreSQL Production Database -> FieldWiring
+import_run_id          51
+parser_version         V7.0.11
+ingest_script_version  V0.4.2
+current DMX rows       508
 ```
 
-FieldWiring is read-only. It does not change:
+The application is read-only and preserves the authority chain:
 
-- PostgreSQL rows or schema;
-- LOR previews or wiring topology;
-- Directus;
-- the deployed `/scan/DISP/<display_id>` QR endpoint;
-- Google Drive folders/files; or
-- FormView.
+```text
+LOR -> Parser V7 -> LOR2DB -> PostgreSQL -> FieldWiring
+```
 
-The renderer does not create a second wiring store. Normal hookup rows continue to use the accepted current `lor_snap.preview_wiring_fieldlead_v6` derivation plus permanent Production Database Display/Scene identity.
+Permanent Display identity is `ref.display.display_id`.
+
+## Application structure
+
+```text
+backend.py
+    Flask host / routes / health
+
+repository.py
+    PostgreSQL production repository
+    SQLite development-snapshot repository
+
+wiring.py
+    top-level package assembler
+
+wiring_data.py
+    normal current wiring/context loader
+
+wiring_dmx_source.py
+    V7.0.11+ atomic DMX source-detail adapter
+
+wiring_presentation.py
+    A/C / Pixie / DMX family classification and physical presentation
+
+wiring_dumbrgb.py
+    CR50 / DumbRGB fixture annotation
+
+wiring_e131.py
+    reviewed temporary E1.31 physical controller/output mappings
+
+wiring_images.py
+    guarded same-scope image resolver and image delivery
+
+wiring.js
+    base browser renderer / image controls / Engineering Details
+
+wiring_e131.js
+    E1.31 technician table
+
+wiring_dumbrgb.js
+    DMX/DumbRGB technician table
+
+wiring_disclosure.js
+    collapsible controller/presentation cards
+
+wiring_sticky_context.css
+    long-list controller/table header behavior
+
+wiring_workspace_focus.js
+wiring_workspace_focus.css
+    shared image + Field Hookup desktop/laptop workspace
+```
+
+## Current presentation families
+
+```text
+LOR + Traditional -> A/C controller / numbered output
+LOR + RGB         -> Pixie controller / numbered RGB output
+DMX + DumbRGB     -> DMX fixture/network presentation
+DMX + RGB         -> E1.31 dense RGB presentation
+```
+
+Current reviewed temporary E1.31 mappings are centralized in `wiring_e131.py` for:
+
+- Mega Tree — AlphaPix / Flex48, Universes 1-48 -> Outputs 1-48;
+- Mega Ball — PixCon 16, Universes 49-64 -> Outputs 1-16;
+- Mega Star Controller 1 — PixCon 16, Universes 113-128 -> Outputs 1-16;
+- Mega Star Controller 2 — PixCon 16, Universes 129-140 -> Outputs 1-12.
+
+These mappings are presentation recovery evidence, not permanent Controller Inventory identity.
+
+Northern Lights is the current DMX/DumbRGB acceptance case: 66 CR50 fixtures represented by 198 atomic RGB source rows. The normal technician table groups three RGB rows into one fixture instruction without fabricating the two intentionally omitted CR50 function channels.
+
+## Current browser UX baseline
+
+Desktop/laptop:
+
+- image + Field Hookup remain visible together in one shared work area;
+- `More Image`, `Balanced`, and `More Hookup` presets bias the split;
+- divider remains draggable for a custom split;
+- `Hide Image` is the only control that removes the image;
+- controller/presentation cards are independently collapsible;
+- normal wiring images do not show a redundant badge;
+- context-only images retain the conspicuous `NO WIRING IMAGE AVAILABLE · CONTEXT IMAGE — NOT WIRING` warning;
+- Engineering Details remains collapsible.
+
+Tablet/phone field acceptance is the next device-level gate.
 
 ## Data modes
 
 ### Production
 
-Set:
-
 ```text
-FIELDWIRING_DATABASE_DSN=<least-privilege PostgreSQL DSN>
+FIELDWIRING_DATABASE_DSN=<least-privilege read-only PostgreSQL DSN>
+FIELDWIRING_DRIVE_ROOT=<server-visible read-only Display Folders root>
+FIELDWIRING_TIMEZONE=America/Chicago
 ```
 
-Production mode opens every database session read-only.
+Production must not set `FIELDWIRING_DEV_SNAPSHOT`.
 
-The production role/grants are **not created by this application milestone**. They must be verified/approved before deployment.
-
-### Explicit development snapshot
-
-For local acceptance testing only:
+### Development snapshot
 
 ```text
 FIELDWIRING_DEV_SNAPSHOT=C:\path\to\fieldwiring_snapshot.db
+FIELDWIRING_DRIVE_ROOT=G:\Shared drives\Display Folders
 ```
 
-The SQLite export is opened with `mode=ro`. It is a development fixture only and must never become FieldWiring's operational source of truth.
+The SQLite snapshot is an engineering fixture only.
 
-### Drive root
-
-The server-side image resolver defaults to:
-
-```text
-G:\Shared drives\Display Folders
-```
-
-For development/testing it may be overridden with:
-
-```text
-FIELDWIRING_DRIVE_ROOT=<mapped or local test Display Folders root>
-```
-
-The browser never receives a `G:` path. Published images are served through the read-only FieldWiring image endpoint, and `SourceDocs` is rejected as application content.
-
-## Development / test environment
-
-Runtime dependencies are listed in:
-
-```text
-FieldWiring/Application/requirements.txt
-```
-
-Development/test dependencies are kept separate so tools such as `pytest` are not added to the production runtime requirement set.
+## Development/test environment
 
 From the repository virtual environment:
 
 ```powershell
 python -m pip install -r .\FieldWiring\Application\requirements-dev.txt
-```
-
-Run the FieldWiring automated tests with:
-
-```powershell
 python -m pytest .\FieldWiring\Application -q
 ```
 
-A JavaScript command-line syntax check is optional and is not a FieldWiring workstation prerequisite. Browser acceptance remains the final validation for the browser JavaScript behavior.
-
-## Run locally
+Run locally:
 
 ```powershell
-$env:FIELDWIRING_DEV_SNAPSHOT = 'C:\path\to\fieldwiring_snapshot.db'
+$env:FIELDWIRING_DEV_SNAPSHOT = 'C:\lor\FieldWiring-Snapshots\fieldwiring_snapshot_run_51_20260821T204440Z.db'
 $env:FIELDWIRING_DRIVE_ROOT = 'G:\Shared drives\Display Folders'
 python .\FieldWiring\Application\backend.py
 ```
 
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:8790/
 ```
 
-## Existing QR dependency
+Health:
 
-The deployed Display QR lookup already resolves permanent `display_id` through the existing scan application.
+```text
+GET /api/health
+```
 
-The renderer can accept `display_id` as its durable trigger identity. FieldWiring does not create a second QR identity or replace the working scan application. Joining the deployed scan task menu to the FieldWiring route remains a later integration step after browser acceptance.
+Expected development mode includes:
 
-## Acceptance status
+```json
+{"data_mode":"sqlite-dev","status":"ok","version":"V0.2.0"}
+```
 
-This milestone is the real application integration of the previously accepted lookup and Church V7 renderer contracts. It does **not** claim live PostgreSQL/Drive acceptance merely because fixture tests pass.
+## Production image-path warning
 
-Next acceptance sequence:
+The accepted laptop resolver currently sees the source tree through:
 
-1. run the application against the current read-only FieldWiring development snapshot and mapped Display Folders;
-2. validate Church as the first real integrated A/C + Pixie case against the accepted Church V7 baseline;
-3. validate Stage 21 Polar Bears as the first multi-image Scene/package case;
-4. continue through the already documented device-family acceptance set;
-5. preserve FormView as the fallback/reference until FieldWiring is explicitly accepted.
+```text
+G:\Shared drives\Display Folders
+```
+
+A Linux production server does not automatically have that path. Before server deployment is accepted, establish a controlled read-only server-visible Display Folders tree and prove deterministic translation from stored Windows `folder_path` / `BackgroundFile` evidence to that server root.
+
+Do not copy ad-hoc images into the application directory or weaken the same-scope/source-marker rules to make deployment easier.
+
+## Existing Display QR dependency
+
+The deployed Display QR hub already exists in the Directus scan extension on `msb-prod-db` and resolves permanent `display_id`.
+
+FieldWiring must not create a second QR identity or scan engine.
+
+The intended integration is one new **Field Wiring** action on the existing `/scan/DISP/:key` hub, passing only the already-resolved permanent `display_id` into the FieldWiring application.
+
+## Merge/deployment state
+
+Merging FieldWiring to `main` is appropriate after the feature branch is brought current with `main` and the full tests pass again.
+
+At the release-candidate checkpoint the branch was 291 commits ahead of `main` and 8 commits behind it, so update the branch before merging.
+
+Merging code is not the same as production cutover. Keep FormView available until:
+
+1. FieldWiring is deployed on the server using live read-only PostgreSQL;
+2. the server can resolve the approved Display Folders/image source;
+3. the protected public route is working;
+4. tablet/phone testing is accepted;
+5. the existing Display scan hub exposes Field Wiring successfully.
