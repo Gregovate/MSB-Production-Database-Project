@@ -2,7 +2,7 @@
 # postgres_ingest_from_lor_sqlite_v7.py
 # Initial Release : 2026-02-21  V0.1.0
 # Version         : 2026-02-21  V0.1.0
-# Current Version : 2026-08-16  V0.4.1
+# Current Version : 2026-08-21  V0.4.2
 #
 # Changes:
 # - Initial append-only ingestion layer (SQLite → Postgres)
@@ -25,6 +25,8 @@
 # - V0.4.1 makes console diagnostics safe on legacy Windows code pages, reports
 #   post-commit failures truthfully, and treats an already-completed matching
 #   SQLite digest as a successful idempotent recovery instead of duplicating it.
+# - V0.4.2 requires V7.0.11+ DMX source-detail schema/value preservation on both
+#   SQLite and PostgreSQL sides before a new import run can commit.
 # (GAL)
 #
 # Author          : Greg Liebig, Engineering Innovations, LLC.
@@ -107,6 +109,13 @@
 #
 # -----------------------------------------------------------------------------
 # Change Log
+# 2026-08-21  GAL / OpenAI  V0.4.2
+#   - For parser V7.0.11 and later, requires dmxChannels.RawPropID,
+#     ChannelName, and ChannelGridRowNumber in SQLite and matching additive
+#     columns in lor_snap.dmx_channels before creating a new import_run.
+#   - Validates all V7.0.11+ DMX source-detail values before import and again in
+#     PostgreSQL before commit; source row-number gaps remain valid.
+#   - Keeps older V7 snapshots eligible under their historical schema contract.
 # 2026-08-16  GAL / OpenAI  V0.4.1
 #   - Prevented Unicode diagnostics from aborting a committed Windows ingest.
 #   - Detects an already-completed exact SQLite digest and returns its existing
@@ -170,6 +179,7 @@ import getpass
 import hashlib
 import os
 import platform
+import re
 import socket
 import sqlite3
 import sys
@@ -181,7 +191,13 @@ import psycopg2
 import psycopg2.extras
 
 
-INGEST_SCRIPT_VERSION = "V0.4.1"
+INGEST_SCRIPT_VERSION = "V0.4.2"
+DMX_SOURCE_DETAIL_MIN_PARSER_VERSION = (7, 0, 11)
+DMX_SOURCE_DETAIL_SCHEMA_CONTRACT = (
+    ("RawPropID", "raw_prop_id"),
+    ("ChannelName", "channel_name"),
+    ("ChannelGridRowNumber", "channel_grid_row_number"),
+)
 
 
 # ---------------------------
@@ -201,6 +217,7 @@ def configure_console_output() -> None:
 
 
 configure_console_output()
+
 
 def norm_name(s: str) -> str:
     """Normalize a column name for matching: lowercase and remove underscores/spaces."""
@@ -363,6 +380,144 @@ def validate_raw_id_target_values(pg_conn, import_run_id: int) -> None:
         )
 
     print("[OK] Postgres raw PropClass UUID values are complete.")
+
+
+def parser_version_tuple(parser_version: str) -> tuple[int, int, int]:
+    """Parse the controlled V<major>.<minor>.<patch> parser version."""
+    match = re.fullmatch(r"V(\d+)\.(\d+)\.(\d+)", str(parser_version or "").strip())
+    if match is None:
+        raise RuntimeError(
+            "Parser snapshot is not eligible for ingest: parser_version must use "
+            f"V<major>.<minor>.<patch>; found {parser_version!r}"
+        )
+    return tuple(int(part) for part in match.groups())
+
+
+def parser_requires_dmx_source_detail(parser_version: str) -> bool:
+    """Return whether this parser version owns the V7.0.11 DMX source contract."""
+    return parser_version_tuple(parser_version) >= DMX_SOURCE_DETAIL_MIN_PARSER_VERSION
+
+
+def validate_dmx_source_detail_schema_contract(
+    sqlite_conn: sqlite3.Connection,
+    pg_conn,
+    parser_version: str,
+) -> None:
+    """Require V7.0.11+ DMX source-detail columns on both sides before ingest."""
+    if not parser_requires_dmx_source_detail(parser_version):
+        return
+
+    sqlite_cols = get_sqlite_columns(sqlite_conn, "dmxChannels")
+    pg_cols = get_pg_columns(pg_conn, "lor_snap", "dmx_channels")
+    failures: List[str] = []
+
+    for sqlite_column, pg_column in DMX_SOURCE_DETAIL_SCHEMA_CONTRACT:
+        if sqlite_column not in sqlite_cols:
+            failures.append(
+                f'SQLite table "dmxChannels" is missing "{sqlite_column}"'
+            )
+        if pg_column not in pg_cols:
+            failures.append(
+                f'Postgres table lor_snap.dmx_channels is missing "{pg_column}"'
+            )
+
+    if failures:
+        details = "\n".join(f"  - {item}" for item in failures)
+        raise RuntimeError(
+            "V7.0.11+ DMX source-detail schema contract failed:\n"
+            f"{details}\n"
+            "The ingest was not started."
+        )
+
+    print("[OK] V7.0.11+ DMX source-detail schema contract verified.")
+
+
+def validate_dmx_source_detail_source_values(
+    sqlite_conn: sqlite3.Connection,
+    parser_version: str,
+) -> None:
+    """Require every V7.0.11+ DMX row to retain source identity/name/row number."""
+    if not parser_requires_dmx_source_detail(parser_version):
+        return
+
+    failures: List[str] = []
+    checks = (
+        (
+            "blank RawPropID",
+            "RawPropID IS NULL OR TRIM(RawPropID) = ''",
+        ),
+        (
+            "blank ChannelName",
+            "ChannelName IS NULL OR TRIM(ChannelName) = ''",
+        ),
+        (
+            "invalid ChannelGridRowNumber",
+            "ChannelGridRowNumber IS NULL OR ChannelGridRowNumber <= 0",
+        ),
+    )
+    for label, predicate in checks:
+        count = int(
+            sqlite_conn.execute(
+                f'SELECT COUNT(*) FROM "dmxChannels" WHERE {predicate}'
+            ).fetchone()[0]
+        )
+        if count:
+            failures.append(f'SQLite "dmxChannels" has {count} row(s) with {label}')
+
+    if failures:
+        details = "\n".join(f"  - {item}" for item in failures)
+        raise RuntimeError(
+            "V7.0.11+ DMX source-detail source-value validation failed:\n"
+            f"{details}"
+        )
+
+    print("[OK] SQLite V7.0.11+ DMX source-detail values are complete.")
+
+
+def validate_dmx_source_detail_target_values(
+    pg_conn,
+    import_run_id: int,
+    parser_version: str,
+) -> None:
+    """Require V7.0.11+ source detail to survive SQLite -> PostgreSQL."""
+    if not parser_requires_dmx_source_detail(parser_version):
+        return
+
+    checks = (
+        ("blank raw_prop_id", "raw_prop_id IS NULL OR BTRIM(raw_prop_id) = ''"),
+        ("blank channel_name", "channel_name IS NULL OR BTRIM(channel_name) = ''"),
+        (
+            "invalid channel_grid_row_number",
+            "channel_grid_row_number IS NULL OR channel_grid_row_number <= 0",
+        ),
+    )
+    failures: List[str] = []
+    for label, predicate in checks:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT COUNT(*)
+                FROM lor_snap.dmx_channels
+                WHERE import_run_id = %s
+                  AND ({predicate})
+                """,
+                (import_run_id,),
+            )
+            count = int(cur.fetchone()[0])
+        if count:
+            failures.append(
+                f"lor_snap.dmx_channels has {count} row(s) with {label} "
+                f"for import_run_id={import_run_id}"
+            )
+
+    if failures:
+        details = "\n".join(f"  - {item}" for item in failures)
+        raise RuntimeError(
+            "V7.0.11+ DMX source-detail target-value validation failed:\n"
+            f"{details}"
+        )
+
+    print("[OK] Postgres V7.0.11+ DMX source-detail values are complete.")
 
 
 def build_column_map(sqlite_cols: List[str], pg_cols: List[str]) -> Dict[str, str]:
@@ -758,11 +913,18 @@ def main() -> int:
     pg_conn.autocommit = False  # we want all-or-nothing
 
     try:
-        # Validate the snapshot contract before creating an import_run row.
+        # Read parser provenance first.  The V7.0.11+ DMX contract is versioned,
+        # and every contract check below still runs before any import_run insert.
+        parser_run = read_parser_run(sqlite_conn)
+        parser_version = str(parser_run.get("parser_version") or "")
+
         validate_raw_id_schema_contract(sqlite_conn, pg_conn)
         validate_raw_id_source_values(sqlite_conn)
+        validate_dmx_source_detail_schema_contract(
+            sqlite_conn, pg_conn, parser_version
+        )
+        validate_dmx_source_detail_source_values(sqlite_conn, parser_version)
 
-        parser_run = read_parser_run(sqlite_conn)
         source_counts = get_sqlite_snapshot_counts(sqlite_conn)
         ingest_actor, ingest_host = get_actor_host()
         ingest_started_at = datetime.now().astimezone()
@@ -858,8 +1020,12 @@ def main() -> int:
         # Views are managed separately in PostgreSQL and are not rebuilt here.
         # This ingest transaction only loads the append-only lor_snap snapshot.
 
-        # Confirm the raw UUID survived SQLite -> Postgres before committing.
+        # Confirm required source identity/detail survived SQLite -> PostgreSQL
+        # before committing the append-only snapshot.
         validate_raw_id_target_values(pg_conn, import_run_id)
+        validate_dmx_source_detail_target_values(
+            pg_conn, import_run_id, parser_version
+        )
 
         # Complete the permanent handoff record inside the same transaction.
         complete_import_run(pg_conn, import_run_id, datetime.now().astimezone())
@@ -907,7 +1073,6 @@ def main() -> int:
             print("[WARN] wiring_field_rows is 0; views likely failed or current_run is empty.", file=sys.stderr)
 
         return 0
-    
 
     except Exception as e:
         if committed:
