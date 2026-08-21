@@ -261,7 +261,10 @@ def _attach_rows_to_unique_pixie_anchor(rows: list[dict[str, Any]], anchors: lis
         )
 
 
-def _apply_reviewed_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
+def _apply_reviewed_repeated_pixie_series(
+    rows: list[dict[str, Any]],
+    scene_name: str | None = None,
+) -> None:
     series: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         if row.get("presentation_family") != "PIXIE" or row.get("controller_group"):
@@ -293,7 +296,8 @@ def _apply_reviewed_repeated_pixie_series(rows: list[dict[str, Any]]) -> None:
         # presented output from the snapshot's raw Unit ID so Output 2 correctly
         # contains both Cane 10 and Cane 12 until a refreshed snapshot is imported.
         known_candyland_stale_third = (
-            key == "CL-RGBCandyCane"
+            (scene_name or "").strip().casefold() == "17-candyland-cl"
+            and key == "CL-RGBCandyCane"
             and len(series_rows) == 12
             and expected == ["21", "22", "23", "24"]
             and sequence[8:12] == ["21", "22", "23", "22"]
@@ -375,7 +379,7 @@ def apply_physical_presentation(
     _apply_candyland_lollipop_pattern(pixie_rows, scene_name)
     anchors = _apply_reviewed_pixie_anchors(pixie_rows)
     _attach_rows_to_unique_pixie_anchor(pixie_rows, anchors)
-    _apply_reviewed_repeated_pixie_series(pixie_rows)
+    _apply_reviewed_repeated_pixie_series(pixie_rows, scene_name)
 
     return rows
 
