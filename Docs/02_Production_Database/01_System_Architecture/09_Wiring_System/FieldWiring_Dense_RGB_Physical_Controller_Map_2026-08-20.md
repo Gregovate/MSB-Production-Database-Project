@@ -17,7 +17,7 @@ The current LOR/V7 snapshot remains authoritative for universe/channel topology.
 
 ```text
 Mega Tree
-    1 physical 48-output AlphaPix controller
+    1 physical HolidayCoro AlphaPix Flex 48-output system
     48 ribbons around the tree
     one physical controller output per ribbon
 
@@ -25,8 +25,7 @@ Mega Ball
     1 physical PixCon16 controller
 
 Mega Cube
-    1 physical 48-output AlphaPix controller
-    same controller class/capability pattern as the Mega Tree
+    1 physical HolidayCoro AlphaPix Flex 48-output system
 
 Whoville Matrix
     1 physical PixCon16 controller
@@ -35,6 +34,16 @@ Mega Star
     2 physical PixCon16 controllers
 ```
 
+Operator-confirmed inventory count for the AlphaPix Flex systems:
+
+```text
+2 total HolidayCoro AlphaPix Flex 48-output systems
+    1 -> Mega Tree
+    1 -> Mega Cube
+```
+
+The two Flex systems are the two previously described 48-output AlphaPix controller contexts; they are not additional controllers.
+
 ## Important Correction — Mega Cube
 
 Earlier FieldWiring E1.31 documentation interpreted the addressing workbook as evidence for three physical PixCon16 controllers for Mega Cube.
@@ -42,7 +51,7 @@ Earlier FieldWiring E1.31 documentation interpreted the addressing workbook as e
 That interpretation is superseded by operator-confirmed physical knowledge:
 
 ```text
-Mega Cube -> one 48-output AlphaPix controller
+Mega Cube -> one HolidayCoro AlphaPix Flex 48-output system
 ```
 
 The older addressing workbook rows/IP entries remain preserved as source/configuration evidence. They must not be deleted or silently rewritten, but FieldWiring must not use them to present Mega Cube as three physical controllers.
@@ -55,12 +64,12 @@ Mega Tree and Mega Cube both demonstrate the same important dense-RGB rule:
 
 ```text
 many E1.31 universe/addressing rows
-        -> one physical 48-output AlphaPix controller
+        -> one physical HolidayCoro AlphaPix Flex 48-output system
 ```
 
 For Mega Tree, the 48 physical outputs correspond to the 48 ribbons around the tree.
 
-For Mega Cube, the physical controller is likewise one 48-output AlphaPix. Detailed output-to-section mapping continues to come from the current LOR/V7 topology and reviewed engineering evidence; this finding does not invent missing wiring rows.
+For Mega Cube, the physical controller is likewise one AlphaPix Flex 48-output system. Detailed output-to-section mapping continues to come from the current LOR/V7 topology plus reviewed controller-side configuration evidence; this finding does not invent missing physical port assignments.
 
 ## PixCon16 Dense RGB Cases
 
@@ -90,20 +99,20 @@ FieldWiring should eventually present these dense RGB Displays using physical-co
 
 ```text
 Mega Tree
-    AlphaPix 48-output controller
+    HolidayCoro AlphaPix Flex 48-output system
     Outputs 1-48
 
 Mega Ball
     PixCon16
-    physical outputs as resolved from current topology
+    physical outputs as resolved from current topology/controller configuration
 
 Mega Cube
-    AlphaPix 48-output controller
+    HolidayCoro AlphaPix Flex 48-output system
     Outputs 1-48 / current resolved connections
 
 Whoville Matrix
     PixCon16
-    physical outputs as resolved from current topology
+    physical outputs as resolved from current topology/controller configuration
 
 Mega Star
     PixCon16 controller 1
@@ -121,8 +130,9 @@ The eventual resolver must support:
 - one physical controller spanning many E1.31 universes;
 - one Display using more than one physical controller;
 - exact controller model/capability distinct from universe/IP addressing;
-- current assignment only, reconciled to the current approved LOR/V7 snapshot; and
-- output/Display relationships supplied from the current LOR/V7 topology rather than duplicated unnecessarily in Controller Inventory.
+- current assignment only, reconciled to the current approved LOR/V7 snapshot;
+- controller-side E1.31-to-physical-port configuration where required for field hookup; and
+- Display/component/output relationships supplied from LOR/V7 where available rather than duplicated unnecessarily in Controller Inventory.
 
 ## Supersession Rule
 
