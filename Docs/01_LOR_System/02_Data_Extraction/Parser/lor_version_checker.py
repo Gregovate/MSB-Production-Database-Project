@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-CHECKER_VERSION = "V1.3.0"
+CHECKER_VERSION = "V1.3.1"
 MANIFEST_VERSION = 4
 CRITICAL_ELEMENTS = {"PreviewClass", "Scene", "PropClass"}
 UUID_RE = re.compile(
@@ -370,6 +370,22 @@ class Finding:
     parser_modification_required: str | None = None
 
 
+def _same_version_authoring_finding(finding: Finding) -> Finding:
+    """Keep normal Motion FX authoring visible without blocking same-version runs."""
+    if finding.severity != "BLOCKING":
+        return finding
+    evidence = f"{finding.area} {finding.message}"
+    if "MotionRowDefault" not in evidence:
+        return finding
+    return Finding(
+        "INFO",
+        finding.area,
+        finding.message
+        + " Same-version Motion FX authoring is nonblocking; the V7 production parser does not consume MotionRowDefault data.",
+        None,
+    )
+
+
 def set_difference_findings(
     baseline: Iterable[str], candidate: Iterable[str], area: str, noun: str
 ) -> list[Finding]:
@@ -593,6 +609,9 @@ def compare_manifests(baseline: dict[str, Any], candidate: dict[str, Any]) -> li
                 "REVIEW", f"deep preview {tag} identity",
                 f"{len(old_ids - new_ids)} IDs were removed and {len(new_ids - old_ids)} IDs were added.",
             ))
+
+    if baseline.get("lor_version") == candidate.get("lor_version"):
+        findings = [_same_version_authoring_finding(item) for item in findings]
     return findings
 
 
