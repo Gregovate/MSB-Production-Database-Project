@@ -1,14 +1,32 @@
-/* FieldWiring long-list sticky context.
+/* FieldWiring long-list sticky context and desktop image/hookup split.
 
    Keep the controller identity and, on desktop, the table column labels visible
    while scrolling a large controller relationship list. The generic Field
    Hookup section heading is intentionally not sticky on mobile so it does not
    consume scarce vertical space.
+
+   When an image is open on desktop, the image pane owns the explicit flex-basis
+   controlled by the existing drag handle and Field Hookup flexes into the
+   remaining workspace. Dragging the divider therefore enlarges either side of
+   the split instead of allowing the image pane to shrink a fixed-height hookup
+   box that cannot reclaim the released space.
 */
 
 @media screen and (min-width: 801px) {
   .hookup-pane {
     --hookup-heading-height: 52px;
+  }
+
+  .image-section.image-open + .hookup-pane {
+    flex: 1 1 0;
+    min-height: 150px;
+    max-height: none;
+  }
+
+  .image-section:not(.image-open) + .hookup-pane {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 58vh;
   }
 
   /* Sticky must resolve against the hookup-pane scroll container rather than a
