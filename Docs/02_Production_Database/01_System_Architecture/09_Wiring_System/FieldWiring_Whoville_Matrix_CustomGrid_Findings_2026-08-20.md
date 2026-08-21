@@ -100,15 +100,7 @@ The last rows end with:
 
 ## Relationship to ChannelGrid
 
-The two logical 800-pixel CustomGrid blocks align numerically with the two ChannelGrid starting universes:
-
-```text
-Logical block A: 1001-1800
-ChannelGrid start: Universe 147
-
-Logical block B: 1-800
-ChannelGrid start: Universe 155
-```
+The raw source proves two logical 800-pixel CustomGrid blocks and two ChannelGrid address blocks beginning at Universes 147 and 155.
 
 The two universe starts are exactly eight universes apart:
 
@@ -125,7 +117,11 @@ Observed arithmetic is strongly consistent with each logical block representing 
 
 This arithmetic is an engineering inference only. It is not authorization to redefine the opaque fifth ChannelGrid field as a channel-count field.
 
-Likewise, the eight-universe separation is consistent with eight 300-channel universe-sized sections per 800-pixel logical block, but this finding does not yet prove a direct physical PixCon output-to-universe mapping.
+Likewise, the eight-universe separation is consistent with eight 300-channel universe-sized sections per 800-pixel logical block.
+
+However, the raw XML inspected so far does **not** explicitly identify which CustomGrid identifier block (`1-800` versus `1001-1800`) corresponds to the first ChannelGrid leg beginning at Universe 147 versus the second leg beginning at Universe 155. That ordering must remain unresolved unless another authoritative source establishes it.
+
+The source also does not yet prove a direct physical PixCon output-to-universe mapping.
 
 ## Physical Controller Boundary
 
