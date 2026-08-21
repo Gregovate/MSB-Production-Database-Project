@@ -67,6 +67,11 @@ def wiring_js() -> Response:
     return send_from_directory(BASE_DIR, "wiring.js")
 
 
+@app.get("/wiring_disclosure.js")
+def wiring_disclosure_js() -> Response:
+    return send_from_directory(BASE_DIR, "wiring_disclosure.js")
+
+
 @app.get("/api/health")
 def health() -> Response:
     mode = "sqlite-dev" if os.environ.get("FIELDWIRING_DEV_SNAPSHOT") else "postgres"
