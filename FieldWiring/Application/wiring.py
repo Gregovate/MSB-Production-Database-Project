@@ -9,6 +9,7 @@ from typing import Any
 
 from wiring_common import MARKER_NAME, WiringError, context_type, end_of_local_day, local_now
 from wiring_data import load_wiring_data
+from wiring_dmx_source import replace_legacy_dmx_rows
 from wiring_images import resolve_images, safe_image_path
 from wiring_presentation import apply_physical_presentation, group_rows
 
@@ -50,19 +51,28 @@ def build_wiring_package(
     preview = raw["preview"]
     stage = raw["stage"]
     scene = raw["scene"]
+    run = raw["run"]
     scene_name = (scene or {}).get("scene_name")
+    scene_scope = bool(scene_name and scene_name.strip().casefold() != "root")
 
-    rows = apply_physical_presentation(raw["rows"], scene_name=scene_name)
+    source_rows = replace_legacy_dmx_rows(
+        repo,
+        raw["rows"],
+        preview_uuid=str(preview_uuid),
+        scene_uuid=scene_uuid,
+        scene_scope=scene_scope,
+        parser_version=run.get("parser_version"),
+    )
+    rows = apply_physical_presentation(source_rows, scene_name=scene_name)
     if not rows:
         raise WiringError("No current field wiring rows were found for the resolved context")
 
     selected_context = context_type(preview.get("preview_name"))
-    scope_kind = "Scene" if scene_name and scene_name.strip().casefold() != "root" else "Stage / Preview"
+    scope_kind = "Scene" if scene_scope else "Stage / Preview"
     images = resolve_images(stage, scene, preview, selected_context)
 
     now = local_now()
     expires = end_of_local_day(now)
-    run = raw["run"]
     return {
         "context": {
             "display_id": display_id,
