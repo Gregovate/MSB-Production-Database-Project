@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — reverse-engineered engineering reference |
 | Baseline | Approved Light-O-Rama `.lorprev` manifest for LOR 6.6.10 |
-| Current revision | 2026-08-17 |
+| Current revision | 2026-08-21 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -35,6 +35,8 @@ The parser source is the implementation authority for materialization. The
 approved XML manifest is the compatibility authority for the complete exported
 structure, including fields the parser does not currently use. The manifest is
 created and compared by `Parser/lor_version_checker.py`.
+
+Human-readable source-field translations used by MSB are controlled separately in [LOR XML to MSB Terminology Contract](LOR_XML_to_MSB_Terminology_Contract.md).
 
 ## File Type
 
@@ -188,7 +190,7 @@ One PropClass does not always equal one production display row. The parser appli
 
 | Attribute | Meaning in MSB parser |
 |---|---|
-| `id` | Raw LOR PropClass UUID/source identity |
+| `id` | Raw LOR PropClass UUID/source identity / LOR Prop ID |
 | `Name` | Channel Name / sequencer label |
 | `Comment` | Display Name |
 | `DeviceType` | Device classification such as LOR, DMX, None |
@@ -210,7 +212,7 @@ One PropClass does not always equal one production display row. The parser appli
 | `Tag` | LOR tag metadata used by downstream reporting/naming logic |
 | `Parm1` through `Parm8` | Prop parameters preserved by parser |
 | `Lights` | Light-count metadata |
-| `ChannelGrid` | Encoded wiring/grid data parsed into network/controller/channel values |
+| `ChannelGrid` | Encoded wiring/grid data whose field meanings depend on DeviceType |
 
 The parser's SQLite schema preserves these values so downstream logic does not need to reopen the XML.
 
@@ -221,9 +223,12 @@ The following distinction is critical:
 ```text
 PropClass.Comment -> Display Name
 PropClass.Name    -> Channel Name
+PropClass.id      -> LOR Prop ID
 ```
 
-A future LOR version that changes the meaning, source, or availability of either attribute can change physical-display matching even if the parser continues to execute.
+A future LOR version that changes the meaning, source, or availability of these attributes can change physical-display matching or source wiring provenance even if the parser continues to execute.
+
+Use [LOR XML to MSB Terminology Contract](LOR_XML_to_MSB_Terminology_Contract.md) for the controlled translation between exact XML names and MSB human-readable terms.
 
 ## PropClass Identity
 
@@ -242,15 +247,61 @@ Compatibility review must pay particular attention to any LOR change in UUID gen
 
 ### Role
 
-ChannelGrid carries the wiring information from which the parser derives fields such as:
+`PropClass.ChannelGrid` carries serialized wiring information. MSB reverse engineering has established that the row structure must be interpreted in the context of `PropClass.DeviceType`; ChannelGrid does **not** have one universal field definition across all DeviceTypes.
+
+The parser derives DeviceType-specific values such as:
 
 - Network;
-- controller UID;
+- controller UID for LOR-style rows;
+- StartUniverse for DMX rows;
 - StartChannel;
 - EndChannel;
 - additional/unknown grid values;
-- Color;
-- DMX universe/channel information.
+- Color where present.
+
+Do not assign a universal meaning to a serialized ChannelGrid position unless that meaning has been established for each DeviceType in scope.
+
+### Current LOR interpretation
+
+For the currently supported LOR form, a serialized Channel Grid Row is interpreted approximately as:
+
+| Position | MSB interpretation |
+|---:|---|
+| 1 | Network |
+| 2 | Controller / Unit ID (`UID`) |
+| 3 | Start Channel |
+| 4 | End Channel |
+| 5 | Unknown LOR grid field |
+| 6, when present | Color |
+
+### Current DMX interpretation
+
+For the currently supported DMX form, a serialized Channel Grid Row is interpreted approximately as:
+
+| Position | MSB interpretation |
+|---:|---|
+| 1 | Network |
+| 2 | DMX Universe (`StartUniverse`) |
+| 3 | Start Channel |
+| 4 | End Channel |
+| 5 | Unknown LOR grid field |
+
+The fifth field remains documented as unknown because a universal authoritative LOR meaning has not been established.
+
+### Multiple serialized rows
+
+Where `ChannelGrid` contains multiple explicit semicolon-delimited entries, each serialized entry is a **Channel Grid Row**.
+
+For source-provenance purposes, Channel Grid Row Number is local to the owning PropClass:
+
+```text
+first serialized row  -> Channel Grid Row 1
+second serialized row -> Channel Grid Row 2
+...
+next PropClass         -> restart at Channel Grid Row 1
+```
+
+Do not flatten row numbering across all PropClasses that share one Display Name.
 
 ### Multi-grid behavior
 
@@ -263,6 +314,14 @@ For DMX, grid legs become rows in `dmxChannels`.
 A change in ChannelGrid serialization is high risk because the parser can still find the PropClass while silently misreading wiring data.
 
 For a future LOR compatibility review, ChannelGrid should always be compared using raw XML examples from equivalent props exported by both LOR versions.
+
+### Compact/auto-numbered ChannelGrid evidence
+
+Some current dense-RGB custom props use a compact ChannelGrid serialization rather than one explicit semicolon-delimited entry for every controller-port/string row visible in the LOR UI.
+
+Observed examples include a `2100` fifth-field pattern on Mega Cube and Whoville Matrix. Current arithmetic and LOR UI evidence support additional reverse engineering, but the fifth field remains `Unknown` in the current parser because its universal semantics have not been established.
+
+Compact-row expansion is therefore not part of the first grouped-DMX source-provenance change. It requires its own evidence and regression gate because expansion can change materialized DMX row counts.
 
 ## DeviceType
 
@@ -280,7 +339,7 @@ LOR channel-based props use controller/network/channel data and may materialize 
 
 ### DMX
 
-DMX props use universe/channel-oriented wiring and materialize channel rows separately from the physical prop master.
+DMX props use universe/channel-oriented wiring and materialize Channel Grid Rows separately from the physical Display master.
 
 ### None
 
@@ -298,9 +357,37 @@ Compatibility review must verify that future LOR versions preserve the same pare
 
 ## DMX Representation
 
-The parser preserves a physical DMX prop master in `props` and materializes wiring legs in `dmxChannels`.
+The parser preserves a physical DMX Display master in `props` and materializes DMX Channel Grid Rows in `dmxChannels`.
 
-The downstream DMX contract depends on correct extraction of:
+### Grouped DMX behavior
+
+Several DMX source PropClasses can share one Display Name (`PropClass.Comment`). V7.0.10 groups those source rows by Display Name, chooses one canonical Display master, and attaches all grouped DMX Channel Grid Rows to the canonical master through `dmxChannels.PropId`.
+
+That behavior means:
+
+```text
+one Display Name
+    -> one canonical materialized props master
+    -> many dmxChannels rows
+```
+
+while multiple source PropClasses can still have distinct:
+
+```text
+PropClass.id   -> LOR Prop ID
+PropClass.Name -> Channel Name
+ChannelGrid    -> local Channel Grid Rows
+```
+
+### Current V7.0.10 source-detail limitation
+
+The current `dmxChannels` row retains the canonical Display/master relationship and DMX addressing, but it does not separately retain which grouped source PropClass supplied that row.
+
+For dense-RGB Displays, this can lose the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number even though the correct Display master remains intact.
+
+The proposed additive parser extension would preserve those values as `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`. Those fields are **not implemented in V7.0.10** and are documented in [FieldWiring Dense RGB DMX Additive Change Map](../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md).
+
+The downstream DMX contract currently depends on correct extraction of:
 
 - Network;
 - StartUniverse;
@@ -308,7 +395,7 @@ The downstream DMX contract depends on correct extraction of:
 - EndChannel;
 - other grid metadata.
 
-If a future LOR release changes universe representation, channel numbering, or the relationship between PropClass and grid data, PostgreSQL wiring output can become incorrect without an obvious XML parse failure.
+If a future LOR release changes universe representation, channel numbering, ChannelGrid serialization, or the relationship between PropClass and grid data, PostgreSQL wiring output can become incorrect without an obvious XML parse failure.
 
 ## Background Images and View Metadata
 
@@ -335,11 +422,13 @@ The highest-risk assumptions are:
 3. Prop objects remain identifiable as `PropClass`.
 4. `PropClass.id`, `Name`, and `Comment` retain their current meanings.
 5. ChannelGrid retains a parseable wiring representation.
-6. `DeviceType` values retain their current meanings.
-7. `MasterPropId` retains its parent relationship semantics.
-8. preview-level Scenes remain available in `.lorprev` exports.
-9. Scene-to-Prop membership remains positionally recoverable from document order.
-10. Scene and Prop identities remain stable enough to resolve positional Scene rows to materialized records.
+6. ChannelGrid DeviceType-specific meanings remain stable.
+7. explicit Channel Grid Row ordering remains meaningful within a PropClass.
+8. `DeviceType` values retain their current meanings.
+9. `MasterPropId` retains its parent relationship semantics.
+10. preview-level Scenes remain available in `.lorprev` exports.
+11. Scene-to-Prop membership remains positionally recoverable from document order.
+12. Scene and Prop identities remain stable enough to resolve positional Scene rows to materialized records.
 
 A parser run that completes successfully does not prove that these assumptions still hold.
 
@@ -352,7 +441,9 @@ For future LOR-version comparisons, maintain or create a representative baseline
 - multi-grid one-plug LOR prop;
 - manually related MasterPropId/subprop example;
 - SPARE channel example;
-- DMX prop with multiple channel legs;
+- DMX prop with multiple explicit Channel Grid Rows;
+- grouped DMX example with multiple PropClasses sharing one Display Name but different Channel Names;
+- representative dense-RGB compact ChannelGrid example retained for review even while its expansion semantics remain unresolved;
 - DeviceType=None single inventory object;
 - DeviceType=None physical fan-out object;
 - blank-comment layout helper;
@@ -390,9 +481,12 @@ The approved baseline is no longer limited to the parser's consumed fields.
 approved previews and stores the deep-preview contract. The Windows runner
 preserves that manifest with the Current LOR version record.
 
+Reverse-engineering discoveries affecting this specification must follow the reusable [Documentation Maintenance Rule](../../../System_Documentation/Standards/Documentation_Maintenance_Rule.md).
+
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Documented the controlled XML-to-MSB naming translation, DeviceType-dependent ChannelGrid field meanings, local Channel Grid Row Number rule, compact dense-RGB ChannelGrid evidence/uncertainty, grouped-DMX source-detail limitation, and proposed additive provenance boundary while retaining V7.0.10 as the implementation baseline. |
 | 2026-08-13 | GAL / OpenAI | Established the complete all-preview XML manifest, V7.0.8 ownership path, and parser-independent compatibility authority. |
 | 2026-08-08 | GAL / OpenAI | Created the standalone reverse-engineered `.lorprev` structure specification from the functional V7.0.7 parser and documented the structural assumptions required for future LOR-version compatibility review. |
