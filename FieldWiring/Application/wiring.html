@@ -60,48 +60,50 @@
 
     <section id="print-images" class="print-images print-only"></section>
 
-    <section id="image-section" class="image-section">
-      <div class="image-toolbar screen-only">
-        <div class="toolbar-group">
-          <button id="image-toggle" type="button">Hide Image</button>
-          <button id="image-prev" type="button">Previous</button>
-          <span id="image-page" class="page-counter">Page 0 / 0</span>
-          <button id="image-next" type="button">Next</button>
+    <div id="workspace-panels" class="workspace-panels">
+      <section id="image-section" class="image-section">
+        <div class="image-toolbar screen-only">
+          <div class="toolbar-group">
+            <button id="image-toggle" type="button">Hide Image</button>
+            <button id="image-prev" type="button">Previous</button>
+            <span id="image-page" class="page-counter">Page 0 / 0</span>
+            <button id="image-next" type="button">Next</button>
+          </div>
+          <div class="toolbar-group">
+            <button id="fit-width" type="button">Fit Width</button>
+            <button id="fit-all" type="button">Fit All</button>
+            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+            <span id="zoom-value" class="zoom-value">100%</span>
+            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+          </div>
         </div>
-        <div class="toolbar-group">
-          <button id="fit-width" type="button">Fit Width</button>
-          <button id="fit-all" type="button">Fit All</button>
-          <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
-          <span id="zoom-value" class="zoom-value">100%</span>
-          <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
-        </div>
-      </div>
 
-      <div id="image-pane" class="image-pane">
-        <div id="image-classification" class="image-classification" hidden></div>
-        <div id="image-empty" class="image-empty" hidden>
-          <strong>NO WIRING IMAGE AVAILABLE</strong>
-          <span id="image-empty-detail"></span>
+        <div id="image-pane" class="image-pane">
+          <div id="image-classification" class="image-classification" hidden></div>
+          <div id="image-empty" class="image-empty" hidden>
+            <strong>NO WIRING IMAGE AVAILABLE</strong>
+            <span id="image-empty-detail"></span>
+          </div>
+          <div id="image-scroll" class="image-scroll">
+            <img id="wiring-image" alt="Field wiring image" hidden>
+          </div>
         </div>
-        <div id="image-scroll" class="image-scroll">
-          <img id="wiring-image" alt="Field wiring image" hidden>
-        </div>
-      </div>
-      <div id="divider" class="divider screen-only" role="separator" aria-orientation="horizontal" aria-label="Resize image and hookup panes" tabindex="0"></div>
-    </section>
+        <div id="divider" class="divider screen-only" role="separator" aria-orientation="horizontal" aria-label="Resize image and hookup panes" tabindex="0"></div>
+      </section>
 
-    <section id="hookup-pane" class="hookup-pane">
-      <div class="hookup-heading">
-        <div>
-          <h2>Field Hookup</h2>
-          <div id="row-summary" class="muted"></div>
+      <section id="hookup-pane" class="hookup-pane">
+        <div class="hookup-heading">
+          <div>
+            <h2>Field Hookup</h2>
+            <div id="row-summary" class="muted"></div>
+          </div>
+          <div class="legend screen-only">
+            <span>Field wiring is primary. Images are supplemental.</span>
+          </div>
         </div>
-        <div class="legend screen-only">
-          <span>Field wiring is primary. Images are supplemental.</span>
-        </div>
-      </div>
-      <div id="controller-groups" class="controller-groups"></div>
-    </section>
+        <div id="controller-groups" class="controller-groups"></div>
+      </section>
+    </div>
 
     <details id="engineering" class="engineering screen-only">
       <summary>Engineering details</summary>
