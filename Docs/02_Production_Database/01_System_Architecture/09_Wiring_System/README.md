@@ -8,9 +8,14 @@ FormView currently provides wiring presentation and generated field documentatio
 
 The active replacement/recovery sub-project is named **FieldWiring**. FieldWiring is intended to be a PostgreSQL-backed, browser-accessible field application that preserves the proven field outcome while improving Scene awareness, Google Drive document resolution, and physical hookup presentation.
 
+Dense-RGB engineering recovery has now proven one parser data-preservation gap before the browser presentation layer can be considered complete: grouped DMX rows retain the canonical Display/master relationship but do not currently retain the originating LOR PropClass/Channel Name and local Channel Grid Row Number for every `dmxChannels` row. The exact additive change boundary is documented and **V7.0.10 remains unchanged** until a grouped-DMX regression test is added first.
+
 Start with:
 
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
+- [FieldWiring Dense RGB Parser Extension Checkpoint](FieldWiring_Dense_RGB_Parser_Extension_Checkpoint_2026-08-21.md)
+- [FieldWiring Dense RGB DMX Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
+- [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
 - [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring PostgreSQL Readiness Audit](FieldWiring_PostgreSQL_Readiness_Audit.md)
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
@@ -169,17 +174,22 @@ The Drive image-discovery mechanism is working: current images added to marked `
 
 The current Display QR entry is also verified as an existing production dependency. Do not redesign it. FieldWiring should extend the existing Display scan hub after the live scan-extension baseline and its server-management documentation are preserved.
 
-Current engineering focus is now the **operator read/presentation layer and its integration with the existing Display identity path**:
+Dense-RGB inspection has now established and documented the current grouped-DMX information-loss boundary. V7.0.10 still preserves the correct canonical Display/master relationship, but each `dmxChannels` row does not currently preserve the originating LOR Prop ID, Channel Name, and local Channel Grid Row Number. The proposed extension is additive only and is not yet implemented.
 
-1. keep current V7 wiring/topology data authoritative;
-2. reuse the existing authenticated Display scan hub and permanent `display_id` entry;
-3. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
-4. classify the physical presentation family from current device/string metadata;
-5. translate raw topology into the hookup terms the field installer sees;
-6. keep raw Unit ID, DMX/E1.31 universe/channel, Source, DeviceType, and similar engineering values available under details;
-7. integrate permanent Controller Inventory identities later without blocking current FieldWiring development; and
-8. preserve the future Channel Name -> 1/2-inch plug-label workflow as a controlled LabelPrintService integration rather than a manual printer-software task.
+Current engineering focus is therefore **dense-RGB parser source preservation before further browser presentation work**:
+
+1. keep V7.0.10 unchanged while adding a grouped-DMX regression fixture;
+2. prove the existing canonical DMX master, `PropId`, row counts, universe/channel values, Scene relationships, and compatibility-view output;
+3. define expected `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` values in the fixture;
+4. after the regression test exists, make only the additive `dmxChannels` parser change documented in the change map;
+5. validate a new SQLite snapshot directly against Mega Star, Mega Cube, Mega Tree, and Whoville Matrix;
+6. preserve the existing PostgreSQL reconciliation identity path and propagate new DMX fields to `lor_snap` only after SQLite acceptance;
+7. resume the operator read/presentation layer using the accepted dense-RGB source detail;
+8. reuse the existing authenticated Display scan hub and permanent `display_id` entry;
+9. resolve the correct Stage/Sub-stage/Scene and Background/Musical context;
+10. classify the physical presentation family from current device/string metadata and Controller Inventory relationships; and
+11. preserve the future Channel Name -> 1/2-inch plug-label workflow as a controlled LabelPrintService integration rather than a manual printer-software task.
 
 Current acceptance examples include Church A/C + Pixie patterns, Candyland repeated Pixie 4 blocks, Who Forest Pixie 8 blocks, Santa's Workshop Pixie 8 blocks, Northern Lights as the first DMX/DumbRGB network-hookup case, and the dense RGB E1.31 cases: Mega Tree, Mega Ball, Mega Cube, Mega Star, and Mt. Crumpit Matrix.
 
-Do not change FormView, the existing Display QR identity, or database schema merely to simplify the browser implementation. Demonstrate any real schema or integration gap before proposing a migration.
+Do not change FormView or the existing Display QR identity. The dense-RGB parser source-preservation gap is now a demonstrated schema need, but it must not be used as justification for a broader parser, PostgreSQL, reconciliation, or browser redesign. Keep the change additive and prove it at each boundary before propagation.
