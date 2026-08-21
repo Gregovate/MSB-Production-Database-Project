@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| Status | INSPECTION COMPLETE — NO PARSER CODE CHANGE YET |
+| Status | REGRESSION FIXTURE ADDED — BASELINE RUN REQUIRED; NO PARSER CODE CHANGE YET |
 | Sub-project | FieldWiring / Engineering Recovery |
 | Branch | `agent/fieldwiring-engineering-recovery` |
 | Parser baseline | V7.0.10 |
@@ -14,13 +14,19 @@ Dense-RGB recovery reached the point where a parser schema extension is required
 
 This document remains the durable handoff for the extension boundary.
 
-The dependency inspection requested by the original checkpoint is now complete. The exact proposed additive change is documented in:
+The dependency inspection requested by the original checkpoint is complete. The exact proposed additive change is documented in:
 
 - [FieldWiring Dense RGB DMX Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
 
 The controlled XML-to-MSB terminology is documented in:
 
 - [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
+
+The pre-change grouped-DMX regression fixture is now committed at:
+
+- [Grouped-DMX V7.0.10 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
+
+The fixture has **not yet been executed successfully in repository CI or the current connector runtime**, so its presence is not a passing test result. Run it against unchanged V7.0.10 before parser implementation.
 
 No V7.0.10 parser code or schema has been changed yet.
 
@@ -265,12 +271,37 @@ The following V7.0.10 dependencies were inspected before any parser change:
 4. **Later duplicate-master collapse** — confirmed the later demotion/deletion pass is restricted to `DeviceType='LOR'` and does not rewrite grouped-DMX masters.
 5. **Scene resolution** — confirmed grouped DMX Scene members resolve to the canonical Display master rather than each XML component becoming a Display.
 6. **SQLite views** — confirmed existing DMX consumers use explicit columns and the existing `PropId -> props.PropID` join, so appended fields can remain invisible to compatibility views initially.
-7. **Parser tests/operator comparison** — confirmed current generic output comparison treats schema changes as blocking and does not provide a semantic grouped-DMX regression fixture.
+7. **Parser tests/operator comparison** — confirmed current generic output comparison treats schema changes as blocking and did not previously provide a semantic grouped-DMX regression fixture.
 8. **PostgreSQL ingest** — confirmed SQLite-to-PostgreSQL mapping is normalized-name based rather than positional; new SQLite columns require matching PostgreSQL columns only when propagation is approved.
 9. **PostgreSQL `dmx_channels` relationship** — confirmed the existing `prop_id` FK remains tied to the canonical snapshot `props` row.
 10. **Reconciliation identity** — confirmed `ref.display.lor_prop_id` continues to come from canonical `lor_snap.props.raw_prop_id`; `dmx_channels` is not part of permanent Display identity promotion.
 
 These findings are captured in the exact [Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md).
+
+## Regression Fixture Added
+
+The V7.0.10 grouped-DMX baseline fixture now exists at:
+
+`Docs/01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py`
+
+It freezes:
+
+- one canonical Display master for two DMX Channel Names sharing one Display Name;
+- the exact existing eight-column `dmxChannels` contract;
+- all existing `PropId`, Network, Universe, channel, Unknown, and Preview values for the fixture;
+- the current FormView-compatible `preview_wiring_map_v6` shape and rows; and
+- the expected future LOR Prop ID / Channel Name / Channel Grid Row Number mapping beside the baseline fixture.
+
+The fixture has not yet been executed successfully in repository CI or the current connector runtime. There is no attached CI status/check for the test commit.
+
+Therefore the implementation gate is now:
+
+```text
+fixture committed
+    -> run against unchanged V7.0.10
+        -> require PASS
+            -> only then modify parser/schema
+```
 
 ## Required Regression Principle
 
@@ -289,21 +320,21 @@ If an additive extension unexpectedly changes an existing relationship, stop and
 
 ## Next Engineering Step
 
-The original inspection gate is complete.
+The inspection gate is complete and the regression fixture exists.
 
-The next step remains **tests before parser implementation**:
+The next step is **execute the baseline fixture before parser implementation**:
 
 ```text
-1. Add a grouped-DMX regression fixture against the V7.0.10 behavior.
-2. Prove existing master selection, PropId values, row counts, and existing field values.
-3. Define expected RawPropID, ChannelName, and ChannelGridRowNumber values in that fixture.
-4. Only after those tests exist, make the additive parser/schema change.
+1. Run test_parse_props_grouped_dmx.py against unchanged V7.0.10.
+2. Require PASS for the frozen canonical master, legacy DMX rows, and compatibility view.
+3. If it fails, review/fix the fixture or architecture — do not change the parser to make the baseline test pass.
+4. Only after PASS, extend dmxChannels additively with RawPropID, ChannelName, and ChannelGridRowNumber.
 ```
 
-After approval and implementation:
+After approved implementation:
 
 ```text
-run parser regression tests
+run full parser regression tests
 -> produce a new parser SQLite snapshot
 -> inspect dense-RGB rows directly
 -> confirm legacy view output is unchanged
@@ -318,6 +349,7 @@ Broad FieldWiring UX work remains out of scope until dense-RGB acceptance is com
 ## Related Durable Decisions
 
 - [FieldWiring Dense RGB DMX Additive Change Map](FieldWiring_Dense_RGB_DMX_Additive_Change_Map_2026-08-21.md)
+- [Grouped-DMX V7.0.10 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
 - [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
 - `FieldWiring_Dense_RGB_LOR_Controller_Port_Recovery_2026-08-21.md`
 - `FieldWiring_E131_LOR_Controller_Definitions_2026-08-21.md`
@@ -333,13 +365,15 @@ At this updated checkpoint:
 - the V7.0.10 dependency inspection is complete;
 - the exact additive schema/change map is documented;
 - the earlier temporary `Source*` terminology is superseded by `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`;
+- the grouped-DMX baseline regression fixture is committed but not yet execution-proven;
 - **no V7 parser code/schema change has been made for the dense-RGB provenance extension**.
 
-The next engineering action is to create the grouped-DMX regression test before changing parser behavior.
+The next engineering action is to run the grouped-DMX baseline fixture against unchanged V7.0.10.
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Added the grouped-DMX V7.0.10 regression fixture and advanced the implementation gate to require a successful baseline execution before parser modification; no CI/connector test result is currently available. |
 | 2026-08-21 | GAL / OpenAI | Completed the V7.0.10 dependency inspection, replaced temporary `Source*` terminology with the controlled LOR/MSB terms, linked the exact additive change map, and advanced the stop point to regression-tests-first with no parser code change. |
 | 2026-08-21 | GAL / OpenAI | Created implementation checkpoint before dense-RGB parser extension. |
