@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| Status | ENGINEERING FINDING — browser acceptance clarification |
+| Status | ACCEPTED — browser-observed stale-snapshot presentation |
 | Sub-project | FieldWiring |
 | Scene | `17-Candyland-CL` |
 | Scope | Candy Cane Pixie grouping vs. stale snapshot output mapping |
@@ -59,6 +59,34 @@ This preserves both truths simultaneously:
 
 - physical grouping: Candy Canes 09-12 belong to the third Pixie 4 controller;
 - current snapshot topology: Candy Cane 12 still resolves to the same programmed address/output as Candy Cane 10 until a refreshed snapshot is imported.
+
+## Browser Acceptance — 2026-08-20
+
+Operator browser acceptance on the laptop confirmed the current FieldWiring result for Candyland Musical after commit `b830f1bfcb2d3de3e4c263478407498f7392d5a7` (`Scope stale Candyland controller mapping to Candyland scene`).
+
+Observed browser result:
+
+```text
+PIXIE 4 · Pixie group 3
+LOR UNIT IDS 21-24
+NETWORK Aux A
+
+Output 1
+  CL-RGBCandyCane-09
+
+Output 2
+  CL-RGBCandyCane-10
+  CL-RGBCandyCane-12
+
+Output 3
+  CL-RGBCandyCane-11
+```
+
+The third controller was no longer shown as `GROUPING REVIEW REQUIRED`.
+
+The operator explicitly confirmed: **this presentation is correct for the current stale development snapshot**.
+
+This is browser-observed acceptance of the Candyland stale-snapshot behavior. It does not change the source data and does not claim that Cane 12 has already moved to Output 4 in the current development snapshot.
 
 ## Refresh Behavior
 
