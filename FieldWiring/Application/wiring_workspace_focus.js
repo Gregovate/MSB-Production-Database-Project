@@ -6,6 +6,7 @@
   const hookupPane = document.getElementById("hookup-pane");
   const imageToolbar = imageSection?.querySelector(".image-toolbar .toolbar-group");
   const hookupHeading = hookupPane?.querySelector(".hookup-heading");
+  const imageToggle = document.getElementById("image-toggle");
 
   if (!workspace || !imageSection || !hookupPane || !imageToolbar || !hookupHeading) return;
 
@@ -55,6 +56,10 @@
 
   hookupButton.addEventListener("click", () => {
     applyMode(mode() === "hookup" ? "split" : "hookup");
+  });
+
+  imageToggle?.addEventListener("click", () => {
+    if (mode() === "image") applyMode("split");
   });
 
   // The base renderer recalculates image sizing on viewport changes. Reapply
