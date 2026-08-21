@@ -11,7 +11,9 @@
 
 This record preserves the original reason the parser carries DMX channels separately from ordinary LOR physical wiring and clarifies how FieldWiring should consume that data.
 
-The DMX channel materialization must preserve the technical LOR topology needed to understand dense-RGB Displays without forcing internal/prewired pixel wiring into normal park hookup instructions.
+The DMX channel materialization must preserve the complete technical and physical connection topology needed to understand and, if necessary, rebuild dense-RGB Displays. A connection being permanently wired or already assembled before the Display reaches the park does **not** make that wiring disposable or irrelevant to FieldWiring.
+
+The separate question is whether the park setup crew must make that connection during normal installation.
 
 ## Display Identity Boundary
 
@@ -48,22 +50,23 @@ ref.display / LOR Comment
 
 ## Why DMX Is Separate in the Parser
 
-The operator originally carried DMX channels in a separate parser table for two reasons:
+The operator originally carried DMX channels in a separate parser table because dense-RGB/E1.31 channel topology is technically important but does not behave the same as ordinary LOR field wiring.
 
-1. Dense-RGB/E1.31 channel topology is technically important and must be preserved.
-2. Much of that wiring is internal to a Display and is already wired to a controller before the Display reaches the park, so it should not automatically appear as ordinary physical field wiring.
+Much of the DMX wiring is built into a Display or completed before the Display reaches the park. Other DMX Displays require substantial assembly and connection work in the park. The parser therefore needs to preserve all DMX topology without assuming that every channel row represents a park-install action.
 
-The separate DMX table is therefore not an accidental side table. It is an intentional boundary between:
+The separate DMX table is an intentional boundary between:
 
 ```text
-LOR technical channel topology
+complete LOR DMX / dense-RGB connection topology
 ```
 
 and
 
 ```text
-field connections volunteers actually need to make
+how those connections are presented and acted on during park setup
 ```
+
+The first must always be retained. The second depends on the physical installation method of the Display.
 
 The parser may be changed to retain additional DMX source information when required. The DMX table remains the correct parser-owned place for that source detail.
 
@@ -119,11 +122,25 @@ For compact/auto-numbered LOR rows, a raw segment may represent more than one vi
 
 Exact field names and expansion semantics still require code/test review before implementation.
 
-## Field Assembly Is Not a Parser Fact
+## Park Installation Action Is Not a Parser Fact
 
-Whether a DMX/output relationship should appear in normal FieldWiring instructions depends on how the Display is assembled in the park. That is **not** a fact the LOR parser should invent or encode from channel data.
+Whether a DMX/output relationship is physically connected during normal park setup is **not** a fact the LOR parser should invent or encode from channel data.
 
-The parser should preserve the technical channel topology consistently. FieldWiring presentation should decide which parts are field-actionable based on reviewed Display/setup context.
+The parser should preserve the complete technical and physical connection topology consistently.
+
+FieldWiring should then distinguish between:
+
+```text
+connection exists / how it is wired
+```
+
+and
+
+```text
+what the setup crew must do with that connection today
+```
+
+A prewired connection must remain visible and reconstructable in FieldWiring even when the normal setup action is simply `PREWIRED / NO PARK CONNECTION REQUIRED` or an equivalent presentation state.
 
 The operator supplied the following current field-assembly distinctions.
 
@@ -134,17 +151,19 @@ Controller: HolidayCoro AlphaPix Flex 48-output system
 Field condition: 48 ribbons are installed/connected as part of park setup
 ```
 
-This is an exception to the general prewired-DMX pattern. FieldWiring needs the LOR controller-port/ribbon relationships because volunteers make these connections in the park.
+FieldWiring needs the complete LOR controller-port/ribbon relationships because volunteers make these connections in the park.
 
 ### Mega Star
 
 ```text
 Display: FT-MegaStar
 Controller(s): built into the standalone Display
-Field condition: completely standalone / internal controller wiring
+Field condition: completely standalone / internal controller wiring is already completed
 ```
 
-The detailed DMX topology remains valuable engineering data, but it should not automatically become a long list of park plug-in instructions when those internal connections are not made during setup.
+The detailed DMX topology is still part of FieldWiring. It must remain available so an engineer can understand, troubleshoot, repair, or reconstruct the physical connections between the built-in controller outputs and the Hub/Spire components.
+
+The difference is only that those connections are normally **already made before park setup**. The standard setup presentation should not instruct volunteers to disconnect and reconnect all internal outputs, but it must not hide or discard the wiring map.
 
 ### Mega Cube
 
@@ -153,7 +172,7 @@ Controller: HolidayCoro AlphaPix Flex 48-output system
 Field condition: Display is assembled in the park
 ```
 
-FieldWiring needs component-aware DMX/output information because park assembly requires meaningful connection guidance.
+FieldWiring needs the complete component-aware DMX/output information, and much of it is directly field-actionable because park assembly requires meaningful connection guidance.
 
 ### Mt. Crumpit / Whoville Matrix
 
@@ -162,7 +181,9 @@ Controller: attached to the Display
 Field condition: permanently wired
 ```
 
-Its DMX/custom-grid topology remains engineering evidence. Normal FieldWiring should not imply that volunteers must reconnect every internal matrix output during park setup.
+Its DMX/custom-grid output topology remains part of the physical wiring record and must remain available in FieldWiring so the matrix can be diagnosed, repaired, or reconstructed correctly.
+
+During ordinary park setup the internal controller-to-matrix connections are already complete, so the presentation should identify them as prewired rather than presenting them as new park hookup tasks.
 
 ### Open/Close Sign — New 2026
 
@@ -172,27 +193,37 @@ Status: new 2026; not installed yet
 Expected field condition: likely assembled/connected to the controller in the park
 ```
 
-This should remain provisional until the actual installation method is confirmed. If park assembly is required, FieldWiring will need to surface the applicable DMX/output relationships.
+This should remain provisional until the actual installation method is confirmed. Regardless of the final installation method, its DMX/output topology must remain preserved; only the normal setup action/presentation changes.
 
 ## Items Not Classified by This Finding
 
-This finding does not assign a field-installation status to every E1.31/DMX Display.
+This finding does not assign a field-installation action to every E1.31/DMX Display.
 
 In particular, do not infer the installation behavior of Mega Ball, Gift Conveyor, Northern Lights, or other DMX/E1.31 contexts from this note unless separately confirmed.
 
+Their physical wiring topology must still be preserved.
+
 ## FieldWiring Presentation Rule
 
-FieldWiring should separate two concepts:
+FieldWiring should separate two concepts without hiding either one:
 
 ```text
-Engineering topology
-    -> always recoverable/inspectable when needed
+Physical wiring topology
+    -> what connects to what
+    -> always retained and available
 
-Field hookup
-    -> only connections that the setup crew actually makes in the park
+Installation action
+    -> whether that connection must be made in the park
+    -> examples: CONNECT IN PARK / PREWIRED / VERIFY-REFERENCE
 ```
 
-A dense-RGB Display may therefore have rich DMX engineering detail while showing only a small number of normal field actions — or none — when the controller and internal outputs are permanently built into the Display.
+The exact status vocabulary is not yet controlled by this finding, but the concept is required.
+
+A dense-RGB Display such as Mega Star or Mt. Crumpit may therefore show a complete controller-output/component wiring map while also making clear that the connections are normally prewired and require no park hookup action.
+
+A Display such as Mega Tree or Mega Cube can use the same underlying wiring data while emphasizing the connections that must actually be made during installation.
+
+FieldWiring must not equate `not normally connected in the park` with `do not show the wiring`.
 
 This distinction is one of the reasons the DMX table should not simply be merged into the traditional LOR physical-wiring model.
 
@@ -206,16 +237,17 @@ The combined model is:
 
 ```text
 LOR / parser DMX table
-    -> current Display/component/channel topology
+    -> complete current Display/component/channel/output topology
 
 Controller Inventory
     -> permanent ctrl_id / model / current assignment
 
 Display/setup context
-    -> whether the connection is field-actionable
+    -> installation action: park-connected vs prewired vs other reviewed state
 
 FieldWiring
-    -> presents the appropriate field hookup while retaining engineering detail
+    -> always retains the wiring map
+    -> presents the appropriate setup action without hiding the underlying connection
 ```
 
 ## Next Engineering Step
@@ -229,6 +261,8 @@ Before code changes:
 5. only then implement and generate a new parser/development snapshot for FieldWiring acceptance.
 
 Do not alter `ref.display` identity as part of this work.
+
+Do not add a park-installation-action field to the parser DMX table merely to drive presentation. The parser owns topology; the installation action belongs to reviewed Display/setup/FieldWiring context.
 
 ## Related Documents
 
