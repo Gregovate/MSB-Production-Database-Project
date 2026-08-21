@@ -48,6 +48,47 @@ Older LOR snapshots and preserved source artifacts may remain available as engin
 
 No schema design is implied here. The Controller Inventory workstream still owns the eventual PostgreSQL model and must derive it from inspected source evidence.
 
+## Controller Inventory Return Handoff — Current Plan
+
+Controller Inventory source review has now established a current engineering direction that FieldWiring can design toward while the physical data is still being corrected.
+
+The controlling plan is:
+
+- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](../08_Controller_Inventory/Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
+
+Confirmed direction from that workstream:
+
+- permanent physical controller identity remains independent of LOR addressing;
+- controller assignment is current-state only and is reconciled to the current approved LOR/V7 snapshot;
+- no historical controller deployment relationship is required;
+- firmware update history belongs to Controller Inventory;
+- repairs/maintenance belong to Work Orders linked to the permanent controller asset;
+- Controller Inventory should not manually duplicate every Display/output relationship already available from the current LOR snapshot;
+- a unique current Network + Unit ID/range can normally associate one physical controller to the LOR wiring rows using that address;
+- intentional duplicate addresses require one additional distinguishing physical group, for example `Candy Canes 1-4`, `Candy Canes 5-8`, and `Candy Canes 9-12`;
+- exact hardware models remain distinct (`PixCon16` and `Pixie-16` are different devices); and
+- Stage/Scene or another simple physical context is sufficient during ordinary data cleanup unless a duplicate-address/ambiguous case needs a more specific Display group.
+
+### FieldWiring implementation consequence
+
+FieldWiring development does **not** need to stop while the controller data is being reviewed.
+
+However, temporary named/hard-coded physical mappings must remain an isolated bridge rather than becoming the permanent architecture.
+
+FieldWiring should converge on a replaceable controller-resolution boundary/provider that can eventually consume a PostgreSQL Controller Inventory read interface supplying, conceptually:
+
+```text
+permanent controller identity
+exact controller model/family + physical capability
+current controller address/context
+optional duplicate-address distinguishing group
+current approved LOR/V7 snapshot provenance
+```
+
+The LOR/V7 snapshot continues to supply the detailed current Display/output wiring rows. Controller Inventory supplies the physical-controller identity/context that LOR cannot encode.
+
+Do not spread new Display/Scene-specific controller assumptions through rendering code merely because the authoritative Controller Inventory data is not ready yet. If a temporary accepted physical mapping is still required for recovery/acceptance, keep it centralized and replaceable by the future controller resolver.
+
 ## Temporary FieldWiring Recovery Rules
 
 The current FieldWiring recovery classifier contains some named, operator-confirmed runtime rules for known Displays/Scenes. This is acceptable as a temporary bridge while Controller Inventory is not yet authoritative.
@@ -179,6 +220,8 @@ FieldWiring will remain a consumer of that model; it should not redefine Control
 
 ## Related Documents
 
+- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](../08_Controller_Inventory/Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
+- [Controller Inventory](../08_Controller_Inventory/README.md)
 - `FieldWiring_Physical_Controller_Output_Presentation_Contract.md`
 - `FieldWiring_RGB_Controller_Pattern_Findings_2026-08-19.md`
 - `FieldWiring_Church_RGB_Tree_Star_Controller_Context_2026-08-20.md`
