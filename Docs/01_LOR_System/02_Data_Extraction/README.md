@@ -11,6 +11,7 @@ separate SQLite-to-PostgreSQL ingest.
 | I want to... | Go to |
 |---|---|
 | Understand the engineering logic behind the current V7 parser | [LOR Preview Parser Architecture](LOR_Preview_Parser_Architecture.md) |
+| Translate LOR XML names into the human-readable MSB names used in engineering and database work | [LOR XML to MSB Terminology Contract](LOR_XML_to_MSB_Terminology_Contract.md) |
 | Understand the `.lorprev` structure the parser depends on | [LOR Preview File Structure Specification](LOR_Preview_File_Structure_Specification.md) |
 | Evaluate and approve a new Light-O-Rama version | [LOR Preview Version Compatibility Review](LOR_Preview_Version_Compatibility_Review.md) |
 | Review the current parser/checker implementation | [Parser](Parser/) |
