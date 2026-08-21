@@ -2,12 +2,12 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — repository-definition audit only |
-| Current revision | 2026-08-17 |
+| Status | DRAFT — live DMX path verified; additive design work pending |
+| Current revision | 2026-08-21 |
 | Sub-project | FieldWiring |
 | Owner | MSB Database Administrator |
-| Live database verification | NOT YET PERFORMED IN THIS AUDIT |
-| Schema/code change status | HOLD |
+| Live database verification | DMX snapshot/current-view path verified 2026-08-21; broader FieldWiring verification remains in progress |
+| Schema/code change status | HOLD — no PostgreSQL change authorized by this audit |
 
 ## Purpose
 
@@ -20,7 +20,7 @@ This is not a migration and does not authorize schema changes.
 Primary sources inspected:
 
 - `LOR/FormView/FormView.py` — FormView 0.3.1 application queries and behavior;
-- `Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py` — current V7.0.10 parser and SQLite wiring-view definitions;
+- `Docs/01_LOR_System/02_Data_Extraction/Parser/parse_props_v7_scene_parser.py` — current V7 parser and SQLite wiring-view definitions;
 - `Database/Basic_Query_Tools_Dev/postgres_create_views_lor_snap.sql` — repository-defined PostgreSQL wiring/report view stack;
 - `LOR2DB/02_Reconciliation/reconciliation/migrations/0020_expose_current_snapshot_provenance.sql` — current-snapshot Preview/provenance interface;
 - `LOR2DB/02_Reconciliation/reconciliation/current_procedures/P2_display_promotion.sql` — permanent Display/Stage promotion contract;
@@ -121,7 +121,9 @@ Status: **semantically aligned**.
 
 Both use the master Prop `Name` as the channel/sequencer label.
 
-Status: **semantically aligned**.
+Status: **semantically aligned** for the legacy compatibility view.
+
+Parser V7.0.11 now also preserves originating grouped-DMX `ChannelName` directly on each DMX row. FieldWiring must consume that source detail through a separate read contract rather than changing the legacy compatibility semantics.
 
 ### SubProp channel name
 
@@ -136,6 +138,8 @@ Status: **semantically aligned**.
 Both use the LOR network, controller UID, StartChannel, and EndChannel for LOR rows and DMX universe/channel values for DMX rows.
 
 Status: **semantically aligned at repository-definition level**.
+
+For E1.31, universe is addressing and must not be treated as physical controller identity. The accepted FieldWiring E1.31 contract presents physical controller/output separately while retaining universe, pixel count, and exact start/end channel range.
 
 ### Field/Internal classification
 
@@ -225,9 +229,17 @@ snapshot provenance
 field wiring columns
 ```
 
+For grouped DMX/E1.31 rows it also does not expose the V7.0.11 source-detail fields:
+
+```text
+source RawPropID
+source ChannelName
+source ChannelGridRowNumber
+```
+
 That does not prove a new table is required.
 
-It indicates that FieldWiring will likely need a controlled **read model/query surface** that joins existing authoritative objects by stable identity.
+It indicates that FieldWiring needs a controlled **read model/query surface** that joins existing authoritative objects by stable identity while preserving the legacy compatibility views unchanged.
 
 The first design choice should be a read-only view/API contract, not a new independent data store.
 
@@ -283,29 +295,132 @@ The current snapshot interfaces already expose useful data for report currentnes
 
 These can support the FieldWiring hard-report rule that every generated report visibly identifies when it was generated, when it expires, and which approved data state it represents.
 
-## Live Database Verification Still Required
+## Live DMX PostgreSQL Verification — 2026-08-21
 
-This audit compares repository definitions. Before treating the PostgreSQL wiring layer as the actual FieldWiring production API, inspect the deployed database and verify:
+A read-only inspection of the deployed production database was completed before any PostgreSQL change.
 
-1. current view definitions match the repository;
-2. current snapshot views return the expected Preview/background data;
-3. field-lead row counts match the current V7 SQLite for representative Previews;
-4. shared circuits retain every legitimate Display row;
-5. current Scene/Display memberships resolve expected permanent `display_id` values;
-6. required read-only grants exist for the future service role or API path; and
-7. no stale legacy object with the same name is being consumed accidentally.
+Current production snapshot evidence:
 
-No write or schema change is required for that verification.
+```text
+import_run_id          = 50
+parser_version         = V7.0.10
+parser_completed_at    = 2026-08-17 13:41:39 -0500
+ingest_script_version  = V0.4.1
+ingest_completed_at    = 2026-08-17 13:41:55.144 -0500
+current DMX rows       = 508
+```
+
+### Deployed `lor_snap.dmx_channels`
+
+The deployed table currently contains only the legacy PostgreSQL snapshot fields:
+
+```text
+import_run_id
+int_dmx_channel_id
+prop_id
+network
+start_universe
+start_channel
+end_channel
+unknown
+preview_id
+```
+
+It does **not** yet contain:
+
+```text
+raw_prop_id
+channel_name
+channel_grid_row_number
+```
+
+Historical rows must remain valid when those additive source-detail fields are introduced; therefore an eventual additive PostgreSQL design must account for prior snapshots that legitimately have no values for them.
+
+### Deployed `lor_snap.v_current_dmx_channels`
+
+The deployed current-snapshot view explicitly projects the same legacy columns from `lor_snap.dmx_channels` and joins them to `lor_snap.v_current_run` by `import_run_id`.
+
+It does **not** use `SELECT *`.
+
+Consequently, adding columns to `lor_snap.dmx_channels` alone will **not** expose them through `v_current_dmx_channels`; the view definition must be deliberately extended as part of the same controlled change.
+
+### Deployed legacy wiring map
+
+The deployed `lor_snap.preview_wiring_map_v6` remains the legacy compatibility surface. Its DMX branch joins:
+
+```text
+lor_snap.v_current_dmx_channels dc
+    -> dc.prop_id
+lor_snap.v_current_props p
+    -> p.prop_id
+```
+
+and uses the canonical master Prop `p.name` as the DMX `lor_name` / later `channel_name` value.
+
+That legacy behavior must remain unchanged for FormView/regression compatibility. FieldWiring should not repurpose the compatibility view to carry V7.0.11 grouped-DMX source Channel Names.
+
+### Ingest consequence
+
+`postgres_ingest_from_lor_sqlite_v7.py` already maps snapshot-table columns by normalized name. Matching PostgreSQL columns would therefore permit these V7.0.11 SQLite fields to map directly:
+
+```text
+RawPropID              -> raw_prop_id
+ChannelName            -> channel_name
+ChannelGridRowNumber   -> channel_grid_row_number
+```
+
+The current ingest's explicit schema/value safety contract covers raw PropClass UUIDs for `props` and `sub_props`, but not these new DMX source-detail fields. A controlled ingest update should fail closed if a V7.0.11 source or PostgreSQL target is missing the approved DMX fields, rather than allowing the generic mapper to silently omit them.
+
+### Identity boundary confirmed
+
+The permanent Display identity path remains:
+
+```text
+dmx row dc.prop_id
+    -> canonical current Prop p.prop_id
+    -> canonical p.raw_prop_id
+    -> ref.display.lor_prop_id
+    -> permanent ref.display.display_id
+```
+
+The future `dc.raw_prop_id` is different: it is the originating grouped-DMX source PropClass identity for that wiring row. It is wiring provenance and must not replace the canonical Display identity relationship or receive a foreign key that forces every grouped source PropClass to become a physical Display row.
+
+## Remaining Live Verification
+
+The DMX snapshot/current-view path is now verified. Broader FieldWiring production verification still includes:
+
+1. current Preview/background results for representative contexts;
+2. field-lead row-count parity for representative non-DMX and DMX Previews;
+3. shared-circuit preservation;
+4. current Scene/Display membership for permanent `display_id` routing;
+5. required read-only grants for the eventual FieldWiring production service role/API path; and
+6. confirmation that no stale legacy object is consumed by the deployed application path.
+
+No write or schema change was made during this verification.
 
 ## Recommended Next Engineering Artifact
 
-After live verification, define a **FieldWiring read contract** with the minimum browser-facing fields needed for:
+Define the additive PostgreSQL DMX source-detail propagation and a **FieldWiring-specific read contract** without changing the legacy `preview_wiring_*_v6` compatibility views.
+
+The minimum DMX/E1.31 browser-facing source contract now needs to preserve, conceptually:
 
 ```text
-scan context -> Preview/Scene wiring context -> field wiring rows -> images -> report provenance
+permanent display_id
+display_name
+Preview UUID / name / revision
+Scene / Stage context
+canonical Display Prop identity
+source DMX RawPropID
+source ChannelName
+source ChannelGridRowNumber
+network
+universe
+start_channel
+end_channel
+snapshot provenance
 ```
 
-The contract should be designed from existing views/relationships first.
+Physical-controller identity/output remains a separate Controller Inventory/current-assignment resolution boundary. E1.31 presentation may derive RGB pixel count from a valid channel span but must preserve the authoritative start/end values. CR50/DumbRGB presentation must preserve its intentional 5-channel addressing footprint and must not apply E1.31 pixel-count assumptions.
 
 Only demonstrated missing information should become a schema proposal.
 
@@ -313,6 +428,8 @@ Only demonstrated missing information should become a schema proposal.
 
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
 - [Wiring System](README.md)
+- [FieldWiring E1.31 Dense RGB Field Presentation Contract](FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md)
+- [FieldWiring DMX / DumbRGB Field Presentation Contract](FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md)
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [LOR Preview Parser Architecture](../../../01_LOR_System/02_Data_Extraction/LOR_Preview_Parser_Architecture.md)
 - [Folder Alignment Engineering Design](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
