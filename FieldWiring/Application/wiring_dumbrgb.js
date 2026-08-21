@@ -29,6 +29,16 @@
     );
   }
 
+  function groupUniverse(group) {
+    const values = [...new Set(
+      (group.rows || [])
+        .map((row) => row.start_universe ?? row.controller)
+        .filter((value) => value !== null && value !== undefined && value !== "")
+        .map(String)
+    )];
+    return values.length === 1 ? values[0] : values.join(", ");
+  }
+
   function renderDumbRgbCards() {
     if (typeof packageData === "undefined" || !packageData?.controller_groups) return;
 
@@ -40,6 +50,21 @@
       if (!group) return;
       const wrap = card.querySelector(".hookup-table-wrap");
       if (!wrap) return;
+
+      const title = card.querySelector(".controller-title > strong");
+      if (title) title.textContent = "DMX / DUMBRGB";
+
+      const meta = card.querySelector(".controller-meta");
+      if (meta) {
+        meta.querySelector(".dmx-universe-meta")?.remove();
+        const universe = groupUniverse(group);
+        if (universe) {
+          meta.insertAdjacentHTML(
+            "afterbegin",
+            `<span class="controller-meta-item dmx-universe-meta"><span class="controller-meta-label">Universe</span><span class="controller-meta-value">${esc(universe)}</span></span>`
+          );
+        }
+      }
 
       const rows = fixtureRows(group).map((row) => {
         const trigger = packageData.context.display_id &&
