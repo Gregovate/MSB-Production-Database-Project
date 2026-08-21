@@ -1,0 +1,66 @@
+/* Common image / Field Hookup workspace focus behavior.
+
+   This is presentation-only and applies to every FieldWiring device family.
+   Desktop/laptop users may give either the image or hookup panel the working
+   area, then restore the normal draggable split. Mobile remains page-scroll
+   based and does not reserve permanent space for focus controls.
+*/
+
+@media screen and (min-width: 801px) {
+  .workspace-focus-button {
+    flex: 0 0 auto;
+  }
+
+  #workspace.workspace-focus-image .image-section {
+    flex: 1 1 auto !important;
+    min-height: 240px;
+  }
+
+  #workspace.workspace-focus-image .hookup-pane {
+    flex: 0 0 auto !important;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+
+  #workspace.workspace-focus-image .hookup-pane .controller-groups {
+    display: none;
+  }
+
+  #workspace.workspace-focus-image .image-section .divider {
+    display: none !important;
+  }
+
+  #workspace.workspace-focus-hookup .image-section {
+    flex: 0 0 auto !important;
+    min-height: 0;
+  }
+
+  #workspace.workspace-focus-hookup .image-section .image-pane,
+  #workspace.workspace-focus-hookup .image-section .divider {
+    display: none !important;
+  }
+
+  #workspace.workspace-focus-hookup .hookup-pane {
+    flex: 1 1 auto !important;
+    min-height: 220px;
+    max-height: none;
+    overflow: auto;
+  }
+
+  #workspace.workspace-focus-hookup .controller-groups {
+    display: grid;
+  }
+}
+
+@media screen and (max-width: 800px) {
+  .workspace-focus-button {
+    display: none !important;
+  }
+}
+
+@media print {
+  .workspace-focus-button {
+    display: none !important;
+  }
+}
