@@ -62,6 +62,11 @@ def wiring_css() -> Response:
     return send_from_directory(BASE_DIR, "wiring.css")
 
 
+@app.get("/wiring_sticky_context.css")
+def wiring_sticky_context_css() -> Response:
+    return send_from_directory(BASE_DIR, "wiring_sticky_context.css")
+
+
 @app.get("/wiring.js")
 def wiring_js() -> Response:
     return send_from_directory(BASE_DIR, "wiring.js")
