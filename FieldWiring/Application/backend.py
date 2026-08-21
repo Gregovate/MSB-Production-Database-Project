@@ -67,6 +67,11 @@ def wiring_js() -> Response:
     return send_from_directory(BASE_DIR, "wiring.js")
 
 
+@app.get("/wiring_e131.js")
+def wiring_e131_js() -> Response:
+    return send_from_directory(BASE_DIR, "wiring_e131.js")
+
+
 @app.get("/wiring_disclosure.js")
 def wiring_disclosure_js() -> Response:
     return send_from_directory(BASE_DIR, "wiring_disclosure.js")
