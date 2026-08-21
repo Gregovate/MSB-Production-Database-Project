@@ -164,6 +164,20 @@ class IngestAuthorityTests(unittest.TestCase):
         self.assertTrue(ingest.parser_requires_dmx_source_detail("V7.0.11"))
         self.assertTrue(ingest.parser_requires_dmx_source_detail("V7.1.0"))
 
+    def test_dmx_source_detail_names_map_without_transform(self) -> None:
+        mapping = ingest.build_column_map(
+            ["RawPropID", "ChannelName", "ChannelGridRowNumber"],
+            ["raw_prop_id", "channel_name", "channel_grid_row_number"],
+        )
+        self.assertEqual(
+            mapping,
+            {
+                "raw_prop_id": "RawPropID",
+                "channel_name": "ChannelName",
+                "channel_grid_row_number": "ChannelGridRowNumber",
+            },
+        )
+
     def test_v7010_does_not_require_new_dmx_columns(self) -> None:
         connection = sqlite3.connect(":memory:")
         self.addCleanup(connection.close)
