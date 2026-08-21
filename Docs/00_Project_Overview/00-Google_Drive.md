@@ -5,10 +5,10 @@
 | Item | Value |
 |------|-------|
 | Document | 00 - Google Drive Folder Structure |
-| Revision | 1.3 Draft |
-| Date | 2026-08-12 |
+| Revision | 1.3.1 |
+| Date | 2026-08-19 |
 | Author | Greg Liebig |
-| Status | Draft |
+| Status | Released |
 
 ---
 
@@ -40,13 +40,13 @@ The following principles apply throughout the project.
 
 1. Organize by physical location first.
 2. Documentation belongs at the organizational level to which it applies: Stage, Substage, Scene, shared Display group, or individual Display.
-3. Not every LOR Display requires its own Google Drive folder. Multiple Displays may legitimately use one shared documentation folder, and some Displays may require no dedicated folder.
+3. Every Wired LOR Display requires its own Google Drive folder located under the Stage or Scene where it lives. Multiple Displays may legitimately use one shared documentation folder, and some Displays may require no dedicated folder like support structures or non-LOR displays used to build the inventory records.
 4. Stage, Substage, and Scene roots use the same standardized helper-folder structure so applications can locate published documentation reliably. Display folders use a smaller standardized helper structure.
 5. Stage wiring markups are stored in the standardized `Wiring` structure.
 6. Procedures are stored in the standardized `Procedures` structure.
 7. Photographs are stored in the standardized `Photos` structure.
-8. Historical information remains with the Stage, Scene, shared group, or Display it documents until it can be reorganized safely.
-9. The Production Database indexes identities, relationships, and document access information but does not replace the Google Drive engineering repository.
+8. Historical information remains with the Stage, Scene, shared group, or Display it documents until it can be reorganized safely. archive folders are used for organization but may no longer be applicable to the active show.
+9. The Production Database indexes identities, relationships, and document access information but does not replace the Google Drive `Display Folder` repository.
 10. QR codes identify stable MSB records; they must not encode fragile Google Drive paths or individual document URLs.
 11. New documentation should follow this organizational standard even when legacy material has not yet been reorganized.
 
@@ -131,6 +131,7 @@ Stages, Substages, and Scenes use the same standardized helper-folder structure:
 Stage / Substage / Scene
 │
 ├── PreviewBackground/
+│   └── archive/
 │
 ├── Photos/
 │   ├── Current/
@@ -158,15 +159,18 @@ Stage / Substage / Scene
 
 `Procedures\Inspection` is intentionally unstructured.
 
-Display folders use the smaller standardized helper structure:
+Display folders use a smaller standard structure. The minimum folders are:
 
 ```text
-Display
-│
-├── PreviewBackground/
-└── Photos/
-    ├── Current/
-    └── Historical/
+<Display>
+├── PreviewBackground
+│   ├── preview development
+│   ├── channel assignments
+│   └── archive
+├── design archive
+└── Photos
+    ├── Current
+    └── Historical
 ```
 
 Each Stage represents a physical area within the park and serves as the primary organizational unit of the Engineering Repository.
