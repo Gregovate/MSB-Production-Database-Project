@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| Status | PROPOSED CHANGE MAP — NO PARSER CODE CHANGE YET |
+| Status | REGRESSION FIXTURE ADDED — NOT YET EXECUTED; NO PARSER CODE CHANGE |
 | Sub-project | FieldWiring / Engineering Recovery |
 | Branch | `agent/fieldwiring-engineering-recovery` |
 | Parser baseline | V7.0.10 |
@@ -17,6 +17,12 @@ It is a design/change map only. It does not describe an implemented schema chang
 The governing terminology is defined in:
 
 - [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
+
+The pre-change grouped-DMX regression fixture is:
+
+- [`test_parse_props_grouped_dmx.py`](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
+
+The fixture has been added to the branch but has not been executed by repository CI because no CI status/check is attached to the commit. Do not treat the baseline as test-proven until that fixture is run successfully against unchanged V7.0.10.
 
 ## Existing Contract — Must Remain Unchanged
 
@@ -214,20 +220,36 @@ A later FieldWiring-specific read model may expose `RawPropID`, `ChannelName`, a
 
 ## Parser Test Impact
 
-Before changing V7.0.10 behavior, add a grouped-DMX regression fixture that proves:
+A grouped-DMX pre-change regression fixture now exists at:
 
-1. multiple DMX `PropClass` rows sharing one Display Name produce one canonical `props` master;
-2. existing master selection is unchanged;
-3. every existing `dmxChannels.PropId` remains the canonical master;
-4. existing DMX row count remains unchanged for explicitly serialized rows;
-5. existing DMX field values remain unchanged;
-6. `RawPropID` identifies the source `PropClass.id` for every row;
-7. `ChannelName` preserves the source `PropClass.Name`;
-8. `ChannelGridRowNumber` starts at 1 and restarts for each source `PropClass`;
-9. existing SQLite wiring views retain the same columns and rows;
-10. non-DMX parser output is unchanged.
+`Docs/01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py`
+
+It freezes the V7.0.10 expectations for:
+
+1. two DMX `PropClass` rows sharing one Display Name producing one canonical `props` master;
+2. existing master selection;
+3. every legacy `dmxChannels.PropId` remaining the canonical master;
+4. the current eight-column `dmxChannels` schema;
+5. six explicit DMX rows and their existing field values in the Mega Star-style fixture;
+6. the current FormView-compatible `preview_wiring_map_v6` column shape and rows;
+7. the current limitation that the legacy DMX view shows the canonical master's Channel Name for every grouped row; and
+8. the expected future source mapping of LOR Prop ID + Channel Name + local Channel Grid Row Number beside the frozen baseline fixture.
+
+The fixture intentionally asserts that `RawPropID`, `ChannelName`, and `ChannelGridRowNumber` are absent from the V7.0.10 table. Those assertions must be revised only as part of the controlled additive implementation after the baseline test has first been run successfully.
 
 The current generic parser-output comparison treats table schema differences as blocking when comparing same-parser compatibility outputs. It is not a substitute for this parser-version regression test because this change intentionally extends the `dmxChannels` schema.
+
+### Current test execution status
+
+The regression test file is committed, but repository CI did not report any status/check for that commit. This engineering session also could not execute the repository parser through the connector runtime.
+
+Therefore:
+
+```text
+fixture added != fixture passed
+```
+
+Run the fixture against unchanged V7.0.10 before making the parser schema or insertion change.
 
 ## PostgreSQL Ingest Impact
 
@@ -263,17 +285,19 @@ The new `dmxChannels.RawPropID` is wiring-row provenance only. It must not becom
 ## Implementation Sequence After Approval
 
 ```text
-1. Add grouped-DMX regression tests against V7.0.10 behavior.
-2. Extend SQLite dmxChannels with the three additive fields.
-3. Populate the fields only in process_dmx_props().
-4. Bump parser version under the existing controlled versioning process.
-5. Run parser tests and same-input regression checks.
-6. Build a new SQLite snapshot.
-7. Inspect dense-RGB rows directly for Mega Star, Mega Cube, Mega Tree, and Whoville Matrix.
-8. Confirm all existing view outputs/relationships remain unchanged.
-9. Only then extend lor_snap.dmx_channels and its current-snapshot interface if PostgreSQL propagation is required.
-10. Build the FieldWiring development read model from the accepted data.
-11. Review compact ChannelGrid expansion as a separate controlled change.
+1. Run test_parse_props_grouped_dmx.py against unchanged V7.0.10 and require PASS.
+2. If the baseline fixture fails, fix/review the fixture or architecture before touching the parser.
+3. Extend SQLite dmxChannels with the three additive fields.
+4. Populate the fields only in process_dmx_props().
+5. Update the grouped-DMX tests to assert the new fields while preserving every frozen legacy expectation.
+6. Bump parser version under the existing controlled versioning process.
+7. Run the full parser test suite and same-input regression checks.
+8. Build a new SQLite snapshot.
+9. Inspect dense-RGB rows directly for Mega Star, Mega Cube, Mega Tree, and Whoville Matrix.
+10. Confirm all existing view outputs/relationships remain unchanged.
+11. Only then extend lor_snap.dmx_channels and its current-snapshot interface if PostgreSQL propagation is required.
+12. Build the FieldWiring development read model from the accepted data.
+13. Review compact ChannelGrid expansion as a separate controlled change.
 ```
 
 ## Stop Conditions
@@ -290,15 +314,19 @@ Stop and review if the provenance change causes any unapproved change to:
 - reconciliation source identity;
 - non-DMX parser output.
 
+Also stop before parser implementation if the new baseline regression fixture has not been run successfully against V7.0.10.
+
 ## Related Documents
 
 - [FieldWiring Dense RGB Parser Extension Checkpoint](FieldWiring_Dense_RGB_Parser_Extension_Checkpoint_2026-08-21.md)
 - [LOR XML to MSB Terminology Contract](../../../01_LOR_System/02_Data_Extraction/LOR_XML_to_MSB_Terminology_Contract.md)
 - [LOR Preview Parser Architecture](../../../01_LOR_System/02_Data_Extraction/LOR_Preview_Parser_Architecture.md)
 - [LOR SQLite Output Database Structure](../../../01_LOR_System/02_Data_Extraction/LOR_SQLite_Output_Database_Structure.md)
+- [Grouped-DMX V7.0.10 Regression Test](../../../01_LOR_System/02_Data_Extraction/Parser/test_parse_props_grouped_dmx.py)
 
 ## Revision History
 
 | Date | Author | Change |
 |---|---|---|
+| 2026-08-21 | GAL / OpenAI | Added the V7.0.10 grouped-DMX regression fixture and recorded that it has not yet executed in CI/connector runtime; changed the implementation gate to require a successful baseline test run before parser modification. |
 | 2026-08-21 | GAL / OpenAI | Created the exact additive change map after V7.0.10 dependency inspection; replaced conversation-specific source/component terminology with the controlled LOR/MSB terms `RawPropID`, `ChannelName`, and `ChannelGridRowNumber`. |
