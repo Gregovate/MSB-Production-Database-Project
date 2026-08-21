@@ -96,26 +96,44 @@ LEFT JOIN lor_snap.v_current_dmx_channels AS dc
   ON dc.import_run_id = r.import_run_id
 GROUP BY r.import_run_id, r.parser_version;
 
--- 7. The legacy compatibility views remain present and queryable.  Migration
---    0037 deliberately does not replace or extend their column contracts.
+-- 7. Protected dependent/compatibility views must remain definition-identical
+--    to the preflight fingerprints.  Compare this result directly with
+--    preflight 10 before accepting migration 0037.
+WITH protected_views(view_name) AS (
+    VALUES
+        ('preview_wiring_map_v6'),
+        ('preview_wiring_sorted_v6'),
+        ('preview_wiring_fieldmap_v6'),
+        ('preview_wiring_fieldlead_v6'),
+        ('preview_wiring_circuit_rollup_v6'),
+        ('preview_wiring_fieldonly_v6'),
+        ('stage_display_assets_v1')
+)
 SELECT
-    table_name,
-    count(*) AS column_count
-FROM information_schema.columns
-WHERE table_schema = 'lor_snap'
-  AND table_name IN (
-      'preview_wiring_map_v6',
-      'preview_wiring_sorted_v6',
-      'preview_wiring_fieldmap_v6',
-      'preview_wiring_fieldlead_v6',
-      'preview_wiring_circuit_rollup_v6',
-      'preview_wiring_fieldonly_v6'
-  )
-GROUP BY table_name
-ORDER BY table_name;
+    pv.view_name,
+    md5(pg_get_viewdef(to_regclass('lor_snap.' || pv.view_name), true))
+        AS view_definition_md5,
+    (
+        SELECT string_agg(
+            c.column_name || ':' || c.data_type,
+            ',' ORDER BY c.ordinal_position
+        )
+        FROM information_schema.columns AS c
+        WHERE c.table_schema = 'lor_snap'
+          AND c.table_name = pv.view_name
+    ) AS column_signature
+FROM protected_views AS pv
+ORDER BY pv.view_name;
 
-SELECT COUNT(*) AS current_field_lead_rows
-FROM lor_snap.preview_wiring_fieldlead_v6;
+SELECT
+    (SELECT COUNT(*) FROM lor_snap.preview_wiring_map_v6)
+        AS preview_wiring_map_rows,
+    (SELECT COUNT(*) FROM lor_snap.preview_wiring_fieldlead_v6)
+        AS preview_wiring_fieldlead_rows,
+    (SELECT COUNT(*) FROM lor_snap.preview_wiring_fieldonly_v6)
+        AS preview_wiring_fieldonly_rows,
+    (SELECT COUNT(*) FROM lor_snap.stage_display_assets_v1)
+        AS stage_display_assets_rows;
 
 -- 8. Once a V7.0.11+ run becomes current, all three source-detail fields are
 --    required by ingest V0.4.2.  This query surfaces any violation without
