@@ -12,11 +12,57 @@
 
 This finding corrects the earlier recovery assumption that exact dense-RGB controller outputs were necessarily unavailable from Light-O-Rama and had to remain unresolved until controller-internal configuration could be inspected.
 
-The operator supplied the current LOR Prop/channel setup for the Mega Tree. The authoring UI explicitly models the physical/logical controller-port rows used by the prop and assigns DMX universe/channel data to each row.
+The operator supplied the current LOR Prop/channel setup for the Mega Tree and Mega Star. The authoring UI explicitly models the controller-port/string rows used by each PropClass and assigns DMX universe/channel data to those rows.
 
-For the current MSB dense-RGB Displays, controller output relationships should therefore be recovered from the LOR channel-authoring model wherever the current source supports them. FieldWiring must not discard that information merely because the present V7 materialization does not expose an `Output` field.
+For the current MSB dense-RGB Displays, controller-output relationships should therefore be recovered from the LOR channel-authoring model wherever the current source supports them. FieldWiring must not discard that information merely because the present V7 materialization does not expose an `Output` field.
 
 This does not make a universe number a permanent physical-controller identity. Permanent hardware identity remains the responsibility of Controller Inventory / `ctrl_id`.
+
+## Operator Authoring Contract — Comment vs Name
+
+The operator confirmed an important authoring rule for the MSB previews:
+
+```text
+PropClass.Comment -> Display identity
+PropClass.Name    -> operator-authored component / channel configuration identity
+```
+
+For dense-RGB Displays, `PropClass.Name` is not merely decorative sequencer text. The operator deliberately creates separate PropClasses for meaningful physical/logical parts of a Display and configures the channel/controller-port rows separately for each part.
+
+Therefore FieldWiring must preserve both levels:
+
+```text
+Display
+    -> PropClass component
+        -> component-local controller-port/string row
+            -> universe/channel addressing
+```
+
+The current V7 behavior that groups DMX rows by `LORComment` and retains only one canonical master Name is insufficient for this purpose.
+
+### Important ordinal rule
+
+The controller-port/string row number shown inside the LOR Prop editor is **local to that PropClass**. It can restart at `1` for the next component.
+
+Therefore a port ordinal is not meaningful without the source PropClass identity/Name.
+
+For example:
+
+```text
+MS Long Spire 1 4x150
+    local row 1 -> U113
+    local row 2 -> U114
+    local row 3 -> U115
+    local row 4 -> U116
+
+MS Short Spire 1 2x150
+    local row 1 -> U129
+    local row 2 -> U130
+```
+
+Flattening those rows into one `FT-MegaStar` master without preserving the source component would make both components appear to have a generic row 1/row 2 and destroy the operator-authored structure.
+
+Do not synthesize component Names later from universe ranges. Preserve the source `PropClass.Name` and `RawPropID` from LOR.
 
 ## Direct LOR UI Evidence — Mega Tree
 
@@ -47,6 +93,109 @@ Therefore, for this prop, LOR directly establishes the controller-output/string 
 
 The raw live `.lorprev` independently contains 48 `ChannelGrid` entries at Universes 1-48, each channels 1-300. The raw order is consistent with the 48 LOR controller-port rows.
 
+## Direct LOR UI Evidence — Mega Star
+
+The Mega Star Scene visibly contains separate authored component PropClasses including:
+
+```text
+MS Center Hub Back
+MS Center Hub Front
+MS Long Spire 1 4x150
+MS Long Spire 2 4x150
+MS Long Spire 3 4x150
+MS Long Spire 4 4x150
+MS Short Spire 1 2x150
+MS Short Spire 2 2x150
+MS Short Spire 3 2x150
+MS Short Spire 4 2x150
+```
+
+The Scene also contains grouping/helper entries such as the Hub groups. Those grouping objects must not be confused with the actual channel-bearing PropClasses.
+
+All of the channel-bearing component PropClasses use:
+
+```text
+Comment: FT-MegaStar
+```
+
+while their `Name` values distinguish the parts of the Display.
+
+### Center Hub Back
+
+The current LOR editor shows:
+
+```text
+Name: MS Center Hub Back
+Comment: FT-MegaStar
+Device type: DMX
+Channel entry mode: Enter a channel on every row
+Separate Universe for each RGB string: enabled
+
+local row 1 -> U139, channel 1-450
+local row 2 -> U140, channel 1-450
+```
+
+This is a custom shape. Its two explicit channel rows are part of the Hub Back component and must remain associated with that exact component Name/RawPropID.
+
+### Long Spire 1
+
+The current LOR editor shows:
+
+```text
+Name: MS Long Spire 1 4x150
+Comment: FT-MegaStar
+Actual # of Controller Ports Used: 4
+Exact # of RGB Nodes per Controller Port: 150
+Channel entry mode: Enter channel on first row, auto-number the rest
+Separate Universe for each RGB string: enabled
+
+local row 1 -> U113, channel 1-450
+local row 2 -> U114, channel 1-450
+local row 3 -> U115, channel 1-450
+local row 4 -> U116, channel 1-450
+```
+
+The four displayed controller-port rows correspond directly to the four DMX legs already observed in the raw `.lorprev` for this PropClass.
+
+### Short Spire 1
+
+The current LOR editor shows:
+
+```text
+Name: MS Short Spire 1 2x150
+Comment: FT-MegaStar
+Actual # of Controller Ports Used: 2
+Exact # of RGB Nodes per Controller Port: 150
+Channel entry mode: Enter channel on first row, auto-number the rest
+Separate Universe for each RGB string: enabled
+
+local row 1 -> U129, channel 1-450
+local row 2 -> U130, channel 1-450
+```
+
+Again, the row ordinal is local to the `MS Short Spire 1 2x150` PropClass. It is not the same semantic object as local row 1 of Long Spire 1 or Hub Back.
+
+### Mega Star source topology preserved by Name
+
+Combining the previously inspected raw Preview with the operator authoring UI gives the current source component structure:
+
+```text
+MS Long Spire 1 4x150 -> U113-U116, local rows 1-4
+MS Long Spire 2 4x150 -> U117-U120, local rows 1-4
+MS Long Spire 3 4x114 -> U121-U124, local rows 1-4
+MS Long Spire 4 4x150 -> U125-U128, local rows 1-4
+
+MS Short Spire 1 2x150 -> U129-U130, local rows 1-2
+MS Short Spire 2 2x150 -> U131-U132, local rows 1-2
+MS Short Spire 3 2x150 -> U133-U134, local rows 1-2
+MS Short Spire 4 2x150 -> U135-U136, local rows 1-2
+
+MS Center Hub Front -> U137-U138, local rows 1-2
+MS Center Hub Back  -> U139-U140, local rows 1-2
+```
+
+This is the FieldWiring-relevant structure that the present Display-level DMX consolidation loses.
+
 ## Current V7 Loss
 
 The current V7 parser documentation and implementation treat DMX `ChannelGrid` semicolon-delimited entries as `dmxChannels` legs and store:
@@ -61,9 +210,15 @@ Unknown
 PreviewId
 ```
 
-The current `dmxChannels` schema does not preserve a controller-port/output ordinal.
+The current `dmxChannels` schema does not preserve:
 
-The current DMX grouping also groups source rows by LOR Comment / Display Name, writes one canonical `props` master, and attaches all DMX legs to that master. This preserves universe/channel topology but can lose source component Names and source-row distinctions that are useful to FieldWiring.
+```text
+source PropClass RawPropID
+source PropClass Name
+component-local controller-port/output ordinal
+```
+
+The current DMX grouping groups source rows by LOR Comment / Display Name, writes one canonical `props` master, and attaches all DMX legs to that master. This preserves universe/channel topology but loses source component Names and source-row distinctions that are required to reconstruct the author's field wiring intent.
 
 Therefore the current limitation is primarily a **parser/read-model materialization gap**, not a lack of LOR source information.
 
@@ -130,9 +285,9 @@ The recovery implementation must validate the expansion rule against representat
 
 For the current dense-RGB cases, however, the UI behavior plus the raw arithmetic provides a concrete, testable route to recover the controller-port rows instead of treating the compact entry as one physical output.
 
-## Controller Context and Output Number
+## Controller Context and Physical Output Number
 
-Current LOR Network Configuration establishes the relevant controller universe ranges:
+Current LOR Network Configuration establishes controller universe ranges such as:
 
 ```text
 Mega Tree Flex 48              U1-U48
@@ -143,40 +298,27 @@ Mega Star 2 PixCon16           U129-U144
 Mt Crumpit / Whoville PixCon16 U147-U162
 ```
 
-For the inspected current props, each physical/logical output string uses at most one DMX universe and `Separate Universe for each RGB string` is the operative LOR channel model.
+The Prop editor establishes the **component-local controller-port/string row** and the universe/channel assigned to that row.
 
-This supports recovering output rows from the LOR channel setup rather than from inaccessible AlphaPix internals.
-
-Examples supported by current evidence:
+These are separate facts and must not be conflated:
 
 ```text
-Mega Tree:
-  Outputs 1-48 -> U1-U48
+PropClass Name + local row ordinal
+    -> authored component/string relationship
 
-Mega Ball:
-  16 logical output rows -> U49-U64
-
-Mega Star controller 1:
-  16 output rows -> U113-U128
-
-Mega Star controller 2:
-  12 currently used rows -> U129-U140
-  U141-U144 have no currently identified Mega Star source legs
-
-Whoville Matrix:
-  two compact 800-pixel blocks beginning U147 and U155
-  -> 16 × 100-pixel output rows across U147-U162
+LOR Network Configuration
+    -> E1.31 controller context / universe range
 ```
 
-Mega Cube requires component-aware expansion because the source contains multiple PropClasses and gaps within the controller universe range:
+For the current MSB configuration, the universe ranges and source rows form clean sequential patterns. That makes a physical controller output number potentially derivable for accepted configurations, but the derivation rule must be explicit and tested; the parser must not simply rename every DMX universe as a physical output.
+
+For example, on Mega Star controller 1:
 
 ```text
-Left  -> block beginning U65
-Front -> block beginning U73
-Top   -> blocks beginning U93 and U101
+U113-U128 are routed to Mega Star 1 PixCon16
 ```
 
-Do not label the unexplained U81-U92 range as unused until all current source props using the Mega Cube controller context have been checked.
+while the source components divide that range into four separate Long Spire PropClasses. If an accepted MSB rule maps the first universe in the controller range to physical Output 1 and increments sequentially, then the physical output can be derived. That rule is different from the component-local row ordinal and must remain a separate field/concept.
 
 ## AlphaPix Flex 48 Boundary — Revised
 
@@ -187,7 +329,7 @@ That remains true.
 What changes is the FieldWiring consequence:
 
 - FieldWiring does **not** need to wait for an inaccessible AlphaPix port map;
-- LOR already contains the current controller-port/string channel setup needed to recover the field output relationships for these authored props;
+- LOR already contains the current component/controller-port/string channel setup needed to recover the authored field relationships;
 - LOR Network Configuration supplies the controller routing/range context; and
 - Controller Inventory supplies permanent physical controller identity and assignment.
 
@@ -195,7 +337,8 @@ Thus the working architecture is:
 
 ```text
 LOR Prop/channel setup
-    -> controller-port/string row
+    -> source PropClass component
+    -> component-local controller-port/string row
     -> universe/channel addressing
 
 LOR Network Configuration
@@ -208,7 +351,7 @@ FieldWiring
     -> joins those facts into the field hookup
 ```
 
-The inaccessible internal AlphaPix programming is not a blocker when the LOR authoring model already expresses the output relationships required by FieldWiring.
+The inaccessible internal AlphaPix programming is not a blocker when the LOR authoring model already expresses the component/output relationships required by FieldWiring.
 
 ## Parser / Read-Model Work Now Required
 
@@ -218,14 +361,16 @@ Before changing the parser, define and test the minimum materialization needed t
 Display identity / LOR Comment
 source PropClass RawPropID
 source component Name
-controller-port/output ordinal
+component-local controller-port/string ordinal
 DMX universe/channel row
 source Preview/run provenance
 ```
 
-For compact auto-numbered DMX grids, the parser/read model also needs a controlled way to materialize the implied controller-port rows rather than one row per raw semicolon segment only.
+For compact auto-numbered DMX grids, the parser/read model also needs a controlled way to materialize the implied component-local controller-port rows rather than one row per raw semicolon segment only.
 
-The current parser's Display-level DMX master may remain useful, but it must not destroy the source component/output detail FieldWiring needs.
+Any later physical-controller output number derived from LOR Network Configuration must be a separate resolved value; it must not replace or overwrite the source component-local ordinal.
+
+The current parser's Display-level DMX master may remain useful for Display identity, but it must not destroy the source component/output detail FieldWiring needs.
 
 No PostgreSQL schema design or parser edit is authorized by this finding alone. The next engineering step is to inspect the exact current V7 DMX materialization code and tests, then propose the smallest backward-compatible change.
 
@@ -233,7 +378,9 @@ No PostgreSQL schema design or parser edit is authorized by this finding alone. 
 
 Where earlier FieldWiring dense-RGB notes say that exact output/port relationships for these Displays must remain unresolved solely because the physical controller's internal mapping cannot be inspected, this finding supersedes that conclusion.
 
-The remaining questions are about **recovering and preserving LOR's own controller-port/channel model**, not obtaining an AlphaPix Flex 48 configuration export.
+Where earlier discussion treats `PropClass.Name` as expendable after matching to a Display Comment, this finding also supersedes that assumption for dense-RGB FieldWiring. The operator-authored component Name is part of the wiring contract and must be preserved.
+
+The remaining questions are about **recovering and preserving LOR's own component/controller-port/channel model**, then resolving that against the applicable E1.31 controller context without collapsing the two levels.
 
 ## Related Documents
 
