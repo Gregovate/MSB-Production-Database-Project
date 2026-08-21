@@ -107,6 +107,25 @@ class DmxSourceDetailMigrationTests(unittest.TestCase):
         ):
             self.assertNotIn(token, source)
 
+    def test_validation_gates_source_detail_completeness_at_v7011(self) -> None:
+        source = VALIDATION.read_text(encoding="utf-8")
+        self.assertIn("dmx_source_detail_required", source)
+        self.assertIn(">= ARRAY[7, 0, 11]", source)
+        self.assertIn("WHEN r.parser_version ~", source)
+        self.assertIn("ELSE false", source)
+        self.assertIn(
+            "WHERE dmx_source_detail_required\n          AND (raw_prop_id IS NULL",
+            source,
+        )
+        self.assertIn(
+            "WHERE dmx_source_detail_required\n          AND (channel_name IS NULL",
+            source,
+        )
+        self.assertIn(
+            "WHERE dmx_source_detail_required\n          AND (\n              channel_grid_row_number IS NULL",
+            source,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
