@@ -178,6 +178,89 @@ Eight reviewed Pixie 8 groups use the ranges `50-57`, `58-5F`, `60-67`, `68-6F`,
 
 E1.31 universes are addressing, not physical controller identity. A single physical controller may span many universes. FieldWiring must not infer controller count merely from compatibility/universe rows.
 
+## E1.31 / DMX Consumer Requirements Added 2026-08-21
+
+Parser V7.0.11 now preserves detailed grouped-DMX source wiring information on each atomic DMX row:
+
+```text
+RawPropID
+ChannelName
+ChannelGridRowNumber
+Universe
+StartChannel
+EndChannel
+```
+
+Those fields remain LOR/LOR2DB wiring authority. They are **not** Controller Inventory identity fields and must not be duplicated into the Controller Inventory model merely because FieldWiring consumes them.
+
+For E1.31, the accepted technician-facing FieldWiring table is grouped by physical controller and shows:
+
+```text
+OUTPUT / PORT
+CHANNEL / DISPLAY SECTION
+UNIVERSE
+PIXELS
+CHANNEL RANGE
+```
+
+Therefore the future Controller Inventory resolver must provide enough current physical assignment information for FieldWiring to determine:
+
+```text
+which permanent controller applies
+human-readable controller label
+exact manufacturer/model
+physical output/port capability
+which physical output/port applies to the current LOR/V7 relationship,
+    or the reviewed mapping basis from which that output can be derived
+current E1.31 assignment/context
+optional current management IP when operationally useful
+current Stage / Scene / distinguishing physical context when required
+which approved LOR/V7 snapshot the mapping was reconciled against
+whether the mapping is authoritative or still requires review
+```
+
+Controller Inventory does **not** need to create a duplicate row for every LOR universe/channel relationship when a simpler reviewed controller-range/output rule is sufficient.
+
+Current examples that the future resolver must be capable of representing include:
+
+```text
+Mega Tree
+    one physical 48-output controller context
+    Universes 1-48
+
+Mega Star
+    two physical PixCon16 controller contexts
+    one Display spanning multiple permanent physical controllers
+
+Mega Cube
+    three physical controller contexts
+    detailed compact-grid expansion remains a separate parser task
+```
+
+The permanent controller identity must still be independent of universe, IP address, Display name, source `RawPropID`, or source Channel Grid row.
+
+### CR50 / DumbRGB boundary
+
+The CR50 fixture rule exposed during Northern Lights acceptance is different from physical-controller inventory.
+
+Each CR50 is a 5-channel DMX fixture, while LOR intentionally carries only the three RGB channels. FieldWiring groups those three source rows into one fixture instruction and preserves the intentional two-channel addressing gaps.
+
+That presentation rule does **not** require Controller Inventory to create one permanent controller record per CR50 fixture.
+
+If the physical gateway/controller serving those fixtures (for example a PixieLink or another DMX/E1.31 interface) is within Controller Inventory scope, its permanent identity/current assignment belongs in Controller Inventory. The individual CR50 fixture source rows remain LOR wiring topology unless the Controller Inventory workstream separately expands its scope to physical fixtures.
+
+## Ongoing Handoff Rule
+
+This handoff is continuous for the life of the FieldWiring project.
+
+Whenever FieldWiring discovers a new requirement that affects permanent controller identity, exact controller model, physical output capability, current assignment/addressing, duplicate-address grouping, E1.31 controller/output resolution, or controller mapping provenance, the corresponding Controller Inventory-owned integration documentation must be updated before the FieldWiring milestone is considered fully documented.
+
+FieldWiring may use temporary reviewed mappings while Controller Inventory is incomplete, but every such mapping must remain centralized and replaceable. Conversation memory and scattered renderer conditions are not acceptable substitutes for the cross-workstream handoff.
+
+The Controller Inventory-owned durable plan is:
+
+- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](../08_Controller_Inventory/Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
+
 ## Current Branch Implementation Status
 
 At the time this handoff was written, the branch contains the Candyland stale-snapshot presentation change, but the full automated gate is **not yet green**.
@@ -223,6 +306,9 @@ FieldWiring will remain a consumer of that model; it should not redefine Control
 - [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](../08_Controller_Inventory/Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - `FieldWiring_Physical_Controller_Output_Presentation_Contract.md`
+- `FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md`
+- `FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md`
+- `FieldWiring_PostgreSQL_DMX_Propagation_Change_Map_2026-08-21.md`
 - `FieldWiring_RGB_Controller_Pattern_Findings_2026-08-19.md`
 - `FieldWiring_Church_RGB_Tree_Star_Controller_Context_2026-08-20.md`
 - `FieldWiring_Candyland_Stale_Snapshot_Output_Mapping_2026-08-20.md`
