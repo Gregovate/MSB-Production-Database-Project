@@ -3,7 +3,7 @@ Preflight: 10_fieldwiring_dmx_0037_preflight.sql
 Purpose:
   Read-only production baseline immediately before considering migration 0037.
   Captures current snapshot identity, object ownership/grants, dependencies,
-  constraints, legacy wiring-view fingerprints, and row-count baselines.
+  constraints, protected dependent-view fingerprints, and row-count baselines.
 
 Safety:
   READ ONLY.  This file contains SELECT statements only.
@@ -105,21 +105,22 @@ WHERE d.refobjid = 'lor_snap.v_current_dmx_channels'::regclass
   AND dep.oid <> 'lor_snap.v_current_dmx_channels'::regclass
 ORDER BY dependent_schema, dependent_object;
 
--- 8. Freeze legacy compatibility-view definitions before migration.  Save this
---    result with the preflight evidence; the same hashes must be unchanged after
---    migration 0037.
-WITH legacy_views(view_name) AS (
+-- 8. Freeze every protected direct/legacy dependent view before migration.
+--    Save this result with the preflight evidence; the same hashes/signatures
+--    must be unchanged after migration 0037.
+WITH protected_views(view_name) AS (
     VALUES
         ('preview_wiring_map_v6'),
         ('preview_wiring_sorted_v6'),
         ('preview_wiring_fieldmap_v6'),
         ('preview_wiring_fieldlead_v6'),
         ('preview_wiring_circuit_rollup_v6'),
-        ('preview_wiring_fieldonly_v6')
+        ('preview_wiring_fieldonly_v6'),
+        ('stage_display_assets_v1')
 )
 SELECT
-    lv.view_name,
-    md5(pg_get_viewdef(to_regclass('lor_snap.' || lv.view_name), true))
+    pv.view_name,
+    md5(pg_get_viewdef(to_regclass('lor_snap.' || pv.view_name), true))
         AS view_definition_md5,
     (
         SELECT string_agg(
@@ -128,10 +129,10 @@ SELECT
         )
         FROM information_schema.columns AS c
         WHERE c.table_schema = 'lor_snap'
-          AND c.table_name = lv.view_name
+          AND c.table_name = pv.view_name
     ) AS column_signature
-FROM legacy_views AS lv
-ORDER BY lv.view_name;
+FROM protected_views AS pv
+ORDER BY pv.view_name;
 
 -- 9. Freeze representative legacy row counts before migration.  Migration 0037
 --    must not change these counts while Run 50 remains current.
@@ -141,7 +142,9 @@ SELECT
     (SELECT COUNT(*) FROM lor_snap.preview_wiring_fieldlead_v6)
         AS preview_wiring_fieldlead_rows,
     (SELECT COUNT(*) FROM lor_snap.preview_wiring_fieldonly_v6)
-        AS preview_wiring_fieldonly_rows;
+        AS preview_wiring_fieldonly_rows,
+    (SELECT COUNT(*) FROM lor_snap.stage_display_assets_v1)
+        AS stage_display_assets_rows;
 
 -- 10. Explicitly show whether any of the three 0037 fields already exists.
 --     Pre-migration expectation: zero rows returned.
