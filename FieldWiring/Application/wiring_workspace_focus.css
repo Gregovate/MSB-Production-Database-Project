@@ -1,66 +1,82 @@
-/* Common image / Field Hookup workspace focus behavior.
+/* Common image / Field Hookup split behavior.
 
-   This is presentation-only and applies to every FieldWiring device family.
-   Desktop/laptop users may give either the image or hookup panel the working
-   area, then restore the normal draggable split. Mobile remains page-scroll
-   based and does not reserve permanent space for focus controls.
+   The image and hookup panels share one bounded work area on desktop/laptop.
+   Presets bias that split without ever hiding either panel. The existing
+   draggable divider remains authoritative for custom ratios. Hide Image is the
+   only control that removes the image from the workspace.
 */
 
 @media screen and (min-width: 801px) {
-  .workspace-focus-button {
-    flex: 0 0 auto;
-  }
-
-  #workspace.workspace-focus-image .image-section {
-    flex: 1 1 auto !important;
-    min-height: 240px;
-  }
-
-  #workspace.workspace-focus-image .hookup-pane {
-    flex: 0 0 auto !important;
-    min-height: 0;
-    max-height: none;
+  .workspace-panels {
+    flex: 1 1 auto;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     overflow: hidden;
   }
 
-  #workspace.workspace-focus-image .hookup-pane .controller-groups {
-    display: none;
+  .workspace-panels .image-section {
+    flex: 0 0 50%;
+    min-height: 150px;
   }
 
-  #workspace.workspace-focus-image .image-section .divider {
-    display: none !important;
-  }
-
-  #workspace.workspace-focus-hookup .image-section {
-    flex: 0 0 auto !important;
-    min-height: 0;
-  }
-
-  #workspace.workspace-focus-hookup .image-section .image-pane,
-  #workspace.workspace-focus-hookup .image-section .divider {
-    display: none !important;
-  }
-
-  #workspace.workspace-focus-hookup .hookup-pane {
-    flex: 1 1 auto !important;
-    min-height: 220px;
+  .workspace-panels .hookup-pane {
+    flex: 1 1 0;
+    min-height: 180px;
     max-height: none;
     overflow: auto;
   }
 
-  #workspace.workspace-focus-hookup .controller-groups {
-    display: grid;
+  /* When the operator explicitly hides the image, return Field Hookup to the
+     compact content-driven behavior that was accepted earlier. */
+  .workspace-panels .image-section:not(.image-open) {
+    flex: 0 0 auto !important;
+    min-height: 0;
+  }
+
+  .workspace-panels .image-section:not(.image-open) + .hookup-pane {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 58vh;
+  }
+
+  .workspace-ratio-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  .workspace-ratio-controls button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .workspace-ratio-controls button[aria-pressed="true"] {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: var(--blue-ink);
   }
 }
 
 @media screen and (max-width: 800px) {
-  .workspace-focus-button {
+  .workspace-panels {
+    display: block;
+    min-height: 0;
+  }
+
+  .workspace-ratio-controls {
     display: none !important;
   }
 }
 
 @media print {
-  .workspace-focus-button {
+  .workspace-panels {
+    display: block;
+  }
+
+  .workspace-ratio-controls {
     display: none !important;
   }
 }
