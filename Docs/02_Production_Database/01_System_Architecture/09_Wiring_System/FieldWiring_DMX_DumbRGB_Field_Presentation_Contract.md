@@ -4,7 +4,7 @@
 |---|---|
 | Status | DRAFT — accepted field UX direction |
 | Sub-project | FieldWiring |
-| Current revision | 2026-08-19 |
+| Current revision | 2026-08-21 |
 | Owner | MSB Database Administrator |
 | Schema status | No schema change authorized |
 
@@ -21,7 +21,7 @@ string_type = DumbRGB
 
 For these Displays, the field task may be a DMX-network connection rather than plugging a Display into one numbered output of an A/C or Pixie controller.
 
-The operator-facing presentation must describe the physical hookup the volunteer actually performs. Raw DMX universe/channel values remain important engineering data, but they must not be mislabeled as physical controller/output instructions.
+The operator-facing presentation must describe the physical hookup the volunteer actually performs. DMX universe/channel values are also important field addressing information for CR50 fixtures and must be presented according to the fixture contract rather than being mislabeled as physical controller/output instructions.
 
 ---
 
@@ -91,18 +91,52 @@ start_channel
 end_channel
 ```
 
-For example, `NL-DS-01` is currently represented by three DMX channels in universe `145`, starting at channels `1`, `2`, and `3`.
+For example, `NL-DS-01` is currently represented by the RGB channels included in the LOR Channel Grid for its DMX fixture address.
 
-The legacy-compatible `preview_wiring_fieldlead_v6` view exposes those DMX values through its generic wiring columns. In that compatibility view, values such as:
-
-```text
-Controller = 145
-StartChannel = 1 / 2 / 3
-```
-
-are DMX universe/channel addressing evidence. They are **not** proof that the volunteer is looking for a physical controller numbered `145` with numbered output plugs `1`, `2`, and `3`.
+The legacy-compatible `preview_wiring_fieldlead_v6` view exposes those DMX values through its generic wiring columns. In that compatibility view, values such as universe `145` and the fixture's RGB channel range are DMX addressing evidence. They are **not** proof that the volunteer is looking for a physical controller numbered `145` with numbered output plugs matching those channels.
 
 This distinction is critical for the browser replacement because FormView's generic controller/channel grid can be technically faithful to the parsed data while still being misleading as a physical hookup instruction.
+
+---
+
+## CR50 Fixture Addressing Rule
+
+This rule applies to **all CR50 fixtures**, not only Northern Lights.
+
+A CR50 is physically a **5-channel DMX fixture**. MSB intentionally includes only the three RGB control channels in the LOR Channel Grid. The additional two fixture-function channels, including strobe and another auxiliary function, are deliberately excluded from the grid.
+
+Therefore the source can legitimately appear as:
+
+```text
+CR50 fixture 1
+    DMX start address 1
+    RGB channels 1-3
+    channels 4-5 intentionally omitted from the MSB Channel Grid
+
+CR50 fixture 2
+    DMX start address 6
+    RGB channels 6-8
+    channels 9-10 intentionally omitted from the MSB Channel Grid
+
+CR50 fixture 3
+    DMX start address 11
+    RGB channels 11-13
+    channels 14-15 intentionally omitted from the MSB Channel Grid
+```
+
+The gaps are **intentional addressing behavior**, not missing parser data and not channels that FieldWiring should synthesize or close.
+
+For CR50 presentation:
+
+```text
+DMX Start Address = StartChannel
+RGB Channels      = StartChannel-EndChannel represented in the LOR Channel Grid
+Physical footprint = 5 DMX channels per fixture
+```
+
+FieldWiring must preserve the actual source channel values and the intentional gap to the next CR50 fixture. It must not infer fixture count or physical DMX footprint merely from `EndChannel - StartChannel + 1`.
+
+This CR50 rule is especially important during DMX addressing and troubleshooting because a technician must be able to distinguish an intentional 5-channel fixture step from accidentally missing channels.
 
 ---
 
@@ -128,37 +162,37 @@ DMX + RGB — reviewed dense RGB cases
 
 The DMX/DumbRGB presentation must not teach the operator that DMX universe values are physical controller identities or that DMX channel numbers are numbered controller plugs.
 
+For CR50 fixtures, however, universe, DMX start address, and the RGB channel range are meaningful field addressing information and belong in the normal fixture table.
+
 ---
 
 ## Operator-Facing DMX/DumbRGB Result
 
 The normal field result should emphasize the information the field crew actually needs.
 
-Conceptually:
+For CR50 fixtures, the accepted technician-facing columns are conceptually:
 
 ```text
-Display / Fixture
-    NL-DS-01
-
-Connection
-    DMX network
-
-Location / visual guidance
-    current same-scope wiring/context image when available
+FIXTURE / CHANNEL
+UNIVERSE
+DMX START ADDRESS
+RGB CHANNELS
 ```
 
-Additional field-facing network identification may be added when the actual physical cable/network labeling contract is confirmed.
-
-Raw technical addressing such as:
+Example:
 
 ```text
-LOR network alias
-DMX universe
-DMX start/end channel
-source/device metadata
+FIXTURE / CHANNEL      UNIVERSE   DMX START   RGB CHANNELS
+CR50 fixture 1         145        1           1-3
+CR50 fixture 2         145        6           6-8
+CR50 fixture 3         145        11          11-13
 ```
 
-belongs in Engineering Details or a troubleshooting view unless a specific field workflow proves that the installer needs it.
+The normal view must not display a pixel count for CR50/DumbRGB fixtures. The RGB span represents three color-control channels, not an addressable-pixel quantity.
+
+Location / visual guidance may still use the current same-scope wiring/context image when available.
+
+Additional raw source/device metadata belongs in Engineering Details or a troubleshooting view unless a specific workflow proves that it belongs in the normal field table.
 
 The current V7 snapshot uses LOR network aliases alongside DMX universe data. FieldWiring must not automatically relabel those values without first defining how the physical DMX network is labeled in the park.
 
@@ -208,6 +242,8 @@ E1.31 dense RGB row
 
 FieldWiring must interpret the row using current Prop/SubProp/device metadata before rendering the normal operator view.
 
+For CR50 specifically, the compatibility data must not be normalized into consecutive 3-channel fixtures. The intentional two-channel gaps are part of the physical 5-channel DMX addressing scheme.
+
 ---
 
 ## Acceptance Requirements
@@ -216,12 +252,16 @@ At minimum, DMX/DumbRGB FieldWiring testing must prove:
 
 1. `16-Northern Lights-NL` is classified as a DMX/DumbRGB presentation family rather than A/C, Pixie, or E1.31 dense RGB;
 2. values such as DMX universe `145` / `146` are not presented as physical controller labels;
-3. DMX channel values are not presented as numbered physical output plugs unless a separate device-specific contract proves that relationship;
-4. the operator can identify the applicable Display/fixture and DMX-network hookup without understanding the raw addressing model;
-5. raw universe/channel/network information remains available under Engineering Details for troubleshooting;
-6. `device_type = DMX` + `string_type = RGB` reviewed dense Displays route to the separate E1.31 presentation contract rather than this DumbRGB contract;
-7. a missing wiring image does not invalidate the DMX field result; and
-8. no change is made to the authoritative LOR topology merely to simplify presentation.
+3. CR50 fixtures are treated as 5-channel DMX devices even though only the three RGB channels are present in the LOR Channel Grid;
+4. CR50 normal rows show fixture/channel, universe, DMX start address, and actual RGB channel range;
+5. intentional two-channel CR50 gaps are preserved and are not filled, renumbered, or reported as missing data;
+6. no pixel count is derived or displayed for CR50/DumbRGB fixtures;
+7. DMX channel values are not presented as numbered physical controller plugs unless a separate device-specific contract proves that relationship;
+8. the operator can identify the applicable Display/fixture and DMX-network hookup without treating universe as physical controller identity;
+9. raw network/source/device metadata remains available under Engineering Details for troubleshooting;
+10. `device_type = DMX` + `string_type = RGB` reviewed dense Displays route to the separate E1.31 presentation contract rather than this DumbRGB contract;
+11. a missing wiring image does not invalidate the DMX field result; and
+12. no change is made to the authoritative LOR topology merely to simplify presentation.
 
 ---
 
