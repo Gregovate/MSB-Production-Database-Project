@@ -1,8 +1,8 @@
-"""Regression tests for the V7.0.10 grouped-DMX materialization contract.
+"""Regression tests for the V7.0.11 additive grouped-DMX contract.
 
-These tests intentionally capture the pre-extension behavior before the dense-RGB
-source-detail fields are added. They protect the existing canonical Display/master
-relationship, existing DMX row values, and compatibility-view output.
+These tests preserve the V7.0.10 canonical Display/master and legacy DMX values
+while validating the three V7.0.11 additive source-detail fields. Existing
+compatibility-view output must remain unchanged.
 
 The proposed additive fields are documented in:
 Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/
@@ -28,8 +28,8 @@ PREVIEW_ID = "11111111-1111-4111-8111-111111111111"
 PROP_A_RAW_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 PROP_B_RAW_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 
-# The fixture also records the source mapping that the additive extension must
-# preserve later. V7.0.10 does not yet store these three values in dmxChannels.
+# Expected source mapping now materialized by V7.0.11 in dmxChannels.
+# Channel Grid Row Number is 1-based and restarts for each PropClass.
 EXPECTED_SOURCE_DETAIL = [
     (PROP_A_RAW_ID, "MS Long Spire 1 4x150", 1, 113),
     (PROP_A_RAW_ID, "MS Long Spire 1 4x150", 2, 114),
@@ -59,8 +59,8 @@ GROUPED_DMX_XML = f"""<?xml version="1.0"?>
 """
 
 
-class GroupedDMXV7010RegressionTests(unittest.TestCase):
-    """Freeze the existing grouped-DMX contract before additive extension."""
+class GroupedDMXV7011RegressionTests(unittest.TestCase):
+    """Protect the V7.0.10 contract while validating V7.0.11 additions."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -148,30 +148,29 @@ class GroupedDMXV7010RegressionTests(unittest.TestCase):
             ],
         )
 
-    def test_v7010_dmx_schema_is_frozen_before_additive_extension(self) -> None:
-        """Record the exact pre-change dmxChannels table contract."""
+    def test_v7011_dmx_schema_appends_source_detail_after_legacy_contract(self) -> None:
+        """Existing eight columns stay first; three source-detail fields append."""
         with closing(sqlite3.connect(self.database)) as connection:
             columns = [
                 row[1]
                 for row in connection.execute("PRAGMA table_info(dmxChannels)").fetchall()
             ]
 
+        legacy_columns = [
+            "IntDMXChannelID",
+            "PropId",
+            "Network",
+            "StartUniverse",
+            "StartChannel",
+            "EndChannel",
+            "Unknown",
+            "PreviewId",
+        ]
+        self.assertEqual(columns[:8], legacy_columns)
         self.assertEqual(
-            columns,
-            [
-                "IntDMXChannelID",
-                "PropId",
-                "Network",
-                "StartUniverse",
-                "StartChannel",
-                "EndChannel",
-                "Unknown",
-                "PreviewId",
-            ],
+            columns[8:],
+            ["RawPropID", "ChannelName", "ChannelGridRowNumber"],
         )
-        self.assertNotIn("RawPropID", columns)
-        self.assertNotIn("ChannelName", columns)
-        self.assertNotIn("ChannelGridRowNumber", columns)
 
     def test_existing_wiring_view_remains_canonical_master_output(self) -> None:
         """Freeze the FormView-compatible DMX projection before extension."""
@@ -234,19 +233,20 @@ class GroupedDMXV7010RegressionTests(unittest.TestCase):
         # show the canonical master's Channel Name for all grouped DMX rows.
         self.assertEqual({row[2] for row in rows}, {"MS Long Spire 1 4x150"})
 
-    def test_fixture_records_future_source_detail_without_changing_v7010(self) -> None:
-        """Keep the agreed future row mapping beside the frozen baseline fixture."""
-        self.assertEqual(
-            EXPECTED_SOURCE_DETAIL,
-            [
-                (PROP_A_RAW_ID, "MS Long Spire 1 4x150", 1, 113),
-                (PROP_A_RAW_ID, "MS Long Spire 1 4x150", 2, 114),
-                (PROP_A_RAW_ID, "MS Long Spire 1 4x150", 3, 115),
-                (PROP_A_RAW_ID, "MS Long Spire 1 4x150", 4, 116),
-                (PROP_B_RAW_ID, "MS Short Spire 1 2x150", 1, 129),
-                (PROP_B_RAW_ID, "MS Short Spire 1 2x150", 2, 130),
-            ],
-        )
+    def test_grouped_dmx_preserves_lor_prop_channel_name_and_local_grid_row(self) -> None:
+        """Every DMX row retains its originating PropClass and local row."""
+        self._materialize()
+
+        with closing(sqlite3.connect(self.database)) as connection:
+            rows = connection.execute(
+                """
+                SELECT RawPropID, ChannelName, ChannelGridRowNumber, StartUniverse
+                FROM dmxChannels
+                ORDER BY StartUniverse, StartChannel, IntDMXChannelID
+                """
+            ).fetchall()
+
+        self.assertEqual(rows, EXPECTED_SOURCE_DETAIL)
 
 
 if __name__ == "__main__":
