@@ -6,6 +6,13 @@
    only control that removes the image from the workspace.
 */
 
+/* A normal published wiring image is already self-evident from its pane. Keep
+   only the context-image warning badge, where the distinction prevents a field
+   operator from mistaking a supplemental image for wiring documentation. */
+.image-classification:not(.context) {
+  display: none !important;
+}
+
 @media screen and (min-width: 801px) {
   .workspace-panels {
     flex: 1 1 auto;
