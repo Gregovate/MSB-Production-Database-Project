@@ -2,12 +2,34 @@
   "use strict";
 
   const groups = document.getElementById("controller-groups");
+  const pane = document.getElementById("hookup-pane");
+  const sectionHeading = pane?.querySelector(".hookup-heading");
   if (!groups) return;
+
+  function updateStickyMeasurements() {
+    const desktop = window.matchMedia("(min-width: 801px)").matches;
+    if (pane && sectionHeading) {
+      pane.style.setProperty(
+        "--hookup-heading-height",
+        desktop ? `${Math.ceil(sectionHeading.getBoundingClientRect().height)}px` : "0px"
+      );
+    }
+
+    groups.querySelectorAll(".controller-card").forEach((card) => {
+      const head = card.querySelector(".controller-head");
+      if (!head) return;
+      card.style.setProperty(
+        "--controller-head-height",
+        `${Math.ceil(head.getBoundingClientRect().height)}px`
+      );
+    });
+  }
 
   function setExpanded(card, expanded) {
     card.classList.toggle("is-collapsed", !expanded);
     const head = card.querySelector(".controller-head");
     if (head) head.setAttribute("aria-expanded", String(expanded));
+    requestAnimationFrame(updateStickyMeasurements);
   }
 
   function toggle(card) {
@@ -40,11 +62,21 @@
       // of controller tables before the technician chooses what they need.
       setExpanded(card, index === 0);
     });
+    requestAnimationFrame(updateStickyMeasurements);
   }
 
   const observer = new MutationObserver(prepareCards);
   observer.observe(groups, { childList: true });
   prepareCards();
+
+  const resizeObserver = typeof ResizeObserver === "function"
+    ? new ResizeObserver(updateStickyMeasurements)
+    : null;
+  if (resizeObserver) {
+    if (sectionHeading) resizeObserver.observe(sectionHeading);
+    resizeObserver.observe(groups);
+  }
+  window.addEventListener("resize", updateStickyMeasurements);
 
   // Hard-copy output must always contain every controller relationship,
   // regardless of what the operator happened to collapse on screen.
