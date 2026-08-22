@@ -46,7 +46,9 @@ For a normal Setup path this includes:
 └── Procedures\
     ├── marker
     └── Setup\
-        └── marker
+        ├── marker
+        └── images\
+            └── marker
 ```
 
 The same rule applies to:
@@ -54,9 +56,10 @@ The same rule applies to:
 ```text
 Procedures\Inspection
 Procedures\Takedown
+Procedures\Takedown\images
 ```
 
-If the Procedure application directly consumes a task-local `images` folder, that `images` folder must also be marked before it becomes part of the application path.
+`Setup\images` and `Takedown\images` are part of the controlled future Procedure content path and must be marked.
 
 `Archive` and `SourceDocs` are excluded source/history areas and are not normal field-presentation folders. They are not application marker targets unless a later approved design intentionally changes their role.
 
@@ -117,15 +120,17 @@ A separate contributor/operator procedure must explain how to create, revise, ar
 
 Setup-document images must have one predictable home associated with the Setup documentation they support so contributors do not have to guess among unrelated repository or Stage image locations.
 
-For Setup-specific document assets, use the established Setup-local image location approved for the Stage documentation workflow. Do not create additional competing image folders for the same document family.
+For Setup-specific document assets, use the established Setup-local `images` folder. The future Procedure system treats this as part of the controlled task path, so the folder must contain the standard marker.
 
-If the future Procedure application reads those image files directly, the applicable `images` folder is part of the controlled application path and must contain the marker before application use.
+The same rule applies to the Takedown-local `images` folder.
+
+Do not create additional competing image folders for the same document family.
 
 Reusable organization branding such as the MSB logo should come from one approved publicly accessible reusable asset location rather than being copied into every Stage Setup folder.
 
 Images should appear next to the instruction step they clarify whenever practical.
 
-The exact physical folder path and presentation behavior for Setup images must remain aligned with the Stage-folder procedure and future Procedure implementation; this standard does not independently invent a second image structure.
+The exact presentation behavior for task-local images must remain aligned with the future Procedure implementation, but their folder/marker ownership is established now.
 
 ## Database Ownership and Document Resolution
 
@@ -209,7 +214,7 @@ A contributor should be able to determine from the repository:
 The following are agreed project direction, not authorization to invent implementation details:
 
 - keep the established Stage/Scene Google Drive folder structure;
-- require the standard marker in every folder used by the future Procedure application's controlled path;
+- require the standard marker in every folder used by the future Procedure application's controlled path, including Setup/Takedown `images`;
 - keep `Archive` and `SourceDocs` outside normal field presentation;
 - continue legacy-document alignment through the existing Folder Alignment/document-organization work;
 - use a dedicated Stage Setup Instruction template;
@@ -225,7 +230,7 @@ Still unresolved and requiring engineering review:
 - exact Google Doc / published PDF reference storage in PostgreSQL;
 - exact current-vs-published relationship when a Google Doc and PDF both exist;
 - exact scraper/API contract used by `my.sheboyganlights.org`;
-- whether/how task-local `images` are served directly by the future Procedure application;
+- exact runtime serving/rendering behavior for task-local `images`;
 - final contributor workflow for generating/publishing PDFs from the controlled template/source.
 
 ## Related Documents
