@@ -4,11 +4,11 @@
 |---|---|
 | Status | DRAFT — resolver design under test |
 | Sub-project | FieldWiring |
-| Current revision | 2026-08-19 |
+| Current revision | 2026-08-22 |
 | Owner | MSB Database Administrator |
 | Runtime data authority | Current V7+ PostgreSQL/LOR snapshot |
 | Legacy comparison authority | FormView / V6 reports are validation evidence only |
-| Code/schema status | Design and read-only test contract; no schema change authorized |
+| Code/schema status | Release-candidate resolver implemented; full child-branch marker enforcement remains open |
 
 ## Purpose
 
@@ -111,21 +111,56 @@ The standard marker is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-Every current Stage, formal Sub-stage, and Scene root carries the structural marker.
+The current governing rule is:
 
-Current application-source helpers are marked separately:
+> Every directory used as part of the new FieldWiring or future Procedure application path must contain the marker.
+
+For FieldWiring that includes:
 
 ```text
-PreviewBackground
-Procedures
-Wiring
+<resolved Stage / Sub-stage / Scene root>\
+├── marker
+├── PreviewBackground\
+│   └── marker
+└── Wiring\
+    ├── marker
+    ├── BackgroundStage\
+    │   └── marker
+    └── MusicalStage\
+        └── marker
 ```
 
-`Photos` is not currently an application-source helper.
+The structural root marker validates the resolved Stage/Sub-stage/Scene scope.
 
-The structural marker supports validation of the resolved hierarchy. The helper marker confirms that the helper folder participates in the current application-source contract.
+The `Wiring` marker validates the wiring source root.
+
+The `BackgroundStage` / `MusicalStage` marker validates the actual published wiring branch selected by the operator's wiring context.
+
+A same-scope `PreviewBackground` used for context must also be marked.
+
+`SourceDocs` is not part of the application path and remains a hard exclusion boundary.
 
 Loose files and unmarked legacy folders are ignored for current published-content discovery.
+
+### Current release-candidate enforcement gap
+
+The current implementation in:
+
+```text
+FieldWiring/Application/wiring_images.py
+```
+
+already requires:
+
+- the resolved Stage/Scene root marker;
+- the `Wiring` root marker before publishing wiring images; and
+- the `PreviewBackground` marker before publishing context images.
+
+It does **not yet require the marker inside the selected `BackgroundStage` or `MusicalStage` branch**.
+
+That is an implementation gap against the current marker contract and must be corrected and tested before final FieldWiring deployment acceptance.
+
+Do not change the documentation back to the older narrower rule merely to match the current release-candidate code.
 
 ---
 
@@ -199,9 +234,9 @@ The resolver operates conservatively:
 7. Use allowed exact hierarchy evidence when it resolves.
 8. Walk upward only as needed to identify the nearest valid current structured Stage/Sub-stage/Scene root.
 9. If the stored path is stale, use current identity plus deterministic actual hierarchy rules to find one safe current marked root.
-10. Use structural markers as supporting validation.
+10. Validate the required markers for the selected application path.
 11. Do not rewrite LOR, PostgreSQL, or Drive as a side effect.
-12. If current identity/path/hierarchy evidence does not yield one safe result, report review/unresolved rather than guess.
+12. If current identity/path/hierarchy/marker evidence does not yield one safe result, report review/unresolved rather than guess.
 
 ---
 
@@ -345,7 +380,9 @@ FieldWiring inspects only the applicable branch inside the fixed resolved scope:
 <resolved scope>\Wiring\MusicalStage
 ```
 
-Only files directly in that branch are published wiring-image candidates.
+Both the `Wiring` root and selected published branch must satisfy the marker contract.
+
+Only files directly in that marked branch are published wiring-image candidates.
 
 Expected image extensions include:
 
@@ -388,6 +425,8 @@ Stage 07 cases demonstrated that generic Stage `PreviewBackground` images also m
 
 The shared hierarchy resolver can also support Setup/Takedown/Inspection discovery, but Procedure behavior is separately governed.
 
+The same marker principle applies: every directory the Procedure application uses in its controlled path must be marked before the application consumes it.
+
 FieldWiring should not attempt to present Procedure documents as part of its wiring-image resolution logic.
 
 A broader field interface may later show which procedures are available for the resolved Stage/Scene context, but whether/how those documents open is a Procedure subsystem concern rather than a FieldWiring wiring rule.
@@ -398,14 +437,14 @@ A broader field interface may later show which procedures are available for the 
 
 The Drive/scope resolver gate is accepted when it can demonstrate:
 
-> Given current V7/PostgreSQL identity, current Scene/Preview relationships, current path evidence, structural/source markers, and the actual Google Drive hierarchy, the application can deterministically locate the correct Stage/Sub-stage/Scene scope without V6 runtime data, unsafe folder guessing, or traversal into source-only branches.
+> Given current V7/PostgreSQL identity, current Scene/Preview relationships, current path evidence, the required markers, and the actual Google Drive hierarchy, the application can deterministically locate the correct Stage/Sub-stage/Scene scope without V6 runtime data, unsafe folder guessing, or traversal into source-only branches.
 
 Image completeness is evaluated separately from scope resolution.
 
 FieldWiring presentation acceptance additionally requires that:
 
 - current wiring rows remain the primary result;
-- published images are restricted to the fixed resolved scope;
+- published images are restricted to the fixed resolved scope and marked selected branch;
 - a missing image is clearly reported rather than hidden by parent fallback;
 - same-scope `PreviewBackground` is context only; and
 - no parent/sibling/source image is substituted merely to produce a visual.
