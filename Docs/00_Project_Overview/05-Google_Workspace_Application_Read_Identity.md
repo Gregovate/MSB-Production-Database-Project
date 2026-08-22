@@ -2,11 +2,11 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — architecture and administrative procedure boundary |
+| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google Workspace identity created; Shared Drive permission and server authorization still pending |
 | Date | 2026-08-21 |
 | Owner | MSB Database Administrator / Google Workspace Administrator |
 | Applies to | `Display Folders` Shared Drive, FieldWiring, future Procedures applications, future approved database-backed field-document consumers |
-| Production-change status | NONE — no Google Workspace user, OAuth client, server mount, or runtime service created by this document |
+| Production-change status | Google Workspace identity created; no OAuth client, server mount, or runtime service created yet |
 
 ## Purpose
 
@@ -67,6 +67,26 @@ When the exact identity is approved, this documentation should record, without s
 
 Do not record passwords, recovery codes, OAuth client secrets, refresh tokens, or other credentials in Git.
 
+## Implemented Google Workspace Identity
+
+The dedicated Google Workspace identity was created on 2026-08-21 as:
+
+```text
+Display name: Engineering Documentation
+Account:      msb-docs@sheboyganlights.org
+Status:       Active
+```
+
+Google Admin evidence at creation showed:
+
+```text
+Admin roles assigned: 0
+```
+
+This is intentional. The account is an application/document read identity and must not receive Google Workspace administrative roles merely because it is used by server infrastructure.
+
+The account currently exists at the Google Workspace layer. Creation of the account does **not** by itself authorize it to read the `Display Folders` Shared Drive. Shared Drive membership/permission must be granted and separately verified.
+
 ## Required Google-Side Access Boundary
 
 The dedicated identity should behave like another authorized MSB user of the `Display Folders` Shared Drive, except that normal application use is read-only.
@@ -75,7 +95,7 @@ The current intended Google-side permission is:
 
 ```text
 Display Folders Shared Drive
-    -> dedicated MSB application read identity
+    -> msb-docs@sheboyganlights.org
     -> Viewer
 ```
 
@@ -169,13 +189,16 @@ If `msb-prod-db` is replaced in the future, the Google Workspace identity may re
 
 As of 2026-08-21:
 
-- a dedicated Google Workspace application-read identity is required;
-- the exact account name has not yet been approved;
+- the approved Google Workspace application-read identity is `msb-docs@sheboyganlights.org`;
+- the account display name is `Engineering Documentation`;
+- the account is active;
+- the account has no Google Workspace administrative roles assigned;
 - the identity is intended for shared MSB engineering-document access, not only FieldWiring;
+- Viewer membership on the `Display Folders` Shared Drive is the next Google-side permission step and remains to be verified;
 - the `Display Folders` Shared Drive remains the authoritative editable repository;
-- the server/application access must be read-only;
+- server/application access must remain read-only;
 - the server-side filesystem must preserve normal folder traversal; and
-- no Google Workspace account, OAuth client, rclone configuration, mount, or server service has yet been created as part of this work.
+- no OAuth client, rclone configuration, mount, or server service has yet been created as part of this work.
 
 ## Related Documents
 
