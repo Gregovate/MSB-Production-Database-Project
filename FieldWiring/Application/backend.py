@@ -53,6 +53,7 @@ def js() -> Response:
 
 
 @app.get("/wiring")
+@app.get("/wiring.html")
 def wiring_page() -> Response:
     return send_from_directory(BASE_DIR, "wiring.html")
 
