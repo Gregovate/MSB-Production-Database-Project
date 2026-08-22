@@ -1,34 +1,36 @@
-# Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20
+# Controller Inventory Current-State / FieldWiring Integration Plan
 
 | Item | Value |
 |---|---|
-| Status | ENGINEERING PLAN — source/data review in progress |
+| Status | ENGINEERING PLAN — 2026 source/data review in progress |
 | Subsystem owner | Controller Inventory |
 | Consumer | FieldWiring |
+| Current working inventory | `Controller Inventory & Testing 2026.xlsx` |
+| FieldWiring baseline | Release Candidate handoff dated 2026-08-21 |
 | Assignment scope | Current approved LOR/V7 snapshot only |
 | Schema status | NO PostgreSQL schema or migration authorized by this plan |
 
 ## Purpose
 
-FieldWiring development needs to continue while the controller source data is being reviewed. Temporary named controller-group rules are currently necessary for known physical patterns, but those rules must not become the permanent controller model.
+FieldWiring development must continue while the physical controller data is being reviewed. The application currently contains reviewed temporary physical-controller interpretations needed for correct field presentation. Those temporary rules must remain replaceable rather than becoming the permanent inventory architecture.
 
-This plan defines the Controller Inventory direction clearly enough for FieldWiring to build toward the future interface without requiring the Controller Inventory schema to be finalized before the source data is corrected.
-
-The design goal is:
+The design direction is:
 
 ```text
 permanent physical controller identity
         +
-current controller address / distinguishing assignment
+current controller address / distinguishing physical group
         +
 current approved LOR/V7 snapshot
         ->
 current physical-controller interpretation used by FieldWiring
 ```
 
-Controller Inventory does not replace LOR topology. It supplies the physical-controller fact that LOR cannot represent.
+Controller Inventory supplies the physical-controller fact that LOR cannot represent. It does not replace LOR topology.
 
-## Confirmed Authority Boundary
+See [Controller Inventory 2026 Source Audit — 2026-08-22](Controller_Inventory_2026_Source_Audit_2026-08-22.md) for the current source findings and unresolved conflicts.
+
+## Authority Boundary
 
 ### Controller Inventory owns
 
@@ -37,7 +39,8 @@ Controller Inventory does not replace LOR topology. It supplies the physical-con
 - physical output/port capability;
 - serial number when available;
 - current controller status;
-- current controller address/assignment needed to associate the physical asset with the current approved LOR/V7 topology;
+- current controller address/context needed to associate the physical asset with the current approved LOR/V7 topology;
+- one additional distinguishing physical group when duplicate addressing makes the controller ambiguous;
 - firmware update history; and
 - durable controller labeling/scan identity.
 
@@ -48,14 +51,15 @@ Controller Inventory does not replace LOR topology. It supplies the physical-con
 - LOR Network;
 - Unit ID / Unit-ID range used by the current show;
 - channel/output relationships represented by LOR;
-- DMX/E1.31 universe/channel topology; and
-- current Stage/Scene/Display context through the approved V7/PostgreSQL snapshot.
+- DMX/E1.31 universe/channel topology;
+- current Stage/Scene/Display context; and
+- current wiring provenance through the approved V7/PostgreSQL snapshot.
 
 ### Work Orders own
 
 Repairs, troubleshooting, parts replacement, maintenance actions, and repair resolution belong in the Work Order system and should link to the permanent controller asset. Controller Inventory does not need a competing repair-history subsystem.
 
-## No Controller Assignment History Requirement
+## Current Assignment Only
 
 The controller itself has permanent identity. Its show assignment is current-state data.
 
@@ -63,11 +67,11 @@ Controller Inventory does **not** need to preserve prior Stage, Scene, Display, 
 
 When the approved LOR/V7 snapshot changes, the current controller assignment can be reviewed/reconciled to that new current snapshot.
 
-Older LOR snapshots and preserved spreadsheets remain available as engineering evidence without being duplicated into Controller Inventory assignment history.
+Older LOR snapshots and preserved spreadsheets remain engineering evidence without being duplicated into Controller Inventory assignment history.
 
 ## Firmware Is the Controller-Specific History to Preserve
 
-Firmware updates are different from show assignments because knowing the firmware progression of a physical controller can matter for troubleshooting and compatibility.
+Firmware updates are different from show assignments because firmware progression can matter for troubleshooting and compatibility.
 
 The eventual Controller Inventory model should be able to preserve, at minimum:
 
@@ -77,33 +81,24 @@ The eventual Controller Inventory model should be able to preserve, at minimum:
 - person who installed or verified it; and
 - optional notes / Work Order reference when applicable.
 
-The lookup spreadsheet's `Latest Firmware` value is model-reference information. It must not be treated as proof of the firmware actually installed on an individual physical controller.
+The lookup workbook's `Latest Firmware` value is model-reference information. It is not proof of the firmware actually installed on an individual controller.
 
 ## Exact Model and Generic Classification Are Both Needed
 
 A simple controller class is useful for people and FieldWiring presentation, but the exact controller model must remain distinct.
 
-For example:
+Example:
 
 ```text
 Generic class: Pixel Controller
 Exact model:   PixCon16
 ```
 
-and:
+`PixCon16` and Pixie-16 are different devices and must never be normalized into one model.
 
-```text
-Generic class: Pixel Controller
-Exact model:   Pixie-16
-```
+The 2026 source currently uses model labels that still require controlled normalization. Do not infer exact hardware solely from similar spelling.
 
-`PixCon16` and `Pixie-16` are different devices and must never be normalized into one model.
-
-Source spellings such as `Pixicon-16` or `Pixiecon 16` must be physically verified before being mapped to an exact model.
-
-For conventional A/C controllers, useful generic characteristics may include output count and applicable current rating while the exact Light-O-Rama model/generation remains preserved.
-
-## Current Assignment — Do Not Duplicate LOR Data Unnecessarily
+## Do Not Duplicate LOR Display/Output Rows Unnecessarily
 
 The inventory team does **not** need to manually recreate every controller-to-Display/output relationship that the current approved LOR snapshot already provides.
 
@@ -117,15 +112,15 @@ Network: Regular
 Unit ID: 41
 ```
 
-The current approved LOR/V7 snapshot can then determine which Displays and LOR outputs currently use `Regular / 41`.
+The current approved LOR/V7 snapshot can determine which Displays and LOR outputs use `Regular / 41`.
 
-Likewise, a Pixie with a unique address range can be associated to its physical controller asset by its current Network/range plus the current snapshot context.
+Likewise, a Pixie with a unique address range can normally be associated with its physical asset by current Network/range plus the current snapshot context.
 
 ## Intentional Duplicate Addresses Need One Additional Distinguishing Fact
 
-MSB intentionally uses repeated Unit IDs/ranges in some places. Therefore `network + Unit ID/range` must **not** be assumed to uniquely identify a physical controller.
+MSB intentionally uses repeated Unit IDs/ranges. Therefore `network + Unit ID/range` must **not** be assumed to uniquely identify a physical controller.
 
-Where two or more physical controllers intentionally use the same address, the current inventory review must capture a short distinguishing assignment/group.
+Where multiple physical controllers intentionally use the same address, the current inventory review must capture a short distinguishing assignment/group.
 
 Example:
 
@@ -135,21 +130,21 @@ CL-043 | UID 21-24 | Candy Canes 5-8
 CL-044 | UID 21-24 | Candy Canes 9-12
 ```
 
-This distinguishing group is the physical fact LOR cannot infer when multiple physical controllers intentionally carry the same programmed address.
+This distinguishing group is the physical fact LOR cannot infer when multiple controller instances carry the same programmed address.
 
-During source cleanup, a plain-language group is sufficient. The eventual PostgreSQL representation must be designed only after the reviewed data shows what structured relationship is actually required.
+The 2026 workbook already contains two identical Church Pixie4 `21-24` rows and three identical Candyland Pixie4 `21-24` rows. Those rows must be physically distinguished before permanent import design.
 
 Do not create a uniqueness rule that prohibits intentional duplicate controller addresses.
 
 ## Stage / Scene / Display Collection Scope During Data Review
 
-For the current cleanup effort, Stage/Scene or another simple physical-context description is sufficient for ordinary controller records when the controller address uniquely resolves its LOR relationships.
+For ordinary controller records, Stage/Scene or another simple physical-context description is sufficient during cleanup when the controller address uniquely resolves its LOR relationships.
 
 The team does **not** need to manually list every Display for every controller.
 
-Display/group information is required during cleanup only when needed to distinguish physical controllers that share the same current address or when the current physical grouping cannot otherwise be determined.
+Display/group information is required only when needed to distinguish physical controllers that share the same current address or when the current physical grouping cannot otherwise be determined.
 
-FieldWiring can use the current approved LOR/V7 snapshot to derive the detailed current Display/output rows after the physical controller has been associated with the correct address/group.
+FieldWiring can derive detailed current Display/output rows from the approved LOR/V7 snapshot after the correct physical controller has been associated with the address/group.
 
 ## Current Snapshot Provenance Requirement
 
@@ -167,75 +162,76 @@ controller mapping reviewed against = Run X
     -> controller mapping requires review/reconciliation
 ```
 
-This is a currentness/provenance requirement, not controller assignment history.
+This is currentness/provenance, not assignment history.
 
 No specific PostgreSQL column or table is authorized by this plan.
 
-## FieldWiring Consumer Interface Direction
+## Current FieldWiring Release-Candidate Boundary
 
-FieldWiring should be built so temporary hard-coded physical-controller rules can later be replaced by an authoritative Controller Inventory resolver/read model without redesigning the browser presentation layer.
+The current FieldWiring release candidate is read-only and explicitly identifies where temporary physical-controller interpretation currently lives.
 
-The eventual read interface is expected to provide enough information to answer questions such as:
+### `FieldWiring/Application/wiring_presentation.py`
 
-- Which permanent physical controller applies to this current wiring context?
-- What exact controller model/family is it?
-- How many physical outputs/ports does it have?
-- What current Network / Unit ID / Unit-ID range or E1.31 controller context applies?
-- If an address is intentionally duplicated, which physical Display/group distinguishes this controller instance?
-- Which approved LOR/V7 snapshot was this current mapping reconciled against?
+This module owns the current reviewed A/C/Pixie presentation/grouping rules. Current named/accepted patterns include such cases as:
 
-This is an interface requirement, **not a proposed table definition**.
+- Church Tree/Cross/Candy Cane contexts;
+- Candyland Lollipops/Candy Canes;
+- Who Forest Pixie8 groups; and
+- Santa's Workshop Pixie8 Trees.
 
-## FieldWiring Requirements Added During DMX / E1.31 Recovery — 2026-08-21
+These are temporary physical interpretations needed for FieldWiring correctness. They are not permanent controller identities.
 
-FieldWiring dense-RGB recovery exposed additional Controller Inventory consumer requirements that must be available to the Controller Inventory workstream even though its PostgreSQL schema is not yet finalized.
+### `FieldWiring/Application/wiring_e131.py`
 
-### E1.31 controller resolution
+This module is the centralized reviewed **temporary** E1.31 physical-controller/output resolver until Controller Inventory can supply permanent physical identity/current assignment.
 
-For an E1.31 wiring relationship, FieldWiring ultimately needs to resolve the current LOR/V7 relationship to the physical controller context the technician sees.
+The current release-candidate handoff lists these explicit mappings:
 
-The eventual Controller Inventory read boundary must be able to provide, conceptually:
+```text
+Mega Tree
+    AlphaPix / Flex48
+    Universes 1-48 -> Outputs 1-48
+
+Mega Ball
+    PixCon16
+    Universes 49-64 -> Outputs 1-16
+
+Mega Star Controller 1
+    PixCon16
+    Universes 113-128 -> Outputs 1-16
+
+Mega Star Controller 2
+    PixCon16
+    Universes 129-140 -> Outputs 1-12
+```
+
+The 2026 workbook now contains physical inventory rows corresponding to all four of those temporary contexts, but permanent `CL-###` controller identity is still missing.
+
+## What Controller Inventory Must Eventually Replace
+
+FieldWiring should not need to know permanent controller identity through named Display/Scene-specific rules.
+
+The future Controller Inventory read boundary must provide enough current physical information for FieldWiring to resolve:
 
 ```text
 permanent controller identity / controller key
 human-readable controller label
 exact manufacturer + model
 physical output/port capacity
-current addressing family = E1.31
-current E1.31 assignment/context sufficient to associate LOR universe rows
-current physical output/port for the relationship,
-    OR a reviewed deterministic mapping basis from which FieldWiring can resolve it
-optional current management IP address when operationally useful
-current Stage / Scene / physical distinguishing context when needed
-approved LOR/V7 snapshot provenance for the assignment
-assignment ambiguity/review state when the mapping is not yet authoritative
+current addressing family
+current Network + Unit ID/range OR E1.31 controller context
+optional duplicate-address distinguishing group
+optional current management IP when operationally useful
+current physical output mapping basis when it cannot be derived safely from LOR
+approved LOR/V7 snapshot provenance
+review/ambiguity state when the physical mapping is not yet authoritative
 ```
 
-The inventory model does **not** have to copy every LOR DMX row merely to satisfy this interface. Where a physical controller owns a clean contiguous universe/output block, the controller assignment may provide enough current context for FieldWiring to combine that physical fact with LOR-authored universe/channel rows.
+This is an interface requirement, **not a proposed table definition**.
 
-Examples already established by FieldWiring evidence include:
+## What Controller Inventory Must Not Copy from V7.0.11
 
-```text
-Mega Tree
-    one 48-output AlphaPix/Flex48-style controller context
-    Universes 1-48
-    one physical output per current universe relationship
-
-Mega Star
-    two physical PixCon16 controller contexts
-    Controller 1: Universes 113-128
-    Controller 2: Universes 129-144 current controller context
-
-Mega Cube
-    three physical controller contexts
-    detailed LOR compact-grid expansion is still a separate parser issue
-```
-
-These examples are consumer requirements/evidence. They do not authorize permanent Controller Inventory rows or IDs until the Controller Inventory source review establishes them.
-
-### What Controller Inventory must not duplicate from V7.0.11
-
-Parser V7.0.11 now preserves detailed DMX source wiring provenance in the current LOR snapshot:
+Parser V7.0.11 preserves detailed current DMX source wiring provenance including:
 
 ```text
 source RawPropID
@@ -258,54 +254,53 @@ Controller Inventory permanent controller/current assignment
 physical field instruction
 ```
 
-The V7.0.11 DMX `RawPropID` is source PropClass provenance. It is **not** a permanent controller identifier and must not become a Controller Inventory foreign-key identity merely because FieldWiring uses it to preserve source wiring detail.
+RawPropID, universe, IP address, Display name, Channel Name, Stage, Scene, or source row position must not become permanent controller identity.
 
-Likewise, E1.31 universe, IP address, Display name, Channel Name, Stage, Scene, or source row position must not become permanent controller identity.
+## Physical Output Is a Consumer Requirement, Not Necessarily a Duplicate Wiring Table
 
-### Physical output is a consumer requirement, not necessarily a duplicated wiring table
+FieldWiring presents physical outputs/ports when the physical mapping is known.
 
-FieldWiring's accepted E1.31 technician view is grouped by physical controller and shows:
+Controller Inventory must provide enough current physical assignment information for FieldWiring to determine the correct physical controller and output/port for an LOR/V7 relationship.
 
-```text
-OUTPUT / PORT
-CHANNEL / DISPLAY SECTION
-UNIVERSE
-PIXELS
-CHANNEL RANGE
-```
+That does **not** imply a duplicate Controller Inventory row for every Display/output/universe relationship. A reviewed range/base mapping or other simpler assignment is preferred when sufficient and unambiguous.
 
-Controller Inventory must therefore provide enough current physical assignment information for FieldWiring to determine the correct physical controller and output/port for an LOR/V7 relationship.
+Where the physical mapping is irregular, duplicated, or cannot be safely derived from current LOR topology, Controller Inventory must preserve the additional distinguishing physical fact rather than forcing FieldWiring to hard-code the exception permanently.
 
-That requirement does **not** imply that Controller Inventory must store a duplicate row for every Display/output/universe relationship. A reviewed range/base mapping or another simpler assignment model is preferred when it is sufficient and unambiguous.
+## 2026 Source Cases That Must Be Reconciled Before Interface Finalization
 
-Where the physical mapping is irregular, duplicated, or cannot be derived safely from current LOR topology, the Controller Inventory workstream must preserve the additional distinguishing fact needed to resolve it rather than forcing FieldWiring to hard-code the exception permanently.
+The current workbook materially improves physical coverage but exposes unresolved cases.
 
-### CR50 / DumbRGB boundary
+### Church
 
-CR50 fixtures are 5-channel DMX fixtures whose LOR Channel Grid intentionally contains only the three RGB channels. FieldWiring groups the three RGB source rows into one fixture instruction and preserves the two omitted function-channel gaps.
+The workbook now contains the Pixie2 Cross controllers and two Pixie4 Candy Cane controllers, but it still lacks the permanent physical Church Tree Pixie16 and the separate Tree Star controller context used by FieldWiring.
 
-That CR50 fixture-row grouping is a **FieldWiring/LOR presentation rule**, not a requirement to create a permanent Controller Inventory record for every CR50 fixture.
+### Candyland
 
-If a physical DMX/E1.31 gateway, PixieLink, or other controller serving those fixtures is within Controller Inventory scope, its permanent identity/current assignment belongs in Controller Inventory. The individual CR50 fixture source rows remain LOR wiring topology unless the Controller Inventory project separately establishes fixture assets as part of its scope.
+The workbook now contains one Pixie16 Lollipop row and three Pixie4 Candy Cane rows. The three Pixie4 rows require physical group distinction.
 
-## Ongoing Cross-Workstream Handoff Rule
+The Lollipop row is recorded on `Aux-B`, while current FieldWiring accepted LOR evidence expects the Lollipop Pixie pattern on `Aux C`. This must be reconciled, not guessed.
 
-This integration plan is not a one-time handoff.
+### Who Forest
 
-Whenever FieldWiring engineering discovers a new requirement that affects any of the following, the responsible Controller Inventory documentation must be updated before that FieldWiring milestone is considered fully documented:
+The 2026 workbook now records all eight Pixie8 groups on `Aux-I`, including Tree 4, matching current FieldWiring topology and superseding the old 2025 working value for current-review purposes.
 
-- permanent physical controller identity;
-- controller manufacturer/model normalization;
-- physical output/port capability;
-- current controller assignment/addressing;
-- duplicate-address distinguishing context;
-- E1.31 physical-controller/output resolution;
-- controller currentness/provenance relative to the approved LOR/V7 snapshot; or
-- the minimum Controller Inventory read interface consumed by FieldWiring.
+### Santa's Workshop
 
-FieldWiring may document the discovery first in its own engineering artifact, but it must also carry the consumer requirement into this Controller Inventory-owned plan and/or the applicable Controller Inventory contract. Conversation history is not the handoff mechanism.
+The two Pixie8 Tree controllers are now present at `10-17` and `18-1F` on `Aux-D`.
 
-This rule does not transfer Controller Inventory schema ownership to FieldWiring. Controller Inventory still determines its implementation from its own inspected source evidence and approved data model.
+### Mega Cube
+
+Do **not** carry the older assumption of three PixCon16 physical controllers forward as current accepted truth.
+
+The 2026 workbook now records one `AlphaPix Flex 48` row at `10.10.5.12`, while its `Controller Type` is recorded as `16`. This conflicts with older evidence and is internally inconsistent.
+
+The current FieldWiring release candidate intentionally leaves Mega Cube compact CustomGrid expansion unresolved rather than fabricating physical rows. Actual installed hardware/output count must be physically confirmed before Controller Inventory defines this assignment.
+
+## CR50 / DumbRGB Boundary
+
+CR50 fixture grouping remains a FieldWiring/LOR presentation rule. The fact that FieldWiring groups three RGB source rows into one fixture instruction does not itself require a permanent Controller Inventory asset for every CR50 fixture.
+
+If a physical gateway/PixieLink/controller serving those fixtures is within Controller Inventory scope, that physical controller's identity/current assignment belongs here. The fixture source rows remain LOR topology unless separately established as inventory assets.
 
 ## Guidance to FieldWiring While Inventory Is Pending
 
@@ -313,16 +308,15 @@ FieldWiring does not need to stop development.
 
 Until Controller Inventory becomes authoritative:
 
-1. preserve current operator-confirmed controller patterns needed for browser correctness;
-2. keep named/recovery mappings isolated behind a controller-resolution boundary rather than spreading Display-specific conditions throughout presentation code;
-3. treat those mappings as temporary evidence, not permanent asset identity;
-4. continue to use the current LOR/V7 snapshot for actual Display/output wiring rows;
-5. never invent permanent controller IDs from Unit ID, range, universe, IP, Display name, or source row;
-6. allow intentional duplicate Pixie address ranges;
-7. preserve unknown physical detail as unknown rather than fabricating a model/output; and
-8. make the temporary resolver replaceable by the future PostgreSQL Controller Inventory read contract.
-
-The objective is to prevent more hard-coded physical interpretations from becoming architectural dependencies while allowing FieldWiring acceptance/recovery work to continue.
+1. preserve operator-confirmed controller patterns required for browser correctness;
+2. keep temporary mappings centralized in the existing presentation/resolver modules;
+3. do not spread new permanent-looking controller facts into unrelated rendering or route code;
+4. treat named mappings as temporary engineering evidence, not physical asset identity;
+5. continue to use current LOR/V7 data for actual Display/output/universe/channel rows;
+6. never invent `CL-###` identity from Unit ID, range, universe, IP, Display name, or source row;
+7. allow intentional duplicate Pixie and A/C addresses;
+8. preserve unknown or conflicting physical detail as review state; and
+9. make the temporary resolver replaceable by the eventual PostgreSQL Controller Inventory read contract.
 
 ## Data Review Action Plan
 
@@ -342,24 +336,31 @@ For each physical controller, collect or verify:
 
 Do not spend substantial effort reconstructing unknown purchase/deployment dates for older controllers. Those fields may remain unknown. If useful and supportable, `First Known Use Year` may later be captured from known Display build information, but it must not be represented as a purchase date.
 
+## Ongoing Cross-Workstream Handoff Rule
+
+FieldWiring may discover physical-controller requirements before Controller Inventory data is complete. Those findings must be carried into Controller Inventory documentation rather than living only in code or conversation history.
+
+Conversely, Controller Inventory source review must update this interface plan when physical evidence contradicts an earlier temporary FieldWiring assumption.
+
+This does not transfer schema ownership to FieldWiring. Controller Inventory determines its final implementation from reviewed source evidence.
+
 ## Schema Gate
 
 No PostgreSQL Controller Inventory tables or migrations should be created until:
 
+- permanent physical controller identity has been established;
 - controller model names have been reviewed and normalized;
-- current physical controllers have been reconciled against the current LOR/V7 snapshot and E1.31 evidence;
-- duplicate-address groups have been identified where needed;
-- the permanent controller identity/labeling rule has been accepted; and
-- the minimum current-assignment interface required by FieldWiring has been reviewed against real controller cases.
+- current physical controllers have been reconciled against current LOR/V7 and E1.31 evidence;
+- duplicate-address groups have been physically distinguished where required;
+- current source conflicts identified in the 2026 audit have been resolved or intentionally marked unknown; and
+- the minimum current-assignment interface required to replace FieldWiring temporary controller mappings has been reviewed against real cases.
 
 ## Related Documents
 
 - [Controller Inventory](README.md)
+- [Controller Inventory 2026 Source Audit — 2026-08-22](Controller_Inventory_2026_Source_Audit_2026-08-22.md)
 - [Controller Inventory and Labeling Plan](Controller_Inventory_and_Labeling_Plan.md)
-- [Controller Inventory 2025 Source Audit — 2026-08-19](Controller_Inventory_2025_Source_Audit_2026-08-19.md)
-- [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
-- [FieldWiring Physical Controller / Output Presentation Contract](../09_Wiring_System/FieldWiring_Physical_Controller_Output_Presentation_Contract.md)
-- [FieldWiring E1.31 Dense RGB Field Presentation Contract](../09_Wiring_System/FieldWiring_E131_Dense_RGB_Field_Presentation_Contract.md)
-- [FieldWiring DMX / DumbRGB Field Presentation Contract](../09_Wiring_System/FieldWiring_DMX_DumbRGB_Field_Presentation_Contract.md)
-- [FieldWiring PostgreSQL DMX Propagation Change Map](../09_Wiring_System/FieldWiring_PostgreSQL_DMX_Propagation_Change_Map_2026-08-21.md)
+- [Controller Inventory 2025 Source Audit — historical evidence](Controller_Inventory_2025_Source_Audit_2026-08-19.md)
+- [FieldWiring Release Candidate Handoff and Development Runbook](../09_Wiring_System/FieldWiring_Release_Candidate_Handoff_and_Development_Runbook_2026-08-21.md)
+- [FieldWiring / Controller Inventory Handoff](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
 - [Work Orders](../06_Work_Orders/README.md)
