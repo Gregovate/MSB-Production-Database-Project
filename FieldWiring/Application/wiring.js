@@ -72,17 +72,17 @@ function requestedPackageUrl() {
     const value = params.get(key);
     if (value) q.set(key, value);
   });
-  return '/api/wiring?' + q.toString();
+  return 'api/wiring?' + q.toString();
 }
 function stageContextPackageUrl(context) {
   const q = new URLSearchParams();
   q.set('stage_id', packageData.context.stage_id);
   q.set('preview_uuid', context.preview_uuid);
   if (context.scene_uuid) q.set('scene_uuid', context.scene_uuid);
-  return '/api/wiring?' + q.toString();
+  return 'api/wiring?' + q.toString();
 }
 function stageContextPageUrl(context) {
-  return '/wiring?' + stageContextPackageUrl(context).split('?')[1];
+  return 'wiring.html?' + stageContextPackageUrl(context).split('?')[1];
 }
 function normalizedScopeRoot(value) {
   return String(value || '').replaceAll('\\','/').replace(/\/+$/,'').toLowerCase();
@@ -112,7 +112,7 @@ async function installContextSwitch() {
   contextSwitch.innerHTML = '';
   if (params.get('display_id')) return;
   try {
-    const payload = await api('/api/stages');
+    const payload = await api('api/stages');
     const stage = (payload.stages || []).find(s => Number(s.stage_id) === Number(packageData.context.stage_id));
     if (!stage) return;
     const backgrounds = stage.contexts.filter(c => c.context_type === 'Background / Static');
@@ -408,7 +408,7 @@ async function start() {
   } catch (err) {
     loading.hidden = true;
     errorBox.hidden = false;
-    errorBox.innerHTML = `<strong>Field Wiring could not be opened.</strong><div>${esc(err.message)}</div><div style="margin-top:10px"><a class="button" href="/">Return to lookup</a></div>`;
+    errorBox.innerHTML = `<strong>Field Wiring could not be opened.</strong><div>${esc(err.message)}</div><div style="margin-top:10px"><a class="button" href="./">Return to lookup</a></div>`;
   }
 }
 start();
