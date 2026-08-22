@@ -6,7 +6,13 @@ This subsystem documents the permanent inventory of physical controller hardware
 
 Controller inventory remains spreadsheet-based and has not yet been implemented as a PostgreSQL subsystem.
 
-Current source evidence includes:
+The **current working review source** is:
+
+```text
+Controller Inventory & Testing 2026.xlsx
+```
+
+Supporting engineering evidence remains:
 
 ```text
 Controller Inventory & Firmware 2025 - Inventory.csv
@@ -15,15 +21,15 @@ DMX Control Addressing.xlsx
 current approved LOR/V7 PostgreSQL snapshot
 ```
 
-The 2025 source is useful physical/controller/firmware evidence, but it is not a finished current permanent asset register. Most populated inventory rows are still marked incomplete, current RGB hardware is missing in several areas, E1.31 rows include older IP/configuration evidence, and the source has no durable per-controller asset key independent of addressing.
+The 2026 workbook materially improves current physical-controller coverage, including current Pixie and E1.31 rows that were missing from the 2025 source, but it is still under review and does not yet contain permanent `CL-###` identities.
 
-See [Controller Inventory 2025 Source Audit — 2026-08-19](Controller_Inventory_2025_Source_Audit_2026-08-19.md).
+Start with [Controller Inventory 2026 Source Audit — 2026-08-22](Controller_Inventory_2026_Source_Audit_2026-08-22.md).
 
 ## Design Intent
 
 Create durable physical controller identities and a current assignment relationship that can be reconciled to the current approved LOR/V7 snapshot.
 
-Controller Inventory supplies the physical-controller fact that LOR cannot represent. LOR/LOR2DB remains authoritative for current show topology, addressing, Stage/Scene/Display relationships, and wiring rows.
+Controller Inventory supplies the physical-controller fact that LOR cannot represent. LOR/LOR2DB remains authoritative for current show topology, addressing, Stage/Scene/Display relationships, and detailed wiring rows.
 
 ## Current/Future Responsibilities
 
@@ -32,7 +38,7 @@ Controller Inventory supplies the physical-controller fact that LOR cannot repre
 - physical output/port capability
 - serial number where available
 - current controller status
-- current controller address/assignment needed to associate the physical controller with current LOR/V7 topology
+- current controller address/context needed to associate the physical controller with current LOR/V7 topology
 - distinguishing current group information when multiple physical controllers intentionally share the same Unit ID/range
 - firmware update history
 - labeling/scanning relationships
@@ -41,7 +47,7 @@ Controller Inventory supplies the physical-controller fact that LOR cannot repre
 
 ## Important Boundaries
 
-### No deployment-assignment history requirement
+### Current assignment only
 
 Controller assignment is current-state data. Controller Inventory does not need to preserve prior Stage, Scene, Display, Unit-ID, network, IP, universe, or deployment assignments as historical relationship rows.
 
@@ -71,22 +77,31 @@ Do not define `network + Unit ID/range` as a unique physical-controller identity
 
 ### Exact controller models remain distinct
 
-Generic classifications are useful, but exact models must be preserved. For example, `PixCon16` and `Pixie-16` are different devices and must never be normalized into one model.
+Generic classifications are useful, but exact models must be preserved. `PixCon16` and Pixie-16 are different devices and must never be normalized into one model.
 
 ## FieldWiring Integration
 
-FieldWiring is a consumer of Controller Inventory; it does not own the Controller Inventory schema.
+FieldWiring is a read-only consumer of Controller Inventory; it does not own the Controller Inventory schema.
 
-While source data is being reviewed, FieldWiring may continue using isolated, operator-confirmed temporary controller mappings. Those mappings must remain replaceable by the eventual PostgreSQL Controller Inventory read contract rather than spreading named Display/Scene hard-coding throughout presentation code.
+The current FieldWiring release candidate documents two explicit temporary replacement targets:
 
-See [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md).
+- `FieldWiring/Application/wiring_presentation.py` — reviewed temporary A/C/Pixie physical grouping rules;
+- `FieldWiring/Application/wiring_e131.py` — reviewed temporary E1.31 controller/output mappings.
+
+Those temporary rules may remain while source review continues, but they must stay replaceable by the eventual PostgreSQL Controller Inventory read contract rather than becoming permanent named Display/Scene architecture.
+
+See:
+
+- [Controller Inventory Current-State / FieldWiring Integration Plan](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
+- [FieldWiring Release Candidate Handoff and Development Runbook](../09_Wiring_System/FieldWiring_Release_Candidate_Handoff_and_Development_Runbook_2026-08-21.md)
 
 ## Related Systems
 
+- [Controller Inventory 2026 Source Audit — 2026-08-22](Controller_Inventory_2026_Source_Audit_2026-08-22.md)
 - [Controller Inventory and Labeling Plan](Controller_Inventory_and_Labeling_Plan.md)
-- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
-- [Controller Inventory 2025 Source Audit — 2026-08-19](Controller_Inventory_2025_Source_Audit_2026-08-19.md)
-- [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
+- [Controller Inventory Current-State / FieldWiring Integration Plan](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
+- [Controller Inventory 2025 Source Audit — historical source](Controller_Inventory_2025_Source_Audit_2026-08-19.md)
+- [FieldWiring Release Candidate Handoff and Development Runbook](../09_Wiring_System/FieldWiring_Release_Candidate_Handoff_and_Development_Runbook_2026-08-21.md)
 - [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
 - [Wiring System](../09_Wiring_System/README.md)
 - [Network Infrastructure](../10_Network_Infrastructure/README.md)
@@ -96,6 +111,6 @@ See [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-
 
 Do not design the final PostgreSQL schema from assumptions.
 
-The next work is source/data reconciliation: normalize confirmed model terminology, identify the current physical controller assets, reconcile their current addressing against the approved LOR/V7 snapshot and E1.31 evidence, identify intentional duplicate-address groups, and review the minimum FieldWiring current-assignment interface.
+The next work is source/data reconciliation: establish permanent physical controller identity, normalize confirmed model terminology, reconcile current addressing against the approved LOR/V7 snapshot, distinguish intentional duplicate-address controllers, resolve the 2026 workbook conflicts identified in the source audit, and review the minimum FieldWiring current-assignment interface.
 
 No PostgreSQL Controller Inventory tables or migrations are authorized until that review is accepted.
