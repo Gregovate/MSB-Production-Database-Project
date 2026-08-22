@@ -119,22 +119,18 @@ Procedures\
 │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   ├── Archive\
 │   ├── images\
+│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   └── SourceDocs\
 │
 └── Takedown\
     ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     ├── Archive\
     ├── images\
+    │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     └── SourceDocs\
 ```
 
-`Procedures`, `Inspection`, `Setup`, and `Takedown` are controlled application folders and must be marked.
-
-### Procedure image folders
-
-If the field Procedure system directly reads an `images` folder as part of published field content, that `images` folder must also contain the marker before it is used by the application.
-
-This follows the same rule: **if the application uses the folder, mark it.**
+`Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images` are controlled application folders and must be marked.
 
 ### Archive and SourceDocs are excluded
 
@@ -183,7 +179,7 @@ Do not place passwords, credentials, API keys, or private personal information i
 
 ---
 
-# Existing Automated Marker Utility — Important
+# Existing Marker Utilities — Important
 
 The existing marker-population utility was written around an earlier, narrower marker rule.
 
@@ -191,7 +187,9 @@ Do **not** assume that running the current utility proves the complete FieldWiri
 
 The utility must be reviewed and updated separately so its targets match this current rule before it is used as the authority for full marker population.
 
-Until that engineering work is complete, visually verify the required markers when creating or reviewing a new controlled Stage/Sub-stage/Scene structure.
+The existing `remove_misplaced_msb_db_scope_root_markers.ps1` utility was created during an intermediate design that treated Stage/Sub-stage/Scene root markers as incorrect. **Do not run that utility under the current architecture.** Current field systems require the structural marker on those roots.
+
+Until the marker tooling is updated and revalidated, visually verify the required markers when creating or reviewing a controlled Stage/Sub-stage/Scene structure.
 
 ---
 
@@ -204,8 +202,8 @@ For a Stage/Sub-stage/Scene used by the field systems, verify:
 - [ ] `Wiring` is marked;
 - [ ] each active published `BackgroundStage` / `MusicalStage` branch is marked;
 - [ ] `Procedures` is marked;
-- [ ] active `Inspection`, `Setup`, and `Takedown` branches are marked;
-- [ ] any additional folder directly consumed by the field application is marked;
+- [ ] `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images` are marked;
+- [ ] any additional folder directly consumed by a field application is marked;
 - [ ] `SourceDocs` and `Archive` remain excluded from normal field presentation; and
 - [ ] marker files have not been renamed or deleted.
 
