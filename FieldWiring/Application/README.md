@@ -1,34 +1,52 @@
 # FieldWiring Application
 
-Status: **release candidate — server/tablet/phone deployment pending**
+Status: **production-operational — Display scan-hub integration in progress**
 
 This folder contains the browser-based FieldWiring application.
 
-For the complete recovery/development handoff, start with:
+## Current State
 
-- `Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Release_Candidate_Handoff_and_Development_Runbook_2026-08-21.md`
-- `Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Server_Deployment_and_Scan_Integration_Plan_2026-08-21.md`
-
-## Current proven baseline
-
-The current application has been exercised on a laptop against a SHA-verified SQLite engineering export of production PostgreSQL Run 51:
+FieldWiring is production-operational as of 2026-08-22 at:
 
 ```text
-import_run_id          51
-parser_version         V7.0.11
-ingest_script_version  V0.4.2
-current DMX rows       508
+https://my.sheboyganlights.org/fieldwiring/
 ```
 
-The application is read-only and preserves the authority chain:
+Accepted production state:
+
+- live read-only PostgreSQL backend;
+- systemd-hosted service operational on `192.168.5.9:8790`;
+- persistent read-only Google `Display Folders` filesystem operational;
+- protected Synology reverse proxy operational;
+- desktop and phone acceptance passed;
+- Display search repaired and production-tested;
+- FormView remains available as fallback/reference.
+
+The remaining active milestone is adding **Field Wiring** to the existing permanent Display QR task hub.
+
+For current engineering work, start with:
+
+- `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md`
+- `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md`
+- `Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/README.md`
+
+## Authority Chain
+
+The application is read-only and preserves:
 
 ```text
 LOR -> Parser V7 -> LOR2DB -> PostgreSQL -> FieldWiring
 ```
 
-Permanent Display identity is `ref.display.display_id`.
+Permanent Display identity is:
 
-## Application structure
+```text
+ref.display.display_id
+```
+
+FieldWiring must not create a competing topology or asset-identity system.
+
+## Application Structure
 
 ```text
 backend.py
@@ -59,8 +77,11 @@ wiring_e131.py
 wiring_images.py
     guarded same-scope image resolver and image delivery
 
+fieldwiring.js
+    Display/Stage lookup landing page
+
 wiring.js
-    base browser renderer / image controls / Engineering Details
+    base wiring renderer / image controls / Engineering Details
 
 wiring_e131.js
     E1.31 technician table
@@ -79,7 +100,7 @@ wiring_workspace_focus.css
     shared image + Field Hookup desktop/laptop workspace
 ```
 
-## Current presentation families
+## Current Presentation Families
 
 ```text
 LOR + Traditional -> A/C controller / numbered output
@@ -88,35 +109,11 @@ DMX + DumbRGB     -> DMX fixture/network presentation
 DMX + RGB         -> E1.31 dense RGB presentation
 ```
 
-Current reviewed temporary E1.31 mappings are centralized in `wiring_e131.py` for:
+Current reviewed temporary E1.31 mappings remain presentation recovery evidence and are not permanent Controller Inventory identity.
 
-- Mega Tree — AlphaPix / Flex48, Universes 1-48 -> Outputs 1-48;
-- Mega Ball — PixCon 16, Universes 49-64 -> Outputs 1-16;
-- Mega Star Controller 1 — PixCon 16, Universes 113-128 -> Outputs 1-16;
-- Mega Star Controller 2 — PixCon 16, Universes 129-140 -> Outputs 1-12.
+## Production Data Mode
 
-These mappings are presentation recovery evidence, not permanent Controller Inventory identity.
-
-Northern Lights is the current DMX/DumbRGB acceptance case: 66 CR50 fixtures represented by 198 atomic RGB source rows. The normal technician table groups three RGB rows into one fixture instruction without fabricating the two intentionally omitted CR50 function channels.
-
-## Current browser UX baseline
-
-Desktop/laptop:
-
-- image + Field Hookup remain visible together in one shared work area;
-- `More Image`, `Balanced`, and `More Hookup` presets bias the split;
-- divider remains draggable for a custom split;
-- `Hide Image` is the only control that removes the image;
-- controller/presentation cards are independently collapsible;
-- normal wiring images do not show a redundant badge;
-- context-only images retain the conspicuous `NO WIRING IMAGE AVAILABLE · CONTEXT IMAGE — NOT WIRING` warning;
-- Engineering Details remains collapsible.
-
-Tablet/phone field acceptance is the next device-level gate.
-
-## Data modes
-
-### Production
+Production uses:
 
 ```text
 FIELDWIRING_DATABASE_DSN=<least-privilege read-only PostgreSQL DSN>
@@ -124,18 +121,26 @@ FIELDWIRING_DRIVE_ROOT=<server-visible read-only Display Folders root>
 FIELDWIRING_TIMEZONE=America/Chicago
 ```
 
-Production must not set `FIELDWIRING_DEV_SNAPSHOT`.
+Production must not use `FIELDWIRING_DEV_SNAPSHOT`.
 
-### Development snapshot
+Current accepted health payload:
+
+```json
+{"data_mode":"postgres","status":"ok","version":"V0.2.0"}
+```
+
+## Development Snapshot Mode
+
+Development/engineering may use an explicit read-only snapshot:
 
 ```text
 FIELDWIRING_DEV_SNAPSHOT=C:\path\to\fieldwiring_snapshot.db
 FIELDWIRING_DRIVE_ROOT=G:\Shared drives\Display Folders
 ```
 
-The SQLite snapshot is an engineering fixture only.
+The SQLite snapshot is an engineering fixture only and must not become the production data source.
 
-## Development/test environment
+## Development / Test
 
 From the repository virtual environment:
 
@@ -144,10 +149,10 @@ python -m pip install -r .\FieldWiring\Application\requirements-dev.txt
 python -m pytest .\FieldWiring\Application -q
 ```
 
-Run locally:
+Local development example:
 
 ```powershell
-$env:FIELDWIRING_DEV_SNAPSHOT = 'C:\lor\FieldWiring-Snapshots\fieldwiring_snapshot_run_51_20260821T204440Z.db'
+$env:FIELDWIRING_DEV_SNAPSHOT = 'C:\path\to\fieldwiring_snapshot.db'
 $env:FIELDWIRING_DRIVE_ROOT = 'G:\Shared drives\Display Folders'
 python .\FieldWiring\Application\backend.py
 ```
@@ -158,48 +163,70 @@ Open:
 http://127.0.0.1:8790/
 ```
 
-Health:
+## Display Deep-Link Contract
+
+The current Display QR integration must use:
 
 ```text
-GET /api/health
+/fieldwiring/wiring.html?display_id=<permanent display_id>
 ```
 
-Expected development mode includes:
+Important distinction:
 
-```json
-{"data_mode":"sqlite-dev","status":"ok","version":"V0.2.0"}
-```
+- `fieldwiring.js` powers the landing/search page and does **not** consume `display_id` from the landing-page URL.
+- `wiring.js` consumes `display_id`, forwards it to `api/wiring`, and renders the resolved package.
+- `wiring.py`/`repository.py` re-resolve the current Stage/Preview/Scene context from PostgreSQL.
 
-## Production image-path warning
+The scan hub should therefore pass only permanent `display_id`.
 
-The accepted laptop resolver currently sees the source tree through:
+Do not pass Stage, Preview, Scene, LOR UUID, controller address, Google Drive path, or import-run identity from the physical QR/scan hub.
+
+## Existing Display QR Dependency
+
+The deployed Display QR hub already exists in the Directus scan extension on `msb-prod-db`:
 
 ```text
-G:\Shared drives\Display Folders
+/opt/directus/extensions/directus-extension-scan/
 ```
 
-A Linux production server does not automatically have that path. Before server deployment is accepted, establish a controlled read-only server-visible Display Folders tree and prove deterministic translation from stored Windows `folder_path` / `BackgroundFile` evidence to that server root.
+The current scan hub resolves permanent `display_id` and already provides independent Display, Testing, Container, and Work Order actions.
 
-Do not copy ad-hoc images into the application directory or weaken the same-scope/source-marker rules to make deployment easier.
+FieldWiring must remain a downstream consumer. The scan hub must not depend on FieldWiring availability to render or operate its other actions.
 
-## Existing Display QR dependency
+Current intended action:
 
-The deployed Display QR hub already exists in the Directus scan extension on `msb-prod-db` and resolves permanent `display_id`.
+```text
+Field Wiring
+    -> /fieldwiring/wiring.html?display_id=<display_id>
+```
 
-FieldWiring must not create a second QR identity or scan engine.
+No FieldWiring backend change is required merely to support this link.
 
-The intended integration is one new **Field Wiring** action on the existing `/scan/DISP/:key` hub, passing only the already-resolved permanent `display_id` into the FieldWiring application.
+## Server Runtime Boundary
 
-## Merge/deployment state
+Application/business source remains in this repository.
 
-Merging FieldWiring to `main` is appropriate after the feature branch is brought current with `main` and the full tests pass again.
+Server runtime details — systemd service, persistent Display Folders mount, Synology reverse proxy, deployment/restart/recovery, and Directus scan-extension runtime — belong in `Gregovate/MSB-Server-Management`.
 
-At the release-candidate checkpoint the branch was 291 commits ahead of `main` and 8 commits behind it, so update the branch before merging.
+Do not copy secrets or protected runtime configuration into either repository.
 
-Merging code is not the same as production cutover. Keep FormView available until:
+## Current Open Work
 
-1. FieldWiring is deployed on the server using live read-only PostgreSQL;
-2. the server can resolve the approved Display Folders/image source;
-3. the protected public route is working;
-4. tablet/phone testing is accepted;
-5. the existing Display scan hub exposes Field Wiring successfully.
+- recover/preserve the accepted current Directus scan implementation in Git-controlled source/deployment form;
+- add the independent Field Wiring action to `/scan/DISP/:key`;
+- regression-test all existing scan routes and camera/manual scanning;
+- test a real permanent Display QR into FieldWiring;
+- update both repository handoffs after acceptance;
+- keep FormView available until a separate cutover decision.
+
+## Resume Development
+
+1. Read `FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md`.
+2. Read the current Labeling/Scanning and Wiring README handoffs.
+3. Read the matching MSB-Server-Management Directus/FieldWiring runtime handoffs.
+4. Preserve/recover the accepted current camera-enabled scan implementation in Git.
+5. Make the minimal Field Wiring action change only.
+6. Run the complete scan regression/acceptance matrix.
+7. Update both repository handoffs before closing the work.
+
+After this scan integration is accepted, Setup/Deployment becomes the next separate engineering project. Its expected high-volume Container/Location scanning should be designed from the actual setup-day workflow rather than by refactoring FieldWiring-specific code.
