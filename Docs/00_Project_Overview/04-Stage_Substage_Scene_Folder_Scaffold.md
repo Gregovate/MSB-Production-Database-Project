@@ -88,12 +88,14 @@ Use this structure for every newly created Stage, Sub-stage, or Scene documentat
 │   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   ├── Archive/
 │   │   ├── images/
+│   │   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   └── SourceDocs/
 │   │
 │   ├── Takedown/
 │   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   ├── Archive/
 │   │   ├── images/
+│   │   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   └── SourceDocs/
 │   │
 │   └── SourceDocs/
@@ -133,12 +135,12 @@ For the scaffold above, markers are required in:
 3. `Procedures`;
 4. `Procedures\Inspection`;
 5. `Procedures\Setup`;
-6. `Procedures\Takedown`;
-7. `Wiring`;
-8. `Wiring\BackgroundStage`; and
-9. `Wiring\MusicalStage`.
-
-If the future Procedure application directly consumes another folder, such as a Setup/Takedown `images` folder, that folder must be marked before it becomes part of the application path.
+6. `Procedures\Setup\images`;
+7. `Procedures\Takedown`;
+8. `Procedures\Takedown\images`;
+9. `Wiring`;
+10. `Wiring\BackgroundStage`; and
+11. `Wiring\MusicalStage`.
 
 `SourceDocs` and `Archive` are working/history folders excluded from normal field presentation and are not field-application marker targets unless a future approved design changes their role.
 
@@ -201,6 +203,8 @@ Procedures\Takedown
 
 The `Procedures` root and the applicable task branch must be marked.
 
+Setup/Takedown `images` folders are part of the future procedure content path and must also be marked.
+
 `Archive` and `SourceDocs` are not normal field-facing content.
 
 ## Photos
@@ -219,7 +223,7 @@ When a new Scene documentation folder is approved:
 - [ ] Create the complete scaffold, not only the one helper folder needed today.
 - [ ] Add the marker to the Scene root.
 - [ ] Add the marker to `PreviewBackground`.
-- [ ] Add the marker to `Procedures` and the active procedure branches.
+- [ ] Add the marker to `Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images`.
 - [ ] Add the marker to `Wiring` and the active `BackgroundStage` / `MusicalStage` branches.
 - [ ] Do not mark `SourceDocs` or `Archive` as normal field sources.
 - [ ] Do not rename the standard helper folders.
