@@ -2,11 +2,11 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google Workspace identity, Shared Drive Viewer access, interactive Drive hierarchy access, and dedicated Google Cloud project verified; Drive API/OAuth/server authorization still pending |
+| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google identity, Shared Drive Viewer access, interactive Drive access, Cloud project, and Drive API verified; OAuth client/server authorization still pending |
 | Date | 2026-08-21 |
 | Owner | MSB Database Administrator / Google Workspace Administrator |
 | Applies to | `Display Folders` Shared Drive, FieldWiring, future Procedures applications, future approved database-backed field-document consumers |
-| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; interactive Drive access verified; dedicated Google Cloud project created; no OAuth client, server mount, or runtime service created yet |
+| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; interactive Drive access verified; dedicated Google Cloud project created and Drive API enabled; no OAuth client, server mount, or runtime service created yet |
 
 ## Purpose
 
@@ -132,22 +132,26 @@ This validates that:
 
 This interactive browser validation does **not** yet prove Linux/rclone OAuth behavior, mount traversal semantics, cache visibility, or programmatic reading/downloading of representative published JPG/PNG/PDF content. Those remain explicit proof-of-concept tests on the server-side implementation.
 
-## Dedicated Google Cloud Project
+## Google Cloud Project and Drive API
 
-On 2026-08-21, a separate Google Cloud project was created for the server-side engineering-document access integration:
+A dedicated Google Cloud project was created on 2026-08-21 for this shared MSB engineering-document access integration.
 
 ```text
-Project name: MSB Engineering Docs Access
-Organization: sheboyganlights.org
+Project display name: MSB Engineering Docs Access
+Organization:         sheboyganlights.org
 ```
 
-This project is intentionally separate from existing Google Cloud projects such as `MSB Directus SSO`, `ActiveBackupforGoogleWorkspace`, and `Cloudflare-Access-My MSB`.
+This project is separate from existing Google Cloud projects such as `MSB Directus SSO` and therefore does not reuse or alter unrelated OAuth/application configuration.
 
-The dedicated project exists so the Google Drive API and OAuth client used by the shared engineering-document filesystem can be managed independently without changing unrelated SSO, backup, or access integrations.
+Within the `MSB Engineering Docs Access` project, the Google Drive API was enabled and verified with service status `Enabled` for:
 
-Creation of the project does not itself grant Drive access. The next configuration steps are to select this project, enable the Google Drive API, and then configure the Google Auth/OAuth client under the approved read-only access model.
+```text
+drive.googleapis.com
+```
 
-Do not store OAuth client secrets, authorization tokens, or refresh tokens in Git.
+The Cloud project and enabled Drive API provide the Google-side application registration boundary for the planned read-only server access. No OAuth client credentials have yet been created.
+
+The next Google-side configuration step is Google Auth Platform setup for an **Internal** audience within the `sheboyganlights.org` organization, followed by creation of the dedicated OAuth desktop client used for headless authorization. Client secrets and tokens must remain outside Git.
 
 ## Required Google-Side Access Boundary
 
@@ -258,11 +262,12 @@ As of 2026-08-21:
 - the identity is intended for shared MSB engineering-document access, not only FieldWiring;
 - `msb-docs@sheboyganlights.org` is a verified `Viewer` member of the `Display Folders` Shared Drive;
 - interactive sign-in at `drive.google.com` successfully exposes the expected `Display Folders` hierarchy to the account;
-- the dedicated Google Cloud project `MSB Engineering Docs Access` has been created under `sheboyganlights.org`;
-- the Google Drive API still needs to be enabled in that project;
+- dedicated Google Cloud project `MSB Engineering Docs Access` exists under `sheboyganlights.org`;
+- Google Drive API `drive.googleapis.com` is enabled in that project;
 - the `Display Folders` Shared Drive remains the authoritative editable repository;
 - server/application access must remain read-only;
 - the server-side filesystem must preserve normal folder traversal;
+- Google Auth Platform / OAuth client configuration is the next Google-side step;
 - actual server-side OAuth, mount traversal, and representative published-file read/download behavior still require proof during the server POC; and
 - no OAuth client, rclone configuration, mount, or server service has yet been created as part of this work.
 
