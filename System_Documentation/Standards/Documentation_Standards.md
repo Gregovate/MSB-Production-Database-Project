@@ -32,6 +32,86 @@ The following principles apply throughout the project:
 * **Write for the least technical audience that needs the document.**
   Use plain language wherever possible. Introduce technical terminology only when the reader needs it to complete the task.
 
+## Engineering Documentation and Operator Documentation Are Different Products
+
+The repository intentionally maintains separate documentation for two different use cases and audiences.
+
+### Engineering documentation
+
+Engineering documentation exists to **build, change, troubleshoot, validate, and resume development of the system**.
+
+Its audience includes maintainers, developers, database administrators, and future engineering work sessions. Engineering documentation may and should preserve the technical detail needed to avoid rediscovering settled design decisions.
+
+Engineering documentation may include:
+
+- architecture and subsystem boundaries;
+- database tables, views, functions, triggers, and data flow;
+- parser and application behavior;
+- filesystem and integration contracts;
+- identity rules;
+- implementation dependencies;
+- validation and failure behavior;
+- historical rationale when it remains relevant to current maintenance;
+- known limitations and unresolved work; and
+- authoritative source locations that must be reviewed before changing the subsystem.
+
+Do not simplify an engineering document to the point that a future maintainer must reconstruct the system from source code, chat history, or old troubleshooting sessions.
+
+### Operator documentation
+
+Operator documentation exists to **use the system correctly**.
+
+Its audience includes volunteers, programmers, technicians, managers, and other users performing a defined task. Operator documentation should contain only the technical detail needed to complete the task safely and correctly.
+
+Operator documentation should focus on:
+
+- what the operator is trying to accomplish;
+- what is needed before starting;
+- exact steps in the order performed;
+- names, buttons, folders, fields, and values the operator must recognize;
+- warnings that prevent likely mistakes;
+- what successful completion looks like; and
+- what to do when a common problem occurs.
+
+An operator should not be required to understand Python, SQL, parser internals, UUIDs, database schemas, data-materialization rules, or application architecture unless that knowledge is genuinely part of the operator's task.
+
+When technical explanation is useful but not required to perform the task, keep it in the responsible engineering document and link to it from a clearly separated **Related Engineering** or **Related Documents** section.
+
+### Do not merge the audiences
+
+Engineering detail must not leak into an operator procedure merely because the engineering explanation exists and is accurate.
+
+Likewise, engineering documentation must not be stripped of essential implementation and decision context merely to make it read like an operator procedure.
+
+The same system may therefore legitimately have:
+
+```text
+Engineering Design
+    = how and why the system works
+
+Operator Procedure / SOP
+    = how a person uses the system
+```
+
+These documents support each other but do not replace one another.
+
+## Repository Documentation Is Durable Project Memory
+
+Conversation, email, and chat are working communication, not the long-term source of project truth.
+
+When a discussion results in an accepted change to architecture, workflow, naming, operation, system boundaries, known limitations, or another controlled decision, that decision must be promoted into the repository document responsible for it.
+
+Do not leave a material decision only in conversation history.
+
+This rule serves two purposes:
+
+1. operators receive current instructions when engineering changes affect how they use the system; and
+2. future engineering work can resume from the repository without spending time reconstructing settled decisions across separate conversations or work threads.
+
+The responsible document may be an engineering design, operator procedure, standard, project rule, subsystem README, or another controlled artifact depending on what changed.
+
+Follow the document-control and README closeout standards when deciding where the durable update belongs.
+
 ## Related Systems and Related Documents
 
 Technical documents, procedures, and subsystem documentation should include navigable **Related Systems** and/or **Related Documents** sections when those relationships help the reader understand where the document fits or where to go next.
@@ -98,4 +178,4 @@ All current documentation should use current, navigable links.
 
 A person arriving at a portal page should normally be able to determine where to go next within about ten seconds.
 
-Technical depth should remain available, but it should be placed deeper in the documentation structure rather than presented to every reader.
+Technical depth should remain available, but it should be placed in the documentation layer intended for the reader rather than presented indiscriminately to every audience.
