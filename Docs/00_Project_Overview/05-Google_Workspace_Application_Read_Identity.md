@@ -2,11 +2,11 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google Workspace identity created; Shared Drive permission and server authorization still pending |
+| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google Workspace identity and Shared Drive Viewer access verified; OAuth/server authorization still pending |
 | Date | 2026-08-21 |
 | Owner | MSB Database Administrator / Google Workspace Administrator |
 | Applies to | `Display Folders` Shared Drive, FieldWiring, future Procedures applications, future approved database-backed field-document consumers |
-| Production-change status | Google Workspace identity created; no OAuth client, server mount, or runtime service created yet |
+| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; no OAuth client, server mount, or runtime service created yet |
 
 ## Purpose
 
@@ -54,7 +54,7 @@ The Production Database repository owns documentation for:
 
 The procedure for creating and maintaining the dedicated Google Workspace identity belongs with this Google Drive/application architecture.
 
-When the exact identity is approved, this documentation should record, without storing secrets:
+This documentation records, without storing secrets:
 
 - approved account name;
 - account purpose;
@@ -85,13 +85,28 @@ Admin roles assigned: 0
 
 This is intentional. The account is an application/document read identity and must not receive Google Workspace administrative roles merely because it is used by server infrastructure.
 
-The account currently exists at the Google Workspace layer. Creation of the account does **not** by itself authorize it to read the `Display Folders` Shared Drive. Shared Drive membership/permission must be granted and separately verified.
+## Verified Shared Drive Membership
+
+On 2026-08-21, the account was added to the Google Shared Drive:
+
+```text
+Shared Drive: Display Folders
+Member:       Engineering Documentation
+Account:      msb-docs@sheboyganlights.org
+Role:         Viewer
+```
+
+The membership was subsequently verified in the `Display Folders` Manage members view, where `Engineering Documentation` appeared with role `Viewer`.
+
+This completes the Google-side identity and Shared Drive membership step. The account now has the intended Google-side read-only role for the authoritative engineering-document repository.
+
+Viewer membership must still be validated during the server proof-of-concept for actual file-download/read behavior, including representative JPG/PNG/PDF content. If a Shared Drive policy prevents Viewer downloads, that must be treated as an implementation blocker rather than solved by granting broader edit permissions without review.
 
 ## Required Google-Side Access Boundary
 
 The dedicated identity should behave like another authorized MSB user of the `Display Folders` Shared Drive, except that normal application use is read-only.
 
-The current intended Google-side permission is:
+The implemented Google-side permission is:
 
 ```text
 Display Folders Shared Drive
@@ -194,10 +209,11 @@ As of 2026-08-21:
 - the account is active;
 - the account has no Google Workspace administrative roles assigned;
 - the identity is intended for shared MSB engineering-document access, not only FieldWiring;
-- Viewer membership on the `Display Folders` Shared Drive is the next Google-side permission step and remains to be verified;
+- `msb-docs@sheboyganlights.org` is a verified `Viewer` member of the `Display Folders` Shared Drive;
 - the `Display Folders` Shared Drive remains the authoritative editable repository;
 - server/application access must remain read-only;
-- the server-side filesystem must preserve normal folder traversal; and
+- the server-side filesystem must preserve normal folder traversal;
+- actual Viewer download/read behavior still requires proof during the server POC; and
 - no OAuth client, rclone configuration, mount, or server service has yet been created as part of this work.
 
 ## Related Documents
