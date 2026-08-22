@@ -52,7 +52,14 @@ function esc(value) {
 
 async function api(url) {
   const response = await fetch(url, {headers:{'Accept':'application/json'}});
-  const payload = await response.json();
+  const text = await response.text();
+  let payload;
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch (_) {
+    if (!response.ok) throw new Error(`FieldWiring server error (${response.status})`);
+    throw new Error('FieldWiring server returned an unexpected response.');
+  }
   if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
   return payload;
 }
