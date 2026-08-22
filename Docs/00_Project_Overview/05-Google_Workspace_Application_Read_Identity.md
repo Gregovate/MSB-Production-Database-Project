@@ -2,11 +2,11 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google identity, Shared Drive Viewer access, interactive Drive access, Cloud project, Drive API, and Google Auth Platform configuration verified; OAuth scope/client and server authorization still pending |
+| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google identity, Shared Drive Viewer access, interactive Drive access, Cloud project, Drive API, Internal Auth configuration, read-only OAuth scope, and desktop client verified; server authorization still pending |
 | Date | 2026-08-21 |
 | Owner | MSB Database Administrator / Google Workspace Administrator |
 | Applies to | `Display Folders` Shared Drive, FieldWiring, future Procedures applications, future approved database-backed field-document consumers |
-| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; interactive Drive access verified; dedicated Google Cloud project created, Drive API enabled, and internal Google Auth Platform configuration created; no OAuth client, server mount, or runtime service created yet |
+| Production-change status | Google Workspace identity and Google Cloud/OAuth application registration created; no rclone configuration, server mount, or runtime service created yet |
 
 ## Purpose
 
@@ -174,21 +174,38 @@ Internal — sheboyganlights.org
 
 Google Auth Platform reported `OAuth configuration created!` after completion.
 
-No OAuth client has been created yet and no client ID, client secret, authorization token, or refresh token has been stored in the repository.
+### Implemented OAuth scope
 
-### Minimum OAuth scope requirement
-
-The planned rclone/Google Drive authorization must request only:
+The Google Auth Platform Data Access configuration was saved with only the required Google Drive read scope:
 
 ```text
 https://www.googleapis.com/auth/drive.readonly
 ```
 
-This scope is sufficient for the required server behavior because it permits reading Drive metadata and file contents, including listing and downloading files, while not permitting upload, rename, move, or delete operations.
+Google describes this scope to the user as:
 
-Do not add the full `https://www.googleapis.com/auth/drive` scope merely because rclone supports it. The integration is intentionally read-only.
+```text
+See and download all your Google Drive files
+```
 
-A separate `drive.metadata.readonly` scope is not required for normal traversal because `drive.readonly` already includes the metadata/content visibility needed for the filesystem view.
+The scope is classified by Google as restricted because it can read private Drive content. That classification does not change the MSB design requirement: this integration is organization-internal and intentionally read-only.
+
+No full Drive write scope was added. A separate `drive.metadata.readonly` scope was not added because `drive.readonly` already provides the metadata and content visibility needed for traversal and file reads.
+
+### Implemented OAuth desktop client
+
+A dedicated OAuth 2.0 client was created on 2026-08-21 in the same Google Cloud project:
+
+```text
+Client name: MSB Engineering Docs rclone
+Client type: Desktop
+```
+
+The client exists specifically for the planned rclone/headless authorization workflow that will let `msb-prod-db` authenticate as the approved Google Workspace document-read identity.
+
+Client credentials are protected configuration. The client ID may be required during server configuration, and the client secret/authorization tokens will be required by the runtime, but secret values must not be copied into repository documentation or normal engineering chat transcripts.
+
+No client secret, downloaded credential JSON, authorization token, or refresh token is stored in Git.
 
 ## Required Google-Side Access Boundary
 
@@ -302,13 +319,15 @@ As of 2026-08-21:
 - dedicated Google Cloud project `MSB Engineering Docs Access` / `msb-engineering-docs-access` exists under `sheboyganlights.org`;
 - Google Drive API `drive.googleapis.com` is enabled in that project;
 - Google Auth Platform configuration has been created with an Internal `sheboyganlights.org` audience;
-- the approved OAuth access scope for this integration is `drive.readonly` only;
+- Google Auth Platform Data Access is saved with only `https://www.googleapis.com/auth/drive.readonly` for Drive access;
+- OAuth desktop client `MSB Engineering Docs rclone` exists;
+- client secrets and OAuth tokens remain outside Git;
 - the `Display Folders` Shared Drive remains the authoritative editable repository;
 - server/application access must remain read-only;
 - the server-side filesystem must preserve normal folder traversal;
-- adding the read-only Drive scope and creating the OAuth desktop client are the next Google-side steps;
-- actual server-side OAuth, mount traversal, and representative published-file read/download behavior still require proof during the server POC; and
-- no OAuth client, rclone configuration, mount, or server service has yet been created as part of this work.
+- Google-side account/application registration is complete for the proof of concept;
+- actual server-side OAuth authorization, rclone configuration, mount traversal, and representative published-file read/download behavior still require proof during the server POC; and
+- no rclone configuration, mount, or server service has yet been created as part of this work.
 
 ## Related Documents
 
