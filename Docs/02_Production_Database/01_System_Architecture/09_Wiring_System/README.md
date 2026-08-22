@@ -179,6 +179,18 @@ The common Drive resolver identifies the structured scope. FieldWiring then insp
 
 Wiring images are supplemental rough-location guidance. Hookup data remains primary and must stay usable when no image exists.
 
+The current controlled marker rule requires the standard marker in **every folder used as part of the FieldWiring application path**. For the current wiring path this includes:
+
+```text
+<resolved Stage / Sub-stage / Scene root>
+Wiring
+Wiring\BackgroundStage   (when selected)
+Wiring\MusicalStage      (when selected)
+PreviewBackground        (when used as same-scope context)
+```
+
+The release-candidate `wiring_images.py` currently enforces the root, `Wiring`, and `PreviewBackground` markers but does not yet require the marker in the selected `BackgroundStage` / `MusicalStage` child branch. This is a known implementation gap against the current Google Drive path contract and must be corrected/tested before production deployment acceptance.
+
 The current laptop environment sees that tree through:
 
 ```text
@@ -217,29 +229,30 @@ Do not infer permanent controller identity from universe, IP address, Unit ID, D
 - E1.31 presentation that does not confuse universe with physical controller identity;
 - future controlled channel/plug-label requests through LabelPrintService;
 - generated browser/PDF field documentation;
-- future disconnected/offline field-document support.
+- future disconnected/offline field-copy support.
 
 ## Resume Development
 
 The parser, PostgreSQL propagation, Run 51 production ingest, FieldWiring DMX read adapter, device-family presentation, and laptop UI acceptance are complete enough for a release candidate.
 
+FieldWiring is now merged to `main`; do not repeat the old pre-merge branch-integration steps from the August 21 checkpoint.
+
 The next engineering sequence is:
 
-1. integrate current `main` into `agent/fieldwiring-engineering-recovery` because the branch is currently behind `main`;
-2. resolve the overlapping Google Drive/Display-folder documentation deliberately;
-3. run the full FieldWiring application test suite and any parser/LOR2DB tests touched by conflict resolution;
-4. smoke-test the verified Run 51 development snapshot one final time;
-5. merge FieldWiring to `main` through the normal PR/merge workflow;
-6. deploy the backend on `msb-prod-db` using live read-only PostgreSQL;
-7. establish the read-only server-visible Display Folders/image source;
-8. publish FieldWiring through the protected `my.sheboyganlights.org` origin using the existing Synology/`msb-prod-db` browser-application pattern;
-9. test tablets/phones;
-10. add **Field Wiring** to the existing Display QR task hub using the already-resolved permanent `display_id`.
+1. refresh current `main` before making further FieldWiring changes;
+2. update `wiring_images.py` and tests so the selected `BackgroundStage` / `MusicalStage` branch marker is enforced in addition to the existing scope/Wiring markers;
+3. run the full FieldWiring application test suite;
+4. deploy the backend on `msb-prod-db` using live read-only PostgreSQL;
+5. establish the read-only server-visible Display Folders/image source;
+6. publish FieldWiring through the protected `my.sheboyganlights.org` origin using the existing Synology/`msb-prod-db` browser-application pattern;
+7. test tablets/phones;
+8. add **Field Wiring** to the existing Display QR task hub using the already-resolved permanent `display_id`.
 
-Use [FieldWiring Server Deployment and Scan Integration Plan](FieldWiring_Server_Deployment_and_Scan_Integration_Plan_2026-08-21.md) for that deployment sequence.
+Use [FieldWiring Server Deployment and Scan Integration Plan](FieldWiring_Server_Deployment_and_Scan_Integration_Plan_2026-08-21.md) for the deployment sequence, but reconcile any older checkpoint wording against this current README before execution.
 
 ## Known Open Work
 
+- enforce the marker on every selected FieldWiring application-path folder, including `BackgroundStage` / `MusicalStage`;
 - production server deployment;
 - server-visible Display Folders mount/synchronization and Windows-path translation;
 - least-privilege production FieldWiring DB role/grants;
