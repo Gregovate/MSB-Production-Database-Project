@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | VERIFIED LAPTOP RUNTIME EVIDENCE — GoodSync relationship still under investigation |
+| Status | VERIFIED LAPTOP RUNTIME EVIDENCE — Google Drive client mechanism confirmed; no Synology Display Folders copy exists |
 | Sub-project | FieldWiring |
 | Host type | Windows development/operator laptop |
 | Production-change status | NONE |
@@ -77,9 +77,11 @@ This listener is loopback-only. No evidence was found in the listener inventory 
 
 The combined account-labeled virtual `G:` drive evidence and active Google Drive for desktop runtime establish Google Drive for desktop as the current laptop mechanism providing the Google Drive filesystem used by FieldWiring development.
 
-This mechanism is user/laptop runtime state and is **not** an acceptable FieldWiring production dependency.
+The operator also confirmed that this is the established Windows-machine pattern beyond this laptop: Windows systems that use the protected MSB environment, including the Show PC, have Google Drive for desktop access mapped as `G:` to the Google filesystem.
 
-The server deployment may reuse the same Google Workspace authority/account concept only if a separately controlled server-side mechanism is deliberately established and documented. It must not depend on this laptop remaining logged in or online.
+This client-side mechanism is useful for Windows operator/authoring systems, but it is **not** an acceptable FieldWiring production-server dependency. A phone or tablet browser must not require its own Google Drive mapping, and the FieldWiring server must not depend on any Windows workstation remaining online.
+
+The server deployment may use the same authoritative Google Workspace / Shared Drive source only through a separately controlled server-side access mechanism.
 
 ## Other Relevant Laptop Services
 
@@ -105,15 +107,7 @@ Listener inventory showed:
 
 Both observed GoodSync listeners are loopback-only.
 
-No evidence collected yet proves that GoodSync has a job whose source or destination includes:
-
-```text
-G:\Shared drives\Display Folders
-```
-
-or that it copies any part of that tree to the Synology.
-
-Because `GsServer` runs as `LocalSystem` while the Google Drive virtual filesystem is associated with the interactive Google Drive for desktop account/session, do not assume the service can consume the same `G:` namespace. Verify configured GoodSync jobs directly.
+No configuration search was performed because the operator confirmed that the Synology does **not** consume or maintain the Google Shared Drive `Display Folders` tree today. GoodSync may have other unrelated responsibilities on the laptop, but there is no reason to continue treating it as a candidate FieldWiring image-delivery dependency unless separate evidence later establishes such a role.
 
 ### Synology Drive VSS Service
 
@@ -127,26 +121,48 @@ StartName   : LocalSystem
 PathName    : "C:\Program Files (x86)\Synology\SynologyDrive\bin\vss-service-x64.exe
 ```
 
-This proves the Synology Drive VSS support service is installed. It does **not** prove that Synology Drive is synchronizing Google `Display Folders` or that the Synology already has a current copy of that Shared Drive.
+This proves the Synology Drive VSS support service is installed on the laptop. It does not mean that Synology Drive is synchronizing Google `Display Folders`.
 
-## Remaining Laptop Verification
+The operator explicitly confirmed that the Synology does not currently consume or maintain that Google Shared Drive tree.
 
-The remaining useful laptop-side question is whether GoodSync or another installed sync component already references `Display Folders`.
+## Laptop Verification Closed for Image-Source Discovery
 
-Search configuration locations read-only and report filenames containing either of these strings:
+No further laptop PowerShell investigation is required to identify the current FieldWiring image-source mechanism.
+
+The current Windows-side source path is established as:
 
 ```text
-Display Folders
-G:\Shared drives
+Google Shared Drive: Display Folders
+        -> Google Drive for desktop
+        -> G:\Shared drives\Display Folders
+        -> Windows applications such as LOR / FieldWiring development
 ```
 
-Do not copy configuration contents, OAuth material, passwords, tokens, or other protected values into Git.
+That path is a client/runtime convenience, not the future production web-server architecture.
 
 ## Deployment Consequence
 
-The laptop investigation no longer supports any architecture that serves production FieldWiring images through the laptop.
+The image-source problem is now narrower and explicit:
 
-The server-side image-source decision remains between infrastructure that can independently maintain or mount the authoritative Google Shared Drive hierarchy, with the first candidate still being a verified Synology-side synchronized tree if one already exists.
+```text
+Authoritative engineering documents
+        = Google Shared Drive / Display Folders
+
+Current Windows access
+        = Google Drive for desktop / G:
+
+Current Synology copy
+        = none
+
+Required FieldWiring production access
+        = new controlled server-side read-only access to the authoritative Google Shared Drive
+```
+
+Therefore the earlier candidate of reusing an existing Synology-side synchronized `Display Folders` tree is eliminated.
+
+The next architecture investigation must evaluate a deliberate server-side mechanism that can read the Google Shared Drive independently of Windows workstations. The mechanism must preserve the existing Stage/Sub-stage/Scene hierarchy, source-folder markers, published Wiring/PreviewBackground branches, filename/path evidence, and `SourceDocs` exclusions.
+
+Do not introduce a Synology synchronization copy merely because Synology is already present in the web path unless that architecture is separately justified against direct server-side Google Drive access.
 
 ## Documentation Governance Note
 
