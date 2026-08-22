@@ -3,10 +3,10 @@
 | Document control | Value |
 |---|---|
 | Status | DRAFT — governing filesystem/path contract |
-| Current revision | 2026-08-17 |
+| Current revision | 2026-08-22 |
 | Owner | MSB Database Administrator |
 | Applies to | Folder Alignment, Field Context Resolution, FieldWiring, Setup, Takedown, Inspection, future field-document applications |
-| Code/schema status | Documentation only; no code or schema change authorized |
+| Code/schema status | Documentation contract; current FieldWiring release candidate does not yet enforce every required child-branch marker |
 
 ## Purpose
 
@@ -95,7 +95,65 @@ Display folders intentionally use a smaller standard structure:
 
 A Display does not automatically receive standardized `Wiring` or `Procedures` branches.
 
-Not every Display requires its own Google Drive folder, and not every Display requires its own `PreviewBackground` image.
+Not every Display requires its own `PreviewBackground` image.
+
+## Controlled Marker Path
+
+The standard marker is:
+
+```text
+_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+The governing rule is:
+
+> **Every folder that FieldWiring or the future Procedure system uses as part of its controlled application path must contain the marker.**
+
+The marker therefore applies to both the structured scope and the application-facing branches below it.
+
+For current Stage/Sub-stage/Scene field-document paths, required marker locations include:
+
+```text
+<Stage / Sub-stage / Scene>\
+├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│
+├── PreviewBackground\
+│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│
+├── Procedures\
+│   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   ├── Inspection\
+│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   ├── Setup\
+│   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   │   └── images\
+│   │       └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   └── Takedown\
+│       ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│       └── images\
+│           └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│
+└── Wiring\
+    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    ├── BackgroundStage\
+    │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    └── MusicalStage\
+        └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+A current Display/shared-folder `PreviewBackground` that is used as LOR/application path evidence must also be marked.
+
+`SourceDocs` and `Archive` are excluded working/history boundaries and are not part of normal field traversal or presentation. They are not field-application marker targets unless an approved future design changes that role.
+
+`Setup\images` and `Takedown\images` are part of the future Procedure content path and must be marked.
+
+`Photos` is not currently part of the FieldWiring or Procedure application path.
+
+### Current FieldWiring implementation gap
+
+The FieldWiring release-candidate image resolver currently validates the structured Stage/Scene root and checks markers on `Wiring` and `PreviewBackground`, but it does not yet require a marker on the selected `BackgroundStage` / `MusicalStage` child branch.
+
+That is an implementation gap against this current contract. Do not weaken the folder/marker documentation to match the incomplete enforcement. The FieldWiring engineering work must be updated separately before final deployment acceptance.
 
 ## Naming Rules for Documentation Scope
 
@@ -493,14 +551,17 @@ A downstream resolver should apply this contract conservatively:
 6. classify the owner and parent hierarchy using the Stage/Sub-stage/Scene/Display naming rules;
 7. if the immediate owner is a Display/group, climb through the actual parent hierarchy to the nearest valid Scene/Sub-stage/Stage root for shared Wiring/Procedure discovery;
 8. if no usable explicit path evidence exists, use the current database hierarchy and deterministic naming rules to resolve the applicable structured scope;
-9. append only the standardized relative branch owned by the selected task;
-10. if path evidence, naming, and current relationships conflict or remain ambiguous, report the condition instead of guessing.
+9. verify the required markers along the controlled application path;
+10. append only the standardized relative branch owned by the selected task;
+11. if path evidence, naming, markers, and current relationships conflict or remain ambiguous, report the condition instead of guessing.
 
 The resolver must not require a Display-level background merely because the entry point was a Display.
 
 ## Task Branches After Scope Resolution
 
 After resolving the documentation root, the task determines the relative branch.
+
+Every directory used in the selected application path must satisfy the marker rule above.
 
 ### Field Wiring
 
@@ -522,10 +583,22 @@ A direct Wiring `BackgroundFile` path may already identify the applicable branch
 <documentation root>\Procedures\Setup
 ```
 
+Published Setup images use the marked:
+
+```text
+<documentation root>\Procedures\Setup\images
+```
+
 ### Takedown
 
 ```text
 <documentation root>\Procedures\Takedown
+```
+
+Published Takedown images use the marked:
+
+```text
+<documentation root>\Procedures\Takedown\images
 ```
 
 ### Inspection
@@ -552,7 +625,7 @@ permanent Display identity
 
 A QR code must not embed the Google Drive path.
 
-Where a browser/service cannot consume a mounted-drive path directly, the service may resolve the same hierarchy through a controlled Google Drive/file-serving mechanism. That mechanism must preserve the scope and branch rules in this contract.
+Where a browser/service cannot consume a mounted-drive path directly, the service may resolve the same hierarchy through a controlled Google Drive/file-serving mechanism. That mechanism must preserve the scope, branch, and marker rules in this contract.
 
 ## Relationship to Folder Alignment
 
@@ -565,8 +638,8 @@ Folder Alignment should:
 - classify Stage/Sub-stage/Scene/Display scopes using this contract;
 - recognize both `PreviewBackground` and deliberate direct Wiring path evidence;
 - report path/name/hierarchy conflicts;
-- validate required standardized helper folders where applicable; and
-- remain read-only except for separately controlled additive helper-folder updaters.
+- validate required markers and standardized helper folders where applicable; and
+- remain read-only except for separately controlled additive helper-folder/marker updaters.
 
 When this document and Folder Alignment implementation disagree, the discrepancy must be reviewed explicitly. Do not silently treat Folder Alignment implementation behavior as a new filesystem standard.
 
@@ -575,6 +648,7 @@ When this document and Folder Alignment implementation disagree, the discrepancy
 Path resolution must:
 
 - preserve the existing Stage/Sub-stage/Scene/Display hierarchy;
+- require the marker on every directory used as part of the current field-application path;
 - treat `PreviewBackground` as an infrastructure/helper folder, never as the scope itself;
 - not require every Display to have `PreviewBackground`;
 - accept deliberate direct Wiring paths as valid current evidence;
@@ -590,6 +664,8 @@ Path resolution must:
 
 - [Google Drive Folder Structure](00-Google_Drive.md)
 - [Google Drive Document Organization Procedure](01-Google_Drive_Document_Organization_Procedure.md)
+- [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
+- [Stage / Sub-stage / Scene Folder Scaffold](04-Stage_Substage_Scene_Folder_Scaffold.md)
 - [Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
 - [LOR Preview Parser Architecture](../01_LOR_System/02_Data_Extraction/LOR_Preview_Parser_Architecture.md)
 - [Shared Field Context Resolution Contract](../02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)

@@ -1,72 +1,125 @@
 # Preview Import Workflow
 
-Use the **latest LOR2DB reconciliation report** to identify the current approved show-preview source before importing previews.
+| Document Control | Value |
+|---|---|
+| Document Type | Operator Procedure |
+| System | LOR Preview Authoring |
+| Task | Get the current approved Preview before editing |
+| Audience | Preview authors and programmers |
+| Status | CURRENT |
+| Owner | MSB Production Crew |
+| Last Reviewed | 2026-08-22 |
 
-The report is available from the [LOR2DB Reporting portal](../../../LOR2DB/Reporting/README.md).
+## Purpose
 
-⚠️ The approved Source folder is the production preview set. **Do not edit, overwrite, or save files in that folder.** Make changes only in your own working copy.
+Use this procedure before changing an existing LOR Preview.
 
----
-
-## Step 1 – Find the Current Approved Preview Source
-
-Open the latest reconciliation report.
-
-Section 3 identifies the **Source folder** used for the current approved production import.
-
-Use that Source folder when importing the current show previews.
-
-The report also lists the approved revision of each preview included in that reconciliation.
+The goal is to make sure you start with the current approved copy instead of an older file from your computer.
 
 ---
 
-## Step 2 – Import a Preview
+# 1. Find the Current Approved Preview Source
 
-When you import a `.lorprev` file, LOR will prompt you depending on whether your system already has that preview:
+Open the latest completed LOR2DB reconciliation report.
 
-- **Case A – Same Version (No Update Needed)**  
-  You’ll see a message like this:  
- ![Import – Same Version](images/import_01.png) 
-  ➡️ If the version matches, no action is needed. Click **Cancel** to avoid creating duplicates.
+The report identifies the source folder used for the current approved Preview set and lists the Preview revisions included in that run.
 
-- **Case B – Newer Version (Update Recommended)**  
-  If the approved preview has a newer revision, you’ll see:  
-  ![Import – Newer Version](images/import_02.png)  
-  ➡️ Click **Yes** to update your existing preview with the latest data.  
-  ➡️ Click **No** only if you need to keep your older version as a separate copy (rare).
+Use the report as the current reference.
+
+Do not assume an older `Database Previews` folder on your computer is current just because it exists.
+
+[LOR2DB Reporting](../../../LOR2DB/03_Reporting/README.md)
 
 ---
 
-## Step 3 – Verify Revision Numbers
+# 2. Import the Preview into LOR
 
-After importing, open the preview. The **revision number** is displayed in the upper right corner:  
-![Preview Revision](images/import_03.png)
+Import the `.lorprev` file you need from the approved source.
 
-- Confirm the revision matches the latest reconciliation report.
-- This ensures you are sequencing with the latest approved design.
+If LOR tells you the Preview already exists:
 
----
+- if your copy is already the current approved version, do not create another duplicate;
+- if the approved copy is newer, update your working copy from the approved source; and
+- if you are not sure which copy is correct, stop and ask before editing.
 
-## Important – Do Not Save to the Approved Source Folder
-
-The Source folder shown in the reconciliation report contains the approved production preview set.
-
-- Import or copy previews from that folder.
-- Do **not** edit files in that folder.
-- Do **not** overwrite files in that folder.
-- Do **not** save new or experimental previews in that folder.
-- Make all changes in your own working location.
-
-The Preview Merger system is under development and is not yet part of the production workflow.
+Do not create a second Preview just to get around an import warning.
 
 ---
 
-## Summary
+# 3. Check the Preview Before Editing
 
-1. Open the latest LOR2DB reconciliation report.
-2. Use Section 3 to find the current approved Source folder.
-3. Import previews from that folder without modifying it.
-4. Verify preview revisions against the reconciliation report.
-5. Make any changes only in your own working copy.
+Open the Preview and check:
 
-Keeping previews aligned avoids mismatches in sequencing and database exports.
+- the Preview name;
+- the revision number; and
+- the background image if the work you are doing depends on it.
+
+For Master Musical Preview work, also review:
+
+[Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
+
+before changing Scene names or Scene backgrounds.
+
+---
+
+# 4. Work Only in Your Own Copy
+
+The approved source folder is read-only from the Preview author's point of view.
+
+Do not:
+
+- edit the file directly in the approved source folder;
+- overwrite the approved master;
+- save experiments into the approved source folder; or
+- use your personal staging folder as the production Preview source.
+
+Make your changes in your normal LOR working copy.
+
+---
+
+# 5. Export Your Finished Candidate
+
+When your work is complete, export the candidate `.lorprev` file to:
+
+```text
+G:\Shared drives\MSB Database\UserPreviewStaging\<username>
+```
+
+Allow Google Drive to finish synchronizing.
+
+`UserPreviewStaging` is the handoff location for your finished candidate. It is not the approved master.
+
+---
+
+# Stop Here
+
+Do not replace the approved master yourself.
+
+The review/master-update process is controlled separately.
+
+Your operator task is complete when the correct candidate file is safely in your `UserPreviewStaging` folder.
+
+---
+
+## Expected Result
+
+You started from the current approved Preview, made changes only in your own working copy, and exported the finished candidate to your personal staging folder.
+
+## If Something Is Wrong
+
+If the Preview name, revision, or import message does not match what you expect, stop before editing and ask for review. Do not create a new Preview or overwrite another file to force the import to work.
+
+## Related Operator Documents
+
+- [Preview Authoring Home](README.md)
+- [Building a Preview](B_Building_Preview_Howto.md)
+- [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
+
+## Related Engineering
+
+- [Preview Merger](../03_Preview_Merger/README.md)
+- [LOR2DB Reporting](../../../LOR2DB/03_Reporting/README.md)
+
+## Revision History
+
+- 2026-08-22 — Rewritten as a plain-language operator procedure while preserving the approved-source, personal-copy, and `UserPreviewStaging` boundaries.

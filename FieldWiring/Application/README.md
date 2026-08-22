@@ -182,6 +182,22 @@ A Linux production server does not automatically have that path. Before server d
 
 Do not copy ad-hoc images into the application directory or weaken the same-scope/source-marker rules to make deployment easier.
 
+### Marker-enforcement gap identified 2026-08-22
+
+The current controlled-folder rule requires the standard marker in **every folder used as part of the FieldWiring application path**, including:
+
+```text
+<resolved Stage / Sub-stage / Scene root>
+Wiring
+Wiring\BackgroundStage
+Wiring\MusicalStage
+PreviewBackground   (when used for same-scope context)
+```
+
+The current `wiring_images.py` release-candidate implementation already requires the resolved root marker, the `Wiring` root marker, and the `PreviewBackground` marker, but it does **not yet require a marker inside the selected `BackgroundStage` / `MusicalStage` branch**.
+
+That is an implementation gap against the current Google Drive path/marker contract. It must be corrected and covered by tests before final production deployment acceptance.
+
 ## Existing Display QR dependency
 
 The deployed Display QR hub already exists in the Directus scan extension on `msb-prod-db` and resolves permanent `display_id`.
@@ -192,14 +208,13 @@ The intended integration is one new **Field Wiring** action on the existing `/sc
 
 ## Merge/deployment state
 
-Merging FieldWiring to `main` is appropriate after the feature branch is brought current with `main` and the full tests pass again.
+FieldWiring is merged to current `main` as a release candidate. Merge is not the same as production cutover.
 
-At the release-candidate checkpoint the branch was 291 commits ahead of `main` and 8 commits behind it, so update the branch before merging.
-
-Merging code is not the same as production cutover. Keep FormView available until:
+Keep FormView available until:
 
 1. FieldWiring is deployed on the server using live read-only PostgreSQL;
 2. the server can resolve the approved Display Folders/image source;
-3. the protected public route is working;
-4. tablet/phone testing is accepted;
-5. the existing Display scan hub exposes Field Wiring successfully.
+3. the required marker is enforced on every folder in the selected FieldWiring path;
+4. the protected public route is working;
+5. tablet/phone testing is accepted; and
+6. the existing Display scan hub exposes Field Wiring successfully.

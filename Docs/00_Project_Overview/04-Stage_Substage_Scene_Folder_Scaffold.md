@@ -71,39 +71,52 @@ Use this structure for every newly created Stage, Sub-stage, or Scene documentat
 │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   └── archive/
 │
+├── Photos/
+│   ├── Current/
+│   ├── Historical/
+│   ├── Reference/
+│   ├── Setup/
+│   └── Takedown/
+│
 ├── Procedures/
 │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   │
 │   ├── Inspection/
+│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   │
 │   ├── Setup/
+│   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   ├── Archive/
 │   │   ├── images/
+│   │   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   └── SourceDocs/
+│   │
 │   ├── Takedown/
+│   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   ├── Archive/
 │   │   ├── images/
+│   │   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   └── SourceDocs/
+│   │
 │   └── SourceDocs/
 │
-├── Wiring/
-│   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│   ├── BackgroundStage/
-│   │   └── SourceDocs/
-│   └── MusicalStage/
-│       └── SourceDocs/
-│
-└── Photos/
-    ├── Current/
-    ├── Historical/
-    ├── Reference/
-    ├── Setup/
-    └── Takedown/
+└── Wiring/
+    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    │
+    ├── BackgroundStage/
+    │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    │   └── SourceDocs/
+    │
+    └── MusicalStage/
+        ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+        └── SourceDocs/
 ```
 
-`desktop.ini` or other Windows-generated metadata is not part of the controlled scaffold contract and does not need to be copied deliberately.
+`desktop.ini` or other Windows-generated metadata is not part of the controlled scaffold and does not need to be copied deliberately.
 
 ---
 
-# Marker Placement
+# Marker Placement Rule
 
 The standard marker filename is:
 
@@ -111,18 +124,27 @@ The standard marker filename is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-A marker is required in:
+The current rule is:
+
+> **Every folder used by the new FieldWiring system or future Procedure system must contain the marker.**
+
+For the scaffold above, markers are required in:
 
 1. the Stage / Sub-stage / Scene root;
 2. `PreviewBackground`;
-3. `Procedures`; and
-4. `Wiring`.
+3. `Procedures`;
+4. `Procedures\Inspection`;
+5. `Procedures\Setup`;
+6. `Procedures\Setup\images`;
+7. `Procedures\Takedown`;
+8. `Procedures\Takedown\images`;
+9. `Wiring`;
+10. `Wiring\BackgroundStage`; and
+11. `Wiring\MusicalStage`.
 
-Do **not** place a database-source marker in `Photos` at this time.
+`SourceDocs` and `Archive` are working/history folders excluded from normal field presentation and are not field-application marker targets unless a future approved design changes their role.
 
-The root marker protects and identifies the aligned structural scope. The helper-folder markers identify the current database/application source folders.
-
-Use the personalized marker text for each location. Local notes may be added in the marker's `LOCAL NOTES` section when useful.
+`Photos` is not currently part of the FieldWiring/Procedure application source path and is not marked by this scaffold.
 
 See [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md).
 
@@ -137,12 +159,12 @@ An **existing** Stage/Sub-stage/Scene root may already contain years of loose fi
 For existing folders:
 
 - preserve the aligned root name;
-- preserve the marked helper-folder names;
-- use marked `PreviewBackground`, `Procedures`, and `Wiring` as the current application-source boundary;
+- preserve the controlled field-application folder names;
+- add/maintain the required markers as the folder becomes part of the new FieldWiring/Procedure system;
 - preserve unrelated legacy material until it can be reviewed; and
-- allow applications to ignore unmarked legacy material.
+- allow applications to ignore material outside the controlled marked paths.
 
-This is what allows gradual cleanup without breaking LOR paths or current database-backed applications.
+This allows gradual cleanup without breaking LOR paths or current field applications.
 
 ---
 
@@ -152,28 +174,42 @@ This is what allows gradual cleanup without breaking LOR paths or current databa
 
 Use `PreviewBackground` for current images intentionally used as LOR Preview/Scene background references.
 
-For **new authoring**, choose the Scene/Preview `BackgroundFile` from an approved marked source location. Do not create new LOR references into loose legacy material when a controlled source folder is available.
+For new authoring, choose the Scene/Preview `BackgroundFile` from an approved marked location. Do not create new LOR references into loose legacy material when a controlled source folder is available.
 
 ## Wiring
 
-Published FieldWiring images belong directly in the applicable branch:
+Published FieldWiring images belong directly in the applicable marked branch:
 
 ```text
 Wiring\BackgroundStage
 Wiring\MusicalStage
 ```
 
+Both the `Wiring` root and the published child branch must be marked.
+
 `SourceDocs` is working/source material and is not normal field-facing content.
 
-**Do not point a new Scene background into `SourceDocs`.** Existing legacy pointers may remain temporarily while alignment work continues, but new authoring should use `PreviewBackground` or a directly published Wiring image.
+Do not point a new Scene background into `SourceDocs`. Existing legacy pointers may remain temporarily while alignment work continues, but new authoring should use `PreviewBackground` or a directly published Wiring image.
 
 ## Procedures
 
-Published field procedure material belongs in the approved procedure branch. `Archive` and `SourceDocs` are not normal field-facing content.
+Published field procedure material belongs in the applicable marked procedure branch:
+
+```text
+Procedures\Inspection
+Procedures\Setup
+Procedures\Takedown
+```
+
+The `Procedures` root and the applicable task branch must be marked.
+
+Setup/Takedown `images` folders are part of the future procedure content path and must also be marked.
+
+`Archive` and `SourceDocs` are not normal field-facing content.
 
 ## Photos
 
-`Photos` remains general documentation and is not currently a Production Database/application source folder.
+`Photos` remains general documentation and is not currently a FieldWiring/Procedure application source folder.
 
 ---
 
@@ -185,9 +221,11 @@ When a new Scene documentation folder is approved:
 - [ ] Confirm the owning Stage or Sub-stage.
 - [ ] Name the folder using the current `NN-Scene Name` / `NNa-Scene Name` rule.
 - [ ] Create the complete scaffold, not only the one helper folder needed today.
-- [ ] Add the structural root marker.
-- [ ] Add the personalized markers to `PreviewBackground`, `Procedures`, and `Wiring`.
-- [ ] Do not mark `Photos`.
+- [ ] Add the marker to the Scene root.
+- [ ] Add the marker to `PreviewBackground`.
+- [ ] Add the marker to `Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images`.
+- [ ] Add the marker to `Wiring` and the active `BackgroundStage` / `MusicalStage` branches.
+- [ ] Do not mark `SourceDocs` or `Archive` as normal field sources.
 - [ ] Do not rename the standard helper folders.
 - [ ] Put new LOR background references only in approved marked source locations.
 - [ ] Never use `SourceDocs` as a normal field-document or new LOR background endpoint.
@@ -198,7 +236,7 @@ When a new Scene documentation folder is approved:
 
 # Simple Rule
 
-> If a new Stage, Sub-stage, or Scene documentation folder is needed, create it from the complete scaffold immediately. Do not invent a partial folder structure and plan to fix it later.
+> If a new Stage, Sub-stage, or Scene documentation folder is needed, create the complete controlled scaffold immediately and mark every folder used by the field applications. Do not invent a partial folder structure and plan to fix it later.
 
 ---
 
