@@ -19,13 +19,35 @@ def _canonical_scene_names(scene_name: str) -> set[str]:
     return {name.casefold() for name in names if name}
 
 
-def _path_is_under_windows(path_text: str, root_text: str) -> bool:
+def _windows_relative_parts(path_text: str, root_text: str) -> tuple[str, ...] | None:
     try:
-        path_parts = [p.casefold() for p in PureWindowsPath(path_text).parts]
-        root_parts = [p.casefold() for p in PureWindowsPath(root_text).parts]
+        path_parts = PureWindowsPath(path_text).parts
+        root_parts = PureWindowsPath(root_text).parts
     except Exception:
+        return None
+    if len(path_parts) < len(root_parts):
+        return None
+    if [p.casefold() for p in path_parts[:len(root_parts)]] != [p.casefold() for p in root_parts]:
+        return None
+    return tuple(path_parts[len(root_parts):])
+
+
+def _localize_evidence_path(path_text: str | None, drive_root: Path) -> Path | None:
+    if not path_text:
+        return None
+    windows_root = os.environ.get("FIELDWIRING_WINDOWS_DRIVE_ROOT", DEFAULT_DRIVE_ROOT).strip() or DEFAULT_DRIVE_ROOT
+    relative_parts = _windows_relative_parts(path_text, windows_root)
+    if relative_parts is not None:
+        return drive_root.joinpath(*relative_parts)
+    return Path(path_text)
+
+
+def _path_is_under(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
         return False
-    return path_parts[:len(root_parts)] == root_parts
 
 
 def _bounded_scope_matches(stage_root: Path, scene_name: str, max_depth: int = 2) -> list[Path]:
@@ -50,23 +72,22 @@ def _bounded_scope_matches(stage_root: Path, scene_name: str, max_depth: int = 2
     return sorted(unique.values(), key=lambda p: str(p).casefold())
 
 
-def _truncate_before_sourcedocs(path_text: str | None) -> tuple[str | None, bool]:
-    if not path_text:
-        return path_text, False
-    parts = PureWindowsPath(path_text).parts
+def _truncate_before_sourcedocs(path: Path | None) -> tuple[Path | None, bool]:
+    if path is None:
+        return None, False
+    parts = path.parts
     for index, part in enumerate(parts):
         if part.casefold() == "sourcedocs":
             if index == 0:
                 return None, True
-            return str(PureWindowsPath(*parts[:index])), True
-    return path_text, False
+            return Path(*parts[:index]), True
+    return path, False
 
 
-def _direct_wiring_owner(pointer_text: str | None) -> Path | None:
+def _direct_wiring_owner(pointer: Path | None) -> Path | None:
     """Return the folder directly above Wiring when BackgroundFile enters Wiring."""
-    if not pointer_text:
+    if pointer is None:
         return None
-    pointer = Path(pointer_text)
     current = pointer.parent if pointer.suffix else pointer
     for candidate in (current, *current.parents):
         if candidate.name.casefold() == "wiring":
@@ -74,10 +95,9 @@ def _direct_wiring_owner(pointer_text: str | None) -> Path | None:
     return None
 
 
-def _recover_stage_root(pointer_text: str | None, drive_root: Path, stage_key: str | None) -> Path | None:
-    if not pointer_text or not stage_key:
+def _recover_stage_root(pointer: Path | None, drive_root: Path, stage_key: str | None) -> Path | None:
+    if pointer is None or not stage_key:
         return None
-    pointer = Path(pointer_text)
     if not pointer.exists():
         return None
     try:
@@ -103,14 +123,15 @@ def _resolve_scope_root(
 ) -> tuple[Path | None, str, list[str]]:
     warnings: list[str] = []
     raw_pointer = (scene or {}).get("scene_background_file") or preview.get("preview_background_file")
-    pointer, blocked = _truncate_before_sourcedocs(raw_pointer)
+    localized_pointer = _localize_evidence_path(raw_pointer, drive_root)
+    pointer, blocked = _truncate_before_sourcedocs(localized_pointer)
     if blocked:
         warnings.append(
             "BackgroundFile path enters SourceDocs. Traversal stopped before SourceDocs; source content was not accessed."
         )
 
     folder_path = (stage.get("folder_path") or "").strip()
-    stage_root = Path(folder_path) if folder_path else None
+    stage_root = _localize_evidence_path(folder_path, drive_root) if folder_path else None
     valid = bool(stage_root and stage_root.is_dir() and (stage_root / MARKER_NAME).is_file())
     if not valid:
         recovered = _recover_stage_root(pointer, drive_root, stage.get("stage_key"))
@@ -132,8 +153,8 @@ def _resolve_scope_root(
     # resolves the structured owner; resolve_images() still selects
     # BackgroundStage versus MusicalStage from the already-resolved context.
     direct_owner = _direct_wiring_owner(pointer)
-    if direct_owner is not None and _path_is_under_windows(str(direct_owner), str(drive_root)):
-        if str(direct_owner).casefold() == str(stage_root).casefold():
+    if direct_owner is not None and _path_is_under(direct_owner, drive_root):
+        if direct_owner == stage_root:
             warnings.append(
                 "BackgroundFile points directly into the current Stage Wiring branch; the marked Stage root is the FieldWiring documentation scope."
             )
@@ -144,18 +165,16 @@ def _resolve_scope_root(
         return stage_root, "STAGE", warnings
 
     targets = _canonical_scene_names(scene_name)
-    if pointer and _path_is_under_windows(str(pointer), str(drive_root)):
-        pointer_path = Path(str(pointer))
-        if pointer_path.exists():
-            current = pointer_path.parent if pointer_path.is_file() else pointer_path
-            stage_fold = str(stage_root).casefold()
-            while str(current).casefold().startswith(stage_fold):
+    if pointer is not None and _path_is_under(pointer, drive_root):
+        if pointer.exists():
+            current = pointer.parent if pointer.is_file() else pointer
+            while _path_is_under(current, stage_root):
                 if current.name.casefold() in targets:
                     if (current / MARKER_NAME).is_file():
                         return current, "SCENE", warnings
                     warnings.append(f"Scene source-folder marker is missing: {current / MARKER_NAME}")
                     return None, "UNRESOLVED", warnings
-                if str(current).casefold() == stage_fold:
+                if current == stage_root:
                     break
                 current = current.parent
 
@@ -201,7 +220,7 @@ def _image_payload(path: Path, drive_root: Path, kind: str) -> dict[str, Any]:
         "name": path.name,
         "kind": kind,
         "relative_path": relative.as_posix(),
-        "url": "/api/wiring/image?path=" + relative.as_posix().replace(" ", "%20"),
+        "url": "api/wiring/image?path=" + relative.as_posix().replace(" ", "%20"),
     }
 
 
