@@ -205,6 +205,8 @@ The client exists specifically for the planned rclone/headless authorization wor
 
 Client credentials are protected configuration. The client ID may be required during server configuration, and the client secret/authorization tokens will be required by the runtime, but secret values must not be copied into repository documentation or normal engineering chat transcripts.
 
+The OAuth client ID and client secret are stored in the MSB Bitwarden vault under the `MSB` folder. This repository records only that protected storage location; it does not record the credential values. Future server-side authorization tokens or refresh tokens must likewise remain in an approved protected credential location and must not be committed to Git.
+
 No client secret, downloaded credential JSON, authorization token, or refresh token is stored in Git.
 
 ## Required Google-Side Access Boundary
@@ -321,7 +323,7 @@ As of 2026-08-21:
 - Google Auth Platform configuration has been created with an Internal `sheboyganlights.org` audience;
 - Google Auth Platform Data Access is saved with only `https://www.googleapis.com/auth/drive.readonly` for Drive access;
 - OAuth desktop client `MSB Engineering Docs rclone` exists;
-- client secrets and OAuth tokens remain outside Git;
+- the OAuth client ID and client secret are stored in Bitwarden under the `MSB` folder, with no credential values stored in Git;
 - the `Display Folders` Shared Drive remains the authoritative editable repository;
 - server/application access must remain read-only;
 - the server-side filesystem must preserve normal folder traversal;
