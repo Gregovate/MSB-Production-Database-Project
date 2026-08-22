@@ -117,3 +117,10 @@ def test_public_frontend_uses_subpath_safe_links():
     assert "wiring.html?" in lookup_js
     assert "api/wiring?" in wiring_js
     assert 'href="./"' in wiring_html
+
+
+def test_current_field_copy_banner_is_print_only():
+    wiring_html = (Path(__file__).resolve().parent / "wiring.html").read_text(encoding="utf-8")
+
+    assert 'id="currentness" class="currentness print-only"' in wiring_html
+    assert "CURRENT FIELD COPY" in wiring_html
