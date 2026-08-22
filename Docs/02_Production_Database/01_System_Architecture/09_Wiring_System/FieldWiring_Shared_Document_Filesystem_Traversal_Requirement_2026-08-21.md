@@ -46,6 +46,35 @@ _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 
 Applications must preserve the real hierarchy and apply the task-specific rules for the branch they own.
 
+## Human Authoring and Maintenance Boundary
+
+The server-side document filesystem exists to let database-backed applications **read and present** engineering information that people continue to author and maintain in Google Workspace.
+
+Normal authorized MSB users should continue using the tools they already know, including Google Drive, Google Docs, normal folders, PDFs, images, and other approved document formats. They should not need to understand PostgreSQL, Directus, application APIs, filesystem mounts, or server internals merely to maintain field documentation.
+
+The intended separation is:
+
+```text
+Authorized MSB users
+    -> Google Workspace / Shared Drive
+    -> create and maintain engineering documents in the controlled folder structure
+
+Production Database
+    -> stores permanent identities, relationships, scope, and application metadata
+
+Server-side document filesystem
+    -> behaves like another authorized read-only user of the same Shared Drive hierarchy
+
+Field applications
+    -> resolve the correct scope and present only the approved current content
+```
+
+PostgreSQL and Directus must not become the normal authoring environment for wiring images, procedures, Preview backgrounds, or other engineering documents merely because applications consume those documents.
+
+The server-side Google identity should therefore behave, from the document repository's point of view, like an authorized MSB user with only the permissions required for application presentation. The implementation mechanism may differ from Windows Google Drive for desktop, but the visible source hierarchy and document ownership model must remain the same.
+
+This boundary is intentional because many MSB contributors are not computer-science users. The engineering system must preserve familiar document-maintenance workflows rather than require volunteers to learn database or server terminology to update field information.
+
 ## Why Filesystem Traversal Is Required
 
 ### FieldWiring
