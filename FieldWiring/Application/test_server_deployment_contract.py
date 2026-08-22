@@ -124,3 +124,19 @@ def test_current_field_copy_banner_is_print_only():
 
     assert 'id="currentness" class="currentness print-only"' in wiring_html
     assert "CURRENT FIELD COPY" in wiring_html
+
+
+def test_postgres_display_name_search_orders_outside_distinct_subquery():
+    source = (Path(__file__).resolve().parent / "repository.py").read_text(encoding="utf-8")
+
+    assert "SELECT *\n                    FROM (\n                        SELECT DISTINCT" in source
+    assert ") AS matches\n                    ORDER BY" in source
+    assert "CASE WHEN lower(display_name) = lower(%s)" in source
+
+
+def test_lookup_frontend_handles_non_json_api_errors():
+    source = (Path(__file__).resolve().parent / "fieldwiring.js").read_text(encoding="utf-8")
+
+    assert "const text = await response.text();" in source
+    assert "FieldWiring server error (${response.status})" in source
+    assert "FieldWiring server returned an unexpected response." in source
