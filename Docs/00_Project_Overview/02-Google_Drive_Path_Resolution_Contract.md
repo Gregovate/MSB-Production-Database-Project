@@ -125,9 +125,13 @@ For current Stage/Sub-stage/Scene field-document paths, required marker location
 │   ├── Inspection\
 │   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   ├── Setup\
-│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   │   └── images\
+│   │       └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   └── Takedown\
-│       └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│       ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│       └── images\
+│           └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │
 └── Wiring\
     ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
@@ -141,7 +145,7 @@ A current Display/shared-folder `PreviewBackground` that is used as LOR/applicat
 
 `SourceDocs` and `Archive` are excluded working/history boundaries and are not part of normal field traversal or presentation. They are not field-application marker targets unless an approved future design changes that role.
 
-If the future Procedure system directly consumes another folder such as a Setup/Takedown `images` folder, that folder must be marked before it becomes part of the application path.
+`Setup\images` and `Takedown\images` are part of the future Procedure content path and must be marked.
 
 `Photos` is not currently part of the FieldWiring or Procedure application path.
 
@@ -579,10 +583,22 @@ A direct Wiring `BackgroundFile` path may already identify the applicable branch
 <documentation root>\Procedures\Setup
 ```
 
+Published Setup images use the marked:
+
+```text
+<documentation root>\Procedures\Setup\images
+```
+
 ### Takedown
 
 ```text
 <documentation root>\Procedures\Takedown
+```
+
+Published Takedown images use the marked:
+
+```text
+<documentation root>\Procedures\Takedown\images
 ```
 
 ### Inspection
