@@ -16,7 +16,7 @@ The scanner is an input device. It does not own Production Database identity or 
 
 MSB has procured rugged tablets intended to serve as mobile browser workstations.
 
-MSB has also purchased one industrial cordless scanner kit for the **workshop forklift**:
+MSB has also purchased one industrial cordless scanner kit:
 
 ```text
 Zebra DS3678-HD
@@ -26,12 +26,15 @@ Decode type: 1-D / 2-D imager
 Variant: High Density (HD)
 Connection kit: USB cradle/cable/power kit
 Feedback: vibration motor included
-Intended deployment: workshop forklift / shop storage workflows
+Primary intended deployment: workshop forklift / shop storage workflows
+Secondary candidate deployment: close-range park unloading / trailer receiving
 ```
 
-The Zebra is not currently intended to be the primary park scanner. Park workflows are expected to rely more heavily on rugged tablets/phones, camera scanning where useful, and GPS/location context.
+The Zebra is not currently intended to be the primary general-purpose park scanner. Park workflows are expected to rely more heavily on rugged tablets/phones, camera scanning where useful, and GPS/location context.
 
-This purchased device is the first real industrial-scanner acceptance platform. Future hardware recommendations should use its measured shop results rather than remain purely conceptual.
+However, the DS3678-HD may be a good fit for a **park unloading checkpoint** where an operator is standing beside a trailer or load and can scan Containers/Displays at close range as they are unloaded. That role does not require across-aisle or long-distance scanning and should be evaluated separately from forklift-seat range acceptance.
+
+This purchased device is the first real industrial-scanner acceptance platform. Future hardware recommendations should use its measured shop and unloading results rather than remain purely conceptual.
 
 ## Scanner Capability
 
@@ -56,7 +59,7 @@ Data Matrix, 10 mil -> 1.0 to 9.0 in.
 
 Actual range depends on barcode size/density, print quality, contrast, angle, ambient light, and label material.
 
-That range may be entirely adequate for controlled workshop/forklift use where the operator can bring the scanner close to the Container or rack-location label. It should not be documented as an across-aisle or extended-range scanner.
+That range may be entirely adequate for controlled workshop/forklift use where the operator can bring the scanner close to the Container or rack-location label. It is also compatible with a park unloading role where the scanner operator is standing immediately beside the material being unloaded. It should not be documented as an across-aisle or extended-range scanner.
 
 ## Workshop Forklift Acceptance Requirement
 
@@ -75,6 +78,31 @@ Acceptance should include:
 - repeated rapid scans rather than one successful demonstration.
 
 If some future workshop task genuinely requires multi-foot or across-aisle scanning, evaluate an ER/XR-class device for that task rather than distorting the browser workflow or encouraging unsafe operator reach.
+
+## Park Unloading Acceptance Requirement
+
+The DS3678-HD should also be tested as a separate **close-range unloading scanner** for Setup/Deployment.
+
+That workflow may look like:
+
+```text
+trailer / truck arrives
+    -> operator stands beside unloading point
+        -> each Container/Display is scanned as it comes off
+            -> browser validates expected load / destination
+                -> Setup workflow records the accepted unloading/receiving event
+```
+
+Acceptance should verify:
+
+- the scanner can be connected to the actual park tablet/workstation without awkward cabling;
+- the cradle/power arrangement is practical for temporary park use;
+- the operator can scan actual Container/Display labels without slowing unloading;
+- vibration/feedback is clear enough in outdoor/noisy conditions;
+- the workflow can auto-submit or advance without repeated screen touches;
+- the scanner can move between workshop and park without creating a fragile reconfiguration process.
+
+This close-range role is distinct from GPS/site placement. The scanner confirms **which asset is being unloaded**; GIS/GPS may then help determine or validate **where that asset belongs**.
 
 ## Browser Input Contract
 
@@ -96,7 +124,7 @@ Camera scanning remains a separate input mechanism on phones/tablets. Camera and
 
 ## Shop Versus Park Input Boundary
 
-The expected deployment model is now deliberately different by environment.
+The expected deployment model is deliberately different by environment, while still allowing the same industrial scanner to serve a useful close-range park role.
 
 ### Workshop / storage
 
@@ -111,7 +139,20 @@ Zebra DS3678-HD
 
 This environment uses discrete, already-designed rack/storage locations and favors fast repeated HID scans.
 
-### Park / field
+### Park unloading / receiving
+
+Candidate interaction:
+
+```text
+Zebra DS3678-HD
+    -> Container / Display barcode or QR at close range
+    -> browser load/unload workflow
+    -> expected destination / Setup context
+```
+
+This is a strong candidate use because the scanner operator can stand beside the trailer/load. It does not depend on long-range aiming from a vehicle seat.
+
+### Park placement / field navigation
 
 Primary interaction is expected to be:
 
@@ -130,13 +171,15 @@ During hardware acceptance, determine and deliberately standardize the scanner s
 
 Do not assume the scanner's current suffix configuration.
 
-The eventual shop Setup scan screen should allow repetitive operation without requiring the forklift operator to touch the screen after every scan. The exact behavior must be tested with the DS3678-HD and then documented as the controlled scanner configuration.
+The eventual shop and unloading Setup scan screens should allow repetitive operation without requiring the operator to touch the screen after every scan. The exact behavior must be tested with the DS3678-HD and then documented as the controlled scanner configuration.
 
 ## Tablet / Host Integration
 
 The USB cradle must connect to a host that supports the selected USB mode.
 
 Before workshop forklift deployment, verify the actual rugged tablet or mounted workstation provides the required USB host connection, power arrangement, and secure cabling for the cradle.
+
+Before park unloading deployment, verify whether the same cradle/USB arrangement can be moved safely and quickly to the park host or whether another approved host/interface arrangement is needed. Do not assume a different scanner protocol is necessary until the actual tablet/host connection is tested.
 
 The scanner should not connect directly to PostgreSQL. The browser application interprets the decoded asset payload and communicates with the approved backend over the network.
 
@@ -152,6 +195,8 @@ Workshop forklift installation should provide:
 - a scanner location that does not encourage use while the forklift is moving;
 - practical return-to-cradle/charging behavior.
 
+Park unloading use should favor a simple temporary station or protected mobile host arrangement rather than permanently mounting the scanner to a park location before the real workflow is proven.
+
 ## Network Requirement
 
 The field workstation/tablet requires application connectivity throughout the intended workflow areas, including:
@@ -159,6 +204,7 @@ The field workstation/tablet requires application connectivity throughout the in
 - storage/rack aisles;
 - workshop staging areas;
 - loading zones;
+- park unloading/receiving points;
 - park Setup/Deployment scan points where online validation is required.
 
 Scanner-to-cradle communication does not replace application network connectivity.
@@ -177,18 +223,19 @@ LOC:<location_code>
 
 The scanner/application must read the payload as data and route it through the scan platform. Physical labels must not encode annual setup state, load number, destination application, or other transient workflow information.
 
-Label size/density should be chosen from actual DS3678-HD shop testing rather than theoretical minimum barcode sizes.
+Label size/density should be chosen from actual DS3678-HD shop and unloading testing rather than theoretical minimum barcode sizes.
 
 ## Setup/Deployment Implication
 
 The upcoming Setup project should assume multiple input mechanisms but one business-resolution layer:
 
 ```text
-shop industrial scanner -> HID keyboard input
-field phone/tablet       -> camera scan and/or GPS context
+shop industrial scanner       -> HID keyboard input
+park unloading scanner        -> HID keyboard input where practical
+field phone/tablet            -> camera scan and/or GPS context
 ```
 
-Both must resolve permanent Production Database identities. Do not build separate Container or Display business logic based on how the identifier was captured.
+All must resolve permanent Production Database identities. Do not build separate Container or Display business logic based on how the identifier was captured.
 
 GPS is context/measurement, not asset identity.
 
@@ -200,16 +247,20 @@ GPS is context/measurement, not asset identity.
 - test current Container labels;
 - test existing rack-location labels;
 - measure practical scan range from the actual workshop forklift position;
+- test the scanner as a close-range park unloading/receiving device;
+- verify the practical host/power connection for temporary park unloading use;
 - document scanner configuration once accepted;
 - determine mounting, cradle power, and cable protection;
 - include industrial-scanner input in Setup/Deployment application acceptance tests;
-- separately engineer park GPS/site-location behavior with Site Infrastructure/GIS rather than assuming the Zebra scanner is the park solution.
+- separately engineer park GPS/site-location behavior with Site Infrastructure/GIS rather than assuming the Zebra scanner replaces field location logic.
 
 ## Resume Development
 
 For workshop hardware work, begin with the purchased Zebra DS3678-HD, existing rack labels, actual Container labels, and the real forklift operating position.
 
-For application work, preserve HID keyboard input as a first-class shop scan path while keeping camera/GPS field input additive.
+For park unloading hardware work, test the same scanner beside the trailer/load with the actual park tablet/workstation and normal unloading pace.
+
+For application work, preserve HID keyboard input as a first-class scan path while keeping camera/GPS field input additive.
 
 For the broader workflow, continue from [Setup and Deployment](../12_Setup_and_Deployment/README.md) after the current FieldWiring Scan Integration is closed.
 
