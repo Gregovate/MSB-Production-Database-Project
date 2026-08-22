@@ -1,217 +1,265 @@
 ---
 title: Create Wiring Backgrounds for Stage Previews
 author: Greg Liebig / Engineering Innovations, LLC
-status: ACTIVE
+status: CURRENT
+revision: 2026-08-22
 ---
 
 # Create Wiring Backgrounds for Stage Previews
 
+| Document Control | Value |
+|---|---|
+| Document Type | Operator Procedure |
+| System | LOR Preview Authoring / Field Wiring |
+| Task | Create and publish field wiring images |
+| Audience | Preview authors and wiring-documentation maintainers |
+| Status | CURRENT |
+| Owner | MSB Production Crew |
+| Last Reviewed | 2026-08-22 |
+
 ## Purpose
 
-This procedure explains how to create and organize the background images and supporting files used by Light-O-Rama Stage Previews and the MSB field-wiring documentation workflow.
+Use this procedure when creating or updating the images used for field wiring instructions.
 
-The wiring background is more than a picture used while authoring a preview. Its stored path and the files placed in the designated Wiring folders are part of the field-documentation pipeline used by FormView.
+These images help the field crew see where Displays and controller connections are located. They do not replace the controller/channel assignments stored in LOR.
 
-At a high level:
+---
 
-```text
-Stage folder
-    -> Wiring folder
-        -> designated Preview background folder
-            -> Preview background image
-            -> supporting field-reference images
-        -> LOR Preview references the background image path
-        -> FormView uses that path/folder relationship
-        -> FormView collects the designated field images
-        -> FormView builds printable HTML field-wiring instructions
-```
+# 1. Use the Correct Wiring Folder
 
-The generated HTML is used by setup crews while plugging displays into controllers and connecting the Stage in the field.
+Use the wiring folder that matches the type of field wiring.
 
-## Standard Stage Folder Location
-
-Each Stage has one unique folder under:
+## Background / Static wiring
 
 ```text
-G:\Shared drives\Display Folders\StageID-StageName-Prefix\
+<Stage / Sub-stage / Scene>\Wiring\BackgroundStage\
 ```
+
+## Musical wiring
+
+```text
+<Stage / Sub-stage / Scene>\Wiring\MusicalStage\
+```
+
+## Working files
+
+Keep editable and temporary work in the matching `SourceDocs` folder:
+
+```text
+Wiring\BackgroundStage\SourceDocs\
+Wiring\MusicalStage\SourceDocs\
+```
+
+Do not use `SourceDocs` as the published field-image location.
+
+---
+
+# 2. Check the Marker Files
+
+Folders used by FieldWiring must have the required marker:
+
+```text
+_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+For a published wiring path, verify the marker is present in:
+
+- the Stage/Sub-stage/Scene root;
+- `Wiring`; and
+- the `BackgroundStage` or `MusicalStage` folder being used.
+
+Do not rename or delete marker files.
+
+See [MSB Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md).
+
+---
+
+# 3. Keep the Published Wiring Folder Clean
+
+Only current field-use images belong directly in `BackgroundStage` or `MusicalStage`.
+
+Do not leave:
+
+- draft images;
+- obsolete images;
+- source files;
+- screenshots that are not part of the current field instructions; or
+- unrelated photographs
+
+in the published folder.
+
+Move working material into `SourceDocs`.
+
+This matters because the field system may show the images stored directly in the selected published wiring folder.
+
+---
+
+# 4. Create a Basic Wiring Image
+
+A basic wiring image can be made from the LOR Preview.
+
+1. Open the complete Stage/Scene Preview in LOR.
+2. Arrange the view so the physical layout is easy to understand.
+3. Capture the complete Preview with Windows Snip Tool or another screen-capture tool.
+4. Save the working capture in the correct `SourceDocs` folder.
+5. Crop, resize, or clean up the image as needed.
+6. Save the finished field-use image directly in the marked `BackgroundStage` or `MusicalStage` folder.
+
+A typical full-Stage image size is about:
+
+```text
+3840 x 2160
+```
+
+The important requirement is that the image remains readable on screen and when printed.
+
+---
+
+# 5. Create a Tagged Wiring Image When More Detail Is Needed
+
+A tagged image is recommended when the plain Preview does not clearly show where physical Displays are located.
+
+A common method is to use draw.io.
+
+1. Open draw.io and create a new diagram.
+2. Set the page size to match the base image when practical.
+3. Insert the base Stage/Scene image.
+4. Add arrows, boxes, or callouts to identify Displays and connection areas.
+5. Label physical Displays using their **Display Names**.
+6. Save the editable `.drawio` file in `SourceDocs`.
+7. Export the finished JPG or PNG directly into the marked published wiring folder.
 
 Example:
 
 ```text
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\
+<Stage>\Wiring\BackgroundStage\SourceDocs\Show Background Stage 21 PolarBears-Tagged.drawio
+<Stage>\Wiring\BackgroundStage\Show Background Stage 21 PolarBears-Tagged.jpg
 ```
 
-The existing Stage-oriented folder structure is shared operational infrastructure. Do not create a second unrelated folder structure for wiring documentation.
+Use a readable font size. The goal is a drawing the setup crew can understand quickly.
 
-## Wiring Folder Purpose
+---
 
-The `Wiring\` folder is reserved for field installation documentation and the images needed by the LOR Stage Preview / FormView wiring workflow.
+# 6. More Than One Wiring Image Is Allowed
 
-It is intended to support:
+Large or complicated Stages/Scenes may need more than one wiring image.
 
-- Stage Preview background images;
-- field wiring reference images;
-- controller connection diagrams;
-- Draw.io wiring documents and source material;
-- FormView-generated field wiring instructions; and
-- visual setup references used while connecting the Stage.
-
-Do not use the Wiring folders as general-purpose storage for unrelated artwork, temporary exports, or fabrication files.
-
-## Wiring Folder Layout
-
-A typical Stage wiring structure is:
-
-```text
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\
-└── Wiring\
-    ├── BackgroundStage\
-    │   ├── Show Background Stage 21 PolarBears-Tagged.jpg
-    │   ├── Show Background Stage 21 Sliding Penguins-Tagged.jpg
-    │   └── SourceDocs\
-    │       ├── polar_bears_map.drawio
-    │       ├── polar_bears_wiring.pspimage
-    │       └── sliding_penguins_layout.jpg
-    │
-    ├── MusicalStage\
-    │   ├── Show Musical Stage 21 PolarBears-Tagged.jpg
-    │   ├── Show Musical Stage 21 Sliding Penguins-Wired.jpg
-    │   └── SourceDocs\
-    │       ├── polar_bears_musical_map.drawio
-    │       ├── penguins_musical_layers.pspimage
-    │       └── penguins_overview_layout.jpg
-    │
-    └── Props-Displays\
-        ├── polar_bears_musical_map.drawio
-        ├── penguins_musical_layers.pspimage
-        └── penguins_overview_layout.jpg
-```
-
-### `BackgroundStage`
-
-Store the images used for **Show Background Stage** Preview field-wiring instructions here.
-
-The `SourceDocs\` subfolder is the working location for source material used to build those field-wiring background images.
-
-### `MusicalStage`
-
-Store the images used for **Musical Stage** Preview field-wiring instructions here.
-
-The `SourceDocs\` subfolder is the working location for source material used to build those field-wiring background images.
-
-For the **Master Musical Preview**, the Scene's background-image path can also be used to identify the Scene's documentation root. A musical Scene that belongs to the whole Stage should reference an image below the Stage's `Wiring\MusicalStage` branch. A Scene that has an established one-to-one nested documentation folder should reference an image below that folder's `Wiring\MusicalStage` branch. See [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md) before assigning musical Scene backgrounds.
-
-### `Props-Displays`
-
-Use this area for images needed to build individual Display/Prop previews in LOR. These are distinct from the Stage-level field-wiring instruction images.
-
-## Creating the Wiring Background
-
-The Stage wiring background should provide a useful visual map for field installation. Depending on the Stage, it may be created from Draw.io, PaintShop Pro, Inkscape, GIMP, photographs, layout drawings, or other source material.
-
-The working/source files belong in the appropriate `SourceDocs\` folder. The final image used by the LOR Preview belongs directly in the designated `BackgroundStage\` or `MusicalStage\` folder.
-
-For a Master Musical Preview Scene, a temporary placeholder image may be used while the final field-wiring image is still being developed. In that case, the important requirement is that the placeholder is stored below the correct Stage or nested Scene documentation root before it is assigned in LOR. The placeholder can later be replaced while preserving the intended documentation-root relationship.
-
-The final background should show enough information to make the generated field-wiring instructions useful to the setup crew. The exact drawing content varies by Stage.
-
-## Set the Background Image in LOR
-
-In the LOR Preview editor:
-
-```text
-Background -> Set Image
-```
-
-Browse to the final background image in the correct Stage Wiring folder.
+Store each final field-use image directly in the same marked published folder.
 
 Example:
 
 ```text
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Wiring\BackgroundStage\Show Background Stage 21 PolarBears-Tagged.jpg
+Wiring\BackgroundStage\
+    Show Background Stage 21 PolarBears-Tagged.jpg
+    Show Background Stage 21 Sliding Penguins-Tagged.jpg
 ```
 
-or, for a Musical Stage Preview:
+Only keep images there that belong in the current field packet.
 
-```text
-G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Wiring\MusicalStage\...
-```
+---
 
-### Do not embed the image
+# 7. When the Wiring Image Is Also the LOR Background
 
-The Preview should reference the background image externally rather than embedding it into the Preview.
+A published wiring image may also be selected as the LOR Preview/Scene background when that is the best image for authoring.
 
-The stored background path is important because the existing wiring-documentation workflow uses that filesystem relationship to locate the Stage wiring material.
+In LOR:
 
-## FormView Relationship
+1. Open the Preview Editor.
+2. Choose **Background -> Set Image**.
+3. Select the current published image directly from the marked `BackgroundStage` or `MusicalStage` folder.
+4. Do **not** embed the image.
+5. Save the Preview.
 
-FormView uses the LOR/parsed Preview background path as the starting point for the wiring-documentation workflow.
+This direct Wiring path is allowed. You do not need to copy the same image into `PreviewBackground` just to use it in LOR.
 
-The current operational behavior is:
+---
 
-1. The Stage Preview references its background image by path.
-2. That path places the Preview within the established Stage `Wiring\` folder structure.
-3. FormView uses the path/folder relationship to locate the designated wiring images associated with that Preview.
-4. Images stored in the applicable field-wiring folder are incorporated into the output.
-5. FormView combines those images with the wiring information derived from the LOR Preview data.
-6. FormView generates a printable HTML document used in the field for plugging displays and controller connections.
+# 8. Master Musical Preview — Important Difference
 
-This folder/path relationship is therefore an operational contract, not merely a file-organizing preference.
+A Master Musical Scene does not have to use a Wiring image as its background.
 
-## Keep the Designated Wiring Folders Clean
+Normally, use a marked `PreviewBackground` image for the Scene.
 
-FormView uses the contents of the designated wiring folders when producing field documentation.
+A directly published `Wiring\MusicalStage` image is also allowed when that wiring drawing is intentionally the best Scene background.
 
-Because of this:
+Do not use `SourceDocs` for a new Scene background.
 
-- only place images needed for the field-wiring instructions in those folders;
-- do not leave unrelated pictures in the active wiring-image folder;
-- do not leave obsolete exports behind after the Stage documentation changes;
-- keep working/source material inside `SourceDocs\` rather than mixed with final field images; and
-- verify the correct final background image is referenced by the LOR Preview.
+See [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md).
 
-Extra or obsolete images can become part of the generated field documentation and confuse the setup crew.
+---
 
-## Background Image Guidance
+# 9. Check the Wiring Information
 
-For Stage backgrounds, use a JPG image sized appropriately for the Preview and field documentation.
+The picture does not override LOR.
 
-Existing guidance for full Stage images is approximately:
+Before relying on the wiring image, verify the LOR Preview still has the correct:
 
-```text
-3840 x 2160 px
-```
+- controller IDs;
+- channels;
+- networks; and
+- DMX/E1.31 information where applicable.
 
-The image should remain readable when viewed on screen and when incorporated into printed/HTML field instructions.
+If the picture and LOR disagree, stop and correct/review the source information.
 
-## Before Exporting the Preview
+---
 
-Verify:
+# 10. Check the Field Output
 
-1. The Preview references the final image from the correct Stage `Wiring\` folder, or follows the documented Master Musical Preview Scene-root rule when a musical Scene uses a placeholder or nested documentation root.
-2. The background image opens correctly from the shared-drive location.
-3. The designated wiring-image folder contains only current field-use images.
-4. Source/working files are kept in `SourceDocs\` where applicable.
-5. The Stage/Preview naming follows the current Preview Authoring naming rules.
-6. Controller and channel assignments in LOR are correct before relying on the resulting field instructions.
+The browser-based **FieldWiring** system is the current replacement being prepared for field use. **FormView remains available as the fallback/reference until FieldWiring completes deployment and field-device acceptance.**
 
-Then export the Preview using the normal controlled Preview Authoring workflow.
+Before relying on the image set:
 
-## Important System Boundary
+1. use the current field-wiring tool available for the test/field situation;
+2. select the correct Stage/Scene and wiring type;
+3. make sure the expected wiring image(s) appear;
+4. verify there are no old or unrelated images; and
+5. confirm the wiring table matches the area you are working on.
 
-LOR remains authoritative for controller assignments, channel numbers, network/DMX assignments, and show topology.
+If an unwanted image appears, remove or move it from the published wiring folder and check again.
 
-The Wiring folder and its images provide the visual field-documentation layer. FormView combines those visual assets with the LOR-derived wiring data to create a practical installation document; it does not redefine the LOR wiring assignments.
+---
 
-## Related Documents
+# Printed Wiring Instructions Are Temporary
 
+Printed or generated wiring instructions are temporary field working documents.
+
+- Generate a current copy when needed.
+- Use it for the current setup work.
+- Do not laminate or treat it as permanent wiring authority.
+- Discard old copies after the work is complete or after Preview/wiring information changes.
+
+This prevents crews from using stale hookup information.
+
+---
+
+# Before You Finish
+
+- [ ] I used the correct `BackgroundStage` or `MusicalStage` folder.
+- [ ] The Stage/Sub-stage/Scene root is marked.
+- [ ] `Wiring` is marked.
+- [ ] The published `BackgroundStage` / `MusicalStage` folder is marked.
+- [ ] Working files are in `SourceDocs`.
+- [ ] Only current field-use images are in the published wiring folder.
+- [ ] Any LOR background points to an approved marked image and not `SourceDocs`.
+- [ ] LOR controller/channel/network information is correct.
+- [ ] I checked the final image set in the current field-wiring tool.
+
+## Expected Result
+
+The correct current wiring images are available for the same Stage/Sub-stage/Scene as the wiring data, with no draft or unrelated images mixed into the field output.
+
+## Related Operator Documents
+
+- [Preview Authoring Home](README.md)
 - [Building a Preview](B_Building_Preview_Howto.md)
 - [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
-- [Naming Conventions](A_Naming_Conventions.md)
-- [LOR Preview Authoring](README.md)
-- [Wiring System Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
+- [MSB Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
 
-## Engineering Note
+## Related Engineering
 
-This document records the operator-facing folder/path contract. The detailed FormView engineering design — including how it resolves the background path, which folders/files it reads, how it combines images with wiring rows, and how the printable HTML is assembled — must be documented separately from the application source and linked back here.
+- [FieldWiring Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
+- [FormView](../04_FormView/README.md)
+
+## Revision History
+
+- 2026-08-22 — Rewritten for operators in plain language and aligned with current FieldWiring, FormView fallback, direct Wiring background paths, and full marker requirements.
