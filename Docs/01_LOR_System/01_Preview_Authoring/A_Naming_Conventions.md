@@ -1,465 +1,321 @@
 # Prop and Display Naming Conventions
 
-- Filename: A_Naming_Conventions.md
-- version: 2026-08-02
-- author: Greg Liebig / Engineering Innovations, LLC
+| Document Control | Value |
+|---|---|
+| Document Type | Operator Procedure |
+| System | LOR Preview Authoring |
+| Task | Name Displays and channels correctly |
+| Audience | Preview authors and programmers |
+| Status | CURRENT |
+| Owner | MSB Production Crew |
+| Last Reviewed | 2026-08-22 |
+
+## Purpose
+
+Use these rules when creating or editing channels and Displays in LOR.
+
+Correct naming keeps channels together in the LOR grid and keeps the physical Display name consistent with labels and field wiring.
+
+## Two LOR Fields Matter
+
+LOR uses two different fields for two different jobs:
+
+| LOR field | What it is used for |
+|---|---|
+| **Name** | Channel name used for programming and sorting in the LOR grid |
+| **Comment** | Physical MSB Display Name |
+
+Do not use the **Name** field as the physical Display Name.
 
 ---
 
-These conventions ensure consistent naming across:
+# 1. Name Field — Channel Naming
 
-- **LOR sequencing (Channel Grid)**
-- **Display database records (Postgres / SQLite)**
-- **Physical labels used in the field**
-- **Field wiring exports**
+Use this general format:
 
-If naming rules are not followed, channels scatter in the grid, wiring reports drift from reality, and physical labels no longer match database records.
-
-This document prevents chaos.
-
----
-
-## 1. Two Separate Naming Layers in LOR
-
-LOR uses two different fields that serve different purposes:
-
-| Field | Meaning | Purpose | Spaces Allowed | Used as Database Key |
-|-------|---------|---------|----------------|----------------------|
-| **Name** | Channel Name | Channel grid sorting and programming | Yes | No |
-| **Comment** | Display Name | Physical display identifier | No | Yes |
-
-These fields must not be confused.
-
----
-
-## 2. LOR Name Field (Channel Naming Convention)
-
-The **Name field controls alphabetical sorting inside the LOR grid.**
-
-- LOR sorts strictly alphabetically.  
-- Improper numbering or inconsistent formatting causes channels to scatter.
-
-### 2.1 Required Structure
-
-Recommended format:
-
-`<SC> <UID>-<CH> <Channel Group>  <Optional Attribute>`
+```text
+<Stage Code> <Controller ID>-<Channel> <Description>
+```
 
 Example:
 
-`TC 7B-01 Hippo Box`
+```text
+TC 7B-01 Hippo Box
+```
 
----
+## Stage Code
 
-### 2.2 UID and Channel Rules (CRITICAL)
-
-**SC** Stage Code
-
-- SC is Stage Code
-- 2 Character Abbreviation
-- Examples:
-  - FT = Festive Trees
-  - FC = Food Collection
-  - WW = Winter Wonderand
-
-**UID** Contriller Unit ID (HEX)
-
-- Controller ID in HEX
-- Uppercase
-- No leading zero padding
-- Example: `7B`, `1F`, `20`
-
-**Channel**
-- Is the plug used on an A/C Controller
-- Always 2-digit padded
-- `01–16`
-- Even if wiring exports show a single digit
-
-Correct:
-- `7B-01`
-- `7B-02`
-- `7B-10`
-
-Incorrect:
-- `7B-1`
-- `7B-2`
-
-**Channel Group**
-
-- Often Used when building a preview with additional detail
-- `Uses the same channel as` in the Preview channel grid
-  - This allows the additional detail on the preview drawing to use the same physical channel without conflict
-- Again used to keep channels sorted together
-- Usually used with with additional Attributes
-
-**Optional Attributes**
-
-- Helpful when building animations
-- Used to describe an Action of a Channel group
-- Examples:
-  - Lid Open
-  - Lid Closed
-  - Arm Up
-  - Arm Down
-
-If channels are not padded, alphabetical sorting breaks:
-
-Wrong order:
-
-- 7B-1
-- 7B-10
-- 7B-11
-- 7B-2
-
-Correct order:
-
-- 7B-01
-- 7B-02
-- 7B-03
-- 7B-10
-
----
-
-### 2.3 Real Example (Hippo + Carolers)
-
-![Channel Grid Example](/Docs/images/naming_conventions_channel_grid.png)
-
-This grid shows:
-
-- One multi-state animated display (Hippo)
-- Three physical panels (CarolerPanel-01..03)
-- Proper grouping by padded channel numbers
-
-The naming works because:
-- All channels begin with consistent stage prefix
-- Channels are padded
-- Related elements sort together
-
-### 2.4 Unused Channels (SPARE Rule — REQUIRED)
-
-Any unused channel on a controller must be explicitly added to the preview.
-
-Do NOT leave gaps.
-
-Unused channels must:
-
-- Follow the exact same naming structure
-- Use the same Stage and Group prefix
-- Use correct HEX UID
-- Use 2-digit padded channel number
-- End with the word `Spare`
-
-Example:
-
-TC 7B-11 Spare  
-TC 7B-12 Spare  
-
-Why this is required:
-
-- Makes unused capacity immediately visible in the Channel Grid
-- Prevents accidental reuse of a channel already assumed to be empty
-- Keeps controllers fully documented
-- Allows quick identification of expansion space during programming
-
-Unused channels must remain in the preview even if no physical wiring exists.
-
-When a Spare channel is later assigned to a display:
-- Rename the channel
-- Update wiring documentation
-- Remove the `Spare` designation
-
-### 2.5 Vacated Channels After Moving a Display (CRITICAL)
-
-When a display is moved to another preview, controller, or channel range, do
-not convert its former channel definition into a spare by only renaming it or
-hiding it.
-
-LOR can retain the moved display's PropClass UUID on the old channel. Hidden
-channels are still stored in the preview and are still processed by the parser.
-For a multi-channel prop, the parser uses the lowest channel when constructing
-the prop identity. A stale UUID on that channel can therefore make the new
-display and the old SPARE appear to be the same LOR object.
-
-Required procedure for each vacated channel:
-
-1. Delete the obsolete display channel/prop definition.
-2. Recreate the unused channel as a new SPARE channel.
-3. Use the required channel name and the `SPARE` Comment value.
-4. Keep the recreated SPARE visible so the unused controller capacity can be
-   verified in the preview.
-5. Export, parse, ingest, and confirm that reconciliation reports no shared
-   `raw_prop_id` across different display comments or previews.
-
-Do not:
-
-- rename the former display channel to SPARE and leave the original object in
-  place;
-- hide the former display channel and assume the parser will ignore it;
-- approve reconciliation while a UUID collision remains unresolved.
-
-#### Verified Example — Olaf Move
-
-`IT-Olaf` was moved from Stage 13 Winter Wonderland controller `3E`, channels
-`01-05`, to Stage 14 Icicle Tunnel controller `3F`, channels `11-15`. The old
-`WW 3E-01` channel had been renamed `SPARE` and hidden, but it retained Olaf's
-UUID. Ingest Run 41 exposed the same `raw_prop_id` on `SPARE` and `IT-Olaf`.
-Deleting and recreating `WW 3E-01` assigned the spare a new identity, and Run
-42 confirmed that the collision was gone.
-
-This check is required for every moved display. A stale identity could collide
-with another physical display, not only a spare.
-  
----
-
-## 3. Comment Field (Display Identifier)
-
-The **Comment field defines the Display Name** used for:
-
-- Physical labels
-- Database joins
-- Wiring exports
-- Inventory tracking
-- Maintenance records
-
-This is the true identity of the physical display.
-
----
-
-### 3.1 Comment Field [Display Name] Rules
-
-- No spaces allowed
-- Must start with 2-letter stage abbreviation
-- Use hyphen as structural separator
-- Use a hyphen after the Actual Display Name (CamelCase)
-- Must remain stable over time
+Use the two-letter Stage abbreviation.
 
 Examples:
 
-Standard stages:
-- `FC-Arch-01`means Food Collection Arch #1
-- `RA-Arch-DS-01`means Racing Arches, Driver Side #1
-- `EC-Elf-P2-06`means Elf Choir, Elf, Pattern 2, #6
+- `FT` = Festive Trees
+- `FC` = Food Collection
+- `WW` = Winter Wonderland
 
-GG stage (Controller Unit ID's specifically allowed):
-- `GG-Elden-20-01` means Glistening Grove, Elden (version 1), UID 20 #1
-- `GG-Elden-20-04` means Glistening Grove, Elden (version 1), UID 20 #4
-- `GG-EldenV2-30-01` means Glistening Grove, Elden (version 2), UID 30 #1
-- `GG-EldenV2-30-02` means Glistening Grove, Elden (version 2), UID 30 #2
+## Controller ID
+
+Use the controller Unit ID exactly as assigned.
+
+Examples:
+
+```text
+7B
+1F
+20
+```
+
+Use uppercase letters. Do not add unnecessary leading zeroes.
+
+## Channel Number
+
+Always use two digits for AC controller channels:
+
+Correct:
+
+```text
+7B-01
+7B-02
+7B-10
+```
+
+Incorrect:
+
+```text
+7B-1
+7B-2
+```
+
+The two-digit format keeps channels in the correct order when LOR sorts them alphabetically.
+
+## Extra Description
+
+Add a short description when it helps identify what the channel controls.
+
+Examples:
+
+```text
+TC 7B-01 Hippo Box
+TC 7B-04 Hippo Body Mid
+TC 7B-05 Hippo Body Full Head
+```
+
+For animated Displays, descriptions such as `Lid Open`, `Lid Closed`, `Arm Up`, or `Arm Down` can make programming easier.
 
 ---
 
-### 3.2 Displays vs Sub-Props
+# 2. Unused Channels — SPARE
 
-| Term | Definition |
-|------|------------|
-| **Display** | One physical panel or unit |
-| **Sub-Prop** | Logical motion element within a display |
+Every unused controller channel must still appear in the Preview.
 
-All sub-props must share the **exact same Comment value** as their parent display.
+Do not leave unexplained gaps.
 
 Example:
 
-| Channel Name | Comment [Display Name]|
-|--------------|---------|
+```text
+TC 7B-11 Spare
+TC 7B-12 Spare
+```
+
+For an unused channel:
+
+1. Use the normal Stage, Controller ID, and two-digit channel format.
+2. End the channel Name with `Spare`.
+3. Use `SPARE` in the Comment field.
+4. Keep the channel visible in the Preview.
+
+This makes unused controller capacity easy to see and prevents someone from accidentally assuming a used channel is available.
+
+---
+
+# 3. When a Display Is Moved to Different Channels
+
+When a Display is moved away from an old channel, **do not simply rename the old Display channel to SPARE and do not just hide it**.
+
+LOR can keep information from the old Display attached to that channel even after the name is changed. That can cause the old channel and the moved Display to be treated as the same object later.
+
+For every channel that becomes unused:
+
+1. Delete the old Display channel/Prop from that location.
+2. Create a new SPARE channel in its place.
+3. Use the normal channel naming format.
+4. Use `SPARE` in the Comment field.
+5. Keep the new SPARE visible.
+
+The important rule is simple:
+
+> **Moved Display: delete the old channel object and create a new SPARE. Do not just rename or hide the old one.**
+
+If you are unsure whether an old Display object was properly removed, stop and ask before exporting the Preview.
+
+---
+
+# 4. Comment Field — Physical Display Name
+
+The **Comment** field contains the physical MSB Display Name.
+
+Examples:
+
+```text
+FC-Arch-01
+RA-Arch-DS-01
+EC-Elf-P2-06
+TC-ChristmasHippo
+```
+
+The Comment value should match the name used on the physical Display label and in field documentation.
+
+## Display Name Rules
+
+- No spaces.
+- Start with the two-letter Stage code.
+- Use hyphens to separate meaningful parts.
+- Keep the name stable unless the physical Display identity is intentionally being changed.
+
+General format:
+
+```text
+<Stage Code>-<DisplayName>-<Optional Variation>-<Optional Number>-<Optional Color>
+```
+
+Examples:
+
+```text
+IT-EntryArchWrap-DS
+IT-SteelEntryArch-PS
+FC-CarCounterArch-Grn
+EC-Elf-P2-06
+WF-MiniTree-G-04
+GG-Elden-20-01
+```
+
+Do not run attributes together when a hyphen is needed.
+
+Wrong:
+
+```text
+EntryArchWrapDS
+SteelEntryArchPS
+CarCounterArchGrn
+```
+
+Correct:
+
+```text
+IT-EntryArchWrap-DS
+IT-SteelEntryArch-PS
+FC-CarCounterArch-Grn
+```
+
+---
+
+# 5. One Physical Display with Several Channels
+
+Several channels may belong to one physical Display.
+
+All of those channels must use the **same Comment value**.
+
+Example:
+
+| Channel Name | Comment |
+|---|---|
 | `TC 7B-01 Hippo Box` | `TC-ChristmasHippo` |
 | `TC 7B-04 Hippo Body Mid` | `TC-ChristmasHippo` |
 | `TC 7B-05 Hippo Body Full Head` | `TC-ChristmasHippo` |
 
----
-
-### 3.3 Example – Multi-Panel Display (Caroler)
-
-![Visualization Example](/Docs/images/naming_conventions_visualization.png)
-
-Three physical displays (panels):
-
-- `TC-CarolerPanel-01`
-- `TC-CarolerPanel-02`
-- `TC-CarolerPanel-03`
-
-Each has its own Comment value. TC is the Stage Code for Traditional Christmas
-
-Even if programming groups them visually, they remain separate physical units in inventory and wiring.
+The channel Names can be different because they describe different parts of the Display. The Comment stays the same because they belong to the same physical Display.
 
 ---
 
-## 4. Display Name Format (put into Comment field)
+# 6. Several Physical Displays Must Have Separate Names
 
-Display names must be structured so that:
-
-The first hyphen separates Stage from DisplayName
-Subsequent hyphens separate functional attributes
-No attribute codes may be appended directly to DisplayName without a hyphen
-
-Prohibited:
-
-EntryArchWrapDS
-SteelEntryArchPS
-CarCounterArchGrn
-
-Required (Stage Code-Display Name-Attributes):
-
-- IT-EntryArchWrap-DS
-- IT-SteelEntryArch-PS
-- FC-CarCounterArch-Grn
-
-`<Stage Code>-<DisplayName>-<Variation>-<Sequence>-<Color>`
-
-| Segment | Meaning |
-|----------|---------|
-| Stage | Two-letter stage code |
-| DisplayName | CamelCase, no spaces |
-| Variation | Optional location/version identifier |
-| Sequence | Always 2-digit padded |
-| Color | Optional suffix |
-
-More Examples:
-
-- `EC-Elf-P2-06`
-- `RA-Arch-DS-01`
-- `WF-MiniTree-G-04`
-- `GG-Elden-20-01`
-- `DF-Wrap-DS-A-02G`
-
----
-
-### 4.1 DeviceType = Undetermined (Inventory-Only Displays)
-
-![Undetermined DeviceType Example](/Docs/images/DisplayTypeNone.png)
-
-In the LOR preview editor, DeviceType is set to:
-
-Undetermined
-
-During SQLite parsing and Postgres ingestion, this becomes:
-
-DeviceType = None
-
-Operationally, both represent the same thing:
-
-A physical inventory item with no controller assignment and no channel grid usage.
-
-`<Stage Code>-<DisplayName>-<Variation>-<Sequence>-<Color>`
-
----
-
-#### Use Cases
-
-- Physical duplicates of programmed displays
-- Arch supports
-- Wrap stands
-- Frame stands
-- Future expansion inventory
-- Volunteer Trailer Steps
-- Igloo wagon for No Left Turn
-- Additional displays were we duplicate the controllers for programming simplification like Emojis
-
----
-
-#### Quantity Creation (Max Circuits per Unit)
-
-When creating inventory-only items:
-
-- Set "Max Circuits per Unit" equal to the required quantity.
-- LOR automatically generates suffixed records:
-  - `-01`, `-02`, `-03`, etc.
+If several physical panels or units are separate items in storage and setup, each one needs its own Display Name.
 
 Example:
 
-Comment:
-`FC-WrapStand`
+```text
+TC-CarolerPanel-01
+TC-CarolerPanel-02
+TC-CarolerPanel-03
+```
 
-Max Circuits per Unit:
-`32`
-
-Generated records:
-- `FC-WrapStand-01`
-- `FC-WrapStand-02`
-- ...
-- `FC-WrapStand-32`
-
-If Max Circuits per Unit = 1:
-- No suffix is added.
+Even if they are programmed together, they are still separate physical Displays.
 
 ---
 
-#### ⚠️ Critical Warning
+# 7. Inventory-Only Displays in LOR
 
-The default value for "Max Circuits per Unit" is 16.
+Some physical items need to be listed even though they have no controller or channel assignment.
 
-If not changed intentionally, LOR will create 16 inventory records automatically.
+In LOR, use **Undetermined** for these items.
 
-This will:
+Examples may include:
 
-- Inflate inventory counts
-- Pollute the database
-- Require manual cleanup
+- spare physical duplicates;
+- supports or stands;
+- future expansion pieces; and
+- other physical items that need to exist in inventory but are not wired in the Preview.
 
-Always verify this value before saving.
+These items still need a valid Display Name in the Comment field.
 
----
+## Creating Several Identical Inventory Items
 
-#### Rules
+When LOR uses **Max Circuits per Unit** to create several physical items, set the quantity intentionally.
 
-Inventory-only entries:
+Example:
 
-- Must follow full Comment naming rules
-- Must not contain Network, UID, or ChannelGrid
-- Must represent real physical inventory
+```text
+Comment: FC-WrapStand
+Max Circuits per Unit: 32
+```
 
-These entries appear in database ingestion but do not affect wiring exports.
+LOR can create:
 
----
+```text
+FC-WrapStand-01
+FC-WrapStand-02
+...
+FC-WrapStand-32
+```
 
-## 5. Field Wiring Alignment
+### Important
 
-![Field Wiring Example](/Docs/images/naming_conventions_field_wiring.png)
+The default value may be larger than the number you actually need.
 
-Field wiring exports rely on the Comment value.
-
-If Comment naming is incorrect:
-- Wiring sheets become inaccurate
-- Displays cannot be located in the field
-- Maintenance records break
-
----
-
-## 6. Inventory and Physical Labels
-
-Every display label must:
-
-- Match the Comment field exactly
-- Be permanently attached to the display
-- Match database and wiring documentation
-
-The Comment value is the backbone of:
-
-- Physical inventory
-- Storage tracking
-- Repair history
-- Field setup instructions
+Always check **Max Circuits per Unit** before saving so you do not accidentally create extra inventory items.
 
 ---
 
-## ✅ Summary
+# 8. Before You Finish
 
-| Field | Controls | Critical Rule |
-|--------|----------|--------------|
-| Name | Programming & Grid Sorting | Pad channels to 2 digits |
-| Comment | Physical Identity | No spaces, stable, structured |
+Check the Preview for the following:
 
-Naming consistency prevents:
+- [ ] Every channel uses the correct Stage code.
+- [ ] Controller IDs are correct.
+- [ ] AC channels use two digits.
+- [ ] Unused channels are shown as SPARE.
+- [ ] Moved Displays were removed from their old channels and new SPARE channels were created.
+- [ ] Every physical Display has the correct Comment value.
+- [ ] Channels belonging to one physical Display use the same Comment.
+- [ ] Separate physical Displays have separate Display Names.
+- [ ] Inventory-only quantities were checked before saving.
 
-- Channel grid chaos
-- Lost programming
-- Wiring mismatches
-- Inventory drift
+## Expected Result
 
----
+The LOR grid is easy to read, channels sort correctly, and each physical Display has one clear name that matches field documentation.
 
-> **Revision History**
-> - GAL 26-03-24 — Added images back in and fixed some typos
-> - GAL 26-03-17 — Clarified Section 4 due to label printing conflicts
-> - GAL 26-02-22 — Major clarification: separated Name vs Comment logic, added UID padding rule, added real-world examples with grid and wiring screenshots
-> - GAL 25-10-30 — Formatting cleanup
-> - GAL 25-10-29 — Initial merge  
+## Related Documents
+
+- [Building a Preview](B_Building_Preview_Howto.md)
+- [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
+- [Preview Authoring Home](README.md)
+
+## Related Engineering
+
+- [Historical LOR Naming Data Contract](C_LOR_Naming_Data_Contract.md)
+- [LOR Parser Architecture](../02_Data_Extraction/LOR_Preview_Parser_Architecture.md)
+
+## Revision History
+
+- 2026-08-22 — Rewritten for Preview authors in plain language. Parser, UUID, SQLite, PostgreSQL, and reconciliation details were removed from the operator instructions while preserving the required naming and SPARE rules.
+- 2026-08-02 — Previous current naming revision.
