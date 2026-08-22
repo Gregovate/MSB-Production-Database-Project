@@ -77,11 +77,55 @@ This listener is loopback-only. No evidence was found in the listener inventory 
 
 The combined account-labeled virtual `G:` drive evidence and active Google Drive for desktop runtime establish Google Drive for desktop as the current laptop mechanism providing the Google Drive filesystem used by FieldWiring development.
 
-The operator also confirmed that this is the established Windows-machine pattern beyond this laptop: Windows systems that use the protected MSB environment, including the Show PC, have Google Drive for desktop access mapped as `G:` to the Google filesystem.
+The operator also confirmed that this same general Google Drive for desktop access pattern exists on other Windows MSB systems, including the Show PC. That statement describes access to the Google filesystem; it does **not** mean those systems operate production workloads directly from Google Drive.
 
 This client-side mechanism is useful for Windows operator/authoring systems, but it is **not** an acceptable FieldWiring production-server dependency. A phone or tablet browser must not require its own Google Drive mapping, and the FieldWiring server must not depend on any Windows workstation remaining online.
 
 The server deployment may use the same authoritative Google Workspace / Shared Drive source only through a separately controlled server-side access mechanism.
+
+## Show PC Operational Sync Boundary
+
+The Show PC has its own Windows user/account context that maintains access to the Google `G:` filesystem.
+
+Production show sequences are **not run from Google Drive**.
+
+The Show PC operates from the local filesystem:
+
+```text
+C:\lor
+```
+
+The operator manually initiates an Allway Sync two-way synchronization between the local `C:\lor` working set and the applicable Google Drive location to move production show sequence changes back and forth.
+
+Therefore the Show PC pattern is:
+
+```text
+Google Drive for desktop / G:
+        <-> manually initiated Allway Sync
+        <-> local C:\lor operational files
+        -> show operation uses local files
+```
+
+This is an intentional reliability boundary: Google Drive is a synchronization/transfer repository for the Show PC workflow, not the live show-runtime filesystem.
+
+### Relevance to FieldWiring
+
+This is a useful operational precedent but must not be copied mechanically.
+
+For FieldWiring:
+
+- Google Shared Drive `Display Folders` remains the authoritative editable engineering-document repository;
+- a server-local read-only copy could be a valid presentation/runtime strategy if it is deliberately designed and its freshness is controlled;
+- FieldWiring must never use a two-way synchronization job because it has no authority to write engineering documents back to Google Drive;
+- a manually initiated sync like the Show PC workflow would create an avoidable stale-document risk for a browser application expected to present current published wiring; and
+- any server-side replica must have documented one-way synchronization, freshness/health evidence, failure behavior, and recovery ownership.
+
+This precedent therefore keeps both architecture classes open for investigation:
+
+1. direct read-only server access to Google Shared Drive; or
+2. an independently maintained read-only server-local replica synchronized one-way from Google Drive.
+
+No choice is made by this evidence alone.
 
 ## Other Relevant Laptop Services
 
@@ -156,13 +200,14 @@ Current Synology copy
 
 Required FieldWiring production access
         = new controlled server-side read-only access to the authoritative Google Shared Drive
+          OR a deliberately maintained read-only server-local replica
 ```
 
 Therefore the earlier candidate of reusing an existing Synology-side synchronized `Display Folders` tree is eliminated.
 
-The next architecture investigation must evaluate a deliberate server-side mechanism that can read the Google Shared Drive independently of Windows workstations. The mechanism must preserve the existing Stage/Sub-stage/Scene hierarchy, source-folder markers, published Wiring/PreviewBackground branches, filename/path evidence, and `SourceDocs` exclusions.
+The next architecture investigation must compare direct read-only server access to Google Shared Drive against a controlled one-way local replica. Either mechanism must operate independently of Windows workstations and preserve the existing Stage/Sub-stage/Scene hierarchy, source-folder markers, published Wiring/PreviewBackground branches, filename/path evidence, and `SourceDocs` exclusions.
 
-Do not introduce a Synology synchronization copy merely because Synology is already present in the web path unless that architecture is separately justified against direct server-side Google Drive access.
+Do not introduce a Synology synchronization copy merely because Synology is already present in the web path. Likewise, do not assume direct live mounting is automatically superior merely because it avoids synchronization. The decision must compare operational reliability, currentness, recovery behavior, and dependency count against the actual server environment.
 
 ## Documentation Governance Note
 
