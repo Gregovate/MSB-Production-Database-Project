@@ -2,11 +2,11 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google Workspace identity and Shared Drive Viewer access verified; OAuth/server authorization still pending |
+| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google Workspace identity, Shared Drive Viewer access, and interactive Drive hierarchy access verified; OAuth/server authorization still pending |
 | Date | 2026-08-21 |
 | Owner | MSB Database Administrator / Google Workspace Administrator |
 | Applies to | `Display Folders` Shared Drive, FieldWiring, future Procedures applications, future approved database-backed field-document consumers |
-| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; no OAuth client, server mount, or runtime service created yet |
+| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; interactive Drive access verified; no OAuth client, server mount, or runtime service created yet |
 
 ## Purpose
 
@@ -101,6 +101,36 @@ The membership was subsequently verified in the `Display Folders` Manage members
 This completes the Google-side identity and Shared Drive membership step. The account now has the intended Google-side read-only role for the authoritative engineering-document repository.
 
 Viewer membership must still be validated during the server proof-of-concept for actual file-download/read behavior, including representative JPG/PNG/PDF content. If a Shared Drive policy prevents Viewer downloads, that must be treated as an implementation blocker rather than solved by granting broader edit permissions without review.
+
+## Interactive Google Drive Access Validation
+
+As an additional pre-server check on 2026-08-21, a normal Google browser profile was created for the `Engineering Documentation` identity and used to sign in to `drive.google.com`.
+
+The account successfully opened the `Display Folders` Shared Drive and displayed the expected top-level engineering hierarchy, including current Stage folders such as:
+
+```text
+00-HWY 42-HW
+01-Front Entrance-FE
+02-Triangle-TR
+03-Welcome Area-WA
+```
+
+as well as current shared/support roots such as:
+
+```text
+_Folder_Structure_Logs
+_Templates
+000-Instructions
+```
+
+This validates that:
+
+- the Workspace identity can authenticate normally;
+- the `Display Folders` Viewer membership is effective;
+- the account can browse the authoritative Shared Drive hierarchy; and
+- the user-side Google access model behaves like the intended authorized-PC/user model.
+
+This interactive browser validation does **not** yet prove Linux/rclone OAuth behavior, mount traversal semantics, cache visibility, or programmatic reading/downloading of representative published JPG/PNG/PDF content. Those remain explicit proof-of-concept tests on the server-side implementation.
 
 ## Required Google-Side Access Boundary
 
@@ -210,10 +240,11 @@ As of 2026-08-21:
 - the account has no Google Workspace administrative roles assigned;
 - the identity is intended for shared MSB engineering-document access, not only FieldWiring;
 - `msb-docs@sheboyganlights.org` is a verified `Viewer` member of the `Display Folders` Shared Drive;
+- interactive sign-in at `drive.google.com` successfully exposes the expected `Display Folders` hierarchy to the account;
 - the `Display Folders` Shared Drive remains the authoritative editable repository;
 - server/application access must remain read-only;
 - the server-side filesystem must preserve normal folder traversal;
-- actual Viewer download/read behavior still requires proof during the server POC; and
+- actual server-side OAuth, mount traversal, and representative published-file read/download behavior still require proof during the server POC; and
 - no OAuth client, rclone configuration, mount, or server service has yet been created as part of this work.
 
 ## Related Documents
