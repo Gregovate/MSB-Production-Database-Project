@@ -111,10 +111,10 @@ Future Procedure paths require markers on:
 Procedures
 Procedures\Inspection
 Procedures\Setup
+Procedures\Setup\images
 Procedures\Takedown
+Procedures\Takedown\images
 ```
-
-If the future Procedure application directly reads another folder such as `Procedures\Setup\images`, that folder must be marked before it becomes part of the application path.
 
 `SourceDocs` and `Archive` are excluded working/history areas and are not normal field-application marker targets.
 
@@ -132,7 +132,9 @@ Stage / Scene root                    <- marked structural scope
 ├── Procedures/                       <- marked application path
 │   ├── Inspection/                   <- marked application branch
 │   ├── Setup/                        <- marked application branch
+│   │   └── images/                   <- marked procedure-image branch
 │   └── Takedown/                     <- marked application branch
+│       └── images/                   <- marked procedure-image branch
 ├── Wiring/                           <- marked application path
 │   ├── BackgroundStage/              <- marked published branch
 │   └── MusicalStage/                 <- marked published branch
@@ -335,11 +337,11 @@ Example target state:
             Front Entrance Setup.pdf
 ```
 
-The Stage/Sub-stage/Scene root, `Procedures`, and `Setup` folders are part of the future Procedure application path and must carry their required markers.
+The Stage/Sub-stage/Scene root, `Procedures`, `Setup`, and `Setup\images` folders are part of the future Procedure application path and must carry their required markers.
 
 `Archive` contains superseded or historical source material and must not be treated as current field authority.
 
-`images` contains image assets used by the Setup instructions. If the future Procedure application reads this folder directly, it must be marked before application use.
+`images` contains image assets used by the Setup instructions and is a required marked application folder.
 
 `SourceDocs` contains Setup working/source material and is not intended for direct field presentation.
 
@@ -365,6 +367,12 @@ For Setup, once the correct Stage, Sub-stage, or Scene is resolved, the applicat
 
 ```text
 <Stage, Sub-stage, or Scene>\Procedures\Setup
+```
+
+and the related current instruction images under:
+
+```text
+<Stage, Sub-stage, or Scene>\Procedures\Setup\images
 ```
 
 Every directory used in that application path must have the required marker before the application treats it as current field content.
@@ -403,7 +411,7 @@ The durable database/document-ID relationship is a separate engineering problem.
 10. Continue until the Stage/Sub-stage/Scene legacy material has been reconciled.
 11. Re-run Folder Alignment when a fresh snapshot of migration progress is needed.
 12. In the procedure-audit phase, process each archived legacy document through the controlled Setup Instruction template.
-13. After review/approval, publish the current field PDF in the applicable marked `Procedures\Setup` folder.
+13. After review/approval, publish the current field PDF in the applicable marked `Procedures\Setup` folder and keep its current images in the marked `Procedures\Setup\images` folder.
 14. Keep the superseded source in `Archive`.
 
 ---
@@ -454,7 +462,7 @@ FormView remains the fallback/reference while the browser-based FieldWiring syst
 
 1. Use the current Documentation Alignment Worklist as the migration roadmap.
 2. Keep the established Stage/Sub-stage/Scene folder structure and do not rename an aligned Stage/Sub-stage/Scene root during ordinary cleanup.
-3. Keep the required marker in every folder used by the new FieldWiring or future Procedure application path.
+3. Keep the required marker in every folder used by the new FieldWiring or future Procedure application path, including `Setup\images` and `Takedown\images`.
 4. Do not rename the controlled `PreviewBackground`, `Procedures`, `Wiring`, or task-branch folders used by the applications.
 5. Preserve loose files and unmarked legacy folders until they have been deliberately reviewed; applications must ignore them for current discovery.
 6. Treat `SourceDocs` and `Archive` as excluded working/history areas, not normal field-presentation folders.
@@ -464,11 +472,12 @@ FormView remains the fallback/reference while the browser-based FieldWiring syst
 10. Do not publish an archived legacy `.gdoc` as though it were the current field instruction.
 11. Audit and reformat the legacy procedure using the controlled Setup Instruction template before publishing a current version.
 12. Keep the current field PDF or other approved presentation directly available from the marked `Procedures\Setup` folder.
-13. Exclude `Archive` and `SourceDocs` material from normal field-user navigation.
-14. Do not delete useful historical engineering material merely to make the folder tree look clean.
-15. Do not assume every Display requires a Setup procedure.
-16. Do not assume every file in the legacy Setup repository is actually a procedure.
-17. When uncertain, preserve the material and flag it for review instead of guessing.
+13. Keep current Setup/Takedown instruction images in their marked task-local `images` folders.
+14. Exclude `Archive` and `SourceDocs` material from normal field-user navigation.
+15. Do not delete useful historical engineering material merely to make the folder tree look clean.
+16. Do not assume every Display requires a Setup procedure.
+17. Do not assume every file in the legacy Setup repository is actually a procedure.
+18. When uncertain, preserve the material and flag it for review instead of guessing.
 
 ---
 
@@ -477,7 +486,7 @@ FormView remains the fallback/reference while the browser-based FieldWiring syst
 The migration phase is progressing correctly when:
 
 - the current aligned Stage/Sub-stage/Scene folder names remain stable;
-- required markers are present throughout the controlled FieldWiring/Procedure application paths;
+- required markers are present throughout the controlled FieldWiring/Procedure application paths, including the task-local `images` folders;
 - applications can ignore unmarked legacy material and use only the controlled marked paths;
 - the unresolved central legacy Setup backlog becomes smaller;
 - reviewed legacy procedures appear under the correct Stage/Sub-stage/Scene `Procedures\Setup\Archive` folders;
