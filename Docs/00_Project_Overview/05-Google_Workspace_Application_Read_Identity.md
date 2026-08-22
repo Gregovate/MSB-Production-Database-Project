@@ -2,11 +2,11 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google identity, Shared Drive Viewer access, interactive Drive access, Cloud project, and Drive API verified; OAuth client/server authorization still pending |
+| Status | CURRENT DESIGN / IMPLEMENTATION IN PROGRESS — Google identity, Shared Drive Viewer access, interactive Drive access, Cloud project, Drive API, and Google Auth Platform configuration verified; OAuth scope/client and server authorization still pending |
 | Date | 2026-08-21 |
 | Owner | MSB Database Administrator / Google Workspace Administrator |
 | Applies to | `Display Folders` Shared Drive, FieldWiring, future Procedures applications, future approved database-backed field-document consumers |
-| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; interactive Drive access verified; dedicated Google Cloud project created and Drive API enabled; no OAuth client, server mount, or runtime service created yet |
+| Production-change status | Google Workspace identity created and added to `Display Folders` as Viewer; interactive Drive access verified; dedicated Google Cloud project created, Drive API enabled, and internal Google Auth Platform configuration created; no OAuth client, server mount, or runtime service created yet |
 
 ## Purpose
 
@@ -138,6 +138,7 @@ A dedicated Google Cloud project was created on 2026-08-21 for this shared MSB e
 
 ```text
 Project display name: MSB Engineering Docs Access
+Project ID:           msb-engineering-docs-access
 Organization:         sheboyganlights.org
 ```
 
@@ -149,9 +150,45 @@ Within the `MSB Engineering Docs Access` project, the Google Drive API was enabl
 drive.googleapis.com
 ```
 
-The Cloud project and enabled Drive API provide the Google-side application registration boundary for the planned read-only server access. No OAuth client credentials have yet been created.
+The Cloud project and enabled Drive API provide the Google-side application registration boundary for the planned read-only server access.
 
-The next Google-side configuration step is Google Auth Platform setup for an **Internal** audience within the `sheboyganlights.org` organization, followed by creation of the dedicated OAuth desktop client used for headless authorization. Client secrets and tokens must remain outside Git.
+## Google Auth Platform Configuration
+
+On 2026-08-21, the Google Auth Platform project configuration was created in the `MSB Engineering Docs Access` project.
+
+The configuration is intentionally organization-internal. Its purpose is to authorize the dedicated MSB document-read identity and other explicitly approved `sheboyganlights.org` identities if ever required for this same integration; it is not intended for public or consumer Google accounts.
+
+The configured application name is:
+
+```text
+MSB Engineering Docs Access
+```
+
+The application-support/contact address is an administrator-monitored MSB address rather than the `msb-docs@sheboyganlights.org` service identity.
+
+The configured audience is:
+
+```text
+Internal — sheboyganlights.org
+```
+
+Google Auth Platform reported `OAuth configuration created!` after completion.
+
+No OAuth client has been created yet and no client ID, client secret, authorization token, or refresh token has been stored in the repository.
+
+### Minimum OAuth scope requirement
+
+The planned rclone/Google Drive authorization must request only:
+
+```text
+https://www.googleapis.com/auth/drive.readonly
+```
+
+This scope is sufficient for the required server behavior because it permits reading Drive metadata and file contents, including listing and downloading files, while not permitting upload, rename, move, or delete operations.
+
+Do not add the full `https://www.googleapis.com/auth/drive` scope merely because rclone supports it. The integration is intentionally read-only.
+
+A separate `drive.metadata.readonly` scope is not required for normal traversal because `drive.readonly` already includes the metadata/content visibility needed for the filesystem view.
 
 ## Required Google-Side Access Boundary
 
@@ -262,12 +299,14 @@ As of 2026-08-21:
 - the identity is intended for shared MSB engineering-document access, not only FieldWiring;
 - `msb-docs@sheboyganlights.org` is a verified `Viewer` member of the `Display Folders` Shared Drive;
 - interactive sign-in at `drive.google.com` successfully exposes the expected `Display Folders` hierarchy to the account;
-- dedicated Google Cloud project `MSB Engineering Docs Access` exists under `sheboyganlights.org`;
+- dedicated Google Cloud project `MSB Engineering Docs Access` / `msb-engineering-docs-access` exists under `sheboyganlights.org`;
 - Google Drive API `drive.googleapis.com` is enabled in that project;
+- Google Auth Platform configuration has been created with an Internal `sheboyganlights.org` audience;
+- the approved OAuth access scope for this integration is `drive.readonly` only;
 - the `Display Folders` Shared Drive remains the authoritative editable repository;
 - server/application access must remain read-only;
 - the server-side filesystem must preserve normal folder traversal;
-- Google Auth Platform / OAuth client configuration is the next Google-side step;
+- adding the read-only Drive scope and creating the OAuth desktop client are the next Google-side steps;
 - actual server-side OAuth, mount traversal, and representative published-file read/download behavior still require proof during the server POC; and
 - no OAuth client, rclone configuration, mount, or server service has yet been created as part of this work.
 
