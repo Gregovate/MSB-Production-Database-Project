@@ -93,9 +93,14 @@ def repo(tmp_path: Path) -> SQLiteFieldContextRepository:
     return SQLiteFieldContextRepository(path)
 
 
-def test_shared_search_includes_wired_and_inventory_only_pattern_matches(tmp_path):
-    rows = repo(tmp_path).search_displays("CH-")
+def test_shared_search_includes_wired_and_nonwired_pattern_matches(tmp_path):
+    rows = repo(tmp_path).search_displays("CH-RGB")
     assert [row["display_id"] for row in rows] == [309, 323]
+
+
+def test_shared_search_includes_inventory_only_matching_name(tmp_path):
+    rows = repo(tmp_path).search_displays("SteelArch")
+    assert [row["display_id"] for row in rows] == [323, 400]
 
 
 def test_inventory_only_display_with_lor_scene_still_resolves_context(tmp_path):
