@@ -106,7 +106,7 @@ def _structured_scope_type(
 ) -> str | None:
     """Classify one ancestor using hierarchy position plus documented naming.
 
-    Position matters.  A nested ``NN-...-XY`` folder can be legacy Scene
+    Position matters. A nested ``NN-...-XY`` folder can be legacy Scene
     evidence even though the preferred current Scene naming omits the suffix;
     it must not be mistaken for another top-level Stage merely from its name.
     """
@@ -121,25 +121,12 @@ def _structured_scope_type(
 
     sub_match = _SUBSTAGE_CHILD_RE.match(candidate.name)
     if sub_match and sub_match.group(1)[:2].casefold() == base.casefold():
-        # A direct NNa child of the owning Stage is the formal Sub-stage root.
         if _same_path(candidate.parent, stage_root):
             return "SUBSTAGE"
-        # A deeper NNa-prefixed child is a Scene owned by that Sub-stage.
         return "SCENE"
 
-    # A child beginning with the current Stage/Sub-stage key is a structured
-    # Scene at this hierarchy depth.  Unprefixed Display/group folders are
-    # intentionally ignored so resolution can continue upward.
     if key and candidate.name.casefold().startswith(key.casefold() + "-"):
         return "SCENE"
-
-    # When a Sub-stage row is anchored temporarily at its parent Stage because
-    # its persisted folder_path is absent/stale, its direct NNa root is still
-    # recognizable by the full Sub-stage key.
-    if _SUBSTAGE_KEY_RE.fullmatch(key) and candidate.name.casefold().startswith(
-        key.casefold() + "-"
-    ):
-        return "SUBSTAGE" if _same_path(candidate.parent, stage_root) else "SCENE"
 
     return None
 
@@ -149,26 +136,26 @@ def _walk_up_from_pointer(
     stage_root: Path,
     stage_key: str | None,
 ) -> tuple[Path | None, str | None, Path | None]:
-    """Walk upward from exact path evidence to the nearest marked scope.
+    """Walk upward from exact path evidence to the nearest structured scope.
 
-    Returns ``(resolved_root, scope_type, first_unmarked_structured)``.
-    No sibling, Stage-root, or Display-Folders enumeration occurs here.
+    Returns ``(resolved_root, scope_type, unmarked_structured)``. A structured
+    child that exists but is unmarked is an explicit review condition; it is
+    not treated the same as an absent Scene and is not silently skipped to the
+    parent Stage.
     """
     current = pointer.parent if pointer.is_file() else pointer
-    first_unmarked: Path | None = None
 
     while _path_is_under(current, stage_root):
         scope_type = _structured_scope_type(current, stage_root, stage_key)
         if scope_type is not None:
             if (current / MARKER_NAME).is_file():
-                return current, scope_type, first_unmarked
-            if first_unmarked is None:
-                first_unmarked = current
+                return current, scope_type, None
+            return None, None, current
         if _same_path(current, stage_root):
             break
         current = current.parent
 
-    return None, None, first_unmarked
+    return None, None, None
 
 
 def _bounded_scope_matches(
@@ -269,8 +256,8 @@ def resolve_structured_scope(
 ) -> tuple[Path | None, str, list[str]]:
     """Resolve one current marked Stage/Sub-stage/Scene root.
 
-    The resolver never scans the Display Folders root.  Exact path evidence is
-    followed upward first.  Only when that exact path is stale may a bounded
+    The resolver never scans the Display Folders root. Exact path evidence is
+    followed upward first. Only when that exact path is stale may a bounded
     name recovery occur inside the already-known owning Stage.
     """
     warnings: list[str] = []
@@ -319,9 +306,6 @@ def resolve_structured_scope(
     if not scene_name or scene_name.strip().casefold() == "root":
         return stage_root, _anchor_scope_type(stage_root, stage.get("stage_key")), warnings
 
-    # Exact LOR path evidence owns the first attempt.  Walk upward through the
-    # path already supplied by LOR; ignore Display/group/helper folders until a
-    # valid structured Scene/Sub-stage/Stage root is reached.
     if pointer is not None and _path_is_under(pointer, drive_root) and pointer.exists():
         if not _path_is_under(pointer, stage_root):
             warnings.append(
@@ -348,16 +332,10 @@ def resolve_structured_scope(
                 )
                 return None, "UNRESOLVED", warnings
 
-    # A Stage-binding Master Musical Scene (NN-Name-XY) is Stage evidence when
-    # its path did not identify a distinct child.  Do not invent a child Scene
-    # merely because the LOR Scene name carries a Stage-style suffix.
     if _scene_name_looks_like_stage_binding(scene_name, stage.get("stage_key")):
         warnings.append(stage_fallback_warning)
         return stage_root, _anchor_scope_type(stage_root, stage.get("stage_key")), warnings
 
-    # Stale-pointer recovery is allowed only inside the already-known Stage and
-    # remains bounded.  This preserves the documented deterministic recovery
-    # without turning runtime resolution into a Drive crawler.
     matches = _bounded_scope_matches(stage_root, scene_name)
     marked = [match for match in matches if (match / MARKER_NAME).is_file()]
     if len(marked) == 1:
