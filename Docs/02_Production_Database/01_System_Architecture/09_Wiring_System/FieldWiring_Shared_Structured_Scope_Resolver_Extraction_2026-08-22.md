@@ -2,13 +2,15 @@
 
 | Document control | Value |
 |---|---|
-| Status | ARCHITECTURE ACCEPTED — production deployment pending |
-| Branch | `agent/shared-field-context-resolver-extraction` |
+| Status | PRODUCTION ACCEPTED — shared resolver deployed and verified |
+| Original implementation branch | `agent/shared-field-context-resolver-extraction` |
+| Merge PR | `#35` |
+| Production merge commit | `21e9e3b1889289806ccb116b3a546cfcd129fae4` |
 | Code-regression-tested commit | `b7fcd0333f2cb023026643c292b1d615cf5ceb6a` |
 | Live-equivalence-tested branch head | `dcedc36c8d3ad0955fa793e8817c4a88d3535014` |
-| Production baseline during test | `c71d0e50de9917a384ec8cfc836202e7aa2885db` |
+| Previous production baseline | `c71d0e50de9917a384ec8cfc836202e7aa2885db` |
 | Primary caller | FieldWiring |
-| Planned second caller | Procedure subsystem |
+| Approved second caller | Procedure subsystem |
 
 ## Purpose
 
@@ -18,7 +20,7 @@ This change finishes the original architecture boundary by extracting that prove
 
 ## Canonical Shared Component
 
-The canonical implementation is now:
+The canonical implementation is:
 
 ```text
 FieldWiring/Application/field_context_resolver.py
@@ -83,11 +85,11 @@ canonical matching also includes:
 
 If path evidence enters `SourceDocs`, traversal is stopped before `SourceDocs`. When the resolver subsequently walks the safe ancestor chain, the marked Stage root `15-Church` may therefore be returned with the existing `SCENE` scope classification.
 
-This is existing production resolver behavior. The returned path remains the marked Stage root and no `SourceDocs` content is traversed or presented. Changing that classification would be a resolver redesign and is outside this extraction.
+This is existing production resolver behavior. The returned path remains the marked Stage root and no `SourceDocs` content is traversed or presented. Changing that classification would be a resolver redesign and was outside this extraction.
 
 ## Regression Gate
 
-The candidate was tested from a detached server worktree:
+The candidate was first tested from a detached server worktree:
 
 ```text
 /var/tmp/fieldwiring-resolver-test
@@ -107,7 +109,7 @@ The first full run produced:
 
 The sole failure was a newly added test that incorrectly expected the legacy canonical-name case above to become `STAGE`. A direct diagnostic confirmed the extracted module matched the pre-existing resolver behavior. The test was corrected; the implementation was not redesigned.
 
-Final full regression result at `b7fcd0333f2cb023026643c292b1d615cf5ceb6a`:
+Final detached-worktree regression result at `b7fcd0333f2cb023026643c292b1d615cf5ceb6a`:
 
 ```text
 54 passed in 1.01s
@@ -141,7 +143,7 @@ A live `BridgeBell` lookup selected permanent Display:
 display_id = 312
 ```
 
-Production and candidate then returned identical resolver-specific values:
+Production and candidate returned identical resolver-specific values:
 
 ```text
 scope_type = STAGE
@@ -157,11 +159,89 @@ Result:
 RESOLVER EQUIVALENCE: PASS
 ```
 
-The transient candidate service was stopped automatically after the comparison. Production remained on its existing checkout throughout the test.
+The transient candidate service was stopped automatically after the comparison.
+
+## Repository Acceptance
+
+PR `#35` merged the accepted extraction into `main`.
+
+Merged production-source commit:
+
+```text
+21e9e3b1889289806ccb116b3a546cfcd129fae4
+```
+
+The merge preserved the reviewed boundary:
+
+```text
+field_context_resolver.py
+    -> task-neutral structured-scope resolution
+
+wiring_images.py
+    -> FieldWiring-only Wiring branch/image behavior
+```
+
+## Production Deployment and Verification
+
+The production checkout was then advanced from:
+
+```text
+c71d0e50de9917a384ec8cfc836202e7aa2885db
+```
+
+to the merged `main` commit:
+
+```text
+21e9e3b1889289806ccb116b3a546cfcd129fae4
+```
+
+The deployment was guarded by:
+
+- exact old/new commit checks;
+- clean-worktree verification;
+- explicit fetch of merged `main`;
+- `--ff-only` production update;
+- automatic rollback logic on failure;
+- complete FieldWiring regression execution before service acceptance.
+
+The full FieldWiring suite in the production checkout passed:
+
+```text
+54 passed in 1.01s
+```
+
+The production service was restarted and verified:
+
+```text
+systemctl is-active fieldwiring.service
+-> active
+```
+
+Production health after restart:
+
+```text
+{"data_mode":"postgres","status":"ok","version":"V0.2.0"}
+```
+
+A post-deployment live resolver check for permanent Display `312` returned:
+
+```text
+scope_type: STAGE
+scope_root: /mnt/msb-display-folders/15-Church-Bells-CH
+warnings: ['BackgroundFile points directly into the current Stage Wiring branch; the marked Stage root is the FieldWiring documentation scope.']
+wiring_images: ['RGB Plus Prop Stage 15 Church-Tagged.jpg']
+```
+
+Result:
+
+```text
+POST-DEPLOY RESOLVER CHECK: PASS
+FieldWiring shared resolver: DEPLOYED AND VERIFIED
+```
 
 ## Acceptance Decision
 
-The shared structured-scope resolver extraction is **architecture accepted** because all required behavior-preservation gates passed:
+The shared structured-scope resolver extraction is **production accepted** because all required gates passed:
 
 1. one task-neutral structured-scope implementation exists;
 2. FieldWiring delegates structured hierarchy resolution to it;
@@ -169,25 +249,20 @@ The shared structured-scope resolver extraction is **architecture accepted** bec
 4. existing warning behavior remains intact;
 5. `SourceDocs` remains protected;
 6. bounded matching and ambiguity rejection remain intact;
-7. the complete FieldWiring regression suite passes: `54 passed`;
-8. live production-data resolver output matches the current production service;
-9. Procedure implementation is directed to call this same component rather than copy or redesign it.
+7. the complete detached-worktree FieldWiring regression suite passed: `54 passed`;
+8. live candidate output matched the pre-deployment production resolver;
+9. PR `#35` merged the accepted architecture to `main`;
+10. the production checkout is now at the merged commit;
+11. the full production-checkout regression suite passed: `54 passed`;
+12. the production service is active and healthy;
+13. the post-deployment live resolver check passed;
+14. Procedure implementation is directed to call this same component rather than copy or redesign it.
 
-Production deployment of the extracted module is a separate server-change step and is not represented as complete by this document.
-
-## Production Deployment Caution
-
-At acceptance-test time, the live `/opt/fieldwiring` checkout was still at:
-
-```text
-c71d0e50de9917a384ec8cfc836202e7aa2885db
-```
-
-The resolver branch is based on newer current `main` history. Therefore deployment must not be described as a resolver-only one-commit update. The full repository gap must be reviewed explicitly before moving the live checkout and restarting FieldWiring.
+The FieldWiring architecture gate that blocked Procedure implementation is closed.
 
 ## Procedure Handoff
 
-The Procedure subsystem may now consume the accepted shared resolver as its second caller in engineering/development work.
+The Procedure subsystem is now approved to consume the production-accepted shared resolver as its second caller.
 
 The intended flow is:
 
