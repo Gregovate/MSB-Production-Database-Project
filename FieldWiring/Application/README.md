@@ -1,12 +1,12 @@
 # FieldWiring Application
 
-Status: **production-operational — Display scan-hub integration in progress**
+Status: **production-operational — Display scan integration accepted**
 
 This folder contains the browser-based FieldWiring application.
 
 ## Current State
 
-FieldWiring is production-operational as of 2026-08-22 at:
+FieldWiring is production-operational at:
 
 ```text
 https://my.sheboyganlights.org/fieldwiring/
@@ -20,11 +20,10 @@ Accepted production state:
 - protected Synology reverse proxy operational;
 - desktop and phone acceptance passed;
 - Display search repaired and production-tested;
+- existing Display Scan hub exposes the independent **Field Wiring** action;
 - FormView remains available as fallback/reference.
 
-The remaining active milestone is adding **Field Wiring** to the existing permanent Display QR task hub.
-
-For current engineering work, start with:
+For current engineering/recovery state, start with:
 
 - `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md`
 - `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md`
@@ -163,9 +162,28 @@ Open:
 http://127.0.0.1:8790/
 ```
 
+## Accepted FieldWiring Marker Contract
+
+The production-aligned marker rule is:
+
+```text
+<resolved Stage / Sub-stage / Scene root>  marker required
+Wiring                                     marker required
+PreviewBackground                          marker required when used for controlled same-scope context
+Wiring\BackgroundStage                     NO separate marker
+Wiring\MusicalStage                        NO separate marker
+SourceDocs                                 excluded / no marker
+```
+
+The marker on `Wiring` guards the selected `BackgroundStage` or `MusicalStage` child branch.
+
+`wiring_images.py` already matches this contract: it checks the resolved structural root, the `Wiring` root, and a controlled `PreviewBackground` when applicable. There is no FieldWiring child-marker enforcement gap.
+
+The future Procedure system has a separate deeper marker contract. Do not add separate markers to production `BackgroundStage` / `MusicalStage` folders merely to imitate Procedure task/image marker rules.
+
 ## Display Deep-Link Contract
 
-The current Display QR integration must use:
+The accepted Display QR integration uses:
 
 ```text
 /fieldwiring/wiring.html?display_id=<permanent display_id>
@@ -177,56 +195,90 @@ Important distinction:
 - `wiring.js` consumes `display_id`, forwards it to `api/wiring`, and renders the resolved package.
 - `wiring.py`/`repository.py` re-resolve the current Stage/Preview/Scene context from PostgreSQL.
 
-The scan hub should therefore pass only permanent `display_id`.
+The scan hub passes only permanent `display_id`.
 
 Do not pass Stage, Preview, Scene, LOR UUID, controller address, Google Drive path, or import-run identity from the physical QR/scan hub.
 
 ## Existing Display QR Dependency
 
-The deployed Display QR hub already exists in the Directus scan extension on `msb-prod-db`:
+The deployed Display Scan hub exists as a Directus endpoint extension on `msb-prod-db`:
 
 ```text
 /opt/directus/extensions/directus-extension-scan/
 ```
 
-The current scan hub resolves permanent `display_id` and already provides independent Display, Testing, Container, and Work Order actions.
+Git-controlled Scan application source is preserved under:
 
-FieldWiring must remain a downstream consumer. The scan hub must not depend on FieldWiring availability to render or operate its other actions.
+```text
+Scan/directus-extension-scan/
+```
 
-Current intended action:
+Public Scan route:
+
+```text
+https://my.sheboyganlights.org/scan/
+```
+
+The hub resolves permanent `display_id` and provides independent Display, Testing, Field Wiring, Container, and Work Order actions.
+
+Accepted action:
 
 ```text
 Field Wiring
     -> /fieldwiring/wiring.html?display_id=<display_id>
 ```
 
-No FieldWiring backend change is required merely to support this link.
+No FieldWiring API call is required merely to render the Scan hub. FieldWiring availability must not become a prerequisite for the other Scan actions.
+
+Directus administrative destinations use the established public Directus origin:
+
+```text
+https://db.sheboyganlights.org/
+```
+
+The final accepted Scan runtime artifact SHA-256 is:
+
+```text
+b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f
+```
+
+## Scan Integration Acceptance
+
+Accepted checks include:
+
+- public `/scan/` HTTP 200 and no-slash redirect;
+- manual `DISP:141` -> `TC-ChristmasHippo`;
+- correct Directus Display record;
+- correct assigned Container;
+- positive Display Test Session redirect using `QV-SHRStocking`;
+- Work Orders = 0 disabled state;
+- correct FieldWiring package for `TC-ChristmasHippo`;
+- phone camera initialization/live preview.
+
+Physical QR decode and positive one/multiple Work Order cases were unavailable during acceptance and remain explicit deferred regression cases.
 
 ## Server Runtime Boundary
 
 Application/business source remains in this repository.
 
-Server runtime details — systemd service, persistent Display Folders mount, Synology reverse proxy, deployment/restart/recovery, and Directus scan-extension runtime — belong in `Gregovate/MSB-Server-Management`.
+Server runtime details — systemd service, persistent Display Folders mount, Synology reverse proxies, deployment/restart/recovery, Directus scan-extension runtime, and runtime hashes — belong in `Gregovate/MSB-Server-Management`.
 
 Do not copy secrets or protected runtime configuration into either repository.
 
 ## Current Open Work
 
-- recover/preserve the accepted current Directus scan implementation in Git-controlled source/deployment form;
-- add the independent Field Wiring action to `/scan/DISP/:key`;
-- regression-test all existing scan routes and camera/manual scanning;
-- test a real permanent Display QR into FieldWiring;
-- update both repository handoffs after acceptance;
-- keep FormView available until a separate cutover decision.
+FieldWiring Scan Integration is closed as accepted production work.
+
+Separate future work includes:
+
+- Controller Inventory replacement of temporary E1.31 presentation mappings;
+- deferred Scan regression cases when suitable examples are available;
+- plug/channel-label request integration;
+- offline/self-contained field copy;
+- separate FormView retirement decision.
 
 ## Resume Development
 
-1. Read `FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md`.
-2. Read the current Labeling/Scanning and Wiring README handoffs.
-3. Read the matching MSB-Server-Management Directus/FieldWiring runtime handoffs.
-4. Preserve/recover the accepted current camera-enabled scan implementation in Git.
-5. Make the minimal Field Wiring action change only.
-6. Run the complete scan regression/acceptance matrix.
-7. Update both repository handoffs before closing the work.
+Before further FieldWiring application changes, read the current Wiring and Scan handoffs and refresh from current `main`.
 
-After this scan integration is accepted, Setup/Deployment becomes the next separate engineering project. Its expected high-volume Container/Location scanning should be designed from the actual setup-day workflow rather than by refactoring FieldWiring-specific code.
+The next major Production Database project is Setup/Deployment. Its expected high-volume Container/Location scanning should be designed from the actual setup-day workflow rather than by refactoring FieldWiring-specific code prematurely.
