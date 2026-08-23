@@ -179,7 +179,7 @@ The marker on `Wiring` guards the selected `BackgroundStage` or `MusicalStage` c
 
 `wiring_images.py` already matches this contract: it checks the resolved structural root, the `Wiring` root, and a controlled `PreviewBackground` when applicable. There is no FieldWiring child-marker enforcement gap.
 
-The future Procedure system has a separate deeper marker contract. Do not add separate markers to production `BackgroundStage` / `MusicalStage` folders merely to imitate Procedure task/image marker rules.
+The Procedure system now uses the same subsystem-root marker pattern: the resolved Stage/Sub-stage/Scene root and `Procedures` are marked, while `Inspection`, `Setup`, `Takedown`, and task-local `images` folders are fixed unmarked child branches. Do not add separate markers to production `BackgroundStage` / `MusicalStage` folders merely to imitate another application branch.
 
 ## Display Deep-Link Contract
 
