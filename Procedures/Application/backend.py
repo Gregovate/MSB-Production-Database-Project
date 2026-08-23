@@ -1,11 +1,11 @@
 """Read-only MSB Procedure browser API.
 
-This backend is intentionally thin.  It consumes the production-accepted
-shared Field Context database repository plus the accepted Procedure
-orchestration/document adapters.  It does not contain PostgreSQL relationship
-SQL, Stage/Scene filesystem resolution, or task-folder discovery rules.
+This backend is intentionally thin. It consumes the production-accepted shared
+Field Context repository, fast Stage/Sub-stage/Scene hierarchy, shared
+structured-scope resolver, and Procedure document adapter. It does not own
+PostgreSQL relationship SQL or Drive hierarchy discovery.
 
-File-serving endpoints never accept a filesystem path.  They re-resolve the
+File-serving endpoints never accept a filesystem path. They re-resolve the
 current Procedure package and may serve only a filename rediscovered in the
 current direct document/image result.
 """
@@ -17,6 +17,7 @@ from typing import Any
 
 from flask import Flask, Response, jsonify, request, send_file
 
+from FieldWiring.Application.field_context_hierarchy import resolve_field_hierarchy
 from FieldWiring.Application.field_context_repository import (
     ConfigError,
     FieldContextRepository,
@@ -135,7 +136,7 @@ def _resolved_asset(kind: str) -> Path:
         items = result.get("images") or []
         task_root_text = result.get("task_root")
         expected_root_text = str(Path(task_root_text) / "images") if task_root_text else None
-    else:  # internal programming error, not user input
+    else:
         raise RuntimeError("Unknown Procedure asset kind")
 
     matched = next((item for item in items if item.get("name") == name), None)
@@ -156,6 +157,30 @@ def _resolved_asset(kind: str) -> Path:
         raise ProcedureAssetError("Requested file is not a direct current Procedure asset.")
 
     return candidate
+
+
+def operator_config_error(_: ConfigError) -> str:
+    return (
+        "Field Procedures are temporarily unavailable because the current data or document source "
+        "could not be opened. Report that Field Procedures are unavailable."
+    )
+
+
+def operator_context_error(exc: ProcedureContextError) -> str:
+    text = str(exc).casefold()
+    if text.startswith("invalid ") or "requires exactly one" in text or "whole_stage" in text:
+        return "This Procedure link is invalid. Return to lookup and select the Display, Stage, Sub-stage, or Scene again."
+    if "unsupported procedure task" in text:
+        return "That Procedure task is not available. Choose Setup, Takedown, or Inspection."
+    if "not available for current field context" in text or "no current stage relationship" in text:
+        return "This selection no longer matches the current approved field data. Return to lookup and select it again."
+    if "not one unique current field context" in text:
+        return "This selection matches more than one current field context. Return to lookup and choose the Stage, Sub-stage, or Scene again."
+    return "Field Procedures could not resolve this selection. Return to lookup and select it again."
+
+
+def operator_asset_error(_: ProcedureAssetError) -> str:
+    return "The requested Procedure file is not available. Return to the current Procedure page and choose a published file."
 
 
 @app.get("/api/health")
@@ -180,7 +205,11 @@ def api_display_context(display_id: int) -> tuple[Response, int] | Response:
 
 @app.get("/api/stages")
 def api_stages() -> Response:
-    return jsonify(stages=repository().stages())
+    hierarchy = resolve_field_hierarchy(repository())
+    return jsonify(
+        stages=hierarchy["stages"],
+        review_required=hierarchy["review_required"],
+    )
 
 
 @app.get("/api/procedures")
@@ -214,17 +243,17 @@ def api_procedure_image() -> Response:
 
 @app.errorhandler(ConfigError)
 def config_error(exc: ConfigError) -> tuple[Response, int]:
-    return jsonify(error=str(exc)), 503
+    return jsonify(error=operator_config_error(exc), engineering_error=str(exc)), 503
 
 
 @app.errorhandler(ProcedureContextError)
 def procedure_context_error(exc: ProcedureContextError) -> tuple[Response, int]:
-    return jsonify(error=str(exc)), 400
+    return jsonify(error=operator_context_error(exc), engineering_error=str(exc)), 400
 
 
 @app.errorhandler(ProcedureAssetError)
 def procedure_asset_error(exc: ProcedureAssetError) -> tuple[Response, int]:
-    return jsonify(error=str(exc)), 404
+    return jsonify(error=operator_asset_error(exc), engineering_error=str(exc)), 404
 
 
 if __name__ == "__main__":
