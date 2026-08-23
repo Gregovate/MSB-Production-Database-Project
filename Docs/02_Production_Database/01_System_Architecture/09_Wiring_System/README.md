@@ -4,41 +4,39 @@ This subsystem documents how MSB presents, enriches, and operationally uses wiri
 
 ## Current State
 
-**FieldWiring is production-operational as of 2026-08-22.**
+**FieldWiring and its Display Scan integration are production-operational as of 2026-08-22 local / 2026-08-23 UTC.**
 
-Current accepted production state:
+Accepted production state:
 
-- browser application published at `https://my.sheboyganlights.org/fieldwiring/`;
+- FieldWiring browser application: `https://my.sheboyganlights.org/fieldwiring/`;
+- Display Scan application: `https://my.sheboyganlights.org/scan/`;
 - live read-only PostgreSQL backend;
-- systemd-hosted backend operational on `192.168.5.9:8790`;
+- systemd-hosted FieldWiring backend on `192.168.5.9:8790`;
 - persistent read-only Google `Display Folders` filesystem operational;
-- protected Synology reverse proxy operational;
-- desktop and phone acceptance passed;
-- Display search repaired and production-tested;
-- FieldWiring remains read-only;
+- protected Synology reverse proxies operational;
+- desktop and phone FieldWiring acceptance passed;
+- FieldWiring Display search repaired and production-tested;
+- existing Display QR/scan hub includes the independent **Field Wiring** action;
+- Directus-facing Scan actions use the established `https://db.sheboyganlights.org/` origin;
 - FormView remains available as fallback/reference.
 
-The current remaining cutover milestone is **Display Scan Integration**: add one independent **Field Wiring** action to the existing `/scan/DISP/:key` hub using the already-resolved permanent `ref.display.display_id`.
-
-The verified deep link is:
+The accepted FieldWiring deep link is:
 
 ```text
 /fieldwiring/wiring.html?display_id=<permanent display_id>
 ```
 
-The originally conceptual `/fieldwiring/?display_id=...` route is not the current direct-entry contract. The landing page does not consume `display_id`; the wiring page does.
+The scan hub passes only the permanent `ref.display.display_id`. No LOR UUID, Stage key, Scene UUID, controller address, or Google Drive path is part of the QR-to-FieldWiring identity contract.
 
-The existing Display scan runtime has now been reconstructed and documented before modification. Current production `dist/index.js` SHA-256 is:
+The accepted current Scan runtime artifact SHA-256 is:
 
 ```text
-824aa56857c3d52c3ba9186c4721313e2172dc24ec32653045bb7bf3b008d7af
+b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f
 ```
-
-The deployed scan extension currently lacks the `src/index.js` declared by its `package.json`. Preserve/recover the accepted scan implementation into Git before substantial scan-platform expansion.
 
 ## Start Here
 
-For the current work, begin with:
+For current production/recovery state, begin with:
 
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
 - [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md)
@@ -123,7 +121,7 @@ The production application supports:
 - A/C controller/output presentation;
 - reviewed Pixie physical-output presentation;
 - atomic V7.0.11 DMX source-row consumption;
-- CR50/DumbRGB fixture aggregation for technician presentation while retaining atomic source rows underneath;
+- CR50/DumbRGB fixture aggregation while retaining atomic source rows underneath;
 - reviewed E1.31 physical-controller presentation for accepted dense RGB cases;
 - collapsible controller/presentation groups;
 - long-list sticky controller context;
@@ -134,7 +132,7 @@ The production application supports:
 - Engineering Details for raw/troubleshooting data;
 - generated/printed currentness and expiration information.
 
-## Stage Folder / Image Boundary
+## Stage Folder / Marker Boundary
 
 The established Stage/Sub-stage/Scene Google Drive structure remains the human-facing source for published wiring images and related field documentation.
 
@@ -142,17 +140,38 @@ FieldWiring uses the structured scope and inspects only the applicable same-scop
 
 Wiring images are supplemental rough-location guidance. Hookup data remains primary and must stay usable when no image exists.
 
-Production server access to this hierarchy is provided through the persistent read-only Display Folders filesystem documented by MSB-Server-Management.
+The accepted FieldWiring marker contract is:
+
+```text
+<resolved Stage / Sub-stage / Scene root>   marker required
+Wiring                                      marker required
+PreviewBackground                           marker required when used as controlled same-scope context
+Wiring\BackgroundStage                      NO separate marker
+Wiring\MusicalStage                         NO separate marker
+SourceDocs                                  excluded / no marker
+```
+
+The marker on `Wiring` guards the selected `BackgroundStage` or `MusicalStage` child branch. The production FieldWiring implementation already matches this contract; no child-marker code change is required.
+
+The future Procedure system has a separate deeper marker contract for `Procedures`, task branches, and Setup/Takedown `images`. Do not project that Procedure rule onto FieldWiring child Wiring branches.
+
+Production server access to the Google hierarchy is provided through the persistent read-only Display Folders filesystem documented by MSB-Server-Management.
 
 ## Existing Display Scan Runtime
 
-The current Display QR lookup is implemented outside FieldWiring as a deployed Directus endpoint on `msb-prod-db`:
+The Display QR lookup is a Directus endpoint deployed on `msb-prod-db`:
 
 ```text
 /opt/directus/extensions/directus-extension-scan/
 ```
 
-Current verified routes include:
+Git-controlled application source is now preserved at:
+
+```text
+Scan/directus-extension-scan/
+```
+
+Current routes include:
 
 ```text
 /scan/
@@ -163,20 +182,42 @@ Current verified routes include:
 /scan/DISP/:key/work-orders
 ```
 
-`/scan/DISP/:key` already resolves permanent `ref.display.display_id`.
+`/scan/DISP/:key` resolves permanent `ref.display.display_id` and presents independent Display, Testing, Field Wiring, Container, and Work Order actions.
 
-FieldWiring must consume that identity rather than creating a second scanner route or duplicating Testing/Work Order/Container logic.
-
-The required action is:
+The Field Wiring action is:
 
 ```text
 Field Wiring
     -> /fieldwiring/wiring.html?display_id=<display_id>
 ```
 
-No FieldWiring API call should occur merely to render the scan hub. A FieldWiring outage must not disable existing scan functions.
+FieldWiring availability is not a prerequisite for rendering the other Scan actions.
+
+Directus record destinations use the existing Directus public origin:
+
+```text
+https://db.sheboyganlights.org/
+```
+
+rather than root-relative `/admin/...` links under `my.sheboyganlights.org`.
 
 See [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md).
+
+## Scan Acceptance Summary
+
+Accepted regression evidence includes:
+
+- public `/scan/` HTTP 200 and `/scan` redirect;
+- manual `DISP:141` -> `TC-ChristmasHippo`;
+- Open Display Record -> correct Directus record;
+- Open Container -> correct assigned Container;
+- positive Testing redirect using `QV-SHRStocking`;
+- Work Orders = 0 disabled state;
+- Field Wiring -> correct `TC-ChristmasHippo` wiring package;
+- phone camera initialization and live preview;
+- final deployed Scan hash `b4f6c27f...175cb20f`.
+
+Physical QR decode and positive one/multiple Work Order cases were not available during acceptance and remain explicitly deferred regression cases.
 
 ## Controller Inventory Boundary
 
@@ -190,13 +231,11 @@ Do not infer permanent controller identity from universe, IP address, Unit ID, D
 
 ## System Boundary
 
-**Relationship Class:** Dedicated Database-Backed Presentation / Field Application over a Production Database subsystem with an Integrated Upstream Dependency on LOR/LOR2DB and an Existing Deployed Scan-Runtime Dependency.
-
 ### Production Database responsibility
 
 - controlled current LOR-derived wiring snapshot;
 - permanent Display identity and database-owned relationships;
-- FieldWiring read/data contracts;
+- FieldWiring and Scan application/business source;
 - scan-to-FieldWiring `display_id` contract;
 - Wiring/Controller Inventory/Setup integration boundaries.
 
@@ -213,9 +252,8 @@ Do not infer permanent controller identity from universe, IP address, Unit ID, D
 ### MSB-Server-Management responsibility
 
 - FieldWiring service/runtime deployment;
-- internal listener/service management;
 - persistent Display Folders mount;
-- protected reverse proxy;
+- protected reverse proxies;
 - Directus scan-extension deployment/restart/recovery;
 - runtime hashes and rollback.
 
@@ -231,43 +269,25 @@ Do not infer permanent controller identity from universe, IP address, Unit ID, D
 
 ## Known Open Work
 
-Current priority:
-
-- recover/preserve the accepted Display scan implementation in a Git-controlled source/deployment boundary;
-- add the independent Field Wiring scan action;
-- verify all existing scan actions plus the FieldWiring deep link with a real permanent Display QR;
-- close the Production Database and Server Management handoffs after acceptance.
-
-Separate future work:
+Separate future work includes:
 
 - Controller Inventory replacement of temporary presentation mappings;
-- Mega Cube and Whoville Matrix compact CustomGrid expansion remains a separate parser-materialization limitation; FieldWiring must not fabricate absent rows;
+- Mega Cube and Whoville Matrix compact CustomGrid expansion, which remains a separate parser-materialization limitation;
 - plug/channel-label request integration;
-- offline/self-contained field copy.
+- offline/self-contained field copy;
+- deferred Scan regression cases when suitable physical/data examples are available.
 
 ## FormView Cutover Rule
 
 FieldWiring production operation does **not** automatically retire FormView.
 
-Keep FormView available as fallback/reference until a separate cutover decision is accepted after the scan integration and any remaining field acceptance concerns are resolved.
+Keep FormView available as fallback/reference until a separate cutover decision is accepted.
 
 ## Resume Development
 
-### Current work — Scan Integration
+FieldWiring Scan Integration is closed as accepted production work. Before merging this engineering branch, reconcile it with current `main` and preserve the accepted marker contract above.
 
-1. Read [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md).
-2. Read [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md).
-3. Read the corresponding MSB-Server-Management Directus/FieldWiring runtime handoffs.
-4. Preserve/recover the current camera-enabled scan implementation in Git.
-5. Add the minimal Field Wiring action using only permanent `display_id`.
-6. Run the complete existing-route regression/FieldWiring acceptance matrix.
-7. Update both repository handoffs and merge through the normal workflow.
-
-### Next project — Setup/Deployment
-
-After Scan Integration closes, begin a separate Setup/Deployment engineering thread/branch from [Setup and Deployment](../12_Setup_and_Deployment/README.md).
-
-That work is expected to involve substantial Container and Storage Location scanning for setup season. Reconstruct the real pull/stage/load/delivery process before designing schema, scan-session state, or a broader scan-platform refactor.
+The next major Production Database project is [Setup and Deployment](../12_Setup_and_Deployment/README.md). Reconstruct the real Container/Location pull, staging, load, delivery, and park-placement workflow before designing new schema, scan-session state, or a broader scan-platform refactor.
 
 ## Related Systems
 
