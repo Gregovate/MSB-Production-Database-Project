@@ -535,6 +535,7 @@ export default {
 
               <a class="btn" href="/admin/content/display/${encodeURIComponent(display.display_id)}">Open Display Record</a>
               ${testButtonHtml}
+              <a class="btn secondary" href="/fieldwiring/wiring.html?display_id=${encodeURIComponent(display.display_id)}">Field Wiring</a>
               <a class="btn secondary" href="/scan/DISP/${encodeURIComponent(display.display_id)}/container">Open Container</a>
                 ${woCount > 0
             ? `<a class="btn secondary" href="/scan/DISP/${encodeURIComponent(display.display_id)}/work-orders">
