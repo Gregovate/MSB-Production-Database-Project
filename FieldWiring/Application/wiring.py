@@ -28,8 +28,17 @@ def build_wiring_package(
 ) -> dict[str, Any]:
     trigger_context: dict[str, Any] | None = None
     if display_id is not None:
+        # New shared-context-aware repositories first prove that the permanent
+        # Display itself is current/valid. FieldWiring eligibility is a separate
+        # downstream decision. Older test doubles without the shared method keep
+        # the established single-call behavior.
+        shared_lookup = getattr(repo, "shared_display_context", None)
+        shared_context = shared_lookup(display_id) if callable(shared_lookup) else None
+
         trigger_context = repo.display_context(display_id)
         if trigger_context is None:
+            if shared_context is not None:
+                raise WiringError("No applicable field wiring is available for this Display")
             raise WiringError("Display is not available for current FieldWiring")
 
         resolved_stage_id = trigger_context.get("stage_id")
