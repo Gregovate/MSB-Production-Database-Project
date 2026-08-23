@@ -113,6 +113,7 @@ function sceneLabel(context) {
 
 function stageLabel(stage) {
   if (!stage) return 'Unresolved';
+  if (stage.label) return stage.label;
   const key = stage.stage_key ? `${stage.stage_key} · ` : '';
   return `${key}${stage.stage_name || 'Unnamed Stage'}`;
 }
@@ -178,50 +179,87 @@ async function loadStages() {
   try {
     const payload = await api('api/stages');
     state.stages = payload.stages || [];
-    stageSelect.innerHTML = '<option value="">Select a Stage…</option>' + state.stages.map(item => {
-      const stage = item.stage || {};
-      return `<option value="${esc(stage.stage_id)}">${esc(stage.stage_key ?? '')} — ${esc(stage.stage_name ?? '')}</option>`;
-    }).join('');
+    stageSelect.innerHTML = '<option value="">Select a Stage…</option>' + state.stages.map(stage =>
+      `<option value="${esc(stage.stage_id)}">${esc(stage.label || `Stage ${stage.stage_key || ''}`)}</option>`
+    ).join('');
   } catch (err) {
     stageSelect.innerHTML = `<option value="">${esc(err.message)}</option>`;
   }
 }
 
+function hierarchySceneContext(scene) {
+  const contexts = scene?.contexts || [];
+  return contexts.length ? flattenContext(contexts[0]) : null;
+}
+
 function renderStageContexts() {
-  const item = state.stages.find(row => String(row.stage?.stage_id) === String(stageSelect.value));
-  if (!item) {
+  const stage = state.stages.find(row => String(row.stage_id) === String(stageSelect.value));
+  if (!stage) {
     stageContexts.innerHTML = '';
     return;
   }
-  const contexts = item.contexts || [];
+
   const rows = [
-    `<div class="context-choice" data-whole-stage="true"><span class="context-badge">Stage</span><strong>Whole Stage</strong><div class="context-meta">Use the Stage-level ${esc(state.task)} procedure.</div></div>`
+    `<div class="context-choice" data-stage-root="true"><span class="context-badge">Stage</span><strong>Whole Stage</strong><div class="context-meta">${esc(stage.label)} · Use the Stage-level ${esc(state.task)} procedure.</div></div>`
   ];
-  contexts.forEach((context, index) => {
-    const c = flattenContext(context);
+
+  (stage.scenes || []).forEach((scene, index) => {
     rows.push(`
-      <div class="context-choice" data-context-index="${index}">
-        <span class="context-badge">${esc(c.scope_kind === 'Scene' ? 'Scene' : 'Stage')}</span>
-        <strong>${esc(sceneLabel(c))}</strong>
-        <div class="context-meta">${esc(c.preview_name || 'Current field context')}</div>
+      <div class="context-choice" data-stage-scene-index="${index}">
+        <span class="context-badge">Scene</span>
+        <strong>${esc(scene.label)}</strong>
+        <div class="context-meta">Use the defined Scene-level ${esc(state.task)} procedure.</div>
       </div>`);
   });
+
+  (stage.sub_stages || []).forEach((subStage, subIndex) => {
+    rows.push(`
+      <div class="context-choice" data-substage-index="${subIndex}">
+        <span class="context-badge">Sub-stage</span>
+        <strong>${esc(subStage.label)}</strong>
+        <div class="context-meta">Use the Sub-stage-level ${esc(state.task)} procedure.</div>
+      </div>`);
+    (subStage.scenes || []).forEach((scene, sceneIndex) => {
+      rows.push(`
+        <div class="context-choice" data-substage-scene="${subIndex}:${sceneIndex}">
+          <span class="context-badge">Scene</span>
+          <strong>${esc(scene.label)}</strong>
+          <div class="context-meta">Under ${esc(subStage.label)}.</div>
+        </div>`);
+    });
+  });
+
   stageContexts.innerHTML = rows.join('');
-  stageContexts.querySelector('[data-whole-stage="true"]')?.addEventListener('click', () => selectStage(item, null, true));
-  stageContexts.querySelectorAll('[data-context-index]').forEach(node => {
-    node.addEventListener('click', () => selectStage(item, contexts[Number(node.dataset.contextIndex)], false));
+  stageContexts.querySelector('[data-stage-root="true"]')?.addEventListener('click', () => selectHierarchyScope(stage));
+  stageContexts.querySelectorAll('[data-stage-scene-index]').forEach(node => {
+    const scene = stage.scenes[Number(node.dataset.stageSceneIndex)];
+    node.addEventListener('click', () => selectHierarchyScope(stage, scene));
+  });
+  stageContexts.querySelectorAll('[data-substage-index]').forEach(node => {
+    const subStage = stage.sub_stages[Number(node.dataset.substageIndex)];
+    node.addEventListener('click', () => selectHierarchyScope(subStage));
+  });
+  stageContexts.querySelectorAll('[data-substage-scene]').forEach(node => {
+    const [subIndex, sceneIndex] = node.dataset.substageScene.split(':').map(Number);
+    const subStage = stage.sub_stages[subIndex];
+    const scene = subStage.scenes[sceneIndex];
+    node.addEventListener('click', () => selectHierarchyScope(subStage, scene));
   });
 }
 
-function selectStage(item, context, wholeStage) {
-  const c = context ? flattenContext(context) : null;
+function selectHierarchyScope(scope, scene = null) {
+  const context = scene ? hierarchySceneContext(scene) : null;
+  if (scene && !context) {
+    showProcedureError('The selected Scene has no current field-context evidence.');
+    return;
+  }
   state.entry = {
     type: 'stage',
-    stage: item.stage,
-    whole_stage: Boolean(wholeStage),
-    preview_uuid: c?.preview_uuid || null,
-    scene_uuid: c?.scene_uuid || null,
-    scene_name: c?.scene_name || null
+    stage: scope,
+    whole_stage: !scene,
+    preview_uuid: context?.preview_uuid || null,
+    scene_uuid: context?.scene_uuid || null,
+    scene_name: scene?.label || null
   };
   updateLocation();
   resolveCurrent();
@@ -331,12 +369,18 @@ function renderProcedure(result) {
   }
 
   const selected = flattenContext(result.selected_context || {});
-  if (!state.entry.whole_stage && selected.scene_name) state.entry.scene_name = selected.scene_name;
+  if (!state.entry.scene_name && selected.scene_name) state.entry.scene_name = selected.scene_name;
   contextChoiceCard.hidden = true;
   procedureCard.hidden = false;
   procedureTitle.textContent = `${state.task} Instructions`;
   renderProcedureContext();
-  scopeBadge.textContent = result.scope_type === 'SCENE' ? 'Scene / Area' : (result.scope_type === 'STAGE' ? 'Stage' : result.scope_type || 'Unresolved');
+  if (result.scope_type === 'SCENE') {
+    scopeBadge.textContent = 'Scene / Area';
+  } else if (state.entry.type === 'stage' && state.entry.stage.scope_type === 'SUBSTAGE') {
+    scopeBadge.textContent = 'Sub-stage';
+  } else {
+    scopeBadge.textContent = result.scope_type === 'STAGE' ? 'Stage' : result.scope_type || 'Unresolved';
+  }
 
   const messages = {
     AVAILABLE: 'Current published instructions are available.',
