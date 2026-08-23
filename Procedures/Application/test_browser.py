@@ -32,8 +32,9 @@ def test_browser_client_uses_only_procedure_api_contract():
     assert "api/displays" in text
     assert "api/stages" in text
     assert "api/procedures" in text
-    assert "api/procedure/document" in text
-    assert "api/procedure/image" in text
+    assert "api/procedure/${kind}" in text
+    assert "assetHref('document'" in text
+    assert "assetHref('image'" in text
     assert "folder_path" not in text
     assert "SourceDocs" not in text
     assert "Archive/" not in text
