@@ -12,8 +12,7 @@ def test_browser_index_is_served():
     assert "Takedown" in text
     assert "Inspection" in text
     assert "Includes current inventory Displays whether wired or not." in text
-    assert "Selected Field Context" not in text
-    assert 'id="selection-card"' not in text
+    assert "Browse Stage / Sub-stage / Scene" in text
     assert 'id="procedure-context"' in text
     assert 'id="clear-selection"' in text
 
@@ -44,15 +43,31 @@ def test_browser_client_uses_only_procedure_api_contract():
     assert "Archive/" not in text
 
 
+def test_browser_consumes_shared_stage_substage_scene_hierarchy():
+    browser.app.config.update(TESTING=True)
+    with browser.app.test_client() as client:
+        text = client.get("/procedure.js").get_data(as_text=True)
+    assert "stage.sub_stages" in text
+    assert "stage.scenes" in text
+    assert "sub.scenes" in text
+    assert "selectHierarchyOwner" in text
+    assert "selectHierarchyScene" in text
+
+
+def test_browser_never_renders_engineering_warnings_as_primary_ui():
+    browser.app.config.update(TESTING=True)
+    with browser.app.test_client() as client:
+        text = client.get("/procedure.js").get_data(as_text=True)
+    assert "result.operator_warnings" in text
+    assert "result.warnings || []" not in text
+
+
 def test_browser_compacts_resolved_context_into_instruction_card():
     browser.app.config.update(TESTING=True)
     with browser.app.test_client() as client:
         text = client.get("/procedure.js").get_data(as_text=True)
     assert "renderProcedureContext" in text
     assert "procedureContext.textContent" in text
-    assert "selectionCard" not in text
-    assert "selectionStatus" not in text
-    assert "selectionGrid" not in text
 
 
 def test_browser_supports_permanent_display_deep_link():
