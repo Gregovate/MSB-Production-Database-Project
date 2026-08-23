@@ -103,6 +103,12 @@ When a discussion results in an accepted change to architecture, workflow, namin
 
 Do not leave a material decision only in conversation history.
 
+The same rule applies to verified discoveries and corrected assumptions, not only formal decisions. A production fact, reverse-engineering finding, ownership boundary, path rule, failure condition, validation result, known limitation, or resume point that later work depends on must be recorded in the responsible repository documentation.
+
+Do not use chat as a temporary holding area for material project knowledge with the intention of reconstructing it later. If a later engineering step depends on a discovery made during the current work, make that discovery durable in the repository before proceeding past that dependency point.
+
+If work ends before implementation is complete, the repository must still preserve the durable reconnaissance findings, unresolved items, constraints, and stop point established during that work.
+
 This rule serves two purposes:
 
 1. operators receive current instructions when engineering changes affect how they use the system; and
@@ -110,7 +116,7 @@ This rule serves two purposes:
 
 The responsible document may be an engineering design, operator procedure, standard, project rule, subsystem README, or another controlled artifact depending on what changed.
 
-Follow the document-control and README closeout standards when deciding where the durable update belongs.
+Follow [Documentation Maintenance Rule](Documentation_Maintenance_Rule.md), the document-control standard, and the README closeout standards when deciding where the durable update belongs.
 
 ## Related Systems and Related Documents
 
