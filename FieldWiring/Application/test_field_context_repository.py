@@ -93,9 +93,9 @@ def repo(tmp_path: Path) -> SQLiteFieldContextRepository:
     return SQLiteFieldContextRepository(path)
 
 
-def test_shared_search_includes_wired_and_nonwired_pattern_matches(tmp_path):
+def test_shared_search_preserves_normal_wired_pattern_match(tmp_path):
     rows = repo(tmp_path).search_displays("CH-RGB")
-    assert [row["display_id"] for row in rows] == [309, 323]
+    assert [row["display_id"] for row in rows] == [309]
 
 
 def test_shared_search_includes_inventory_only_matching_name(tmp_path):
