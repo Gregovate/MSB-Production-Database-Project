@@ -2,77 +2,96 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT ENGINEERING HANDOFF — live scan runtime recovered; no scan change deployed yet |
-| Current revision | 2026-08-22 |
+| Status | ACCEPTED PRODUCTION — Field Wiring action deployed and operational |
+| Current revision | 2026-08-22 local / 2026-08-23 UTC |
 | Production scan host | `msb-prod-db` / `192.168.5.9` |
 | Production scan runtime | `/opt/directus/extensions/directus-extension-scan/` |
+| Public scan route | `https://my.sheboyganlights.org/scan/` |
 | FieldWiring public route | `https://my.sheboyganlights.org/fieldwiring/` |
-| FieldWiring production state | OPERATIONAL / PostgreSQL-backed / read-only |
-| Server runtime documentation | `Gregovate/MSB-Server-Management` |
+| Application source branch | `agent/fieldwiring-server-deployment-reconnaissance` |
+| Server runtime branch | `agent/scan-fieldwiring-runtime-integration` |
 
 ## Purpose
 
-This document is the current engineering handoff for adding **Field Wiring** to the existing permanent Display QR workflow without changing the physical QR identity or making existing scan functions dependent on FieldWiring.
+This document is the accepted engineering handoff for adding **Field Wiring** to the existing permanent Display QR/scan workflow without changing physical Display identity and without making existing scan functions dependent on FieldWiring.
 
-It records the live production scan implementation recovered on 2026-08-22, the verified FieldWiring deep-link contract, the required failure boundary, the source-control recovery gap, and the exact point where implementation should resume.
+The integration is complete and production-operational. The current scan application source has also been recovered into Git so future Setup/Deployment scan work no longer has to start from an undocumented live-only artifact.
 
-This is also the first deliberate additive integration onto the existing scan platform. The design must remain compatible with later Setup/Deployment scanning work, including high-volume Container and Storage Location scanning, without prematurely redesigning the production scan runtime during the FieldWiring change.
+## Accepted Production Result
 
-## Current Production Baseline
-
-### FieldWiring
-
-FieldWiring is production-operational at:
+The Display scan hub now includes one independent action:
 
 ```text
-https://my.sheboyganlights.org/fieldwiring/
+Field Wiring
+    -> /fieldwiring/wiring.html?display_id=<permanent display_id>
 ```
 
-Accepted production state:
+The action uses only the already-resolved permanent `ref.display.display_id`.
 
-- live read-only PostgreSQL backend;
-- persistent Google `Display Folders` filesystem operational;
-- systemd-hosted backend operational on `192.168.5.9:8790`;
-- protected Synology reverse proxy operational;
-- desktop and phone acceptance passed;
-- Display search repaired and production-tested;
-- FormView remains fallback/reference.
+No schema change was required.
 
-The scan-hub integration is the remaining FieldWiring deployment milestone.
+No physical QR change was required.
 
-### Display scan runtime
+No FieldWiring backend change was required merely to support the link.
 
-The current Display scan system is a Directus endpoint extension deployed at:
+Existing Testing, Container, Work Order, and Directus Display destinations remain separate from FieldWiring. The scan hub does not call FieldWiring merely to render the action.
+
+## Application Source Recovery
+
+The accepted March 2026 camera-enabled Directus scan implementation was recovered from the live server before modification.
+
+Git-controlled application source now exists at:
 
 ```text
-/opt/directus/extensions/directus-extension-scan/
+Scan/directus-extension-scan/
+    package.json
+    src/index.js
+    dist/index.js
 ```
 
-Verified live runtime files on 2026-08-22:
+Relevant recovery/integration commits on this branch:
 
 ```text
-package.json
-
-dist/
-    index.js
-    index-copy original-no-camera-scanning.js
+d579dd1  Recover accepted Directus scan extension source
+7fdb1b9  Complete Directus scan extension recovery baseline
+5f24474  Add FieldWiring action to display scan hub
 ```
 
-Current `dist/index.js` SHA-256:
+The application/business source belongs to the Production Database repository because it contains MSB-specific Display, Testing, Container, Work Order, and FieldWiring behavior. The fact that Directus hosts the endpoint does not transfer application ownership to Server Management.
+
+## Production Artifact Identity
+
+Accepted pre-change production `dist/index.js` SHA-256:
 
 ```text
 824aa56857c3d52c3ba9186c4721313e2172dc24ec32653045bb7bf3b008d7af
 ```
 
-The older `index-copy original-no-camera-scanning.js` predates camera-scanning support and is **not** a valid rollback copy for the current accepted production system.
+Accepted FieldWiring-enabled production `dist/index.js` SHA-256:
 
-Server deployment/recovery facts are owned by `Gregovate/MSB-Server-Management` and must remain synchronized with this application/business handoff.
+```text
+e17ea51ec1f1993440719cb3ca35eb84c7250eb4f3d0a25784d0a42ef2114df0
+```
 
-## Recovered Scan Architecture
+The older live file named:
 
-The extension is one Directus endpoint module. It handles scan-page HTML, camera/manual input, Display and Container lookup routes, and downstream redirects directly in the deployed JavaScript.
+```text
+dist/index-copy original-no-camera-scanning.js
+```
 
-Verified current routes include:
+remains historical only and is **not** a valid rollback artifact for the current camera-enabled scan system.
+
+The verified pre-change rollback copy created for this deployment is recorded by MSB-Server-Management at:
+
+```text
+/home/msbadmin/backups/directus-scan/pre-fieldwiring-20260823T011615Z/index.js
+```
+
+Its SHA-256 is the accepted pre-change hash `824aa568...008d7af`.
+
+## Scan Architecture
+
+The Directus endpoint extension continues to provide:
 
 ```text
 /scan/
@@ -83,197 +102,100 @@ Verified current routes include:
 /scan/DISP/:key/work-orders
 ```
 
-### `/scan/`
+The landing page supports camera scanning, QR codes, 1-D barcodes through `html5-qrcode`, manual entry, and URL handling.
 
-The scan landing page provides:
-
-- camera scanning;
-- QR support;
-- 1-D barcode support through `html5-qrcode`;
-- manual entry;
-- URL handling;
-- client-side routing to the extension endpoints.
-
-The extension does not implement its own authentication. It relies on the existing protected Directus/application session. Camera access requires HTTPS.
-
-### Display identity resolution
-
-`/scan/DISP/:key` uses the route key directly against:
+`/scan/DISP/:key` resolves the route key directly against:
 
 ```text
 ref.display.display_id
 ```
 
-The permanent Production Database `display_id` is therefore already the resolved identity at the Display hub.
+Therefore the Display hub already has the permanent identity FieldWiring requires. No LOR UUID, Stage key, Scene UUID, controller address, or Google Drive path belongs in the scan handoff.
 
-There is no need for FieldWiring to introduce another QR identity, LOR UUID translation, Stage key, Scene UUID, Google Drive path, or controller address into the scan contract.
+## FieldWiring Deep-Link Contract
 
-### Display action menu
-
-The Display hub currently queries the resolved Display and then renders its actions directly in server-generated HTML.
-
-Current actions are:
-
-- **Open Display Record**;
-- Testing action/status;
-- **Open Container**;
-- **Open Work Orders** when active Work Orders exist.
-
-The Testing button is state-aware and may be enabled or disabled based on current season/container test-session state.
-
-### Existing downstream independence
-
-The existing Test, Container, and Work Order routes each perform their own required database lookup after navigation.
-
-FieldWiring must not be inserted into those routes or become a prerequisite for them.
-
-Required failure boundary:
-
-> If FieldWiring is unavailable, Display Record, Testing, Container, Work Order, and other existing scan functions remain usable.
-
-## Verified FieldWiring Display Contract
-
-The originally conceptual route:
-
-```text
-/fieldwiring/?display_id=<display_id>
-```
-
-is **not** the current direct-entry contract.
-
-The FieldWiring landing page does not consume `display_id` from its own query string. The wiring page does.
-
-Current direct Display route:
+The accepted direct Display route is:
 
 ```text
 /fieldwiring/wiring.html?display_id=<permanent display_id>
 ```
 
-The wiring page forwards `display_id` to the FieldWiring API. The backend then resolves the current Display context from PostgreSQL and derives the applicable Stage/Preview/Scene context.
-
-FieldWiring deliberately validates any supplied context against the Display-resolved context, so the scan hub should pass **only** the permanent Display ID.
-
-Do not pass:
-
-- Stage ID/key;
-- Preview UUID/name;
-- Scene UUID/name;
-- LOR Prop UUID;
-- controller address;
-- Google Drive path;
-- FieldWiring import/snapshot ID.
-
-## Approved Additive Integration Shape
-
-The smallest safe change to the current Display hub is one additional independent action:
+The older conceptual route:
 
 ```text
-Field Wiring
-    -> /fieldwiring/wiring.html?display_id=<display.display_id>
+/fieldwiring/?display_id=<display_id>
 ```
 
-The scan hub should not perform a FieldWiring health/API call merely to render this button.
+is not the direct wiring-entry contract.
 
-The Field Wiring action should be generated only from the already-resolved `display.display_id`.
+FieldWiring receives the permanent Display ID, resolves current Stage/Preview/Scene context from PostgreSQL, and owns its own wiring-availability behavior.
 
-No schema change is required for this integration.
+## Public Routing Discovery and Correction
 
-No FieldWiring backend change is required merely to support this link.
+During production acceptance, the Directus endpoint was healthy internally but the public `/scan/` path returned the Synology/WebStation 404 page.
 
-No physical QR change is required.
-
-## Source-Control Recovery Gap
-
-The deployed `package.json` declares:
+Isolation proved:
 
 ```text
-source: src/index.js
-path:   dist/index.js
+msb-prod-db Directus http://127.0.0.1:8055/scan/       -> HTTP 200
+Synology direct https://my.sheboyganlights.org/scan/   -> HTTP 404
+Synology direct /fieldwiring/                           -> HTTP 200
 ```
 
-but the live production extension contains no `src/` directory.
+The missing layer was the Synology nginx/WebStation route. Server Management added an explicit protected-site proxy preserving the `/scan/...` path to Directus on `192.168.5.9:8055`.
 
-This means the current accepted scan implementation is effectively a built-only server artifact.
-
-Because Setup/Deployment is expected to add substantial Container/Location scanning later, continuing to evolve the scan platform only through manual `/opt/.../dist/index.js` edits would create an unacceptable recovery/documentation risk.
-
-### Required direction
-
-Recover the current accepted scan implementation into a Git-controlled application source/deployment boundary before substantial scan-platform expansion.
-
-The application/business source belongs with the Production Database project because it implements Production Database asset identity and workflow routing. `MSB-Server-Management` owns the deployed path, Directus reload/recovery procedure, runtime hashes, and rollback.
-
-### FieldWiring scope rule
-
-Do **not** use this source-recovery requirement as an excuse to redesign the entire scan extension before adding Field Wiring.
-
-The FieldWiring integration should remain a minimal additive change after the current implementation is safely preserved/recovered.
-
-Broader internal scan-platform structure should be derived from the actual Setup/Deployment workflow rather than invented prematurely.
-
-## Future Setup/Deployment Compatibility
-
-FieldWiring is the first new controlled task integration, but upcoming Setup/Deployment work is expected to require much heavier scanning.
-
-Likely durable identities remain:
+Accepted public behavior after reload:
 
 ```text
-DISP:<permanent display_id>
-CONT:<permanent container_id>
-LOC:<operational storage/location code>
+/scan/  -> HTTP 200
+/scan   -> HTTP 301 -> /scan/
 ```
 
-Physical labels must remain durable asset/location identifiers. They must not encode annual setup dates, loads, Stage assignments, application-specific URLs, or transient workflow state.
+The exact nginx configuration path, backup, and reload evidence are owned by `Gregovate/MSB-Server-Management`.
 
-Future Setup work may require scan-session behavior such as:
+## Production Acceptance Evidence
 
-```text
-Container -> Location
-Location -> Container
-```
+Accepted checks completed during the deployment:
 
-plus pull/staging/load/delivery confirmations.
-
-Those workflows are **not** being implemented as part of the FieldWiring action. The current requirement is to preserve a scan architecture that can accept them additively later.
-
-After FieldWiring Scan Integration closes, Setup/Deployment engineering should reconstruct the real setup-day process before deciding whether the current one-file route implementation should be refactored into shared asset resolvers, action definitions, scan-session state, or transaction handlers.
-
-## Implementation Safety Gate
-
-Before changing production:
-
-1. Preserve/recover the accepted current scan implementation in Git-controlled source or an explicitly controlled recovery artifact.
-2. Verify the live `dist/index.js` SHA-256 still matches the accepted pre-change baseline.
-3. Capture a new rollback copy of the current camera-enabled `dist/index.js`.
-4. Record the backup path/hash in the Server Management change record.
-5. Make only the Field Wiring additive action change.
-6. Restart/reload Directus using the documented Server Management procedure.
-7. Verify every existing scan route/function.
-8. Verify the new Field Wiring route with a real permanent Display QR.
-9. Confirm a FieldWiring outage does not disable existing scan functions.
-10. Update both repository handoffs before considering the integration complete.
-
-## Acceptance Matrix
-
-At minimum verify:
-
-| Test | Required result |
+| Test | Result |
 |---|---|
-| `/scan/` | Opens normally |
-| Camera scan | Existing camera behavior preserved |
-| Manual `DISP:<id>` | Resolves same Display |
-| Existing Display QR | Opens existing Display hub |
-| Display Record | Still opens |
-| Testing | Existing state/route behavior preserved |
-| Assigned Container | Still opens |
-| Unassigned Container | Existing no-container behavior preserved |
-| Work Orders = 0 | Existing disabled/no-open-work behavior preserved |
-| Work Orders = 1 | Existing direct-open behavior preserved |
-| Work Orders > 1 | Existing selection behavior preserved |
-| Unknown Display | Existing not-found behavior preserved |
-| Field Wiring | Opens `/fieldwiring/wiring.html?display_id=<id>` |
-| FieldWiring unavailable | Existing scan actions still operate |
-| FieldWiring Display with no current wiring | FieldWiring owns and displays its own unavailable/error behavior; scan hub remains healthy |
+| Directus JavaScript syntax check | PASS |
+| Directus restart | PASS |
+| Extension load | PASS — `directus-extension-scan` loaded |
+| Internal `/scan/` | PASS — HTTP 200 |
+| Public Synology `/scan/` | PASS — HTTP 200 |
+| Public `/scan` no-slash redirect | PASS — HTTP 301 to `/scan/` |
+| Manual Display navigation | PASS |
+| Field Wiring action rendered | PASS |
+| Permanent `display_id` handoff | PASS |
+| FieldWiring resolution | PASS — `TC-ChristmasHippo` resolved to current Background/Static context and field-hookup data |
+| Phone camera initialization | PASS — live camera preview and Stop Camera control displayed |
+| Post-restart live artifact hash | PASS — `e17ea51e...2114df0` |
+
+The operator accepted the deployment after these checks.
+
+### Explicitly deferred / not claimed as tested
+
+The following were not exercised during this acceptance session and must not be retroactively marked PASS:
+
+- physical QR decode, because no QR label was available at the test location;
+- full Display Record click-through regression;
+- full Testing state matrix;
+- assigned/unassigned Container matrix;
+- Work Orders 0 / 1 / >1 matrix;
+- unknown Display behavior;
+- FieldWiring-unavailable failure-boundary test;
+- FieldWiring Display with no current wiring.
+
+These remain regression cases for the next suitable scan acceptance session. The FieldWiring code change itself was additive and did not alter the camera, Testing, Container, Work Order, or unknown-Display code paths.
+
+## Failure Boundary
+
+The required architecture remains:
+
+> If FieldWiring is unavailable, Display Record, Testing, Container, Work Order, and other existing scan functions remain usable.
+
+Do not add a FieldWiring health/API dependency to the Display hub merely to render the Field Wiring button.
 
 ## Repository Ownership
 
@@ -281,40 +203,48 @@ At minimum verify:
 
 - permanent Display/Container/Location identity contracts;
 - scan payload rules;
-- scan action/business behavior;
-- Testing, Work Order, Container, FieldWiring, Setup/Deployment integration contracts;
+- scan application/business source under `Scan/directus-extension-scan/`;
+- Testing, Work Order, Container, FieldWiring, and future Setup/Deployment scan behavior;
 - FieldWiring `display_id` deep-link contract;
-- future scan-session/workflow business rules;
-- Git-controlled scan application source when recovered.
+- future scan-session/workflow business rules.
 
 ### MSB-Server-Management owns
 
-- `/opt/directus/extensions/directus-extension-scan/` runtime record;
+- `/opt/directus/extensions/directus-extension-scan/` deployed runtime;
 - Directus container/image/mount relationship;
-- runtime hashes;
+- production runtime hashes;
 - deployment/restart procedure;
 - backup/rollback/recovery process;
-- FieldWiring systemd/mount/proxy runtime;
-- infrastructure changes required by an accepted scan integration.
+- Synology/WebStation reverse-proxy route for `/scan/`;
+- FieldWiring service/mount/proxy runtime.
 
-Do not duplicate either repository's owned material into the other. Cross-link the responsible documents.
+A production application running on `msb-prod-db` does not automatically become Server Management source. Application behavior stays with its owning application/database repository; runtime hosting stays with Server Management.
 
-## Current Stop Point / Resume Development
+## Future Setup/Deployment Compatibility
 
-As of this handoff:
+This integration intentionally did not redesign the scan platform.
 
-- FieldWiring production deployment is accepted;
-- Display and phone acceptance are complete;
-- the current scan runtime has been reconstructed sufficiently for the FieldWiring action;
-- current production `dist/index.js` and package hashes are recorded;
-- the missing deployed `src/` source boundary is identified;
-- no Field Wiring scan action has been deployed;
-- no Directus restart has been performed for this integration;
-- no schema change is required or approved.
+Likely durable scan identities remain:
 
-Resume by preserving/recovering the accepted current scan implementation into the responsible Git-controlled source boundary, then make the minimal Field Wiring action change and run the acceptance matrix above.
+```text
+DISP:<permanent display_id>
+CONT:<permanent container_id>
+LOC:<operational storage/location code>
+```
 
-After Scan Integration is accepted and both repository handoffs are closed, start the separate Setup/Deployment engineering work from its current README and reconstruct the actual Container/Location setup workflow before designing schema or scan-session behavior.
+Physical labels must remain durable asset/location identifiers and must not encode annual setup dates, loads, Stage assignments, application-specific URLs, or transient workflow state.
+
+The next Setup/Deployment engineering work should reconstruct the real Container/Location setup workflow before deciding whether the current route implementation needs shared asset resolvers, scan-session state, transaction handlers, or other refactoring.
+
+## Current Stop Point / Next Project
+
+**FieldWiring Scan Integration is accepted production work.**
+
+No further Scan/FieldWiring code change is required to close this sub-project.
+
+Remaining deferred regression cases can be exercised when appropriate without reopening the architecture unless they reveal a defect.
+
+The next major Production Database work may proceed to the separate Setup/Deployment engineering project using the established scan identity and repository ownership boundaries.
 
 ## Related Documents
 
@@ -325,4 +255,4 @@ After Scan Integration is accepted and both repository handoffs are closed, star
 - [Wiring System](../09_Wiring_System/README.md)
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 - [MSB-Server-Management — Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/agent/scan-fieldwiring-runtime-integration/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md)
-- [MSB-Server-Management — FieldWiring Production Runtime](https://github.com/Gregovate/MSB-Server-Management/blob/agent/scan-fieldwiring-runtime-integration/docs/server/FieldWiring_Production_Runtime.md)
+- [MSB-Server-Management — Directus Restart Procedure](https://github.com/Gregovate/MSB-Server-Management/blob/agent/scan-fieldwiring-runtime-integration/docs/directus/Directus_Restart_Procedure.md)
