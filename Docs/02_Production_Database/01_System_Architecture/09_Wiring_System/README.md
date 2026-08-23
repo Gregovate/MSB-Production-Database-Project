@@ -153,7 +153,7 @@ SourceDocs                                  excluded / no marker
 
 The marker on `Wiring` guards the selected `BackgroundStage` or `MusicalStage` child branch. The production FieldWiring implementation already matches this contract; no child-marker code change is required.
 
-The Procedure system uses the same subsystem-root marker pattern: the resolved Stage/Sub-stage/Scene root and `Procedures` are marked; the fixed `Inspection`, `Setup`, and `Takedown` child branches and task-local `images` folders do not require separate markers. This Procedure contract does not change FieldWiring's Wiring behavior.
+The future Procedure system has a separate deeper marker contract for `Procedures`, task branches, and Setup/Takedown `images`. Do not project that Procedure rule onto FieldWiring child Wiring branches.
 
 Production server access to the Google hierarchy is provided through the persistent read-only Display Folders filesystem documented by MSB-Server-Management.
 

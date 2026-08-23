@@ -201,7 +201,7 @@ The common resolver owns **which structured root applies**.
 
 The task adapter owns **what to do with that root**.
 
-This is important because Wiring and Procedures are different tasks. FieldWiring must not import Procedure presentation, publication, or task-fallback rules merely because both applications use the same hierarchy resolver.
+This is important because Wiring and Procedures are different tasks. FieldWiring must not import a Procedure-style parent fallback rule or Procedure child-marker rule merely because both use the same hierarchy resolver.
 
 Procedure presentation/availability is governed separately and is not part of the FieldWiring wiring-image fallback contract.
 
@@ -411,7 +411,7 @@ Stage 07 cases demonstrated that generic Stage `PreviewBackground` images also m
 
 The shared hierarchy resolver can also support Setup/Takedown/Inspection discovery, but Procedure behavior is separately governed.
 
-The Procedure system uses a marked `Procedures` subsystem root beneath the already-marked Stage/Sub-stage/Scene scope. The fixed `Inspection`, `Setup`, and `Takedown` child branches, including task-local `images` folders, do **not** require separate marker files. Those Procedure rules do not change FieldWiring's `Wiring` / `BackgroundStage` / `MusicalStage` behavior.
+The Procedure system has its own deeper marker contract for `Procedures`, task branches, and Setup/Takedown `images`. Those requirements do not apply to FieldWiring's `BackgroundStage` / `MusicalStage` child branches.
 
 FieldWiring should not attempt to present Procedure documents as part of its wiring-image resolution logic.
 
@@ -447,4 +447,3 @@ FieldWiring presentation acceptance additionally requires that:
 - [Shared Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [Google Drive Path Resolution Contract](../../../00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md)
 - [Google Drive Folder Structure](../../../00_Project_Overview/00-Google_Drive.md)
-- [Procedure System Field Context Handoff](../12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
