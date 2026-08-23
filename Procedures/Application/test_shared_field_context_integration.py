@@ -117,7 +117,7 @@ def test_missing_setup_pdf_reports_exact_operator_folder(tmp_path):
     assert result["operator_warnings"]
     warning = result["operator_warnings"][0]
     assert "Setup procedure" in warning
-    assert r"Procedures\Setup" in warning
+    assert "Procedures/Setup" in warning.replace("\\", "/")
     assert "TASK_CONTENT_NOT_FOUND" not in warning
 
 
@@ -147,4 +147,5 @@ def test_task_adapters_choose_exact_procedure_branch(tmp_path):
         )
         assert result["status"] == "TASK_UNAVAILABLE"
         assert result["operator_warnings"]
-        assert f"Procedures\\{task}" in result["operator_warnings"][0]
+        warning = result["operator_warnings"][0].replace("\\", "/")
+        assert f"Procedures/{task}" in warning
