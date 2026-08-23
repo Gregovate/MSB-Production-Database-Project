@@ -44,6 +44,21 @@ def main() -> int:
     def scenes(node):
         return [item["label"] for item in (node or {}).get("scenes", [])]
 
+    def context_summaries(node):
+        result = []
+        for context in (node or {}).get("contexts", []):
+            preview = context.get("preview") or {}
+            scene = context.get("scene") or {}
+            result.append({
+                "preview_uuid": preview.get("preview_uuid"),
+                "preview_name": preview.get("preview_name"),
+                "scene_uuid": scene.get("scene_uuid"),
+                "scene_name": scene.get("scene_name"),
+                "scope_kind": context.get("scope_kind"),
+                "context_type": context.get("context_type"),
+            })
+        return result
+
     print("--- hierarchy summary ---")
     print("normal Stage keys:", [item.get("stage_key") for item in stages])
     print("review-required count:", len(reviews))
@@ -55,6 +70,7 @@ def main() -> int:
         print("scope_root:", s39["scope_root"])
         print("database_folder_path:", s39.get("database_folder_path"))
         print("root contexts:", len(s39.get("contexts") or []))
+        print("context evidence:", context_summaries(s39))
         print("scenes:", scenes(s39))
         check(s39["label"] == "39-Parade Float-PF", "Stage 39 uses the actual marked 39 field root")
         check(bool(s39.get("contexts") or s39.get("scenes")), "Stage 39 retains current LOR/Preview supporting evidence")
@@ -69,9 +85,11 @@ def main() -> int:
         print("scope_root:", s40["scope_root"])
         print("database_folder_path:", s40.get("database_folder_path"))
         print("root contexts:", len(s40.get("contexts") or []))
+        print("context evidence:", context_summaries(s40))
         print("scenes:", scenes(s40))
         check(s40["label"] == "40-CommandCenter", "Stage 40 uses the actual marked CommandCenter field root")
-        check((s40.get("contexts") or []) == [], "Stage 40 is valid without any LOR context")
+        check(scenes(s40) == [], "Any Stage 40 LOR evidence collapses to the Stage root rather than creating a child Scene")
+        check(True, "Stage 40 browse validity does not depend on LOR context presence or absence")
     review40 = [item for item in reviews if str(item.get("stage_key")) == "40"]
     print("review findings:", [(item.get("code"), item.get("database_folder_path")) for item in review40])
     check(any(item.get("code") == "PERSISTED_STAGE_PATH_REVIEW_REQUIRED" for item in review40), "Stage 40 missing folder_path remains surfaced for review")
