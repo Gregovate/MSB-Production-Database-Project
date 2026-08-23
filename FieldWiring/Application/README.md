@@ -1,6 +1,6 @@
 # FieldWiring Application
 
-Status: **production-operational — Display scan integration accepted**
+Status: **production-operational — shared resolver architecture accepted; extraction deployment pending**
 
 This folder contains the browser-based FieldWiring application.
 
@@ -23,8 +23,16 @@ Accepted production state:
 - existing Display Scan hub exposes the independent **Field Wiring** action;
 - FormView remains available as fallback/reference.
 
+Accepted engineering state:
+
+- the proven Stage/Sub-stage/Scene resolver has been extracted from `wiring_images.py` into task-neutral `field_context_resolver.py`;
+- complete FieldWiring regression suite passed: `54 passed in 1.01s`;
+- a live candidate using production PostgreSQL + mounted Google files matched the production resolver output for Display `312`;
+- production deployment of the extraction is still a separate server-management step.
+
 For current engineering/recovery state, start with:
 
+- `Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Shared_Structured_Scope_Resolver_Extraction_2026-08-22.md`
 - `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md`
 - `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md`
 - `Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/README.md`
@@ -73,8 +81,13 @@ wiring_dumbrgb.py
 wiring_e131.py
     reviewed temporary E1.31 physical controller/output mappings
 
+field_context_resolver.py
+    task-neutral marked Stage/Sub-stage/Scene structured-scope resolver
+    shared infrastructure for FieldWiring and future Procedure callers
+
 wiring_images.py
-    guarded same-scope image resolver and image delivery
+    FieldWiring adapter after scope resolution
+    selects Wiring branch, enumerates wiring/context images, and safely serves images
 
 fieldwiring.js
     Display/Stage lookup landing page
@@ -98,6 +111,31 @@ wiring_workspace_focus.js
 wiring_workspace_focus.css
     shared image + Field Hookup desktop/laptop workspace
 ```
+
+## Shared Structured-Scope Boundary
+
+`field_context_resolver.py` owns only the common hierarchy decision:
+
+```text
+current Stage / Scene / Preview facts
+    + controlled path evidence
+    + marked Display Folders hierarchy
+        -> fixed marked Stage/Sub-stage/Scene scope_root
+```
+
+It preserves the production resolver behavior for path translation, marked-root validation, stale-path recovery, bounded Scene matching, ambiguity rejection, `SourceDocs` protection, and visible warning behavior.
+
+After that common result is fixed, `wiring_images.py` owns the FieldWiring-specific branch:
+
+```text
+scope_root
+    -> Wiring/MusicalStage
+       OR Wiring/BackgroundStage
+    -> direct wiring images
+    -> same-scope PreviewBackground context when allowed
+```
+
+Future Procedure work must consume `field_context_resolver.resolve_structured_scope(...)` as a second caller rather than copy the resolver algorithm or reuse FieldWiring's Wiring-specific adapter.
 
 ## Current Presentation Families
 
@@ -177,7 +215,7 @@ SourceDocs                                 excluded / no marker
 
 The marker on `Wiring` guards the selected `BackgroundStage` or `MusicalStage` child branch.
 
-`wiring_images.py` already matches this contract: it checks the resolved structural root, the `Wiring` root, and a controlled `PreviewBackground` when applicable. There is no FieldWiring child-marker enforcement gap.
+`field_context_resolver.py` validates the structured root; `wiring_images.py` then checks the `Wiring` root and controlled `PreviewBackground` when applicable. There is no FieldWiring child-marker enforcement gap.
 
 The future Procedure system has a separate deeper marker contract. Do not add separate markers to production `BackgroundStage` / `MusicalStage` folders merely to imitate Procedure task/image marker rules.
 
@@ -269,6 +307,8 @@ Do not copy secrets or protected runtime configuration into either repository.
 
 FieldWiring Scan Integration is closed as accepted production work.
 
+The shared structured-scope resolver extraction is architecture accepted and awaiting its controlled production checkout/service update.
+
 Separate future work includes:
 
 - Controller Inventory replacement of temporary E1.31 presentation mappings;
@@ -279,6 +319,6 @@ Separate future work includes:
 
 ## Resume Development
 
-Before further FieldWiring application changes, read the current Wiring and Scan handoffs and refresh from current `main`.
+Before further FieldWiring application changes, read the current Wiring/Scan handoffs plus `FieldWiring_Shared_Structured_Scope_Resolver_Extraction_2026-08-22.md` and refresh from current `main`.
 
-The next major Production Database project is Setup/Deployment. Its expected high-volume Container/Location scanning should be designed from the actual setup-day workflow rather than by refactoring FieldWiring-specific code prematurely.
+Procedure engineering may now consume the accepted shared resolver as a second caller. It must not create an independent Display/Stage/Scene resolver or copy `wiring_images.py` task behavior.
