@@ -73,11 +73,29 @@ def _build_fixture(tmp_path: Path):
     current_image = images / "step-01.jpg"
     current_image.write_bytes(b"current-image")
 
+    substage_root = stage_root / "25a-Inner Arches-IA"
+    substage_root.mkdir()
+    _mark(substage_root)
+    substage_procedures = substage_root / "Procedures"
+    substage_procedures.mkdir()
+    _mark(substage_procedures)
+    substage_setup = substage_procedures / "Setup"
+    substage_setup.mkdir()
+    (substage_setup / "Inner Arches Setup.pdf").write_bytes(b"substage-pdf")
+
     stage = {
         "stage_id": 55,
         "stage_key": "25",
         "stage_name": "RGB Plus Stage 25 Racing Arches Traditional",
         "folder_path": str(stage_root),
+    }
+    substage = {
+        "stage_id": 56,
+        "stage_key": "25a",
+        "stage_name": "Inner Arches",
+        # Deliberately missing to prove the shared hierarchy root survives into
+        # Procedure browse instead of falling back to stale persisted metadata.
+        "folder_path": None,
     }
 
     second_context_a = {
@@ -130,7 +148,10 @@ def _build_fixture(tmp_path: Path):
             "contexts": [second_context_a, second_context_b],
         },
     }
-    stages = [{"stage": stage, "contexts": []}]
+    stages = [
+        {"stage": stage, "contexts": []},
+        {"stage": substage, "contexts": []},
+    ]
     repo = FakeFieldContextRepository(displays=displays, stages=stages)
     return root, repo, current_pdf, current_image
 
@@ -173,6 +194,28 @@ def test_display_context_uses_shared_context_contract(client):
     assert context["contexts"] == []
 
 
+def test_stage_browse_uses_resolved_shared_hierarchy_contract(client):
+    test_client, *_ = client
+    response = test_client.get("/api/stages")
+    assert response.status_code == 200
+    stages = response.get_json()["stages"]
+    assert len(stages) == 1
+    stage = stages[0]
+    assert stage["stage_id"] == 55
+    assert stage["stage_key"] == "25"
+    assert stage["label"] == "25-Racing Arches-RA"
+    assert "scope_root" not in stage
+    assert "database_folder_path" not in stage
+    assert stage["scenes"] == []
+    assert len(stage["sub_stages"]) == 1
+    substage = stage["sub_stages"][0]
+    assert substage["stage_id"] == 56
+    assert substage["stage_key"] == "25a"
+    assert substage["label"] == "25a-Inner Arches-IA"
+    assert substage["scope_type"] == "SUBSTAGE"
+    assert "scope_root" not in substage
+
+
 def test_missing_display_context_returns_404(client):
     test_client, *_ = client
     response = test_client.get("/api/displays/9999/context")
@@ -202,6 +245,29 @@ def test_stage_whole_stage_browse_resolves_current_setup(client):
     assert result["status"] == "AVAILABLE"
     assert result["trigger"]["type"] == "STAGE_BROWSE"
     assert result["selected_context"] is None
+
+
+def test_substage_whole_scope_uses_resolved_hierarchy_root_when_persisted_path_is_missing(client):
+    test_client, *_ = client
+    response = test_client.get(
+        "/api/procedures?stage_id=56&task=Setup&whole_stage=true"
+    )
+    assert response.status_code == 200
+    result = response.get_json()["procedure"]
+    assert result["status"] == "AVAILABLE"
+    assert result["trigger"]["stage_key"] == "25a"
+    assert [item["name"] for item in result["documents"]] == [
+        "Inner Arches Setup.pdf"
+    ]
+
+
+def test_stage_browse_rejects_raw_non_hierarchy_scene_context(client):
+    test_client, *_ = client
+    response = test_client.get(
+        "/api/procedures?stage_id=55&task=Setup&preview_uuid=preview-a&scene_uuid=scene-a"
+    )
+    assert response.status_code == 400
+    assert "current defined field Scene" in response.get_json()["error"]
 
 
 def test_multiple_shared_contexts_are_returned_for_browser_choice(client):
