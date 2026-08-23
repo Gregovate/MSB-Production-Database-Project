@@ -2,18 +2,19 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT ENGINEERING HANDOFF — production deployment of shared DB context pending |
-| Shared DB-context branch | `agent/shared-field-context-database-layer` |
-| Accepted candidate | `c56df80055a80cff6ff497538f1e8f6a892c8bf2` |
-| Procedure branch | `feature/setup-takedown-procedures` — remain paused until production acceptance |
+| Status | **CURRENT ENGINEERING HANDOFF — shared database context production accepted; Procedure gate cleared** |
+| Shared DB-context implementation | `FieldWiring/Application/field_context_repository.py` |
+| Merge PR | `#37` |
+| Production deployment commit | `decb4eb7030a35bab3fc2e778fcf271463044044` |
+| Procedure branch | `feature/setup-takedown-procedures` — refresh/rebase onto current `main` before resuming |
 
 ## Why this handoff exists
 
 Procedure browser engineering correctly reused the production-accepted filesystem resolver, but exposed a remaining upstream coupling: permanent Display ID -> current Stage/Scene/Preview relationship resolution was still embedded in FieldWiring's `repository.py` and subject to Wiring-specific eligibility filters.
 
-That is not an acceptable shared boundary for Procedures. A valid inventory Display may need Setup/Takedown documentation even when it has no controller/channel assignment and therefore no FieldWiring package.
+That was not an acceptable shared boundary for Procedures. A valid inventory Display may need Setup/Takedown documentation even when it has no controller/channel assignment and therefore no FieldWiring package.
 
-This handoff records the new shared database-context layer that must be used when Procedure engineering resumes.
+That gap is now closed and production accepted.
 
 ## Canonical shared database context
 
@@ -31,7 +32,7 @@ The production-accepted filesystem resolver remains:
 FieldWiring/Application/field_context_resolver.py
 ```
 
-The combined common chain is:
+The common chain is now:
 
 ```text
 DISP:<display_id> / manual Display / Stage / Scene entry
@@ -61,9 +62,9 @@ Procedures
     owns current Setup/Takedown/Inspection documentation
 ```
 
-Therefore an inventory-only steel arch can be a valid Procedure entry even when FieldWiring correctly reports no applicable wiring.
+Therefore an inventory-only steel arch is a valid Procedure entry even when FieldWiring correctly reports no applicable wiring.
 
-## Real acceptance fixture
+## Real production acceptance fixture
 
 Production Display:
 
@@ -82,7 +83,7 @@ scene_name   25-Racing Arches-RA
 preview      2026 Master Musical Preview v6.6.10 2026-08-20
 ```
 
-The unchanged shared filesystem resolver then returned:
+The unchanged shared filesystem resolver returned:
 
 ```text
 scope_type = SCENE
@@ -100,23 +101,55 @@ FieldWiring direct     -> No applicable field wiring is available for this Displ
 
 This is the required distinction between **valid field context** and **task availability**.
 
-## Regression evidence
+## Acceptance evidence
 
-Complete FieldWiring + shared-context candidate suite:
+Detached candidate regression:
 
 ```text
 64 passed in 2.04s
 ```
 
-Normal wired Display `312` was also compared against the unchanged production FieldWiring API and remained equivalent at the resolver/image boundary.
+Normal wired Display `312` remained equivalent to the unchanged production FieldWiring API before merge.
 
-## Procedure resume rule
+After PR `#37` merged, production `/opt/fieldwiring` was advanced to:
 
-Do not resume substantive Procedure browser/database orchestration until this shared database-context layer is merged and production accepted.
+```text
+decb4eb7030a35bab3fc2e778fcf271463044044
+```
 
-After production acceptance, resume `feature/setup-takedown-procedures` by refreshing/rebasing it onto current `main` and replacing any planned FieldWiring-repository dependency with the canonical shared context repository.
+Production regression and service verification:
 
-Preserve the already accepted Procedure second-caller boundary:
+```text
+64 passed in 2.05s
+fieldwiring.service = active
+{"data_mode":"postgres","status":"ok","version":"V0.2.0"}
+```
+
+Post-deployment checks:
+
+```text
+DISPLAY 807 FIELDWIRING TASK SEPARATION: PASS
+DISPLAY 807 SHARED FIELD CONTEXT: PASS
+DISPLAY 312 FIELDWIRING POST-DEPLOY: PASS
+Shared Field Context database layer: DEPLOYED AND VERIFIED
+```
+
+The shared database-context layer is therefore **production accepted**.
+
+## Procedure resume rule — Gate cleared
+
+The previous pause is now cleared.
+
+Before substantive Procedure browser/database orchestration resumes:
+
+1. refresh/fetch current `main`;
+2. rebase or deliberately merge `feature/setup-takedown-procedures` onto current `main`;
+3. preserve the already accepted Procedure second-caller filesystem adapter work;
+4. use the canonical shared `field_context_repository` for permanent Display/Stage/Scene/Preview facts;
+5. pass those facts into the unchanged `field_context_resolver.resolve_structured_scope(...)`;
+6. keep Procedure task/document discovery downstream.
+
+Preserve this architecture:
 
 ```text
 shared DB context
@@ -132,7 +165,7 @@ Do not:
 - copy FieldWiring SQL into Procedures;
 - redesign `resolve_structured_scope(...)`;
 - create a second Stage/Scene filesystem resolver;
-- create new schema merely to support this first shared read path.
+- create new schema merely to support this shared read path.
 
 ## Related documents
 
