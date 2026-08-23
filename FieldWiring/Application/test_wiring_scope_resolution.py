@@ -36,7 +36,9 @@ def test_no_distinct_scene_folder_retains_stage_scope(tmp_path, monkeypatch):
     assert result["scope_type"] == "STAGE"
     assert result["scope_root"] == str(stage_root)
     assert [image["name"] for image in result["wiring_images"]] == ["church.png"]
-    assert any("stage root retained" in warning.lower() for warning in result["warnings"])
+    assert result["warnings"] == [
+        "No distinct Scene folder matched the current Scene identity; known marked Stage root retained as the FieldWiring scope."
+    ]
 
 
 def test_direct_wiring_pointer_resolves_stage_owner_while_context_selects_branch(tmp_path, monkeypatch):
@@ -57,18 +59,23 @@ def test_direct_wiring_pointer_resolves_stage_owner_while_context_selects_branch
     assert musical_result["scope_type"] == "STAGE"
     assert musical_result["scope_root"] == str(stage_root)
     assert [image["name"] for image in musical_result["wiring_images"]] == ["church.png"]
+    assert musical_result["warnings"] == [
+        "BackgroundFile points directly into the current Stage Wiring branch; the marked Stage root is the FieldWiring documentation scope."
+    ]
 
     background_result = resolve_images(stage, scene, preview, "Background / Static")
     assert background_result["scope_type"] == "STAGE"
     assert background_result["scope_root"] == str(stage_root)
     assert [image["name"] for image in background_result["wiring_images"]] == ["church-background.png"]
+    assert background_result["warnings"] == musical_result["warnings"]
 
 
 def test_unmarked_matching_scene_does_not_fall_back_to_stage(tmp_path, monkeypatch):
     root = tmp_path / "Display Folders"
     root.mkdir()
     stage_root = _stage(root)
-    (stage_root / "15-Church-CH").mkdir()
+    scene_root = stage_root / "15-Church-CH"
+    scene_root.mkdir()
     monkeypatch.setenv("FIELDWIRING_DRIVE_ROOT", str(root))
 
     result = resolve_images(
@@ -81,4 +88,22 @@ def test_unmarked_matching_scene_does_not_fall_back_to_stage(tmp_path, monkeypat
     assert result["scope_type"] == "UNRESOLVED"
     assert result["scope_root"] is None
     assert result["wiring_images"] == []
-    assert any("not an approved marked source root" in warning.lower() for warning in result["warnings"])
+    assert result["warnings"] == [
+        "Matching Scene folder exists but is not an approved marked source root: "
+        + str(scene_root)
+    ]
+
+
+def test_wiring_images_delegates_structured_scope_to_shared_component():
+    source = (Path(__file__).resolve().parent / "wiring_images.py").read_text(encoding="utf-8")
+
+    assert "from field_context_resolver import resolve_structured_scope" in source
+    assert "resolve_structured_scope(" in source
+    assert "branch = \"MusicalStage\"" in source
+    assert "scope_root / \"Wiring\" / branch" in source
+
+    assert "def _resolve_scope_root" not in source
+    assert "def _canonical_scene_names" not in source
+    assert "def _bounded_scope_matches" not in source
+    assert "def _recover_stage_root" not in source
+    assert "def _truncate_before_sourcedocs" not in source
