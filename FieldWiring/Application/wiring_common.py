@@ -7,14 +7,15 @@ import re
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from field_context_resolver import (
+    DEFAULT_WINDOWS_DRIVE_ROOT,
+    MARKER_NAME,
+    SKIP_SCOPE_SEARCH,
+)
+
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
-MARKER_NAME = "_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt"
-DEFAULT_DRIVE_ROOT = r"G:\Shared drives\Display Folders"
+DEFAULT_DRIVE_ROOT = DEFAULT_WINDOWS_DRIVE_ROOT
 DEFAULT_TIMEZONE = "America/Chicago"
-SKIP_SCOPE_SEARCH = {
-    "wiring", "procedures", "photos", "previewbackground", "sourcedocs",
-    "archive", "archived", "design archive",
-}
 
 
 class WiringError(RuntimeError):
