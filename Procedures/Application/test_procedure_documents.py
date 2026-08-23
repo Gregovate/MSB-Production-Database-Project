@@ -191,3 +191,33 @@ def test_scene_scope_from_shared_resolver_controls_procedure_branch(tmp_path):
     assert result["scope_type"] == "SCENE"
     assert result["scope_root"] == str(scene_root)
     assert [item["name"] for item in result["documents"]] == ["Nativity Setup.pdf"]
+
+
+def test_scene_fallback_warning_names_expected_windows_procedure_path(tmp_path):
+    root = tmp_path / "Display Folders"
+    root.mkdir()
+    stage_root = _stage(root)
+    setup = _procedures(stage_root) / "Setup"
+    setup.mkdir()
+    (setup / "Church Setup.pdf").write_bytes(b"pdf")
+
+    stage = {
+        "stage_key": "15",
+        "stage_name": "Church Bells",
+        "folder_path": r"G:\Shared drives\Display Folders\15-Church-Bells-CH",
+    }
+    scene = {
+        "scene_name": "15-Church-CH",
+        "scene_background_file": None,
+    }
+    preview = {"preview_background_file": None}
+
+    result = resolve_procedure_documents(stage, scene, preview, "Setup", root)
+
+    assert result["status"] == "AVAILABLE"
+    assert result["scope_type"] == "STAGE"
+    assert result["warnings"] == [
+        "No Setup procedure found in "
+        r"G:\Shared drives\Display Folders\15-Church-Bells-CH\15-Church-CH\Procedures\Setup. "
+        "Using the Stage-level Setup procedure instead."
+    ]
