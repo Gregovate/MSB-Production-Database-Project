@@ -26,7 +26,7 @@ Current Setup instructions belong in the established Stage or Scene `Procedures\
 
 Legacy documents are being reconciled into the established current/archive structure through the separate document-alignment process. Do not independently move legacy documents based only on this standard.
 
-## Marker Requirement for the Future Procedure System
+## Marker Requirement for the Procedure System
 
 The standard marker is:
 
@@ -34,36 +34,35 @@ The standard marker is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-The governing rule is:
+The Procedure system uses the same subsystem-root marker pattern as FieldWiring.
 
-> **Every folder used as part of the future Procedure application's controlled path must contain the marker.**
-
-For a normal Setup path this includes:
+For a normal Procedure path, required marker locations are:
 
 ```text
 <Stage / Sub-stage / Scene root>\
 ├── marker
 └── Procedures\
     ├── marker
-    └── Setup\
-        ├── marker
-        └── images\
-            └── marker
+    ├── Inspection\
+    ├── Setup\
+    │   ├── Archive\
+    │   ├── images\
+    │   └── SourceDocs\
+    └── Takedown\
+        ├── Archive\
+        ├── images\
+        └── SourceDocs\
 ```
 
-The same rule applies to:
+`Inspection`, `Setup`, and `Takedown` are fixed application child branches selected by folder name. They do **not** require separate markers.
 
-```text
-Procedures\Inspection
-Procedures\Takedown
-Procedures\Takedown\images
-```
-
-`Setup\images` and `Takedown\images` are part of the controlled future Procedure content path and must be marked.
+`Setup\images` and `Takedown\images` are supporting child folders and do **not** require separate markers.
 
 `Archive` and `SourceDocs` are excluded source/history areas and are not normal field-presentation folders. They are not application marker targets unless a later approved design intentionally changes their role.
 
-This is the same marker principle used by FieldWiring. Wiring and Procedures remain separate tasks, but they share the rule that an application may only follow a controlled marked path.
+This mirrors the accepted FieldWiring pattern: the marker on `Wiring` guards its known `BackgroundStage` and `MusicalStage` child branches; the marker on `Procedures` guards its known `Inspection`, `Setup`, and `Takedown` child branches.
+
+Earlier 2026-08-22 wording that required markers on every Procedure task/image folder is superseded by this subsystem-root contract.
 
 See [MSB Database Source Folder Marker — Operator Procedure](../../Docs/00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) and [Google Drive Path Resolution Contract](../../Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md).
 
@@ -87,9 +86,11 @@ The preferred field experience is a simple current PDF or equivalent rendered do
 
 Where Markdown is used as the controlled template or source structure, the Markdown source remains a maintainable engineering/contributor artifact and the PDF is the field-use publication unless the project explicitly designates another source relationship.
 
-Where a Google Doc remains the editable source, the system must identify it by a durable Google document identifier rather than depending on a copied `.gdoc` shortcut file or a fragile full URL embedded throughout the system.
+Where a Google Doc remains the editable source, the system must identify it by a durable Google document identifier rather than depending on a copied `.gdoc` shortcut file or a fragile full URL embedded throughout the system when durable source/publication identity is required by that workflow.
 
 Do not allow an exported PDF, Google Doc, Markdown file, and intranet rendering to silently become competing authorities. The owning workflow must identify which representation is edited and which is published/derived.
+
+The first read-only Procedure browser is allowed to discover current published PDFs directly from the controlled current task folder after the structured scope and marked `Procedures` root are resolved. A per-document PostgreSQL registry is not an initial runtime prerequisite.
 
 ## Setup Instruction Template
 
@@ -120,9 +121,11 @@ A separate contributor/operator procedure must explain how to create, revise, ar
 
 Setup-document images must have one predictable home associated with the Setup documentation they support so contributors do not have to guess among unrelated repository or Stage image locations.
 
-For Setup-specific document assets, use the established Setup-local `images` folder. The future Procedure system treats this as part of the controlled task path, so the folder must contain the standard marker.
+For Setup-specific document assets, use the established Setup-local `images` folder.
 
 The same rule applies to the Takedown-local `images` folder.
+
+These `images` folders are known supporting children beneath the marked `Procedures` subsystem root. They do **not** require their own marker files.
 
 Do not create additional competing image folders for the same document family.
 
@@ -130,7 +133,7 @@ Reusable organization branding such as the MSB logo should come from one approve
 
 Images should appear next to the instruction step they clarify whenever practical.
 
-The exact presentation behavior for task-local images must remain aligned with the future Procedure implementation, but their folder/marker ownership is established now.
+The exact presentation behavior for task-local images must remain aligned with the Procedure implementation.
 
 ## Database Ownership and Document Resolution
 
@@ -145,14 +148,14 @@ Display QR
     -> permanent Display identity
     -> Production Database relationships
     -> applicable Stage / Scene context
-    -> controlled marked Procedure path
-    -> durable Setup document reference(s)
+    -> marked Stage/Scene root
+    -> marked Procedures subsystem root
+    -> fixed Setup/Takedown/Inspection child branch
+    -> current published field document(s)
     -> user-facing presentation
 ```
 
-The exact database field/table used to store or resolve Google document IDs, published PDF references, or other durable document references must be engineered from the current schema and approved separately. This standard does not create or approve a new schema field by itself.
-
-Do not derive document identity from a user-visible filename alone.
+The exact database field/table used to store Google document IDs, published PDF references, or other durable document references remains a separate future engineering decision if publication/history requirements justify it. This standard does not create or approve a new schema field by itself.
 
 Do not require a QR code to contain a Google Drive folder path or direct document URL. The QR identifies the asset; the system resolves the current applicable documentation.
 
@@ -193,7 +196,15 @@ Wiring has its own LOR/FieldWiring/FormView contracts and `BackgroundStage` / `M
 
 The proven reusable architectural idea is that structured system identity can resolve the correct field documentation without requiring the volunteer to understand where that documentation is stored.
 
-Both systems use controlled markers along their application paths, but each task owns its own branch and presentation behavior.
+Both systems use the same marker pattern at the application-subsystem boundary:
+
+```text
+resolved Stage/Sub-stage/Scene root -> marker
+Wiring                              -> marker
+Procedures                          -> marker
+```
+
+The known child branch names then select task-specific content without adding another marker layer.
 
 ## Navigation and Discovery
 
@@ -214,7 +225,8 @@ A contributor should be able to determine from the repository:
 The following are agreed project direction, not authorization to invent implementation details:
 
 - keep the established Stage/Scene Google Drive folder structure;
-- require the standard marker in every folder used by the future Procedure application's controlled path, including Setup/Takedown `images`;
+- require the standard marker on the resolved Stage/Sub-stage/Scene root and on the `Procedures` subsystem root;
+- do not require separate markers on `Inspection`, `Setup`, `Takedown`, or their task-local `images` folders;
 - keep `Archive` and `SourceDocs` outside normal field presentation;
 - continue legacy-document alignment through the existing Folder Alignment/document-organization work;
 - use a dedicated Stage Setup Instruction template;
@@ -223,13 +235,13 @@ The following are agreed project direction, not authorization to invent implemen
 - use Production Database identity/relationships to resolve applicable instructions;
 - use `my.sheboyganlights.org` as the normal simplified field presentation layer;
 - prefer current PDF/rendered field documents for UX when practical;
-- preserve durable external document identity rather than depending on filenames, `.gdoc` pointer files, or manually maintained direct links.
+- allow the first read-only Procedure browser to enumerate current published PDFs directly from the controlled task folder;
+- add durable per-document metadata only when a demonstrated publication/history requirement justifies it.
 
 Still unresolved and requiring engineering review:
 
-- exact Google Doc / published PDF reference storage in PostgreSQL;
 - exact current-vs-published relationship when a Google Doc and PDF both exist;
-- exact scraper/API contract used by `my.sheboyganlights.org`;
+- whether later publication/history workflows require durable Google Doc/PDF identifiers in PostgreSQL;
 - exact runtime serving/rendering behavior for task-local `images`;
 - final contributor workflow for generating/publishing PDFs from the controlled template/source.
 
@@ -241,6 +253,7 @@ Still unresolved and requiring engineering review:
 - [Google Drive Document Organization Procedure](../../Docs/00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md)
 - [MSB Database Source Folder Marker — Operator Procedure](../../Docs/00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
 - [Google Drive Path Resolution Contract](../../Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md)
+- [Procedure System Field Context Handoff](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
 - [Setup and Deployment Engineering](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md)
 - [Labeling and Scanning](../../Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/README.md)
 - [Wiring System](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
