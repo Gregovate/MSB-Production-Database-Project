@@ -7,6 +7,7 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 
+from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
@@ -174,7 +175,11 @@ def api_display_context(display_id: int) -> Response:
 
 @app.get("/api/stages")
 def api_stages() -> Response:
-    return jsonify(stages=repository().stages())
+    hierarchy = build_field_hierarchy(repository().shared_stages())
+    return jsonify(
+        stages=hierarchy["stages"],
+        review_required=hierarchy["review_required"],
+    )
 
 
 @app.get("/api/wiring")
