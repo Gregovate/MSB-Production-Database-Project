@@ -34,14 +34,14 @@ def test_valid_top_level_stage_remains_normal(tmp_path):
     assert [item["stage_key"] for item in result["stages"]] == ["15"]
     assert result["stages"][0]["label"] == "15-Church-Bells-CH"
     assert not any(
-        item["code"] == "TOP_LEVEL_STAGE_BINDING_REVIEW_REQUIRED"
+        item["code"] == "PERSISTED_STAGE_PATH_REVIEW_REQUIRED"
         for item in result["review_required"]
     )
 
 
-def test_conflicting_top_level_stage_path_is_review_only(tmp_path):
+def test_conflicting_top_level_stage_path_remains_browseable_with_review(tmp_path):
     drive = tmp_path / "Display Folders"
-    mark(drive / "39-Parade Float-PF")
+    expected = mark(drive / "39-Parade Float-PF")
     other = mark(drive / "40-Parade Float-PF")
 
     result = build_field_hierarchy(
@@ -49,25 +49,32 @@ def test_conflicting_top_level_stage_path_is_review_only(tmp_path):
         drive,
     )
 
-    assert result["stages"] == []
-    codes = [item["code"] for item in result["review_required"]]
-    assert "PERSISTED_STAGE_PATH_REVIEW_REQUIRED" in codes
-    assert "TOP_LEVEL_STAGE_BINDING_REVIEW_REQUIRED" in codes
+    assert [item["stage_key"] for item in result["stages"]] == ["39"]
+    assert result["stages"][0]["scope_root"] == str(expected)
+    assert any(
+        item["code"] == "PERSISTED_STAGE_PATH_REVIEW_REQUIRED"
+        and str(item.get("stage_key")) == "39"
+        for item in result["review_required"]
+    )
 
 
-def test_missing_top_level_stage_path_is_review_only(tmp_path):
+def test_missing_top_level_stage_path_remains_browseable_without_lor_requirement(tmp_path):
     drive = tmp_path / "Display Folders"
-    mark(drive / "40-CommandCenter")
+    expected = mark(drive / "40-CommandCenter")
 
     result = build_field_hierarchy(
         [raw_stage(40, "40", "CommandCenter-CC", None)],
         drive,
     )
 
-    assert result["stages"] == []
-    codes = [item["code"] for item in result["review_required"]]
-    assert "PERSISTED_STAGE_PATH_REVIEW_REQUIRED" in codes
-    assert "TOP_LEVEL_STAGE_BINDING_REVIEW_REQUIRED" in codes
+    assert [item["stage_key"] for item in result["stages"]] == ["40"]
+    assert result["stages"][0]["scope_root"] == str(expected)
+    assert result["stages"][0]["contexts"] == []
+    assert any(
+        item["code"] == "PERSISTED_STAGE_PATH_REVIEW_REQUIRED"
+        and str(item.get("stage_key")) == "40"
+        for item in result["review_required"]
+    )
 
 
 def test_nested_substage_with_missing_persisted_path_remains_browseable(tmp_path):
