@@ -198,6 +198,33 @@ def test_scene_child_is_derived_from_path_string_not_drive_enumeration():
     assert scenes[0]["scope_path_evidence"].endswith(r"13-Christmas Story")
 
 
+def test_background_filename_with_stage_prefix_is_not_promoted_to_scene():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                33,
+                "03",
+                "Show Background Stage 03 Welcome Area",
+                r"G:\Shared drives\Display Folders\03-Welcome Area-WA",
+                [
+                    context(
+                        "03-Welcome Area",
+                        stage_key="03",
+                        path=(
+                            r"G:\Shared drives\Display Folders\03-Welcome Area-WA"
+                            r"\PreviewBackground\03-welcome area.jpg"
+                        ),
+                    )
+                ],
+            )
+        ]
+    )
+
+    stage = result["stages"][0]
+    assert stage["scenes"] == []
+    assert [item["scene_name"] for item in stage["contexts"]] == ["03-Welcome Area"]
+
+
 def test_legacy_nested_scene_with_short_code_is_retained_when_path_proves_child():
     result = build_field_hierarchy(
         [
