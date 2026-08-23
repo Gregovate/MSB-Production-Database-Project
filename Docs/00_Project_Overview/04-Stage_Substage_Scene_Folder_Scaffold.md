@@ -73,32 +73,22 @@ Use this structure for every newly created Stage, Sub-stage, or Scene documentat
 │
 ├── Photos/
 │   ├── Current/
-│   ├── Historical/
-│   ├── Reference/
-│   ├── Setup/
-│   └── Takedown/
+│   └── Historical/
 │
 ├── Procedures/
 │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │
 │   ├── Inspection/
-│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │
 │   ├── Setup/
-│   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   ├── Archive/
 │   │   ├── images/
-│   │   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   │   └── SourceDocs/
 │   │
-│   ├── Takedown/
-│   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│   │   ├── Archive/
-│   │   ├── images/
-│   │   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│   │   └── SourceDocs/
-│   │
-│   └── SourceDocs/
+│   └── Takedown/
+│       ├── Archive/
+│       ├── images/
+│       └── SourceDocs/
 │
 └── Wiring/
     ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
@@ -109,6 +99,12 @@ Use this structure for every newly created Stage, Sub-stage, or Scene documentat
     └── MusicalStage/
         └── SourceDocs/
 ```
+
+`Procedures\Inspection` is intentionally unstructured.
+
+There is no generic `Procedures\SourceDocs` root contract. Setup and Takedown each own their own `SourceDocs` folder.
+
+Legacy `Photos\Reference`, `Photos\Setup`, and `Photos\Takedown` folders may still exist in older Stage/Scene trees, but they are not part of the current canonical scaffold. Preserve legacy content until it is deliberately reviewed; do not create those legacy folders in new scopes.
 
 `desktop.ini` or other Windows-generated metadata is not part of the controlled scaffold and does not need to be copied deliberately.
 
@@ -122,7 +118,9 @@ The standard marker filename is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-Marker placement is application-specific.
+The current field-document applications use the same basic guard pattern:
+
+> **mark the resolved structured scope, then mark the application subsystem root. The application selects controlled child branches by folder name without another marker layer.**
 
 ## FieldWiring
 
@@ -134,23 +132,30 @@ For FieldWiring, markers are required in:
 
 `Wiring\BackgroundStage` and `Wiring\MusicalStage` are **not separately marked**. The marker on the `Wiring` root guards those published child branches.
 
-## Future Procedure system
+## Procedure system
 
-For the future Procedure path represented by this scaffold, markers are required in:
+For the Procedure system, markers are required in:
 
-1. the Stage / Sub-stage / Scene root;
-2. `Procedures`;
-3. `Procedures\Inspection`;
-4. `Procedures\Setup`;
-5. `Procedures\Setup\images`;
-6. `Procedures\Takedown`; and
-7. `Procedures\Takedown\images`.
+1. the Stage / Sub-stage / Scene root; and
+2. `Procedures`.
 
-Do not copy the Procedure child-folder marker rule onto FieldWiring's `BackgroundStage` / `MusicalStage` branches.
+The controlled child branches are selected by folder name:
+
+```text
+Procedures\Inspection
+Procedures\Setup
+Procedures\Takedown
+```
+
+Those task branches do **not** require separate markers.
+
+`Procedures\Setup\images` and `Procedures\Takedown\images` are supporting child folders beneath the marked `Procedures` root and do **not** require separate markers.
 
 `SourceDocs` and `Archive` are working/history folders excluded from normal field presentation and are not field-application marker targets unless a future approved design changes their role.
 
 `Photos` is not currently part of the FieldWiring/Procedure application source path and is not marked by this scaffold.
+
+Earlier 2026-08-22 wording that required a marker in every Procedure task/image folder is superseded by this subsystem-root marker contract.
 
 See [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md).
 
@@ -201,7 +206,7 @@ Do not point a new Scene background into `SourceDocs`. Existing legacy pointers 
 
 ## Procedures
 
-Published field procedure material belongs in the applicable marked procedure branch:
+Published field procedure material belongs directly in the applicable Procedure task branch:
 
 ```text
 Procedures\Inspection
@@ -209,15 +214,24 @@ Procedures\Setup
 Procedures\Takedown
 ```
 
-The `Procedures` root and the applicable task branch must be marked under the current future-Procedure contract.
+The `Procedures` root must be marked. The `Inspection`, `Setup`, and `Takedown` child branches do **not** require their own markers.
 
-Setup/Takedown `images` folders are part of that future procedure content path and must also be marked.
+Setup/Takedown `images` folders are supporting task-local asset folders and do **not** require separate markers.
 
 `Archive` and `SourceDocs` are not normal field-facing content.
 
 ## Photos
 
 `Photos` remains general documentation and is not currently a FieldWiring/Procedure application source folder.
+
+The current canonical photo structure for a new Stage/Sub-stage/Scene is:
+
+```text
+Photos\Current
+Photos\Historical
+```
+
+Do not recreate legacy `Photos\Setup`, `Photos\Takedown`, or `Photos\Reference` folders as part of a new scaffold.
 
 ---
 
@@ -228,13 +242,16 @@ When a new Scene documentation folder is approved:
 - [ ] Confirm the Scene represents a real physical/documentation scope, not merely sequencing convenience.
 - [ ] Confirm the owning Stage or Sub-stage.
 - [ ] Name the folder using the current `NN-Scene Name` / `NNa-Scene Name` rule.
-- [ ] Create the complete scaffold, not only the one helper folder needed today.
+- [ ] Create the complete current scaffold, not only the one helper folder needed today.
 - [ ] Add the marker to the Scene root.
 - [ ] Add the marker to `PreviewBackground` when it is a current controlled source.
 - [ ] Add the marker to `Wiring`.
 - [ ] Do **not** add separate FieldWiring markers to `Wiring\BackgroundStage` or `Wiring\MusicalStage`.
-- [ ] Add the Procedure markers to `Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images` when that future application contract is being prepared/used.
+- [ ] Add the marker to `Procedures` when the Procedure subsystem is being prepared/used.
+- [ ] Do **not** add separate markers to `Procedures\Inspection`, `Procedures\Setup`, `Procedures\Takedown`, or their `images` folders.
 - [ ] Do not mark `SourceDocs` or `Archive` as normal field sources.
+- [ ] Do not create a generic `Procedures\SourceDocs` folder.
+- [ ] Do not recreate legacy `Photos\Setup`, `Photos\Takedown`, or `Photos\Reference` folders in new scopes.
 - [ ] Do not rename the standard helper folders.
 - [ ] Put new LOR background references only in approved controlled source locations.
 - [ ] Never use `SourceDocs` as a normal field-document or new LOR background endpoint.
@@ -245,7 +262,7 @@ When a new Scene documentation folder is approved:
 
 # Simple Rule
 
-> Create the complete Stage/Sub-stage/Scene scaffold immediately, then apply the marker contract for the application that consumes each branch. For FieldWiring, the guard stops at the marked `Wiring` root; do not invent child markers in `BackgroundStage` or `MusicalStage`.
+> Create the complete current Stage/Sub-stage/Scene scaffold immediately, then mark the structured scope and each application subsystem root that is actually consumed. `Wiring` guards `BackgroundStage` / `MusicalStage`; `Procedures` guards `Inspection` / `Setup` / `Takedown`. Do not add another marker layer to those fixed child branches.
 
 ---
 
@@ -255,4 +272,6 @@ When a new Scene documentation folder is approved:
 - [Google Drive Document Organization Procedure](01-Google_Drive_Document_Organization_Procedure.md)
 - [Google Drive Path Resolution Contract](02-Google_Drive_Path_Resolution_Contract.md)
 - [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
+- [Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
+- [Procedure System Field Context Handoff](../02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
 - [Building the Master Musical Preview](../01_LOR_System/01_Preview_Authoring/E_Master_Musical_Preview_Howto.md)
