@@ -77,6 +77,41 @@ def test_takedown_and_inspection_paths_are_caller_selected():
     assert r"\Procedures\Inspection" in inspection
 
 
+def test_generic_task_content_code_uses_same_operator_contract():
+    diagnostic = {
+        "code": "TASK_CONTENT_NOT_FOUND",
+        "scene_name": "13-Christmas Story",
+        "scope_root": r"G:\Shared drives\Display Folders\13-Winter Wonderland-WW\13-Christmas Story",
+    }
+
+    assert operator_warning(
+        diagnostic,
+        task="Setup procedure",
+        task_relative_folder=r"Procedures\Setup",
+    ) == (
+        "Setup procedure not found for 13-Christmas Story in folder "
+        r"G:\Shared drives\Display Folders\13-Winter Wonderland-WW\13-Christmas Story\Procedures\Setup."
+    )
+
+
+def test_root_context_is_described_to_operator_as_stage():
+    diagnostic = {
+        "code": "TASK_CONTENT_NOT_FOUND",
+        "scene_name": "Root",
+        "stage_key": "15",
+        "scope_root": r"G:\Shared drives\Display Folders\15-Church-Bells-CH",
+    }
+
+    assert operator_warning(
+        diagnostic,
+        task="Takedown procedure",
+        task_relative_folder=r"Procedures\Takedown",
+    ) == (
+        "Takedown procedure not found for Stage 15 in folder "
+        r"G:\Shared drives\Display Folders\15-Church-Bells-CH\Procedures\Takedown."
+    )
+
+
 def test_unknown_engineering_code_never_leaks_and_keeps_expected_folder():
     diagnostic = {
         "code": "SOME_INTERNAL_ENGINEERING_CODE",
