@@ -13,6 +13,10 @@ FIELDWIRING_DIRECT_OWNER_WARNING = (
     "BackgroundFile points directly into the current Stage Wiring branch; "
     "the marked Stage root is the FieldWiring documentation scope."
 )
+FIELDWIRING_STAGE_FALLBACK_WARNING = (
+    "No distinct Scene folder matched the current Scene identity; "
+    "known marked Stage root retained as the FieldWiring scope."
+)
 
 
 def _direct_images(folder: Path) -> list[Path]:
@@ -66,6 +70,7 @@ def resolve_images(
         windows_drive_root=windows_root,
         direct_owner_folder_name="Wiring",
         direct_owner_warning=FIELDWIRING_DIRECT_OWNER_WARNING,
+        stage_fallback_warning=FIELDWIRING_STAGE_FALLBACK_WARNING,
     )
     if scope_root is None:
         return {
@@ -76,7 +81,7 @@ def resolve_images(
             "warnings": warnings,
         }
 
-    # Everything below this point is intentionally FieldWiring-specific.  The
+    # Everything below this point is intentionally FieldWiring-specific. The
     # shared resolver has already fixed the Stage/Scene root; this adapter now
     # selects only the applicable Wiring branch and supplemental context images.
     branch = "MusicalStage" if selected_context == "Musical" else "BackgroundStage"
