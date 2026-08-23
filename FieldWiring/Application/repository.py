@@ -181,7 +181,7 @@ class SQLiteSnapshotRepository(Repository):
             )
 
     def stages(self) -> list[dict[str, Any]]:
-        # FieldWiring browse intentionally remains wiring-filtered.
+        # Preserve the accepted SQLite development-snapshot behavior exactly.
         with self.connect() as conn:
             stage_rows = conn.execute(
                 """
@@ -194,16 +194,8 @@ class SQLiteSnapshotRepository(Repository):
                 """
                 SELECT DISTINCT preview_id, preview_name, preview_stage_id,
                        scene_id, scene_name, scene_stage_id
-                FROM lor_snap__v_display_lor_occurrence o
+                FROM lor_snap__v_display_lor_occurrence
                 WHERE location_type = 'SCENE'
-                  AND EXISTS (
-                      SELECT 1
-                      FROM ref__display d
-                      JOIN lor_snap__v_current_props p ON p.raw_prop_id = d.lor_prop_id
-                      WHERE d.display_name = o.display_name
-                        AND d.display_status_id = 1
-                        AND lower(coalesce(p.device_type, '')) <> 'none'
-                  )
                 ORDER BY preview_name, scene_name
                 """
             ).fetchall()
@@ -273,7 +265,7 @@ class PostgresRepository(Repository):
         return self._field_context.stages()
 
     @staticmethod
-    def _fieldwiring_device_type(cur: Any, display_id: int) -> str | None:
+    def _fieldwiring_device_type(cur: Any, display_id: int) -> tuple[bool, str | None]:
         cur.execute(
             """
             SELECT p.device_type
@@ -287,7 +279,7 @@ class PostgresRepository(Repository):
             (display_id,),
         )
         row = cur.fetchone()
-        return row["device_type"] if row else None
+        return (row is not None, row["device_type"] if row else None)
 
     def search_displays(self, query: str, limit: int = 40) -> list[dict[str, Any]]:
         kind, value = normalized_display_query(query)
@@ -352,13 +344,13 @@ class PostgresRepository(Repository):
             shared = self._field_context.display_context_with_cursor(cur, display_id)
             if shared is None:
                 return None
-            device_type = self._fieldwiring_device_type(cur, display_id)
-            if device_type is None:
+            eligible, device_type = self._fieldwiring_device_type(cur, display_id)
+            if not eligible:
                 return None
             return _flatten_fieldwiring_context(shared, device_type)
 
     def stages(self) -> list[dict[str, Any]]:
-        # FieldWiring browse intentionally remains wiring-filtered.
+        # Preserve the production FieldWiring browse eligibility filter exactly.
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
