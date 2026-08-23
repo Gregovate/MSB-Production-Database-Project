@@ -182,21 +182,26 @@ A Linux production server does not automatically have that path. Before server d
 
 Do not copy ad-hoc images into the application directory or weaken the same-scope/source-marker rules to make deployment easier.
 
-### Marker-enforcement gap identified 2026-08-22
+### Accepted FieldWiring marker contract
 
-The current controlled-folder rule requires the standard marker in **every folder used as part of the FieldWiring application path**, including:
+The controlled FieldWiring marker rule is:
 
 ```text
-<resolved Stage / Sub-stage / Scene root>
-Wiring
-Wiring\BackgroundStage
-Wiring\MusicalStage
-PreviewBackground   (when used for same-scope context)
+<resolved Stage / Sub-stage / Scene root>  marker required
+Wiring                                     marker required
+PreviewBackground                          marker required when used for same-scope controlled context
+Wiring\BackgroundStage                     no separate marker
+Wiring\MusicalStage                        no separate marker
+SourceDocs                                 excluded / no marker
 ```
 
-The current `wiring_images.py` release-candidate implementation already requires the resolved root marker, the `Wiring` root marker, and the `PreviewBackground` marker, but it does **not yet require a marker inside the selected `BackgroundStage` / `MusicalStage` branch**.
+The marker on the `Wiring` root guards the selected `BackgroundStage` or `MusicalStage` child branch.
 
-That is an implementation gap against the current Google Drive path/marker contract. It must be corrected and covered by tests before final production deployment acceptance.
+The current `wiring_images.py` implementation matches this contract: it requires the resolved root marker, requires the `Wiring` root marker before publishing wiring images, and requires the `PreviewBackground` marker before publishing context images.
+
+There is **no implementation gap** requiring separate markers inside `BackgroundStage` / `MusicalStage`.
+
+Do not add child markers to production Wiring folders merely to satisfy superseded documentation. The future Procedure system has a separate deeper marker contract and must not be used to redefine FieldWiring's Wiring boundary.
 
 ## Existing Display QR dependency
 
@@ -214,7 +219,7 @@ Keep FormView available until:
 
 1. FieldWiring is deployed on the server using live read-only PostgreSQL;
 2. the server can resolve the approved Display Folders/image source;
-3. the required marker is enforced on every folder in the selected FieldWiring path;
+3. the accepted FieldWiring marker contract is preserved — scope root, `Wiring`, and controlled `PreviewBackground`, with no required child markers in `BackgroundStage` / `MusicalStage`;
 4. the protected public route is working;
 5. tablet/phone testing is accepted; and
 6. the existing Display scan hub exposes Field Wiring successfully.
