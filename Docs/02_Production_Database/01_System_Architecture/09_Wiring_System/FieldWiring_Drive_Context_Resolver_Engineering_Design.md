@@ -8,7 +8,7 @@
 | Owner | MSB Database Administrator |
 | Runtime data authority | Current V7+ PostgreSQL/LOR snapshot |
 | Legacy comparison authority | FormView / V6 reports are validation evidence only |
-| Code/schema status | Release-candidate resolver implemented; full child-branch marker enforcement remains open |
+| Code/schema status | Current FieldWiring implementation matches the accepted Wiring-root marker contract |
 
 ## Purpose
 
@@ -19,7 +19,7 @@ The V7+ LOR model is Scene-aware. The Master Musical Preview normally carries us
 The resolver has two distinct responsibilities:
 
 1. resolve the correct structured scope — Stage, formal Sub-stage, or Scene; and
-2. allow the FieldWiring task adapter to inspect only the current marked source folders belonging to that resolved scope.
+2. allow the FieldWiring task adapter to inspect only the current controlled source folders belonging to that resolved scope.
 
 The wiring-row result is the primary FieldWiring product. Images are supplemental guidance only.
 
@@ -97,7 +97,7 @@ The pointer may refer to:
 - a stale path;
 - or a legacy `SourceDocs` path.
 
-The resolver uses allowed path evidence to find the correct current Stage/Sub-stage/Scene scope. Once the scope is known, FieldWiring returns to the controlled marked source folders for published/current content.
+The resolver uses allowed path evidence to find the correct current Stage/Sub-stage/Scene scope. Once the scope is known, FieldWiring returns to the controlled source folders for published/current content.
 
 Loose legacy files may remain valid path evidence without becoming FieldWiring content.
 
@@ -111,38 +111,30 @@ The standard marker is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-The current governing rule is:
-
-> Every directory used as part of the new FieldWiring or future Procedure application path must contain the marker.
-
-For FieldWiring that includes:
+The accepted FieldWiring marker contract is:
 
 ```text
 <resolved Stage / Sub-stage / Scene root>\
 ├── marker
 ├── PreviewBackground\
-│   └── marker
+│   └── marker           when used as a current controlled source
 └── Wiring\
     ├── marker
     ├── BackgroundStage\
-    │   └── marker
     └── MusicalStage\
-        └── marker
 ```
 
 The structural root marker validates the resolved Stage/Sub-stage/Scene scope.
 
-The `Wiring` marker validates the wiring source root.
+The `Wiring` marker validates the FieldWiring source root and guards the selected `BackgroundStage` or `MusicalStage` child branch.
 
-The `BackgroundStage` / `MusicalStage` marker validates the actual published wiring branch selected by the operator's wiring context.
+`BackgroundStage` and `MusicalStage` do **not** require separate marker files.
 
-A same-scope `PreviewBackground` used for context must also be marked.
+A same-scope `PreviewBackground` used for context must be marked.
 
 `SourceDocs` is not part of the application path and remains a hard exclusion boundary.
 
 Loose files and unmarked legacy folders are ignored for current published-content discovery.
-
-### Current release-candidate enforcement gap
 
 The current implementation in:
 
@@ -150,17 +142,11 @@ The current implementation in:
 FieldWiring/Application/wiring_images.py
 ```
 
-already requires:
+matches this contract: it requires the resolved Stage/Scene root marker, checks the `Wiring` root marker before publishing wiring images, and checks the `PreviewBackground` marker before publishing context images.
 
-- the resolved Stage/Scene root marker;
-- the `Wiring` root marker before publishing wiring images; and
-- the `PreviewBackground` marker before publishing context images.
+The absence of a separate marker in the selected `BackgroundStage` or `MusicalStage` branch is **not** an implementation gap.
 
-It does **not yet require the marker inside the selected `BackgroundStage` or `MusicalStage` branch**.
-
-That is an implementation gap against the current marker contract and must be corrected and tested before final FieldWiring deployment acceptance.
-
-Do not change the documentation back to the older narrower rule merely to match the current release-candidate code.
+Do not add child markers to production Wiring branches merely to satisfy superseded documentation.
 
 ---
 
@@ -215,7 +201,7 @@ The common resolver owns **which structured root applies**.
 
 The task adapter owns **what to do with that root**.
 
-This is important because Wiring and Procedures are different tasks. FieldWiring must not import a Procedure-style parent fallback rule merely because both use the same hierarchy resolver.
+This is important because Wiring and Procedures are different tasks. FieldWiring must not import a Procedure-style parent fallback rule or Procedure child-marker rule merely because both use the same hierarchy resolver.
 
 Procedure presentation/availability is governed separately and is not part of the FieldWiring wiring-image fallback contract.
 
@@ -234,7 +220,7 @@ The resolver operates conservatively:
 7. Use allowed exact hierarchy evidence when it resolves.
 8. Walk upward only as needed to identify the nearest valid current structured Stage/Sub-stage/Scene root.
 9. If the stored path is stale, use current identity plus deterministic actual hierarchy rules to find one safe current marked root.
-10. Validate the required markers for the selected application path.
+10. Validate the markers required by the FieldWiring contract: resolved scope root, `Wiring`, and same-scope `PreviewBackground` when used.
 11. Do not rewrite LOR, PostgreSQL, or Drive as a side effect.
 12. If current identity/path/hierarchy/marker evidence does not yield one safe result, report review/unresolved rather than guess.
 
@@ -380,9 +366,9 @@ FieldWiring inspects only the applicable branch inside the fixed resolved scope:
 <resolved scope>\Wiring\MusicalStage
 ```
 
-Both the `Wiring` root and selected published branch must satisfy the marker contract.
+The `Wiring` root must satisfy the FieldWiring marker contract. The selected `BackgroundStage` / `MusicalStage` child branch does not require a separate marker.
 
-Only files directly in that marked branch are published wiring-image candidates.
+Only files directly in that selected branch are published wiring-image candidates.
 
 Expected image extensions include:
 
@@ -425,7 +411,7 @@ Stage 07 cases demonstrated that generic Stage `PreviewBackground` images also m
 
 The shared hierarchy resolver can also support Setup/Takedown/Inspection discovery, but Procedure behavior is separately governed.
 
-The same marker principle applies: every directory the Procedure application uses in its controlled path must be marked before the application consumes it.
+The Procedure system has its own deeper marker contract for `Procedures`, task branches, and Setup/Takedown `images`. Those requirements do not apply to FieldWiring's `BackgroundStage` / `MusicalStage` child branches.
 
 FieldWiring should not attempt to present Procedure documents as part of its wiring-image resolution logic.
 
@@ -437,14 +423,14 @@ A broader field interface may later show which procedures are available for the 
 
 The Drive/scope resolver gate is accepted when it can demonstrate:
 
-> Given current V7/PostgreSQL identity, current Scene/Preview relationships, current path evidence, the required markers, and the actual Google Drive hierarchy, the application can deterministically locate the correct Stage/Sub-stage/Scene scope without V6 runtime data, unsafe folder guessing, or traversal into source-only branches.
+> Given current V7/PostgreSQL identity, current Scene/Preview relationships, current path evidence, the accepted FieldWiring markers, and the actual Google Drive hierarchy, the application can deterministically locate the correct Stage/Sub-stage/Scene scope without V6 runtime data, unsafe folder guessing, or traversal into source-only branches.
 
 Image completeness is evaluated separately from scope resolution.
 
 FieldWiring presentation acceptance additionally requires that:
 
 - current wiring rows remain the primary result;
-- published images are restricted to the fixed resolved scope and marked selected branch;
+- published images are restricted to the fixed resolved scope and selected branch beneath a marked `Wiring` root;
 - a missing image is clearly reported rather than hidden by parent fallback;
 - same-scope `PreviewBackground` is context only; and
 - no parent/sibling/source image is substituted merely to produce a visual.
