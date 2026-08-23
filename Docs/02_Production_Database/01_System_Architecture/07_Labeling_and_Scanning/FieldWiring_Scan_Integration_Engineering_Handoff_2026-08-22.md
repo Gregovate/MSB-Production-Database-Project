@@ -2,11 +2,12 @@
 
 | Document control | Value |
 |---|---|
-| Status | ACCEPTED PRODUCTION — Field Wiring action deployed and operational |
+| Status | ACCEPTED PRODUCTION — Field Wiring action and corrected Directus routing operational |
 | Current revision | 2026-08-22 local / 2026-08-23 UTC |
 | Production scan host | `msb-prod-db` / `192.168.5.9` |
 | Production scan runtime | `/opt/directus/extensions/directus-extension-scan/` |
 | Public scan route | `https://my.sheboyganlights.org/scan/` |
+| Directus public origin | `https://db.sheboyganlights.org/` |
 | FieldWiring public route | `https://my.sheboyganlights.org/fieldwiring/` |
 | Application source branch | `agent/fieldwiring-server-deployment-reconnaissance` |
 | Server runtime branch | `agent/scan-fieldwiring-runtime-integration` |
@@ -15,11 +16,13 @@
 
 This document is the accepted engineering handoff for adding **Field Wiring** to the existing permanent Display QR/scan workflow without changing physical Display identity and without making existing scan functions dependent on FieldWiring.
 
-The integration is complete and production-operational. The current scan application source has also been recovered into Git so future Setup/Deployment scan work no longer has to start from an undocumented live-only artifact.
+The integration is production-operational. During acceptance, publication of `/scan/` through the protected `my.sheboyganlights.org` origin exposed an older same-origin assumption in the recovered Directus scan extension. That defect was corrected before final acceptance so Directus-facing actions now use the existing Directus public origin `https://db.sheboyganlights.org/` while Scan and FieldWiring remain on `my.sheboyganlights.org`.
+
+The current scan application source is recovered into Git so future Setup/Deployment scan work no longer has to start from an undocumented live-only artifact.
 
 ## Accepted Production Result
 
-The Display scan hub now includes one independent action:
+The Display scan hub includes one independent action:
 
 ```text
 Field Wiring
@@ -55,6 +58,7 @@ Relevant recovery/integration commits on this branch:
 d579dd1  Recover accepted Directus scan extension source
 7fdb1b9  Complete Directus scan extension recovery baseline
 5f24474  Add FieldWiring action to display scan hub
+35158f7  Fix Scan Directus links for public routing
 ```
 
 The application/business source belongs to the Production Database repository because it contains MSB-specific Display, Testing, Container, Work Order, and FieldWiring behavior. The fact that Directus hosts the endpoint does not transfer application ownership to Server Management.
@@ -67,10 +71,18 @@ Accepted pre-change production `dist/index.js` SHA-256:
 824aa56857c3d52c3ba9186c4721313e2172dc24ec32653045bb7bf3b008d7af
 ```
 
-Accepted FieldWiring-enabled production `dist/index.js` SHA-256:
+First FieldWiring-enabled artifact SHA-256:
 
 ```text
 e17ea51ec1f1993440719cb3ca35eb84c7250eb4f3d0a25784d0a42ef2114df0
+```
+
+That artifact correctly added FieldWiring, but public acceptance exposed the legacy Directus same-origin link defect described below.
+
+**Current accepted production `dist/index.js` SHA-256:**
+
+```text
+b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f
 ```
 
 The older live file named:
@@ -81,13 +93,15 @@ dist/index-copy original-no-camera-scanning.js
 
 remains historical only and is **not** a valid rollback artifact for the current camera-enabled scan system.
 
-The verified pre-change rollback copy created for this deployment is recorded by MSB-Server-Management at:
+Verified rollback copies created during this work are recorded by MSB-Server-Management:
 
 ```text
 /home/msbadmin/backups/directus-scan/pre-fieldwiring-20260823T011615Z/index.js
-```
+    SHA-256 824aa56857c3d52c3ba9186c4721313e2172dc24ec32653045bb7bf3b008d7af
 
-Its SHA-256 is the accepted pre-change hash `824aa568...008d7af`.
+/home/msbadmin/backups/directus-scan/pre-directus-link-fix-20260823T015833Z/index.js
+    SHA-256 e17ea51ec1f1993440719cb3ca35eb84c7250eb4f3d0a25784d0a42ef2114df0
+```
 
 ## Scan Architecture
 
@@ -130,9 +144,11 @@ is not the direct wiring-entry contract.
 
 FieldWiring receives the permanent Display ID, resolves current Stage/Preview/Scene context from PostgreSQL, and owns its own wiring-availability behavior.
 
-## Public Routing Discovery and Correction
+## Public Routing and Directus-Origin Correction
 
-During production acceptance, the Directus endpoint was healthy internally but the public `/scan/` path returned the Synology/WebStation 404 page.
+### Publishing `/scan/`
+
+During initial production acceptance, the Directus endpoint was healthy internally but the public `/scan/` path returned the Synology/WebStation 404 page.
 
 Isolation proved:
 
@@ -151,11 +167,48 @@ Accepted public behavior after reload:
 /scan   -> HTTP 301 -> /scan/
 ```
 
-The exact nginx configuration path, backup, and reload evidence are owned by `Gregovate/MSB-Server-Management`.
+### Legacy same-origin defect discovered during acceptance
+
+After `/scan/` was published on `my.sheboyganlights.org`, **Open Display Record** returned a Synology 404. The recovered March extension used root-relative Directus admin destinations such as:
+
+```text
+/admin/content/display/<id>
+/admin/content/container/<id>
+/admin/content/display_test_session/<id>
+/admin/content/work_order/<id>
+```
+
+Those links had worked when Scan and Directus shared one origin. On the new public Scan origin they incorrectly resolved under `my.sheboyganlights.org`.
+
+Reconnaissance confirmed an existing full Directus reverse proxy already exists at:
+
+```text
+https://db.sheboyganlights.org/
+    -> 192.168.5.9:8055
+```
+
+The application correction in commit `35158f7` changed the six Directus-facing destinations to the existing public Directus origin, for example:
+
+```text
+https://db.sheboyganlights.org/admin/content/display/<id>
+```
+
+This correction covers:
+
+- Display Record;
+- Container Record from a Container scan;
+- Display Test Session redirect;
+- Display-to-Container redirect;
+- one active Work Order direct redirect;
+- multiple active Work Order selection links.
+
+No `/admin/` proxy was added to `my.sheboyganlights.org`. Scan remains on `my.sheboyganlights.org`, FieldWiring remains on `my.sheboyganlights.org`, and Directus administration remains on `db.sheboyganlights.org`.
+
+The exact nginx configuration paths, backups, and reload evidence are owned by `Gregovate/MSB-Server-Management`.
 
 ## Production Acceptance Evidence
 
-Accepted checks completed during the deployment:
+Final accepted checks completed during the deployment and corrective retest:
 
 | Test | Result |
 |---|---|
@@ -165,29 +218,33 @@ Accepted checks completed during the deployment:
 | Internal `/scan/` | PASS — HTTP 200 |
 | Public Synology `/scan/` | PASS — HTTP 200 |
 | Public `/scan` no-slash redirect | PASS — HTTP 301 to `/scan/` |
-| Manual Display navigation | PASS |
+| Manual `DISP:141` navigation | PASS — `TC-ChristmasHippo` |
+| Open Display Record | PASS — correct `TC-ChristmasHippo` record opened on `db.sheboyganlights.org` |
+| Assigned Container | PASS — correct Container `11` opened from `DISP:141` |
+| Testing redirect | PASS — `QV-SHRStocking` current Display Test Session opened in Directus; Display Test Session ID `1860`, Test Session ID `687` |
+| Work Orders = 0 | PASS — disabled/no-open-work state preserved |
 | Field Wiring action rendered | PASS |
 | Permanent `display_id` handoff | PASS |
 | FieldWiring resolution | PASS — `TC-ChristmasHippo` resolved to current Background/Static context and field-hookup data |
 | Phone camera initialization | PASS — live camera preview and Stop Camera control displayed |
-| Post-restart live artifact hash | PASS — `e17ea51e...2114df0` |
+| Final live artifact hash | PASS — `b4f6c27f...175cb20f` |
 
-The operator accepted the deployment after these checks.
+The operator accepted the corrected deployment after these checks.
 
 ### Explicitly deferred / not claimed as tested
 
 The following were not exercised during this acceptance session and must not be retroactively marked PASS:
 
 - physical QR decode, because no QR label was available at the test location;
-- full Display Record click-through regression;
-- full Testing state matrix;
-- assigned/unassigned Container matrix;
-- Work Orders 0 / 1 / >1 matrix;
+- Work Orders = 1 positive redirect, because no open Work Orders were available;
+- Work Orders > 1 selection page, because no open Work Orders were available;
+- full Testing state matrix beyond the one positive redirect and disabled state observed;
+- unassigned Container behavior;
 - unknown Display behavior;
 - FieldWiring-unavailable failure-boundary test;
 - FieldWiring Display with no current wiring.
 
-These remain regression cases for the next suitable scan acceptance session. The FieldWiring code change itself was additive and did not alter the camera, Testing, Container, Work Order, or unknown-Display code paths.
+These remain regression cases for the next suitable scan acceptance session. They do not block acceptance of the corrected current production state.
 
 ## Failure Boundary
 
@@ -205,6 +262,7 @@ Do not add a FieldWiring health/API dependency to the Display hub merely to rend
 - scan payload rules;
 - scan application/business source under `Scan/directus-extension-scan/`;
 - Testing, Work Order, Container, FieldWiring, and future Setup/Deployment scan behavior;
+- Directus application-destination contract using the established `db.sheboyganlights.org` origin;
 - FieldWiring `display_id` deep-link contract;
 - future scan-session/workflow business rules.
 
@@ -216,6 +274,7 @@ Do not add a FieldWiring health/API dependency to the Display hub merely to rend
 - deployment/restart procedure;
 - backup/rollback/recovery process;
 - Synology/WebStation reverse-proxy route for `/scan/`;
+- existing `db.sheboyganlights.org` -> Directus reverse proxy runtime;
 - FieldWiring service/mount/proxy runtime.
 
 A production application running on `msb-prod-db` does not automatically become Server Management source. Application behavior stays with its owning application/database repository; runtime hosting stays with Server Management.
@@ -238,13 +297,15 @@ The next Setup/Deployment engineering work should reconstruct the real Container
 
 ## Current Stop Point / Next Project
 
-**FieldWiring Scan Integration is accepted production work.**
+**FieldWiring Scan Integration is accepted production work after the Directus public-origin correction.**
 
 No further Scan/FieldWiring code change is required to close this sub-project.
 
 Remaining deferred regression cases can be exercised when appropriate without reopening the architecture unless they reveal a defect.
 
-The next major Production Database work may proceed to the separate Setup/Deployment engineering project using the established scan identity and repository ownership boundaries.
+Before this branch is merged to `main`, reconcile it with the corrected FieldWiring marker-documentation contract so known-bad marker guidance from the current `main` branch is not reintroduced.
+
+After branch reconciliation/merge, the next major Production Database work may proceed to the separate Setup/Deployment engineering project using the established scan identity and repository ownership boundaries.
 
 ## Related Documents
 
