@@ -2,9 +2,11 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT ENGINEERING HANDOFF ADDENDUM — shared resolver architecture accepted |
+| Status | CURRENT ENGINEERING HANDOFF ADDENDUM — shared resolver production accepted |
 | Parent handoff | `00_Procedure_System_Field_Context_Handoff_2026-08-22.md` |
-| Shared resolver branch | `agent/shared-field-context-resolver-extraction` |
+| Original resolver branch | `agent/shared-field-context-resolver-extraction` |
+| Merge PR | `#35` |
+| Production resolver commit | `21e9e3b1889289806ccb116b3a546cfcd129fae4` |
 | Code-regression-tested commit | `b7fcd0333f2cb023026643c292b1d615cf5ceb6a` |
 | Live-equivalence-tested branch head | `dcedc36c8d3ad0955fa793e8817c4a88d3535014` |
 
@@ -16,13 +18,13 @@ The parent Procedure handoff correctly established that Procedures must reuse Fi
 FieldWiring/Application/wiring_images.py
 ```
 
-That location statement is now superseded.
+That location statement is superseded.
 
 This addendum does not change the resolver algorithm or the Procedure task rules already established by the parent handoff.
 
 ## Canonical resolver source
 
-The proven structured-scope implementation has now been extracted to:
+The proven structured-scope implementation is:
 
 ```text
 FieldWiring/Application/field_context_resolver.py
@@ -35,6 +37,12 @@ resolve_structured_scope(...)
 ```
 
 The module is task-neutral. It remains physically beside FieldWiring so the existing production Python/systemd deployment model does not need to change merely for packaging. The Procedure implementation must consume this same canonical implementation as its second caller; it must not copy the resolver into a Procedure-owned file.
+
+The shared resolver is now deployed and verified in production FieldWiring at merged commit:
+
+```text
+21e9e3b1889289806ccb116b3a546cfcd129fae4
+```
 
 ## What Procedures receive from the shared resolver
 
@@ -104,9 +112,9 @@ The intended architecture is:
 
 ## Acceptance evidence
 
-The extracted resolver and FieldWiring adapter were tested together from an isolated server worktree.
+The extracted resolver and FieldWiring adapter were first tested together from an isolated server worktree.
 
-Complete FieldWiring regression result:
+Complete detached-worktree FieldWiring regression result:
 
 ```text
 54 passed in 1.01s
@@ -131,22 +139,50 @@ Result:
 RESOLVER EQUIVALENCE: PASS
 ```
 
-The shared resolver extraction is therefore accepted as the common architecture boundary.
+PR `#35` then merged the accepted resolver extraction to `main`.
+
+The production `/opt/fieldwiring` checkout was advanced to:
+
+```text
+21e9e3b1889289806ccb116b3a546cfcd129fae4
+```
+
+The full FieldWiring regression suite was rerun in the production checkout:
+
+```text
+54 passed in 1.01s
+```
+
+The production service restarted successfully and reported:
+
+```text
+active
+{"data_mode":"postgres","status":"ok","version":"V0.2.0"}
+```
+
+The post-deployment resolver check for permanent Display `312` matched the accepted result and ended with:
+
+```text
+POST-DEPLOY RESOLVER CHECK: PASS
+FieldWiring shared resolver: DEPLOYED AND VERIFIED
+```
+
+The shared resolver extraction is therefore **production accepted** as the common architecture boundary.
 
 ## Procedure implementation gate
 
-The prior gate preventing substantive Procedure resolver work is now cleared for engineering/development.
+The FieldWiring resolver gate that previously blocked substantive Procedure implementation is now fully cleared.
 
 Procedure engineering should begin from:
 
 1. this addendum;
 2. `00_Procedure_System_Field_Context_Handoff_2026-08-22.md`;
-3. the canonical `field_context_resolver.py` implementation;
+3. the canonical production-accepted `field_context_resolver.py` implementation;
 4. the Procedure marker/current-document rules already defined in the parent handoff.
 
 The first Procedure proof must demonstrate a **second caller of the same resolver**, not a second implementation of it.
 
-Production deployment of the FieldWiring extraction remains a separate server-management step. Procedure production deployment must not substitute a copied resolver merely because that server update is still pending.
+No further FieldWiring resolver extraction or production-acceptance work is required before Procedure implementation begins.
 
 ## Related FieldWiring acceptance record
 
