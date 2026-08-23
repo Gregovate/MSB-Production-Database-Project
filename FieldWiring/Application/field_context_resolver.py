@@ -1,10 +1,9 @@
 """Task-neutral Stage/Sub-stage/Scene filesystem context resolver.
 
-This module contains the structured-scope resolution proven by FieldWiring.  It
+This module contains the structured-scope resolution proven by FieldWiring. It
 resolves the current marked Stage/Scene root from authoritative identity plus
-bounded path/filesystem evidence.  Task-specific consumers (FieldWiring,
-Procedures, and future field applications) own what they do *after* this root
-has been resolved.
+bounded path/filesystem evidence. Task-specific consumers own what they do
+after this root has been resolved.
 
 Do not add Wiring/Procedure content discovery here.
 """
@@ -20,6 +19,11 @@ SKIP_SCOPE_SEARCH = {
     "wiring", "procedures", "photos", "previewbackground", "sourcedocs",
     "archive", "archived", "design archive",
 }
+
+DEFAULT_STAGE_FALLBACK_WARNING = (
+    "No distinct Scene folder matched the current Scene identity; "
+    "known marked Stage root retained as the structured field scope."
+)
 
 
 def _canonical_scene_names(scene_name: str) -> set[str]:
@@ -151,13 +155,13 @@ def resolve_structured_scope(
     windows_drive_root: str = DEFAULT_WINDOWS_DRIVE_ROOT,
     direct_owner_folder_name: str | None = None,
     direct_owner_warning: str | None = None,
+    stage_fallback_warning: str = DEFAULT_STAGE_FALLBACK_WARNING,
 ) -> tuple[Path | None, str, list[str]]:
     """Resolve one current marked Stage/Scene root without discovering task content.
 
     ``direct_owner_folder_name`` preserves a caller's existing exact path-owner
     evidence rule without teaching this shared resolver what that task folder
-    means.  FieldWiring currently supplies ``Wiring``; other callers may omit it.
-    The caller also supplies its legacy warning text so existing user-visible
+    means. The caller may also supply legacy warning strings so user-visible
     warnings remain byte-for-byte stable during extraction.
     """
     warnings: list[str] = []
@@ -203,7 +207,7 @@ def resolve_structured_scope(
         return None, "UNRESOLVED", warnings
 
     # Some callers already use an exact task-root path as explicit
-    # documentation-ownership evidence.  The shared resolver accepts the task
+    # documentation-ownership evidence. The shared resolver accepts the task
     # root name as data; it does not select or inspect task content beneath it.
     direct_owner = _direct_task_owner(pointer, direct_owner_folder_name)
     if direct_owner is not None and _path_is_under(direct_owner, drive_root):
@@ -250,7 +254,5 @@ def resolve_structured_scope(
         )
         return None, "UNRESOLVED", warnings
 
-    warnings.append(
-        "No distinct Scene folder matched the current Scene identity; known marked Stage root retained as the FieldWiring scope."
-    )
+    warnings.append(stage_fallback_warning)
     return stage_root, "STAGE", warnings
