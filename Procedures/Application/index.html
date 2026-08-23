@@ -48,15 +48,6 @@
     </section>
   </div>
 
-  <section id="selection-card" class="card resolved-card" hidden>
-    <div class="card-heading-row">
-      <h2>Selected Field Context</h2>
-      <button id="clear-selection" type="button">Clear</button>
-    </div>
-    <div id="selection-grid" class="resolved-grid"></div>
-    <div id="selection-status" class="status">Select a Display or Stage / Scene.</div>
-  </section>
-
   <section id="context-choice-card" class="card resolved-card" hidden>
     <h2>Choose the applicable Scene / Area</h2>
     <div class="hint">More than one current context is valid. Choose the one you are working on.</div>
@@ -65,8 +56,14 @@
 
   <section id="procedure-card" class="card resolved-card" hidden>
     <div class="card-heading-row">
-      <h2 id="procedure-title">Current Procedure</h2>
-      <span id="scope-badge" class="scope-badge"></span>
+      <div>
+        <h2 id="procedure-title">Current Procedure</h2>
+        <div id="procedure-context" class="procedure-context"></div>
+      </div>
+      <div class="procedure-heading-actions">
+        <span id="scope-badge" class="scope-badge"></span>
+        <button id="clear-selection" type="button">Clear</button>
+      </div>
     </div>
     <div id="procedure-message" class="status"></div>
     <div id="document-list" class="document-list"></div>
