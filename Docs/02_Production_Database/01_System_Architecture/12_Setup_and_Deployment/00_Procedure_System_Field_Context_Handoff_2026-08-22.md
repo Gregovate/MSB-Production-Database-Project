@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT ENGINEERING HANDOFF — resolves Procedure/FieldWiring documentation conflicts |
 | Current revision | 2026-08-22 |
-| Source baseline | `main` after accepted FieldWiring + Display Scan integration |
+| Source baseline | `main` after accepted FieldWiring + Display Scan integration and Procedure resolver handoff |
 | Production field entry | `https://my.sheboyganlights.org/fieldwiring/` and `https://my.sheboyganlights.org/scan/` |
 | Shared document filesystem | read-only Google `Display Folders` hierarchy on `msb-prod-db` |
 | Procedure subsystem | Setup / Takedown / Inspection field-document presentation |
@@ -157,27 +157,38 @@ same structured root
 
 ## Procedure Marker Contract
 
-Procedure markers remain task-specific and are not identical to FieldWiring's Wiring marker rules.
+The Procedure system uses the same **subsystem-root guard pattern** as FieldWiring.
 
-For the Procedure application path, current governing documentation requires markers on:
+The required Procedure markers are:
 
 ```text
 <Stage / Sub-stage / Scene root>
 Procedures
-Procedures/Inspection
-Procedures/Setup
-Procedures/Setup/images
-Procedures/Takedown
-Procedures/Takedown/images
 ```
 
-`Archive` and `SourceDocs` are excluded working/history areas and are not normal field-presentation sources.
+The fixed child folder names select the Procedure task:
 
-This is **not** a conflict with reuse of the structured resolver.
+```text
+Procedures/Inspection
+Procedures/Setup
+Procedures/Takedown
+```
 
-The common resolver establishes the structured root. The Procedure adapter then validates the markers required by the Procedure branch it owns.
+Those task folders are **not separately marked**. `Procedures/Setup/images` and `Procedures/Takedown/images` are supporting child folders and are also **not separately marked**.
 
-Do not copy Procedure child-marker requirements back onto FieldWiring's `Wiring/BackgroundStage` or `Wiring/MusicalStage` folders.
+This matches the accepted FieldWiring pattern:
+
+```text
+Wiring                  -> marker required
+Wiring/BackgroundStage  -> no separate marker
+Wiring/MusicalStage     -> no separate marker
+```
+
+The marker on `Procedures` guards the known Procedure child branches just as the marker on `Wiring` guards the known Wiring child branches.
+
+`Archive` and `SourceDocs` remain excluded working/history areas and are not normal field-presentation sources. Their exclusion is enforced by folder role and application behavior, not by placing additional markers in neighboring child folders.
+
+Earlier 2026-08-22 wording that required separate markers in `Inspection`, `Setup`, `Takedown`, or their `images` folders was an over-application of the marker rule and is superseded by this subsystem-root contract.
 
 ---
 
@@ -185,11 +196,11 @@ Do not copy Procedure child-marker requirements back onto FieldWiring's `Wiring/
 
 The first Procedure browser does not require a per-document database registry merely to discover current published PDFs.
 
-For the initial implementation, after the structured root and Procedure task branch are validated:
+For the initial implementation, after the structured root and marked `Procedures` subsystem root are validated:
 
-1. enumerate files **directly** in the selected task folder;
-2. present approved current field-document formats supported by the implementation, beginning with PDF;
-3. exclude the marker file itself from user choices;
+1. select the exact known task folder (`Inspection`, `Setup`, or `Takedown`);
+2. enumerate files **directly** in the selected task folder;
+3. present approved current field-document formats supported by the implementation, beginning with PDF;
 4. do not recurse into `Archive`;
 5. do not recurse into `SourceDocs`;
 6. do not treat files inside `images` as independent Procedure documents;
@@ -201,13 +212,13 @@ Example:
 
 ```text
 resolved scope_root
-    -> Procedures
-        -> Setup
+    -> Procedures              marker required
+        -> Setup               fixed child branch; no separate marker
             -> Current Setup A.pdf
             -> Current Setup B.pdf
-            -> images/        supporting assets, not separate procedure choices
-            -> Archive/       excluded
-            -> SourceDocs/    excluded
+            -> images/         supporting assets, not separate procedure choices
+            -> Archive/        excluded
+            -> SourceDocs/     excluded
 ```
 
 A filename may be used as a user-facing label for a discovered current file. It is not permanent Production Database identity.
@@ -302,7 +313,7 @@ The first acceptance target should be deliberately narrow:
 4. use the existing read-only `Display Folders` filesystem;
 5. resolve one known Stage/Scene context from current PostgreSQL identity;
 6. select `Procedures/Setup` instead of `Wiring/...`;
-7. validate the Procedure markers;
+7. validate the resolved scope marker and the `Procedures` subsystem-root marker;
 8. enumerate the current PDF directly in that Setup folder;
 9. serve/open that PDF through a protected `my.sheboyganlights.org` Procedure route;
 10. prove `Archive` and `SourceDocs` cannot be served through normal Procedure endpoints;
@@ -323,13 +334,14 @@ Interpret older guidance as follows:
 - Production Database owns durable Display/Stage/Scene identities and relationships.
 - Google `Display Folders` owns human-maintained field documents.
 - Stage/Sub-stage/Scene structure is authoritative.
-- Procedure task folders and markers are application contracts.
+- the marked `Procedures` subsystem root plus the fixed `Inspection` / `Setup` / `Takedown` folder names form the Procedure application contract;
 - `Archive` and `SourceDocs` are excluded from normal field presentation.
 - current published PDF/rendered documents are preferred field output.
 - durable document identity may be added when publication/history requirements justify it.
 
-### Superseded as an initial implementation prerequisite
+### Superseded
 
+- separate markers are required in `Procedures/Inspection`, `Procedures/Setup`, `Procedures/Takedown`, or their task-local `images` folders;
 - Procedure runtime must have a PostgreSQL row for every current PDF before it can find the PDF;
 - every current Procedure PDF must first have a stored Google file/document ID before browser discovery is allowed;
 - Procedures should build their own independent Display-to-Stage/Scene resolver;
@@ -350,7 +362,7 @@ Interpret older guidance as follows:
 8. `System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md`
 9. `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md`
 
-If those documents contain older wording that appears inconsistent, preserve the ownership/marker/publication rules but follow this handoff for the initial resolver/runtime architecture.
+If those documents contain older wording that appears inconsistent, preserve the ownership/publication rules but follow this handoff for the initial resolver/runtime and marker architecture.
 
 ---
 
