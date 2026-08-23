@@ -22,8 +22,7 @@ _FIELDWIRING_APPLICATION = Path(__file__).resolve().parents[2] / "FieldWiring" /
 if str(_FIELDWIRING_APPLICATION) not in sys.path:
     sys.path.insert(0, str(_FIELDWIRING_APPLICATION))
 
-from field_context_browse import FieldHierarchyError
-from field_context_hierarchy import resolve_field_hierarchy
+from field_context_hierarchy import FieldHierarchyError, resolve_field_hierarchy
 from FieldWiring.Application.field_context_repository import (
     ConfigError,
     FieldContextRepository,
