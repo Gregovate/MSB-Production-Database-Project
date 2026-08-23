@@ -151,8 +151,12 @@ def _scene_child_from_pointer(
     if owner_index is None:
         return None, None
 
+    # BackgroundFile evidence names a file, so its final path segment is never
+    # a Stage/Sub-stage/Scene folder.  Excluding the filename prevents a file
+    # such as ``03-welcome area.jpg`` from being promoted into the browse
+    # hierarchy merely because its basename begins with the owning Stage key.
     target = owner_key.casefold() + "-"
-    for index in range(owner_index + 1, len(parts)):
+    for index in range(owner_index + 1, max(owner_index + 1, len(parts) - 1)):
         part = parts[index]
         if part.casefold().startswith(target):
             return part, _path_with_parts(str(pointer), index + 1) if pointer else None
