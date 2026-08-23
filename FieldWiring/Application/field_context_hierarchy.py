@@ -167,7 +167,25 @@ def _scene_name_candidate(scene_name: str | None, owner_key: str, owner_label: s
     name = str(scene_name or "").strip()
     if not name or name.casefold() == "root":
         return None
-    if name.casefold() == owner_label.casefold():
+
+    # If no exact child folder was proven by path evidence, treat the
+    # owning Stage/Sub-stage label and that label without its terminal short
+    # code as the same owner identity.  Example:
+    #
+    #   03-Welcome Area-WA  <->  03-Welcome Area
+    #
+    # Exact nested path evidence is evaluated before this fallback, so a real
+    # child folder with the same textual base can still resolve as a Scene.
+    canonical_owner_names = {owner_label.casefold()}
+    owner_without_short_code = re.sub(
+        r"-[A-Za-z]{2,3}$",
+        "",
+        owner_label,
+    ).strip()
+    if owner_without_short_code:
+        canonical_owner_names.add(owner_without_short_code.casefold())
+
+    if name.casefold() in canonical_owner_names:
         return None
     if not name.casefold().startswith(owner_key.casefold() + "-"):
         return None
