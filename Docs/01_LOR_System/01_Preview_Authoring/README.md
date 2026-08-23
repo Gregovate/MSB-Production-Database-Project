@@ -1,38 +1,64 @@
 # LOR Preview Authoring
 
-This area contains the user-facing rules and procedures for creating and maintaining Light-O-Rama previews that can be safely used by the MSB production workflow.
+This area is for people who create, edit, and maintain Light-O-Rama (LOR) Previews for MSB.
+
+You do **not** need to understand the parser, Python, SQLite, PostgreSQL, or database design to use these procedures.
 
 ## Start Here
 
-| I want to... | Go to |
+| I need to... | Use this document |
 |---|---|
-| Understand required display and channel naming | [Naming Conventions](A_Naming_Conventions.md) |
-| Build or update a preview | [Building Preview How-To](B_Building_Preview_Howto.md) |
-| Build or update the Master Musical Preview | [Master Musical Preview How-To](E_Master_Musical_Preview_Howto.md) |
+| Name Displays and channels correctly | [Prop and Display Naming Conventions](A_Naming_Conventions.md) |
+| Build or update a Preview | [Building a Preview](B_Building_Preview_Howto.md) |
+| Build or update the Master Musical Preview | [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md) |
 | Create a new Scene/Sub-stage documentation folder | [Stage / Sub-stage / Scene Folder Scaffold](../../00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md) |
-| Create and organize Stage wiring background images | [Create Wiring Backgrounds for Stage Previews](D_Create_Wiring_Backgrounds..md) |
-| Review the February 2026 origin of the LOR-to-database naming contract | [Historical LOR Naming Data Contract](C_LOR_Naming_Data_Contract.md) |
-| Import the current approved preview set | [Preview Import Workflow](Preview_Import_Workflow.md) |
+| Create or update field wiring images | [Create Wiring Backgrounds](D_Create_Wiring_Backgrounds..md) |
+| Get the current approved Preview before editing | [Preview Import Workflow](Preview_Import_Workflow.md) |
 
-The historical naming contract is preserved here because it records the early engineering decisions that connected LOR Comment naming, stage codes, parser output, and Production Database ingestion. It is not the current authoring authority; current naming rules are maintained in [Naming Conventions](A_Naming_Conventions.md).
+## Important Rules
 
-## Important Boundary
+- Work from your own copy of a Preview.
+- Do not overwrite the approved master Preview files.
+- When your work is finished, export your candidate Preview to:
 
-Preview Authoring explains how to create and maintain previews. The controlled process for comparing programmer copies and protecting the approved preview set is documented separately under [Preview Merger](../03_Preview_Merger/README.md).
+```text
+G:\Shared drives\MSB Database\UserPreviewStaging\<username>
+```
 
-Parser engineering and `.lorprev` structure are documented separately under [Data Extraction](../02_Data_Extraction/README.md).
+- `UserPreviewStaging` is a handoff location. It is **not** the approved master.
+- Use the existing Google Drive Stage/Scene/Display organization. Do not invent a new folder structure from inside LOR.
+- New Stage/Sub-stage/Scene documentation folders must use the complete controlled scaffold.
+- Folders used by FieldWiring or the future Procedure system must have the required `_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt` marker.
+- Do not use `SourceDocs` as a normal LOR background or field-document location.
 
-The [Master Musical Preview How-To](E_Master_Musical_Preview_Howto.md) documents how musical Scene names and Scene background-image paths provide Stage/documentation context without requiring every musical Scene to become a Google Drive folder.
+## How to Read These Documents
 
-When a Scene really does require its own Google Drive documentation scope, create it from the complete [Stage / Sub-stage / Scene Folder Scaffold](../../00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md) rather than creating a partial one-off folder. New authoring uses the marked `PreviewBackground`, `Procedures`, and `Wiring` source structure; `SourceDocs` is not a normal Scene background or field-presentation endpoint.
+Text shown like `PreviewBackground`, `BackgroundFile`, or `UserPreviewStaging` means an exact folder name, field name, filename, or value that you may need to recognize or use.
 
-Detailed FieldWiring implementation and wiring-system engineering remain separate from these operator procedures.
+## Operator Documentation vs Engineering Documentation
 
-## Related Systems
+The documents in this folder explain how to **use** the Preview system.
+
+The technical documents that explain how the parser, Folder Alignment, FieldWiring, FormView, and databases work are kept separately. Preview authors should not need those engineering details to complete normal work.
+
+## Related Operator Information
 
 - [Google Drive Document Organization](../../00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md)
-- [MSB Database Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
+- [MSB Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
+- [Stage / Sub-stage / Scene Folder Scaffold](../../00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md)
+
+## Related Engineering
+
+- [LOR Data Extraction / Parser](../02_Data_Extraction/README.md)
 - [Preview Merger](../03_Preview_Merger/README.md)
-- [LOR Data Extraction](../02_Data_Extraction/README.md)
-- [Wiring System Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
-- [LOR2DB Ingest](../../../LOR2DB/01_Ingest/README.md)
+- [FormView](../04_FormView/README.md)
+- [FieldWiring Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
+- [LOR2DB](../../../LOR2DB/README.md)
+
+## Historical Reference
+
+- [Historical LOR Naming Data Contract](C_LOR_Naming_Data_Contract.md) — engineering history only; not current operator instructions.
+
+## Revision History
+
+- 2026-08-22 — Rewritten as a plain-language operator portal while preserving the current Scene scaffold, marker, Preview staging, and FieldWiring boundaries.

@@ -6,6 +6,7 @@ Reusable rules that should apply across multiple repositories belong under [`../
 
 ## Current Project Rules
 
+- [Repository Change Workflow](Repository_Change_Workflow.md) — requires refreshing current remote `main`, reviewing the latest affected files, and resolving stale-branch/concurrent-work issues before changing code, schema, configuration, or controlled documentation.
 - [Stage Setup Documentation Standard](Stage_Setup_Documentation_Standard.md) — governs how Stage/Scene setup instructions relate to the established Google Shared Drive structure, controlled templates, Production Database identity, QR resolution, and the my.sheboyganlights.org presentation layer.
 
 ## Rule Ownership

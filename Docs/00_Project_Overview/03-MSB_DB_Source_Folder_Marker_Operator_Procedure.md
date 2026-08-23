@@ -2,13 +2,9 @@
 
 ## Purpose
 
-Use this procedure when working with the standardized Google Drive helper folders used by the MSB Production Database and database-backed applications.
+Use this procedure when working with Google Drive folders that are part of the current FieldWiring system or the future Setup/Takedown/Inspection system.
 
-The marker file identifies a **specific helper folder whose contents are used as a database/application source location**. It exists to make those folders obvious to people browsing Google Drive without renaming the established Stage, Sub-stage, Scene, Display, or helper-folder structure.
-
-The marker is human-readable guidance and may also be used by applications as supporting confirmation. It does **not** replace Production Database identity, current LOR relationships, Scene/Preview path evidence, or the Google Drive path-resolution contract.
-
----
+The marker file tells people and applications that a folder is part of a controlled MSB field-document structure. Marker placement is **application-specific**: FieldWiring and the future Procedure system do not use identical marker rules.
 
 ## Standard File Name
 
@@ -18,224 +14,197 @@ Use this exact file name:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-Do not shorten, rename, or delete the marker after it has been placed in an approved source folder.
+Do not shorten, rename, move, or delete an approved marker.
 
 ---
 
-## Standard Opening Text
+# Current FieldWiring Marker Rule
 
-Every marker begins with:
-
-```text
-MSB DATABASE SOURCE FOLDER
-READ ME — DO NOT DELETE
-
-This file identifies this folder as a source location used by the
-MSB Production Database or an MSB database-backed application
-```
-
-Keep this opening text unchanged.
-
-The rest of the marker is personalized for the folder type and may include local notes.
-
----
-
-# Approved Marker Locations
-
-The current approved database/application source folders are:
+The accepted FieldWiring contract is:
 
 ```text
-PreviewBackground
-Procedures
-Wiring
+<Stage / Sub-stage / Scene root>     marker required
+PreviewBackground                    marker required when used as a current controlled source
+Wiring                               marker required
+Wiring\BackgroundStage              NO separate marker
+Wiring\MusicalStage                 NO separate marker
+SourceDocs                           NO marker / excluded from field presentation
 ```
 
-The marker belongs at the **root of those source helper folders**.
+This is the production-aligned rule. Do not add child markers to `Wiring\BackgroundStage` or `Wiring\MusicalStage`, and do not remove the existing Stage/Sub-stage/Scene root marker or `Wiring` marker.
+
+The current FieldWiring implementation matches this contract: it resolves the structured scope, checks the scope marker, and treats the marker on the `Wiring` root as the guard for the selected `BackgroundStage` or `MusicalStage` branch.
+
+### Stage / Sub-stage / Scene roots
+
+Every current Stage, formal Sub-stage, and Scene documentation root used by the field systems must contain the marker directly in the root.
 
 Example:
 
 ```text
-<Stage, Sub-stage, or Scene>/
-├── PreviewBackground/
-│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│
-├── Procedures/
-│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│
-├── Wiring/
-│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│
-└── Photos/
-    └── no database-source marker at this time
+15-Church-Bells-CH\
+├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+├── PreviewBackground\
+├── Procedures\
+├── Wiring\
+└── Photos\
 ```
 
-## Stage / Sub-stage / Scene roots are NOT marker locations
+The root marker identifies and protects the structured Stage/Sub-stage/Scene scope.
 
-Do **not** place the database-source marker directly in a Stage, Sub-stage, or Scene root merely because that scope contains database-linked material.
+Do not rename or move a marked Stage/Sub-stage/Scene root as ordinary cleanup.
 
-For example, this is **not** correct:
+### Preview backgrounds
+
+Any `PreviewBackground` folder used as a current LOR/application source must contain the marker.
+
+This includes an applicable Stage, Sub-stage, Scene, Display, or shared-group `PreviewBackground` folder.
 
 ```text
-15-Church-Bells-CH/
-└── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt   <- DO NOT PLACE HERE
+PreviewBackground\
+├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+└── current background images
 ```
 
-The Stage/Scene root may contain many other engineering, historical, fabrication, photo, and legacy folders that are not database/application source folders. The marker is intentionally used only on the helper folders that participate in the current database/application source contract.
+Referenced background images must not be casually renamed, moved, or deleted because LOR may point directly to them.
 
-## Photos is not marked
+### FieldWiring folders
 
-Do not add the marker to `Photos` at this time. The current Production Database/application contract does not use the Stage/Scene `Photos` helper as a database source folder.
-
-## Child folders are not separately marked by default
-
-Do not add extra copies inside:
+The controlled Wiring structure is:
 
 ```text
-BackgroundStage
-MusicalStage
-Setup
-Takedown
-Inspection
-SourceDocs
-Archive
-images
+Wiring\
+├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│
+├── BackgroundStage\
+│   ├── published wiring images
+│   └── SourceDocs\
+│
+└── MusicalStage\
+    ├── published wiring images
+    └── SourceDocs\
 ```
 
-unless a future approved application contract specifically makes that child folder its own separately controlled database source.
+The marker in `Wiring` identifies the controlled Wiring source root. `BackgroundStage` and `MusicalStage` are child branches selected by wiring context and are **not separately marked**.
 
-`PreviewBackground` may legitimately exist beneath a Display/shared folder and may carry its own marker because LOR may reference that folder directly.
+A missing child marker in `BackgroundStage` or `MusicalStage` is therefore **not** an implementation gap and is not a folder-alignment defect.
 
-If another helper folder becomes a database/application source in the future, update the governing documentation first and then add the marker to that helper folder.
+### `SourceDocs` is excluded
+
+Do **not** treat `SourceDocs` as a field-application source folder.
+
+It contains working/source material and is specifically excluded from FieldWiring. It does not require a field-source marker unless a future approved design deliberately changes that role.
 
 ---
 
-# Folder-Specific Marker Content
+# Future Procedure Marker Rule
 
-## PreviewBackground
+The Procedure system has its own controlled path and may require markers deeper than FieldWiring.
 
-The marker explains that the folder contains current LOR Preview/Scene background images and path/context evidence used by database-backed applications.
-
-Referenced images must not be casually renamed, moved, or deleted without deliberately updating the LOR reference and alignment.
-
-## Procedures
-
-The marker explains that the folder is the controlled source root for field procedures associated with the applicable Stage, Sub-stage, or Scene.
-
-`Archive` and `SourceDocs` remain excluded from normal field presentation.
-
-## Wiring
-
-The marker explains that the folder is the controlled source root for published field wiring information.
-
-Published field wiring branches are:
+Current planned Procedure locations are:
 
 ```text
-Wiring\BackgroundStage
-Wiring\MusicalStage
+Procedures\
+├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│
+├── Inspection\
+│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│
+├── Setup\
+│   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   ├── Archive\
+│   ├── images\
+│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│   └── SourceDocs\
+│
+└── Takedown\
+    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    ├── Archive\
+    ├── images\
+    │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    └── SourceDocs\
 ```
 
-`SourceDocs` is working/source material and is a hard exclusion boundary for FieldWiring and normal field applications.
+For the Procedure system, `Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images` are planned controlled application folders and must be marked when that application contract is in use.
+
+Do **not** copy the Procedure marker rule onto the FieldWiring `BackgroundStage` / `MusicalStage` child branches. The two applications have different folder guards.
+
+### Archive and SourceDocs are excluded
+
+`Archive` and `SourceDocs` are not normal field-presentation folders.
+
+Do not mark them as field-application source folders unless a later approved design intentionally changes their role.
+
+---
+
+# Photos
+
+`Photos` is general engineering documentation and is not currently part of the FieldWiring or Procedure application path.
+
+Do not add a field-source marker to `Photos` merely because the folder exists.
+
+If a future field application begins using `Photos` directly, update the governing documentation first and then mark the applicable folder before the application consumes it.
+
+---
+
+# What the Marker Means
+
+The marker means:
+
+> This folder is part of a controlled MSB field-document/application structure. Do not casually rename, move, delete, or repurpose it.
+
+The marker does **not** mean that the folder name itself is permanent Production Database identity.
+
+The Production Database and current LOR relationships still provide the durable identities and relationships used by the applications.
 
 ---
 
 # Local Notes Are Allowed
 
-Each marker contains a `LOCAL NOTES (optional)` section.
+Each marker may contain a `LOCAL NOTES` section.
 
 Use it for short factual information such as:
 
+- a known legacy exception;
 - pending Folder Alignment work;
-- stale Scene/background pointers;
-- known legacy exceptions;
-- why a Scene currently falls back to a Stage/Substage source; or
-- other information a future maintainer should know before changing the folder.
+- a stale LOR background pointer that still needs correction;
+- a missing field image;
+- a temporary migration condition; or
+- another warning a future maintainer should see before changing the folder.
 
-Example:
-
-```text
-LOCAL NOTES (optional)
-
-Notes:
-2026-08-19 GL — Musical Scene pointer still uses the old folder suffix.
-Do not remove the current folder until the next LOR/parser alignment run is complete.
-```
-
-Do not place credentials, passwords, API keys, or private personal information in the marker.
-
-The population utility never overwrites an existing exact marker, so local notes are preserved.
+Do not place passwords, credentials, API keys, or private personal information in a marker.
 
 ---
 
-# Automated Population Utility
+# Existing Marker Utilities — Important
 
-Use:
+Marker utilities must follow the application-specific rules above.
 
-```text
-Utilities\populate_msb_db_source_folder_markers.ps1
-```
+Do **not** use an older utility or checklist as authority for adding markers to `Wiring\BackgroundStage` or `Wiring\MusicalStage`.
 
-The utility is preview-only by default.
+The existing `remove_misplaced_msb_db_scope_root_markers.ps1` utility was created during an intermediate design that treated Stage/Sub-stage/Scene root markers as incorrect. **Do not run that utility under the current architecture.** Current field systems require the structural marker on those roots.
 
-It targets only:
-
-- existing `PreviewBackground` folders;
-- existing `Procedures` folders at Stage/Sub-stage/Scene scope; and
-- existing `Wiring` folders at Stage/Sub-stage/Scene scope.
-
-It does **not** target Stage/Sub-stage/Scene roots and does not mark `Photos`.
-
-It does not create, rename, move, or delete folders. It does not overwrite an existing exact marker.
-
-### Preview all current Stages
-
-```powershell
-.\Utilities\populate_msb_db_source_folder_markers.ps1
-```
-
-### Preview one Stage
-
-```powershell
-.\Utilities\populate_msb_db_source_folder_markers.ps1 -StageFilter '15-*'
-```
-
-### Apply after review
-
-```powershell
-.\Utilities\populate_msb_db_source_folder_markers.ps1 -Apply
-```
-
-Review any `REVIEW_EXISTING_MARKER` result manually.
+Do not run marker utilities merely to make production folders match superseded documentation. The production FieldWiring folders were already aligned to the accepted rule above.
 
 ---
 
-# Application Behavior
+# Before You Finish
 
-The marker `.txt` file itself is never field content and must not be listed as a Wiring image, Setup/Takedown/Inspection instruction, or other published document.
+For a Stage/Sub-stage/Scene used by FieldWiring, verify:
 
-Applications may use the presence of the marker as supporting confirmation that an approved helper folder participates in the current database/application source contract.
+- [ ] the Stage/Sub-stage/Scene root is marked;
+- [ ] every active `PreviewBackground` source folder is marked;
+- [ ] `Wiring` is marked;
+- [ ] `Wiring\BackgroundStage` and `Wiring\MusicalStage` do **not** require separate markers;
+- [ ] `SourceDocs` remains excluded from normal field presentation; and
+- [ ] approved marker files have not been renamed or deleted.
 
-The marker does not replace database/LOR identity authority.
+For future Procedure work, separately verify the Procedure-specific marker locations defined above.
 
-Inside marked source folders, task-specific exclusions still apply. Examples:
-
-- FieldWiring exposes only the applicable published `BackgroundStage` or `MusicalStage` branch;
-- `SourceDocs` is excluded;
-- Procedure `Archive` and source branches are excluded from normal field presentation; and
-- the marker file itself is ignored as content.
-
-A missing expected marker is an alignment/review condition. It does not authorize an application to search neighboring legacy material for a substitute.
-
----
-
-# Simple Rule
-
-> Put `_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt` only in the root of an approved database/application source helper folder. Today those are `PreviewBackground`, `Procedures`, and `Wiring`. Do not put it in the Stage/Scene root or `Photos`.
-
----
-
-## More Information
+## Related Documents
 
 - [Google Drive Folder Structure](00-Google_Drive.md)
 - [Google Drive Document Organization Procedure](01-Google_Drive_Document_Organization_Procedure.md)
 - [Google Drive Path Resolution Contract](02-Google_Drive_Path_Resolution_Contract.md)
-- [FieldWiring Drive Context Resolver Engineering Design](../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
+- [Stage / Sub-stage / Scene Folder Scaffold](04-Stage_Substage_Scene_Folder_Scaffold.md)
+- [FieldWiring Engineering](../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)

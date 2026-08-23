@@ -6,7 +6,7 @@ This project rule defines how field-facing Stage and Scene setup instructions ar
 
 Stage Setup Instructions are not the same document class as repository Operator SOPs. They are field-use documents for volunteers physically installing displays and Stage infrastructure in the park. They may consume Production Database information and be discovered through MSB applications, but their normal user experience must remain simple and Stage-oriented.
 
-This rule governs ownership, source/published relationships, document identity, archive behavior, template use, and integration boundaries. It does not redesign the established Google Shared Drive Stage folder structure.
+This rule governs ownership, source/published relationships, document identity, archive behavior, template use, marker requirements, and integration boundaries. It does not redesign the established Google Shared Drive Stage folder structure.
 
 ## Document Class
 
@@ -25,6 +25,47 @@ The exact Stage/Scene folder layout and migration procedure are governed by the 
 Current Setup instructions belong in the established Stage or Scene `Procedures\Setup` location appropriate to what the instruction actually describes.
 
 Legacy documents are being reconciled into the established current/archive structure through the separate document-alignment process. Do not independently move legacy documents based only on this standard.
+
+## Marker Requirement for the Future Procedure System
+
+The standard marker is:
+
+```text
+_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+The governing rule is:
+
+> **Every folder used as part of the future Procedure application's controlled path must contain the marker.**
+
+For a normal Setup path this includes:
+
+```text
+<Stage / Sub-stage / Scene root>\
+├── marker
+└── Procedures\
+    ├── marker
+    └── Setup\
+        ├── marker
+        └── images\
+            └── marker
+```
+
+The same rule applies to:
+
+```text
+Procedures\Inspection
+Procedures\Takedown
+Procedures\Takedown\images
+```
+
+`Setup\images` and `Takedown\images` are part of the controlled future Procedure content path and must be marked.
+
+`Archive` and `SourceDocs` are excluded source/history areas and are not normal field-presentation folders. They are not application marker targets unless a later approved design intentionally changes their role.
+
+This is the same marker principle used by FieldWiring. Wiring and Procedures remain separate tasks, but they share the rule that an application may only follow a controlled marked path.
+
+See [MSB Database Source Folder Marker — Operator Procedure](../../Docs/00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) and [Google Drive Path Resolution Contract](../../Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md).
 
 ## Stage, Scene, and Display Scope
 
@@ -79,13 +120,17 @@ A separate contributor/operator procedure must explain how to create, revise, ar
 
 Setup-document images must have one predictable home associated with the Setup documentation they support so contributors do not have to guess among unrelated repository or Stage image locations.
 
-For Setup-specific document assets, use the established Setup-local image location approved for the Stage documentation workflow. Do not create additional competing image folders for the same document family.
+For Setup-specific document assets, use the established Setup-local `images` folder. The future Procedure system treats this as part of the controlled task path, so the folder must contain the standard marker.
+
+The same rule applies to the Takedown-local `images` folder.
+
+Do not create additional competing image folders for the same document family.
 
 Reusable organization branding such as the MSB logo should come from one approved publicly accessible reusable asset location rather than being copied into every Stage Setup folder.
 
 Images should appear next to the instruction step they clarify whenever practical.
 
-The exact physical folder path for Setup images must remain aligned with the Stage-folder procedure being completed in the document-alignment work; this standard does not independently change that structure.
+The exact presentation behavior for task-local images must remain aligned with the future Procedure implementation, but their folder/marker ownership is established now.
 
 ## Database Ownership and Document Resolution
 
@@ -100,6 +145,7 @@ Display QR
     -> permanent Display identity
     -> Production Database relationships
     -> applicable Stage / Scene context
+    -> controlled marked Procedure path
     -> durable Setup document reference(s)
     -> user-facing presentation
 ```
@@ -143,9 +189,11 @@ Archived Setup documents:
 
 Setup and Wiring share the established Stage-oriented documentation model but remain different document systems.
 
-Wiring has its own LOR/FormView-derived contracts and `BackgroundStage` / `MusicalStage` behavior. Setup instructions must not be reorganized as Wiring documents, and Wiring must not be simplified into ordinary Setup procedure folders.
+Wiring has its own LOR/FieldWiring/FormView contracts and `BackgroundStage` / `MusicalStage` behavior. Setup instructions must not be reorganized as Wiring documents, and Wiring must not be simplified into ordinary Setup procedure folders.
 
 The proven reusable architectural idea is that structured system identity can resolve the correct field documentation without requiring the volunteer to understand where that documentation is stored.
+
+Both systems use controlled markers along their application paths, but each task owns its own branch and presentation behavior.
 
 ## Navigation and Discovery
 
@@ -166,6 +214,8 @@ A contributor should be able to determine from the repository:
 The following are agreed project direction, not authorization to invent implementation details:
 
 - keep the established Stage/Scene Google Drive folder structure;
+- require the standard marker in every folder used by the future Procedure application's controlled path, including Setup/Takedown `images`;
+- keep `Archive` and `SourceDocs` outside normal field presentation;
 - continue legacy-document alignment through the existing Folder Alignment/document-organization work;
 - use a dedicated Stage Setup Instruction template;
 - maintain a separate contributor/operator procedure for using that template;
@@ -180,7 +230,7 @@ Still unresolved and requiring engineering review:
 - exact Google Doc / published PDF reference storage in PostgreSQL;
 - exact current-vs-published relationship when a Google Doc and PDF both exist;
 - exact scraper/API contract used by `my.sheboyganlights.org`;
-- final Setup image-path rule as the Stage folder-alignment procedure is completed;
+- exact runtime serving/rendering behavior for task-local `images`;
 - final contributor workflow for generating/publishing PDFs from the controlled template/source.
 
 ## Related Documents
@@ -189,6 +239,8 @@ Still unresolved and requiring engineering review:
 - [Linking and Navigation Standard](../Standards/Linking_and_Navigation_Standard.md)
 - [Templates](../Templates/README.md)
 - [Google Drive Document Organization Procedure](../../Docs/00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md)
+- [MSB Database Source Folder Marker — Operator Procedure](../../Docs/00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
+- [Google Drive Path Resolution Contract](../../Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md)
 - [Setup and Deployment Engineering](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md)
 - [Labeling and Scanning](../../Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/README.md)
 - [Wiring System](../../Docs/02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
