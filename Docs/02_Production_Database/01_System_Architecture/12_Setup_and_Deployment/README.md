@@ -2,13 +2,17 @@
 
 ## Current State
 
-**Status: DOCUMENTATION ACTIVE / OPERATIONAL ENGINEERING MOSTLY PLANNED**
+**Status: DOCUMENTATION ACTIVE / OPERATIONAL ENGINEERING NEXT PRIORITY AFTER SCAN INTEGRATION**
 
-This subsystem covers the documentation and future operational engineering for planning, scheduling, staging, loading, scanning, and moving tested displays and containers from storage to the park for annual setup, plus takedown-related field documentation where it belongs with the same Stage material.
+This subsystem covers planning, scheduling, staging, loading, scanning, and moving tested displays and containers from storage to the park for annual setup, plus takedown-related field documentation where it belongs with the same Stage material.
 
-The Stage-oriented folder structure already exists. Setup/Takedown instructions are being organized into those existing Stage folders and use the same Stage-oriented convention already used for Wiring documentation. That documentation work is active now even though the database workflow for scheduling, pick lists, load order, and forklift scanning is not yet fully engineered.
+The Stage-oriented folder structure already exists. Setup/Takedown instructions are being organized into those existing Stage folders and use the same Stage-oriented convention already used by Wiring documentation.
 
-The Production Database does not yet contain the complete engineered workflow for this subsystem. No operator procedure should imply that planned scheduling, pick-list, load-order, or forklift-scanning functions are implemented unless verified from the current database/application.
+The operational database/application workflow for scheduling, pick lists, load order, and forklift scanning is not yet fully engineered. No operator procedure should imply those planned functions are implemented until verified from the current database/application.
+
+FieldWiring is now production-operational, and the existing scan platform is being recovered/documented before its first new additive integration. Once the FieldWiring scan action is accepted, this Setup/Deployment workflow is the next major scanning project.
+
+MSB has purchased a **Zebra DS3678-HD cordless ultra-rugged 1-D/2-D scanner kit** for the workshop forklift. It uses the Zebra 3600-series USB cradle and supports USB HID keyboard input. Because this is the **HD (High Density)** variant rather than an ER/XR extended-range model, its actual suitability from the forklift seat must be tested with real MSB Container and Storage Location labels before it is accepted as the final forklift-distance standard. See [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md).
 
 ## Design Intent
 
@@ -99,6 +103,38 @@ The exact PostgreSQL location for durable Google Doc IDs, published PDF referenc
 
 `my.sheboyganlights.org` is the intended normal field presentation layer. Field volunteers should not need to understand the GitHub repository, database schema, Google Drive organization, or source-document mechanics to reach the current Setup instruction.
 
+## Scan / Forklift Direction
+
+Setup is expected to be a high-volume scan workflow rather than occasional lookup.
+
+Durable physical identities remain the starting point:
+
+```text
+DISP:<permanent display_id>
+CONT:<permanent container_id>
+LOC:<operational storage/location code>
+```
+
+Annual setup dates, load numbers, staging status, and other transient workflow state must not be encoded into the permanent labels.
+
+The application should be designed so both of these input paths produce the same canonical asset/location payload:
+
+```text
+industrial scanner -> HID keyboard input
+phone/tablet camera -> camera decoder
+```
+
+The purchased Zebra DS3678-HD gives the project a real industrial hardware acceptance target. Its USB HID behavior fits the browser-first design, but the hardware must be tested against actual label size/density and actual forklift position before deciding whether HD range is adequate or an ER/XR scanner is required for some tasks.
+
+Likely setup interactions may include both scan orders:
+
+```text
+Container -> Location
+Location -> Container
+```
+
+The real setup-day process must determine what each pair means: pull confirmation, staging, load assignment, destination validation, storage relocation, or another business event. Do not invent transaction semantics from the scanner hardware.
+
 ## Annual Operating Cycle
 
 `ref.season` remains the annual operational context. The documented working cycle is approximately:
@@ -151,6 +187,7 @@ The subsystem is expected to eventually support:
 - pick lists;
 - load/trip grouping and sequence;
 - forklift scanning;
+- Container/Location validation;
 - meaningful pull/stage/load/delivery confirmations;
 - prior-year sequence reference;
 - durable Stage/Scene Setup document resolution;
@@ -167,18 +204,17 @@ This subsystem depends on existing Production Database identities and relationsh
 - testing readiness/state;
 - people/volunteer identity;
 - labeling and scanning infrastructure;
+- rugged tablet/industrial scanner hardware;
 - Stage/Scene identity and established documentation organization; and
 - site/stage/location information needed for deployment planning.
 
 It must not redefine permanent Display IDs, Container IDs, storage identities, LOR wiring/topology, or other identities already owned by existing subsystems.
 
-Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory is a known future need but is not being engineered as part of this documentation work.
+Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory is a known future need but is not being engineered as part of the current Scan Integration work.
 
 ## Known Limitations / Open Work
 
-The operational database workflow is intentionally not fully engineered yet.
-
-Current priority is to document the real Setup/Takedown instructions in the existing Stage/Scene locations, finish the document-alignment procedure, define the controlled Setup template/contributor workflow, and establish durable navigation before deeper workflow engineering.
+Current priority is to close FieldWiring Scan Integration cleanly, then begin Setup/Deployment engineering from the real operational process.
 
 Open work includes:
 
@@ -192,10 +228,39 @@ Open work includes:
 - define how readiness from Testing becomes eligible for Setup/Deployment;
 - define how park destination/stage affects load order;
 - define loads/trips and setup-day changes without destroying useful history;
-- define what forklift scanning must confirm; and
+- document the real forklift driver workflow and required scan confirmations;
+- receive/test the Zebra DS3678-HD with actual Container and representative Location labels;
+- verify USB HID integration with the actual forklift tablet/workstation;
+- measure usable scan range from the actual forklift position;
+- standardize scanner suffix/terminator behavior for rapid browser scanning;
+- determine whether the HD scanner is sufficient or an ER/XR-class scanner is needed for some distances;
 - determine which management workflows remain in Directus versus a dedicated task-focused interface.
 
 ## Resume Development
+
+### Current prerequisite — finish Scan Integration
+
+Before beginning Setup application/schema engineering, close the current FieldWiring Scan Integration and leave the Labeling/Scanning and Server Management handoffs current. The existing scan platform is a dependency and should not be rediscovered in the Setup thread.
+
+### Setup workflow engineering
+
+Then document the real setup-day process from the people who:
+
+- schedule pulls;
+- operate the forklift;
+- identify containers/locations;
+- stage material;
+- load trailers/trucks;
+- receive loads at the park;
+- place containers/displays at their destinations.
+
+Define business events and exception handling before designing schema, Directus Flows, scan-session state, or a dedicated field application.
+
+### Hardware acceptance
+
+Begin hardware testing with the [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md) handoff and the purchased Zebra DS3678-HD. Use actual labels and measured working distances rather than theoretical family-level specifications.
+
+### Setup-document work
 
 For Setup-document work, begin with:
 
@@ -207,14 +272,13 @@ For Setup-document work, begin with:
 
 Do not redesign the established Stage folder structure while solving document identity, QR resolution, PDF publishing, or intranet UX.
 
-For future database/application engineering, document the real setup-day process from the people who schedule, pull, load, drive the forklift, and receive displays at the park. Define business rules before designing schema, Directus Flows, or a dedicated field application.
-
 ## Related Systems
 
 - [Testing System](../05_Testing_System/README.md) — establishes testing state/readiness before deployment.
 - [Containers and Storage](../04_Containers_and_Storage/README.md) — owns container identity, assignments, storage-location relationships, and KIT container identity.
 - [Wiring System](../09_Wiring_System/README.md) — shares the established Stage-oriented field-documentation model while retaining its own wiring contracts.
-- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — owns permanent labels and QR/scanning integration patterns.
+- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — owns permanent labels and scan-routing integration patterns.
+- [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md) — owns the purchased Zebra scanner baseline and hardware/browser-input acceptance contract.
 - [People and Identity](../03_People_and_Identity/README.md) — provides durable person/user identity and audit attribution.
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md) — may provide destination/location context where applicable.
 

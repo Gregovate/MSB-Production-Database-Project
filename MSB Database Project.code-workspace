@@ -10,6 +10,15 @@
 			"dryrun",
 			"lorprev",
 			"winnerfrom"
-		]
+		],
+		"window.title": "MSB DATABASE — ${activeEditorShort}",
+		"workbench.colorCustomizations": {
+			"titleBar.activeBackground": "#005A9C",
+			"titleBar.activeForeground": "#FFFFFF",
+			"activityBar.background": "#005A9C",
+			"activityBar.foreground": "#FFFFFF",
+			"statusBar.background": "#005A9C",
+			"statusBar.foreground": "#FFFFFF"
+		}
 	}
 }

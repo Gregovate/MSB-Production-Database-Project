@@ -324,19 +324,22 @@ class PostgresRepository(Repository):
             else:
                 cur.execute(
                     """
-                    SELECT DISTINCT
-                        d.display_id, d.display_name, d.stage_id,
-                        s.stage_key, s.stage_name,
-                        p.device_type
-                    FROM ref.display d
-                    LEFT JOIN ref.stage s ON s.stage_id = d.stage_id
-                    JOIN lor_snap.v_current_props p ON p.raw_prop_id = d.lor_prop_id
-                    WHERE d.display_status_id = 1
-                      AND upper(coalesce(p.device_type, '')) <> 'NONE'
-                      AND d.display_name ILIKE %s
+                    SELECT *
+                    FROM (
+                        SELECT DISTINCT
+                            d.display_id, d.display_name, d.stage_id,
+                            s.stage_key, s.stage_name,
+                            p.device_type
+                        FROM ref.display d
+                        LEFT JOIN ref.stage s ON s.stage_id = d.stage_id
+                        JOIN lor_snap.v_current_props p ON p.raw_prop_id = d.lor_prop_id
+                        WHERE d.display_status_id = 1
+                          AND upper(coalesce(p.device_type, '')) <> 'NONE'
+                          AND d.display_name ILIKE %s
+                    ) AS matches
                     ORDER BY
-                        CASE WHEN lower(d.display_name) = lower(%s) THEN 0 ELSE 1 END,
-                        d.display_name
+                        CASE WHEN lower(display_name) = lower(%s) THEN 0 ELSE 1 END,
+                        display_name
                     LIMIT %s
                     """,
                     (f"%{value}%", value, limit),

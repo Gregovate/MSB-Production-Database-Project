@@ -52,7 +52,14 @@ function esc(value) {
 
 async function api(url) {
   const response = await fetch(url, {headers:{'Accept':'application/json'}});
-  const payload = await response.json();
+  const text = await response.text();
+  let payload;
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch (_) {
+    if (!response.ok) throw new Error(`FieldWiring server error (${response.status})`);
+    throw new Error('FieldWiring server returned an unexpected response.');
+  }
   if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
   return payload;
 }
@@ -65,7 +72,7 @@ async function searchDisplays() {
   }
   displayResults.innerHTML = '<div class="hint" style="padding:10px 4px">Searching…</div>';
   try {
-    const payload = await api(`/api/displays?q=${encodeURIComponent(q)}`);
+    const payload = await api(`api/displays?q=${encodeURIComponent(q)}`);
     const items = payload.displays || [];
     if (!items.length) {
       displayResults.innerHTML = '<div class="hint" style="padding:10px 4px">No current wiring Display match.</div>';
@@ -91,7 +98,7 @@ async function searchDisplays() {
 
 async function selectDisplay(displayId) {
   try {
-    const payload = await api(`/api/displays/${displayId}/context`);
+    const payload = await api(`api/displays/${displayId}/context`);
     showResolved({...payload.context, source:'Display lookup'});
   } catch (err) {
     alert(err.message);
@@ -105,7 +112,7 @@ function wiringHref(c) {
   params.set('stage_id', c.stage_id);
   params.set('preview_uuid', c.preview_uuid);
   if (c.scene_uuid) params.set('scene_uuid', c.scene_uuid);
-  return '/wiring?' + params.toString();
+  return 'wiring.html?' + params.toString();
 }
 
 function showResolved(c) {
@@ -143,7 +150,7 @@ function showResolved(c) {
 
 async function loadStages() {
   try {
-    const payload = await api('/api/stages');
+    const payload = await api('api/stages');
     stages = payload.stages || [];
     stageSelect.innerHTML = '<option value="">Select a Stage…</option>' +
       stages.map(s => `<option value="${esc(s.stage_key)}">${esc(s.stage_key)} — ${esc(s.stage_name)}</option>`).join('');

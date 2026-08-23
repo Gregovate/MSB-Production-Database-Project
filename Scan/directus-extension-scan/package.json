@@ -1,0 +1,11 @@
+{
+  "name": "directus-extension-scan",
+  "version": "1.0.0",
+  "type": "module",
+  "directus:extension": {
+    "type": "endpoint",
+    "path": "dist/index.js",
+    "source": "src/index.js",
+    "host": "^11.15.4"
+  }
+}

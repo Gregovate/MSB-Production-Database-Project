@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document preserves the durable identity, label, and scanning contracts from the original MSB Asset ID, Labeling, and Scanning plan while distinguishing implemented behavior from scanning work that is still planned or evolving.
+This document preserves the durable identity, label, and scanning contracts for MSB assets and locations while distinguishing implemented behavior from workflows that are still planned or evolving.
 
 ## Core Rule
 
-Machine-readable labels must identify an MSB asset by a durable Production Database identity. They must not depend on a copied Directus admin URL or other application-specific browser path that may change when the user interface changes.
+Machine-readable labels must identify an MSB asset or discrete operational location by a durable Production Database identity. They must not depend on a copied Directus admin URL, annual workflow state, or another application-specific destination that may change.
 
-The human-readable label and the machine-readable payload should identify the same physical asset without creating another competing identity system.
+The human-readable label and machine-readable payload should identify the same object without creating another competing identity system.
 
 ## Approved Canonical Payload Pattern
 
@@ -16,9 +16,9 @@ The approved machine-readable identifier pattern is:
 
 `TYPE:KEY`
 
-The original approved prefixes are:
+Current approved prefixes include:
 
-| Asset Type | Prefix | Example |
+| Object Type | Prefix | Example |
 |---|---|---|
 | Container | `CONT` | `CONT:587` |
 | Storage Location | `LOC` | `LOC:RA-01-A-03` |
@@ -28,12 +28,36 @@ The original approved prefixes are:
 Rules:
 
 - use the stable internal Production Database identifier for Displays and Containers;
-- use the operational location code for Storage Locations;
+- use the operational location code for labeled discrete Storage Locations;
 - controller identity must use the permanent Controller Inventory identity once that subsystem is implemented;
 - do not use LOR UUIDs as Production asset identity;
-- do not use single-letter prefixes for new machine-readable asset identifiers.
+- do not use raw GPS coordinates as a permanent location identity;
+- do not use single-letter prefixes for new machine-readable identifiers.
 
-Before changing existing deployed label payloads, verify the current label templates and LabelPrintService implementation. This document records the approved identity contract; it does not assert that every planned asset type has already been deployed.
+Before changing existing deployed label payloads, verify the current label templates and LabelPrintService implementation. This document records the approved identity contract; it does not assert that every planned object type has already been deployed.
+
+## Storage Location Versus Park GIS Location
+
+`LOC:<location_code>` is the approved machine-readable pattern for **discrete labeled operational locations**, especially workshop/rack/storage locations.
+
+A park destination does not automatically require a physical `LOC:` label.
+
+Park placement is expected to use a durable site/location identity owned with the Site Infrastructure/GIS and Setup/Deployment contracts, with GPS coordinates as spatial evidence/context.
+
+Important distinction:
+
+```text
+Workshop rack position
+    -> discrete Production Database Storage Location
+    -> LOC:<location_code> label is appropriate
+
+Park destination
+    -> durable site/location identity
+    -> GIS/reference coordinates
+    -> mobile GPS/proximity context where operationally useful
+```
+
+Raw latitude/longitude must not become the physical QR/barcode payload merely because the park workflow uses GPS.
 
 ## QR Lookup Rule
 
@@ -41,7 +65,7 @@ A QR code used for record lookup must not encode a raw Directus admin URL such a
 
 A stable application/redirect route may wrap the canonical asset identity so the eventual destination can change without requiring physical labels to be replaced.
 
-For Displays, that design is now a verified deployed capability. The current production Directus scan extension on `msb-prod-db` implements a stable Display lookup hub including:
+For Displays, that design is a verified deployed capability. The current production Directus scan extension on `msb-prod-db` implements a stable Display lookup hub including:
 
 ```text
 /scan/
@@ -53,7 +77,7 @@ For Displays, that design is now a verified deployed capability. The current pro
 
 `/scan/DISP/:key` resolves permanent `ref.display.display_id` and then presents task destinations. New Display field applications such as FieldWiring must extend that existing resolved-identity hub rather than creating another Display QR payload or lookup engine.
 
-The broader `/scan/<TYPE>/<KEY>` concept still remains partly a design direction for asset types/workflows that have not been verified as deployed. Do not infer that Container, Location, or Controller scan behavior exists merely because Display scanning does.
+The broader `/scan/<TYPE>/<KEY>` concept remains partly a design direction for workflows not yet verified as deployed. Do not infer that all Container, Location, Controller, or Setup behaviors exist merely because Display scanning does.
 
 See [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) for the verified Display implementation boundary.
 
@@ -61,8 +85,8 @@ See [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Bound
 
 The implemented operator contract currently includes:
 
-- **Display:** 1 label per display
-- **Container:** 2 labels per container
+- **Display:** 1 label per display;
+- **Container:** 2 labels per container.
 
 These quantities are handled by the printing system; operators should not have to manually create duplicate Container print requests.
 
@@ -82,7 +106,7 @@ The user should not need to export CSV files, open label-design software, choose
 
 The durable design requires enough history to distinguish a requested/attempted print from the physical belief that a usable label is present on the asset.
 
-Important engineering goals from the original plan include:
+Important engineering goals include:
 
 - preserve print request/batch history;
 - preserve who requested a batch;
@@ -96,29 +120,57 @@ The exact current database states and retry/reprint behavior must be verified ag
 
 The Display QR lookup hub is implemented and verified as described above.
 
-Other scan-driven field workflows are not documented here as fully implemented simply because they were approved in the original plan.
+Other scan-driven field workflows are not documented here as fully implemented simply because they are approved directions.
 
 The approved direction is to support both 1-D and 2-D scanning where the workflow benefits from them:
 
-- Code 128 for fast logistics-style identification such as Containers and Storage Locations;
+- Code 128 for fast logistics-style identification such as Containers and labeled Storage Locations;
 - QR where phone/tablet lookup or deeper record navigation is useful;
 - rugged tablets as field display/workstation devices;
-- cordless industrial scanners for forklift-distance workflows.
+- cordless industrial scanners for high-volume workshop/forklift workflows;
+- mobile GPS/site context for park placement where scanning a physical location label is not appropriate.
 
-Planned workflow concepts include:
+Planned workshop workflow concepts include:
 
 - scan Container -> show Home Location;
 - scan Location -> show assigned Container(s);
-- scan Location + Container -> validate whether the move/placement matches;
+- scan Location + Container -> validate whether the relationship matches;
 - support either scan order when the field application maintains temporary scan state.
 
-These remain engineering directions for future scanning/application work until implemented and tested.
+Planned park workflow concepts are different:
+
+- scan Display or Container when asset confirmation is needed;
+- resolve its expected park destination;
+- use GPS/map context to guide or validate placement;
+- retain Setup/Deployment as the owner of the actual movement/delivery/install state transition.
+
+These remain engineering directions until implemented and accepted.
+
+## Input-Method Independence
+
+The business resolver must not depend on how an identifier was captured.
+
+For example:
+
+```text
+Zebra HID scan of CONT:587
+manual entry of CONT:587
+camera scan resolving CONT:587
+```
+
+must identify the same Container and enter the same business workflow.
+
+GPS is additional location context. It is not a different Container identity path.
 
 ## Related Systems
 
 - [Labeling and Scanning engineering handoff](README.md)
 - [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md)
+- [Scan Workflows and Forklift Operations](Scan_Workflows_and_Forklift_Operations.md)
+- [Scanner Hardware and Tablet Integration](Scanner_Hardware_and_Tablet_Integration.md)
 - [Wiring System](../09_Wiring_System/README.md)
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
+- [Setup and Deployment](../12_Setup_and_Deployment/README.md)
+- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md)

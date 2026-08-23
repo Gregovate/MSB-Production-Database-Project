@@ -12,6 +12,7 @@ Detailed engineering and operator instructions belong in the subsystem documenta
 - [Organize Google Drive Documents](01-Google_Drive_Document_Organization_Procedure.md) — volunteer procedure for placing current Setup, Takedown, Maintenance, Operations, Wiring, and Photos in the standardized Stage/Scene helper folders.
 - [MSB Database Source Folder Marker](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) — operator procedure for the `_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt` marker used at controlled structural roots and database/application source folders.
 - [Stage / Sub-stage / Scene Folder Scaffold](04-Stage_Substage_Scene_Folder_Scaffold.md) — controlled folder scaffold to use whenever a new Scene, Sub-stage, or Stage documentation root is created.
+- [Google Workspace Application Read Identity](05-Google_Workspace_Application_Read_Identity.md) — shared Google Workspace read-identity purpose, permission boundary, human-authoring requirement, and split between Production Database and server-management documentation.
 
 The current subsystem documentation remains authoritative for detailed operating and engineering rules.
 
