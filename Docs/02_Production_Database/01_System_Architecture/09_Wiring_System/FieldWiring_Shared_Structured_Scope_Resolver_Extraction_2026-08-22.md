@@ -2,9 +2,10 @@
 
 | Document control | Value |
 |---|---|
-| Status | CODE REGRESSION ACCEPTED — production deployment pending |
+| Status | ARCHITECTURE ACCEPTED — production deployment pending |
 | Branch | `agent/shared-field-context-resolver-extraction` |
-| Tested commit | `b7fcd0333f2cb023026643c292b1d615cf5ceb6a` |
+| Code-regression-tested commit | `b7fcd0333f2cb023026643c292b1d615cf5ceb6a` |
+| Live-equivalence-tested branch head | `dcedc36c8d3ad0955fa793e8817c4a88d3535014` |
 | Production baseline during test | `c71d0e50de9917a384ec8cfc836202e7aa2885db` |
 | Primary caller | FieldWiring |
 | Planned second caller | Procedure subsystem |
@@ -112,11 +113,55 @@ Final full regression result at `b7fcd0333f2cb023026643c292b1d615cf5ceb6a`:
 54 passed in 1.01s
 ```
 
-This is the code-level regression acceptance gate. Production deployment and live acceptance remain separate.
+## Live Production-Data Equivalence Gate
 
-## Acceptance Boundary
+After the complete regression suite passed, the branch was launched from the detached worktree as a transient candidate service on:
 
-The extraction is code-level accepted when all of the following remain true:
+```text
+127.0.0.1:8791
+```
+
+The existing production FieldWiring service remained unchanged on:
+
+```text
+192.168.5.9:8790
+```
+
+Both services used the same production read-only PostgreSQL configuration and the same mounted read-only Google `Display Folders` filesystem.
+
+Health matched exactly:
+
+```text
+{"data_mode":"postgres","status":"ok","version":"V0.2.0"}
+```
+
+A live `BridgeBell` lookup selected permanent Display:
+
+```text
+display_id = 312
+```
+
+Production and candidate then returned identical resolver-specific values:
+
+```text
+scope_type = STAGE
+scope_root = /mnt/msb-display-folders/15-Church-Bells-CH
+warnings = [BackgroundFile points directly into the current Stage Wiring branch; the marked Stage root is the FieldWiring documentation scope.]
+wiring image = RGB Plus Prop Stage 15 Church-Tagged.jpg
+relative path = 15-Church-Bells-CH/Wiring/MusicalStage/RGB Plus Prop Stage 15 Church-Tagged.jpg
+```
+
+Result:
+
+```text
+RESOLVER EQUIVALENCE: PASS
+```
+
+The transient candidate service was stopped automatically after the comparison. Production remained on its existing checkout throughout the test.
+
+## Acceptance Decision
+
+The shared structured-scope resolver extraction is **architecture accepted** because all required behavior-preservation gates passed:
 
 1. one task-neutral structured-scope implementation exists;
 2. FieldWiring delegates structured hierarchy resolution to it;
@@ -124,12 +169,25 @@ The extraction is code-level accepted when all of the following remain true:
 4. existing warning behavior remains intact;
 5. `SourceDocs` remains protected;
 6. bounded matching and ambiguity rejection remain intact;
-7. the complete FieldWiring regression suite passes;
-8. Procedure implementation does not begin by copying or redesigning the resolver.
+7. the complete FieldWiring regression suite passes: `54 passed`;
+8. live production-data resolver output matches the current production service;
+9. Procedure implementation is directed to call this same component rather than copy or redesign it.
+
+Production deployment of the extracted module is a separate server-change step and is not represented as complete by this document.
+
+## Production Deployment Caution
+
+At acceptance-test time, the live `/opt/fieldwiring` checkout was still at:
+
+```text
+c71d0e50de9917a384ec8cfc836202e7aa2885db
+```
+
+The resolver branch is based on newer current `main` history. Therefore deployment must not be described as a resolver-only one-commit update. The full repository gap must be reviewed explicitly before moving the live checkout and restarting FieldWiring.
 
 ## Procedure Handoff
 
-After production acceptance, the Procedure subsystem becomes the second caller.
+The Procedure subsystem may now consume the accepted shared resolver as its second caller in engineering/development work.
 
 The intended flow is:
 
@@ -142,6 +200,8 @@ Display / Stage / Scene context
 ```
 
 Procedure marker validation, PDF discovery, `images`, `Archive`, and task-specific `SourceDocs` exclusions remain Procedure-adapter responsibilities.
+
+Procedure production deployment must not fork or substitute another resolver implementation.
 
 ## Related Documents
 
