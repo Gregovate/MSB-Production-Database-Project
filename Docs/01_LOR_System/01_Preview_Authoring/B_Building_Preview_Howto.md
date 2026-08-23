@@ -68,13 +68,15 @@ For Display-folder organization, follow the current Google Drive organization pr
 
 ## Required marker files
 
-Folders used by the new FieldWiring or future Procedure system must have the required marker:
+Controlled field-application folders use the standard marker:
 
 ```text
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-Do not delete or rename these marker files.
+Marker placement depends on the application. For FieldWiring, the Stage/Sub-stage/Scene root and `Wiring` are marked; a controlled `PreviewBackground` is marked when used; `Wiring\BackgroundStage` and `Wiring\MusicalStage` do **not** require separate markers.
+
+Do not delete or rename approved marker files.
 
 See [MSB Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md).
 
@@ -84,7 +86,7 @@ See [MSB Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder
 
 LOR should link to a shared-drive image. Do **not** embed the image into the Preview.
 
-For new authoring, use an approved marked location.
+For new authoring, use an approved controlled location.
 
 ## Normal Preview or Scene background
 
@@ -107,7 +109,7 @@ Wiring\BackgroundStage\<published image>
 Wiring\MusicalStage\<published image>
 ```
 
-Use only the current published marked wiring branch.
+Use only the current published wiring child branch beneath the marked `Wiring` root. Do not add a separate marker to `BackgroundStage` or `MusicalStage`.
 
 ## Do not use SourceDocs
 
@@ -234,7 +236,7 @@ Before exporting:
 - verify controller and channel assignments;
 - verify SPARE channels;
 - verify the background image still opens from the shared drive;
-- verify new folders, when required, use the approved scaffold and markers;
+- verify new folders, when required, use the approved scaffold and application-specific marker rules;
 - verify the background does not point into `SourceDocs`; and
 - verify you are working in your own copy, not the approved master.
 
@@ -268,13 +270,13 @@ The master-update/review process is controlled separately.
 
 - [ ] I started from the approved design information.
 - [ ] If editing an existing Preview, I used the current approved Preview.
-- [ ] My background image is in an approved marked location.
+- [ ] My background image is in an approved controlled location.
 - [ ] My background does not point into `SourceDocs`.
 - [ ] My Display and channel names follow the naming rules.
 - [ ] Controller and channel assignments are correct.
 - [ ] Unused channels are shown as SPARE.
 - [ ] Old channels from moved Displays were deleted and replaced with new SPARE channels.
-- [ ] Any new Stage/Sub-stage/Scene folder uses the complete scaffold and required markers.
+- [ ] Any new Stage/Sub-stage/Scene folder uses the complete scaffold and correct application-specific markers.
 - [ ] I exported my work to `UserPreviewStaging\<username>`.
 - [ ] I did not overwrite the approved master.
 
@@ -304,5 +306,6 @@ If you are unsure about the correct Stage, folder, Scene name, Display Name, bac
 
 # Changelog
 
+- 2026-08-22 — Clarified FieldWiring marker boundary: `Wiring` is marked; `BackgroundStage` / `MusicalStage` are not separately marked.
 - 2026-08-22 — Rewritten as a plain-language operator procedure using the current marked-folder, Scene scaffold, Master Musical Preview, FieldWiring, and staging rules.
 - 2025-10-05 — Initial release.

@@ -6,7 +6,7 @@
 | Current revision | 2026-08-22 |
 | Owner | MSB Database Administrator |
 | Applies to | Folder Alignment, Field Context Resolution, FieldWiring, Setup, Takedown, Inspection, future field-document applications |
-| Code/schema status | Documentation contract; current FieldWiring release candidate does not yet enforce every required child-branch marker |
+| Code/schema status | Documentation contract; current FieldWiring implementation matches the accepted Wiring-root marker rule |
 
 ## Purpose
 
@@ -97,7 +97,7 @@ A Display does not automatically receive standardized `Wiring` or `Procedures` b
 
 Not every Display requires its own `PreviewBackground` image.
 
-## Controlled Marker Path
+## Controlled Marker Paths
 
 The standard marker is:
 
@@ -105,13 +105,11 @@ The standard marker is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-The governing rule is:
+Marker placement is application-specific.
 
-> **Every folder that FieldWiring or the future Procedure system uses as part of its controlled application path must contain the marker.**
+### FieldWiring marker contract
 
-The marker therefore applies to both the structured scope and the application-facing branches below it.
-
-For current Stage/Sub-stage/Scene field-document paths, required marker locations include:
+For current FieldWiring resolution, required marker locations are:
 
 ```text
 <Stage / Sub-stage / Scene>\
@@ -119,41 +117,47 @@ For current Stage/Sub-stage/Scene field-document paths, required marker location
 │
 ├── PreviewBackground\
 │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│
-├── Procedures\
-│   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│   ├── Inspection\
-│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│   ├── Setup\
-│   │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│   │   └── images\
-│   │       └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│   └── Takedown\
-│       ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-│       └── images\
-│           └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│       (when PreviewBackground is used as a current controlled source)
 │
 └── Wiring\
     ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     ├── BackgroundStage\
-    │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     └── MusicalStage\
-        └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-A current Display/shared-folder `PreviewBackground` that is used as LOR/application path evidence must also be marked.
+`Wiring\BackgroundStage` and `Wiring\MusicalStage` do **not** require separate markers. The marker on `Wiring` guards the selected published child branch.
+
+This is the accepted production-aligned contract and matches the current FieldWiring resolver behavior.
+
+A current Display/shared-folder `PreviewBackground` used as LOR/application path evidence must also be marked.
+
+### Future Procedure marker contract
+
+The future Procedure system uses a separate controlled path. Current planned required marker locations include:
+
+```text
+<Stage / Sub-stage / Scene>\
+├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+│
+└── Procedures\
+    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    ├── Inspection\
+    │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    ├── Setup\
+    │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    │   └── images\
+    │       └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    └── Takedown\
+        ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+        └── images\
+            └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+Do not copy the Procedure child-folder marker rule onto FieldWiring's `BackgroundStage` / `MusicalStage` branches.
 
 `SourceDocs` and `Archive` are excluded working/history boundaries and are not part of normal field traversal or presentation. They are not field-application marker targets unless an approved future design changes that role.
 
-`Setup\images` and `Takedown\images` are part of the future Procedure content path and must be marked.
-
 `Photos` is not currently part of the FieldWiring or Procedure application path.
-
-### Current FieldWiring implementation gap
-
-The FieldWiring release-candidate image resolver currently validates the structured Stage/Scene root and checks markers on `Wiring` and `PreviewBackground`, but it does not yet require a marker on the selected `BackgroundStage` / `MusicalStage` child branch.
-
-That is an implementation gap against this current contract. Do not weaken the folder/marker documentation to match the incomplete enforcement. The FieldWiring engineering work must be updated separately before final deployment acceptance.
 
 ## Naming Rules for Documentation Scope
 
@@ -551,7 +555,7 @@ A downstream resolver should apply this contract conservatively:
 6. classify the owner and parent hierarchy using the Stage/Sub-stage/Scene/Display naming rules;
 7. if the immediate owner is a Display/group, climb through the actual parent hierarchy to the nearest valid Scene/Sub-stage/Stage root for shared Wiring/Procedure discovery;
 8. if no usable explicit path evidence exists, use the current database hierarchy and deterministic naming rules to resolve the applicable structured scope;
-9. verify the required markers along the controlled application path;
+9. verify the markers required by the selected application's marker contract;
 10. append only the standardized relative branch owned by the selected task;
 11. if path evidence, naming, markers, and current relationships conflict or remain ambiguous, report the condition instead of guessing.
 
@@ -559,9 +563,7 @@ The resolver must not require a Display-level background merely because the entr
 
 ## Task Branches After Scope Resolution
 
-After resolving the documentation root, the task determines the relative branch.
-
-Every directory used in the selected application path must satisfy the marker rule above.
+After resolving the documentation root, the task determines the relative branch and applies that task's marker contract.
 
 ### Field Wiring
 
@@ -576,6 +578,8 @@ or:
 ```
 
 A direct Wiring `BackgroundFile` path may already identify the applicable branch.
+
+FieldWiring requires the documentation-root marker and `Wiring` marker; the selected `BackgroundStage` / `MusicalStage` child is not separately marked.
 
 ### Setup
 
@@ -625,7 +629,7 @@ permanent Display identity
 
 A QR code must not embed the Google Drive path.
 
-Where a browser/service cannot consume a mounted-drive path directly, the service may resolve the same hierarchy through a controlled Google Drive/file-serving mechanism. That mechanism must preserve the scope, branch, and marker rules in this contract.
+Where a browser/service cannot consume a mounted-drive path directly, the service may resolve the same hierarchy through a controlled Google Drive/file-serving mechanism. That mechanism must preserve the scope, branch, and application-specific marker rules in this contract.
 
 ## Relationship to Folder Alignment
 
@@ -638,7 +642,7 @@ Folder Alignment should:
 - classify Stage/Sub-stage/Scene/Display scopes using this contract;
 - recognize both `PreviewBackground` and deliberate direct Wiring path evidence;
 - report path/name/hierarchy conflicts;
-- validate required markers and standardized helper folders where applicable; and
+- validate the markers required by the applicable application contract and standardized helper folders where applicable; and
 - remain read-only except for separately controlled additive helper-folder/marker updaters.
 
 When this document and Folder Alignment implementation disagree, the discrepancy must be reviewed explicitly. Do not silently treat Folder Alignment implementation behavior as a new filesystem standard.
@@ -648,7 +652,7 @@ When this document and Folder Alignment implementation disagree, the discrepancy
 Path resolution must:
 
 - preserve the existing Stage/Sub-stage/Scene/Display hierarchy;
-- require the marker on every directory used as part of the current field-application path;
+- apply the marker contract owned by the selected application rather than assuming every traversed child folder is separately marked;
 - treat `PreviewBackground` as an infrastructure/helper folder, never as the scope itself;
 - not require every Display to have `PreviewBackground`;
 - accept deliberate direct Wiring paths as valid current evidence;
