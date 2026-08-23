@@ -31,20 +31,15 @@ const state = {
 
 function esc(value) {
   return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
 function storedTheme() {
   try {
     const value = localStorage.getItem(THEME_KEY);
     return value === 'light' || value === 'dark' ? value : null;
-  } catch (_) {
-    return null;
-  }
+  } catch (_) { return null; }
 }
 
 function systemTheme() {
@@ -105,23 +100,36 @@ function flattenContext(context) {
   };
 }
 
-function sceneLabel(context) {
-  const c = flattenContext(context);
-  if (c.scene_name && c.scene_name.toLowerCase() !== 'root') return c.scene_name;
-  return 'Whole Stage';
+function nodeStage(node) {
+  return {
+    stage_id: node?.stage_id ?? null,
+    stage_key: node?.stage_key ?? null,
+    stage_name: node?.label ?? node?.database_stage_name ?? 'Unnamed Stage'
+  };
 }
 
 function stageLabel(stage) {
   if (!stage) return 'Unresolved';
+  if (stage.label) return stage.label;
   const key = stage.stage_key ? `${stage.stage_key} · ` : '';
   return `${key}${stage.stage_name || 'Unnamed Stage'}`;
+}
+
+function sceneLabel(context) {
+  const c = flattenContext(context);
+  return c.scene_name && c.scene_name.toLowerCase() !== 'root' ? c.scene_name : 'Whole Stage';
 }
 
 function updateLocation() {
   const params = new URLSearchParams();
   params.set('task', state.task);
   if (state.entry?.type === 'display') params.set('display_id', state.entry.display_id);
-  if (state.entry?.type === 'stage') params.set('stage_id', state.entry.stage.stage_id);
+  if (state.entry?.type === 'stage') {
+    params.set('stage_id', state.entry.stage.stage_id);
+    if (state.entry.whole_stage) params.set('whole_stage', 'true');
+    if (state.entry.preview_uuid) params.set('preview_uuid', state.entry.preview_uuid);
+    if (state.entry.scene_uuid) params.set('scene_uuid', state.entry.scene_uuid);
+  }
   const query = params.toString();
   try { history.replaceState(null, '', query ? `?${query}` : location.pathname); } catch (_) {}
 }
@@ -178,53 +186,118 @@ async function loadStages() {
   try {
     const payload = await api('api/stages');
     state.stages = payload.stages || [];
-    stageSelect.innerHTML = '<option value="">Select a Stage…</option>' + state.stages.map(item => {
-      const stage = item.stage || {};
-      return `<option value="${esc(stage.stage_id)}">${esc(stage.stage_key ?? '')} — ${esc(stage.stage_name ?? '')}</option>`;
-    }).join('');
+    stageSelect.innerHTML = '<option value="">Select a Stage…</option>' +
+      state.stages.map(stage => `<option value="${esc(stage.stage_id)}">${esc(stage.label)}</option>`).join('');
   } catch (err) {
     stageSelect.innerHTML = `<option value="">${esc(err.message)}</option>`;
   }
 }
 
+function contextRow(label, badge, meta, attrs) {
+  return `<div class="context-choice" ${attrs}>
+    <span class="context-badge">${esc(badge)}</span>
+    <strong>${esc(label)}</strong>
+    <div class="context-meta">${esc(meta)}</div>
+  </div>`;
+}
+
 function renderStageContexts() {
-  const item = state.stages.find(row => String(row.stage?.stage_id) === String(stageSelect.value));
-  if (!item) {
+  const stage = state.stages.find(row => String(row.stage_id) === String(stageSelect.value));
+  if (!stage) {
     stageContexts.innerHTML = '';
     return;
   }
-  const contexts = item.contexts || [];
-  const rows = [
-    `<div class="context-choice" data-whole-stage="true"><span class="context-badge">Stage</span><strong>Whole Stage</strong><div class="context-meta">Use the Stage-level ${esc(state.task)} procedure.</div></div>`
-  ];
-  contexts.forEach((context, index) => {
-    const c = flattenContext(context);
-    rows.push(`
-      <div class="context-choice" data-context-index="${index}">
-        <span class="context-badge">${esc(c.scope_kind === 'Scene' ? 'Scene' : 'Stage')}</span>
-        <strong>${esc(sceneLabel(c))}</strong>
-        <div class="context-meta">${esc(c.preview_name || 'Current field context')}</div>
-      </div>`);
+
+  const rows = [];
+  rows.push(contextRow(stage.label, 'Stage', `Use the Stage-level ${state.task} procedure.`, 'data-owner="stage"'));
+
+  (stage.scenes || []).forEach((scene, index) => {
+    rows.push(contextRow(scene.label, 'Scene', `Use the Scene-level ${state.task} procedure.`, `data-stage-scene="${index}"`));
   });
+
+  (stage.sub_stages || []).forEach((sub, subIndex) => {
+    rows.push(contextRow(sub.label, 'Sub-stage', `Use the Sub-stage-level ${state.task} procedure.`, `data-substage="${subIndex}"`));
+    (sub.scenes || []).forEach((scene, sceneIndex) => {
+      rows.push(contextRow(scene.label, 'Scene', `Use the Scene-level ${state.task} procedure.`, `data-sub-scene="${subIndex}:${sceneIndex}"`));
+    });
+  });
+
   stageContexts.innerHTML = rows.join('');
-  stageContexts.querySelector('[data-whole-stage="true"]')?.addEventListener('click', () => selectStage(item, null, true));
-  stageContexts.querySelectorAll('[data-context-index]').forEach(node => {
-    node.addEventListener('click', () => selectStage(item, contexts[Number(node.dataset.contextIndex)], false));
+  stageContexts.querySelector('[data-owner="stage"]')?.addEventListener('click', () => selectHierarchyOwner(stage));
+  stageContexts.querySelectorAll('[data-stage-scene]').forEach(node => {
+    node.addEventListener('click', () => selectHierarchyScene(stage, stage.scenes[Number(node.dataset.stageScene)]));
+  });
+  stageContexts.querySelectorAll('[data-substage]').forEach(node => {
+    node.addEventListener('click', () => selectHierarchyOwner(stage.sub_stages[Number(node.dataset.substage)]));
+  });
+  stageContexts.querySelectorAll('[data-sub-scene]').forEach(node => {
+    node.addEventListener('click', () => {
+      const [subIndex, sceneIndex] = node.dataset.subScene.split(':').map(Number);
+      const sub = stage.sub_stages[subIndex];
+      selectHierarchyScene(sub, sub.scenes[sceneIndex]);
+    });
   });
 }
 
-function selectStage(item, context, wholeStage) {
-  const c = context ? flattenContext(context) : null;
+function selectHierarchyOwner(owner) {
   state.entry = {
     type: 'stage',
-    stage: item.stage,
-    whole_stage: Boolean(wholeStage),
-    preview_uuid: c?.preview_uuid || null,
-    scene_uuid: c?.scene_uuid || null,
-    scene_name: c?.scene_name || null
+    stage: nodeStage(owner),
+    whole_stage: true,
+    preview_uuid: null,
+    scene_uuid: null,
+    scene_name: null
   };
   updateLocation();
   resolveCurrent();
+}
+
+function selectHierarchyScene(owner, scene) {
+  const contexts = scene?.contexts || [];
+  if (!contexts.length) {
+    showProcedureError(`No current ${state.task} context is available for ${scene?.label || 'this Scene'}.`);
+    return;
+  }
+  if (contexts.length === 1) {
+    selectStageContext(owner, contexts[0]);
+    return;
+  }
+
+  state.entry = {
+    type: 'stage',
+    stage: nodeStage(owner),
+    whole_stage: false,
+    preview_uuid: null,
+    scene_uuid: null,
+    scene_name: scene.label
+  };
+  renderDirectContextChoices(owner, scene, contexts);
+}
+
+function selectStageContext(owner, context) {
+  const c = flattenContext(context);
+  state.entry = {
+    type: 'stage',
+    stage: nodeStage(owner),
+    whole_stage: false,
+    preview_uuid: c.preview_uuid,
+    scene_uuid: c.scene_uuid,
+    scene_name: c.scene_name
+  };
+  updateLocation();
+  resolveCurrent();
+}
+
+function renderDirectContextChoices(owner, scene, contexts) {
+  contextChoices.innerHTML = contexts.map((context, index) => {
+    const c = flattenContext(context);
+    return contextRow(scene.label, 'Scene', c.preview_name || 'Current field context', `data-choice-index="${index}"`);
+  }).join('');
+  contextChoices.querySelectorAll('[data-choice-index]').forEach(node => {
+    node.addEventListener('click', () => selectStageContext(owner, contexts[Number(node.dataset.choiceIndex)]));
+  });
+  contextChoiceCard.hidden = false;
+  procedureCard.hidden = true;
 }
 
 function renderProcedureContext() {
@@ -233,11 +306,9 @@ function renderProcedureContext() {
     return;
   }
   const parts = [];
-  if (state.entry.type === 'display') {
-    parts.push(`${state.entry.display_name} · DISP:${state.entry.display_id}`);
-  }
+  if (state.entry.type === 'display') parts.push(`${state.entry.display_name} · DISP:${state.entry.display_id}`);
   parts.push(stageLabel(state.entry.stage));
-  parts.push(state.entry.whole_stage ? 'Whole Stage' : (state.entry.scene_name || 'Current Stage / Scene context'));
+  parts.push(state.entry.whole_stage ? 'Whole Stage / Sub-stage' : (state.entry.scene_name || 'Current Scene'));
   procedureContext.textContent = parts.join(' · ');
 }
 
@@ -304,12 +375,7 @@ function renderContextChoices(result) {
   const choices = result.contexts || [];
   contextChoices.innerHTML = choices.map((context, index) => {
     const c = flattenContext(context);
-    return `
-      <div class="context-choice" data-choice-index="${index}">
-        <span class="context-badge">${esc(c.scope_kind === 'Scene' ? 'Scene' : 'Stage')}</span>
-        <strong>${esc(sceneLabel(c))}</strong>
-        <div class="context-meta">${esc(c.preview_name || 'Current field context')}</div>
-      </div>`;
+    return contextRow(sceneLabel(c), c.scope_kind === 'Scene' ? 'Scene' : 'Stage', c.preview_name || 'Current field context', `data-choice-index="${index}"`);
   }).join('');
   contextChoices.querySelectorAll('[data-choice-index]').forEach(node => {
     node.addEventListener('click', () => {
@@ -317,6 +383,7 @@ function renderContextChoices(result) {
       state.entry.preview_uuid = c.preview_uuid;
       state.entry.scene_uuid = c.scene_uuid;
       state.entry.scene_name = c.scene_name;
+      updateLocation();
       resolveCurrent();
     });
   });
@@ -336,14 +403,16 @@ function renderProcedure(result) {
   procedureCard.hidden = false;
   procedureTitle.textContent = `${state.task} Instructions`;
   renderProcedureContext();
-  scopeBadge.textContent = result.scope_type === 'SCENE' ? 'Scene / Area' : (result.scope_type === 'STAGE' ? 'Stage' : result.scope_type || 'Unresolved');
+  scopeBadge.textContent = result.scope_type === 'SCENE' ? 'Scene / Area' :
+    (result.scope_type === 'SUBSTAGE' ? 'Sub-stage' :
+    (result.scope_type === 'STAGE' ? 'Stage' : result.scope_type || 'Unresolved'));
 
   const messages = {
     AVAILABLE: 'Current published instructions are available.',
     NO_CURRENT_DOCUMENTS: `No current ${state.task} PDF is published for this field context.`,
     TASK_UNAVAILABLE: `${state.task} is not currently published for this field context.`,
     PROCEDURES_UNAVAILABLE: 'The Procedure source is not currently available for this field context.',
-    UNRESOLVED_SCOPE: 'The current Stage / Scene filesystem scope could not be resolved safely.'
+    UNRESOLVED_SCOPE: 'The current Stage / Sub-stage / Scene scope could not be resolved safely.'
   };
   procedureMessage.textContent = messages[result.status] || result.status || 'Procedure status unavailable.';
 
@@ -365,8 +434,8 @@ function renderProcedure(result) {
     </div>
   `).join('');
 
-  const warnings = result.warnings || [];
-  warningList.innerHTML = warnings.map(warning => `<div class="warning">${esc(warning)}</div>`).join('');
+  const operatorWarnings = result.operator_warnings || [];
+  warningList.innerHTML = operatorWarnings.map(warning => `<div class="warning">${esc(warning)}</div>`).join('');
 }
 
 function clearCurrentSelection() {
