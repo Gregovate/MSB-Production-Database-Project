@@ -3,14 +3,12 @@ const displaySearch = document.getElementById('display-search');
 const displayResults = document.getElementById('display-results');
 const stageSelect = document.getElementById('stage-select');
 const stageContexts = document.getElementById('stage-contexts');
-const selectionCard = document.getElementById('selection-card');
-const selectionGrid = document.getElementById('selection-grid');
-const selectionStatus = document.getElementById('selection-status');
 const clearSelection = document.getElementById('clear-selection');
 const contextChoiceCard = document.getElementById('context-choice-card');
 const contextChoices = document.getElementById('context-choices');
 const procedureCard = document.getElementById('procedure-card');
 const procedureTitle = document.getElementById('procedure-title');
+const procedureContext = document.getElementById('procedure-context');
 const procedureMessage = document.getElementById('procedure-message');
 const documentList = document.getElementById('document-list');
 const imageList = document.getElementById('image-list');
@@ -89,6 +87,7 @@ function normalizeTask(value) {
 function setTask(task, resolve = true) {
   state.task = normalizeTask(task);
   taskButtons.forEach(button => button.classList.toggle('active', button.dataset.task === state.task));
+  if (stageSelect.value) renderStageContexts();
   updateLocation();
   if (resolve && state.entry) resolveCurrent();
 }
@@ -168,11 +167,10 @@ async function selectDisplay(displayId) {
       scene_uuid: null,
       scene_name: null
     };
-    renderSelection();
     updateLocation();
     await resolveCurrent();
   } catch (err) {
-    showSelectionError(err.message);
+    showProcedureError(err.message);
   }
 }
 
@@ -225,36 +223,38 @@ function selectStage(item, context, wholeStage) {
     scene_uuid: c?.scene_uuid || null,
     scene_name: c?.scene_name || null
   };
-  renderSelection();
   updateLocation();
   resolveCurrent();
 }
 
-function renderSelection() {
+function renderProcedureContext() {
   if (!state.entry) {
-    selectionCard.hidden = true;
+    procedureContext.textContent = '';
     return;
   }
-  const rows = [];
-  if (state.entry.type === 'display') rows.push(['Display', `${state.entry.display_name} · DISP:${state.entry.display_id}`]);
-  rows.push(['Stage', stageLabel(state.entry.stage)]);
-  rows.push(['Scene / Area', state.entry.whole_stage ? 'Whole Stage' : (state.entry.scene_name || 'Resolving current context…')]);
-  rows.push(['Procedure', state.task]);
-  selectionGrid.innerHTML = rows.map(([label, value]) => `
-    <div class="resolved-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>
-  `).join('');
-  selectionStatus.textContent = `Resolving current ${state.task} instructions…`;
-  selectionCard.hidden = false;
-  contextChoiceCard.hidden = true;
-  procedureCard.hidden = true;
+  const parts = [];
+  if (state.entry.type === 'display') {
+    parts.push(`${state.entry.display_name} · DISP:${state.entry.display_id}`);
+  }
+  parts.push(stageLabel(state.entry.stage));
+  parts.push(state.entry.whole_stage ? 'Whole Stage' : (state.entry.scene_name || 'Current Stage / Scene context'));
+  procedureContext.textContent = parts.join(' · ');
 }
 
-function showSelectionError(message) {
-  selectionCard.hidden = false;
-  selectionGrid.innerHTML = '';
-  selectionStatus.textContent = message;
+function clearProcedureContents() {
+  documentList.innerHTML = '';
+  imageList.innerHTML = '';
+  warningList.innerHTML = '';
+  scopeBadge.textContent = '';
+}
+
+function showProcedureError(message) {
   contextChoiceCard.hidden = true;
-  procedureCard.hidden = true;
+  procedureCard.hidden = false;
+  procedureTitle.textContent = `${state.task} Instructions`;
+  renderProcedureContext();
+  procedureMessage.textContent = message;
+  clearProcedureContents();
 }
 
 function procedureParams(name = null) {
@@ -286,14 +286,17 @@ function formatBytes(value) {
 
 async function resolveCurrent() {
   if (!state.entry) return;
-  selectionStatus.textContent = `Resolving current ${state.task} instructions…`;
   contextChoiceCard.hidden = true;
-  procedureCard.hidden = true;
+  procedureCard.hidden = false;
+  procedureTitle.textContent = `${state.task} Instructions`;
+  renderProcedureContext();
+  procedureMessage.textContent = `Resolving current ${state.task} instructions…`;
+  clearProcedureContents();
   try {
     const payload = await api(`api/procedures?${procedureParams().toString()}`);
     renderProcedure(payload.procedure);
   } catch (err) {
-    selectionStatus.textContent = err.message;
+    showProcedureError(err.message);
   }
 }
 
@@ -314,13 +317,11 @@ function renderContextChoices(result) {
       state.entry.preview_uuid = c.preview_uuid;
       state.entry.scene_uuid = c.scene_uuid;
       state.entry.scene_name = c.scene_name;
-      renderSelection();
       resolveCurrent();
     });
   });
   contextChoiceCard.hidden = false;
   procedureCard.hidden = true;
-  selectionStatus.textContent = 'More than one current field context applies. Choose the Scene / Area you are working on.';
 }
 
 function renderProcedure(result) {
@@ -331,9 +332,10 @@ function renderProcedure(result) {
 
   const selected = flattenContext(result.selected_context || {});
   if (!state.entry.whole_stage && selected.scene_name) state.entry.scene_name = selected.scene_name;
-  renderSelection();
+  contextChoiceCard.hidden = true;
   procedureCard.hidden = false;
   procedureTitle.textContent = `${state.task} Instructions`;
+  renderProcedureContext();
   scopeBadge.textContent = result.scope_type === 'SCENE' ? 'Scene / Area' : (result.scope_type === 'STAGE' ? 'Stage' : result.scope_type || 'Unresolved');
 
   const messages = {
@@ -344,9 +346,6 @@ function renderProcedure(result) {
     UNRESOLVED_SCOPE: 'The current Stage / Scene filesystem scope could not be resolved safely.'
   };
   procedureMessage.textContent = messages[result.status] || result.status || 'Procedure status unavailable.';
-  selectionStatus.textContent = result.status === 'AVAILABLE'
-    ? `Current ${state.task} procedure resolved.`
-    : procedureMessage.textContent;
 
   const documents = result.documents || [];
   documentList.innerHTML = documents.map(document => `
@@ -372,7 +371,6 @@ function renderProcedure(result) {
 
 function clearCurrentSelection() {
   state.entry = null;
-  selectionCard.hidden = true;
   contextChoiceCard.hidden = true;
   procedureCard.hidden = true;
   stageSelect.value = '';
