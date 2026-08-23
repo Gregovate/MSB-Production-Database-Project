@@ -179,17 +179,22 @@ The common Drive resolver identifies the structured scope. FieldWiring then insp
 
 Wiring images are supplemental rough-location guidance. Hookup data remains primary and must stay usable when no image exists.
 
-The current controlled marker rule requires the standard marker in **every folder used as part of the FieldWiring application path**. For the current wiring path this includes:
+The accepted FieldWiring marker contract requires:
 
 ```text
-<resolved Stage / Sub-stage / Scene root>
-Wiring
-Wiring\BackgroundStage   (when selected)
-Wiring\MusicalStage      (when selected)
-PreviewBackground        (when used as same-scope context)
+<resolved Stage / Sub-stage / Scene root>   marker required
+Wiring                                      marker required
+PreviewBackground                           marker required when used as same-scope controlled context
+Wiring\BackgroundStage                      no separate marker
+Wiring\MusicalStage                         no separate marker
+SourceDocs                                  excluded / no marker
 ```
 
-The release-candidate `wiring_images.py` currently enforces the root, `Wiring`, and `PreviewBackground` markers but does not yet require the marker in the selected `BackgroundStage` / `MusicalStage` child branch. This is a known implementation gap against the current Google Drive path contract and must be corrected/tested before production deployment acceptance.
+The marker on the `Wiring` root guards the selected `BackgroundStage` or `MusicalStage` child branch. The current `wiring_images.py` implementation matches this contract by checking the resolved scope marker, `Wiring` marker, and `PreviewBackground` marker when applicable.
+
+There is **no FieldWiring child-branch marker enforcement gap**. Do not add markers to production `BackgroundStage` / `MusicalStage` folders merely to match superseded documentation.
+
+The future Procedure system has a separate deeper marker contract for `Procedures`, task branches, and Setup/Takedown `images`; that rule must not be projected onto Wiring child branches.
 
 The current laptop environment sees that tree through:
 
@@ -240,8 +245,8 @@ FieldWiring is now merged to `main`; do not repeat the old pre-merge branch-inte
 The next engineering sequence is:
 
 1. refresh current `main` before making further FieldWiring changes;
-2. update `wiring_images.py` and tests so the selected `BackgroundStage` / `MusicalStage` branch marker is enforced in addition to the existing scope/Wiring markers;
-3. run the full FieldWiring application test suite;
+2. preserve the accepted FieldWiring marker contract; no child-marker code change is required;
+3. run the full FieldWiring application test suite before material application changes;
 4. deploy the backend on `msb-prod-db` using live read-only PostgreSQL;
 5. establish the read-only server-visible Display Folders/image source;
 6. publish FieldWiring through the protected `my.sheboyganlights.org` origin using the existing Synology/`msb-prod-db` browser-application pattern;
@@ -252,7 +257,6 @@ Use [FieldWiring Server Deployment and Scan Integration Plan](FieldWiring_Server
 
 ## Known Open Work
 
-- enforce the marker on every selected FieldWiring application-path folder, including `BackgroundStage` / `MusicalStage`;
 - production server deployment;
 - server-visible Display Folders mount/synchronization and Windows-path translation;
 - least-privilege production FieldWiring DB role/grants;
