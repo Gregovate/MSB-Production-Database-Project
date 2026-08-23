@@ -104,11 +104,9 @@ Use this structure for every newly created Stage, Sub-stage, or Scene documentat
     ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     │
     ├── BackgroundStage/
-    │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     │   └── SourceDocs/
     │
     └── MusicalStage/
-        ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
         └── SourceDocs/
 ```
 
@@ -124,23 +122,31 @@ The standard marker filename is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-The current rule is:
+Marker placement is application-specific.
 
-> **Every folder used by the new FieldWiring system or future Procedure system must contain the marker.**
+## FieldWiring
 
-For the scaffold above, markers are required in:
+For FieldWiring, markers are required in:
 
 1. the Stage / Sub-stage / Scene root;
-2. `PreviewBackground`;
-3. `Procedures`;
-4. `Procedures\Inspection`;
-5. `Procedures\Setup`;
-6. `Procedures\Setup\images`;
-7. `Procedures\Takedown`;
-8. `Procedures\Takedown\images`;
-9. `Wiring`;
-10. `Wiring\BackgroundStage`; and
-11. `Wiring\MusicalStage`.
+2. `PreviewBackground` when it is a current controlled LOR/application source; and
+3. `Wiring`.
+
+`Wiring\BackgroundStage` and `Wiring\MusicalStage` are **not separately marked**. The marker on the `Wiring` root guards those published child branches.
+
+## Future Procedure system
+
+For the future Procedure path represented by this scaffold, markers are required in:
+
+1. the Stage / Sub-stage / Scene root;
+2. `Procedures`;
+3. `Procedures\Inspection`;
+4. `Procedures\Setup`;
+5. `Procedures\Setup\images`;
+6. `Procedures\Takedown`; and
+7. `Procedures\Takedown\images`.
+
+Do not copy the Procedure child-folder marker rule onto FieldWiring's `BackgroundStage` / `MusicalStage` branches.
 
 `SourceDocs` and `Archive` are working/history folders excluded from normal field presentation and are not field-application marker targets unless a future approved design changes their role.
 
@@ -160,9 +166,9 @@ For existing folders:
 
 - preserve the aligned root name;
 - preserve the controlled field-application folder names;
-- add/maintain the required markers as the folder becomes part of the new FieldWiring/Procedure system;
+- add/maintain only the markers required by the applicable application contract;
 - preserve unrelated legacy material until it can be reviewed; and
-- allow applications to ignore material outside the controlled marked paths.
+- allow applications to ignore material outside the controlled source paths.
 
 This allows gradual cleanup without breaking LOR paths or current field applications.
 
@@ -174,18 +180,20 @@ This allows gradual cleanup without breaking LOR paths or current field applicat
 
 Use `PreviewBackground` for current images intentionally used as LOR Preview/Scene background references.
 
-For new authoring, choose the Scene/Preview `BackgroundFile` from an approved marked location. Do not create new LOR references into loose legacy material when a controlled source folder is available.
+For new authoring, choose the Scene/Preview `BackgroundFile` from an approved controlled location. Do not create new LOR references into loose legacy material when a controlled source folder is available.
+
+A `PreviewBackground` used as a current controlled source carries its marker.
 
 ## Wiring
 
-Published FieldWiring images belong directly in the applicable marked branch:
+Published FieldWiring images belong directly in the applicable branch:
 
 ```text
 Wiring\BackgroundStage
 Wiring\MusicalStage
 ```
 
-Both the `Wiring` root and the published child branch must be marked.
+The `Wiring` root must be marked. The `BackgroundStage` and `MusicalStage` child branches do **not** require their own marker.
 
 `SourceDocs` is working/source material and is not normal field-facing content.
 
@@ -201,9 +209,9 @@ Procedures\Setup
 Procedures\Takedown
 ```
 
-The `Procedures` root and the applicable task branch must be marked.
+The `Procedures` root and the applicable task branch must be marked under the current future-Procedure contract.
 
-Setup/Takedown `images` folders are part of the future procedure content path and must also be marked.
+Setup/Takedown `images` folders are part of that future procedure content path and must also be marked.
 
 `Archive` and `SourceDocs` are not normal field-facing content.
 
@@ -222,12 +230,13 @@ When a new Scene documentation folder is approved:
 - [ ] Name the folder using the current `NN-Scene Name` / `NNa-Scene Name` rule.
 - [ ] Create the complete scaffold, not only the one helper folder needed today.
 - [ ] Add the marker to the Scene root.
-- [ ] Add the marker to `PreviewBackground`.
-- [ ] Add the marker to `Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images`.
-- [ ] Add the marker to `Wiring` and the active `BackgroundStage` / `MusicalStage` branches.
+- [ ] Add the marker to `PreviewBackground` when it is a current controlled source.
+- [ ] Add the marker to `Wiring`.
+- [ ] Do **not** add separate FieldWiring markers to `Wiring\BackgroundStage` or `Wiring\MusicalStage`.
+- [ ] Add the Procedure markers to `Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images` when that future application contract is being prepared/used.
 - [ ] Do not mark `SourceDocs` or `Archive` as normal field sources.
 - [ ] Do not rename the standard helper folders.
-- [ ] Put new LOR background references only in approved marked source locations.
+- [ ] Put new LOR background references only in approved controlled source locations.
 - [ ] Never use `SourceDocs` as a normal field-document or new LOR background endpoint.
 - [ ] Add local notes to a marker when a known exception or pending alignment item should be visible to future maintainers.
 - [ ] When the approved LOR Scene structure changes, allow the normal parser/snapshot workflow to pick up the change; creating the Drive folder does not itself update the Production Database.
@@ -236,7 +245,7 @@ When a new Scene documentation folder is approved:
 
 # Simple Rule
 
-> If a new Stage, Sub-stage, or Scene documentation folder is needed, create the complete controlled scaffold immediately and mark every folder used by the field applications. Do not invent a partial folder structure and plan to fix it later.
+> Create the complete Stage/Sub-stage/Scene scaffold immediately, then apply the marker contract for the application that consumes each branch. For FieldWiring, the guard stops at the marked `Wiring` root; do not invent child markers in `BackgroundStage` or `MusicalStage`.
 
 ---
 
