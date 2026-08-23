@@ -9,7 +9,7 @@ fixed task child, and discovers only directly published current content.
 """
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from FieldWiring.Application.field_context_resolver import (
@@ -47,6 +47,37 @@ def _direct_files(folder: Path, extensions: set[str]) -> list[dict[str, Any]]:
     ]
 
 
+def _stage_fallback_warning(
+    stage: dict[str, Any],
+    scene: dict[str, Any] | None,
+    task_name: str,
+) -> str:
+    """Return an operator-facing message for Scene -> Stage Procedure fallback.
+
+    The shared resolver keeps its task-neutral engineering warning. Procedures
+    replace only that caller-supplied fallback message with the expected
+    Procedure location, using the human-facing stored Stage path when present.
+    """
+    stage_folder = str(stage.get("folder_path") or "").strip()
+    scene_name = str((scene or {}).get("scene_name") or "").strip()
+
+    if stage_folder and scene_name and scene_name.casefold() != "root":
+        windows_stage = PureWindowsPath(stage_folder)
+        if windows_stage.drive:
+            expected = windows_stage / scene_name / "Procedures" / task_name
+        else:
+            expected = Path(stage_folder) / scene_name / "Procedures" / task_name
+        return (
+            f"No {task_name} procedure found in {expected}. "
+            f"Using the Stage-level {task_name} procedure instead."
+        )
+
+    return (
+        f"No Scene-level {task_name} procedure found. "
+        f"Using the Stage-level {task_name} procedure instead."
+    )
+
+
 def resolve_procedure_documents(
     stage: dict[str, Any],
     scene: dict[str, Any] | None,
@@ -71,17 +102,19 @@ def resolve_procedure_documents(
             "Unsupported Procedure task. Expected Setup, Takedown, or Inspection."
         )
 
+    task_name = TASK_FOLDERS[task_key]
     scope_root, scope_type, warnings = resolve_structured_scope(
         stage,
         scene,
         preview,
         Path(drive_root),
+        stage_fallback_warning=_stage_fallback_warning(stage, scene, task_name),
     )
     warnings = list(warnings)
 
     result: dict[str, Any] = {
         "status": "UNRESOLVED_SCOPE",
-        "task": TASK_FOLDERS[task_key],
+        "task": task_name,
         "scope_type": scope_type,
         "scope_root": str(scope_root) if scope_root is not None else None,
         "procedures_root": None,
@@ -108,7 +141,7 @@ def resolve_procedure_documents(
         warnings.append(f"Procedure subsystem marker is missing: {marker}")
         return result
 
-    task_root = procedures_root / TASK_FOLDERS[task_key]
+    task_root = procedures_root / task_name
     result["task_root"] = str(task_root)
     if not task_root.is_dir():
         result["status"] = "TASK_UNAVAILABLE"
