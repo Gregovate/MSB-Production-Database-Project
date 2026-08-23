@@ -363,7 +363,7 @@ def resolve_structured_scope(
 
     if matches:
         warnings.append(
-            "Matching structured folder exists but is not an approved marked source root: "
+            "Matching Scene folder exists but is not an approved marked source root: "
             + "; ".join(str(match) for match in matches)
         )
         return None, "UNRESOLVED", warnings
