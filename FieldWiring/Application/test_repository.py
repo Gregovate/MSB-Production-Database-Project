@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from repository import SQLiteSnapshotRepository, classify_context, normalized_display_query
+from wiring import WiringError, build_wiring_package
 
 
 def make_fixture(path: Path) -> None:
@@ -84,6 +85,12 @@ def test_search_excludes_device_type_none(repo):
     assert "CH-RGBTree-Base" not in names
 
 
+def test_shared_search_includes_inventory_only_display(repo):
+    rows = repo.shared_search_displays("CH-RGB")
+    names = [row["display_name"] for row in rows]
+    assert names == ["CH-RGBCandyCane-01", "CH-RGBTree-Base"]
+
+
 def test_canonical_display_id_lookup(repo):
     rows = repo.search_displays("DISP:309")
     assert [row["display_id"] for row in rows] == [309]
@@ -96,6 +103,20 @@ def test_display_context_is_field_friendly(repo):
     assert context["scene_name"] == "15-Church-CH"
     assert context["context_type"] == "Musical"
     assert context["scope_kind"] == "Scene"
+
+
+def test_inventory_only_display_resolves_shared_context_but_not_fieldwiring(repo):
+    shared = repo.shared_display_context(323)
+    assert shared is not None
+    assert shared["display_name"] == "CH-RGBTree-Base"
+    assert shared["stage"]["stage_key"] == "15"
+    assert shared["contexts"][0]["scene"]["scene_name"] == "15-Church-CH"
+    assert repo.display_context(323) is None
+
+
+def test_inventory_only_direct_fieldwiring_entry_is_not_reported_as_unknown(repo):
+    with pytest.raises(WiringError, match="No applicable field wiring"):
+        build_wiring_package(repo, display_id=323)
 
 
 def test_stage_browse_contains_scene(repo):
