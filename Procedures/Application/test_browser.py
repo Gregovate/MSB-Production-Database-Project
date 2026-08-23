@@ -12,6 +12,10 @@ def test_browser_index_is_served():
     assert "Takedown" in text
     assert "Inspection" in text
     assert "Includes current inventory Displays whether wired or not." in text
+    assert "Selected Field Context" not in text
+    assert 'id="selection-card"' not in text
+    assert 'id="procedure-context"' in text
+    assert 'id="clear-selection"' in text
 
 
 def test_browser_assets_are_served():
@@ -38,6 +42,17 @@ def test_browser_client_uses_only_procedure_api_contract():
     assert "folder_path" not in text
     assert "SourceDocs" not in text
     assert "Archive/" not in text
+
+
+def test_browser_compacts_resolved_context_into_instruction_card():
+    browser.app.config.update(TESTING=True)
+    with browser.app.test_client() as client:
+        text = client.get("/procedure.js").get_data(as_text=True)
+    assert "renderProcedureContext" in text
+    assert "procedureContext.textContent" in text
+    assert "selectionCard" not in text
+    assert "selectionStatus" not in text
+    assert "selectionGrid" not in text
 
 
 def test_browser_supports_permanent_display_deep_link():
