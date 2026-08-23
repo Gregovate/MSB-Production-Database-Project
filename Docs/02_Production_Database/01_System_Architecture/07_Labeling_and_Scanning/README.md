@@ -8,21 +8,30 @@ Display and container label printing is an implemented production capability use
 
 **Display QR lookup is also an implemented production capability.** The current Display scan route is deployed as a Directus endpoint extension on `msb-prod-db` under `/opt/directus/extensions/directus-extension-scan/`. It resolves the permanent Production Database `display_id` and presents the existing Display scan hub.
 
-The deployed scan runtime was reconstructed and documented on 2026-08-22 before the FieldWiring integration. Current production routes, action generation, runtime hashes, the camera-scanning baseline, and the missing deployed `src/index.js` source boundary are now recorded. The current accepted `dist/index.js` must be preserved while the source/deployment workflow is recovered into Git.
+The accepted camera-enabled scan implementation has been recovered into Git-controlled application source under:
 
-**FieldWiring is production-operational independently of the scan hub.** The active scan work is one additive **Field Wiring** action using the already-resolved permanent `display_id`. No scan change has been deployed yet for that integration.
+```text
+Scan/directus-extension-scan/
+    package.json
+    src/index.js
+    dist/index.js
+```
 
-The current FieldWiring direct-entry contract is:
+The detailed deployed runtime hash, rollback artifacts, restart/recovery sequence, and Synology `/scan/` proxy behavior are maintained in `Gregovate/MSB-Server-Management`.
+
+**FieldWiring Scan Integration is accepted production work.** The Display scan hub currently includes the additive **Field Wiring** action using only the already-resolved permanent `display_id`:
 
 ```text
 /fieldwiring/wiring.html?display_id=<permanent display_id>
 ```
 
-The scan hub must remain independent of FieldWiring for Display Record, Testing, Container, Work Order, and other existing actions.
+The scan hub remains independent of FieldWiring for Display Record, Testing, Container, Work Order, and other existing actions. FieldWiring does not have to be healthy merely for the Display hub to render.
 
-The scan platform will become more important during Setup/Deployment, where high-volume Container and Storage Location scanning is expected. FieldWiring is therefore being integrated as the first controlled additive consumer rather than as a one-off replacement of the scan system. The later Setup/Deployment scan workflow must still be engineered from the real field process before broader scan-platform refactoring is approved.
+**Procedure is also production-operational independently at `https://my.sheboyganlights.org/procedures/`.** The next bounded scan follow-on is Procedure Display Scan Integration using the same permanent `display_id` identity already resolved by `/scan/DISP/:key`. The exact Scan-hub Procedure action UX must be confirmed from the current Procedure/Scan contracts before code changes; no physical QR redesign, second resolver, Procedure schema, alternate Google hierarchy, or duplicate document registry is implied by this integration.
 
-The deployed scan runtime predates the current documentation structure. Its server-side deployment, restart, hash, backup, and recovery details are maintained through the separate [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management) project.
+The broader Setup/Deployment scan workflow remains separate engineering scope. High-volume Container and Storage Location scanning is expected during setup season, but the real pull/stage/load/delivery process must be reconstructed before broader scan-platform refactoring or transaction semantics are approved.
+
+The deployed scan runtime predates the current documentation structure. Its server-side deployment, restart, hash, backup, recovery, and reverse-proxy details are maintained through the separate [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management) project.
 
 Label printing crosses a repository and service boundary:
 
@@ -34,10 +43,10 @@ The LabelPrintService is an external supporting subsystem. If it is unavailable,
 
 ## Start Here
 
-- [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — current scan implementation baseline, verified FieldWiring deep link, source-control recovery gap, acceptance matrix, and exact resume point.
+- [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Scan/FieldWiring baseline, permanent `display_id` handoff, source-control boundary, failure boundary, acceptance matrix, and deferred regression cases.
+- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, and current scan-extension resume point.
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules.
-- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — verified current Directus scan endpoint, runtime/source boundary, and cross-repository ownership.
-- [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) — shared scan-to-Display/hierarchy contract used by Work Orders, FieldWiring, Setup, Takedown, Testing, and future field functions.
+- [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) — shared scan-to-Display/hierarchy contract used by Work Orders, FieldWiring, Procedures, Testing, and future field functions.
 - [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md) — shared browser/PDF/offline/currentness rules for field documents reached through the scan/task workflow.
 - [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md) — current operator instructions.
 
@@ -60,8 +69,8 @@ For example, Wiring owns wiring information, Setup and Deployment owns setup/tak
 - [Database Foundation](../01_Database_Foundation/README.md)
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
 - [People and Identity](../03_People_and_Identity/README.md) for authenticated operations where applicable
-- [Setup and Deployment](../12_Setup_and_Deployment/README.md) for the upcoming Container/Location setup-season workflow
-- [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management) for the deployed `msb-prod-db` runtime, Directus server administration, and live `/opt/...` inspection/recovery documentation
+- [Setup and Deployment](../12_Setup_and_Deployment/README.md) for Procedure field-document behavior and the future Container/Location setup-season workflow
+- [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management) for the deployed `msb-prod-db` runtime, Directus server administration, runtime hashes/recovery, and Synology proxy configuration
 
 ## Current Responsibilities
 
@@ -107,9 +116,9 @@ The current Display scan endpoint is deployed under:
 
 on `msb-prod-db`.
 
-The Production Database repository owns the permanent identity, application source/business behavior, and database contracts consumed by that endpoint. Server runtime administration, deployment/restart/recovery documentation, runtime hashes, and inspection of the live `/opt/...` implementation are owned by [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management).
+The Production Database repository owns the permanent identity, Git-controlled scan application source/business behavior, and database contracts consumed by that endpoint. Server runtime administration, deployment/restart/recovery documentation, runtime hashes, backups, and inspection of the live `/opt/...` implementation are owned by [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management).
 
-The current deployment has no `src/` directory even though `package.json` declares `src/index.js`. Recovering the accepted implementation into a Git-controlled source/deployment boundary is required before substantial scan-platform expansion.
+The live deployment executes `dist/index.js`; it does not need to contain the development `src/` tree. The accepted application source has been recovered under `Scan/directus-extension-scan/` in this repository, so future changes must begin from that source and the current Server Management runtime baseline rather than reconstructing the extension from the live artifact.
 
 See [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) and [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md).
 
@@ -141,11 +150,12 @@ A failure of LabelPrintService must not transfer data authority to the service o
 - [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md)
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md)
 - [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md)
+- current scan application source under `Scan/directus-extension-scan/`;
 - current PostgreSQL label-printing objects and request/batch records;
 - current Directus Display and Container print workflows;
 - current deployed Display scan extension on `msb-prod-db`;
 - current `MSB_LabelPrintService` implementation and operator documentation;
-- [MSB-Server-Management — Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/agent/scan-fieldwiring-runtime-integration/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) for server/runtime administration and recovery.
+- [MSB-Server-Management — Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) for server/runtime administration, accepted live hash, backup/rollback evidence, restart, and recovery.
 
 The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled into this subsystem and archived as historical planning evidence.
 
@@ -165,25 +175,28 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 ## Resume Development
 
-### Scan Integration — current priority
+### Procedure Display Scan Integration — current priority
 
-Begin with:
+Standalone Procedure field access and FieldWiring Scan Integration are accepted production baselines. The next bounded scan follow-on is Procedure Display Scan Integration.
 
-1. [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md);
-2. [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md);
-3. the current live scan-extension hash/runtime documented in MSB-Server-Management; and
-4. the current FieldWiring application contract in [Wiring System](../09_Wiring_System/README.md).
+Before changing the scan extension:
 
-Preserve/recover the accepted current scan implementation in Git, then add the minimal **Field Wiring** action using only permanent `display_id`. Do not refactor Testing, Container, Work Order, or camera-scanning behavior as part of that change.
+1. read the current [Setup and Deployment](../12_Setup_and_Deployment/README.md) Procedure/scan handoff;
+2. read the accepted [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) so its deployment, identity, and failure-boundary lessons are preserved;
+3. read [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md);
+4. read the current Procedure application README under `Procedures/Application/README.md` and confirm its existing permanent-`display_id` deep-link behavior;
+5. read the current `MSB-Server-Management` Display Scan Extension Deployment and Recovery runbook before any deployment planning;
+6. verify the exact current `Scan/directus-extension-scan/src/index.js` and `dist/index.js` source before editing; and
+7. confirm the exact operator-facing Procedure action behavior before implementation rather than inventing a new scan flow.
 
-### Setup/Deployment — next project
+Preserve the current physical `DISP:<display_id>` QR identity. Do not add a second resolver, Procedure schema, alternate Google hierarchy, direct Procedure-document URL in the QR, or a Procedure health/API dependency merely to render the Display scan hub.
 
-After FieldWiring Scan Integration is accepted and both repository handoffs are closed, start a separate Setup/Deployment engineering thread/branch from [Setup and Deployment](../12_Setup_and_Deployment/README.md).
+### Setup/Deployment operational scanning — separate project
 
-The expected setup-season workload includes substantial Container and Storage Location scanning. Reconstruct the real pull/stage/load/delivery workflow before designing schema, scan-session state, or a broader scan-platform refactor.
+The expected setup-season workload includes substantial Container and Storage Location scanning. Reconstruct the real pull/stage/load/delivery workflow before designing schema, scan-session state, transaction semantics, or a broader scan-platform refactor.
 
 ### Label printing
 
 For label printing, begin with the current PostgreSQL request/batch objects, [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md), and the current LabelPrintService implementation. Verify the actor-attribution contract and any retry/reprint behavior before changing the database or service.
 
-Material work is not complete until this README and the corresponding Server Management handoff are reviewed and updated so the next chat can resume from Git without reconstructing settled behavior.
+Material work is not complete until durable discoveries are recorded in the responsible engineering/runbook documentation as they are established, and this README plus the corresponding Server Management handoff are reviewed and updated so the next chat can resume from Git without reconstructing settled behavior.
