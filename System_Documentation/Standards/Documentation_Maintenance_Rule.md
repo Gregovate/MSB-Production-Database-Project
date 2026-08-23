@@ -5,6 +5,7 @@
 | Status | CURRENT — reusable documentation standard |
 | Scope | Version-controlled engineering projects using the MSB documentation framework |
 | Initial revision | 2026-08-21 |
+| Current revision | 2026-08-23 |
 | Owner | Project documentation owner / administrator |
 
 ## Purpose
@@ -18,6 +19,32 @@ This rule applies to engineering projects using this documentation framework and
 When engineering work reveals new information that improves, corrects, or materially clarifies the understanding of a system, data source, field meaning, relationship, workflow, boundary, naming translation, implementation behavior, or operating constraint, that discovery must be captured in the appropriate repository documentation before the work is considered complete.
 
 Conversation is a working and discovery environment. The repository is the durable project record.
+
+## No Chat-Only Project Memory
+
+Durable project knowledge must not remain only in ChatGPT conversation history, email, temporary notes, or another working communication channel.
+
+This includes, when material to future work:
+
+- verified current-state facts;
+- reverse-engineering discoveries;
+- accepted design or architecture decisions;
+- corrected assumptions;
+- identity, naming, path, schema, runtime, and ownership rules;
+- production constraints and failure boundaries;
+- validation results that establish a new accepted baseline;
+- known limitations and unresolved questions; and
+- the exact stop point or next engineering starting point.
+
+A chat summary is not a substitute for repository documentation.
+
+Do not defer a material discovery merely by planning to document it at the end of the project. When later engineering work will rely on a discovery, correction, or accepted decision, promote it into the responsible controlled repository document before proceeding past the point where that later work depends on it.
+
+If the correct documentation owner is not immediately obvious, identify the existing current authority first. Do not create an ad hoc document, duplicate a rule into multiple active documents, or invent a new structure simply to record the discovery.
+
+If work stops before implementation is complete, the repository must still contain the durable reconnaissance findings, known constraints, unresolved items, and resume point established during that work.
+
+For cross-repository systems, each repository must preserve the information it owns. Update or synchronize the responsible documents according to the documented ownership boundary rather than leaving the cross-repository state only in conversation history.
 
 ## Applies to Every Document Touched
 
@@ -68,12 +95,13 @@ Prefer exact source-system names when discussing the source schema and establish
 
 Before closing material engineering work:
 
-1. Review the controlled documents edited during the conversation.
-2. Identify durable discoveries made during the work that affect what those documents own.
-3. Add focused corrections or clarifications without unnecessarily rewriting valid documentation.
-4. Update the responsible subsystem documentation for discoveries that belong outside the files already being edited.
-5. Review navigation when a new controlled reference was created or moved.
-6. Commit the documentation with the engineering work or as a clearly related documentation commit.
+1. Confirm that no durable discovery, accepted decision, corrected assumption, production fact, known limitation, or resume point remains only in conversation history.
+2. Review the controlled documents edited during the conversation.
+3. Identify durable discoveries made during the work that affect what those documents own.
+4. Add focused corrections or clarifications without unnecessarily rewriting valid documentation.
+5. Update the responsible subsystem documentation for discoveries that belong outside the files already being edited.
+6. Review navigation when a new controlled reference was created or moved.
+7. Commit the documentation with the engineering work or as a clearly related documentation commit.
 
 Work is not fully documented if a future maintainer or future engineering session would have to reconstruct an established discovery from conversation history instead of finding it in the repository.
 
