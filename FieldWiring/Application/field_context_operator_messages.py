@@ -5,10 +5,10 @@ queries, filesystem access, Drive enumeration, marker checks, or network calls.
 It receives facts the caller already resolved and turns them into useful
 operator-facing text.
 
-Engineering codes remain stable for logs/tests. Field applications must not
-render those codes directly. The task adapter supplies both its human task name
-and, when applicable, the exact task-relative folder beneath the resolved
-Stage/Sub-stage/Scene scope.
+Engineering codes remain stable for logs/tests. Operator-facing applications
+must not render those codes directly. A task adapter supplies its human task
+name and, when applicable, the exact task-relative location already selected by
+that application.
 
 Examples::
 
@@ -18,9 +18,9 @@ Examples::
     Takedown procedure    -> Procedures\\Takedown
     Inspection procedure  -> Procedures\\Inspection
 
-The shared mapper does not choose the task branch. That remains owned by the
-calling task adapter. Server-side mount paths are translated textually to the
-canonical operator-visible Shared Drive path; no filesystem lookup is used.
+The shared mapper does not choose the task branch. Server-side mount paths are
+translated textually to the canonical operator-visible Shared Drive path; no
+filesystem lookup is used.
 """
 from __future__ import annotations
 
@@ -48,15 +48,29 @@ OPERATOR_WARNING_MAP = {
     "LOR_CONTEXT_NESTING_REVIEW_REQUIRED": (
         "{task} location for {subject} needs review. Expected folder: {folder}."
     ),
+    # Generic cross-application task conditions. These are intentionally not
+    # FieldWiring-specific so Procedure and future operator UIs can use the
+    # same presentation contract without copying strings.
+    "TASK_CONTENT_NOT_FOUND": (
+        "{task} not found for {subject} in folder {folder}."
+    ),
+    "TASK_FOLDER_UNAPPROVED": (
+        "{task} folder for {subject} is not approved for field use: {folder}."
+    ),
+    "TASK_SCOPE_UNRESOLVED": (
+        "{task} location could not be resolved for {subject}. Expected folder: {folder}."
+    ),
 }
 
 
 def _subject(diagnostic: dict[str, Any]) -> str:
-    return str(
-        diagnostic.get("scene_name")
-        or diagnostic.get("stage_key")
-        or "this selection"
-    )
+    scene_name = str(diagnostic.get("scene_name") or "").strip()
+    stage_key = str(diagnostic.get("stage_key") or "").strip()
+    if scene_name and scene_name.casefold() != "root":
+        return scene_name
+    if stage_key:
+        return f"Stage {stage_key}"
+    return "this selection"
 
 
 def _operator_scope_folder(diagnostic: dict[str, Any]) -> str:
@@ -77,10 +91,11 @@ def _operator_scope_folder(diagnostic: dict[str, Any]) -> str:
     return raw
 
 
-def _expected_folder(
+def expected_operator_folder(
     diagnostic: dict[str, Any],
-    task_relative_folder: str | None,
+    task_relative_folder: str | None = None,
 ) -> str:
+    """Return a human-facing expected folder using already-resolved path text."""
     base = _operator_scope_folder(diagnostic)
     relative = str(task_relative_folder or "").strip().strip("\\/")
     if not relative:
@@ -114,7 +129,7 @@ def operator_warning(
     """Return one operator-safe message without exposing the engineering code."""
     code = str(diagnostic.get("code") or "")
     template = OPERATOR_WARNING_MAP.get(code)
-    folder = _expected_folder(diagnostic, task_relative_folder)
+    folder = expected_operator_folder(diagnostic, task_relative_folder)
     if template is None:
         return f"{task} is not available for {_subject(diagnostic)}. Expected folder: {folder}."
     return template.format(
