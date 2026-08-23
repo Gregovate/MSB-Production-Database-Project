@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Procedures</title>
+  <link rel="stylesheet" href="procedure.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <img id="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div class="brand-copy">
+      <h1>Field Procedures</h1>
+      <div class="subhead">Find current Setup, Takedown, and Inspection instructions.</div>
+    </div>
+    <button id="theme-toggle" type="button">Dark mode</button>
+  </div>
+</header>
+
+<main>
+  <section class="card task-card">
+    <h2>What do you need to do?</h2>
+    <div id="task-buttons" class="task-buttons" role="group" aria-label="Procedure task">
+      <button type="button" data-task="Setup" class="task-button active">Setup</button>
+      <button type="button" data-task="Takedown" class="task-button">Takedown</button>
+      <button type="button" data-task="Inspection" class="task-button">Inspection</button>
+    </div>
+  </section>
+
+  <div class="entry-grid">
+    <section class="card">
+      <h2>Find Display</h2>
+      <label for="display-search">Display Name or Display ID</label>
+      <input id="display-search" autocomplete="off" placeholder="Example: RA-SteelArch-DS-F-03 or DISP:807">
+      <div class="hint">Includes current inventory Displays whether wired or not.</div>
+      <div id="display-results" class="results" aria-live="polite"></div>
+    </section>
+
+    <section class="card">
+      <h2>Browse Stage / Scene</h2>
+      <label for="stage-select">Stage</label>
+      <select id="stage-select">
+        <option value="">Loading Stages…</option>
+      </select>
+      <div class="hint">Choose the whole Stage or a current Scene / Area.</div>
+      <div id="stage-contexts" class="stage-contexts"></div>
+    </section>
+  </div>
+
+  <section id="context-choice-card" class="card resolved-card" hidden>
+    <h2>Choose the applicable Scene / Area</h2>
+    <div class="hint">More than one current context is valid. Choose the one you are working on.</div>
+    <div id="context-choices" class="stage-contexts"></div>
+  </section>
+
+  <section id="procedure-card" class="card resolved-card" hidden>
+    <div class="card-heading-row">
+      <div>
+        <h2 id="procedure-title">Current Procedure</h2>
+        <div id="procedure-context" class="procedure-context"></div>
+      </div>
+      <div class="procedure-heading-actions">
+        <span id="scope-badge" class="scope-badge"></span>
+        <button id="clear-selection" type="button">Clear</button>
+      </div>
+    </div>
+    <div id="procedure-message" class="status"></div>
+    <div id="document-list" class="document-list"></div>
+    <div id="image-list" class="image-grid"></div>
+    <div id="warning-list" class="warning-list"></div>
+  </section>
+</main>
+
+<script src="procedure.js"></script>
+</body>
+</html>

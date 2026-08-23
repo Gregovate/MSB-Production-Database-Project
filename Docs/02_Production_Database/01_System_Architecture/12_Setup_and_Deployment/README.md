@@ -91,7 +91,11 @@ shared/proven FieldWiring structured Stage / Sub-stage / Scene resolver
     ↓
 fixed applicable structured root
     ↓
-Procedure task adapter
+validate structured-root marker
+    ↓
+validate <scope>/Procedures marker
+    ↓
+Procedure task adapter selects fixed child
     ↓
 <scope>/Procedures/Setup
 or <scope>/Procedures/Takedown
@@ -108,7 +112,7 @@ The QR code identifies the asset. It does not contain a Google Drive folder path
 
 The Production Database owns the durable identities and relationships used to determine the structured Stage/Scene context. The database does not become the editing system for Procedure content.
 
-For the **initial read-only Procedure browser**, a PostgreSQL row or stored Google document ID for every current published PDF is **not a prerequisite**. Once the current structured root and marked Procedure task folder are validated, the application may enumerate the current published files directly in that controlled folder while excluding `Archive` and `SourceDocs`.
+For the **initial read-only Procedure browser**, a PostgreSQL row or stored Google document ID for every current published PDF is **not a prerequisite**. Once the current structured root and marked `Procedures` subsystem root are validated, the application selects the exact known `Setup`, `Takedown`, or `Inspection` child and may enumerate the current published files directly in that task folder while excluding `Archive` and `SourceDocs`.
 
 Durable per-document metadata remains a future engineering option when approval workflow, revision history, source-to-publication lineage, supersession, audit, or stable document identity demonstrates a need for it. Do not create schema merely because older documentation listed document-ID storage as unresolved.
 
@@ -131,12 +135,12 @@ This means Wiring and Procedures share scope resolution but do not share task-sp
 ```text
 resolved structured root
     |
-    +--> FieldWiring -> Wiring/BackgroundStage or Wiring/MusicalStage
+    +--> FieldWiring -> marked Wiring root -> BackgroundStage or MusicalStage
     |
-    +--> Procedures  -> Procedures/Setup, Procedures/Takedown, Procedures/Inspection
+    +--> Procedures  -> marked Procedures root -> Setup, Takedown, or Inspection
 ```
 
-Procedure marker rules remain separate from FieldWiring marker rules. `Archive` and `SourceDocs` remain excluded from normal field presentation.
+Both systems use the same subsystem-root marker pattern: the resolved structured scope is marked, then the owning application subsystem root (`Wiring` or `Procedures`) is marked. Their fixed child branches are selected by folder name and do not require a second marker layer. `Archive` and `SourceDocs` remain excluded from normal field presentation.
 
 ## Scan / Forklift Direction
 
@@ -267,7 +271,7 @@ Open Procedure-document work includes:
 
 - inspect/extract the reusable FieldWiring structured-scope boundary without changing its accepted behavior;
 - prove one read-only current Setup PDF lookup end-to-end from current PostgreSQL Stage/Scene context;
-- validate Procedure-specific marker enforcement;
+- validate the resolved Stage/Sub-stage/Scene marker and the `Procedures` subsystem-root marker;
 - enforce `Archive` and `SourceDocs` exclusion at the normal Procedure endpoint;
 - define supported current field-document formats, beginning with PDF;
 - define the simple list behavior when more than one current Procedure applies;
@@ -307,8 +311,9 @@ The first application proof should remain narrow:
 Display / Stage / Scene lookup
     -> shared structured-scope resolver
     -> fixed current scope_root
-    -> Procedures/Setup
-    -> marker validation
+    -> validate scope_root marker
+    -> validate Procedures marker
+    -> select Procedures/Setup
     -> enumerate current PDF(s)
     -> protected browser presentation
 ```

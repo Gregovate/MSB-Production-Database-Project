@@ -2,9 +2,13 @@
 
 ## Purpose
 
-Use this procedure when working with Google Drive folders that are part of the current FieldWiring system or the future Setup/Takedown/Inspection system.
+Use this procedure when working with Google Drive folders that are part of the current FieldWiring system or the Setup/Takedown/Inspection Procedure system.
 
-The marker file tells people and applications that a folder is part of a controlled MSB field-document structure. Marker placement is **application-specific**: FieldWiring and the future Procedure system do not use identical marker rules.
+The marker file tells people and applications that a folder is part of a controlled MSB field-document structure.
+
+The current field-document applications use the same basic marker pattern:
+
+> **mark the resolved structured scope, then mark the application subsystem root. The application selects known child branches by folder name without adding another marker layer.**
 
 ## Standard File Name
 
@@ -97,43 +101,56 @@ It contains working/source material and is specifically excluded from FieldWirin
 
 ---
 
-# Future Procedure Marker Rule
+# Procedure Marker Rule
 
-The Procedure system has its own controlled path and may require markers deeper than FieldWiring.
+The Procedure system uses the same subsystem-root guard pattern as FieldWiring.
 
-Current planned Procedure locations are:
+The controlled Procedure structure is:
 
 ```text
 Procedures\
 ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │
 ├── Inspection\
-│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │
 ├── Setup\
-│   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   ├── Archive\
 │   ├── images\
-│   │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │   └── SourceDocs\
 │
 └── Takedown\
-    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     ├── Archive\
     ├── images\
-    │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     └── SourceDocs\
 ```
 
-For the Procedure system, `Procedures`, `Inspection`, `Setup`, `Setup\images`, `Takedown`, and `Takedown\images` are planned controlled application folders and must be marked when that application contract is in use.
+For the Procedure system:
 
-Do **not** copy the Procedure marker rule onto the FieldWiring `BackgroundStage` / `MusicalStage` child branches. The two applications have different folder guards.
+```text
+<Stage / Sub-stage / Scene root>     marker required
+Procedures                           marker required
+Procedures\Inspection               NO separate marker
+Procedures\Setup                    NO separate marker
+Procedures\Takedown                 NO separate marker
+Procedures\Setup\images             NO separate marker
+Procedures\Takedown\images          NO separate marker
+Archive                              NO marker / excluded from field presentation
+SourceDocs                           NO marker / excluded from field presentation
+```
+
+The marker on `Procedures` guards the known `Inspection`, `Setup`, and `Takedown` child branches. The application selects the child branch by its controlled folder name.
+
+The task-local `images` folders are supporting children beneath the marked `Procedures` subsystem root. They do not require separate marker files.
+
+Earlier 2026-08-22 instructions that required separate markers in each Procedure task or image folder were incorrect and are superseded by this root-marker contract.
 
 ### Archive and SourceDocs are excluded
 
 `Archive` and `SourceDocs` are not normal field-presentation folders.
 
 Do not mark them as field-application source folders unless a later approved design intentionally changes their role.
+
+The application must exclude them based on their defined folder role; the absence of a marker is not the only protection against serving source/history content.
 
 ---
 
@@ -143,7 +160,7 @@ Do not mark them as field-application source folders unless a later approved des
 
 Do not add a field-source marker to `Photos` merely because the folder exists.
 
-If a future field application begins using `Photos` directly, update the governing documentation first and then mark the applicable folder before the application consumes it.
+If a future field application begins using `Photos` directly, update the governing documentation first and then mark the applicable subsystem/source boundary before the application consumes it.
 
 ---
 
@@ -178,13 +195,23 @@ Do not place passwords, credentials, API keys, or private personal information i
 
 # Existing Marker Utilities — Important
 
-Marker utilities must follow the application-specific rules above.
+Marker utilities must follow the current root/subsystem marker rules above.
 
-Do **not** use an older utility or checklist as authority for adding markers to `Wiring\BackgroundStage` or `Wiring\MusicalStage`.
+Do **not** use an older utility or checklist as authority for adding markers to:
+
+```text
+Wiring\BackgroundStage
+Wiring\MusicalStage
+Procedures\Inspection
+Procedures\Setup
+Procedures\Takedown
+Procedures\Setup\images
+Procedures\Takedown\images
+```
 
 The existing `remove_misplaced_msb_db_scope_root_markers.ps1` utility was created during an intermediate design that treated Stage/Sub-stage/Scene root markers as incorrect. **Do not run that utility under the current architecture.** Current field systems require the structural marker on those roots.
 
-Do not run marker utilities merely to make production folders match superseded documentation. The production FieldWiring folders were already aligned to the accepted rule above.
+Do not run marker utilities merely to make production folders match superseded documentation.
 
 ---
 
@@ -199,7 +226,14 @@ For a Stage/Sub-stage/Scene used by FieldWiring, verify:
 - [ ] `SourceDocs` remains excluded from normal field presentation; and
 - [ ] approved marker files have not been renamed or deleted.
 
-For future Procedure work, separately verify the Procedure-specific marker locations defined above.
+For a Stage/Sub-stage/Scene used by the Procedure system, verify:
+
+- [ ] the Stage/Sub-stage/Scene root is marked;
+- [ ] `Procedures` is marked;
+- [ ] `Inspection`, `Setup`, and `Takedown` are the controlled child branch names;
+- [ ] those task folders and their `images` folders do **not** require separate markers;
+- [ ] `Archive` and `SourceDocs` remain excluded from normal field presentation; and
+- [ ] approved marker files have not been renamed or deleted.
 
 ## Related Documents
 
@@ -207,4 +241,5 @@ For future Procedure work, separately verify the Procedure-specific marker locat
 - [Google Drive Document Organization Procedure](01-Google_Drive_Document_Organization_Procedure.md)
 - [Google Drive Path Resolution Contract](02-Google_Drive_Path_Resolution_Contract.md)
 - [Stage / Sub-stage / Scene Folder Scaffold](04-Stage_Substage_Scene_Folder_Scaffold.md)
+- [Procedure System Field Context Handoff](../02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
 - [FieldWiring Engineering](../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
