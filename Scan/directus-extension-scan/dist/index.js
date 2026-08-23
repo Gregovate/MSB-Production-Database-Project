@@ -533,7 +533,7 @@ export default {
                 Status: ${escapeHtml(display.display_status_id ?? 'Unknown')}
               </div>
 
-              <a class="btn" href="/admin/content/display/${encodeURIComponent(display.display_id)}">Open Display Record</a>
+              <a class="btn" href="https://db.sheboyganlights.org/admin/content/display/${encodeURIComponent(display.display_id)}">Open Display Record</a>
               ${testButtonHtml}
               <a class="btn secondary" href="/fieldwiring/wiring.html?display_id=${encodeURIComponent(display.display_id)}">Field Wiring</a>
               <a class="btn secondary" href="/scan/DISP/${encodeURIComponent(display.display_id)}/container">Open Container</a>
@@ -603,7 +603,7 @@ export default {
           <div class="card">
             <h1>Container ${key}</h1>
 
-            <a class="btn" href="/admin/content/container/${key}">
+            <a class="btn" href="https://db.sheboyganlights.org/admin/content/container/${key}">
               Open Container Record
             </a>
 
@@ -675,7 +675,7 @@ export default {
 
         // Redirect to Directus admin editor
         res.redirect(
-          `/admin/content/display_test_session/${encodeURIComponent(
+          `https://db.sheboyganlights.org/admin/content/display_test_session/${encodeURIComponent(
             displayTestSession.display_test_session_id
           )}`
         );
@@ -715,7 +715,7 @@ export default {
           return;
         }
 
-        res.redirect(`/admin/content/container/${encodeURIComponent(display.container_id)}`);
+        res.redirect(`https://db.sheboyganlights.org/admin/content/container/${encodeURIComponent(display.container_id)}`);
       } catch (err) {
         res.status(500).send(`<pre>${escapeHtml(err.message)}</pre>`);
       }
@@ -755,13 +755,13 @@ export default {
 
         // Exactly ONE → open directly
         if (workOrders.length === 1) {
-          res.redirect(`/admin/content/work_order/${encodeURIComponent(workOrders[0].work_order_id)}`);
+          res.redirect(`https://db.sheboyganlights.org/admin/content/work_order/${encodeURIComponent(workOrders[0].work_order_id)}`);
           return;
         }
 
         // Multiple → show selection page
         const linksHtml = workOrders.map(wo => `
-          <a href="/admin/content/work_order/${encodeURIComponent(wo.work_order_id)}">
+          <a href="https://db.sheboyganlights.org/admin/content/work_order/${encodeURIComponent(wo.work_order_id)}">
             Work Order #${escapeHtml(wo.work_order_id)}
           </a><br>
         `).join('');
