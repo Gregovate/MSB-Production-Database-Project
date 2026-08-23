@@ -2,134 +2,160 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT ENGINEERING HANDOFF — production deployment pending |
-| Repair branch | `agent/shared-field-context-hierarchy-browse-repair` |
-| Accepted candidate | `b1d897cf2b4d157ebf8a713c8dcc939726012df0` |
-| Procedure branch | `feature/setup-takedown-procedures` — remain paused until production acceptance |
+| Status | **PRODUCTION ACCEPTED — PROCEDURE RESUME GATE CLEARED** |
+| Final implementation PRs | `#40`, `#41` |
+| Production commit | `060de4546cbaa3cbcec7b70978d17d6db0d3ed44` |
+| Procedure branch | `feature/setup-takedown-procedures` — refresh from current `main` before continuing |
 
-## Why Procedure is paused again
+## Why this handoff exists
 
 Procedure browser acceptance exposed a defect in the shared browse contract, not in Procedure task/document discovery.
 
-The shared database repository's raw `stages()` result contains `ref.stage` and LOR Scene evidence. That evidence must not be rendered directly as the field Stage/Sub-stage/Scene hierarchy.
+Raw `ref.stage` rows and raw LOR Scene associations are relationship evidence. They are not the field-facing Stage/Sub-stage/Scene browse hierarchy.
 
-The released Google Drive architecture remains authoritative:
+The released Google Drive and Folder Alignment contracts remain authoritative.
 
 ```text
 Display Folders
   -> NN-Name-XY Stage
       -> optional NNa-Name-XY Sub-stage
-          -> optional defined NNa-Scene
-      -> optional defined NN-Scene
+      -> optional defined NN-Name / NNa-Name Scene
+      -> Display/component/shared-documentation folders as applicable
 ```
 
-A raw LOR Scene is not automatically a field/documentation Scene.
+Display/component folders are not hierarchy browse nodes merely because they exist beneath a Stage or Scene.
 
 ## Canonical shared browse entry point
 
-After this repair is production accepted, Procedure Stage browsing must consume:
+Procedure Stage browsing must consume:
 
 ```text
 FieldWiring/Application/field_context_hierarchy.py
     resolve_field_hierarchy(repository, drive_root)
 ```
 
-The lower-level shared hierarchy builder is:
+Supporting shared components remain:
 
 ```text
-FieldWiring/Application/field_context_browse.py
-```
+field_context_repository.py
+    current permanent Display / Stage / LOR relationship evidence
 
-The existing structured-scope resolver remains unchanged:
+field_context_browse.py
+    lower-level filesystem hierarchy grouping
 
-```text
-FieldWiring/Application/field_context_resolver.py
+field_context_resolver.py
     resolve_structured_scope(...)
 ```
 
-The shared database repository remains the source of current DB/LOR evidence:
+Do not present `repository.stages()` directly.
 
-```text
-FieldWiring/Application/field_context_repository.py
-```
-
-## Required chain after resume
+## Required Procedure chain
 
 ```text
 permanent Display identity / field browse request
     -> field_context_repository
     -> raw current DB/LOR evidence
     -> field_context_hierarchy.resolve_field_hierarchy(...)
-    -> actual marked Stage -> Sub-stage -> defined Scene browse tree
+    -> actual marked Stage -> Sub-stage -> defined Scene hierarchy
     -> selected resolved field scope
     -> Procedure task adapter
     -> Setup / Takedown / Inspection discovery
 ```
 
-Do not present `repository.stages()` directly.
+## Final accepted hierarchy behavior
 
-## Governing behavior
+### Top-level Stage
 
-The repaired hierarchy:
+One current `ref.stage.stage_key` plus one matching marked top-level `NN-...` folder is sufficient to establish the field Stage.
 
-- labels Stage/Sub-stage/Scene nodes from the actual resolved folder basename;
-- nests `05a` and `07a` beneath their owning top-level Stages;
-- creates a child Scene only when the existing structured-scope resolver resolves a raw LOR Scene to one distinct marked prefixed child scope;
-- collapses `Root` and Stage-binding Master Musical scenes to the Stage root rather than creating duplicate choices;
-- deduplicates by the resolved marked filesystem root;
-- excludes `90–94` from normal physical browse;
-- suppresses top-level `39/40` from normal browse while their current DB/filesystem alignment remains unsafe;
-- surfaces stale/missing/conflicting path evidence under `review_required` rather than guessing.
+LOR/Preview association is optional supporting evidence. Missing/stale/conflicting `ref.stage.folder_path` remains visible under `review_required`, but does not erase an otherwise unique marked physical/documentation Stage.
 
-## Acceptance evidence
-
-Synthetic regression:
+Accepted real cases:
 
 ```text
-74 passed in 2.09s
+39-Parade Float-PF
+    normal Stage
+    current LOR/Preview evidence present
+    stale folder_path reported for review
+
+40-CommandCenter
+    normal Stage
+    browse validity does not depend on LOR context presence or absence
+    current Root Preview evidence, if present, collapses to Stage root
+    missing folder_path reported for review
 ```
 
-Live read-only production-data acceptance:
+### Sub-stage
+
+`05a` and `07a` are nested beneath their owning Stages, not top-level peers. Stale/missing persisted Sub-stage paths remain review findings.
+
+### Scene — unchanged
+
+The released Folder Alignment naming/classification contract remains in force:
 
 ```text
-normal Stage count: 27
-review-required count: 36
-SHARED FIELD HIERARCHY LIVE ACCEPTANCE: PASS
+NN-Name  -> Scene candidate beneath owning Stage
+NNa-Name -> Scene candidate beneath owning Sub-stage
+Root -> owning Stage root
+unprefixed non-Root -> Display/group evidence, not automatic Scene
 ```
 
-Representative cases accepted:
+A Scene browse node exists only when the existing structured-scope resolver resolves the current LOR Scene evidence to one distinct marked correctly prefixed child scope.
 
-- Stage 15 Church: Stage root only; raw `15-Church-CH` and `Root` do not create child Scenes;
-- Stage 07: `07a-Who Forest-WF` nested under `07-Whoville-WV`;
-- Stage 13: exactly four defined marked child Scene scopes;
-- Stage 21: `21-SnowballBears` child Scene, `21-Sliding Penguins` Stage-root evidence;
-- Stage 25: same-name Racing Arches LOR Scene collapses to the Stage root;
-- Stage 39/40: review-only rather than guessed;
-- Stage 90–94: absent from normal physical browse;
-- inventory Display 807: shared identity/context preserved while FieldWiring remains unavailable;
-- normal wired Display 312: candidate output exactly equivalent to unchanged production FieldWiring.
+The marker approves the already-resolved structural scope. A marker alone does not turn an arbitrary Display/component folder into a Scene.
+
+Examples preserved:
+
+- Stage 15: `15-Church-CH` / `Root` collapse to Stage root;
+- Stage 13: exactly four defined marked Scene scopes;
+- Stage 21: `21-SnowballBears` is a Scene, while `21-Sliding Penguins` collapses to Stage root;
+- Stage 25: same-name Racing Arches Scene collapses to Stage root;
+- Stages 90–94 remain outside normal physical browse.
+
+## Production acceptance evidence
+
+```text
+74 passed
+SHARED FIELD HIERARCHY LOR-OPTIONAL STAGE ACCEPTANCE: PASS
+Production commit: 060de4546cbaa3cbcec7b70978d17d6db0d3ed44
+Shared Field Context hierarchy refinement: DEPLOYED AND VERIFIED
+```
+
+Identity/task separation also remains accepted:
+
+- inventory Display `807` resolves shared field context;
+- FieldWiring normal search still excludes `807`;
+- direct FieldWiring for `807` reports no applicable wiring;
+- wired Display `312` remains equivalent to production FieldWiring behavior.
 
 ## Procedure resume rule
 
-Do not modify Procedure code as part of this shared repair.
+The shared hierarchy prerequisite is now cleared.
 
-After the repair is merged and production accepted:
+Before further Procedure work:
 
-1. merge current `origin/main` into `feature/setup-takedown-procedures`;
-2. preserve the existing accepted Procedure browser/orchestration/document work;
-3. replace raw shared Stage browse consumption with `field_context_hierarchy.resolve_field_hierarchy(...)`;
-4. retain permanent Display lookup through `field_context_repository.py`;
-5. keep Procedure task/document discovery downstream of resolved field scope.
+1. fetch current `origin/main`;
+2. merge current `origin/main` into `feature/setup-takedown-procedures`;
+3. preserve the existing accepted Procedure browser/orchestration/document work;
+4. replace raw Stage browse consumption with `field_context_hierarchy.resolve_field_hierarchy(...)`;
+5. retain permanent Display lookup through `field_context_repository.py`;
+6. keep Procedure task/document discovery downstream of resolved field scope.
 
 Do not:
 
 - copy PostgreSQL relationship SQL into Procedures;
-- treat every raw LOR Scene as a browse Scene;
+- render `repository.stages()` directly;
+- treat every raw LOR Scene as a field Scene;
+- promote Display/component folders into the hierarchy resolver;
 - use `ref.stage.stage_name` as the field-facing Stage label;
 - invent a second Stage/Sub-stage/Scene resolver;
-- alter FieldWiring eligibility or search;
-- add schema for the browse repair;
-- silently guess Stage 39/40 alignment.
+- alter FieldWiring eligibility/search;
+- add schema for this browse contract;
+- silently repair stale `folder_path` evidence.
+
+## Runtime note
+
+Resolved hierarchy construction reads the mounted Google/rclone tree and is slower than raw PostgreSQL browse. Procedure may later use an appropriate cache/refresh boundary, but caching must preserve this resolved hierarchy contract.
 
 ## Related acceptance record
 
