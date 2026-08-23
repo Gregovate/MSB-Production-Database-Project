@@ -37,6 +37,60 @@ def optional_int(name: str) -> int | None:
     return int(raw)
 
 
+def operator_config_error(_: ConfigError) -> str:
+    """Formatting-only operator message; retain configuration detail separately."""
+    return (
+        "Field Wiring is temporarily unavailable because its current data source "
+        "could not be opened. Report that the Field Wiring service is unavailable."
+    )
+
+
+def operator_wiring_error(exc: WiringError) -> str:
+    """Translate internal FieldWiring failures without changing engineering errors."""
+    text = str(exc)
+    folded = text.casefold()
+
+    if folded.startswith("invalid "):
+        return "This Field Wiring link is invalid. Return to lookup and select the Display or Stage again."
+
+    if "does not belong to the requested" in folded or "requires a resolved stage and preview" in folded:
+        return (
+            "This Field Wiring link no longer matches the current Display, Stage, or Scene. "
+            "Return to lookup and select it again."
+        )
+
+    if "not present in the current" in folded or "not present in the production database" in folded:
+        return (
+            "This Field Wiring link no longer matches the current approved data. "
+            "Return to lookup and select the Display or Stage again."
+        )
+
+    if "no applicable field wiring" in folded or "display is not available for current fieldwiring" in folded:
+        return "No current Field Wiring is available for this Display."
+
+    if "no current field wiring rows" in folded:
+        return "No current Field Wiring data is available for this Stage or Scene."
+
+    if (
+        "dmx source" in folded
+        or "dmx source-detail" in folded
+        or "atomic dmx" in folded
+        or "v7.0.11" in folded
+    ):
+        return (
+            "Current Field Wiring data for this selection is incomplete. "
+            "Report the selected Display, Stage, or Scene so engineering can verify the current wiring data."
+        )
+
+    if "image path" in folded or "wiring image is not available" in folded or "sourcedocs content" in folded:
+        return "The requested wiring image is not available. Return to the current Field Wiring page and try another image."
+
+    return (
+        "Field Wiring could not be opened for this selection. Return to lookup and try again, "
+        "or report the selected Display, Stage, or Scene."
+    )
+
+
 @app.get("/")
 def index() -> Response:
     return send_from_directory(BASE_DIR, "index.html")
@@ -143,12 +197,18 @@ def api_wiring_image() -> Response:
 
 @app.errorhandler(ConfigError)
 def config_error(exc: ConfigError) -> tuple[Response, int]:
-    return jsonify(error=str(exc)), 503
+    return jsonify(
+        error=operator_config_error(exc),
+        engineering_error=str(exc),
+    ), 503
 
 
 @app.errorhandler(WiringError)
 def wiring_error(exc: WiringError) -> tuple[Response, int]:
-    return jsonify(error=str(exc)), 400
+    return jsonify(
+        error=operator_wiring_error(exc),
+        engineering_error=str(exc),
+    ), 400
 
 
 if __name__ == "__main__":
