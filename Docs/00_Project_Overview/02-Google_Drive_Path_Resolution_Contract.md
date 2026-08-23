@@ -105,7 +105,7 @@ The standard marker is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-Marker placement is application-specific.
+The current field-document applications use the same basic marker pattern: validate the structured Stage/Sub-stage/Scene scope, then validate the application subsystem root. Fixed child branches are selected by folder name without another marker layer.
 
 ### FieldWiring marker contract
 
@@ -131,9 +131,11 @@ This is the accepted production-aligned contract and matches the current FieldWi
 
 A current Display/shared-folder `PreviewBackground` used as LOR/application path evidence must also be marked.
 
-### Future Procedure marker contract
+### Procedure marker contract
 
-The future Procedure system uses a separate controlled path. Current planned required marker locations include:
+The Procedure system follows the same subsystem-root guard pattern as FieldWiring.
+
+Required Procedure marker locations are:
 
 ```text
 <Stage / Sub-stage / Scene>\
@@ -142,20 +144,23 @@ The future Procedure system uses a separate controlled path. Current planned req
 └── Procedures\
     ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     ├── Inspection\
-    │   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     ├── Setup\
-    │   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-    │   └── images\
-    │       └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+    │   ├── Archive\
+    │   ├── images\
+    │   └── SourceDocs\
     └── Takedown\
-        ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
-        └── images\
-            └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+        ├── Archive\
+        ├── images\
+        └── SourceDocs\
 ```
 
-Do not copy the Procedure child-folder marker rule onto FieldWiring's `BackgroundStage` / `MusicalStage` branches.
+`Procedures\Inspection`, `Procedures\Setup`, and `Procedures\Takedown` are fixed child branches selected by the Procedure task adapter and do **not** require separate markers.
+
+`Procedures\Setup\images` and `Procedures\Takedown\images` are supporting child folders and do **not** require separate markers.
 
 `SourceDocs` and `Archive` are excluded working/history boundaries and are not part of normal field traversal or presentation. They are not field-application marker targets unless an approved future design changes that role.
+
+Earlier 2026-08-22 wording that required markers on every Procedure task/image folder is superseded by this subsystem-root marker contract.
 
 `Photos` is not currently part of the FieldWiring or Procedure application path.
 
@@ -581,35 +586,41 @@ A direct Wiring `BackgroundFile` path may already identify the applicable branch
 
 FieldWiring requires the documentation-root marker and `Wiring` marker; the selected `BackgroundStage` / `MusicalStage` child is not separately marked.
 
-### Setup
+### Procedures
+
+Procedure tasks require the documentation-root marker and the `Procedures` subsystem-root marker. The selected task child is not separately marked.
+
+Setup:
 
 ```text
 <documentation root>\Procedures\Setup
 ```
 
-Published Setup images use the marked:
+Published Setup images use:
 
 ```text
 <documentation root>\Procedures\Setup\images
 ```
 
-### Takedown
+Takedown:
 
 ```text
 <documentation root>\Procedures\Takedown
 ```
 
-Published Takedown images use the marked:
+Published Takedown images use:
 
 ```text
 <documentation root>\Procedures\Takedown\images
 ```
 
-### Inspection
+Inspection:
 
 ```text
 <documentation root>\Procedures\Inspection
 ```
+
+The `Setup`, `Takedown`, `Inspection`, and task-local `images` folders do **not** require separate marker files.
 
 The application must not maintain a separate hard-coded full path for each individual field document when the standardized hierarchy can resolve it.
 
@@ -673,4 +684,5 @@ Path resolution must:
 - [Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
 - [LOR Preview Parser Architecture](../01_LOR_System/02_Data_Extraction/LOR_Preview_Parser_Architecture.md)
 - [Shared Field Context Resolution Contract](../02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
+- [Procedure System Field Context Handoff](../02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
 - [FieldWiring Engineering Recovery and Compatibility Contract](../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
