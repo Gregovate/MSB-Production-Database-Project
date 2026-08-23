@@ -88,7 +88,7 @@ The standard marker is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-Marker placement is application-specific.
+The current field-document applications use the same basic marker pattern: mark the resolved structured scope, then mark the application subsystem root. Fixed child branches are selected by folder name without another marker layer.
 
 Current **FieldWiring** paths require markers on:
 
@@ -107,17 +107,22 @@ Wiring\MusicalStage
 
 The marker on `Wiring` guards those published child branches.
 
-Future **Procedure** paths use their separate marker contract:
+The **Procedure** system follows the same subsystem-root pattern:
 
 ```text
 <Stage / Sub-stage / Scene root>
 Procedures
+```
+
+The controlled Procedure child branches are:
+
+```text
 Procedures\Inspection
 Procedures\Setup
-Procedures\Setup\images
 Procedures\Takedown
-Procedures\Takedown\images
 ```
+
+Those task folders are **not separately marked**. `Procedures\Setup\images` and `Procedures\Takedown\images` are supporting child folders and are also **not separately marked**.
 
 `SourceDocs` and `Archive` are excluded working/history areas and are not normal field-application marker targets.
 
@@ -132,19 +137,21 @@ Conceptually:
 ```text
 Stage / Scene root                    <- marked structural scope
 ├── PreviewBackground/                <- marked when used by application/LOR
-├── Procedures/                       <- marked Procedure application path
-│   ├── Inspection/                   <- marked Procedure branch
-│   ├── Setup/                        <- marked Procedure branch
-│   │   └── images/                   <- marked Procedure-image branch
-│   └── Takedown/                     <- marked Procedure branch
-│       └── images/                   <- marked Procedure-image branch
-├── Wiring/                           <- marked FieldWiring source root
-│   ├── BackgroundStage/              <- published child; no separate FieldWiring marker
-│   └── MusicalStage/                 <- published child; no separate FieldWiring marker
+├── Procedures/                       <- marked Procedure subsystem root
+│   ├── Inspection/                   <- fixed child; no separate marker
+│   ├── Setup/                        <- fixed child; no separate marker
+│   │   └── images/                   <- supporting child; no separate marker
+│   └── Takedown/                     <- fixed child; no separate marker
+│       └── images/                   <- supporting child; no separate marker
+├── Wiring/                           <- marked FieldWiring subsystem root
+│   ├── BackgroundStage/              <- published child; no separate marker
+│   └── MusicalStage/                 <- published child; no separate marker
 ├── Photos/                           <- general documentation; not app source currently
 ├── legacy folder(s)                  <- preserve; ignored by application discovery
 └── loose legacy files                <- preserve; ignored by application discovery
 ```
+
+Earlier 2026-08-22 wording that required separate markers in every Procedure task/image folder was incorrect and is superseded by this subsystem-root contract.
 
 As legacy material is reviewed, it may be deliberately moved into the appropriate controlled structure. Until then, applications must ignore it rather than guess based on filename, folder name, or proximity.
 
@@ -340,11 +347,11 @@ Example target state:
             Front Entrance Setup.pdf
 ```
 
-The Stage/Sub-stage/Scene root, `Procedures`, `Setup`, and `Setup\images` folders are part of the future Procedure application path and must carry their required markers.
+The Stage/Sub-stage/Scene root and `Procedures` subsystem root must carry their required markers. `Setup` and `Setup\images` are controlled child folders beneath the marked `Procedures` root and do **not** require separate markers.
 
 `Archive` contains superseded or historical source material and must not be treated as current field authority.
 
-`images` contains image assets used by the Setup instructions and is a required marked application folder.
+`images` contains image assets used by the Setup instructions. It is a supporting task-local folder, not an independently marked application root.
 
 `SourceDocs` contains Setup working/source material and is not intended for direct field presentation.
 
@@ -378,7 +385,7 @@ and the related current instruction images under:
 <Stage, Sub-stage, or Scene>\Procedures\Setup\images
 ```
 
-Every directory used in that Procedure application path must have the required marker before the application treats it as current field content.
+Before the Procedure application treats those children as current field content, it must validate the resolved Stage/Sub-stage/Scene marker and the `Procedures` subsystem-root marker. The known `Setup`, `Takedown`, `Inspection`, and task-local `images` child folders do not require separate markers.
 
 Archive and SourceDocs content must be excluded from normal field presentation.
 
@@ -404,7 +411,7 @@ The durable database/document-ID relationship is a separate engineering problem.
 
 1. Run or open the current Documentation Alignment Worklist.
 2. Select one Stage and preserve its current aligned Stage folder name.
-3. Preserve the controlled Stage/Sub-stage/Scene structure and the marker rules for each application path.
+3. Preserve the controlled Stage/Sub-stage/Scene structure and the marker rules for each application subsystem root.
 4. Treat material outside the controlled application paths as legacy/general engineering material unless and until it is deliberately aligned.
 5. Review the remaining legacy Setup files reported from `000-Instructions\0 - Setup Procedures`.
 6. Human-review the legacy file and determine its correct Stage, Sub-stage, or Scene ownership.
@@ -414,7 +421,7 @@ The durable database/document-ID relationship is a separate engineering problem.
 10. Continue until the Stage/Sub-stage/Scene legacy material has been reconciled.
 11. Re-run Folder Alignment when a fresh snapshot of migration progress is needed.
 12. In the procedure-audit phase, process each archived legacy document through the controlled Setup Instruction template.
-13. After review/approval, publish the current field PDF in the applicable marked `Procedures\Setup` folder and keep its current images in the marked `Procedures\Setup\images` folder.
+13. After review/approval, publish the current field PDF in `Procedures\Setup` beneath the marked `Procedures` subsystem root and keep its current images in the task-local `Procedures\Setup\images` folder.
 14. Keep the superseded source in `Archive`.
 
 ---
@@ -459,7 +466,7 @@ For FieldWiring, the Stage/Sub-stage/Scene root and `Wiring` carry the required 
 
 FieldWiring must ignore unrelated loose Stage/Scene files and unmarked legacy folders.
 
-FormView remains the fallback/reference while the browser-based FieldWiring system completes deployment and field acceptance.
+FieldWiring is now production-operational. FormView remains historical/reference evidence for the proven predecessor workflow and is not the Procedure runtime.
 
 ---
 
@@ -467,8 +474,8 @@ FormView remains the fallback/reference while the browser-based FieldWiring syst
 
 1. Use the current Documentation Alignment Worklist as the migration roadmap.
 2. Keep the established Stage/Sub-stage/Scene folder structure and do not rename an aligned Stage/Sub-stage/Scene root during ordinary cleanup.
-3. Apply the marker contract owned by each application: FieldWiring requires the scope root, `Wiring`, and current controlled `PreviewBackground`; the future Procedure system requires its listed Procedure/task/image folders.
-4. Do **not** add separate FieldWiring markers to `Wiring\BackgroundStage` or `Wiring\MusicalStage`.
+3. Apply the subsystem-root marker contract: the structured scope is marked; FieldWiring uses a marked `Wiring` root; Procedures uses a marked `Procedures` root; current controlled `PreviewBackground` is marked when used as LOR/application path evidence.
+4. Do **not** add separate markers to `Wiring\BackgroundStage`, `Wiring\MusicalStage`, `Procedures\Inspection`, `Procedures\Setup`, `Procedures\Takedown`, or their task-local `images` folders.
 5. Do not rename the controlled `PreviewBackground`, `Procedures`, `Wiring`, or task-branch folders used by the applications.
 6. Preserve loose files and unmarked legacy folders until they have been deliberately reviewed; applications must ignore them for current discovery.
 7. Treat `SourceDocs` and `Archive` as excluded working/history areas, not normal field-presentation folders.
@@ -477,8 +484,8 @@ FormView remains the fallback/reference while the browser-based FieldWiring syst
 10. Do not rely on fuzzy filename matching once the document has been human-assigned to an Archive location.
 11. Do not publish an archived legacy `.gdoc` as though it were the current field instruction.
 12. Audit and reformat the legacy procedure using the controlled Setup Instruction template before publishing a current version.
-13. Keep the current field PDF or other approved presentation directly available from the marked `Procedures\Setup` folder.
-14. Keep current Setup/Takedown instruction images in their marked task-local `images` folders.
+13. Keep the current field PDF or other approved presentation directly available in `Procedures\Setup` beneath the marked `Procedures` root.
+14. Keep current Setup/Takedown instruction images in their task-local `images` folders; those folders do not require separate marker files.
 15. Exclude `Archive` and `SourceDocs` material from normal field-user navigation.
 16. Do not delete useful historical engineering material merely to make the folder tree look clean.
 17. Do not assume every Display requires a Setup procedure.
@@ -493,7 +500,7 @@ The migration phase is progressing correctly when:
 
 - the current aligned Stage/Sub-stage/Scene folder names remain stable;
 - FieldWiring markers are present at the structural scope root, `Wiring`, and any current controlled `PreviewBackground`, without separate child markers in `BackgroundStage` / `MusicalStage`;
-- future Procedure markers are present on the controlled Procedure/task/image folders when that system is prepared/used;
+- Procedure markers are present at the structural scope root and `Procedures` subsystem root, without separate markers in `Inspection`, `Setup`, `Takedown`, or task-local `images` folders;
 - applications can ignore unmarked legacy material and use only their controlled paths;
 - the unresolved central legacy Setup backlog becomes smaller;
 - reviewed legacy procedures appear under the correct Stage/Sub-stage/Scene `Procedures\Setup\Archive` folders;
@@ -510,8 +517,10 @@ The end goal is simple: a volunteer should eventually be able to scan a Display 
 - [Google Drive Folder Structure](00-Google_Drive.md) — engineering architecture and folder-location contract.
 - [Google Drive Path Resolution Contract](02-Google_Drive_Path_Resolution_Contract.md) — governing field-application folder/path/marker rules.
 - [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) — marker placement for the controlled field-application paths.
+- [Stage / Sub-stage / Scene Folder Scaffold](04-Stage_Substage_Scene_Folder_Scaffold.md) — controlled new-scope structure aligned to Folder Alignment.
 - [LOR System Documentation](../01_LOR_System/README.md) — LOR-side system documentation.
-- [FormView](../01_LOR_System/04_FormView/README.md) — fallback/reference field-wiring application.
-- [FieldWiring Engineering](../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md) — current browser-based wiring system engineering handoff.
+- [FormView](../01_LOR_System/04_FormView/README.md) — historical/reference predecessor behavior.
+- [FieldWiring Engineering](../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md) — current production browser-based wiring system engineering handoff.
+- [Procedure System Field Context Handoff](../02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md) — current Procedure resolver/marker conflict-resolution authority.
 - [Stage Setup Documentation Standard](../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md) — governance for controlled field-facing Setup Instructions.
 - [Stage Setup Instruction Template](../../System_Documentation/Templates/Stage_Setup_Instruction_Template.md) — controlled draft formatting structure for current Setup Instructions.
