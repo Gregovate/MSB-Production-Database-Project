@@ -13,6 +13,7 @@ Detailed engineering and operator instructions belong in the subsystem documenta
 - [MSB Database Source Folder Marker](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) — operator procedure for the `_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt` marker used at controlled structural roots and database/application source folders.
 - [Stage / Sub-stage / Scene Folder Scaffold](04-Stage_Substage_Scene_Folder_Scaffold.md) — controlled folder scaffold to use whenever a new Scene, Sub-stage, or Stage documentation root is created.
 - [Google Workspace Application Read Identity](05-Google_Workspace_Application_Read_Identity.md) — shared Google Workspace read-identity purpose, permission boundary, human-authoring requirement, and split between Production Database and server-management documentation.
+- [Operator UI Message Contract](06-Operator_UI_Message_Contract.md) — governing cross-application rule for plain-language operator errors/warnings, exact expected locations/actions, engineering-code separation, and zero-I/O message formatting.
 
 The current subsystem documentation remains authoritative for detailed operating and engineering rules.
 
