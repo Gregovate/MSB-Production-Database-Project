@@ -117,7 +117,7 @@ def test_engineering_payload_keeps_code_separate_from_operator_warning():
     )
 
 
-def test_posix_scope_style_is_preserved_for_server_diagnostics():
+def test_server_mount_is_textually_translated_to_operator_drive_path():
     diagnostic = {
         "code": "LOR_CONTEXT_UNRESOLVED",
         "scene_name": "21-Sliding Penguins",
@@ -130,4 +130,22 @@ def test_posix_scope_style_is_preserved_for_server_diagnostics():
         task_relative_folder=r"Procedures\Setup",
     )
 
-    assert "/mnt/msb-display-folders/21-Polar Bear Playground-PB/Procedures/Setup" in message
+    assert (
+        r"G:\Shared drives\Display Folders\21-Polar Bear Playground-PB\Procedures\Setup"
+        in message
+    )
+    assert "/mnt/msb-display-folders" not in message
+
+
+def test_operator_mapper_is_formatting_only_source_contract():
+    source = __import__("pathlib").Path(
+        __file__
+    ).with_name("field_context_operator_messages.py").read_text(encoding="utf-8")
+
+    assert "psycopg" not in source
+    assert "sqlite" not in source
+    assert "requests" not in source
+    assert ".exists(" not in source
+    assert ".is_dir(" not in source
+    assert ".is_file(" not in source
+    assert ".iterdir(" not in source
