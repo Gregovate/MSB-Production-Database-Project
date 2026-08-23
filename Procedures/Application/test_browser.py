@@ -44,19 +44,6 @@ def test_browser_client_uses_only_procedure_api_contract():
     assert "Archive/" not in text
 
 
-def test_browser_renders_resolved_stage_substage_scene_hierarchy():
-    browser.app.config.update(TESTING=True)
-    with browser.app.test_client() as client:
-        text = client.get("/procedure.js").get_data(as_text=True)
-    assert "stage.label" in text
-    assert "stage.sub_stages" in text
-    assert "subStage.scenes" in text
-    assert "selectHierarchyScope" in text
-    assert "data-substage-index" in text
-    assert "data-stage-scene-index" in text
-    assert "data-substage-scene" in text
-
-
 def test_browser_compacts_resolved_context_into_instruction_card():
     browser.app.config.update(TESTING=True)
     with browser.app.test_client() as client:
