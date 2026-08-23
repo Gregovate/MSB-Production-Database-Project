@@ -2,6 +2,7 @@ const params = new URLSearchParams(location.search);
 const loading = document.getElementById('loading');
 const errorBox = document.getElementById('error');
 const workspace = document.getElementById('workspace');
+const operatorNotices = document.getElementById('operator-notices');
 const imageSection = document.getElementById('image-section');
 const imagePane = document.getElementById('image-pane');
 const imageScroll = document.getElementById('image-scroll');
@@ -106,6 +107,11 @@ function renderContext() {
   document.getElementById('context-type').textContent = c.context_type || 'Unknown';
   document.getElementById('technical-context').innerHTML = contextRows(c).map(([label,value]) => `
     <div><span>${esc(label)}</span><strong>${esc(fmt(value))}</strong></div>`).join('');
+}
+function renderOperatorNotices() {
+  const messages = packageData.images?.operator_warnings || [];
+  operatorNotices.hidden = messages.length === 0;
+  operatorNotices.innerHTML = messages.map(message => `<div>${esc(message)}</div>`).join('');
 }
 async function installContextSwitch() {
   contextSwitch.hidden = true;
@@ -302,7 +308,7 @@ function showImage() {
     imageScroll.hidden = true;
     imageClassification.hidden = true;
     imageEmpty.hidden = false;
-    imageEmptyDetail.textContent = packageData.images.warnings?.length ? packageData.images.warnings.join(' ') : 'The hookup data remains current and usable without an image.';
+    imageEmptyDetail.textContent = 'The hookup data remains current and usable without an image. See the notice above for the expected Wiring folder.';
     return;
   }
   imageEmpty.hidden = true;
@@ -397,6 +403,7 @@ async function start() {
     const payload = await api(requestedPackageUrl());
     packageData = payload.wiring;
     renderContext();
+    renderOperatorNotices();
     renderCurrentness();
     renderGroups();
     renderEngineering();
