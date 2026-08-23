@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Status: DOCUMENTATION ACTIVE / PROCEDURE RESOLVER ENGINEERING READY**
+**Status: DOCUMENTATION ACTIVE / PROCEDURE FIELD ACCESS PRODUCTION-OPERATIONAL**
 
 This subsystem covers planning, scheduling, staging, loading, scanning, and moving tested displays and containers from storage to the park for annual setup, plus takedown-related field documentation where it belongs with the same Stage material.
 
@@ -10,7 +10,9 @@ The Stage-oriented folder structure already exists. Setup/Takedown instructions 
 
 The operational database/application workflow for scheduling, pick lists, load order, and forklift scanning is not yet fully engineered. No operator procedure should imply those planned functions are implemented until verified from the current database/application.
 
-**FieldWiring and the Display Scan integration are now accepted production baselines.** Procedure resolver engineering does not need to wait for, rediscover, or redesign either system. Start with [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md), which resolves older documentation conflicts and defines how Setup/Takedown/Inspection reuse the proven FieldWiring structured Stage/Sub-stage/Scene resolver.
+**FieldWiring, Display Scan, and the standalone Procedure application are accepted production baselines.** Procedure is production-operational at `https://my.sheboyganlights.org/procedures/` and uses the shared Field Context resolver plus the existing read-only Google `Display Folders` mount. Do not rediscover or redesign those accepted systems merely to continue Setup/Deployment work.
+
+The next bounded Procedure-related engineering follow-on is **Procedure Display Scan Integration** using the permanent `display_id` already resolved by the existing Display scan hub. Human Procedure-document authoring/alignment and the broader scheduling/pick/load/forklift workflow remain separate work streams.
 
 MSB has purchased a **Zebra DS3678-HD cordless ultra-rugged 1-D/2-D scanner kit** for the workshop forklift. It uses the Zebra 3600-series USB cradle and supports USB HID keyboard input. Because this is the **HD (High Density)** variant rather than an ER/XR extended-range model, its actual suitability from the forklift seat must be tested with real MSB Container and Storage Location labels before it is accepted as the final forklift-distance standard. See [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md).
 
@@ -72,13 +74,13 @@ The existing Google Shared Drive Stage/Scene folder structure is the human-facin
 - [Wiring System](../09_Wiring_System/README.md) owns wiring content in that structure.
 - Setup and Deployment owns setup/takedown instruction behavior and the application integration contract for finding applicable Procedure documents.
 - [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) owns permanent QR/scanning integration patterns, but QR lookup does not become the content authority.
-- [Procedure System Field Context Handoff](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) owns the current initial resolver/runtime handoff where older documents conflict.
+- [Procedure System Field Context Handoff](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) remains the architecture handoff that resolved the original Procedure/FieldWiring conflicts.
 
 This framework does not by itself define or approve a new database schema.
 
 ## Document Resolution and Field UX
 
-The accepted initial field-access path is:
+The accepted current field-access path is:
 
 ```text
 Display QR or manual Display/Stage/Scene lookup
@@ -112,15 +114,15 @@ The QR code identifies the asset. It does not contain a Google Drive folder path
 
 The Production Database owns the durable identities and relationships used to determine the structured Stage/Scene context. The database does not become the editing system for Procedure content.
 
-For the **initial read-only Procedure browser**, a PostgreSQL row or stored Google document ID for every current published PDF is **not a prerequisite**. Once the current structured root and marked `Procedures` subsystem root are validated, the application selects the exact known `Setup`, `Takedown`, or `Inspection` child and may enumerate the current published files directly in that task folder while excluding `Archive` and `SourceDocs`.
+For the current read-only Procedure browser, a PostgreSQL row or stored Google document ID for every current published PDF is **not a prerequisite**. Once the current structured root and marked `Procedures` subsystem root are validated, the application selects the exact known `Setup`, `Takedown`, or `Inspection` child and enumerates the current published files directly in that task folder while excluding `Archive` and `SourceDocs`.
 
 Durable per-document metadata remains a future engineering option when approval workflow, revision history, source-to-publication lineage, supersession, audit, or stable document identity demonstrates a need for it. Do not create schema merely because older documentation listed document-ID storage as unresolved.
 
-`my.sheboyganlights.org` is the intended normal field presentation layer. Field volunteers should not need to understand the GitHub repository, database schema, Google Drive organization, or source-document mechanics to reach the current Setup instruction.
+`my.sheboyganlights.org` is the normal field presentation layer. Field volunteers should not need to understand the GitHub repository, database schema, Google Drive organization, or source-document mechanics to reach the current Setup instruction.
 
 ## Resolver Reuse Boundary
 
-Procedures must **reuse or extract the proven FieldWiring structured-scope resolver** rather than create a second independent Display-to-Stage/Scene algorithm.
+Procedure **reuses the proven shared FieldWiring structured-scope resolver** rather than maintaining a second independent Display-to-Stage/Scene algorithm.
 
 The shared resolver answers:
 
@@ -144,7 +146,9 @@ Both systems use the same subsystem-root marker pattern: the resolved structured
 
 ## Scan / Forklift Direction
 
-The permanent Display scan platform is already production-operational and resolves `DISP:<display_id>` using permanent Production Database identity. Future Procedure scan actions should consume that existing identity contract; no physical Display QR redesign is required.
+The permanent Display scan platform is production-operational and resolves `DISP:<display_id>` using permanent Production Database identity. Procedure Display Scan Integration must consume that existing identity contract; no physical Display QR redesign is required.
+
+The exact operator-facing Procedure action behavior still needs to be confirmed before the scan extension is changed. Do not invent a second resolver, encode Stage/Scene/Google paths in the QR, or make the Display hub depend on Procedure health merely to render a Procedure action.
 
 Setup is also expected to become a high-volume scan workflow for deployment operations rather than only document lookup.
 
@@ -225,13 +229,20 @@ The system should preserve the actual sequence used each year when that history 
 
 Legacy and superseded Setup instructions should be archived through the established Stage documentation process rather than deleted or left mixed with current field instructions.
 
-## Planned Responsibilities
+## Current and Planned Responsibilities
 
-The subsystem is expected to eventually support:
+Already production-operational:
 
 - current Setup/Takedown/Inspection document lookup by Display/Stage/Scene;
-- field-friendly Procedure presentation through `my.sheboyganlights.org`;
-- Procedure actions from the existing Display scan hub after standalone Procedure acceptance;
+- field-friendly Procedure presentation through `my.sheboyganlights.org/procedures/`;
+- shared Field Context resolution and read-only Google `Display Folders` consumption.
+
+Current bounded follow-on:
+
+- Procedure action behavior from the existing permanent-identity Display scan hub.
+
+Separate planned operational work includes:
+
 - setup season/session context;
 - calendar pull scheduling;
 - pick lists;
@@ -242,7 +253,7 @@ The subsystem is expected to eventually support:
 - prior-year sequence reference;
 - optional durable per-document publication metadata when a demonstrated workflow requires it.
 
-These are design targets, not implemented schema commitments unless verified in the current database.
+These planned operational items are design targets, not implemented schema commitments unless verified in the current database.
 
 ## System Boundaries and Dependencies
 
@@ -251,6 +262,7 @@ This subsystem depends on existing Production Database identities and relationsh
 - permanent Display identity and Stage/Scene relationships;
 - the accepted FieldWiring structured-context behavior;
 - the accepted Display scan platform;
+- the accepted standalone Procedure application;
 - the shared read-only Google `Display Folders` filesystem;
 - containers and storage locations;
 - testing readiness/state;
@@ -261,64 +273,63 @@ This subsystem depends on existing Production Database identities and relationsh
 
 It must not redefine permanent Display IDs, Container IDs, storage identities, LOR wiring/topology, or other identities already owned by existing subsystems.
 
-Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory is a known future need but is not part of the first Procedure document-resolution proof.
+Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory remains a separate future Setup/Deployment need.
 
 ## Known Limitations / Open Work
 
-**FieldWiring and Display Scan are no longer open prerequisites.** The immediate Procedure-document engineering work may proceed from their accepted production baseline.
+The standalone Procedure field-access application is accepted production work. Do not reopen its shared resolver, Google hierarchy, Procedure marker contract, or current-document discovery architecture unless a demonstrated production defect requires it.
 
-Open Procedure-document work includes:
+Current Procedure-related open work is separated into these scopes:
 
-- inspect/extract the reusable FieldWiring structured-scope boundary without changing its accepted behavior;
-- prove one read-only current Setup PDF lookup end-to-end from current PostgreSQL Stage/Scene context;
-- validate the resolved Stage/Sub-stage/Scene marker and the `Procedures` subsystem-root marker;
-- enforce `Archive` and `SourceDocs` exclusion at the normal Procedure endpoint;
-- define supported current field-document formats, beginning with PDF;
-- define the simple list behavior when more than one current Procedure applies;
-- define the missing-current-document user experience;
-- define the protected `my.sheboyganlights.org` Procedure route;
-- test PC/phone/tablet and print/offline behavior;
-- add a Procedure action to the existing Display scan hub only after standalone Procedure presentation is accepted;
-- complete the legacy Setup-document alignment/archive procedure already underway;
-- finalize the Stage Setup Instruction template and contributor/operator procedure;
-- determine the editable-source versus published-PDF relationship where Google Docs remain in use;
-- engineer durable Google document IDs / published references only if a demonstrated publication/history workflow requires them.
+- **Procedure Display Scan Integration** — add the agreed Procedure action behavior to the existing Display scan hub using permanent `display_id`, preserving existing scan actions and failure boundaries;
+- **Procedure document authoring/alignment** — continue the legacy Setup-document review, alignment, archive, and publication work in the existing Stage/Scene `Display Folders` hierarchy;
+- **Contributor/operator documentation** — finalize the Stage Setup Instruction contributor workflow and the editable-source versus published-PDF relationship where Google Docs remain in use;
+- **additional field acceptance as needed** — complete any broader PC/phone/tablet, print, or offline validation required for the 2026 field workflow; and
+- **durable document metadata only if justified** — engineer Google document IDs or published references only when a demonstrated publication/history requirement cannot be met by the current controlled-folder contract.
 
-Separate Setup/Deployment operational work still includes scheduling, readiness, pull/load planning, Container/Location movement semantics, forklift workflow, and hardware acceptance. Do not mix those business-process questions into the first Procedure document-resolution proof.
+Separate Setup/Deployment operational work still includes scheduling, readiness, pull/load planning, Container/Location movement semantics, forklift workflow, hardware acceptance, and related annual workflow state. Do not mix those business-process questions into Procedure Display Scan Integration.
 
 ## Resume Development
 
-### Current baseline — FieldWiring and Scan are complete
+### Current production baseline
 
-Begin from current `main`. Do not rediscover the old live-only scan extension, redesign the physical QR, or rebuild the Google filesystem connection.
+Begin from current `main` and the current responsible runbooks. Do not rediscover the old live-only scan extension, redesign the physical QR, rebuild the Google filesystem connection, or reconstruct Procedure deployment from chat history.
 
 Read first:
 
-1. [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
-2. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
-3. [FieldWiring Drive Context Resolver Engineering Design](../09_Wiring_System/FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
-4. `FieldWiring/Application/wiring_images.py`
-5. `FieldWiring/Application/repository.py`
-6. [Google Drive Document Organization Procedure](../../../00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md)
-7. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md)
-8. [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
+1. [Procedure Application README](../../../../Procedures/Application/README.md) — current standalone Procedure application contract and production status;
+2. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current scan platform handoff and Procedure scan resume point;
+3. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary and accepted scan baseline;
+4. [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted additive scan integration pattern and failure boundary;
+5. [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) — architecture precedence for Procedure/Field Context;
+6. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md);
+7. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md); and
+8. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment planning.
 
-### First Procedure application proof
+### Procedure Display Scan Integration — current bounded engineering task
 
-The first application proof should remain narrow:
+The accepted identity handoff is:
 
 ```text
-Display / Stage / Scene lookup
-    -> shared structured-scope resolver
-    -> fixed current scope_root
-    -> validate scope_root marker
-    -> validate Procedures marker
-    -> select Procedures/Setup
-    -> enumerate current PDF(s)
-    -> protected browser presentation
+existing physical Display QR
+    -> DISP:<permanent display_id>
+    -> existing /scan/DISP/:key Display hub
+    -> agreed Procedure action
+    -> existing Procedure application receives permanent display_id
 ```
 
-Do not begin by creating Procedure schema, a generic document registry, a second resolver, or forklift/deployment transaction logic.
+The Procedure browser already accepts permanent Display identity as an entry input. Before changing Scan, confirm the exact operator-facing action behavior for Setup/Takedown/Inspection rather than inventing new routing or task semantics.
+
+This work must not create:
+
+- a new physical QR format;
+- a second Display/Stage/Scene resolver;
+- a Procedure-only Google hierarchy or mount;
+- a generic Procedure document registry;
+- a new Procedure database schema merely for scan integration; or
+- a Procedure health/API dependency that makes unrelated Scan actions unavailable.
+
+Follow the existing Server Management scan-extension runbook for live hash verification, rollback capture, staging, syntax validation, restart, and regression testing. Operational discoveries made during this work must be written into the responsible runbook before later steps depend on them.
 
 ### Setup workflow engineering
 
@@ -348,7 +359,7 @@ For Setup-document authoring/alignment work, continue with:
 4. the controlled [Stage Setup Instruction Template](../../../../System_Documentation/Templates/Stage_Setup_Instruction_Template.md); and
 5. the real Stage/Scene documents currently being reviewed and archived.
 
-Do not redesign the established Stage folder structure while solving Procedure resolution, QR integration, PDF publishing, or intranet UX.
+Do not redesign the established Stage folder structure while solving Procedure QR integration, PDF publishing, or intranet UX.
 
 ## Related Systems
 
@@ -363,13 +374,16 @@ Do not redesign the established Stage folder structure while solving Procedure r
 
 ## Related Documentation
 
+- [Procedure Application README](../../../../Procedures/Application/README.md)
 - [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
 - [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md)
 - [Stage Setup Instruction Template](../../../../System_Documentation/Templates/Stage_Setup_Instruction_Template.md)
 - [Google Drive Document Organization Procedure](../../../00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md)
 - [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
 - [FieldWiring Drive Context Resolver Engineering Design](../09_Wiring_System/FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
+- [Documentation Maintenance Rule](../../../../System_Documentation/Standards/Documentation_Maintenance_Rule.md)
 - [Document Control Standard](../../../../System_Documentation/Standards/Document_Control_Standard.md)
 - [Linking and Navigation Standard](../../../../System_Documentation/Standards/Linking_and_Navigation_Standard.md)
+- [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md)
 
 Repository Operational SOPs remain appropriate for database/application tasks in this subsystem when those tasks are implemented. They are not the storage or format model for the field-facing Stage Setup Instructions themselves.
