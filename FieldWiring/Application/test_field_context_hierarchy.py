@@ -1,16 +1,39 @@
-from pathlib import Path
-
 from field_context_hierarchy import build_field_hierarchy
-from field_context_resolver import MARKER_NAME
 
 
-def mark(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
-    (path / MARKER_NAME).write_text("marker", encoding="utf-8")
-    return path
+def context(
+    scene_name: str,
+    *,
+    stage_key: str,
+    path: str | None,
+    context_type: str = "Musical",
+    preview_uuid: str = "preview-1",
+    scene_uuid: str = "scene-1",
+):
+    return {
+        "preview": {
+            "preview_uuid": preview_uuid,
+            "preview_name": "2026 Master Musical Preview",
+            "preview_background_file": None,
+        },
+        "scene": {
+            "scene_uuid": scene_uuid,
+            "scene_name": scene_name,
+            "scene_stage_key": stage_key,
+            "scene_background_file": path,
+        },
+        "scope_kind": "Scene",
+        "context_type": context_type,
+    }
 
 
-def raw_stage(stage_id: int, key: str, name: str, folder_path: str | None):
+def raw_stage(
+    stage_id: int,
+    key: str,
+    name: str,
+    folder_path: str | None,
+    contexts=None,
+):
     return {
         "stage": {
             "stage_id": stage_id,
@@ -18,82 +41,246 @@ def raw_stage(stage_id: int, key: str, name: str, folder_path: str | None):
             "stage_name": name,
             "folder_path": folder_path,
         },
-        "contexts": [],
+        "contexts": list(contexts or []),
     }
 
 
-def test_valid_top_level_stage_remains_normal(tmp_path):
-    drive = tmp_path / "Display Folders"
-    root = mark(drive / "15-Church-Bells-CH")
-
-    result = build_field_hierarchy(
-        [raw_stage(15, "15", "LOR Church Name", str(root))],
-        drive,
-    )
-
-    assert [item["stage_key"] for item in result["stages"]] == ["15"]
-    assert result["stages"][0]["label"] == "15-Church-Bells-CH"
-    assert not any(
-        item["code"] == "PERSISTED_STAGE_PATH_REVIEW_REQUIRED"
-        for item in result["review_required"]
-    )
-
-
-def test_conflicting_top_level_stage_path_remains_browseable_with_review(tmp_path):
-    drive = tmp_path / "Display Folders"
-    expected = mark(drive / "39-Parade Float-PF")
-    other = mark(drive / "40-Parade Float-PF")
-
-    result = build_field_hierarchy(
-        [raw_stage(39, "39", "RGB Plus Stage 39 Parade Float", str(other))],
-        drive,
-    )
-
-    assert [item["stage_key"] for item in result["stages"]] == ["39"]
-    assert result["stages"][0]["scope_root"] == str(expected)
-    assert any(
-        item["code"] == "PERSISTED_STAGE_PATH_REVIEW_REQUIRED"
-        and str(item.get("stage_key")) == "39"
-        for item in result["review_required"]
-    )
-
-
-def test_missing_top_level_stage_path_remains_browseable_without_lor_requirement(tmp_path):
-    drive = tmp_path / "Display Folders"
-    expected = mark(drive / "40-CommandCenter")
-
-    result = build_field_hierarchy(
-        [raw_stage(40, "40", "CommandCenter-CC", None)],
-        drive,
-    )
-
-    assert [item["stage_key"] for item in result["stages"]] == ["40"]
-    assert result["stages"][0]["scope_root"] == str(expected)
-    assert result["stages"][0]["contexts"] == []
-    assert any(
-        item["code"] == "PERSISTED_STAGE_PATH_REVIEW_REQUIRED"
-        and str(item.get("stage_key")) == "40"
-        for item in result["review_required"]
-    )
-
-
-def test_nested_substage_with_missing_persisted_path_remains_browseable(tmp_path):
-    drive = tmp_path / "Display Folders"
-    stage_root = mark(drive / "07-Whoville-WV")
-    mark(stage_root / "07a-Who Forest-WF")
+def test_build_hierarchy_does_not_touch_drive_root():
+    class ForbiddenDriveRoot:
+        def __fspath__(self):
+            raise AssertionError("runtime browse must not touch Display Folders")
 
     result = build_field_hierarchy(
         [
-            raw_stage(7, "07", "Whoville", str(stage_root)),
-            raw_stage(70, "07a", "Who Forest", None),
+            raw_stage(
+                45,
+                "15",
+                "Show Background Stage 15 Church",
+                r"G:\Shared drives\Display Folders\15-Church-Bells-CH",
+            )
         ],
-        drive,
+        ForbiddenDriveRoot(),
+    )
+
+    assert [item["label"] for item in result["stages"]] == ["15-Church-Bells-CH"]
+
+
+def test_persisted_stage_folder_path_is_fast_field_label():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                51,
+                "21",
+                "Show Background Stage 21 Polar Bears",
+                r"G:\Shared drives\Display Folders\21-Polar Bear Playground-PB",
+            )
+        ]
+    )
+
+    stage = result["stages"][0]
+    assert stage["label"] == "21-Polar Bear Playground-PB"
+    assert stage["label_basis"] == "PERSISTED_STAGE_PATH"
+
+
+def test_stale_stage_path_uses_stored_lor_path_string_without_filesystem_scan():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                58,
+                "39",
+                "RGB Plus Stage 39 Parade Float",
+                r"G:\Shared drives\Display Folders\40-Parade Float-PF",
+                [
+                    context(
+                        "Parade Float",
+                        stage_key="39",
+                        path=(
+                            r"G:\Shared drives\Display Folders\39-Parade Float-PF"
+                            r"\Wiring\BackgroundStage\Parade.jpg"
+                        ),
+                    )
+                ],
+            )
+        ]
+    )
+
+    stage = result["stages"][0]
+    assert stage["label"] == "39-Parade Float-PF"
+    assert stage["label_basis"] == "LOR_PATH_EVIDENCE"
+
+
+def test_substage_is_nested_and_uses_lor_path_string_when_folder_path_missing():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                37,
+                "07",
+                "Show Background Stage 07 WhoHouse Mt Crumpet",
+                r"G:\Shared drives\Display Folders\07-Whoville-WV",
+            ),
+            raw_stage(
+                59,
+                "07a",
+                "RGB Plus Stage 07a Who Forest",
+                None,
+                [
+                    context(
+                        "07a-Who Forest-WF",
+                        stage_key="07a",
+                        path=(
+                            r"G:\Shared drives\Display Folders\07-Whoville-WV"
+                            r"\07a-Who Forest-WF\PreviewBackground\Who-Forest.jpg"
+                        ),
+                    )
+                ],
+            ),
+        ]
     )
 
     assert [item["stage_key"] for item in result["stages"]] == ["07"]
-    assert [item["stage_key"] for item in result["stages"][0]["sub_stages"]] == ["07a"]
-    assert any(
-        item["code"] == "PERSISTED_SUBSTAGE_PATH_REVIEW_REQUIRED"
-        and str(item.get("stage_key")) == "07a"
-        for item in result["review_required"]
+    sub = result["stages"][0]["sub_stages"][0]
+    assert sub["stage_key"] == "07a"
+    assert sub["label"] == "07a-Who Forest-WF"
+    assert sub["label_basis"] == "LOR_PATH_EVIDENCE"
+
+
+def test_stage_binding_scene_collapses_to_stage_context_when_path_has_no_child():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                45,
+                "15",
+                "Show Background Stage 15 Church",
+                r"G:\Shared drives\Display Folders\15-Church-Bells-CH",
+                [
+                    context(
+                        "15-Church-CH",
+                        stage_key="15",
+                        path=(
+                            r"G:\Shared drives\Display Folders\15-Church-Bells-CH"
+                            r"\PreviewBackground\Church.jpg"
+                        ),
+                    )
+                ],
+            )
+        ]
     )
+
+    stage = result["stages"][0]
+    assert stage["scenes"] == []
+    assert [item["scene_name"] for item in stage["contexts"]] == ["15-Church-CH"]
+
+
+def test_scene_child_is_derived_from_path_string_not_drive_enumeration():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                43,
+                "13",
+                "Show Background Stage 13 Winter Wonderland",
+                r"G:\Shared drives\Display Folders\13-Winter Wonderland-WW",
+                [
+                    context(
+                        "13-Christmas Story",
+                        stage_key="13",
+                        path=(
+                            r"G:\Shared drives\Display Folders\13-Winter Wonderland-WW"
+                            r"\13-Christmas Story\PreviewBackground\Story.jpg"
+                        ),
+                    )
+                ],
+            )
+        ]
+    )
+
+    scenes = result["stages"][0]["scenes"]
+    assert [item["label"] for item in scenes] == ["13-Christmas Story"]
+    assert scenes[0]["scope_path_evidence"].endswith(r"13-Christmas Story")
+
+
+def test_legacy_nested_scene_with_short_code_is_retained_when_path_proves_child():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                33,
+                "03",
+                "Show Background Stage 03 Welcome Area",
+                r"G:\Shared drives\Display Folders\03-Welcome Area-WA",
+                [
+                    context(
+                        "03-Mega Cube-MC",
+                        stage_key="03",
+                        path=(
+                            r"G:\Shared drives\Display Folders\03-Welcome Area-WA"
+                            r"\03-Mega Cube-MC\PreviewBackground\Mega.jpg"
+                        ),
+                    )
+                ],
+            )
+        ]
+    )
+
+    assert [item["label"] for item in result["stages"][0]["scenes"]] == [
+        "03-Mega Cube-MC"
+    ]
+
+
+def test_unprefixed_lor_group_is_context_evidence_not_browse_scene():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                44,
+                "14",
+                "Show Background Stage 14 Icicle Tunnel",
+                r"G:\Shared drives\Display Folders\14-Icicle Tunnel-IT",
+                [
+                    context(
+                        "Anna",
+                        stage_key="14",
+                        path=(
+                            r"G:\Shared drives\Display Folders\14-Icicle Tunnel-IT"
+                            r"\Anna\PreviewBackground\Anna.jpg"
+                        ),
+                    )
+                ],
+            )
+        ]
+    )
+
+    stage = result["stages"][0]
+    assert stage["scenes"] == []
+    assert [item["scene_name"] for item in stage["contexts"]] == ["Anna"]
+
+
+def test_animation_only_rows_without_physical_stage_path_are_excluded():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                91,
+                "90",
+                "Show Animation EL 90 Elf On Shelf-1",
+                None,
+                [
+                    context(
+                        "Root",
+                        stage_key="90",
+                        path=None,
+                        context_type="Animation",
+                    )
+                ],
+            )
+        ]
+    )
+
+    assert result["stages"] == []
+    assert result["review_required"][0]["code"] == "DATABASE_STAGE_NOT_IN_FIELD_HIERARCHY"
+
+
+def test_database_stage_without_lor_context_remains_browseable_for_manual_stage_use():
+    result = build_field_hierarchy(
+        [raw_stage(368, "40", "CommandCenter-CC", None, [])]
+    )
+
+    assert [item["stage_key"] for item in result["stages"]] == ["40"]
+    assert result["stages"][0]["label"] == "CommandCenter-CC"
+    assert result["review_required"][0]["code"] == "STAGE_PATH_EVIDENCE_REVIEW_REQUIRED"
