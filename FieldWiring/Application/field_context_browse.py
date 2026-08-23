@@ -1,9 +1,11 @@
 """Resolved Stage/Sub-stage/Scene browse over shared field-context evidence.
 
 Raw ``ref.stage`` rows and raw LOR Scene rows are evidence, not field browse
-nodes.  The released Google Drive hierarchy is represented only after current
+nodes. The released Google Drive hierarchy is represented only after current
 filesystem roots have been resolved and validated.
 
+This module is an engineering/alignment validator. Normal application runtime
+browse must use ``field_context_hierarchy.py`` and must not scan the Drive tree.
 This module does not discover Wiring or Procedure content.
 """
 from __future__ import annotations
@@ -167,6 +169,14 @@ def _context_review(
     }
 
 
+def _unprefixed_group_context(context: dict[str, Any], owning_key: str) -> bool:
+    scene = context.get("scene") or {}
+    name = str(scene.get("scene_name") or "").strip()
+    if not name or name.casefold() == "root":
+        return False
+    return not name.casefold().startswith(owning_key.casefold() + "-")
+
+
 def _attach_contexts(
     node: dict[str, Any],
     stage: dict[str, Any],
@@ -207,6 +217,22 @@ def _attach_contexts(
             continue
 
         if _path_key(scope_root) == _path_key(owning_root):
+            # The runtime resolver correctly climbs through unprefixed
+            # Display/group folders to the owning structured scope. The
+            # engineering validator still records that the raw LOR Scene was
+            # not itself a defined field Scene so alignment work can see it.
+            if _unprefixed_group_context(context, owning_key):
+                _add_review(
+                    reviews,
+                    review_seen,
+                    _context_review(
+                        "LOR_CONTEXT_NOT_DEFINED_FIELD_SCENE",
+                        stage,
+                        context,
+                        warnings,
+                        scope_root,
+                    ),
+                )
             node["contexts"].append(context)
             continue
 
@@ -525,9 +551,10 @@ def build_field_hierarchy(
 
 
 def resolve_field_hierarchy(repository: Any, drive_root: str | Path) -> dict[str, Any]:
-    """Canonical shared browse entry point.
+    """Engineering/alignment validator entry point.
 
-    ``repository.stages()`` is treated only as raw DB/LOR evidence. Applications
-    must consume this resolved result rather than present those rows directly.
+    ``repository.stages()`` is raw DB/LOR evidence. This function may inspect
+    the Drive tree for alignment validation, but it is not the normal web-app
+    browse source. Normal runtime browse is ``field_context_hierarchy``.
     """
     return build_field_hierarchy(repository.stages(), drive_root)

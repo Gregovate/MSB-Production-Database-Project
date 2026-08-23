@@ -16,6 +16,7 @@ const LIGHT_LOGO = 'https://webassets.sheboyganlights.org/images/branding/msb-bl
 const DARK_LOGO = 'https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg';
 
 let stages = [];
+let browseNodes = [];
 let timer = null;
 let resolvedContext = null;
 
@@ -119,11 +120,12 @@ function showResolved(c) {
   resolvedContext = c;
   resolved.hidden = false;
   const isScene = c.scope_kind === 'Scene' && c.scene_name && c.scene_name.toLowerCase() !== 'root';
+  const wholeScope = c.owner_scope_type === 'SUBSTAGE' ? 'Whole Sub-stage' : 'Whole Stage';
   const rows = [];
   if (c.display_name) rows.push(['Display', c.display_name]);
   rows.push(
-    ['Stage', `${c.stage_key ? c.stage_key + ' · ' : ''}${c.stage_name || 'Unresolved'}`],
-    ['Scene / Area', isScene ? c.scene_name : 'Whole Stage'],
+    ['Stage / Area', `${c.stage_key ? c.stage_key + ' · ' : ''}${c.stage_name || 'Unresolved'}`],
+    ['Scene / Area', isScene ? c.scene_name : wholeScope],
     ['Wiring', c.context_type || 'Unknown']
   );
   resolvedGrid.innerHTML = rows.map(([label,value]) => `
@@ -148,42 +150,106 @@ function showResolved(c) {
   resolved.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
+function flattenBrowseNodes(stageList) {
+  const nodes = [];
+  stageList.forEach(stage => {
+    nodes.push({
+      id: `STAGE:${stage.stage_id}`,
+      node: stage,
+      depth: 0
+    });
+    (stage.sub_stages || []).forEach(sub => {
+      nodes.push({
+        id: `SUBSTAGE:${sub.stage_id}`,
+        node: sub,
+        depth: 1
+      });
+    });
+  });
+  return nodes;
+}
+
+function browseContextChoices(node) {
+  const choices = [];
+  const ownerLabel = node.scope_type === 'SUBSTAGE' ? 'Whole Sub-stage' : 'Whole Stage';
+
+  (node.contexts || []).forEach(context => {
+    choices.push({
+      context: {
+        ...context,
+        scope_kind: 'Stage / Preview',
+        scene_name: null
+      },
+      label: ownerLabel,
+      badge: node.scope_type === 'SUBSTAGE' ? 'Sub-stage' : 'Stage'
+    });
+  });
+
+  (node.scenes || []).forEach(scene => {
+    (scene.contexts || []).forEach(context => {
+      choices.push({
+        context: {
+          ...context,
+          scope_kind: 'Scene',
+          scene_name: scene.label
+        },
+        label: scene.label,
+        badge: 'Scene'
+      });
+    });
+  });
+
+  return choices;
+}
+
 async function loadStages() {
   try {
     const payload = await api('api/stages');
     stages = payload.stages || [];
-    stageSelect.innerHTML = '<option value="">Select a Stage…</option>' +
-      stages.map(s => `<option value="${esc(s.stage_key)}">${esc(s.stage_key)} — ${esc(s.stage_name)}</option>`).join('');
+    browseNodes = flattenBrowseNodes(stages);
+
+    stageSelect.innerHTML = '<option value="">Select a Stage / Sub-stage…</option>' +
+      browseNodes.map(item => {
+        const prefix = item.depth ? '↳ ' : '';
+        return `<option value="${esc(item.id)}">${esc(prefix + item.node.label)}</option>`;
+      }).join('');
   } catch (err) {
     stageSelect.innerHTML = `<option value="">${esc(err.message)}</option>`;
   }
 }
 
 function renderStageContexts() {
-  const stage = stages.find(s => String(s.stage_key) === String(stageSelect.value));
-  if (!stage) {
+  const selected = browseNodes.find(item => item.id === stageSelect.value);
+  if (!selected) {
     stageContexts.innerHTML = '';
     return;
   }
-  stageContexts.innerHTML = stage.contexts.map((c, i) => {
-    const isScene = c.scope_kind === 'Scene' && c.scene_name && c.scene_name.toLowerCase() !== 'root';
-    const label = isScene ? c.scene_name : 'Whole Stage';
-    return `
+
+  const node = selected.node;
+  const choices = browseContextChoices(node);
+
+  if (!choices.length) {
+    stageContexts.innerHTML = '<div class="hint" style="padding:10px 4px">No current Field Wiring context is available for this Stage / Sub-stage.</div>';
+    return;
+  }
+
+  stageContexts.innerHTML = choices.map((choice, i) => `
       <div class="context-choice" data-context-index="${i}">
-        <span class="context-badge">${esc(c.context_type)}</span>
-        <span class="context-badge">${isScene ? 'Scene' : 'Stage'}</span>
-        <strong>${esc(label)}</strong>
-      </div>`;
-  }).join('');
-  stageContexts.querySelectorAll('.context-choice').forEach(node => {
-    node.addEventListener('click', () => {
-      const c = stage.contexts[Number(node.dataset.contextIndex)];
+        <span class="context-badge">${esc(choice.context.context_type || 'Wiring')}</span>
+        <span class="context-badge">${esc(choice.badge)}</span>
+        <strong>${esc(choice.label)}</strong>
+      </div>`).join('');
+
+  stageContexts.querySelectorAll('.context-choice').forEach(element => {
+    element.addEventListener('click', () => {
+      const choice = choices[Number(element.dataset.contextIndex)];
       showResolved({
-        ...c,
+        ...choice.context,
         source:'Stage / Scene browse',
-        stage_id:stage.stage_id,
-        stage_key:stage.stage_key,
-        stage_name:stage.stage_name,
+        stage_id:node.stage_id,
+        stage_key:node.stage_key,
+        stage_name:node.label,
+        owner_scope_type:node.scope_type,
         display_id:null,
         display_name:null,
         device_type:null
