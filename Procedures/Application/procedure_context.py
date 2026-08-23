@@ -185,11 +185,20 @@ def resolve_stage_procedure(
     whole_stage: bool = False,
     preview_uuid: str | None = None,
     scene_uuid: str | None = None,
+    resolved_scope_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Resolve a Procedure task from controlled Stage/Scene browse selection."""
+    """Resolve a Procedure task from controlled Stage/Scene browse selection.
+
+    ``resolved_scope_root`` is an internal caller-supplied root that has already
+    been validated by the shared field hierarchy.  It is not client input.  It
+    lets Procedure browse preserve a current Stage/Sub-stage root even when the
+    persisted ``ref.stage.folder_path`` is missing or stale.
+    """
     task_name = _task_name(task)
     shared = _stage_from_repository(repo, int(stage_id))
-    stage = shared.get("stage") or {}
+    stage = dict(shared.get("stage") or {})
+    if resolved_scope_root is not None:
+        stage["folder_path"] = str(Path(resolved_scope_root))
     contexts = list(shared.get("contexts") or [])
     trigger = {
         "type": "STAGE_BROWSE",
