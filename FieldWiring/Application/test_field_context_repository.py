@@ -4,6 +4,7 @@ import sqlite3
 from pathlib import Path
 
 from field_context_repository import SQLiteFieldContextRepository
+from field_context_resolver import MARKER_NAME, resolve_structured_scope
 
 
 def make_fixture(path: Path) -> None:
@@ -117,6 +118,33 @@ def test_inventory_only_display_without_lor_prop_still_resolves_stage(tmp_path):
     assert context["stage"]["stage_key"] == "20"
     assert context["stage"]["folder_path"] == "/drive/20-Steel-Arches"
     assert context["contexts"] == []
+
+
+def test_inventory_only_display_reaches_shared_structured_scope(tmp_path):
+    shared_repo = repo(tmp_path)
+    drive_root = tmp_path / "Display Folders"
+    stage_root = drive_root / "20-Steel-Arches"
+    stage_root.mkdir(parents=True)
+    (stage_root / MARKER_NAME).write_text("stage", encoding="utf-8")
+
+    with sqlite3.connect(shared_repo.path) as conn:
+        conn.execute(
+            "UPDATE ref__stage SET folder_path = ? WHERE stage_id = 20",
+            (str(stage_root),),
+        )
+        conn.commit()
+
+    context = shared_repo.display_context(400)
+    assert context is not None
+    scope_root, scope_type, warnings = resolve_structured_scope(
+        context["stage"],
+        None,
+        {},
+        drive_root,
+    )
+    assert scope_root == stage_root
+    assert scope_type == "STAGE"
+    assert warnings == []
 
 
 def test_retired_display_is_not_shared_current_context(tmp_path):
