@@ -220,7 +220,7 @@ Final accepted checks completed during the deployment and corrective retest:
 | Public `/scan` no-slash redirect | PASS — HTTP 301 to `/scan/` |
 | Manual `DISP:141` navigation | PASS — `TC-ChristmasHippo` |
 | Open Display Record | PASS — correct `TC-ChristmasHippo` record opened on `db.sheboyganlights.org` |
-| Assigned Container | PASS — correct Container `11` opened from `DISP:141` |
+| Assigned Container | PASS — correct assigned Container opened from `DISP:141` |
 | Testing redirect | PASS — `QV-SHRStocking` current Display Test Session opened in Directus; Display Test Session ID `1860`, Test Session ID `687` |
 | Work Orders = 0 | PASS — disabled/no-open-work state preserved |
 | Field Wiring action rendered | PASS |
@@ -303,9 +303,9 @@ No further Scan/FieldWiring code change is required to close this sub-project.
 
 Remaining deferred regression cases can be exercised when appropriate without reopening the architecture unless they reveal a defect.
 
-Before this branch is merged to `main`, reconcile it with the corrected FieldWiring marker-documentation contract so known-bad marker guidance from the current `main` branch is not reintroduced.
+The FieldWiring marker-documentation correction was merged to `main` before the final FieldWiring/Scan integration merge, and the accepted production handoff reflects that reconciled contract.
 
-After branch reconciliation/merge, the next major Production Database work may proceed to the separate Setup/Deployment engineering project using the established scan identity and repository ownership boundaries.
+The next major Production Database work may proceed to the separate Setup/Deployment engineering project using the established scan identity and repository ownership boundaries.
 
 ## Related Documents
 
