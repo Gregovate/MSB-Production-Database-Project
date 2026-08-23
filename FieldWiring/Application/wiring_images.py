@@ -2,204 +2,17 @@
 from __future__ import annotations
 
 import os
-import re
 from pathlib import Path, PureWindowsPath
 from typing import Any
 
-from wiring_common import (
-    DEFAULT_DRIVE_ROOT, IMAGE_EXTENSIONS, MARKER_NAME, SKIP_SCOPE_SEARCH, WiringError,
+from field_context_resolver import resolve_structured_scope
+from wiring_common import DEFAULT_DRIVE_ROOT, IMAGE_EXTENSIONS, MARKER_NAME, WiringError
+
+
+FIELDWIRING_DIRECT_OWNER_WARNING = (
+    "BackgroundFile points directly into the current Stage Wiring branch; "
+    "the marked Stage root is the FieldWiring documentation scope."
 )
-
-
-def _canonical_scene_names(scene_name: str) -> set[str]:
-    names = {scene_name.strip()}
-    stripped = re.sub(r"-[A-Z]{2,3}$", "", scene_name.strip())
-    if stripped:
-        names.add(stripped)
-    return {name.casefold() for name in names if name}
-
-
-def _windows_relative_parts(path_text: str, root_text: str) -> tuple[str, ...] | None:
-    try:
-        path_parts = PureWindowsPath(path_text).parts
-        root_parts = PureWindowsPath(root_text).parts
-    except Exception:
-        return None
-    if len(path_parts) < len(root_parts):
-        return None
-    if [p.casefold() for p in path_parts[:len(root_parts)]] != [p.casefold() for p in root_parts]:
-        return None
-    return tuple(path_parts[len(root_parts):])
-
-
-def _localize_evidence_path(path_text: str | None, drive_root: Path) -> Path | None:
-    if not path_text:
-        return None
-    windows_root = os.environ.get("FIELDWIRING_WINDOWS_DRIVE_ROOT", DEFAULT_DRIVE_ROOT).strip() or DEFAULT_DRIVE_ROOT
-    relative_parts = _windows_relative_parts(path_text, windows_root)
-    if relative_parts is not None:
-        return drive_root.joinpath(*relative_parts)
-    return Path(path_text)
-
-
-def _path_is_under(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False
-
-
-def _bounded_scope_matches(stage_root: Path, scene_name: str, max_depth: int = 2) -> list[Path]:
-    targets = _canonical_scene_names(scene_name)
-    matches: list[Path] = []
-
-    def walk(path: Path, depth: int) -> None:
-        if depth > max_depth:
-            return
-        try:
-            children = [p for p in path.iterdir() if p.is_dir()]
-        except OSError:
-            return
-        for child in children:
-            if child.name.casefold() in targets:
-                matches.append(child)
-            if depth < max_depth and child.name.casefold() not in SKIP_SCOPE_SEARCH:
-                walk(child, depth + 1)
-
-    walk(stage_root, 1)
-    unique = {str(item).casefold(): item for item in matches}
-    return sorted(unique.values(), key=lambda p: str(p).casefold())
-
-
-def _truncate_before_sourcedocs(path: Path | None) -> tuple[Path | None, bool]:
-    if path is None:
-        return None, False
-    parts = path.parts
-    for index, part in enumerate(parts):
-        if part.casefold() == "sourcedocs":
-            if index == 0:
-                return None, True
-            return Path(*parts[:index]), True
-    return path, False
-
-
-def _direct_wiring_owner(pointer: Path | None) -> Path | None:
-    """Return the folder directly above Wiring when BackgroundFile enters Wiring."""
-    if pointer is None:
-        return None
-    current = pointer.parent if pointer.suffix else pointer
-    for candidate in (current, *current.parents):
-        if candidate.name.casefold() == "wiring":
-            return candidate.parent
-    return None
-
-
-def _recover_stage_root(pointer: Path | None, drive_root: Path, stage_key: str | None) -> Path | None:
-    if pointer is None or not stage_key:
-        return None
-    if not pointer.exists():
-        return None
-    try:
-        relative = pointer.relative_to(drive_root)
-    except ValueError:
-        return None
-    if not relative.parts:
-        return None
-    candidate = drive_root / relative.parts[0]
-    numeric = re.match(r"^(\d{2})", str(stage_key))
-    if not numeric or not candidate.name.casefold().startswith(numeric.group(1).casefold() + "-"):
-        return None
-    if not candidate.is_dir() or not (candidate / MARKER_NAME).is_file():
-        return None
-    return candidate
-
-
-def _resolve_scope_root(
-    stage: dict[str, Any],
-    scene: dict[str, Any] | None,
-    preview: dict[str, Any],
-    drive_root: Path,
-) -> tuple[Path | None, str, list[str]]:
-    warnings: list[str] = []
-    raw_pointer = (scene or {}).get("scene_background_file") or preview.get("preview_background_file")
-    localized_pointer = _localize_evidence_path(raw_pointer, drive_root)
-    pointer, blocked = _truncate_before_sourcedocs(localized_pointer)
-    if blocked:
-        warnings.append(
-            "BackgroundFile path enters SourceDocs. Traversal stopped before SourceDocs; source content was not accessed."
-        )
-
-    folder_path = (stage.get("folder_path") or "").strip()
-    stage_root = _localize_evidence_path(folder_path, drive_root) if folder_path else None
-    valid = bool(stage_root and stage_root.is_dir() and (stage_root / MARKER_NAME).is_file())
-    if not valid:
-        recovered = _recover_stage_root(pointer, drive_root, stage.get("stage_key"))
-        if recovered is not None:
-            stage_root = recovered
-            valid = True
-            warnings.append(
-                "Persisted Stage folder_path was unavailable or stale; current marked Stage root was recovered from exact LOR path evidence."
-            )
-    if not valid or stage_root is None:
-        warnings.append(
-            "Stage has no usable current folder_path anchor." if not folder_path
-            else f"Stage folder_path is unavailable or unmarked on this server: {folder_path}"
-        )
-        return None, "UNRESOLVED", warnings
-
-    # A direct BackgroundFile inside Wiring is explicit documentation-ownership
-    # evidence. The folder above Wiring owns the field documentation. This only
-    # resolves the structured owner; resolve_images() still selects
-    # BackgroundStage versus MusicalStage from the already-resolved context.
-    direct_owner = _direct_wiring_owner(pointer)
-    if direct_owner is not None and _path_is_under(direct_owner, drive_root):
-        if direct_owner == stage_root:
-            warnings.append(
-                "BackgroundFile points directly into the current Stage Wiring branch; the marked Stage root is the FieldWiring documentation scope."
-            )
-            return stage_root, "STAGE", warnings
-
-    scene_name = (scene or {}).get("scene_name")
-    if not scene_name or scene_name.strip().casefold() == "root":
-        return stage_root, "STAGE", warnings
-
-    targets = _canonical_scene_names(scene_name)
-    if pointer is not None and _path_is_under(pointer, drive_root):
-        if pointer.exists():
-            current = pointer.parent if pointer.is_file() else pointer
-            while _path_is_under(current, stage_root):
-                if current.name.casefold() in targets:
-                    if (current / MARKER_NAME).is_file():
-                        return current, "SCENE", warnings
-                    warnings.append(f"Scene source-folder marker is missing: {current / MARKER_NAME}")
-                    return None, "UNRESOLVED", warnings
-                if current == stage_root:
-                    break
-                current = current.parent
-
-    matches = _bounded_scope_matches(stage_root, scene_name)
-    marked = [m for m in matches if (m / MARKER_NAME).is_file()]
-    if len(marked) == 1:
-        if raw_pointer:
-            warnings.append(
-                "Stored Scene BackgroundFile did not resolve exactly; one deterministic marked current Scene folder was used."
-            )
-        return marked[0], "SCENE", warnings
-    if len(marked) > 1:
-        warnings.append("More than one marked Scene folder matched the current Scene identity.")
-        return None, "UNRESOLVED", warnings
-    if matches:
-        warnings.append(
-            "Matching Scene folder exists but is not an approved marked source root: "
-            + "; ".join(str(match) for match in matches)
-        )
-        return None, "UNRESOLVED", warnings
-
-    warnings.append(
-        "No distinct Scene folder matched the current Scene identity; known marked Stage root retained as the FieldWiring scope."
-    )
-    return stage_root, "STAGE", warnings
 
 
 def _direct_images(folder: Path) -> list[Path]:
@@ -233,13 +46,39 @@ def resolve_images(
     root_text = os.environ.get("FIELDWIRING_DRIVE_ROOT", DEFAULT_DRIVE_ROOT).strip()
     drive_root = Path(root_text)
     if not drive_root.is_dir():
-        return {"scope_type":"UNAVAILABLE", "scope_root":None, "wiring_images":[], "context_images":[],
-                "warnings":[f"Display Folders root is not available on this server: {root_text}"]}
+        return {
+            "scope_type": "UNAVAILABLE",
+            "scope_root": None,
+            "wiring_images": [],
+            "context_images": [],
+            "warnings": [f"Display Folders root is not available on this server: {root_text}"],
+        }
 
-    scope_root, scope_type, warnings = _resolve_scope_root(stage, scene, preview, drive_root)
+    windows_root = (
+        os.environ.get("FIELDWIRING_WINDOWS_DRIVE_ROOT", DEFAULT_DRIVE_ROOT).strip()
+        or DEFAULT_DRIVE_ROOT
+    )
+    scope_root, scope_type, warnings = resolve_structured_scope(
+        stage,
+        scene,
+        preview,
+        drive_root,
+        windows_drive_root=windows_root,
+        direct_owner_folder_name="Wiring",
+        direct_owner_warning=FIELDWIRING_DIRECT_OWNER_WARNING,
+    )
     if scope_root is None:
-        return {"scope_type":scope_type, "scope_root":None, "wiring_images":[], "context_images":[], "warnings":warnings}
+        return {
+            "scope_type": scope_type,
+            "scope_root": None,
+            "wiring_images": [],
+            "context_images": [],
+            "warnings": warnings,
+        }
 
+    # Everything below this point is intentionally FieldWiring-specific.  The
+    # shared resolver has already fixed the Stage/Scene root; this adapter now
+    # selects only the applicable Wiring branch and supplemental context images.
     branch = "MusicalStage" if selected_context == "Musical" else "BackgroundStage"
     wiring_folder = scope_root / "Wiring" / branch
     wiring_images: list[Path] = []
