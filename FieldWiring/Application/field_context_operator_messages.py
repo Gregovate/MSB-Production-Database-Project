@@ -1,12 +1,25 @@
 """Translate shared field-context diagnostics into operator-facing task messages.
 
 Engineering codes remain stable for logs/tests. Field applications must not
-render those codes directly. Instead, the task adapter supplies its human task
-name (for example ``Wiring`` or ``Setup procedure``) and this module returns a
-plain-language message using the current Scene/scope folder evidence.
+render those codes directly. The task adapter supplies both its human task name
+and, when applicable, the exact task-relative folder beneath the resolved
+Stage/Sub-stage/Scene scope.
+
+Examples::
+
+    Wiring / Musical      -> Wiring\\MusicalStage
+    Wiring / Background   -> Wiring\\BackgroundStage
+    Setup procedure       -> Procedures\\Setup
+    Takedown procedure    -> Procedures\\Takedown
+    Inspection procedure  -> Procedures\\Inspection
+
+The shared mapper does not choose the task branch. That remains owned by the
+calling task adapter.
 """
 from __future__ import annotations
 
+import re
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
 
@@ -15,16 +28,16 @@ OPERATOR_WARNING_MAP = {
         "{task} not found for {subject} in folder {folder}."
     ),
     "LOR_CONTEXT_UNRESOLVED": (
-        "{task} location could not be resolved for {subject} in folder {folder}."
+        "{task} location could not be resolved for {subject}. Expected folder: {folder}."
     ),
     "FIELD_SCENE_MARKER_MISSING": (
         "{task} folder for {subject} is not approved for field use: {folder}."
     ),
     "LOR_CONTEXT_OUTSIDE_OWNING_SCOPE": (
-        "{task} location for {subject} points outside the expected Stage folder: {folder}."
+        "{task} location for {subject} points outside the expected Stage area. Expected folder: {folder}."
     ),
     "LOR_CONTEXT_NESTING_REVIEW_REQUIRED": (
-        "{task} location for {subject} needs review in folder {folder}."
+        "{task} location for {subject} needs review. Expected folder: {folder}."
     ),
 }
 
@@ -37,7 +50,7 @@ def _subject(diagnostic: dict[str, Any]) -> str:
     )
 
 
-def _folder(diagnostic: dict[str, Any]) -> str:
+def _scope_folder(diagnostic: dict[str, Any]) -> str:
     return str(
         diagnostic.get("scope_root")
         or diagnostic.get("database_folder_path")
@@ -45,21 +58,66 @@ def _folder(diagnostic: dict[str, Any]) -> str:
     )
 
 
-def operator_warning(diagnostic: dict[str, Any], *, task: str) -> str:
+def _expected_folder(
+    diagnostic: dict[str, Any],
+    task_relative_folder: str | None,
+) -> str:
+    base = _scope_folder(diagnostic)
+    relative = str(task_relative_folder or "").strip().strip("\\/")
+    if not relative:
+        return base
+
+    # Preserve the path style already exposed to the operator. Windows/Drive
+    # paths remain Windows paths; server-side POSIX paths remain POSIX paths.
+    if "\\" in base or re.match(r"^[A-Za-z]:", base):
+        relative_parts = [
+            part
+            for part in PureWindowsPath(relative).parts
+            if part not in {"\\", "/"}
+        ]
+        return str(PureWindowsPath(base, *relative_parts))
+
+    if base.startswith("/"):
+        relative_parts = [
+            part
+            for part in PurePosixPath(relative.replace("\\", "/")).parts
+            if part != "/"
+        ]
+        return str(PurePosixPath(base, *relative_parts))
+
+    return base.rstrip("\\/") + "\\" + relative.replace("/", "\\")
+
+
+def operator_warning(
+    diagnostic: dict[str, Any],
+    *,
+    task: str,
+    task_relative_folder: str | None = None,
+) -> str:
     """Return one operator-safe message without exposing the engineering code."""
     code = str(diagnostic.get("code") or "")
     template = OPERATOR_WARNING_MAP.get(code)
+    folder = _expected_folder(diagnostic, task_relative_folder)
     if template is None:
-        return f"{task} is not available for {_subject(diagnostic)}."
+        return f"{task} is not available for {_subject(diagnostic)}. Expected folder: {folder}."
     return template.format(
         task=task,
         subject=_subject(diagnostic),
-        folder=_folder(diagnostic),
+        folder=folder,
     )
 
 
-def with_operator_warning(diagnostic: dict[str, Any], *, task: str) -> dict[str, Any]:
+def with_operator_warning(
+    diagnostic: dict[str, Any],
+    *,
+    task: str,
+    task_relative_folder: str | None = None,
+) -> dict[str, Any]:
     """Keep engineering metadata while adding the UI-safe translated message."""
     result = dict(diagnostic)
-    result["operator_warning"] = operator_warning(diagnostic, task=task)
+    result["operator_warning"] = operator_warning(
+        diagnostic,
+        task=task,
+        task_relative_folder=task_relative_folder,
+    )
     return result
