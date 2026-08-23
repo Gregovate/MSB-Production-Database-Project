@@ -122,7 +122,10 @@ def test_inventory_only_display_can_reach_procedure_without_wiring_fields(tmp_pa
         "display_id": 807,
         "display_name": "RA-SteelArch-DS-F-03",
     }
-    assert result["scope_type"] == "SCENE"
+    # Exact path evidence lands at the owning Stage root.  The governing
+    # path contract does not invent a Scene merely because the LOR scene name
+    # repeats the Stage folder name.
+    assert result["scope_type"] == "STAGE"
     assert [item["name"] for item in result["documents"]] == [pdf.name]
 
 
@@ -203,8 +206,10 @@ def test_explicit_display_context_is_validated_and_used(tmp_path):
     root = tmp_path / "Display Folders"
     root.mkdir()
     stage_root = _scope(root, "25-Racing Arches-RA")
-    scene_a = _scope(stage_root, "Scene A")
-    scene_b = _scope(stage_root, "Scene B")
+    # Governed Scene roots use NN-Name under the owning Stage.  Unprefixed
+    # names are Display/shared-group folders and must not be promoted to Scene.
+    scene_a = _scope(stage_root, "25-Scene A")
+    scene_b = _scope(stage_root, "25-Scene B")
     _publish(scene_b, "Setup", "Scene B Setup.pdf")
     stage = {
         "stage_id": 55,
