@@ -12,17 +12,11 @@ current direct document/image result.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
 from flask import Flask, Response, jsonify, request, send_file
 
-_FIELDWIRING_APPLICATION = Path(__file__).resolve().parents[2] / "FieldWiring" / "Application"
-if str(_FIELDWIRING_APPLICATION) not in sys.path:
-    sys.path.insert(0, str(_FIELDWIRING_APPLICATION))
-
-from field_context_hierarchy import FieldHierarchyError, resolve_field_hierarchy
 from FieldWiring.Application.field_context_repository import (
     ConfigError,
     FieldContextRepository,
@@ -88,84 +82,6 @@ def _optional_bool(name: str) -> bool:
     raise ProcedureContextError(f"Invalid {name}")
 
 
-def _context_summary(context: dict[str, Any]) -> dict[str, Any]:
-    preview = context.get("preview") or {}
-    scene = context.get("scene") or {}
-    return {
-        "preview_uuid": preview.get("preview_uuid"),
-        "preview_name": preview.get("preview_name"),
-        "scene_uuid": scene.get("scene_uuid"),
-        "scene_name": scene.get("scene_name"),
-        "scope_kind": context.get("scope_kind"),
-        "context_type": context.get("context_type"),
-    }
-
-
-def _public_hierarchy_node(node: dict[str, Any]) -> dict[str, Any]:
-    result = {
-        "scope_type": node.get("scope_type"),
-        "label": node.get("label"),
-        "stage_id": node.get("stage_id"),
-        "stage_key": node.get("stage_key"),
-        "scenes": [
-            {
-                "scope_type": scene.get("scope_type"),
-                "label": scene.get("label"),
-                "stage_id": scene.get("stage_id"),
-                "stage_key": scene.get("stage_key"),
-                "contexts": [
-                    _context_summary(context)
-                    for context in list(scene.get("contexts") or [])
-                ],
-            }
-            for scene in list(node.get("scenes") or [])
-        ],
-    }
-    if node.get("scope_type") == "STAGE":
-        result["sub_stages"] = [
-            _public_hierarchy_node(sub_stage)
-            for sub_stage in list(node.get("sub_stages") or [])
-        ]
-    return result
-
-
-def _hierarchy_scope_by_stage_id(
-    hierarchy: dict[str, Any],
-    stage_id: int,
-) -> dict[str, Any] | None:
-    for stage in hierarchy.get("stages") or []:
-        if stage.get("stage_id") is not None and int(stage["stage_id"]) == int(stage_id):
-            return stage
-        for sub_stage in stage.get("sub_stages") or []:
-            if sub_stage.get("stage_id") is not None and int(sub_stage["stage_id"]) == int(stage_id):
-                return sub_stage
-    return None
-
-
-def _hierarchy_scene_context_is_valid(
-    scope: dict[str, Any],
-    *,
-    preview_uuid: str | None,
-    scene_uuid: str | None,
-) -> bool:
-    requested_preview = (preview_uuid or "").strip() or None
-    requested_scene = (scene_uuid or "").strip() or None
-    if requested_preview is None and requested_scene is None:
-        return False
-
-    matches = 0
-    for scene in scope.get("scenes") or []:
-        for context in scene.get("contexts") or []:
-            preview = context.get("preview") or {}
-            scene_data = context.get("scene") or {}
-            if requested_preview is not None and str(preview.get("preview_uuid") or "") != requested_preview:
-                continue
-            if requested_scene is not None and str(scene_data.get("scene_uuid") or "") != requested_scene:
-                continue
-            matches += 1
-    return matches == 1
-
-
 def _procedure_result() -> dict[str, Any]:
     display_id = _optional_int("display_id")
     stage_id = _optional_int("stage_id")
@@ -177,12 +93,11 @@ def _procedure_result() -> dict[str, Any]:
     task = request.args.get("task", "").strip()
     preview_uuid = request.args.get("preview_uuid", "").strip() or None
     scene_uuid = request.args.get("scene_uuid", "").strip() or None
-    whole_stage = _optional_bool("whole_stage")
     repo = repository()
     root = drive_root()
 
     if display_id is not None:
-        if whole_stage:
+        if _optional_bool("whole_stage"):
             raise ProcedureContextError("whole_stage is valid only for Stage browse.")
         return resolve_display_procedure(
             repo,
@@ -193,36 +108,14 @@ def _procedure_result() -> dict[str, Any]:
             scene_uuid=scene_uuid,
         )
 
-    hierarchy = resolve_field_hierarchy(repo, root)
-    scope = _hierarchy_scope_by_stage_id(hierarchy, int(stage_id))
-    if scope is None:
-        raise ProcedureContextError(
-            "Stage/Sub-stage is not available in the current field hierarchy."
-        )
-
-    if whole_stage:
-        if preview_uuid is not None or scene_uuid is not None:
-            raise ProcedureContextError(
-                "Whole Stage/Sub-stage browse cannot include a Scene selection."
-            )
-    elif not _hierarchy_scene_context_is_valid(
-        scope,
-        preview_uuid=preview_uuid,
-        scene_uuid=scene_uuid,
-    ):
-        raise ProcedureContextError(
-            "The requested Scene is not a current defined field Scene under this Stage/Sub-stage."
-        )
-
     return resolve_stage_procedure(
         repo,
         stage_id=int(stage_id),
         task=task,
         drive_root=root,
-        whole_stage=whole_stage,
+        whole_stage=_optional_bool("whole_stage"),
         preview_uuid=preview_uuid,
         scene_uuid=scene_uuid,
-        resolved_scope_root=Path(str(scope["scope_root"])),
     )
 
 
@@ -287,13 +180,7 @@ def api_display_context(display_id: int) -> tuple[Response, int] | Response:
 
 @app.get("/api/stages")
 def api_stages() -> Response:
-    hierarchy = resolve_field_hierarchy(repository(), drive_root())
-    return jsonify(
-        stages=[
-            _public_hierarchy_node(stage)
-            for stage in hierarchy.get("stages") or []
-        ]
-    )
+    return jsonify(stages=repository().stages())
 
 
 @app.get("/api/procedures")
@@ -327,11 +214,6 @@ def api_procedure_image() -> Response:
 
 @app.errorhandler(ConfigError)
 def config_error(exc: ConfigError) -> tuple[Response, int]:
-    return jsonify(error=str(exc)), 503
-
-
-@app.errorhandler(FieldHierarchyError)
-def hierarchy_error(exc: FieldHierarchyError) -> tuple[Response, int]:
     return jsonify(error=str(exc)), 503
 
 
