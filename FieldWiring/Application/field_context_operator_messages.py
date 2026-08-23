@@ -1,5 +1,10 @@
 """Translate shared field-context diagnostics into operator-facing task messages.
 
+This module is formatting-only runtime code. It must perform no database
+queries, filesystem access, Drive enumeration, marker checks, or network calls.
+It receives facts the caller already resolved and turns them into useful
+operator-facing text.
+
 Engineering codes remain stable for logs/tests. Field applications must not
 render those codes directly. The task adapter supplies both its human task name
 and, when applicable, the exact task-relative folder beneath the resolved
@@ -14,7 +19,8 @@ Examples::
     Inspection procedure  -> Procedures\\Inspection
 
 The shared mapper does not choose the task branch. That remains owned by the
-calling task adapter.
+calling task adapter. Server-side mount paths are translated textually to the
+canonical operator-visible Shared Drive path; no filesystem lookup is used.
 """
 from __future__ import annotations
 
@@ -22,6 +28,9 @@ import re
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
+
+OPERATOR_DRIVE_ROOT = r"G:\Shared drives\Display Folders"
+SERVER_DRIVE_ROOT = "/mnt/msb-display-folders"
 
 OPERATOR_WARNING_MAP = {
     "LOR_CONTEXT_NOT_DEFINED_FIELD_SCENE": (
@@ -50,25 +59,33 @@ def _subject(diagnostic: dict[str, Any]) -> str:
     )
 
 
-def _scope_folder(diagnostic: dict[str, Any]) -> str:
-    return str(
+def _operator_scope_folder(diagnostic: dict[str, Any]) -> str:
+    raw = str(
         diagnostic.get("scope_root")
         or diagnostic.get("database_folder_path")
         or "the current Stage folder"
     )
+
+    normalized = raw.replace("\\", "/").rstrip("/")
+    server_root = SERVER_DRIVE_ROOT.rstrip("/")
+    if normalized.casefold() == server_root.casefold():
+        return OPERATOR_DRIVE_ROOT
+    if normalized.casefold().startswith(server_root.casefold() + "/"):
+        suffix = normalized[len(server_root):].lstrip("/")
+        return str(PureWindowsPath(OPERATOR_DRIVE_ROOT, *PurePosixPath(suffix).parts))
+
+    return raw
 
 
 def _expected_folder(
     diagnostic: dict[str, Any],
     task_relative_folder: str | None,
 ) -> str:
-    base = _scope_folder(diagnostic)
+    base = _operator_scope_folder(diagnostic)
     relative = str(task_relative_folder or "").strip().strip("\\/")
     if not relative:
         return base
 
-    # Preserve the path style already exposed to the operator. Windows/Drive
-    # paths remain Windows paths; server-side POSIX paths remain POSIX paths.
     if "\\" in base or re.match(r"^[A-Za-z]:", base):
         relative_parts = [
             part
