@@ -1,8 +1,22 @@
 # Procedure Application
 
-**Status:** SECOND-CALLER READ-ONLY PROOF ACCEPTED — not deployed
+**Status:** PRODUCTION-OPERATIONAL — read-only Procedure field access accepted 2026-08-23
 
 This directory contains the Procedure subsystem application/business logic for Setup, Takedown, and Inspection field-document discovery.
+
+Current protected production route:
+
+```text
+https://my.sheboyganlights.org/procedures/
+```
+
+Current accepted Production Database application commit:
+
+```text
+9a19639ae0af6cd5bbaf162fe236e14c1b88722d
+```
+
+Server/runtime authority is maintained in `Gregovate/MSB-Server-Management`, especially `docs/server/Procedure_Production_Runtime.md` and `docs/server/Synology_Protected_Application_Reverse_Proxy.md`.
 
 ## Shared Resolver Boundary
 
@@ -24,7 +38,7 @@ The shared resolver owns the current structured field context. Procedure code tr
 
 ## Procedure Adapter Boundary
 
-The first adapter is:
+The Procedure adapter is:
 
 ```text
 procedure_documents.py
@@ -54,8 +68,6 @@ The fixed task names are application-controlled. User input cannot become an arb
 
 ## Current Document Discovery
 
-For the first read-only proof:
-
 - current Procedure documents are PDF files directly in the selected task folder;
 - discovery is non-recursive;
 - multiple direct PDFs are returned in deterministic case-insensitive name order;
@@ -63,8 +75,8 @@ For the first read-only proof:
 - `SourceDocs` is excluded from current-document discovery;
 - PDFs inside `images` are not Procedure choices;
 - supported task-local image assets are discovered separately from `images`;
-- no neighboring Stage/Scene or parent-folder fallback is allowed;
-- no per-document PostgreSQL registry is required for this proof.
+- no neighboring Stage/Scene or parent-folder fallback is allowed; and
+- no per-document PostgreSQL registry is required for current read-only field presentation.
 
 The adapter returns explicit states:
 
@@ -97,88 +109,80 @@ Observed PDF size:
 
 No marker is required inside `Setup` for this fixture to be valid.
 
-## Acceptance Evidence — 2026-08-23
+## Production Acceptance — 2026-08-23
 
-Procedure-specific regression:
+Final combined FieldWiring + Procedure regression before deployment:
 
 ```text
-9 passed in 0.16s
+150 passed in 2.16s
 ```
 
-Combined FieldWiring + Procedure regression:
+Live production-data gate:
 
 ```text
-63 passed in 2.05s
+/api/stages HTTP 200 in 0.0136 seconds
+Top-level Stages: 30
+Stage 03 Scenes: ['03-Mega Cube']
+Stage 07 Sub-stages: ['07a-Who Forest']
+Stage 21 Scenes: ['21-SlidingPenguins', '21-SnowballBears']
+Stage 15 Setup status: AVAILABLE
+Stage 15 Setup document: 15 - Church-Nativity-Bells.pdf
 ```
 
-The real Church fixture was then resolved through the same canonical shared resolver and the Procedure adapter:
+Internal production service:
 
 ```text
-status:           AVAILABLE
-scope_type:       STAGE
-scope_root:       G:\Shared drives\Display Folders\15-Church-Bells-CH
-procedures_root:  G:\Shared drives\Display Folders\15-Church-Bells-CH\Procedures
-task_root:        G:\Shared drives\Display Folders\15-Church-Bells-CH\Procedures\Setup
-document:         15 - Church-Nativity-Bells.pdf
-size:             3296464 bytes
-warnings:         none
+msb-procedures.service = active
+192.168.5.9:8792
+{"data_mode":"postgres","status":"ok","version":"V0.1.0"}
+```
+
+Protected public route acceptance through Synology:
+
+```text
+GET /procedures/api/health -> HTTP 200 / postgres / ok / V0.1.0
+HEAD /procedures/          -> HTTP/2 200
+HEAD /procedures           -> HTTP/2 301 -> /procedures/
 ```
 
 Result:
 
 ```text
-CHURCH PROCEDURE SECOND-CALLER PROOF: PASS
+PROCEDURE PRODUCTION DEPLOYMENT: ACCEPTED
 ```
-
-This accepts the read-only Procedure adapter boundary as the second caller of `field_context_resolver.resolve_structured_scope(...)`. It does **not** constitute browser, server-runtime, or production deployment acceptance.
 
 ## Tests
 
-Procedure-specific tests are in:
+Procedure-specific and shared integration tests live under:
 
 ```text
-test_procedure_documents.py
+Procedures/Application/test_*.py
 ```
 
-From the repository root and active project virtual environment:
+The final production candidate was accepted together with the complete FieldWiring regression suite so changes to the shared Field Context contract cannot silently diverge between the two applications.
 
-```powershell
-python -m pytest .\Procedures\Application\test_procedure_documents.py -q
-```
+## Remaining Work
 
-The tests verify:
+The standalone Procedure field-access application is production-operational. Remaining work is separate follow-on scope, including:
 
-- the adapter imports the exact canonical shared resolver callable;
-- Stage-scope Setup discovery using only the Stage and `Procedures` markers;
-- refusal to consume an unmarked `Procedures` root;
-- direct-only PDF discovery;
-- exclusion of `Archive`, `SourceDocs`, and image-folder PDFs;
-- supporting image discovery;
-- deterministic multiple-PDF ordering;
-- explicit no-document and missing-task states;
-- invalid task/path rejection; and
-- Scene-scope Procedure discovery through the shared resolver.
+- add Procedure actions to the existing Display Scan hub using permanent `display_id` without changing physical QR identity;
+- continue human Procedure-document authoring/alignment/archive work in Google `Display Folders`;
+- complete any broader PC/phone/tablet operator acceptance needed for the 2026 field workflow; and
+- engineer scheduling, pick/load, forklift, Container/Location, and other Setup/Deployment operational workflows separately from Procedure document lookup.
 
-## Not Implemented Yet
-
-The accepted second-caller proof does **not** yet provide:
-
-- a browser backend or protected public route;
-- PostgreSQL/manual Display lookup orchestration for Procedures;
-- PDF/image HTTP serving endpoints;
-- field presentation pages;
-- scan-hub integration;
-- production deployment/runtime configuration.
-
-Those are the next engineering layers and must preserve the accepted resolver/adapter boundary.
+Do not create a second field-context resolver, Procedure-only Google hierarchy, generic document registry, or new Procedure database schema unless a later demonstrated workflow requires it.
 
 ## Governing Documentation
 
 Read first:
 
 1. `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md`
-2. `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/01_Shared_Resolver_Extraction_Handoff_2026-08-22.md`
-3. `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/02_Procedure_Second_Caller_Acceptance_2026-08-23.md`
-4. `FieldWiring/Application/field_context_resolver.py`
-5. `Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md`
-6. `Docs/00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md`
+2. `Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md`
+3. `Docs/00_Project_Overview/06-Operator_UI_Message_Contract.md`
+4. `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md`
+5. `FieldWiring/Application/field_context_resolver.py`
+6. `FieldWiring/Application/field_context_repository.py`
+7. `Gregovate/MSB-Server-Management: docs/server/Procedure_Production_Runtime.md`
+8. `Gregovate/MSB-Server-Management: docs/server/Synology_Protected_Application_Reverse_Proxy.md`
+
+Historical dated Procedure acceptance documents in `12_Setup_and_Deployment/` remain valid as records of the engineering stages they describe; when they say deployment had not yet occurred, that statement applies to that historical acceptance stage, not the current production state.
