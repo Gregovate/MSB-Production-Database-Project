@@ -32,6 +32,71 @@ The existing `Docs/02_Production_Database/02_Operational_SOPs/` tree remains val
 
 Do not mass-move existing procedures only to make the repository look uniform. Move a document only when ownership, navigation, and link updates are understood.
 
+## Production Subsystem Documentation Layout
+
+For a Production subsystem or documentation area that contains both operator and engineering material, use this target structure when it can be introduced safely:
+
+```text
+<Subsystem>/
+├── README.md
+└── docs/
+    ├── operatorSOP/
+    │   └── <task procedures>.md
+    └── engineering/
+        ├── README.md
+        └── <engineering contracts, designs, handoffs>.md
+```
+
+### Subsystem `README.md` = operator/user portal
+
+The root `README.md` is the normal user/operator navigation page.
+
+It should answer questions such as:
+
+- What do I need to do?
+- Which current procedure applies?
+- Where do I go next?
+- Which live application should I use?
+
+Do not turn the root README into an engineering recovery handoff when the same subsystem has an operator audience.
+
+### `docs/operatorSOP/` = task procedures
+
+Put the current operator/contributor task procedures here when the subsystem owns those tasks.
+
+These procedures follow the reusable Operational SOP standard and remain plain-language/task-oriented.
+
+### `docs/engineering/README.md` = engineering handoff
+
+This is the engineering starting point for Greg, future maintainers, and engineering work sessions.
+
+It should preserve or link to:
+
+- current architecture;
+- application/data/filesystem contracts;
+- authoritative implementation sources;
+- dependencies and boundaries;
+- current production state where the subsystem owns that state;
+- known limitations;
+- recovery/resume information; and
+- dated engineering/acceptance evidence where needed.
+
+Technical contracts and implementation explanations belong under `docs/engineering/`, not in the normal operator procedure path.
+
+### Compatibility during migration
+
+Existing documentation has many inbound relative links. Do not break those links merely to achieve the target folder layout.
+
+When moving a current authority:
+
+1. create the new canonical document first;
+2. update the most important current portals and links;
+3. leave a short compatibility document at the old path that clearly points to the new current authority when needed;
+4. repair remaining inbound links deliberately; and
+5. remove the compatibility file only after current references no longer depend on it.
+
+A compatibility pointer is not a second authority. It exists only to keep old links useful during migration.
+
 ## Operator Discovery Through `my.sheboyganlights.org`
 
 `my.sheboyganlights.org` is the normal Production operator discovery and presentation layer.
@@ -65,17 +130,30 @@ When relevant, state:
 
 Do not explain the resolver, database relationships, path parsing, marker-validation implementation, API behavior, or other engineering internals in the operator instructions. Link to the responsible engineering contract instead.
 
-## Current Google Drive Document Classes
+## Google Drive Documentation Target Structure
 
-The current project-level Google Drive documentation separates these responsibilities:
+The Google Drive / Display Folder documentation is the first area being migrated to the subsystem layout above.
 
-- `Docs/00_Project_Overview/00-Google_Drive.md` — engineering architecture/overview;
-- `Docs/00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md` — operator/contributor procedure for organizing and publishing Display Folder documentation;
-- `Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md` — engineering filesystem/path contract;
-- `Docs/00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md` — operator procedure for marker placement and verification;
-- `Docs/00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md` — operator/contributor scaffold for creating a new controlled Stage/Sub-stage/Scene documentation root.
+Target:
 
-These locations may be reconsidered in later repository cleanup, but publication work must not be blocked merely to move files for organization. Audience and authority must be made clear first.
+```text
+Docs/00_Project_Overview/Google_Drive/
+├── README.md
+└── docs/
+    ├── operatorSOP/
+    │   ├── Run_Folder_Alignment.md
+    │   ├── Repair_Existing_Stage_Scene.md
+    │   ├── Add_Verify_Marker_Files.md
+    │   ├── Create_Stage_Substage_Scene_Folder.md
+    │   ├── Align_Legacy_Setup_Documents.md
+    │   └── Publish_Current_Setup_Instruction.md
+    └── engineering/
+        └── README.md
+```
+
+The operator portal may link to a task owned by another subsystem rather than duplicate it. For example, the wiring-diagram creation procedure is owned by Preview Authoring / Field Wiring and can be linked from the Google Drive operator portal.
+
+Existing Google Drive documents at their former paths may remain temporarily as compatibility pointers while inbound links are repaired.
 
 ## Stage Setup Instructions Are a Separate Field Document Class
 
