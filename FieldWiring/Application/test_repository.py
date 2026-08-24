@@ -96,13 +96,13 @@ def test_canonical_display_id_lookup(repo):
     assert [row["display_id"] for row in rows] == [309]
 
 
-def test_display_context_is_field_friendly(repo):
+def test_display_context_treats_stage_binding_lor_scene_as_stage_scope(repo):
     context = repo.display_context(309)
     assert context is not None
     assert context["stage_key"] == "15"
-    assert context["scene_name"] == "15-Church-CH"
+    assert context["scene_name"] is None
     assert context["context_type"] == "Musical"
-    assert context["scope_kind"] == "Scene"
+    assert context["scope_kind"] == "Stage / Preview"
 
 
 def test_inventory_only_display_resolves_shared_context_but_not_fieldwiring(repo):

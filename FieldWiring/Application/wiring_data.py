@@ -85,6 +85,9 @@ def _sqlite_package(repo: Any, preview_uuid: str, scene_uuid: str | None, stage_
             """
             rows = _sqlite_rows(conn, members_sql, (preview_uuid, scene_uuid, preview["preview_name"]))
         else:
+            # Whole Stage/Sub-stage scope must remain bounded to the resolved
+            # Production Database stage_id even when the selected Preview is a
+            # shared/master Preview containing Displays from other Stages.
             members_sql = """
                 WITH members AS (
                     SELECT DISTINCT d.display_id,
@@ -93,6 +96,7 @@ def _sqlite_package(repo: Any, preview_uuid: str, scene_uuid: str | None, stage_
                     FROM lor_snap__v_current_props p
                     JOIN ref__display d ON d.lor_prop_id = p.raw_prop_id
                     WHERE p.preview_id = ?
+                      AND d.stage_id = ?
                       AND d.display_status_id = 1
                       AND upper(coalesce(p.device_type, '')) <> 'NONE'
                 )
@@ -107,7 +111,7 @@ def _sqlite_package(repo: Any, preview_uuid: str, scene_uuid: str | None, stage_
                  AND fw.display_name = replace(trim(m.lor_comment), ' ', '-')
                 ORDER BY fw.network, fw.controller, fw.start_channel, m.production_display_name
             """
-            rows = _sqlite_rows(conn, members_sql, (preview_uuid, preview["preview_name"]))
+            rows = _sqlite_rows(conn, members_sql, (preview_uuid, stage_id, preview["preview_name"]))
 
         run = _sqlite_one(conn, """
             SELECT import_run_id, run_ts, parser_version, parser_completed_at,
@@ -183,6 +187,9 @@ def _postgres_package(repo: Any, preview_uuid: str, scene_uuid: str | None, stag
                     ORDER BY fw.network, fw.controller, fw.start_channel, m.production_display_name
                 """, (preview_uuid, scene_uuid, preview["preview_name"]))
             else:
+                # Whole Stage/Sub-stage scope must remain bounded to the resolved
+                # Production Database stage_id even when the selected Preview is a
+                # shared/master Preview containing Displays from other Stages.
                 cur.execute("""
                     WITH members AS (
                         SELECT DISTINCT d.display_id,
@@ -191,6 +198,7 @@ def _postgres_package(repo: Any, preview_uuid: str, scene_uuid: str | None, stag
                         FROM lor_snap.v_current_props p
                         JOIN ref.display d ON d.lor_prop_id = p.raw_prop_id
                         WHERE p.preview_id = %s
+                          AND d.stage_id = %s
                           AND d.display_status_id = 1
                           AND upper(coalesce(p.device_type, '')) <> 'NONE'
                     )
@@ -204,7 +212,7 @@ def _postgres_package(repo: Any, preview_uuid: str, scene_uuid: str | None, stag
                       ON fw.preview_name = %s
                      AND fw.display_name = replace(btrim(m.lor_comment), ' ', '-')
                     ORDER BY fw.network, fw.controller, fw.start_channel, m.production_display_name
-                """, (preview_uuid, preview["preview_name"]))
+                """, (preview_uuid, stage_id, preview["preview_name"]))
             rows = [dict(row) for row in cur.fetchall()]
 
             cur.execute("""

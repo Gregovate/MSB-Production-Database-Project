@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from field_context_hierarchy import resolve_display_operational_context
 from field_context_repository import (
     ConfigError,
     PostgresFieldContextRepository,
@@ -21,8 +22,7 @@ def _flatten_fieldwiring_context(
 ) -> dict[str, Any]:
     """Adapt shared identity/context facts to FieldWiring's legacy flat shape."""
     stage = shared.get("stage") or {}
-    contexts = shared.get("contexts") or []
-    selected = contexts[0] if contexts else None
+    selected = resolve_display_operational_context(shared)
     preview = (selected or {}).get("preview") or {}
     scene = (selected or {}).get("scene") or {}
     scene_name = scene.get("scene_name")

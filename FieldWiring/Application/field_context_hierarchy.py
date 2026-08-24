@@ -124,6 +124,21 @@ def _context_summary(context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _whole_scope_context_summary(context: dict[str, Any]) -> dict[str, Any]:
+    """Normalize raw LOR occurrence context to one Stage/Sub-stage package."""
+    summary = _context_summary(context)
+    summary.update(
+        {
+            "scene_uuid": None,
+            "scene_name": None,
+            "scene_stage_key": None,
+            "scene_background_file": None,
+            "scope_kind": "Stage / Preview",
+        }
+    )
+    return summary
+
+
 def _scene_child_from_pointer(
     context: dict[str, Any],
     owner_key: str,
@@ -204,23 +219,68 @@ def _scene_name_candidate(scene_name: str | None, owner_key: str, owner_label: s
     return name
 
 
+def _formal_scene_label(
+    context: dict[str, Any],
+    owner_key: str,
+    owner_label: str,
+) -> tuple[str | None, str | None]:
+    child_label, child_path = _scene_child_from_pointer(context, owner_key, owner_label)
+    if child_label is not None:
+        return child_label, child_path
+    scene = context.get("scene") or {}
+    return _scene_name_candidate(scene.get("scene_name"), owner_key, owner_label), None
+
+
+def resolve_display_operational_context(shared: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve one Display to its formal operational wiring context.
+
+    Raw LOR Scene records are evidence, not automatic field Scene ownership.
+    A Display narrows to Scene only when the shared hierarchy rules prove a
+    formal Scene.  Otherwise the selected Preview is retained while Scene is
+    cleared so callers load the whole owning Stage/Sub-stage package.
+    """
+    stage = shared.get("stage") or {}
+    contexts = list(shared.get("contexts") or [])
+    if not contexts:
+        return None
+
+    owner_key = str(stage.get("stage_key") or "").strip()
+    owner_label, _, _ = _node_label_and_path(stage, contexts)
+
+    for context in contexts:
+        child_label, _ = _formal_scene_label(context, owner_key, owner_label)
+        if child_label is None:
+            continue
+        selected = dict(context)
+        scene = dict(selected.get("scene") or {})
+        scene["scene_name"] = child_label
+        selected["scene"] = scene
+        selected["scope_kind"] = "Scene"
+        return selected
+
+    selected = dict(contexts[0])
+    selected["scene"] = None
+    selected["scope_kind"] = "Stage / Preview"
+    return selected
+
+
 def _attach_contexts(node: dict[str, Any], contexts: list[dict[str, Any]]) -> None:
     owner_key = str(node.get("stage_key") or "")
     owner_label = str(node.get("label") or "")
     scene_nodes: dict[str, dict[str, Any]] = {}
+    whole_context_keys: set[tuple[str, str]] = set()
 
     for context in contexts:
-        child_label, child_path = _scene_child_from_pointer(context, owner_key, owner_label)
-        if child_label is None:
-            scene = context.get("scene") or {}
-            child_label = _scene_name_candidate(
-                scene.get("scene_name"),
-                owner_key,
-                owner_label,
-            )
+        child_label, child_path = _formal_scene_label(context, owner_key, owner_label)
 
         if child_label is None:
-            node["contexts"].append(_context_summary(context))
+            summary = _whole_scope_context_summary(context)
+            preview_identity = str(summary.get("preview_uuid") or summary.get("preview_name") or "")
+            context_identity = str(summary.get("context_type") or "")
+            key = (preview_identity, context_identity)
+            if key not in whole_context_keys:
+                whole_context_keys.add(key)
+                node["contexts"].append(summary)
             continue
 
         key = child_label.casefold()
