@@ -12,13 +12,14 @@ Those are intentionally separate documentation paths.
 | Understand or change how `.lorprev` data is parsed and structured | [Data Extraction](02_Data_Extraction/README.md) |
 | Understand or maintain the controlled Preview merge process | [Preview Merger](03_Preview_Merger/README.md) |
 | Understand the legacy/fallback FormView wiring behavior | [FormView](04_FormView/README.md) |
+| Understand LOR Network Preferences, COM-port bindings, UID usage, or E1.31 routing | [LOR Network Configuration](05_Network_Configuration/README.md) |
 | Understand or continue the browser-based FieldWiring replacement | [FieldWiring Engineering](../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md) |
 
 ## Operator vs Engineering Documentation
 
 **Preview Authoring** is the normal operator path. It is written for Preview authors and programmers who need to create, edit, name, organize, and export LOR Previews without learning parser or database internals.
 
-**Data Extraction, Preview Merger, FormView, and FieldWiring engineering documents** preserve the technical detail needed to build, troubleshoot, validate, and continue development of those systems.
+**Data Extraction, Preview Merger, FormView, LOR Network Configuration, and FieldWiring engineering documents** preserve the technical detail needed to build, troubleshoot, validate, and continue development of those systems.
 
 Do not move engineering detail into operator procedures merely because the operator task depends on that engineering. Likewise, do not remove needed implementation context from the engineering documents in an attempt to make them operator manuals.
 
@@ -30,6 +31,7 @@ Do not move engineering detail into operator procedures merely because the opera
 | [02_Data_Extraction](02_Data_Extraction/README.md) | `.lorprev` structure, parser architecture, SQLite output design, Folder Alignment, and LOR version compatibility review |
 | [03_Preview_Merger](03_Preview_Merger/README.md) | Preview Merger engineering design, current status, and controlled workflow |
 | [04_FormView](04_FormView/README.md) | FormView fallback/reference subsystem and recovered engineering architecture |
+| [05_Network_Configuration](05_Network_Configuration/README.md) | LOR Network Preferences engineering, Regular/Aux network configuration, COM-port/speed/Enhanced settings, UID availability, and E1.31 universe/IP routing |
 
 ## Engineering Handoff
 
