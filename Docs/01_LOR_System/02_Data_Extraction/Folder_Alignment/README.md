@@ -33,22 +33,6 @@ Use the responsible Google Drive operator procedure
 Run Folder Alignment again when a fresh worklist is useful
 ```
 
-## Documentation Layout
-
-```text
-Folder_Alignment/
-├── README.md                  this operator/user portal
-├── operatorSOP/
-│   ├── README.md              operator procedure index
-│   └── ...
-├── engineering/
-│   ├── README.md              engineering handoff
-│   └── ...
-└── images/                    Folder Alignment documentation images, when needed
-```
-
-The Python implementation remains in the subsystem root. Operator documentation does not explain or require understanding that implementation.
-
 ## Engineering
 
 For design, resolver/classification behavior, report model, regression fixtures, or code changes, use:
