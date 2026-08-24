@@ -535,8 +535,8 @@ export default {
 
               <a class="btn" href="https://db.sheboyganlights.org/admin/content/display/${encodeURIComponent(display.display_id)}">Open Display Record</a>
               ${testButtonHtml}
-              <a class="btn secondary" href="/fieldwiring/wiring.html?display_id=${encodeURIComponent(display.display_id)}">Field Wiring</a>
-              <a class="btn secondary" href="/procedures/?display_id=${encodeURIComponent(display.display_id)}">Procedures</a>
+              <a class="btn secondary" href="https://my.sheboyganlights.org/fieldwiring/wiring.html?display_id=${encodeURIComponent(display.display_id)}">Field Wiring</a>
+              <a class="btn secondary" href="https://my.sheboyganlights.org/procedures/?display_id=${encodeURIComponent(display.display_id)}">Procedures</a>
               <a class="btn secondary" href="/scan/DISP/${encodeURIComponent(display.display_id)}/container">Open Container</a>
                 ${woCount > 0
             ? `<a class="btn secondary" href="/scan/DISP/${encodeURIComponent(display.display_id)}/work-orders">
