@@ -8,7 +8,7 @@
 | Audience | Production documentation maintainers and Folder Alignment reviewers |
 | Status | CURRENT |
 | Owner | Production documentation owner / administrator |
-| Last Reviewed | 2026-08-23 |
+| Last Reviewed | 2026-08-24 |
 | Keywords | legacy Setup, Google Drive, Archive, Folder Alignment, Stage, Scene |
 
 [↑ Google Drive / Display Folder Operations](../README.md)
@@ -21,7 +21,7 @@ This task records **where the old document belongs**. It does not make the old d
 
 ## Before You Start
 
-- Open the current **Documentation Alignment Worklist**.
+- Open the current [**Documentation Alignment Worklist**](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Review_Folder_Alignment_Worklist.md). If you need a fresh worklist, use [Run Folder Alignment](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Run_Folder_Alignment.md).
 - Work on one Stage at a time.
 - Use the real current Stage/Scene organization, not only a similar filename.
 - If ownership is uncertain, leave the document where it is and flag it for review.
