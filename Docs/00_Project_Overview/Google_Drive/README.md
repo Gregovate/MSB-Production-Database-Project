@@ -48,22 +48,6 @@ The normal team workflow should use those field systems to find current Wiring a
 
 Putting a current field document in `Archive` or `SourceDocs` can prevent the field application from presenting it as current material.
 
-## Documentation Layout
-
-```text
-Google_Drive/
-├── README.md                  this operator/user portal
-├── operatorSOP/
-│   ├── README.md              operator procedure index
-│   └── ...
-├── engineering/
-│   ├── README.md              engineering handoff
-│   └── ...
-└── images/                    Google Drive documentation images
-```
-
-The `images/` folder above contains images used by repository documentation. It is separate from field-content folders such as `Procedures\Setup\images` inside the Google Shared Drive.
-
 ## Engineering
 
 Engineering documentation is intentionally separate from the operator procedures.
