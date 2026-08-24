@@ -1,114 +1,174 @@
 # Operational SOP Standard
 
+| Document Control | Value |
+|---|---|
+| Document Type | Reusable Documentation Standard |
+| Scope | MSB repositories using the shared documentation framework |
+| Status | CURRENT |
+| Owner | MSB documentation governance |
+| Last Reviewed | 2026-08-23 |
+
 ## Purpose
 
-This standard defines how MSB operator procedures are created, named, placed, written, illustrated, and linked so they are easy for volunteers to use and can be indexed automatically in the future.
+This standard defines the reusable rules for MSB operator procedures.
 
-Operational SOPs explain **how to perform a task**. They do not replace engineering architecture or implementation documentation.
+An Operational SOP explains **how to perform a task correctly**. It is not engineering architecture, implementation documentation, a database design, a troubleshooting handoff, or a substitute for the technical documentation that owns the system behind the task.
 
-## Where SOPs Belong
+Repository-specific folder locations, screenshot locations, publishing paths, and local portal conventions belong in that repository's `System_Documentation/Project_Rules/` or another clearly designated local governance location.
 
-Operator procedures for the Production Database belong under:
+## Audience
 
-```text
-Docs/02_Production_Database/02_Operational_SOPs/
-```
+Write for the least-technical operator who needs to perform the task.
 
-Create or use a task-area folder beneath that portal, for example:
+A current operator SOP must not require the reader to understand PostgreSQL, SQL, schemas, triggers, functions, UUID implementation details, backend architecture, APIs, resolver internals, or other engineering concepts unless that knowledge is genuinely necessary to perform the operator's task.
 
-```text
-02_Operational_SOPs/
-├── Displays/
-├── Label_Printing/
-├── Test_Sessions/
-└── Work_Orders/
-```
+If the current user interface happens to be Directus or another technical platform, describe only the visible buttons, fields, labels, selections, and actions the operator must use. Do not teach the platform's internal architecture merely because it provides the screen.
 
-Do not place an operator procedure inside `01_System_Architecture/` merely because the procedure uses a database feature, Directus Flow, trigger, or application.
+## Operator Documentation and Engineering Documentation Are Different Products
 
-Each task-area folder should have a `README.md` portal when it contains more than one procedure or when the folder represents an ongoing operational area.
+Operator documentation answers:
 
-## Operator Navigation Boundary
+> What do I need to do?
 
-The normal browsing path for operators must remain operational by default.
+Engineering documentation answers:
 
-An operator moving through README portals should normally follow:
+> How does this system work, and how is it maintained or changed?
 
-```text
-Operational SOP portal -> task-area portal -> plain-language task procedure
-```
+Keep those products separate.
 
-Do not place engineering documents, SQL procedures, trigger documentation, architecture handoffs, implementation notes, or other technical references in the normal operator procedure-selection table.
+Engineering explanation may be linked from a clearly separated **Related Engineering** or **Related Documents** section when useful, but it must not interrupt the normal task instructions or become prerequisite reading for an ordinary operator.
 
-Engineering material may still be linked when it is useful to someone who wants to understand how the system works. Put those links in a clearly labeled section such as **Related Engineering** or **Related Documents**, separate from the normal task-navigation table.
+## Where an SOP Belongs
 
-The operator should have to deliberately choose to leave the operational documentation path and enter engineering documentation.
+An SOP should normally live with the **subsystem, project step, or business workflow that owns the task**.
 
-This boundary applies even when the engineering document describes the database behavior behind the operator task. The operator portal should answer **What do I need to do?**, while engineering navigation answers **How does this system work?**
+Examples:
 
-## Task Granularity and Workflow Portals
+- a testing task belongs with the Testing workflow;
+- a labeling or scanning task belongs with the workflow that owns that operator action;
+- a Setup/Takedown task belongs with the Setup/Deployment workflow rather than whichever application happens to expose the button;
+- a cross-system SOP belongs to the business workflow that owns the end-to-end task, not arbitrarily to one implementation component.
 
-Prefer one plain-language procedure for each real operator task or decision point rather than one large end-to-end manual when the workflow can be safely divided.
+Do not centralize every operator procedure into one repository folder merely because it is an SOP.
 
-A task-area `README.md` should act as the workflow map. It should help the operator answer **What am I trying to do right now?** and lead directly to the appropriate short procedure.
+Each repository's Project Rules define its actual local placement and portal conventions.
 
-For example, a testing workflow may have separate procedures for starting a test session, testing displays, handling a repair, refreshing the displays to test, resuming deferred work, and finishing a container.
+## Operator Discovery
 
-Each procedure should contain enough information to complete its task without requiring the operator to read the entire workflow documentation first. Use Related Documents to connect the procedures in the normal sequence.
+Repository organization exists for ownership and maintainability. Operator-facing navigation exists so people can find the correct task without understanding repository structure.
 
-Do not split a task so finely that an operator must constantly switch documents to complete one normal action. The goal is understandable task-sized instructions, not the largest or smallest possible number of files.
+For MSB operational documentation, `my.sheboyganlights.org` is the normal discovery/presentation layer. It may aggregate links or application entry points across repositories and subsystem folders, but it must not create competing authoritative copies.
 
-## Workflow Navigation Inside Procedures
+An operator should be able to find the current procedure by the task they are trying to perform without knowing whether the authoritative source is in GitHub, Google Workspace, a Display Folder, Directus, or another MSB system.
 
-When a task area contains a sequence of related procedures, each procedure must make it easy to move through that workflow without returning to the GitHub folder view.
+## Task Granularity
 
-Place a compact navigation line near the **top** of the procedure and repeat it at the **bottom**.
+Prefer one plain-language procedure for each real operator task or decision point when the workflow can be safely divided.
 
-Use this pattern when applicable:
+Do not create one enormous manual when operators normally perform smaller independent tasks. Also do not split a normal task so finely that the operator must constantly switch documents.
 
-```markdown
-[← Previous: Previous Task](Previous_Task.md) | [↑ Test Sessions Home](README.md) | [Next: Next Task →](Next_Task.md)
-```
+A workflow portal may connect related procedures and help the operator answer:
 
-Navigation rules:
+> What am I trying to do right now?
 
-- **Previous** returns to the preceding task in the documented workflow.
-- **Home** returns to the task-area `README.md` portal.
-- **Next** moves to the next task or reference in the documented workflow.
-- The top and bottom navigation should use the same destinations.
-- Do not force a false linear sequence where the workflow branches. For a branch task, use the most useful return/continuation destination and keep the task-area portal available in the middle.
-- Reference documents may participate in the browse sequence when that makes the documentation easier to review, but they should not be presented as mandatory operational steps unless they truly are required.
-- Manager-only procedures should not be inserted into the normal volunteer previous/next sequence unless the workflow actually requires a manager handoff.
+Each procedure should contain enough information to complete its own task without requiring the operator to read the full engineering or workflow documentation first.
 
-A reader should be able to move to the previous task, return to the task-area portal, or continue to the next task from either end of a procedure.
+## Required Content
+
+Use the following sections when they apply. Do not add empty sections merely to satisfy a template.
+
+### Purpose
+
+State what the task accomplishes and when the operator uses the procedure.
+
+### Before You Start
+
+List prerequisites that matter to the operator, such as required access, information, physical items, or a prior task that must already be complete.
+
+Do not include engineering prerequisites the operator does not need to know.
+
+### Procedure
+
+Write numbered steps in the order the task is actually performed.
+
+- Prefer one operator action per step.
+- Use the exact labels and names the operator sees.
+- Use **bold** for buttons, fields, menu entries, folder names, or required values when it improves scanning.
+- Explain why only when the explanation prevents a likely mistake.
+- Do not bury required actions inside long technical paragraphs.
+
+### Expected Result
+
+Tell the operator how to recognize successful completion.
+
+### If Something Is Wrong
+
+Include the likely failure condition and the safe next action. Link to a separate troubleshooting procedure or engineering reference when diagnosis becomes substantial.
+
+### Related Documents
+
+Link to related operator procedures and, when useful, the responsible engineering authority. Do not copy engineering detail into the SOP.
+
+## File and Folder Placement Tasks
+
+When an operator task requires placing, naming, moving, creating, or locating documents or folders, the procedure must be concrete enough that a nontechnical operator can perform the task without reverse engineering the hierarchy.
+
+When applicable, include:
+
+- the exact destination folder or visible navigation sequence;
+- the required file or folder name;
+- the expected parent/child path in plain language;
+- at least one realistic correct example;
+- nearby folders that are easy to confuse when confusion matters;
+- required file type or naming rules that affect discovery;
+- what successful placement looks like;
+- how to verify the item is in the correct place and is discoverable; and
+- the safe correction or escalation path when the operator is unsure.
+
+Correct placement may be a **functional operational control** when an application discovers content from an established folder hierarchy. In that case, say plainly when putting the item in the wrong folder will prevent the application from finding or using it.
+
+Do **not** explain resolver algorithms, database relationships, marker-validation implementation, APIs, or application internals unless that explanation is necessary for the operator to perform the task.
+
+## Operator Language
+
+Use plain language and the terms the operator actually sees.
+
+Good:
+
+> Place the current wiring diagram in the Stage's `Wiring\BackgroundStage` folder.
+
+Not appropriate in the operator steps:
+
+> The Wiring folder is an application-facing filesystem contract consumed by the structured-context resolver.
+
+The second statement may be correct engineering documentation, but it does not help an ordinary operator complete the placement task.
+
+## Warnings
+
+Warnings should prevent likely mistakes rather than explain general engineering theory.
+
+Examples:
+
+- **Do not rename this folder.**
+- **Do not place the current PDF in `Archive`. It will not be shown as the current procedure.**
+- **Do not move an LOR background image until the related LOR reference has been reviewed.**
 
 ## Print and Hard-Copy Usability
 
-Operator procedures should be usable both digitally and as printed hard copies when practical.
+When a procedure may be printed, the core task instructions must remain usable without clickable navigation.
 
-A printed procedure cannot depend on clickable navigation to explain the task. The core instructions needed to perform the task must appear in the procedure itself.
+Use clear titles, ordered steps, visible warnings, required values, completion guidance, and a visible reviewed/current date when appropriate.
 
-For procedures likely to be printed:
+## Document Control
 
-- use a clear task title;
-- state the purpose and intended audience;
-- list anything required before starting;
-- keep numbered actions in the order performed;
-- make warnings and required values easy to find;
-- state what successful completion looks like;
-- keep essential instructions complete even when links are unavailable on paper;
-- place Related Documents at the end for digital navigation and follow-up work.
+Every current SOP should carry consistent metadata so people and future indexing tools can identify its purpose and status.
 
-Screenshots may be used when they materially help the operator identify a screen, field, or action, but a procedure should not become unusable solely because a screenshot prints poorly or is unavailable.
-
-## Required Document Control
-
-Every current SOP should begin with a short Document Control table using these exact field names:
+Use these fields unless a repository-specific project rule defines an equivalent controlled representation:
 
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
-| System | Name of the system or subsystem |
+| System | System, subsystem, or business workflow |
 | Task | Short description of the operator task |
 | Audience | Intended operator or volunteer group |
 | Status | CURRENT, DRAFT, or RETIRED |
@@ -116,137 +176,78 @@ Every current SOP should begin with a short Document Control table using these e
 | Last Reviewed | YYYY-MM-DD |
 | Keywords | Comma-separated search terms |
 
-These fields are intentionally consistent so a future documentation indexer can identify current procedures without depending only on filenames.
-
 ### Status Rules
 
 - `CURRENT` — approved procedure for present use.
-- `DRAFT` — being written or tested; not yet the authoritative operator procedure.
-- `RETIRED` — retained only when there is a reason to preserve it outside the archive.
+- `DRAFT` — being written or tested; not current operator authority.
+- `RETIRED` — intentionally retained outside the archive for a specific reason.
 
-Superseded procedures should normally be moved to the archive rather than left mixed with current operator instructions.
+Superseded material should normally be archived rather than left mixed with current operator instructions.
 
-## Required SOP Structure
+## Navigation
 
-Use the sections below when they apply. Do not add empty sections merely to satisfy the template.
+Normal operator navigation must remain task-oriented.
 
-### 1. Purpose
+Do not place engineering handoffs, SQL documentation, architecture documents, implementation notes, or historical acceptance records in the normal operator task-selection path.
 
-State what the task accomplishes and when the operator would use the procedure.
+When a set of procedures forms a normal sequence, provide useful previous/home/next navigation or an equivalent workflow navigation method. Do not force a false linear sequence when the workflow branches.
 
-### 2. Before You Start
+## Screenshots and Supporting Images
 
-List prerequisites that matter to the operator, such as required access, information, physical items, or another task that must already be complete.
+Use screenshots only when they materially help the operator identify a screen, field, folder, or action.
 
-Do not include engineering prerequisites the operator does not need to know.
+- Keep the screenshot close to the instruction it supports.
+- Use descriptive alternative text where the publishing format supports it.
+- Do not make a procedure unusable when a screenshot is unavailable or prints poorly.
+- Store images according to the repository's local Project Rules; this reusable standard does not define a repository-specific image path.
 
-### 3. Procedure
+## Naming
 
-Write numbered steps in the order the task is actually performed.
+Use a descriptive title and filename that tell the reader what the task accomplishes.
 
-- One operator action per step whenever practical.
-- Use the labels and names the operator sees on screen.
-- Use **bold** for buttons, fields, menu entries, and required values when it improves scanning.
-- Explain why only when the explanation prevents a likely mistake.
-- Do not bury required actions inside long paragraphs.
+Do not depend on an unexplained number or letter prefix to communicate the purpose of a new procedure.
 
-### Operator Language
+Existing legacy names may remain until the document is naturally revised or migrated under an approved project-specific cleanup.
 
-Use the exact system or interface term when the operator needs to recognize it on screen, but explain what it means in plain language the first time the meaning matters.
+## Indexing and Searchability
 
-For example, keep field names such as **Display ID**, **Container ID**, **Frame ID**, and **Print Label** because those are the names shown in Directus. Avoid unnecessary engineering language when a simpler operator description is enough.
+Current SOPs should be discoverable from their metadata and workflow context rather than filename alone.
 
-When screenshots show greyed-out fields that are read-only, say so when that prevents the operator from trying to edit them.
+At minimum, maintain useful values for:
 
-### 4. Expected Result
+- System;
+- Task;
+- Audience;
+- Status;
+- Owner;
+- Last Reviewed; and
+- Keywords.
 
-Tell the operator how to recognize successful completion.
+A future indexer or intranet search may aggregate SOPs from multiple folders and repositories. That discovery layer must point to the authoritative procedure rather than create another editable copy.
 
-### 5. If Something Is Wrong
-
-Include only likely failure conditions and the safe next action. Link to a troubleshooting procedure when troubleshooting becomes substantial.
-
-### 6. Related Documents
-
-Link to related operator procedures and, when useful, the responsible engineering subsystem. Do not duplicate engineering detail in the SOP.
-
-## Screenshots
-
-Follow [Working with Screenshots](../../Docs/0_Contributing/13_Working_with_Screenshots.md) for image storage and screenshot practices.
-
-Documentation images are stored in the shared:
-
-```text
-Docs/images/
-```
-
-A screenshot should support a specific nearby instruction. Avoid placing a collection of screenshots at the end of a document without explaining what each one shows.
-
-Use descriptive alternative text:
-
-```markdown
-![Directus Display menu](../../../images/directus-display-menu.png)
-```
-
-The relative path must be calculated from the SOP's actual folder location.
-
-## Naming SOP Files
-
-Use a descriptive task name that tells the reader what the procedure accomplishes.
-
-Preferred examples:
-
-```text
-Complete_Display_Metadata_After_LOR_Import.md
-Complete_Work_Order.md
-Print_Container_and_Display_Labels.md
-```
-
-Do not depend on a letter or number prefix to explain what the file contains. Existing lettered procedures may remain until they are naturally revised.
-
-## Portal and Indexing Requirements
-
-When adding a new current SOP:
-
-1. Place it under the correct `02_Operational_SOPs/<Task_Area>/` folder.
-2. Add or update that task area's `README.md` so the procedure is directly discoverable.
-3. Update `02_Operational_SOPs/README.md` when a new task-area folder is introduced.
-4. Use the required Document Control fields.
-5. Use a clear H1 title and descriptive filename.
-6. Add meaningful `Keywords` for likely operator searches.
-7. Verify all relative links and images.
-8. Keep engineering detail in the responsible engineering documents and link to it when useful.
-9. Keep the normal operator browse path operational; place engineering links in a separate related-information section rather than the task-selection table.
-10. For multi-step workflow documentation, add previous/home/next navigation at both the top and bottom of each task procedure.
-
-A future automatic indexer should be able to discover current SOPs by scanning `02_Operational_SOPs/`, reading the Document Control table, and following the README portal structure.
-
-## SOP Template
+## Reusable SOP Template
 
 ```markdown
 # Task Name
 
-[← Previous: Previous Task](Previous_Task.md) | [↑ Task Area Home](README.md) | [Next: Next Task →](Next_Task.md)
-
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
-| System | Production Database — Subsystem |
+| System | System / Subsystem / Workflow |
 | Task | What the operator is doing |
 | Audience | Operators / Volunteers / Managers |
 | Status | CURRENT |
-| Owner | Responsible role |
+| Owner | Responsible person or role |
 | Last Reviewed | YYYY-MM-DD |
 | Keywords | keyword one, keyword two, keyword three |
 
 ## Purpose
 
-Briefly explain what this procedure accomplishes.
+Briefly explain what this task accomplishes.
 
 ## Before You Start
 
-- Required access or information
-- Required prior task, if any
+- Required access, information, or prior task
 
 ## Procedure
 
@@ -260,18 +261,14 @@ Describe what success looks like.
 
 ## If Something Is Wrong
 
-Describe the safe next action for likely problems.
+Give the safe next action for likely problems.
 
 ## Related Documents
 
-- [Related procedure](relative-link.md)
-- [Engineering subsystem](../../01_System_Architecture/subsystem/README.md)
-
----
-
-[← Previous: Previous Task](Previous_Task.md) | [↑ Task Area Home](README.md) | [Next: Next Task →](Next_Task.md)
+- [Related operator procedure](relative-or-published-link)
+- [Related engineering authority](relative-or-published-link)
 ```
 
 ## Writing Goal
 
-A volunteer should be able to open the procedure, understand whether it is the right procedure, and begin the task without first learning the underlying database architecture.
+A volunteer should be able to open the procedure, determine that it is the correct task, follow the instructions, and recognize successful completion without first learning the underlying application or database architecture.
