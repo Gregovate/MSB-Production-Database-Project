@@ -2,7 +2,7 @@
 title: Create and Publish a Field Wiring Diagram
 author: Greg Liebig / Engineering Innovations, LLC
 status: CURRENT
-revision: 2026-08-23
+revision: 2026-08-24
 ---
 
 # Create and Publish a Field Wiring Diagram
@@ -15,7 +15,7 @@ revision: 2026-08-23
 | Audience | Preview authors and wiring-documentation maintainers |
 | Status | CURRENT |
 | Owner | MSB Production Crew |
-| Last Reviewed | 2026-08-23 |
+| Last Reviewed | 2026-08-24 |
 | Keywords | wiring diagram, Field Wiring, draw.io, Stage wiring, BackgroundStage, MusicalStage, LOR Preview |
 
 ## Purpose
@@ -81,7 +81,7 @@ The marker filename is:
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-For the full marker procedure, see [Add and Verify MSB Display Folder Marker Files](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Add_Verify_Marker_Files.md).
+For the full marker procedure, see [Add and Verify MSB Display Folder Marker Files](../../00_Project_Overview/Google_Drive/operatorSOP/Add_Verify_Marker_Files.md).
 
 ## Create a Basic Wiring Image
 
@@ -242,7 +242,7 @@ The intended Stage/Sub-stage/Scene has a readable current wiring image in the co
 ## Related Operator Documents
 
 - [Google Drive / Display Folder Operations](../../00_Project_Overview/Google_Drive/README.md)
-- [Add and Verify MSB Display Folder Marker Files](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Add_Verify_Marker_Files.md)
+- [Add and Verify MSB Display Folder Marker Files](../../00_Project_Overview/Google_Drive/operatorSOP/Add_Verify_Marker_Files.md)
 - [Preview Authoring Home](README.md)
 - [Building a Preview](B_Building_Preview_Howto.md)
 - [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md)
@@ -250,11 +250,11 @@ The intended Stage/Sub-stage/Scene has a readable current wiring image in the co
 ## Related Engineering
 
 - [FieldWiring Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
-- [Google Drive Engineering](../../00_Project_Overview/Google_Drive/docs/engineering/README.md)
+- [Google Drive Engineering](../../00_Project_Overview/Google_Drive/engineering/README.md)
 - [FormView](../04_FormView/README.md)
 
 ## Revision History
 
-- 2026-08-23 — Updated navigation to the canonical Google Drive operator/engineering split.
+- 2026-08-24 — Repaired navigation to the final direct Google Drive subsystem layout.
 - 2026-08-23 — Updated for production FieldWiring and separated operator publishing steps from resolver/application engineering detail.
 - 2026-08-22 — Corrected current FieldWiring marker placement and rewrote the procedure for field-document maintainers.
