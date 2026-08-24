@@ -8,17 +8,20 @@ Use this page to choose the task you are doing. You do not need to understand th
 
 If you are repairing or organizing an existing Stage/Scene, start with:
 
-- [Repair or Organize an Existing Stage / Scene](docs/operatorSOP/Repair_Existing_Stage_Scene.md)
+- [Repair or Organize an Existing Stage / Scene](operatorSOP/Repair_Existing_Stage_Scene.md)
 
 ## What Do You Need To Do?
 
-- [Run Folder Alignment](docs/operatorSOP/Run_Folder_Alignment.md)
-- [Repair or organize an existing Stage / Scene](docs/operatorSOP/Repair_Existing_Stage_Scene.md)
-- [Add or verify MSB marker files](docs/operatorSOP/Add_Verify_Marker_Files.md)
-- [Create a new Stage / Sub-stage / Scene documentation folder](docs/operatorSOP/Create_Stage_Substage_Scene_Folder.md)
-- [Align a legacy Setup document to the correct Stage / Scene](docs/operatorSOP/Align_Legacy_Setup_Documents.md)
-- [Publish a current Setup instruction](docs/operatorSOP/Publish_Current_Setup_Instruction.md)
+- [Run Folder Alignment](../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Run_Folder_Alignment.md)
+- [Review the Folder Alignment Worklist](../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Review_Folder_Alignment_Worklist.md)
+- [Repair or organize an existing Stage / Scene](operatorSOP/Repair_Existing_Stage_Scene.md)
+- [Add or verify MSB marker files](operatorSOP/Add_Verify_Marker_Files.md)
+- [Create a new Stage / Sub-stage / Scene documentation folder](operatorSOP/Create_Stage_Substage_Scene_Folder.md)
+- [Align a legacy Setup document to the correct Stage / Scene](operatorSOP/Align_Legacy_Setup_Documents.md)
+- [Publish a current Setup instruction](operatorSOP/Publish_Current_Setup_Instruction.md)
 - [Create or update a field wiring diagram](../../01_LOR_System/01_Preview_Authoring/D_Create_Wiring_Backgrounds..md)
+
+For the procedure index, see [Google Drive Operator Procedures](operatorSOP/README.md).
 
 ## Current Field Systems
 
@@ -45,13 +48,29 @@ The normal team workflow should use those field systems to find current Wiring a
 
 Putting a current field document in `Archive` or `SourceDocs` can prevent the field application from presenting it as current material.
 
+## Documentation Layout
+
+```text
+Google_Drive/
+├── README.md                  this operator/user portal
+├── operatorSOP/
+│   ├── README.md              operator procedure index
+│   └── ...
+├── engineering/
+│   ├── README.md              engineering handoff
+│   └── ...
+└── images/                    Google Drive documentation images
+```
+
+The `images/` folder above contains images used by repository documentation. It is separate from field-content folders such as `Procedures\Setup\images` inside the Google Shared Drive.
+
 ## Engineering
 
 Engineering documentation is intentionally separate from the operator procedures.
 
 Start here only when you need to understand, troubleshoot, validate, or change how the Google Drive integrations work:
 
-- [Google Drive Engineering](docs/engineering/README.md)
+- [Google Drive Engineering](engineering/README.md)
 
 ## If You Are Unsure
 
