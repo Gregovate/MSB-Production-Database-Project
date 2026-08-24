@@ -11,8 +11,8 @@ You do **not** need to understand the parser, Python, SQLite, PostgreSQL, or dat
 | Name Displays and channels correctly | [Prop and Display Naming Conventions](A_Naming_Conventions.md) |
 | Build or update a Preview | [Building a Preview](B_Building_Preview_Howto.md) |
 | Build or update the Master Musical Preview | [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md) |
-| Create a new Scene/Sub-stage documentation folder | [Stage / Sub-stage / Scene Folder Scaffold](../../00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md) |
-| Create or update field wiring images | [Create Wiring Backgrounds](D_Create_Wiring_Backgrounds..md) |
+| Create a new Scene/Sub-stage documentation folder | [Create a New Stage / Sub-stage / Scene Documentation Folder](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Create_Stage_Substage_Scene_Folder.md) |
+| Create or update field wiring images | [Create and Publish a Field Wiring Diagram](D_Create_Wiring_Backgrounds..md) |
 | Get the current approved Preview before editing | [Preview Import Workflow](Preview_Import_Workflow.md) |
 
 ## Important Rules
@@ -28,7 +28,7 @@ G:\Shared drives\MSB Database\UserPreviewStaging\<username>
 - `UserPreviewStaging` is a handoff location. It is **not** the approved master.
 - Use the existing Google Drive Stage/Scene/Display organization. Do not invent a new folder structure from inside LOR.
 - New Stage/Sub-stage/Scene documentation folders must use the complete controlled scaffold.
-- Folders used by FieldWiring or the future Procedure system must have the required `_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt` marker.
+- Folders used by Field Wiring or Procedures must have the required `_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt` markers in the locations defined by the current marker procedure.
 - Do not use `SourceDocs` as a normal LOR background or field-document location.
 
 ## How to Read These Documents
@@ -43,9 +43,9 @@ The technical documents that explain how the parser, Folder Alignment, FieldWiri
 
 ## Related Operator Information
 
-- [Google Drive Document Organization](../../00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md)
-- [MSB Source Folder Marker](../../00_Project_Overview/03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
-- [Stage / Sub-stage / Scene Folder Scaffold](../../00_Project_Overview/04-Stage_Substage_Scene_Folder_Scaffold.md)
+- [Google Drive / Display Folder Operations](../../00_Project_Overview/Google_Drive/README.md)
+- [Add and Verify MSB Display Folder Marker Files](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Add_Verify_Marker_Files.md)
+- [Create a New Stage / Sub-stage / Scene Documentation Folder](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Create_Stage_Substage_Scene_Folder.md)
 
 ## Related Engineering
 
@@ -53,6 +53,7 @@ The technical documents that explain how the parser, Folder Alignment, FieldWiri
 - [Preview Merger](../03_Preview_Merger/README.md)
 - [FormView](../04_FormView/README.md)
 - [FieldWiring Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
+- [Google Drive Engineering](../../00_Project_Overview/Google_Drive/docs/engineering/README.md)
 - [LOR2DB](../../../LOR2DB/README.md)
 
 ## Historical Reference
@@ -61,4 +62,5 @@ The technical documents that explain how the parser, Folder Alignment, FieldWiri
 
 ## Revision History
 
+- 2026-08-23 — Updated operator navigation for the canonical Google Drive operator/engineering split and current Procedures production state.
 - 2026-08-22 — Rewritten as a plain-language operator portal while preserving the current Scene scaffold, marker, Preview staging, and FieldWiring boundaries.
