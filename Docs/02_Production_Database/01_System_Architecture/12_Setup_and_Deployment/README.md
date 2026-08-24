@@ -12,7 +12,7 @@ The operational database/application workflow for scheduling, pick lists, load o
 
 **FieldWiring, Display Scan, and the standalone Procedure application are accepted production baselines.** Procedure is production-operational at `https://my.sheboyganlights.org/procedures/` and uses the shared Field Context resolver plus the existing read-only Google `Display Folders` mount. Do not rediscover or redesign those accepted systems merely to continue Setup/Deployment work.
 
-The next bounded Procedure-related engineering follow-on is **Procedure Display Scan Integration** using the permanent `display_id` already resolved by the existing Display scan hub. Human Procedure-document authoring/alignment and the broader scheduling/pick/load/forklift workflow remain separate work streams.
+The bounded **Procedure Display Scan Integration** UX is now settled and its application-source candidate is implemented on `agent/procedure-scan-action`: the existing Display scan hub gets one **Procedures** button that passes only permanent `display_id` to `/procedures/?display_id=<display_id>`. Setup/Takedown/Inspection selection remains inside the existing Procedure page. Production deployment/regression acceptance of that Scan candidate is still pending through the current Server Management runbook. Human Procedure-document authoring/alignment and the broader scheduling/pick/load/forklift workflow remain separate work streams.
 
 MSB has purchased a **Zebra DS3678-HD cordless ultra-rugged 1-D/2-D scanner kit** for the workshop forklift. It uses the Zebra 3600-series USB cradle and supports USB HID keyboard input. Because this is the **HD (High Density)** variant rather than an ER/XR extended-range model, its actual suitability from the forklift seat must be tested with real MSB Container and Storage Location labels before it is accepted as the final forklift-distance standard. See [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md).
 
@@ -146,9 +146,19 @@ Both systems use the same subsystem-root marker pattern: the resolved structured
 
 ## Scan / Forklift Direction
 
-The permanent Display scan platform is production-operational and resolves `DISP:<display_id>` using permanent Production Database identity. Procedure Display Scan Integration must consume that existing identity contract; no physical Display QR redesign is required.
+The permanent Display scan platform is production-operational and resolves `DISP:<display_id>` using permanent Production Database identity. Procedure Display Scan Integration consumes that existing identity contract; no physical Display QR redesign is required.
 
-The exact operator-facing Procedure action behavior still needs to be confirmed before the scan extension is changed. Do not invent a second resolver, encode Stage/Scene/Google paths in the QR, or make the Display hub depend on Procedure health merely to render a Procedure action.
+The agreed operator-facing Scan behavior is:
+
+```text
+Display scan hub
+    -> Procedures
+        -> /procedures/?display_id=<permanent display_id>
+            -> existing Procedure page
+                -> operator chooses Setup, Takedown, or Inspection
+```
+
+The Scan hub passes only `display_id`, does not duplicate the three Procedure task buttons, and does not call Procedure merely to decide whether the link should render. The source candidate is implemented on `agent/procedure-scan-action` with implementation commit `333f7c20a26e8ed2a0460ddbf309c167bffa2992`; production deployment/acceptance is still pending. Do not invent a second resolver, encode Stage/Scene/Google paths in the QR, or make the Display hub depend on Procedure health merely to render the Procedures action.
 
 Setup is also expected to become a high-volume scan workflow for deployment operations rather than only document lookup.
 
@@ -239,7 +249,7 @@ Already production-operational:
 
 Current bounded follow-on:
 
-- Procedure action behavior from the existing permanent-identity Display scan hub.
+- deploy and accept the implemented one-button Procedure action from the existing permanent-identity Display scan hub.
 
 Separate planned operational work includes:
 
@@ -281,7 +291,7 @@ The standalone Procedure field-access application is accepted production work. D
 
 Current Procedure-related open work is separated into these scopes:
 
-- **Procedure Display Scan Integration** — add the agreed Procedure action behavior to the existing Display scan hub using permanent `display_id`, preserving existing scan actions and failure boundaries;
+- **Procedure Display Scan Integration** — source candidate is implemented as one Display-hub **Procedures** action using permanent `display_id`; remaining work is Directus Scan deployment and regression acceptance through the Server Management safety gate;
 - **Procedure document authoring/alignment** — continue the legacy Setup-document review, alignment, archive, and publication work in the existing Stage/Scene `Display Folders` hierarchy;
 - **Contributor/operator documentation** — finalize the Stage Setup Instruction contributor workflow and the editable-source versus published-PDF relationship where Google Docs remain in use;
 - **additional field acceptance as needed** — complete any broader PC/phone/tablet, print, or offline validation required for the 2026 field workflow; and
@@ -297,28 +307,30 @@ Begin from current `main` and the current responsible runbooks. Do not rediscove
 
 Read first:
 
-1. [Procedure Application README](../../../../Procedures/Application/README.md) — current standalone Procedure application contract and production status;
-2. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current scan platform handoff and Procedure scan resume point;
-3. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary and accepted scan baseline;
+1. [Procedure Application README](../../../../Procedures/Application/README.md) — current standalone Procedure application contract, production status, and Scan entry contract;
+2. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current scan platform handoff and Procedure scan candidate state;
+3. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary, accepted live Scan baseline, and Procedure source candidate;
 4. [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted additive scan integration pattern and failure boundary;
 5. [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) — architecture precedence for Procedure/Field Context;
 6. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md);
 7. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md); and
-8. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment planning.
+8. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment.
 
-### Procedure Display Scan Integration — current bounded engineering task
+### Procedure Display Scan Integration — deployment/acceptance is the current bounded task
 
-The accepted identity handoff is:
+The accepted identity and UX handoff is:
 
 ```text
 existing physical Display QR
     -> DISP:<permanent display_id>
     -> existing /scan/DISP/:key Display hub
-    -> agreed Procedure action
+    -> Procedures
+    -> /procedures/?display_id=<permanent display_id>
     -> existing Procedure application receives permanent display_id
+    -> operator chooses Setup, Takedown, or Inspection
 ```
 
-The Procedure browser already accepts permanent Display identity as an entry input. Before changing Scan, confirm the exact operator-facing action behavior for Setup/Takedown/Inspection rather than inventing new routing or task semantics.
+The source candidate is already implemented on `agent/procedure-scan-action`; implementation commit `333f7c20a26e8ed2a0460ddbf309c167bffa2992`. The next step is not additional architecture reconnaissance: it is the documented Server Management deployment gate and regression acceptance.
 
 This work must not create:
 
