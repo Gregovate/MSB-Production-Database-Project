@@ -11,7 +11,7 @@ You do **not** need to understand the parser, Python, SQLite, PostgreSQL, or dat
 | Name Displays and channels correctly | [Prop and Display Naming Conventions](A_Naming_Conventions.md) |
 | Build or update a Preview | [Building a Preview](B_Building_Preview_Howto.md) |
 | Build or update the Master Musical Preview | [Building the Master Musical Preview](E_Master_Musical_Preview_Howto.md) |
-| Create a new Scene/Sub-stage documentation folder | [Create a New Stage / Sub-stage / Scene Documentation Folder](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Create_Stage_Substage_Scene_Folder.md) |
+| Create a new Scene/Sub-stage documentation folder | [Create a New Stage / Sub-stage / Scene Documentation Folder](../../00_Project_Overview/Google_Drive/operatorSOP/Create_Stage_Substage_Scene_Folder.md) |
 | Create or update field wiring images | [Create and Publish a Field Wiring Diagram](D_Create_Wiring_Backgrounds..md) |
 | Get the current approved Preview before editing | [Preview Import Workflow](Preview_Import_Workflow.md) |
 
@@ -44,8 +44,9 @@ The technical documents that explain how the parser, Folder Alignment, FieldWiri
 ## Related Operator Information
 
 - [Google Drive / Display Folder Operations](../../00_Project_Overview/Google_Drive/README.md)
-- [Add and Verify MSB Display Folder Marker Files](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Add_Verify_Marker_Files.md)
-- [Create a New Stage / Sub-stage / Scene Documentation Folder](../../00_Project_Overview/Google_Drive/docs/operatorSOP/Create_Stage_Substage_Scene_Folder.md)
+- [Add and Verify MSB Display Folder Marker Files](../../00_Project_Overview/Google_Drive/operatorSOP/Add_Verify_Marker_Files.md)
+- [Create a New Stage / Sub-stage / Scene Documentation Folder](../../00_Project_Overview/Google_Drive/operatorSOP/Create_Stage_Substage_Scene_Folder.md)
+- [Folder Alignment](../02_Data_Extraction/Folder_Alignment/README.md)
 
 ## Related Engineering
 
@@ -53,7 +54,7 @@ The technical documents that explain how the parser, Folder Alignment, FieldWiri
 - [Preview Merger](../03_Preview_Merger/README.md)
 - [FormView](../04_FormView/README.md)
 - [FieldWiring Engineering](../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
-- [Google Drive Engineering](../../00_Project_Overview/Google_Drive/docs/engineering/README.md)
+- [Google Drive Engineering](../../00_Project_Overview/Google_Drive/engineering/README.md)
 - [LOR2DB](../../../LOR2DB/README.md)
 
 ## Historical Reference
@@ -62,5 +63,5 @@ The technical documents that explain how the parser, Folder Alignment, FieldWiri
 
 ## Revision History
 
-- 2026-08-23 — Updated operator navigation for the canonical Google Drive operator/engineering split and current Procedures production state.
+- 2026-08-24 — Repaired operator navigation to the final Google Drive and Folder Alignment proof structure.
 - 2026-08-22 — Rewritten as a plain-language operator portal while preserving the current Scene scaffold, marker, Preview staging, and FieldWiring boundaries.
