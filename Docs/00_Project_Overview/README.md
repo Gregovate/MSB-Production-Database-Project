@@ -2,13 +2,14 @@
 
 This area provides the high-level entry points for the MSB Production Database Project.
 
-Operator procedures and engineering documentation are intentionally separated. If you are trying to **do a task**, use the operator portal for that system. If you are trying to **understand, troubleshoot, or change how a system works**, use its engineering documentation.
+Operator procedures and engineering documentation are intentionally separated within subsystems that need both. The Project Overview itself remains a standalone overview/navigation area; it does not receive empty operator/engineering folders merely for consistency.
 
 ## Start Here
 
 - [LOR System Overview](00_LOR_System_Overview.md) — high-level view of the LOR-to-Production-Database workflow.
 - [Production Database System Overview](01_Production_Database_System_Overview.md) — purpose, authority boundaries, permanent identities, and major operational areas.
-- [Google Drive / Display Folder Operations](Google_Drive/README.md) — operator portal for Folder Alignment, Stage/Scene repair, markers, Setup publishing, legacy alignment, and wiring-document work.
+- [Google Drive / Display Folder Operations](Google_Drive/README.md) — operator portal for Stage/Scene folder repair, markers, Setup publishing, legacy alignment, and related document-maintenance work.
+- [Folder Alignment](../01_LOR_System/02_Data_Extraction/Folder_Alignment/README.md) — operator portal for generating and reviewing the read-only Documentation Alignment Worklist.
 
 ## Google Drive / Display Folders
 
@@ -18,17 +19,26 @@ Use:
 
 - [Google Drive / Display Folder Operations](Google_Drive/README.md)
 
-for the actual maintenance tasks.
+for actual Google Drive folder/document maintenance tasks.
 
 ### Engineering
 
 Use:
 
-- [Google Drive Engineering](Google_Drive/docs/engineering/README.md)
+- [Google Drive Engineering](Google_Drive/engineering/README.md)
 
 for filesystem contracts, resolver/path behavior, integration design, and technical handoff material.
 
-The older Google Drive document paths are being retained temporarily as compatibility pointers while current inbound links are repaired.
+The older Google Drive document paths are retained temporarily as compatibility pointers while current inbound links are repaired.
+
+## Folder Alignment
+
+Folder Alignment is a separate subsystem with its own owner boundary:
+
+- [Folder Alignment Operator Portal](../01_LOR_System/02_Data_Extraction/Folder_Alignment/README.md)
+- [Folder Alignment Engineering](../01_LOR_System/02_Data_Extraction/Folder_Alignment/engineering/README.md)
+
+Folder Alignment produces/reviews the worklist. Google Drive procedures own the human folder/document changes made from that worklist.
 
 ## Other Current Engineering References
 
