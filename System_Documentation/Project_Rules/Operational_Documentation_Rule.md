@@ -6,11 +6,11 @@
 | Repository | MSB Production Database Project |
 | Status | CURRENT |
 | Owner | Production documentation owner / administrator |
-| Last Reviewed | 2026-08-23 |
+| Last Reviewed | 2026-08-24 |
 
 ## Purpose
 
-This rule defines Production Database-specific placement, ownership, and discovery rules for operator documentation.
+This rule defines Production Database-specific placement, ownership, discovery, image-asset, migration, and intranet-handoff rules for operator and engineering documentation.
 
 The reusable writing and audience rules live in [`../Standards/Operational_SOP_Standard.md`](../Standards/Operational_SOP_Standard.md). This document owns the Production-specific rules that must not be copied into unrelated repositories.
 
@@ -24,13 +24,14 @@ Examples:
 
 - testing procedures belong with the Testing workflow;
 - labeling and scan procedures belong with the workflow that owns those tasks;
-- Setup/Takedown document-maintenance procedures belong with the Setup/Deployment and Display Folder documentation workflow;
+- Google Drive document-maintenance procedures belong with the Google Drive / Display Folder workflow;
+- Folder Alignment procedures for generating/reviewing the alignment worklist belong with Folder Alignment;
 - LOR operator procedures belong with the LOR workflow they operate;
 - cross-system procedures belong with the business workflow that owns the end-to-end task.
 
 The existing `Docs/02_Production_Database/02_Operational_SOPs/` tree remains valid for the procedures already owned there. It is **not** the mandatory home for every current or future Production operator SOP.
 
-Do not mass-move existing procedures only to make the repository look uniform. Move a document only when ownership, navigation, and link updates are understood.
+Do not mass-move existing procedures only to make the repository look uniform. Move a document only when ownership, navigation, image references, inbound links, and intranet impact are understood.
 
 ## Production Subsystem Documentation Layout
 
@@ -38,18 +39,22 @@ For a Production subsystem or documentation area that contains both operator and
 
 ```text
 <Subsystem>/
-├── README.md
-└── docs/
-    ├── operatorSOP/
-    │   └── <task procedures>.md
-    └── engineering/
-        ├── README.md
-        └── <engineering contracts, designs, handoffs>.md
+├── README.md                  operator/user portal
+├── operatorSOP/
+│   ├── README.md              operator procedure index
+│   └── <task procedures>.md
+├── engineering/
+│   ├── README.md              engineering handoff
+│   ├── Internal_Web_Backbone_Handoff.md
+│   └── <engineering contracts, designs, handoffs>.md
+└── images/                    subsystem-owned repository documentation images
 ```
+
+Create only the branches the subsystem actually needs. A category/overview folder that does not own operator tasks or engineering work does not need empty `operatorSOP/`, `engineering/`, or `images/` directories merely for symmetry.
 
 ### Subsystem `README.md` = operator/user portal
 
-The root `README.md` is the normal user/operator navigation page.
+The root `README.md` is the normal user/operator navigation page when the subsystem has an operator audience.
 
 It should answer questions such as:
 
@@ -60,13 +65,13 @@ It should answer questions such as:
 
 Do not turn the root README into an engineering recovery handoff when the same subsystem has an operator audience.
 
-### `docs/operatorSOP/` = task procedures
+### `operatorSOP/` = task procedures
 
-Put the current operator/contributor task procedures here when the subsystem owns those tasks.
+Put current operator/contributor task procedures here when the subsystem owns those tasks.
 
-These procedures follow the reusable Operational SOP standard and remain plain-language/task-oriented.
+The `operatorSOP/README.md` is the operator procedure index for that subsystem. It may link to a procedure owned by another subsystem, but it must not create a duplicate current authority.
 
-### `docs/engineering/README.md` = engineering handoff
+### `engineering/README.md` = engineering handoff
 
 This is the engineering starting point for Greg, future maintainers, and engineering work sessions.
 
@@ -81,21 +86,95 @@ It should preserve or link to:
 - recovery/resume information; and
 - dated engineering/acceptance evidence where needed.
 
-Technical contracts and implementation explanations belong under `docs/engineering/`, not in the normal operator procedure path.
+Technical contracts and implementation explanations belong under `engineering/`, not in the normal operator procedure path.
 
-### Compatibility during migration
+## Subsystem Image Ownership
+
+Repository documentation images must be owned by the subsystem that uses them.
+
+For converted subsystems, store screenshots, diagrams, and supporting repository-documentation images under:
+
+```text
+<Subsystem>/images/
+```
+
+Do not continue adding unrelated subsystem assets to a global `Docs/images/` bucket merely for convenience.
+
+When converting a subsystem that already uses images:
+
+1. inventory every image reference in the current operator and engineering documents being converted;
+2. identify the actual image file and confirm which subsystem owns it;
+3. move/copy the asset into the owning subsystem's `images/` folder using a stable descriptive filename;
+4. update every current Markdown/reference link that points to the old image location;
+5. verify the rendered/document link after the move;
+6. search for remaining current references to the old image path; and
+7. do not delete a shared old image until all current consumers have been identified and migrated.
+
+If one image is legitimately shared across multiple subsystems, choose one authoritative owner and let the other subsystem link to that asset, or deliberately duplicate only when independent ownership is actually required. Do not create accidental competing copies.
+
+This repository-image rule is separate from runtime/content image folders inside Google Drive such as:
+
+```text
+Procedures\Setup\images
+Procedures\Takedown\images
+```
+
+Those are field-content locations, not Git documentation-asset locations.
+
+## Compatibility During Migration
 
 Existing documentation has many inbound relative links. Do not break those links merely to achieve the target folder layout.
 
 When moving a current authority:
 
 1. create the new canonical document first;
-2. update the most important current portals and links;
-3. leave a short compatibility document at the old path that clearly points to the new current authority when needed;
-4. repair remaining inbound links deliberately; and
-5. remove the compatibility file only after current references no longer depend on it.
+2. move/rehome any owned image assets and repair the document's image links;
+3. update the most important current portals and links;
+4. leave a short compatibility document at the old path that clearly points to the new current authority when needed;
+5. repair remaining inbound links deliberately;
+6. verify the Internal Web Backbone impact; and
+7. remove the compatibility file only after current references no longer depend on it.
 
 A compatibility pointer is not a second authority. It exists only to keep old links useful during migration.
+
+## Internal Web Backbone Handoff Is Required
+
+Every subsystem converted to the operator/engineering documentation structure must include:
+
+```text
+<Subsystem>/engineering/Internal_Web_Backbone_Handoff.md
+```
+
+when the subsystem has operator tasks, portals, application entry points, or search/navigation behavior that `my.sheboyganlights.org` must expose or may already expose.
+
+The handoff must tell `Gregovate/MSB-Internal-Web-Backbone` at minimum:
+
+- the canonical operator portal;
+- current task choices that should be discoverable;
+- stable application entry points that should remain preferred over repository deep links;
+- useful document-control/search metadata;
+- engineering/historical paths that must be excluded from normal operator navigation;
+- old/compatibility links that should not become new intranet dependencies;
+- subsystem image-path implications when relevant; and
+- acceptance criteria for deployed intranet verification.
+
+The source subsystem remains authoritative. The Backbone handoff is an integration contract, not a copied operator manual.
+
+A subsystem documentation conversion is not fully closed until the Backbone state is recorded as one of:
+
+- `PENDING` — handoff exists but Backbone has not implemented it;
+- `IMPLEMENTED` — Backbone source has been updated;
+- `VERIFIED` — the deployed intranet navigation/search result has been checked.
+
+## Documentation Conversion Tracker
+
+Repository-wide conversion must proceed one subsystem at a time after the Google Drive / Folder Alignment proof is accepted.
+
+Track progress in:
+
+[`Documentation_Subsystem_Conversion_Tracker.md`](Documentation_Subsystem_Conversion_Tracker.md)
+
+Do not rely on chat history to remember which subsystem is converted, partially converted, or still legacy.
 
 ## Operator Discovery Through `my.sheboyganlights.org`
 
@@ -130,30 +209,47 @@ When relevant, state:
 
 Do not explain the resolver, database relationships, path parsing, marker-validation implementation, API behavior, or other engineering internals in the operator instructions. Link to the responsible engineering contract instead.
 
-## Google Drive Documentation Target Structure
+## First Proof Conversion — Google Drive and Folder Alignment
 
-The Google Drive / Display Folder documentation is the first area being migrated to the subsystem layout above.
+The first controlled conversion covers two related but separately owned subsystems.
 
-Target:
+### Google Drive / Display Folder Operations
 
 ```text
 Docs/00_Project_Overview/Google_Drive/
 ├── README.md
-└── docs/
-    ├── operatorSOP/
-    │   ├── Run_Folder_Alignment.md
-    │   ├── Repair_Existing_Stage_Scene.md
-    │   ├── Add_Verify_Marker_Files.md
-    │   ├── Create_Stage_Substage_Scene_Folder.md
-    │   ├── Align_Legacy_Setup_Documents.md
-    │   └── Publish_Current_Setup_Instruction.md
-    └── engineering/
-        └── README.md
+├── operatorSOP/
+│   ├── README.md
+│   ├── Repair_Existing_Stage_Scene.md
+│   ├── Add_Verify_Marker_Files.md
+│   ├── Create_Stage_Substage_Scene_Folder.md
+│   ├── Align_Legacy_Setup_Documents.md
+│   └── Publish_Current_Setup_Instruction.md
+├── engineering/
+│   ├── README.md
+│   └── Internal_Web_Backbone_Handoff.md
+└── images/
 ```
 
-The operator portal may link to a task owned by another subsystem rather than duplicate it. For example, the wiring-diagram creation procedure is owned by Preview Authoring / Field Wiring and can be linked from the Google Drive operator portal.
+### Folder Alignment
 
-Existing Google Drive documents at their former paths may remain temporarily as compatibility pointers while inbound links are repaired.
+```text
+Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/
+├── README.md
+├── operatorSOP/
+│   ├── README.md
+│   ├── Run_Folder_Alignment.md
+│   └── Review_Folder_Alignment_Worklist.md
+├── engineering/
+│   ├── README.md
+│   └── Internal_Web_Backbone_Handoff.md
+├── images/
+└── <working implementation files>
+```
+
+The operator portals may link to tasks owned by another subsystem rather than duplicate them. For example, the Google Drive portal links to Folder Alignment for worklist generation/review and to Preview Authoring / Field Wiring for wiring-diagram creation.
+
+Existing documents at former paths may remain temporarily as compatibility pointers while inbound links are repaired.
 
 ## Stage Setup Instructions Are a Separate Field Document Class
 
