@@ -677,12 +677,12 @@ Path resolution must:
 
 ## Related Documents
 
-- [Google Drive Folder Structure](00-Google_Drive.md)
-- [Google Drive Document Organization Procedure](01-Google_Drive_Document_Organization_Procedure.md)
-- [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
-- [Stage / Sub-stage / Scene Folder Scaffold](04-Stage_Substage_Scene_Folder_Scaffold.md)
-- [Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
-- [LOR Preview Parser Architecture](../01_LOR_System/02_Data_Extraction/LOR_Preview_Parser_Architecture.md)
-- [Shared Field Context Resolution Contract](../02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
-- [Procedure System Field Context Handoff](../02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
-- [FieldWiring Engineering Recovery and Compatibility Contract](../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
+- [Google Drive Engineering Overview](Google_Drive_Engineering_Overview.md)
+- [Google Drive / Display Folder Operations](../README.md)
+- [MSB Display Folder Marker Procedure](../operatorSOP/Add_Verify_Marker_Files.md)
+- [Create a New Stage / Sub-stage / Scene Documentation Folder](../operatorSOP/Create_Stage_Substage_Scene_Folder.md)
+- [Folder Alignment Engineering Design](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/engineering/Folder_Alignment_Engineering_Design.md)
+- [LOR Preview Parser Architecture](../../../01_LOR_System/02_Data_Extraction/LOR_Preview_Parser_Architecture.md)
+- [Shared Field Context Resolution Contract](../../../02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
+- [Procedure System Field Context Handoff](../../../02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
+- [FieldWiring Engineering Recovery and Compatibility Contract](../../../02_Production_Database/01_System_Architecture/09_Wiring_System/FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
