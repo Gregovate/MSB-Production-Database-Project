@@ -1,4 +1,7 @@
-from field_context_hierarchy import build_field_hierarchy
+from field_context_hierarchy import (
+    build_field_hierarchy,
+    resolve_display_operational_context,
+)
 
 
 def context(
@@ -168,7 +171,9 @@ def test_stage_binding_scene_collapses_to_stage_context_when_path_has_no_child()
 
     stage = result["stages"][0]
     assert stage["scenes"] == []
-    assert [item["scene_name"] for item in stage["contexts"]] == ["15-Church-CH"]
+    assert [item["scene_name"] for item in stage["contexts"]] == [None]
+    assert [item["scene_uuid"] for item in stage["contexts"]] == [None]
+    assert [item["scope_kind"] for item in stage["contexts"]] == ["Stage / Preview"]
 
 
 def test_scene_child_is_derived_from_path_string_not_drive_enumeration():
@@ -222,7 +227,7 @@ def test_background_filename_with_stage_prefix_is_not_promoted_to_scene():
 
     stage = result["stages"][0]
     assert stage["scenes"] == []
-    assert [item["scene_name"] for item in stage["contexts"]] == ["03-Welcome Area"]
+    assert [item["scene_name"] for item in stage["contexts"]] == [None]
 
 
 def test_legacy_nested_scene_with_short_code_is_retained_when_path_proves_child():
@@ -276,7 +281,135 @@ def test_unprefixed_lor_group_is_context_evidence_not_browse_scene():
 
     stage = result["stages"][0]
     assert stage["scenes"] == []
-    assert [item["scene_name"] for item in stage["contexts"]] == ["Anna"]
+    assert [item["scene_name"] for item in stage["contexts"]] == [None]
+
+
+def test_duplicate_nonformal_lor_scenes_collapse_to_one_whole_stage_context():
+    result = build_field_hierarchy(
+        [
+            raw_stage(
+                54,
+                "24",
+                "Show Background Stage 24 Traditional Christmas",
+                r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC",
+                [
+                    context(
+                        "ChristmasHippo",
+                        stage_key="24",
+                        path=(
+                            r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC"
+                            r"\ChristmasHippo\PreviewBackground\Hippo.jpg"
+                        ),
+                        context_type="Background / Static",
+                        preview_uuid="preview-24-background",
+                        scene_uuid="scene-hippo",
+                    ),
+                    context(
+                        "ChristmasTree",
+                        stage_key="24",
+                        path=(
+                            r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC"
+                            r"\ChristmasTree\PreviewBackground\Tree.jpg"
+                        ),
+                        context_type="Background / Static",
+                        preview_uuid="preview-24-background",
+                        scene_uuid="scene-tree",
+                    ),
+                    context(
+                        "24-Nutcracker-Ornaments",
+                        stage_key="24",
+                        path=(
+                            r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC"
+                            r"\24-Nutcracker-Ornaments\PreviewBackground\Nutcracker.jpg"
+                        ),
+                        context_type="Background / Static",
+                        preview_uuid="preview-24-background",
+                        scene_uuid="scene-nutcracker",
+                    ),
+                    context(
+                        "24-SnowFamily and 10YrStocking",
+                        stage_key="24",
+                        path=(
+                            r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC"
+                            r"\24-SnowFamily and 10YrStocking\PreviewBackground\Snow.jpg"
+                        ),
+                        context_type="Background / Static",
+                        preview_uuid="preview-24-background",
+                        scene_uuid="scene-snow",
+                    ),
+                ],
+            )
+        ]
+    )
+
+    stage = result["stages"][0]
+    assert len(stage["contexts"]) == 1
+    assert stage["contexts"][0]["scene_uuid"] is None
+    assert stage["contexts"][0]["scene_name"] is None
+    assert [scene["label"] for scene in stage["scenes"]] == [
+        "24-Nutcracker-Ornaments",
+        "24-SnowFamily and 10YrStocking",
+    ]
+
+
+def test_display_with_unprefixed_lor_scene_resolves_to_whole_stage_package():
+    shared = raw_stage(
+        54,
+        "24",
+        "Show Background Stage 24 Traditional Christmas",
+        r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC",
+        [
+            context(
+                "ChristmasHippo",
+                stage_key="24",
+                path=(
+                    r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC"
+                    r"\ChristmasHippo\PreviewBackground\Hippo.jpg"
+                ),
+                context_type="Background / Static",
+                preview_uuid="preview-24-background",
+                scene_uuid="scene-hippo",
+            )
+        ],
+    )
+    shared.update({"display_id": 141, "display_name": "TC-ChristmasHippo"})
+
+    selected = resolve_display_operational_context(shared)
+
+    assert selected is not None
+    assert selected["scope_kind"] == "Stage / Preview"
+    assert selected["preview"]["preview_uuid"] == "preview-24-background"
+    assert selected["scene"] is None
+
+
+def test_display_in_formal_scene_resolves_to_entire_scene_package():
+    shared = raw_stage(
+        54,
+        "24",
+        "Show Background Stage 24 Traditional Christmas",
+        r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC",
+        [
+            context(
+                "24-Nutcracker-Ornaments",
+                stage_key="24",
+                path=(
+                    r"G:\Shared drives\Display Folders\24-Traditional Christmas-TC"
+                    r"\24-Nutcracker-Ornaments\PreviewBackground\Nutcracker.jpg"
+                ),
+                context_type="Background / Static",
+                preview_uuid="preview-24-background",
+                scene_uuid="scene-nutcracker",
+            )
+        ],
+    )
+    shared.update({"display_id": 142, "display_name": "TC-Nutcracker-01"})
+
+    selected = resolve_display_operational_context(shared)
+
+    assert selected is not None
+    assert selected["scope_kind"] == "Scene"
+    assert selected["scene"]["scene_uuid"] == "scene-nutcracker"
+    assert selected["scene"]["scene_name"] == "24-Nutcracker-Ornaments"
 
 
 def test_animation_only_rows_without_physical_stage_path_are_excluded():
