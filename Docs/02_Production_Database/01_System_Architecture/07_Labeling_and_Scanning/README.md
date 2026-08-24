@@ -27,7 +27,23 @@ The detailed deployed runtime hash, rollback artifacts, restart/recovery sequenc
 
 The scan hub remains independent of FieldWiring for Display Record, Testing, Container, Work Order, and other existing actions. FieldWiring does not have to be healthy merely for the Display hub to render.
 
-**Procedure is also production-operational independently at `https://my.sheboyganlights.org/procedures/`.** The next bounded scan follow-on is Procedure Display Scan Integration using the same permanent `display_id` identity already resolved by `/scan/DISP/:key`. The exact Scan-hub Procedure action UX must be confirmed from the current Procedure/Scan contracts before code changes; no physical QR redesign, second resolver, Procedure schema, alternate Google hierarchy, or duplicate document registry is implied by this integration.
+**Procedure is also production-operational independently at `https://my.sheboyganlights.org/procedures/`.** The Procedure Display Scan source candidate is implemented on branch `agent/procedure-scan-action` from current `main`. The agreed Scan UX is one additive **Procedures** button on the Display hub:
+
+```text
+/procedures/?display_id=<permanent display_id>
+```
+
+The Scan hub passes only the permanent `display_id`. Setup, Takedown, and Inspection selection remains inside the existing Procedure application, which already presents those three operator task choices. This avoids duplicating Procedure task-selection UI in Scan and does not add a Procedure API/health dependency merely to render the Display hub.
+
+Application-source implementation commit:
+
+```text
+333f7c20a26e8ed2a0460ddbf309c167bffa2992
+```
+
+This source candidate is **not yet a production-runtime acceptance record**. Until the documented Server Management deployment gate is executed and accepted, the current live Scan runtime remains the previously accepted FieldWiring-enabled artifact and hash.
+
+No physical QR redesign, second resolver, Procedure schema, alternate Google hierarchy, or duplicate document registry is part of this integration.
 
 The broader Setup/Deployment scan workflow remains separate engineering scope. High-volume Container and Storage Location scanning is expected during setup season, but the real pull/stage/load/delivery process must be reconstructed before broader scan-platform refactoring or transaction semantics are approved.
 
@@ -44,7 +60,7 @@ The LabelPrintService is an external supporting subsystem. If it is unavailable,
 ## Start Here
 
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Scan/FieldWiring baseline, permanent `display_id` handoff, source-control boundary, failure boundary, acceptance matrix, and deferred regression cases.
-- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, and current scan-extension resume point.
+- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, Procedure source-candidate state, and current scan-extension resume point.
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules.
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) — shared scan-to-Display/hierarchy contract used by Work Orders, FieldWiring, Procedures, Testing, and future field functions.
 - [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md) — shared browser/PDF/offline/currentness rules for field documents reached through the scan/task workflow.
@@ -58,7 +74,7 @@ The operator-facing Production Database procedure should stop at requesting labe
 
 Display-linked documents and field information are not intended to become a generic database document-management system. Their operational purpose is to support QR-based lookup from the physical Display or Container to the information needed in the field. The subsystem that owns the actual content remains authoritative for that content.
 
-A Display scan establishes the permanent Display identity through the existing deployed Directus scan endpoint. The resulting Display scan hub then allows the operator to choose the task they need. Work Orders, FieldWiring, Setup, Takedown, Testing, and future field functions must consume that resolved identity/context rather than maintaining separate QR-resolution logic.
+A Display scan establishes the permanent Display identity through the existing deployed Directus scan endpoint. The resulting Display scan hub then allows the operator to choose the task they need. Work Orders, FieldWiring, Procedures, Testing, and future field functions must consume that resolved identity/context rather than maintaining separate QR-resolution logic. Procedure-specific Setup/Takedown/Inspection task selection remains inside the Procedure application.
 
 For document-style task results, the shared field publication contract defines the common current browser presentation, self-contained PDF/offline direction, visible expiration/currentness metadata, and supersession behavior. The responsible subsystem still owns the actual document/data content and its task-specific expiration interval.
 
@@ -175,19 +191,29 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 ## Resume Development
 
-### Procedure Display Scan Integration — current priority
+### Procedure Display Scan Integration — source candidate ready; deployment/acceptance pending
 
-Standalone Procedure field access and FieldWiring Scan Integration are accepted production baselines. The next bounded scan follow-on is Procedure Display Scan Integration.
+Standalone Procedure field access and FieldWiring Scan Integration are accepted production baselines. Procedure Display Scan Integration now has an application-source candidate on branch `agent/procedure-scan-action`.
 
-Before changing the scan extension:
+Agreed operator behavior:
 
-1. read the current [Setup and Deployment](../12_Setup_and_Deployment/README.md) Procedure/scan handoff;
-2. read the accepted [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) so its deployment, identity, and failure-boundary lessons are preserved;
-3. read [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md);
-4. read the current Procedure application README under `Procedures/Application/README.md` and confirm its existing permanent-`display_id` deep-link behavior;
-5. read the current `MSB-Server-Management` Display Scan Extension Deployment and Recovery runbook before any deployment planning;
-6. verify the exact current `Scan/directus-extension-scan/src/index.js` and `dist/index.js` source before editing; and
-7. confirm the exact operator-facing Procedure action behavior before implementation rather than inventing a new scan flow.
+```text
+Display scan hub
+    -> Procedures
+        -> /procedures/?display_id=<permanent display_id>
+            -> existing Procedure page
+                -> operator chooses Setup, Takedown, or Inspection
+```
+
+The source candidate adds exactly one Display-hub link in both Git-controlled `src/index.js` and `dist/index.js`. It does not call Procedure to decide whether to render the button and does not change any existing Scan route.
+
+Application-source commit:
+
+```text
+333f7c20a26e8ed2a0460ddbf309c167bffa2992
+```
+
+Next step is deployment/acceptance through the current `MSB-Server-Management` Display Scan Extension Deployment and Recovery runbook. Before live replacement, verify the live artifact still matches the documented accepted baseline, create a new timestamped rollback, stage/syntax-check the candidate, and regression-test Display Record, Testing, Container, Work Orders, Field Wiring, manual/camera Scan behavior as applicable, plus the new Procedures action.
 
 Preserve the current physical `DISP:<display_id>` QR identity. Do not add a second resolver, Procedure schema, alternate Google hierarchy, direct Procedure-document URL in the QR, or a Procedure health/API dependency merely to render the Display scan hub.
 

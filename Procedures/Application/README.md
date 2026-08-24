@@ -151,6 +151,42 @@ Result:
 PROCEDURE PRODUCTION DEPLOYMENT: ACCEPTED
 ```
 
+## Display Scan Entry Contract
+
+The Procedure page already owns operator task selection:
+
+```text
+What do you need to do?
+    Setup
+    Takedown
+    Inspection
+```
+
+Its existing deep-link behavior accepts permanent Display identity:
+
+```text
+/procedures/?display_id=<permanent display_id>
+```
+
+and optionally a task parameter when another approved caller has a reason to preselect one:
+
+```text
+/procedures/?display_id=<permanent display_id>&task=Setup
+/procedures/?display_id=<permanent display_id>&task=Takedown
+/procedures/?display_id=<permanent display_id>&task=Inspection
+```
+
+For the current Display Scan integration, the agreed UX is **one `Procedures` button** on the Display scan hub. It passes only `display_id` and leaves Setup/Takedown/Inspection selection inside this existing Procedure page. Scan does not duplicate these three task buttons and does not call the Procedure API merely to decide whether the button should render.
+
+Source candidate branch and implementation commit:
+
+```text
+agent/procedure-scan-action
+333f7c20a26e8ed2a0460ddbf309c167bffa2992
+```
+
+This is an application-source candidate until the Directus Scan deployment/regression gate is completed and accepted. The standalone Procedure service itself does not require redesign or redeployment for this Scan link.
+
 ## Tests
 
 Procedure-specific and shared integration tests live under:
@@ -165,7 +201,7 @@ The final production candidate was accepted together with the complete FieldWiri
 
 The standalone Procedure field-access application is production-operational. Remaining work is separate follow-on scope, including:
 
-- add Procedure actions to the existing Display Scan hub using permanent `display_id` without changing physical QR identity;
+- deploy and accept the additive Display Scan **Procedures** action through the current Server Management Directus Scan safety gate;
 - continue human Procedure-document authoring/alignment/archive work in Google `Display Folders`;
 - complete any broader PC/phone/tablet operator acceptance needed for the 2026 field workflow; and
 - engineer scheduling, pick/load, forklift, Container/Location, and other Setup/Deployment operational workflows separately from Procedure document lookup.
@@ -184,5 +220,6 @@ Read first:
 6. `FieldWiring/Application/field_context_repository.py`
 7. `Gregovate/MSB-Server-Management: docs/server/Procedure_Production_Runtime.md`
 8. `Gregovate/MSB-Server-Management: docs/server/Synology_Protected_Application_Reverse_Proxy.md`
+9. `Gregovate/MSB-Server-Management: docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md` for the pending Scan source-candidate deployment.
 
 Historical dated Procedure acceptance documents in `12_Setup_and_Deployment/` remain valid as records of the engineering stages they describe; when they say deployment had not yet occurred, that statement applies to that historical acceptance stage, not the current production state.

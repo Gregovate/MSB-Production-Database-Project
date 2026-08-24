@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PRODUCTION DEPENDENCY — runtime and Git source boundary documented |
+| Status | CURRENT PRODUCTION DEPENDENCY — Procedure source candidate ready; production deployment pending |
 | Current revision | 2026-08-23 |
 | Owner | MSB Database Administrator |
 | Production host | `msb-prod-db` |
@@ -38,7 +38,9 @@ The current accepted production SHA-256 after FieldWiring integration and the Di
 b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f
 ```
 
-The accepted application/business source is now version-controlled under:
+That hash remains the accepted **live production baseline** until the Procedure-enabled candidate is actually deployed and accepted through the Server Management safety gate.
+
+The accepted application/business source is version-controlled under:
 
 ```text
 Scan/directus-extension-scan/
@@ -61,7 +63,7 @@ Detailed Directus/runtime administration, current hashes, rollback copies, resta
 
 ## Current Route Inventory
 
-Verified routes include:
+Verified production routes include:
 
 ```text
 /scan/
@@ -71,6 +73,8 @@ Verified routes include:
 /scan/DISP/:key/container
 /scan/DISP/:key/work-orders
 ```
+
+The Procedure source candidate does **not** add or replace a Scan route. It adds a Display-hub link to the already-deployed protected Procedure application.
 
 The scan landing page supports camera scanning, QR codes, 1-D barcodes, manual entry, and URL handling.
 
@@ -88,7 +92,7 @@ The physical Display QR must continue to represent the durable Display identity 
 
 ## Current Display Hub Behavior
 
-The current hub independently presents or resolves:
+The currently accepted production hub independently presents or resolves:
 
 - the Directus Display record;
 - the current Display Testing record/status when applicable;
@@ -96,7 +100,9 @@ The current hub independently presents or resolves:
 - active Work Orders; and
 - the accepted Field Wiring action.
 
-Testing, Container, Work Order, and FieldWiring remain separate downstream actions. A failure in one downstream application must not make the basic Display hub or unrelated actions unavailable.
+The Procedure-enabled source candidate adds one independent **Procedures** action without changing those existing actions.
+
+Testing, Container, Work Order, FieldWiring, and Procedure remain separate downstream actions. A failure in one downstream application must not make the basic Display hub or unrelated actions unavailable.
 
 ## Authentication and Public-Origin Boundary
 
@@ -153,7 +159,7 @@ FieldWiring remains a downstream consumer. A FieldWiring outage must not disable
 
 See [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) for the accepted implementation and production evidence.
 
-## Procedure Display Scan Integration — Next Bounded Follow-On
+## Procedure Display Scan Integration — Source Candidate Ready
 
 The standalone Procedure application is production-operational at:
 
@@ -161,11 +167,43 @@ The standalone Procedure application is production-operational at:
 https://my.sheboyganlights.org/procedures/
 ```
 
-Procedure already accepts permanent Display identity as an application entry input and owns its own shared Field Context resolution and Setup/Takedown/Inspection task behavior.
+Procedure already accepts permanent Display identity as an application entry input and already owns its Setup/Takedown/Inspection task-selection UI.
 
-The next bounded scan follow-on is to add the agreed Procedure action behavior to the existing Display hub using the already-resolved permanent `display_id`.
+The agreed Display Scan UX is one additive **Procedures** button:
 
-This follow-on must preserve the same architectural rules proven by FieldWiring:
+```text
+Existing Display QR
+    -> /scan/DISP/:key
+        -> permanent display_id resolved
+            -> existing Display scan hub
+                -> Procedures
+                    -> /procedures/?display_id=<permanent display_id>
+                        -> existing Procedure page
+                            -> operator chooses Setup, Takedown, or Inspection
+```
+
+The Scan hub passes only the permanent `display_id`. It does not duplicate Setup/Takedown/Inspection buttons and does not call the Procedure API merely to determine whether the button should render.
+
+Git-controlled candidate source is on:
+
+```text
+branch: agent/procedure-scan-action
+implementation commit: 333f7c20a26e8ed2a0460ddbf309c167bffa2992
+```
+
+Both candidate files intentionally use the same Git blob:
+
+```text
+Scan/directus-extension-scan/src/index.js
+Scan/directus-extension-scan/dist/index.js
+Git blob: b3fd0e992b22407784e9da0dbc21d371c0d4a483
+```
+
+Compared with the current `main` baseline, each file has exactly one added line: the Procedures link. No existing Scan route or database query is changed.
+
+This is **not yet production acceptance**. The current live artifact remains the accepted hash `b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f` until the Server Management deployment gate verifies the live baseline, creates a new rollback, stages and syntax-checks the candidate, restarts Directus, and completes regression acceptance.
+
+The Procedure follow-on preserves the architectural rules proven by FieldWiring:
 
 - no physical QR change;
 - no second Display resolver;
@@ -173,8 +211,6 @@ This follow-on must preserve the same architectural rules proven by FieldWiring:
 - no Procedure schema or generic document registry merely for scan integration;
 - no Procedure health/API call required just to render the Display hub; and
 - existing Display, Testing, Container, Work Order, and FieldWiring actions remain independently usable if Procedure is unavailable.
-
-The exact operator-facing Procedure action design must be confirmed from the current Procedure application and Setup/Deployment handoff before implementation. Do not invent a new scan workflow merely because Procedure supports multiple tasks.
 
 ## Future Setup/Deployment Scan Platform Boundary
 
@@ -229,11 +265,13 @@ As of 2026-08-23:
 - the Directus public-origin correction is accepted production behavior;
 - the `/scan/` Synology route is production-operational;
 - standalone Procedure field access is production-operational;
-- Procedure Display Scan Integration is the next bounded scan follow-on;
+- the Procedure Display Scan UX is now settled as one **Procedures** button that passes only permanent `display_id` and leaves Setup/Takedown/Inspection selection inside the existing Procedure application;
+- the Git-controlled Procedure-enabled Scan source candidate is implemented on `agent/procedure-scan-action`, with implementation commit `333f7c20a26e8ed2a0460ddbf309c167bffa2992`;
+- production deployment and regression acceptance of that candidate are still pending through the current Server Management runbook;
 - the broader Container/Location Setup/Deployment workflow remains separate engineering scope; and
-- no schema or physical QR change is required merely to begin Procedure scan integration reconnaissance.
+- no schema or physical QR change is part of this bounded integration.
 
-Before changing Scan again, read the current Production Database scan/Procedure handoffs and the Server Management [Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) runbook. Do not rediscover the Directus extension path, runtime hash, restart procedure, `/scan/` proxy, or rollback process from scratch unless the documented runtime is proven wrong.
+Before deploying the candidate, read the current Server Management [Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) runbook. Do not rediscover the Directus extension path, current runtime hash, restart procedure, `/scan/` proxy, or rollback process from scratch unless the documented runtime is proven wrong.
 
 ## Related Documents
 
@@ -243,4 +281,5 @@ Before changing Scan again, read the current Production Database scan/Procedure 
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md)
 - [Wiring System](../09_Wiring_System/README.md)
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
+- [Procedure Application](../../../../../Procedures/Application/README.md)
 - [MSB Server Management — Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md)
