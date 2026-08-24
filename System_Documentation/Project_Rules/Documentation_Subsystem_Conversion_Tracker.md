@@ -46,8 +46,14 @@ A subsystem is not `CONVERTED` until all applicable items are complete:
 
 | Subsystem / Area | Source Status | Images Audit | Backbone Handoff | Backbone State | Notes |
 |---|---|---|---|---|---|
-| Google Drive / Display Folder Operations | IN PROGRESS | COMPLETE — no embedded Markdown images found in current Google Drive engineering overview/path contract/legacy organization procedure; new subsystem `images/` established | EXISTS | PENDING | Operator portal/SOP split created. Old procedure/marker/scaffold paths are compatibility pointers. Engineering authorities still need physical move/link reconciliation. |
-| Folder Alignment | IN PROGRESS | COMPLETE — no embedded Markdown images found in current Folder Alignment engineering design; subsystem `images/` path defined | EXISTS | PENDING | Operator portal, run/review SOPs, engineering portal created. Engineering design still needs physical move behind compatibility pointer. |
+| Google Drive / Display Folder Operations | IN PROGRESS | COMPLETE — no embedded Markdown images found in the current engineering overview, path contract, or converted operator procedures; subsystem `images/` established | EXISTS | PENDING — Backbone issue #2 | Operator portal/SOP split complete. Engineering overview and path contract physically relocated under `engineering/`; old paths are compatibility pointers. Major current portal links repaired. Final validation of relative links inside relocated engineering authorities remains. |
+| Folder Alignment | IN PROGRESS | COMPLETE — no embedded Markdown images found in the current engineering design or converted operator procedures; subsystem `images/` established | EXISTS | PENDING — Backbone issue #2 | Operator portal, run/review SOPs, engineering portal complete. Engineering design physically relocated under `engineering/`; old path is compatibility pointer. Final validation of relative links inside relocated engineering authority remains. |
+
+## Active Backbone Work
+
+- `Gregovate/MSB-Internal-Web-Backbone` issue **#2** — `Integrate converted Google Drive and Folder Alignment operator portals`
+
+Source conversion and live intranet deployment are separate milestones. Do not mark these subsystems `VERIFIED` until the deployed Backbone result is checked.
 
 ## Planned After Proof Is Accepted
 
