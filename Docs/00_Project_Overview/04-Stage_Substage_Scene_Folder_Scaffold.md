@@ -1,36 +1,43 @@
-# Stage / Sub-stage / Scene Folder Scaffold
+# Create a New Stage / Sub-stage / Scene Documentation Folder
+
+| Document Control | Value |
+|---|---|
+| Document Type | Operational SOP |
+| System | Google Shared Drive — Display Folders |
+| Task | Create the standard documentation scaffold for a new Stage, Sub-stage, or Scene |
+| Audience | Production documentation maintainers and Folder Alignment reviewers |
+| Status | CURRENT |
+| Owner | Production documentation owner / administrator |
+| Last Reviewed | 2026-08-23 |
+| Keywords | Stage folder, Scene folder, Sub-stage, scaffold, Google Drive, Display Folders, Wiring, Procedures, PreviewBackground |
 
 ## Purpose
 
-Use this scaffold whenever a new **Stage, formal Sub-stage, or Scene documentation folder** is created in the Google Shared Drive `Display Folders` repository.
+Use this procedure when creating a new **Stage, formal Sub-stage, or Scene documentation folder** in the Google Shared Drive named **Display Folders**.
 
-New Stages are expected to be uncommon. New **Scene** folders are more likely as the physical/documentation organization is refined, so Scene creation is the most common use of this scaffold.
+New Stages are uncommon. New Scene folders are more likely as the physical/documentation organization is refined.
 
-The scaffold provides a complete controlled starting structure so a newly created Scene does not begin as another one-off legacy folder.
+This procedure gives the exact folder structure to create and the marker locations to use. It does not explain the application resolver or database architecture behind that structure.
 
-It does not require existing legacy Stage/Scene roots to be cleaned up immediately. Existing loose files and legacy folders may remain while Folder Alignment work proceeds.
+## Before You Start
 
----
+Do **not** create a Scene folder merely because a Scene exists in Light-O-Rama.
 
-# Before Creating a Scene Folder
+Create a Scene documentation folder when the Scene represents a real shared field/documentation scope, for example when a group of Displays:
 
-Do **not** create a Google Drive Scene folder merely because a Scene exists in Light-O-Rama.
-
-Create a Scene folder when the Scene represents a real shared physical/documentation scope, for example when a group of Displays:
-
-- is installed as one recognizable field assembly;
+- is installed as one recognizable assembly;
 - shares a wiring harness or wiring drawing;
 - shares Setup or Takedown instructions;
 - owns a meaningful common Preview background; or
-- otherwise needs its own durable documentation scope beneath the Stage/Sub-stage.
+- otherwise needs its own durable shared documentation location.
 
-If the LOR Scene exists only for sequencing clarity, keep its documentation at the applicable Stage or Sub-stage instead of creating an unnecessary folder.
+If the LOR Scene exists only for sequencing convenience, keep its documentation at the applicable Stage or Sub-stage instead of creating another folder.
 
----
+If you are unsure whether a new Scene folder is justified, stop and review the Folder Alignment worklist before creating it.
 
-# Scene Folder Naming
+## Folder Naming
 
-Use the current Google Drive path-resolution naming rules.
+Use the current Stage/Scene naming pattern.
 
 Scene directly under a Stage:
 
@@ -49,18 +56,16 @@ Examples:
 ```text
 13-Christmas Story
 21-Sliding Penguins
-07a-<Scene Name>
+07a-Who Forest North
 ```
 
-Do not add the Stage's trailing two-letter folder code to an ordinary Scene name merely to make it resemble the Stage root.
+Do not add the Stage's trailing two-letter Stage code to an ordinary Scene name merely to make it resemble the Stage root.
 
-Once an aligned Stage/Sub-stage/Scene folder is in use, do not rename or move it except as a deliberate coordinated alignment correction.
+Once an aligned Stage/Sub-stage/Scene folder is in use, do not rename or move it as ordinary cleanup.
 
----
+## Create This Folder Structure
 
-# Controlled Scaffold
-
-Use this structure for every newly created Stage, Sub-stage, or Scene documentation root:
+Create the following structure for a new Stage, formal Sub-stage, or Scene documentation root:
 
 ```text
 <Stage / Sub-stage / Scene>/
@@ -102,176 +107,164 @@ Use this structure for every newly created Stage, Sub-stage, or Scene documentat
 
 `Procedures\Inspection` is intentionally unstructured.
 
-There is no generic `Procedures\SourceDocs` root contract. Setup and Takedown each own their own `SourceDocs` folder.
+There is no general `Procedures\SourceDocs` folder. Setup and Takedown each have their own `SourceDocs` folder.
 
-Legacy `Photos\Reference`, `Photos\Setup`, and `Photos\Takedown` folders may still exist in older Stage/Scene trees, but they are not part of the current canonical scaffold. Preserve legacy content until it is deliberately reviewed; do not create those legacy folders in new scopes.
+Do not deliberately create `desktop.ini` or other Windows-generated metadata as part of the scaffold.
 
-`desktop.ini` or other Windows-generated metadata is not part of the controlled scaffold and does not need to be copied deliberately.
+## Marker Locations
 
----
-
-# Marker Placement Rule
-
-The standard marker filename is:
+Use the exact marker filename:
 
 ```text
 _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 ```
 
-The current field-document applications use the same basic guard pattern:
-
-> **mark the resolved structured scope, then mark the application subsystem root. The application selects controlled child branches by folder name without another marker layer.**
-
-## FieldWiring
-
-For FieldWiring, markers are required in:
-
-1. the Stage / Sub-stage / Scene root;
-2. `PreviewBackground` when it is a current controlled LOR/application source; and
-3. `Wiring`.
-
-`Wiring\BackgroundStage` and `Wiring\MusicalStage` are **not separately marked**. The marker on the `Wiring` root guards those published child branches.
-
-## Procedure system
-
-For the Procedure system, markers are required in:
-
-1. the Stage / Sub-stage / Scene root; and
-2. `Procedures`.
-
-The controlled child branches are selected by folder name:
+For a new controlled Stage/Sub-stage/Scene scaffold:
 
 ```text
-Procedures\Inspection
-Procedures\Setup
-Procedures\Takedown
+Stage / Sub-stage / Scene root       YES
+PreviewBackground                    YES when used as a current controlled source
+Procedures                           YES
+Procedures\Inspection               NO
+Procedures\Setup                    NO
+Procedures\Takedown                 NO
+Procedures\Setup\images             NO
+Procedures\Takedown\images          NO
+Wiring                               YES
+Wiring\BackgroundStage              NO
+Wiring\MusicalStage                 NO
+Archive                              NO
+SourceDocs                           NO
+Photos                               NO
 ```
 
-Those task branches do **not** require separate markers.
+Use [Add and Verify MSB Display Folder Marker Files](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md) when you need the full marker checklist.
 
-`Procedures\Setup\images` and `Procedures\Takedown\images` are supporting child folders beneath the marked `Procedures` root and do **not** require separate markers.
+## Folder Use
 
-`SourceDocs` and `Archive` are working/history folders excluded from normal field presentation and are not field-application marker targets unless a future approved design changes their role.
+### `PreviewBackground`
 
-`Photos` is not currently part of the FieldWiring/Procedure application source path and is not marked by this scaffold.
+Use `PreviewBackground` for current images intentionally used as an LOR Preview or Scene background.
 
-Earlier 2026-08-22 wording that required a marker in every Procedure task/image folder is superseded by this subsystem-root marker contract.
+For new work, choose the background from this approved location when practical rather than creating a new LOR reference to a loose legacy image.
 
-See [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md).
+Do not put a new LOR background reference inside `SourceDocs`.
 
----
+### `Photos`
 
-# New Folder vs. Existing Legacy Folder
-
-A **new** Stage/Sub-stage/Scene folder should start with the controlled scaffold above and should not accumulate unrelated loose files at its root.
-
-An **existing** Stage/Sub-stage/Scene root may already contain years of loose files and legacy folders. Do not reorganize those merely to make the old folder look like a new scaffold.
-
-For existing folders:
-
-- preserve the aligned root name;
-- preserve the controlled field-application folder names;
-- add/maintain only the markers required by the applicable application contract;
-- preserve unrelated legacy material until it can be reviewed; and
-- allow applications to ignore material outside the controlled source paths.
-
-This allows gradual cleanup without breaking LOR paths or current field applications.
-
----
-
-# Source Folder Rules
-
-## PreviewBackground
-
-Use `PreviewBackground` for current images intentionally used as LOR Preview/Scene background references.
-
-For new authoring, choose the Scene/Preview `BackgroundFile` from an approved controlled location. Do not create new LOR references into loose legacy material when a controlled source folder is available.
-
-A `PreviewBackground` used as a current controlled source carries its marker.
-
-## Wiring
-
-Published FieldWiring images belong directly in the applicable branch:
-
-```text
-Wiring\BackgroundStage
-Wiring\MusicalStage
-```
-
-The `Wiring` root must be marked. The `BackgroundStage` and `MusicalStage` child branches do **not** require their own marker.
-
-`SourceDocs` is working/source material and is not normal field-facing content.
-
-Do not point a new Scene background into `SourceDocs`. Existing legacy pointers may remain temporarily while alignment work continues, but new authoring should use `PreviewBackground` or a directly published Wiring image.
-
-## Procedures
-
-Published field procedure material belongs directly in the applicable Procedure task branch:
-
-```text
-Procedures\Inspection
-Procedures\Setup
-Procedures\Takedown
-```
-
-The `Procedures` root must be marked. The `Inspection`, `Setup`, and `Takedown` child branches do **not** require their own markers.
-
-Setup/Takedown `images` folders are supporting task-local asset folders and do **not** require separate markers.
-
-`Archive` and `SourceDocs` are not normal field-facing content.
-
-## Photos
-
-`Photos` remains general documentation and is not currently a FieldWiring/Procedure application source folder.
-
-The current canonical photo structure for a new Stage/Sub-stage/Scene is:
+Use:
 
 ```text
 Photos\Current
 Photos\Historical
 ```
 
-Do not recreate legacy `Photos\Setup`, `Photos\Takedown`, or `Photos\Reference` folders as part of a new scaffold.
+for general documentation photos.
 
----
+Do not create the older `Photos\Setup`, `Photos\Takedown`, or `Photos\Reference` folders in a new scaffold.
 
-# New Scene Folder Checklist
+Images used by Setup/Takedown instructions belong in the applicable Procedure `images` folder instead.
 
-When a new Scene documentation folder is approved:
+### `Procedures`
 
-- [ ] Confirm the Scene represents a real physical/documentation scope, not merely sequencing convenience.
-- [ ] Confirm the owning Stage or Sub-stage.
-- [ ] Name the folder using the current `NN-Scene Name` / `NNa-Scene Name` rule.
-- [ ] Create the complete current scaffold, not only the one helper folder needed today.
-- [ ] Add the marker to the Scene root.
-- [ ] Add the marker to `PreviewBackground` when it is a current controlled source.
-- [ ] Add the marker to `Wiring`.
-- [ ] Do **not** add separate FieldWiring markers to `Wiring\BackgroundStage` or `Wiring\MusicalStage`.
-- [ ] Add the marker to `Procedures` when the Procedure subsystem is being prepared/used.
-- [ ] Do **not** add separate markers to `Procedures\Inspection`, `Procedures\Setup`, `Procedures\Takedown`, or their `images` folders.
-- [ ] Do not mark `SourceDocs` or `Archive` as normal field sources.
-- [ ] Do not create a generic `Procedures\SourceDocs` folder.
-- [ ] Do not recreate legacy `Photos\Setup`, `Photos\Takedown`, or `Photos\Reference` folders in new scopes.
-- [ ] Do not rename the standard helper folders.
-- [ ] Put new LOR background references only in approved controlled source locations.
-- [ ] Never use `SourceDocs` as a normal field-document or new LOR background endpoint.
-- [ ] Add local notes to a marker when a known exception or pending alignment item should be visible to future maintainers.
-- [ ] When the approved LOR Scene structure changes, allow the normal parser/snapshot workflow to pick up the change; creating the Drive folder does not itself update the Production Database.
+Put current published field procedures directly in:
 
----
+```text
+Procedures\Inspection
+Procedures\Setup
+Procedures\Takedown
+```
 
-# Simple Rule
+Use the task-local `images` folder for instruction images.
 
-> Create the complete current Stage/Sub-stage/Scene scaffold immediately, then mark the structured scope and each application subsystem root that is actually consumed. `Wiring` guards `BackgroundStage` / `MusicalStage`; `Procedures` guards `Inspection` / `Setup` / `Takedown`. Do not add another marker layer to those fixed child branches.
+Use `Archive` for historical/superseded material and `SourceDocs` for editable working/source files.
 
----
+Do not put a current field PDF inside `Archive` or `SourceDocs`.
+
+### `Wiring`
+
+Put current published wiring images directly in:
+
+```text
+Wiring\BackgroundStage
+Wiring\MusicalStage
+```
+
+Use the branch's `SourceDocs` folder for working/source material.
+
+Do not put the current field wiring image inside `SourceDocs`.
+
+## Procedure
+
+1. Confirm that the new Stage, Sub-stage, or Scene represents a real documentation scope.
+2. Confirm its owning Stage or Sub-stage.
+3. Name the folder using the current naming rule.
+4. Create the complete folder structure shown above.
+5. Add the marker to the new Stage/Sub-stage/Scene root.
+6. Add the marker to `Procedures`.
+7. Add the marker to `Wiring`.
+8. Add the marker to `PreviewBackground` when that folder is being used as a current controlled LOR/application source.
+9. Do **not** add separate markers to the fixed child branches listed above.
+10. Put new current files only in the correct published locations.
+11. Keep working/source files in `SourceDocs` and historical material in `Archive`.
+12. Verify the completed scaffold against the checklist below.
+13. Allow the normal parser/Folder Alignment workflow to pick up any related LOR changes; creating the Google Drive folder does not by itself change LOR or the Production Database.
+
+## New Folder Checklist
+
+- [ ] The new scope is a real field/documentation scope, not only an LOR sequencing convenience.
+- [ ] The owning Stage or Sub-stage is known.
+- [ ] The folder uses the current `NN-Scene Name` or `NNa-Scene Name` rule when it is a Scene.
+- [ ] The complete current scaffold has been created.
+- [ ] The Stage/Sub-stage/Scene root marker is present.
+- [ ] `Procedures` marker is present.
+- [ ] `Wiring` marker is present.
+- [ ] `PreviewBackground` marker is present when that folder is used as a current source.
+- [ ] No extra markers were added to `Setup`, `Takedown`, `Inspection`, `images`, `BackgroundStage`, or `MusicalStage`.
+- [ ] `Archive` and `SourceDocs` are not marked as current field content.
+- [ ] No generic `Procedures\SourceDocs` folder was created.
+- [ ] Old `Photos\Setup`, `Photos\Takedown`, and `Photos\Reference` folders were not recreated.
+- [ ] Current Setup/Takedown PDFs will be placed directly in the task folder.
+- [ ] Current wiring images will be placed directly in the correct Wiring branch.
+- [ ] Working/source material will be kept in `SourceDocs`.
+
+## Existing Legacy Folders
+
+This scaffold is for a **new** controlled Stage/Sub-stage/Scene folder.
+
+An existing folder may contain years of loose files and older folder names. Do not reorganize all of that material merely to make the old folder look like this scaffold.
+
+For an existing folder:
+
+- preserve the aligned root name;
+- preserve current controlled folder names;
+- add or maintain only the markers actually required;
+- preserve unrelated legacy material until it is reviewed; and
+- use the normal document-alignment procedure rather than bulk cleanup.
+
+See [Organize and Publish MSB Display Folder Documentation](01-Google_Drive_Document_Organization_Procedure.md).
+
+## Expected Result
+
+The new Stage/Sub-stage/Scene starts with one complete, predictable documentation structure. Current published Procedure and Wiring files have clear destinations, source/history files have separate locations, and marker files appear only where required.
+
+## If Something Is Wrong
+
+- **Unsure whether this should be a Scene folder:** do not create it yet; review Folder Alignment and the physical field organization.
+- **Folder was created with the wrong name:** stop before adding current files; correct the naming decision through the normal alignment process.
+- **Extra markers were added to child folders:** review the marker procedure and remove/flag the extras only after confirming they are not required by another approved use.
+- **Legacy files already exist in the proposed location:** do not overwrite or bulk-move them. Review the existing material first.
 
 ## Related Documents
 
-- [Google Drive Folder Structure](00-Google_Drive.md)
-- [Google Drive Document Organization Procedure](01-Google_Drive_Document_Organization_Procedure.md)
+### Operator / Contributor
+
+- [Organize and Publish MSB Display Folder Documentation](01-Google_Drive_Document_Organization_Procedure.md)
+- [Add and Verify MSB Display Folder Marker Files](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
+- [Stage Setup Documentation Standard](../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md)
+
+### Related Engineering
+
+- [Google Drive Folder Structure — Engineering Overview](00-Google_Drive.md)
 - [Google Drive Path Resolution Contract](02-Google_Drive_Path_Resolution_Contract.md)
-- [MSB Database Source Folder Marker — Operator Procedure](03-MSB_DB_Source_Folder_Marker_Operator_Procedure.md)
 - [Folder Alignment Engineering Design](../01_LOR_System/02_Data_Extraction/Folder_Alignment/Folder_Alignment_Engineering_Design.md)
-- [Procedure System Field Context Handoff](../02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
-- [Building the Master Musical Preview](../01_LOR_System/01_Preview_Authoring/E_Master_Musical_Preview_Howto.md)
