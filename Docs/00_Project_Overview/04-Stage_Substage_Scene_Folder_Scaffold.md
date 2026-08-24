@@ -6,7 +6,7 @@ It is **not** the current operator authority.
 
 ## Current Procedure
 
-- [Create a New Stage / Sub-stage / Scene Documentation Folder](Google_Drive/docs/operatorSOP/Create_Stage_Substage_Scene_Folder.md)
+- [Create a New Stage / Sub-stage / Scene Documentation Folder](Google_Drive/operatorSOP/Create_Stage_Substage_Scene_Folder.md)
 
 ## Google Drive Operator Portal
 
@@ -16,6 +16,6 @@ It is **not** the current operator authority.
 
 For technical path/classification/application behavior, use:
 
-- [Google Drive Engineering](Google_Drive/docs/engineering/README.md)
+- [Google Drive Engineering](Google_Drive/engineering/README.md)
 
-This compatibility file may be removed after current inbound links have been repaired.
+Do not add new links to this compatibility file. Link to the current procedure or portal above.
