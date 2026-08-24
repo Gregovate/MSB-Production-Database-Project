@@ -114,7 +114,7 @@ Putting a current field document in the wrong support folder can prevent the fie
 - [Publish a Current Setup Instruction](Publish_Current_Setup_Instruction.md)
 - [Add and Verify MSB Display Folder Marker Files](Add_Verify_Marker_Files.md)
 - [Create a New Stage / Sub-stage / Scene Documentation Folder](Create_Stage_Substage_Scene_Folder.md)
-- [Create and Publish a Field Wiring Diagram](../../../../../01_LOR_System/01_Preview_Authoring/D_Create_Wiring_Backgrounds..md)
+- [Create and Publish a Field Wiring Diagram](../../../../01_LOR_System/01_Preview_Authoring/D_Create_Wiring_Backgrounds..md)
 
 ## Expected Result
 
