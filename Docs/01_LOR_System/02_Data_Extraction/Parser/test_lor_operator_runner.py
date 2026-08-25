@@ -79,6 +79,15 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("ConfigureIngest", source)
         self.assertIn("postgres-ingest-password.dpapi", source)
         self.assertIn("LOR_INGEST_PG_PASSWORD", source)
+        self.assertIn("PrintServerUnattended", source)
+        self.assertIn("New-ScheduledTaskTrigger -AtStartup", source)
+        self.assertIn("$trigger.Delay = 'PT1M'", source)
+        self.assertIn("-LogonType Interactive", source)
+        self.assertIn("-Password $taskPassword", source)
+        self.assertIn("-RunLevel Highest", source)
+        self.assertIn("PRINT-SERVER\\Print Service", source)
+        self.assertIn("192.168.5.56", source)
+        self.assertIn("192.168.5.55", source)
 
     def test_http_access_log_uses_stdout_not_stderr(self) -> None:
         """A successful request must not become a PowerShell native error."""
