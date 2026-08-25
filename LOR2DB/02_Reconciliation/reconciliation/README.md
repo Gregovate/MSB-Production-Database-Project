@@ -11,8 +11,8 @@ change, or merely reports evidence.
 | Path | Contents | Execution rule |
 |---|---|---|
 | `current_procedures/` | Canonical standalone P1, P2, P3, and P4 definitions matching the latest accepted migration chain | Inspection or explicitly authorized repair only; these files do not call promotion |
-| `migrations/` | Immutable installation history `0011` through `0036` | Run only the specifically authorized next migration; never rerun the folder as a batch |
-| `validation/` | Validation `10` through `31` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `migrations/` | Immutable installation history `0011` through `0038` | Run only the specifically authorized next migration; never rerun the folder as a batch |
+| `validation/` | Validation `10` through `33` | Follow each file's header; several are transaction-wrapped rollback tests |
 | `operator_queries/preflight/` | Read-only latest-ingest reports `01` through `09` | Run individually; no operator-supplied `import_run_id` |
 | `incidents/` | Production incident report and its incident-specific forensic SQL | Historical evidence; not part of routine reconciliation |
 
@@ -43,6 +43,9 @@ is authoritative for the named object only.
 | Database object | Originally installed | Current definition | Validation |
 |---|---|---|---|
 | `ops.f_build_lor_reconciliation_stage_candidates(bigint)` | `migrations/0015_create_reconciliation_safe_p1_stage_promotion.sql` | `migrations/0023_use_preview_manifest_for_stage_bindings.sql` | `validation/19_preview_manifest_stage_binding_validation.sql` |
+| `lor_snap.v_display_reconciliation_source` | `migrations/0011_create_lor_display_reconciliation_preflight_v7.sql` | `migrations/0038_allow_spare_to_display_activation.sql` | `validation/33_spare_to_display_activation_validation.sql` |
+| `ops.v_lor_display_reconciliation` | `migrations/0011_create_lor_display_reconciliation_preflight_v7.sql` | `migrations/0038_allow_spare_to_display_activation.sql` | `validation/33_spare_to_display_activation_validation.sql` |
+| `ops.f_start_lor_display_reconciliation(text)` | `migrations/0014_create_lor_reconciliation_decision_layer.sql` | `migrations/0038_allow_spare_to_display_activation.sql` | `validation/33_spare_to_display_activation_validation.sql` |
 
 ## Operator preflight suite
 
@@ -67,7 +70,7 @@ is retained only as incident evidence. It is not step 8A of the normal workflow.
 
 ## Migration and validation status
 
-The current installation chain is `0011` through `0036`.
+The current installation chain is `0011` through `0038`.
 Migration `0029` must be revision
 `2026-08-05-true-noop-reconciliation-writes-v4`; its corresponding validation
 is `validation/25_true_noop_reconciliation_write_validation.sql`. Migration
@@ -93,6 +96,15 @@ Migration `0036` completes the incident repair by moving the existing Mega Star
 permanent Scene from Stage 05 to the distinct Stage 05a identity. It changes no
 snapshot or frozen reconciliation evidence and is paired with
 `validation/31_complete_stage05a_scene_repair_validation.sql`.
+Migration `0037` adds grouped-DMX source-row detail without changing permanent
+Display identity and is paired with
+`validation/32_dmx_source_detail_validation.sql`.
+Migration `0038` supports both normal channel lifecycle directions: placing a
+SPARE into service as a physical Display and returning a recycled Display
+channel to SPARE. SPARE/PHANTOM evidence remains excluded and cannot contribute
+to physical UUID/name duplicate counts, occurrence evidence, identity
+components, physical decision groups, or non-active Display classifications. It is paired with
+`validation/33_spare_to_display_activation_validation.sql`.
 
 Do not infer that a numbered validation is harmless from its filename alone.
 Read its header. In particular,
