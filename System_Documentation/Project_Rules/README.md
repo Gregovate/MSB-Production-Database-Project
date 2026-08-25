@@ -7,6 +7,7 @@ Reusable rules that should apply across multiple repositories belong under [`../
 ## Current Project Rules
 
 - [Repository Change Workflow](Repository_Change_Workflow.md) — requires refreshing current remote `main`, reviewing the latest affected files, and resolving stale-branch/concurrent-work issues before changing code, schema, configuration, or controlled documentation.
+- [Issue Management and Closeout Rule](Issue_Management_and_Closeout_Rule.md) — defines when a separate GitHub issue is warranted, requires durable discoveries to be promoted into controlled documentation rather than left only in issues/chat, and makes issue review/closure part of project and sub-project closeout.
 - [Production Operational Documentation Rule](Operational_Documentation_Rule.md) — defines Production-specific SOP ownership, `my.sheboyganlights.org` discovery, Display Folder procedure boundaries, and the rule that the existing central SOP tree is not the mandatory home for every operator procedure.
 - [Stage Setup Documentation Standard](Stage_Setup_Documentation_Standard.md) — governs how Stage/Scene setup instructions relate to the established Google Shared Drive structure, controlled templates, Production Database identity, QR resolution, and the `my.sheboyganlights.org` presentation layer.
 
