@@ -62,9 +62,10 @@ Complete the following lessons in order.
 | [10 — Respond to Review Comments](10_Respond_to_Review_Comments.md) | Learn how to respond to review comments and update an existing Pull Request. |
 | [11 — Markdown Quick Reference](11_Markdown_Quick_Reference.md) | A handy reference for the Markdown formatting used throughout the project. |
 | [12 — Common Problems and How to Fix Them](12_Common_Problems_and_How_to_Fix_Them.md) | Solutions to the most common questions and problems encountered by new contributors. |
-| [13 — Working with Screenshots](13_Working_with_Screenshots.md) | Learn how to capture, name, store, and reference screenshots using the shared `Docs/images` folder. |
+| [13 — Working with Screenshots](13_Working_with_Screenshots.md) | Learn how to capture, name, store, size, replace, and preview screenshots using subsystem-owned image folders. |
 | [14 — Visual Reference Guide](14_Visual_Reference_Guide.md) | Screenshots and visual examples of the Visual Studio Code and GitHub interface used throughout this training. |
 | [15 — Glossary](15_Glossary.md) | Definitions of common Git, GitHub, Visual Studio Code, and Markdown terms used in the MSB Documentation Project. |
+| [16 — Recommended VS Code Extensions](16_Recommended_VSCode_Extensions.md) | Tested or commonly used VS Code extensions and their MSB-specific settings, starting with Paste Image. |
 
 ---
 
