@@ -1,34 +1,69 @@
-# Office PC Runner Operations and Disaster Recovery
+# LOR Runner Host Operations and Disaster Recovery
 
 | Document control | Value |
 |---|---|
 | Repository path | `LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md` |
 | Document type | Engineering operations and recovery runbook |
-| Status | CURRENT |
+| Status | CURRENT — temporary host pending controlled PRINT-SERVER transfer |
 | Owner | MSB Database Administrator |
-| Initial release / current revision | 2026-08-17 / 2026-08-17 |
+| Initial release / current revision | 2026-08-17 / 2026-08-25 |
 
 ## Revision History
 
 | Date | Change |
 |---|---|
+| 2026-08-25 | Recorded the Office Desktop as a temporary/test host and PRINT-SERVER as the approved permanent production host; added transfer prerequisites and acceptance boundary. |
 | 2026-08-17 | Initial controlled runbook for installation, restart, credential recovery, network failure, and replacement-PC transfer. |
 
 ## Purpose
 
-This runbook defines the Office PC dependency behind the browser-operated LOR
-parser, version checker, and PostgreSQL ingest. It covers normal status and
-restart actions, Windows recovery, credential recovery, and transfer to a
-replacement computer.
+This runbook defines the Windows runner-host dependency behind the
+browser-operated LOR parser, version checker, and PostgreSQL ingest. It covers
+the current temporary Office Desktop deployment, normal status and restart
+actions, Windows recovery, credential recovery, and controlled transfer to the
+approved permanent PRINT-SERVER host.
 
 This is not a normal operator procedure. Authorized operators use the LOR2DB
 website. Use this document only to maintain or recover the engineering service
 boundary behind that website.
 
+## Approved Host Transition — Not Yet Deployed
+
+The Office Desktop deployment is now classified as temporary/test
+infrastructure. It is not the accepted permanent production host.
+
+```text
+Current temporary host: MSB-OFFICE-PC (192.168.5.55)
+Approved permanent host: PRINT-SERVER (192.168.5.56)
+Permanent task account: PRINT-SERVER\Print Service
+Transfer status: PLANNED — NOT YET INSTALLED OR ACCEPTED
+```
+
+On 2026-08-25, closing the interactive PowerShell window that owned the Office
+Desktop runner stopped TCP 8791. The LOR2DB dashboard correctly reported the
+runner unavailable while the Linux API, PostgreSQL snapshot 54, and
+reconciliation state remained intact. This confirmed that the Office Desktop
+availability model is unsuitable for permanent production operation.
+
+The production target is a separate, unattended PRINT-SERVER Scheduled Task.
+It must start without an interactive Windows login, recover after reboot, and
+remain isolated from the existing `MSB Label Service` process, task, working
+directory, Python environment, credentials, logs, and printer recovery.
+
+This section records a hosting decision, not a completed deployment. Until the
+cutover acceptance gates pass, Linux remains configured for the temporary
+Office Desktop runner and the website may report the runner offline when that
+temporary listener is stopped.
+
+The PRINT-SERVER host/runtime prerequisites and dual-workload isolation gates
+are controlled by the
+[Print Server Runtime Runbook](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Print_Server_Runtime_Runbook.md).
+
 ## Dependency Summary
 
-The production LOR2DB application spans two computers and the shared Google
-Drive:
+The currently deployed LOR2DB application spans two computers and the shared
+Google Drive. This diagram describes the temporary Office Desktop deployment,
+not the approved permanent target:
 
 ```text
 Authenticated browser
@@ -58,12 +93,12 @@ down. The parser/version/ingest controls are unavailable, but an already
 committed snapshot and an already-started reconciliation remain on the Linux
 and PostgreSQL side.
 
-## Production Components
+## Current Temporary Office Desktop Components
 
 | Component | Production requirement |
 |---|---|
-| Windows host | Designated Office PC; current address `192.168.5.55` |
-| Windows account | Greg's logged-in account; owns the mapped `G:` drive and DPAPI secrets |
+| Windows host | Temporary Office Desktop host; current address `192.168.5.55` |
+| Windows account | Greg's logged-in account; owns the current mapped `G:` drive and DPAPI secrets |
 | Repository | Current reviewed `main` checkout with a working `.venv` |
 | Launcher | Repository-root `run_lor_runner.ps1` |
 | Scheduled Task | `MSB LOR Operator Runner`, triggered at that user's logon |
@@ -238,6 +273,43 @@ The shared `runner-state.json`, approved manifest, preview folders, parser
 reports, and SQLite output remain recoverable because they live on the Shared
 Drive. Do not initialize a replacement runner state over the existing file.
 
+### PRINT-SERVER transfer gate
+
+The generic replacement procedure below describes the existing
+logged-in-user runner design. It must **not** be executed unchanged for the
+approved PRINT-SERVER transfer.
+
+Before deploying to `PRINT-SERVER`:
+
+1. Verify a stable read/write path to the approved preview folders,
+   `runner-state.json`, compatibility manifests, review records, and SQLite
+   output from the `PRINT-SERVER\Print Service` noninteractive task context.
+   A `G:` mapping visible only in an interactive desktop session is not
+   sufficient.
+2. Establish a separate LOR runner working directory and Python environment.
+   Do not install into `C:\MSB_LabelService`, alter its Python dependencies, or
+   reuse its logs or configuration.
+3. Update and test `run_lor_runner.ps1` so `Install` can create the approved
+   at-startup, run-whether-logged-on-or-not task under the permanent Print
+   Service account. The current launcher intentionally creates an at-logon
+   interactive task and therefore does not yet meet this production target.
+4. Use the reserved PRINT-SERVER address `192.168.5.56` for the listener and
+   restrict inbound TCP 8791 to `192.168.5.9`.
+5. Create new DPAPI-protected runner and PostgreSQL credentials under the
+   permanent task account. Existing Office Desktop DPAPI files are not
+   portable.
+6. Back up the Linux pairing environment, then re-pair it to
+   `http://192.168.5.56:8791` only when the new runner is ready for controlled
+   cutover.
+7. Require local health, Linux API-to-runner health, dashboard availability,
+   controlled parser validation, dual-task reboot recovery, and an unaffected
+   physical Label Print Service test before disabling the Office Desktop
+   runner.
+
+The PRINT-SERVER host facts and workload-isolation requirements are maintained
+in the
+[Print Server Runtime Runbook](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Print_Server_Runtime_Runbook.md).
+
 ### Transfer procedure
 
 1. Stop the old runner after confirming no parser or ingest is running:
@@ -372,7 +444,8 @@ PY
 
 | Symptom | Likely boundary | Safe action |
 |---|---|---|
-| Dashboard says runner unavailable after reboot | No interactive logon or `G:` not restored | Sign in, restore `G:`, then run `Status` |
+| Temporary Office Desktop runner is unavailable after reboot | No interactive logon or `G:` not restored | Sign in, restore `G:`, then run `Status`; do not represent this as the permanent production design |
+| PRINT-SERVER task starts but LOR state/source paths are unavailable | Headless task cannot access a user-session Google Drive mapping | Stop the transfer; establish and verify a durable noninteractive path before pairing Linux or disabling the old runner |
 | Scheduled Task is `Ready`, no listener exists | Task exited during prerequisite or credential check | Review service log, fix the named prerequisite, run `Start` |
 | Port 8791 belongs to an unrelated process | Listener conflict | Do not kill it through the launcher; identify and resolve the conflict |
 | Local health passes but Linux times out | Firewall, wrong runner IP, or network path | Verify Private profile, firewall remote address, listener address, and Linux `LOR_RUNNER_URL` |
@@ -402,3 +475,4 @@ PY
 - [LOR Parser and Compatibility Tools](../../Docs/01_LOR_System/02_Data_Extraction/Parser/README.md)
 - [LOR2DB Ingest](../01_Ingest/README.md)
 - [LOR Production Import and Reconciliation Procedure](../02_Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md)
+- [PRINT-SERVER Runtime Runbook](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Print_Server_Runtime_Runbook.md)

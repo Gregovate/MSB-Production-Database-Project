@@ -25,7 +25,7 @@ For production reconciliation procedures and recovery guidance, go to [Reconcili
 - [Run the repeatable parser, approve its output, and ingest it from the web interface](01_Ingest/README.md)
 - [Run or understand reconciliation](02_Reconciliation/README.md)
 - [Work on the LOR2DB application](Application/README.md)
-- [Install, restart, or recover the Office PC runner](Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
+- [Install, restart, recover, or transfer the LOR runner](Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
 - [View and understand reconciliation reports](03_Reporting/README.md)
 
 ## Folder Guide

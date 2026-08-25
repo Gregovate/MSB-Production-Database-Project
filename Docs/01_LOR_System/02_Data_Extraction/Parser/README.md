@@ -47,11 +47,20 @@ indicate a parser contract change. A New LOR candidate remains fully strict:
 changing any reviewed candidate file after Version Check invalidates that check
 and requires it to be rerun.
 
-The production runner task uses the logged-in Greg account because that Windows
-session owns the mapped `G:` drive. Screen locking does not stop the task. After
-a reboot, the runner remains unavailable until Greg signs in and Google Drive
-restores `G:`; the website reports the runner as unavailable without affecting
-command-line parser use or PostgreSQL.
+The current Office Desktop runner task uses the logged-in Greg account because
+that Windows session owns the mapped `G:` drive. Screen locking does not stop
+the task. Closing its interactive runner window, logging out, or rebooting can
+leave the website runner unavailable without affecting PostgreSQL or an
+already committed snapshot.
+
+That Office Desktop deployment is temporary/test infrastructure. The approved
+permanent host is `PRINT-SERVER` (`192.168.5.56`) under a separate unattended
+Scheduled Task. The transfer is not yet deployed. Before cutover, the
+`PRINT-SERVER\Print Service` task context must have durable headless access to
+the approved preview/state/output paths, and the runner launcher must support
+the accepted at-startup noninteractive task model. Do not disable the Office
+Desktop listener or re-pair Linux until the controlled transfer acceptance
+gates pass.
 
 See:
 
@@ -61,4 +70,4 @@ See:
 - [Approved-version maintenance rule](../LOR_Approved_Version_Maintenance_Compatibility_Rule_2026-08-25.md)
 - [SQLite output contract](../LOR_SQLite_Output_Database_Structure.md)
 - [LOR2DB ingest handoff](../../../../LOR2DB/01_Ingest/README.md)
-- [Office PC runner operations and disaster recovery](../../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
+- [Runner host transition, operations, and disaster recovery](../../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
