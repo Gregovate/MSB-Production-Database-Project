@@ -10,66 +10,82 @@ Many MSB procedures include screenshots to help explain each step.
 
 A good screenshot is often easier to understand than several paragraphs of text.
 
-This guide explains how screenshots are used throughout the MSB Documentation Project.
+This guide explains how screenshots are stored, named, referenced, previewed, and replaced in the current MSB documentation structure.
+
+For the tested Visual Studio Code extension that can automate screenshot saving and insertion, see:
+
+[16 — Recommended VS Code Extensions](16_Recommended_VSCode_Extensions.md)
 
 ---
 
 # Where Screenshots Are Stored
 
-All screenshots and graphics used by the documentation are stored in one shared folder.
+The MSB documentation no longer assumes one global image folder for every subsystem.
+
+Converted documentation subsystems own their repository documentation images in a local `images` folder.
+
+Example:
 
 ```text
-Docs/
-└── images/
+Scanning/
+├── images/
+│   ├── README.md
+│   └── Scan_Home_Page.png
+├── README.md
+├── QR_Code_Types_and_Meanings.md
+├── Set_Up_Phone_or_Tablet_for_Scanning.md
+├── Use_Scan_Manually.md
+└── What_To_Do_After_You_Scan.md
 ```
 
-There is only one **images** folder for the entire documentation project.
+Use the image folder owned by the subsystem you are editing.
 
-Do **not** create additional Images folders inside other documentation folders unless instructed by the project administrator.
+Do **not** place new images into the older shared `Docs/images/` folder merely because older documentation still references it. Some legacy documentation has not yet been converted, and its existing image references should remain intact until that subsystem is deliberately reviewed.
 
 ---
 
-# Why We Use One Images Folder
+# Why Images Are Owned by the Subsystem
 
-Using one shared image folder provides several advantages.
+Keeping documentation images with the subsystem that uses them makes ownership clear and keeps future documentation moves safer.
 
-* Images are easier to locate.
-* Duplicate copies are avoided.
-* Updating an image automatically updates every document that uses it.
-* The project stays organized.
+This helps contributors understand:
+
+* which documentation owns the image;
+* which images should move if a subsystem is reorganized;
+* which images are current versus legacy; and
+* which image paths must be preserved when documentation is published through another presentation system.
+
+Do not duplicate the same image into several subsystem folders unless there is a documented reason for each subsystem to own its own copy.
 
 ---
 
 # Supported Image Formats
 
-For most documentation, use:
+For most documentation screenshots, use:
 
-* PNG (.png)
+* PNG (`.png`)
 
-PNG provides excellent quality for screenshots and diagrams.
+PNG provides excellent quality for user-interface screenshots and diagrams.
+
+JPEG (`.jpg`) may be used for photographs when appropriate.
 
 Avoid using screenshots saved as:
 
 * BMP
 * TIFF
 
-JPEG (.jpg) may be used for photographs if necessary.
-
 ---
 
 # Taking a Screenshot
 
-Windows provides several ways to capture a screenshot.
+A simple Windows method is:
 
-One simple method is:
+1. Press **Windows + Shift + S**.
+2. Select only the area needed for the procedure.
+3. Copy the captured image to the clipboard.
+4. Save or paste the image into the subsystem-owned `images` folder.
 
-1. Press **Windows + Shift + S**
-2. Select the area you want to capture.
-3. Save the image.
-
-Crop the image so that only the important information is shown.
-
-Large screenshots containing unnecessary information make documents harder to read.
+Crop the screenshot so it shows the information the contributor or operator needs without unnecessary browser chrome, desktop background, or unrelated application content.
 
 ---
 
@@ -77,21 +93,20 @@ Large screenshots containing unnecessary information make documents harder to re
 
 A good screenshot should:
 
-* Show only the important part of the screen.
-* Be easy to read.
-* Have a reasonable size.
-* Avoid unnecessary desktop background.
-* Avoid personal information.
+* show only the important part of the screen;
+* be easy to read;
+* have a reasonable display size;
+* avoid unnecessary desktop background or unrelated browser tabs; and
+* avoid personal or confidential information.
 
-Before saving a screenshot, check for:
+Before adding a screenshot, check for:
 
-* Email addresses
-* Passwords
-* Personal information
-* Private project information
-* Browser tabs unrelated to the procedure
-
-Remove or hide anything that should not become part of the documentation.
+* passwords;
+* private account information;
+* personal email or contact information that is not intended for documentation;
+* unrelated browser tabs;
+* confidential project information; and
+* other material that should not become part of the repository.
 
 ---
 
@@ -102,16 +117,10 @@ Use descriptive filenames.
 Good examples:
 
 ```text
-github-sign-in-page.png
-
+Scan_Home_Page.png
 vscode-open-folder.png
-
 vscode-source-control.png
-
-vscode-markdown-preview.png
-
 preview-authoring-folder.png
-
 directus-login-screen.png
 ```
 
@@ -119,172 +128,150 @@ Poor examples:
 
 ```text
 image1.png
-
 picture.png
-
 new.png
-
 screenshot.png
-
 copy.png
 ```
 
-Someone should be able to understand what an image contains simply by reading its filename.
+Someone should be able to understand approximately what an image contains by reading its filename.
 
----
-
-# File Naming Guidelines
-
-Use:
-
-* lowercase letters
-* numbers when appropriate
-* hyphens between words
-
-Avoid:
-
-* spaces
-* special characters
-* long filenames
-
----
-
-# Saving the Image
-
-Save every documentation screenshot into:
-
-```text
-Docs/images/
-```
-
-Do not store screenshots on your Desktop or inside unrelated folders.
+Avoid spaces and special characters in image filenames.
 
 ---
 
 # Referencing an Image
 
-Markdown uses the following format:
+If the Markdown file and the `images` folder are in the same subsystem folder, a standard Markdown image reference is:
 
 ```markdown
-![Image Description](../images/example-image.png)
+![MSB Scan home page](images/Scan_Home_Page.png)
 ```
 
-The text inside the square brackets is called **alternative text**.
+The text inside the square brackets is **alternative text**. It should briefly describe what the image shows.
 
-It briefly describes the image.
+Alternative text is useful for accessibility and remains useful if the image cannot be displayed.
+
+---
+
+# Controlling Display Size
+
+Plain Markdown does not provide a consistent standard for image width across all renderers.
+
+When a screenshot needs a controlled display width, MSB documentation may use an HTML image element inside the Markdown document.
 
 Example:
 
-```markdown
-![Visual Studio Code Welcome Screen](../images/vscode-welcome-screen.png)
+```html
+<img src="images/Scan_Home_Page.png" alt="MSB Scan home page" width="600">
 ```
+
+This keeps the original PNG at full quality while controlling how large it appears in the rendered document.
+
+The tested Paste Image configuration in [16 — Recommended VS Code Extensions](16_Recommended_VSCode_Extensions.md) can insert this pattern automatically so contributors do not have to type it manually for every screenshot.
 
 ---
 
 # Understanding Relative Paths
 
-Markdown links images relative to the document's location.
+Image references are relative to the Markdown file that contains them.
 
-Example:
-
-If your document is located here:
+For this structure:
 
 ```text
-Docs/
-└── 00_Contributing/
-    └── 13_Working_with_Screenshots.md
+Scanning/
+├── images/
+│   └── Scan_Home_Page.png
+└── Use_Scan_Manually.md
 ```
 
-and the image is located here:
+the image path is:
 
 ```text
-Docs/
-└── images/
-    └── vscode-source-control.png
+images/Scan_Home_Page.png
 ```
 
-the correct image reference is:
+If a Markdown file is in a nested folder, the correct relative path may be different.
 
-```markdown
-![Source Control](../images/vscode-source-control.png)
-```
-
-The `..` means:
-
-"Go up one folder."
+Do not guess. Preview the document and verify the image displays correctly.
 
 ---
 
-# Documents in Other Folders
+# Previewing the Document
 
-Some documents are located deeper in the project.
+Visual Studio Code includes Markdown Preview.
 
-For example:
+With the Markdown file open, use:
 
 ```text
-Docs/
-└── 01_LOR_System/
-    └── 01_Preview_Authoring/
-        └── procedure.md
+Ctrl+Shift+V
 ```
 
-To reach the shared images folder, the document must go up two folders.
+to open the preview.
 
-The correct reference would be:
+Use:
 
-```markdown
-![Preview Window](../../images/preview-window.png)
+```text
+Ctrl+K, V
 ```
 
-Always verify the relative path based on the location of the document.
+to open the preview beside the editor.
 
----
+After adding or replacing an image:
 
-# Testing the Image
-
-After adding an image:
-
-1. Save the document.
-2. Open the Markdown Preview.
-3. Verify the image appears correctly.
-
-If you see only the alternative text, the image path is probably incorrect.
+1. save the Markdown document;
+2. open or refresh Markdown Preview; and
+3. verify the image displays at the expected size.
 
 ---
 
 # Replacing an Existing Image
 
-Sometimes software changes and an older screenshot becomes outdated.
+If a screenshot is being updated for the same screen or feature, it is often appropriate to replace the existing image using the same filename.
 
-If the new screenshot represents the same feature:
+That allows every current document referencing that image to continue using the same path.
 
-Replace the existing image rather than creating a second file with a different name.
+Only replace an image when the new image represents the same documented screen or purpose.
 
-This automatically updates every document that references that image.
-
-Only replace an image if it represents the same screen or feature.
+If the screenshot represents a different feature, create a new descriptive filename instead.
 
 ---
 
-# Creating a New Image
+# Important: Markdown Preview Can Show a Cached Image
 
-If the screenshot represents a new feature or a completely different screen:
+When an image file is replaced using the same filename, Visual Studio Code Markdown Preview may continue displaying the previous image temporarily.
 
-Create a new image with a descriptive filename.
+If the image file itself is correct but Preview still shows an older version:
 
-Update only the documents that need the new image.
+1. click the Preview refresh button;
+2. close and reopen the Preview tab; or
+3. open the Command Palette and run:
+
+```text
+Developer: Reload Window
+```
+
+Do not create another image file or rename a correct image merely because Preview has not refreshed yet.
 
 ---
 
-# Image Size
+# Using Paste Image
 
-Avoid extremely large screenshots.
+MSB has tested the Visual Studio Code **Paste Image** extension as a way to automate screenshot placement and markup.
 
-Crop unnecessary borders.
+With the recommended settings, the contributor can:
 
-Focus attention on the controls being discussed.
+1. capture a screenshot to the clipboard;
+2. place the cursor in the Markdown document;
+3. press **Ctrl+Alt+V**;
+4. enter a descriptive filename; and
+5. let the extension save the image and insert the image markup automatically.
 
-Smaller, focused images are easier to read.
+The current tested settings are documented in:
+
+[16 — Recommended VS Code Extensions](16_Recommended_VSCode_Extensions.md)
+
+One important behavior: Paste Image can use selected editor text as part of the image filename or path. Make sure unrelated text is not selected before pasting an image.
 
 ---
 
@@ -294,30 +281,29 @@ Sometimes it helps to draw attention to a button or menu.
 
 Simple annotations such as:
 
-* arrows
-* circles
+* arrows;
+* circles; and
 * rectangles
 
-may be added.
+may be added when they improve clarity.
 
-Avoid excessive colors or large blocks of text on the image.
+Avoid excessive colors or large blocks of text inside the screenshot.
 
-The document should explain the procedure.
-
-The image should support the explanation.
+The written procedure should explain the task. The screenshot should support that explanation.
 
 ---
 
 # Before Submitting
 
-Before submitting documentation containing new screenshots, verify:
+Before submitting documentation containing new or changed screenshots, verify:
 
-* The image is stored in `Docs/images`.
-* The filename is descriptive.
-* The image displays correctly.
-* The Markdown Preview shows the image.
-* No personal information appears in the screenshot.
-* The image clearly supports the procedure.
+* the image is stored in the image folder owned by the subsystem;
+* the filename is descriptive;
+* the image displays correctly in Markdown Preview;
+* the displayed image is not unnecessarily large;
+* the alternative text describes the image;
+* no personal or confidential information appears in the screenshot; and
+* the image clearly supports the procedure.
 
 ---
 
@@ -325,14 +311,16 @@ Before submitting documentation containing new screenshots, verify:
 
 You now know how to:
 
-* Capture screenshots.
-* Name screenshots.
-* Store screenshots.
-* Reference screenshots in Markdown.
-* Verify that screenshots display correctly.
-* Replace outdated screenshots.
+* capture screenshots;
+* determine the correct subsystem-owned image location;
+* name screenshots;
+* reference screenshots in Markdown;
+* control screenshot display size when needed;
+* preview images in Visual Studio Code;
+* replace outdated screenshots; and
+* recognize and clear a stale Markdown Preview image cache.
 
-Following these guidelines helps keep the MSB Documentation Project consistent and easy to maintain.
+Following these guidelines helps keep MSB documentation consistent, portable, and easier to maintain.
 
 ---
 
