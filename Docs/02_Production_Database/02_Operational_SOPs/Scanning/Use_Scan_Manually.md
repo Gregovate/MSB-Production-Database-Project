@@ -29,8 +29,8 @@ You should see:
 - a box labeled **Scan code or paste URL**;
 - a **Go** button; and
 - a **Scan with Camera** button.
-  
-![](../![](../scan_p1.png)
+
+<img src="images/Scan_Home_Page.png" alt="MSB Scan Home Page" width="600">
 
 ## Procedure
 
