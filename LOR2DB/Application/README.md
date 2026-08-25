@@ -147,11 +147,13 @@ parser table-count interpretation.
 
 ### Windows runner deployment boundary
 
-`Docs/01_LOR_System/02_Data_Extraction/Parser/lor_operator_runner.py` runs on the
-restricted Office PC under the logged-in Greg account because that session owns
-the Shared Drive mounted as `G:`. It listens on the internal interface only and
-requires a bearer token shared with the Linux API. Production already has an
-approved 6.6.10 state and must retain it. Never run `init` over that state.
+`Docs/01_LOR_System/02_Data_Extraction/Parser/lor_operator_runner.py` currently
+runs on the restricted Office Desktop under the logged-in Greg account because
+that session owns the Shared Drive mounted as `G:`. This is a temporary/test
+deployment, not the approved permanent production host. It listens on the
+internal interface only and requires a bearer token shared with the Linux API.
+Production already has an approved 6.6.10 state and must retain it. Never run
+`init` over that state.
 
 Use only the repository-root launcher. `Install` generates one random token,
 protects it with Windows DPAPI, and registers the **MSB LOR Operator Runner**
@@ -185,15 +187,24 @@ the same non-secret fingerprint as Windows, and deletes the pending plaintext
 file. The reverse proxy continues to expose only the Linux LOR2DB API; do not
 publish port 8791 to the Internet.
 
-The task runs while Greg remains logged in, including while the screen is
-locked. After a Windows update or reboot, the runner remains unavailable until
-Greg signs in and `G:` is restored. This is an explicit availability boundary:
-the website reports the runner offline, while the existing SQLite snapshot,
-PostgreSQL, and any already-started reconciliation remain unaffected.
+The current task runs while Greg remains logged in, including while the screen
+is locked. Closing a foreground runner window, logging out, or rebooting can
+leave the runner unavailable until the Office Desktop session and `G:` are
+restored. This is an explicit availability boundary: the website reports the
+runner offline, while the existing SQLite snapshot, PostgreSQL, and any
+already-started reconciliation remain unaffected.
+
+The approved permanent host is `PRINT-SERVER` (`192.168.5.56`) using a
+separate at-startup, run-whether-logged-on-or-not Scheduled Task under
+`PRINT-SERVER\Print Service`. That transfer is planned but not yet deployed.
+The current launcher creates an interactive at-logon task and must be updated
+and tested before it can install the approved PRINT-SERVER production model.
+Headless access to the approved preview/state/output paths is a mandatory
+cutover gate; a user-session-only `G:` mapping is not sufficient.
 
 Installation, restart, credential recovery, network requirements, and transfer
-to a replacement Office PC are controlled by the
-[Office PC Runner Operations and Disaster Recovery](Office_PC_Runner_Operations_and_Disaster_Recovery.md)
+to a replacement host are controlled by the
+[Runner Operations and Disaster Recovery](Office_PC_Runner_Operations_and_Disaster_Recovery.md)
 runbook. Do not improvise token transfer or copy DPAPI files to another account
 or computer.
 
