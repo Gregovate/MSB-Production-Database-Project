@@ -29,6 +29,8 @@ You should see:
 - a box labeled **Scan code or paste URL**;
 - a **Go** button; and
 - a **Scan with Camera** button.
+  
+![](../![](../scan_p1.png)
 
 ## Procedure
 
