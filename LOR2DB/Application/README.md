@@ -9,6 +9,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-25 | Added runner V1.6.0 dual deployment profiles after the PRINT-SERVER Password-logon Session-0 task proved headless access to every required Shared Drive path. Production cutover remains separately controlled. |
 | 2026-08-16 | Changed the successful final production-application boundary from failure-red styling to an amber notice with standard blue confirmation controls. Cancellation and actual failures remain red. |
 | 2026-08-16 | Added ingest V0.4.1 / runner V1.5.1 recovery for a Windows console encoding failure after PostgreSQL commit. The exact completed SQLite digest is reused without creating a duplicate import run, and post-commit failures can no longer claim rollback. |
 | 2026-08-16 | Kept `Run parser` permanently available after successful runs and made `Review parser output` an additional action instead of a replacement. Corrected the Windows installer message so an unchanged protected token does not instruct the operator to pair the server again. |
@@ -157,15 +158,24 @@ Production already has an approved 6.6.10 state and must retain it. Never run
 
 Use only the repository-root launcher. `Install` generates one random token,
 protects it with Windows DPAPI, and registers the **MSB LOR Operator Runner**
-task at Greg's logon. It never starts the parser. `PairServer` transfers the
-same token over SSH to a mode-0600 pending file without displaying or placing
-the secret in command history.
+task using the selected deployment profile. It never starts the parser.
+`PairServer` transfers the same token over SSH to a mode-0600 pending file
+without displaying or placing the secret in command history.
 
 ```powershell
 .\run_lor_runner.ps1 -Action Install
 .\run_lor_runner.ps1 -Action PairServer
 .\run_lor_runner.ps1 -Action Stop
 .\run_lor_runner.ps1 -Action Status
+```
+
+The temporary Office deployment defaults to `OfficeInteractive`. The approved
+PRINT-SERVER command is explicit:
+
+```powershell
+.\run_lor_runner.ps1 `
+    -Action Install `
+    -DeploymentProfile PrintServerUnattended
 ```
 
 `Install` safely replaces an existing managed runner, including an orphaned
@@ -195,12 +205,13 @@ runner offline, while the existing SQLite snapshot, PostgreSQL, and any
 already-started reconciliation remain unaffected.
 
 The approved permanent host is `PRINT-SERVER` (`192.168.5.56`) using a
-separate at-startup, run-whether-logged-on-or-not Scheduled Task under
-`PRINT-SERVER\Print Service`. That transfer is planned but not yet deployed.
-The current launcher creates an interactive at-logon task and must be updated
-and tested before it can install the approved PRINT-SERVER production model.
-Headless access to the approved preview/state/output paths is a mandatory
-cutover gate; a user-session-only `G:` mapping is not sufficient.
+separate at-startup, Password-logon Scheduled Task under
+`PRINT-SERVER\Print Service`. A Session-0 task passed headless access to the
+approved preview/state/output paths on 2026-08-25. Runner V1.6.0 now implements
+that `PrintServerUnattended` profile and retains the existing
+`OfficeInteractive` profile for rollback. The transfer is implementation-ready
+but not production-complete until installation, Linux re-pairing, dashboard,
+parser, reboot, and Label Service isolation acceptance all pass.
 
 Installation, restart, credential recovery, network requirements, and transfer
 to a replacement host are controlled by the
