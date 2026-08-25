@@ -3,8 +3,11 @@
 Initial release: 2026-08-13 V1.0.0
 
 This checker is deliberately parser-independent. It inventories the complete
-XML contract, including fields the production parser does not consume, before
-the candidate preview set is allowed to exercise the parser.
+XML contract, including fields the production parser does not consume. A
+different-version candidate is compared strictly with the approved manifest;
+same-approved-version production maintenance keeps content drift visible but
+blocks only newly encountered XML vocabulary or another structural condition
+that can indicate a parser contract change.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-CHECKER_VERSION = "V1.3.1"
+CHECKER_VERSION = "V1.4.0"
 MANIFEST_VERSION = 4
 CRITICAL_ELEMENTS = {"PreviewClass", "Scene", "PropClass"}
 UUID_RE = re.compile(
@@ -371,7 +374,13 @@ class Finding:
 
 
 def _same_version_authoring_finding(finding: Finding) -> Finding:
-    """Keep normal Motion FX authoring visible without blocking same-version runs."""
+    """Keep parser-ignored Motion FX structure nonblocking for approved versions.
+
+    MotionRowDefault elements can appear or disappear as authors add/remove
+    Motion FX rows. Aggregate structural comparisons cannot infer from an XML
+    instance that this is already-known LOR vocabulary, so retain this explicit
+    parser contract exception in addition to the general content rules below.
+    """
     if finding.severity != "BLOCKING":
         return finding
     evidence = f"{finding.area} {finding.message}"
@@ -387,24 +396,41 @@ def _same_version_authoring_finding(finding: Finding) -> Finding:
 
 
 def set_difference_findings(
-    baseline: Iterable[str], candidate: Iterable[str], area: str, noun: str
+    baseline: Iterable[str],
+    candidate: Iterable[str],
+    area: str,
+    noun: str,
+    *,
+    added_severity: str = "BLOCKING",
+    removed_severity: str = "BLOCKING",
 ) -> list[Finding]:
     old, new = set(baseline), set(candidate)
     findings: list[Finding] = []
     for value in sorted(new - old):
         findings.append(Finding(
-            "BLOCKING", area, f"New {noun}: {value}",
-            f"Review and explicitly support or reject {noun} {value!r} before production.",
+            added_severity, area, f"New {noun}: {value}",
+            (
+                f"Review and explicitly support or reject {noun} {value!r} before production."
+                if added_severity == "BLOCKING" else None
+            ),
         ))
     for value in sorted(old - new):
         findings.append(Finding(
-            "BLOCKING", area, f"Removed {noun}: {value}",
-            f"Update the parser contract for removed {noun} {value!r}, or restore it in LOR.",
+            removed_severity, area, f"Removed {noun}: {value}",
+            (
+                f"Update the parser contract for removed {noun} {value!r}, or restore it in LOR."
+                if removed_severity == "BLOCKING" else None
+            ),
         ))
     return findings
 
 
-def compare_shapes(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[Finding]:
+def compare_shapes(
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    *,
+    severity: str = "BLOCKING",
+) -> list[Finding]:
     findings: list[Finding] = []
     all_tags = sorted(set(baseline) | set(candidate))
     for tag in all_tags:
@@ -415,30 +441,43 @@ def compare_shapes(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[
             new_shapes = set(new_attributes.get(attribute, {}))
             if old_shapes != new_shapes:
                 findings.append(Finding(
-                    "BLOCKING", f"{tag}.{attribute}",
+                    severity, f"{tag}.{attribute}",
                     f"Value shapes changed from {sorted(old_shapes)} to {sorted(new_shapes)}.",
-                    f"Confirm parsing and materialization of {tag}.{attribute} for every new value shape.",
+                    (
+                        f"Confirm parsing and materialization of {tag}.{attribute} for every new value shape."
+                        if severity == "BLOCKING" else None
+                    ),
                 ))
     return findings
 
 
 def compare_delimited_fields(
-    baseline: dict[str, Any], candidate: dict[str, Any], area_prefix: str = ""
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    area_prefix: str = "",
+    *,
+    severity: str = "BLOCKING",
 ) -> list[Finding]:
     """Detect positional contract drift in every comma/semicolon-encoded field."""
     findings: list[Finding] = []
     old_fields, new_fields = set(baseline), set(candidate)
     for field in sorted(new_fields - old_fields):
         findings.append(Finding(
-            "BLOCKING", area_prefix + field,
+            severity, area_prefix + field,
             f"New delimiter-encoded field layout: {field}.",
-            f"Document and support the positional layout of {field} before production.",
+            (
+                f"Document and support the positional layout of {field} before production."
+                if severity == "BLOCKING" else None
+            ),
         ))
     for field in sorted(old_fields - new_fields):
         findings.append(Finding(
-            "BLOCKING", area_prefix + field,
+            severity, area_prefix + field,
             f"Delimiter-encoded field layout disappeared: {field}.",
-            f"Update code that relies on positional layout in {field} before production.",
+            (
+                f"Update code that relies on positional layout in {field} before production."
+                if severity == "BLOCKING" else None
+            ),
         ))
     for field in sorted(old_fields & new_fields):
         # ChannelGrid retains its dedicated, explicit comparison and report area.
@@ -450,7 +489,9 @@ def compare_delimited_fields(
             ("token_counts", "comma token count"),
         ):
             findings.extend(set_difference_findings(
-                old[key], new[key], area_prefix + field, noun
+                old[key], new[key], area_prefix + field, noun,
+                added_severity=severity,
+                removed_severity=severity,
             ))
         positions = sorted(
             set(old["position_shapes"]) | set(new["position_shapes"]), key=int
@@ -460,15 +501,23 @@ def compare_delimited_fields(
             new_shapes = set(new["position_shapes"].get(position, {}))
             if old_shapes != new_shapes:
                 findings.append(Finding(
-                    "BLOCKING", f"{area_prefix}{field} position {position}",
+                    severity, f"{area_prefix}{field} position {position}",
                     f"Delimited value shapes changed from {sorted(old_shapes)} "
                     f"to {sorted(new_shapes)}.",
-                    f"Confirm the positional meaning and parsing of {field} position {position}.",
+                    (
+                        f"Confirm the positional meaning and parsing of {field} position {position}."
+                        if severity == "BLOCKING" else None
+                    ),
                 ))
     return findings
 
 
-def compare_file_contracts(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[Finding]:
+def compare_file_contracts(
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    *,
+    same_version: bool = False,
+) -> list[Finding]:
     """Compare every matching preview, not only the aggregate/deep preview."""
     findings: list[Finding] = []
     old_files = {preview_identity(item): item for item in baseline["files"]}
@@ -501,6 +550,7 @@ def compare_file_contracts(baseline: dict[str, Any], candidate: dict[str, Any]) 
         findings.extend(set_difference_findings(
             [old["root_element"]], [new["root_element"]], prefix + "document", "root element"
         ))
+        instance_severity = "INFO" if same_version else "BLOCKING"
         for key, area, noun in (
             ("namespaces", "document", "namespace"),
             ("element_counts", "XML", "element"),
@@ -509,14 +559,21 @@ def compare_file_contracts(baseline: dict[str, Any], candidate: dict[str, Any]) 
             ("transitions", "XML ordering", "sibling transition"),
         ):
             findings.extend(set_difference_findings(
-                old[key], new[key], prefix + area, noun
+                old[key], new[key], prefix + area, noun,
+                added_severity=instance_severity,
+                removed_severity=instance_severity,
             ))
         for tag in sorted(set(old["attributes"]) | set(new["attributes"])):
             findings.extend(set_difference_findings(
                 old["attributes"].get(tag, []), new["attributes"].get(tag, []),
                 prefix + tag, "attribute",
+                added_severity=instance_severity,
+                removed_severity=instance_severity,
             ))
-        for item in compare_shapes(old["attribute_shapes"], new["attribute_shapes"]):
+        for item in compare_shapes(
+            old["attribute_shapes"], new["attribute_shapes"],
+            severity=instance_severity,
+        ):
             findings.append(Finding(
                 item.severity, prefix + item.area, item.message,
                 item.parser_modification_required,
@@ -526,28 +583,32 @@ def compare_file_contracts(baseline: dict[str, Any], candidate: dict[str, Any]) 
             new_count = new["element_counts"].get(tag, 0)
             if old_count != new_count:
                 findings.append(Finding(
-                    "REVIEW", prefix + tag,
+                    "INFO" if same_version else "REVIEW", prefix + tag,
                     f"{tag} count changed from {old_count} to {new_count}.",
                 ))
             old_ids = set(old["ids"].get(tag, []))
             new_ids = set(new["ids"].get(tag, []))
             if old_ids != new_ids:
                 findings.append(Finding(
-                    "REVIEW", prefix + f"{tag} identity",
+                    "INFO" if same_version else "REVIEW", prefix + f"{tag} identity",
                     f"{len(old_ids - new_ids)} IDs were removed and "
                     f"{len(new_ids - old_ids)} IDs were added.",
                 ))
         findings.extend(compare_delimited_fields(
-            old["delimited_fields"], new["delimited_fields"], prefix
+            old["delimited_fields"], new["delimited_fields"], prefix,
+            severity=instance_severity,
         ))
         old_grid, new_grid = old["channel_grid"], new["channel_grid"]
         findings.extend(set_difference_findings(
             old_grid["token_counts"], new_grid["token_counts"],
             prefix + "PropClass.ChannelGrid", "record token count",
+            added_severity=instance_severity,
+            removed_severity=instance_severity,
         ))
         for item in compare_shapes(
             {"PropClass.ChannelGrid": old_grid["position_shapes"]},
             {"PropClass.ChannelGrid": new_grid["position_shapes"]},
+            severity=instance_severity,
         ):
             findings.append(Finding(
                 item.severity, prefix + item.area, item.message,
@@ -559,32 +620,55 @@ def compare_file_contracts(baseline: dict[str, Any], candidate: dict[str, Any]) 
 def compare_manifests(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[Finding]:
     old = baseline["aggregate"]
     new = candidate["aggregate"]
+    same_version = baseline.get("lor_version") == candidate.get("lor_version")
+    content_severity = "INFO" if same_version else "BLOCKING"
+    removed_structure_severity = "INFO" if same_version else "BLOCKING"
     findings: list[Finding] = []
-    findings.extend(compare_file_contracts(baseline, candidate))
+    findings.extend(compare_file_contracts(
+        baseline, candidate, same_version=same_version
+    ))
     findings.extend(set_difference_findings(old["root_elements"], new["root_elements"], "document", "root element"))
-    findings.extend(set_difference_findings(old["namespaces"], new["namespaces"], "document", "namespace"))
-    findings.extend(set_difference_findings(old["element_counts"], new["element_counts"], "XML", "element"))
-    findings.extend(set_difference_findings(old["path_counts"], new["path_counts"], "XML hierarchy", "element path"))
-    findings.extend(set_difference_findings(old["edges"], new["edges"], "XML hierarchy", "parent/child edge"))
-    findings.extend(set_difference_findings(old["transitions"], new["transitions"], "XML ordering", "sibling transition"))
+    for key, area, noun in (
+        ("namespaces", "document", "namespace"),
+        ("element_counts", "XML", "element"),
+        ("path_counts", "XML hierarchy", "element path"),
+        ("edges", "XML hierarchy", "parent/child edge"),
+    ):
+        findings.extend(set_difference_findings(
+            old[key], new[key], area, noun,
+            removed_severity=removed_structure_severity,
+        ))
+    findings.extend(set_difference_findings(
+        old["transitions"], new["transitions"], "XML ordering", "sibling transition",
+        added_severity=content_severity,
+        removed_severity=content_severity,
+    ))
 
     all_tags = sorted(set(old["attributes"]) | set(new["attributes"]))
     for tag in all_tags:
         findings.extend(set_difference_findings(
-            old["attributes"].get(tag, []), new["attributes"].get(tag, []), tag, "attribute"
+            old["attributes"].get(tag, []), new["attributes"].get(tag, []), tag, "attribute",
+            removed_severity=removed_structure_severity,
         ))
-    findings.extend(compare_shapes(old["attribute_shapes"], new["attribute_shapes"]))
+    findings.extend(compare_shapes(
+        old["attribute_shapes"], new["attribute_shapes"],
+        severity=content_severity,
+    ))
     findings.extend(compare_delimited_fields(
-        old["delimited_fields"], new["delimited_fields"]
+        old["delimited_fields"], new["delimited_fields"],
+        severity=content_severity,
     ))
 
     old_grid, new_grid = old["channel_grid"], new["channel_grid"]
     findings.extend(set_difference_findings(
-        old_grid["token_counts"], new_grid["token_counts"], "PropClass.ChannelGrid", "record token count"
+        old_grid["token_counts"], new_grid["token_counts"], "PropClass.ChannelGrid", "record token count",
+        added_severity=content_severity,
+        removed_severity=content_severity,
     ))
     findings.extend(compare_shapes(
         {"ChannelGrid": old_grid["position_shapes"]},
         {"ChannelGrid": new_grid["position_shapes"]},
+        severity=content_severity,
     ))
 
     if baseline["file_count"] != candidate["file_count"]:
@@ -599,18 +683,18 @@ def compare_manifests(baseline: dict[str, Any], candidate: dict[str, Any]) -> li
         new_count = new_deep["element_counts"].get(tag, 0)
         if old_count != new_count:
             findings.append(Finding(
-                "REVIEW", f"deep preview {tag}",
+                "INFO" if same_version else "REVIEW", f"deep preview {tag}",
                 f"{tag} count changed from {old_count} to {new_count} in the deep preview.",
             ))
         old_ids = set(old_deep["ids"].get(tag, []))
         new_ids = set(new_deep["ids"].get(tag, []))
         if old_ids != new_ids:
             findings.append(Finding(
-                "REVIEW", f"deep preview {tag} identity",
+                "INFO" if same_version else "REVIEW", f"deep preview {tag} identity",
                 f"{len(old_ids - new_ids)} IDs were removed and {len(new_ids - old_ids)} IDs were added.",
             ))
 
-    if baseline.get("lor_version") == candidate.get("lor_version"):
+    if same_version:
         findings = [_same_version_authoring_finding(item) for item in findings]
     return findings
 

@@ -9,9 +9,11 @@ tools for operator convenience but does not own their XML interpretation.
 | File | Purpose |
 |---|---|
 | `parse_props_v7_scene_parser.py` | Canonical V7 parser; atomically publishes only a fully validated SQLite snapshot |
-| `lor_version_checker.py` | Parser-independent complete XML manifest and Current/New LOR compatibility comparison |
+| `lor_version_checker.py` | Parser-independent complete XML manifest; approved-version maintenance classification and strict New LOR compatibility comparison |
 | `lor_operator_runner.py` | Restricted Windows/G-drive API, single-operation lock, durable read-only parser and ingest console records, digest-locked PostgreSQL ingest, candidate stale-manifest guard, approved-version structural guard, and same-parser SQLite output comparison used by the authenticated LOR2DB website |
 | `test_lor_version_checker.py` | Regression tests for Scene count/structure, unused fields, ChannelGrid, and other delimiter-position changes |
+| `test_lor_version_checker_maintenance.py` | Regression tests proving same-version display additions/removals and authored value diversity remain nonblocking |
+| `test_lor_version_checker_motion_fx.py` | Regression tests proving same-version Motion FX row maintenance remains nonblocking |
 | `test_lor_operator_runner.py` | Regression tests for version-scoped paths, stale manifests, SQLite output comparison, Revision handling, and approval history |
 | `test_parse_props_console_encoding.py` | Regression test preventing Windows console/log encoding from aborting parser execution |
 | `test_parse_props_atomic_publish.py` | Regression tests for transient Windows file-lock retry and fail-closed atomic publication |
@@ -36,10 +38,14 @@ runner changes any stale `RUNNING` marker to `INTERRUPTED` rather than leaving
 the website in a false running state.
 
 An approved Current LOR folder may receive ordinary preview-authoring edits and
-be parsed repeatedly. Each run rebuilds the live manifest and rejects only a
-parser-breaking XML contract change relative to the approved LOR manifest. A
-New LOR candidate remains stricter: changing any reviewed candidate file after
-Version Check invalidates that check and requires it to be rerun.
+be parsed repeatedly. Adding/removing Displays or Scenes, changing nullable
+attribute values, using different integer/decimal authoring values, changing
+non-parser delimiter payloads, and adding/removing Motion FX rows remain
+inventoried as informational evidence. They do not block the approved-version
+parser run. Newly encountered XML vocabulary remains blocking because it can
+indicate a parser contract change. A New LOR candidate remains fully strict:
+changing any reviewed candidate file after Version Check invalidates that check
+and requires it to be rerun.
 
 The production runner task uses the logged-in Greg account because that Windows
 session owns the mapped `G:` drive. Screen locking does not stop the task. After
@@ -52,6 +58,7 @@ See:
 - [Parser architecture](../LOR_Preview_Parser_Architecture.md)
 - [XML structure specification](../LOR_Preview_File_Structure_Specification.md)
 - [Version compatibility procedure](../LOR_Preview_Version_Compatibility_Review.md)
+- [Approved-version maintenance rule](../LOR_Approved_Version_Maintenance_Compatibility_Rule_2026-08-25.md)
 - [SQLite output contract](../LOR_SQLite_Output_Database_Structure.md)
 - [LOR2DB ingest handoff](../../../../LOR2DB/01_Ingest/README.md)
 - [Office PC runner operations and disaster recovery](../../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)

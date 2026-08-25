@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — controlled engineering procedure |
 | Applies to | Any new Light-O-Rama release that can change `.lorprev` output |
-| Current revision | 2026-08-17 |
+| Current revision | 2026-08-25 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -92,6 +92,12 @@ finding is explicitly recorded as resolved.
 
 The XML check occurs before the parser. A successful parser run cannot override
 a failed XML compatibility check.
+
+These strict candidate rules apply when the Current and New LOR software
+versions differ. They do not turn routine preview authoring under the already
+approved version into a candidate-version approval event. Same-version Display,
+Scene, value, delimiter-payload, and Motion FX maintenance follows the
+[approved-version maintenance rule](LOR_Approved_Version_Maintenance_Compatibility_Rule_2026-08-25.md).
 
 ## Test Preview Selection
 
