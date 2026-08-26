@@ -218,7 +218,7 @@ at-startup, Password-logon, Highest Scheduled Task under
 separate pre-login-capable workload. Production acceptance on 2026-08-25
 included local and Linux health, dashboard availability, cold reboot with
 Autologon, controlled parser V7.0.11, ingest 55, reconciliation Run 13,
-immutable report publication, and exact final Display verification.
+immutable report publication, exact final Display verification, and a successful physical Display label through the independent Label Print Service after reboot.
 
 Installation, restart, credential recovery, network requirements, and transfer
 to a replacement host are controlled by the
