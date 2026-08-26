@@ -279,7 +279,8 @@ The change is accepted because all of the following passed:
 - authenticated Linux API-to-runner health;
 - dashboard runner state;
 - automatic-login reboot recovery; and
-- isolation from the existing Label Print Service.
+- isolation from the existing Label Print Service; and
+- a successful physical Display label printed by the Label Service after reboot.
 
 ## Unresolved Engineering Defects
 
