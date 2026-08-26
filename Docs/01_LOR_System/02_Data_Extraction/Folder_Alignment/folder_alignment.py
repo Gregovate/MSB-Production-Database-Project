@@ -25,10 +25,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PureWindowsPath
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DEFAULT_DB = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
 DEFAULT_ROOT = Path(r"G:\Shared drives\Display Folders")
-DEFAULT_OUTPUT = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment")
+#DEFAULT_OUTPUT = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment")
 MASTER_MUSICAL_RE = re.compile(r"^\s*\d{4}\s+Master\s+Musical\s+Preview\b", re.IGNORECASE)
 STAGE_FOLDER_RE = re.compile(r"^(?P<stage>\d{2})-")
 SCENE_PREFIX_RE = re.compile(r"^\s*(?P<num>\d{2})(?P<letter>[A-Za-z]?)-(?P<body>.+?)\s*$")
@@ -141,7 +141,15 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Read-only MSB Stage/Scene documentation alignment worklist")
     p.add_argument("--db", type=Path, default=DEFAULT_DB)
     p.add_argument("--drive-root", type=Path, default=DEFAULT_ROOT)
-    p.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    p.add_argument(
+    "--output-dir",
+    type=Path,
+    default=None,
+    help=(
+        "Report output directory. When omitted on Windows, Folder Alignment "
+        "uses parser_run.SourcePreviewFolder/reports/google-drive-alignment."
+        ),
+    )
     return p.parse_args()
 
 
@@ -700,12 +708,45 @@ def main() -> int:
     with sqlite3.connect(args.db) as conn:
         previews, scene_infos, provenance = load_scene_info(conn)
 
+    output_dir = args.output_dir
+
+    if output_dir is None:
+        source_preview_folder = provenance.get("SourcePreviewFolder", "").strip()
+
+        if not source_preview_folder:
+            raise SystemExit(
+                "[ERROR] Latest parser_run does not contain SourcePreviewFolder. "
+                "Run the current parser first or provide --output-dir."
+            )
+
+        source_preview_path = Path(source_preview_folder)
+
+        if not source_preview_path.is_dir():
+            raise SystemExit(
+                "[ERROR] Parser SourcePreviewFolder is not accessible on this machine: "
+                f"{source_preview_path}\n"
+                "On Linux, provide --output-dir using the appropriate mounted Linux path."
+            )
+
+        output_dir = (
+            source_preview_path
+            / "reports"
+            / "google-drive-alignment"
+        )
+
+    print(
+        f"[INFO] Parser Preview source: "
+        f"{provenance.get('SourcePreviewFolder', '<unknown>')}",
+        flush=True,
+    )
+    print(f"[INFO] Report output: {output_dir}", flush=True)
+
     stages, dirs_by_stage, direct_by_stage = inventory_drive(args.drive_root)
     scopes, scope_issues = resolve_scopes(args.drive_root, stages, dirs_by_stage, direct_by_stage, scene_infos)
     _legacy_root, legacy_by_stage, unassigned = scan_legacy(args.drive_root)
 
     html_path, csv_path = write_reports(
-        args.output_dir, args.drive_root, args.db, previews, scopes, scope_issues,
+        output_dir, args.drive_root, args.db, previews, scopes, scope_issues,
         legacy_by_stage, unassigned, provenance,
     )
     print(f"[INFO] HTML: {html_path}", flush=True)
