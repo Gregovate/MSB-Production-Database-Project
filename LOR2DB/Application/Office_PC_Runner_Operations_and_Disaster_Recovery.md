@@ -52,7 +52,7 @@ credentials, logs, and printer recovery.
 
 Linux is paired to `http://192.168.5.56:8791`. Parser V7.0.11, PostgreSQL
 ingest 55, reconciliation Run 13, report publication, final `ref.display`
-verification, and a post-autologon reboot all passed on 2026-08-25.
+verification, a post-autologon reboot, and a physical Display label through the independent Label Print Service all passed on 2026-08-25.
 
 ### Google Drive Cold-Boot Gate — INITIAL PROBE INVALID; AUTOLOGON ACCEPTED
 
