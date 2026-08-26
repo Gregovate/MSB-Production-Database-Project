@@ -4,7 +4,7 @@
 |---|---|
 | Repository path | `LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md` |
 | Document type | Engineering operations and recovery runbook |
-| Status | CURRENT — temporary host pending controlled PRINT-SERVER transfer |
+| Status | CURRENT — PRINT-SERVER production deployment accepted 2026-08-25 |
 | Owner | MSB Database Administrator |
 | Initial release / current revision | 2026-08-17 / 2026-08-25 |
 
@@ -12,6 +12,8 @@
 
 | Date | Change |
 |---|---|
+| 2026-08-25 | Corrected the false Session-0 Google Drive conclusion; recorded the required Print Service autologon, completed V1.6.0 cutover, reboot/parser/ingest/Run 13 acceptance, and remaining startup limitations. |
+| 2026-08-25 | Recorded the initial PRINT-SERVER Session-0 path probe and added the V1.6.0 `PrintServerUnattended` installation and cutover procedure. |
 | 2026-08-25 | Recorded the Office Desktop as a temporary/test host and PRINT-SERVER as the approved permanent production host; added transfer prerequisites and acceptance boundary. |
 | 2026-08-17 | Initial controlled runbook for installation, restart, credential recovery, network failure, and replacement-PC transfer. |
 
@@ -27,33 +29,73 @@ This is not a normal operator procedure. Authorized operators use the LOR2DB
 website. Use this document only to maintain or recover the engineering service
 boundary behind that website.
 
-## Approved Host Transition — Not Yet Deployed
+## Approved Production Host — Deployed and Accepted 2026-08-25
 
-The Office Desktop deployment is now classified as temporary/test
-infrastructure. It is not the accepted permanent production host.
+The Office Desktop deployment is retained only as disabled rollback material.
+The accepted production runtime is:
 
 ```text
-Current temporary host: MSB-OFFICE-PC (192.168.5.55)
-Approved permanent host: PRINT-SERVER (192.168.5.56)
-Permanent task account: PRINT-SERVER\Print Service
-Transfer status: PLANNED — NOT YET INSTALLED OR ACCEPTED
+Rollback host: MSB-OFFICE-PC (192.168.5.55)
+Production host: PRINT-SERVER (192.168.5.56)
+Permanent account: PRINT-SERVER\Print Service
+Repository: C:\MSB_LORRunner
+Listener: 192.168.5.56:8791
+Runner: V1.6.0
+Transfer status: PRODUCTION ACCEPTED
 ```
 
-On 2026-08-25, closing the interactive PowerShell window that owned the Office
-Desktop runner stopped TCP 8791. The LOR2DB dashboard correctly reported the
-runner unavailable while the Linux API, PostgreSQL snapshot 54, and
-reconciliation state remained intact. This confirmed that the Office Desktop
-availability model is unsuitable for permanent production operation.
+Closing the interactive Office Desktop runner had stopped TCP 8791 while the
+Linux API and PostgreSQL remained healthy. The replacement was therefore
+deployed as a separate PRINT-SERVER runtime, isolated from the existing
+`MSB Label Service` process, task, working directory, Python environment,
+credentials, logs, and printer recovery.
 
-The production target is a separate, unattended PRINT-SERVER Scheduled Task.
-It must start without an interactive Windows login, recover after reboot, and
-remain isolated from the existing `MSB Label Service` process, task, working
-directory, Python environment, credentials, logs, and printer recovery.
+Linux is paired to `http://192.168.5.56:8791`. Parser V7.0.11, PostgreSQL
+ingest 55, reconciliation Run 13, report publication, final `ref.display`
+verification, a post-autologon reboot, and a physical Display label through the independent Label Print Service all passed on 2026-08-25.
 
-This section records a hosting decision, not a completed deployment. Until the
-cutover acceptance gates pass, Linux remains configured for the temporary
-Office Desktop runner and the website may report the runner offline when that
-temporary listener is stopped.
+### Google Drive Cold-Boot Gate — INITIAL PROBE INVALID; AUTOLOGON ACCEPTED
+
+A temporary Password-logon Session-0 task initially reported `GDrivePresent=True`
+and found every required `G:` path. That test ran while a desktop session had
+already mounted Google Drive and did not prove cold-boot availability.
+
+The first true reboot disproved the conclusion. Before interactive login:
+
+- PRINT-SERVER, SSH, and the Label Print Service were available;
+- Google Drive `G:` was absent;
+- the LOR task exited with result 1;
+- no TCP 8791 listener existed; and
+- the runner log identified the missing `runner-state.json`.
+
+Starting `GoogleDriveFS.exe --startup_mode` in Session 0 did not mount `G:`
+and caused path checks to hang. This deployment of Google Drive for Desktop
+requires an interactive Print Service session.
+
+Microsoft Sysinternals Autologon was deliberately enabled for
+`PRINT-SERVER\Print Service`. PRINT-SERVER is physically controlled, and this
+availability/security tradeoff was accepted by the MSB Database Administrator.
+The credential value is not recorded in Git. Autologon uses an LSA secret, but
+local administrators can still recover it.
+
+The accepted boot dependency is automatic Print Service login, Google Drive
+startup and `G:` mount, then LOR runner availability. A cold reboot after
+Autologon passed local listener, authenticated Linux API, dashboard, controlled
+parser, ingest 55, and Run 13 acceptance. The temporary probe task and files
+were removed.
+
+Launcher V1.6.0 now implements two explicit deployment profiles:
+
+| Profile | Host model | Task model | Default listener |
+|---|---|---|---|
+| `OfficeInteractive` | Temporary recovery | At user logon / Interactive / Limited | `192.168.5.55:8791` |
+| `PrintServerUnattended` | Approved permanent target | At startup after one minute / Password / Highest | `192.168.5.56:8791` |
+
+The unattended profile refuses installation or startup unless the computer is
+`PRINT-SERVER` and the current identity is
+`PRINT-SERVER\Print Service`. The password is requested through a Windows
+credential prompt and is supplied only to Task Scheduler; it is not stored in
+the repository, command line, runner state, or service log.
 
 The PRINT-SERVER host/runtime prerequisites and dual-workload isolation gates
 are controlled by the
@@ -61,20 +103,19 @@ are controlled by the
 
 ## Dependency Summary
 
-The currently deployed LOR2DB application spans two computers and the shared
-Google Drive. This diagram describes the temporary Office Desktop deployment,
-not the approved permanent target:
+The deployed LOR2DB application spans two computers and the shared Google Drive. This diagram describes the accepted PRINT-SERVER production deployment:
 
 ```text
 Authenticated browser
     -> Linux LOR2DB API on msb-prod-db (192.168.5.9:8784)
     -> authenticated HTTP request from 192.168.5.9
-    -> Office PC runner (192.168.5.55:8791)
-    -> approved repository code and account-bound DPAPI credentials
-    -> G:\ Shared Drive previews, state, reports, and SQLite output
+    -> PRINT-SERVER runner (192.168.5.56:8791)
+    -> reviewed C:\MSB_LORRunner code and account-bound DPAPI credentials
+    -> interactive Print Service session mounts G:\
+    -> Shared Drive previews, state, reports, and SQLite output
 ```
 
-The Office PC runner is required for:
+The PRINT-SERVER runner is required for:
 
 - LOR-version candidate detection and compatibility checks;
 - routine production parser execution and console capture; and
@@ -93,16 +134,16 @@ down. The parser/version/ingest controls are unavailable, but an already
 committed snapshot and an already-started reconciliation remain on the Linux
 and PostgreSQL side.
 
-## Current Temporary Office Desktop Components
+## Current PRINT-SERVER Production Components
 
 | Component | Production requirement |
 |---|---|
-| Windows host | Temporary Office Desktop host; current address `192.168.5.55` |
-| Windows account | Greg's logged-in account; owns the current mapped `G:` drive and DPAPI secrets |
-| Repository | Current reviewed `main` checkout with a working `.venv` |
+| Windows host | PRINT-SERVER; reserved address `192.168.5.56` |
+| Windows account | `PRINT-SERVER\Print Service`; owns the interactive Google Drive mount and DPAPI secrets |
+| Repository | `C:\MSB_LORRunner`, reviewed `main` checkout with isolated `.venv` |
 | Launcher | Repository-root `run_lor_runner.ps1` |
-| Scheduled Task | `MSB LOR Operator Runner`, triggered at that user's logon |
-| Listener | `192.168.5.55:8791`, private LAN only |
+| Scheduled Task | `MSB LOR Operator Runner`, startup trigger, Password logon, Highest, one-minute delay |
+| Listener | `192.168.5.56:8791`, private LAN only |
 | Firewall | Inbound TCP 8791, Private profile, remote address `192.168.5.9` only |
 | State | `G:\Shared drives\MSB Database\LOR Version Reviews\runner-state.json` |
 | SQLite output | `G:\Shared drives\MSB Database\database\lor_output_v7_scene.db` |
@@ -165,18 +206,19 @@ document.
    `Install` creates or retains the DPAPI runner token, requests the PostgreSQL
    ingest password only when needed, registers the logged-in-user Scheduled
    Task, and starts the listener.
-6. If `Install` says a new token was generated, run `PairServer`, install the
-   pending token on Linux, and restart the API as described in the replacement
-   procedure. If it says the existing server pairing remains valid, do not pair
-   again.
+6. Determine pairing from the deployed host, token fingerprint, and Linux
+   environment—not merely from whether a local protected token exists. A
+   partial install can retain a token before the task is usable. For a new host,
+   rotated token, or uncertain pairing state, run `PairServer`, install the
+   pending token on Linux, compare non-secret fingerprints, restart the API,
+   and verify authenticated backend-to-runner health.
 7. Require a healthy Windows `Status`, a passing Linux backend-to-runner check,
    and the expected runner version on the LOR2DB dashboard before returning the
    service to operators.
 
 ## Normal Status Check
 
-Run this from a normal PowerShell window in the repository root on the Office
-PC:
+Run this from a normal PowerShell window in `C:\MSB_LORRunner` on PRINT-SERVER:
 
 ```powershell
 .\run_lor_runner.ps1 -Action Status
@@ -188,7 +230,7 @@ A healthy result must show:
 - protected runner token `AVAILABLE`;
 - protected PostgreSQL ingest credential `AVAILABLE`;
 - runner health `ok`; and
-- runner version `V1.5.1` or the later version documented by the deployed
+- runner version `V1.6.0` or the later version documented by the deployed
   release.
 
 The displayed credential fingerprint is not a secret. It is safe to use when
@@ -228,21 +270,27 @@ Normally the Scheduled Task starts the runner automatically at user logon.
 
 ## After a Reboot or Windows Update
 
-1. Sign in to the same Windows account used to install the task.
-2. Wait for Google Drive to restore the `G:` mapping.
+1. Confirm Sysinternals Autologon completed for `PRINT-SERVER\Print Service`.
+2. Wait for Google Drive for Desktop to mount `G:`.
 3. Confirm the current preview folder, manifest, and `runner-state.json` are
    available.
-4. Run `Status`.
-5. If the task is not running, run `Start` and check `Status` again.
-6. If startup repeatedly fails, review:
+4. Run `Status` from `C:\MSB_LORRunner`.
+5. If the task attempted startup before `G:` was ready, verify no managed
+   listener is running, then run `Start` once and check `Status`.
+6. Verify authenticated Linux API-to-runner health and the LOR2DB dashboard.
+7. If startup fails, review:
 
    ```powershell
    Get-Content "$env:LOCALAPPDATA\MSB\LORRunner\runner-service.log" -Tail 60
    ```
 
-Screen locking does not stop the task. Logging out does. The task requires an
-interactive logon because the mapped Shared Drive belongs to that user
-session.
+Screen locking does not stop the runner. Logging out removes the interactive
+Google Drive mount and makes parser/ingest operations unavailable. The Label
+Print Service remains independent and does not require this login.
+
+The runner currently exits when `G:` is late rather than retrying. That is a
+known engineering defect; do not repeatedly start tasks without first checking
+the listener and service log.
 
 ## Restore the PostgreSQL Ingest Credential
 
@@ -279,29 +327,28 @@ The generic replacement procedure below describes the existing
 logged-in-user runner design. It must **not** be executed unchanged for the
 approved PRINT-SERVER transfer.
 
-Before deploying to `PRINT-SERVER`:
+Transfer requirements and current status:
 
-1. Verify a stable read/write path to the approved preview folders,
-   `runner-state.json`, compatibility manifests, review records, and SQLite
-   output from the `PRINT-SERVER\Print Service` noninteractive task context.
-   A `G:` mapping visible only in an interactive desktop session is not
-   sufficient.
-2. Establish a separate LOR runner working directory and Python environment.
+1. **CORRECTED 2026-08-25:** The initial Session-0 path probe was a false
+   positive caused by an already-mounted desktop `G:`. Cold boot proved the
+   mapping is interactive. The accepted production control is Print Service
+   Autologon followed by Google Drive startup; a future durable noninteractive
+   source path would remove this dependency.
+2. **DEPLOYMENT STEP:** Establish a separate LOR runner working directory and Python environment.
    Do not install into `C:\MSB_LabelService`, alter its Python dependencies, or
    reuse its logs or configuration.
-3. Update and test `run_lor_runner.ps1` so `Install` can create the approved
-   at-startup, run-whether-logged-on-or-not task under the permanent Print
-   Service account. The current launcher intentionally creates an at-logon
-   interactive task and therefore does not yet meet this production target.
-4. Use the reserved PRINT-SERVER address `192.168.5.56` for the listener and
+3. **IMPLEMENTED IN V1.6.0:** The reviewed `PrintServerUnattended` profile
+   creates an at-startup, Password-logon, Highest task under the permanent
+   Print Service account and retains the Office interactive rollback profile.
+4. **DEPLOYMENT STEP:** Use the reserved PRINT-SERVER address `192.168.5.56` for the listener and
    restrict inbound TCP 8791 to `192.168.5.9`.
-5. Create new DPAPI-protected runner and PostgreSQL credentials under the
+5. **DEPLOYMENT STEP:** Create new DPAPI-protected runner and PostgreSQL credentials under the
    permanent task account. Existing Office Desktop DPAPI files are not
    portable.
-6. Back up the Linux pairing environment, then re-pair it to
+6. **CUTOVER STEP:** Back up the Linux pairing environment, then re-pair it to
    `http://192.168.5.56:8791` only when the new runner is ready for controlled
    cutover.
-7. Require local health, Linux API-to-runner health, dashboard availability,
+7. **ACCEPTANCE STEP:** Require local health, Linux API-to-runner health, dashboard availability,
    controlled parser validation, dual-task reboot recovery, and an unaffected
    physical Label Print Service test before disabling the Office Desktop
    runner.
@@ -309,6 +356,98 @@ Before deploying to `PRINT-SERVER`:
 The PRINT-SERVER host facts and workload-isolation requirements are maintained
 in the
 [Print Server Runtime Runbook](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Print_Server_Runtime_Runbook.md).
+
+### PRINT-SERVER controlled installation
+
+Run these commands locally on `PRINT-SERVER` while signed in as
+`PRINT-SERVER\Print Service`. Use a separate elevated PowerShell window only
+for the firewall rule.
+
+1. Create the isolated working tree and virtual environment:
+
+   ```powershell
+   Set-Location C:\
+   git clone `
+       https://github.com/Gregovate/MSB-Production-Database-Project.git `
+       C:\MSB_LORRunner
+
+   Set-Location C:\MSB_LORRunner
+   git switch main
+   git pull --ff-only
+
+   & "C:\Program Files\Python\python.exe" -m venv .venv
+   .\.venv\Scripts\python.exe -m pip install --upgrade pip
+   .\.venv\Scripts\python.exe -m pip install psycopg2-binary==2.9.10
+   ```
+
+2. Validate the reviewed release before creating credentials or tasks:
+
+   ```powershell
+   [scriptblock]::Create((Get-Content .\run_lor_runner.ps1 -Raw)) |
+       Out-Null
+
+   .\.venv\Scripts\python.exe -m unittest discover `
+       -s .\Docs\01_LOR_System\02_Data_Extraction\Parser `
+       -p "test_*.py"
+   ```
+
+   All tests must pass. Do not install the task from an uncommitted or dirty
+   working tree.
+
+3. In an elevated PowerShell window, create the isolated inbound firewall
+   rule:
+
+   ```powershell
+   New-NetFirewallRule `
+       -DisplayName "MSB LOR Runner 8791" `
+       -Direction Inbound `
+       -Action Allow `
+       -Profile Private `
+       -Protocol TCP `
+       -LocalAddress 192.168.5.56 `
+       -LocalPort 8791 `
+       -RemoteAddress 192.168.5.9 `
+       -Program "C:\MSB_LORRunner\.venv\Scripts\python.exe"
+   ```
+
+   Do not modify the Label Service task, firewall behavior, Python runtime, or
+   `C:\MSB_LabelService`.
+
+4. Back in the normal Print Service PowerShell window, install and verify the
+   new runner:
+
+   ```powershell
+   Set-Location C:\MSB_LORRunner
+
+   .\run_lor_runner.ps1 `
+       -Action Install `
+       -DeploymentProfile PrintServerUnattended
+
+   .\run_lor_runner.ps1 `
+       -Action Status `
+       -DeploymentProfile PrintServerUnattended
+   ```
+
+   `Install` prompts separately for the PostgreSQL `msbadmin` ingest password
+   and the Windows `PRINT-SERVER\Print Service` task password. Do not confuse
+   those credentials. Do not pair Linux until local status shows task
+   `Running`, both DPAPI-protected credentials `AVAILABLE`, health `ok`, and
+   runner `V1.6.0`.
+
+5. Confirm the installed task contract:
+
+   ```powershell
+   (Get-ScheduledTask -TaskName "MSB LOR Operator Runner").Principal |
+       Format-List UserId,LogonType,RunLevel
+
+   (Get-ScheduledTask -TaskName "MSB LOR Operator Runner").Triggers |
+       Format-List *
+   ```
+
+   Require `Print Service`, `Password`, `Highest`, an at-startup trigger, and a
+   one-minute delay.
+
+Historical note: installation alone did not complete the cutover. Linux re-pairing, cold-reboot/autologon recovery, parser, ingest 55, Run 13, and Label Service isolation were all required and passed before production acceptance.
 
 ### Transfer procedure
 
@@ -445,7 +584,7 @@ PY
 | Symptom | Likely boundary | Safe action |
 |---|---|---|
 | Temporary Office Desktop runner is unavailable after reboot | No interactive logon or `G:` not restored | Sign in, restore `G:`, then run `Status`; do not represent this as the permanent production design |
-| PRINT-SERVER task starts but LOR state/source paths are unavailable | Headless task cannot access a user-session Google Drive mapping | Stop the transfer; establish and verify a durable noninteractive path before pairing Linux or disabling the old runner |
+| PRINT-SERVER task starts but LOR state/source paths are unavailable | Autologon/Google Drive did not mount `G:` before prerequisites ran | Verify the Print Service desktop session and `G:` first; inspect the runner log; start one managed instance only after paths exist |
 | Scheduled Task is `Ready`, no listener exists | Task exited during prerequisite or credential check | Review service log, fix the named prerequisite, run `Start` |
 | Port 8791 belongs to an unrelated process | Listener conflict | Do not kill it through the launcher; identify and resolve the conflict |
 | Local health passes but Linux times out | Firewall, wrong runner IP, or network path | Verify Private profile, firewall remote address, listener address, and Linux `LOR_RUNNER_URL` |
@@ -476,3 +615,4 @@ PY
 - [LOR2DB Ingest](../01_Ingest/README.md)
 - [LOR Production Import and Reconciliation Procedure](../02_Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md)
 - [PRINT-SERVER Runtime Runbook](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Print_Server_Runtime_Runbook.md)
+- [2026-08-25 Routine Display Maintenance and PRINT-SERVER Cutover Incident Record](LOR_Routine_Display_Maintenance_and_PRINT_SERVER_Cutover_Incident_2026-08-25.md)

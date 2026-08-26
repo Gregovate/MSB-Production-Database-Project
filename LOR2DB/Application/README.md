@@ -2,13 +2,15 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT — production deployed and validated through reconciliation Run 7 |
+| Status | CURRENT — production deployed and validated through reconciliation Run 13 |
 | Initial release / current revision | 2026-08-04 / 2026-08-17 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-08-25 | Recorded completed PRINT-SERVER V1.6.0 cutover, corrected the false Session-0 Google Drive conclusion, documented required Print Service autologon, and accepted parser V7.0.11, ingest 55, and reconciliation Run 13. |
+| 2026-08-25 | Added runner V1.6.0 dual deployment profiles after the initial PRINT-SERVER Password-logon Session-0 path probe; later cold-boot validation superseded its headless conclusion. |
 | 2026-08-16 | Changed the successful final production-application boundary from failure-red styling to an amber notice with standard blue confirmation controls. Cancellation and actual failures remain red. |
 | 2026-08-16 | Added ingest V0.4.1 / runner V1.5.1 recovery for a Windows console encoding failure after PostgreSQL commit. The exact completed SQLite digest is reused without creating a duplicate import run, and post-commit failures can no longer claim rollback. |
 | 2026-08-16 | Kept `Run parser` permanently available after successful runs and made `Review parser output` an additional action instead of a replacement. Corrected the Windows installer message so an unchanged protected token does not instruct the operator to pair the server again. |
@@ -147,25 +149,43 @@ parser table-count interpretation.
 
 ### Windows runner deployment boundary
 
-`Docs/01_LOR_System/02_Data_Extraction/Parser/lor_operator_runner.py` currently
-runs on the restricted Office Desktop under the logged-in Greg account because
-that session owns the Shared Drive mounted as `G:`. This is a temporary/test
-deployment, not the approved permanent production host. It listens on the
-internal interface only and requires a bearer token shared with the Linux API.
-Production already has an approved 6.6.10 state and must retain it. Never run
-`init` over that state.
+The production runner is deployed on `PRINT-SERVER` at
+`192.168.5.56:8791` under `PRINT-SERVER\Print Service`. Its isolated
+repository is `C:\MSB_LORRunner`, and runner V1.6.0 uses the
+`PrintServerUnattended` profile. The former Office Desktop deployment is
+disabled rollback material only.
+
+Google Drive for Desktop did not mount `G:` in a true pre-login Session-0
+cold boot. The accepted production configuration therefore uses controlled
+automatic login for the Print Service account so Google Drive can mount the
+approved preview, state, review, and SQLite paths. The runner currently exits
+if it checks prerequisites before `G:` is ready; recovery requires verifying
+the mount and starting one managed instance. This limitation is tracked for
+engineering correction.
+
+Production retains the approved 6.6.10 state. Never run `init` over that
+state.
 
 Use only the repository-root launcher. `Install` generates one random token,
 protects it with Windows DPAPI, and registers the **MSB LOR Operator Runner**
-task at Greg's logon. It never starts the parser. `PairServer` transfers the
-same token over SSH to a mode-0600 pending file without displaying or placing
-the secret in command history.
+task using the selected deployment profile. It never starts the parser.
+`PairServer` transfers the same token over SSH to a mode-0600 pending file
+without displaying or placing the secret in command history.
 
 ```powershell
 .\run_lor_runner.ps1 -Action Install
 .\run_lor_runner.ps1 -Action PairServer
 .\run_lor_runner.ps1 -Action Stop
 .\run_lor_runner.ps1 -Action Status
+```
+
+The temporary Office deployment defaults to `OfficeInteractive`. The approved
+PRINT-SERVER command is explicit:
+
+```powershell
+.\run_lor_runner.ps1 `
+    -Action Install `
+    -DeploymentProfile PrintServerUnattended
 ```
 
 `Install` safely replaces an existing managed runner, including an orphaned
@@ -187,26 +207,27 @@ the same non-secret fingerprint as Windows, and deletes the pending plaintext
 file. The reverse proxy continues to expose only the Linux LOR2DB API; do not
 publish port 8791 to the Internet.
 
-The current task runs while Greg remains logged in, including while the screen
-is locked. Closing a foreground runner window, logging out, or rebooting can
-leave the runner unavailable until the Office Desktop session and `G:` are
-restored. This is an explicit availability boundary: the website reports the
-runner offline, while the existing SQLite snapshot, PostgreSQL, and any
-already-started reconciliation remain unaffected.
+The production task is independent of an open PowerShell window. Screen
+locking does not stop it. Logging out removes the interactive Google Drive
+mount and makes parser/version/ingest operations unavailable until automatic
+or manual Print Service login restores `G:`.
 
-The approved permanent host is `PRINT-SERVER` (`192.168.5.56`) using a
-separate at-startup, run-whether-logged-on-or-not Scheduled Task under
-`PRINT-SERVER\Print Service`. That transfer is planned but not yet deployed.
-The current launcher creates an interactive at-logon task and must be updated
-and tested before it can install the approved PRINT-SERVER production model.
-Headless access to the approved preview/state/output paths is a mandatory
-cutover gate; a user-session-only `G:` mapping is not sufficient.
+The accepted host is `PRINT-SERVER` (`192.168.5.56`) with a separate
+at-startup, Password-logon, Highest Scheduled Task under
+`PRINT-SERVER\Print Service`. The existing Label Print Service remains a
+separate pre-login-capable workload. Production acceptance on 2026-08-25
+included local and Linux health, dashboard availability, cold reboot with
+Autologon, controlled parser V7.0.11, ingest 55, reconciliation Run 13,
+immutable report publication, exact final Display verification, and a successful physical Display label through the independent Label Print Service after reboot.
 
 Installation, restart, credential recovery, network requirements, and transfer
 to a replacement host are controlled by the
 [Runner Operations and Disaster Recovery](Office_PC_Runner_Operations_and_Disaster_Recovery.md)
 runbook. Do not improvise token transfer or copy DPAPI files to another account
 or computer.
+
+The complete deployment and workflow incident is preserved in
+[LOR Routine Display Maintenance and PRINT-SERVER Cutover Incident — 2026-08-25](LOR_Routine_Display_Maintenance_and_PRINT_SERVER_Cutover_Incident_2026-08-25.md).
 
 ## Required API
 

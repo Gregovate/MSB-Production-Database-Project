@@ -10,13 +10,14 @@
 | Audience | Authorized LOR2DB operators |
 | Status | CURRENT |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-08-17 |
+| Last Reviewed | 2026-08-25 |
 | Keywords | LOR2DB, parser, SQLite, ingest, reconciliation, production report |
 
 ## Revision History
 
 | Date | Change |
 |---|---|
+| 2026-08-25 | Recorded PRINT-SERVER production ownership and temporary safety instructions for stale console evidence and action controls that do not visibly advance after one click. |
 | 2026-08-17 | Initial controlled browser procedure aligned to the deployed parser-to-report workflow validated by ingest 48 and reconciliation Run 7. |
 
 ## Purpose
@@ -43,19 +44,26 @@ This procedure deliberately keeps three approvals separate:
 
 1. Open [LOR2DB](https://my.sheboyganlights.org/lor2db/).
 2. Confirm the **Approved LOR version** and **Preview source folder**.
-3. Select **Run parser**.
-4. Review the parser console, validation status, counts, reports, SQLite path,
-   and SQLite SHA-256.
+3. Select **Run parser** once. Wait for the operation state to change. Do not
+   submit a second parser request merely because the page has not visibly
+   refreshed.
+4. Review the parser activity time, console, validation status, counts, reports,
+   SQLite path, and SQLite SHA-256. The console evidence, activity record, and
+   digest must belong to the same parser operation. If the console is stale or
+   the timestamps do not match, stop and use engineering verification before
+   approving the output.
 5. If anything is wrong, correct the source previews and select **Run parser**
    again. Repeat this step as many times as necessary. Each run rebuilds and
    replaces the SQLite output; it does not ingest PostgreSQL.
 6. When the displayed output looks correct, select
-   **Parser output looks correct — ready for ingest**.
-7. Select **Ingest to PostgreSQL**. The ingest is locked to the exact SQLite
-   SHA-256 that you approved.
+   **Parser output looks correct — ready for ingest** once.
+7. Select **Ingest to PostgreSQL** once. The ingest is locked to the exact
+   SQLite SHA-256 that you approved. Wait for the operation state; if the page
+   does not advance, refresh and inspect activity before submitting anything
+   again.
 8. Review the PostgreSQL ingest console. Continue only when the page reports
    that the ingest completed and shows its PostgreSQL import run.
-9. Select **Start reconciliation**.
+9. Select **Start reconciliation** once. If the page appears stalled, wait and refresh; do not submit another Start request.
 10. Review every item requiring a decision. Use the complete evidence shown on
     screen, choose the appropriate decision, optionally add a useful audit
     comment, and select **Save decision**.
@@ -79,9 +87,16 @@ This procedure deliberately keeps three approvals separate:
 
 - **Parser output is wrong:** correct the preview source and rerun the parser.
   Do not ingest it.
-- **Runner unavailable:** confirm the Office PC is signed in, Google Drive has
-  restored `G:`, and the managed runner reports healthy. Do not substitute an
-  unreviewed file or path.
+- **Runner unavailable:** confirm PRINT-SERVER automatically logged into the
+  `Print Service` desktop, Google Drive restored `G:`, and the managed runner
+  reports healthy. Do not substitute an unreviewed file or path.
+- **A parser or ingest button appears to do nothing:** do not click repeatedly.
+  The first request may already be running. Wait, refresh, and verify the
+  durable activity record. Repeated Start requests can create or supersede
+  reconciliation attempts.
+- **Parser digest changed but console output did not:** treat the console as
+  stale and stop approval until engineering verification ties the exact
+  activity, SQLite file, and SHA-256 together.
 - **Ingest fails before commit:** do not start reconciliation. Preserve the
   console output and resolve the failure before retrying.
 - **Ingest console reports a failure after showing a completed import:** return
@@ -103,7 +118,8 @@ This procedure deliberately keeps three approvals separate:
 - [LOR Production Import and Reconciliation Procedure](../../../../LOR2DB/02_Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md)
 - [Manual Reconciliation Runbook — fallback only](../../../../LOR2DB/02_Reconciliation/02_LOR_Manual_Reconciliation_Runbook.md)
 - [LOR Preview Version Compatibility Review](../../../01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md)
-- [Office PC Runner Operations and Disaster Recovery](../../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
+- [LOR Runner Host Operations and Disaster Recovery](../../../../LOR2DB/Application/Office_PC_Runner_Operations_and_Disaster_Recovery.md)
+- [2026-08-25 Routine Display Maintenance and PRINT-SERVER Cutover Incident Record](../../../../LOR2DB/Application/LOR_Routine_Display_Maintenance_and_PRINT_SERVER_Cutover_Incident_2026-08-25.md)
 
 ---
 

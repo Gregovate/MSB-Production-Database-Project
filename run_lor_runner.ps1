@@ -18,7 +18,10 @@ param(
     [ValidateSet('Install', 'ConfigureIngest', 'PairServer', 'Start', 'Stop', 'Status')]
     [string]$Action = 'Status',
 
-    [string]$RunnerHost = '192.168.5.55',
+    [ValidateSet('OfficeInteractive', 'PrintServerUnattended')]
+    [string]$DeploymentProfile,
+
+    [string]$RunnerHost,
     [ValidateRange(1, 65535)]
     [int]$Port = 8791,
 
@@ -30,6 +33,22 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $DeploymentProfile) {
+    if ($env:COMPUTERNAME -ieq 'PRINT-SERVER') {
+        $DeploymentProfile = 'PrintServerUnattended'
+    }
+    else {
+        $DeploymentProfile = 'OfficeInteractive'
+    }
+}
+if (-not $RunnerHost) {
+    if ($DeploymentProfile -eq 'PrintServerUnattended') {
+        $RunnerHost = '192.168.5.56'
+    }
+    else {
+        $RunnerHost = '192.168.5.55'
+    }
+}
 $TaskName = 'MSB LOR Operator Runner'
 $RepoRoot = $PSScriptRoot
 $RunnerPath = Join-Path $RepoRoot `
@@ -231,21 +250,37 @@ function Test-AuthenticatedHealth {
     }
 }
 
+function Assert-DeploymentIdentity {
+    if ($DeploymentProfile -ne 'PrintServerUnattended') {
+        return
+    }
+
+    if ($env:COMPUTERNAME -ine 'PRINT-SERVER') {
+        throw (
+            'PrintServerUnattended may be installed or started only on ' +
+            'PRINT-SERVER.'
+        )
+    }
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    if ($identity -ine 'PRINT-SERVER\Print Service') {
+        throw (
+            'PrintServerUnattended must run as ' +
+            "PRINT-SERVER\Print Service; current identity is $identity."
+        )
+    }
+}
+
 function Install-ScheduledRunner {
     $account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
     $arguments = "-NoProfile -WindowStyle Hidden " +
         "-ExecutionPolicy Bypass -File `"$PSCommandPath`" " +
-        "-Action Start -RunnerHost $RunnerHost -Port $Port " +
+        "-Action Start -DeploymentProfile $DeploymentProfile " +
+        "-RunnerHost $RunnerHost -Port $Port " +
         "-StateFile `"$StateFile`""
     $taskAction = New-ScheduledTaskAction `
         -Execute 'powershell.exe' `
         -Argument $arguments `
         -WorkingDirectory $RepoRoot
-    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $account
-    $principal = New-ScheduledTaskPrincipal `
-        -UserId $account `
-        -LogonType Interactive `
-        -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet `
         -StartWhenAvailable `
         -AllowStartIfOnBatteries `
@@ -254,14 +289,52 @@ function Install-ScheduledRunner {
         -RestartInterval (New-TimeSpan -Minutes 1) `
         -ExecutionTimeLimit ([TimeSpan]::Zero) `
         -MultipleInstances IgnoreNew
-    Register-ScheduledTask `
-        -TaskName $TaskName `
-        -Action $taskAction `
-        -Trigger $trigger `
-        -Principal $principal `
-        -Settings $settings `
-        -Description 'Restricted LOR2DB parser/ingest/version-check runner; requires Greg logon and G: drive.' `
-        -Force | Out-Null
+
+    if ($DeploymentProfile -eq 'PrintServerUnattended') {
+        $trigger = New-ScheduledTaskTrigger -AtStartup
+        $trigger.Delay = 'PT1M'
+        $taskCredential = Get-Credential `
+            -UserName $account `
+            -Message 'Enter the PRINT-SERVER Print Service Windows password'
+        if (-not $taskCredential) {
+            throw 'Windows task credential entry was cancelled.'
+        }
+        $taskPassword = $taskCredential.GetNetworkCredential().Password
+        if ([string]::IsNullOrWhiteSpace($taskPassword)) {
+            throw 'Windows task password cannot be blank.'
+        }
+        try {
+            Register-ScheduledTask `
+                -TaskName $TaskName `
+                -Action $taskAction `
+                -Trigger $trigger `
+                -User $account `
+                -Password $taskPassword `
+                -RunLevel Highest `
+                -Settings $settings `
+                -Description 'Restricted unattended LOR2DB runner on PRINT-SERVER; isolated from MSB Label Service.' `
+                -Force | Out-Null
+        }
+        finally {
+            Remove-Variable taskPassword -ErrorAction SilentlyContinue
+            Remove-Variable taskCredential -ErrorAction SilentlyContinue
+        }
+    }
+    else {
+        $trigger = New-ScheduledTaskTrigger -AtLogOn -User $account
+        $principal = New-ScheduledTaskPrincipal `
+            -UserId $account `
+            -LogonType Interactive `
+            -RunLevel Limited
+        Register-ScheduledTask `
+            -TaskName $TaskName `
+            -Action $taskAction `
+            -Trigger $trigger `
+            -Principal $principal `
+            -Settings $settings `
+            -Description 'Restricted LOR2DB runner; requires the Office user logon and G: drive.' `
+            -Force | Out-Null
+    }
 }
 
 function Stop-InstalledRunner {
@@ -353,6 +426,7 @@ function Start-InstalledRunner {
 
 switch ($Action) {
     'Install' {
+        Assert-DeploymentIdentity
         Assert-RunnerPrerequisites | Out-Null
         Stop-InstalledRunner
         $pairingRequired = $false
@@ -380,7 +454,9 @@ switch ($Action) {
             Remove-Variable secureIngestCredential -ErrorAction SilentlyContinue
         }
         Install-ScheduledRunner
-        Write-Host "[OK] Scheduled Task installed for logged-in account: $TaskName"
+        Write-Host "[OK] Scheduled Task installed: $TaskName"
+        Write-Host "[OK] Deployment profile: $DeploymentProfile"
+        Write-Host "[OK] Task account: $([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)"
         Write-Host "[OK] Credential fingerprint: $(Get-TokenFingerprint -Token $token)"
         Start-InstalledRunner -Token $token
         if ($pairingRequired) {
@@ -393,6 +469,7 @@ switch ($Action) {
     }
 
     'ConfigureIngest' {
+        Assert-DeploymentIdentity
         Assert-RunnerPrerequisites | Out-Null
         $secureIngestCredential = Read-Host `
             'Enter the PostgreSQL msbadmin password for web ingest' `
@@ -421,13 +498,17 @@ switch ($Action) {
         Write-Host '[OK] Pairing token transferred to a mode-0600 pending file.'
         Write-Host "[OK] Credential fingerprint: $(Get-TokenFingerprint -Token $token)"
         Write-Host '[NEXT] From the repository root on msb-prod-db, run:'
-        Write-Host 'sudo python3 LOR2DB/Application/install_lor_runner_pairing.py'
+        Write-Host (
+            'sudo python3 LOR2DB/Application/install_lor_runner_pairing.py ' +
+            "--runner-url http://${RunnerHost}:$Port"
+        )
         Remove-Variable token -ErrorAction SilentlyContinue
     }
 
     'Start' {
         Write-ServiceLog "Start requested for ${RunnerHost}:$Port."
         try {
+            Assert-DeploymentIdentity
             $state = Assert-RunnerPrerequisites
             Write-ServiceLog (
                 "Prerequisites passed for approved LOR " +
@@ -454,7 +535,8 @@ switch ($Action) {
             $env:LOR_INGEST_PATH = $IngestPath
             $env:PYTHONUNBUFFERED = '1'
             Write-ServiceLog (
-                "Starting runner V1.5.1; credential fingerprint=" +
+                "Starting runner V1.6.0; profile=$DeploymentProfile; " +
+                "credential fingerprint=" +
                 "$(Get-TokenFingerprint -Token $token)."
             )
             # BaseHTTPRequestHandler writes normal HTTP access records to
@@ -499,9 +581,14 @@ switch ($Action) {
 
     'Status' {
         Write-Host "Task: $TaskName"
+        Write-Host "Deployment profile: $DeploymentProfile"
+        Write-Host "Runner endpoint: http://${RunnerHost}:$Port"
         $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
         if ($task) {
             Write-Host "Scheduled Task state: $($task.State)"
+            Write-Host "Scheduled Task user: $($task.Principal.UserId)"
+            Write-Host "Scheduled Task logon type: $($task.Principal.LogonType)"
+            Write-Host "Scheduled Task run level: $($task.Principal.RunLevel)"
         }
         else {
             Write-Host 'Scheduled Task state: NOT INSTALLED'

@@ -19,9 +19,9 @@ tools for operator convenience but does not own their XML interpretation.
 | `test_parse_props_atomic_publish.py` | Regression tests for transient Windows file-lock retry and fail-closed atomic publication |
 
 The repository-root `run_lor_runner.ps1` is the canonical deployment and
-runtime launcher. It owns DPAPI secret storage, the logged-in-user Scheduled
-Task, authenticated status checks, and SSH pairing to the Linux API. Do not
-assemble runner environment variables or tokens manually.
+runtime launcher. It owns DPAPI secret storage, both reviewed Scheduled Task
+profiles, authenticated status checks, and SSH pairing to the Linux API. Do
+not assemble runner environment variables or tokens manually.
 
 ## Operating Boundary
 
@@ -55,12 +55,14 @@ already committed snapshot.
 
 That Office Desktop deployment is temporary/test infrastructure. The approved
 permanent host is `PRINT-SERVER` (`192.168.5.56`) under a separate unattended
-Scheduled Task. The transfer is not yet deployed. Before cutover, the
-`PRINT-SERVER\Print Service` task context must have durable headless access to
-the approved preview/state/output paths, and the runner launcher must support
-the accepted at-startup noninteractive task model. Do not disable the Office
-Desktop listener or re-pair Linux until the controlled transfer acceptance
-gates pass.
+Scheduled Task. On 2026-08-25, a Password-logon task running as
+`PRINT-SERVER\Print Service` passed the headless `G:` path gate in Session 0
+with no interactive user. Launcher V1.6.0 now provides the reviewed
+`PrintServerUnattended` at-startup profile while retaining
+`OfficeInteractive` for rollback. The production transfer remains incomplete
+until deployment, Linux re-pairing, dashboard validation, controlled parser
+validation, and reboot acceptance pass. Do not disable the Office Desktop
+listener or re-pair Linux early.
 
 See:
 
