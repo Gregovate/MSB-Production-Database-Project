@@ -1,4 +1,4 @@
-/* MSB parser and ingest workflow - 2026-08-27 V0.6.2 */
+/* MSB parser and ingest workflow - 2026-08-27 V0.6.2.1 */
 (function () {
   "use strict";
 
@@ -236,7 +236,7 @@
           <button id="rerun-parser" type="button">Make corrections and run parser again</button>
         </div>`
       : `<div class="page-actions">
-          <button id="mark-ready-ingest" class="primary" type="button">Parser output looks correct — ready for ingest</button>
+          <button id="run-ingest" class="primary" type="button">Parser output looks correct — ready for ingest</button>
           <button id="rerun-parser" type="button">Make corrections and run parser again</button>
         </div>`;
 
@@ -257,7 +257,7 @@
       detail = "Review the ingest console error below. Reconciliation has not started. Correct the problem and retry this same validated snapshot.";
       controls = reviewed
         ? '<div class="page-actions"><button id="run-ingest" class="primary" type="button">Retry PostgreSQL ingest</button><button id="rerun-parser" type="button">Make corrections and run parser again</button></div>'
-        : '<div class="page-actions"><button id="mark-ready-ingest" class="primary" type="button">Parser output still looks correct — retry ingest</button><button id="rerun-parser" type="button">Make corrections and run parser again</button></div>';
+        : '<div class="page-actions"><button id="run-ingest" class="primary" type="button">Parser output still looks correct — retry ingest</button><button id="rerun-parser" type="button">Make corrections and run parser again</button></div>';
     }
 
     return `<section id="ingest-step" class="card next-step-card">
@@ -428,12 +428,6 @@
 
     document.querySelector("#run-parser")?.addEventListener("click", runParser);
     document.querySelector("#rerun-parser")?.addEventListener("click", runParser);
-    document.querySelector("#mark-ready-ingest")?.addEventListener("click", () => {
-      reviewedDigest = digest;
-      reviewedParserActivityId = parserActivityId;
-      render();
-      document.querySelector("#ingest-step")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
     document.querySelector("#run-ingest")?.addEventListener("click", runIngest);
     document.querySelector("#start-reconciliation")?.addEventListener("click", startReconciliation);
     document.querySelector("#refresh-output")?.addEventListener("click", refresh);
@@ -552,17 +546,17 @@
     const digest = evidence?.digest;
     const parserActivityId = evidence?.activityId;
 
-    if (
-      !digest
-      || !parserActivityId
-      || reviewedDigest !== digest
-      || reviewedParserActivityId !== parserActivityId
-    ) {
+    if (!digest || !parserActivityId) {
       window.alert(
-        "Review and approve this exact parser activity and SQLite output before ingest."
+        "Current parser evidence is not available for ingest. Refresh and review the exact parser activity before trying again."
       );
       return;
     }
+
+    // This one deliberate click is both the operator approval of the exact
+    // parser activity/digest and the idempotent request to start ingest.
+    reviewedDigest = digest;
+    reviewedParserActivityId = parserActivityId;
 
     const requestId = operationRequestId("ingest");
 
