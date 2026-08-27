@@ -2,7 +2,7 @@
 
 Initial release: 2026-08-13 V1.0.0
 
-Current version: 2026-08-25 V1.6.0
+Current version: 2026-08-27 V1.7.0
 
 V1.5.0 adds the fixed, digest-locked PostgreSQL ingest operation and bounded
 read-only ingest console. Parser execution remains repeatable and never starts
@@ -43,7 +43,7 @@ from urllib.parse import urlparse
 from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.6.0"
+RUNNER_VERSION = "V1.7.0"
 MAX_BROWSER_CONSOLE_CHARACTERS = 500_000
 
 AUTHORITATIVE_OUTPUT_TABLES = (
@@ -475,7 +475,12 @@ class Runner:
         self.store.update(operation)
 
     def _start_parser_activity(
-        self, target: str, version: str, folder: Path, actor: str
+        self,
+        target: str,
+        version: str,
+        folder: Path,
+        actor: str,
+        request_id: str | None = None,
     ) -> tuple[dict[str, Any], Path]:
         """Record one recoverable browser-visible parser attempt."""
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
@@ -493,6 +498,7 @@ class Runner:
             "started_at": utc_now(),
             "completed_at": None,
             "run_by": actor,
+            "request_id": request_id,
             "console_log_path": str(log_path),
             "error": None,
             "result": None,
@@ -550,7 +556,11 @@ class Runner:
         return public
 
     def _start_ingest_activity(
-        self, digest: str, actor: str
+        self,
+        digest: str,
+        actor: str,
+        parser_activity_id: str | None = None,
+        request_id: str | None = None,
     ) -> tuple[dict[str, Any], Path]:
         """Record one recoverable browser-visible PostgreSQL ingest attempt."""
         state = self.store.read()
@@ -569,6 +579,8 @@ class Runner:
             "started_at": utc_now(),
             "completed_at": None,
             "run_by": actor,
+            "parser_activity_id": parser_activity_id,
+            "request_id": request_id,
             "console_log_path": str(log_path),
             "error": None,
             "result": None,
@@ -629,13 +641,242 @@ class Runner:
         public["console_truncated"] = truncated
         return public
 
-    def run_ingest(self, expected_digest: str, actor: str) -> dict[str, Any]:
-        """Run the one fixed, parser-authorized SQLite-to-PostgreSQL ingest."""
+    @staticmethod
+    def _normalize_request_id(request_id: str) -> str:
+        """Validate one browser-generated idempotency key."""
+        value = str(request_id or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9._:-]{8,128}", value):
+            raise ValueError(
+                "Request ID must contain 8-128 safe identifier characters"
+            )
+        return value
+
+    def _background_parser(
+        self,
+        target: str,
+        actor: str,
+        activity: dict[str, Any],
+        console_log: Path,
+    ) -> None:
+        """Complete one already-recorded parser activity."""
+        try:
+            self.run_parser(
+                target,
+                actor,
+                activity_context=(activity, console_log),
+            )
+        except Exception as error:
+            latest = self.store.read().get("parser_activity") or {}
+            if (
+                latest.get("activity_id") == activity["activity_id"]
+                and latest.get("status") == "RUNNING"
+            ):
+                detail = f"[FATAL] Parser operation failed: {error}"
+                self._finish_parser_activity(
+                    activity,
+                    "FAILED",
+                    console_log,
+                    detail,
+                    error=str(error),
+                )
+        finally:
+            self.operation_lock.release()
+
+    def start_parser(
+        self,
+        target: str,
+        actor: str,
+        request_id: str,
+    ) -> dict[str, Any]:
+        """
+        Record one production parser activity, return immediately, and
+        complete the work on the managed runner thread.
+        """
+        if target != "current":
+            raise ValueError(
+                "Durable parser start is valid only for "
+                "the current production parser"
+            )
+
+        request_id = self._normalize_request_id(request_id)
+
+        latest = self.store.read().get("parser_activity") or {}
+        if latest.get("request_id") == request_id:
+            return self.public_parser_activity() or {}
+
+        if not self.operation_lock.acquire(blocking=False):
+            latest = self.store.read().get("parser_activity") or {}
+
+            if latest.get("request_id") == request_id:
+                return self.public_parser_activity() or {}
+
+            raise RuntimeError(
+                "Another parser, ingest, or version-check operation "
+                "is already running"
+            )
+
+        try:
+            state = self.store.read()
+            version = state["current_lor_version"]
+            folder = Path(state["current_preview_folder"])
+
+            activity, console_log = self._start_parser_activity(
+                target,
+                version,
+                folder,
+                actor,
+                request_id=request_id,
+            )
+
+            worker = threading.Thread(
+                target=self._background_parser,
+                args=(target, actor, activity, console_log),
+                name=f"lor-parser-{activity['activity_id']}",
+                daemon=True,
+            )
+            worker.start()
+
+            return self.public_parser_activity() or {}
+        except Exception:
+            self.operation_lock.release()
+            raise
+
+    def _background_ingest(
+        self,
+        digest: str,
+        parser_activity_id: str,
+        actor: str,
+        activity: dict[str, Any],
+        console_log: Path,
+    ) -> None:
+        """Complete one already-recorded PostgreSQL ingest activity."""
+        try:
+            self.run_ingest(
+                digest,
+                actor,
+                expected_parser_activity_id=parser_activity_id,
+                activity_context=(activity, console_log),
+            )
+        except Exception as error:
+            latest = self.store.read().get("ingest_activity") or {}
+
+            if (
+                latest.get("activity_id") == activity["activity_id"]
+                and latest.get("status") == "RUNNING"
+            ):
+                detail = f"[FATAL] PostgreSQL ingest failed: {error}"
+                self._finish_ingest_activity(
+                    activity,
+                    "FAILED",
+                    console_log,
+                    detail,
+                    error=str(error),
+                )
+        finally:
+            self.operation_lock.release()
+
+    def start_ingest(
+        self,
+        expected_digest: str,
+        parser_activity_id: str,
+        actor: str,
+        request_id: str,
+    ) -> dict[str, Any]:
+        """
+        Record one digest/activity-locked ingest, return immediately,
+        and complete it on the managed runner thread.
+        """
+        digest = str(expected_digest or "").strip().lower()
+
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError(
+                "Expected SQLite SHA-256 must contain "
+                "64 hexadecimal characters"
+            )
+
+        parser_activity_id = str(parser_activity_id or "").strip()
+        if not parser_activity_id:
+            raise ValueError(
+                "Expected parser activity ID is required for ingest"
+            )
+
+        request_id = self._normalize_request_id(request_id)
+
+        latest = self.store.read().get("ingest_activity") or {}
+        if latest.get("request_id") == request_id:
+            return self.public_ingest_activity() or {}
+
+        if not self.operation_lock.acquire(blocking=False):
+            latest = self.store.read().get("ingest_activity") or {}
+
+            if latest.get("request_id") == request_id:
+                return self.public_ingest_activity() or {}
+
+            raise RuntimeError(
+                "Another parser, ingest, or version-check operation "
+                "is already running"
+            )
+
+        try:
+            activity, console_log = self._start_ingest_activity(
+                digest,
+                actor,
+                parser_activity_id=parser_activity_id,
+                request_id=request_id,
+            )
+
+            worker = threading.Thread(
+                target=self._background_ingest,
+                args=(
+                    digest,
+                    parser_activity_id,
+                    actor,
+                    activity,
+                    console_log,
+                ),
+                name=f"lor-ingest-{activity['activity_id']}",
+                daemon=True,
+            )
+            worker.start()
+
+            return self.public_ingest_activity() or {}
+        except Exception:
+            self.operation_lock.release()
+            raise
+
+    def run_ingest(
+        self,
+        expected_digest: str,
+        actor: str,
+        expected_parser_activity_id: str | None = None,
+        *,
+        activity_context: tuple[dict[str, Any], Path] | None = None,
+    ) -> dict[str, Any]:
+        """Run the fixed parser-authorized SQLite-to-PostgreSQL ingest."""
         digest = expected_digest.strip().lower()
         if not re.fullmatch(r"[0-9a-f]{64}", digest):
             raise ValueError("Expected SQLite SHA-256 must contain 64 hexadecimal characters")
         state = self.store.read()
         parser_run = state.get("production_parser_run") or {}
+        parser_activity = state.get("parser_activity") or {}
+
+        if expected_parser_activity_id:
+            activity_result = parser_activity.get("result") or {}
+
+            if (
+                parser_activity.get("activity_id")
+                != expected_parser_activity_id
+                or parser_activity.get("target") != "current"
+                or parser_activity.get("status") != "PASSED"
+                or str(
+                    activity_result.get("sqlite_sha256") or ""
+                ).lower() != digest
+            ):
+                raise ValueError(
+                    "The requested ingest is not bound to "
+                    "the current passed parser activity"
+                )
+
         if (
             parser_run.get("status") != "COMPLETE"
             or parser_run.get("validation_status") != "PASSED"
@@ -662,7 +903,21 @@ class Runner:
 
         password = required_environment("LOR_INGEST_PG_PASSWORD")
         version = state["current_lor_version"]
-        activity, console_log = self._start_ingest_activity(digest, actor)
+
+        parser_evidence_id = (
+            expected_parser_activity_id
+            or parser_activity.get("activity_id")
+        )
+
+        if activity_context is None:
+            activity, console_log = self._start_ingest_activity(
+                digest,
+                actor,
+                parser_activity_id=parser_evidence_id,
+            )
+        else:
+            activity, console_log = activity_context
+
         command = [
             sys.executable,
             str(self.ingest_path),
@@ -720,6 +975,7 @@ class Runner:
             "import_run_id": int(match.group(1)),
             "completed_at": utc_now(),
             "run_by": actor,
+            "parser_activity_id": parser_evidence_id,
         }
         self._finish_ingest_activity(
             activity, "PASSED", console_log, console_output, result=result
@@ -828,7 +1084,13 @@ class Runner:
         self.store.update(operation)
         return record
 
-    def run_parser(self, target: str, actor: str) -> dict[str, Any]:
+    def run_parser(
+        self,
+        target: str,
+        actor: str,
+        *,
+        activity_context: tuple[dict[str, Any], Path] | None = None,
+    ) -> dict[str, Any]:
         state = self.store.read()
         if target in {"current", "baseline"}:
             version = state["current_lor_version"]
@@ -913,7 +1175,28 @@ class Runner:
             "--result-json", str(result_json),
             "--non-interactive",
         ]
-        activity, console_log = self._start_parser_activity(target, version, folder, actor)
+        if activity_context is None:
+            activity, console_log = self._start_parser_activity(
+                target,
+                version,
+                folder,
+                actor,
+            )
+        else:
+            activity, console_log = activity_context
+
+            if (
+                activity.get("target") != target
+                or activity.get("source_lor_version") != version
+                or Path(
+                    str(activity.get("source_preview_folder") or "")
+                ) != folder
+            ):
+                raise RuntimeError(
+                    "Pre-recorded parser activity does not match "
+                    "the requested source"
+                )
+
         try:
             completed = subprocess.run(
                 command, capture_output=True, text=True, timeout=900,
@@ -1169,6 +1452,33 @@ class RequestHandler(BaseHTTPRequestHandler):
         payload = self.body()
         actor = str(payload.get("actor") or "unknown-operator")
         if self.command == "POST":
+            if path == "/parser/start":
+                return HTTPStatus.ACCEPTED, {
+                    "activity": self.runner.start_parser(
+                        str(payload.get("target") or ""),
+                        actor,
+                        str(payload.get("request_id") or ""),
+                    )
+                }
+
+            if path == "/ingest/start":
+                return HTTPStatus.ACCEPTED, {
+                    "activity": self.runner.start_ingest(
+                        str(
+                            payload.get(
+                                "expected_sqlite_sha256"
+                            ) or ""
+                        ),
+                        str(
+                            payload.get(
+                                "parser_activity_id"
+                            ) or ""
+                        ),
+                        actor,
+                        str(payload.get("request_id") or ""),
+                    )
+                }
+
             # Only one state-changing/check/parser/ingest operation may run at a time.
             # This prevents concurrent website clicks from targeting the same
             # candidate database or changing the version record mid-run. A

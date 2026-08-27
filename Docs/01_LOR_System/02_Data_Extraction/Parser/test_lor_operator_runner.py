@@ -9,6 +9,8 @@ import json
 import os
 import sqlite3
 import tempfile
+import threading
+import time
 import unittest
 from http import HTTPStatus
 from pathlib import Path
@@ -129,6 +131,251 @@ class OperatorRunnerTests(unittest.TestCase):
 
         self.assertEqual(status, HTTPStatus.CONFLICT)
         self.assertIn("already running", payload["error"])
+
+    @patch("lor_operator_runner.subprocess.run")
+    def test_async_current_parser_start_is_durable_and_idempotent(
+        self, run
+    ) -> None:
+        entered = threading.Event()
+        release = threading.Event()
+
+        def complete(command, **_kwargs):
+            entered.set()
+
+            if not release.wait(2):
+                raise RuntimeError("test parser release timed out")
+
+            result_path = Path(
+                command[command.index("--result-json") + 1]
+            )
+            result_path.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            result_path.write_text(
+                json.dumps({
+                    "status": "COMPLETE",
+                    "validation_status": "PASSED",
+                    "source_lor_version": "6.6.4",
+                    "sqlite_sha256": "a" * 64,
+                }),
+                encoding="utf-8",
+            )
+
+            return argparse.Namespace(
+                returncode=0,
+                stdout="[OK] async parser complete\n",
+                stderr="",
+            )
+
+        run.side_effect = complete
+        request_id = "parser-request-12345678"
+
+        first = self.runner.start_parser(
+            "current",
+            "operator@example.com",
+            request_id,
+        )
+
+        self.assertEqual(first["status"], "RUNNING")
+        self.assertEqual(first["request_id"], request_id)
+        self.assertTrue(
+            first["activity_id"].startswith("current-")
+        )
+        self.assertTrue(entered.wait(2))
+
+        second = self.runner.start_parser(
+            "current",
+            "operator@example.com",
+            request_id,
+        )
+
+        self.assertEqual(
+            second["activity_id"],
+            first["activity_id"],
+        )
+        self.assertEqual(run.call_count, 1)
+
+        release.set()
+
+        for _ in range(200):
+            activity = self.runner.public_parser_activity()
+
+            if activity["status"] != "RUNNING":
+                break
+
+            time.sleep(0.01)
+
+        activity = self.runner.public_parser_activity()
+
+        self.assertEqual(activity["status"], "PASSED")
+        self.assertEqual(activity["request_id"], request_id)
+        self.assertEqual(
+            activity["result"]["sqlite_sha256"],
+            "a" * 64,
+        )
+        self.assertEqual(run.call_count, 1)
+
+    @patch("lor_operator_runner.subprocess.run")
+    def test_async_ingest_is_bound_to_parser_activity_and_idempotent(
+        self, run
+    ) -> None:
+        database = self.root / "lor_output_v7_scene.db"
+        database.write_bytes(b"reviewed sqlite")
+
+        digest = runner_module.hashlib.sha256(
+            database.read_bytes()
+        ).hexdigest()
+
+        parser_activity_id = "current-parser-evidence"
+
+        def prepare(state):
+            state["production_parser_run"] = {
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+                "source_lor_version": "6.6.4",
+                "sqlite_path": str(database),
+                "sqlite_sha256": digest,
+            }
+            state["parser_activity"] = {
+                "activity_id": parser_activity_id,
+                "target": "current",
+                "status": "PASSED",
+                "result": {
+                    "sqlite_sha256": digest,
+                },
+            }
+
+        self.store.update(prepare)
+
+        entered = threading.Event()
+        release = threading.Event()
+
+        def complete(_command, **_kwargs):
+            entered.set()
+
+            if not release.wait(2):
+                raise RuntimeError("test ingest release timed out")
+
+            return argparse.Namespace(
+                returncode=0,
+                stdout=(
+                    "[DONE] Snapshot ingest complete. "
+                    "import_run_id=47\n"
+                ),
+                stderr="",
+            )
+
+        run.side_effect = complete
+        request_id = "ingest-request-12345678"
+
+        with patch.dict(
+            os.environ,
+            {"LOR_INGEST_PG_PASSWORD": "secret"},
+        ):
+            first = self.runner.start_ingest(
+                digest,
+                parser_activity_id,
+                "operator@example.com",
+                request_id,
+            )
+
+            self.assertEqual(first["status"], "RUNNING")
+            self.assertEqual(
+                first["request_id"],
+                request_id,
+            )
+            self.assertEqual(
+                first["parser_activity_id"],
+                parser_activity_id,
+            )
+            self.assertTrue(entered.wait(2))
+
+            second = self.runner.start_ingest(
+                digest,
+                parser_activity_id,
+                "operator@example.com",
+                request_id,
+            )
+
+            self.assertEqual(
+                second["activity_id"],
+                first["activity_id"],
+            )
+            self.assertEqual(run.call_count, 1)
+
+            release.set()
+
+            for _ in range(200):
+                activity = (
+                    self.runner.public_ingest_activity()
+                )
+
+                if activity["status"] != "RUNNING":
+                    break
+
+                time.sleep(0.01)
+
+        activity = self.runner.public_ingest_activity()
+
+        self.assertEqual(activity["status"], "PASSED")
+        self.assertEqual(
+            activity["parser_activity_id"],
+            parser_activity_id,
+        )
+
+        production = (
+            self.store.read()["production_ingest_run"]
+        )
+
+        self.assertEqual(
+            production["import_run_id"],
+            47,
+        )
+        self.assertEqual(
+            production["parser_activity_id"],
+            parser_activity_id,
+        )
+        self.assertEqual(run.call_count, 1)
+
+    def test_ingest_rejects_wrong_parser_activity_binding(
+        self,
+    ) -> None:
+        database = self.root / "lor_output_v7_scene.db"
+        database.write_bytes(b"reviewed sqlite")
+
+        digest = runner_module.hashlib.sha256(
+            database.read_bytes()
+        ).hexdigest()
+
+        def prepare(state):
+            state["production_parser_run"] = {
+                "status": "COMPLETE",
+                "validation_status": "PASSED",
+                "source_lor_version": "6.6.4",
+                "sqlite_path": str(database),
+                "sqlite_sha256": digest,
+            }
+            state["parser_activity"] = {
+                "activity_id": "current-correct",
+                "target": "current",
+                "status": "PASSED",
+                "result": {
+                    "sqlite_sha256": digest,
+                },
+            }
+
+        self.store.update(prepare)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "not bound to the current passed parser activity",
+        ):
+            self.runner.run_ingest(
+                digest,
+                "operator@example.com",
+                expected_parser_activity_id="current-wrong",
+            )
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.10", "operator@example.com")
