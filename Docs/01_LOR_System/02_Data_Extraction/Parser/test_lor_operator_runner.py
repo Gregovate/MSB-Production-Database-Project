@@ -247,6 +247,10 @@ class OperatorRunnerTests(unittest.TestCase):
         )
         self.assertIsNone(state["production_ingest_run"])
         self.assertIsNone(state["ingest_activity"])
+        self.assertIn(
+            request_id,
+            state["operation_request_ids"],
+        )
         self.assertEqual(run.call_count, 1)
 
     @patch("lor_operator_runner.subprocess.run")
@@ -374,6 +378,11 @@ class OperatorRunnerTests(unittest.TestCase):
             production["ingest_activity_id"],
             activity["activity_id"],
         )
+        self.assertIn(
+            request_id,
+            self.store.read()["operation_request_ids"],
+        )
+        self.assertTrue(activity["console_available"])
         self.assertEqual(run.call_count, 1)
 
     def test_ingest_rejects_wrong_parser_activity_binding(
@@ -414,6 +423,53 @@ class OperatorRunnerTests(unittest.TestCase):
                 "operator@example.com",
                 expected_parser_activity_id="current-wrong",
             )
+
+    @patch("lor_operator_runner.subprocess.run")
+    def test_used_parser_request_id_cannot_start_duplicate(
+        self, run
+    ) -> None:
+        request_id = "parser-replay-12345678"
+
+        def prepare(state):
+            state["operation_request_ids"] = [request_id]
+
+        self.store.update(prepare)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "already accepted",
+        ):
+            self.runner.start_parser(
+                "current",
+                "operator@example.com",
+                request_id,
+            )
+
+        run.assert_not_called()
+
+    @patch("lor_operator_runner.subprocess.run")
+    def test_used_ingest_request_id_cannot_start_duplicate(
+        self, run
+    ) -> None:
+        request_id = "ingest-replay-12345678"
+
+        def prepare(state):
+            state["operation_request_ids"] = [request_id]
+
+        self.store.update(prepare)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "already accepted",
+        ):
+            self.runner.start_ingest(
+                "a" * 64,
+                "current-parser-evidence",
+                "operator@example.com",
+                request_id,
+            )
+
+        run.assert_not_called()
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.11", "operator@example.com")
@@ -533,6 +589,7 @@ class OperatorRunnerTests(unittest.TestCase):
         activity = self.runner.public_parser_activity()
         self.assertEqual(activity["status"], "PASSED")
         self.assertEqual(activity["target"], "current")
+        self.assertTrue(activity["console_available"])
         self.assertIn("[OK] parser complete", activity["console_output"])
         self.assertNotIn("console_log_path", self.runner.public_state()["parser_activity"])
 
@@ -567,6 +624,7 @@ class OperatorRunnerTests(unittest.TestCase):
         runner_module.Runner(self.store)
         activity = self.runner.public_parser_activity()
         self.assertEqual(activity["status"], "INTERRUPTED")
+        self.assertFalse(activity["console_available"])
         self.assertIn("restarted", activity["error"])
 
     @patch("lor_operator_runner.subprocess.run")
@@ -575,6 +633,8 @@ class OperatorRunnerTests(unittest.TestCase):
         database.write_bytes(b"reviewed sqlite")
         digest = runner_module.hashlib.sha256(database.read_bytes()).hexdigest()
 
+        parser_activity_id = "current-web-ingest"
+
         def prepare(state):
             state["production_parser_run"] = {
                 "status": "COMPLETE",
@@ -582,6 +642,15 @@ class OperatorRunnerTests(unittest.TestCase):
                 "source_lor_version": "6.6.10",
                 "sqlite_path": str(database),
                 "sqlite_sha256": digest,
+                "parser_activity_id": parser_activity_id,
+            }
+            state["parser_activity"] = {
+                "activity_id": parser_activity_id,
+                "target": "current",
+                "status": "PASSED",
+                "result": {
+                    "sqlite_sha256": digest,
+                },
             }
 
         self.store.update(prepare)
@@ -608,10 +677,12 @@ class OperatorRunnerTests(unittest.TestCase):
                 self.runner.run_ingest(digest, "operator@example.com")
         self.assertEqual(run.call_count, 1)
 
-    def test_web_ingest_rejects_digest_not_approved_by_parser(self) -> None:
+    def test_web_ingest_rejects_digest_not_bound_to_parser_activity(self) -> None:
         database = self.root / "lor_output_v7_scene.db"
         database.write_bytes(b"reviewed sqlite")
         digest = runner_module.hashlib.sha256(database.read_bytes()).hexdigest()
+
+        parser_activity_id = "current-digest-guard"
 
         def prepare(state):
             state["production_parser_run"] = {
@@ -620,10 +691,19 @@ class OperatorRunnerTests(unittest.TestCase):
                 "source_lor_version": "6.6.10",
                 "sqlite_path": str(database),
                 "sqlite_sha256": digest,
+                "parser_activity_id": parser_activity_id,
+            }
+            state["parser_activity"] = {
+                "activity_id": parser_activity_id,
+                "target": "current",
+                "status": "PASSED",
+                "result": {
+                    "sqlite_sha256": digest,
+                },
             }
 
         self.store.update(prepare)
-        with self.assertRaisesRegex(ValueError, "not the latest validated"):
+        with self.assertRaisesRegex(ValueError, "not bound to the current passed parser activity"):
             self.runner.run_ingest("0" * 64, "operator@example.com")
 
     def test_runner_restart_marks_incomplete_ingest_activity_interrupted(self) -> None:
@@ -638,6 +718,7 @@ class OperatorRunnerTests(unittest.TestCase):
         restarted = runner_module.Runner(self.store)
         activity = restarted.public_ingest_activity()
         self.assertEqual(activity["status"], "INTERRUPTED")
+        self.assertFalse(activity["console_available"])
         self.assertIn("restarted", activity["error"])
 
     def test_current_parser_blocks_new_xml_contract(self) -> None:

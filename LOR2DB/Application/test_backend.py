@@ -362,6 +362,22 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         runner.assert_not_called()
 
+    def test_parser_run_rejects_current_production_target(
+        self,
+    ) -> None:
+        with patch.object(backend, "runner_request") as runner:
+            response = backend.app.test_client().post(
+                "/parser/run",
+                json={"target": "current"},
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        runner.assert_not_called()
+
     def test_parser_run_rejects_arbitrary_target(self) -> None:
         response = backend.app.test_client().post(
             "/parser/run",
@@ -452,36 +468,31 @@ class BackendSafetyTests(unittest.TestCase):
             },
         )
 
-    def test_ingest_forwards_only_validated_digest_and_authenticated_actor(self) -> None:
-        digest = "a" * 64
-        with patch.object(backend, "runner_request", return_value={"status": "COMPLETE"}) as runner:
+    def test_legacy_synchronous_ingest_is_disabled(self) -> None:
+        with patch.object(backend, "runner_request") as runner:
             response = backend.app.test_client().post(
                 "/ingest/run",
-                json={
-                    "expected_sqlite_sha256": digest,
-                    "sqlite_path": "C:\\unsafe.db",
-                    "command": "arbitrary",
-                },
+                json={"expected_sqlite_sha256": "a" * 64},
                 headers={
                     "Cf-Access-Authenticated-User-Email":
                         "greg@sheboyganlights.org"
                 },
             )
-        self.assertEqual(response.status_code, 200)
-        runner.assert_called_once_with(
-            "ingest/run",
-            {
-                "expected_sqlite_sha256": digest,
-                "actor": "greg@sheboyganlights.org",
-            },
-            timeout=920,
-        )
 
-    def test_ingest_rejects_invalid_digest_before_runner_use(self) -> None:
+        self.assertEqual(response.status_code, 409)
+        runner.assert_not_called()
+
+    def test_ingest_start_rejects_invalid_digest_before_runner_use(self) -> None:
         with patch.object(backend, "runner_request") as runner:
             response = backend.app.test_client().post(
-                "/ingest/run",
-                json={"expected_sqlite_sha256": "not-a-digest"},
+                "/ingest/start",
+                json={
+                    "expected_sqlite_sha256": "not-a-digest",
+                    "parser_activity_id":
+                        "current-20260827-152821-123456",
+                    "request_id":
+                        "ingest:12345678-1234-1234-1234-123456789abc",
+                },
                 headers={
                     "Cf-Access-Authenticated-User-Email":
                         "greg@sheboyganlights.org"
@@ -493,6 +504,9 @@ class BackendSafetyTests(unittest.TestCase):
     def test_landing_page_separates_parser_and_version_workflows(self) -> None:
         landing = Path(__file__).with_name("landing")
         source = (landing / "lor2db.js").read_text(encoding="utf-8")
+        landing_page = (
+            landing / "index.html"
+        ).read_text(encoding="utf-8")
         version_source = (
             landing / "version-check" / "version-check.js"
         ).read_text(encoding="utf-8")
@@ -523,6 +537,7 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn("Parser activity ID", parser_source)
         self.assertIn("validatedParserEvidence", parser_source)
         self.assertIn("validatedIngestEvidence", parser_source)
+        self.assertIn("console_available", parser_source)
         self.assertIn("requiresSettlementRefresh", parser_source)
         self.assertIn("ingest_activity_id", parser_source)
         self.assertIn("operationRequestId", parser_source)
@@ -542,6 +557,10 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn(
             'parser.js?v=0.6.2',
             parser_page,
+        )
+        self.assertIn(
+            'lor2db.js?v=0.6.2',
+            landing_page,
         )
         self.assertIn("Start reconciliation", parser_source)
         self.assertIn('request("runs/start"', parser_source)

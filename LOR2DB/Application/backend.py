@@ -593,8 +593,12 @@ def run_parser_compatibility_check() -> Response:
 def run_lor_parser() -> Response:
     operator = operator_email()
     target = str(json_body().get("target") or "").strip().lower()
-    if target not in {"current", "baseline", "candidate"}:
-        raise ApiError("Parser target must be current, baseline, or candidate")
+    if target not in {"baseline", "candidate"}:
+        raise ApiError(
+            "Synchronous parser runs are reserved for "
+            "baseline/candidate version checks; "
+            "use /parser/start for production"
+        )
     return jsonify(runner_request(
         "parser/run", {"target": target, "actor": operator}, timeout=920
     ))
@@ -641,18 +645,12 @@ def start_postgresql_ingest() -> tuple[Response, int]:
 
 @app.post("/ingest/run")
 def run_postgresql_ingest() -> Response:
-    """Run only the latest validated SQLite digest through the fixed runner."""
-    operator = operator_email()
-    digest = str(
-        json_body().get("expected_sqlite_sha256") or ""
-    ).strip().lower()
-    if not re.fullmatch(r"[0-9a-f]{64}", digest):
-        raise ApiError("Expected SQLite SHA-256 must contain 64 hexadecimal characters")
-    return jsonify(runner_request(
-        "ingest/run",
-        {"expected_sqlite_sha256": digest, "actor": operator},
-        timeout=920,
-    ))
+    """Reject the retired synchronous browser ingest path."""
+    operator_email()
+    raise ApiError(
+        "Synchronous ingest is disabled; use /ingest/start",
+        409,
+    )
 
 
 @app.post("/parser/approve")

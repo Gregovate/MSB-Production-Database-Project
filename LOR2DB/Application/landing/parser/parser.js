@@ -119,6 +119,7 @@
     if (
       consoleActivity?.activity_id !== activityId
       || consoleActivity?.status !== "PASSED"
+      || consoleActivity?.console_available !== true
       || String(consoleActivity?.result?.sqlite_sha256 || "").toLowerCase() !== digest
     ) return null;
 
@@ -166,6 +167,7 @@
     if (
       consoleActivity?.activity_id !== ingestActivityId
       || consoleActivity?.status !== "PASSED"
+      || consoleActivity?.console_available !== true
       || consoleActivity?.parser_activity_id !== parserActivityId
       || consoleActivity?.result?.ingest_activity_id
         !== ingestActivityId
@@ -280,13 +282,21 @@
       && record.activity_id !== expectedActivityId
     );
 
+    const evidenceUnavailable = Boolean(
+      !mismatched
+      && record?.status === "PASSED"
+      && record?.console_available !== true
+    );
+
     const status = mismatched
       ? "REFRESHING"
       : (record?.status || "NOT RUN");
 
     const output = mismatched
       ? "Current console evidence is still refreshing. Approval is blocked until the activity ID matches."
-      : (
+      : evidenceUnavailable
+        ? "Current console evidence is unavailable. Approval and reconciliation are blocked."
+        : (
           record?.console_output
           || (
             status === "RUNNING"
@@ -298,6 +308,7 @@
     return `<section id="${esc(id)}" class="card">
       <div class="card-title"><h2>${esc(title)}</h2><span class="pill state-${esc(status.toLowerCase())}">${esc(status)}</span></div>
       ${record?.activity_id ? `<dl class="facts"><div><dt>Activity ID</dt><dd class="digest">${esc(record.activity_id)}</dd></div>${record?.parser_activity_id ? `<div><dt>Parser activity ID</dt><dd class="digest">${esc(record.parser_activity_id)}</dd></div>` : ""}</dl>` : ""}
+      ${evidenceUnavailable ? '<p class="error">Current console evidence is unavailable. Approval and reconciliation are blocked.</p>' : ""}
       ${record?.console_truncated && !mismatched ? '<p class="warning">Only the most recent 500,000 characters are displayed. The complete log remains on the runner host.</p>' : ""}
       ${record?.error && !mismatched ? `<p class="error">${esc(record.error)}</p>` : ""}
       <pre class="console">${esc(output)}</pre>

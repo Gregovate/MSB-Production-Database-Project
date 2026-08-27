@@ -507,6 +507,14 @@ class Runner:
         def operation(current: dict[str, Any]) -> None:
             current["parser_activity"] = activity
 
+            if request_id:
+                history = list(
+                    current.get("operation_request_ids") or []
+                )
+                if request_id not in history:
+                    history.append(request_id)
+                current["operation_request_ids"] = history
+
         self.store.update(operation)
         return activity, log_path
 
@@ -546,13 +554,15 @@ class Runner:
         log_path = Path(str(public.pop("console_log_path", "")))
         console_output = ""
         truncated = False
-        if log_path.is_file():
+        console_available = log_path.is_file()
+        if console_available:
             console_output = log_path.read_text(encoding="utf-8", errors="replace")
             if len(console_output) > MAX_BROWSER_CONSOLE_CHARACTERS:
                 console_output = console_output[-MAX_BROWSER_CONSOLE_CHARACTERS:]
                 truncated = True
         public["console_output"] = console_output
         public["console_truncated"] = truncated
+        public["console_available"] = console_available
         return public
 
     def _start_ingest_activity(
@@ -588,6 +598,14 @@ class Runner:
 
         def operation(current: dict[str, Any]) -> None:
             current["ingest_activity"] = activity
+
+            if request_id:
+                history = list(
+                    current.get("operation_request_ids") or []
+                )
+                if request_id not in history:
+                    history.append(request_id)
+                current["operation_request_ids"] = history
 
         self.store.update(operation)
         return activity, log_path
@@ -630,7 +648,8 @@ class Runner:
         log_path = Path(str(public.pop("console_log_path", "")))
         console_output = ""
         truncated = False
-        if log_path.is_file():
+        console_available = log_path.is_file()
+        if console_available:
             console_output = log_path.read_text(
                 encoding="utf-8", errors="replace"
             )
@@ -639,6 +658,7 @@ class Runner:
                 truncated = True
         public["console_output"] = console_output
         public["console_truncated"] = truncated
+        public["console_available"] = console_available
         return public
 
     @staticmethod
@@ -700,9 +720,19 @@ class Runner:
 
         request_id = self._normalize_request_id(request_id)
 
-        latest = self.store.read().get("parser_activity") or {}
+        state = self.store.read()
+        latest = state.get("parser_activity") or {}
+
         if latest.get("request_id") == request_id:
             return self.public_parser_activity() or {}
+
+        if request_id in (
+            state.get("operation_request_ids") or []
+        ):
+            raise ValueError(
+                "Request ID was already accepted; "
+                "no duplicate parser operation was started"
+            )
 
         if not self.operation_lock.acquire(blocking=False):
             latest = self.store.read().get("parser_activity") or {}
@@ -802,9 +832,19 @@ class Runner:
 
         request_id = self._normalize_request_id(request_id)
 
-        latest = self.store.read().get("ingest_activity") or {}
+        state = self.store.read()
+        latest = state.get("ingest_activity") or {}
+
         if latest.get("request_id") == request_id:
             return self.public_ingest_activity() or {}
+
+        if request_id in (
+            state.get("operation_request_ids") or []
+        ):
+            raise ValueError(
+                "Request ID was already accepted; "
+                "no duplicate ingest operation was started"
+            )
 
         if not self.operation_lock.acquire(blocking=False):
             latest = self.store.read().get("ingest_activity") or {}
@@ -860,24 +900,28 @@ class Runner:
         parser_run = state.get("production_parser_run") or {}
         parser_activity = state.get("parser_activity") or {}
 
-        if expected_parser_activity_id:
-            activity_result = parser_activity.get("result") or {}
+        parser_evidence_id = (
+            expected_parser_activity_id
+            or str(parser_activity.get("activity_id") or "")
+        )
+        activity_result = parser_activity.get("result") or {}
 
-            if (
-                parser_activity.get("activity_id")
-                != expected_parser_activity_id
-                or parser_run.get("parser_activity_id")
-                != expected_parser_activity_id
-                or parser_activity.get("target") != "current"
-                or parser_activity.get("status") != "PASSED"
-                or str(
-                    activity_result.get("sqlite_sha256") or ""
-                ).lower() != digest
-            ):
-                raise ValueError(
-                    "The requested ingest is not bound to "
-                    "the current passed parser activity"
-                )
+        if (
+            not parser_evidence_id
+            or parser_activity.get("activity_id")
+                != parser_evidence_id
+            or parser_run.get("parser_activity_id")
+                != parser_evidence_id
+            or parser_activity.get("target") != "current"
+            or parser_activity.get("status") != "PASSED"
+            or str(
+                activity_result.get("sqlite_sha256") or ""
+            ).lower() != digest
+        ):
+            raise ValueError(
+                "The requested ingest is not bound to "
+                "the current passed parser activity"
+            )
 
         if (
             parser_run.get("status") != "COMPLETE"
@@ -905,11 +949,6 @@ class Runner:
 
         password = required_environment("LOR_INGEST_PG_PASSWORD")
         version = state["current_lor_version"]
-
-        parser_evidence_id = (
-            expected_parser_activity_id
-            or parser_activity.get("activity_id")
-        )
 
         if activity_context is None:
             activity, console_log = self._start_ingest_activity(
