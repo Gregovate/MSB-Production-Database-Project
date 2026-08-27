@@ -620,7 +620,7 @@ switch ($Action) {
             $env:LOR_INGEST_PATH = $IngestPath
             $env:PYTHONUNBUFFERED = '1'
             Write-ServiceLog (
-                "Starting runner V1.6.0; profile=$DeploymentProfile; " +
+                "Starting runner V1.7.0; profile=$DeploymentProfile; " +
                 "credential fingerprint=" +
                 "$(Get-TokenFingerprint -Token $token)."
             )

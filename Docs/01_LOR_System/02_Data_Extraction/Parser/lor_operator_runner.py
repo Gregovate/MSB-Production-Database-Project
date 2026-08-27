@@ -866,6 +866,8 @@ class Runner:
             if (
                 parser_activity.get("activity_id")
                 != expected_parser_activity_id
+                or parser_run.get("parser_activity_id")
+                != expected_parser_activity_id
                 or parser_activity.get("target") != "current"
                 or parser_activity.get("status") != "PASSED"
                 or str(
@@ -976,6 +978,7 @@ class Runner:
             "completed_at": utc_now(),
             "run_by": actor,
             "parser_activity_id": parser_evidence_id,
+            "ingest_activity_id": activity["activity_id"],
         }
         self._finish_ingest_activity(
             activity, "PASSED", console_log, console_output, result=result
@@ -1232,6 +1235,7 @@ class Runner:
             "run_by": actor,
             "completed_at": utc_now(),
             "result_json": str(result_json),
+            "parser_activity_id": activity["activity_id"],
         }
 
         def operation(current: dict[str, Any]) -> None:
@@ -1244,10 +1248,8 @@ class Runner:
                 raise RuntimeError("LOR version changed while the parser was running; result was not recorded")
             if target == "current":
                 key = "production_parser_run"
-                previous_ingest = current.get("production_ingest_run") or {}
-                if previous_ingest.get("sqlite_sha256") != record.get("sqlite_sha256"):
-                    current["production_ingest_run"] = None
-                    current["ingest_activity"] = None
+                current["production_ingest_run"] = None
+                current["ingest_activity"] = None
             elif target == "baseline":
                 key = "baseline_parser_run"
                 current["candidate_output_comparison"] = None

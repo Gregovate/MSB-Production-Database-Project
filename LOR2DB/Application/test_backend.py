@@ -522,7 +522,11 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn("parser_activity_id", parser_source)
         self.assertIn("Parser activity ID", parser_source)
         self.assertIn("validatedParserEvidence", parser_source)
+        self.assertIn("validatedIngestEvidence", parser_source)
+        self.assertIn("requiresSettlementRefresh", parser_source)
+        self.assertIn("ingest_activity_id", parser_source)
         self.assertIn("operationRequestId", parser_source)
+        self.assertIn("run?.parser_activity_id", source)
         self.assertNotIn(
             'window.confirm("Run the parser now?',
             parser_source,

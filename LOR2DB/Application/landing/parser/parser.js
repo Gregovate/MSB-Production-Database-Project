@@ -103,9 +103,11 @@
     const activityId = String(activity?.activity_id || "");
 
     if (
-      run?.validation_status !== "PASSED"
+      run?.status !== "COMPLETE"
+      || run?.validation_status !== "PASSED"
       || !/^[0-9a-f]{64}$/.test(digest)
       || !activityId
+      || String(run?.parser_activity_id || "") !== activityId
     ) return null;
 
     if (
@@ -126,6 +128,60 @@
     };
   }
 
+  function validatedIngestEvidence(
+    runner,
+    parserEvidence,
+    consoleActivity
+  ) {
+    const digest = parserEvidence?.digest;
+    const parserActivityId = parserEvidence?.activityId;
+    const ingested = runner?.production_ingest_run;
+    const stateActivity = runner?.ingest_activity;
+    const ingestActivityId = String(
+      ingested?.ingest_activity_id || ""
+    );
+
+    if (
+      !digest
+      || !parserActivityId
+      || ingested?.status !== "COMPLETE"
+      || String(ingested?.sqlite_sha256 || "").toLowerCase()
+        !== digest
+      || ingested?.parser_activity_id !== parserActivityId
+      || !ingestActivityId
+    ) return null;
+
+    if (
+      stateActivity?.activity_id !== ingestActivityId
+      || stateActivity?.status !== "PASSED"
+      || stateActivity?.parser_activity_id !== parserActivityId
+      || stateActivity?.result?.ingest_activity_id
+        !== ingestActivityId
+      || stateActivity?.result?.parser_activity_id
+        !== parserActivityId
+      || stateActivity?.result?.import_run_id
+        !== ingested?.import_run_id
+    ) return null;
+
+    if (
+      consoleActivity?.activity_id !== ingestActivityId
+      || consoleActivity?.status !== "PASSED"
+      || consoleActivity?.parser_activity_id !== parserActivityId
+      || consoleActivity?.result?.ingest_activity_id
+        !== ingestActivityId
+      || consoleActivity?.result?.parser_activity_id
+        !== parserActivityId
+      || consoleActivity?.result?.import_run_id
+        !== ingested?.import_run_id
+    ) return null;
+
+    return {
+      ...parserEvidence,
+      ingestActivityId,
+      importRunId: ingested.import_run_id
+    };
+  }
+
   function ingestWorkflow(runner, evidence, workflow) {
     const digest = evidence?.digest;
     const parserActivityId = evidence?.activityId;
@@ -134,7 +190,12 @@
 
     const ingest = ingestActivity?.activity;
     const ingested = runner.production_ingest_run;
-    const sameDigestComplete = ingested?.status === "COMPLETE" && ingested.sqlite_sha256 === digest;
+    const completeEvidence = validatedIngestEvidence(
+      runner,
+      evidence,
+      ingest
+    );
+    const sameDigestComplete = Boolean(completeEvidence);
     const running = ingest?.status === "RUNNING";
     const failed = ingest?.status === "FAILED" || ingest?.status === "INTERRUPTED";
     const reviewed =
@@ -186,12 +247,14 @@
     </section>`;
   }
 
-  function reconciliationWorkflow(runner, digest, workflow) {
+  function reconciliationWorkflow(runner, evidence, workflow) {
     const ingested = runner?.production_ingest_run;
-    const sameDigestComplete = digest
-      && ingested?.status === "COMPLETE"
-      && ingested.sqlite_sha256 === digest;
-    if (!sameDigestComplete) return "";
+    const completeEvidence = validatedIngestEvidence(
+      runner,
+      evidence,
+      ingestActivity?.activity
+    );
+    if (!completeEvidence) return "";
     const controls = workflow?.can_start
       ? '<button id="start-reconciliation" class="primary" type="button">Start reconciliation</button>'
       : '<button id="refresh-reconciliation" type="button">Refresh reconciliation status</button>';
@@ -321,7 +384,7 @@
       "No PostgreSQL ingest has been run for this parser output.",
       runner.ingest_activity?.activity_id
     )}
-    ${reconciliationWorkflow(runner, digest, model.workflow)}`;
+    ${reconciliationWorkflow(runner, evidence, model.workflow)}`;
 
     document.querySelector("#run-parser")?.addEventListener("click", runParser);
     document.querySelector("#rerun-parser")?.addEventListener("click", runParser);
@@ -346,10 +409,63 @@
     }
   }
 
-  async function refresh() {
-    [model, parserActivity, ingestActivity] = await Promise.all([
-      request("dashboard"), request("parser/activity"), request("ingest/activity")
+  async function loadCurrentState() {
+    return Promise.all([
+      request("dashboard"),
+      request("parser/activity"),
+      request("ingest/activity")
     ]);
+  }
+
+  function requiresSettlementRefresh() {
+    const runner = model?.parser_runner;
+    const parser = parserActivity?.activity;
+    const ingest = ingestActivity?.activity;
+
+    const parserNeedsSettlement = Boolean(
+      parser
+      && parser.status !== "RUNNING"
+      && (
+        runner?.parser_activity?.activity_id
+          !== parser.activity_id
+        || runner?.parser_activity?.status
+          !== parser.status
+        || (
+          parser.status === "PASSED"
+          && runner?.production_parser_run?.parser_activity_id
+            !== parser.activity_id
+        )
+      )
+    );
+
+    const ingestNeedsSettlement = Boolean(
+      ingest
+      && ingest.status !== "RUNNING"
+      && (
+        runner?.ingest_activity?.activity_id
+          !== ingest.activity_id
+        || runner?.ingest_activity?.status
+          !== ingest.status
+        || (
+          ingest.status === "PASSED"
+          && runner?.production_ingest_run?.ingest_activity_id
+            !== ingest.activity_id
+        )
+      )
+    );
+
+    return parserNeedsSettlement || ingestNeedsSettlement;
+  }
+
+  async function refresh() {
+    [model, parserActivity, ingestActivity] =
+      await loadCurrentState();
+
+    if (requiresSettlementRefresh()) {
+      [model, parserActivity, ingestActivity] =
+        await loadCurrentState();
+    }
+
     render();
   }
 

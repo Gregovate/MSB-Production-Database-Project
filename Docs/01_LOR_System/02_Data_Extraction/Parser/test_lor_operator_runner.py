@@ -95,6 +95,7 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("READINESS TIMEOUT", source)
         self.assertIn("$state = Wait-RunnerPrerequisites", source)
         self.assertIn("$ProductionSqlitePath", source)
+        self.assertIn("Starting runner V1.7.0", source)
 
     def test_http_access_log_uses_stdout_not_stderr(self) -> None:
         """A successful request must not become a PowerShell native error."""
@@ -171,6 +172,30 @@ class OperatorRunnerTests(unittest.TestCase):
         run.side_effect = complete
         request_id = "parser-request-12345678"
 
+        def seed_previous_ingest(state):
+            state["production_ingest_run"] = {
+                "status": "COMPLETE",
+                "sqlite_sha256": "a" * 64,
+                "parser_activity_id": "current-old-parser",
+                "ingest_activity_id": "ingest-old",
+                "import_run_id": 46,
+            }
+            state["ingest_activity"] = {
+                "activity_id": "ingest-old",
+                "status": "PASSED",
+                "sqlite_sha256": "a" * 64,
+                "parser_activity_id": "current-old-parser",
+                "result": {
+                    "status": "COMPLETE",
+                    "sqlite_sha256": "a" * 64,
+                    "parser_activity_id": "current-old-parser",
+                    "ingest_activity_id": "ingest-old",
+                    "import_run_id": 46,
+                },
+            }
+
+        self.store.update(seed_previous_ingest)
+
         first = self.runner.start_parser(
             "current",
             "operator@example.com",
@@ -214,6 +239,14 @@ class OperatorRunnerTests(unittest.TestCase):
             activity["result"]["sqlite_sha256"],
             "a" * 64,
         )
+
+        state = self.store.read()
+        self.assertEqual(
+            state["production_parser_run"]["parser_activity_id"],
+            activity["activity_id"],
+        )
+        self.assertIsNone(state["production_ingest_run"])
+        self.assertIsNone(state["ingest_activity"])
         self.assertEqual(run.call_count, 1)
 
     @patch("lor_operator_runner.subprocess.run")
@@ -236,6 +269,7 @@ class OperatorRunnerTests(unittest.TestCase):
                 "source_lor_version": "6.6.10",
                 "sqlite_path": str(database),
                 "sqlite_sha256": digest,
+                "parser_activity_id": parser_activity_id,
             }
             state["parser_activity"] = {
                 "activity_id": parser_activity_id,
@@ -335,6 +369,10 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertEqual(
             production["parser_activity_id"],
             parser_activity_id,
+        )
+        self.assertEqual(
+            production["ingest_activity_id"],
+            activity["activity_id"],
         )
         self.assertEqual(run.call_count, 1)
 
