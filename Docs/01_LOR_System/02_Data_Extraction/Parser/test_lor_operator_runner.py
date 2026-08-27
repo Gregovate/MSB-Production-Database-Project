@@ -33,15 +33,15 @@ class OperatorRunnerTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.previews = self.root / "previews"
-        self.current = self.previews / "Database Previews V6.6.4"
-        self.candidate = self.previews / "Database Previews V6.6.10"
+        self.current = self.previews / "Database Previews V6.6.10"
+        self.candidate = self.previews / "Database Previews V6.6.11"
         for folder in (self.current, self.candidate):
             folder.mkdir(parents=True)
             (folder / "test.lorprev").write_text(PREVIEW_XML, encoding="utf-8")
         self.state_file = self.root / "state" / "lor-runner-state.json"
         runner_module.initialize(argparse.Namespace(
             current_preview_folder=self.current,
-            current_lor_version="6.6.4",
+            current_lor_version="6.6.10",
             deep_preview="test.lorprev",
             state_file=self.state_file,
         ))
@@ -156,7 +156,7 @@ class OperatorRunnerTests(unittest.TestCase):
                 json.dumps({
                     "status": "COMPLETE",
                     "validation_status": "PASSED",
-                    "source_lor_version": "6.6.4",
+                    "source_lor_version": "6.6.10",
                     "sqlite_sha256": "a" * 64,
                 }),
                 encoding="utf-8",
@@ -233,7 +233,7 @@ class OperatorRunnerTests(unittest.TestCase):
             state["production_parser_run"] = {
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
-                "source_lor_version": "6.6.4",
+                "source_lor_version": "6.6.10",
                 "sqlite_path": str(database),
                 "sqlite_sha256": digest,
             }
@@ -352,7 +352,7 @@ class OperatorRunnerTests(unittest.TestCase):
             state["production_parser_run"] = {
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
-                "source_lor_version": "6.6.4",
+                "source_lor_version": "6.6.10",
                 "sqlite_path": str(database),
                 "sqlite_sha256": digest,
             }
@@ -378,15 +378,15 @@ class OperatorRunnerTests(unittest.TestCase):
             )
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
-        state = self.runner.select_candidate("6.6.10", "operator@example.com")
-        self.assertEqual(state["new_lor_version"], "6.6.10")
+        state = self.runner.select_candidate("6.6.11", "operator@example.com")
+        self.assertEqual(state["new_lor_version"], "6.6.11")
         self.assertEqual(Path(state["new_preview_folder"]), self.candidate.resolve())
         with self.assertRaisesRegex(ValueError, "numeric and dot-separated"):
             self.runner.select_candidate("..\\outside", "operator@example.com")
 
     def test_approval_preserves_manifest_and_appends_history(self) -> None:
-        self.runner.select_candidate("6.6.10", "operator@example.com")
-        candidate_manifest = build_manifest(self.candidate, "6.6.10", "test.lorprev")
+        self.runner.select_candidate("6.6.11", "operator@example.com")
+        candidate_manifest = build_manifest(self.candidate, "6.6.11", "test.lorprev")
         candidate_manifest_path = self.root / "reports" / "candidate-manifest.json"
         write_json(candidate_manifest_path, candidate_manifest)
 
@@ -400,13 +400,13 @@ class OperatorRunnerTests(unittest.TestCase):
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
                 "parser_version": "V7.0.10",
-                "source_lor_version": "6.6.10",
+                "source_lor_version": "6.6.11",
                 "sqlite_sha256": "a" * 64,
             }
             state["baseline_parser_run"] = {
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
-                "source_lor_version": "6.6.4",
+                "source_lor_version": "6.6.10",
                 "sqlite_sha256": "b" * 64,
             }
             state["candidate_output_comparison"] = {
@@ -415,9 +415,9 @@ class OperatorRunnerTests(unittest.TestCase):
             }
 
         self.store.update(prepare)
-        state = self.runner.approve_candidate("6.6.10", "operator@example.com")
+        state = self.runner.approve_candidate("6.6.11", "operator@example.com")
         approved_manifest = self.state_file.with_name("current-lor-manifest.json")
-        self.assertEqual(state["current_lor_version"], "6.6.10")
+        self.assertEqual(state["current_lor_version"], "6.6.11")
         self.assertEqual(state["current_manifest_path"], str(approved_manifest))
         self.assertEqual(
             json.loads(approved_manifest.read_text(encoding="utf-8"))["manifest_sha256"],
@@ -426,10 +426,10 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertEqual(len(state["approval_history"]), 1)
         self.assertEqual(state["last_approval"]["parser_version"], "V7.0.10")
         self.assertEqual(state["last_approval"]["baseline_sqlite_sha256"], "b" * 64)
-        self.assertEqual(state["baseline_parser_run"]["source_lor_version"], "6.6.10")
+        self.assertEqual(state["baseline_parser_run"]["source_lor_version"], "6.6.11")
 
     def test_approval_requires_output_comparison(self) -> None:
-        self.runner.select_candidate("6.6.10", "operator@example.com")
+        self.runner.select_candidate("6.6.11", "operator@example.com")
 
         def prepare(state):
             state["candidate_check"] = {"status": "PASSED"}
@@ -444,11 +444,11 @@ class OperatorRunnerTests(unittest.TestCase):
 
         self.store.update(prepare)
         with self.assertRaisesRegex(ValueError, "output differences"):
-            self.runner.approve_candidate("6.6.10", "operator@example.com")
+            self.runner.approve_candidate("6.6.11", "operator@example.com")
 
     def test_changed_candidate_folder_invalidates_checked_manifest(self) -> None:
-        self.runner.select_candidate("6.6.10", "operator@example.com")
-        manifest = build_manifest(self.candidate, "6.6.10", "test.lorprev")
+        self.runner.select_candidate("6.6.11", "operator@example.com")
+        manifest = build_manifest(self.candidate, "6.6.11", "test.lorprev")
         manifest_path = self.root / "reports" / "candidate-manifest.json"
         write_json(manifest_path, manifest)
 
@@ -480,7 +480,7 @@ class OperatorRunnerTests(unittest.TestCase):
             result_path.write_text(json.dumps({
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
-                "source_lor_version": "6.6.4",
+                "source_lor_version": "6.6.10",
                 "sqlite_sha256": "a" * 64,
             }), encoding="utf-8")
             return argparse.Namespace(
@@ -541,7 +541,7 @@ class OperatorRunnerTests(unittest.TestCase):
             state["production_parser_run"] = {
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
-                "source_lor_version": "6.6.4",
+                "source_lor_version": "6.6.10",
                 "sqlite_path": str(database),
                 "sqlite_sha256": digest,
             }
@@ -579,7 +579,7 @@ class OperatorRunnerTests(unittest.TestCase):
             state["production_parser_run"] = {
                 "status": "COMPLETE",
                 "validation_status": "PASSED",
-                "source_lor_version": "6.6.4",
+                "source_lor_version": "6.6.10",
                 "sqlite_path": str(database),
                 "sqlite_sha256": digest,
             }
@@ -618,8 +618,8 @@ class ParserOutputComparisonTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.baseline = self.root / "baseline.db"
         self.candidate = self.root / "candidate.db"
-        self._create_database(self.baseline, revision="1", name="Master 6.6.4", source="old.lorprev")
-        self._create_database(self.candidate, revision="2", name="Master 6.6.10", source="new.lorprev")
+        self._create_database(self.baseline, revision="1", name="Master 6.6.10", source="old.lorprev")
+        self._create_database(self.candidate, revision="2", name="Master 6.6.11", source="new.lorprev")
 
     def _create_database(self, path: Path, revision: str, name: str, source: str) -> None:
         # sqlite3.Connection.__exit__ commits/rolls back but does not close.
@@ -659,8 +659,8 @@ class ParserOutputComparisonTests(unittest.TestCase):
         return runner_module.compare_parser_outputs(
             self.baseline,
             self.candidate,
-            "6.6.4",
             "6.6.10",
+            "6.6.11",
             self.root / "comparison.json",
             self.root / "comparison.md",
         )

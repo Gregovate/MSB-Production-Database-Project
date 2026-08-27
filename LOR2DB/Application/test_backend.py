@@ -499,6 +499,9 @@ class BackendSafetyTests(unittest.TestCase):
         parser_source = (
             landing / "parser" / "parser.js"
         ).read_text(encoding="utf-8")
+        parser_page = (
+            landing / "parser" / "index.html"
+        ).read_text(encoding="utf-8")
 
         self.assertIn('href="parser/"', source)
         self.assertIn('href="version-check/"', source)
@@ -514,7 +517,28 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn("Each run rebuilds and replaces the SQLite output", parser_source)
         self.assertIn("Parser output looks correct — ready for ingest", parser_source)
         self.assertIn("Ingest to PostgreSQL", parser_source)
-        self.assertIn('request("ingest/run"', parser_source)
+        self.assertIn('"parser/start"', parser_source)
+        self.assertIn('"ingest/start"', parser_source)
+        self.assertIn("parser_activity_id", parser_source)
+        self.assertIn("Parser activity ID", parser_source)
+        self.assertIn("validatedParserEvidence", parser_source)
+        self.assertIn("operationRequestId", parser_source)
+        self.assertNotIn(
+            'window.confirm("Run the parser now?',
+            parser_source,
+        )
+        self.assertNotIn(
+            'window.confirm("Ingest this reviewed SQLite',
+            parser_source,
+        )
+        self.assertNotIn(
+            'request("ingest/run"',
+            parser_source,
+        )
+        self.assertIn(
+            'parser.js?v=0.6.2',
+            parser_page,
+        )
         self.assertIn("Start reconciliation", parser_source)
         self.assertIn('request("runs/start"', parser_source)
         self.assertIn("Review parser output", source)

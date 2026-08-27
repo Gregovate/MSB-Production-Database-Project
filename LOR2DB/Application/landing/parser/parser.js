@@ -1,4 +1,4 @@
-/* MSB parser and ingest workflow - 2026-08-16 V0.6.1 */
+/* MSB parser and ingest workflow - 2026-08-27 V0.6.2 */
 (function () {
   "use strict";
 
@@ -8,6 +8,8 @@
   let ingestActivity;
   let pollTimer;
   let reviewedDigest;
+  let reviewedParserActivityId;
+  const pendingRequestIds = {};
 
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -31,6 +33,56 @@
     return payload;
   }
 
+  function operationRequestId(kind) {
+    const key = `lor2db-${kind}-request-id`;
+
+    if (pendingRequestIds[kind]) {
+      return pendingRequestIds[kind];
+    }
+
+    try {
+      const stored = sessionStorage.getItem(key);
+      if (stored) {
+        pendingRequestIds[kind] = stored;
+        return stored;
+      }
+    } catch (_error) {
+      // In-memory idempotency still protects repeated clicks in this page.
+    }
+
+    const suffix = globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+
+    const value = `${kind}:${suffix}`;
+    pendingRequestIds[kind] = value;
+
+    try {
+      sessionStorage.setItem(key, value);
+    } catch (_error) {
+      // In-memory fallback is sufficient for the current page lifetime.
+    }
+
+    return value;
+  }
+
+  function clearOperationRequestId(kind, acceptedRequestId) {
+    if (!acceptedRequestId) return;
+
+    if (pendingRequestIds[kind] === acceptedRequestId) {
+      delete pendingRequestIds[kind];
+    }
+
+    try {
+      const key = `lor2db-${kind}-request-id`;
+      if (sessionStorage.getItem(key) === acceptedRequestId) {
+        sessionStorage.removeItem(key);
+      }
+    } catch (_error) {
+      // Nothing else is required if browser storage is unavailable.
+    }
+  }
+
   function counts(result) {
     const values = result?.counts;
     if (!values) return "";
@@ -44,27 +96,50 @@
     </div>`;
   }
 
-  function validatedDigest(runner) {
+  function validatedParserEvidence(runner, consoleActivity) {
     const run = runner?.production_parser_run;
     const activity = runner?.parser_activity;
     const digest = String(run?.sqlite_sha256 || "").toLowerCase();
-    if (run?.validation_status !== "PASSED" || !/^[0-9a-f]{64}$/.test(digest)) return null;
+    const activityId = String(activity?.activity_id || "");
+
+    if (
+      run?.validation_status !== "PASSED"
+      || !/^[0-9a-f]{64}$/.test(digest)
+      || !activityId
+    ) return null;
+
     if (
       activity?.target !== "current"
       || activity?.status !== "PASSED"
       || String(activity?.result?.sqlite_sha256 || "").toLowerCase() !== digest
     ) return null;
-    return digest;
+
+    if (
+      consoleActivity?.activity_id !== activityId
+      || consoleActivity?.status !== "PASSED"
+      || String(consoleActivity?.result?.sqlite_sha256 || "").toLowerCase() !== digest
+    ) return null;
+
+    return {
+      digest,
+      activityId
+    };
   }
 
-  function ingestWorkflow(runner, digest, workflow) {
-    if (!digest) return "";
+  function ingestWorkflow(runner, evidence, workflow) {
+    const digest = evidence?.digest;
+    const parserActivityId = evidence?.activityId;
+
+    if (!digest || !parserActivityId) return "";
+
     const ingest = ingestActivity?.activity;
     const ingested = runner.production_ingest_run;
     const sameDigestComplete = ingested?.status === "COMPLETE" && ingested.sqlite_sha256 === digest;
     const running = ingest?.status === "RUNNING";
     const failed = ingest?.status === "FAILED" || ingest?.status === "INTERRUPTED";
-    const reviewed = reviewedDigest === digest;
+    const reviewed =
+      reviewedDigest === digest
+      && reviewedParserActivityId === parserActivityId;
     let status = reviewed ? "READY FOR INGEST" : "REVIEW REQUIRED";
     let detail = reviewed
       ? "You marked this exact parser output as correct. Ingest is now available for this SQLite SHA-256 only."
@@ -103,6 +178,7 @@
       <div class="card-title"><div><p class="eyebrow">2. Operator approval and ingest</p><h2>PostgreSQL snapshot ingest</h2></div><span class="pill">${esc(status)}</span></div>
       <p>${detail}</p>
       <dl class="facts">
+        <div><dt>Parser activity ID</dt><dd class="digest">${esc(parserActivityId)}</dd></div>
         <div><dt>Validated SQLite SHA-256</dt><dd class="digest">${esc(digest)}</dd></div>
         <div><dt>PostgreSQL import run</dt><dd>${esc(ingested?.import_run_id || "Not yet created")}</dd></div>
       </dl>
@@ -126,14 +202,41 @@
     </section>`;
   }
 
-  function consoleCard(id, title, activity, emptyMessage) {
+  function consoleCard(
+    id,
+    title,
+    activity,
+    emptyMessage,
+    expectedActivityId
+  ) {
     const record = activity?.activity;
-    const status = record?.status || "NOT RUN";
-    const output = record?.console_output || (status === "RUNNING" ? "Operation is running..." : emptyMessage);
+
+    const mismatched = Boolean(
+      expectedActivityId
+      && record?.activity_id
+      && record.activity_id !== expectedActivityId
+    );
+
+    const status = mismatched
+      ? "REFRESHING"
+      : (record?.status || "NOT RUN");
+
+    const output = mismatched
+      ? "Current console evidence is still refreshing. Approval is blocked until the activity ID matches."
+      : (
+          record?.console_output
+          || (
+            status === "RUNNING"
+              ? "Operation is running..."
+              : emptyMessage
+          )
+        );
+
     return `<section id="${esc(id)}" class="card">
       <div class="card-title"><h2>${esc(title)}</h2><span class="pill state-${esc(status.toLowerCase())}">${esc(status)}</span></div>
-      ${record?.console_truncated ? '<p class="warning">Only the most recent 500,000 characters are displayed. The complete log remains on the Office PC.</p>' : ""}
-      ${record?.error ? `<p class="error">${esc(record.error)}</p>` : ""}
+      ${record?.activity_id ? `<dl class="facts"><div><dt>Activity ID</dt><dd class="digest">${esc(record.activity_id)}</dd></div>${record?.parser_activity_id ? `<div><dt>Parser activity ID</dt><dd class="digest">${esc(record.parser_activity_id)}</dd></div>` : ""}</dl>` : ""}
+      ${record?.console_truncated && !mismatched ? '<p class="warning">Only the most recent 500,000 characters are displayed. The complete log remains on the runner host.</p>' : ""}
+      ${record?.error && !mismatched ? `<p class="error">${esc(record.error)}</p>` : ""}
       <pre class="console">${esc(output)}</pre>
     </section>`;
   }
@@ -149,8 +252,32 @@
     const ingestRunning = ingestActivity?.activity?.status === "RUNNING";
     const run = latest?.result || runner.production_parser_run;
     const status = latest?.status || "NOT RUN FROM THIS PAGE";
-    const digest = validatedDigest(runner);
-    if (reviewedDigest && reviewedDigest !== digest) reviewedDigest = undefined;
+
+    if (latest?.request_id) {
+      clearOperationRequestId("parser", latest.request_id);
+    }
+
+    if (ingestActivity?.activity?.request_id) {
+      clearOperationRequestId(
+        "ingest",
+        ingestActivity.activity.request_id
+      );
+    }
+
+    const evidence = validatedParserEvidence(runner, latest);
+    const digest = evidence?.digest;
+    const parserActivityId = evidence?.activityId;
+
+    if (
+      reviewedDigest
+      && (
+        reviewedDigest !== digest
+        || reviewedParserActivityId !== parserActivityId
+      )
+    ) {
+      reviewedDigest = undefined;
+      reviewedParserActivityId = undefined;
+    }
     const targetNote = latest && latest.target !== "current"
       ? `<p class="warning">The latest parser activity belongs to the ${esc(latest.target)} version-check workflow, not the production parser.</p>`
       : "";
@@ -161,6 +288,7 @@
       <dl class="facts">
         <div><dt>Approved LOR version</dt><dd>${esc(runner.current_lor_version)}</dd></div>
         <div><dt>Parser status</dt><dd>${esc(status)}</dd></div>
+        <div><dt>Parser activity ID</dt><dd class="digest">${esc(latest?.activity_id || "Not recorded")}</dd></div>
         <div><dt>Preview source folder</dt><dd class="path-value">${esc(runner.current_preview_folder)}</dd></div>
         <div><dt>Started</dt><dd>${esc(displayDate(latest?.started_at))}</dd></div>
         <div><dt>Production SQLite</dt><dd class="path-value">${esc(run?.sqlite_path || "Not recorded")}</dd></div>
@@ -178,15 +306,28 @@
         <a class="secondary" href="../">Return to dashboard</a>
       </div>
     </section>
-    ${consoleCard("parser-console", "Parser console output", parserActivity, "No parser console output has been recorded yet.")}
-    ${ingestWorkflow(runner, digest, model.workflow)}
-    ${consoleCard("ingest-console", "PostgreSQL ingest console output", ingestActivity, "No PostgreSQL ingest has been run for this parser output.")}
+    ${consoleCard(
+      "parser-console",
+      "Parser console output",
+      parserActivity,
+      "No parser console output has been recorded yet.",
+      runner.parser_activity?.activity_id
+    )}
+    ${ingestWorkflow(runner, evidence, model.workflow)}
+    ${consoleCard(
+      "ingest-console",
+      "PostgreSQL ingest console output",
+      ingestActivity,
+      "No PostgreSQL ingest has been run for this parser output.",
+      runner.ingest_activity?.activity_id
+    )}
     ${reconciliationWorkflow(runner, digest, model.workflow)}`;
 
     document.querySelector("#run-parser")?.addEventListener("click", runParser);
     document.querySelector("#rerun-parser")?.addEventListener("click", runParser);
     document.querySelector("#mark-ready-ingest")?.addEventListener("click", () => {
       reviewedDigest = digest;
+      reviewedParserActivityId = parserActivityId;
       render();
       document.querySelector("#ingest-step")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -213,40 +354,89 @@
   }
 
   async function runParser(event) {
-    if (!window.confirm("Run the parser now? You can inspect the output and run it again before ingest.")) return;
     reviewedDigest = undefined;
+    reviewedParserActivityId = undefined;
+
+    const requestId = operationRequestId("parser");
+
     event.currentTarget.disabled = true;
     event.currentTarget.textContent = "Starting parser...";
-    if (!pollTimer) pollTimer = window.setInterval(refresh, 2000);
+
+    if (!pollTimer) {
+      pollTimer = window.setInterval(refresh, 2000);
+    }
+
     try {
-      await request("parser/run", { method: "POST", body: JSON.stringify({ target: "current" }) });
+      parserActivity = await request(
+        "parser/start",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            target: "current",
+            request_id: requestId
+          })
+        }
+      );
+
+      clearOperationRequestId("parser", requestId);
+      render();
     } catch (error) {
       window.alert(error.message);
-    } finally {
-      await refresh();
     }
+
+    await refresh();
   }
 
   async function runIngest(event) {
-    const digest = validatedDigest(model?.parser_runner);
-    if (!digest || reviewedDigest !== digest) {
-      window.alert("Review and approve this exact parser output before ingest.");
+    const evidence = validatedParserEvidence(
+      model?.parser_runner,
+      parserActivity?.activity
+    );
+
+    const digest = evidence?.digest;
+    const parserActivityId = evidence?.activityId;
+
+    if (
+      !digest
+      || !parserActivityId
+      || reviewedDigest !== digest
+      || reviewedParserActivityId !== parserActivityId
+    ) {
+      window.alert(
+        "Review and approve this exact parser activity and SQLite output before ingest."
+      );
       return;
     }
-    if (!window.confirm("Ingest this reviewed SQLite snapshot into PostgreSQL now? Reconciliation will not start automatically.")) return;
+
+    const requestId = operationRequestId("ingest");
+
     event.currentTarget.disabled = true;
     event.currentTarget.textContent = "Starting ingest...";
-    if (!pollTimer) pollTimer = window.setInterval(refresh, 2000);
+
+    if (!pollTimer) {
+      pollTimer = window.setInterval(refresh, 2000);
+    }
+
     try {
-      await request("ingest/run", {
-        method: "POST",
-        body: JSON.stringify({ expected_sqlite_sha256: digest })
-      });
+      ingestActivity = await request(
+        "ingest/start",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            expected_sqlite_sha256: digest,
+            parser_activity_id: parserActivityId,
+            request_id: requestId
+          })
+        }
+      );
+
+      clearOperationRequestId("ingest", requestId);
+      render();
     } catch (error) {
       window.alert(error.message);
-    } finally {
-      await refresh();
     }
+
+    await refresh();
   }
 
   async function startReconciliation(event) {
