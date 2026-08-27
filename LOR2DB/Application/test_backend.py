@@ -306,6 +306,62 @@ class BackendSafetyTests(unittest.TestCase):
             },
         )
 
+    def test_parser_start_forwards_durable_current_operation(
+        self,
+    ) -> None:
+        request_id = "parser:12345678-1234-1234-1234-123456789abc"
+
+        with patch.object(
+            backend,
+            "runner_request",
+            return_value={
+                "activity": {
+                    "activity_id": "current-20260827-123456",
+                    "status": "RUNNING",
+                    "request_id": request_id,
+                }
+            },
+        ) as runner:
+            response = backend.app.test_client().post(
+                "/parser/start",
+                json={
+                    "target": "current",
+                    "request_id": request_id,
+                },
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+
+        self.assertEqual(response.status_code, 202)
+        runner.assert_called_once_with(
+            "parser/start",
+            {
+                "target": "current",
+                "request_id": request_id,
+                "actor": "greg@sheboyganlights.org",
+            },
+        )
+
+    def test_parser_start_rejects_nonproduction_target(self) -> None:
+        with patch.object(backend, "runner_request") as runner:
+            response = backend.app.test_client().post(
+                "/parser/start",
+                json={
+                    "target": "baseline",
+                    "request_id":
+                        "parser:12345678-1234-1234-1234-123456789abc",
+                },
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        runner.assert_not_called()
+
     def test_parser_run_rejects_arbitrary_target(self) -> None:
         response = backend.app.test_client().post(
             "/parser/run",
@@ -350,6 +406,51 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, expected)
         runner.assert_called_once_with("parser/activity")
+
+    def test_ingest_start_binds_digest_parser_activity_and_request(
+        self,
+    ) -> None:
+        digest = "a" * 64
+        parser_activity_id = "current-20260827-152821-123456"
+        request_id = "ingest:12345678-1234-1234-1234-123456789abc"
+
+        with patch.object(
+            backend,
+            "runner_request",
+            return_value={
+                "activity": {
+                    "activity_id": "ingest-20260827-153000-123456",
+                    "status": "RUNNING",
+                    "request_id": request_id,
+                    "parser_activity_id": parser_activity_id,
+                }
+            },
+        ) as runner:
+            response = backend.app.test_client().post(
+                "/ingest/start",
+                json={
+                    "expected_sqlite_sha256": digest,
+                    "parser_activity_id": parser_activity_id,
+                    "request_id": request_id,
+                    "sqlite_path": "C:\\unsafe.db",
+                    "command": "arbitrary",
+                },
+                headers={
+                    "Cf-Access-Authenticated-User-Email":
+                        "greg@sheboyganlights.org"
+                },
+            )
+
+        self.assertEqual(response.status_code, 202)
+        runner.assert_called_once_with(
+            "ingest/start",
+            {
+                "expected_sqlite_sha256": digest,
+                "parser_activity_id": parser_activity_id,
+                "request_id": request_id,
+                "actor": "greg@sheboyganlights.org",
+            },
+        )
 
     def test_ingest_forwards_only_validated_digest_and_authenticated_actor(self) -> None:
         digest = "a" * 64
