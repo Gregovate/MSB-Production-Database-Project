@@ -535,6 +535,14 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn('"ingest/start"', parser_source)
         self.assertIn("parser_activity_id", parser_source)
         self.assertIn("Parser activity ID", parser_source)
+        self.assertIn("Parser version", parser_source)
+        self.assertIn("Source manifest SHA-256", parser_source)
+        self.assertIn("source_manifest_sha256", parser_source)
+        self.assertIn("parser_version", parser_source)
+        self.assertNotIn(
+            "latest?.result || runner.production_parser_run",
+            parser_source,
+        )
         self.assertIn("validatedParserEvidence", parser_source)
         self.assertIn("validatedIngestEvidence", parser_source)
         self.assertIn("console_available", parser_source)

@@ -101,12 +101,18 @@
     const activity = runner?.parser_activity;
     const digest = String(run?.sqlite_sha256 || "").toLowerCase();
     const activityId = String(activity?.activity_id || "");
+    const parserVersion = String(run?.parser_version || "");
+    const sourceManifestSha256 = String(
+      run?.source_manifest_sha256 || ""
+    ).toLowerCase();
 
     if (
       run?.status !== "COMPLETE"
       || run?.validation_status !== "PASSED"
       || !/^[0-9a-f]{64}$/.test(digest)
       || !activityId
+      || !parserVersion
+      || !/^[0-9a-f]{64}$/.test(sourceManifestSha256)
       || String(run?.parser_activity_id || "") !== activityId
     ) return null;
 
@@ -114,6 +120,10 @@
       activity?.target !== "current"
       || activity?.status !== "PASSED"
       || String(activity?.result?.sqlite_sha256 || "").toLowerCase() !== digest
+      || String(activity?.result?.parser_version || "") !== parserVersion
+      || String(
+        activity?.result?.source_manifest_sha256 || ""
+      ).toLowerCase() !== sourceManifestSha256
     ) return null;
 
     if (
@@ -121,11 +131,17 @@
       || consoleActivity?.status !== "PASSED"
       || consoleActivity?.console_available !== true
       || String(consoleActivity?.result?.sqlite_sha256 || "").toLowerCase() !== digest
+      || String(consoleActivity?.result?.parser_version || "") !== parserVersion
+      || String(
+        consoleActivity?.result?.source_manifest_sha256 || ""
+      ).toLowerCase() !== sourceManifestSha256
     ) return null;
 
     return {
       digest,
-      activityId
+      activityId,
+      parserVersion,
+      sourceManifestSha256
     };
   }
 
@@ -187,8 +203,15 @@
   function ingestWorkflow(runner, evidence, workflow) {
     const digest = evidence?.digest;
     const parserActivityId = evidence?.activityId;
+    const parserVersion = evidence?.parserVersion;
+    const sourceManifestSha256 = evidence?.sourceManifestSha256;
 
-    if (!digest || !parserActivityId) return "";
+    if (
+      !digest
+      || !parserActivityId
+      || !parserVersion
+      || !sourceManifestSha256
+    ) return "";
 
     const ingest = ingestActivity?.activity;
     const ingested = runner.production_ingest_run;
@@ -242,6 +265,8 @@
       <p>${detail}</p>
       <dl class="facts">
         <div><dt>Parser activity ID</dt><dd class="digest">${esc(parserActivityId)}</dd></div>
+        <div><dt>Parser version</dt><dd>${esc(parserVersion)}</dd></div>
+        <div><dt>Source manifest SHA-256</dt><dd class="digest">${esc(sourceManifestSha256)}</dd></div>
         <div><dt>Validated SQLite SHA-256</dt><dd class="digest">${esc(digest)}</dd></div>
         <div><dt>PostgreSQL import run</dt><dd>${esc(ingested?.import_run_id || "Not yet created")}</dd></div>
       </dl>
@@ -324,7 +349,9 @@
     const latest = parserActivity?.activity;
     const parserRunning = latest?.status === "RUNNING";
     const ingestRunning = ingestActivity?.activity?.status === "RUNNING";
-    const run = latest?.result || runner.production_parser_run;
+    const run = latest?.target === "current"
+      ? latest?.result
+      : runner.production_parser_run;
     const status = latest?.status || "NOT RUN FROM THIS PAGE";
 
     if (latest?.request_id) {
@@ -363,6 +390,8 @@
         <div><dt>Approved LOR version</dt><dd>${esc(runner.current_lor_version)}</dd></div>
         <div><dt>Parser status</dt><dd>${esc(status)}</dd></div>
         <div><dt>Parser activity ID</dt><dd class="digest">${esc(latest?.activity_id || "Not recorded")}</dd></div>
+        <div><dt>Parser version</dt><dd>${esc(run?.parser_version || "Not recorded")}</dd></div>
+        <div><dt>Source manifest SHA-256</dt><dd class="digest">${esc(run?.source_manifest_sha256 || "Not recorded")}</dd></div>
         <div><dt>Preview source folder</dt><dd class="path-value">${esc(runner.current_preview_folder)}</dd></div>
         <div><dt>Started</dt><dd>${esc(displayDate(latest?.started_at))}</dd></div>
         <div><dt>Production SQLite</dt><dd class="path-value">${esc(run?.sqlite_path || "Not recorded")}</dd></div>
