@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-15  V0.6.1
+Current Version : 2026-08-27  V0.6.2
 Author          : GAL / OpenAI
 
 Purpose:
@@ -80,7 +80,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.1"
+APP_VERSION = "V0.6.2"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -427,6 +427,20 @@ def json_body() -> dict[str, Any]:
     return payload
 
 
+def require_operation_id(
+    payload: dict[str, Any],
+    key: str,
+    label: str,
+) -> str:
+    """Accept only opaque runner/browser operation identifiers."""
+    value = str(payload.get(key) or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9._:-]{8,128}", value):
+        raise ApiError(
+            f"{label} must contain 8-128 safe identifier characters"
+        )
+    return value
+
+
 def optional_decision_reason(payload: dict[str, Any], action: str) -> str:
     """Keep a nonblank audit reason without requiring an operator comment."""
     reason = str(payload.get("reason") or "").strip()
@@ -537,6 +551,36 @@ def get_ingest_activity() -> Response:
     return jsonify(runner_request("ingest/activity"))
 
 
+@app.post("/parser/start")
+def start_lor_parser() -> tuple[Response, int]:
+    """Start one durable routine production parser activity."""
+    operator = operator_email()
+    payload = json_body()
+    target = str(payload.get("target") or "").strip().lower()
+
+    if target != "current":
+        raise ApiError(
+            "Durable parser start is only available for "
+            "the current production parser"
+        )
+
+    request_id = require_operation_id(
+        payload,
+        "request_id",
+        "Request ID",
+    )
+
+    result = runner_request(
+        "parser/start",
+        {
+            "target": target,
+            "request_id": request_id,
+            "actor": operator,
+        },
+    )
+    return jsonify(result), 202
+
+
 @app.post("/parser/check")
 def run_parser_compatibility_check() -> Response:
     operator = operator_email()
@@ -549,27 +593,64 @@ def run_parser_compatibility_check() -> Response:
 def run_lor_parser() -> Response:
     operator = operator_email()
     target = str(json_body().get("target") or "").strip().lower()
-    if target not in {"current", "baseline", "candidate"}:
-        raise ApiError("Parser target must be current, baseline, or candidate")
+    if target not in {"baseline", "candidate"}:
+        raise ApiError(
+            "Synchronous parser runs are reserved for "
+            "baseline/candidate version checks; "
+            "use /parser/start for production"
+        )
     return jsonify(runner_request(
         "parser/run", {"target": target, "actor": operator}, timeout=920
     ))
 
 
+@app.post("/ingest/start")
+def start_postgresql_ingest() -> tuple[Response, int]:
+    """Start one durable parser-activity-locked PostgreSQL ingest."""
+    operator = operator_email()
+    payload = json_body()
+
+    digest = str(
+        payload.get("expected_sqlite_sha256") or ""
+    ).strip().lower()
+
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ApiError(
+            "Expected SQLite SHA-256 must contain "
+            "64 hexadecimal characters"
+        )
+
+    parser_activity_id = require_operation_id(
+        payload,
+        "parser_activity_id",
+        "Parser activity ID",
+    )
+    request_id = require_operation_id(
+        payload,
+        "request_id",
+        "Request ID",
+    )
+
+    result = runner_request(
+        "ingest/start",
+        {
+            "expected_sqlite_sha256": digest,
+            "parser_activity_id": parser_activity_id,
+            "request_id": request_id,
+            "actor": operator,
+        },
+    )
+    return jsonify(result), 202
+
+
 @app.post("/ingest/run")
 def run_postgresql_ingest() -> Response:
-    """Run only the latest validated SQLite digest through the fixed runner."""
-    operator = operator_email()
-    digest = str(
-        json_body().get("expected_sqlite_sha256") or ""
-    ).strip().lower()
-    if not re.fullmatch(r"[0-9a-f]{64}", digest):
-        raise ApiError("Expected SQLite SHA-256 must contain 64 hexadecimal characters")
-    return jsonify(runner_request(
-        "ingest/run",
-        {"expected_sqlite_sha256": digest, "actor": operator},
-        timeout=920,
-    ))
+    """Reject the retired synchronous browser ingest path."""
+    operator_email()
+    raise ApiError(
+        "Synchronous ingest is disabled; use /ingest/start",
+        409,
+    )
 
 
 @app.post("/parser/approve")

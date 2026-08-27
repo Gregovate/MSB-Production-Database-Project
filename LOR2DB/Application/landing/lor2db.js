@@ -1,4 +1,4 @@
-/* MSB LOR landing page - 2026-08-16 V0.6.1 */
+/* MSB LOR landing page - 2026-08-27 V0.6.2 */
 (function () {
   "use strict";
 
@@ -35,15 +35,35 @@
     const run = document?.parser_runner?.production_parser_run;
     const activity = document?.parser_runner?.parser_activity;
     const digest = String(run?.sqlite_sha256 || "").toLowerCase();
-    if (run?.validation_status !== "PASSED" || !/^[0-9a-f]{64}$/.test(digest)) return null;
+    const activityId = String(activity?.activity_id || "");
+
+    if (
+      run?.status !== "COMPLETE"
+      || run?.validation_status !== "PASSED"
+      || !/^[0-9a-f]{64}$/.test(digest)
+      || !activityId
+      || String(run?.parser_activity_id || "") !== activityId
+    ) return null;
+
     if (
       activity?.target !== "current"
       || activity?.status !== "PASSED"
-      || String(activity?.result?.sqlite_sha256 || "").toLowerCase() !== digest
+      || String(activity?.result?.sqlite_sha256 || "").toLowerCase()
+        !== digest
     ) return null;
+
     const ingested = document?.parser_runner?.production_ingest_run;
-    if (ingested?.status === "COMPLETE" && ingested.sqlite_sha256 === digest) return null;
-    return { sqlite_sha256: digest };
+
+    if (
+      ingested?.status === "COMPLETE"
+      && ingested.sqlite_sha256 === digest
+      && ingested.parser_activity_id === activityId
+    ) return null;
+
+    return {
+      sqlite_sha256: digest,
+      parser_activity_id: activityId
+    };
   }
 
   function parserWorkflowCard(runner, runnerError) {
