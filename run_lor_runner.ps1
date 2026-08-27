@@ -65,6 +65,11 @@ $SecretPath = Join-Path $SecretRoot 'runner-token.dpapi'
 $IngestSecretPath = Join-Path $SecretRoot 'postgres-ingest-password.dpapi'
 $ServiceLogPath = Join-Path $SecretRoot 'runner-service.log'
 $PendingRemotePath = '~/.msb-lor-runner-token.pending'
+$ProductionSqlitePath =
+    'G:\Shared drives\MSB Database\database\lor_output_v7_scene.db'
+$ReadinessTimeoutSeconds = 600
+$ReadinessInitialDelaySeconds = 2
+$ReadinessMaxDelaySeconds = 30
 
 function Write-ServiceLog {
     param([Parameter(Mandatory = $true)][string]$Message)
@@ -221,6 +226,87 @@ function Assert-RunnerPrerequisites {
     }
     return $state
 }
+
+function Wait-RunnerPrerequisites {
+    <#
+    PRINT-SERVER depends on Google Drive for Desktop mounting G: after the
+    interactive Print Service Autologon session begins. The Scheduled Task
+    must not fail permanently merely because it starts before DriveFS has
+    finished mounting the approved LOR paths.
+
+    Local deployment files are checked once and fail immediately. G:-backed
+    runtime prerequisites are retried with bounded exponential backoff.
+    #>
+
+    foreach ($requiredLocalPath in @(
+        $RunnerPath,
+        $ParserPath,
+        $CheckerPath,
+        $IngestPath,
+        $PythonPath
+    )) {
+        if (-not (Test-Path -LiteralPath $requiredLocalPath -PathType Leaf)) {
+            throw "Required local runner file was not found: $requiredLocalPath"
+        }
+    }
+
+    if ($DeploymentProfile -ne 'PrintServerUnattended') {
+        return (Assert-RunnerPrerequisites)
+    }
+
+    $deadline = [DateTime]::UtcNow.AddSeconds($ReadinessTimeoutSeconds)
+    $delaySeconds = $ReadinessInitialDelaySeconds
+    $attempt = 0
+    $lastFailure = $null
+
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $attempt++
+        try {
+            $state = Assert-RunnerPrerequisites
+
+            $sqliteDirectory = Split-Path -Parent $ProductionSqlitePath
+            if (-not (
+                Test-Path -LiteralPath $sqliteDirectory -PathType Container
+            )) {
+                throw (
+                    'Production SQLite destination is unavailable: ' +
+                    $sqliteDirectory
+                )
+            }
+
+            if ($attempt -gt 1) {
+                Write-ServiceLog (
+                    "Readiness passed on attempt $attempt after waiting for " +
+                    'Google Drive/runtime prerequisites.'
+                )
+            }
+
+            return $state
+        }
+        catch {
+            $lastFailure = $_.Exception.Message
+            Write-ServiceLog (
+                "Readiness attempt $attempt waiting ${delaySeconds}s: " +
+                $lastFailure
+            )
+
+            Start-Sleep -Seconds $delaySeconds
+            $delaySeconds = [Math]::Min(
+                $delaySeconds * 2,
+                $ReadinessMaxDelaySeconds
+            )
+        }
+    }
+
+    $message = (
+        'Runner prerequisites were not ready within ' +
+        "${ReadinessTimeoutSeconds}s. Last failure: $lastFailure"
+    )
+
+    Write-ServiceLog "READINESS TIMEOUT: $message"
+    throw $message
+}
+
 
 function Test-AuthenticatedHealth {
     param([Parameter(Mandatory = $true)][string]$Token)
@@ -509,7 +595,7 @@ switch ($Action) {
         Write-ServiceLog "Start requested for ${RunnerHost}:$Port."
         try {
             Assert-DeploymentIdentity
-            $state = Assert-RunnerPrerequisites
+            $state = Wait-RunnerPrerequisites
             Write-ServiceLog (
                 "Prerequisites passed for approved LOR " +
                 "$($state.current_lor_version)."
@@ -526,8 +612,7 @@ switch ($Action) {
             $env:LOR_RUNNER_TOKEN = $token
             $env:LOR_INGEST_PG_PASSWORD = $ingestCredential
             $env:LOR_PREVIEW_PARENT = 'G:\Shared drives\MSB Database'
-            $env:LOR_SQLITE_OUTPUT =
-                'G:\Shared drives\MSB Database\database\lor_output_v7_scene.db'
+            $env:LOR_SQLITE_OUTPUT = $ProductionSqlitePath
             $env:LOR_RUNNER_REPORTS_ROOT =
                 'G:\Shared drives\MSB Database\LOR Version Reviews'
             $env:LOR_PARSER_PATH = $ParserPath

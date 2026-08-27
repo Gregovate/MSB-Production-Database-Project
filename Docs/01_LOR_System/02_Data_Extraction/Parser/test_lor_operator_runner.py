@@ -88,6 +88,11 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("PRINT-SERVER\\Print Service", source)
         self.assertIn("192.168.5.56", source)
         self.assertIn("192.168.5.55", source)
+        self.assertIn("function Wait-RunnerPrerequisites", source)
+        self.assertIn("Readiness attempt", source)
+        self.assertIn("READINESS TIMEOUT", source)
+        self.assertIn("$state = Wait-RunnerPrerequisites", source)
+        self.assertIn("$ProductionSqlitePath", source)
 
     def test_http_access_log_uses_stdout_not_stderr(self) -> None:
         """A successful request must not become a PowerShell native error."""
