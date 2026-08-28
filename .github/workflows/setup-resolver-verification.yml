@@ -1,0 +1,32 @@
+name: Setup resolver verification
+
+on:
+  push:
+    branches:
+      - agent/setup-resolver-canonical-document-root
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest flask psycopg2-binary
+
+      - name: Run shared resolver and Procedure regression
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/FieldWiring/Application:${{ github.workspace }}/Procedures/Application
+        run: >-
+          pytest -q
+          FieldWiring/Application/test_field_context_hierarchy.py
+          FieldWiring/Application/test_field_context_resolver.py
+          FieldWiring/Application/test_wiring_scope_resolution.py
+          Procedures/Application/test_procedure_documents.py
+          Procedures/Application/test_procedure_context.py
