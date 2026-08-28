@@ -97,10 +97,24 @@ def _node_label_and_path(
 ) -> tuple[str, str | None, str]:
     key = str(stage.get("stage_key") or "").strip()
     persisted_label, persisted_path = _valid_persisted_label(stage)
+    pointer_label, pointer_path = _unique_pointer_root(contexts, key)
+
+    # A persisted path string may be syntactically plausible while stale on
+    # disk (for example ``07a-Who Forest`` after the established Sub-stage
+    # folder became ``07a-Who Forest-WF``).  Current LOR BackgroundFile path
+    # evidence is the same navigation evidence consumed by the shared
+    # filesystem resolver.  When it unambiguously identifies a different
+    # owner folder, keep the current LOR owner identity instead of preserving
+    # the conflicting stale string merely because both begin with ``stage_key``.
+    if pointer_label and (
+        not persisted_label
+        or pointer_label.casefold() != persisted_label.casefold()
+    ):
+        return pointer_label, pointer_path, "LOR_PATH_EVIDENCE"
+
     if persisted_label:
         return persisted_label, persisted_path, "PERSISTED_STAGE_PATH"
 
-    pointer_label, pointer_path = _unique_pointer_root(contexts, key)
     if pointer_label:
         return pointer_label, pointer_path, "LOR_PATH_EVIDENCE"
 
