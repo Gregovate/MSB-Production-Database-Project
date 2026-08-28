@@ -2,12 +2,15 @@
 
 | Document control | Value |
 |---|---|
-| Status | ENGINEERING FIX / REGRESSION VERIFIED |
+| Status | PRODUCTION DEPLOYED / LIVE ACCEPTED |
 | Repository | `Gregovate/MSB-Production-Database-Project` |
-| Branch | `agent/setup-resolver-canonical-document-root` |
+| Engineering branch | `agent/setup-resolver-canonical-document-root` |
 | Starting `main` | `d504716c0039526f4e6d42b9229548d286b8361a` |
-| Deployed Procedure baseline | `9a19639ae0af6cd5bbaf162fe236e14c1b88722d` |
-| Production Procedure PR | #45 — `agent/procedure-shared-field-context-integration` |
+| Merged Production Database commit | `718fe0d2ccdee0c99225680ee2048e9d29a767e8` |
+| Production Database PR | #91 — `agent/setup-resolver-canonical-document-root` |
+| Previous shared production checkout | `d0acdfb7d781ab7cc43edfd348dc7eb6285fd358` |
+| Accepted shared production checkout | `718fe0d2ccdee0c99225680ee2048e9d29a767e8` |
+| Live acceptance date | 2026-08-28 |
 
 ## Defect
 
@@ -130,7 +133,7 @@ They prove:
 7. Existing Procedure document tests continue to prove `Archive`, `SourceDocs`, and nested files are excluded from normal current Procedure results.
 8. Existing shared resolver and FieldWiring scope tests remain in the regression gate.
 
-## Verification
+## Engineering verification
 
 Focused shared hierarchy / structured resolver / Wiring scope / Procedure document / Procedure context regression:
 
@@ -138,15 +141,126 @@ Focused shared hierarchy / structured resolver / Wiring scope / Procedure docume
 56 passed in 0.31s
 ```
 
-Complete FieldWiring + Procedure application regression:
+Complete FieldWiring + Procedure application regression on the feature branch:
 
 ```text
 pytest -q FieldWiring/Application Procedures/Application
 161 passed in 1.04s
 ```
 
-Both runs completed successfully on the feature branch. The temporary branch-only GitHub Actions verification workflow used to execute these tests was removed after the complete regression passed and is not part of the proposed production change.
+Both runs completed successfully on the feature branch. The temporary branch-only GitHub Actions verification workflow used to execute these tests was removed after the complete regression passed and is not part of the production change.
 
-## Deployment boundary
+## Production deployment and acceptance — 2026-08-28
 
-This document records an engineering repair only. The existing production Procedure service remains on the accepted deployed commit until this branch is reviewed, merged, deployed to the Procedure runtime checkout, restarted, and field-accepted against the real mounted Display Folders tree.
+PR #91 was merged to `main` as:
+
+```text
+718fe0d2ccdee0c99225680ee2048e9d29a767e8
+```
+
+The shared production checkout on `msb-prod-db` was verified at:
+
+```text
+d0acdfb7d781ab7cc43edfd348dc7eb6285fd358
+```
+
+before deployment.
+
+The server remote uses a narrow fetch refspec for `agent/fieldwiring-server-deployment-reconnaissance`, so `git fetch origin main` updated `FETCH_HEAD` but did not advance the stale local `origin/main` tracking ref. The deployment gate was corrected to verify the actual remote `refs/heads/main` with `git ls-remote` and fetch the exact approved target.
+
+A detached candidate worktree at the exact merged target was tested using the production Python environment. The first invocation reached 100% but pytest then attempted to restore `/home/msbadmin` after running as `fieldwiring`, producing a shutdown permission error. The candidate was rerun from inside the candidate worktree and completed cleanly:
+
+```text
+161 passed in 2.47s
+```
+
+The live checkout was then advanced fast-forward-only:
+
+```text
+d0acdfb7d781ab7cc43edfd348dc7eb6285fd358
+    ->
+718fe0d2ccdee0c99225680ee2048e9d29a767e8
+```
+
+Both shared-checkout services were restarted:
+
+```text
+fieldwiring.service
+msb-procedures.service
+```
+
+Immediate health passed:
+
+```text
+FieldWiring: {"data_mode":"postgres","status":"ok","version":"V0.2.0"}
+Procedures:  {"data_mode":"postgres","status":"ok","version":"V0.1.0"}
+```
+
+The first live filesystem/API acceptance wrapper resolved the repaired hierarchy correctly but attempted direct mounted-folder enumeration as `msbadmin`, which lacks `msb-docs-read` traversal rights. That check failed with `PermissionError`. A wrapper control-flow flaw also allowed later commands to print an acceptance message after that failure. That result was explicitly rejected and not used as production acceptance.
+
+Final acceptance was rerun with direct filesystem validation under the `fieldwiring` runtime account and strict failure semantics outside a conditional context.
+
+### Final live hierarchy acceptance
+
+```text
+Stage 07:          07-Whoville-WV
+Sub-stage 07a:     07a-Who Forest-WF
+07a scope type:    SUBSTAGE
+07a path evidence: G:\Shared drives\Display Folders\07-Whoville-WV\07a-Who Forest-WF
+Stage 07 stage_id: 37
+07a stage_id:      59
+```
+
+FieldWiring and Procedure returned the same `07a-Who Forest-WF` label and the same canonical path evidence.
+
+### Stage 07 Setup
+
+Resolved root:
+
+```text
+/mnt/msb-display-folders/07-Whoville-WV/Procedures/Setup
+```
+
+Direct mounted PDFs and Procedure API PDFs matched exactly:
+
+```text
+07 - Whoville.pdf
+07b - Mount Crumpit .pdf
+```
+
+### Sub-stage 07a Setup
+
+Resolved root:
+
+```text
+/mnt/msb-display-folders/07-Whoville-WV/07a-Who Forest-WF/Procedures/Setup
+```
+
+Direct mounted PDFs and Procedure API PDFs matched exactly:
+
+```text
+07a - Who Forest Trees Setup Instructions.pdf
+```
+
+Final production result:
+
+```text
+FILESYSTEM / API AGREEMENT: PASS
+SHARED ROOT AGREEMENT: PASS
+FINAL PRODUCTION ACCEPTANCE: PASS
+DEPLOYMENT ACCEPTED
+```
+
+The accepted shared production checkout is now:
+
+```text
+718fe0d2ccdee0c99225680ee2048e9d29a767e8
+```
+
+The immediate application rollback point is:
+
+```text
+d0acdfb7d781ab7cc43edfd348dc7eb6285fd358
+```
+
+Server/runtime authority and the complete deployment record are maintained in `Gregovate/MSB-Server-Management`, including `docs/server/Setup_Resolver_Canonical_Root_Production_Acceptance_2026-08-28.md`.
