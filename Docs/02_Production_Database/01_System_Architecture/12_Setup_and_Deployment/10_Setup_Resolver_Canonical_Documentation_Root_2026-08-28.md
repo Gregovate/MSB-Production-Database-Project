@@ -110,6 +110,7 @@ The raw database Stage object remains unchanged in the returned Procedure result
 FieldWiring/Application/field_context_hierarchy.py
 Procedures/Application/procedure_context.py
 Procedures/Application/test_procedure_context.py
+Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/10_Setup_Resolver_Canonical_Documentation_Root_2026-08-28.md
 ```
 
 No PostgreSQL schema, parser, V6 SQLite data, Google Drive folder names, QR payloads, or unrelated application code were changed.
@@ -131,13 +132,20 @@ They prove:
 
 ## Verification
 
-Focused shared hierarchy / structured resolver / Wiring scope / Procedure document / Procedure context run:
+Focused shared hierarchy / structured resolver / Wiring scope / Procedure document / Procedure context regression:
 
 ```text
 56 passed in 0.31s
 ```
 
-The complete FieldWiring + Procedure regression is also required before merge/deployment. Record the final complete-suite result here before production deployment.
+Complete FieldWiring + Procedure application regression:
+
+```text
+pytest -q FieldWiring/Application Procedures/Application
+161 passed in 1.04s
+```
+
+Both runs completed successfully on the feature branch. The temporary branch-only GitHub Actions verification workflow used to execute these tests was removed after the complete regression passed and is not part of the proposed production change.
 
 ## Deployment boundary
 
