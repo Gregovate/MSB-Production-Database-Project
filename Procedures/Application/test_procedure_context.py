@@ -2,8 +2,9 @@ from pathlib import Path
 
 import pytest
 
+from FieldWiring.Application.field_context_hierarchy import build_field_hierarchy
 from FieldWiring.Application.field_context_repository import FieldContextRepository
-from FieldWiring.Application.field_context_resolver import MARKER_NAME
+from FieldWiring.Application.field_context_resolver import MARKER_NAME, resolve_structured_scope
 from Procedures.Application.procedure_context import (
     ProcedureContextError,
     resolve_display_procedure,
@@ -355,3 +356,167 @@ def test_missing_display_is_rejected(tmp_path):
             task="Setup",
             drive_root=root,
         )
+
+
+def _whoville_repository(root: Path, *, scene_child: bool = False):
+    stage_root = _scope(root, "07-Whoville-WV")
+    substage_root = _scope(stage_root, "07a-Who Forest-WF")
+    stale_substage_path = stage_root / "07a-Who Forest"
+
+    stage_07 = {
+        "stage_id": 107,
+        "stage_key": "07",
+        "stage_name": "Whoville",
+        "folder_path": str(stage_root),
+    }
+    stage_07a = {
+        "stage_id": 1071,
+        "stage_key": "07a",
+        "stage_name": "Who Forest",
+        # Reproduce the persisted path that produced the bad Procedure message.
+        "folder_path": str(stale_substage_path),
+    }
+
+    if scene_child:
+        scene_root = _scope(substage_root, "07a-SomethingElse")
+        pointer_root = scene_root / "PreviewBackground"
+        scene_name = scene_root.name
+        scene_uuid = "scene-07a-something-else"
+    else:
+        scene_root = None
+        pointer_root = substage_root / "PreviewBackground"
+        scene_name = "07a-Who Forest"
+        scene_uuid = "scene-07a-owner"
+
+    pointer_root.mkdir()
+    background = pointer_root / "Who-Forest.jpg"
+    background.write_bytes(b"image")
+
+    context = {
+        "preview": {
+            "preview_uuid": "preview-07a",
+            "preview_name": "2026 Master Musical Preview",
+            "preview_background_file": None,
+            "preview_revision": "1",
+            "source_filename": "master.lorprev",
+        },
+        "scene": {
+            "scene_uuid": scene_uuid,
+            "scene_name": scene_name,
+            "scene_stage_key": "07a",
+            "scene_background_file": str(background),
+        },
+        "scope_kind": "Scene",
+        "context_type": "Musical",
+    }
+
+    repo = FakeFieldContextRepository(
+        stages=[
+            {"stage": stage_07, "contexts": []},
+            {"stage": stage_07a, "contexts": [context]},
+        ]
+    )
+    return repo, stage_root, substage_root, stale_substage_path, context, scene_root
+
+
+def test_stage_07_setup_resolves_from_shared_top_level_scope(tmp_path):
+    root = tmp_path / "Display Folders"
+    root.mkdir()
+    repo, stage_root, _, _, _, _ = _whoville_repository(root)
+    pdf = _publish(stage_root, "Setup", "Whoville Setup.pdf")
+
+    result = resolve_stage_procedure(
+        repo,
+        stage_id=107,
+        task="Setup",
+        drive_root=root,
+        whole_stage=True,
+    )
+
+    assert result["status"] == "AVAILABLE"
+    assert result["scope_type"] == "STAGE"
+    assert result["scope_root"] == str(stage_root)
+    assert result["task_root"] == str(stage_root / "Procedures" / "Setup")
+    assert [item["name"] for item in result["documents"]] == [pdf.name]
+
+
+def test_substage_07a_setup_uses_shared_canonical_scope_not_stale_folder_path(tmp_path):
+    root = tmp_path / "Display Folders"
+    root.mkdir()
+    repo, _, substage_root, stale_path, _, _ = _whoville_repository(root)
+    pdf = _publish(substage_root, "Setup", "Who Forest Setup.pdf")
+
+    result = resolve_stage_procedure(
+        repo,
+        stage_id=1071,
+        task="Setup",
+        drive_root=root,
+        whole_stage=True,
+    )
+
+    assert result["status"] == "AVAILABLE"
+    assert result["scope_type"] == "SUBSTAGE"
+    assert result["scope_root"] == str(substage_root)
+    assert result["task_root"] == str(substage_root / "Procedures" / "Setup")
+    assert [item["name"] for item in result["documents"]] == [pdf.name]
+    # Database provenance remains visible; resolution alone consumes the shared
+    # canonical hierarchy path evidence.
+    assert result["stage"]["folder_path"] == str(stale_path)
+
+
+def test_wiring_and_setup_resolve_identical_canonical_root_for_substage_07a(tmp_path):
+    root = tmp_path / "Display Folders"
+    root.mkdir()
+    repo, _, substage_root, _, context, _ = _whoville_repository(root)
+    _publish(substage_root, "Setup", "Who Forest Setup.pdf")
+
+    setup_result = resolve_stage_procedure(
+        repo,
+        stage_id=1071,
+        task="Setup",
+        drive_root=root,
+        whole_stage=True,
+    )
+
+    raw_substage = repo.stages()[1]["stage"]
+    wiring_scope, wiring_scope_type, _ = resolve_structured_scope(
+        raw_substage,
+        context["scene"],
+        context["preview"],
+        root,
+    )
+
+    # FieldWiring delegates its documentation-root selection to this same
+    # shared resolver before appending Wiring/<branch>.
+    assert wiring_scope_type == "SUBSTAGE"
+    assert wiring_scope == substage_root
+    assert setup_result["scope_root"] == str(wiring_scope)
+
+
+def test_scene_named_07a_something_else_is_not_mistaken_for_substage_07a(tmp_path):
+    root = tmp_path / "Display Folders"
+    root.mkdir()
+    repo, _, substage_root, _, _, scene_root = _whoville_repository(
+        root,
+        scene_child=True,
+    )
+    substage_pdf = _publish(substage_root, "Setup", "Who Forest Setup.pdf")
+    _publish(scene_root, "Setup", "Something Else Setup.pdf")
+
+    hierarchy = build_field_hierarchy(repo.stages())
+    substage = hierarchy["stages"][0]["sub_stages"][0]
+    assert substage["stage_key"] == "07a"
+    assert substage["label"] == "07a-Who Forest-WF"
+    assert [scene["label"] for scene in substage["scenes"]] == ["07a-SomethingElse"]
+
+    result = resolve_stage_procedure(
+        repo,
+        stage_id=1071,
+        task="Setup",
+        drive_root=root,
+        whole_stage=True,
+    )
+
+    assert result["scope_type"] == "SUBSTAGE"
+    assert result["scope_root"] == str(substage_root)
+    assert [item["name"] for item in result["documents"]] == [substage_pdf.name]
