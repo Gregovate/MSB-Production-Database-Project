@@ -18,15 +18,9 @@ jobs:
           python-version: '3.12'
 
       - name: Install test dependencies
-        run: python -m pip install --upgrade pip pytest flask psycopg2-binary
+        run: python -m pip install --upgrade pip pytest -r FieldWiring/Application/requirements.txt
 
-      - name: Run shared resolver and Procedure regression
+      - name: Run complete FieldWiring and Procedure regression
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/FieldWiring/Application:${{ github.workspace }}/Procedures/Application
-        run: >-
-          pytest -q
-          FieldWiring/Application/test_field_context_hierarchy.py
-          FieldWiring/Application/test_field_context_resolver.py
-          FieldWiring/Application/test_wiring_scope_resolution.py
-          Procedures/Application/test_procedure_documents.py
-          Procedures/Application/test_procedure_context.py
+        run: pytest -q FieldWiring/Application Procedures/Application
