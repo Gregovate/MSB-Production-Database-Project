@@ -20,33 +20,56 @@ Do not assume that repository state remembered from an earlier conversation is s
 
 For connector/API-based work where a local `git pull` is not available, creating the work branch directly from current remote `main` and reading the current remote files satisfies the refresh requirement.
 
-## Production Schema Authority — Verify Live PostgreSQL Before DDL
+## Production Schema Authority
 
-For any table, view, function, trigger, constraint, sequence, permission path, or other database object that currently exists in production, the **live PostgreSQL definition is the implementation authority for current state**.
+The **live PostgreSQL database is runtime implementation truth**.
 
-Checked-in DDL, old migration scripts, development query files, schema exports, archived SQL, documentation, and conversation history may be useful evidence, but they must not be assumed to represent the current production definition without verification against the live database.
+The canonical engineering record of that implementation is the newest dated schema-only export under:
+
+```text
+Database/Schema_Snapshots/
+```
+
+The newest canonical snapshot may be used as the current engineering authority when it is known to have been captured **after the most recent accepted production schema change**. This is especially important when direct database-query access is unavailable.
+
+Checked-in historical DDL, old migration scripts, development query files, archived schema exports, documentation, and conversation history remain evidence only unless they have been reconciled to the current canonical snapshot or live database.
 
 Before designing or applying a schema change to an existing production object:
 
-1. inspect the live PostgreSQL object's current columns and data types;
-2. inspect its primary key, unique constraints, foreign keys, check constraints, defaults, generated expressions, and sequences/identity behavior as applicable;
-3. inspect current indexes;
-4. inspect current triggers and referenced trigger functions;
-5. inspect dependent views/functions/procedures where the proposed change can affect them;
-6. inspect current ownership, grants, and application-role permissions when the change can affect access;
-7. inspect relevant Directus metadata, relationships, forms, bookmarks, or other application configuration when the object is exposed through Directus;
-8. compare the live definition with repository SQL/documentation and explicitly identify stale or incomplete repository artifacts before using them as implementation input; and
-9. derive the additive migration/change from the verified live production definition, not from an unverified historical CREATE TABLE file.
+1. inspect the newest canonical schema snapshot and confirm its capture date/revision is after the latest known production schema change;
+2. inspect the object's current columns and data types;
+3. inspect its primary key, unique constraints, foreign keys, check constraints, defaults, generated expressions, and sequences/identity behavior as applicable;
+4. inspect current indexes;
+5. inspect current triggers and referenced trigger functions;
+6. inspect dependent views/functions/procedures where the proposed change can affect them;
+7. inspect current ownership, grants, and application-role permissions when the change can affect access;
+8. inspect relevant Directus metadata, relationships, forms, bookmarks, or other application configuration when the object is exposed through Directus;
+9. use live PostgreSQL inspection as an additional verification whenever direct access is available; and
+10. derive the additive migration/change from the verified current production definition, not from an unverified historical CREATE TABLE file.
 
-A repository DDL file that contains `DROP TABLE`, recreates an object from scratch, uses an obsolete key, omits current columns/constraints, or otherwise differs from production must be treated as historical/development evidence until reconciled. It must not be used as the basis for a production migration merely because its filename appears authoritative.
+A repository DDL file that contains `DROP TABLE`, recreates an object from scratch, uses an obsolete key, omits current columns/constraints, or otherwise differs from the canonical current snapshot must be treated as historical/development evidence until reconciled.
 
-If live-schema access is not available, stop before approving or applying DDL to the existing production object. Record the missing verification as a blocker rather than guessing from repository files.
+If neither direct live-schema access nor a known-current canonical schema snapshot is available, stop before approving or applying DDL to the existing production object. Capture/obtain current schema evidence rather than guessing.
 
-After an accepted production schema change, update the responsible repository schema/reference documentation so future work does not repeatedly rediscover the same divergence. Where Directus is affected, include the required Directus reload/restart and form/bookmark/relationship review in the deployment and acceptance sequence.
+### Mandatory Post-Schema-Change Snapshot
+
+Every accepted production schema change must include a fresh schema-only PostgreSQL snapshot as part of deployment closeout.
+
+The schema change is not considered fully documented until:
+
+1. the production DDL has been applied and verified;
+2. any required Directus restart/reload and relationship/form/bookmark review has been completed;
+3. a new schema-only snapshot has been captured from the resulting production database;
+4. the new snapshot has been saved directly under `Database/Schema_Snapshots/` using the required dated filename;
+5. the previous current snapshot has been moved to `Database/Schema_Snapshots/archive/` rather than deleted;
+6. the new snapshot has been reviewed sufficiently to confirm the intended object/change is present; and
+7. the snapshot and related controlled documentation have been committed with the implementation work before the issue/PR is treated as complete.
+
+This requirement exists so future engineering can reconstruct current production schema from the repository even when direct PostgreSQL access is unavailable.
 
 ### Simple schema rule
 
-> **Existing production object: inspect live PostgreSQL first. Repository DDL is evidence until verified.**
+> **Use the newest post-change canonical schema snapshot as the durable engineering authority; verify live PostgreSQL too whenever access is available. After every production schema change, capture a new snapshot before closeout.**
 
 ## Concurrent Project Work
 
@@ -74,13 +97,14 @@ Before rewriting an operator procedure or engineering document:
 
 The repository is the durable project record. Parallel development is expected.
 
-Refreshing first prevents:
+Refreshing first and maintaining a current schema snapshot prevents:
 
 - overwriting newer work;
 - documenting obsolete behavior;
 - rebuilding decisions already settled in another thread;
 - creating conflicting operator and engineering instructions;
-- deriving production schema changes from stale development DDL; and
+- deriving production schema changes from stale development DDL;
+- becoming blocked merely because direct database-query access is unavailable; and
 - wasting time reconciling changes after they have already been written against a stale base.
 
 ## Simple Rule
