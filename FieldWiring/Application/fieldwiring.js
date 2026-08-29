@@ -174,17 +174,41 @@ function browseContextChoices(node) {
   const choices = [];
   const ownerLabel = node.scope_type === 'SUBSTAGE' ? 'Whole Sub-stage' : 'Whole Stage';
   const wholeContexts = node.contexts || [];
-  const multipleWholePreviews = wholeContexts.length > 1;
 
-  wholeContexts.forEach(context => {
+  // A physical Stage can have several separate LOR Previews even when some
+  // of those Previews expose only formal Scene contexts in the shared
+  // hierarchy.  For browse presentation, collect Preview identity from both
+  // whole-scope contexts and Scene contexts.  Only synthesize these additional
+  // Preview choices when more than one distinct Preview exists; ordinary
+  // single-Preview Stage/Scene presentation therefore remains unchanged.
+  const allPreviewContexts = [...wholeContexts];
+  (node.scenes || []).forEach(scene => {
+    allPreviewContexts.push(...(scene.contexts || []));
+  });
+
+  const previewContextsById = new Map();
+  allPreviewContexts.forEach(context => {
+    const previewIdentity = context.preview_uuid || context.preview_name;
+    if (!previewIdentity || previewContextsById.has(previewIdentity)) return;
+    previewContextsById.set(previewIdentity, context);
+  });
+
+  const previewContexts = [...previewContextsById.values()];
+  const multiplePreviews = previewContexts.length > 1;
+  const browsePreviews = multiplePreviews ? previewContexts : wholeContexts;
+
+  browsePreviews.forEach(context => {
     choices.push({
       context: {
         ...context,
         scope_kind: 'Stage / Preview',
-        scene_name: null
+        scene_uuid: null,
+        scene_name: null,
+        scene_stage_key: null,
+        scene_background_file: null
       },
-      label: multipleWholePreviews && context.preview_name ? context.preview_name : ownerLabel,
-      badge: multipleWholePreviews
+      label: multiplePreviews && context.preview_name ? context.preview_name : ownerLabel,
+      badge: multiplePreviews
         ? 'Preview'
         : (node.scope_type === 'SUBSTAGE' ? 'Sub-stage' : 'Stage')
     });
