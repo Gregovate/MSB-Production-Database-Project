@@ -74,7 +74,7 @@ def test_one_physical_stage_retains_multiple_preview_contexts():
     assert all(item["scope_kind"] == "Stage / Preview" for item in stage["contexts"])
 
 
-def test_stage01_shape_can_split_preview_identity_between_whole_and_scene_contexts():
+def test_stage01_shape_keeps_whole_preview_and_formal_scene_scopes_distinct():
     outside_preview = "preview-outside"
     contexts = [
         _context(
@@ -124,29 +124,29 @@ def test_stage01_shape_can_split_preview_identity_between_whole_and_scene_contex
         "01-Open-Close Sign",
     ]
 
-    preview_ids = {item["preview_uuid"] for item in stage["contexts"]}
-    for scene in stage["scenes"]:
-        preview_ids.update(item["preview_uuid"] for item in scene["contexts"])
-
-    assert preview_ids == {
-        "preview-goal",
+    # The MSB Sign and Open-Close Preview identities remain available as
+    # provenance inside their formal Scene contexts, but they must not be
+    # duplicated as separate whole-Preview field choices.
+    scene_preview_ids = {
+        item["preview_uuid"]
+        for scene in stage["scenes"]
+        for item in scene["contexts"]
+    }
+    assert scene_preview_ids == {
         "preview-msb",
         "preview-open",
         outside_preview,
     }
 
 
-def test_browser_contract_exposes_all_preview_identities_for_multi_preview_stage():
+def test_browser_contract_labels_only_multiple_whole_scope_previews():
     source = (Path(__file__).resolve().parent / "fieldwiring.js").read_text(encoding="utf-8")
 
-    assert "const allPreviewContexts = [...wholeContexts];" in source
-    assert "allPreviewContexts.push(...(scene.contexts || []));" in source
-    assert "const previewContextsById = new Map();" in source
-    assert "const multiplePreviews = previewContexts.length > 1;" in source
-    assert "const browsePreviews = multiplePreviews ? previewContexts : wholeContexts;" in source
-    assert "scene_uuid: null" in source
-    assert "multiplePreviews && context.preview_name ? context.preview_name : ownerLabel" in source
-    assert "multiplePreviews\n        ? 'Preview'" in source
+    assert "const multipleWholePreviews = wholeContexts.length > 1;" in source
+    assert "multipleWholePreviews && context.preview_name ? context.preview_name : ownerLabel" in source
+    assert "multipleWholePreviews\n        ? 'Preview'" in source
+    assert "allPreviewContexts" not in source
+    assert "previewContextsById" not in source
     assert "if (c.preview_name) rows.push(['Preview', c.preview_name]);" in source
     assert "params.set('preview_uuid', c.preview_uuid);" in source
 
