@@ -125,9 +125,10 @@ function showResolved(c) {
   if (c.display_name) rows.push(['Display', c.display_name]);
   rows.push(
     ['Stage / Area', `${c.stage_key ? c.stage_key + ' · ' : ''}${c.stage_name || 'Unresolved'}`],
-    ['Scene / Area', isScene ? c.scene_name : wholeScope],
-    ['Wiring', c.context_type || 'Unknown']
+    ['Scene / Area', isScene ? c.scene_name : wholeScope]
   );
+  if (c.preview_name) rows.push(['Preview', c.preview_name]);
+  rows.push(['Wiring', c.context_type || 'Unknown']);
   resolvedGrid.innerHTML = rows.map(([label,value]) => `
     <div class="resolved-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>
   `).join('');
@@ -172,16 +173,20 @@ function flattenBrowseNodes(stageList) {
 function browseContextChoices(node) {
   const choices = [];
   const ownerLabel = node.scope_type === 'SUBSTAGE' ? 'Whole Sub-stage' : 'Whole Stage';
+  const wholeContexts = node.contexts || [];
+  const multipleWholePreviews = wholeContexts.length > 1;
 
-  (node.contexts || []).forEach(context => {
+  wholeContexts.forEach(context => {
     choices.push({
       context: {
         ...context,
         scope_kind: 'Stage / Preview',
         scene_name: null
       },
-      label: ownerLabel,
-      badge: node.scope_type === 'SUBSTAGE' ? 'Sub-stage' : 'Stage'
+      label: multipleWholePreviews && context.preview_name ? context.preview_name : ownerLabel,
+      badge: multipleWholePreviews
+        ? 'Preview'
+        : (node.scope_type === 'SUBSTAGE' ? 'Sub-stage' : 'Stage')
     });
   });
 
