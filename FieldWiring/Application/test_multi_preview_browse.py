@@ -22,8 +22,8 @@ def _context(
             "preview_uuid": preview_uuid,
             "preview_name": preview_name,
             "preview_background_file": (
-                rf"G:\Shared drives\Display Folders\{stage_key}-Front Entrance-FE"
-                rf"\PreviewBackground\{preview_uuid}.jpg"
+                rf"G:\\Shared drives\\Display Folders\\{stage_key}-Front Entrance-FE"
+                rf"\\PreviewBackground\\{preview_uuid}.jpg"
             ),
         },
         "scene": {
@@ -43,7 +43,7 @@ def _stage(contexts):
             "stage_id": 31,
             "stage_key": "01",
             "stage_name": "Show Background Stage 01 Front Entrance",
-            "folder_path": r"G:\Shared drives\Display Folders\01-Front Entrance-FE",
+            "folder_path": r"G:\\Shared drives\\Display Folders\\01-Front Entrance-FE",
         },
         "contexts": list(contexts),
     }
@@ -85,14 +85,12 @@ def test_stage01_shape_keeps_whole_preview_and_formal_scene_scopes_distinct():
         _context(
             "preview-msb",
             "Show Background Stage 01 FE MSB Sign",
-            scene_name="01-Making Spirits Bright",
-            scene_stage_key="01",
+            scene_name="Making Spirits Bright",
         ),
         _context(
             "preview-open",
             "Show Background Stage 01 FE Open-Close Sign",
-            scene_name="01-Open-Close Sign",
-            scene_stage_key="01",
+            scene_name="Open-Close Sign",
         ),
         _context(
             outside_preview,
@@ -105,8 +103,8 @@ def test_stage01_shape_keeps_whole_preview_and_formal_scene_scopes_distinct():
             scene_name="01-Entrance Arch",
             scene_stage_key="01",
             scene_background_file=(
-                r"G:\Shared drives\Display Folders\01-Front Entrance-FE"
-                r"\01-Entrance Arch\PreviewBackground\Entry Arch Visualizer.jpg"
+                r"G:\\Shared drives\\Display Folders\\01-Front Entrance-FE"
+                r"\\01-Entrance Arch\\PreviewBackground\\Entry Arch Visualizer.jpg"
             ),
         ),
     ]
@@ -116,25 +114,23 @@ def test_stage01_shape_keeps_whole_preview_and_formal_scene_scopes_distinct():
 
     assert [item["preview_uuid"] for item in stage["contexts"]] == [
         "preview-goal",
+        "preview-msb",
+        "preview-open",
         outside_preview,
     ]
     assert [scene["label"] for scene in stage["scenes"]] == [
         "01-Entrance Arch",
-        "01-Making Spirits Bright",
-        "01-Open-Close Sign",
     ]
 
-    # The MSB Sign and Open-Close Preview identities remain available as
-    # provenance inside their formal Scene contexts, but they must not be
-    # duplicated as separate whole-Preview field choices.
+    # Stand-alone Preview content intentionally uses unprefixed Scene names, so
+    # Goal Sign, MSB Sign, and Open-Close remain whole-Preview field choices.
+    # Only the prefixed Entrance Arch context is a formal Stage 01 Scene.
     scene_preview_ids = {
         item["preview_uuid"]
         for scene in stage["scenes"]
         for item in scene["contexts"]
     }
     assert scene_preview_ids == {
-        "preview-msb",
-        "preview-open",
         outside_preview,
     }
 
