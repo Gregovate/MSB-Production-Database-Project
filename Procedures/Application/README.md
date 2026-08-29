@@ -1,6 +1,6 @@
 # Procedure Application
 
-**Status:** PRODUCTION-OPERATIONAL — read-only Procedure field access accepted 2026-08-23
+**Status:** PRODUCTION-OPERATIONAL — canonical Stage/Sub-stage Setup resolution accepted 2026-08-28
 
 This directory contains the Procedure subsystem application/business logic for Setup, Takedown, and Inspection field-document discovery.
 
@@ -13,16 +13,22 @@ https://my.sheboyganlights.org/procedures/
 Current accepted Production Database application commit:
 
 ```text
-9a19639ae0af6cd5bbaf162fe236e14c1b88722d
+718fe0d2ccdee0c99225680ee2048e9d29a767e8
 ```
 
-Server/runtime authority is maintained in `Gregovate/MSB-Server-Management`, especially `docs/server/Procedure_Production_Runtime.md` and `docs/server/Synology_Protected_Application_Reverse_Proxy.md`.
+Immediate application rollback point for the current shared checkout:
+
+```text
+d0acdfb7d781ab7cc43edfd348dc7eb6285fd358
+```
+
+Server/runtime authority is maintained in `Gregovate/MSB-Server-Management`, especially `docs/server/Procedure_Production_Runtime.md`, `docs/server/FieldWiring_Production_Runtime.md`, and `docs/server/Setup_Resolver_Canonical_Root_Production_Acceptance_2026-08-28.md`.
 
 ## Shared Resolver Boundary
 
-The Procedure subsystem does **not** implement Stage/Sub-stage/Scene resolution.
+The Procedure subsystem does **not** implement a second Stage/Sub-stage/Scene filesystem resolver.
 
-It consumes the production-accepted canonical implementation directly:
+It consumes the production-accepted canonical structured-scope implementation directly:
 
 ```python
 from FieldWiring.Application.field_context_resolver import resolve_structured_scope
@@ -34,7 +40,9 @@ Canonical source:
 FieldWiring/Application/field_context_resolver.py
 ```
 
-The shared resolver owns the current structured field context. Procedure code treats its returned `scope_root` as fixed and does not perform a second filename-, path-, Display-, Stage-, or Scene-resolution pass.
+The shared hierarchy owns Stage/Sub-stage/Scene presentation identity and canonical owner-path evidence. The shared structured-scope resolver validates the selected physical root. Procedure code does not perform a second filename-, path-, Display-, Stage-, or Scene-resolution pass.
+
+For controlled Stage/Sub-stage browse, Procedure identifies the selected owner by permanent `stage_id`, consumes the shared hierarchy's `scope_path_evidence`, and then delegates to `resolve_structured_scope()` for physical validation. It does not reconstruct a directory from `stage_key + stage_name` and does not perform a loose `NNa-*` filesystem search.
 
 ## Procedure Adapter Boundary
 
@@ -90,7 +98,7 @@ UNRESOLVED_SCOPE
 
 ## First Real Fixture
 
-The first observed Google Drive fixture is:
+The first observed Google Drive fixture was:
 
 ```text
 G:\Shared drives\Display Folders\15-Church-Bells-CH
@@ -109,27 +117,100 @@ Observed PDF size:
 
 No marker is required inside `Setup` for this fixture to be valid.
 
-## Production Acceptance — 2026-08-23
+## Production Acceptance — 2026-08-28 Canonical Setup Root
 
-Final combined FieldWiring + Procedure regression before deployment:
+Production Database PR `#91` repaired a whole-Sub-stage Procedure lookup failure where stale persisted Stage path evidence could end in:
+
+```text
+07a-Who Forest
+```
+
+while current LOR path evidence and the established Google Drive hierarchy identify the real Sub-stage as:
+
+```text
+07a-Who Forest-WF
+```
+
+`07a-Who Forest-WF` remains a **Sub-stage**, not a Scene. Same-prefix Scene names are not used as loose Sub-stage filesystem matches.
+
+The merged and deployed application commit is:
+
+```text
+718fe0d2ccdee0c99225680ee2048e9d29a767e8
+```
+
+Detached production-environment regression before live mutation:
+
+```text
+161 passed in 2.47s
+```
+
+Live shared hierarchy acceptance:
+
+```text
+Stage 07:          07-Whoville-WV
+Sub-stage 07a:     07a-Who Forest-WF
+07a scope type:    SUBSTAGE
+07a path evidence: G:\Shared drives\Display Folders\07-Whoville-WV\07a-Who Forest-WF
+```
+
+FieldWiring and Procedure returned identical 07a owner identity and canonical path evidence.
+
+Live Stage 07 Setup root:
+
+```text
+/mnt/msb-display-folders/07-Whoville-WV/Procedures/Setup
+```
+
+Current direct PDFs, matched exactly by the Procedure API:
+
+```text
+07 - Whoville.pdf
+07b - Mount Crumpit .pdf
+```
+
+Live Sub-stage 07a Setup root:
+
+```text
+/mnt/msb-display-folders/07-Whoville-WV/07a-Who Forest-WF/Procedures/Setup
+```
+
+Current direct PDF, matched exactly by the Procedure API:
+
+```text
+07a - Who Forest Trees Setup Instructions.pdf
+```
+
+Final result:
+
+```text
+FILESYSTEM / API AGREEMENT: PASS
+SHARED ROOT AGREEMENT: PASS
+FINAL PRODUCTION ACCEPTANCE: PASS
+DEPLOYMENT ACCEPTED
+```
+
+The first live filesystem validation attempt was deliberately not accepted because it enumerated the mounted task folder as `msbadmin`, which lacks the `msb-docs-read` traversal rights of the `fieldwiring` runtime account. A wrapper control-flow flaw also allowed a misleading success message after that failed assertion. Final acceptance was rerun under the correct runtime account with strict failure semantics and passed.
+
+Detailed server/runtime evidence is in `Gregovate/MSB-Server-Management: docs/server/Setup_Resolver_Canonical_Root_Production_Acceptance_2026-08-28.md`.
+
+## Historical Production Acceptance — 2026-08-23 Initial Procedure Deployment
+
+The original Procedure production deployment used application commit:
+
+```text
+9a19639ae0af6cd5bbaf162fe236e14c1b88722d
+```
+
+Original combined FieldWiring + Procedure regression:
 
 ```text
 150 passed in 2.16s
 ```
 
-Live production-data gate:
+The original live gate established the Procedure service, Stage browse, Stage 15 Setup document resolution, and the protected public route.
 
-```text
-/api/stages HTTP 200 in 0.0136 seconds
-Top-level Stages: 30
-Stage 03 Scenes: ['03-Mega Cube']
-Stage 07 Sub-stages: ['07a-Who Forest']
-Stage 21 Scenes: ['21-SlidingPenguins', '21-SnowballBears']
-Stage 15 Setup status: AVAILABLE
-Stage 15 Setup document: 15 - Church-Nativity-Bells.pdf
-```
-
-Internal production service:
+Internal production service remains:
 
 ```text
 msb-procedures.service = active
@@ -137,18 +218,12 @@ msb-procedures.service = active
 {"data_mode":"postgres","status":"ok","version":"V0.1.0"}
 ```
 
-Protected public route acceptance through Synology:
+Protected public route remains:
 
 ```text
 GET /procedures/api/health -> HTTP 200 / postgres / ok / V0.1.0
 HEAD /procedures/          -> HTTP/2 200
 HEAD /procedures           -> HTTP/2 301 -> /procedures/
-```
-
-Result:
-
-```text
-PROCEDURE PRODUCTION DEPLOYMENT: ACCEPTED
 ```
 
 ## Display Scan Entry Contract
@@ -178,14 +253,14 @@ and optionally a task parameter when another approved caller has a reason to pre
 
 For the current Display Scan integration, the agreed UX is **one `Procedures` button** on the Display scan hub. It passes only `display_id` and leaves Setup/Takedown/Inspection selection inside this existing Procedure page. Scan does not duplicate these three task buttons and does not call the Procedure API merely to decide whether the button should render.
 
-Source candidate branch and implementation commit:
+Source candidate branch and implementation commit recorded for that separate Scan integration work:
 
 ```text
 agent/procedure-scan-action
 333f7c20a26e8ed2a0460ddbf309c167bffa2992
 ```
 
-This is an application-source candidate until the Directus Scan deployment/regression gate is completed and accepted. The standalone Procedure service itself does not require redesign or redeployment for this Scan link.
+The standalone Procedure resolver behavior documented here is independent of that Scan link.
 
 ## Tests
 
@@ -195,13 +270,12 @@ Procedure-specific and shared integration tests live under:
 Procedures/Application/test_*.py
 ```
 
-The final production candidate was accepted together with the complete FieldWiring regression suite so changes to the shared Field Context contract cannot silently diverge between the two applications.
+Shared Field Context changes must be accepted together with the relevant FieldWiring regression suite so the two applications cannot silently diverge on Stage/Sub-stage/Scene scope.
 
 ## Remaining Work
 
 The standalone Procedure field-access application is production-operational. Remaining work is separate follow-on scope, including:
 
-- deploy and accept the additive Display Scan **Procedures** action through the current Server Management Directus Scan safety gate;
 - continue human Procedure-document authoring/alignment/archive work in Google `Display Folders`;
 - complete any broader PC/phone/tablet operator acceptance needed for the 2026 field workflow; and
 - engineer scheduling, pick/load, forklift, Container/Location, and other Setup/Deployment operational workflows separately from Procedure document lookup.
@@ -213,13 +287,15 @@ Do not create a second field-context resolver, Procedure-only Google hierarchy, 
 Read first:
 
 1. `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/00_Procedure_System_Field_Context_Handoff_2026-08-22.md`
-2. `Docs/00_Project_Overview/02-Google_Drive_Path_Resolution_Contract.md`
-3. `Docs/00_Project_Overview/06-Operator_UI_Message_Contract.md`
-4. `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md`
-5. `FieldWiring/Application/field_context_resolver.py`
-6. `FieldWiring/Application/field_context_repository.py`
-7. `Gregovate/MSB-Server-Management: docs/server/Procedure_Production_Runtime.md`
-8. `Gregovate/MSB-Server-Management: docs/server/Synology_Protected_Application_Reverse_Proxy.md`
-9. `Gregovate/MSB-Server-Management: docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md` for the pending Scan source-candidate deployment.
+2. `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/10_Setup_Resolver_Canonical_Documentation_Root_2026-08-28.md`
+3. `Docs/00_Project_Overview/Google_Drive/engineering/Google_Drive_Path_Resolution_Contract.md`
+4. `Docs/00_Project_Overview/06-Operator_UI_Message_Contract.md`
+5. `Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md`
+6. `FieldWiring/Application/field_context_hierarchy.py`
+7. `FieldWiring/Application/field_context_resolver.py`
+8. `FieldWiring/Application/field_context_repository.py`
+9. `Gregovate/MSB-Server-Management: docs/server/Procedure_Production_Runtime.md`
+10. `Gregovate/MSB-Server-Management: docs/server/FieldWiring_Production_Runtime.md`
+11. `Gregovate/MSB-Server-Management: docs/server/Setup_Resolver_Canonical_Root_Production_Acceptance_2026-08-28.md`
 
-Historical dated Procedure acceptance documents in `12_Setup_and_Deployment/` remain valid as records of the engineering stages they describe; when they say deployment had not yet occurred, that statement applies to that historical acceptance stage, not the current production state.
+Historical dated Procedure acceptance documents remain valid as records of the engineering stages they describe; statements that deployment had not yet occurred apply to those historical stages, not the current production state.
