@@ -2,6 +2,29 @@
 
 This subsystem documents permanent asset labeling, QR/barcode payloads, label-printing integration, scan behavior, and scanner/tablet workflows.
 
+## Boundary — Do Not Collapse These Systems
+
+**Repository location is not subsystem ownership.**
+
+Labeling and Scanning is its own MSB subsystem even though its controlled engineering documentation and some current Scan implementation source live inside `Gregovate/MSB-Production-Database-Project`.
+
+Keep these boundaries separate in every new thread, branch, issue, PR, and design decision:
+
+```text
+Labeling and Scanning subsystem
+    = cross-system labeling / payload / scanning contract
+
+MSB Production Database
+    = authoritative database records and database implementation
+
+MSB Label Print Service / PRINT-SERVER
+    = external physical-printing runtime and Brother implementation
+```
+
+A file living in the Production Database repository does not automatically make its engineering responsibility a Production Database responsibility.
+
+Read [Labeling and Scanning — Subsystem and Repository Boundary](Subsystem_and_Repository_Boundary.md) before changing QR payloads, scanner behavior, label profiles, Scan normalization/routing, print-request integration, Brother templates, or printer/runtime behavior.
+
 ## Current State
 
 Display and container label printing is an implemented production capability used to connect physical assets to Production Database records.
@@ -16,6 +39,8 @@ Scan/directus-extension-scan/
     src/index.js
     dist/index.js
 ```
+
+The source is stored in the Production Database repository because it operates directly against Production Database identities/data. Its label/payload/scan behavior still implements the Labeling and Scanning subsystem contract.
 
 The detailed deployed runtime hash, rollback artifacts, restart/recovery sequence, and Synology `/scan/` proxy behavior are maintained in `Gregovate/MSB-Server-Management`.
 
@@ -51,14 +76,17 @@ The deployed scan runtime predates the current documentation structure. Its serv
 
 Label printing crosses a repository and service boundary:
 
-- the **Production Database** owns the asset records and the request to print;
+- **Labeling and Scanning** owns the cross-system label/payload/scan contract;
+- the **Production Database** owns the authoritative asset records and database-backed request/batch state;
 - **Directus** provides the current operator interface for selecting records and enabling `Print Label`;
-- the separate **MSB_LabelPrintService** consumes those requests and performs the physical printing on the dedicated print server.
+- the separate **MSB_LabelPrintService** consumes the approved database contract and performs physical printing on the dedicated print server.
 
 The LabelPrintService is an external supporting subsystem. If it is unavailable, printing stops, but the Production Database remains authoritative and usable.
 
 ## Start Here
 
+- [Subsystem and Repository Boundary](Subsystem_and_Repository_Boundary.md) — controlling separation among Labeling and Scanning, the Production Database, and LabelPrintService/PRINT-SERVER.
+- [Label Payload and Profile Architecture](Label_Payload_and_Profile_Architecture.md) — current QR-generation/profile reconnaissance and implementation gates.
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Scan/FieldWiring baseline, permanent `display_id` handoff, source-control boundary, failure boundary, acceptance matrix, and deferred regression cases.
 - [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, Procedure source-candidate state, and current scan-extension resume point.
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules.
@@ -69,6 +97,8 @@ The LabelPrintService is an external supporting subsystem. If it is unavailable,
 ## Design Intent
 
 Labels must use durable Production Database identities rather than brittle application-specific URLs. Printing and scanning should remain usable by non-technical volunteers while preserving traceability and reprint control.
+
+Labeling and Scanning governs the cross-system representation and scan contract. The Production Database supplies authoritative identities/data and database-side implementation. LabelPrintService owns Brother/PRINT-SERVER implementation.
 
 The operator-facing Production Database procedure should stop at requesting labels and basic first-line checks. Service startup/restart, print-server operation, and service-specific troubleshooting belong in the LabelPrintService repository.
 
@@ -87,13 +117,16 @@ For example, Wiring owns wiring information, Setup and Deployment owns setup/tak
 - [People and Identity](../03_People_and_Identity/README.md) for authenticated operations where applicable
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md) for Procedure field-document behavior and the future Container/Location setup-season workflow
 - [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management) for the deployed `msb-prod-db` runtime, Directus server administration, runtime hashes/recovery, and Synology proxy configuration
+- [MSB_LabelPrintService](https://github.com/Gregovate/MSB_LabelPrintService) for Brother/PRINT-SERVER physical-printing implementation
 
 ## Current Responsibilities
 
+Labeling and Scanning currently owns/governs:
+
 - asset ID/payload conventions;
-- display/container/storage-location labels;
-- label-printing service integration;
-- print/reprint state and history;
+- display/container/storage-location label contract;
+- label-printing service integration contract;
+- logical print/reprint requirements;
 - QR/barcode lookup behavior;
 - shared Display/field-context resolution for task routing;
 - shared field-document publication/currentness contract;
@@ -101,6 +134,8 @@ For example, Wiring owns wiring information, Setup and Deployment owns setup/tak
 - forklift/field scan workflows;
 - additive scan-task routing without making existing functions dependent on downstream applications;
 - routing scanned assets to authoritative operational information without duplicating that content in a generic document registry.
+
+Implementation details remain with the repository/system responsible for them as defined in [Subsystem and Repository Boundary](Subsystem_and_Repository_Boundary.md).
 
 ## Label Print Request and Actor Contract
 
@@ -122,7 +157,7 @@ Before changing these fields or their implementation, verify the current databas
 
 ### Display scan runtime
 
-**Relationship Class:** Existing deployed Directus endpoint on the Production Database server.
+**Relationship Class:** Labeling and Scanning implementation currently hosted as a Directus endpoint on the Production Database server.
 
 The current Display scan endpoint is deployed under:
 
@@ -132,9 +167,9 @@ The current Display scan endpoint is deployed under:
 
 on `msb-prod-db`.
 
-The Production Database repository owns the permanent identity, Git-controlled scan application source/business behavior, and database contracts consumed by that endpoint. Server runtime administration, deployment/restart/recovery documentation, runtime hashes, backups, and inspection of the live `/opt/...` implementation are owned by [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management).
+The Production Database repository owns the Git-controlled implementation files and database contracts used by that endpoint. Labeling and Scanning owns the cross-system payload/scan behavior the implementation must satisfy. Server runtime administration, deployment/restart/recovery documentation, runtime hashes, backups, and inspection of the live `/opt/...` implementation are owned by [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management).
 
-The live deployment executes `dist/index.js`; it does not need to contain the development `src/` tree. The accepted application source has been recovered under `Scan/directus-extension-scan/` in this repository, so future changes must begin from that source and the current Server Management runtime baseline rather than reconstructing the extension from the live artifact.
+The live deployment executes `dist/index.js`; it does not need to contain the development `src/` tree. The accepted application source has been recovered under `Scan/directus-extension-scan/` in this repository, so future implementation changes must begin from that source and the current Server Management runtime baseline rather than reconstructing the extension from the live artifact.
 
 See [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) and [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md).
 
@@ -142,31 +177,42 @@ See [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Bound
 
 **Relationship Class:** External Supporting Subsystem — LabelPrintService.
 
+#### Labeling and Scanning responsibility
+
+- canonical label/payload contract;
+- compatibility rules for deployed labels;
+- logical label-profile requirements;
+- integration behavior between database request state, Scan, and physical printing.
+
 #### Production Database responsibility
 
-- authoritative Display and Container identity;
+- authoritative Display and Container records/identity keys;
 - label-print request state;
-- database-side batch/request creation and audit attribution;
-- integration contract consumed by LabelPrintService;
+- database-side batch/history/audit objects;
+- database implementation consumed by LabelPrintService;
 - authoritative relationships used by shared field-context resolution.
 
 #### LabelPrintService responsibility
 
 - dedicated print-server service;
-- reading/processing queued print batches;
-- rendering and sending labels to the physical printer;
-- print-service logs and service-specific recovery/troubleshooting.
+- reading/processing queued print work;
+- rendering and sending labels to physical printers;
+- Brother templates/b-PAC/printer mappings;
+- print-service logs and service-specific recovery/troubleshooting;
+- failed-batch/no-double-print runtime safeguards.
 
 A failure of LabelPrintService must not transfer data authority to the service or require a second source of truth.
 
 ## Authoritative Sources
 
+- [Subsystem and Repository Boundary](Subsystem_and_Repository_Boundary.md)
+- [Label Payload and Profile Architecture](Label_Payload_and_Profile_Architecture.md)
 - [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md)
 - [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md)
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md)
 - [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md)
-- current scan application source under `Scan/directus-extension-scan/`;
+- current Scan application source under `Scan/directus-extension-scan/`;
 - current PostgreSQL label-printing objects and request/batch records;
 - current Directus Display and Container print workflows;
 - current deployed Display scan extension on `msb-prod-db`;
@@ -185,8 +231,8 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md)
-- [Operational SOPs](../../02_Operational_SOPs/README.md)
-- [LabelPrintService Operator Guide](https://github.com/Gregovate/MSB_LabelPrintService/blob/main/docs/Operator_Label_Printing.md)
+- [Operational SOPs](../../02_Production_Database/02_Operational_SOPs/README.md)
+- [MSB Label Print Service](https://github.com/Gregovate/MSB_LabelPrintService)
 - [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management)
 
 ## Resume Development
@@ -215,7 +261,7 @@ Application-source commit:
 
 Next step is deployment/acceptance through the current `MSB-Server-Management` Display Scan Extension Deployment and Recovery runbook. Before live replacement, verify the live artifact still matches the documented accepted baseline, create a new timestamped rollback, stage/syntax-check the candidate, and regression-test Display Record, Testing, Container, Work Orders, Field Wiring, manual/camera Scan behavior as applicable, plus the new Procedures action.
 
-Preserve the current physical `DISP:<display_id>` QR identity. Do not add a second resolver, Procedure schema, alternate Google hierarchy, direct Procedure-document URL in the QR, or a Procedure health/API dependency merely to render the Display scan hub.
+Preserve the current physical Display identity/payload contract. Do not add a second resolver, Procedure schema, alternate Google hierarchy, direct Procedure-document URL in the QR, or a Procedure health/API dependency merely to render the Display scan hub.
 
 ### Setup/Deployment operational scanning — separate project
 
@@ -223,6 +269,8 @@ The expected setup-season workload includes substantial Container and Storage Lo
 
 ### Label printing
 
-For label printing, begin with the current PostgreSQL request/batch objects, [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md), and the current LabelPrintService implementation. Verify the actor-attribution contract and any retry/reprint behavior before changing the database or service.
+For label printing, begin with [Subsystem and Repository Boundary](Subsystem_and_Repository_Boundary.md), [Label Payload and Profile Architecture](Label_Payload_and_Profile_Architecture.md), current PostgreSQL request/batch objects, [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md), and the current LabelPrintService implementation.
 
-Material work is not complete until durable discoveries are recorded in the responsible engineering/runbook documentation as they are established, and this README plus the corresponding Server Management handoff are reviewed and updated so the next chat can resume from Git without reconstructing settled behavior.
+First classify each proposed change as Labeling and Scanning contract, Production Database implementation, LabelPrintService implementation, or a coordinated cross-boundary change.
+
+Material work is not complete until durable discoveries are recorded in the responsible engineering/runbook documentation for every boundary changed so the next chat can resume from Git without reconstructing settled behavior.
