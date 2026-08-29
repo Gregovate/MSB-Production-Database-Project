@@ -8,7 +8,15 @@ from field_context_hierarchy import build_field_hierarchy
 from wiring_data import load_wiring_data
 
 
-def _context(preview_uuid: str, preview_name: str, stage_key: str = "01"):
+def _context(
+    preview_uuid: str,
+    preview_name: str,
+    stage_key: str = "01",
+    *,
+    scene_name: str = "Root",
+    scene_stage_key: str | None = None,
+    scene_background_file: str | None = None,
+):
     return {
         "preview": {
             "preview_uuid": preview_uuid,
@@ -19,10 +27,10 @@ def _context(preview_uuid: str, preview_name: str, stage_key: str = "01"):
             ),
         },
         "scene": {
-            "scene_uuid": f"scene-{preview_uuid}",
-            "scene_name": "Root",
-            "scene_stage_key": stage_key,
-            "scene_background_file": None,
+            "scene_uuid": f"scene-{preview_uuid}-{scene_name}",
+            "scene_name": scene_name,
+            "scene_stage_key": scene_stage_key,
+            "scene_background_file": scene_background_file,
         },
         "scope_kind": "Scene",
         "context_type": "Background Wiring",
@@ -66,12 +74,79 @@ def test_one_physical_stage_retains_multiple_preview_contexts():
     assert all(item["scope_kind"] == "Stage / Preview" for item in stage["contexts"])
 
 
-def test_browser_contract_exposes_preview_name_only_for_multi_preview_whole_scope():
+def test_stage01_shape_can_split_preview_identity_between_whole_and_scene_contexts():
+    outside_preview = "preview-outside"
+    contexts = [
+        _context(
+            "preview-goal",
+            "Show Background Stage 01 FE Goal Sign",
+            scene_name="Goal Sign",
+        ),
+        _context(
+            "preview-msb",
+            "Show Background Stage 01 FE MSB Sign",
+            scene_name="01-Making Spirits Bright",
+            scene_stage_key="01",
+        ),
+        _context(
+            "preview-open",
+            "Show Background Stage 01 FE Open-Close Sign",
+            scene_name="01-Open-Close Sign",
+            scene_stage_key="01",
+        ),
+        _context(
+            outside_preview,
+            "Show Background Stage 01 FE Outside Gate",
+            scene_name="Root",
+        ),
+        _context(
+            outside_preview,
+            "Show Background Stage 01 FE Outside Gate",
+            scene_name="01-Entrance Arch",
+            scene_stage_key="01",
+            scene_background_file=(
+                r"G:\Shared drives\Display Folders\01-Front Entrance-FE"
+                r"\01-Entrance Arch\PreviewBackground\Entry Arch Visualizer.jpg"
+            ),
+        ),
+    ]
+
+    result = build_field_hierarchy([_stage(contexts)])
+    stage = result["stages"][0]
+
+    assert [item["preview_uuid"] for item in stage["contexts"]] == [
+        "preview-goal",
+        outside_preview,
+    ]
+    assert [scene["label"] for scene in stage["scenes"]] == [
+        "01-Entrance Arch",
+        "01-Making Spirits Bright",
+        "01-Open-Close Sign",
+    ]
+
+    preview_ids = {item["preview_uuid"] for item in stage["contexts"]}
+    for scene in stage["scenes"]:
+        preview_ids.update(item["preview_uuid"] for item in scene["contexts"])
+
+    assert preview_ids == {
+        "preview-goal",
+        "preview-msb",
+        "preview-open",
+        outside_preview,
+    }
+
+
+def test_browser_contract_exposes_all_preview_identities_for_multi_preview_stage():
     source = (Path(__file__).resolve().parent / "fieldwiring.js").read_text(encoding="utf-8")
 
-    assert "const multipleWholePreviews = wholeContexts.length > 1;" in source
-    assert "multipleWholePreviews && context.preview_name ? context.preview_name : ownerLabel" in source
-    assert "multipleWholePreviews\n        ? 'Preview'" in source
+    assert "const allPreviewContexts = [...wholeContexts];" in source
+    assert "allPreviewContexts.push(...(scene.contexts || []));" in source
+    assert "const previewContextsById = new Map();" in source
+    assert "const multiplePreviews = previewContexts.length > 1;" in source
+    assert "const browsePreviews = multiplePreviews ? previewContexts : wholeContexts;" in source
+    assert "scene_uuid: null" in source
+    assert "multiplePreviews && context.preview_name ? context.preview_name : ownerLabel" in source
+    assert "multiplePreviews\n        ? 'Preview'" in source
     assert "if (c.preview_name) rows.push(['Preview', c.preview_name]);" in source
     assert "params.set('preview_uuid', c.preview_uuid);" in source
 
