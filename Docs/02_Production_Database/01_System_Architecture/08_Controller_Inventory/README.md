@@ -4,17 +4,17 @@
 |---|---|
 | Status | ACTIVE PRE-DDL ENGINEERING WORK |
 | Current authority | [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md) |
+| Grouping decisions | [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) |
 | PostgreSQL implementation | Not yet installed |
 
 This subsystem defines permanent physical controller/device identity and the accepted physical relationships needed to interpret the current LOR/V7 wiring in field terms.
 
 ## Read This First
 
-The current Controller Inventory engineering authority is:
+Current Controller Inventory engineering authority is split deliberately between:
 
-- [Controller Inventory Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md)
-
-That baseline records the accepted identity model, grouping process, spreadsheet boundary, FieldWiring consumer requirements, current Pre-DDL resume point, and DDL gate.
+- [Controller Inventory Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md) — accepted identity, authority, relationship, spreadsheet, FieldWiring, and DDL-gate rules;
+- [Controller Inventory Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) — grouping conclusions and unresolved physical-grouping questions promoted from the active Pre-DDL review as they are established.
 
 Older planning/audit documents in this folder remain useful evidence. When an older document conflicts with the current acceptance baseline, the current acceptance baseline controls until the older document is brought forward.
 
@@ -88,7 +88,7 @@ It is the best current attempt to assemble physical groupings from authoritative
 
 The final `For What` column was deliberately added to define or distinguish the proposed physical grouping/use context. It must be interpreted as grouping evidence, not incidental notes.
 
-Accepted grouping decisions and corrected assumptions must be promoted into controlled engineering documentation as the review proceeds. They must not remain only in chat or only in the spreadsheet.
+Accepted grouping decisions and corrected assumptions must be promoted into the [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) as the review proceeds. They must not remain only in chat or only in the spreadsheet.
 
 After PostgreSQL Controller Inventory is implemented, the maintained physical inventory/grouping workflow belongs in PostgreSQL and its controlled application/workflow. The spreadsheet becomes historical bootstrap evidence only.
 
@@ -150,6 +150,7 @@ Do not continue ordinary Controller Inventory edits directly on that stale branc
 ## Related Engineering Evidence
 
 - [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md)
+- [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md)
 - [Controller Inventory and Labeling Plan](Controller_Inventory_and_Labeling_Plan.md) — older planning foundation; identity examples may be superseded by the current acceptance baseline
 - [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
 - [Controller Inventory Current Assignment Cardinality — 2026-08-20](Controller_Inventory_Current_Assignment_Cardinality_2026-08-20.md)
@@ -166,4 +167,4 @@ Do not continue ordinary Controller Inventory edits directly on that stale branc
 
 Do not design or install final Controller Inventory DDL from spreadsheet row shape or conversation assumptions.
 
-Continue the grouping/fit test, promote material accepted findings into the controlled acceptance baseline as they are established, and only move to DDL when the physical identity/relationship model has been demonstrated against the real system and the remaining implementation decisions are explicit.
+Continue the grouping/fit test, promote material accepted findings into the controlled acceptance baseline/register as they are established, and only move to DDL when the physical identity/relationship model has been demonstrated against the real system and the remaining implementation decisions are explicit.
