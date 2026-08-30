@@ -1,5 +1,5 @@
 /* ======================================================================
-   Add optional ref.display -> ref.label_template relationship
+   Add ref.display -> ref.label_template relationship
 
    Status: REVIEWED CANDIDATE — NOT YET APPLIED TO PRODUCTION
    Subsystem: Labeling and Scanning
@@ -7,14 +7,19 @@
      Database/Schema_Snapshots/msb_production_schema-2026-08-08.sql
 
    Purpose:
-     Allow an individual Display to select a governed non-default identity
-     label format without storing Brother template paths or printer details
-     on ref.display.
+     Give every Display an explicit governed physical label format without
+     storing Brother template paths or printer details on ref.display.
 
-   Default compatibility rule:
-     NULL label_template_id means use the current standard Display identity
-     format (DISPLAY_36MM). Existing Displays therefore require no mass update
-     and retain current 36 mm behavior.
+   Directus compatibility decision:
+     ref.display stores label_template_code directly and references the text
+     PRIMARY KEY on ref.label_template. If Directus exposes the raw relation
+     value, the operator sees a meaningful value such as
+     DISPLAY_36MM_HORIZONTAL rather than an opaque numeric ID.
+
+   Initial assignment rule:
+     Every existing Display is assigned DISPLAY_36MM_HORIZONTAL.
+     Displays requiring the narrower format can then be deliberately changed
+     to DISPLAY_24MM_HORIZONTAL.
 
    This script must run only after Create-LabelTemplate.sql has been accepted
    and ref.label_template exists.
@@ -37,9 +42,18 @@ BEGIN
         FROM information_schema.columns
         WHERE table_schema = 'ref'
           AND table_name = 'display'
-          AND column_name = 'label_template_id'
+          AND column_name = 'label_template_code'
     ) THEN
-        RAISE EXCEPTION 'ref.display.label_template_id already exists; stop and inspect the existing implementation';
+        RAISE EXCEPTION 'ref.display.label_template_code already exists; stop and inspect the existing implementation';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ref.label_template
+        WHERE label_template_code = 'DISPLAY_36MM_HORIZONTAL'
+          AND active_flag = true
+    ) THEN
+        RAISE EXCEPTION 'Required active template DISPLAY_36MM_HORIZONTAL is missing from ref.label_template';
     END IF;
 
     IF NOT EXISTS (
@@ -58,15 +72,17 @@ END
 $$;
 
 ALTER TABLE ref.display
-    ADD COLUMN label_template_id integer;
+    ADD COLUMN label_template_code text
+    DEFAULT 'DISPLAY_36MM_HORIZONTAL'::text
+    NOT NULL;
 
-COMMENT ON COLUMN ref.display.label_template_id IS
-'Optional governed Display identity-label template. NULL preserves the current standard 36 mm Display-label behavior. Non-NULL values select an approved ref.label_template row; runtime Brother paths/printer details remain owned by LabelPrintService.';
+COMMENT ON COLUMN ref.display.label_template_code IS
+'Governed physical Display label format. Existing and new Displays default to DISPLAY_36MM_HORIZONTAL; approved exceptions may use another active DISPLAY template such as DISPLAY_24MM_HORIZONTAL. PRINT-SERVER paths and printer details remain owned by LabelPrintService.';
 
 ALTER TABLE ONLY ref.display
     ADD CONSTRAINT fk_display_label_template
-    FOREIGN KEY (label_template_id)
-    REFERENCES ref.label_template(label_template_id)
+    FOREIGN KEY (label_template_code)
+    REFERENCES ref.label_template(label_template_code)
     ON UPDATE CASCADE
     ON DELETE RESTRICT;
 
@@ -74,13 +90,27 @@ COMMIT;
 
 /* ----------------------------------------------------------------------
    Post-install verification — run after COMMIT.
-   Existing rows should all remain NULL until deliberately assigned.
    ---------------------------------------------------------------------- */
 SELECT
-    COUNT(*) AS display_count,
-    COUNT(label_template_id) AS explicitly_assigned_template_count,
-    COUNT(*) FILTER (WHERE label_template_id IS NULL) AS default_36mm_display_count
-FROM ref.display;
+    label_template_code,
+    COUNT(*) AS display_count
+FROM ref.display
+GROUP BY label_template_code
+ORDER BY label_template_code;
+
+SELECT
+    d.display_id,
+    d.display_name,
+    d.label_template_code,
+    lt.label_template_name,
+    lt.media_width_mm,
+    lt.label_orientation,
+    lt.template_relative_path
+FROM ref.display d
+JOIN ref.label_template lt
+  ON lt.label_template_code = d.label_template_code
+ORDER BY d.display_id
+LIMIT 25;
 
 SELECT
     tc.constraint_name,
