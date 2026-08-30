@@ -5,27 +5,32 @@
    Subsystem: Labeling and Scanning
    Schema basis:
      Database/Schema_Snapshots/msb_production_schema-2026-08-08.sql
-   Purpose:
-     Define the governed label format selected by Production Database
-     records/workflows without storing the PRINT-SERVER installation root
-     or Windows printer queue on the source asset.
 
-   IMPORTANT:
-     - This creates a NEW production table only.
-     - It does NOT alter ref.display.
-     - The DDL is aligned to the canonical 2026-08-08 repository schema
-       snapshot and still verifies required runtime dependencies before DDL.
-     - ref.display is confirmed to use bigint display_id, standard audit
-       columns, label_required, print_label, and cached print-history fields.
-     - A separate reviewed migration will add the optional Display relationship.
+   Purpose:
+     Define the governed physical label format selected by Production
+     Database records/workflows without storing the PRINT-SERVER installation
+     root or Windows printer queue on each source asset.
+
+   Directus compatibility decision:
+     label_template_code is the PRIMARY KEY. This follows the existing
+     ref.inventory_type text-PK pattern and avoids forcing Directus users to
+     work with an opaque numeric relationship key.
 
    Runtime path contract:
      config.local.ini on PRINT-SERVER owns the machine-local template root:
        C:\MSB_LabelService\templates
 
      ref.label_template.template_relative_path stores only the path below
-     that root, using forward slashes for portability, for example:
+     that root, using forward slashes, for example:
        pt_p950nw/QR_display_labels_2_line_24mm.lbx
+
+   IMPORTANT:
+     - This creates a NEW production reference table only.
+     - It does NOT alter ref.display, ref.container, or ref.controller.
+     - Controller templates are intentionally not seeded until the physical
+       Controller label size/orientation is decided and accepted.
+     - Printer queue names and the C:\MSB_LabelService root do not belong in
+       this table.
    ====================================================================== */
 
 BEGIN;
@@ -37,6 +42,10 @@ DO $$
 BEGIN
     IF to_regnamespace('ref') IS NULL THEN
         RAISE EXCEPTION 'Required schema ref does not exist';
+    END IF;
+
+    IF to_regclass('ref.person') IS NULL THEN
+        RAISE EXCEPTION 'Required table ref.person does not exist';
     END IF;
 
     IF to_regprocedure('ref.set_actor_on_insert()') IS NULL THEN
@@ -66,13 +75,13 @@ END
 $$;
 
 CREATE TABLE ref.label_template (
-    label_template_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    label_template_code text NOT NULL UNIQUE,
+    label_template_code text NOT NULL,
     label_template_name text NOT NULL,
     label_class text NOT NULL,
-    media_width_mm smallint,
+    media_width_mm smallint NOT NULL,
+    label_orientation text NOT NULL,
     media_type text NOT NULL,
-    template_relative_path text NOT NULL UNIQUE,
+    template_relative_path text NOT NULL,
     description text,
     active_flag boolean NOT NULL DEFAULT true,
 
@@ -83,47 +92,69 @@ CREATE TABLE ref.label_template (
     updated_by text NOT NULL DEFAULT CURRENT_USER,
     updated_by_person_id bigint,
 
+    CONSTRAINT label_template_pkey
+        PRIMARY KEY (label_template_code),
+    CONSTRAINT uq_label_template_relative_path
+        UNIQUE (template_relative_path),
     CONSTRAINT ck_label_template_code_not_blank
         CHECK (btrim(label_template_code) <> ''),
     CONSTRAINT ck_label_template_name_not_blank
         CHECK (btrim(label_template_name) <> ''),
     CONSTRAINT ck_label_template_class_not_blank
         CHECK (btrim(label_class) <> ''),
+    CONSTRAINT ck_label_template_media_width_positive
+        CHECK (media_width_mm > 0),
+    CONSTRAINT ck_label_template_orientation
+        CHECK (label_orientation = ANY (ARRAY['VERTICAL'::text, 'HORIZONTAL'::text])),
     CONSTRAINT ck_label_template_media_type_not_blank
         CHECK (btrim(media_type) <> ''),
-    CONSTRAINT ck_label_template_media_width_positive
-        CHECK (media_width_mm IS NULL OR media_width_mm > 0),
     CONSTRAINT ck_label_template_relative_path_not_blank
         CHECK (btrim(template_relative_path) <> ''),
     CONSTRAINT ck_label_template_relative_path_not_windows_absolute
-        CHECK (template_relative_path !~ '^[A-Za-z]:[\\/]' AND template_relative_path !~ '^[/\\]{2}')
+        CHECK (
+            template_relative_path !~ '^[A-Za-z]:[\\/]'
+            AND template_relative_path !~ '^[/\\]{2}'
+        )
 );
 
 ALTER TABLE ref.label_template OWNER TO msbadmin;
 
 COMMENT ON TABLE ref.label_template IS
-'Governed logical/physical label format lookup. Stores the label format, media requirement, and template path relative to the PRINT-SERVER configured template root. Does not store the PRINT-SERVER installation root or Windows printer queue.';
-
-COMMENT ON COLUMN ref.label_template.label_template_id IS
-'PostgreSQL-generated surrogate key for the governed label template/profile implementation row.';
+'Governed physical label-template lookup shared by Display, Container, Controller, Location, Wiring, and future label classes. The stable text primary key is intentionally Directus-readable. Machine-local PRINT-SERVER root paths and Windows printer queue names are not stored here.';
 
 COMMENT ON COLUMN ref.label_template.label_template_code IS
-'Stable machine-facing code used by database and LabelPrintService integration, for example DISPLAY_36MM.';
+'Stable text primary key and integration key, for example DISPLAY_36MM_HORIZONTAL or CONTAINER_36MM_VERTICAL. Intended to remain human-readable if Directus exposes the raw relationship value.';
 
 COMMENT ON COLUMN ref.label_template.label_template_name IS
-'Human-readable label-template name suitable for administration and Directus relationship display.';
+'Human-readable administrative name for the physical label format.';
 
 COMMENT ON COLUMN ref.label_template.label_class IS
-'Label purpose/class such as DISPLAY, CONTAINER, LOCATION, or WIRING. Initial installed rows are Display only.';
+'Label purpose/class such as DISPLAY, CONTAINER, CONTROLLER, LOCATION, or WIRING.';
 
 COMMENT ON COLUMN ref.label_template.media_width_mm IS
-'Nominal required media width in millimeters when width is meaningful. NULL is allowed for future media where another dimensioning scheme is more appropriate.';
+'Nominal required print-media width in millimeters.';
+
+COMMENT ON COLUMN ref.label_template.label_orientation IS
+'Physical label layout orientation: HORIZONTAL or VERTICAL.';
 
 COMMENT ON COLUMN ref.label_template.media_type IS
 'Governed media family/description code, for example LAMINATED_TAPE. Operators do not select printers from this table.';
 
 COMMENT ON COLUMN ref.label_template.template_relative_path IS
-'Path to the current LBX implementation relative to the LabelPrintService template_dir root. Store forward-slash relative paths only; do not store C:\MSB_LabelService or a UNC share here.';
+'LBX implementation path relative to the LabelPrintService template_dir root. Store a relative path such as pt_p950nw/QR_container_vertical.lbx; do not store C:\MSB_LabelService or a UNC share.';
+
+COMMENT ON COLUMN ref.label_template.active_flag IS
+'False retires a template from new assignment without destroying historical meaning.';
+
+ALTER TABLE ONLY ref.label_template
+    ADD CONSTRAINT fk_label_template_created_by_person
+    FOREIGN KEY (created_by_person_id)
+    REFERENCES ref.person(person_id);
+
+ALTER TABLE ONLY ref.label_template
+    ADD CONSTRAINT fk_label_template_updated_by_person
+    FOREIGN KEY (updated_by_person_id)
+    REFERENCES ref.person(person_id);
 
 CREATE TRIGGER trg_label_template_set_actor_insert
 BEFORE INSERT ON ref.label_template
@@ -136,41 +167,74 @@ FOR EACH ROW
 EXECUTE FUNCTION ref.set_actor_on_update();
 
 /* ----------------------------------------------------------------------
-   Initial approved Display formats.
-   Existing Displays are NOT altered by this script.
+   Initial known production formats.
+
+   Display:
+     - Current standard is 36 mm horizontal.
+     - 24 mm horizontal is the approved narrower Display option.
+
+   Container:
+     - Both horizontal and vertical 36 mm formats already exist operationally.
+
+   Controller:
+     - No row is inserted until its actual size/orientation/template is
+       physically decided and accepted.
    ---------------------------------------------------------------------- */
 INSERT INTO ref.label_template (
     label_template_code,
     label_template_name,
     label_class,
     media_width_mm,
+    label_orientation,
     media_type,
     template_relative_path,
     description
 )
 VALUES
 (
-    'DISPLAY_36MM',
-    'Display Label - 36 mm',
+    'DISPLAY_36MM_HORIZONTAL',
+    'Display Label - 36 mm Horizontal',
     'DISPLAY',
     36,
+    'HORIZONTAL',
     'LAMINATED_TAPE',
     'pt_p950nw/QR_display_labels_2_line_36mm.lbx',
     'Current standard Display identity label using 36 mm laminated P-touch media.'
 ),
 (
-    'DISPLAY_24MM',
-    'Display Label - 24 mm',
+    'DISPLAY_24MM_HORIZONTAL',
+    'Display Label - 24 mm Horizontal',
     'DISPLAY',
     24,
+    'HORIZONTAL',
     'LAMINATED_TAPE',
     'pt_p950nw/QR_display_labels_2_line_24mm.lbx',
     'Narrow Display identity label using 24 mm laminated P-touch media.'
+),
+(
+    'CONTAINER_36MM_HORIZONTAL',
+    'Container Label - 36 mm Horizontal',
+    'CONTAINER',
+    36,
+    'HORIZONTAL',
+    'LAMINATED_TAPE',
+    'pt_p950nw/QR_container_horizontal.lbx',
+    'Current horizontal Container identity label using 36 mm laminated P-touch media.'
+),
+(
+    'CONTAINER_36MM_VERTICAL',
+    'Container Label - 36 mm Vertical',
+    'CONTAINER',
+    36,
+    'VERTICAL',
+    'LAMINATED_TAPE',
+    'pt_p950nw/QR_container_vertical.lbx',
+    'Current vertical Container identity label using 36 mm laminated P-touch media.'
 );
 
-/* Directus needs read access for relationship display; LabelPrintService
-   needs read access for runtime resolution. Template maintenance remains a
-   controlled administrator/database action in this phase. */
+/* Directus needs read access for relationship selection/display.
+   LabelPrintService needs read access for runtime resolution.
+   Template maintenance remains a controlled administrator/database action. */
 GRANT SELECT ON TABLE ref.label_template TO directus_app;
 GRANT SELECT ON TABLE ref.label_template TO printservice;
 
@@ -180,11 +244,11 @@ COMMIT;
    Post-install verification — run after COMMIT.
    ---------------------------------------------------------------------- */
 SELECT
-    label_template_id,
     label_template_code,
     label_template_name,
     label_class,
     media_width_mm,
+    label_orientation,
     media_type,
     template_relative_path,
     active_flag,
@@ -195,4 +259,4 @@ SELECT
     updated_by,
     updated_by_person_id
 FROM ref.label_template
-ORDER BY label_template_id;
+ORDER BY label_class, media_width_mm, label_orientation, label_template_code;
