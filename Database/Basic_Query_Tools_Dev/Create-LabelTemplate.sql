@@ -11,10 +11,14 @@
      Database records/workflows without storing the PRINT-SERVER installation
      root or Windows printer queue on each source asset.
 
-   Directus compatibility decision:
-     label_template_code is the PRIMARY KEY. This follows the existing
-     ref.inventory_type text-PK pattern and avoids forcing Directus users to
-     work with an opaque numeric relationship key.
+   Key model:
+     label_template_id is the integer generated primary key used by foreign
+     keys from Display, Controller, and other governed assets.
+
+     label_template_code is a separate UNIQUE stable integration code used to
+     describe the semantic template meaning, for example:
+       DISPLAY_36MM_HORIZONTAL
+       CONTAINER_36MM_VERTICAL
 
    Runtime path contract:
      config.local.ini on PRINT-SERVER owns the machine-local template root:
@@ -35,9 +39,6 @@
 
 BEGIN;
 
-/* ----------------------------------------------------------------------
-   Verify current production dependencies before creating the new lookup.
-   ---------------------------------------------------------------------- */
 DO $$
 BEGIN
     IF to_regnamespace('ref') IS NULL THEN
@@ -75,6 +76,7 @@ END
 $$;
 
 CREATE TABLE ref.label_template (
+    label_template_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
     label_template_code text NOT NULL,
     label_template_name text NOT NULL,
     label_class text NOT NULL,
@@ -93,7 +95,9 @@ CREATE TABLE ref.label_template (
     updated_by_person_id bigint,
 
     CONSTRAINT label_template_pkey
-        PRIMARY KEY (label_template_code),
+        PRIMARY KEY (label_template_id),
+    CONSTRAINT uq_label_template_code
+        UNIQUE (label_template_code),
     CONSTRAINT uq_label_template_relative_path
         UNIQUE (template_relative_path),
     CONSTRAINT ck_label_template_code_not_blank
@@ -120,10 +124,13 @@ CREATE TABLE ref.label_template (
 ALTER TABLE ref.label_template OWNER TO msbadmin;
 
 COMMENT ON TABLE ref.label_template IS
-'Governed physical label-template lookup shared by Display, Container, Controller, Location, Wiring, and future label classes. The stable text primary key is intentionally Directus-readable. Machine-local PRINT-SERVER root paths and Windows printer queue names are not stored here.';
+'Governed physical label-template lookup shared by Display, Container, Controller, Location, Wiring, and future label classes. Foreign keys use the generated integer label_template_id. Machine-local PRINT-SERVER root paths and Windows printer queue names are not stored here.';
+
+COMMENT ON COLUMN ref.label_template.label_template_id IS
+'PostgreSQL-generated integer primary key used by asset foreign-key relationships.';
 
 COMMENT ON COLUMN ref.label_template.label_template_code IS
-'Stable text primary key and integration key, for example DISPLAY_36MM_HORIZONTAL or CONTAINER_36MM_VERTICAL. Intended to remain human-readable if Directus exposes the raw relationship value.';
+'Stable unique integration code describing the semantic physical label format, for example DISPLAY_36MM_HORIZONTAL or CONTAINER_36MM_VERTICAL.';
 
 COMMENT ON COLUMN ref.label_template.label_template_name IS
 'Human-readable administrative name for the physical label format.';
@@ -166,20 +173,6 @@ BEFORE UPDATE ON ref.label_template
 FOR EACH ROW
 EXECUTE FUNCTION ref.set_actor_on_update();
 
-/* ----------------------------------------------------------------------
-   Initial known production formats.
-
-   Display:
-     - Current standard is 36 mm horizontal.
-     - 24 mm horizontal is the approved narrower Display option.
-
-   Container:
-     - Both horizontal and vertical 36 mm formats already exist operationally.
-
-   Controller:
-     - No row is inserted until its actual size/orientation/template is
-       physically decided and accepted.
-   ---------------------------------------------------------------------- */
 INSERT INTO ref.label_template (
     label_template_code,
     label_template_name,
@@ -232,18 +225,14 @@ VALUES
     'Current vertical Container identity label using 36 mm laminated P-touch media.'
 );
 
-/* Directus needs read access for relationship selection/display.
-   LabelPrintService needs read access for runtime resolution.
-   Template maintenance remains a controlled administrator/database action. */
 GRANT SELECT ON TABLE ref.label_template TO directus_app;
 GRANT SELECT ON TABLE ref.label_template TO printservice;
+GRANT SELECT, USAGE ON SEQUENCE ref.label_template_label_template_id_seq TO directus_app;
 
 COMMIT;
 
-/* ----------------------------------------------------------------------
-   Post-install verification — run after COMMIT.
-   ---------------------------------------------------------------------- */
 SELECT
+    label_template_id,
     label_template_code,
     label_template_name,
     label_class,
@@ -259,4 +248,4 @@ SELECT
     updated_by,
     updated_by_person_id
 FROM ref.label_template
-ORDER BY label_class, media_width_mm, label_orientation, label_template_code;
+ORDER BY label_template_id;
