@@ -87,17 +87,23 @@ Intentional repeated addresses are valid. Network + UID/range or Network + UID +
 
 ## Working Spreadsheet Boundary
 
-The current `Controller Inventory & Testing 2026(...)` spreadsheet is a **temporary engineering grouping worksheet**.
+The current `Controller Inventory & Testing 2026(7).xlsx` spreadsheet is a **temporary engineering grouping worksheet containing deployed/assigned controllers only**.
 
-It is not an authoritative physical inventory and it is not a future operational dependency.
+It is not a spare-stock list. There are currently no known spare/available controller rows in this workbook.
 
-It is the best current attempt to assemble physical groupings from authoritative LOR wiring, controller-family behavior, model/capability evidence, location clues, and known field facts before the complete physical inventory is presented/verified.
+The workbook is the best current attempt to assemble the deployed physical-controller groupings from authoritative LOR wiring, controller-family behavior, model/capability evidence, location clues, and known field facts before the complete physical inventory is presented/verified.
+
+A workbook row whose permanent Display relationship is unresolved must remain a deployed-controller backfill/review item. It must not be reclassified as `AVAILABLE` merely because the application cannot yet resolve its `display_id`.
 
 The final `For What` column was deliberately added to define or distinguish the proposed physical grouping/use context. It must be interpreted as grouping evidence, not incidental notes.
 
 Accepted grouping decisions and corrected assumptions must be promoted into the [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) as the review proceeds. They must not remain only in chat or only in the spreadsheet.
 
 After PostgreSQL Controller Inventory is implemented, the maintained physical inventory/grouping workflow belongs in PostgreSQL and its controlled application/workflow. The spreadsheet becomes historical bootstrap evidence only.
+
+Available/unassigned controllers are added later only when an actual unassigned physical controller is discovered or deliberately entered through the Controller Inventory workflow.
+
+Controller-to-Display assignment is separate from current physical location. An assigned controller may remain assigned to its Display(s) while physically stored in the workshop/warehouse between setup seasons.
 
 ## Important Boundaries
 
@@ -148,6 +154,8 @@ FieldWiring continues to obtain detailed current wiring from LOR/V7. Controller 
 ## Current Working Evidence / Resume Point
 
 Current active Pre-DDL evidence includes the working Controller Inventory spreadsheet and current V7.0.11 / LOR 6.6.10 parser materialization supplied during the active review.
+
+The current working spreadsheet is `Controller Inventory & Testing 2026(7).xlsx`; it represents deployed/assigned controller groupings, not spare inventory.
 
 Known source corrections newer than a frozen comparison artifact must be maintained explicitly during Pre-DDL testing rather than silently reintroduced as current facts. In particular:
 
