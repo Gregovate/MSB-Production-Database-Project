@@ -14,7 +14,8 @@ This subsystem defines permanent physical controller/device identity and the acc
 Current Controller Inventory engineering authority is split deliberately between:
 
 - [Controller Inventory Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md) — accepted identity, authority, relationship, spreadsheet, FieldWiring, and DDL-gate rules;
-- [Controller Inventory Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) — grouping conclusions and unresolved physical-grouping questions promoted from the active Pre-DDL review as they are established.
+- [Controller Inventory Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) — grouping conclusions and unresolved physical-grouping questions promoted from the active Pre-DDL review as they are established;
+- [Controller Inventory Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md) — valid V1 model/firmware, capacity, Glistening Grove, technician-write, verification-workflow, and pending DDL details salvaged from the retired review branch.
 
 Older planning/audit documents in this folder remain useful evidence. When an older document conflicts with the current acceptance baseline, the current acceptance baseline controls until the older document is brought forward.
 
@@ -147,10 +148,13 @@ The older `docs/controller-inventory-v1-review` branch contains valuable reconna
 
 Do not continue ordinary Controller Inventory edits directly on that stale branch. Reconcile valid findings into fresh work based on current `main` so newer accepted Production Database and FieldWiring changes are preserved.
 
+The valid remaining V1 design details from that branch have been promoted into [Controller Inventory Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md). The old branch remains historical recovery evidence only.
+
 ## Related Engineering Evidence
 
 - [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md)
 - [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md)
+- [Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md)
 - [Controller Inventory and Labeling Plan](Controller_Inventory_and_Labeling_Plan.md) — older planning foundation; identity examples may be superseded by the current acceptance baseline
 - [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
 - [Controller Inventory Current Assignment Cardinality — 2026-08-20](Controller_Inventory_Current_Assignment_Cardinality_2026-08-20.md)
