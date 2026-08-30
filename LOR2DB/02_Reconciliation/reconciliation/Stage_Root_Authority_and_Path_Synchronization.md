@@ -4,17 +4,17 @@
 |---|---|
 | Document Type | Database engineering contract |
 | System | LOR2DB Reconciliation / Google Drive Stage context |
-| Status | CURRENT — migrations 0039 and 0040 production deployed and validated |
+| Status | CURRENT — migrations 0039 through 0041 production deployed and validated |
 | Owner | MSB Database Administrator |
 | Last Reviewed | 2026-08-30 |
-| Issues | #96, #101 |
-| Migrations | `0039_repair_stage_folder_authority.sql`, `0040_sync_existing_stage_folder_path.sql` |
+| Issues | #96, #101, #104 |
+| Migrations | `0039_repair_stage_folder_authority.sql`, `0040_sync_existing_stage_folder_path.sql`, `0041_grant_lor_preflight_governed_root.sql` |
 
 ## Purpose
 
 This document is the current authority for how LOR2DB stores and maintains permanent Stage/Sub-stage naming and the current Google Drive `folder_path` locator in `ref.stage`.
 
-It records the production behavior established by migrations 0039 and 0040. Where older reconciliation design documents describe earlier P1 Stage naming or path behavior, this contract controls for Stage root naming and `folder_path` synchronization.
+It records the production behavior established by migrations 0039, 0040, and the least-privilege application grant repaired by migration 0041. Where older reconciliation design documents describe earlier P1 Stage naming, path behavior, or application access, this contract controls for Stage root naming and `folder_path` synchronization.
 
 ## Existing Google Drive Naming Contract — Unchanged
 
@@ -138,6 +138,39 @@ When those conditions are satisfied:
 
 If governed root evidence is absent, multiple, or inconsistent with the permanent Stage identity, P1 does not synthesize or guess a path.
 
+## Migration 0041 — LOR2DB Least-Privilege Resolver Access
+
+Migration 0039 correctly revoked `PUBLIC` execute on `ops.f_lor_governed_stage_roots(bigint,text)`, but the first production installation omitted the explicit grant required by the least-privilege LOR2DB login `lor_preflight_app`.
+
+That omission blocked browser Stage review on reconciliation Run 18 / import 60 with:
+
+```text
+permission denied for function f_lor_governed_stage_roots
+```
+
+Migration 0041 repairs only that privilege boundary:
+
+```text
+GRANT EXECUTE ON FUNCTION
+    ops.f_lor_governed_stage_roots(bigint,text)
+TO lor_preflight_app;
+```
+
+`PUBLIC` remains revoked. No production Stage data, snapshot data, reconciliation actions, parser data, Google Drive content, or application code is changed by 0041.
+
+### Required application-role acceptance rule
+
+A database change used by the LOR2DB browser is not production-accepted merely because it works as `msbadmin`.
+
+When a new function, view, or procedure enters a browser-facing query path, acceptance must exercise that exact path under the real least-privilege application role. For the governed-root resolver this means validating with:
+
+```text
+SET LOCAL ROLE lor_preflight_app
+    -> SELECT from ops.v_lor_reconciliation_operator_stage_review
+```
+
+This application-role check is required in addition to object-definition and administrator-role validation.
+
 ## Held / Special Stage Identities
 
 The current held set remains outside automatic root-name/path repair:
@@ -189,6 +222,29 @@ SHA-256:
 4b243a01583c18571349727cfeaa0e9b213536fcd8bf158580542c3099d9eaa0
 ```
 
+### Migration 0041 / Run 18 recovery
+
+Production evidence identified `lor_preflight_app` as the only LOR2DB login missing resolver execute permission. Before repair:
+
+```text
+can_record_stage_authority = true
+can_read_governed_root     = false
+Run 18 / import 60         = AWAITING_DECISIONS
+Run 18 actions             = 0
+```
+
+The production repair first tested the exact Stage-review query inside a temporary transaction after granting execute and using `SET LOCAL ROLE lor_preflight_app`; the query returned the unresolved `03a-Mega Cube-MC` Stage candidate. That proof transaction was rolled back and the privilege returned to false, proving no hidden state change.
+
+Migration 0041 then granted execute permanently to `lor_preflight_app`. Validation 36 proved:
+
+- `lor_preflight_app` can execute the governed-root resolver;
+- `PUBLIC` remains revoked;
+- the actual browser-facing Stage review succeeds under `SET LOCAL ROLE lor_preflight_app`;
+- Run 18 remained open and unchanged with zero actions;
+- PostgreSQL remained healthy.
+
+Run 18 therefore resumes in place. No new parser, ingest, or reconciliation run is required.
+
 ## Operator Consequence During Folder Cleanup
 
 When a governed Stage/Sub-stage folder is renamed or moved during Display Folders cleanup:
@@ -215,6 +271,8 @@ Migrations 0039 and 0040 did not modify:
 - Scene classification; or
 - the established Stage/Sub-stage/Scene/Display naming grammar.
 
+Migration 0041 changes only the explicit database privilege needed by the existing LOR2DB Stage-review path.
+
 FieldWiring and Procedures continue to consume current Production Database/LOR path context under their existing resolver contracts. Keeping `ref.stage.folder_path` synchronized reduces stale-anchor recovery and gives those applications a current persisted Stage/Sub-stage locator.
 
 ## Authoritative Implementation
@@ -224,6 +282,8 @@ FieldWiring and Procedures continue to consume current Production Database/LOR p
 - [`validation/34_stage_folder_authority_validation.sql`](validation/34_stage_folder_authority_validation.sql) — migration 0039 validation
 - [`migrations/0040_sync_existing_stage_folder_path.sql`](migrations/0040_sync_existing_stage_folder_path.sql) — existing Stage/Sub-stage path synchronization
 - [`validation/35_stage_folder_path_sync_validation.sql`](validation/35_stage_folder_path_sync_validation.sql) — migration 0040 validation
+- [`migrations/0041_grant_lor_preflight_governed_root.sql`](migrations/0041_grant_lor_preflight_governed_root.sql) — least-privilege LOR2DB resolver grant
+- [`validation/36_lor_preflight_governed_root_grant_validation.sql`](validation/36_lor_preflight_governed_root_grant_validation.sql) — application-role grant validation
 
 ## Related Documents
 
