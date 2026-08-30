@@ -5,6 +5,7 @@
 | Status | ACTIVE PRE-DDL ENGINEERING WORK |
 | Current authority | [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md) |
 | Grouping decisions | [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) |
+| Application / backfill framework | [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md) |
 | PostgreSQL implementation | Not yet installed |
 
 This subsystem defines permanent physical controller/device identity and the accepted physical relationships needed to interpret the current LOR/V7 wiring in field terms.
@@ -15,17 +16,18 @@ Current Controller Inventory engineering authority is split deliberately between
 
 - [Controller Inventory Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md) — accepted identity, authority, relationship, spreadsheet, FieldWiring, and DDL-gate rules;
 - [Controller Inventory Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) — grouping conclusions and unresolved physical-grouping questions promoted from the active Pre-DDL review as they are established;
-- [Controller Inventory Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md) — valid V1 model/firmware, capacity, Glistening Grove, technician-write, verification-workflow, and pending DDL details salvaged from the retired review branch.
+- [Controller Inventory Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md) — valid V1 model/firmware, capacity, Glistening Grove, technician-write, verification-workflow, and pending DDL details salvaged from the retired review branch; and
+- [Controller Inventory Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md) — real-world Stage/Display assignment workbench, available stock, `ref.location`, labeling, setup/takedown, model/firmware, reconciliation, and phased implementation framework.
 
 Older planning/audit documents in this folder remain useful evidence. When an older document conflicts with the current acceptance baseline, the current acceptance baseline controls until the older document is brought forward.
 
 ## Current Phase
 
-Controller Inventory is still in **Pre-DDL physical-grouping reconstruction and fit testing**.
+Controller Inventory is still in **Pre-DDL physical-grouping reconstruction and fit testing**, now with an accepted application/backfill operating framework that the first DDL must support.
 
 No Controller Inventory PostgreSQL tables or migrations are authorized yet.
 
-The active engineering question is whether the proposed physical groupings and relationship model can explain the real current LOR wiring across conventional A/C, Pixie, repeated-address, E1.31, multi-Display, multi-controller, and unresolved physical-copy cases without turning LOR addressing into permanent identity.
+The active engineering question is whether the proposed physical groupings and relationship model can explain the real current LOR wiring across conventional A/C, Pixie, repeated-address, E1.31, multi-Display, multi-controller, and unresolved physical-copy cases without turning LOR addressing into permanent identity, while also supporting the accepted real-world backfill and lifecycle workflows.
 
 ## Authority Boundary
 
@@ -41,6 +43,10 @@ Controller Inventory engineering
 future PostgreSQL Controller Inventory
     -> permanent physical controller/device identity
        accepted Production Database-owned physical relationships
+
+Controller Inventory application
+    -> controlled inventory, assignment, stock, location, label,
+       setup/takedown, model, firmware, and reconciliation workflow
 
 FieldWiring
     -> technician-facing consumer
@@ -115,6 +121,20 @@ Generic family/classification is useful, but exact models must remain distinct. 
 
 Directors, Easy Light Linkers, InputPup, PixieLink, ServoDog, and other managed show-control devices may receive permanent inventory identity even when no Display assignment is required.
 
+## Application / Backfill Framework
+
+The real operational workflow is now controlled by:
+
+- [Controller Inventory Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
+
+The central workflow is a Stage/Display controller-assignment workbench that shows current physical controller contexts and coverage (`ASSIGNED`, `MISSING`, `PARTIAL`, `REVIEW_REQUIRED`) alongside available/unassigned controller stock. The same workflow must support adding a physical controller, adding a canonical model when needed, assigning/unassigning/replacing controllers, updating current `ref.location`, recording setup/placement notes, and printing permanent `CTRL:<controller_id>` labels.
+
+This workbench is intentionally both the initial backfill tool and the permanent future assignment workflow. The full later firmware/setup/takedown/FieldWiring feature set must not block creation of permanent controller IDs, labeling of spare stock, or assignment of real controllers once the minimum inventory core and workbench are accepted.
+
+`ref.location` is the physical-location authority for controllers. Stage, Display assignment, physical LOC, and current LOR address/configuration are separate mutable facts and must not be collapsed into controller identity.
+
+Normal LOR ingest/reconciliation must not delete/rebuild controller assets or blindly destroy controller-to-Display assignments. Controller currentness is evaluated after the approved LOR/V7 state changes, with explicit review states for changed wiring, new/missing controller contexts, partial coverage, removed/recycled Displays, and ambiguous mappings.
+
 ## FieldWiring Integration
 
 FieldWiring is a consumer of Controller Inventory and does not own its schema.
@@ -127,20 +147,14 @@ FieldWiring continues to obtain detailed current wiring from LOR/V7. Controller 
 
 ## Current Working Evidence / Resume Point
 
-Current active Pre-DDL evidence:
+Current active Pre-DDL evidence includes the working Controller Inventory spreadsheet and current V7.0.11 / LOR 6.6.10 parser materialization supplied during the active review.
 
-```text
-Controller Inventory & Testing 2026(6).xlsx
-lor_output_v7_scene(20260829-194137).db
-Parser V7.0.11 / LOR 6.6.10
-```
+Known source corrections newer than a frozen comparison artifact must be maintained explicitly during Pre-DDL testing rather than silently reintroduced as current facts. In particular:
 
-Two known corrections are newer than those exact uploaded artifacts:
+- the obsolete `HW-EventTrafficRight-01 / Regular / UID 08 / CTB32LG3` spreadsheet row has already been removed from the current working spreadsheet; and
+- current LOR corrected `42 10-09 SPARE` to `Regular / UID 10 / channel 9`; any frozen SQLite that predates that correction is stale for that fact.
 
-- the obsolete `HW-EventTrafficRight-01 / Regular / UID 08 / CTB32LG3` spreadsheet row has already been removed from the current working spreadsheet;
-- current LOR corrected `42 10-09 SPARE` to `Regular / UID 10 / channel 9`; the uploaded SQLite predates that correction.
-
-Do not reopen those two items merely because they remain visible in the uploaded comparison artifacts.
+Do not reopen those items merely because they remain visible in an older comparison artifact.
 
 ## Branch Boundary
 
@@ -155,6 +169,7 @@ The valid remaining V1 design details from that branch have been promoted into [
 - [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md)
 - [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md)
 - [Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md)
+- [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
 - [Controller Inventory and Labeling Plan](Controller_Inventory_and_Labeling_Plan.md) — older planning foundation; identity examples may be superseded by the current acceptance baseline
 - [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
 - [Controller Inventory Current Assignment Cardinality — 2026-08-20](Controller_Inventory_Current_Assignment_Cardinality_2026-08-20.md)
@@ -171,4 +186,4 @@ The valid remaining V1 design details from that branch have been promoted into [
 
 Do not design or install final Controller Inventory DDL from spreadsheet row shape or conversation assumptions.
 
-Continue the grouping/fit test, promote material accepted findings into the controlled acceptance baseline/register as they are established, and only move to DDL when the physical identity/relationship model has been demonstrated against the real system and the remaining implementation decisions are explicit.
+Continue the grouping/lifecycle fit test, promote material accepted findings into the controlled acceptance baseline/register/framework as they are established, and only move to DDL when the physical identity/relationship model and the minimum real-world backfill/application lifecycle have been demonstrated against the real system and the remaining implementation decisions are explicit.
