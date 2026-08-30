@@ -11,6 +11,7 @@ It is part of the **LOR2DB technical workflow**. Operational Directus SOPs are m
 | Run the normal production update | [Operator SOP](../../Docs/02_Production_Database/02_Operational_SOPs/LOR2DB/Run_an_LOR_Production_Update.md) |
 | Administer the full production workflow | [00_LOR_Production_Import_and_Reconciliation_Procedure.md](00_LOR_Production_Import_and_Reconciliation_Procedure.md) |
 | Understand how the production workflow is organized | [01_LOR_Production_Promotion_Pipeline_Design.md](01_LOR_Production_Promotion_Pipeline_Design.md) |
+| Understand current Stage/Sub-stage root naming and `folder_path` authority | [Stage Root Authority and Path Synchronization](reconciliation/Stage_Root_Authority_and_Path_Synchronization.md) |
 | Recover when the normal application cannot be used | [02_LOR_Manual_Reconciliation_Runbook.md](02_LOR_Manual_Reconciliation_Runbook.md) |
 | View the reconciliation engineering documentation | [reconciliation/README.md](reconciliation/README.md) |
 
@@ -31,6 +32,8 @@ procedure is intended only for controlled recovery situations.
 Normal production work should always follow the controlled reconciliation procedure.
 
 The current reconciliation engine, production procedures, migrations, validation scripts, and supporting engineering documentation are maintained under [reconciliation/README.md](reconciliation/README.md).
+
+Current Stage/Sub-stage root-name and path synchronization behavior is documented separately in [Stage Root Authority and Path Synchronization](reconciliation/Stage_Root_Authority_and_Path_Synchronization.md). That contract records the production-deployed migration 0039 naming authority and migration 0040 existing-path synchronization rules.
 
 Older SQL and utility files located directly in this directory remain for historical reference or development history and are not part of the normal production workflow.
 
