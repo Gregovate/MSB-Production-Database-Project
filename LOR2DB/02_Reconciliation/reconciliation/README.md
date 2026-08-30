@@ -11,18 +11,34 @@ change, or merely reports evidence.
 | Path | Contents | Execution rule |
 |---|---|---|
 | `current_procedures/` | Canonical standalone P1, P2, P3, and P4 definitions matching the latest accepted migration chain | Inspection or explicitly authorized repair only; these files do not call promotion |
-| `migrations/` | Immutable installation history `0011` through `0038` | Run only the specifically authorized next migration; never rerun the folder as a batch |
-| `validation/` | Validation `10` through `33` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `migrations/` | Immutable installation history `0011` through `0040` | Run only the specifically authorized next migration; never rerun the folder as a batch |
+| `validation/` | Validation `10` through `35` | Follow each file's header; several are transaction-wrapped rollback tests |
 | `operator_queries/preflight/` | Read-only latest-ingest reports `01` through `09` | Run individually; no operator-supplied `import_run_id` |
 | `incidents/` | Production incident report and its incident-specific forensic SQL | Historical evidence; not part of routine reconciliation |
 
 The root Markdown files are this index and the current design specification.
 
+## Current Stage Root Authority
+
+For current P1 Stage/Sub-stage name and path behavior, use:
+
+[Stage Root Authority and Path Synchronization](Stage_Root_Authority_and_Path_Synchronization.md)
+
+That document is the current authority for the migrations 0039/0040 Stage-root contract. Where older design text describes earlier P1 naming or `folder_path` behavior, the focused Stage-root contract controls.
+
+Key current rules are:
+
+- permanent `stage_id` is preserved;
+- governed Stage/Sub-stage `stage_name` and `folder_name` are the exact Google Drive root basename, including Stage/Sub-stage key and terminal short code;
+- current `folder_path` may be synchronized from the reconciliation run's frozen LOR path evidence only when exactly one governed root matches the permanent Stage identity;
+- Stage path synchronization does not enumerate or search Google Drive;
+- held/special rows `12,39,40,90-94` remain outside the automatic governed-root repair.
+
 ## Current promotion procedures
 
 | Phase | Database object | Canonical file | Definition lineage |
 |---|---|---|---|
-| P1 | `ref.p1_promote_stage_from_reconciliation(bigint)` | `current_procedures/P1_stage_promotion.sql` | Migration `0035` distinguishes simultaneous main/substage keys, moves only the approved new-key bindings, and requires unanimous evidence for a true rename |
+| P1 | `ref.p1_promote_stage_from_reconciliation(bigint)` | `current_procedures/P1_stage_promotion.sql` | Migration `0039` establishes governed Stage/Sub-stage root naming authority; migration `0040` preserves that P1 and adds exact-one-governed-root synchronization of existing `folder_path` values |
 | P2 | `ref.p2_promote_display_from_reconciliation(bigint)` | `current_procedures/P2_display_promotion.sql` | Migration `0035` resolves P1-created stages by source key and refuses unresolved/null stage assignments |
 | P3 | `ref.p3_promote_scene_from_reconciliation(bigint)` | `current_procedures/P3_scene_promotion.sql` | Full definition from `0018`, then no-op correction from `0029 v4` |
 | P4 | `ref.p4_promote_scene_display_from_reconciliation(bigint)` | `current_procedures/P4_scene_display_promotion.sql` | Full definition from `0018`, then no-op correction from `0029 v4` |
@@ -43,6 +59,7 @@ is authoritative for the named object only.
 | Database object | Originally installed | Current definition | Validation |
 |---|---|---|---|
 | `ops.f_build_lor_reconciliation_stage_candidates(bigint)` | `migrations/0015_create_reconciliation_safe_p1_stage_promotion.sql` | `migrations/0023_use_preview_manifest_for_stage_bindings.sql` | `validation/19_preview_manifest_stage_binding_validation.sql` |
+| `ops.f_lor_governed_stage_roots(bigint,text)` | `migrations/0039_repair_stage_folder_authority.sql` | `migrations/0039_repair_stage_folder_authority.sql` | `validation/34_stage_folder_authority_validation.sql`, `validation/35_stage_folder_path_sync_validation.sql` |
 | `lor_snap.v_display_reconciliation_source` | `migrations/0011_create_lor_display_reconciliation_preflight_v7.sql` | `migrations/0038_allow_spare_to_display_activation.sql` | `validation/33_spare_to_display_activation_validation.sql` |
 | `ops.v_lor_display_reconciliation` | `migrations/0011_create_lor_display_reconciliation_preflight_v7.sql` | `migrations/0038_allow_spare_to_display_activation.sql` | `validation/33_spare_to_display_activation_validation.sql` |
 | `ops.f_start_lor_display_reconciliation(text)` | `migrations/0014_create_lor_reconciliation_decision_layer.sql` | `migrations/0038_allow_spare_to_display_activation.sql` | `validation/33_spare_to_display_activation_validation.sql` |
@@ -70,7 +87,8 @@ is retained only as incident evidence. It is not step 8A of the normal workflow.
 
 ## Migration and validation status
 
-The current installation chain is `0011` through `0038`.
+The current installed migration chain is `0011` through `0040`.
+
 Migration `0029` must be revision
 `2026-08-05-true-noop-reconciliation-writes-v4`; its corresponding validation
 is `validation/25_true_noop_reconciliation_write_validation.sql`. Migration
@@ -103,8 +121,21 @@ Migration `0038` supports both normal channel lifecycle directions: placing a
 SPARE into service as a physical Display and returning a recycled Display
 channel to SPARE. SPARE/PHANTOM evidence remains excluded and cannot contribute
 to physical UUID/name duplicate counts, occurrence evidence, identity
-components, physical decision groups, or non-active Display classifications. It is paired with
-`validation/33_spare_to_display_activation_validation.sql`.
+components, physical decision groups, or non-active Display classifications. It
+is paired with `validation/33_spare_to_display_activation_validation.sql`.
+Migration `0039` makes the governed Google Drive Stage/Sub-stage root the
+permanent naming authority. Existing accepted `stage_name` and `folder_name`
+values were repaired to the exact root basename; future `ADD_NEW_STAGE` requires
+one frozen governed root. It is paired with
+`validation/34_stage_folder_authority_validation.sql`.
+Migration `0040` synchronizes an existing governed Stage/Sub-stage
+`folder_path` only from exactly one frozen governed LOR root that matches the
+permanent Stage name/folder identity. It performs no Google Drive search and is
+paired with `validation/35_stage_folder_path_sync_validation.sql`.
+
+Both 0039 and 0040 were production deployed and validated on 2026-08-30. See
+[Stage Root Authority and Path Synchronization](Stage_Root_Authority_and_Path_Synchronization.md)
+for the acceptance record and rollback artifacts.
 
 Do not infer that a numbered validation is harmless from its filename alone.
 Read its header. In particular,
@@ -120,6 +151,9 @@ not an installation script.
 - Contradictory stage evidence cannot expose an approval action.
 - Main and substage source keys (`NN` and `NNa`) retain separate permanent
   stage identities, bindings, and display assignments.
+- Governed Stage/Sub-stage names come from exact frozen root path evidence, not descriptive LOR Preview/Scene names.
+- Existing governed `folder_path` is synchronized only when exactly one frozen governed root matches the permanent `stage_name` and `folder_name` identity.
+- P1 does not enumerate or recursively search Google Drive to discover a moved Stage/Sub-stage.
 - Captured `lor_snap` rows and frozen reconciliation candidates are never
   rewritten to repair a production-reference defect.
 - A new permanent stage is inserted only by P1 after an explicit, evidence-
