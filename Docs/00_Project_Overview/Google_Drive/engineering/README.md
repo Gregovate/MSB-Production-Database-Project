@@ -10,6 +10,7 @@ Ordinary document-maintenance work belongs in the [Google Drive / Display Folder
 
 - [Google Drive Engineering Overview](Google_Drive_Engineering_Overview.md)
 - [Google Drive Path Resolution Contract](Google_Drive_Path_Resolution_Contract.md)
+- [LOR2DB Stage Root Authority and Path Synchronization](../../../../LOR2DB/02_Reconciliation/reconciliation/Stage_Root_Authority_and_Path_Synchronization.md)
 - [Google Workspace Application Read Identity](../../05-Google_Workspace_Application_Read_Identity.md)
 - [Folder Alignment Engineering](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/engineering/README.md)
 - [FieldWiring Engineering](../../../02_Production_Database/01_System_Architecture/09_Wiring_System/README.md)
@@ -34,6 +35,27 @@ Engineering documentation owns subjects such as:
 - accepted architecture and recovery/acceptance evidence.
 
 Operator SOPs should state the required folder, filename, warning, or verification step without reproducing this engineering explanation.
+
+## Database Stage/Sub-stage Path Synchronization
+
+Google Drive remains the editable filesystem repository, but the Production Database stores a current Stage/Sub-stage locator in `ref.stage.folder_path` for field-context consumers.
+
+That database locator is maintained by LOR2DB reconciliation, not by recursively searching Display Folders. Current LOR Preview/Scene `BackgroundFile` paths are captured by the parser and ingest into frozen `lor_snap` evidence. P1 can synchronize an existing governed Stage/Sub-stage `folder_path` only when that frozen import proves exactly one governed root whose root name matches the permanent Stage identity.
+
+The normal correction flow is therefore:
+
+```text
+correct/move governed Google Drive root
+    -> correct affected LOR BackgroundFile reference(s)
+    -> parser
+    -> approved ingest
+    -> reconciliation
+    -> P1 synchronizes ref.stage.folder_path
+```
+
+This keeps expensive Google Drive discovery out of the production database workflow. FieldWiring and Procedures continue to use their existing path-resolution contracts; migrations 0039/0040 changed no field-application or filesystem-resolver code.
+
+For the exact database authority, held identities, migration behavior, and 2026-08-30 production acceptance evidence, use [LOR2DB Stage Root Authority and Path Synchronization](../../../../LOR2DB/02_Reconciliation/reconciliation/Stage_Root_Authority_and_Path_Synchronization.md).
 
 ## Current Subsystem Layout
 
