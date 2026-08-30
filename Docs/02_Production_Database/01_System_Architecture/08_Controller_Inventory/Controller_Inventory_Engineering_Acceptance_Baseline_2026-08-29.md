@@ -137,6 +137,12 @@ It is not:
 
 The workbook is an attempt to assemble the best physical-controller groupings possible before the complete physical inventory is presented/verified.
 
+The current working `Controller Inventory & Testing 2026(7).xlsx` list contains **deployed/assigned controllers only**. It contains no known spare/available controller rows. Therefore a workbook row whose permanent Display relationship is not yet resolved remains a deployed-controller review item and must not be reclassified as available stock merely because assignment resolution is incomplete.
+
+Available/unassigned controller inventory begins outside this workbook and will be created only when actual spare/unassigned physical hardware is discovered or deliberately added through the future Controller Inventory workflow.
+
+Controller-to-Display assignment is independent of current physical storage/deployment location. An assigned controller may remain assigned while physically stored in the workshop/warehouse between setup seasons.
+
 The groupings are educated engineering reconstructions based on how the authoritative LOR wiring comes together, controller-family behavior, known physical facts, model/capability information, location clues, and operator knowledge.
 
 ### `For What` column
@@ -254,18 +260,20 @@ lor_output_v7_scene(20260829-194137).db
 Parser V7.0.11 / LOR 6.6.10
 ```
 
+The active working evidence has since advanced to `Controller Inventory & Testing 2026(7).xlsx` and `lor_output_v7_scene(20260830-185521).db`. The workbook is a deployed-controller grouping list, not spare inventory.
+
 Known corrections newer than those exact uploaded artifacts must be honored during review:
 
 1. the old workbook row representing `HW-EventTrafficRight-01 / Regular / UID 08 / CTB32LG3` has been removed from the current working spreadsheet and must not be treated as an open grouping mismatch;
 2. the Rotary Trees SPARE source was corrected in current LOR so `42 10-09 SPARE` is `Regular / UID 10 / channel 9`; the uploaded SQLite still predates that correction and must not be used to reopen it.
 
-The active task is **not DDL**. It is to continue stress-testing the proposed physical groupings and relationship requirements against current LOR wiring and the FieldWiring consumer contract.
+The active task is **not final DDL**. It is to continue stress-testing the proposed physical groupings and relationship requirements against current LOR wiring and the FieldWiring consumer contract, using the isolated Controller Inventory fit-test path authorized by Issue #110.
 
 ## DDL Gate
 
-Do not create Controller Inventory PostgreSQL tables or migrations until the current Pre-DDL grouping review establishes that the proposed physical identity/relationship model can represent the actual system without forcing LOR addressing to become permanent identity or forcing unsupported physical guesses into permanent data.
+Do not create final production-authoritative Controller Inventory PostgreSQL tables or migrations until the current grouping/application fit test establishes that the proposed physical identity/relationship model can represent the actual system without forcing LOR addressing to become permanent identity or forcing unsupported physical guesses into permanent data.
 
-Before DDL, engineering must have a durable record of:
+Before final DDL acceptance, engineering must have a durable record of:
 
 - accepted identity and many-to-many relationship rules;
 - family-specific grouping behavior;
@@ -290,7 +298,7 @@ Do not continue normal Controller Inventory edits directly on that stale branch.
 
 ## Rule Established
 
-> LOR/V7 is the authority for current wiring and addressing. The spreadsheet is a temporary engineering worksheet used to assemble the best physical-controller grouping hypotheses possible before the physical inventory is fully presented. Material groupings and corrected assumptions must be promoted into controlled Controller Inventory documentation as they are accepted. PostgreSQL will eventually own permanent `controller_id` and accepted physical relationships, replacing the spreadsheet as the maintained Controller Inventory system while continuing to consume LOR wiring read-only.
+> LOR/V7 is the authority for current wiring and addressing. The spreadsheet is a temporary engineering worksheet used to assemble the best deployed physical-controller grouping hypotheses possible before the physical inventory is fully presented. Material groupings and corrected assumptions must be promoted into controlled Controller Inventory documentation as they are accepted. PostgreSQL will eventually own permanent `controller_id` and accepted physical relationships, replacing the spreadsheet as the maintained Controller Inventory system while continuing to consume LOR wiring read-only.
 
 ## Related Documents
 
