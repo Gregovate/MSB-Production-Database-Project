@@ -7,6 +7,11 @@ Run only AFTER:
   - stage.controller_model_reference is installed/reviewed;
   - 002_create_ref_controller_sandbox.sql has created empty ref.controller*.
 
+Model rule:
+  - staged model_evidence maps directly to ref.controller_model.model_code;
+  - manufacturer/full-name metadata lives on ref.controller_model separately;
+  - distinct source model codes are not collapsed during bootstrap.
+
 Firmware rule:
   - RECORDED workbook firmware becomes installed firmware with state
     RECORDED_UNVERIFIED.
@@ -18,7 +23,6 @@ SAFETY:
   - Requires every staging candidate READY or SKIPPED.
   - Requires ref.controller and ref.controller_display empty.
   - Restarts controller identity at 1001 only because the table is empty.
-  - Resolves staged source-model labels through stage.controller_model_reference.
   - Verifies every generated ID equals 1000 + reviewed bootstrap_order.
   - Any mismatch/error aborts the entire transaction.
 ============================================================================ */
@@ -95,21 +99,19 @@ BEGIN
     LEFT JOIN stage.controller_model_reference AS r
       ON r.source_model_evidence = b.model_evidence
     LEFT JOIN ref.controller_model AS m
-      ON m.model_code = r.canonical_model_code
+      ON m.model_code = b.model_evidence
     WHERE b.review_state = 'READY'
       AND (r.source_model_evidence IS NULL OR m.controller_model_id IS NULL);
     IF v_count <> 0 THEN
         RAISE EXCEPTION
-            'Controller bootstrap has % READY rows whose canonical model is unresolved',
+            'Controller bootstrap has % READY rows whose model code is unresolved',
             v_count;
     END IF;
 
     SELECT count(*) INTO v_count
     FROM stage.controller_bootstrap AS b
-    JOIN stage.controller_model_reference AS r
-      ON r.source_model_evidence = b.model_evidence
     JOIN ref.controller_model AS m
-      ON m.model_code = r.canonical_model_code
+      ON m.model_code = b.model_evidence
     LEFT JOIN ref.controller_firmware_version AS fv
       ON fv.controller_model_id = m.controller_model_id
      AND fv.firmware_version = btrim(b.firmware_evidence)
@@ -137,7 +139,6 @@ BEGIN
 END
 $preflight$;
 
--- Safe only because preflight proved ref.controller is empty.
 ALTER TABLE ref.controller ALTER COLUMN controller_id RESTART WITH 1001;
 
 CREATE TEMP TABLE pg_temp.controller_bootstrap_promoted (
@@ -164,23 +165,21 @@ BEGIN
     END IF;
 
     FOR r IN
-        SELECT b.*, mr.canonical_model_code
-        FROM stage.controller_bootstrap AS b
-        JOIN stage.controller_model_reference AS mr
-          ON mr.source_model_evidence = b.model_evidence
-        WHERE b.review_state = 'READY'
-        ORDER BY b.bootstrap_order
+        SELECT *
+        FROM stage.controller_bootstrap
+        WHERE review_state = 'READY'
+        ORDER BY bootstrap_order
     LOOP
         v_expected_id := 1000 + r.bootstrap_order;
 
         SELECT controller_model_id INTO v_model_id
         FROM ref.controller_model
-        WHERE model_code = r.canonical_model_code;
+        WHERE model_code = r.model_evidence;
 
         IF v_model_id IS NULL THEN
             RAISE EXCEPTION
-                'Canonical model % is unresolved for bootstrap row %',
-                r.canonical_model_code, r.source_row_num;
+                'Model % is unresolved for bootstrap row %',
+                r.model_evidence, r.source_row_num;
         END IF;
 
         v_firmware_id := NULL;
@@ -195,8 +194,8 @@ BEGIN
 
             IF v_firmware_id IS NULL THEN
                 RAISE EXCEPTION
-                    'Recorded firmware % for canonical model % is unresolved for bootstrap row %',
-                    r.firmware_evidence, r.canonical_model_code, r.source_row_num;
+                    'Recorded firmware % for model % is unresolved for bootstrap row %',
+                    r.firmware_evidence, r.model_evidence, r.source_row_num;
             END IF;
 
             v_firmware_state := 'RECORDED_UNVERIFIED';
@@ -239,7 +238,6 @@ BEGIN
 END
 $promotion$;
 
--- Permanent M:N Display relationships.
 INSERT INTO ref.controller_display (
     controller_id,
     display_id,
@@ -260,7 +258,6 @@ LEFT JOIN LATERAL (
       AND x.relationship_type = 'WIRING_SOURCE'
 ) AS ws ON true;
 
--- Initial recorded firmware is history evidence but is explicitly unverified.
 INSERT INTO ref.controller_firmware_history (
     controller_id,
     controller_firmware_version_id,
@@ -277,10 +274,8 @@ SELECT
 FROM pg_temp.controller_bootstrap_promoted AS p
 JOIN stage.controller_bootstrap AS b
   ON b.controller_bootstrap_id = p.controller_bootstrap_id
-JOIN stage.controller_model_reference AS mr
-  ON mr.source_model_evidence = b.model_evidence
 JOIN ref.controller_model AS m
-  ON m.model_code = mr.canonical_model_code
+  ON m.model_code = b.model_evidence
 JOIN ref.controller_firmware_version AS fv
   ON fv.controller_model_id = m.controller_model_id
  AND fv.firmware_version = btrim(b.firmware_evidence)
