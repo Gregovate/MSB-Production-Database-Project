@@ -208,8 +208,8 @@ SELECT
             THEN CASE WHEN o.firmware_evidence = '1.12'
                       THEN 'OFFICIAL_CURRENT' ELSE 'OFFICIAL_LISTED' END
 
-        WHEN o.model_evidence IN ('CMB24D','Pixie2','Pixie16')
-         AND o.firmware_evidence = '1.17'
+        WHEN (o.model_evidence = 'CMB24D' AND o.firmware_evidence = '1.10')
+          OR (o.model_evidence IN ('Pixie2','Pixie16') AND o.firmware_evidence = '1.17')
             THEN 'REFERENCE_MISMATCH_REVIEW'
 
         ELSE 'SOURCE_RECORDED_NOT_ON_CURRENT_REFERENCE'
