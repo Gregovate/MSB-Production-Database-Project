@@ -4,9 +4,18 @@ This subsystem documents how MSB presents, enriches, and operationally uses wiri
 
 ## Current State
 
-**FieldWiring and its Display Scan integration are production-operational as of 2026-08-22 local / 2026-08-23 UTC.**
+**FieldWiring and its first permanent Controller Inventory integration are production-operational.**
 
-Accepted production state:
+Current accepted production checkpoint:
+
+```text
+checkout                    84d6f06e16c43ebb0f6aa21273b999af7f6d455b
+FieldWiring                  V0.3.1 / postgres / healthy
+Procedures                   V0.1.0 / postgres / healthy
+combined live regression     183 passed in 2.39s
+```
+
+Accepted production state includes:
 
 - FieldWiring browser application: `https://my.sheboyganlights.org/fieldwiring/`;
 - Display Scan application: `https://my.sheboyganlights.org/scan/`;
@@ -15,12 +24,17 @@ Accepted production state:
 - persistent read-only Google `Display Folders` filesystem operational;
 - protected Synology reverse proxies operational;
 - desktop and phone FieldWiring acceptance passed;
-- FieldWiring Display search repaired and production-tested;
+- permanent Display search and Stage/Scene browse;
+- Stage/Sub-stage-aware Controller Inventory browse/search;
+- current programmed Controller Network/UID/IP presentation;
+- permanent Controller ID/model context in FieldWiring where governed relationships resolve the physical device;
+- FieldWiring -> Controller Inventory cross-links;
+- Controller Inventory -> Field Wiring links from Display assignments;
 - existing Display QR/scan hub includes the independent **Field Wiring** action;
 - Directus-facing Scan actions use the established `https://db.sheboyganlights.org/` origin;
 - FormView remains available as fallback/reference.
 
-The accepted FieldWiring deep link is:
+The accepted FieldWiring Display deep link is:
 
 ```text
 /fieldwiring/wiring.html?display_id=<permanent display_id>
@@ -28,19 +42,16 @@ The accepted FieldWiring deep link is:
 
 The scan hub passes only the permanent `ref.display.display_id`. No LOR UUID, Stage key, Scene UUID, controller address, or Google Drive path is part of the QR-to-FieldWiring identity contract.
 
-The accepted current Scan runtime artifact SHA-256 is:
-
-```text
-b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f
-```
-
 ## Start Here
 
 For current production/recovery state, begin with:
 
+- [Controller Inventory](../08_Controller_Inventory/README.md)
+- [Controller Management Application Boundary — 2026-08-31](../08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md)
+- [FieldWiring / Controller Inventory Handoff — 2026-08-20](FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
+- [FieldWiring Application README](../../../../FieldWiring/Application/README.md)
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
 - [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md)
-- [FieldWiring Application README](../../../../FieldWiring/Application/README.md)
 - [FieldWiring Engineering Recovery and Compatibility Contract](FieldWiring_Engineering_Recovery_and_Compatibility_Contract.md)
 - [FieldWiring Drive Context Resolver Engineering Design](FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
 - [FieldWiring Field Presentation Requirements](FieldWiring_Field_Presentation_Requirements.md)
@@ -64,32 +75,54 @@ Light-O-Rama
             -> FieldWiring
 ```
 
-LOR remains authoritative for show topology, controller/address assignments, channels, DMX/E1.31/network assignments, and related source wiring configuration.
+LOR remains authoritative for current show topology, controller/address assignments, channels, DMX/E1.31/network assignments, and related source wiring configuration.
 
 PostgreSQL provides the controlled current snapshot plus permanent Production Database identities and database-owned relationships.
 
-FieldWiring interprets and presents that information for field use. It must not become a competing topology-authoring system.
+Permanent identities used by Wiring are:
+
+```text
+Display     ref.display.display_id
+Controller  ref.controller.controller_id
+```
+
+Controller Inventory owns permanent physical Controller identity, current Controller-to-Display relationships, current programmed Controller facts, and Controller operational management.
+
+FieldWiring interprets and presents those facts together with current LOR wiring for field use. It must not become a competing topology-authoring or identity system.
+
+## Controller Management Boundary
+
+The working Controller Inventory browser is the accepted read-side foundation for Controller Management.
+
+Directus is **not** the Controller operational editor. It remains the shared login/identity/Manager-policy authority and a secondary simple one-table/reference maintenance tool.
+
+Browser-native Controller Management owns the future Manager workflow:
+
+```text
+Controller Detail
+    -> authenticated Manager check
+    -> Edit / Add Controller
+    -> current programmed Network / UID / IP maintenance
+    -> Assign / Reassign / Unassign Displays
+    -> label request action
+    -> PostgreSQL validation / audit
+```
+
+Do not make the read-only `fieldwiring_app` database role broadly writable merely to add Controller management controls.
+
+The permanent Controller/Display relationship retains:
+
+```text
+PRIMARY KEY (controller_id, display_id)
+```
+
+The Directus multi-table relationship experiment is closed; do not distort the database model to accommodate Directus UI limitations.
 
 ## Current Production Data Baseline
 
-The accepted FieldWiring data path was established against:
+The accepted FieldWiring data path was established on Parser V7/LOR2DB PostgreSQL materialization. Detailed wiring remains current-snapshot authority and Controller Inventory does not replace it.
 
-```text
-import_run_id          51
-parser_version         V7.0.11
-ingest_script_version  V0.4.2
-current DMX rows       508
-```
-
-Parser V7.0.11 additively preserves grouped-DMX source detail on every current DMX row:
-
-```text
-RawPropID
-ChannelName
-ChannelGridRowNumber
-```
-
-PostgreSQL migration `0037_add_dmx_source_detail.sql` is installed in production. The legacy `preview_wiring_*_v6` compatibility views remain unchanged for FormView/regression compatibility.
+Parser V7.0.11+ preserves grouped-DMX source detail on current DMX rows, including source Prop/channel/grid information. The legacy `preview_wiring_*_v6` compatibility views remain available for FormView/regression compatibility.
 
 ## Current Presentation Families
 
@@ -109,7 +142,24 @@ DMX + RGB — reviewed dense RGB cases
 
 The generic compatibility-view `Controller` and `StartChannel` columns do not have one universal physical meaning across these families.
 
-Current reviewed temporary E1.31 physical mappings remain presentation recovery evidence, not permanent Controller Inventory identity.
+Permanent Controller Inventory now supplements physical identity/context where governed relationships resolve the device. Remaining temporary E1.31/family-specific mappings are presentation evidence only and must remain centralized/replaceable until permanent Controller evidence fully covers those cases.
+
+## Permanent Controller Resolver Contract
+
+The accepted physical relationship basis is:
+
+```text
+physical controller = ref.controller.controller_id
+physical Display     = ref.controller_display.display_id
+wiring Display       = COALESCE(
+    ref.controller_display.wiring_source_display_id,
+    ref.controller_display.display_id
+)
+```
+
+FieldWiring starts from the governed Controller-to-Display relationship. For AC/Pixie rows, current programmed Network/UID may distinguish which already-assigned physical Controller applies. Network/UID is never permanent identity.
+
+For DMX/E1.31 families, do not claim an exact universe-to-physical-controller split unless governed evidence supports it.
 
 ## Current Browser/Application Behavior
 
@@ -120,9 +170,15 @@ The production application supports:
 - Scene-aware package resolution;
 - A/C controller/output presentation;
 - reviewed Pixie physical-output presentation;
-- atomic V7.0.11 DMX source-row consumption;
+- atomic V7.0.11+ DMX source-row consumption with scope guarding;
 - CR50/DumbRGB fixture aggregation while retaining atomic source rows underneath;
 - reviewed E1.31 physical-controller presentation for accepted dense RGB cases;
+- permanent Controller Inventory browse/detail;
+- Stage/Sub-stage-aware Controller filtering and free-text Stage-match confirmation;
+- current programmed Controller Network/UID/IP facts;
+- current Display assignments, firmware history, and label state;
+- permanent Controller ID/model context in FieldWiring;
+- bidirectional FieldWiring / Controller Inventory navigation;
 - collapsible controller/presentation groups;
 - long-list sticky controller context;
 - shared image + Field Hookup workspace on desktop/laptop;
@@ -151,9 +207,9 @@ Wiring\MusicalStage                         NO separate marker
 SourceDocs                                  excluded / no marker
 ```
 
-The marker on `Wiring` guards the selected `BackgroundStage` or `MusicalStage` child branch. The production FieldWiring implementation already matches this contract; no child-marker code change is required.
+The marker on `Wiring` guards the selected `BackgroundStage` or `MusicalStage` child branch.
 
-The future Procedure system has a separate deeper marker contract for `Procedures`, task branches, and Setup/Takedown `images`. Do not project that Procedure rule onto FieldWiring child Wiring branches.
+The Procedure system has a separate deeper marker contract. Do not project that Procedure rule onto FieldWiring child Wiring branches.
 
 Production server access to the Google hierarchy is provided through the persistent read-only Display Folders filesystem documented by MSB-Server-Management.
 
@@ -165,7 +221,7 @@ The Display QR lookup is a Directus endpoint deployed on `msb-prod-db`:
 /opt/directus/extensions/directus-extension-scan/
 ```
 
-Git-controlled application source is now preserved at:
+Git-controlled application source is preserved at:
 
 ```text
 Scan/directus-extension-scan/
@@ -201,40 +257,12 @@ https://db.sheboyganlights.org/
 
 rather than root-relative `/admin/...` links under `my.sheboyganlights.org`.
 
-See [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md).
-
-## Scan Acceptance Summary
-
-Accepted regression evidence includes:
-
-- public `/scan/` HTTP 200 and `/scan` redirect;
-- manual `DISP:141` -> `TC-ChristmasHippo`;
-- Open Display Record -> correct Directus record;
-- Open Container -> correct assigned Container;
-- positive Testing redirect using `QV-SHRStocking`;
-- Work Orders = 0 disabled state;
-- Field Wiring -> correct `TC-ChristmasHippo` wiring package;
-- phone camera initialization and live preview;
-- final deployed Scan hash `b4f6c27f...175cb20f`.
-
-Physical QR decode and positive one/multiple Work Order cases were not available during acceptance and remain explicitly deferred regression cases.
-
-## Controller Inventory Boundary
-
-FieldWiring currently contains explicit reviewed temporary physical presentation mappings for known controller cases.
-
-These are not permanent controller asset identities.
-
-Controller Inventory remains responsible for permanent controller identity, normalized model/family, current assignment, output capacity, network/IP configuration where operationally needed, and deployment/history.
-
-Do not infer permanent controller identity from universe, IP address, Unit ID, Display Name, or source row position.
-
 ## System Boundary
 
 ### Production Database responsibility
 
 - controlled current LOR-derived wiring snapshot;
-- permanent Display identity and database-owned relationships;
+- permanent Display and Controller identities and database-owned relationships;
 - FieldWiring and Scan application/business source;
 - scan-to-FieldWiring `display_id` contract;
 - Wiring/Controller Inventory/Setup integration boundaries.
@@ -244,10 +272,20 @@ Do not infer permanent controller identity from universe, IP address, Unit ID, D
 - task-focused field hookup lookup/presentation;
 - Stage/Sub-stage/Scene-aware scope resolution;
 - device-family-aware physical hookup presentation;
+- permanent Controller context/cross-links as a read consumer;
 - current image/context presentation;
 - browser/desktop/phone UX;
 - currentness/expiration presentation;
 - application-specific API/client code and tests.
+
+### Controller Inventory responsibility
+
+- permanent physical Controller identity;
+- current Controller model/status/location/firmware/programmed configuration;
+- current Controller-to-Display relationships;
+- reviewed duplicated-channel wiring-source relationships;
+- browser-native Manager operational workflow;
+- Controller label request state.
 
 ### MSB-Server-Management responsibility
 
@@ -269,9 +307,13 @@ Do not infer permanent controller identity from universe, IP address, Unit ID, D
 
 ## Known Open Work
 
-Separate future work includes:
+Current cross-workstream open work includes:
 
-- Controller Inventory replacement of temporary presentation mappings;
+- browser-native authenticated Manager Controller editing;
+- Add Controller shelf-stock workflow;
+- Controller ↔ Display assignment/reassignment/unassignment workbench;
+- Manager `print_label` request action and later label-service handoff;
+- replacement of remaining temporary FieldWiring physical presentation mappings only when permanent Controller evidence fully covers their real cases;
 - Mega Cube and Whoville Matrix compact CustomGrid expansion, which remains a separate parser-materialization limitation;
 - plug/channel-label request integration;
 - offline/self-contained field copy;
@@ -285,9 +327,15 @@ Keep FormView available as fallback/reference until a separate cutover decision 
 
 ## Resume Development
 
-FieldWiring Scan Integration is closed as accepted production work. Before merging this engineering branch, reconcile it with current `main` and preserve the accepted marker contract above.
+Do not resume from the original FieldWiring recovery or shared-resolver extraction backlog. Those gates are accepted.
 
-The next major Production Database project is [Setup and Deployment](../12_Setup_and_Deployment/README.md). Reconstruct the real Container/Location pull, staging, load, delivery, and park-placement workflow before designing new schema, scan-session state, or a broader scan-platform refactor.
+The current Controller/Wiring resume point is documented in:
+
+- [Controller Inventory](../08_Controller_Inventory/README.md)
+- [Controller Management Application Boundary](../08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md)
+- [FieldWiring / Controller Inventory Handoff](FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
+
+Every deployed change affecting FieldWiring or shared resolver code must preserve the FieldWiring + Procedures regression gate. Durable findings and accepted changes must be written into the responsible Controller/Wiring documents during the work rather than reconstructed from conversation history later.
 
 ## Related Systems
 
