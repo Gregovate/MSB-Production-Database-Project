@@ -4,15 +4,21 @@ Issue: #110
 
 Run only AFTER:
   - stage-only bootstrap/review/order is complete and accepted;
+  - stage.controller_model_reference is installed/reviewed;
   - 002_create_ref_controller_sandbox.sql has created empty ref.controller*.
+
+Firmware rule:
+  - RECORDED workbook firmware becomes installed firmware with state
+    RECORDED_UNVERIFIED.
+  - New / ??? / blank become UNKNOWN with no installed firmware FK.
+  - Firmware validation is deferred to field setup and does not block promotion.
 
 SAFETY:
   - First permanent controller-ID allocation only.
   - Requires every staging candidate READY or SKIPPED.
   - Requires ref.controller and ref.controller_display empty.
   - Restarts controller identity at 1001 only because the table is empty.
-  - Resolves staged model text to ref.controller_model at promotion time.
-  - Creates firmware catalog rows only for staged RECORDED versions.
+  - Resolves staged source-model labels through stage.controller_model_reference.
   - Verifies every generated ID equals 1000 + reviewed bootstrap_order.
   - Any mismatch/error aborts the entire transaction.
 ============================================================================ */
@@ -23,6 +29,7 @@ LOCK TABLE ref.controller IN ACCESS EXCLUSIVE MODE;
 LOCK TABLE ref.controller_display IN ACCESS EXCLUSIVE MODE;
 LOCK TABLE stage.controller_bootstrap IN SHARE MODE;
 LOCK TABLE stage.controller_bootstrap_display IN SHARE MODE;
+LOCK TABLE stage.controller_model_reference IN SHARE MODE;
 
 DO $preflight$
 DECLARE
@@ -85,13 +92,33 @@ BEGIN
 
     SELECT count(*) INTO v_count
     FROM stage.controller_bootstrap AS b
+    LEFT JOIN stage.controller_model_reference AS r
+      ON r.source_model_evidence = b.model_evidence
     LEFT JOIN ref.controller_model AS m
-      ON m.model_code = b.model_evidence
+      ON m.model_code = r.canonical_model_code
     WHERE b.review_state = 'READY'
-      AND m.controller_model_id IS NULL;
+      AND (r.source_model_evidence IS NULL OR m.controller_model_id IS NULL);
     IF v_count <> 0 THEN
         RAISE EXCEPTION
-            'Controller bootstrap has % READY rows whose model code is not present in ref.controller_model',
+            'Controller bootstrap has % READY rows whose canonical model is unresolved',
+            v_count;
+    END IF;
+
+    SELECT count(*) INTO v_count
+    FROM stage.controller_bootstrap AS b
+    JOIN stage.controller_model_reference AS r
+      ON r.source_model_evidence = b.model_evidence
+    JOIN ref.controller_model AS m
+      ON m.model_code = r.canonical_model_code
+    LEFT JOIN ref.controller_firmware_version AS fv
+      ON fv.controller_model_id = m.controller_model_id
+     AND fv.firmware_version = btrim(b.firmware_evidence)
+    WHERE b.review_state = 'READY'
+      AND b.firmware_state_evidence = 'RECORDED'
+      AND fv.controller_firmware_version_id IS NULL;
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION
+            'Controller bootstrap has % RECORDED firmware values missing from ref.controller_firmware_version',
             v_count;
     END IF;
 
@@ -110,24 +137,6 @@ BEGIN
 END
 $preflight$;
 
--- Normalize only real recorded firmware versions at the permanent-promotion gate.
-INSERT INTO ref.controller_firmware_version (
-    controller_model_id,
-    firmware_version,
-    source_note
-)
-SELECT DISTINCT
-    m.controller_model_id,
-    btrim(b.firmware_evidence),
-    'Controller Inventory & Testing 2026(7) bootstrap evidence'
-FROM stage.controller_bootstrap AS b
-JOIN ref.controller_model AS m
-  ON m.model_code = b.model_evidence
-WHERE b.review_state = 'READY'
-  AND b.firmware_state_evidence = 'RECORDED'
-  AND nullif(btrim(coalesce(b.firmware_evidence, '')), '') IS NOT NULL
-ON CONFLICT (controller_model_id, firmware_version) DO NOTHING;
-
 -- Safe only because preflight proved ref.controller is empty.
 ALTER TABLE ref.controller ALTER COLUMN controller_id RESTART WITH 1001;
 
@@ -144,6 +153,7 @@ DECLARE
     v_status_id integer;
     v_model_id integer;
     v_firmware_id integer;
+    v_firmware_state text;
 BEGIN
     SELECT controller_status_id INTO v_status_id
     FROM ref.controller_status
@@ -154,24 +164,28 @@ BEGIN
     END IF;
 
     FOR r IN
-        SELECT *
-        FROM stage.controller_bootstrap
-        WHERE review_state = 'READY'
-        ORDER BY bootstrap_order
+        SELECT b.*, mr.canonical_model_code
+        FROM stage.controller_bootstrap AS b
+        JOIN stage.controller_model_reference AS mr
+          ON mr.source_model_evidence = b.model_evidence
+        WHERE b.review_state = 'READY'
+        ORDER BY b.bootstrap_order
     LOOP
         v_expected_id := 1000 + r.bootstrap_order;
 
         SELECT controller_model_id INTO v_model_id
         FROM ref.controller_model
-        WHERE model_code = r.model_evidence;
+        WHERE model_code = r.canonical_model_code;
 
         IF v_model_id IS NULL THEN
             RAISE EXCEPTION
-                'Model % is unresolved for bootstrap row %',
-                r.model_evidence, r.source_row_num;
+                'Canonical model % is unresolved for bootstrap row %',
+                r.canonical_model_code, r.source_row_num;
         END IF;
 
         v_firmware_id := NULL;
+        v_firmware_state := 'UNKNOWN';
+
         IF r.firmware_state_evidence = 'RECORDED' THEN
             SELECT controller_firmware_version_id
               INTO v_firmware_id
@@ -181,15 +195,18 @@ BEGIN
 
             IF v_firmware_id IS NULL THEN
                 RAISE EXCEPTION
-                    'Recorded firmware % for model % is unresolved for bootstrap row %',
-                    r.firmware_evidence, r.model_evidence, r.source_row_num;
+                    'Recorded firmware % for canonical model % is unresolved for bootstrap row %',
+                    r.firmware_evidence, r.canonical_model_code, r.source_row_num;
             END IF;
+
+            v_firmware_state := 'RECORDED_UNVERIFIED';
         END IF;
 
         INSERT INTO ref.controller (
             controller_model_id,
             controller_status_id,
             installed_firmware_version_id,
+            firmware_verification_state,
             year_deployed,
             verification_state,
             notes,
@@ -200,6 +217,7 @@ BEGIN
             v_model_id,
             v_status_id,
             v_firmware_id,
+            v_firmware_state,
             r.year_deployed,
             'ENGINEERING_ACCEPTED',
             r.review_notes,
@@ -221,6 +239,7 @@ BEGIN
 END
 $promotion$;
 
+-- Permanent M:N Display relationships.
 INSERT INTO ref.controller_display (
     controller_id,
     display_id,
@@ -241,22 +260,27 @@ LEFT JOIN LATERAL (
       AND x.relationship_type = 'WIRING_SOURCE'
 ) AS ws ON true;
 
+-- Initial recorded firmware is history evidence but is explicitly unverified.
 INSERT INTO ref.controller_firmware_history (
     controller_id,
     controller_firmware_version_id,
+    verification_state,
     source_note,
     notes
 )
 SELECT
     p.controller_id,
     fv.controller_firmware_version_id,
+    'RECORDED_UNVERIFIED',
     'Controller Inventory & Testing 2026(7) bootstrap evidence',
-    'Initial Controller Inventory bootstrap firmware evidence'
+    'Recorded prior to powered field verification; verify during setup.'
 FROM pg_temp.controller_bootstrap_promoted AS p
 JOIN stage.controller_bootstrap AS b
   ON b.controller_bootstrap_id = p.controller_bootstrap_id
+JOIN stage.controller_model_reference AS mr
+  ON mr.source_model_evidence = b.model_evidence
 JOIN ref.controller_model AS m
-  ON m.model_code = b.model_evidence
+  ON m.model_code = mr.canonical_model_code
 JOIN ref.controller_firmware_version AS fv
   ON fv.controller_model_id = m.controller_model_id
  AND fv.firmware_version = btrim(b.firmware_evidence)
@@ -266,6 +290,8 @@ DO $assertions$
 DECLARE
     v_expected integer;
     v_actual integer;
+    v_recorded integer;
+    v_unknown integer;
 BEGIN
     SELECT count(*) INTO v_expected
     FROM stage.controller_bootstrap
@@ -287,6 +313,20 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Controller promotion ID/order verification failed';
     END IF;
+
+    SELECT count(*) INTO v_recorded
+    FROM ref.controller
+    WHERE firmware_verification_state = 'RECORDED_UNVERIFIED';
+
+    SELECT count(*) INTO v_unknown
+    FROM ref.controller
+    WHERE firmware_verification_state = 'UNKNOWN';
+
+    IF v_recorded <> 172 OR v_unknown <> 5 THEN
+        RAISE EXCEPTION
+            'Firmware-state count mismatch: expected 172 recorded-unverified and 5 unknown; found % and %',
+            v_recorded, v_unknown;
+    END IF;
 END
 $assertions$;
 
@@ -295,5 +335,7 @@ COMMIT;
 SELECT
     count(*) AS controller_count,
     min(controller_id) AS first_controller_id,
-    max(controller_id) AS last_controller_id
+    max(controller_id) AS last_controller_id,
+    count(*) FILTER (WHERE firmware_verification_state='RECORDED_UNVERIFIED') AS firmware_recorded_unverified,
+    count(*) FILTER (WHERE firmware_verification_state='UNKNOWN') AS firmware_unknown
 FROM ref.controller;
