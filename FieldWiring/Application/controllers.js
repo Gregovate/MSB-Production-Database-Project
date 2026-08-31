@@ -125,7 +125,7 @@ function renderControllerList(controllers) {
 async function loadControllers() {
   controllerList.innerHTML = '<div class="empty-state">Loading controllers…</div>';
   try {
-    const response = await fetch(`/api/controllers?${queryString()}`);
+    const response = await fetch(`api/controllers?${queryString()}`);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'Controller Inventory could not be loaded.');
     populateFilters(payload);
@@ -157,7 +157,7 @@ function renderAssignments(assignments) {
       ? `${item.wiring_source_display} (Display ${item.wiring_source_display_id})`
       : 'This Display';
     const action = item.has_current_wiring
-      ? `<a class="wiring-link" href="/wiring?display_id=${item.wiring_display_id}">Open Field Wiring</a>`
+      ? `<a class="wiring-link" href="wiring?display_id=${item.wiring_display_id}">Open Field Wiring</a>`
       : '<span class="no-wiring">No current LOR wiring</span>';
     return `
       <div class="assignment">
@@ -203,7 +203,7 @@ async function loadControllerDetail(controllerId) {
   document.getElementById('firmware-history').innerHTML = '';
 
   try {
-    const response = await fetch(`/api/controllers/${controllerId}`);
+    const response = await fetch(`api/controllers/${controllerId}`);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'Controller could not be loaded.');
     const c = payload.controller;
