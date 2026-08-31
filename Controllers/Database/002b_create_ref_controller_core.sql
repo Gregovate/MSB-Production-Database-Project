@@ -18,6 +18,9 @@ BEGIN
        OR to_regclass('ref.controller_firmware_version') IS NULL THEN
         RAISE EXCEPTION 'Permanent Controller model/firmware catalog is required first';
     END IF;
+    IF to_regclass('ref.storage_location') IS NULL THEN
+        RAISE EXCEPTION 'ref.storage_location is required for Controller current location';
+    END IF;
 END
 $preflight$;
 
@@ -81,7 +84,7 @@ CREATE TABLE IF NOT EXISTS ref.controller (
         REFERENCES ref.person(person_id),
     CONSTRAINT fk_controller_current_location
         FOREIGN KEY (current_location_code)
-        REFERENCES ref.location(location_code),
+        REFERENCES ref.storage_location(location_code),
     CONSTRAINT fk_controller_label_last_by
         FOREIGN KEY (label_print_last_by_cached_id)
         REFERENCES ref.person(person_id),
