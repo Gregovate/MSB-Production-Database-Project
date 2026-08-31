@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.2.0."""
+"""MSB FieldWiring browser API and static application host — V0.3.0."""
 
 from __future__ import annotations
 
@@ -7,11 +7,16 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 
+from controller_inventory import (
+    ControllerInventoryError,
+    controller_detail,
+    controller_list,
+)
 from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.2.0"
+APP_VERSION = "V0.3.0"
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__)
 
@@ -63,7 +68,7 @@ def operator_wiring_error(exc: WiringError) -> str:
     if "not present in the current" in folded or "not present in the production database" in folded:
         return (
             "This Field Wiring link no longer matches the current approved data. "
-            "Return to lookup and select the Display or Stage again."
+            "Return to lookup and select it again."
         )
 
     if "no applicable field wiring" in folded or "display is not available for current fieldwiring" in folded:
@@ -105,6 +110,22 @@ def css() -> Response:
 @app.get("/fieldwiring.js")
 def js() -> Response:
     return send_from_directory(BASE_DIR, "fieldwiring.js")
+
+
+@app.get("/controllers")
+@app.get("/controllers.html")
+def controllers_page() -> Response:
+    return send_from_directory(BASE_DIR, "controllers.html")
+
+
+@app.get("/controllers.css")
+def controllers_css() -> Response:
+    return send_from_directory(BASE_DIR, "controllers.css")
+
+
+@app.get("/controllers.js")
+def controllers_js() -> Response:
+    return send_from_directory(BASE_DIR, "controllers.js")
 
 
 @app.get("/wiring")
@@ -182,6 +203,26 @@ def api_stages() -> Response:
     )
 
 
+@app.get("/api/controllers")
+def api_controllers() -> Response:
+    data = controller_list(
+        repository(),
+        query=request.args.get("q", ""),
+        status=request.args.get("status", ""),
+        model=request.args.get("model", ""),
+        assignment=request.args.get("assignment", ""),
+    )
+    return jsonify(**data)
+
+
+@app.get("/api/controllers/<int:controller_id>")
+def api_controller_detail(controller_id: int) -> Response:
+    data = controller_detail(repository(), controller_id)
+    if data is None:
+        return jsonify(error="Controller was not found"), 404
+    return jsonify(**data)
+
+
 @app.get("/api/wiring")
 def api_wiring() -> Response:
     package = build_wiring_package(
@@ -204,6 +245,14 @@ def api_wiring_image() -> Response:
 def config_error(exc: ConfigError) -> tuple[Response, int]:
     return jsonify(
         error=operator_config_error(exc),
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerInventoryError)
+def controller_inventory_error(exc: ControllerInventoryError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller Inventory is available only from the production PostgreSQL data source.",
         engineering_error=str(exc),
     ), 503
 
