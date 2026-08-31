@@ -44,7 +44,7 @@ WHERE c.controller_id IN (
     1034,1035,
     1058,1059,1060,1061,
     1090,1091,1092,1093,1094,1095,
-    1112,1113,1117,
+    1112,1113,1117,1120,1121,
     1134,1135,1136,1138,1139,1140,
     1141,1142,
     1143,1144,
@@ -53,7 +53,7 @@ WHERE c.controller_id IN (
 )
 ORDER BY c.controller_id;
 
--- Explicitly show every production Pixie4D/Pixie8D/Pixie16D range.
+-- Explicitly show every production fixed-range CCB100/Pixie4D/Pixie8D/Pixie16D range.
 SELECT
     c.controller_id,
     m.model_code,
@@ -65,13 +65,10 @@ SELECT
 FROM ref.controller c
 JOIN ref.controller_model m
   ON m.controller_model_id = c.controller_model_id
-WHERE m.model_code IN ('Pixie4D','Pixie8D','Pixie16D')
+WHERE m.model_code IN ('CCB100','Pixie4D','Pixie8D','Pixie16D')
 ORDER BY
-    CASE m.model_code
-        WHEN 'Pixie4D' THEN 4
-        WHEN 'Pixie8D' THEN 8
-        WHEN 'Pixie16D' THEN 16
-    END,
+    m.lor_uid_capacity,
+    m.model_code,
     c.controller_id;
 
 SELECT
@@ -99,11 +96,11 @@ WHERE c.lor_uid_count IS NOT NULL
       OR c.lor_uid_end > 240
   );
 
--- For these Pixie families the programmed UID range must occupy the full model range.
+-- Fixed-range models must occupy their complete contiguous UID range.
 SELECT
-    count(*) AS invalid_pixie_exact_uid_count_rows
+    count(*) AS invalid_fixed_range_exact_uid_count_rows
 FROM ref.controller c
 JOIN ref.controller_model m
   ON m.controller_model_id = c.controller_model_id
-WHERE m.model_code IN ('Pixie4D','Pixie8D','Pixie16D')
+WHERE m.model_code IN ('CCB100','Pixie4D','Pixie8D','Pixie16D')
   AND c.lor_uid_count IS DISTINCT FROM m.lor_uid_capacity;
