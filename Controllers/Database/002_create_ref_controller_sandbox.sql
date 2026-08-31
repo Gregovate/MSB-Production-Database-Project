@@ -11,10 +11,11 @@ Required stage inputs:
   stage.controller_model_reference
 
 Model rule:
-  - model_code is the short operational code already used in the workbook.
-  - manufacturer_model_code stores the vendor designation separately.
-  - model_name stores the full manufacturer/product name.
-  - Distinct source model codes are not collapsed during bootstrap.
+  - Workbook model text is source evidence only.
+  - Permanent ref.controller_model.model_code is the corrected vendor model code.
+  - model_name is the full model/product name used by the vendor reference.
+  - If workbook shorthand is not a real LOR model (for example CTB32LG3), it
+    must not be copied into the permanent model catalog.
 
 Firmware rule:
   - RECORDED workbook firmware is imported exactly as recorded.
@@ -45,8 +46,8 @@ CREATE TABLE IF NOT EXISTS ref.controller_model (
     controller_model_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     model_code text NOT NULL UNIQUE,
     manufacturer text NOT NULL,
-    manufacturer_model_code text,
     model_name text NOT NULL,
+    hardware_revision text,
     firmware_family text,
     device_family text,
     model_reference_url text,
@@ -160,11 +161,7 @@ CREATE TABLE IF NOT EXISTS ref.controller (
         )
     ),
     CONSTRAINT ck_controller_firmware_verification_state CHECK (
-        firmware_verification_state IN (
-            'UNKNOWN',
-            'RECORDED_UNVERIFIED',
-            'VERIFIED'
-        )
+        firmware_verification_state IN ('UNKNOWN','RECORDED_UNVERIFIED','VERIFIED')
     ),
     CONSTRAINT ck_controller_label_print_count CHECK (
         label_print_count_cached >= 0
@@ -183,16 +180,12 @@ CREATE TABLE IF NOT EXISTS ref.controller_display (
     updated_by text NOT NULL DEFAULT current_user,
     created_by_person_id integer,
     updated_by_person_id integer,
-
     CONSTRAINT pk_controller_display PRIMARY KEY (controller_id, display_id),
-    CONSTRAINT fk_controller_display_controller
-        FOREIGN KEY (controller_id)
+    CONSTRAINT fk_controller_display_controller FOREIGN KEY (controller_id)
         REFERENCES ref.controller(controller_id),
-    CONSTRAINT fk_controller_display_display
-        FOREIGN KEY (display_id)
+    CONSTRAINT fk_controller_display_display FOREIGN KEY (display_id)
         REFERENCES ref.display(display_id),
-    CONSTRAINT fk_controller_display_wiring_source
-        FOREIGN KEY (wiring_source_display_id)
+    CONSTRAINT fk_controller_display_wiring_source FOREIGN KEY (wiring_source_display_id)
         REFERENCES ref.display(display_id)
 );
 
@@ -212,14 +205,11 @@ CREATE TABLE IF NOT EXISTS ref.controller_firmware_history (
     updated_by text NOT NULL DEFAULT current_user,
     created_by_person_id integer,
     updated_by_person_id integer,
-    CONSTRAINT fk_controller_firmware_history_controller
-        FOREIGN KEY (controller_id)
+    CONSTRAINT fk_controller_firmware_history_controller FOREIGN KEY (controller_id)
         REFERENCES ref.controller(controller_id),
-    CONSTRAINT fk_controller_firmware_history_version
-        FOREIGN KEY (controller_firmware_version_id)
+    CONSTRAINT fk_controller_firmware_history_version FOREIGN KEY (controller_firmware_version_id)
         REFERENCES ref.controller_firmware_version(controller_firmware_version_id),
-    CONSTRAINT fk_controller_firmware_history_verified_by
-        FOREIGN KEY (verified_by_person_id)
+    CONSTRAINT fk_controller_firmware_history_verified_by FOREIGN KEY (verified_by_person_id)
         REFERENCES ref.person(person_id),
     CONSTRAINT ck_controller_firmware_history_state CHECK (
         verification_state IN ('RECORDED_UNVERIFIED','VERIFIED')
@@ -228,57 +218,45 @@ CREATE TABLE IF NOT EXISTS ref.controller_firmware_history (
 
 -- Standard actor triggers.
 DROP TRIGGER IF EXISTS trg_controller_model_actor_insert ON ref.controller_model;
-CREATE TRIGGER trg_controller_model_actor_insert
-BEFORE INSERT ON ref.controller_model
+CREATE TRIGGER trg_controller_model_actor_insert BEFORE INSERT ON ref.controller_model
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_insert();
 DROP TRIGGER IF EXISTS trg_controller_model_actor_update ON ref.controller_model;
-CREATE TRIGGER trg_controller_model_actor_update
-BEFORE UPDATE ON ref.controller_model
+CREATE TRIGGER trg_controller_model_actor_update BEFORE UPDATE ON ref.controller_model
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 
 DROP TRIGGER IF EXISTS trg_controller_status_actor_insert ON ref.controller_status;
-CREATE TRIGGER trg_controller_status_actor_insert
-BEFORE INSERT ON ref.controller_status
+CREATE TRIGGER trg_controller_status_actor_insert BEFORE INSERT ON ref.controller_status
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_insert();
 DROP TRIGGER IF EXISTS trg_controller_status_actor_update ON ref.controller_status;
-CREATE TRIGGER trg_controller_status_actor_update
-BEFORE UPDATE ON ref.controller_status
+CREATE TRIGGER trg_controller_status_actor_update BEFORE UPDATE ON ref.controller_status
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 
 DROP TRIGGER IF EXISTS trg_controller_firmware_version_actor_insert ON ref.controller_firmware_version;
-CREATE TRIGGER trg_controller_firmware_version_actor_insert
-BEFORE INSERT ON ref.controller_firmware_version
+CREATE TRIGGER trg_controller_firmware_version_actor_insert BEFORE INSERT ON ref.controller_firmware_version
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_insert();
 DROP TRIGGER IF EXISTS trg_controller_firmware_version_actor_update ON ref.controller_firmware_version;
-CREATE TRIGGER trg_controller_firmware_version_actor_update
-BEFORE UPDATE ON ref.controller_firmware_version
+CREATE TRIGGER trg_controller_firmware_version_actor_update BEFORE UPDATE ON ref.controller_firmware_version
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 
 DROP TRIGGER IF EXISTS trg_controller_actor_insert ON ref.controller;
-CREATE TRIGGER trg_controller_actor_insert
-BEFORE INSERT ON ref.controller
+CREATE TRIGGER trg_controller_actor_insert BEFORE INSERT ON ref.controller
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_insert();
 DROP TRIGGER IF EXISTS trg_controller_actor_update ON ref.controller;
-CREATE TRIGGER trg_controller_actor_update
-BEFORE UPDATE ON ref.controller
+CREATE TRIGGER trg_controller_actor_update BEFORE UPDATE ON ref.controller
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 
 DROP TRIGGER IF EXISTS trg_controller_display_actor_insert ON ref.controller_display;
-CREATE TRIGGER trg_controller_display_actor_insert
-BEFORE INSERT ON ref.controller_display
+CREATE TRIGGER trg_controller_display_actor_insert BEFORE INSERT ON ref.controller_display
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_insert();
 DROP TRIGGER IF EXISTS trg_controller_display_actor_update ON ref.controller_display;
-CREATE TRIGGER trg_controller_display_actor_update
-BEFORE UPDATE ON ref.controller_display
+CREATE TRIGGER trg_controller_display_actor_update BEFORE UPDATE ON ref.controller_display
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 
 DROP TRIGGER IF EXISTS trg_controller_firmware_history_actor_insert ON ref.controller_firmware_history;
-CREATE TRIGGER trg_controller_firmware_history_actor_insert
-BEFORE INSERT ON ref.controller_firmware_history
+CREATE TRIGGER trg_controller_firmware_history_actor_insert BEFORE INSERT ON ref.controller_firmware_history
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_insert();
 DROP TRIGGER IF EXISTS trg_controller_firmware_history_actor_update ON ref.controller_firmware_history;
-CREATE TRIGGER trg_controller_firmware_history_actor_update
-BEFORE UPDATE ON ref.controller_firmware_history
+CREATE TRIGGER trg_controller_firmware_history_actor_update BEFORE UPDATE ON ref.controller_firmware_history
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 
 INSERT INTO ref.controller_status (controller_status_name, description)
@@ -289,46 +267,44 @@ VALUES
     ('RETIRED', 'Controller identity is retained but the asset is retired.')
 ON CONFLICT (controller_status_name) DO NOTHING;
 
--- One permanent model row per reviewed short operational/source model code.
+-- One permanent model row per corrected vendor model. Multiple workbook aliases
+-- may intentionally resolve to the same real model.
 INSERT INTO ref.controller_model (
     model_code,
     manufacturer,
-    manufacturer_model_code,
     model_name,
+    hardware_revision,
     firmware_family,
     model_reference_url,
     firmware_reference_url,
     notes
 )
-SELECT
-    r.source_model_evidence,
+SELECT DISTINCT ON (r.canonical_model_code)
+    r.canonical_model_code,
     r.manufacturer,
-    r.manufacturer_model_code,
     r.canonical_model_name,
+    r.hardware_revision,
     r.firmware_family,
-    r.reference_url,
+    r.model_reference_url,
     r.firmware_reference_url,
     r.notes
 FROM stage.controller_model_reference AS r
+ORDER BY r.canonical_model_code, r.source_model_evidence
 ON CONFLICT (model_code) DO UPDATE SET
     manufacturer = EXCLUDED.manufacturer,
-    manufacturer_model_code = EXCLUDED.manufacturer_model_code,
     model_name = EXCLUDED.model_name,
+    hardware_revision = EXCLUDED.hardware_revision,
     firmware_family = EXCLUDED.firmware_family,
     model_reference_url = EXCLUDED.model_reference_url,
     firmware_reference_url = EXCLUDED.firmware_reference_url,
     notes = EXCLUDED.notes;
 
--- Vendor-current firmware is guidance for setup. Vendors without a comparable
--- firmware-reference page simply have no current-reference row inserted here.
+-- Vendor-current firmware is optional setup guidance.
 INSERT INTO ref.controller_firmware_version (
-    controller_model_id,
-    firmware_version,
-    source_note,
-    is_current_recommended,
-    reference_url
+    controller_model_id, firmware_version, source_note,
+    is_current_recommended, reference_url
 )
-SELECT
+SELECT DISTINCT
     m.controller_model_id,
     r.reference_current_firmware,
     'Vendor current firmware reference at Controller Inventory bootstrap',
@@ -336,21 +312,18 @@ SELECT
     r.firmware_reference_url
 FROM stage.controller_model_reference AS r
 JOIN ref.controller_model AS m
-  ON m.model_code = r.source_model_evidence
+  ON m.model_code = r.canonical_model_code
 WHERE r.reference_current_firmware IS NOT NULL
   AND r.firmware_reference_url IS NOT NULL
 ON CONFLICT (controller_model_id, firmware_version) DO UPDATE SET
     is_current_recommended = true,
     reference_url = EXCLUDED.reference_url;
 
--- Every actually recorded workbook firmware version is retained regardless of
--- whether it appears on a current vendor page. Field verification is later.
+-- Every firmware value actually recorded in the workbook is retained under the
+-- corrected real model, regardless of current vendor-page listing.
 INSERT INTO ref.controller_firmware_version (
-    controller_model_id,
-    firmware_version,
-    source_note,
-    is_current_recommended,
-    reference_url
+    controller_model_id, firmware_version, source_note,
+    is_current_recommended, reference_url
 )
 SELECT DISTINCT
     m.controller_model_id,
@@ -363,7 +336,7 @@ FROM stage.controller_bootstrap AS b
 JOIN stage.controller_model_reference AS r
   ON r.source_model_evidence = b.model_evidence
 JOIN ref.controller_model AS m
-  ON m.model_code = b.model_evidence
+  ON m.model_code = r.canonical_model_code
 WHERE b.firmware_state_evidence = 'RECORDED'
   AND nullif(btrim(coalesce(b.firmware_evidence, '')), '') IS NOT NULL
 ON CONFLICT (controller_model_id, firmware_version) DO UPDATE SET
