@@ -5,12 +5,32 @@
 | Status | ACTIVE ARCHITECTURE DECISION |
 | Issue | #110 |
 | Primary Controller UX | Purpose-built Controller application |
-| Directus role | Simple table/reference maintenance only |
+| Primary retained Directus value | Authentication and authorization |
+| Secondary Directus use | Simple table/reference maintenance only |
 | Controller delete policy | No normal Controller delete |
 
 ## Decision
 
-Directus remains useful in the MSB Production Database for relatively simple maintenance tasks where the operator is editing one table at a time, optionally with a small number of lookups or boolean controls.
+The primary retained value of Directus in the MSB Production Database is **authentication and authorization**.
+
+Directus provides the existing user identity, login/session, role/policy, and Manager authorization system. Purpose-built MSB applications should reuse that authority rather than invent a second user/permissions system.
+
+Operational UX does **not** need to be implemented in Directus merely because Directus authenticates the user.
+
+The intended architecture is:
+
+```text
+Directus
+  = login / identity / role-policy authority
+
+Purpose-built MSB applications
+  = operational user experience and workflow
+
+PostgreSQL
+  = data integrity, audit, constraints, and final authority
+```
+
+Directus may still be used for relatively simple maintenance tasks where the operator is editing one table at a time, optionally with a small number of lookups or boolean controls. That is a secondary convenience, not its primary architectural role.
 
 Accepted examples include:
 
@@ -20,9 +40,33 @@ Accepted examples include:
 - toggling boolean request/state fields such as `label_required` and `print_label`;
 - basic record notes and audit-aware metadata maintenance.
 
-The existing Display edit form is an acceptable example of this boundary. Its formatting and layout are limited and somewhat clunky, but it is operationally adequate for one-record metadata maintenance.
+The existing Display edit form is an acceptable example of this secondary boundary. Its formatting and layout are limited and somewhat clunky, but it is operationally adequate for one-record metadata maintenance.
 
 Directus is **not** the target operational UX once a task becomes a multi-table workflow.
+
+## Authentication / authorization boundary
+
+Purpose-built MSB applications should use the existing Directus identity/session/policy authority for access decisions.
+
+For Controller Management, the desired flow is:
+
+```text
+User authenticates through Directus identity/session
+        ↓
+Controller application resolves authenticated user
+        ↓
+Server verifies Manager authorization/policy
+        ↓
+Manager-only Add/Edit/Assign/Unassign controls become available
+        ↓
+Server verifies authorization again on every write request
+        ↓
+PostgreSQL constraints/audit remain final authority
+```
+
+The client-visible Edit button is never the security boundary. A hidden or visible button does not grant permission; every write must be authorized server-side.
+
+Do not grant broad write privileges to `fieldwiring_app` merely to enable browser editing.
 
 ## Custom-application threshold
 
@@ -37,11 +81,11 @@ A purpose-built application should own the UX when the operator must coordinate 
 - printing/label request workflow;
 - history or reconciliation views;
 - cross-links to operational tools;
-- application-specific permissions and commands.
+- application-specific commands.
 
-Controller Management is already beyond the Directus threshold.
+Controller Management is already beyond the Directus UX threshold.
 
-Work Orders are expected to cross the same threshold and should eventually become a purpose-built application rather than remain dependent on Directus as the primary UX.
+Work Orders are expected to cross the same threshold and should eventually become a purpose-built application while continuing to reuse the common authentication/authorization authority.
 
 ## Controller Management responsibility
 
@@ -62,7 +106,7 @@ The Controller application owns the normal operational experience for:
 
 The application may visually reuse successful Directus concepts such as grouped sections, readable lookups, booleans, and read-only audit fields, but it is not constrained by Directus layout or relation-model limitations.
 
-## Directus responsibility for Controller subsystem
+## Directus secondary CRUD responsibility
 
 Directus may remain available for simple Controller/reference-table maintenance where it behaves well, for example:
 
@@ -71,6 +115,8 @@ Directus may remain available for simple Controller/reference-table maintenance 
 - `ref.controller_firmware_version`;
 - simple individual `ref.controller` metadata fields if operationally useful;
 - simple boolean fields such as `print_label`.
+
+This CRUD capability is a convenience. It is not the Controller Management application.
 
 Do not require Directus to provide the Controller-to-Display assignment workspace or other complex Controller workflows.
 
@@ -92,9 +138,7 @@ The Controller application can work directly with the governed composite relatio
 
 The existing Controller/FieldWiring browser remains read-only until authenticated Manager write handling is implemented.
 
-Do not grant broad write privileges to `fieldwiring_app` simply to enable browser editing.
-
-Browser-native Controller editing must include a server-side authenticated Manager authorization check before any write operation. Client-side button visibility is not the security boundary.
+Browser-native Controller editing must include a server-side authenticated Manager authorization check before any write operation.
 
 The implementation should preserve:
 
@@ -114,4 +158,4 @@ This limitation is accepted for simple metadata maintenance and lookup tables. I
 
 Controller Management is complete when a Manager can use the purpose-built Controller application to perform the full operational workflow without raw SQL and without relying on Directus for multi-table coordination.
 
-Directus remains a supporting administration/reference tool, not the Controller Management application.
+Directus remains the shared authentication/authorization authority and may continue as a secondary simple-record administration tool where useful.
