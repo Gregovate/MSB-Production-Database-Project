@@ -1,12 +1,12 @@
 /* ============================================================================
 Object:       FieldWiring application least-privilege grants
 Filename:     grant_fieldwiring_app.sql
-Revision:     2026-08-22 V0.1.0
+Revision:     2026-08-30 V0.2.0
 
 Purpose:
   Grant the existing login role fieldwiring_app only the read access required
-  by the FieldWiring production browser/API. This script does not create the
-  login or store its password.
+  by the FieldWiring production browser/API, including the read-only permanent
+  Controller Inventory browser.
 
 Security contract:
   - FieldWiring is read-only.
@@ -15,11 +15,7 @@ Security contract:
   - The application also opens every PostgreSQL session as read-only.
   - default_transaction_read_only is set on the login as an independent DB
     backstop.
-
-Relations are intentionally enumerated from the production application SQL in:
-  repository.py
-  wiring_data.py
-  wiring_dmx_source.py
+  - No stage.controller_* bootstrap relation is granted.
 ============================================================================ */
 
 BEGIN;
@@ -43,6 +39,13 @@ GRANT SELECT ON
     ref.stage,
     ref.lor_scene,
     ref.lor_scene_display,
+    ref.person,
+    ref.controller,
+    ref.controller_model,
+    ref.controller_status,
+    ref.controller_firmware_version,
+    ref.controller_display,
+    ref.controller_firmware_history,
     lor_snap.v_current_props,
     lor_snap.v_current_previews,
     lor_snap.v_current_scenes,
@@ -55,5 +58,5 @@ TO fieldwiring_app;
 COMMIT;
 
 SELECT
-    '2026-08-22-fieldwiring-app-grants-v0.1.0' AS applied_revision,
+    '2026-08-30-fieldwiring-app-grants-v0.2.0' AS applied_revision,
     current_user AS applied_by;
