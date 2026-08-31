@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS stage.controller_bootstrap (
     stage_scene_evidence text,
     park_location_evidence text,
     for_what_evidence text,
+    v7_match_state text,
+    v7_match_type text,
+    v7_match_count integer,
 
     controller_model_id integer,
     year_deployed integer,
@@ -60,6 +63,9 @@ CREATE TABLE IF NOT EXISTS stage.controller_bootstrap (
     ),
     CONSTRAINT ck_controller_bootstrap_order CHECK (
         bootstrap_order IS NULL OR bootstrap_order > 0
+    ),
+    CONSTRAINT ck_controller_bootstrap_v7_match_count CHECK (
+        v7_match_count IS NULL OR v7_match_count >= 0
     ),
     CONSTRAINT uq_controller_bootstrap_order UNIQUE (bootstrap_order),
     CONSTRAINT uq_controller_bootstrap_proposed_id UNIQUE (proposed_controller_id)
