@@ -117,6 +117,7 @@ name_matches AS (
 )
 SELECT
     b.controller_bootstrap_id,
+    b.source_file,
     b.source_row_num,
     b.display_name_evidence,
     b.network_evidence,
@@ -124,9 +125,13 @@ SELECT
     b.model_evidence,
     b.firmware_evidence,
     b.firmware_state_evidence,
+    b.controller_type_evidence,
     b.stage_scene_evidence,
     b.park_location_evidence,
     b.for_what_evidence,
+    b.v7_match_state,
+    b.v7_match_type,
+    b.v7_match_count,
     b.controller_model_id,
     coalesce(dr.serves_count, 0) AS serves_count,
     dr.serves_displays,
