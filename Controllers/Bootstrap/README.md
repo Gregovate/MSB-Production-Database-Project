@@ -1,23 +1,44 @@
 # Controller Bootstrap Source Loader
 
-The initial Controller Inventory reconstruction uses a generated reconciliation CSV created from:
+The initial Controller Inventory reconstruction used a generated reconciliation CSV created from the Controller Inventory workbook and the approved V7/LOR comparison material.
+
+The original bootstrap loaded 177 deployed-controller candidates into temporary `stage.*` objects. Those stage objects were later removed after permanent Controller Inventory promotion.
+
+## Preserved Recovery Evidence — 2026-08-31
+
+During FieldWiring integration review, a permanent-model gap was found: the first promotion preserved physical `controller_id` and Controller-to-Display relationships, but did not carry the physical controller's reviewed Network / Unit-ID / address configuration into `ref.controller`.
+
+The original workbook was re-opened and reconciled against the accepted permanent `controller_id` sequence. The resulting 177-row recovery evidence is now preserved at:
 
 ```text
-Controller Inventory & Testing 2026(7).xlsx
-lor_output_v7_scene(20260830-185521).db
+Controllers/Bootstrap/Evidence/controller_programmed_configuration_recovery_20260831.csv
 ```
 
-The current CSV contains 177 deployed-controller candidates.
+That file preserves, per permanent Controller ID:
 
-`load_controller_reconciliation_csv.py` validates the CSV before any database write.
+- original Excel row number;
+- original controller/display name evidence;
+- original Network evidence;
+- original Unit-ID/address evidence;
+- normalized current LOR Network;
+- First UID, UID Count, and calculated ending UID where applicable;
+- management IP for the nine E1.31 controllers represented in the workbook;
+- canonical permanent model code; and
+- the original `For What` grouping evidence needed to distinguish repeated-address physical controllers.
 
-Default mode:
+The permanent database recovery is implemented by:
 
 ```text
-python load_controller_reconciliation_csv.py controller_reconciliation_20260830.csv
+Controllers/Database/014_restore_controller_programmed_configuration.sql
 ```
 
-Expected current output includes:
+Do not delete this recovery evidence after migration. It is the durable audit bridge between the original physical inventory workbook and the permanent Controller IDs.
+
+## Historical Loader
+
+`load_controller_reconciliation_csv.py` validated the original generated bootstrap CSV before temporary stage writes.
+
+Historical validation output was:
 
 ```text
 rows=177
@@ -29,13 +50,4 @@ mode=VALIDATE_ONLY
 database_writes=0
 ```
 
-To load only the temporary staging table after database script 001 is installed:
-
-```text
-set CONTROLLER_DATABASE_DSN=<secured PostgreSQL DSN>
-python load_controller_reconciliation_csv.py controller_reconciliation_20260830.csv --apply
-```
-
-`--apply` writes only `stage.controller_bootstrap`; it allocates zero permanent Controller IDs.
-
-Reloading the same source file/row updates source-evidence columns without replacing operator review state, derived year, permanent Display relationships, or proposed Controller-ID order.
+The original `--apply` workflow wrote only `stage.controller_bootstrap` and allocated zero permanent Controller IDs. It is retained as historical bootstrap tooling; the permanent Controller Inventory is now the operational authority.
