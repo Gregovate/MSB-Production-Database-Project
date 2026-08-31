@@ -5,12 +5,15 @@ Issue: #110
 Run only AFTER:
   - stage-only bootstrap/review/order is complete and accepted;
   - stage.controller_model_reference is installed/reviewed;
-  - 002_create_ref_controller_sandbox.sql has created empty ref.controller*.
+  - 002_create_ref_controller_sandbox.sql has created the model/firmware catalog;
+  - 002b_create_ref_controller_core.sql has created empty physical-controller tables.
 
 Model rule:
   - staged model_evidence is source provenance only;
   - stage.controller_model_reference resolves it to canonical_model_code;
-  - permanent ref.controller_model uses corrected vendor model identities/names.
+  - permanent ref.controller_model uses corrected vendor model identities/names;
+  - hardware_revision is copied to the individual physical controller, never
+    generalized onto every controller sharing the same model.
 
 Firmware rule:
   - RECORDED workbook firmware becomes installed firmware with state
@@ -152,7 +155,7 @@ BEGIN
     END IF;
 
     FOR r IN
-        SELECT b.*, mr.canonical_model_code
+        SELECT b.*, mr.canonical_model_code, mr.hardware_revision
         FROM stage.controller_bootstrap AS b
         JOIN stage.controller_model_reference AS mr
           ON mr.source_model_evidence = b.model_evidence
@@ -190,6 +193,7 @@ BEGIN
         INSERT INTO ref.controller (
             controller_model_id,
             controller_status_id,
+            hardware_revision,
             installed_firmware_version_id,
             firmware_verification_state,
             year_deployed,
@@ -201,6 +205,7 @@ BEGIN
         VALUES (
             v_model_id,
             v_status_id,
+            r.hardware_revision,
             v_firmware_id,
             v_firmware_state,
             r.year_deployed,
