@@ -40,6 +40,46 @@ Network, Unit ID, Unit-ID range, IP address, and universe remain mutable. None i
 
 Intentional duplicate addresses remain valid.
 
+## LOR Unit-ID Range Rule
+
+For a physical LOR controller that uses more than one Unit ID, the programmed Unit IDs are contiguous in hexadecimal order.
+
+Therefore the permanent current-configuration model should store a machine-readable range rather than only a free-text value:
+
+```text
+lor_network
+uid_start
+uid_end
+```
+
+For a single-UID controller:
+
+```text
+uid_start = uid_end
+```
+
+For a multi-UID controller, every Unit ID from `uid_start` through `uid_end` is part of the controller's programmed range. The range count is derived from the inclusive hexadecimal interval:
+
+```text
+uid_count = uid_end - uid_start + 1
+```
+
+Examples:
+
+```text
+Pixie2D   Aux H   01-02   -> 2 contiguous Unit IDs
+Pixie4D   Aux N   21-24   -> 4 contiguous Unit IDs
+Pixie8D   Aux I   50-57   -> 8 contiguous Unit IDs
+Pixie16D  Aux N   30-3F   -> 16 contiguous Unit IDs
+CTB32     Aux I   BA-BA   -> one Unit ID, displayed as BA
+```
+
+The database should store normalized numeric values suitable for comparison/range arithmetic and render them to operators in uppercase hexadecimal form with appropriate leading zero formatting. Do not make a text value such as `21-24` the only authoritative representation.
+
+If source evidence supplies the first Unit ID plus a known programmed Unit-ID count, `uid_end` can be derived. If source evidence supplies the first and last Unit IDs, the count can be derived. In either case the resulting range must be contiguous.
+
+This rule does not make Unit ID/range unique. Separate permanent controllers may intentionally carry the same Network + Unit-ID range.
+
 ## Why Current Programmed Configuration Must Be Stored
 
 A controller does not operate merely because the Production Database knows its `controller_id` and Display assignment. The physical controller has its own programmed configuration.
