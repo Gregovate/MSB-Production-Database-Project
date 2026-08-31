@@ -126,7 +126,7 @@ BEGIN
         v_expected_id := 1000 + r.bootstrap_order;
         v_firmware_id := NULL;
 
-        IF nullif(btrim(coalesce(r.firmware_evidence, '')), '') IS NOT NULL THEN
+        IF r.firmware_state_evidence = 'RECORDED' THEN
             SELECT controller_firmware_version_id
               INTO v_firmware_id
             FROM ref.controller_firmware_version
@@ -135,7 +135,7 @@ BEGIN
 
             IF v_firmware_id IS NULL THEN
                 RAISE EXCEPTION
-                    'Firmware % for model id % is unresolved for bootstrap row %',
+                    'Recorded firmware % for model id % is unresolved for bootstrap row %',
                     r.firmware_evidence, r.controller_model_id, r.source_row_num;
             END IF;
         END IF;
@@ -196,7 +196,7 @@ LEFT JOIN LATERAL (
       AND x.relationship_type = 'WIRING_SOURCE'
 ) AS ws ON true;
 
--- Initial firmware evidence becomes both current installed firmware and history.
+-- Only firmware source values already classified as RECORDED become history.
 INSERT INTO ref.controller_firmware_history (
     controller_id,
     controller_firmware_version_id,
@@ -212,7 +212,7 @@ JOIN stage.controller_bootstrap AS b
 JOIN ref.controller_firmware_version AS fv
   ON fv.controller_model_id = b.controller_model_id
  AND fv.firmware_version = btrim(b.firmware_evidence)
-WHERE nullif(btrim(coalesce(b.firmware_evidence, '')), '') IS NOT NULL;
+WHERE b.firmware_state_evidence = 'RECORDED';
 
 -- Final transactional assertions.
 DO $assertions$
