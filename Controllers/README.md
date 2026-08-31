@@ -46,22 +46,19 @@ stage.v_controller_bootstrap_review
 
 No permanent `controller_id` exists in stage.
 
-Permanent-shaped Controller Inventory objects are isolated in `ref.controller*` and may be reset while this subsystem remains experimental. Existing production tables are FK targets only and must not depend on `ref.controller*` during this phase.
+**The entire initial reconstruction, Display resolution, year backfill, duplicate-address review, and proposed 1001+ ordering is completed in `stage.*` before `ref.controller*` is created.**
 
-## Database Scripts
+Permanent-shaped Controller Inventory objects are created only after the staged set/order is accepted. Existing production tables are FK targets only and must not depend on `ref.controller*` during the experimental phase.
 
-Run individually and read the header before execution:
+## Database Scripts — Current Sequence
+
+### Phase A — Stage-only reconstruction
 
 1. `Database/001_create_stage_controller_bootstrap.sql`
    - creates the disposable staging/review layer
    - allocates no controller IDs
 
-2. `Database/002_create_ref_controller_sandbox.sql`
-   - creates isolated permanent-shaped Controller Inventory tables
-   - seeds current known model codes and controller statuses
-   - `controller_id` identity starts at 1001
-
-3. Load the generated reconciliation CSV with:
+2. Validate and then load the generated reconciliation CSV with:
 
    ```text
    Bootstrap/load_controller_reconciliation_csv.py
@@ -69,38 +66,49 @@ Run individually and read the header before execution:
 
    Default mode is validation only. `--apply` writes **stage only**.
 
-4. `Database/003_prepare_controller_bootstrap.sql`
-   - resolves canonical model rows
+3. `Database/003_prepare_controller_bootstrap.sql`
+   - requires only the stage tables plus existing `ref.display`
    - auto-links only unique exact permanent Display-name matches
    - derives `year_deployed` from the earliest assigned `ref.display.year_built`
-   - creates firmware catalog rows only for source values classified `RECORDED`
    - creates the review view and order-preparation function
+   - writes only `stage.*`
    - allocates no controller IDs
 
-5. Use `Application/` to review the staged candidates.
-   - add/remove permanent `display_id` relationships
-   - resolve model/year
-   - preserve repeated-address physical controllers separately
-   - add reviewed `WIRING_SOURCE` relationship where required
-   - mark candidates READY only after blockers are cleared
+4. `Database/005_validate_controller_bootstrap.sql`
+   - stage-only read/report
+   - shows unresolved Display/year rows
+   - shows firmware evidence state
+   - exposes repeated Network/UID groups without collapsing them
 
-6. From the application, **Prepare 1001+ Order**.
-   - this writes only `bootstrap_order` / `proposed_controller_id` in stage
+5. Resolve the remaining staging review cases. This may be done through controlled SQL first and then through `Application/` once its stage-only deployment is accepted.
+
+6. Run `stage.prepare_controller_bootstrap_order()` only after all physical controller rows are READY/SKIPPED.
+   - writes only `bootstrap_order` / `proposed_controller_id` in stage
    - no permanent ID is allocated
 
-7. `Database/005_validate_controller_bootstrap.sql`
-   - review the complete proposed chronological order
-   - confirm zero unresolved candidates/blockers
+7. Run `Database/005_validate_controller_bootstrap.sql` again and review the complete oldest-to-newest proposed 1001+ order.
 
-8. `Database/004_promote_controller_bootstrap.sql`
+### Phase B — Permanent-shaped experimental Controller Inventory
+
+Only after Phase A is accepted:
+
+8. `Database/002_create_ref_controller_sandbox.sql`
+   - creates isolated permanent-shaped Controller Inventory tables
+   - seeds accepted current model codes and controller statuses
+   - leaves `ref.controller` empty
+   - `controller_id` identity is configured to start at 1001
+
+9. `Database/004_promote_controller_bootstrap.sql`
    - **explicit controlled gate; not exposed in the browser**
+   - resolves staged model evidence to `ref.controller_model`
+   - creates firmware catalog rows only for source values classified `RECORDED`
    - requires empty `ref.controller`
    - restarts identity at 1001
    - promotes all READY rows in one transaction
    - verifies every generated ID equals the reviewed proposed ID
    - any mismatch rolls back the entire transaction
 
-9. Run `Database/005_validate_controller_bootstrap.sql` again.
+10. Perform post-promotion validation before permanent Controller identities are accepted.
 
 ## Experimental Reset
 
