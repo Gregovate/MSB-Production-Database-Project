@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS ref.controller (
     serial_number text,
     year_deployed integer,
     current_location_code text,
-    is_display_attached boolean NOT NULL DEFAULT false,
+    is_display_attached boolean,
     verification_state text NOT NULL DEFAULT 'ENGINEERING_ACCEPTED',
     notes text,
 
