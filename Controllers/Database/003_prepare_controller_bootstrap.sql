@@ -68,7 +68,8 @@ FROM derived AS d
 WHERE d.controller_bootstrap_id = b.controller_bootstrap_id
   AND b.year_deployed IS NULL;
 
--- Normalize known firmware into the controlled catalog without guessing versions.
+-- Normalize only source values already classified as real recorded versions.
+-- Values such as blank, ???, and New remain UNKNOWN_OR_VERIFY.
 INSERT INTO ref.controller_firmware_version (
     controller_model_id,
     firmware_version,
@@ -80,6 +81,7 @@ SELECT DISTINCT
     'Controller Inventory & Testing 2026(7) bootstrap evidence'
 FROM stage.controller_bootstrap AS b
 WHERE b.controller_model_id IS NOT NULL
+  AND b.firmware_state_evidence = 'RECORDED'
   AND nullif(btrim(coalesce(b.firmware_evidence, '')), '') IS NOT NULL
 ON CONFLICT (controller_model_id, firmware_version) DO NOTHING;
 
@@ -121,6 +123,7 @@ SELECT
     b.uid_evidence,
     b.model_evidence,
     b.firmware_evidence,
+    b.firmware_state_evidence,
     b.stage_scene_evidence,
     b.park_location_evidence,
     b.for_what_evidence,
