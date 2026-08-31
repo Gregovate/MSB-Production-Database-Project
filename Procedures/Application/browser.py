@@ -26,5 +26,10 @@ def procedure_js() -> Response:
     return send_file(BASE_DIR / "procedure.js", mimetype="application/javascript")
 
 
+@app.get("/static/analytics.js")
+def analytics_js() -> Response:
+    return send_file(BASE_DIR / "static" / "analytics.js", mimetype="application/javascript")
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "8792")), debug=False)
