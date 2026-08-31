@@ -19,6 +19,7 @@ SELECT
     ) AS config_recorded_unverified
 FROM ref.controller;
 
+-- Detailed controller spot-checks for repeated-address and multi-controller cases.
 SELECT
     c.controller_id,
     m.model_code,
@@ -40,15 +41,38 @@ JOIN ref.controller_model m
   ON m.controller_model_id = c.controller_model_id
 WHERE c.controller_id IN (
     1015,1016,
+    1034,1035,
     1058,1059,1060,1061,
-    1112,1113,
-    1134,1135,1136,
+    1090,1091,1092,1093,1094,1095,
+    1112,1113,1117,
+    1134,1135,1136,1138,1139,1140,
     1141,1142,
     1143,1144,
     1163,1164,
     1176
 )
 ORDER BY c.controller_id;
+
+-- Explicitly show every production Pixie4D/Pixie8D/Pixie16D range.
+SELECT
+    c.controller_id,
+    m.model_code,
+    c.lor_network,
+    upper(lpad(to_hex(c.lor_uid_start::integer), 2, '0')) AS first_uid,
+    c.lor_uid_count,
+    upper(lpad(to_hex(c.lor_uid_end::integer), 2, '0')) AS last_uid,
+    m.lor_uid_capacity
+FROM ref.controller c
+JOIN ref.controller_model m
+  ON m.controller_model_id = c.controller_model_id
+WHERE m.model_code IN ('Pixie4D','Pixie8D','Pixie16D')
+ORDER BY
+    CASE m.model_code
+        WHEN 'Pixie4D' THEN 4
+        WHEN 'Pixie8D' THEN 8
+        WHEN 'Pixie16D' THEN 16
+    END,
+    c.controller_id;
 
 SELECT
     m.model_code,
@@ -74,3 +98,12 @@ WHERE c.lor_uid_count IS NOT NULL
       OR c.lor_uid_start < 1
       OR c.lor_uid_end > 240
   );
+
+-- For these Pixie families the programmed UID range must occupy the full model range.
+SELECT
+    count(*) AS invalid_pixie_exact_uid_count_rows
+FROM ref.controller c
+JOIN ref.controller_model m
+  ON m.controller_model_id = c.controller_model_id
+WHERE m.model_code IN ('Pixie4D','Pixie8D','Pixie16D')
+  AND c.lor_uid_count IS DISTINCT FROM m.lor_uid_capacity;
