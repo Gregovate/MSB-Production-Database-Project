@@ -19,6 +19,8 @@ SELECT
     count(*) FILTER (WHERE bootstrap_order IS NOT NULL) AS ordered_rows
 FROM stage.controller_bootstrap;
 
+-- Actual unresolved data blockers only. REVIEW_REQUIRED by itself is a workflow
+-- state; blocker-free rows are intentionally omitted from this result set.
 SELECT
     controller_bootstrap_id,
     source_row_num,
@@ -35,9 +37,16 @@ SELECT
     review_state,
     review_notes
 FROM stage.v_controller_bootstrap_review
-WHERE review_state = 'REVIEW_REQUIRED'
-   OR cardinality(blockers) > 0
+WHERE cardinality(blockers) > 0
 ORDER BY source_row_num;
+
+SELECT
+    count(*) FILTER (WHERE cardinality(blockers) = 0) AS blocker_free_rows,
+    count(*) FILTER (WHERE cardinality(blockers) > 0) AS blocked_rows,
+    count(*) FILTER (WHERE 'DISPLAY_NOT_RESOLVED' = ANY(blockers)) AS display_unresolved_rows,
+    count(*) FILTER (WHERE 'YEAR_DEPLOYED_NOT_RESOLVED' = ANY(blockers)) AS year_unresolved_rows,
+    count(*) FILTER (WHERE 'MODEL_NOT_RECORDED' = ANY(blockers)) AS model_unresolved_rows
+FROM stage.v_controller_bootstrap_review;
 
 SELECT
     bootstrap_order,
