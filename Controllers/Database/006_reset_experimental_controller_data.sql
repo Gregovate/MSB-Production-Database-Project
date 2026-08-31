@@ -70,8 +70,7 @@ ALTER TABLE ref.controller ALTER COLUMN controller_id RESTART WITH 1001;
 COMMIT;
 
 SELECT
-    count(*) AS controller_rows_after_reset,
-    count(*) FILTER (WHERE bootstrap_order IS NOT NULL) AS staged_ordered_rows
-FROM ref.controller
-CROSS JOIN stage.controller_bootstrap
-GROUP BY (SELECT count(*) FROM ref.controller);
+    (SELECT count(*) FROM ref.controller) AS controller_rows_after_reset,
+    (SELECT count(*)
+       FROM stage.controller_bootstrap
+      WHERE bootstrap_order IS NOT NULL) AS staged_ordered_rows;
