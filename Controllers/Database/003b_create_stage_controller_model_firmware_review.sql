@@ -3,8 +3,15 @@ Controller Inventory model/firmware normalization — STAGE ONLY
 Issue: #110
 
 Purpose:
-  Preserve workbook model/firmware evidence exactly while adding a separate
-  manufacturer-reference layer for canonical model naming and firmware review.
+  Preserve workbook model/firmware evidence exactly while adding canonical
+  manufacturer model names and vendor firmware reference metadata.
+
+Operating rule:
+  - Existing firmware values are recorded evidence, not powered verification.
+  - Firmware verification does NOT block Controller Inventory creation.
+  - RECORDED source values remain RECORDED_UNVERIFIED until field setup.
+  - New / ??? / blank remain UNKNOWN until field setup.
+  - Vendor current/listed firmware is reference information only.
 
 This script:
   - writes only stage.* objects;
@@ -55,88 +62,89 @@ INSERT INTO stage.controller_model_reference (
 )
 VALUES
     ('32LD-G3', 'Light-O-Rama', 'CTB32LDg3',
-     'CTB32LDg3 Generation 3 commercial controller board',
+     'CTB32LDg3 Generation 3 Controller Board (16 channels)',
      'CTB32LG3', '1.17',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Workbook shorthand normalized to manufacturer board designation.'),
+     'Workbook shorthand normalized to the manufacturer board designation.'),
 
     ('AlphaPix Flex 48', 'HolidayCoro', 'AlphaPix Evolution Flex 48',
      'AlphaPix Evolution Flex 48-Port Pixel Controller',
      'AlphaPix Evolution', NULL,
-     'https://www.holidaycoro.com/alphapix',
+     'https://www.holidaycoro.com/48-Output-Pixel-Ready2Run-Assembled-Controller-p/952-8.htm',
      'VENDOR_REFERENCE',
-     'Two staged rows have no recorded firmware; do not infer a version.'),
+     'Two staged controllers have no recorded firmware. Firmware remains unknown until setup.'),
 
     ('CCB100', 'Light-O-Rama', 'CCB100',
-     'CCB100 Cosmic Color Bulbs/Pixels Controller',
+     'CCB100 Cosmic Color Bulbs/Pixels Controller (Original RGB smart pixels - 2 ports)',
      'CCB', '1.21',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Original RGB smart-pixel controller, two ports.'),
+     'Existing recorded firmware is retained even if not present on the current vendor download page.'),
 
     ('CF50D', 'Light-O-Rama', 'CF50D',
-     'CF50D Cosmic Color Flood 50 Watt RGB/UV Controller',
+     'CF50D Cosmic Color Flood (50 watt RGB/UV smart pixel flood with controller)',
      'CF50D', '1.05',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED', NULL),
 
     ('CMB24D', 'Light-O-Rama', 'CMB24D',
-     'CMB24D 24-Channel RGB Dumb Pixel Controller Board',
+     'CMB24D Pixel Controller Board (24 channels / 8 RGB dumb pixels)',
      'CMB24D', '1.05',
      'https://store.lightorama.com/pages/controller-firmware-updates',
-     'REFERENCE_MATCHED', NULL),
+     'REFERENCE_MATCHED',
+     'Existing recorded firmware is retained pending powered setup verification.'),
 
     ('CTB04-G3', 'Light-O-Rama', 'CTB04Dg3',
-     'CTB04Dg3 Generation 3 Four-Channel Controller',
+     'CTB04Dg3 Generation 3 Controller (4 channels)',
      'CTB04Dg3', '1.01',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Workbook shorthand normalized to manufacturer designation.'),
+     'Workbook shorthand normalized to the manufacturer designation.'),
 
     ('CTB32LG3', 'Light-O-Rama', 'CTB32/LOR160x-G3',
-     'CTB32 / LOR160x Generation 3 Controller Family',
+     'CTB32 / LOR160x Generation 3 Professional Controller Family (16 channels)',
      'CTB32LG3', '1.17',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'FAMILY_ONLY',
-     'CTB32LG3 is the firmware family; exact physical product may be CTB32LDg3 board or LOR160x enclosure.'),
+     'CTB32LG3 is the firmware family. Exact board/enclosure variant may be refined during field setup without changing controller identity.'),
 
     ('Pixcon16', 'Light-O-Rama', 'PixCon16-MKII',
-     'PixCon16 MKII 16-Port Smart Pixel Controller Board',
+     'PixCon16 MKII Controller Board (RGB smart pixels - 16 ports)',
      'PixCon16 MKII', '2.0.13',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'All seven staged rows report firmware 2.0.13; LOR identifies 2.x firmware as MKII.'),
+     'All seven staged rows report firmware 2.0.13. LOR states firmware beginning with 2 identifies the MKII revision.'),
 
-    ('Pixie16', 'Light-O-Rama', 'Pixie16',
-     'Pixie16D Smart Pixel Controller Board (16 ports)',
+    ('Pixie16', 'Light-O-Rama', 'Pixie16D',
+     'Pixie16D Controller Board (RGB smart pixels - 16 ports)',
      'Pixie16D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Source label preserved; manufacturer firmware/board designation uses Pixie16D.'),
+     'Source firmware remains recorded-unverified until setup.'),
 
-    ('Pixie2', 'Light-O-Rama', 'Pixie2',
-     'Pixie2 / Cosmic Color Controller II (2 ports)',
+    ('Pixie2', 'Light-O-Rama', 'Pixie2D',
+     'Pixie2D / Cosmic Color Controller II (RGB smart pixels - 2 ports)',
      'Pixie2D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
      'Pixie2 is the marketed product name; Pixie2D is the board/firmware designation.'),
 
-    ('Pixie2D', 'Light-O-Rama', 'Pixie2',
-     'Pixie2 / Cosmic Color Controller II (2 ports)',
+    ('Pixie2D', 'Light-O-Rama', 'Pixie2D',
+     'Pixie2D / Cosmic Color Controller II (RGB smart pixels - 2 ports)',
      'Pixie2D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Preserve source label; do not infer first/second generation board revision.'),
+     'Preserve workbook source label while using the common manufacturer model.'),
 
-    ('Pixie4', 'Light-O-Rama', 'Pixie4',
-     'Pixie4D Smart Pixel Controller Board (4 ports)',
+    ('Pixie4', 'Light-O-Rama', 'Pixie4D',
+     'Pixie4D Controller Board (RGB smart pixels - 4 ports)',
      'Pixie4D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED', NULL),
 
-    ('Pixie8', 'Light-O-Rama', 'Pixie8',
-     'Pixie8D Smart Pixel Controller Board (8 ports)',
+    ('Pixie8', 'Light-O-Rama', 'Pixie8D',
+     'Pixie8D Controller Board (RGB smart pixels - 8 ports)',
      'Pixie8D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED', NULL)
@@ -171,49 +179,42 @@ SELECT
     o.firmware_evidence,
     o.firmware_state_evidence,
     o.controller_count,
+    CASE
+        WHEN o.firmware_state_evidence = 'RECORDED'
+            THEN 'RECORDED_UNVERIFIED'
+        ELSE 'UNKNOWN'
+    END AS setup_verification_state,
     mr.reference_current_firmware,
     CASE
         WHEN o.firmware_state_evidence <> 'RECORDED'
-            THEN 'UNKNOWN_OR_VERIFY'
-
+            THEN 'NOT_APPLICABLE'
+        WHEN mr.reference_current_firmware IS NULL
+            THEN 'NO_CURRENT_REFERENCE'
+        WHEN o.firmware_evidence = mr.reference_current_firmware
+            THEN 'CURRENT_REFERENCE_MATCH'
         WHEN o.model_evidence IN ('32LD-G3','CTB32LG3')
          AND o.firmware_evidence IN ('1.17','1.15','1.13','1.12','1.11','1.08','1.05')
-            THEN CASE WHEN o.firmware_evidence = mr.reference_current_firmware
-                      THEN 'OFFICIAL_CURRENT' ELSE 'OFFICIAL_LISTED' END
-
+            THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence = 'CTB04-G3'
          AND o.firmware_evidence = '1.01'
-            THEN 'OFFICIAL_CURRENT'
-
+            THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence = 'CF50D'
          AND o.firmware_evidence = '1.05'
-            THEN 'OFFICIAL_CURRENT'
-
+            THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence = 'CMB24D'
          AND o.firmware_evidence IN ('1.05','1.04','1.02')
-            THEN CASE WHEN o.firmware_evidence = '1.05'
-                      THEN 'OFFICIAL_CURRENT' ELSE 'OFFICIAL_LISTED' END
-
+            THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence = 'CCB100'
          AND o.firmware_evidence IN ('1.21','1.19','1.18','1.16','1.15')
-            THEN CASE WHEN o.firmware_evidence = '1.21'
-                      THEN 'OFFICIAL_CURRENT' ELSE 'OFFICIAL_LISTED' END
-
+            THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence = 'Pixcon16'
-         AND o.firmware_evidence = '2.0.13'
-            THEN 'OFFICIAL_CURRENT'
-
+         AND o.firmware_evidence IN ('2.0.13')
+            THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence IN ('Pixie2','Pixie2D','Pixie4','Pixie8','Pixie16')
          AND o.firmware_evidence IN ('1.12','1.11','1.10','1.09','1.08','1.07','1.06','1.05','1.04','1.03')
-            THEN CASE WHEN o.firmware_evidence = '1.12'
-                      THEN 'OFFICIAL_CURRENT' ELSE 'OFFICIAL_LISTED' END
-
-        WHEN (o.model_evidence = 'CMB24D' AND o.firmware_evidence = '1.10')
-          OR (o.model_evidence IN ('Pixie2','Pixie16') AND o.firmware_evidence = '1.17')
-            THEN 'REFERENCE_MISMATCH_REVIEW'
-
-        ELSE 'SOURCE_RECORDED_NOT_ON_CURRENT_REFERENCE'
-    END AS reference_status,
+            THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
+        ELSE 'NOT_LISTED_ON_CURRENT_VENDOR_PAGE'
+    END AS vendor_reference_status,
     mr.reference_url,
     mr.normalization_state,
     mr.notes
