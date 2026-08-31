@@ -1,4 +1,5 @@
 const searchInput = document.getElementById('controller-search');
+const stageFilter = document.getElementById('stage-filter');
 const statusFilter = document.getElementById('status-filter');
 const modelFilter = document.getElementById('model-filter');
 const assignmentFilter = document.getElementById('assignment-filter');
@@ -60,6 +61,7 @@ themeToggle.addEventListener('click', () => {
 function queryString() {
   const params = new URLSearchParams();
   if (searchInput.value.trim()) params.set('q', searchInput.value.trim());
+  if (stageFilter.value) params.set('stage_id', stageFilter.value);
   if (statusFilter.value) params.set('status', statusFilter.value);
   if (modelFilter.value) params.set('model', modelFilter.value);
   if (assignmentFilter.value) params.set('assignment', assignmentFilter.value);
@@ -68,18 +70,28 @@ function queryString() {
 
 function populateFilters(payload) {
   if (filtersLoaded) return;
+
+  for (const stage of payload.stages || []) {
+    const option = document.createElement('option');
+    option.value = stage.stage_id;
+    option.textContent = `${stage.stage_key} · ${stage.stage_name}`;
+    stageFilter.appendChild(option);
+  }
+
   for (const status of payload.statuses || []) {
     const option = document.createElement('option');
     option.value = status;
     option.textContent = status;
     statusFilter.appendChild(option);
   }
+
   for (const model of payload.models || []) {
     const option = document.createElement('option');
     option.value = model.model_code;
     option.textContent = `${model.model_code} — ${model.model_name}`;
     modelFilter.appendChild(option);
   }
+
   filtersLoaded = true;
 }
 
@@ -102,6 +114,7 @@ function renderControllerList(controllers) {
     const assignmentText = Number(item.assignment_count) === 0
       ? 'Unassigned'
       : item.display_names;
+    const stageText = item.stage_names || 'No Stage';
     const firmware = item.installed_firmware
       ? `${item.installed_firmware} · ${item.firmware_verification_state}`
       : item.firmware_verification_state;
@@ -112,6 +125,7 @@ function renderControllerList(controllers) {
           <span class="pill ${esc(item.controller_status_name)}">${esc(item.controller_status_name)}</span>
         </div>
         <div class="controller-model">${esc(item.model_code)}</div>
+        <div class="controller-stage">${esc(stageText)}</div>
         <div class="controller-meta">${esc(assignmentText)}</div>
         <div class="controller-meta">Firmware: ${esc(firmware)}</div>
       </div>`;
@@ -235,16 +249,27 @@ async function loadControllerDetail(controllerId) {
   }
 }
 
+function clearFilters() {
+  searchInput.value = '';
+  stageFilter.value = '';
+  statusFilter.value = '';
+  modelFilter.value = '';
+  assignmentFilter.value = '';
+  loadControllers();
+}
+
 function scheduleRefresh() {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(loadControllers, 220);
 }
 
 searchInput.addEventListener('input', scheduleRefresh);
+stageFilter.addEventListener('change', loadControllers);
 statusFilter.addEventListener('change', loadControllers);
 modelFilter.addEventListener('change', loadControllers);
 assignmentFilter.addEventListener('change', loadControllers);
 document.getElementById('refresh-button').addEventListener('click', loadControllers);
+document.getElementById('clear-filters-button').addEventListener('click', clearFilters);
 
 configureTheme();
 loadControllers();
