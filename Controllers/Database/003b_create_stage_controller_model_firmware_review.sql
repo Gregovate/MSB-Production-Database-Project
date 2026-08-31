@@ -4,14 +4,17 @@ Issue: #110
 
 Purpose:
   Preserve workbook model/firmware evidence exactly while adding canonical
-  manufacturer model names and vendor firmware reference metadata.
+  manufacturer model names and separate model-vs-firmware vendor references.
 
 Operating rule:
+  - Workbook model labels remain the short operational/source labels.
+  - canonical_model_name carries the full manufacturer/product name.
   - Existing firmware values are recorded evidence, not powered verification.
   - Firmware verification does NOT block Controller Inventory creation.
   - RECORDED source values remain RECORDED_UNVERIFIED until field setup.
   - New / ??? / blank remain UNKNOWN until field setup.
   - Vendor current/listed firmware is reference information only.
+  - A vendor product/model page is not assumed to be a firmware reference page.
 
 This script:
   - writes only stage.* objects;
@@ -29,7 +32,8 @@ CREATE TABLE IF NOT EXISTS stage.controller_model_reference (
     canonical_model_name text NOT NULL,
     firmware_family text,
     reference_current_firmware text,
-    reference_url text NOT NULL,
+    reference_url text,
+    firmware_reference_url text,
     normalization_state text NOT NULL,
     notes text,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -42,6 +46,12 @@ CREATE TABLE IF NOT EXISTS stage.controller_model_reference (
         normalization_state IN ('REFERENCE_MATCHED','FAMILY_ONLY','VENDOR_REFERENCE')
     )
 );
+
+-- Safe for an earlier experimental revision of this table.
+ALTER TABLE stage.controller_model_reference
+    ADD COLUMN IF NOT EXISTS firmware_reference_url text;
+ALTER TABLE stage.controller_model_reference
+    ALTER COLUMN reference_url DROP NOT NULL;
 
 DROP TRIGGER IF EXISTS trg_controller_model_reference_actor_insert
     ON stage.controller_model_reference;
@@ -58,26 +68,29 @@ FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 INSERT INTO stage.controller_model_reference (
     source_model_evidence, manufacturer, canonical_model_code,
     canonical_model_name, firmware_family, reference_current_firmware,
-    reference_url, normalization_state, notes
+    reference_url, firmware_reference_url, normalization_state, notes
 )
 VALUES
     ('32LD-G3', 'Light-O-Rama', 'CTB32LDg3',
      'CTB32LDg3 Generation 3 Controller Board (16 channels)',
      'CTB32LG3', '1.17',
      'https://store.lightorama.com/pages/controller-firmware-updates',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Workbook shorthand normalized to the manufacturer board designation.'),
+     'Workbook shorthand retained as source evidence; canonical name uses the manufacturer board designation.'),
 
     ('AlphaPix Flex 48', 'HolidayCoro', 'AlphaPix Evolution Flex 48',
      'AlphaPix Evolution Flex 48-Port Pixel Controller',
      'AlphaPix Evolution', NULL,
      'https://www.holidaycoro.com/48-Output-Pixel-Ready2Run-Assembled-Controller-p/952-8.htm',
+     NULL,
      'VENDOR_REFERENCE',
-     'Two staged controllers have no recorded firmware. Firmware remains unknown until setup.'),
+     'HolidayCoro product reference only. No equivalent vendor firmware-reference page is recorded. Two staged controllers have no firmware evidence; verify during setup.'),
 
     ('CCB100', 'Light-O-Rama', 'CCB100',
      'CCB100 Cosmic Color Bulbs/Pixels Controller (Original RGB smart pixels - 2 ports)',
      'CCB', '1.21',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
      'Existing recorded firmware is retained even if not present on the current vendor download page.'),
@@ -86,11 +99,13 @@ VALUES
      'CF50D Cosmic Color Flood (50 watt RGB/UV smart pixel flood with controller)',
      'CF50D', '1.05',
      'https://store.lightorama.com/pages/controller-firmware-updates',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED', NULL),
 
     ('CMB24D', 'Light-O-Rama', 'CMB24D',
      'CMB24D Pixel Controller Board (24 channels / 8 RGB dumb pixels)',
      'CMB24D', '1.05',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
      'Existing recorded firmware is retained pending powered setup verification.'),
@@ -99,19 +114,22 @@ VALUES
      'CTB04Dg3 Generation 3 Controller (4 channels)',
      'CTB04Dg3', '1.01',
      'https://store.lightorama.com/pages/controller-firmware-updates',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Workbook shorthand normalized to the manufacturer designation.'),
+     'Workbook shorthand retained as source evidence; canonical name uses the manufacturer designation.'),
 
     ('CTB32LG3', 'Light-O-Rama', 'CTB32/LOR160x-G3',
      'CTB32 / LOR160x Generation 3 Professional Controller Family (16 channels)',
      'CTB32LG3', '1.17',
      'https://store.lightorama.com/pages/controller-firmware-updates',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'FAMILY_ONLY',
-     'CTB32LG3 is the firmware family. Exact board/enclosure variant may be refined during field setup without changing controller identity.'),
+     'CTB32LG3 is the firmware family/source shorthand. Exact board/enclosure variant may be refined during setup without changing controller identity.'),
 
     ('Pixcon16', 'Light-O-Rama', 'PixCon16-MKII',
      'PixCon16 MKII Controller Board (RGB smart pixels - 16 ports)',
      'PixCon16 MKII', '2.0.13',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
      'All seven staged rows report firmware 2.0.13. LOR states firmware beginning with 2 identifies the MKII revision.'),
@@ -120,6 +138,7 @@ VALUES
      'Pixie16D Controller Board (RGB smart pixels - 16 ports)',
      'Pixie16D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
      'Source firmware remains recorded-unverified until setup.'),
 
@@ -127,12 +146,14 @@ VALUES
      'Pixie2D / Cosmic Color Controller II (RGB smart pixels - 2 ports)',
      'Pixie2D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
-     'Pixie2 is the marketed product name; Pixie2D is the board/firmware designation.'),
+     'Pixie2 is the short/marketed name; Pixie2D is the board/firmware designation.'),
 
     ('Pixie2D', 'Light-O-Rama', 'Pixie2D',
      'Pixie2D / Cosmic Color Controller II (RGB smart pixels - 2 ports)',
      'Pixie2D', '1.12',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED',
      'Preserve workbook source label while using the common manufacturer model.'),
@@ -141,11 +162,13 @@ VALUES
      'Pixie4D Controller Board (RGB smart pixels - 4 ports)',
      'Pixie4D', '1.12',
      'https://store.lightorama.com/pages/controller-firmware-updates',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED', NULL),
 
     ('Pixie8', 'Light-O-Rama', 'Pixie8D',
      'Pixie8D Controller Board (RGB smart pixels - 8 ports)',
      'Pixie8D', '1.12',
+     'https://store.lightorama.com/pages/controller-firmware-updates',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'REFERENCE_MATCHED', NULL)
 ON CONFLICT (source_model_evidence) DO UPDATE SET
@@ -155,6 +178,7 @@ ON CONFLICT (source_model_evidence) DO UPDATE SET
     firmware_family = EXCLUDED.firmware_family,
     reference_current_firmware = EXCLUDED.reference_current_firmware,
     reference_url = EXCLUDED.reference_url,
+    firmware_reference_url = EXCLUDED.firmware_reference_url,
     normalization_state = EXCLUDED.normalization_state,
     notes = EXCLUDED.notes;
 
@@ -188,6 +212,8 @@ SELECT
     CASE
         WHEN o.firmware_state_evidence <> 'RECORDED'
             THEN 'NOT_APPLICABLE'
+        WHEN mr.firmware_reference_url IS NULL
+            THEN 'NO_VENDOR_FIRMWARE_REFERENCE_PAGE'
         WHEN mr.reference_current_firmware IS NULL
             THEN 'NO_CURRENT_REFERENCE'
         WHEN o.firmware_evidence = mr.reference_current_firmware
@@ -208,14 +234,15 @@ SELECT
          AND o.firmware_evidence IN ('1.21','1.19','1.18','1.16','1.15')
             THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence = 'Pixcon16'
-         AND o.firmware_evidence IN ('2.0.13')
+         AND o.firmware_evidence = '2.0.13'
             THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         WHEN o.model_evidence IN ('Pixie2','Pixie2D','Pixie4','Pixie8','Pixie16')
          AND o.firmware_evidence IN ('1.12','1.11','1.10','1.09','1.08','1.07','1.06','1.05','1.04','1.03')
             THEN 'LISTED_ON_CURRENT_VENDOR_PAGE'
         ELSE 'NOT_LISTED_ON_CURRENT_VENDOR_PAGE'
     END AS vendor_reference_status,
-    mr.reference_url,
+    mr.reference_url AS model_reference_url,
+    mr.firmware_reference_url,
     mr.normalization_state,
     mr.notes
 FROM observed AS o
@@ -230,6 +257,8 @@ SELECT
     mr.canonical_model_name,
     mr.firmware_family,
     mr.reference_current_firmware,
+    mr.reference_url AS model_reference_url,
+    mr.firmware_reference_url,
     mr.normalization_state,
     count(b.controller_bootstrap_id) AS controllers,
     mr.notes
@@ -243,5 +272,7 @@ GROUP BY
     mr.canonical_model_name,
     mr.firmware_family,
     mr.reference_current_firmware,
+    mr.reference_url,
+    mr.firmware_reference_url,
     mr.normalization_state,
     mr.notes;
