@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS stage.controller_bootstrap (
     uid_evidence text,
     model_evidence text NOT NULL,
     firmware_evidence text,
+    firmware_state_evidence text NOT NULL DEFAULT 'UNKNOWN_OR_VERIFY',
     controller_type_evidence text,
     stage_scene_evidence text,
     park_location_evidence text,
@@ -50,6 +51,9 @@ CREATE TABLE IF NOT EXISTS stage.controller_bootstrap (
     CONSTRAINT uq_controller_bootstrap_source UNIQUE (source_file, source_row_num),
     CONSTRAINT ck_controller_bootstrap_review_state CHECK (
         review_state IN ('REVIEW_REQUIRED', 'READY', 'SKIPPED')
+    ),
+    CONSTRAINT ck_controller_bootstrap_firmware_state CHECK (
+        firmware_state_evidence IN ('RECORDED', 'UNKNOWN_OR_VERIFY')
     ),
     CONSTRAINT ck_controller_bootstrap_year CHECK (
         year_deployed IS NULL OR year_deployed BETWEEN 1980 AND 2100
