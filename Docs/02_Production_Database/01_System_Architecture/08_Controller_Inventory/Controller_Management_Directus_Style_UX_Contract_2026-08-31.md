@@ -2,21 +2,46 @@
 
 | Item | Value |
 |---|---|
-| Status | ACTIVE IMPLEMENTATION CONTRACT |
+| Status | SUPERSEDED AS DIRECTUS IMPLEMENTATION — FIELD/UX REQUIREMENTS RETAINED |
 | Issue | #110 |
-| Primary maintenance experience | Controller Inventory management UI |
-| Reference interaction model | Existing MSB Directus edit forms |
+| Current architecture authority | [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md) |
+| Primary maintenance experience | Browser-native Controller Inventory management UI |
+| Reference interaction model | Familiar grouped edit-form patterns used in MSB |
 | Delete policy | No normal Controller delete |
 
-## Purpose
+## Superseded Direction
 
-The Controller Management experience should deliberately resemble the Directus edit screens already used for MSB operational maintenance rather than inventing a second administration paradigm.
+This document originally described implementing the Controller operational workflow inside Directus. Live testing proved that approach unsuitable once the workflow crossed Controller facts, firmware, labels, and the many-to-many Controller-to-Display relationship.
 
-Operators/managers should see one Controller record at a time, grouped into clear sections, with governed lookup controls, booleans rendered as switches, relationship sections rendered as related-item workspaces, and audit fields visible but read-only.
+The accepted architecture is now:
 
-The Controller browser remains the normal discovery/browse experience. Management actions should open or transition into a form that feels consistent with Directus editing.
+```text
+Directus
+    -> login / identity / Manager policy authority
+    -> optional simple one-table/reference maintenance only
 
-## Form structure
+Controller Inventory browser
+    -> Add / Edit Controller
+    -> current programmed Network / UID / IP maintenance
+    -> Assign / Reassign / Unassign Displays
+    -> label request controls
+    -> operational Controller workflow
+
+PostgreSQL
+    -> constraints / audit / data integrity / final authority
+```
+
+The attempted Directus `display_assignments` / `firmware_history` reverse workspaces were removed after causing Controller item-detail failures. The cleanup preserved the legitimate composite key:
+
+```text
+PRIMARY KEY (controller_id, display_id)
+```
+
+Do not resume Directus O2M relationship-workspace work or add a surrogate relationship ID solely for Directus compatibility.
+
+The form structure and field requirements below remain useful as the browser-native Controller Management UX contract.
+
+## Browser-Native Form Structure
 
 ### Identification
 
@@ -35,19 +60,19 @@ This section records what the physical controller is currently programmed as. It
 
 - LOR Network
 - First UID — operator-facing uppercase hexadecimal input
-- Number of UIDs — decimal count
+- Number of UIDs — ordinary decimal count
 - Calculated UID Range — read-only presentation from generated `lor_uid_end`
 - Management IP
 - Programmed Configuration Verification State
-- Programmed Configuration Verified At — read-only unless governed verification workflow requires otherwise
+- Programmed Configuration Verified At — read-only unless a governed verification workflow explicitly updates it
 - Programmed Configuration Source Note
 
 Model rules remain enforced in PostgreSQL. The UI should help the operator by showing model UID capacity and any fixed-count requirement before save.
 
 ### Physical / Operational State
 
-- Current Location — controlled lookup to `ref.storage_location`
-- Display Attached — boolean switch / tri-state only if Directus supports preserving NULL cleanly
+- Current Location — controlled lookup to the accepted storage/location authority
+- Display Attached — boolean/tri-state as required by the stored fact
 - Controller Status — controlled lookup
 
 Stage is not edited here. Stage remains derived from current Display assignments.
@@ -57,15 +82,15 @@ Stage is not edited here. Stage remains derived from current Display assignments
 - Installed Firmware Version — controlled lookup constrained to the selected model
 - Firmware Verification State
 - Firmware Verified At
-- Firmware Verified By — related person, normally workflow-controlled/read-only
+- Firmware Verified By — workflow-controlled/read-only where appropriate
 - Firmware Verification Note
-- Firmware History — related records from `ref.controller_firmware_history`
+- Firmware History — presented from `ref.controller_firmware_history`
 
 Raw firmware-version IDs must not be the normal operator experience.
 
 ### Display Assignments
 
-Show current `ref.controller_display` relationships in a related-items section with:
+Show current `ref.controller_display` relationships with:
 
 - Display name / Display ID
 - derived Stage / Sub-stage context
@@ -74,7 +99,7 @@ Show current `ref.controller_display` relationships in a related-items section w
 - relationship notes
 - Open Field Wiring action when current wiring exists
 
-Required actions:
+Required browser-native actions:
 
 - Assign Display
 - Reassign / add additional Display
@@ -86,14 +111,14 @@ The assignment workflow must never infer permanent physical identity from Networ
 
 ### Labels
 
-- Label Required — boolean switch
-- Print Label — boolean switch / request flag
+- Label Required — boolean control
+- Print Label — boolean/request action
 - Label Template — controlled lookup to existing `ref.label_template`
 - Label Print Count — read-only
 - Last Printed — read-only
 - Last Printed By — read-only
 
-The management UI may set `print_label = true` before the external label service rework is complete. Actual printer handoff remains a separate integration step and must use the established MSB label subsystem.
+The Controller Management UI may set `print_label = true` before the external label-service rework is complete. Actual printer handoff remains a separate integration step and must use the established MSB label subsystem.
 
 ### Audit
 
@@ -106,11 +131,11 @@ Show but do not normally edit:
 - Updated By
 - Updated By Person
 
-Directus/user-aware audit behavior remains the established MSB hybrid audit contract.
+Existing MSB user-aware audit behavior remains the governing contract.
 
 ## Add Controller
 
-Add Controller should use the same section layout as Edit Controller.
+Add Controller uses the same browser-native section layout as Edit Controller.
 
 Minimum practical creation flow:
 
@@ -124,40 +149,32 @@ Minimum practical creation flow:
 
 The permanent `controller_id` remains PostgreSQL-generated and is never user-entered.
 
-## Directus consistency rules
+## Browser Consistency Rules
 
-Use the same interaction patterns already established elsewhere in MSB Directus:
+Use familiar MSB maintenance patterns where they improve usability:
 
 - human-readable relationship dropdowns instead of raw FK numbers;
 - grouped form sections;
 - read-only audit/system fields;
-- boolean switches for boolean facts;
-- normal Directus save/unsaved-change behavior;
-- Manager policy can CREATE/READ/UPDATE;
-- ordinary MSB read-only users remain READ-only;
+- clear boolean controls;
+- Save / Cancel behavior with unsaved-change protection;
+- Manager-only create/update/relationship commands;
+- ordinary MSB users remain read-only;
 - no normal Controller DELETE.
 
-Do not center this maintenance workflow on dashboards.
+These are interaction-pattern requirements, not a requirement to render the form inside Directus.
 
-## Relationship / metadata work required
+## Authentication / Authorization Rule
 
-The current Directus reconnaissance confirms the six Controller collections are registered and visible and the database role/policies already permit the intended CREATE/READ/UPDATE/no-DELETE model.
+The Controller browser must reuse the existing Directus login/session/Manager policy authority and verify Manager authorization server-side on every write.
 
-Remaining work is UI metadata and relationship configuration, including:
+A visible or hidden Edit button is not the security boundary.
 
-- configure `controller_model_id` as a model relation;
-- configure `controller_status_id` as a status relation;
-- configure `installed_firmware_version_id` as a firmware relation;
-- configure `current_location_code` as a location relation;
-- configure `label_template_id` as a label-template relation;
-- configure person/audit references appropriately;
-- surface programmed-configuration fields added after the original Controller metadata registration;
-- configure `controller_display` as a usable related-items assignment workspace;
-- organize field order/groups according to this contract.
+Do not make `fieldwiring_app` broadly writable merely to support the browser UI.
 
 ## Acceptance
 
-Controller Management is not complete until a Manager can perform, through the normal UI, all of the following without raw SQL:
+Controller Management is not complete until a Manager can perform, through the browser-native Controller Management UI, all of the following without raw SQL and without relying on Directus for multi-table coordination:
 
 - add an unassigned Controller;
 - edit its model/status/location and physical facts;
