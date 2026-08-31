@@ -2,13 +2,18 @@
 Controller Inventory initial bootstrap promotion
 Issue: #110
 
+Run only AFTER:
+  - stage-only bootstrap/review/order is complete and accepted;
+  - 002_create_ref_controller_sandbox.sql has created empty ref.controller*.
+
 SAFETY:
-  - This is the first permanent controller-ID allocation only.
-  - Requires every staging candidate to be READY or SKIPPED.
-  - Requires ref.controller and ref.controller_display to be empty.
+  - First permanent controller-ID allocation only.
+  - Requires every staging candidate READY or SKIPPED.
+  - Requires ref.controller and ref.controller_display empty.
   - Restarts controller identity at 1001 only because the table is empty.
-  - Inserts READY rows in reviewed bootstrap_order.
-  - Verifies every generated ID equals 1000 + bootstrap_order.
+  - Resolves staged model text to ref.controller_model at promotion time.
+  - Creates firmware catalog rows only for staged RECORDED versions.
+  - Verifies every generated ID equals 1000 + reviewed bootstrap_order.
   - Any mismatch/error aborts the entire transaction.
 ============================================================================ */
 
@@ -79,6 +84,18 @@ BEGIN
     END IF;
 
     SELECT count(*) INTO v_count
+    FROM stage.controller_bootstrap AS b
+    LEFT JOIN ref.controller_model AS m
+      ON m.model_code = b.model_evidence
+    WHERE b.review_state = 'READY'
+      AND m.controller_model_id IS NULL;
+    IF v_count <> 0 THEN
+        RAISE EXCEPTION
+            'Controller bootstrap has % READY rows whose model code is not present in ref.controller_model',
+            v_count;
+    END IF;
+
+    SELECT count(*) INTO v_count
     FROM (
         SELECT controller_bootstrap_id
         FROM stage.controller_bootstrap_display
@@ -93,7 +110,25 @@ BEGIN
 END
 $preflight$;
 
--- Safe here only because preflight proved ref.controller is empty.
+-- Normalize only real recorded firmware versions at the permanent-promotion gate.
+INSERT INTO ref.controller_firmware_version (
+    controller_model_id,
+    firmware_version,
+    source_note
+)
+SELECT DISTINCT
+    m.controller_model_id,
+    btrim(b.firmware_evidence),
+    'Controller Inventory & Testing 2026(7) bootstrap evidence'
+FROM stage.controller_bootstrap AS b
+JOIN ref.controller_model AS m
+  ON m.model_code = b.model_evidence
+WHERE b.review_state = 'READY'
+  AND b.firmware_state_evidence = 'RECORDED'
+  AND nullif(btrim(coalesce(b.firmware_evidence, '')), '') IS NOT NULL
+ON CONFLICT (controller_model_id, firmware_version) DO NOTHING;
+
+-- Safe only because preflight proved ref.controller is empty.
 ALTER TABLE ref.controller ALTER COLUMN controller_id RESTART WITH 1001;
 
 CREATE TEMP TABLE pg_temp.controller_bootstrap_promoted (
@@ -107,6 +142,7 @@ DECLARE
     v_controller_id bigint;
     v_expected_id bigint;
     v_status_id integer;
+    v_model_id integer;
     v_firmware_id integer;
 BEGIN
     SELECT controller_status_id INTO v_status_id
@@ -124,19 +160,29 @@ BEGIN
         ORDER BY bootstrap_order
     LOOP
         v_expected_id := 1000 + r.bootstrap_order;
-        v_firmware_id := NULL;
 
+        SELECT controller_model_id INTO v_model_id
+        FROM ref.controller_model
+        WHERE model_code = r.model_evidence;
+
+        IF v_model_id IS NULL THEN
+            RAISE EXCEPTION
+                'Model % is unresolved for bootstrap row %',
+                r.model_evidence, r.source_row_num;
+        END IF;
+
+        v_firmware_id := NULL;
         IF r.firmware_state_evidence = 'RECORDED' THEN
             SELECT controller_firmware_version_id
               INTO v_firmware_id
             FROM ref.controller_firmware_version
-            WHERE controller_model_id = r.controller_model_id
+            WHERE controller_model_id = v_model_id
               AND firmware_version = btrim(r.firmware_evidence);
 
             IF v_firmware_id IS NULL THEN
                 RAISE EXCEPTION
-                    'Recorded firmware % for model id % is unresolved for bootstrap row %',
-                    r.firmware_evidence, r.controller_model_id, r.source_row_num;
+                    'Recorded firmware % for model % is unresolved for bootstrap row %',
+                    r.firmware_evidence, r.model_evidence, r.source_row_num;
             END IF;
         END IF;
 
@@ -151,7 +197,7 @@ BEGIN
             print_label
         )
         VALUES (
-            r.controller_model_id,
+            v_model_id,
             v_status_id,
             v_firmware_id,
             r.year_deployed,
@@ -175,7 +221,6 @@ BEGIN
 END
 $promotion$;
 
--- Permanent M:N Display relationships.
 INSERT INTO ref.controller_display (
     controller_id,
     display_id,
@@ -196,25 +241,27 @@ LEFT JOIN LATERAL (
       AND x.relationship_type = 'WIRING_SOURCE'
 ) AS ws ON true;
 
--- Only firmware source values already classified as RECORDED become history.
 INSERT INTO ref.controller_firmware_history (
     controller_id,
     controller_firmware_version_id,
+    source_note,
     notes
 )
 SELECT
     p.controller_id,
     fv.controller_firmware_version_id,
-    'Initial Controller Inventory bootstrap evidence'
+    'Controller Inventory & Testing 2026(7) bootstrap evidence',
+    'Initial Controller Inventory bootstrap firmware evidence'
 FROM pg_temp.controller_bootstrap_promoted AS p
 JOIN stage.controller_bootstrap AS b
   ON b.controller_bootstrap_id = p.controller_bootstrap_id
+JOIN ref.controller_model AS m
+  ON m.model_code = b.model_evidence
 JOIN ref.controller_firmware_version AS fv
-  ON fv.controller_model_id = b.controller_model_id
+  ON fv.controller_model_id = m.controller_model_id
  AND fv.firmware_version = btrim(b.firmware_evidence)
 WHERE b.firmware_state_evidence = 'RECORDED';
 
--- Final transactional assertions.
 DO $assertions$
 DECLARE
     v_expected integer;
