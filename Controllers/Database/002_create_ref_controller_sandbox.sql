@@ -13,6 +13,9 @@ Model rule:
   - model_name is the full vendor model/product name.
   - Hardware revision is NOT a model-level fact; it belongs to the individual
     physical controller and is created later by 002b.
+  - device_family and display_assignment_capable distinguish managed show-control
+    hardware from hardware that actually participates in Controller-to-Display
+    assignment.
 
 Firmware rule:
   - Every workbook value classified RECORDED is retained exactly as recorded.
@@ -43,6 +46,7 @@ CREATE TABLE IF NOT EXISTS ref.controller_model (
     model_name text NOT NULL,
     firmware_family text,
     device_family text,
+    display_assignment_capable boolean NOT NULL DEFAULT true,
     model_reference_url text,
     firmware_reference_url text,
     notes text,
@@ -101,11 +105,15 @@ FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 
 -- One permanent row per corrected real vendor model. Multiple workbook aliases
 -- may intentionally resolve to one model (e.g. 32LD-G3 and CTB32LG3 -> CTB32).
+-- stage-only catalog additions may legitimately have zero bootstrap controller
+-- rows when MSB owns the hardware but it is not yet in the deployed workbook.
 INSERT INTO ref.controller_model (
     model_code,
     manufacturer,
     model_name,
     firmware_family,
+    device_family,
+    display_assignment_capable,
     model_reference_url,
     firmware_reference_url,
     notes
@@ -115,6 +123,8 @@ SELECT DISTINCT ON (r.canonical_model_code)
     r.manufacturer,
     r.canonical_model_name,
     r.firmware_family,
+    r.device_family,
+    COALESCE(r.display_assignment_capable, true),
     r.model_reference_url,
     r.firmware_reference_url,
     CASE
@@ -128,6 +138,8 @@ ON CONFLICT (model_code) DO UPDATE SET
     manufacturer = EXCLUDED.manufacturer,
     model_name = EXCLUDED.model_name,
     firmware_family = EXCLUDED.firmware_family,
+    device_family = EXCLUDED.device_family,
+    display_assignment_capable = EXCLUDED.display_assignment_capable,
     model_reference_url = EXCLUDED.model_reference_url,
     firmware_reference_url = EXCLUDED.firmware_reference_url,
     notes = EXCLUDED.notes;
@@ -195,9 +207,12 @@ FROM ref.controller_model;
 SELECT
     m.model_code,
     m.model_name,
+    m.device_family,
+    m.display_assignment_capable,
     count(fv.controller_firmware_version_id) AS firmware_versions
 FROM ref.controller_model AS m
 LEFT JOIN ref.controller_firmware_version AS fv
   ON fv.controller_model_id = m.controller_model_id
-GROUP BY m.controller_model_id, m.model_code, m.model_name
+GROUP BY m.controller_model_id, m.model_code, m.model_name,
+         m.device_family, m.display_assignment_capable
 ORDER BY m.model_code;
