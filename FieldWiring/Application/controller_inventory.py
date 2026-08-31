@@ -53,6 +53,9 @@ def controller_list(
             "m.model_name ILIKE %s OR "
             "coalesce(c.serial_number, '') ILIKE %s OR "
             "coalesce(c.current_location_code, '') ILIKE %s OR "
+            "coalesce(c.lor_network, '') ILIKE %s OR "
+            "coalesce(host(c.management_ip), '') ILIKE %s OR "
+            "coalesce(upper(lpad(to_hex(c.lor_uid_start::integer), 2, '0')), '') ILIKE upper(%s) OR "
             "EXISTS ("
             "  SELECT 1 "
             "  FROM ref.controller_display qcd "
@@ -67,7 +70,10 @@ def controller_list(
             ")"
             ")"
         )
-        params.extend([token, token, token, token, token, token, token, token])
+        params.extend([
+            token, token, token, token, token, token, token, token,
+            token, token, token,
+        ])
 
     if stage_id is not None:
         where.append(
@@ -107,11 +113,18 @@ def controller_list(
             m.manufacturer,
             m.model_name,
             m.device_family,
+            m.lor_uid_capacity,
             s.controller_status_name,
             c.hardware_revision,
             c.serial_number,
             c.year_deployed,
             c.current_location_code,
+            c.lor_network,
+            c.lor_uid_start,
+            c.lor_uid_count,
+            c.lor_uid_end,
+            host(c.management_ip) AS management_ip,
+            c.programmed_config_verification_state,
             c.firmware_verification_state,
             fv.firmware_version AS installed_firmware,
             c.verification_state,
@@ -190,7 +203,7 @@ def controller_list(
 
         cur.execute(
             """
-            SELECT model_code, model_name
+            SELECT model_code, model_name, lor_uid_capacity
             FROM ref.controller_model
             ORDER BY model_code
             """
@@ -240,12 +253,21 @@ def controller_detail(repo: Repository, controller_id: int) -> dict[str, Any] | 
                 m.model_name,
                 m.device_family,
                 m.display_assignment_capable,
+                m.lor_uid_capacity,
                 c.controller_status_id,
                 s.controller_status_name,
                 c.hardware_revision,
                 c.serial_number,
                 c.year_deployed,
                 c.current_location_code,
+                c.lor_network,
+                c.lor_uid_start,
+                c.lor_uid_count,
+                c.lor_uid_end,
+                host(c.management_ip) AS management_ip,
+                c.programmed_config_verification_state,
+                c.programmed_config_verified_at,
+                c.programmed_config_source_note,
                 c.is_display_attached,
                 c.verification_state,
                 c.firmware_verification_state,
