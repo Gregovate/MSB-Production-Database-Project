@@ -153,7 +153,8 @@ CREATE TABLE IF NOT EXISTS ref.controller_firmware_history (
     controller_firmware_history_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     controller_id bigint NOT NULL,
     controller_firmware_version_id integer NOT NULL,
-    verified_at timestamptz NOT NULL DEFAULT now(),
+    firmware_recorded_at timestamptz NOT NULL DEFAULT now(),
+    source_note text,
     notes text,
     created_at timestamptz NOT NULL DEFAULT now(),
     created_by text NOT NULL DEFAULT current_user,
@@ -169,33 +170,8 @@ CREATE TABLE IF NOT EXISTS ref.controller_firmware_history (
         REFERENCES ref.controller_firmware_version(controller_firmware_version_id)
 );
 
-INSERT INTO ref.controller_status (controller_status_name, description)
-VALUES
-    ('DEPLOYED', 'Controller is part of the current deployed show inventory.'),
-    ('AVAILABLE', 'Controller exists as unassigned stock.'),
-    ('REPAIR', 'Controller is held for repair or troubleshooting.'),
-    ('RETIRED', 'Controller identity is retained but the asset is retired.')
-ON CONFLICT (controller_status_name) DO NOTHING;
-
--- Seed only the model codes known from the current controller workbook.
--- Manufacturer/family detail remains nullable until separately verified.
-INSERT INTO ref.controller_model (model_code, model_name)
-VALUES
-    ('32LD-G3', '32LD-G3'),
-    ('AlphaPix Flex 48', 'AlphaPix Flex 48'),
-    ('CCB100', 'CCB100'),
-    ('CF50D', 'CF50D'),
-    ('CMB24D', 'CMB24D'),
-    ('CTB04-G3', 'CTB04-G3'),
-    ('CTB32LG3', 'CTB32LG3'),
-    ('Pixcon16', 'Pixcon16'),
-    ('Pixie16', 'Pixie16'),
-    ('Pixie2', 'Pixie2'),
-    ('Pixie2D', 'Pixie2D'),
-    ('Pixie4', 'Pixie4'),
-    ('Pixie8', 'Pixie8')
-ON CONFLICT (model_code) DO NOTHING;
-
+-- Install standard actor triggers before seed rows are inserted so the seeds
+-- follow the same audit path as later application/database writes.
 DROP TRIGGER IF EXISTS trg_controller_model_actor_insert ON ref.controller_model;
 CREATE TRIGGER trg_controller_model_actor_insert
 BEFORE INSERT ON ref.controller_model
@@ -249,5 +225,32 @@ DROP TRIGGER IF EXISTS trg_controller_firmware_history_actor_update ON ref.contr
 CREATE TRIGGER trg_controller_firmware_history_actor_update
 BEFORE UPDATE ON ref.controller_firmware_history
 FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
+
+INSERT INTO ref.controller_status (controller_status_name, description)
+VALUES
+    ('DEPLOYED', 'Controller is part of the current deployed show inventory.'),
+    ('AVAILABLE', 'Controller exists as unassigned stock.'),
+    ('REPAIR', 'Controller is held for repair or troubleshooting.'),
+    ('RETIRED', 'Controller identity is retained but the asset is retired.')
+ON CONFLICT (controller_status_name) DO NOTHING;
+
+-- Seed only the model codes known from the current controller workbook.
+-- Manufacturer/family detail remains nullable until separately verified.
+INSERT INTO ref.controller_model (model_code, model_name)
+VALUES
+    ('32LD-G3', '32LD-G3'),
+    ('AlphaPix Flex 48', 'AlphaPix Flex 48'),
+    ('CCB100', 'CCB100'),
+    ('CF50D', 'CF50D'),
+    ('CMB24D', 'CMB24D'),
+    ('CTB04-G3', 'CTB04-G3'),
+    ('CTB32LG3', 'CTB32LG3'),
+    ('Pixcon16', 'Pixcon16'),
+    ('Pixie16', 'Pixie16'),
+    ('Pixie2', 'Pixie2'),
+    ('Pixie2D', 'Pixie2D'),
+    ('Pixie4', 'Pixie4'),
+    ('Pixie8', 'Pixie8')
+ON CONFLICT (model_code) DO NOTHING;
 
 COMMIT;
