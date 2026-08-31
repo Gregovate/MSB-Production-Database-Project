@@ -1,15 +1,16 @@
 /* ============================================================================
-Controller Inventory: enforce exact LOR UID counts for fixed-range Pixie models
+Controller Inventory: enforce exact LOR UID counts for fixed-range models
 Issue: #110
 
 Operator rule accepted 2026-08-31:
+  - CCB100 uses exactly 2 contiguous Unit IDs.
   - Pixie4D uses exactly 4 contiguous Unit IDs.
   - Pixie8D uses exactly 8 contiguous Unit IDs.
   - Pixie16D uses exactly 16 contiguous Unit IDs.
 
 The existing generic capacity guard remains useful for other models, but these
-fixed-range Pixie families must not accept a lower count merely because it is
-below capacity.
+fixed-range families must not accept a lower count merely because it is below
+capacity.
 ============================================================================ */
 
 BEGIN;
@@ -22,7 +23,7 @@ COMMENT ON COLUMN ref.controller_model.lor_uid_requires_full_capacity IS
 
 UPDATE ref.controller_model
 SET lor_uid_requires_full_capacity = true
-WHERE model_code IN ('Pixie4D','Pixie8D','Pixie16D');
+WHERE model_code IN ('CCB100','Pixie4D','Pixie8D','Pixie16D');
 
 CREATE OR REPLACE FUNCTION ref.validate_controller_lor_configuration()
 RETURNS trigger
@@ -88,13 +89,13 @@ BEGIN
       AND c.lor_uid_count IS DISTINCT FROM m.lor_uid_capacity;
 
     IF v_count <> 0 THEN
-        RAISE EXCEPTION 'Found % fixed-range Pixie controllers not using full model UID capacity', v_count;
+        RAISE EXCEPTION 'Found % fixed-range controllers not using full model UID capacity', v_count;
     END IF;
 END
 $preflight$;
 
--- Prove the trigger rejects an under-sized Pixie4D configuration without
--- leaving any production change behind.
+-- Prove the trigger rejects under-sized configurations without leaving any
+-- production change behind.
 DO $guard_test$
 DECLARE
     v_rejected boolean := false;
@@ -114,6 +115,23 @@ BEGIN
     IF (SELECT lor_uid_count FROM ref.controller WHERE controller_id = 1134) <> 4 THEN
         RAISE EXCEPTION 'Guard test altered controller 1134 unexpectedly';
     END IF;
+
+    v_rejected := false;
+    BEGIN
+        UPDATE ref.controller
+        SET lor_uid_count = 1
+        WHERE controller_id = 1120;
+    EXCEPTION WHEN OTHERS THEN
+        v_rejected := true;
+    END;
+
+    IF NOT v_rejected THEN
+        RAISE EXCEPTION 'Guard test failed: CCB100 accepted UID Count 1';
+    END IF;
+
+    IF (SELECT lor_uid_count FROM ref.controller WHERE controller_id = 1120) <> 2 THEN
+        RAISE EXCEPTION 'Guard test altered controller 1120 unexpectedly';
+    END IF;
 END
 $guard_test$;
 
@@ -129,7 +147,7 @@ SELECT
 FROM ref.controller_model m
 JOIN ref.controller c
   ON c.controller_model_id = m.controller_model_id
-WHERE m.model_code IN ('Pixie4D','Pixie8D','Pixie16D')
+WHERE m.model_code IN ('CCB100','Pixie4D','Pixie8D','Pixie16D')
 GROUP BY m.controller_model_id, m.model_code, m.lor_uid_capacity,
          m.lor_uid_requires_full_capacity
-ORDER BY m.lor_uid_capacity;
+ORDER BY m.lor_uid_capacity, m.model_code;
