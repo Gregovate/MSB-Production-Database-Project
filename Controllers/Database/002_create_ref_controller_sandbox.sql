@@ -3,20 +3,26 @@ Controller Inventory permanent-shaped sandbox
 Issue: #110
 
 Purpose:
-  Create the isolated permanent Controller Inventory objects only after the
-  stage-only bootstrap/model review has been accepted.
+  Create isolated permanent Controller Inventory objects only after stage-only
+  bootstrap/model review has been accepted.
 
 Required stage inputs:
   stage.controller_bootstrap
   stage.controller_model_reference
 
-Firmware operating rule:
+Model rule:
+  - model_code is the short operational code already used in the workbook.
+  - manufacturer_model_code stores the vendor designation separately.
+  - model_name stores the full manufacturer/product name.
+  - Distinct source model codes are not collapsed during bootstrap.
+
+Firmware rule:
   - RECORDED workbook firmware is imported exactly as recorded.
   - RECORDED does not mean powered/field verified.
   - New / ??? / blank remain UNKNOWN.
   - Firmware verification happens during setup and does not block controller
-    creation or permanent controller_id assignment.
-  - Vendor current firmware is reference metadata only.
+    creation or controller_id assignment.
+  - Vendor firmware information is reference metadata only.
 
 Identity rule:
   ref.controller.controller_id starts at 1001.
@@ -39,10 +45,12 @@ CREATE TABLE IF NOT EXISTS ref.controller_model (
     controller_model_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     model_code text NOT NULL UNIQUE,
     manufacturer text NOT NULL,
+    manufacturer_model_code text,
     model_name text NOT NULL,
     firmware_family text,
     device_family text,
-    reference_url text,
+    model_reference_url text,
+    firmware_reference_url text,
     notes text,
     created_at timestamptz NOT NULL DEFAULT now(),
     created_by text NOT NULL DEFAULT current_user,
@@ -281,33 +289,38 @@ VALUES
     ('RETIRED', 'Controller identity is retained but the asset is retired.')
 ON CONFLICT (controller_status_name) DO NOTHING;
 
--- Canonical model catalog comes from the reviewed stage reference layer.
+-- One permanent model row per reviewed short operational/source model code.
 INSERT INTO ref.controller_model (
     model_code,
     manufacturer,
+    manufacturer_model_code,
     model_name,
     firmware_family,
-    reference_url,
+    model_reference_url,
+    firmware_reference_url,
     notes
 )
-SELECT DISTINCT ON (r.canonical_model_code)
-    r.canonical_model_code,
+SELECT
+    r.source_model_evidence,
     r.manufacturer,
+    r.manufacturer_model_code,
     r.canonical_model_name,
     r.firmware_family,
     r.reference_url,
+    r.firmware_reference_url,
     r.notes
 FROM stage.controller_model_reference AS r
-ORDER BY r.canonical_model_code, r.source_model_evidence
 ON CONFLICT (model_code) DO UPDATE SET
     manufacturer = EXCLUDED.manufacturer,
+    manufacturer_model_code = EXCLUDED.manufacturer_model_code,
     model_name = EXCLUDED.model_name,
     firmware_family = EXCLUDED.firmware_family,
-    reference_url = EXCLUDED.reference_url,
+    model_reference_url = EXCLUDED.model_reference_url,
+    firmware_reference_url = EXCLUDED.firmware_reference_url,
     notes = EXCLUDED.notes;
 
--- Add vendor-current firmware as reference rows even if no controller currently
--- reports that version. This is guidance for setup, not a migration requirement.
+-- Vendor-current firmware is guidance for setup. Vendors without a comparable
+-- firmware-reference page simply have no current-reference row inserted here.
 INSERT INTO ref.controller_firmware_version (
     controller_model_id,
     firmware_version,
@@ -315,22 +328,23 @@ INSERT INTO ref.controller_firmware_version (
     is_current_recommended,
     reference_url
 )
-SELECT DISTINCT
+SELECT
     m.controller_model_id,
     r.reference_current_firmware,
     'Vendor current firmware reference at Controller Inventory bootstrap',
     true,
-    r.reference_url
+    r.firmware_reference_url
 FROM stage.controller_model_reference AS r
 JOIN ref.controller_model AS m
-  ON m.model_code = r.canonical_model_code
+  ON m.model_code = r.source_model_evidence
 WHERE r.reference_current_firmware IS NOT NULL
+  AND r.firmware_reference_url IS NOT NULL
 ON CONFLICT (controller_model_id, firmware_version) DO UPDATE SET
     is_current_recommended = true,
     reference_url = EXCLUDED.reference_url;
 
--- Add every firmware version actually recorded in the 177-controller workbook,
--- regardless of whether it appears on the current vendor download page.
+-- Every actually recorded workbook firmware version is retained regardless of
+-- whether it appears on a current vendor page. Field verification is later.
 INSERT INTO ref.controller_firmware_version (
     controller_model_id,
     firmware_version,
@@ -342,19 +356,21 @@ SELECT DISTINCT
     m.controller_model_id,
     btrim(b.firmware_evidence),
     'Controller Inventory & Testing 2026(7) recorded evidence; field verification pending setup',
-    (btrim(b.firmware_evidence) = r.reference_current_firmware),
-    r.reference_url
+    (r.reference_current_firmware IS NOT NULL
+     AND btrim(b.firmware_evidence) = r.reference_current_firmware),
+    r.firmware_reference_url
 FROM stage.controller_bootstrap AS b
 JOIN stage.controller_model_reference AS r
   ON r.source_model_evidence = b.model_evidence
 JOIN ref.controller_model AS m
-  ON m.model_code = r.canonical_model_code
+  ON m.model_code = b.model_evidence
 WHERE b.firmware_state_evidence = 'RECORDED'
   AND nullif(btrim(coalesce(b.firmware_evidence, '')), '') IS NOT NULL
 ON CONFLICT (controller_model_id, firmware_version) DO UPDATE SET
     source_note = EXCLUDED.source_note,
     is_current_recommended = ref.controller_firmware_version.is_current_recommended
                              OR EXCLUDED.is_current_recommended,
-    reference_url = COALESCE(EXCLUDED.reference_url, ref.controller_firmware_version.reference_url);
+    reference_url = COALESCE(EXCLUDED.reference_url,
+                             ref.controller_firmware_version.reference_url);
 
 COMMIT;
