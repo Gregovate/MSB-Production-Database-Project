@@ -34,6 +34,24 @@ function formatDate(value) {
   return date.toLocaleString();
 }
 
+function hexUid(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric)) return null;
+  return numeric.toString(16).toUpperCase().padStart(2, '0');
+}
+
+function programmedConfig(item) {
+  if (item.lor_uid_start !== null && item.lor_uid_start !== undefined) {
+    const first = hexUid(item.lor_uid_start);
+    const last = hexUid(item.lor_uid_end);
+    const range = first === last ? first : `${first}-${last}`;
+    return `${item.lor_network || 'LOR'} · ${range} · ${item.lor_uid_count} UID${Number(item.lor_uid_count) === 1 ? '' : 's'}`;
+  }
+  if (item.management_ip) return `Management IP ${item.management_ip}`;
+  return 'No programmed configuration recorded';
+}
+
 function configureTheme() {
   const saved = localStorage.getItem('msb-theme');
   if (saved === 'light' || saved === 'dark') {
@@ -88,7 +106,8 @@ function populateFilters(payload) {
   for (const model of payload.models || []) {
     const option = document.createElement('option');
     option.value = model.model_code;
-    option.textContent = `${model.model_code} — ${model.model_name}`;
+    const capacity = model.lor_uid_capacity ? ` · ${model.lor_uid_capacity} UID max` : '';
+    option.textContent = `${model.model_code} — ${model.model_name}${capacity}`;
     modelFilter.appendChild(option);
   }
 
@@ -127,6 +146,7 @@ function renderControllerList(controllers) {
         <div class="controller-model">${esc(item.model_code)}</div>
         <div class="controller-stage">${esc(stageText)}</div>
         <div class="controller-meta">${esc(assignmentText)}</div>
+        <div class="controller-meta">Programmed: ${esc(programmedConfig(item))}</div>
         <div class="controller-meta">Firmware: ${esc(firmware)}</div>
       </div>`;
   }).join('');
@@ -227,9 +247,20 @@ async function loadControllerDetail(controllerId) {
     status.textContent = c.controller_status_name;
     status.className = `pill ${c.controller_status_name}`;
 
+    const firstUid = hexUid(c.lor_uid_start);
+    const lastUid = hexUid(c.lor_uid_end);
+    const range = firstUid ? (firstUid === lastUid ? firstUid : `${firstUid}-${lastUid}`) : null;
+
     document.getElementById('detail-facts').innerHTML = [
       fact('Model', c.model_code),
       fact('Device Family', c.device_family),
+      fact('Model UID Capacity', c.lor_uid_capacity),
+      fact('LOR Network', c.lor_network),
+      fact('First UID', firstUid),
+      fact('UID Count', c.lor_uid_count),
+      fact('UID Range', range),
+      fact('Management IP', c.management_ip),
+      fact('Programmed Config State', c.programmed_config_verification_state),
       fact('Hardware Revision', c.hardware_revision),
       fact('Serial Number', c.serial_number),
       fact('Year Deployed', c.year_deployed),
