@@ -17,6 +17,7 @@ Rules:
     show-control infrastructure such as Directors, ELLs, bridges and adapters.
 
 This script writes only stage.* and allocates no controller IDs.
+It is intentionally rerunnable after a partial prior run.
 ============================================================================ */
 
 BEGIN;
@@ -204,6 +205,8 @@ ON CONFLICT (source_model_evidence) DO UPDATE SET
 
 COMMIT;
 
+-- Preserve the original 003b view-column order so CREATE OR REPLACE VIEW does
+-- not interpret existing columns as renames. New columns are appended at end.
 CREATE OR REPLACE VIEW stage.v_controller_model_reference_summary AS
 SELECT
     r.source_model_evidence,
@@ -212,17 +215,17 @@ SELECT
     r.canonical_model_name,
     r.hardware_revision,
     r.firmware_family,
-    r.device_family,
-    r.display_assignment_capable,
     r.reference_current_firmware,
     r.normalization_state,
     count(b.controller_bootstrap_id) AS controllers,
-    r.notes
+    r.notes,
+    r.device_family,
+    r.display_assignment_capable
 FROM stage.controller_model_reference AS r
 LEFT JOIN stage.controller_bootstrap AS b
   ON b.model_evidence = r.source_model_evidence
 GROUP BY
     r.source_model_evidence, r.manufacturer, r.canonical_model_code,
     r.canonical_model_name, r.hardware_revision, r.firmware_family,
-    r.device_family, r.display_assignment_capable,
-    r.reference_current_firmware, r.normalization_state, r.notes;
+    r.reference_current_firmware, r.normalization_state, r.notes,
+    r.device_family, r.display_assignment_capable;
