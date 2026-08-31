@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.3.0."""
+"""MSB FieldWiring browser API and static application host — V0.3.1."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.3.0"
+APP_VERSION = "V0.3.1"
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__)
 
@@ -208,6 +208,7 @@ def api_controllers() -> Response:
     data = controller_list(
         repository(),
         query=request.args.get("q", ""),
+        stage_id=optional_int("stage_id"),
         status=request.args.get("status", ""),
         model=request.args.get("model", ""),
         assignment=request.args.get("assignment", ""),
