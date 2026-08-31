@@ -1,0 +1,10 @@
+.search-context {
+  margin-top:8px;
+  border:1px solid var(--blue);
+  background:var(--soft);
+  border-radius:7px;
+  padding:8px 10px;
+  color:var(--ink);
+  font-size:12px;
+  font-weight:800;
+}
