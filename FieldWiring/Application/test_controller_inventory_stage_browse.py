@@ -115,4 +115,6 @@ def test_text_search_includes_stage_key_and_stage_name() -> None:
     assert "LEFT JOIN ref.stage qst" in first_sql
     assert "qst.stage_key" in first_sql
     assert "qst.stage_name" in first_sql
-    assert first_params == ["%Church%"] * 8
+    # Controller text search now also covers LOR Network, management IP, and
+    # programmed first UID in addition to the original Controller/Display/Stage fields.
+    assert first_params == ["%Church%"] * 11
