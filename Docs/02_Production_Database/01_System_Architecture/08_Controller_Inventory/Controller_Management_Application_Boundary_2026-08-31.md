@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| Status | ACTIVE ARCHITECTURE DECISION |
+| Status | ACTIVE ARCHITECTURE DECISION — CURRENT RESUME AUTHORITY |
 | Issue | #110 |
 | Primary Controller UX | Purpose-built Controller application |
 | Primary retained Directus value | Authentication and authorization |
@@ -43,6 +43,51 @@ Accepted examples include:
 The existing Display edit form is an acceptable example of this secondary boundary. Its formatting and layout are limited and somewhat clunky, but it is operationally adequate for one-record metadata maintenance.
 
 Directus is **not** the target operational UX once a task becomes a multi-table workflow.
+
+## Current Accepted Implementation State
+
+The production Controller/FieldWiring read experience is already operational.
+
+Accepted production application checkpoint on `msb-prod-db`:
+
+```text
+checkout                    84d6f06e16c43ebb0f6aa21273b999af7f6d455b
+FieldWiring health/version  V0.3.1 / postgres / ok
+Procedures health/version   V0.1.0 / postgres / ok
+combined live regression    183 passed in 2.39s
+```
+
+The current Controller browser already provides:
+
+- permanent Controller ID browse/detail;
+- Stage/Sub-stage-aware Controller search and visible Stage-match context;
+- model/status/location and current programmed Network/UID/IP presentation;
+- current Display assignments and Stage context;
+- firmware history and verification context;
+- Controller label state;
+- Controller Inventory -> Field Wiring navigation;
+- Field Wiring -> permanent Controller Inventory cross-links using permanent `controller_id` and model context.
+
+The Controller/FieldWiring browser remains read-only for database writes until authenticated Manager write handling is implemented.
+
+### Directus Controller relationship experiment — closed
+
+Live testing proved that Directus is not a suitable operational editor for the Controller multi-table workflow. The attempted Controller reverse relationship workspaces became brittle around the legitimate composite Controller/Display key and caused the Directus Controller detail page to fail.
+
+The accepted cleanup is complete:
+
+- Directus `display_assignments` reverse workspace removed;
+- Directus `firmware_history` reverse workspace removed;
+- temporary Directus assignment DELETE capability removed;
+- `ref.controller_display` retained its valid composite primary key `(controller_id, display_id)`;
+- permanent relationship/history data were preserved;
+- cleanup validation returned `DIRECTUS CONTROLLER SIMPLIFICATION: PASS`;
+- accepted post-cleanup counts were 194 Controller/Display assignment rows and 172 firmware-history rows;
+- Directus restarted healthy and the Controller record page no longer crashes.
+
+Do **not** resume attempts to make Directus the Controller operational editor. The browser-native workflow below is the accepted direction.
+
+The current Controller browser still contains an older informational message saying Manager maintenance remains governed through Directus until authenticated browser editing is implemented. That wording is stale architecture text. Manager **authorization** remains governed by the existing Directus identity/policy authority; Controller operational editing belongs in the Controller browser.
 
 ## Authentication / authorization boundary
 
@@ -116,7 +161,7 @@ Directus may remain available for simple Controller/reference-table maintenance 
 - simple individual `ref.controller` metadata fields if operationally useful;
 - simple boolean fields such as `print_label`.
 
-This CRUD capability is a convenience. It is not the Controller Management application.
+This CRUD capability is a convenience. It is not the Controller Management application and it must not be treated as the required Manager workflow.
 
 Do not require Directus to provide the Controller-to-Display assignment workspace or other complex Controller workflows.
 
@@ -147,6 +192,24 @@ The implementation should preserve:
 - no normal Controller DELETE;
 - controlled relationship unassignment without deleting the Controller asset;
 - PostgreSQL validation and audit triggers as final data-integrity authority.
+
+## Immediate Resume Point
+
+Do not resume from the earlier Directus relationship-editing experiment or from the original Stage-browser backlog. Those phases are closed.
+
+The immediate implementation phase is:
+
+1. add browser-native Manager maintenance for permanent `ref.controller`: **Add Controller** and **Edit Controller**;
+2. reuse Directus login/session/Manager policy as the authentication/authorization authority and enforce Manager rights server-side on every write;
+3. provide controlled browser lookups for Model, Status, Location, Firmware, verification states, and current programmed configuration;
+4. make current programmed Network / First UID / UID Count / calculated UID range / management IP editable through governed controls while PostgreSQL model/UID rules remain final authority;
+5. expose `print_label` as a Manager-editable request action using the existing Controller label contract;
+6. build permanent Controller ↔ Display assignment management: assign, M:N relationships, move/reassign, controlled unassign, and reviewed `wiring_source_display_id` where required;
+7. support newly acquired/unassigned shelf controllers receiving permanent PostgreSQL-generated `CTRL:<controller_id>` identity with normally `AVAILABLE` status before Display assignment;
+8. complete actual label-service handoff later without blocking the Controller Management UI;
+9. validate the workflow with real shelf-stock/reassignment cases, then write the plain-English operator procedures against the accepted screens.
+
+The working read-side Controller Inventory and FieldWiring screens are the implementation foundation. Extend them; do not replace them merely to add management capability.
 
 ## Directus formatting lesson
 
