@@ -33,7 +33,11 @@
     <div class="filters">
       <label>
         Search
-        <input id="controller-search" autocomplete="off" placeholder="Controller ID, Display, model, serial, location…">
+        <input id="controller-search" autocomplete="off" placeholder="Controller, Display, Stage, model, serial, location…">
+      </label>
+      <label>
+        Stage / Sub-stage
+        <select id="stage-filter"><option value="">All Stages</option></select>
       </label>
       <label>
         Status
@@ -52,8 +56,9 @@
         </select>
       </label>
       <button id="refresh-button" type="button">Refresh</button>
+      <button id="clear-filters-button" type="button">Clear</button>
     </div>
-    <div class="hint">Read-only operational view. Controller records are maintained by authorized managers in Directus.</div>
+    <div class="hint">Stage is derived from current Display assignments. Unassigned shelf controllers have no Stage until they are assigned.</div>
   </section>
 
   <section class="workspace">
@@ -99,7 +104,7 @@
 
         <section class="detail-section directus-note">
           <strong>Maintenance</strong>
-          <div>Use Directus to create or update Controller Inventory records. Delete is intentionally not part of the manager workflow.</div>
+          <div>All production users may browse Controller Inventory. Manager maintenance remains governed through Directus until authenticated browser editing is implemented.</div>
         </section>
       </div>
     </div>
