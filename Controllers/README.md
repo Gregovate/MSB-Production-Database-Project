@@ -1,26 +1,52 @@
-# Controller Inventory — Application-First Bootstrap Sandbox
+# Controller Inventory — Bootstrap Engineering Artifacts
 
-Status: **EXPERIMENTAL / RESETTABLE — DO NOT PRINT PERMANENT CONTROLLER LABELS**
+Status: **HISTORICAL BOOTSTRAP COMPLETE — PERMANENT CONTROLLER IDS ACCEPTED — DO NOT RESET**
 
 Issue: #110
 
-## Current Source Facts
+Current operational authority is:
 
-The current bootstrap evidence is:
+- `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/README.md`
+- `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md`
+- `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md`
+
+This `Controllers/` area preserves the bootstrap source, reconciliation evidence, database scripts, diagnostics, migrations, and acceptance artifacts used to create the permanent Controller Inventory. It is no longer the current operational handoff.
+
+## Accepted Permanent State
+
+The initial Controller Inventory bootstrap is complete and permanent identity has been accepted:
+
+```text
+177 permanent physical controllers
+controller_id range 1001-1177
+permanent authority ref.controller.controller_id
+```
+
+Permanent IDs must not be reset or reused.
+
+The former experimental reset path is retired. `Database/006_reset_experimental_controller_data.sql` is historical PRE-ACCEPTANCE tooling and must not be used against the accepted permanent Controller Inventory.
+
+Permanent Controller labels are no longer blocked merely because the original identity set was experimental. Current label behavior is governed by the operational Controller Inventory and labeling documentation.
+
+## Historical Source Facts
+
+The bootstrap evidence was:
 
 - `Controller Inventory & Testing 2026(7).xlsx`
 - `lor_output_v7_scene(20260830-185521).db`
 - generated reconciliation CSV for those two artifacts
 
-The workbook contains **177 deployed controllers and no spare/available controllers**.
+The workbook contained **177 deployed controllers and no spare/available controllers**.
 
-Current reconciliation result:
+Initial reconciliation result:
 
 - 177 deployed-controller candidates
 - 152 direct V7 Display-name matches
 - 25 candidates requiring review
 - 172 recorded firmware versions
 - 5 firmware values requiring verification (`???`, `New`, or blank)
+
+These values describe the initial reconstruction process, not the current operational inventory workflow.
 
 ## Identity Rule
 
@@ -32,11 +58,11 @@ ref.controller.controller_id
 
 The first permanent Controller ID is **1001**.
 
-The initial IDs are intentionally allocated in a reviewed rough oldest-to-newest order, using `year_deployed` derived from permanent Display evidence before the first permanent insert. This makes the initial number range more useful to people without turning the ID into encoded year/UID meaning.
+Network/UID/channel/IP/universe, Display name, Stage, Scene, spreadsheet row, workbook text, and other source evidence are not permanent physical identity.
 
-## Bootstrap Boundary
+## Historical Bootstrap Boundary
 
-Temporary reconstruction belongs in the already-established `stage` schema:
+Temporary reconstruction used the already-established `stage` schema:
 
 ```text
 stage.controller_bootstrap
@@ -44,83 +70,60 @@ stage.controller_bootstrap_display
 stage.v_controller_bootstrap_review
 ```
 
-No permanent `controller_id` exists in stage.
+No permanent `controller_id` existed in stage.
 
-**The entire initial reconstruction, Display resolution, year backfill, duplicate-address review, and proposed 1001+ ordering is completed in `stage.*` before `ref.controller*` is created.**
+The complete initial reconstruction, Display resolution, year backfill, duplicate-address review, and proposed 1001+ ordering were completed in `stage.*` before accepted promotion into permanent `ref.controller*`.
 
-Permanent-shaped Controller Inventory objects are created only after the staged set/order is accepted. Existing production tables are FK targets only and must not depend on `ref.controller*` during the experimental phase.
+The stage objects were engineering scaffolding only and are not operational Controller Inventory authority.
 
-## Database Scripts — Current Sequence
+## Historical Database Sequence
 
-### Phase A — Stage-only reconstruction
+The original controlled bootstrap sequence was:
 
 1. `Database/001_create_stage_controller_bootstrap.sql`
-   - creates the disposable staging/review layer
-   - allocates no controller IDs
+   - create disposable staging/review layer
+   - allocate no controller IDs
 
-2. Validate and then load the generated reconciliation CSV with:
+2. validate/load generated reconciliation with:
 
    ```text
    Bootstrap/load_controller_reconciliation_csv.py
    ```
 
-   Default mode is validation only. `--apply` writes **stage only**.
-
 3. `Database/003_prepare_controller_bootstrap.sql`
-   - requires only the stage tables plus existing `ref.display`
-   - auto-links only unique exact permanent Display-name matches
-   - derives `year_deployed` from the earliest assigned `ref.display.year_built`
-   - creates the review view and order-preparation function
-   - writes only `stage.*`
-   - allocates no controller IDs
+   - resolve exact permanent Display-name matches
+   - derive initial deployment-year evidence
+   - create review/order preparation structures
 
 4. `Database/005_validate_controller_bootstrap.sql`
-   - stage-only read/report
-   - shows unresolved Display/year rows
-   - shows firmware evidence state
-   - exposes repeated Network/UID groups without collapsing them
+   - stage-only validation/review
 
-5. Resolve the remaining staging review cases. This may be done through controlled SQL first and then through `Application/` once its stage-only deployment is accepted.
+5. resolve remaining staging cases and accepted repeated-address/duplicated-channel cases
 
-6. Run `stage.prepare_controller_bootstrap_order()` only after all physical controller rows are READY/SKIPPED.
-   - writes only `bootstrap_order` / `proposed_controller_id` in stage
-   - no permanent ID is allocated
+6. run `stage.prepare_controller_bootstrap_order()` only after all physical-controller rows were READY/SKIPPED
 
-7. Run `Database/005_validate_controller_bootstrap.sql` again and review the complete oldest-to-newest proposed 1001+ order.
-
-### Phase B — Permanent-shaped experimental Controller Inventory
-
-Only after Phase A is accepted:
+7. review the complete proposed 1001+ order while still in stage
 
 8. `Database/002_create_ref_controller_sandbox.sql`
-   - creates isolated permanent-shaped Controller Inventory tables
-   - seeds accepted current model codes and controller statuses
-   - leaves `ref.controller` empty
-   - `controller_id` identity is configured to start at 1001
+   - create permanent-shaped empty Controller tables
 
 9. `Database/004_promote_controller_bootstrap.sql`
-   - **explicit controlled gate; not exposed in the browser**
-   - resolves staged model evidence to `ref.controller_model`
-   - creates firmware catalog rows only for source values classified `RECORDED`
-   - requires empty `ref.controller`
-   - restarts identity at 1001
-   - promotes all READY rows in one transaction
-   - verifies every generated ID equals the reviewed proposed ID
-   - any mismatch rolls back the entire transaction
+   - controlled all-or-nothing promotion
+   - verify generated IDs match reviewed proposed IDs
 
-10. Perform post-promotion validation before permanent Controller identities are accepted.
+10. post-promotion validation and explicit acceptance of permanent identities
 
-## Experimental Reset
+This sequence is retained as engineering history. It is **not** the normal Add Controller workflow.
 
-`Database/006_reset_experimental_controller_data.sql` is PRE-ACCEPTANCE ONLY.
+## Retired Experimental Reset
 
-It refuses to reset if Controller label request/print evidence exists or if an external subsystem has begun depending on `ref.controller`.
+`Database/006_reset_experimental_controller_data.sql` was PRE-ACCEPTANCE ONLY.
 
-Once Controller IDs are formally accepted as permanent, the reset/restart workflow is retired and IDs are never reused.
+Permanent Controller identities are now accepted and external systems already consume `ref.controller*`. Do not run the reset/restart workflow and do not reuse Controller IDs.
 
 ## Label Fields
 
-`ref.controller` mirrors the existing Display label-state pattern:
+`ref.controller` uses the established label-state pattern:
 
 ```text
 label_required
@@ -133,15 +136,31 @@ label_template_id
 
 `label_template_id` references the existing `ref.label_template.label_template_id` authority.
 
-No new `label_id`, `label_type_id`, or Controller-specific template table is introduced.
+No new `label_id`, `label_type_id`, or Controller-specific template table is authorized.
 
-## Important Boundaries
+Current Manager label-request behavior belongs in the browser-native Controller Management workflow. Actual printer handoff remains governed by the existing labeling subsystem.
 
-- Network/UID/channel/IP/universe are current LOR/V7 evidence, never permanent controller identity.
+## Current Operational Direction
+
+The initial bootstrap is closed. Current work is not staging reconstruction.
+
+The accepted next phase is browser-native Controller Management using the already-working Controller Inventory / FieldWiring read experience as the foundation:
+
+- Directus supplies login/session/Manager authorization;
+- the Controller browser owns Add/Edit/Assign/Unassign/Print Label UX;
+- PostgreSQL owns constraints/audit/final data integrity;
+- `ref.controller_display` retains its composite key `(controller_id, display_id)`;
+- ordinary users remain read-only;
+- no normal Controller DELETE workflow exists.
+
+See the current architecture/roadmap documents linked at the top of this file before using any artifact in this directory for new work.
+
+## Important Permanent Boundaries
+
+- Network/UID/channel/IP/universe are mutable programmed/show facts, never permanent controller identity.
 - The same address may belong to multiple physical controllers.
 - Controller-to-Display is many-to-many.
 - `year_deployed` is first-known deployment/use evidence, not manufacture year.
-- Unknown firmware remains unknown; text such as `New` is not inserted as a firmware version.
-- Current physical `ref.location`, Display assignment, Stage context, and LOR address are separate mutable facts.
-- The current workbook is deployed-controller bootstrap evidence, not spare inventory.
-- No Controller label should be physically printed while the identity set remains resettable.
+- Unknown firmware remains unknown; text such as `New` is not a firmware version.
+- Current physical location, Display assignment, Stage context, and LOR address are separate mutable facts.
+- Newly found shelf controllers are created through the permanent Controller Management workflow; they are not appended to the historical workbook bootstrap.
