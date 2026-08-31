@@ -18,6 +18,7 @@ Accepted rule:
     firmware-reference page is asserted.
 
 This script writes only stage.* and allocates no permanent controller IDs.
+It is intentionally rerunnable over earlier experimental revisions.
 ============================================================================ */
 
 BEGIN;
@@ -39,10 +40,7 @@ CREATE TABLE IF NOT EXISTS stage.controller_model_reference (
     updated_at timestamptz NOT NULL DEFAULT now(),
     updated_by text NOT NULL DEFAULT current_user,
     created_by_person_id integer,
-    updated_by_person_id integer,
-    CONSTRAINT ck_controller_model_reference_state CHECK (
-        normalization_state IN ('EXACT_VENDOR_MODEL','CORRECTED_SOURCE_MODEL','VENDOR_REFERENCE')
-    )
+    updated_by_person_id integer
 );
 
 -- Experimental table may already exist from an earlier branch revision.
@@ -54,6 +52,12 @@ ALTER TABLE stage.controller_model_reference
     ADD COLUMN IF NOT EXISTS model_reference_url text;
 ALTER TABLE stage.controller_model_reference
     ADD COLUMN IF NOT EXISTS firmware_reference_url text;
+
+-- Earlier experimental revisions used different normalization-state values.
+-- Drop that check before replacing the generated reference rows, then recreate
+-- the current constraint after the upsert below.
+ALTER TABLE stage.controller_model_reference
+    DROP CONSTRAINT IF EXISTS ck_controller_model_reference_state;
 
 DROP TRIGGER IF EXISTS trg_controller_model_reference_actor_insert
     ON stage.controller_model_reference;
@@ -76,11 +80,11 @@ INSERT INTO stage.controller_model_reference (
 VALUES
     ('32LD-G3', 'Light-O-Rama', 'CTB32',
      'CTB32 Generation 3 Controller Board (16 channels)',
-     NULL, 'CTB32LG3', '1.17',
+     'CTB32LDg3 circuit-board variant', 'CTB32LG3', '1.17',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'CORRECTED_SOURCE_MODEL',
-     '32LD-G3 is workbook shorthand. LOR names the model CTB32 Generation 3 Controller Board; CTB32LDg3 is the circuit-board variant named in the firmware description.'),
+     '32LD-G3 is workbook shorthand. LOR names the model CTB32 Generation 3 Controller Board and identifies CTB32LDg3 as the circuit-board variant.'),
 
     ('AlphaPix Flex 48', 'HolidayCoro', 'AlphaPix Evolution Flex 48',
      'AlphaPix Evolution Flex 48-Port Pixel Controller',
@@ -127,7 +131,7 @@ VALUES
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'https://store.lightorama.com/pages/controller-firmware-updates',
      'CORRECTED_SOURCE_MODEL',
-     'CTB32LG3 is the firmware family/name, not the model. Corrected to the LOR CTB32 Generation 3 model family.'),
+     'CTB32LG3 is the firmware family/name, not the model. Corrected to the LOR CTB32 Generation 3 model; exact board/enclosure variant remains field-verifiable.'),
 
     ('Pixcon16', 'Light-O-Rama', 'PixCon16',
      'PixCon16 Controller Board (RGB smart pixels - 16 ports)',
@@ -186,6 +190,15 @@ ON CONFLICT (source_model_evidence) DO UPDATE SET
     firmware_reference_url = EXCLUDED.firmware_reference_url,
     normalization_state = EXCLUDED.normalization_state,
     notes = EXCLUDED.notes;
+
+ALTER TABLE stage.controller_model_reference
+    ADD CONSTRAINT ck_controller_model_reference_state CHECK (
+        normalization_state IN (
+            'EXACT_VENDOR_MODEL',
+            'CORRECTED_SOURCE_MODEL',
+            'VENDOR_REFERENCE'
+        )
+    );
 
 COMMIT;
 
