@@ -6,18 +6,19 @@
 | Issue | #110 |
 | Permanent database authority | `ref.controller*` |
 | Primary user experience | Wiring System / Controller Inventory browser |
-| Governed maintenance back-end | Directus |
+| Authentication / authorization authority | Directus login/session/Manager policy |
+| Operational Controller editing | Browser-native Controller Management |
 | Delete policy | No normal Controller Inventory delete |
 
 ## Purpose
 
-This roadmap controls the work after successful permanent Controller Inventory bootstrap. It replaces the obsolete assumption that Controller Inventory is still only a Pre-DDL exercise.
+This roadmap controls the work after successful permanent Controller Inventory bootstrap.
 
-The permanent Controller subsystem is installed in production and the initial physical inventory has been promoted. The remaining work is operational integration: make Controller Inventory usable for normal browsing and manager maintenance, make FieldWiring consume permanent physical controller identity, support ongoing Controller-to-Display assignment, support newly discovered shelf stock, complete labeling, and produce plain-English operator procedures after the system is accepted.
+The permanent Controller subsystem is installed in production and the initial physical inventory has been promoted. Stage-aware browsing and the first permanent Controller/FieldWiring integration are also accepted. The remaining work is now the authenticated Manager workflow: Add/Edit Controller, governed current programmed configuration, Controller-to-Display assignment management, shelf/AVAILABLE inventory, label request/printing integration, and final operator procedures.
 
 ## Current Accepted Production State
 
-Production currently contains:
+Production contains:
 
 - `ref.controller_model`;
 - `ref.controller_firmware_version`;
@@ -34,20 +35,42 @@ The initial Controller-to-Display reconstruction has been corrected for the acce
 
 Controller `1176` is intentionally unassigned until its new 2026 Matrix Display exists through the normal Preview/LOR workflow.
 
+Accepted production application checkpoint:
+
+```text
+checkout                    84d6f06e16c43ebb0f6aa21273b999af7f6d455b
+FieldWiring                  V0.3.1 / postgres / healthy
+Procedures                   V0.1.0 / postgres / healthy
+combined live regression     183 passed in 2.39s
+```
+
+Accepted read-side capabilities now include:
+
+- Stage/Sub-stage-aware Controller browse/filter;
+- free-text Stage-match confirmation;
+- programmed LOR Network / First UID / UID Count / calculated range / management IP visibility and search;
+- current Display assignments and Stage context;
+- firmware history and label state;
+- permanent Controller ID/model context in FieldWiring;
+- Controller Inventory -> Field Wiring links;
+- Field Wiring -> Controller Inventory cross-links.
+
 The original stage bootstrap objects are temporary engineering scaffolding and are not operational Controller Inventory authority.
 
 ## Authority Boundary
 
 ```text
-Controller Inventory
+Controller Inventory / Controller browser
     permanent physical controller identity
     controller model/status/firmware/location/notes
+    current programmed Network/UID/IP facts
     current physical Controller-to-Display relationships
     optional wiring_source_display_id for duplicated-channel copies
+    operational Manager UX
 
 LOR / Parser V7 / LOR2DB
     current wiring topology
-    Network / Unit ID / channels / universes
+    expected show Network / Unit ID / channels / universes
     Preview / Scene / Display wiring definitions
 
 FieldWiring
@@ -55,7 +78,11 @@ FieldWiring
     technician-facing read experience
 
 Directus
-    governed manager maintenance back-end
+    login / identity / role-policy authority
+    optional simple one-table/reference maintenance only
+
+PostgreSQL
+    constraints / audit / data integrity / final authority
 ```
 
 No Controller Inventory workflow may rewrite LOR wiring topology.
@@ -64,26 +91,47 @@ No Controller Inventory workflow may rewrite LOR wiring topology.
 
 All MSB production users receive read access to Controller Inventory.
 
-Managers receive:
+Managers receive operational capability through the Controller browser:
 
 ```text
-CREATE  yes
-READ    yes
-UPDATE  yes
-DELETE  no
+CREATE                 yes
+READ                   yes
+UPDATE                  yes
+ASSIGN / UNASSIGN      yes
+DELETE Controller       no normal workflow
 ```
 
-Directus remains the governed maintenance back-end. The Wiring System browser is the preferred normal browsing experience.
+The browser must reuse the existing Directus identity/session/Manager policy authority. Every write request must verify Manager authorization server-side.
 
-Browser-native editing may be added only after the Wiring System has a trustworthy authenticated user/role identity that can distinguish Managers from ordinary production users. Do not make the existing read-only `fieldwiring_app` PostgreSQL role writable merely to expose browser edit controls.
+Do not make the existing read-only `fieldwiring_app` PostgreSQL role broadly writable merely to expose browser edit controls.
 
-An interim Manager-only Edit path may deep-link to the appropriate Directus record so Directus continues to enforce Manager permissions and unsaved-change behavior.
+Do not deep-link Managers to Directus as the required Controller editing workflow. The Directus multi-table relationship experiment was rejected after live testing and cleanup.
 
-## Workstream 1 — Controller Inventory Browser
+## Closed Directus Relationship Experiment
 
-The browser must become the primary day-to-day Controller Inventory experience.
+Directus remains useful for authentication/authorization and simple single-table maintenance, but it is not the Controller operational editor.
 
-Required browse/search capabilities:
+The attempted Directus Controller reverse workspaces were removed after causing item-detail failures around the legitimate composite relationship model. Accepted cleanup preserved:
+
+```text
+ref.controller_display PRIMARY KEY (controller_id, display_id)
+194 Controller/Display assignment rows
+172 firmware-history rows
+```
+
+Validation returned:
+
+```text
+DIRECTUS CONTROLLER SIMPLIFICATION: PASS
+```
+
+Do not resume O2M Directus relationship-workspace work or introduce a surrogate `controller_display_id` merely for Directus compatibility.
+
+## Workstream 1 — Controller Inventory Browser — READ SIDE ACCEPTED
+
+The browser is the primary day-to-day Controller Inventory experience.
+
+Accepted browse/search capabilities include:
 
 - Controller ID;
 - Display name / Display ID;
@@ -93,9 +141,10 @@ Required browse/search capabilities:
 - assignment state;
 - serial number;
 - current physical location;
+- programmed Network/UID/IP context;
 - firmware verification state.
 
-Stage is derived through the current physical relationship:
+Stage remains derived through the current physical relationship:
 
 ```text
 ref.controller
@@ -106,11 +155,47 @@ ref.controller
 
 Do not add redundant `stage_id` to `ref.controller` merely for browsing.
 
-A controller serving several Displays in one Stage appears once in that Stage result with its relevant Display assignments. A controller serving Displays in more than one Stage may legitimately appear when either Stage is selected.
-
 An unassigned `AVAILABLE` controller has no Stage until assigned.
 
-## Workstream 2 — Controller ↔ Display Assignment Workbench
+## Workstream 2 — Authenticated Browser-Native Controller Maintenance — NEXT
+
+The immediate implementation phase is the Manager write boundary in the existing Controller browser.
+
+Required flow:
+
+```text
+Controller Detail
+    -> Manager authorization resolved from existing Directus identity/session
+    -> Edit Controller
+       OR Add Controller
+    -> server verifies Manager permission on every write
+    -> PostgreSQL constraints/audit remain final authority
+```
+
+Required governed controls include:
+
+- model lookup;
+- status lookup;
+- physical location lookup;
+- firmware/version lookup constrained by accepted model/firmware rules;
+- serial number;
+- hardware revision;
+- year deployed / first-known-use evidence;
+- physical and firmware verification state/notes;
+- general notes;
+- current LOR Network;
+- First UID as operator-facing uppercase hexadecimal;
+- UID Count as ordinary decimal count;
+- calculated UID range from generated `lor_uid_end`;
+- management IP;
+- programmed-configuration verification state/source note;
+- label flags/status including `print_label`.
+
+Model/UID rules remain enforced in PostgreSQL. The UI should prevent obvious invalid choices and present model capacity, but database constraints are final authority.
+
+Add Controller must support a newly discovered shelf controller with zero Display assignments. The permanent `controller_id` is PostgreSQL-generated and is never user-entered.
+
+## Workstream 3 — Controller ↔ Display Assignment Workbench — NEXT
 
 A permanent assignment workbench is required. The initial bootstrap match-up was one-time reconstruction; future Controller Inventory must support ongoing physical inventory changes without manual junction-table edits.
 
@@ -148,11 +233,9 @@ Stage / Display browse
         -> Add / Change Controller
 ```
 
-## Workstream 3 — FieldWiring Permanent Controller Resolver
+## Workstream 4 — FieldWiring Permanent Controller Resolver — FIRST PASS ACCEPTED
 
-FieldWiring currently still contains temporary physical-controller presentation rules such as inferred Pixie groups. Those rules were explicitly documented as a bridge until Controller Inventory became authoritative.
-
-FieldWiring must now converge on the accepted permanent resolver contract:
+The accepted permanent resolver contract is:
 
 ```text
 physical controller = ref.controller.controller_id
@@ -163,36 +246,11 @@ wiring Display       = COALESCE(
 )
 ```
 
-FieldWiring must:
+FieldWiring now shows permanent Controller ID/model context and provides Controller Inventory cross-links where permanent relationships resolve the physical controller.
 
-- show permanent `controller_id` and exact controller model when available;
-- use `ref.controller_display` to distinguish physical controllers when Unit IDs/ranges repeat intentionally;
-- stop using temporary labels such as `Pixie group 1/2/3` when permanent relationships resolve the case;
-- eliminate false grouping-review states that Controller Inventory now resolves;
-- use `wiring_source_display_id` for Glistening Grove and similar reviewed duplicated-channel copies;
-- keep detailed Network/UID/channel/universe data from LOR/V7;
-- not invent wiring for a Controller/Display that has no current approved LOR wiring and no reviewed wiring source.
+Detailed Network/UID/channel/universe data remain LOR/V7 authority.
 
-The existing temporary named/grouping rules must remain isolated until each relevant presentation family has been migrated and regression accepted; do not remove a fallback before the permanent resolver covers its real cases.
-
-## Workstream 4 — Controller Maintenance UX
-
-Manager maintenance requires governed lookup controls rather than raw FK IDs.
-
-Expected governed controls include:
-
-- model lookup;
-- status lookup;
-- physical location lookup;
-- firmware/version lookup constrained by the accepted model/firmware rules;
-- serial number;
-- hardware revision;
-- year deployed / first-known-use evidence;
-- verification state and notes;
-- general notes;
-- label flags/status.
-
-The preferred end-state is a useful Wiring/Controller management experience with Manager-only edit capability. Directus remains the security/governance back-end and fallback maintenance console.
+Remaining presentation-family-specific temporary mappings/fallbacks must remain isolated until each real case is covered by permanent Controller Inventory evidence and regression accepted. Do not remove a fallback merely because the first permanent resolver integration is working.
 
 ## Workstream 5 — Labels and Scan
 
@@ -202,7 +260,11 @@ Permanent Controller identity uses:
 CTRL:<controller_id>
 ```
 
-The Controller browser must eventually expose label state and a controlled Request/Print Label action using the established MSB labeling subsystem rather than creating a separate print mechanism.
+`ref.controller` already contains the established label-state fields, including `label_required`, `print_label`, cached print count/time, and label template reference.
+
+The Controller browser must expose label state and a controlled Manager Request/Print Label action. The existing `print_label` request flag may be made Manager-editable before the external label-service rework is complete.
+
+Actual printer handoff must use the established MSB labeling subsystem rather than creating a separate Controller printing mechanism.
 
 New shelf controllers must be able to receive permanent Controller IDs and labels before they are assigned to a Display.
 
@@ -212,7 +274,7 @@ Controller scan integration is a later operational step after the label/assignme
 
 Operator procedures are required before Controller Inventory is considered operationally complete.
 
-Do not write final procedures from an unfinished UI. Build and accept the working system first, then write plain-English procedures against the actual screens and behavior.
+Do not write final procedures from an unfinished Manager UI. Build and accept the working system first, then write plain-English procedures against the actual screens and behavior.
 
 At minimum the final operator procedure set must cover:
 
@@ -226,6 +288,7 @@ At minimum the final operator procedure set must cover:
 - unassign a controller and return it to available stock when appropriate;
 - record/verify firmware;
 - change status/location;
+- maintain current Network/UID/IP configuration;
 - request/print a controller label;
 - open current Field Wiring from a controller;
 - handle a duplicated-channel `wiring_source_display_id` case;
@@ -233,19 +296,20 @@ At minimum the final operator procedure set must cover:
 
 Procedures must use normal operator language and screenshots/examples from the accepted production interface. Engineering terms such as junction-table row, FK, resolver provider, or LOR UUID belong in engineering documentation, not ordinary operator instructions.
 
-## Implementation Sequence
+## Active Implementation Sequence
 
-The active sequence is:
+The active sequence is now:
 
-1. bring Controller Inventory documentation forward to the installed production state;
-2. add Stage-aware Controller browsing and richer search;
-3. migrate FieldWiring physical-controller presentation to permanent Controller Inventory relationships in controlled, regression-tested increments;
-4. add the Controller ↔ Display Assignment workbench;
-5. add Manager edit navigation / authenticated edit capability;
-6. complete label integration;
-7. validate shelf-stock and reassignment lifecycle with real controllers;
-8. complete production acceptance and regression testing;
-9. write and accept plain-English operator procedures.
+1. implement browser-native Directus-authenticated Manager identity/authorization boundary;
+2. add **Edit Controller** to the existing Controller detail experience;
+3. add **Add Controller** for permanent unassigned shelf stock;
+4. add controlled maintenance of model/status/location/firmware/verification/current programmed Network/UID/IP facts;
+5. make `print_label` Manager-editable using the existing label contract;
+6. add Controller ↔ Display assignment/reassignment/unassignment workbench;
+7. validate real shelf-stock/reassignment lifecycle with physical controllers;
+8. complete the actual label-service handoff when its separate contract is ready;
+9. complete production acceptance and shared FieldWiring/Procedures regression testing;
+10. write and accept plain-English operator procedures.
 
 Each deployed change must preserve the existing shared FieldWiring/Procedures runtime regression gate.
 
@@ -254,5 +318,7 @@ Each deployed change must preserve the existing shared FieldWiring/Procedures ru
 Material Controller Inventory findings must be written into the repository as they are accepted. Issue comments are useful implementation history but are not a substitute for durable architecture/operations documentation.
 
 Whenever FieldWiring behavior changes because of Controller Inventory, both the Controller Inventory integration documentation and Wiring System handoff/current-state documentation must be updated in the same workstream.
+
+Do not leave a changed architecture decision, accepted production checkpoint, known limitation, or exact resume point only in conversation history or Issue comments. Update the controlled documents before subsequent work depends on it.
 
 When the UI/workflow becomes accepted, operator procedures must be created before the work is closed.
