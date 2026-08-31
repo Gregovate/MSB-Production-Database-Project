@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Controller Inventory</title>
+  <link rel="stylesheet" href="/controllers.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <img id="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div class="brand-copy">
+      <h1>Controller Inventory</h1>
+      <div class="subhead">Permanent physical controllers used by the Wiring System.</div>
+    </div>
+    <div class="header-actions">
+      <a class="header-link" href="/">Field Wiring</a>
+      <button id="theme-toggle" type="button">Dark mode</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="summary-grid" id="summary-grid" aria-live="polite">
+    <div class="summary-card"><span>Total Controllers</span><strong id="sum-total">—</strong></div>
+    <div class="summary-card"><span>Assigned</span><strong id="sum-assigned">—</strong></div>
+    <div class="summary-card"><span>Unassigned</span><strong id="sum-unassigned">—</strong></div>
+    <div class="summary-card"><span>Firmware To Verify</span><strong id="sum-firmware">—</strong></div>
+  </section>
+
+  <section class="card toolbar">
+    <div class="filters">
+      <label>
+        Search
+        <input id="controller-search" autocomplete="off" placeholder="Controller ID, Display, model, serial, location…">
+      </label>
+      <label>
+        Status
+        <select id="status-filter"><option value="">All statuses</option></select>
+      </label>
+      <label>
+        Model
+        <select id="model-filter"><option value="">All models</option></select>
+      </label>
+      <label>
+        Assignment
+        <select id="assignment-filter">
+          <option value="">All controllers</option>
+          <option value="assigned">Assigned</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
+      </label>
+      <button id="refresh-button" type="button">Refresh</button>
+    </div>
+    <div class="hint">Read-only operational view. Controller records are maintained by authorized managers in Directus.</div>
+  </section>
+
+  <section class="workspace">
+    <div class="card list-card">
+      <div class="section-title">
+        <h2>Controllers</h2>
+        <span id="controller-count" class="muted"></span>
+      </div>
+      <div id="controller-list" class="controller-list" aria-live="polite"></div>
+    </div>
+
+    <div class="card detail-card">
+      <div id="detail-empty" class="empty-state">
+        Select a controller to see its permanent asset information and current Display assignments.
+      </div>
+
+      <div id="detail" hidden>
+        <div class="detail-heading">
+          <div>
+            <div class="eyebrow">Controller</div>
+            <h2 id="detail-id"></h2>
+            <div id="detail-model" class="detail-model"></div>
+          </div>
+          <span id="detail-status" class="pill"></span>
+        </div>
+
+        <div id="detail-facts" class="fact-grid"></div>
+
+        <section class="detail-section">
+          <div class="section-title">
+            <h3>Current Display Assignments</h3>
+            <span id="assignment-count" class="muted"></span>
+          </div>
+          <div id="assignments" class="assignment-list"></div>
+        </section>
+
+        <section class="detail-section">
+          <div class="section-title">
+            <h3>Firmware History</h3>
+          </div>
+          <div id="firmware-history" class="firmware-history"></div>
+        </section>
+
+        <section class="detail-section directus-note">
+          <strong>Maintenance</strong>
+          <div>Use Directus to create or update Controller Inventory records. Delete is intentionally not part of the manager workflow.</div>
+        </section>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/controllers.js"></script>
+</body>
+</html>
