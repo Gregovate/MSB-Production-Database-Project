@@ -100,3 +100,10 @@ def test_fieldwiring_browser_consumes_shared_hierarchy_shape():
     assert "node.scenes || []" in source
     assert "item.node.label" in source
     assert "stage.stage_name" not in source
+
+
+def test_wiring_detail_links_back_to_controller_inventory():
+    source = (Path(__file__).resolve().parent / "wiring.html").read_text(encoding="utf-8")
+
+    assert 'href="controllers"' in source
+    assert ">Controller Inventory</a>" in source
