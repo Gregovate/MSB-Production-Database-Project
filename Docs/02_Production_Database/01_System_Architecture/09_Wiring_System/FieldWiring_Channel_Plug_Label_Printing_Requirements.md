@@ -31,10 +31,10 @@ In this example:
 - `TC` is Stage/authoring context;
 - `7B` is controller UID/address context;
 - `09` identifies controller channel/output 9;
-- `P1` is a field plug identifier embedded in the descriptive portion; and
-- the remaining words are useful field metadata.
+- `P1` is additional plug/context carried in the preview name but is not intended physical-label text; and
+- `Caroler Mouth Open 2` is the useful descriptive metadata intended for the physical wiring line.
 
-The Stage short code and controller UID are intentionally embedded in the LOR name for preview authoring/context. Printing those values on the physical wiring line would unnecessarily bind the lead label to a particular Stage/controller identity.
+The Stage short code, controller UID, and plug/context token are useful inside the wiring/preview system but are not part of the descriptive physical label.
 
 The controller channel/output number itself is different: it is intentionally printed as a large standalone integer, normally `1` through `16`, and does not by itself identify a specific controller.
 
@@ -43,8 +43,8 @@ The intended direction is therefore:
 ```text
 current approved FieldWiring row
     -> resolve controller physical channel/output number
-    -> resolve field plug identifier + useful field metadata
-    -> operator selects plug/lead labels
+    -> resolve useful printable descriptive metadata
+    -> operator selects wiring labels
     -> FieldWiring creates controlled print request
     -> existing LabelPrintService
     -> Brother label printer
@@ -62,10 +62,11 @@ For wiring labels:
 - `objChannel` is intentionally the visually dominant field on the label;
 - Stage short codes embedded only for preview organization are **not** intended physical-label text;
 - controller UID/address prefixes embedded only for preview organization are **not** intended physical-label text;
-- the descriptive wiring line should retain the applicable **field plug identifier** and useful connection metadata;
-- controller identity, Stage, network, UID/address, universe, and other resolved wiring context remains available from the FieldWiring system and may be shown in the pre-print review without being printed on the label;
-- the LabelPrintService must not attempt to infer correctness by blindly trimming arbitrary prefixes from a raw Channel Name string; and
-- if the controller channel/output, field plug, and printable metadata cannot be resolved unambiguously from the approved wiring model, the print request should be blocked/reviewed rather than falling back to the entire raw LOR Channel Name.
+- plug identifiers or other routing/context tokens such as `P1` are **not** intended descriptive physical-label text;
+- `objLine1` / `objLine2` contain only the useful descriptive connection metadata intended for the installer;
+- controller identity, Stage, network, UID/address, plug/routing context, universe, and other resolved wiring context remains available from the FieldWiring system and may be shown in the pre-print review without being printed on the label;
+- the LabelPrintService must not attempt to infer correctness by blindly trimming arbitrary prefixes/tokens from a raw Channel Name string; and
+- if the controller channel/output and printable descriptive metadata cannot be resolved unambiguously from the approved wiring model, the print request should be blocked/reviewed rather than falling back to the entire raw LOR Channel Name.
 
 For the representative source name:
 
@@ -73,14 +74,14 @@ For the representative source name:
 TC 7B-09 Caroler P1 Mouth Open 2
 ```
 
-the intended semantic label inputs are conceptually:
+the intended semantic label inputs are:
 
 ```text
 objChannel = 9
-printable descriptive text = field plug P1 + useful Caroler/Mouth Open 2 metadata
+objLine1/objLine2 = Caroler / Mouth Open 2 descriptive metadata
 ```
 
-The exact ordering/splitting of the descriptive text is a rendering decision to be validated against the 12 mm templates. The authoring-only `TC` and controller UID `7B` must not be printed merely because they exist in the LOR Channel Name.
+The exact one-line/two-line split of that descriptive metadata is a rendering decision to be validated against the 12 mm templates. `TC`, `7B`, and `P1` are not intended physical-label text.
 
 This is a data-contract boundary, not a cosmetic string-shortening rule.
 
@@ -88,13 +89,13 @@ This is a data-contract boundary, not a cosmetic string-shortening rule.
 
 A FieldWiring plug/lead label is a **configuration / hookup label**, not a permanent asset-identity label.
 
-Unlike a Display, Container, or future Controller QR/identity label, a plug/lead assignment or descriptive metadata may change when the approved LOR wiring topology changes.
+Unlike a Display, Container, or future Controller QR/identity label, descriptive wiring metadata may change when the approved LOR wiring topology changes.
 
 Therefore:
 
 - the printed text is derived from the current approved structured wiring state;
 - print history must retain enough source provenance to identify which wiring build produced the label;
-- a later plug/output or metadata change may require a controlled replacement/reprint; and
+- a later output assignment or metadata change may require a controlled replacement/reprint; and
 - the plug/lead label must not be used as the permanent identity key for the controller, Display, or wiring relationship.
 
 ## Known Printer / Service Context
@@ -119,7 +120,7 @@ two-line: objChannel, objLine1, objLine2
 
 `objChannel` is the visually dominant physical controller channel/output number, normally `1` through `16`.
 
-`objLine1` / `objLine2` contain the field plug identifier and useful connection metadata, with preview-only Stage/controller-UID scaffolding removed by the structured wiring model before the print request reaches LabelPrintService.
+`objLine1` / `objLine2` contain only useful descriptive connection metadata. Preview-only Stage/controller-UID and plug/routing context must be excluded by the structured wiring model before the print request reaches LabelPrintService.
 
 The exact structured FieldWiring source fields supplying those objects must be resolved before Wiring printing is implemented.
 
@@ -150,9 +151,9 @@ The normal workflow should be approximately:
 
 ```text
 1. Operator opens resolved FieldWiring context.
-2. Operator selects one or more physical plug/output labels.
-3. FieldWiring resolves controller channel/output number, field plug identifier, and printable metadata.
-4. FieldWiring shows a pre-print review of exactly what will be printed plus the supporting Stage/controller/network context.
+2. Operator selects one or more wiring labels.
+3. FieldWiring resolves controller channel/output number and printable descriptive metadata.
+4. FieldWiring shows a pre-print review of exactly what will be printed plus the supporting Stage/controller/network/plug context.
 5. Operator confirms label count and printable text.
 6. Printer/media/template preflight passes.
 7. FieldWiring submits a controlled request to LabelPrintService.
@@ -168,13 +169,12 @@ The pre-print review should make the source context obvious enough to catch a wr
 At minimum, the integration must provide:
 
 - controller physical channel/output number sourced from the current approved structured wiring data;
-- field plug identifier sourced from the current approved structured wiring data;
-- printable metadata sourced from the current approved structured wiring data;
+- printable descriptive metadata sourced from the current approved structured wiring data;
 - no normal hand-keying or manual prefix stripping of label text;
 - raw LOR Channel Name retained as source evidence where useful, but not assumed to be the literal physical-label text;
 - Stage/Sub-stage/Scene and Background/Musical context visible before printing;
 - physical controller/group and Output/Plug context visible when known;
-- Stage and controller-UID authoring prefixes excluded from the descriptive physical label text;
+- Stage, controller-UID, and plug/routing authoring context excluded from the descriptive physical label text;
 - requested label count visible before printing;
 - centrally controlled FieldWiring label template;
 - required 12 mm media/cartridge preflight;
@@ -185,7 +185,7 @@ At minimum, the integration must provide:
 - per-item print result where technically possible;
 - requester / timestamp tracking;
 - wiring snapshot / Preview provenance sufficient to identify the source data; and
-- no fragile LabelPrintService-only string parser that silently guesses which parts of an arbitrary LOR Channel Name are Stage/address scaffolding.
+- no fragile LabelPrintService-only string parser that silently guesses which parts of an arbitrary LOR Channel Name are authoring scaffolding.
 
 Useful reprint reasons include:
 
@@ -202,48 +202,47 @@ other controlled reason
 
 ## Label Content — Accepted Direction
 
-The essential physical-label content is:
+The essential physical-label content is exactly:
 
 ```text
 large controller channel/output number
-+ field plug identifier
-+ useful connection metadata
++ useful descriptive connection metadata
 ```
 
 The large controller channel/output number is normally `1` through `16`. It is intentionally printed and does not, by itself, identify a particular controller.
 
-The raw LOR Channel Name may contain additional Stage/controller UID/address scaffolding needed only for preview authoring and therefore must not be treated as the label specification.
+The raw LOR Channel Name may contain additional Stage/controller UID/address and plug/routing scaffolding needed for preview authoring or wiring context and therefore must not be treated as the label specification.
 
-A 12 mm label has limited real estate. `objChannel` is the visually dominant field. `objLine1` / `objLine2` carry the field plug and concise connection metadata as supported by the tested template.
+A 12 mm label has limited real estate. `objChannel` is the visually dominant field. `objLine1` / `objLine2` carry only the concise descriptive connection metadata supported by the tested template.
 
-Additional context such as Stage, controller identity, UID/address, Display, network, universe, or source Preview can remain visible in the FieldWiring browser/pre-print review and available through the wiring system rather than being permanently printed on every lead.
+Additional context such as Stage, controller identity, UID/address, plug/routing identifier, Display, network, universe, or source Preview can remain visible in the FieldWiring browser/pre-print review and available through the wiring system rather than being permanently printed on every lead.
 
 The final source-field mapping and representative short/long metadata cases must be validated before production approval.
 
 ## Relationship to FieldWiring Physical Presentation
 
-Label printing must use the same physical interpretation presented to the installer while avoiding unnecessary Stage/controller identity binding on the descriptive physical label text.
+Label printing must use the same physical interpretation presented to the installer while avoiding unnecessary Stage/controller/plug context on the physical wiring line.
 
 Examples:
 
 ```text
 Traditional A/C
     physical controller channel/output 1-16 -> objChannel
-    resolved field plug + connection metadata -> objLine1/objLine2
-    Stage + controller UID/address remain wiring-system context
+    resolved descriptive connection metadata -> objLine1/objLine2
+    Stage + controller UID/address + plug/routing context remain wiring-system context
 
 Pixie
     physical controller channel/output 1-16 -> objChannel
-    resolved pigtail/plug + connection metadata -> objLine1/objLine2
-    controller assignment/context remains available in FieldWiring
+    resolved descriptive connection metadata -> objLine1/objLine2
+    controller assignment and plug/routing context remain available in FieldWiring
 
 E1.31
     accepted physical controller output -> objChannel when that output contract is established
-    resolved connection/plug metadata -> objLine1/objLine2
-    universe/controller identity remains available in FieldWiring unless specifically approved as label text
+    resolved descriptive connection metadata -> objLine1/objLine2
+    universe/controller/plug context remains available in FieldWiring unless specifically approved as label text
 ```
 
-Raw LOR Unit IDs, DMX/E1.31 universes, compatibility-view `Controller` values, or Stage short codes must not be substituted into the descriptive physical label text merely because they are easy to extract from the preview.
+Raw LOR Unit IDs, DMX/E1.31 universes, compatibility-view `Controller` values, Stage short codes, or plug/routing tokens must not be substituted into the descriptive physical label text merely because they are easy to extract from the preview.
 
 ## Implementation Boundary
 
@@ -254,14 +253,14 @@ This means:
 ```text
 FieldWiring / wiring model
     -> supplies controller channel/output number
-    -> supplies field plug + printable metadata
+    -> supplies printable descriptive metadata
 
 LabelPrintService
     -> places channel/output in objChannel
-    -> decides HOW supplied plug/metadata is rendered in objLine1/objLine2
+    -> decides HOW supplied descriptive metadata is rendered in objLine1/objLine2
 ```
 
-LabelPrintService must not become a second wiring parser whose correctness depends on reverse-engineering naming prefixes from LOR Channel Name text.
+LabelPrintService must not become a second wiring parser whose correctness depends on reverse-engineering naming prefixes/tokens from LOR Channel Name text.
 
 FieldWiring must not create a second independent Brother printer integration if the existing LabelPrintService can be extended to support this label class.
 
@@ -273,20 +272,20 @@ Before FieldWiring channel/plug label printing is considered production-ready, t
 
 1. the dedicated 12 mm FieldWiring one-line and two-line templates;
 2. representative controller channel/output values, including normal `1` through `16` values;
-3. representative short and long printable plug/metadata text;
-4. a representative LOR name containing Stage + UID/channel authoring scaffolding and prove Stage/UID scaffolding is omitted while the resolved channel/output number is retained in `objChannel`;
+3. representative short and long printable descriptive metadata;
+4. a representative LOR name containing Stage + UID/channel + plug/routing authoring context and prove those non-label tokens are omitted while the resolved channel/output number is retained in `objChannel`;
 5. one-label printing;
 6. multi-label batch printing;
-7. exact structured channel/output, plug, and metadata transfer with no re-keying;
-8. pre-print review showing both printable fields and supporting controller/Stage context;
+7. exact structured channel/output and descriptive metadata transfer with no re-keying;
+8. pre-print review showing both printable fields and supporting controller/Stage/plug context;
 9. correct 12 mm media/cartridge preflight;
 10. intentional reprint of one selected label;
 11. partial-batch failure and targeted retry;
 12. accidental duplicate-print protection;
 13. changed structured wiring metadata / replacement-label workflow;
 14. requester and source-provenance tracking;
-15. physical verification that printed labels correspond to the selected controller outputs/plugs; and
-16. proof that LabelPrintService does not rely on a fragile hard-coded parser for Stage/UID/address prefixes.
+15. physical verification that printed labels correspond to the selected controller outputs; and
+16. proof that LabelPrintService does not rely on a fragile hard-coded parser for Stage/UID/address/plug prefixes.
 
 ## Related Documents
 
