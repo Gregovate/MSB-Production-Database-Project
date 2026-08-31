@@ -24,10 +24,17 @@ def controller_list(
     repo: Repository,
     *,
     query: str = "",
+    stage_id: int | None = None,
     status: str = "",
     model: str = "",
     assignment: str = "",
 ) -> dict[str, Any]:
+    """Return permanent controllers with operational browse filters.
+
+    Stage is derived from current Controller-to-Display relationships. It is not
+    stored on ``ref.controller`` because one controller may serve multiple
+    Displays and, legitimately, Displays from more than one Stage.
+    """
     pg = _postgres(repo)
     query = query.strip()
     status = status.strip().upper()
@@ -40,21 +47,39 @@ def controller_list(
     if query:
         token = f"%{query}%"
         where.append(
-            "(" 
+            "("
             "c.controller_id::text ILIKE %s OR "
             "m.model_code ILIKE %s OR "
             "m.model_name ILIKE %s OR "
             "coalesce(c.serial_number, '') ILIKE %s OR "
             "coalesce(c.current_location_code, '') ILIKE %s OR "
             "EXISTS ("
-            "  SELECT 1 FROM ref.controller_display qcd "
+            "  SELECT 1 "
+            "  FROM ref.controller_display qcd "
             "  JOIN ref.display qd ON qd.display_id = qcd.display_id "
+            "  LEFT JOIN ref.stage qst ON qst.stage_id = qd.stage_id "
             "  WHERE qcd.controller_id = c.controller_id "
-            "    AND qd.display_name ILIKE %s"
+            "    AND ("
+            "      qd.display_name ILIKE %s OR "
+            "      coalesce(qst.stage_key, '') ILIKE %s OR "
+            "      coalesce(qst.stage_name, '') ILIKE %s"
+            "    )"
             ")"
             ")"
         )
-        params.extend([token, token, token, token, token, token])
+        params.extend([token, token, token, token, token, token, token, token])
+
+    if stage_id is not None:
+        where.append(
+            "EXISTS ("
+            "  SELECT 1 "
+            "  FROM ref.controller_display scd "
+            "  JOIN ref.display sd ON sd.display_id = scd.display_id "
+            "  WHERE scd.controller_id = c.controller_id "
+            "    AND sd.stage_id = %s"
+            ")"
+        )
+        params.append(stage_id)
 
     if status:
         where.append("s.controller_status_name = %s")
@@ -93,7 +118,14 @@ def controller_list(
             c.label_required,
             c.print_label,
             count(cd.display_id) AS assignment_count,
-            string_agg(d.display_name, ', ' ORDER BY d.display_name) AS display_names
+            string_agg(d.display_name, ', ' ORDER BY d.display_name) AS display_names,
+            string_agg(
+                DISTINCT CASE
+                    WHEN st.stage_id IS NULL THEN NULL
+                    ELSE st.stage_key || ' · ' || st.stage_name
+                END,
+                ', '
+            ) AS stage_names
         FROM ref.controller c
         JOIN ref.controller_model m
           ON m.controller_model_id = c.controller_model_id
@@ -105,6 +137,8 @@ def controller_list(
           ON cd.controller_id = c.controller_id
         LEFT JOIN ref.display d
           ON d.display_id = cd.display_id
+        LEFT JOIN ref.stage st
+          ON st.stage_id = d.stage_id
     """
     if where:
         sql += " WHERE " + " AND ".join(where)
@@ -163,10 +197,32 @@ def controller_list(
         )
         models = [dict(row) for row in cur.fetchall()]
 
+        cur.execute(
+            """
+            SELECT
+                st.stage_id,
+                st.stage_key,
+                st.stage_name
+            FROM ref.controller_display cd
+            JOIN ref.display d
+              ON d.display_id = cd.display_id
+            JOIN ref.stage st
+              ON st.stage_id = d.stage_id
+            GROUP BY st.stage_id, st.stage_key, st.stage_name
+            ORDER BY
+                min(st.park_order),
+                min(st.sub_order),
+                st.stage_key,
+                st.stage_name
+            """
+        )
+        stages = [dict(row) for row in cur.fetchall()]
+
     return {
         "summary": summary,
         "statuses": statuses,
         "models": models,
+        "stages": stages,
         "controllers": controllers,
     }
 
@@ -248,7 +304,10 @@ def controller_detail(repo: Repository, controller_id: int) -> dict[str, Any] | 
             LEFT JOIN ref.display ws
               ON ws.display_id = cd.wiring_source_display_id
             WHERE cd.controller_id = %s
-            ORDER BY d.display_name
+            ORDER BY
+                st.park_order,
+                st.sub_order,
+                d.display_name
             """,
             (controller_id,),
         )
