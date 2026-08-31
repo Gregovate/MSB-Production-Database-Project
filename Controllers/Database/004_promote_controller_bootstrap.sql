@@ -8,9 +8,9 @@ Run only AFTER:
   - 002_create_ref_controller_sandbox.sql has created empty ref.controller*.
 
 Model rule:
-  - staged model_evidence maps directly to ref.controller_model.model_code;
-  - manufacturer/full-name metadata lives on ref.controller_model separately;
-  - distinct source model codes are not collapsed during bootstrap.
+  - staged model_evidence is source provenance only;
+  - stage.controller_model_reference resolves it to canonical_model_code;
+  - permanent ref.controller_model uses corrected vendor model identities/names.
 
 Firmware rule:
   - RECORDED workbook firmware becomes installed firmware with state
@@ -42,24 +42,19 @@ DECLARE
 BEGIN
     SELECT count(*) INTO v_count FROM ref.controller;
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Initial Controller promotion requires empty ref.controller; found % rows',
-            v_count;
+        RAISE EXCEPTION 'Initial Controller promotion requires empty ref.controller; found % rows', v_count;
     END IF;
 
     SELECT count(*) INTO v_count FROM ref.controller_display;
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Initial Controller promotion requires empty ref.controller_display; found % rows',
-            v_count;
+        RAISE EXCEPTION 'Initial Controller promotion requires empty ref.controller_display; found % rows', v_count;
     END IF;
 
     SELECT count(*) INTO v_count
     FROM stage.controller_bootstrap
     WHERE review_state = 'REVIEW_REQUIRED';
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Controller bootstrap still has % REVIEW_REQUIRED rows', v_count;
+        RAISE EXCEPTION 'Controller bootstrap still has % REVIEW_REQUIRED rows', v_count;
     END IF;
 
     SELECT count(*) INTO v_ready
@@ -71,27 +66,22 @@ BEGIN
 
     SELECT count(*) INTO v_count
     FROM stage.controller_bootstrap
-    WHERE review_state = 'READY'
-      AND bootstrap_order IS NULL;
+    WHERE review_state = 'READY' AND bootstrap_order IS NULL;
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Controller bootstrap has % READY rows without bootstrap_order', v_count;
+        RAISE EXCEPTION 'Controller bootstrap has % READY rows without bootstrap_order', v_count;
     END IF;
 
     SELECT count(*) INTO v_count
     FROM stage.v_controller_bootstrap_review
-    WHERE review_state = 'READY'
-      AND cardinality(blockers) > 0;
+    WHERE review_state = 'READY' AND cardinality(blockers) > 0;
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Controller bootstrap has % READY rows with unresolved blockers', v_count;
+        RAISE EXCEPTION 'Controller bootstrap has % READY rows with unresolved blockers', v_count;
     END IF;
 
     IF (SELECT min(bootstrap_order) FROM stage.controller_bootstrap WHERE review_state='READY') <> 1
        OR (SELECT max(bootstrap_order) FROM stage.controller_bootstrap WHERE review_state='READY') <> v_ready
        OR (SELECT count(DISTINCT bootstrap_order) FROM stage.controller_bootstrap WHERE review_state='READY') <> v_ready THEN
-        RAISE EXCEPTION
-            'Controller bootstrap_order must be contiguous 1..%', v_ready;
+        RAISE EXCEPTION 'Controller bootstrap_order must be contiguous 1..%', v_ready;
     END IF;
 
     SELECT count(*) INTO v_count
@@ -99,19 +89,19 @@ BEGIN
     LEFT JOIN stage.controller_model_reference AS r
       ON r.source_model_evidence = b.model_evidence
     LEFT JOIN ref.controller_model AS m
-      ON m.model_code = b.model_evidence
+      ON m.model_code = r.canonical_model_code
     WHERE b.review_state = 'READY'
       AND (r.source_model_evidence IS NULL OR m.controller_model_id IS NULL);
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Controller bootstrap has % READY rows whose model code is unresolved',
-            v_count;
+        RAISE EXCEPTION 'Controller bootstrap has % READY rows whose corrected vendor model is unresolved', v_count;
     END IF;
 
     SELECT count(*) INTO v_count
     FROM stage.controller_bootstrap AS b
+    JOIN stage.controller_model_reference AS r
+      ON r.source_model_evidence = b.model_evidence
     JOIN ref.controller_model AS m
-      ON m.model_code = b.model_evidence
+      ON m.model_code = r.canonical_model_code
     LEFT JOIN ref.controller_firmware_version AS fv
       ON fv.controller_model_id = m.controller_model_id
      AND fv.firmware_version = btrim(b.firmware_evidence)
@@ -119,9 +109,7 @@ BEGIN
       AND b.firmware_state_evidence = 'RECORDED'
       AND fv.controller_firmware_version_id IS NULL;
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Controller bootstrap has % RECORDED firmware values missing from ref.controller_firmware_version',
-            v_count;
+        RAISE EXCEPTION 'Controller bootstrap has % RECORDED firmware values missing from ref.controller_firmware_version', v_count;
     END IF;
 
     SELECT count(*) INTO v_count
@@ -133,8 +121,7 @@ BEGIN
         HAVING count(*) > 1
     ) AS x;
     IF v_count <> 0 THEN
-        RAISE EXCEPTION
-            'Controller bootstrap has % candidates with multiple WIRING_SOURCE rows', v_count;
+        RAISE EXCEPTION 'Controller bootstrap has % candidates with multiple WIRING_SOURCE rows', v_count;
     END IF;
 END
 $preflight$;
@@ -165,37 +152,36 @@ BEGIN
     END IF;
 
     FOR r IN
-        SELECT *
-        FROM stage.controller_bootstrap
-        WHERE review_state = 'READY'
-        ORDER BY bootstrap_order
+        SELECT b.*, mr.canonical_model_code
+        FROM stage.controller_bootstrap AS b
+        JOIN stage.controller_model_reference AS mr
+          ON mr.source_model_evidence = b.model_evidence
+        WHERE b.review_state = 'READY'
+        ORDER BY b.bootstrap_order
     LOOP
         v_expected_id := 1000 + r.bootstrap_order;
 
         SELECT controller_model_id INTO v_model_id
         FROM ref.controller_model
-        WHERE model_code = r.model_evidence;
+        WHERE model_code = r.canonical_model_code;
 
         IF v_model_id IS NULL THEN
-            RAISE EXCEPTION
-                'Model % is unresolved for bootstrap row %',
-                r.model_evidence, r.source_row_num;
+            RAISE EXCEPTION 'Corrected vendor model % is unresolved for bootstrap row %',
+                r.canonical_model_code, r.source_row_num;
         END IF;
 
         v_firmware_id := NULL;
         v_firmware_state := 'UNKNOWN';
 
         IF r.firmware_state_evidence = 'RECORDED' THEN
-            SELECT controller_firmware_version_id
-              INTO v_firmware_id
+            SELECT controller_firmware_version_id INTO v_firmware_id
             FROM ref.controller_firmware_version
             WHERE controller_model_id = v_model_id
               AND firmware_version = btrim(r.firmware_evidence);
 
             IF v_firmware_id IS NULL THEN
-                RAISE EXCEPTION
-                    'Recorded firmware % for model % is unresolved for bootstrap row %',
-                    r.firmware_evidence, r.model_evidence, r.source_row_num;
+                RAISE EXCEPTION 'Recorded firmware % for model % is unresolved for bootstrap row %',
+                    r.firmware_evidence, r.canonical_model_code, r.source_row_num;
             END IF;
 
             v_firmware_state := 'RECORDED_UNVERIFIED';
@@ -226,8 +212,7 @@ BEGIN
         RETURNING controller_id INTO v_controller_id;
 
         IF v_controller_id <> v_expected_id THEN
-            RAISE EXCEPTION
-                'Controller ID mismatch for bootstrap row %: expected %, PostgreSQL generated %',
+            RAISE EXCEPTION 'Controller ID mismatch for bootstrap row %: expected %, PostgreSQL generated %',
                 r.source_row_num, v_expected_id, v_controller_id;
         END IF;
 
@@ -239,9 +224,7 @@ END
 $promotion$;
 
 INSERT INTO ref.controller_display (
-    controller_id,
-    display_id,
-    wiring_source_display_id
+    controller_id, display_id, wiring_source_display_id
 )
 SELECT
     p.controller_id,
@@ -274,8 +257,10 @@ SELECT
 FROM pg_temp.controller_bootstrap_promoted AS p
 JOIN stage.controller_bootstrap AS b
   ON b.controller_bootstrap_id = p.controller_bootstrap_id
+JOIN stage.controller_model_reference AS r
+  ON r.source_model_evidence = b.model_evidence
 JOIN ref.controller_model AS m
-  ON m.model_code = b.model_evidence
+  ON m.model_code = r.canonical_model_code
 JOIN ref.controller_firmware_version AS fv
   ON fv.controller_model_id = m.controller_model_id
  AND fv.firmware_version = btrim(b.firmware_evidence)
@@ -294,9 +279,7 @@ BEGIN
 
     SELECT count(*) INTO v_actual FROM ref.controller;
     IF v_actual <> v_expected THEN
-        RAISE EXCEPTION
-            'Controller promotion row-count mismatch: expected %, actual %',
-            v_expected, v_actual;
+        RAISE EXCEPTION 'Controller promotion row-count mismatch: expected %, actual %', v_expected, v_actual;
     END IF;
 
     IF EXISTS (
@@ -318,8 +301,7 @@ BEGIN
     WHERE firmware_verification_state = 'UNKNOWN';
 
     IF v_recorded <> 172 OR v_unknown <> 5 THEN
-        RAISE EXCEPTION
-            'Firmware-state count mismatch: expected 172 recorded-unverified and 5 unknown; found % and %',
+        RAISE EXCEPTION 'Firmware-state count mismatch: expected 172 recorded-unverified and 5 unknown; found % and %',
             v_recorded, v_unknown;
     END IF;
 END
