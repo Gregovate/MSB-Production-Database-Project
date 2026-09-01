@@ -31,7 +31,20 @@ def test_production_wrapper_is_two_session_foreground_and_lf_safe() -> None:
     assert "UTF8Encoding($false)" in source
 
 
-def test_production_server_gate_pins_exact_live_and_target_commits() -> None:
+def test_production_wrapper_rebases_template_to_verified_live_checkpoint() -> None:
+    source = (ACCEPTANCE / "run_controller_label_production_deploy.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "$TemplateExpectedHead = '84d6f06e16c43ebb0f6aa21273b999af7f6d455b'" in source
+    assert "$VerifiedLiveHead = 'f334cfe71717b643a4d3a7ac6a5064fb13b9047e'" in source
+    assert "$ApprovedTarget = 'e9ab029a17067b38b34f9306069f54899925f73f'" in source
+    assert "$serverText = $serverText.Replace($TemplateExpectedHead, $VerifiedLiveHead)" in source
+    assert "target is 60 commits ahead, 0 behind" in source
+    assert "Rollback backup was not created before this stop" in source
+
+
+def test_production_server_gate_pins_template_live_and_target_commits() -> None:
     source = (ACCEPTANCE / "controller_label_production_deploy_server.sh").read_text(
         encoding="utf-8"
     )
