@@ -6,21 +6,31 @@ REPO_ROOT = BASE_DIR.parent.parent
 ACCEPTANCE = REPO_ROOT / "Controllers" / "Acceptance"
 
 
+def _powershell_executable_lines(source: str) -> str:
+    """Return non-comment PowerShell lines for forbidden-command assertions."""
+    return "\n".join(
+        line
+        for line in source.splitlines()
+        if not line.lstrip().startswith("#")
+    )
+
+
 def test_windows_wrapper_keeps_ssh_foreground_bounded_and_two_session() -> None:
     source = (ACCEPTANCE / "run_controller_label_disposable_acceptance.ps1").read_text(
         encoding="utf-8"
     )
+    executable = _powershell_executable_lines(source)
 
-    assert "Start-Process" not in source
-    assert "ssh -f" not in source
-    assert "ssh -N" not in source
-    assert "-L " not in source
-    assert "Tee-Object" not in source
-    assert "timeout --signal=TERM 1200s" in source
-    assert source.count("& ssh") == 1
-    assert source.count("& scp") == 1
-    assert "& ssh -tt $Server" in source
-    assert "& scp -r $localBundle" in source
+    assert "Start-Process" not in executable
+    assert "ssh -f" not in executable
+    assert "ssh -N" not in executable
+    assert "-L " not in executable
+    assert "Tee-Object" not in executable
+    assert "timeout --signal=TERM 1200s" in executable
+    assert executable.count("& ssh") == 1
+    assert executable.count("& scp") == 1
+    assert "& ssh -tt $Server" in executable
+    assert "& scp -r $localBundle" in executable
 
 
 def test_windows_wrapper_normalizes_shell_script_to_lf_before_upload() -> None:
