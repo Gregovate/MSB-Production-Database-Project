@@ -40,6 +40,29 @@ If more than one Stage/Sub-stage name matches, the browser identifies all matche
 
 When the operator selects the Stage/Sub-stage dropdown directly, the dropdown itself remains the explicit Stage context and the free-text Stage-match banner is hidden.
 
+## Stage-wide physical inventory boundary
+
+Controller Inventory Stage browsing is a **Stage-wide physical inventory view**. It must not inherit FieldWiring's Background/Static-versus-Musical presentation split as an inventory boundary.
+
+FieldWiring may legitimately present different LOR Preview/Scene wiring contexts separately because a technician is asking which hookup applies in the selected presentation context. Controller Inventory answers a different question: which permanent physical Controllers currently serve Displays in this Stage/Sub-stage.
+
+Therefore Controller Inventory resolves Stage membership through the permanent Controller-to-Display relationships and presents each permanent physical Controller in the Stage result without requiring the operator to know which Background, Musical, Preview, or Scene context exposed its wiring evidence.
+
+Presentation context may remain useful troubleshooting/provenance evidence, but it does not create a separate Controller identity or a separate Stage inventory membership.
+
+The accepted distinction is:
+
+```text
+FieldWiring
+    -> wiring for the selected LOR presentation context
+
+Controller Inventory
+    -> permanent physical Controllers serving the Stage/Sub-stage
+       across the current permanent Display relationships
+```
+
+A Controller serving multiple Displays in the same Stage remains one physical Controller. A Display served by multiple physical Controllers must expose all of those permanent Controller relationships.
+
 ## Data boundary
 
 Stage remains derived through current Display assignments:
