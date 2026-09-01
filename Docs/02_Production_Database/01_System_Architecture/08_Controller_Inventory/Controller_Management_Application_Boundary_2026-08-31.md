@@ -5,50 +5,41 @@
 | Status | ACTIVE ARCHITECTURE DECISION — CURRENT RESUME AUTHORITY |
 | Issue | #110 |
 | Primary Controller UX | Purpose-built Controller application |
-| Primary retained Directus value | Authentication and authorization |
+| Authentication authority | Cloudflare Access on `my.sheboyganlights.org` |
+| Authenticated identity | `Cf-Access-Authenticated-User-Email` |
+| Authorization authority | Existing Directus user / role / policy data |
 | Secondary Directus use | Simple table/reference maintenance only |
 | Controller delete policy | No normal Controller delete |
 
 ## Decision
 
-The primary retained value of Directus in the MSB Production Database is **authentication and authorization**.
-
-Directus provides the existing user identity, login/session, role/policy, and Manager authorization system. Purpose-built MSB applications should reuse that authority rather than invent a second user/permissions system.
-
-Operational UX does **not** need to be implemented in Directus merely because Directus authenticates the user.
-
-The intended architecture is:
+Controller Management uses the same protected-site authentication boundary already established for MSB browser applications:
 
 ```text
+Cloudflare Access
+  = authentication / known user identity
+
 Directus
-  = login / identity / role-policy authority
+  = existing user / role / policy authorization data
 
 Purpose-built MSB applications
   = operational user experience and workflow
 
 PostgreSQL
-  = data integrity, audit, constraints, and final authority
+  = data integrity, audit, constraints, narrow write commands, and final authority
 ```
 
-Directus may still be used for relatively simple maintenance tasks where the operator is editing one table at a time, optionally with a small number of lookups or boolean controls. That is a secondary convenience, not its primary architectural role.
+A Controller user does **not** log into Directus again, and the Controller application does **not** depend on cross-origin Directus cookies or a Directus browser session. Once Cloudflare Access has authenticated the user at `my.sheboyganlights.org`, the protected backend receives the authenticated email and resolves current authorization from the existing Directus user/role/policy model.
 
-Accepted examples include:
+The detailed authentication/authorization contract is controlled in [Controller Management Authentication / Authorization Contract — 2026-08-31](Controller_Management_Authentication_Authorization_Contract_2026-08-31.md).
 
-- maintaining lookup/reference tables;
-- maintaining ordinary Display metadata;
-- selecting simple related values such as status, frame, theme, designer, or container;
-- toggling boolean request/state fields such as `label_required` and `print_label`;
-- basic record notes and audit-aware metadata maintenance.
-
-The existing Display edit form is an acceptable example of this secondary boundary. Its formatting and layout are limited and somewhat clunky, but it is operationally adequate for one-record metadata maintenance.
-
-Directus is **not** the target operational UX once a task becomes a multi-table workflow.
+Directus may still be used for relatively simple maintenance tasks where the operator is editing one table at a time. That is a secondary convenience, not the Controller operational workflow.
 
 ## Current Accepted Implementation State
 
-The production Controller/FieldWiring read experience is already operational.
+The production Controller/FieldWiring read experience is operational.
 
-Accepted production application checkpoint on `msb-prod-db`:
+Accepted production checkpoint before browser write work:
 
 ```text
 checkout                    84d6f06e16c43ebb0f6aa21273b999af7f6d455b
@@ -57,24 +48,36 @@ Procedures health/version   V0.1.0 / postgres / ok
 combined live regression    183 passed in 2.39s
 ```
 
-The current Controller browser already provides:
+The read experience includes permanent Controller browse/detail, Stage/Sub-stage-aware search, programmed Network/UID/IP presentation, current Display assignments, firmware history, label state, and Controller/FieldWiring cross-links.
 
-- permanent Controller ID browse/detail;
-- Stage/Sub-stage-aware Controller search and visible Stage-match context;
-- model/status/location and current programmed Network/UID/IP presentation;
-- current Display assignments and Stage context;
-- firmware history and verification context;
-- Controller label state;
-- Controller Inventory -> Field Wiring navigation;
-- Field Wiring -> permanent Controller Inventory cross-links using permanent `controller_id` and model context.
+### Browser write implementation checkpoint — not yet production deployed
 
-The Controller/FieldWiring browser remains read-only for database writes until authenticated Manager write handling is implemented.
+Candidate `99728122e982eb2e77268cf1bb5aee682aaa4c62` establishes the first narrow write slice:
 
-### Directus Controller relationship experiment — closed
+- Cloudflare-authenticated email is consumed by the backend;
+- `ref.controller_browser_capabilities(text)` resolves current Directus-backed capabilities without granting `fieldwiring_app` direct access to Directus system tables;
+- `ref.request_controller_label(text,bigint)` is a narrow `SECURITY DEFINER` command;
+- `fieldwiring_app` retains no direct `UPDATE` on `ref.controller`;
+- the command resolves the active Directus UUID and sets transaction-local `app.directus_user_uuid` so the existing `ref.set_actor_on_update()` -> `ref.resolve_actor()` audit path records the mapped MSB person;
+- the browser sends no email, role, policy, or capability value supplied by JavaScript;
+- `Print Label` is POST-only and server-authorized.
 
-Live testing proved that Directus is not a suitable operational editor for the Controller multi-table workflow. The attempted Controller reverse relationship workspaces became brittle around the legitimate composite Controller/Display key and caused the Directus Controller detail page to fail.
+Application regression for this candidate passed on 2026-08-31:
 
-The accepted cleanup is complete:
+```text
+focused Controller auth/write contracts   9 passed in 0.86s
+FieldWiring full regression               144 passed in 4.48s
+Procedures full regression                 54 passed in 1.23s
+combined application regression           198 passed
+```
+
+These results are an application gate only. Database migrations `021_create_controller_browser_authorization_contract.sql` and `022_create_controller_label_request_command.sql` have **not** yet been applied to production. Current-production disposable PostgreSQL acceptance is the next gate.
+
+## Directus Controller relationship experiment — closed
+
+Live testing proved that Directus is not a suitable operational editor for the Controller multi-table workflow. The attempted reverse relationship workspaces became brittle around the legitimate composite Controller/Display key and caused the Directus Controller detail page to fail.
+
+Accepted cleanup remains:
 
 - Directus `display_assignments` reverse workspace removed;
 - Directus `firmware_history` reverse workspace removed;
@@ -82,55 +85,96 @@ The accepted cleanup is complete:
 - `ref.controller_display` retained its valid composite primary key `(controller_id, display_id)`;
 - permanent relationship/history data were preserved;
 - cleanup validation returned `DIRECTUS CONTROLLER SIMPLIFICATION: PASS`;
-- accepted post-cleanup counts were 194 Controller/Display assignment rows and 172 firmware-history rows;
-- Directus restarted healthy and the Controller record page no longer crashes.
+- Directus restarted healthy and Controller item detail no longer crashes.
 
-Do **not** resume attempts to make Directus the Controller operational editor. The browser-native workflow below is the accepted direction.
-
-The current Controller browser still contains an older informational message saying Manager maintenance remains governed through Directus until authenticated browser editing is implemented. That wording is stale architecture text. Manager **authorization** remains governed by the existing Directus identity/policy authority; Controller operational editing belongs in the Controller browser.
+Do **not** resume attempts to make Directus the Controller operational editor.
 
 ## Authentication / authorization boundary
 
-Purpose-built MSB applications should use the existing Directus identity/session/policy authority for access decisions.
-
-For Controller Management, the desired flow is:
+Accepted request flow:
 
 ```text
-User authenticates through Directus identity/session
-        ↓
-Controller application resolves authenticated user
-        ↓
-Server verifies Manager authorization/policy
-        ↓
-Manager-only Add/Edit/Assign/Unassign controls become available
-        ↓
-Server verifies authorization again on every write request
-        ↓
-PostgreSQL constraints/audit remain final authority
+Browser
+    -> Cloudflare Access authenticates the user
+    -> protected my.sheboyganlights.org/fieldwiring/ proxy path
+    -> backend receives Cf-Access-Authenticated-User-Email
+    -> backend / PostgreSQL resolves active Directus user + role/policy capability
+    -> capability-specific controls are presented
+    -> every state-changing request rechecks identity and authorization server-side
+    -> narrow PostgreSQL command performs the approved write
+    -> existing PostgreSQL audit/constraints remain final authority
 ```
 
-The client-visible Edit button is never the security boundary. A hidden or visible button does not grant permission; every write must be authorized server-side.
+The client-visible button is never the security boundary. A hidden or visible button does not grant permission.
 
 Do not grant broad write privileges to `fieldwiring_app` merely to enable browser editing.
 
+## Capability boundary
+
+Current accepted Controller capabilities are:
+
+```text
+Authenticated production user  -> browse according to existing protected-app access
+Production Crew                 -> browse + Print Label
+Manager                         -> browse + Print Label + Controller management
+Administrator                   -> browse + Print Label + Controller management
+MSB Browser / Read Only         -> browse only
+```
+
+Controller management includes Add Controller, Edit Controller, current model/status/location/firmware/verification/programmed configuration, and Controller-to-Display assignment/reassignment/unassignment. No normal Controller DELETE workflow is authorized.
+
+## PostgreSQL write boundary
+
+The browser application must retain least privilege:
+
+```text
+fieldwiring_app
+    -> SELECT approved read model
+    -> EXECUTE narrow Controller functions/procedures
+    -> no broad table INSERT/UPDATE/DELETE
+```
+
+The first implemented command is:
+
+```text
+ref.request_controller_label(authenticated_email, controller_id)
+```
+
+Its only Controller state change is:
+
+```text
+ref.controller.print_label = true
+```
+
+The label polling/print service remains a separate subsystem and consumes the established request state. Controller Management does not create a second print queue.
+
+The same narrow-command model is the required direction for later Controller create/update/assignment operations.
+
+## Audit actor boundary
+
+The existing Controller tables use:
+
+```text
+ref.set_actor_on_insert()
+ref.set_actor_on_update()
+    -> ref.resolve_actor()
+```
+
+`ref.resolve_actor()` first honors transaction/session setting:
+
+```text
+app.directus_user_uuid
+```
+
+and maps that UUID through `ref.person.directus_user_id`. Browser write commands therefore resolve the authenticated Directus user server-side and set `app.directus_user_uuid` transaction-locally before the governed table write. This preserves the existing audit standard and records the real MSB person rather than `fieldwiring_app`.
+
+Do not bypass the actor triggers, manually stamp audit IDs, or map an arbitrary browser-supplied identity.
+
 ## Custom-application threshold
 
-A purpose-built application should own the UX when the operator must coordinate several related facts/actions in one workflow, including any combination of:
+A purpose-built application owns the UX when an operator must coordinate multiple related facts/actions, including relationship management, workflow state, conditional validation, task-specific navigation, printing, history, or application commands.
 
-- multiple related tables;
-- relationship assignment/unassignment;
-- workflow state transitions;
-- derived context from other records;
-- conditional validation;
-- task-specific search/navigation;
-- printing/label request workflow;
-- history or reconciliation views;
-- cross-links to operational tools;
-- application-specific commands.
-
-Controller Management is already beyond the Directus UX threshold.
-
-Work Orders are expected to cross the same threshold and should eventually become a purpose-built application while continuing to reuse the common authentication/authorization authority.
+Controller Management is beyond the Directus UX threshold. Work Orders are expected eventually to cross the same threshold while continuing to reuse the common authentication/authorization model.
 
 ## Controller Management responsibility
 
@@ -139,86 +183,57 @@ The Controller application owns the normal operational experience for:
 - browse/search;
 - Add Controller;
 - Edit Controller;
-- current model/status/location/firmware maintenance;
+- model/status/location/firmware maintenance;
 - current programmed Network/UID/IP maintenance;
-- Controller-to-Display assignment and unassignment;
+- Controller-to-Display assignment/reassignment/unassignment;
 - reviewed `wiring_source_display_id` maintenance;
-- label request state including `print_label`;
+- label request state;
 - firmware/history context;
 - FieldWiring cross-links;
 - shelf-stock/unassigned Controller workflows;
-- Manager-only commands and validation.
-
-The application may visually reuse successful Directus concepts such as grouped sections, readable lookups, booleans, and read-only audit fields, but it is not constrained by Directus layout or relation-model limitations.
+- capability-protected commands and validation.
 
 ## Directus secondary CRUD responsibility
 
-Directus may remain available for simple Controller/reference-table maintenance where it behaves well, for example:
+Directus may remain available for simple reference or one-record maintenance where it behaves well, for example `ref.controller_model`, `ref.controller_status`, or `ref.controller_firmware_version`. This is a convenience, not the required Controller workflow.
 
-- `ref.controller_model`;
-- `ref.controller_status`;
-- `ref.controller_firmware_version`;
-- simple individual `ref.controller` metadata fields if operationally useful;
-- simple boolean fields such as `print_label`.
-
-This CRUD capability is a convenience. It is not the Controller Management application and it must not be treated as the required Manager workflow.
-
-Do not require Directus to provide the Controller-to-Display assignment workspace or other complex Controller workflows.
+Do not require Directus to provide Controller-to-Display assignment or other complex Controller workflows.
 
 ## Database-model rule
 
-Do not distort a sound PostgreSQL data model solely to satisfy a Directus UI limitation when Directus is not the intended operational application.
+Do not distort PostgreSQL solely to satisfy an administrative UI limitation.
 
-In particular, `ref.controller_display` currently uses the legitimate composite business key:
+`ref.controller_display` legitimately uses:
 
 ```text
 PRIMARY KEY (controller_id, display_id)
 ```
 
-A rollback-only investigation proved that adding a surrogate `controller_display_id` would make the table easier for Directus to treat as an O2M collection, but the architecture decision is **not to apply that schema change merely for Directus compatibility**.
+The composite relationship key remains accepted. Do not replace it with a surrogate key merely for Directus compatibility.
 
-The Controller application can work directly with the governed composite relationship semantics.
+## Security / deployment boundary
 
-## Security boundary
+The Cloudflare authenticated-user header is trusted only behind the documented protected `my.sheboyganlights.org` proxy path. The internal FieldWiring listener must remain restricted according to the Server Management runtime contract so an untrusted client cannot bypass Cloudflare and inject the identity header.
 
-The existing Controller/FieldWiring browser remains read-only until authenticated Manager write handling is implemented.
-
-Browser-native Controller editing must include a server-side authenticated Manager authorization check before any write operation.
-
-The implementation should preserve:
-
-- read-only behavior for ordinary users;
-- Manager-only create/update/assignment commands;
-- no normal Controller DELETE;
-- controlled relationship unassignment without deleting the Controller asset;
-- PostgreSQL validation and audit triggers as final data-integrity authority.
+Database-changing Controller work must follow the Server Management [PostgreSQL Disposable Acceptance Standard](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/PostgreSQL_Disposable_Acceptance_Standard.md): product regression, current-production disposable clone, candidate migration/behavior assertions, production invariants, cleanup, then a separate explicit production deployment gate.
 
 ## Immediate Resume Point
 
-Do not resume from the earlier Directus relationship-editing experiment or from the original Stage-browser backlog. Those phases are closed.
+Do not resume from the Directus relationship experiment or the old Stage-browser backlog.
 
-The immediate implementation phase is:
+Current sequence is:
 
-1. add browser-native Manager maintenance for permanent `ref.controller`: **Add Controller** and **Edit Controller**;
-2. reuse Directus login/session/Manager policy as the authentication/authorization authority and enforce Manager rights server-side on every write;
-3. provide controlled browser lookups for Model, Status, Location, Firmware, verification states, and current programmed configuration;
-4. make current programmed Network / First UID / UID Count / calculated UID range / management IP editable through governed controls while PostgreSQL model/UID rules remain final authority;
-5. expose `print_label` as a Manager-editable request action using the existing Controller label contract;
-6. build permanent Controller ↔ Display assignment management: assign, M:N relationships, move/reassign, controlled unassign, and reviewed `wiring_source_display_id` where required;
-7. support newly acquired/unassigned shelf controllers receiving permanent PostgreSQL-generated `CTRL:<controller_id>` identity with normally `AVAILABLE` status before Display assignment;
-8. complete actual label-service handoff later without blocking the Controller Management UI;
-9. validate the workflow with real shelf-stock/reassignment cases, then write the plain-English operator procedures against the accepted screens.
+1. **Complete disposable PostgreSQL acceptance for migrations 021/022 and the Print Label command.**
+2. Separate explicit production deployment/validation of 021/022 and the V0.3.3 browser slice.
+3. Admin browser acceptance: authenticated identity, capability display, Print Label request, and audit identity.
+4. Production Crew and Read Only capability-boundary acceptance.
+5. Implement Edit Controller using the same narrow command/audit model.
+6. Implement Add Controller.
+7. Implement Controller-to-Display assignment/reassignment/unassignment with M:N and `wiring_source_display_id` preserved.
+8. Minor UI cleanup, full regression/acceptance, operator procedures, and final PR #111 preparation.
 
 The working read-side Controller Inventory and FieldWiring screens are the implementation foundation. Extend them; do not replace them merely to add management capability.
 
-## Directus formatting lesson
-
-Directus provides limited form formatting. Existing MSB forms can group fields and provide reasonable lookup/boolean controls, but layout flexibility is insufficient for complex operational workflows.
-
-This limitation is accepted for simple metadata maintenance and lookup tables. It is not a reason to force complex workflows into Directus.
-
 ## Acceptance direction
 
-Controller Management is complete when a Manager can use the purpose-built Controller application to perform the full operational workflow without raw SQL and without relying on Directus for multi-table coordination.
-
-Directus remains the shared authentication/authorization authority and may continue as a secondary simple-record administration tool where useful.
+Controller Management is complete when authorized operators can perform the accepted operational workflow in the purpose-built Controller application without raw SQL and without relying on Directus for multi-table coordination, while Cloudflare Access remains authentication authority, Directus role/policy data remains authorization authority, and PostgreSQL narrow commands/audit remain the final write boundary.
