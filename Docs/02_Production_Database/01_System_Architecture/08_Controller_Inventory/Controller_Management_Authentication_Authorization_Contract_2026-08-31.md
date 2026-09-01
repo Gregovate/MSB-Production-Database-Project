@@ -159,6 +159,50 @@ Candidate command boundaries include:
 
 No normal Controller DELETE command is authorized.
 
+## Audit Actor Handoff — recovered 2026-08-31
+
+The existing production Controller tables already use the standard MSB audit triggers:
+
+```text
+ref.controller
+    -> ref.set_actor_on_insert()
+    -> ref.set_actor_on_update()
+
+ref.controller_display
+    -> ref.set_actor_on_insert()
+    -> ref.set_actor_on_update()
+
+ref.controller_firmware_history
+    -> ref.set_actor_on_insert()
+    -> ref.set_actor_on_update()
+```
+
+The unchanged standard `ref.resolve_actor()` function first reads the transaction/session setting:
+
+```text
+app.directus_user_uuid
+```
+
+When that UUID maps to `ref.person.directus_user_id`, the standard trigger path stamps the real MSB person. Only when no Directus UUID/person mapping is available does `resolve_actor()` fall back to the PostgreSQL login.
+
+Therefore browser Controller write commands must not allow the service-account fallback for human operations. The accepted handoff is:
+
+```text
+Cloudflare authenticated email
+    -> active Directus user
+    -> current Directus role/policy authorization
+    -> require matching ref.person.directus_user_id
+    -> SET LOCAL app.directus_user_uuid = <resolved Directus UUID>
+    -> narrow Controller write
+    -> existing audit trigger
+    -> ref.resolve_actor()
+    -> real person_id / preferred actor name
+```
+
+A human Controller write fails closed if the authenticated Directus user is not mapped to `ref.person`.
+
+The first implementation of this pattern is `ref.request_controller_label(text,bigint)` in `Controllers/Database/022_create_controller_label_request_command.sql`. It is deliberately idempotent while `print_label` is already true and grants `fieldwiring_app` `EXECUTE` only, not direct table `UPDATE`.
+
 ## Cloudflare Trust Boundary
 
 The Cloudflare identity header is trusted only because the application is deployed behind the protected `my.sheboyganlights.org` proxy/access boundary. Direct access to the internal FieldWiring listener must remain restricted to the documented Synology/protected runtime path so an untrusted client cannot inject the identity header.
@@ -167,4 +211,4 @@ This follows the already-established MSB LOR2DB pattern and must be preserved in
 
 ## Rule Established
 
-> Cloudflare Access authenticates the Controller browser user at `my.sheboyganlights.org`. The Controller backend consumes `Cf-Access-Authenticated-User-Email` as the known authenticated identity, resolves current authorization from the existing Directus user/role/policy authority, permits Controller label requests to Production Crew/Manager/Administrator, permits Controller maintenance only to Manager/Administrator, rechecks authorization server-side on every write, and keeps `fieldwiring_app` free of broad production-table write privileges.
+> Cloudflare Access authenticates the Controller browser user at `my.sheboyganlights.org`. The Controller backend consumes `Cf-Access-Authenticated-User-Email` as the known authenticated identity, resolves current authorization from the existing Directus user/role/policy authority, permits Controller label requests to Production Crew/Manager/Administrator, permits Controller maintenance only to Manager/Administrator, rechecks authorization server-side on every write, passes the resolved Directus UUID through `app.directus_user_uuid` so the existing audit triggers resolve the real `ref.person`, and keeps `fieldwiring_app` free of broad production-table write privileges.
