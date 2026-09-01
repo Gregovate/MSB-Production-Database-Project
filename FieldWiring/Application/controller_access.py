@@ -19,6 +19,10 @@ class ControllerAccessError(RuntimeError):
     """Raised when Controller authorization cannot be resolved safely."""
 
 
+class ControllerAuthenticationError(ControllerAccessError):
+    """Raised when the protected request is missing Cloudflare identity."""
+
+
 CLOUDFLARE_EMAIL_HEADER = "Cf-Access-Authenticated-User-Email"
 
 
@@ -26,7 +30,9 @@ def cloudflare_operator_email(headers: Mapping[str, str]) -> str:
     """Return the normalized Cloudflare Access email or reject the request."""
     email = (headers.get(CLOUDFLARE_EMAIL_HEADER) or "").strip().lower()
     if not email:
-        raise ControllerAccessError("Cloudflare Access operator identity is missing")
+        raise ControllerAuthenticationError(
+            "Cloudflare Access operator identity is missing"
+        )
     return email
 
 
