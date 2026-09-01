@@ -26,6 +26,8 @@ ref.controller_display
 ref.controller_firmware_history
 ```
 
+**Production status rule:** every existing `ref.controller*` table listed above is a production table. None is a sandbox, staging, experimental, or resettable table. Historical filenames/scripts containing terms such as `sandbox`, `bootstrap`, or `experimental` describe migration history only and do not change the production status of the installed `ref.controller*` objects.
+
 Initial accepted bootstrap state:
 
 - 177 permanent physical controllers;
