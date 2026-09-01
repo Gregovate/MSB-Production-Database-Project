@@ -2,16 +2,17 @@
 
 | Document control | Value |
 |---|---|
-| Status | PRODUCTION CORE INSTALLED — READ EXPERIENCE ACCEPTED — MANAGER WORKFLOW NEXT |
+| Status | PRODUCTION CORE INSTALLED — READ EXPERIENCE ACCEPTED — PROTECTED WRITE ACCEPTANCE IN PROGRESS |
 | Issue | #110 |
 | Permanent identity | `ref.controller.controller_id` |
 | Permanent database | Installed on `msb-prod-db` |
+| Authentication / authorization | [Controller Management Authentication / Authorization Contract — 2026-08-31](Controller_Management_Authentication_Authorization_Contract_2026-08-31.md) |
 | Management boundary | [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md) |
 | Programmed configuration | [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md) |
 | Operational roadmap | [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md) |
 | Repeated-address / duplicated-channel contract | [Accepted Cases — 2026-08-30](Controller_FieldWiring_Repeated_Address_and_Duplicated_Channel_Cases_2026-08-30.md) |
 
-Controller Inventory owns permanent physical controller identity and current physical Controller-to-Display relationships. It also records the physical controller's current programmed configuration. LOR/V7 remains authoritative for current show wiring topology and what the show currently requires: addressing, channels, universes, Preview/Scene context, and whether a Display has current approved wiring.
+Controller Inventory owns permanent physical controller identity, current physical Controller-to-Display relationships, and the physical controller's recorded current programmed configuration. LOR/V7 remains authoritative for current show wiring topology and what the show currently requires.
 
 ## Current Production State
 
@@ -26,20 +27,11 @@ ref.controller_display
 ref.controller_firmware_history
 ```
 
-**Production status rule:** every existing `ref.controller*` table listed above is a production table. None is a sandbox, staging, experimental, or resettable table. Historical filenames/scripts containing terms such as `sandbox`, `bootstrap`, or `experimental` describe migration history only and do not change the production status of the installed `ref.controller*` objects.
+Every existing `ref.controller*` object above is a **production** object. Historical migration filenames containing `sandbox`, `bootstrap`, or `experimental` describe migration history only; they do not make the installed tables disposable.
 
-Initial accepted bootstrap state:
+Accepted permanent state includes 177 physical controllers with IDs `1001` through `1177`. `ref.controller_display` retains the legitimate composite key `(controller_id, display_id)`. Controller 1176 remains intentionally unassigned until its new Display exists through the normal LOR/Preview workflow.
 
-- 177 permanent physical controllers;
-- controller IDs `1001` through `1177`;
-- exact controller models normalized to accepted manufacturer terminology;
-- firmware evidence preserved as `RECORDED_UNVERIFIED` or `UNKNOWN` pending powered setup verification;
-- Controller-to-Display relationships corrected for accepted repeated-address and duplicated-channel cases;
-- controller `1176` intentionally unassigned until the new 2026 Matrix Display exists through the normal Preview/LOR workflow.
-
-The temporary `stage.controller_*` bootstrap objects were engineering scaffolding only and are not permanent authority.
-
-Current accepted production application checkpoint:
+Accepted production read-side checkpoint before protected browser writes:
 
 ```text
 checkout                    84d6f06e16c43ebb0f6aa21273b999af7f6d455b
@@ -48,28 +40,62 @@ Procedures                   V0.1.0 / postgres / healthy
 combined live regression     183 passed in 2.39s
 ```
 
-The working Controller/FieldWiring read experience now includes:
+The working Controller/FieldWiring read experience includes Stage/Sub-stage-aware browsing/search, programmed LOR Network/UID/IP presentation, Controller/FieldWiring cross-links, firmware history, current assignments, and label state.
 
-- Stage/Sub-stage-aware Controller browsing and richer text search;
-- visible free-text Stage-match confirmation;
-- current programmed LOR Network / First UID / UID Count / calculated range / management IP presentation;
-- permanent Controller ID and model context in FieldWiring;
-- FieldWiring -> Controller Inventory cross-links;
-- Controller Inventory -> Field Wiring links from current Display assignments;
-- firmware history and label-state presentation.
+## Protected Browser Write Checkpoint — Not Yet Production Deployed
+
+Candidate `99728122e982eb2e77268cf1bb5aee682aaa4c62` implements the first controlled browser write slice: **Print Label**.
+
+The implemented boundary is:
+
+```text
+Cloudflare Access authenticated email
+    -> current Directus user/role/policy capability resolution
+    -> server-side capability check
+    -> narrow SECURITY DEFINER PostgreSQL command
+    -> existing Controller audit trigger / ref.resolve_actor()
+```
+
+New database contracts:
+
+```text
+ref.controller_browser_capabilities(text)
+ref.request_controller_label(text, bigint)
+```
+
+`fieldwiring_app` receives EXECUTE only and retains no broad `UPDATE` on `ref.controller`.
+
+The label command resolves the active Directus user UUID, requires an existing `ref.person.directus_user_id` mapping, sets transaction-local `app.directus_user_uuid`, and then sets only:
+
+```text
+ref.controller.print_label = true
+```
+
+The existing `ref.set_actor_on_update()` -> `ref.resolve_actor()` path therefore records the real mapped person rather than the application login.
+
+Application regression for this candidate passed on 2026-08-31:
+
+```text
+focused Controller auth/write contracts   9 passed in 0.86s
+FieldWiring full regression               144 passed in 4.48s
+Procedures full regression                 54 passed in 1.23s
+combined application regression           198 passed
+```
+
+Migrations `021_create_controller_browser_authorization_contract.sql` and `022_create_controller_label_request_command.sql` have **not** yet been applied to production. Current-production disposable PostgreSQL acceptance is the next gate.
 
 ## Read This First
 
 For current implementation work, read in this order:
 
-1. [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md)
-2. [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md)
-3. [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md)
-4. [Controller Inventory / FieldWiring Repeated-Address and Duplicated-Channel Cases — 2026-08-30](Controller_FieldWiring_Repeated_Address_and_Duplicated_Channel_Cases_2026-08-30.md)
-5. [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
-6. [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
+1. [Controller Management Authentication / Authorization Contract — 2026-08-31](Controller_Management_Authentication_Authorization_Contract_2026-08-31.md)
+2. [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md)
+3. [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md)
+4. [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md)
+5. [Controller Inventory / FieldWiring Repeated-Address and Duplicated-Channel Cases — 2026-08-30](Controller_FieldWiring_Repeated_Address_and_Duplicated_Channel_Cases_2026-08-30.md)
+6. [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
 
-Older Pre-DDL/bootstrap documents remain historical design and evidence. When they conflict with current production state or the active management boundary, current production/management documents control.
+Older bootstrap/Pre-DDL material remains historical evidence. Current production and active management/authentication documents control when older material conflicts.
 
 ## Permanent Identity and Relationships
 
@@ -85,7 +111,7 @@ Accepted scan payload:
 CTRL:<controller_id>
 ```
 
-Network, Unit ID/range, IP address, universe, Display name, Stage, Scene, workbook row, and LOR Prop UUID are not permanent controller identity. Network/UID/IP values stored on `ref.controller` are mutable current programmed-configuration facts for the physical box, not identity and not a replacement for LOR/V7 expected-show authority.
+Network, Unit ID/range, IP address, universe, Display, Stage, Scene, workbook row, and LOR Prop UUID are mutable facts/evidence, not permanent Controller identity.
 
 Controller-to-Display cardinality is many-to-many:
 
@@ -94,74 +120,78 @@ one controller -> zero, one, or many Displays
 one Display    -> zero, one, or many controllers
 ```
 
-Intentional repeated addresses are valid. Network + Unit ID/range must never be globally unique physical identity.
+Intentional repeated addresses are valid. Never make Network + UID globally unique physical identity.
 
-`ref.controller_display.wiring_source_display_id` is the explicit bridge for reviewed duplicated-channel physical copies whose LOR wiring is intentionally defined by another Display.
-
-The legitimate permanent relationship key remains:
-
-```text
-PRIMARY KEY (controller_id, display_id)
-```
-
-Do not replace it with a surrogate key merely to satisfy an administrative UI.
+`ref.controller_display.wiring_source_display_id` remains the explicit reviewed bridge for duplicated-channel physical copies whose LOR wiring is intentionally defined by another Display.
 
 ## Authority Boundary
 
 ```text
+Cloudflare Access
+    -> authenticates the protected browser user
+
+Directus
+    -> current user / role / policy authorization data
+
 Controller Inventory
-    -> permanent controller identity
+    -> permanent physical controller identity
     -> model/status/firmware/location/notes
     -> current programmed Network / UID range / management IP
     -> current physical Controller-to-Display relationship
 
 LOR / Parser V7 / LOR2DB
     -> authoritative current show wiring topology
-    -> Network / Unit ID / channels / universes required by the current show
+    -> addressing/channels/universes required by the show
     -> Preview / Scene / Display wiring definitions
 
-Setup / reconciliation
-    -> compare the physical controller's recorded current programming
-       against the current LOR/V7 requirement
-
-FieldWiring / Controller browser
-    -> technician-facing read experience
-    -> permanent Controller cross-links
-    -> future Manager operational maintenance UX
-
-Directus
-    -> login / identity / Manager policy authority
-    -> optional simple one-table/reference maintenance only
+Purpose-built Controller / FieldWiring browser
+    -> operational read and management UX
 
 PostgreSQL
-    -> constraints / audit / data integrity / final authority
+    -> constraints / audit / narrow write commands / final authority
 ```
 
-Controller Inventory does not rewrite LOR wiring. Changing the current programmed configuration recorded for a physical controller does not change the LOR/V7 expected-show topology.
+No Directus login redirect or cross-origin Directus browser-session bridge is required for Controller Management.
 
-## Controller Management Direction
-
-The **Wiring System / Controller Inventory browser** is the accepted operational Controller experience.
-
-Directus is **not** the Controller operational editor. Live testing proved that the multi-table Controller workflow does not fit Directus reliably. The Directus relationship-workspace experiment was removed after it caused Controller item-detail failures; cleanup validation passed while preserving the composite Controller/Display key and all permanent data.
-
-Directus remains valuable for authentication/authorization and for simple one-table/reference maintenance where appropriate.
-
-Access model:
+## Capability Matrix
 
 ```text
-All MSB production users: READ
-Managers:                 CREATE + READ + UPDATE + relationship management
-DELETE Controller:        no normal workflow
+Production Crew           -> browse + Print Label
+Manager                   -> browse + Print Label + Controller management
+Administrator             -> browse + Print Label + Controller management
+MSB Browser / Read Only   -> browse only
 ```
 
-Manager controls must be implemented in the Controller browser and protected by server-side authenticated Manager checks. Do not make the existing read-only `fieldwiring_app` PostgreSQL role broadly writable merely to expose browser edit controls.
+Controller management means Add/Edit Controller and Controller-to-Display assignment/reassignment/unassignment. No normal Controller DELETE workflow is authorized.
+
+Button visibility is presentation only. Every write rechecks authenticated identity and current authorization server-side.
+
+## PostgreSQL Write Boundary
+
+Do not make `fieldwiring_app` a broad table writer.
+
+Accepted direction:
+
+```text
+fieldwiring_app
+    -> SELECT approved read model
+    -> EXECUTE narrow SECURITY DEFINER commands
+    -> no broad INSERT / UPDATE / DELETE on ref.controller*
+```
+
+The first command is `ref.request_controller_label(text,bigint)`. Later Add/Edit/Assignment operations must follow the same least-privilege pattern.
+
+## Current Programmed Configuration
+
+`ref.controller` records the physical controller's **current programmed configuration**, including current `lor_network`, `lor_uid_start`, `lor_uid_count`, calculated `lor_uid_end`, and management IP where applicable. These are mutable operational facts, not identity.
+
+LOR/V7 remains authoritative for the show-required configuration. Setup/reconciliation compares physical recorded programming against current show requirements.
+
+Fixed full-UID models remain governed by the existing database validation rules, including CCB100=2, Pixie4D=4, Pixie8D=8, Pixie16D=16.
 
 ## Stage and Assignment Model
 
-Do not add a redundant `stage_id` to `ref.controller` merely for browsing.
-
-A controller's show Stage is derived through its current Display relationships:
+Do not add redundant `stage_id` to `ref.controller` merely for browsing. Stage context is derived through current Display relationships:
 
 ```text
 ref.controller
@@ -170,13 +200,11 @@ ref.controller
             -> ref.stage
 ```
 
-Unassigned shelf controllers may legitimately have zero Display assignments and no Stage. They remain permanent assets, normally with `AVAILABLE` status until assigned.
-
-A permanent Controller ↔ Display Assignment workbench is required for ongoing operations. The initial bootstrap matching is not the long-term assignment workflow.
+Unassigned shelf controllers may legitimately have zero assignments and no Stage.
 
 ## FieldWiring Integration
 
-The accepted resolver basis is:
+Accepted resolver basis:
 
 ```text
 physical controller = ref.controller.controller_id
@@ -187,81 +215,43 @@ wiring Display       = COALESCE(
 )
 ```
 
-Permanent Controller context is now visible in FieldWiring and cross-links back to Controller Inventory. Detailed wiring/address facts remain LOR/V7 authority.
-
-Temporary presentation rules may remain only where permanent Controller Inventory does not yet provide enough governed information for a specific presentation family. Do not remove a fallback until the real case is covered and regression accepted.
+Permanent Controller context is visible in FieldWiring. Detailed show wiring remains LOR/V7 authority.
 
 ## Labels and Scan
 
-Controller labels use permanent identity:
+Controller labels use permanent identity `CTRL:<controller_id>`.
 
-```text
-CTRL:<controller_id>
-```
+`ref.controller` already contains the established label request/cache fields. Browser Print Label sets the governed request flag; the separate label polling/print service handles downstream printing. Do not create another print queue in Controller Management.
 
-No separate controller identity scheme is authorized. New shelf controllers must be able to receive permanent IDs and labels before they are assigned to Displays.
+Production Crew, Manager, and Administrator may request Controller labels. Full Controller maintenance remains Manager/Admin only.
 
-`ref.controller` already contains the established label fields, including `label_required`, `print_label`, cached print count/time, and label template reference.
+## Directus Experiment — Closed
 
-The Controller Management UI must expose the existing `print_label` request state to Managers. Actual printer handoff remains a separate integration step and must use the established MSB labeling subsystem rather than creating a second printing mechanism.
+Do not resume the Directus Controller relationship workspace experiment. It caused Controller item-detail failures around the legitimate composite relationship key. Cleanup passed while preserving permanent data and the composite key.
+
+Directus remains useful as authorization data and optional simple one-record/reference maintenance. It is not the Controller operational editor.
 
 ## Operator Procedures
 
-Plain-English operator procedures are required before the Controller Inventory system is considered operationally complete.
-
-Final procedures must be written **after** the working Manager UI/workflow is accepted so they match real screens and behavior. They must cover normal browsing, Stage lookup, adding shelf stock, assignment/reassignment/unassignment, firmware/status/location maintenance, labels, and opening current Field Wiring.
-
-## Historical / Supporting Engineering Evidence
-
-Useful historical and design evidence includes:
-
-- [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md)
-- [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md)
-- [Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md)
-- [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
-- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
-- [Controller Inventory Current Assignment Cardinality — 2026-08-20](Controller_Inventory_Current_Assignment_Cardinality_2026-08-20.md)
-- [HWY-42 Address Ambiguity — 2026-08-20](Controller_Inventory_LOR_Address_Ambiguity_HWY42_2026-08-20.md)
-- [E1.31 IP Current-State Correction — 2026-08-20](Controller_Inventory_E131_IP_Current_State_Correction_2026-08-20.md)
-- [FieldWiring / Controller Inventory Handoff](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
-- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
-- [Wiring System](../09_Wiring_System/README.md)
-- [Work Orders](../06_Work_Orders/README.md)
-
-The older [Directus-Style UX Contract](Controller_Management_Directus_Style_UX_Contract_2026-08-31.md) retains useful field/layout requirements but is superseded as an implementation mechanism by the active [Controller Management Application Boundary](Controller_Management_Application_Boundary_2026-08-31.md).
+Plain-English operator procedures are required after the browser management workflow is accepted so the documentation matches real screens and behavior. They must cover browsing, Stage lookup, shelf stock, Add/Edit, assignment/reassignment/unassignment, firmware/status/location/programmed configuration, labels, and FieldWiring navigation.
 
 ## Completion and Main-Merge Gate
 
-No Controller Inventory work from `agent/controller-inventory-ref-sandbox` has been merged back to `main` yet. Draft PR #111 remains the controlled merge path.
+Controller Inventory application work from `agent/controller-inventory-ref-sandbox` has not been merged to `main`. Draft PR #111 remains the controlled merge path.
 
-The Controller subsystem is considered functionally complete for this project slice when the existing production Controller browser supports the accepted browser-native Manager maintenance workflow without raw SQL or Directus multi-table editing:
-
-```text
-Add Controller
-Edit Controller
-maintain current programmed Network / UID / IP configuration
-request a Controller label by setting the governed print_label state
-add / edit / reassign / unassign Controller-to-Display relationships
-preserve reviewed wiring_source_display_id behavior
-```
-
-After that workflow is accepted in production, remaining Controller work before merging PR #111 to `main` is expected to be limited to minor UI corrections, regression/acceptance cleanup, and final documentation/operator-procedure updates. Do not merge the branch merely because the production tables already exist; merge only after the Manager editing workflow and final acceptance gate are complete.
+Do not merge merely because production Controller tables already exist. Merge only after the browser management workflow, regression, production acceptance, and operator documentation are complete.
 
 ## Active Resume Point
 
-Do **not** resume from the old Stage-browser backlog or the Directus relationship-editing experiment. Stage-aware browsing and the first permanent FieldWiring Controller integration are already accepted.
+Current sequence:
 
-Immediate implementation sequence:
+1. **Current-production disposable PostgreSQL acceptance for migrations 021/022 and Print Label behavior.**
+2. Separate explicit production deployment/validation of 021/022 and the browser candidate.
+3. Admin browser acceptance: Cloudflare identity, capability resolution, Print Label, correct audit person.
+4. Production Crew and Read Only capability-boundary acceptance.
+5. Implement Edit Controller using the same narrow command/audit model.
+6. Implement Add Controller.
+7. Implement Controller ↔ Display assignment/reassignment/unassignment preserving M:N and `wiring_source_display_id`.
+8. Minor UI corrections, full regression/acceptance, final operator procedures, and PR #111 merge preparation.
 
-1. browser-native authenticated Manager boundary using the existing Directus login/session/Manager policy authority;
-2. **Edit Controller** from the existing Controller detail pane;
-3. **Add Controller** for new/unassigned shelf stock with PostgreSQL-generated permanent `controller_id`;
-4. controlled model/status/location/firmware/verification/programmed-configuration fields;
-5. governed current Network / First UID / UID Count / calculated range / management IP maintenance;
-6. Manager-editable `print_label` request state;
-7. Controller ↔ Display assignment/reassignment/unassignment workbench preserving M:N cardinality and reviewed `wiring_source_display_id` behavior;
-8. real shelf-stock/reassignment acceptance;
-9. actual label-service handoff when its separate contract is ready;
-10. plain-English operator procedures after the accepted UI exists.
-
-Every deployed application change must preserve the shared FieldWiring + Procedures regression gate and keep the cross-workstream documentation current during the work, not after the conversation ends.
+Every deployed application change must preserve the shared FieldWiring + Procedures regression gate and keep responsible documentation current during the work.
