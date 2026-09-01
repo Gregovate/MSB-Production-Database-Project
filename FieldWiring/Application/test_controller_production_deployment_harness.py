@@ -44,6 +44,19 @@ def test_production_wrapper_rebases_template_to_verified_live_checkpoint() -> No
     assert "Rollback backup was not created before this stop" in source
 
 
+def test_production_wrapper_removes_sigpipe_prone_host_file_pipelines() -> None:
+    source = (ACCEPTANCE / "run_controller_label_production_deploy.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'cat "$BACKUP_FILE" | sudo docker exec -i "$PROD_CONTAINER" pg_restore --list >/dev/null' in source
+    assert 'sudo docker exec -i "$PROD_CONTAINER" pg_restore --list < "$BACKUP_FILE" >/dev/null' in source
+    assert 'cat "$SCRIPT_DIR/021_create_controller_browser_authorization_contract.sql" | psql_prod' in source
+    assert 'psql_prod < "$SCRIPT_DIR/021_create_controller_browser_authorization_contract.sql"' in source
+    assert 'cat "$SCRIPT_DIR/022_create_controller_label_request_command.sql" | psql_prod' in source
+    assert 'psql_prod < "$SCRIPT_DIR/022_create_controller_label_request_command.sql"' in source
+
+
 def test_production_server_gate_pins_template_live_and_target_commits() -> None:
     source = (ACCEPTANCE / "controller_label_production_deploy_server.sh").read_text(
         encoding="utf-8"
