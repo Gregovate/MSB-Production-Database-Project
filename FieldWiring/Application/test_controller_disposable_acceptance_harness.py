@@ -61,6 +61,16 @@ def test_server_runner_uses_isolated_production_equivalent_postgres() -> None:
     assert "PostgreSQL init process complete; ready for start up" in source
 
 
+def test_server_runner_streams_host_migrations_into_container_psql() -> None:
+    source = (ACCEPTANCE / "controller_label_disposable_server.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'psql_test < "$SCRIPT_DIR/021_create_controller_browser_authorization_contract.sql"' in source
+    assert 'psql_test < "$SCRIPT_DIR/022_create_controller_label_request_command.sql"' in source
+    assert 'psql_test -f "$SCRIPT_DIR/' not in source
+
+
 def test_server_runner_guards_production_and_cleanup() -> None:
     source = (ACCEPTANCE / "controller_label_disposable_server.sh").read_text(
         encoding="utf-8"
