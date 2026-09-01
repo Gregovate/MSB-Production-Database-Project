@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.3.1."""
+"""MSB FieldWiring browser API and static application host — V0.3.2."""
 
 from __future__ import annotations
 
@@ -7,6 +7,12 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 
+from controller_access import (
+    ControllerAccessError,
+    ControllerAuthenticationError,
+    cloudflare_operator_email,
+    controller_browser_access,
+)
 from controller_inventory import (
     ControllerInventoryError,
     controller_detail,
@@ -16,7 +22,7 @@ from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.3.1"
+APP_VERSION = "V0.3.2"
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__)
 
@@ -180,6 +186,12 @@ def health() -> Response:
     return jsonify(status="ok", version=APP_VERSION, data_mode=mode)
 
 
+@app.get("/api/controller-access")
+def api_controller_access() -> Response:
+    email = cloudflare_operator_email(request.headers)
+    return jsonify(access=controller_browser_access(repository(), email))
+
+
 @app.get("/api/displays")
 def api_displays() -> Response:
     query = request.args.get("q", "")
@@ -246,6 +258,22 @@ def api_wiring_image() -> Response:
 def config_error(exc: ConfigError) -> tuple[Response, int]:
     return jsonify(
         error=operator_config_error(exc),
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerAuthenticationError)
+def controller_authentication_error(exc: ControllerAuthenticationError) -> tuple[Response, int]:
+    return jsonify(
+        error="Cloudflare Access identity is required for Controller management.",
+        engineering_error=str(exc),
+    ), 401
+
+
+@app.errorhandler(ControllerAccessError)
+def controller_access_error(exc: ControllerAccessError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller permissions could not be resolved.",
         engineering_error=str(exc),
     ), 503
 
