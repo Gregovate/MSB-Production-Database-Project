@@ -65,7 +65,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, ref
+SET search_path = pg_catalog, ref
 AS $function$
 DECLARE
     v_email text := lower(trim(p_email));
