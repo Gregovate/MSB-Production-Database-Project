@@ -9,6 +9,7 @@ Current operational authority is:
 - `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md`
 - `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md`
+- `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Current_Programmed_Configuration_Contract_2026-08-31.md`
 
 This `Controllers/` area preserves the bootstrap source, reconciliation evidence, database scripts, diagnostics, migrations, and acceptance artifacts used to create the permanent Controller Inventory. It is no longer the current operational handoff.
 
@@ -38,6 +39,10 @@ The bootstrap evidence was:
 
 The workbook contained **177 deployed controllers and no spare/available controllers**.
 
+The Controller spreadsheet is now **retired migration evidence only**. All accepted Controller Inventory data from that bootstrap has been migrated into the permanent `ref.controller*` model. The spreadsheet is not an operational authority, is not an ongoing maintenance source, and is not to be updated with newly acquired controllers, assignment changes, firmware changes, programmed UID changes, label requests, or other current Controller facts.
+
+Future Controller maintenance occurs through the permanent Controller Inventory database/application workflow.
+
 Initial reconciliation result:
 
 - 177 deployed-controller candidates
@@ -59,6 +64,37 @@ ref.controller.controller_id
 The first permanent Controller ID is **1001**.
 
 Network/UID/channel/IP/universe, Display name, Stage, Scene, spreadsheet row, workbook text, and other source evidence are not permanent physical identity.
+
+## Current Programmed Configuration Rule
+
+Although LOR/V7 remains authoritative for the wiring/configuration the current show requires, the physical Controller Inventory must also retain what each physical controller is **currently programmed as** so setup, troubleshooting, reassignment, and shelf-stock workflows can compare the physical box against the current LOR expectation.
+
+The permanent `ref.controller` record therefore carries the current programmed configuration, including the applicable fields:
+
+```text
+lor_network
+lor_uid_start
+lor_uid_count
+lor_uid_end          calculated/generated range end
+management_ip
+```
+
+These are mutable current physical-controller facts. They are not permanent identity and are not globally unique. Intentional repeated Network/UID programming across separate permanent controllers remains valid.
+
+The authority split is:
+
+```text
+ref.controller
+    -> what this permanent physical controller is currently programmed as
+
+LOR / approved V7 snapshot
+    -> what the current show requires the controller/wiring to be programmed as
+
+Setup / reconciliation
+    -> compare the two and explicitly verify/reprogram when needed
+```
+
+Do not remove current programmed UID/network/IP from `ref.controller` merely because LOR owns the expected-show configuration.
 
 ## Historical Bootstrap Boundary
 
@@ -158,6 +194,7 @@ See the current architecture/roadmap documents linked at the top of this file be
 ## Important Permanent Boundaries
 
 - Network/UID/channel/IP/universe are mutable programmed/show facts, never permanent controller identity.
+- Current programmed Network/UID/IP is nevertheless retained in `ref.controller` because the physical controller must be compared to current LOR/V7 expectations.
 - The same address may belong to multiple physical controllers.
 - Controller-to-Display is many-to-many.
 - `year_deployed` is first-known deployment/use evidence, not manufacture year.
