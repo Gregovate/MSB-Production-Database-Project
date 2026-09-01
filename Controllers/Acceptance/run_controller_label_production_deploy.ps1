@@ -61,6 +61,21 @@ try {
         'if [[ -s "$BACKUP_FILE" ]]; then echo "Rollback backup retained at: $BACKUP_FILE"; else echo "Rollback backup was not created before this stop"; fi'
     )
 
+    # Avoid SIGPIPE under `set -o pipefail`. pg_restore/psql read the host files
+    # through direct stdin redirection instead of a separate `cat` producer.
+    $serverText = $serverText.Replace(
+        'cat "$BACKUP_FILE" | sudo docker exec -i "$PROD_CONTAINER" pg_restore --list >/dev/null',
+        'sudo docker exec -i "$PROD_CONTAINER" pg_restore --list < "$BACKUP_FILE" >/dev/null'
+    )
+    $serverText = $serverText.Replace(
+        'cat "$SCRIPT_DIR/021_create_controller_browser_authorization_contract.sql" | psql_prod',
+        'psql_prod < "$SCRIPT_DIR/021_create_controller_browser_authorization_contract.sql"'
+    )
+    $serverText = $serverText.Replace(
+        'cat "$SCRIPT_DIR/022_create_controller_label_request_command.sql" | psql_prod',
+        'psql_prod < "$SCRIPT_DIR/022_create_controller_label_request_command.sql"'
+    )
+
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText(
         (Join-Path $localBundle 'controller_label_production_deploy_server.sh'),
