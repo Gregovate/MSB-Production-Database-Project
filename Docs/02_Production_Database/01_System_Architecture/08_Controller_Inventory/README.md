@@ -230,6 +230,23 @@ Useful historical and design evidence includes:
 
 The older [Directus-Style UX Contract](Controller_Management_Directus_Style_UX_Contract_2026-08-31.md) retains useful field/layout requirements but is superseded as an implementation mechanism by the active [Controller Management Application Boundary](Controller_Management_Application_Boundary_2026-08-31.md).
 
+## Completion and Main-Merge Gate
+
+No Controller Inventory work from `agent/controller-inventory-ref-sandbox` has been merged back to `main` yet. Draft PR #111 remains the controlled merge path.
+
+The Controller subsystem is considered functionally complete for this project slice when the existing production Controller browser supports the accepted browser-native Manager maintenance workflow without raw SQL or Directus multi-table editing:
+
+```text
+Add Controller
+Edit Controller
+maintain current programmed Network / UID / IP configuration
+request a Controller label by setting the governed print_label state
+add / edit / reassign / unassign Controller-to-Display relationships
+preserve reviewed wiring_source_display_id behavior
+```
+
+After that workflow is accepted in production, remaining Controller work before merging PR #111 to `main` is expected to be limited to minor UI corrections, regression/acceptance cleanup, and final documentation/operator-procedure updates. Do not merge the branch merely because the production tables already exist; merge only after the Manager editing workflow and final acceptance gate are complete.
+
 ## Active Resume Point
 
 Do **not** resume from the old Stage-browser backlog or the Directus relationship-editing experiment. Stage-aware browsing and the first permanent FieldWiring Controller integration are already accepted.
