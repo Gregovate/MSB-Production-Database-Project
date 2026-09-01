@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.3.2."""
+"""MSB FieldWiring browser API and static application host — V0.3.3."""
 
 from __future__ import annotations
 
@@ -13,6 +13,12 @@ from controller_access import (
     cloudflare_operator_email,
     controller_browser_access,
 )
+from controller_commands import (
+    ControllerCommandAuthorizationError,
+    ControllerCommandError,
+    ControllerCommandNotFoundError,
+    request_controller_label,
+)
 from controller_inventory import (
     ControllerInventoryError,
     controller_detail,
@@ -22,8 +28,9 @@ from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.3.2"
+APP_VERSION = "V0.3.3"
 BASE_DIR = Path(__file__).resolve().parent
+CONTROLLER_COMMAND_HEADER = "X-MSB-Controller-Command"
 app = Flask(__name__)
 
 
@@ -47,6 +54,23 @@ def optional_int(name: str) -> int | None:
     if not raw.isdigit():
         raise WiringError(f"Invalid {name}")
     return int(raw)
+
+
+def require_controller_command_request() -> None:
+    """Require the non-simple same-origin command shape used by Controller UI.
+
+    Cloudflare Access authenticates the user. This additional browser command
+    guard prevents a simple cross-site form submission from invoking a write.
+    FieldWiring does not expose a permissive CORS policy for this custom header.
+    """
+    if not request.is_json:
+        raise ControllerCommandAuthorizationError(
+            "Controller command requires an application/json request"
+        )
+    if request.headers.get(CONTROLLER_COMMAND_HEADER, "") != "1":
+        raise ControllerCommandAuthorizationError(
+            "Controller command request guard is missing"
+        )
 
 
 def operator_config_error(_: ConfigError) -> str:
@@ -236,6 +260,18 @@ def api_controller_detail(controller_id: int) -> Response:
     return jsonify(**data)
 
 
+@app.post("/api/controllers/<int:controller_id>/print-label")
+def api_controller_print_label(controller_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = request_controller_label(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+    )
+    return jsonify(controller=result)
+
+
 @app.get("/api/wiring")
 def api_wiring() -> Response:
     package = build_wiring_package(
@@ -274,6 +310,34 @@ def controller_authentication_error(exc: ControllerAuthenticationError) -> tuple
 def controller_access_error(exc: ControllerAccessError) -> tuple[Response, int]:
     return jsonify(
         error="Controller permissions could not be resolved.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerCommandAuthorizationError)
+def controller_command_authorization_error(
+    exc: ControllerCommandAuthorizationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="This account is not authorized for that Controller action.",
+        engineering_error=str(exc),
+    ), 403
+
+
+@app.errorhandler(ControllerCommandNotFoundError)
+def controller_command_not_found_error(
+    exc: ControllerCommandNotFoundError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller was not found.",
+        engineering_error=str(exc),
+    ), 404
+
+
+@app.errorhandler(ControllerCommandError)
+def controller_command_error(exc: ControllerCommandError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller action could not be completed.",
         engineering_error=str(exc),
     ), 503
 
