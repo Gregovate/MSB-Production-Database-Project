@@ -7,10 +7,11 @@
 | Permanent identity | `ref.controller.controller_id` |
 | Permanent database | Installed on `msb-prod-db` |
 | Management boundary | [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md) |
+| Programmed configuration | [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md) |
 | Operational roadmap | [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md) |
 | Repeated-address / duplicated-channel contract | [Accepted Cases — 2026-08-30](Controller_FieldWiring_Repeated_Address_and_Duplicated_Channel_Cases_2026-08-30.md) |
 
-Controller Inventory owns permanent physical controller identity and current physical Controller-to-Display relationships. LOR/V7 remains authoritative for current show wiring topology, addressing, channels, universes, Preview/Scene context, and whether a Display has current approved wiring.
+Controller Inventory owns permanent physical controller identity and current physical Controller-to-Display relationships. It also records the physical controller's current programmed configuration. LOR/V7 remains authoritative for current show wiring topology and what the show currently requires: addressing, channels, universes, Preview/Scene context, and whether a Display has current approved wiring.
 
 ## Current Production State
 
@@ -60,10 +61,11 @@ The working Controller/FieldWiring read experience now includes:
 For current implementation work, read in this order:
 
 1. [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md)
-2. [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md)
-3. [Controller Inventory / FieldWiring Repeated-Address and Duplicated-Channel Cases — 2026-08-30](Controller_FieldWiring_Repeated_Address_and_Duplicated_Channel_Cases_2026-08-30.md)
-4. [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
-5. [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
+2. [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md)
+3. [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md)
+4. [Controller Inventory / FieldWiring Repeated-Address and Duplicated-Channel Cases — 2026-08-30](Controller_FieldWiring_Repeated_Address_and_Duplicated_Channel_Cases_2026-08-30.md)
+5. [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
+6. [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
 
 Older Pre-DDL/bootstrap documents remain historical design and evidence. When they conflict with current production state or the active management boundary, current production/management documents control.
 
@@ -81,7 +83,7 @@ Accepted scan payload:
 CTRL:<controller_id>
 ```
 
-Network, Unit ID/range, IP address, universe, Display name, Stage, Scene, workbook row, and LOR Prop UUID are not permanent controller identity.
+Network, Unit ID/range, IP address, universe, Display name, Stage, Scene, workbook row, and LOR Prop UUID are not permanent controller identity. Network/UID/IP values stored on `ref.controller` are mutable current programmed-configuration facts for the physical box, not identity and not a replacement for LOR/V7 expected-show authority.
 
 Controller-to-Display cardinality is many-to-many:
 
@@ -108,12 +110,17 @@ Do not replace it with a surrogate key merely to satisfy an administrative UI.
 Controller Inventory
     -> permanent controller identity
     -> model/status/firmware/location/notes
+    -> current programmed Network / UID range / management IP
     -> current physical Controller-to-Display relationship
 
 LOR / Parser V7 / LOR2DB
-    -> current wiring topology
-    -> Network / Unit ID / channels / universes
+    -> authoritative current show wiring topology
+    -> Network / Unit ID / channels / universes required by the current show
     -> Preview / Scene / Display wiring definitions
+
+Setup / reconciliation
+    -> compare the physical controller's recorded current programming
+       against the current LOR/V7 requirement
 
 FieldWiring / Controller browser
     -> technician-facing read experience
@@ -128,7 +135,7 @@ PostgreSQL
     -> constraints / audit / data integrity / final authority
 ```
 
-Controller Inventory does not rewrite LOR wiring.
+Controller Inventory does not rewrite LOR wiring. Changing the current programmed configuration recorded for a physical controller does not change the LOR/V7 expected-show topology.
 
 ## Controller Management Direction
 
