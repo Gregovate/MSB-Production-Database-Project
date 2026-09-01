@@ -215,8 +215,8 @@ echo "Clone preflight passed"
 
 echo
 echo "--- Apply candidate migrations 021 / 022 to disposable only ---"
-psql_test -f "$SCRIPT_DIR/021_create_controller_browser_authorization_contract.sql"
-psql_test -f "$SCRIPT_DIR/022_create_controller_label_request_command.sql"
+psql_test < "$SCRIPT_DIR/021_create_controller_browser_authorization_contract.sql"
+psql_test < "$SCRIPT_DIR/022_create_controller_label_request_command.sql"
 
 echo
 echo "--- Capability and least-privilege assertions ---"
