@@ -17,6 +17,7 @@
       <div class="subhead">Permanent physical controllers used by the Wiring System.</div>
     </div>
     <div class="header-actions">
+      <span id="controller-access-status" class="access-status">Checking access…</span>
       <a class="header-link" href="./">Field Wiring</a>
       <button id="theme-toggle" type="button">Dark mode</button>
     </div>
@@ -107,7 +108,7 @@
 
         <section class="detail-section directus-note">
           <strong>Maintenance</strong>
-          <div>All production users may browse Controller Inventory. Manager maintenance remains governed through Directus until authenticated browser editing is implemented.</div>
+          <div>Cloudflare Access identifies the signed-in user. Directus remains the role/policy authority. Controller actions are enabled here only when the server authorizes them.</div>
         </section>
       </div>
     </div>
@@ -116,6 +117,6 @@
 
 <script src="controllers.js"></script>
 <script src="static/controllers_search_context.js"></script>
-<script src="static/controllers_detail_extras.js?v=2026-08-31.1"></script>
+<script src="static/controllers_detail_extras.js?v=2026-08-31.2"></script>
 </body>
 </html>
