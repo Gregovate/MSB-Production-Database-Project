@@ -75,7 +75,7 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public, ref
+SET search_path = pg_catalog, ref
 AS $function$
     WITH user_row AS (
         SELECT
