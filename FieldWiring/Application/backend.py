@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.2.0."""
+"""MSB FieldWiring browser API and static application host — V0.4.0."""
 
 from __future__ import annotations
 
@@ -7,12 +7,44 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 
+from controller_access import (
+    ControllerAccessError,
+    ControllerAuthenticationError,
+    cloudflare_operator_email,
+    controller_browser_access,
+)
+from controller_commands import (
+    ControllerCommandAuthorizationError,
+    ControllerCommandConflictError,
+    ControllerCommandError,
+    ControllerCommandNotFoundError,
+    ControllerCommandValidationError,
+    assign_controller_display,
+    create_controller,
+    reassign_controller_display,
+    request_controller_label,
+    unassign_controller_display,
+    update_controller,
+    update_controller_display_assignment,
+)
+from controller_inventory import (
+    ControllerInventoryError,
+    controller_detail,
+    controller_list,
+)
+from controller_management import (
+    ControllerManagementAuthorizationError,
+    ControllerManagementError,
+    controller_assignment_display_search,
+    controller_management_options,
+)
 from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.2.0"
+APP_VERSION = "V0.4.0"
 BASE_DIR = Path(__file__).resolve().parent
+CONTROLLER_COMMAND_HEADER = "X-MSB-Controller-Command"
 app = Flask(__name__)
 
 
@@ -36,6 +68,44 @@ def optional_int(name: str) -> int | None:
     if not raw.isdigit():
         raise WiringError(f"Invalid {name}")
     return int(raw)
+
+
+def require_controller_command_request() -> None:
+    """Require the non-simple same-origin command shape used by Controller UI.
+
+    Cloudflare Access authenticates the user. This additional browser command
+    guard prevents a simple cross-site form submission from invoking a write.
+    FieldWiring does not expose a permissive CORS policy for this custom header.
+    """
+    if not request.is_json:
+        raise ControllerCommandAuthorizationError(
+            "Controller command requires an application/json request"
+        )
+    if request.headers.get(CONTROLLER_COMMAND_HEADER, "") != "1":
+        raise ControllerCommandAuthorizationError(
+            "Controller command request guard is missing"
+        )
+
+
+def controller_json_body() -> dict:
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        raise ControllerCommandValidationError(
+            "Controller command requires a JSON object"
+        )
+    return payload
+
+
+def require_controller_manager() -> tuple[Repository, str]:
+    """Resolve presentation-side Manager access; DB commands recheck independently."""
+    repo = repository()
+    email = cloudflare_operator_email(request.headers)
+    access = controller_browser_access(repo, email)
+    if not access.get("can_manage_controllers"):
+        raise ControllerCommandAuthorizationError(
+            "Controller maintenance is not authorized for this account"
+        )
+    return repo, email
 
 
 def operator_config_error(_: ConfigError) -> str:
@@ -63,7 +133,7 @@ def operator_wiring_error(exc: WiringError) -> str:
     if "not present in the current" in folded or "not present in the production database" in folded:
         return (
             "This Field Wiring link no longer matches the current approved data. "
-            "Return to lookup and select the Display or Stage again."
+            "Return to lookup and select it again."
         )
 
     if "no applicable field wiring" in folded or "display is not available for current fieldwiring" in folded:
@@ -105,6 +175,22 @@ def css() -> Response:
 @app.get("/fieldwiring.js")
 def js() -> Response:
     return send_from_directory(BASE_DIR, "fieldwiring.js")
+
+
+@app.get("/controllers")
+@app.get("/controllers.html")
+def controllers_page() -> Response:
+    return send_from_directory(BASE_DIR, "controllers.html")
+
+
+@app.get("/controllers.css")
+def controllers_css() -> Response:
+    return send_from_directory(BASE_DIR, "controllers.css")
+
+
+@app.get("/controllers.js")
+def controllers_js() -> Response:
+    return send_from_directory(BASE_DIR, "controllers.js")
 
 
 @app.get("/wiring")
@@ -159,6 +245,12 @@ def health() -> Response:
     return jsonify(status="ok", version=APP_VERSION, data_mode=mode)
 
 
+@app.get("/api/controller-access")
+def api_controller_access() -> Response:
+    email = cloudflare_operator_email(request.headers)
+    return jsonify(access=controller_browser_access(repository(), email))
+
+
 @app.get("/api/displays")
 def api_displays() -> Response:
     query = request.args.get("q", "")
@@ -180,6 +272,133 @@ def api_stages() -> Response:
         stages=hierarchy["stages"],
         review_required=hierarchy["review_required"],
     )
+
+
+@app.get("/api/controllers")
+def api_controllers() -> Response:
+    data = controller_list(
+        repository(),
+        query=request.args.get("q", ""),
+        stage_id=optional_int("stage_id"),
+        status=request.args.get("status", ""),
+        model=request.args.get("model", ""),
+        assignment=request.args.get("assignment", ""),
+    )
+    return jsonify(**data)
+
+
+@app.post("/api/controllers")
+def api_controller_create() -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = create_controller(
+        repository(),
+        email=email,
+        payload=controller_json_body(),
+    )
+    return jsonify(controller=result), 201
+
+
+@app.get("/api/controllers/<int:controller_id>")
+def api_controller_detail(controller_id: int) -> Response:
+    data = controller_detail(repository(), controller_id)
+    if data is None:
+        return jsonify(error="Controller was not found"), 404
+    return jsonify(**data)
+
+
+@app.patch("/api/controllers/<int:controller_id>")
+def api_controller_update(controller_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = update_controller(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(controller=result)
+
+
+@app.post("/api/controllers/<int:controller_id>/print-label")
+def api_controller_print_label(controller_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = request_controller_label(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+    )
+    return jsonify(controller=result)
+
+
+@app.get("/api/controller-management/options")
+def api_controller_management_options() -> Response:
+    repo, email = require_controller_manager()
+    return jsonify(options=controller_management_options(repo, email))
+
+
+@app.get("/api/controller-management/displays")
+def api_controller_management_displays() -> Response:
+    repo, _email = require_controller_manager()
+    query = request.args.get("q", "")
+    return jsonify(displays=controller_assignment_display_search(repo, query))
+
+
+@app.post("/api/controllers/<int:controller_id>/assignments")
+def api_controller_assignment_create(controller_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = assign_controller_display(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(assignment=result), 201
+
+
+@app.patch("/api/controllers/<int:controller_id>/assignments/<int:display_id>")
+def api_controller_assignment_update(controller_id: int, display_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = update_controller_display_assignment(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        display_id=display_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(assignment=result)
+
+
+@app.post("/api/controllers/<int:controller_id>/assignments/<int:display_id>/reassign")
+def api_controller_assignment_reassign(controller_id: int, display_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = reassign_controller_display(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        old_display_id=display_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(assignment=result)
+
+
+@app.delete("/api/controllers/<int:controller_id>/assignments/<int:display_id>")
+def api_controller_assignment_delete(controller_id: int, display_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    payload = controller_json_body()
+    result = unassign_controller_display(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        display_id=display_id,
+        return_available=payload.get("return_available", True),
+    )
+    return jsonify(assignment=result)
 
 
 @app.get("/api/wiring")
@@ -204,6 +423,96 @@ def api_wiring_image() -> Response:
 def config_error(exc: ConfigError) -> tuple[Response, int]:
     return jsonify(
         error=operator_config_error(exc),
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerAuthenticationError)
+def controller_authentication_error(exc: ControllerAuthenticationError) -> tuple[Response, int]:
+    return jsonify(
+        error="Cloudflare Access identity is required for Controller management.",
+        engineering_error=str(exc),
+    ), 401
+
+
+@app.errorhandler(ControllerAccessError)
+def controller_access_error(exc: ControllerAccessError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller permissions could not be resolved.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerCommandAuthorizationError)
+def controller_command_authorization_error(
+    exc: ControllerCommandAuthorizationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="This account is not authorized for that Controller action.",
+        engineering_error=str(exc),
+    ), 403
+
+
+@app.errorhandler(ControllerCommandNotFoundError)
+def controller_command_not_found_error(
+    exc: ControllerCommandNotFoundError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error=str(exc) or "Controller or assignment was not found.",
+        engineering_error=str(exc),
+    ), 404
+
+
+@app.errorhandler(ControllerCommandValidationError)
+def controller_command_validation_error(
+    exc: ControllerCommandValidationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error=str(exc) or "Controller data is invalid.",
+        engineering_error=str(exc),
+    ), 400
+
+
+@app.errorhandler(ControllerCommandConflictError)
+def controller_command_conflict_error(
+    exc: ControllerCommandConflictError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error=str(exc) or "That Controller relationship already exists.",
+        engineering_error=str(exc),
+    ), 409
+
+
+@app.errorhandler(ControllerCommandError)
+def controller_command_error(exc: ControllerCommandError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller action could not be completed.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerManagementAuthorizationError)
+def controller_management_authorization_error(
+    exc: ControllerManagementAuthorizationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="This account is not authorized for Controller maintenance.",
+        engineering_error=str(exc),
+    ), 403
+
+
+@app.errorhandler(ControllerManagementError)
+def controller_management_error(exc: ControllerManagementError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller maintenance reference data could not be loaded.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerInventoryError)
+def controller_inventory_error(exc: ControllerInventoryError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller Inventory is available only from the production PostgreSQL data source.",
         engineering_error=str(exc),
     ), 503
 

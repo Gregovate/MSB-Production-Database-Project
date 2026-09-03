@@ -1,13 +1,15 @@
 """Read-only FieldWiring renderer package builder.
 
 Connects the accepted browser context to the existing V7/PostgreSQL wiring
-read model, accepted physical-presentation rules, and guarded Drive resolver.
+read model, accepted physical-presentation rules, guarded Drive resolver, and
+permanent Controller Inventory relationships.
 """
 from __future__ import annotations
 
 from typing import Any
 
 from wiring_common import MARKER_NAME, WiringError, context_type, end_of_local_day, local_now
+from wiring_controller_inventory import attach_permanent_controller_context
 from wiring_data import load_wiring_data
 from wiring_dmx_source import replace_legacy_dmx_rows
 from wiring_dumbrgb import apply_dumbrgb_fixture_presentation
@@ -77,6 +79,7 @@ def build_wiring_package(
     rows = apply_physical_presentation(source_rows, scene_name=scene_name)
     rows = apply_dumbrgb_fixture_presentation(rows)
     rows = apply_reviewed_e131_mapping(rows)
+    rows = attach_permanent_controller_context(repo, rows)
     if not rows:
         raise WiringError("No current field wiring rows were found for the resolved context")
 

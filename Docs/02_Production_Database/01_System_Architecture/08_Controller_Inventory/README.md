@@ -2,67 +2,129 @@
 
 | Document control | Value |
 |---|---|
-| Status | ACTIVE PRE-DDL ENGINEERING WORK |
-| Current authority | [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md) |
-| Grouping decisions | [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) |
-| Application / backfill framework | [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md) |
-| PostgreSQL implementation | Not yet installed |
+| Status | PRODUCTION V0.4.0 DEPLOYED — CORE PLANNING / MAINTENANCE ACCEPTED |
+| Issue | #110 |
+| Draft PR | #111 |
+| Permanent identity | `ref.controller.controller_id` |
+| Permanent database | Installed on `msb-prod-db` |
+| Current production checkout | `63be47f40be78f608416935ed0583287da9d90e6` |
+| Immediate application rollback | `e9ab029a17067b38b34f9306069f54899925f73f` |
+| FieldWiring production | `V0.4.0 / postgres / healthy` |
+| Procedures production | `V0.1.0 / postgres / healthy` |
+| Production deployment acceptance | [Controller V0.4.0 Production Deployment Acceptance — 2026-09-03](Controller_V0.4.0_Production_Deployment_Acceptance_2026-09-03.md) |
+| Authentication / authorization | [Controller Management Authentication / Authorization Contract — 2026-08-31](Controller_Management_Authentication_Authorization_Contract_2026-08-31.md) |
+| Management boundary | [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md) |
+| Programmed configuration | [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md) |
+| Operational roadmap | [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md) |
 
-This subsystem defines permanent physical controller/device identity and the accepted physical relationships needed to interpret the current LOR/V7 wiring in field terms.
+Controller Inventory owns permanent physical Controller identity, current Controller-to-Display relationships, physical Controller facts, and the physical Controller's recorded current programmed configuration. LOR/V7 remains authoritative for current show wiring topology and what the show currently requires.
 
-## Read This First
+## Current Production State
 
-Current Controller Inventory engineering authority is split deliberately between:
-
-- [Controller Inventory Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md) — accepted identity, authority, relationship, spreadsheet, FieldWiring, and DDL-gate rules;
-- [Controller Inventory Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) — grouping conclusions and unresolved physical-grouping questions promoted from the active Pre-DDL review as they are established;
-- [Controller Inventory Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md) — valid V1 model/firmware, capacity, Glistening Grove, technician-write, verification-workflow, and pending DDL details salvaged from the retired review branch; and
-- [Controller Inventory Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md) — real-world Stage/Display assignment workbench, available stock, `ref.location`, labeling, setup/takedown, model/firmware, reconciliation, and phased implementation framework.
-
-Older planning/audit documents in this folder remain useful evidence. When an older document conflicts with the current acceptance baseline, the current acceptance baseline controls until the older document is brought forward.
-
-## Current Phase
-
-Controller Inventory is still in **Pre-DDL physical-grouping reconstruction and fit testing**, now with an accepted application/backfill operating framework that the first DDL must support.
-
-No Controller Inventory PostgreSQL tables or migrations are authorized yet.
-
-The active engineering question is whether the proposed physical groupings and relationship model can explain the real current LOR wiring across conventional A/C, Pixie, repeated-address, E1.31, multi-Display, multi-controller, and unresolved physical-copy cases without turning LOR addressing into permanent identity, while also supporting the accepted real-world backfill and lifecycle workflows.
-
-## Authority Boundary
+Permanent production objects:
 
 ```text
-LOR / V7
-    -> current wiring, Network, UID, channels/outputs,
-       universes, Preview/Scene/Display relationships, SPARE state
-
-Controller Inventory engineering
-    -> physical-controller grouping interpretation built from
-       LOR wiring + family behavior + known field evidence
-
-future PostgreSQL Controller Inventory
-    -> permanent physical controller/device identity
-       accepted Production Database-owned physical relationships
-
-Controller Inventory application
-    -> controlled inventory, assignment, stock, location, label,
-       setup/takedown, model, firmware, and reconciliation workflow
-
-FieldWiring
-    -> technician-facing consumer
+ref.controller_model
+ref.controller_firmware_version
+ref.controller_status
+ref.controller
+ref.controller_display
+ref.controller_firmware_history
 ```
 
-LOR wiring remains read-only to Controller Inventory.
+Accepted permanent inventory remains 177 physical Controllers with IDs `1001` through `1177`. `ref.controller_display` keeps the legitimate composite key `(controller_id, display_id)`. Controller `1176` remains intentionally unassigned until its new Display exists through the normal LOR/Preview workflow.
 
-## Permanent Identity
+Current V0.4.0 deployment checkpoint:
 
-The accepted permanent identity is only:
+```text
+checkout                    63be47f40be78f608416935ed0583287da9d90e6
+rollback checkout           e9ab029a17067b38b34f9306069f54899925f73f
+FieldWiring                  V0.4.0 / postgres / healthy
+Procedures                   V0.1.0 / postgres / healthy
+Controller fingerprint       578217bcb18e1291ceced673a3de3b27 unchanged
+```
+
+Validated rollback database archive:
+
+```text
+/home/msbadmin/backups/postgres/msb-pre-controller-setup-management-20260903T044324.dump
+SHA256 702bcb71c776a1495fecef3e73ec39a35d75049e21b0c02f54a7ed2b65311a23
+```
+
+Production deployment report:
+
+```text
+/tmp/MSB_Controller_Setup_Management_Production_Deploy_20260903T044324.txt
+```
+
+## V0.4.0 Production Capability
+
+The purpose-built Controller browser now provides the accepted operational core:
+
+- Stage/Sub-stage-aware Controller browse/search;
+- current Display assignments and Stage context;
+- Controller/FieldWiring cross-links;
+- current programmed LOR Network / First UID / UID Count / calculated UID range / management IP;
+- Controller planning/capacity views using current LOR/V7 evidence;
+- Add Controller;
+- Edit Controller;
+- assignment / reassignment / unassignment management;
+- model/status/location/serial/hardware/year/verification/notes maintenance;
+- firmware maintenance and verification state;
+- `Physically Attached to Display` as a physical fact separate from logical assignments;
+- contextual `?` help for non-obvious fields;
+- unsaved-change protection;
+- Controller label state and Print Label request action;
+- distinct Print Label styling from Save Controller;
+- human-facing operator attribution for label requests.
+
+The grouped maintenance form and current planner presentation are operator-accepted for V0.4.0.
+
+## Browser Write Boundary
+
+Production command migrations now include:
+
+```text
+021_create_controller_browser_authorization_contract.sql
+022_create_controller_label_request_command.sql
+023_create_controller_management_commands.sql
+024_harden_controller_assignment_capability.sql
+```
+
+The deployed security model is:
+
+```text
+Cloudflare Access authenticated email
+    -> Directus user / role / policy authorization data
+    -> server-side capability check
+    -> narrow SECURITY DEFINER PostgreSQL command
+    -> PostgreSQL validation / audit / final authority
+```
+
+`fieldwiring_app` remains a least-privilege application role. It does not receive broad direct `INSERT`, `UPDATE`, or `DELETE` on `ref.controller*` merely because browser management exists.
+
+No Directus login redirect or cross-origin Directus browser-session bridge is required.
+
+## Capability Matrix
+
+```text
+Production Crew           -> browse + Print Label
+Manager                   -> browse + Print Label + Controller management
+Administrator             -> browse + Print Label + Controller management
+MSB Browser / Read Only   -> browse only
+```
+
+Controller management means Add/Edit Controller and Controller-to-Display assignment/reassignment/unassignment. There is no normal Controller DELETE workflow.
+
+Button visibility is presentation only; every write rechecks authenticated identity and current authorization server-side.
+
+## Permanent Identity and Relationship Rules
+
+Permanent physical identity is only:
 
 ```text
 ref.controller.controller_id
 ```
-
-`controller_id` is PostgreSQL-generated, analogous to `ref.display.display_id`.
 
 Accepted scan payload:
 
@@ -70,120 +132,113 @@ Accepted scan payload:
 CTRL:<controller_id>
 ```
 
-Do **not** create `controller_key`, `CL-###`, or another parallel permanent identity.
+Network, Unit ID/range, IP address, universe, Display, Stage, Scene, spreadsheet row, and LOR Prop UUID are mutable facts/evidence, not permanent Controller identity.
 
-Network, UID/range, IP, universe, Display, Stage, Scene, COM port, workbook row, and LOR Prop identity are not permanent controller identity.
-
-## Physical Relationship
-
-Controller-to-Display is many-to-many:
+Controller-to-Display cardinality is many-to-many:
 
 ```text
-one controller -> zero, one, or many Displays
-one Display    -> zero, one, or many controllers
+one Controller -> zero, one, or many Displays
+one Display    -> zero, one, or many Controllers
 ```
 
-Intentional repeated addresses are valid. Network + UID/range or Network + UID + channel must never be globally unique physical-controller identity.
+Intentional repeated addresses are valid. Never make Network + UID globally unique physical identity.
 
-## Working Spreadsheet Boundary
+`ref.controller_display.wiring_source_display_id` remains the reviewed bridge for duplicated-channel physical copies whose LOR wiring is intentionally defined by another Display.
 
-The current `Controller Inventory & Testing 2026(...)` spreadsheet is a **temporary engineering grouping worksheet**.
+## Current Programmed Configuration
 
-It is not an authoritative physical inventory and it is not a future operational dependency.
+`ref.controller` records the physical Controller's **current programmed configuration**, including current `lor_network`, `lor_uid_start`, `lor_uid_count`, generated `lor_uid_end`, and management IP where applicable.
 
-It is the best current attempt to assemble physical groupings from authoritative LOR wiring, controller-family behavior, model/capability evidence, location clues, and known field facts before the complete physical inventory is presented/verified.
+These are mutable operational facts, not identity. LOR/V7 remains authoritative for the show-required configuration. Setup/reconciliation compares physical recorded programming against current show requirements.
 
-The final `For What` column was deliberately added to define or distinguish the proposed physical grouping/use context. It must be interpreted as grouping evidence, not incidental notes.
+Fixed full-UID models remain governed by database rules, including:
 
-Accepted grouping decisions and corrected assumptions must be promoted into the [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md) as the review proceeds. They must not remain only in chat or only in the spreadsheet.
+```text
+CCB100   = 2 UIDs
+Pixie4D  = 4 UIDs
+Pixie8D  = 8 UIDs
+Pixie16D = 16 UIDs
+```
 
-After PostgreSQL Controller Inventory is implemented, the maintained physical inventory/grouping workflow belongs in PostgreSQL and its controlled application/workflow. The spreadsheet becomes historical bootstrap evidence only.
+## Stage and FieldWiring Integration
 
-## Important Boundaries
+Do not add redundant `stage_id` to `ref.controller` merely for browsing. Stage context is derived through current Display relationships:
 
-### No deployment-assignment history requirement
+```text
+ref.controller
+    -> ref.controller_display
+        -> ref.display
+            -> ref.stage
+```
 
-Controller assignment is current-state data. V1 does not require historical Stage, Scene, Display, UID, network, IP, universe, or deployment relationship rows.
+Unassigned shelf Controllers may legitimately have zero assignments and no Stage.
 
-### Firmware history is retained
+Accepted FieldWiring resolver basis:
 
-Firmware history follows permanent `controller_id` and must use model-compatible firmware authority.
+```text
+physical Controller = ref.controller.controller_id
+physical Display    = ref.controller_display.display_id
+wiring Display      = COALESCE(
+    ref.controller_display.wiring_source_display_id,
+    ref.controller_display.display_id
+)
+```
 
-### Repairs belong to Work Orders
+Detailed Network/UID/channel/universe requirements remain LOR/V7 authority.
 
-Repairs, troubleshooting, parts replacement, and maintenance belong in the Work Order system linked to `controller_id`.
+## Labels and Scan
 
-### Exact models remain distinct
+Controller labels use permanent identity:
 
-Generic family/classification is useful, but exact models must remain distinct. `PixCon16` and `Pixie-16` are not interchangeable.
+```text
+CTRL:<controller_id>
+```
 
-### Managed-device scope is broader than output controllers
+The browser Print Label command sets the governed `ref.controller.print_label` request flag. The physical polling/print service remains a separate subsystem.
 
-Directors, Easy Light Linkers, InputPup, PixieLink, ServoDog, and other managed show-control devices may receive permanent inventory identity even when no Display assignment is required.
+Current limitation: the external LabelPrintService does not yet have accepted Controller template/profile/routing support. Physical Controller label printing is therefore not considered complete simply because the browser request flag exists.
 
-## Application / Backfill Framework
+The accidental pending CTRL 1001 request must be cleared under a bounded production mutation procedure before Controller physical print routing becomes active.
 
-The real operational workflow is now controlled by:
+## Directus Experiment — Closed
 
-- [Controller Inventory Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
+Do not resume the Directus Controller relationship workspace experiment. It caused item-detail failures around the legitimate composite relationship key.
 
-The central workflow is a Stage/Display controller-assignment workbench that shows current physical controller contexts and coverage (`ASSIGNED`, `MISSING`, `PARTIAL`, `REVIEW_REQUIRED`) alongside available/unassigned controller stock. The same workflow must support adding a physical controller, adding a canonical model when needed, assigning/unassigning/replacing controllers, updating current `ref.location`, recording setup/placement notes, and printing permanent `CTRL:<controller_id>` labels.
+Directus remains useful as authorization data and optional simple reference maintenance. It is not the Controller operational editor.
 
-This workbench is intentionally both the initial backfill tool and the permanent future assignment workflow. The full later firmware/setup/takedown/FieldWiring feature set must not block creation of permanent controller IDs, labeling of spare stock, or assignment of real controllers once the minimum inventory core and workbench are accepted.
+## Remaining Work After V0.4.0
 
-`ref.location` is the physical-location authority for controllers. Stage, Display assignment, physical LOC, and current LOR address/configuration are separate mutable facts and must not be collapsed into controller identity.
+The core Controller planning/maintenance system is deployed. Remaining work is narrower:
 
-Normal LOR ingest/reconciliation must not delete/rebuild controller assets or blindly destroy controller-to-Display assignments. Controller currentness is evaluated after the approved LOR/V7 state changes, with explicit review states for changed wiring, new/missing controller contexts, partial coverage, removed/recycled Displays, and ambiguous mappings.
+1. build offline/printable Controller reports:
+   - firmware / verification worksheet;
+   - Stage / Display Controller list;
+   - verification / exception report;
+2. complete external Controller label-service profile/template/routing work separately;
+3. clear the accidental CTRL 1001 pending label request before physical Controller printing is enabled;
+4. complete Production Crew and Read Only browser capability acceptance;
+5. write and accept plain-English operator procedures against the deployed V0.4.0 screens;
+6. reconcile final documentation and prepare draft PR #111 for review/merge.
 
-## FieldWiring Integration
+PR #111 remains draft. Production deployment does **not** authorize merging `main`.
 
-FieldWiring is a consumer of Controller Inventory and does not own its schema.
+## Operator Procedures
 
-The durable consumer contract is:
+Final plain-English procedures are still required. They must match the deployed screens and cover browsing, Stage lookup, shelf stock, Add/Edit, assignment/reassignment/unassignment, firmware/status/location/programmed configuration, labels, planning, and FieldWiring navigation.
 
-- [FieldWiring / Controller Inventory Handoff — 2026-08-20](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
+Engineering terms such as junction-table rows, foreign keys, resolver providers, or LOR UUIDs belong in engineering documentation, not ordinary operator instructions.
 
-FieldWiring continues to obtain detailed current wiring from LOR/V7. Controller Inventory eventually supplies permanent physical controller identity, model/capability, accepted current physical grouping/assignment, duplicate-address distinction, and enough physical output/port context for FieldWiring to turn LOR wiring into technician-facing hookup instructions.
+## Read This First
 
-## Current Working Evidence / Resume Point
+For current work, read in this order:
 
-Current active Pre-DDL evidence includes the working Controller Inventory spreadsheet and current V7.0.11 / LOR 6.6.10 parser materialization supplied during the active review.
+1. [Controller V0.4.0 Production Deployment Acceptance — 2026-09-03](Controller_V0.4.0_Production_Deployment_Acceptance_2026-09-03.md)
+2. [Controller V0.4.0 Disposable Browser Operator Acceptance — 2026-09-03](Controller_V0.4.0_Disposable_Browser_Operator_Acceptance_2026-09-03.md)
+3. [Controller Management Authentication / Authorization Contract — 2026-08-31](Controller_Management_Authentication_Authorization_Contract_2026-08-31.md)
+4. [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md)
+5. [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md)
+6. [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md)
+7. [Controller Inventory / FieldWiring Repeated-Address and Duplicated-Channel Cases — 2026-08-30](Controller_FieldWiring_Repeated_Address_and_Duplicated_Channel_Cases_2026-08-30.md)
+8. Server Management `docs/server/Production_Database_Change_Deployment_Runbook.md` before any future production mutation.
 
-Known source corrections newer than a frozen comparison artifact must be maintained explicitly during Pre-DDL testing rather than silently reintroduced as current facts. In particular:
-
-- the obsolete `HW-EventTrafficRight-01 / Regular / UID 08 / CTB32LG3` spreadsheet row has already been removed from the current working spreadsheet; and
-- current LOR corrected `42 10-09 SPARE` to `Regular / UID 10 / channel 9`; any frozen SQLite that predates that correction is stale for that fact.
-
-Do not reopen those items merely because they remain visible in an older comparison artifact.
-
-## Branch Boundary
-
-The older `docs/controller-inventory-v1-review` branch contains valuable reconnaissance but diverged materially from current `main` while other production work continued.
-
-Do not continue ordinary Controller Inventory edits directly on that stale branch. Reconcile valid findings into fresh work based on current `main` so newer accepted Production Database and FieldWiring changes are preserved.
-
-The valid remaining V1 design details from that branch have been promoted into [Controller Inventory Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md). The old branch remains historical recovery evidence only.
-
-## Related Engineering Evidence
-
-- [Engineering Acceptance Baseline — 2026-08-29](Controller_Inventory_Engineering_Acceptance_Baseline_2026-08-29.md)
-- [Grouping Acceptance Register](Controller_Inventory_Grouping_Acceptance_Register.md)
-- [Pre-DDL Design Details — 2026-08-29](Controller_Inventory_PreDDL_Design_Details_2026-08-29.md)
-- [Application, Backfill, and Operations Framework — 2026-08-30](Controller_Inventory_Application_Backfill_and_Operations_Framework_2026-08-30.md)
-- [Controller Inventory and Labeling Plan](Controller_Inventory_and_Labeling_Plan.md) — older planning foundation; identity examples may be superseded by the current acceptance baseline
-- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
-- [Controller Inventory Current Assignment Cardinality — 2026-08-20](Controller_Inventory_Current_Assignment_Cardinality_2026-08-20.md)
-- [Controller Inventory 2025 Source Audit — 2026-08-19](Controller_Inventory_2025_Source_Audit_2026-08-19.md)
-- [HWY-42 Address Ambiguity — 2026-08-20](Controller_Inventory_LOR_Address_Ambiguity_HWY42_2026-08-20.md)
-- [E1.31 IP Current-State Correction — 2026-08-20](Controller_Inventory_E131_IP_Current_State_Correction_2026-08-20.md)
-- [FieldWiring / Controller Inventory Handoff](../09_Wiring_System/FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
-- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
-- [Wiring System](../09_Wiring_System/README.md)
-- [Network Infrastructure](../10_Network_Infrastructure/README.md)
-- [Work Orders](../06_Work_Orders/README.md)
-
-## DDL Gate
-
-Do not design or install final Controller Inventory DDL from spreadsheet row shape or conversation assumptions.
-
-Continue the grouping/lifecycle fit test, promote material accepted findings into the controlled acceptance baseline/register/framework as they are established, and only move to DDL when the physical identity/relationship model and the minimum real-world backfill/application lifecycle have been demonstrated against the real system and the remaining implementation decisions are explicit.
+Older bootstrap and Pre-DDL material remains historical evidence. Current production and active management/authentication documents control when older material conflicts.

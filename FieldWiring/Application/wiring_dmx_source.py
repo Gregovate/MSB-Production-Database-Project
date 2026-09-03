@@ -137,8 +137,7 @@ def _sqlite_source_rows(
                            p.string_type,
                            p.tag AS lor_tag
                     FROM lor_snap__v_current_props p
-                    JOIN ref__display d
-                      ON d.lor_prop_id = p.raw_prop_id
+                    JOIN ref__display d ON d.lor_prop_id = p.raw_prop_id
                     WHERE p.preview_id = ?
                       AND d.display_status_id = 1
                       AND upper(coalesce(p.device_type, '')) = 'DMX'
@@ -309,18 +308,34 @@ def replace_legacy_dmx_rows(
     scene_scope: bool,
     parser_version: Any,
 ) -> list[dict[str, Any]]:
-    """Replace compatibility-view DMX rows with V7.0.11 atomic source rows.
+    """Replace only DMX Displays already present in the resolved wiring scope.
 
-    Pre-V7.0.11 snapshots retain the legacy compatibility path.  On V7.0.11+
-    a context that has legacy DMX wiring must also expose the approved source
-    detail; otherwise FieldWiring fails closed and asks for a refreshed snapshot
-    instead of silently reverting to canonical master Channel Names.
+    The incoming ``rows`` list is already bounded to the resolved Display,
+    Stage, or Scene by ``wiring_data``. The atomic DMX source-detail query is an
+    enrichment source and must never broaden that context. In particular, a
+    shared/master Preview may contain DMX Displays from many Stages.
+
+    Pre-V7.0.11 snapshots retain the legacy compatibility path. On V7.0.11+ a
+    context that has legacy DMX wiring must also expose approved source detail;
+    otherwise FieldWiring fails closed instead of silently reverting to
+    canonical master Channel Names.
     """
     legacy_dmx = [
         row for row in rows
         if str(row.get("device_type") or "").strip().casefold() == "dmx"
     ]
     required = _requires_source_detail(parser_version)
+
+    # No DMX exists in the already-resolved context. Do not query/reintroduce
+    # atomic DMX rows from other Displays in the shared Preview.
+    if not legacy_dmx:
+        return rows
+
+    allowed_display_ids = {
+        int(row["display_id"])
+        for row in legacy_dmx
+        if row.get("display_id") is not None
+    }
 
     try:
         source_rows = load_dmx_source_rows(
@@ -330,7 +345,7 @@ def replace_legacy_dmx_rows(
             scene_scope=scene_scope,
         )
     except Exception as exc:
-        if required and legacy_dmx:
+        if required:
             raise WiringError(
                 "Current V7.0.11+ FieldWiring data does not expose the required "
                 "DMX source-detail columns. Regenerate the FieldWiring snapshot "
@@ -338,8 +353,17 @@ def replace_legacy_dmx_rows(
             ) from exc
         return rows
 
+    # Atomic source detail may contain DMX Displays from elsewhere in a shared
+    # Preview. Keep only Displays that were already present in the resolved
+    # Stage/Scene/Display package.
+    source_rows = [
+        row for row in source_rows
+        if row.get("display_id") is not None
+        and int(row["display_id"]) in allowed_display_ids
+    ]
+
     if not source_rows:
-        if required and legacy_dmx:
+        if required:
             raise WiringError(
                 "Current V7.0.11+ wiring contains DMX relationships but no atomic "
                 "DMX source rows were resolved for this context."
@@ -348,18 +372,13 @@ def replace_legacy_dmx_rows(
 
     _validate_source_rows(source_rows)
 
-    if required and legacy_dmx:
-        legacy_display_ids = {
-            int(row["display_id"])
-            for row in legacy_dmx
-            if row.get("display_id") is not None
-        }
+    if required:
         source_display_ids = {
             int(row["display_id"])
             for row in source_rows
             if row.get("display_id") is not None
         }
-        missing = sorted(legacy_display_ids - source_display_ids)
+        missing = sorted(allowed_display_ids - source_display_ids)
         if missing:
             raise WiringError(
                 "Atomic DMX source rows did not resolve every DMX Display from the "
