@@ -8,7 +8,7 @@
 | Audience | MSB volunteers, operators, and managers |
 | Status | DRAFT — operator review and screenshots required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-08-24 |
+| Last Reviewed | 2026-09-03 |
 | Keywords | scan, scanning, QR code, display, container, phone, tablet, camera, manual entry, field wiring, procedures |
 
 ## What Is MSB Scan?
@@ -23,9 +23,17 @@ You do **not** need to understand database IDs, application routes, or the repos
 
 ## Open Scan
 
-Open:
+The normal operator entry is the protected MSB Internal home page:
 
-**https://db.sheboyganlights.org/scan/**
+**https://my.sheboyganlights.org/**
+
+Use the green **Open Scan** button in the top Work Order / Scan / Database section.
+
+You may also open Scan directly at:
+
+**https://my.sheboyganlights.org/scan/**
+
+`/scan/` is the canonical operator application entry. Existing printed labels and older scan links that use `https://db.sheboyganlights.org/scan/...` remain supported for compatibility and do not need to be replaced merely because the operator launch point is now under `my.sheboyganlights.org`.
 
 The Scan page provides two normal ways to start:
 
