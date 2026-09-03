@@ -302,5 +302,10 @@ assignmentFilter.addEventListener('change', loadControllers);
 document.getElementById('refresh-button').addEventListener('click', loadControllers);
 document.getElementById('clear-filters-button').addEventListener('click', clearFilters);
 
+const requestedControllerId = new URLSearchParams(window.location.search).get('controller_id');
+if (requestedControllerId && /^\d+$/.test(requestedControllerId)) {
+  searchInput.value = requestedControllerId;
+}
+
 configureTheme();
 loadControllers();

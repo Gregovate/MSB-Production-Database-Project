@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PRODUCTION DEPENDENCY — Procedure source candidate ready; production deployment pending |
-| Current revision | 2026-08-23 |
+| Status | CURRENT PRODUCTION DEPENDENCY — CTRL source candidate ready; production deployment pending |
+| Current revision | 2026-09-03 |
 | Owner | MSB Database Administrator |
 | Production host | `msb-prod-db` |
 | Production runtime path | `/opt/directus/extensions/directus-extension-scan/` |
@@ -32,13 +32,13 @@ Directus executes:
 dist/index.js
 ```
 
-The current accepted production SHA-256 after FieldWiring integration and the Directus public-origin correction is:
+The current Server Management runbook records this accepted production SHA-256, including the FieldWiring and Procedures Display-hub actions:
 
 ```text
-b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f
+fb2a98088e363430fb0a303e4c895bae8202f4f253ac22a1481a406eb5b7443a
 ```
 
-That hash remains the accepted **live production baseline** until the Procedure-enabled candidate is actually deployed and accepted through the Server Management safety gate.
+That hash remains the accepted **live production baseline** until the CTRL-enabled candidate is deployed and accepted through the Server Management safety gate.
 
 The accepted application/business source is version-controlled under:
 
@@ -47,6 +47,7 @@ Scan/directus-extension-scan/
     package.json
     src/index.js
     dist/index.js
+    test/controller-route.test.mjs
 ```
 
 The live deployment does not need to contain the development `src/` tree. Application source belongs in the Production Database repository; live deployment/recovery belongs in Server Management.
@@ -74,7 +75,7 @@ Verified production routes include:
 /scan/DISP/:key/work-orders
 ```
 
-The Procedure source candidate does **not** add or replace a Scan route. It adds a Display-hub link to the already-deployed protected Procedure application.
+The Git-controlled CTRL candidate adds `/scan/CTRL/:key`; that route is not included in the production inventory above until deployment acceptance is complete.
 
 The scan landing page supports camera scanning, QR codes, 1-D barcodes, manual entry, and URL handling.
 
@@ -98,9 +99,8 @@ The currently accepted production hub independently presents or resolves:
 - the current Display Testing record/status when applicable;
 - the assigned Container;
 - active Work Orders; and
-- the accepted Field Wiring action.
-
-The Procedure-enabled source candidate adds one independent **Procedures** action without changing those existing actions.
+- the accepted Field Wiring action; and
+- the accepted Procedures action.
 
 Testing, Container, Work Order, FieldWiring, and Procedure remain separate downstream actions. A failure in one downstream application must not make the basic Display hub or unrelated actions unavailable.
 
@@ -159,7 +159,7 @@ FieldWiring remains a downstream consumer. A FieldWiring outage must not disable
 
 See [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) for the accepted implementation and production evidence.
 
-## Procedure Display Scan Integration — Source Candidate Ready
+## Procedure Display Scan Integration — Accepted Production
 
 The standalone Procedure application is production-operational at:
 
@@ -167,7 +167,7 @@ The standalone Procedure application is production-operational at:
 https://my.sheboyganlights.org/procedures/
 ```
 
-Procedure already accepts permanent Display identity as an application entry input and already owns its Setup/Takedown/Inspection task-selection UI.
+Procedure accepts permanent Display identity as an application entry input and owns its Setup/Takedown/Inspection task-selection UI.
 
 The agreed Display Scan UX is one additive **Procedures** button:
 
@@ -184,26 +184,7 @@ Existing Display QR
 
 The Scan hub passes only the permanent `display_id`. It does not duplicate Setup/Takedown/Inspection buttons and does not call the Procedure API merely to determine whether the button should render.
 
-Git-controlled candidate source is on:
-
-```text
-branch: agent/procedure-scan-action
-implementation commit: 333f7c20a26e8ed2a0460ddbf309c167bffa2992
-```
-
-Both candidate files intentionally use the same Git blob:
-
-```text
-Scan/directus-extension-scan/src/index.js
-Scan/directus-extension-scan/dist/index.js
-Git blob: b3fd0e992b22407784e9da0dbc21d371c0d4a483
-```
-
-Compared with the current `main` baseline, each file has exactly one added line: the Procedures link. No existing Scan route or database query is changed.
-
-This is **not yet production acceptance**. The current live artifact remains the accepted hash `b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f` until the Server Management deployment gate verifies the live baseline, creates a new rollback, stages and syntax-checks the candidate, restarts Directus, and completes regression acceptance.
-
-The Procedure follow-on preserves the architectural rules proven by FieldWiring:
+The accepted Procedure integration preserves the architectural rules proven by FieldWiring:
 
 - no physical QR change;
 - no second Display resolver;
@@ -211,6 +192,18 @@ The Procedure follow-on preserves the architectural rules proven by FieldWiring:
 - no Procedure schema or generic document registry merely for scan integration;
 - no Procedure health/API call required just to render the Display hub; and
 - existing Display, Testing, Container, Work Order, and FieldWiring actions remain independently usable if Procedure is unavailable.
+
+## Controller Scan Integration — Source Candidate Ready
+
+Controller Inventory V0.4.0 is merged to `main` and production-operational. It already supports exact detail entry through:
+
+```text
+https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=<controller_id>
+```
+
+The bounded Scan candidate adds `/scan/CTRL/:key`, validates that the key is a positive integer permanent Controller ID, and redirects to that existing Controller Inventory entry point. The Controller browser initializes its Search control from `controller_id`, filters the list, and opens the exact detail panel.
+
+The candidate does not query Controller tables or duplicate Controller details/actions inside Scan. Camera-readable full URLs and compact Zebra HID/manual values converge on the same route and identity. Production deployment, regression checks, and physical label/device acceptance are still required.
 
 ## Future Setup/Deployment Scan Platform Boundary
 
@@ -222,6 +215,7 @@ Durable labels should remain asset/location identifiers such as:
 DISP:<display_id>
 CONT:<container_id>
 LOC:<location_code>
+CTRL:<controller_id>
 ```
 
 Annual setup dates, load numbers, transient movement state, application-specific routes, and other workflow state must not become physical label identity.
@@ -234,7 +228,7 @@ The broader Setup/Deployment workflow remains separate from Procedure document l
 
 Owns:
 
-- permanent Display/Container/Location identity and relationships;
+- permanent Display/Container/Location/Controller identity and relationships;
 - scan payload/business contracts;
 - Git-controlled scan application source under `Scan/directus-extension-scan/`;
 - Testing, Work Order, Container, FieldWiring, Procedure, and Setup/Deployment integration behavior;
@@ -257,17 +251,17 @@ A server path does not transfer business-rule authority to the Server Management
 
 ## Current Stop Point
 
-As of 2026-08-23:
+As of 2026-09-03:
 
 - current scan application source is recovered in Git;
 - FieldWiring Scan Integration is accepted production work;
-- current accepted live scan artifact hash is `b4f6c27f4880a8eaf8a90d8d55c7939c5bd190645dca9329344a86c3175cb20f`;
+- current accepted live scan artifact hash is `fb2a98088e363430fb0a303e4c895bae8202f4f253ac22a1481a406eb5b7443a`;
 - the Directus public-origin correction is accepted production behavior;
 - the `/scan/` Synology route is production-operational;
-- standalone Procedure field access is production-operational;
-- the Procedure Display Scan UX is now settled as one **Procedures** button that passes only permanent `display_id` and leaves Setup/Takedown/Inspection selection inside the existing Procedure application;
-- the Git-controlled Procedure-enabled Scan source candidate is implemented on `agent/procedure-scan-action`, with implementation commit `333f7c20a26e8ed2a0460ddbf309c167bffa2992`;
-- production deployment and regression acceptance of that candidate are still pending through the current Server Management runbook;
+- standalone Procedure field access and its Display-hub action are production-operational;
+- Controller Inventory V0.4.0 is merged and production-operational;
+- the Git-controlled CTRL route candidate hands permanent `controller_id` to the existing Controller Inventory Search/detail experience;
+- production deployment and device acceptance of the CTRL candidate are pending through the current Server Management runbook;
 - the broader Container/Location Setup/Deployment workflow remains separate engineering scope; and
 - no schema or physical QR change is part of this bounded integration.
 
@@ -281,5 +275,5 @@ Before deploying the candidate, read the current Server Management [Display Scan
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md)
 - [Wiring System](../09_Wiring_System/README.md)
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
-- [Procedure Application](../../../../../Procedures/Application/README.md)
+- [Procedure Application](../../../../Procedures/Application/README.md)
 - [MSB Server Management — Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md)

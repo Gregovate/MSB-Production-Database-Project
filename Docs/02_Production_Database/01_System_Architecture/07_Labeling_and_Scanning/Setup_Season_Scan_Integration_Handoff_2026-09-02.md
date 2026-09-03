@@ -6,7 +6,7 @@
 | System | Labeling and Scanning / Scan / Setup and Deployment |
 | Status | CURRENT WORKING HANDOFF |
 | Owner | MSB Technical Team |
-| Date | 2026-09-02 |
+| Date | 2026-09-03 |
 
 ## Purpose
 
@@ -55,22 +55,67 @@ LOC:<location_code>
 CTRL:<controller_id>
 ```
 
-Zebra scanners have been configured to report compact canonical values for deployed Display/Container/Location scanning instead of typing the full scan URL.
+The Zebra ADF correction was physically checked on 2026-09-03: the scanner types the expected compact canonical value into Google Docs. That proves the HID/ADF input format, not end-to-end Scan application behavior for every identity type.
 
 This is an input-method normalization convenience. The Scan application must not require Zebra-specific behavior. Manual entry, camera decode, Zebra HID input, and supported legacy/full URLs must converge on the same identity resolution where compatibility is required.
 
 ## Current Known Scan Problems
 
-As of this handoff:
+As of the 2026-09-03 reconnaissance:
 
-- reaching the Scan application is cumbersome and needs one obvious supported operator entry point;
+- the MSB Internal home page at `https://my.sheboyganlights.org/` now provides the obvious supported **Open Scan** entry point; the former discovery/navigation problem is resolved;
 - `DISP` is the most developed route;
-- `CONT` exists but has limited result/actions;
+- `CONT` is accepted for its current purpose: it opens the Directus Container record, where the original design exposes assigned Displays;
 - `LOC` does not yet have complete route/resolution behavior; focused implementation is #88;
-- `CTRL` needs a Scan route/result now that permanent Controller Inventory IDs exist;
+- production Controller Inventory is deployed at `/fieldwiring/controllers` and accepts `?controller_id=<id>` for exact detail selection;
+- the Git-controlled `CTRL` Scan source candidate routes the permanent Controller identity to that existing Controller Inventory instead of building a duplicate result page; deployment and physical acceptance remain pending;
 - iPhone behavior is not accepted merely because a camera preview opens; actual barcode/QR decode and correct routing must be physically verified;
 - camera-permission failure/recovery remains #112;
 - operator documentation in #67 must follow corrected deployed behavior rather than freezing current defects into SOPs.
+
+## Current-State Matrix
+
+`Source-supported` means the current code path accepts the input. `Input-only verified` means the Zebra emitted the expected value in Google Docs; it is not an end-to-end route acceptance result.
+
+| Type | Manual | Zebra HID | Android camera | iPhone camera | Route exists | Result/actions |
+|---|---|---|---|---|---|---|
+| `DISP` | Source-supported | Input-only verified in current test pass | Physical decode/routing acceptance not recorded in this pass | Camera may open; real-label decode/routing not accepted | Yes — production | Existing Display hub: Directus record, Testing, Container, Work Orders, Field Wiring, and Procedures |
+| `CONT` | Source-supported | End-to-end Container scan reported working; compact ADF output independently verified | Physical decode/routing acceptance not recorded in this pass | Camera may open; real-label decode/routing not accepted | Yes — production | Opens the Directus Container record and its Display assignments; preserve this accepted behavior |
+| `LOC` | Landing-page normalization exists, but destination fails because no route exists | Compact ADF output verified only | Not accepted | Not accepted | No | #88 must supply Location resolution and the minimum Setup-owned operator workflow |
+| `CTRL` | Compact/full-URL normalization is source-supported by the candidate | Compact `CTRL:<id>` input contract; end-to-end production acceptance pending | Full-URL QR decode/routing acceptance pending | Full-URL QR decode/routing acceptance pending | Source candidate only | Redirects to production Controller Inventory with `controller_id=<id>`, which filters Search and opens exact detail |
+
+The Controller capture contract is:
+
+```text
+phone/tablet camera QR
+    -> https://db.sheboyganlights.org/scan/CTRL/<controller_id>
+
+Zebra HID or manual compact entry
+    -> CTRL:<controller_id>
+
+both
+    -> /scan/CTRL/<controller_id>
+    -> https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=<controller_id>
+```
+
+Controller Inventory remains the owner of Controller details and actions. Scan only resolves and hands off permanent identity.
+
+## Label-Request Interface Findings
+
+- Controller Inventory has a **Print Label** request button, but external print-service polling does not yet consume that request; that is separate LabelPrintService work.
+- No usable operator interface currently exists to select Displays and request their labels. That is a database/label-request UI gap, not part of the bounded `CTRL` Scan route.
+- Do not volume-print Controller labels until the Scan route, operator destination, Zebra/camera behavior, and real-world scan distance pass the physical-label gate below.
+
+## Smallest Ordered Repair Plan
+
+1. Review and merge the bounded `CTRL` source candidate without changing existing `DISP` or `CONT` behavior.
+2. Deploy it through the current Server Management Scan runbook, then accept compact Zebra/manual and full-URL phone/tablet inputs against a real Controller label and the Controller Inventory result.
+3. Complete `LOC` resolution and the minimum Setup-owned operator action under #88; do not infer movement from scan order.
+4. Complete real-label Android/iPhone decode and camera permission/recovery acceptance under #112.
+5. Update the operator SOP and discovery guidance under #67 only after the deployed routes and camera behavior are correct.
+6. Add broader Setup movement/staging/load semantics only where the reconstructed operational process proves they are needed.
+
+Keep #113 as the umbrella and keep #88, #112, and #67 focused; do not create a new issue for each small finding.
 
 ## Setup-Season Direction
 
@@ -108,7 +153,7 @@ A new Scan engineering thread should begin by:
 2. refreshing current remote `main` before editing;
 3. inventorying current `Scan/directus-extension-scan/` source and current deployed Scan baseline/runbook;
 4. documenting the current route matrix for `DISP`, `CONT`, `LOC`, and `CTRL` before changing code;
-5. resolving the operator entry/navigation problem;
+5. preserving the now-deployed MSB Internal **Open Scan** entry point;
 6. verifying capture methods independently: manual, Zebra HID, Android camera, iPhone camera;
 7. implementing/accepting focused route gaps without redesigning LabelPrintService;
 8. continuing #88 for Setup-critical Location and movement semantics;

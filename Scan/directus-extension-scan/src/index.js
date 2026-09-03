@@ -15,6 +15,9 @@
      /scan/CONT/:key
        → Container scan landing page
 
+     /scan/CTRL/:key
+       → Controller Inventory exact-controller search/detail
+
      /scan/DISP/:key/test
        → Opens display test record in Directus
 
@@ -187,7 +190,7 @@ export default {
             <button id="scanBtn" type="button" class="btn secondary">Scan with Camera</button>
             <button id="stopBtn" type="button" class="btn secondary" style="display:none;">Stop Camera</button>
 
-            <div class="hint">Examples: DISP:141, CONT:238, LOC:RA-01-A-03, or a full scan URL</div>
+            <div class="hint">Examples: DISP:141, CONT:238, LOC:RA-01-A-03, CTRL:1014, or a full scan URL</div>
 
             <div id="reader"></div>
             <div id="scanStatus"></div>
@@ -615,6 +618,29 @@ export default {
         </body>
         </html>
       `);
+    });
+
+    // ============================================================
+    // CONTROLLER INVENTORY HANDOFF
+    // /scan/CTRL/:key
+    // Opens the production Controller Inventory with the permanent
+    // controller_id selected in both Search and the detail panel.
+    // ============================================================
+    router.get('/CTRL/:key', async (req, res) => {
+      const key = String(req.params.key ?? '').trim();
+      const controllerId = Number(key);
+
+      if (!/^\d+$/.test(key) || !Number.isSafeInteger(controllerId) || controllerId <= 0) {
+        res.status(400).send(`
+          <h1>Invalid Controller</h1>
+          <p>Expected CTRL:&lt;controller_id&gt;; received CTRL:${escapeHtml(key)}</p>
+        `);
+        return;
+      }
+
+      res.redirect(
+        `https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=${encodeURIComponent(controllerId)}`
+      );
     });
 
     // ============================================================
