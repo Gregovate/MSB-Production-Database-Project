@@ -2,23 +2,33 @@
 
 | Item | Value |
 |---|---|
-| Status | PARTIAL PASS — DISPOSABLE HARNESS RETRY REQUIRED |
+| Status | **PASS — APPROVED FOR SEPARATE PRODUCTION DEPLOYMENT GATE** |
 | Issue | #110 |
 | Draft PR | #111 |
 | Application candidate | `2fd2067958cc0a903260fe6f089f88ae63a857f1` |
 | Production application baseline | `e9ab029a17067b38b34f9306069f54899925f73f` |
 | Acceptance wrapper | `Controllers/Acceptance/run_controller_setup_probe_disposable_acceptance.ps1` |
-| Production mutation | NONE |
+| Candidate DB migrations | `023_create_controller_management_commands.sql`, `024_harden_controller_assignment_capability.sql` |
+| Production mutation during acceptance | NONE |
 
-## Purpose
+## Final Result
 
-Record the first acceptance run that reached the real 2026 Controller planning/probing gates and preserve the exact reason the disposable write test did not complete.
+The 2026 Controller setup probe and browser-maintenance candidate completed the full accepted gate successfully.
 
-This evidence is operationally important because the planner itself passed against current production data. The remaining failure was in disposable PostgreSQL container startup timing, not in Controller planning, Controller maintenance code, authorization, or production data.
+Final banners:
+
+```text
+CONTROLLER MANAGEMENT DISPOSABLE ACCEPTANCE: PASS
+CONTROLLER MANAGEMENT DISPOSABLE CHILD: PASS
+CONTROLLER SETUP PROBE + MANAGEMENT ACCEPTANCE: PASS
+CONTROLLER SETUP PROBE + MANAGEMENT WRAPPER: PASS
+```
+
+Production deployment remains a **separate explicit gate** governed by the MSB Server Management Production Database deployment runbook.
 
 ## Detached Application Regression
 
-Exact candidate:
+Exact application candidate:
 
 ```text
 2fd2067958cc0a903260fe6f089f88ae63a857f1
@@ -27,17 +37,17 @@ Exact candidate:
 Result:
 
 ```text
-231 passed in 2.65s
+231 passed in 2.25s
 DETACHED CONTROLLER PROBE/MAINTENANCE REGRESSION: PASS
 ```
 
-This validated the candidate FieldWiring + Procedures application test suites before any planner data probe or disposable write testing.
+The combined FieldWiring + Procedures suite therefore passed against the exact application candidate in the production runtime before any database-clone write testing.
 
 ## Current Production Read-Only Planner Probe
 
-The acceptance wrapper queried the live production database read-only using the existing `fieldwiring_app` planner read boundary.
+The live production planner probe was read-only and passed.
 
-Observed current production evidence:
+Observed current-production evidence:
 
 ```text
 planner numeric UID rows       = 1786
@@ -53,109 +63,161 @@ Result:
 PLANNER PRODUCTION READ PROBE: PASS
 ```
 
-This establishes that the current production system contains enough governed data for the setup planner to provide:
+This establishes that the current governed data supports the first setup-season planner for:
 
-- Network-scoped numeric UID usage;
+- Stage/Sub-stage selection;
+- Networks currently used by a Stage;
+- Network-scoped LOR Unit-ID usage;
 - physical Controller current-programming overlay;
-- Stage selection;
 - `Regular` network context;
-- model-aware multi-UID / contiguous UID planning.
+- model-aware multi-UID / contiguous-UID planning.
+
+The planner does **not** claim physical Network reachability for every Stage. When probing a Network not currently evidenced at the selected Stage, the operator confirms physical reach using the existing park/network map. `Regular` remains the known park-wide slow/background network exception.
 
 ## Current Production Direct-Stage SPARE Probe
 
-The read-only direct-stage SPARE attribution query returned:
+The current LOR/V7 materialization returned:
 
 ```text
 direct_stage_spare_rows=116
 ```
 
-This is strong evidence that the current LOR/V7 materialization contains useful directly attributable Stage/SPARE data for the first setup planner implementation.
+This confirms useful directly attributable Stage/SPARE evidence exists for the initial planner.
 
-Shared/master Preview SPARE rows remain deliberately unguessed when direct physical/Stage attribution cannot be proven.
+`ref.spare_channel` is not used as current authority. Shared/master Preview SPARE rows remain deliberately unguessed when Stage or physical-Controller attribution cannot be proven.
 
-## Production Safety Evidence
+## Current-Production Disposable Clone
 
-Before the disposable clone test:
+Production state captured before the clone test:
 
 ```text
-production Controller fingerprint = 578217bcb18e1291ceced673a3de3b27
-controllers                         = 177
-assignments                         = 194
+Controller fingerprint = 578217bcb18e1291ceced673a3de3b27
+controllers             = 177
+assignments             = 194
+production dump         = 14M, structurally validated
 ```
 
-After the failed disposable restore attempt:
+A disposable `postgis/postgis:16-3.5` PostgreSQL instance was populated from the current production dump. The candidate migrations were then applied **only to the disposable clone**:
 
 ```text
-production Controller fingerprint = 578217bcb18e1291ceced673a3de3b27
+023_create_controller_management_commands.sql
+024_harden_controller_assignment_capability.sql
 ```
 
-Result:
+Migration privilege result:
 
 ```text
+can_read_controller_management_options = true
+can_create_controller                  = true
+can_update_controller                  = true
+can_assign_controller                  = true
+can_unassign_controller                = true
+can_reassign_controller                = true
+forbidden direct controller UPDATE     = false
+forbidden direct controller INSERT     = false
+forbidden direct assignment INSERT     = false
+forbidden direct assignment DELETE     = false
+```
+
+This confirms the intended least-privilege boundary: `fieldwiring_app` executes narrow governed commands but does not receive broad Controller-table DML.
+
+## Authorization and Audit Proof
+
+The disposable acceptance resolved the real Manager/Admin actor:
+
+```text
+gliebig@sheboyganlights.org -> person_id 17 -> Greg Liebig
+```
+
+Results:
+
+```text
+PASS: direct fieldwiring_app Controller INSERT denied
+PASS: unauthorized Controller create denied
+PASS: created clone-only CTRL 1178; audit person=17; actor=Greg Liebig
+```
+
+The clone-only Controller used PostgreSQL-generated permanent identity. Production Controller identity remained unchanged.
+
+## Programmed Configuration and UID Rules
+
+Results:
+
+```text
+PASS: intentional duplicate Network/UID programming accepted
+PASS: fixed-capacity model rejected invalid UID count
+```
+
+This preserves the accepted Controller rules:
+
+- `controller_id` is permanent physical identity;
+- Network/UID is mutable programming, not identity;
+- repeated Network/UID values are valid when intentional;
+- fixed-capacity multi-UID models enforce their governed UID count;
+- UID planning is Network-scoped.
+
+## Controller-to-Display Lifecycle
+
+The disposable clone exercised the current-snapshot M:N relationship workflow.
+
+Results:
+
+```text
+PASS: one Controller assigned to two Displays and AVAILABLE -> DEPLOYED transition applied
+PASS: replacement preserved other assignment and moved only selected relationship
+PASS: final unassign preserved Controller asset and returned DEPLOYED -> AVAILABLE
+PASS: REPAIR Controller assignment denied until status is explicitly changed
+```
+
+The tested workflow therefore preserved:
+
+- one Controller -> many Displays;
+- one Display -> many Controllers as a supported model;
+- atomic selected-relationship replacement;
+- Controller asset preservation on unassign;
+- operational status lifecycle;
+- assignment guard for REPAIR;
+- assignment-capability hardening from migration 024.
+
+## Production Safety Proof
+
+After all disposable write tests completed:
+
+```text
+Before: 578217bcb18e1291ceced673a3de3b27
+After:  578217bcb18e1291ceced673a3de3b27
 PASS: production Controller fingerprint unchanged
 ```
 
-The setup probe parent remained SELECT-only against production. No candidate Controller maintenance migration was applied to production.
+No candidate migration was installed in production during this acceptance run. No production Controller, assignment, or firmware-history row was changed.
 
-## Disposable PostgreSQL Failure
+## Accepted Deployment Target
 
-A current production dump was successfully captured and structurally validated:
-
-```text
-14M production dump
-```
-
-The disposable PostgreSQL container started and `pg_isready` returned success, after which the harness immediately created the disposable database and began `pg_restore`.
-
-During restore PostgreSQL terminated the connection with:
-
-```text
-FATAL: terminating connection due to administrator command
-server closed the connection unexpectedly
-```
-
-The visible restore statement at termination happened to be a COMMENT on `ops.v_lor_reconciliation_operator_stage_review`; that object is not considered the cause.
-
-### Root cause
-
-The newer Controller management disposable harness waited only for `pg_isready` after starting a brand-new `postgis/postgis:16-3.5` container.
-
-The official PostgreSQL Docker entrypoint uses a temporary initialization server that can briefly satisfy `pg_isready`, then intentionally shuts that temporary server down before starting the final PostgreSQL process. Starting `pg_restore` during that interval can therefore terminate the restore with `administrator command`.
-
-The older Controller label disposable harness already contained the correct sequence:
-
-```text
-wait for Docker log marker:
-    PostgreSQL init process complete; ready for start up
-
-then:
-    wait for final pg_isready
-
-then:
-    createdb / pg_restore
-```
-
-The setup wrapper has been corrected to patch the child management harness to that proven sequence before transfer/execution.
-
-It also now captures disposable PostgreSQL logs as failure evidence before container cleanup when a future clone test fails.
-
-## Current Resume Point
-
-Application candidate remains unchanged:
+The accepted **application** target remains exactly:
 
 ```text
 2fd2067958cc0a903260fe6f089f88ae63a857f1
 ```
 
-Do not repin the application merely because the disposable acceptance infrastructure changed. The candidate application already passed regression and the real production planner probe.
+Acceptance-harness commits made after that SHA do not change the accepted application target and must not silently repin deployment.
 
-Rerun:
+The production deployment package must install only candidate migrations 023/024 and fast-forward the shared application checkout to this exact target after all production preflight, backup, least-privilege, regression, health, and rollback requirements pass.
 
-```powershell
-git pull --ff-only origin agent/controller-inventory-ref-sandbox
-powershell -ExecutionPolicy Bypass -File .\Controllers\Acceptance\run_controller_setup_probe_disposable_acceptance.ps1
-```
+## Next Gate
 
-The rerun should repeat the exact application regression and production read-only planner probe, then wait for final disposable PostgreSQL startup before restoring and executing Controller maintenance migrations 023/024 in the disposable clone only.
+Before any production mutation:
 
-Production deployment remains a separate explicit gate after the full disposable acceptance passes.
+1. prepare the Controller setup/maintenance production deployment runner from the active `MSB-Server-Management` Production Database Change Deployment Runbook;
+2. pin the exact accepted application SHA above;
+3. verify the actual live production checkout rather than assuming a remembered SHA;
+4. run detached regression in the production runtime;
+5. create and validate the rollback PostgreSQL archive using direct stdin redirection;
+6. preflight and apply migrations 023/024 only;
+7. verify Controller fingerprints remain unchanged by function installation;
+8. fast-forward the shared checkout;
+9. restart and verify FieldWiring + Procedures;
+10. run live combined regression and negative security checks;
+11. retain deployment report and rollback archive;
+12. then perform deliberate browser/operator acceptance for Plan Capacity and Controller Maintenance.
+
+Production deployment requires explicit approval and is not authorized merely by this PASS record.
