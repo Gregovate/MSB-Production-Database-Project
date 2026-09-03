@@ -220,6 +220,8 @@ psql_test <<SQL
 CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';
 GRANT USAGE ON SCHEMA ref, lor_snap, ops TO fieldwiring_app;
 GRANT SELECT ON ALL TABLES IN SCHEMA ref, lor_snap, ops TO fieldwiring_app;
+REVOKE ALL ON FUNCTION ref.controller_browser_capabilities(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.request_controller_label(text,bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ref.controller_browser_capabilities(text) TO fieldwiring_app;
 GRANT EXECUTE ON FUNCTION ref.request_controller_label(text,bigint) TO fieldwiring_app;
 SQL
@@ -229,7 +231,7 @@ psql_test < "$MIGRATION_024"
 
 echo
 echo "--- Validate disposable browser authorization/write boundary ---"
-MANAGE_OK="$(psql_test -qAt -v preview_email="$PREVIEW_EMAIL" -c "SELECT can_manage_controllers FROM ref.controller_browser_capabilities(:'preview_email');")"
+MANAGE_OK="$(psql_test -qAt -c "SELECT can_manage_controllers FROM ref.controller_browser_capabilities('$PREVIEW_EMAIL');")"
 if [[ "$MANAGE_OK" != "t" ]]; then
     echo "FAIL: preview operator $PREVIEW_EMAIL does not have Controller management capability"
     exit 15
