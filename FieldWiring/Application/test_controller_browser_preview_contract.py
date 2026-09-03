@@ -64,6 +64,18 @@ def test_browser_preview_uses_separate_local_flask_port_and_foreground_ssh() -> 
     assert 'read -r -p "Press ENTER to stop and clean up the browser preview' in server
 
 
+def test_browser_preview_makes_only_temp_bundle_readable_to_runtime_user() -> None:
+    wrapper = (ACCEPT / "run_controller_setup_management_browser_preview.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "$remoteEntry = \"$remoteRoot/controller_setup_management_browser_preview_entry.py\"" in wrapper
+    assert "chmod 755 '$remoteRoot'" in wrapper
+    assert "chmod 700 '$remoteScript'" in wrapper
+    assert "chmod 644 '$remoteEntry'" in wrapper
+    assert "/opt/fieldwiring" not in wrapper.split("$remoteCommand =", 1)[1].split("\n", 1)[0]
+
+
 def test_browser_preview_switches_runtime_user_before_backgrounding_flask() -> None:
     server = (ACCEPT / "controller_setup_management_browser_preview_server.sh").read_text(
         encoding="utf-8"
