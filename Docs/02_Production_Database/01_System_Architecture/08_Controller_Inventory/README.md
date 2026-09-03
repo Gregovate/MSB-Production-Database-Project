@@ -4,7 +4,7 @@
 |---|---|
 | Status | PRODUCTION V0.4.0 DEPLOYED — CORE PLANNING / MAINTENANCE ACCEPTED |
 | Issue | #110 |
-| Draft PR | #111 |
+| Merged PR | #111 |
 | Permanent identity | `ref.controller.controller_id` |
 | Permanent database | Installed on `msb-prod-db` |
 | Current production checkout | `63be47f40be78f608416935ed0583287da9d90e6` |
@@ -200,6 +200,15 @@ Current limitation: the external LabelPrintService does not yet have accepted Co
 
 The accidental pending CTRL 1001 request must be cleared under a bounded production mutation procedure before Controller physical print routing becomes active.
 
+The accepted Scan destination reuses this production browser rather than creating a separate Controller result screen:
+
+```text
+/scan/CTRL/<controller_id>
+    -> /fieldwiring/controllers?controller_id=<controller_id>
+```
+
+The `controller_id` parameter populates/filters the existing Search control and opens the exact Controller detail. The matching Scan extension change is currently a Git-controlled source candidate and still requires deployment plus physical full-URL QR and compact Zebra HID acceptance before Controller labels are printed in volume.
+
 ## Directus Experiment — Closed
 
 Do not resume the Directus Controller relationship workspace experiment. It caused item-detail failures around the legitimate composite relationship key.
@@ -218,9 +227,9 @@ The core Controller planning/maintenance system is deployed. Remaining work is n
 3. clear the accidental CTRL 1001 pending label request before physical Controller printing is enabled;
 4. complete Production Crew and Read Only browser capability acceptance;
 5. write and accept plain-English operator procedures against the deployed V0.4.0 screens;
-6. reconcile final documentation and prepare draft PR #111 for review/merge.
+6. add final operator procedures after the remaining Production Crew and Read Only capability checks.
 
-PR #111 remains draft. Production deployment does **not** authorize merging `main`.
+PR #111 is merged to `main`, and Controller Inventory V0.4.0 is production-operational. Future Scan deployment remains a separate controlled change.
 
 ## Operator Procedures
 

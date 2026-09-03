@@ -27,7 +27,7 @@ Read [Labeling and Scanning — Subsystem and Repository Boundary](Subsystem_and
 
 ## Current State
 
-Display and container label printing is an implemented production capability used to connect physical assets to Production Database records.
+Display and Container label-printing infrastructure exists, but the current operator request surfaces are not equivalent: there is no usable interface to select Displays and request their labels. Controller Inventory has a Print Label request button, while the separate LabelPrintService does not yet consume Controller requests. Those request/polling gaps are separate from Scan identity routing.
 
 **Display QR lookup is also an implemented production capability.** The current Display scan route is deployed as a Directus endpoint extension on `msb-prod-db` under `/opt/directus/extensions/directus-extension-scan/`. It resolves the permanent Production Database `display_id` and presents the existing Display scan hub.
 
@@ -38,6 +38,7 @@ Scan/directus-extension-scan/
     package.json
     src/index.js
     dist/index.js
+    test/controller-route.test.mjs
 ```
 
 The source is stored in the Production Database repository because it operates directly against Production Database identities/data. Its label/payload/scan behavior still implements the Labeling and Scanning subsystem contract.
@@ -52,7 +53,7 @@ The detailed deployed runtime hash, rollback artifacts, restart/recovery sequenc
 
 The scan hub remains independent of FieldWiring for Display Record, Testing, Container, Work Order, and other existing actions. FieldWiring does not have to be healthy merely for the Display hub to render.
 
-**Procedure is also production-operational independently at `https://my.sheboyganlights.org/procedures/`.** The Procedure Display Scan source candidate is implemented on branch `agent/procedure-scan-action` from current `main`. The agreed Scan UX is one additive **Procedures** button on the Display hub:
+**Procedure and its Display Scan action are accepted production behavior.** The Display hub includes one additive **Procedures** button:
 
 ```text
 /procedures/?display_id=<permanent display_id>
@@ -60,15 +61,16 @@ The scan hub remains independent of FieldWiring for Display Record, Testing, Con
 
 The Scan hub passes only the permanent `display_id`. Setup, Takedown, and Inspection selection remains inside the existing Procedure application, which already presents those three operator task choices. This avoids duplicating Procedure task-selection UI in Scan and does not add a Procedure API/health dependency merely to render the Display hub.
 
-Application-source implementation commit:
+No physical QR redesign, second resolver, Procedure schema, alternate Google hierarchy, or duplicate document registry is part of this integration.
+
+**Controller Inventory V0.4.0 is deployed production behavior.** A bounded `CTRL` Scan source candidate now reuses its exact-controller entry contract:
 
 ```text
-333f7c20a26e8ed2a0460ddbf309c167bffa2992
+/scan/CTRL/<controller_id>
+    -> /fieldwiring/controllers?controller_id=<controller_id>
 ```
 
-This source candidate is **not yet a production-runtime acceptance record**. Until the documented Server Management deployment gate is executed and accepted, the current live Scan runtime remains the previously accepted FieldWiring-enabled artifact and hash.
-
-No physical QR redesign, second resolver, Procedure schema, alternate Google hierarchy, or duplicate document registry is part of this integration.
+The Controller page uses that parameter to populate/filter Search and open the exact detail panel. The `CTRL` route is not production behavior until the Scan candidate passes the Server Management deployment gate and physical Zebra/camera acceptance.
 
 The broader Setup/Deployment scan workflow remains separate engineering scope. High-volume Container and Storage Location scanning is expected during setup season, but the real pull/stage/load/delivery process must be reconstructed before broader scan-platform refactoring or transaction semantics are approved.
 
@@ -78,7 +80,7 @@ Label printing crosses a repository and service boundary:
 
 - **Labeling and Scanning** owns the cross-system label/payload/scan contract;
 - the **Production Database** owns the authoritative asset records and database-backed request/batch state;
-- **Directus** provides the current operator interface for selecting records and enabling `Print Label`;
+- the **Production Database operator applications** provide asset-specific request surfaces where implemented;
 - the separate **MSB_LabelPrintService** consumes the approved database contract and performs physical printing on the dedicated print server.
 
 The LabelPrintService is an external supporting subsystem. If it is unavailable, printing stops, but the Production Database remains authoritative and usable.
@@ -88,7 +90,7 @@ The LabelPrintService is an external supporting subsystem. If it is unavailable,
 - [Subsystem and Repository Boundary](Subsystem_and_Repository_Boundary.md) — controlling separation among Labeling and Scanning, the Production Database, and LabelPrintService/PRINT-SERVER.
 - [Label Payload and Profile Architecture](Label_Payload_and_Profile_Architecture.md) — current QR-generation/profile reconnaissance and implementation gates.
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Scan/FieldWiring baseline, permanent `display_id` handoff, source-control boundary, failure boundary, acceptance matrix, and deferred regression cases.
-- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, Procedure source-candidate state, and current scan-extension resume point.
+- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, accepted production baseline, and current scan-extension candidate.
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules.
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) — shared scan-to-Display/hierarchy contract used by Work Orders, FieldWiring, Procedures, Testing, and future field functions.
 - [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md) — shared browser/PDF/offline/currentness rules for field documents reached through the scan/task workflow.
@@ -231,37 +233,29 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [Operational Label Printing SOPs](../../02_Operational_SOPs/Label_Printing/README.md)
-- [Operational SOPs](../../02_Production_Database/02_Operational_SOPs/README.md)
+- [Operational SOPs](../../02_Operational_SOPs/README.md)
 - [MSB Label Print Service](https://github.com/Gregovate/MSB_LabelPrintService)
 - [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management)
 
 ## Resume Development
 
-### Procedure Display Scan Integration — source candidate ready; deployment/acceptance pending
+### Controller Scan Integration — source candidate ready; deployment/acceptance pending
 
-Standalone Procedure field access and FieldWiring Scan Integration are accepted production baselines. Procedure Display Scan Integration now has an application-source candidate on branch `agent/procedure-scan-action`.
+Current production Controller Inventory already owns Controller search, detail, assignments, planning, maintenance, and label-request actions. The bounded Scan candidate adds no competing Controller screen or database query.
 
-Agreed operator behavior:
-
-```text
-Display scan hub
-    -> Procedures
-        -> /procedures/?display_id=<permanent display_id>
-            -> existing Procedure page
-                -> operator chooses Setup, Takedown, or Inspection
-```
-
-The source candidate adds exactly one Display-hub link in both Git-controlled `src/index.js` and `dist/index.js`. It does not call Procedure to decide whether to render the button and does not change any existing Scan route.
-
-Application-source commit:
+Accepted handoff:
 
 ```text
-333f7c20a26e8ed2a0460ddbf309c167bffa2992
+camera QR: https://db.sheboyganlights.org/scan/CTRL/<controller_id>
+Zebra/manual: CTRL:<controller_id>
+    -> /scan/CTRL/<controller_id>
+    -> /fieldwiring/controllers?controller_id=<controller_id>
+    -> Search filtered and exact Controller detail opened
 ```
 
-Next step is deployment/acceptance through the current `MSB-Server-Management` Display Scan Extension Deployment and Recovery runbook. Before live replacement, verify the live artifact still matches the documented accepted baseline, create a new timestamped rollback, stage/syntax-check the candidate, and regression-test Display Record, Testing, Container, Work Orders, Field Wiring, manual/camera Scan behavior as applicable, plus the new Procedures action.
+The Git-controlled `src/index.js` and deployable `dist/index.js` remain identical. The Controller browser initializes its existing Search control from the same `controller_id` parameter already used by FieldWiring cross-links and exact-detail loading.
 
-Preserve the current physical Display identity/payload contract. Do not add a second resolver, Procedure schema, alternate Google hierarchy, direct Procedure-document URL in the QR, or a Procedure health/API dependency merely to render the Display scan hub.
+Next step is deployment/acceptance through the current `MSB-Server-Management` Display Scan Extension Deployment and Recovery runbook. Verify the live artifact hash, create a timestamped rollback, stage/syntax-check the candidate, restart Directus, and regress existing Display/Container/manual/camera behavior plus compact/full-URL `CTRL` inputs and the Controller Inventory result. Update the Server Management runbook only after that production acceptance.
 
 ### Setup/Deployment operational scanning — separate project
 

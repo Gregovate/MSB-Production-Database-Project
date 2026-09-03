@@ -106,9 +106,13 @@ def test_fieldwiring_loads_controller_crosslink_assets() -> None:
 
 def test_controller_inventory_supports_exact_controller_deep_link_and_exposes_print_label() -> None:
     html = (BASE_DIR / "controllers.html").read_text(encoding="utf-8")
+    base_script = (BASE_DIR / "controllers.js").read_text(encoding="utf-8")
     script = (BASE_DIR / "static" / "controllers_detail_extras.js").read_text(encoding="utf-8")
 
+    assert "controllers.js?v=2026-09-03.1" in html
     assert "controllers_detail_extras.js" in html
+    assert "get('controller_id')" in base_script
+    assert "searchInput.value = requestedControllerId" in base_script
     assert "get('controller_id')" in script
     assert "loadControllerDetail(controllerId)" in script
     assert "Print Label" in script
