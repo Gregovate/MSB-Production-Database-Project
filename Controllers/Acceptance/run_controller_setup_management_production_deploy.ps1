@@ -8,7 +8,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $ServerScript = Join-Path $ScriptDir 'controller_setup_management_production_deploy_server.sh'
 $ExpectedBranch = 'agent/controller-inventory-ref-sandbox'
-$CandidateSha = '2fd2067958cc0a903260fe6f089f88ae63a857f1'
+$CandidateSha = '63be47f40be78f608416935ed0583287da9d90e6'
 
 if (-not (Test-Path -LiteralPath $ServerScript)) {
     throw "Required deployment runner is missing: $ServerScript"
@@ -42,7 +42,7 @@ Write-Host '========== CONTROLLER SETUP + MANAGEMENT PRODUCTION DEPLOYMENT =====
 Write-Host "Server:        $Server"
 Write-Host "Candidate SHA: $CandidateSha"
 Write-Host "Remote root:   $remoteRoot"
-Write-Host 'This is the PRODUCTION deployment gate for accepted migrations 023/024 and the exact accepted application candidate.'
+Write-Host 'This is the PRODUCTION deployment gate for accepted migrations 023/024 and the exact operator-accepted V0.4.0 application candidate.'
 Write-Host 'The remote runner creates and validates a rollback DB archive before mutation and fails closed on errors.'
 Write-Host
 
