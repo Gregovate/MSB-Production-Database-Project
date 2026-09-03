@@ -2,26 +2,52 @@
 
 | Item | Value |
 |---|---|
-| Status | ENGINEERING HANDOFF — durable cross-workstream contract |
-| FieldWiring branch | `agent/fieldwiring-engineering-recovery` |
-| FieldWiring ownership | Browser wiring presentation and consumption of controller relationships |
-| Controller Inventory ownership | Permanent physical controller identity and current assignment for the current approved LOR/V7 snapshot |
+| Status | CURRENT CROSS-WORKSTREAM CONTRACT — PERMANENT CONTROLLER INTEGRATION ACTIVE |
+| Issue | #110 |
+| FieldWiring ownership | Browser wiring presentation and consumption of permanent Controller relationships |
+| Controller Inventory ownership | Permanent physical controller identity, current Controller-to-Display relationships, current programmed controller facts |
 | Schema status | FieldWiring does not own or authorize Controller Inventory schema changes |
+| Current Controller architecture | [Controller Management Application Boundary — 2026-08-31](../08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md) |
 
 ## Purpose
 
-This note is the durable handoff between the FieldWiring engineering-recovery workstream and the separate Controller Inventory workstream. It exists so controller requirements discovered during FieldWiring browser acceptance are available from the repository rather than depending on conversation memory.
+This note is the durable handoff between FieldWiring and Controller Inventory. It exists so Controller requirements discovered during FieldWiring engineering and Controller integration are available from the repository rather than depending on conversation memory.
 
-The Controller Inventory workstream should inspect its own source artifacts and design its eventual PostgreSQL model from evidence. FieldWiring findings below are consumer requirements and confirmed physical/topology observations; they are not a substitute for Controller Inventory source inspection.
+Controller Inventory owns its PostgreSQL model and permanent physical identities. FieldWiring is a consumer of those governed facts plus the current LOR/V7 wiring snapshot.
+
+## Current Accepted Production Checkpoint
+
+The first permanent Controller Inventory / FieldWiring integration is now production-accepted.
+
+```text
+production checkout           84d6f06e16c43ebb0f6aa21273b999af7f6d455b
+FieldWiring                   V0.3.1 / postgres / healthy
+Procedures                    V0.1.0 / postgres / healthy
+combined live regression      183 passed in 2.39s
+```
+
+Accepted current behavior includes:
+
+- permanent Controller Inventory is populated and authoritative for physical `controller_id`;
+- Stage/Sub-stage-aware Controller browsing is working;
+- current programmed LOR Network / UID / management IP facts are visible in Controller Inventory;
+- FieldWiring shows permanent Controller ID and model context where governed Controller relationships resolve the physical device;
+- FieldWiring provides a Controller Inventory cross-link;
+- Controller Inventory assignments provide **Open Field Wiring** links back to the relevant Display wiring view;
+- LOR/V7 remains authoritative for detailed current wiring topology;
+- the shared FieldWiring + Procedures regression gate is the deployment safety gate.
+
+The older temporary Controller presentation logic described later in this document remains historical/bridge evidence only where a presentation family still lacks enough governed permanent Controller resolution.
 
 ## Authority Boundary
 
-- LOR is authoritative for show topology, addressing, and current wiring relationships.
-- PostgreSQL owns permanent Production Database identities and operational relationships.
+- LOR is authoritative for current show topology, addressing, channels, universe/network assignments, and wiring definitions.
+- PostgreSQL owns permanent Production Database identities, current Controller relationships, constraints, and audit.
 - `ref.display.display_id` is permanent Display identity; LOR Prop UUID / `lor_prop_id` is an external binding.
+- `ref.controller.controller_id` is permanent physical Controller identity.
 - Google Shared Drive `Display Folders` remains the engineering document/image authority used by FieldWiring.
 - FieldWiring does **not** own the Controller Inventory schema.
-- Controller Inventory must eventually provide permanent physical controller identity plus the **current assignment relationship that applies to the current approved LOR/V7 snapshot**.
+- Controller Inventory provides permanent physical controller identity plus the current physical Controller-to-Display relationship.
 - FieldWiring does **not** require historical controller deployment relationships.
 
 Permanent physical controller identity must **not** be based on:
@@ -30,105 +56,130 @@ Permanent physical controller identity must **not** be based on:
 - E1.31 universe;
 - IP address;
 - Display name;
-- physical location alone.
+- physical location alone;
+- Stage/Scene context.
 
-Pixie controllers may deliberately reuse Unit-ID ranges. One E1.31 controller may span many universes, and one Display may use multiple physical controllers.
+Intentional repeated addresses are valid. One E1.31 controller may span many universes, and one Display may use multiple physical controllers.
+
+## Accepted Permanent Resolver Contract
+
+The permanent relationship basis is:
+
+```text
+physical controller = ref.controller.controller_id
+physical Display     = ref.controller_display.display_id
+wiring Display       = COALESCE(
+    ref.controller_display.wiring_source_display_id,
+    ref.controller_display.display_id
+)
+```
+
+FieldWiring uses the governed Controller-to-Display relationship first. Current programmed Network/UID may then distinguish which already-assigned physical Controller applies to an AC/Pixie wiring row. Addressing is never promoted into permanent physical identity.
+
+For reviewed duplicated-channel physical copies, `wiring_source_display_id` provides the explicit bridge to the Display whose current LOR wiring defines the hookup.
 
 ## Current-State Assignment Scope
 
-FieldWiring needs to answer a current operational question:
+FieldWiring answers the current operational question:
 
 > Which permanent physical controller is assigned to the wiring relationships in the current approved LOR/V7 snapshot?
 
-The controller itself has permanent identity. Its deployment/address assignment is current-state data.
+The controller itself has permanent identity. Its Display assignment, current programmed address, management IP, physical location, firmware, and status are mutable current-state facts.
 
-There is no FieldWiring requirement to preserve each prior controller deployment as historical relationship rows. Controller assignments change infrequently. When they do change, the Controller Inventory current assignment can be reconciled to the newly approved current snapshot.
+There is no FieldWiring requirement to preserve each prior controller deployment as historical relationship rows. Older LOR snapshots and preserved source artifacts remain engineering evidence without requiring duplicate Controller deployment-history relationships.
 
-Older LOR snapshots and preserved source artifacts may remain available as engineering evidence, but Controller Inventory does not need to duplicate that evidence as deployment-history relationships merely for FieldWiring.
+## Controller Management Boundary
 
-No schema design is implied here. The Controller Inventory workstream still owns the eventual PostgreSQL model and must derive it from inspected source evidence.
+Controller Management is now explicitly a browser-native/custom application workflow.
 
-## Controller Inventory Return Handoff — Current Plan
+Directus remains the shared login/identity/Manager-policy authority and may still be used for simple one-table/reference maintenance. It is **not** the Controller operational editor.
 
-Controller Inventory source review has now established a current engineering direction that FieldWiring can design toward while the physical data is still being corrected.
-
-The controlling plan is:
-
-- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](../08_Controller_Inventory/Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
-
-Confirmed direction from that workstream:
-
-- permanent physical controller identity remains independent of LOR addressing;
-- controller assignment is current-state only and is reconciled to the current approved LOR/V7 snapshot;
-- no historical controller deployment relationship is required;
-- firmware update history belongs to Controller Inventory;
-- repairs/maintenance belong to Work Orders linked to the permanent controller asset;
-- Controller Inventory should not manually duplicate every Display/output relationship already available from the current LOR snapshot;
-- a unique current Network + Unit ID/range can normally associate one physical controller to the LOR wiring rows using that address;
-- intentional duplicate addresses require one additional distinguishing physical group, for example `Candy Canes 1-4`, `Candy Canes 5-8`, and `Candy Canes 9-12`;
-- exact hardware models remain distinct (`PixCon16` and `Pixie-16` are different devices); and
-- Stage/Scene or another simple physical context is sufficient during ordinary data cleanup unless a duplicate-address/ambiguous case needs a more specific Display group.
-
-### FieldWiring implementation consequence
-
-FieldWiring development does **not** need to stop while the controller data is being reviewed.
-
-However, temporary named/hard-coded physical mappings must remain an isolated bridge rather than becoming the permanent architecture.
-
-FieldWiring should converge on a replaceable controller-resolution boundary/provider that can eventually consume a PostgreSQL Controller Inventory read interface supplying, conceptually:
+The accepted Manager workflow belongs in the Controller browser:
 
 ```text
-permanent controller identity
-exact controller model/family + physical capability
-current controller address/context
-optional duplicate-address distinguishing group
-current approved LOR/V7 snapshot provenance
+Controller Detail
+    -> authenticated Manager check
+    -> Edit Controller / Add Controller
+    -> current programmed Network / UID / IP maintenance
+    -> Assign / Reassign / Unassign Displays
+    -> label request state
+    -> PostgreSQL validation/audit
 ```
 
-The LOR/V7 snapshot continues to supply the detailed current Display/output wiring rows. Controller Inventory supplies the physical-controller identity/context that LOR cannot encode.
+Do not make `fieldwiring_app` broadly writable merely to support Controller Management. The server-side write path must have its own governed authorization and database-write boundary.
 
-Do not spread new Display/Scene-specific controller assumptions through rendering code merely because the authoritative Controller Inventory data is not ready yet. If a temporary accepted physical mapping is still required for recovery/acceptance, keep it centralized and replaceable by the future controller resolver.
+The permanent relationship key remains:
 
-## Temporary FieldWiring Recovery Rules
+```text
+PRIMARY KEY (controller_id, display_id)
+```
 
-The current FieldWiring recovery classifier contains some named, operator-confirmed runtime rules for known Displays/Scenes. This is acceptable as a temporary bridge while Controller Inventory is not yet authoritative.
+Do not introduce a surrogate relationship key merely to satisfy Directus.
 
-Those rules are **presentation recovery logic**, not permanent controller identities. They must not be interpreted as the Controller Inventory data model.
+## Directus Relationship Experiment — Closed
 
-Named examples in FieldWiring tests/runtime currently include Church, Candyland, Who Forest, and Santa's Workshop controller patterns. Tests may freely use exact Display/Scene names as acceptance fixtures. Runtime named rules should remain limited to explicitly reviewed physical patterns and should be replaced by authoritative Controller Inventory current-assignment relationships when that subsystem is ready.
+Live testing showed that the multi-table Controller workflow did not fit Directus reliably. The attempted reverse relationship workspaces caused Controller item-detail failures around the legitimate composite relationship model.
+
+The accepted cleanup removed the Directus `display_assignments` and `firmware_history` reverse workspaces plus temporary assignment DELETE capability while preserving permanent data and the composite key. Validation returned:
+
+```text
+DIRECTUS CONTROLLER SIMPLIFICATION: PASS
+```
+
+Accepted post-cleanup data counts were:
+
+```text
+Controller/Display assignments  194
+firmware-history rows            172
+```
+
+Do not resume the Directus O2M relationship workspace as a FieldWiring/Controller integration task.
+
+## Current FieldWiring Implementation Consequence
+
+FieldWiring no longer needs to wait for a future Controller Inventory subsystem before showing permanent physical context. The first permanent resolver integration is active.
+
+Current rules:
+
+- show permanent `controller_id` and exact model where governed Controller relationships resolve the physical device;
+- use `ref.controller_display` before using current programmed Network/UID to distinguish physical controllers;
+- preserve intentional duplicate addresses;
+- use `wiring_source_display_id` for reviewed duplicated-channel copies;
+- continue sourcing detailed Network/UID/channel/universe wiring from LOR/V7;
+- do not invent wiring for an assigned Controller/Display without current approved LOR wiring or a reviewed wiring source;
+- keep any remaining temporary named/family-specific mappings centralized and replaceable until their real cases are covered by permanent Controller evidence and regression accepted.
 
 ## Confirmed Consumer Requirements
 
-### Reused Pixie Unit IDs
+### Reused Unit IDs
 
-Repeated RGB Unit IDs across separate operator-confirmed physical Displays can be positive evidence of multiple physical Pixie controller instances. Reused addresses must not be treated as permanent physical identity and must not be "fixed" merely because they repeat.
+Repeated Unit IDs across separate operator-confirmed physical Displays can be positive evidence of multiple physical controllers. Reused addresses must not be treated as permanent physical identity and must not be "fixed" merely because they repeat.
 
 ### Physical Grouping vs Current Snapshot Output Mapping
 
 A known physical controller grouping and the current snapshot output relationships inside that controller are separate concerns.
 
-FieldWiring may preserve an operator-confirmed physical controller group while still displaying the exact current snapshot wiring relationships inside that group. FieldWiring must not silently rewrite stale LOR topology outside the normal controlled parser/import cycle.
+FieldWiring may preserve an operator-confirmed physical controller group while displaying the exact current snapshot wiring relationships inside that group. FieldWiring must not silently rewrite stale LOR topology outside the normal controlled parser/import cycle.
 
-This also means a physical output may legitimately show more than one Display/connection relationship when the current source topology says so.
+A physical output may legitimately show more than one Display/connection relationship when the current source topology says so.
 
 ### Unknown Physical Detail
 
-When the controller context is known but the exact physical model/output mapping is not established, FieldWiring should preserve the known controller context without inventing the missing physical fact. Unknown output may be shown as `—`; this is different from an unresolved grouping that genuinely requires review.
+When the controller context is known but the exact physical output mapping is not established, FieldWiring must preserve the known Controller context without inventing the missing physical fact. Unknown output may be shown as `—`; this is different from a genuinely unresolved grouping that requires review.
 
-## Confirmed Examples
+## Historical / Accepted Examples
+
+These examples remain useful evidence for regression and for understanding why permanent identity cannot be inferred from addressing.
 
 ### Church RGB Tree Star
 
 `CH-RGBTree-Star` is a controller context separate from `CH-RGBTree-16x100-180`.
 
-Confirmed from operator inspection of the LOR Prop Definition:
+Confirmed historical evidence:
 
 - Network: `Aux N`;
 - LOR Unit-ID span: `40-41`;
-- not part of the Tree Pixie 16 at `30-3F`;
-- exact physical Pixie model/output count is not yet established from authoritative physical evidence.
-
-FieldWiring therefore presents a separate known controller context and does not attach the Star to Tree Output 16.
+- not part of the Tree Pixie 16 at `30-3F`.
 
 See `FieldWiring_Church_RGB_Tree_Star_Controller_Context_2026-08-20.md`.
 
@@ -138,49 +189,33 @@ Eight Candy Canes use two physical Pixie 4 controllers. Each controller intentio
 
 ### Candyland RGB Candy Canes
 
-Twelve Candy Canes use three physical Pixie 4 controllers, each intended to use Unit IDs `21-24` and Outputs 1-4.
+Twelve Candy Canes use three physical Pixie 4 controllers. Repeated `21-24` ranges are intentional physical-controller reuse, not identity conflicts.
 
-The current development snapshot predates an LOR correction and still contains:
-
-```text
-Candy Cane 09 -> 21
-Candy Cane 10 -> 22
-Candy Cane 11 -> 23
-Candy Cane 12 -> 22
-```
-
-The live Preview was corrected so Candy Cane 12 now uses `24`, but no new controlled snapshot has been imported yet.
-
-For the stale snapshot, FieldWiring must still present the known third Pixie 4 controller while preserving the current snapshot hookup relationships:
-
-```text
-Pixie group 3
-  Output 1 -> CL-RGBCandyCane-09
-  Output 2 -> CL-RGBCandyCane-10
-              CL-RGBCandyCane-12
-  Output 3 -> CL-RGBCandyCane-11
-  Output 4 -> no current snapshot relationship
-```
-
-After a refreshed snapshot contains the corrected `24`, the same controller naturally becomes Outputs 1-4 with Cane 12 on Output 4.
+The historical stale-snapshot case that temporarily showed Cane 12 on `22` instead of corrected `24` remains useful regression evidence for the rule that FieldWiring preserves the current approved snapshot rather than silently rewriting source topology.
 
 See `FieldWiring_Candyland_Stale_Snapshot_Output_Mapping_2026-08-20.md`.
 
 ### Candyland RGB Lollipops
 
-The reviewed current topology is one Pixie 16 presentation spanning Unit IDs `50-5B` with twelve physical outputs across the eight Lollipop Displays. This is a FieldWiring accepted pattern, not a permanent controller identity record.
+The reviewed topology is one Pixie 16 presentation spanning Unit IDs `50-5B` with twelve physical outputs across eight Lollipop Displays. This illustrates why Display count and Unit-ID count are not Controller identity.
 
 ### Who Forest
 
-Eight reviewed Pixie 8 groups use the ranges `50-57`, `58-5F`, `60-67`, `68-6F`, `70-77`, `78-7F`, `80-87`, and `88-8F`. Corresponding RGB Stars are accepted shared-controller relationships in the current FieldWiring presentation. A known source conflict remains for Tree 4 network assignment (historical inventory vs current V7); it must not be silently reconciled.
+Reviewed Pixie 8 groups use multiple contiguous ranges from `50-57` through `88-8F`. Historical source conflicts must remain explicit until corrected through the governed source/ingest path.
 
 ### E1.31 / Dense RGB
 
-E1.31 universes are addressing, not physical controller identity. A single physical controller may span many universes. FieldWiring must not infer controller count merely from compatibility/universe rows.
+E1.31 universes are addressing, not physical Controller identity. A single physical controller may span many universes. FieldWiring must not infer controller count merely from universe rows.
 
-## E1.31 / DMX Consumer Requirements Added 2026-08-21
+Current Controller Inventory provides assignment context, but exact universe-to-physical-controller partitioning may still require additional governed evidence for some E1.31 cases.
 
-Parser V7.0.11 now preserves detailed grouped-DMX source wiring information on each atomic DMX row:
+### CR50 / DumbRGB boundary
+
+A CR50 fixture is a field presentation/fixture concept, not automatically a permanent Controller Inventory asset. FieldWiring may aggregate LOR source rows into technician-facing fixture instructions without creating one permanent controller record per fixture.
+
+## E1.31 / DMX Consumer Requirements
+
+Parser V7.0.11+ preserves detailed grouped-DMX source wiring information on atomic DMX rows, including:
 
 ```text
 RawPropID
@@ -191,118 +226,39 @@ StartChannel
 EndChannel
 ```
 
-Those fields remain LOR/LOR2DB wiring authority. They are **not** Controller Inventory identity fields and must not be duplicated into the Controller Inventory model merely because FieldWiring consumes them.
+Those fields remain LOR/LOR2DB wiring authority. They are **not** Controller Inventory identity fields.
 
-For E1.31, the accepted technician-facing FieldWiring table is grouped by physical controller and shows:
-
-```text
-OUTPUT / PORT
-CHANNEL / DISPLAY SECTION
-UNIVERSE
-PIXELS
-CHANNEL RANGE
-```
-
-Therefore the future Controller Inventory resolver must provide enough current physical assignment information for FieldWiring to determine:
-
-```text
-which permanent controller applies
-human-readable controller label
-exact manufacturer/model
-physical output/port capability
-which physical output/port applies to the current LOR/V7 relationship,
-    or the reviewed mapping basis from which that output can be derived
-current E1.31 assignment/context
-optional current management IP when operationally useful
-current Stage / Scene / distinguishing physical context when required
-which approved LOR/V7 snapshot the mapping was reconciled against
-whether the mapping is authoritative or still requires review
-```
-
-Controller Inventory does **not** need to create a duplicate row for every LOR universe/channel relationship when a simpler reviewed controller-range/output rule is sufficient.
-
-Current examples that the future resolver must be capable of representing include:
-
-```text
-Mega Tree
-    one physical 48-output controller context
-    Universes 1-48
-
-Mega Star
-    two physical PixCon16 controller contexts
-    one Display spanning multiple permanent physical controllers
-
-Mega Cube
-    three physical controller contexts
-    detailed compact-grid expansion remains a separate parser task
-```
-
-The permanent controller identity must still be independent of universe, IP address, Display name, source `RawPropID`, or source Channel Grid row.
-
-### CR50 / DumbRGB boundary
-
-The CR50 fixture rule exposed during Northern Lights acceptance is different from physical-controller inventory.
-
-Each CR50 is a 5-channel DMX fixture, while LOR intentionally carries only the three RGB channels. FieldWiring groups those three source rows into one fixture instruction and preserves the intentional two-channel addressing gaps.
-
-That presentation rule does **not** require Controller Inventory to create one permanent controller record per CR50 fixture.
-
-If the physical gateway/controller serving those fixtures (for example a PixieLink or another DMX/E1.31 interface) is within Controller Inventory scope, its permanent identity/current assignment belongs in Controller Inventory. The individual CR50 fixture source rows remain LOR wiring topology unless the Controller Inventory workstream separately expands its scope to physical fixtures.
+For E1.31, FieldWiring may require enough permanent assignment information to determine the physical Controller and, where governed evidence exists, the applicable physical output/port. Controller Inventory should not duplicate every LOR universe/channel relationship when a simpler reviewed controller/output rule is sufficient.
 
 ## Ongoing Handoff Rule
 
-This handoff is continuous for the life of the FieldWiring project.
+This handoff is continuous for the life of the FieldWiring and Controller Inventory workstreams.
 
-Whenever FieldWiring discovers a new requirement that affects permanent controller identity, exact controller model, physical output capability, current assignment/addressing, duplicate-address grouping, E1.31 controller/output resolution, or controller mapping provenance, the corresponding Controller Inventory-owned integration documentation must be updated before the FieldWiring milestone is considered fully documented.
+Whenever FieldWiring discovers a new requirement affecting permanent controller identity, exact model, physical output capability, current assignment/addressing, duplicate-address grouping, E1.31 controller/output resolution, or mapping provenance, update the responsible Controller Inventory and Wiring System documents **during the work** before later engineering depends on the discovery.
 
-FieldWiring may use temporary reviewed mappings while Controller Inventory is incomplete, but every such mapping must remain centralized and replaceable. Conversation memory and scattered renderer conditions are not acceptable substitutes for the cross-workstream handoff.
+Whenever Controller Inventory changes the permanent resolver or Manager workflow in a way that affects FieldWiring, update this handoff and the Wiring System current-state documentation in the same workstream.
 
-The Controller Inventory-owned durable plan is:
+Issue comments and conversation history are implementation evidence, not substitutes for the controlled handoff.
 
-- [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](../08_Controller_Inventory/Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
+## Current Resume Point
 
-## Current Branch Implementation Status
+The read-side Controller/FieldWiring integration is accepted. Do not resume from the historical temporary-grouping investigation as if permanent Controller Inventory were still future work.
 
-At the time this handoff was written, the branch contains the Candyland stale-snapshot presentation change, but the full automated gate is **not yet green**.
+Current cross-workstream next steps are:
 
-Observed laptop test result:
-
-```text
-1 failed, 22 passed
-```
-
-Failing test:
-
-```text
-FieldWiring/Application/test_wiring.py::test_inconsistent_repeated_block_preserves_good_groups_and_flags_bad_block
-```
-
-Cause identified during review:
-
-- the temporary stale-Candyland exception currently keys on the `CL-RGBCandyCane` series/shape without also requiring the actual Candyland Scene;
-- the older safety test intentionally places a similar inconsistent series in a synthetic non-Candyland Scene and expects the bad block to fail safe;
-- therefore the Candyland stale-source exception must be scoped to the actual `17-Candyland-CL` context while generic inconsistent repeated blocks must continue to require review.
-
-This is an **implementation defect**, not a change to the consumer contract above. Do not treat the current branch head as acceptance-ready until the test gate is green again.
-
-## Controller Inventory Integration Direction
-
-When Controller Inventory becomes authoritative, FieldWiring should consume permanent controller identity plus the controller's **current assignment for the current approved snapshot**, rather than relying on temporary group labels such as `Pixie group 1/2/3` or named recovery rules.
-
-Controller Inventory should be able to represent, without violating identity rules:
-
-- multiple physical Pixie controllers carrying the same programmed Unit-ID range in the current snapshot;
-- one physical controller spanning multiple addressing rows/ranges;
-- one Display connected through more than one physical controller where applicable;
-- the current assignment of each controller to the current approved snapshot topology; and
-- known controller identity even when addressing or deployment is later changed and the current assignment is updated.
-
-A historical deployment-relationship model is **not required** for FieldWiring.
-
-FieldWiring will remain a consumer of that model; it should not redefine Controller Inventory ownership in order to satisfy browser presentation needs.
+1. browser-native Directus-authenticated Manager boundary in Controller Inventory;
+2. Edit/Add Controller workflow;
+3. governed current programmed Network/UID/IP editing;
+4. Controller ↔ Display assignment/reassignment/unassignment workbench;
+5. Manager `print_label` request action;
+6. real shelf-stock/reassignment acceptance;
+7. continue replacing remaining temporary FieldWiring presentation mappings only when permanent Controller evidence fully covers their real cases;
+8. preserve the shared FieldWiring + Procedures regression gate for every deployment.
 
 ## Related Documents
 
+- [Controller Management Application Boundary — 2026-08-31](../08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md)
+- [Controller Inventory Operational Implementation Roadmap — 2026-08-31](../08_Controller_Inventory/Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md)
 - [Controller Inventory Current-State / FieldWiring Integration Plan — 2026-08-20](../08_Controller_Inventory/Controller_Inventory_Current_State_FieldWiring_Integration_Plan_2026-08-20.md)
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - `FieldWiring_Physical_Controller_Output_Presentation_Contract.md`

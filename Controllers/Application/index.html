@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSB Controller Inventory</title>
+  <link rel="stylesheet" href="/controller.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Controller Inventory</h1>
+      <p>Initial deployed-controller bootstrap review</p>
+    </div>
+    <div id="health" class="status">Loading…</div>
+  </header>
+
+  <main>
+    <section class="toolbar card">
+      <div class="summary" id="summary"></div>
+      <div class="filters">
+        <input id="search" placeholder="Search Display, model, UID, group…">
+        <select id="stateFilter">
+          <option value="">All states</option>
+          <option value="REVIEW_REQUIRED">Review required</option>
+          <option value="READY">Ready</option>
+          <option value="SKIPPED">Skipped</option>
+        </select>
+        <button id="refreshButton">Refresh</button>
+        <button id="prepareOrderButton" class="primary">Prepare 1001+ Order</button>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="card list-card">
+        <div class="section-title">
+          <h2>Bootstrap Candidates</h2>
+          <span id="candidateCount"></span>
+        </div>
+        <div id="candidateList" class="candidate-list"></div>
+      </div>
+
+      <div class="card detail-card">
+        <div id="emptyDetail" class="empty">Select a controller candidate.</div>
+        <div id="detail" hidden>
+          <div class="section-title">
+            <div>
+              <h2 id="detailTitle"></h2>
+              <div id="detailEvidence" class="muted"></div>
+            </div>
+            <span id="detailState" class="pill"></span>
+          </div>
+
+          <div id="blockers" class="blockers"></div>
+
+          <div class="grid fields">
+            <label>Model
+              <select id="modelSelect"></select>
+            </label>
+            <label>Year deployed
+              <input id="yearDeployed" type="number" min="1980" max="2100">
+            </label>
+            <label>Review state
+              <select id="reviewState">
+                <option value="REVIEW_REQUIRED">REVIEW_REQUIRED</option>
+                <option value="READY">READY</option>
+                <option value="SKIPPED">SKIPPED</option>
+              </select>
+            </label>
+          </div>
+
+          <label>Review notes
+            <textarea id="reviewNotes" rows="3"></textarea>
+          </label>
+          <button id="saveCandidateButton" class="primary">Save Review</button>
+
+          <hr>
+
+          <h3>Permanent Display Relationships</h3>
+          <div id="relationships"></div>
+          <div class="display-search">
+            <input id="displaySearch" placeholder="Find permanent Display…">
+            <button id="displaySearchButton">Search</button>
+          </div>
+          <div id="displayResults"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card order-card">
+      <div class="section-title">
+        <h2>Proposed Controller ID Order</h2>
+        <button id="loadOrderButton">Refresh Order</button>
+      </div>
+      <p class="muted">Review-only until the controlled SQL promotion is run. No browser action allocates controller IDs.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Order</th><th>Proposed ID</th><th>Year</th><th>Network</th><th>UID</th><th>Display evidence</th><th>Model</th><th>Firmware</th>
+            </tr>
+          </thead>
+          <tbody id="orderBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/controller.js"></script>
+</body>
+</html>

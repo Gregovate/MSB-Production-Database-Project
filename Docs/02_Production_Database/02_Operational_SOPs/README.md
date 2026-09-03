@@ -8,6 +8,7 @@ These procedures are for people performing day-to-day production database tasks.
 |---|---|
 | Scan a Display, Container, or other MSB code and choose the next action | [Scanning](Scanning/README.md) |
 | Create or maintain container records and display assignments | [Containers](Containers/README.md) |
+| Find, plan, add, edit, or assign physical Controllers | [Controllers](Controllers/README.md) |
 | Complete or maintain Production Database information about displays | [Displays](Displays/README.md) |
 | Run the LOR parser, ingest, and reconciliation workflow | [LOR2DB](LOR2DB/README.md) |
 | Print display or container labels | [Label Printing](Label_Printing/README.md) |
@@ -20,6 +21,7 @@ These procedures are for people performing day-to-day production database tasks.
 |---|---|
 | [Scanning](Scanning/README.md) | Operator guidance for manual Scan entry, QR/code meanings, phone/tablet camera setup, and choosing what to do after a scan |
 | [Containers](Containers/README.md) | Procedures for creating and maintaining containers, storage information, dimensions, labels, and display assignments |
+| [Controllers](Controllers/README.md) | Controller Inventory browse, capacity planning, maintenance, verification, and Display-assignment procedures |
 | [Displays](Displays/README.md) | Procedures for completing and maintaining Production Database display information |
 | [LOR2DB](LOR2DB/README.md) | Browser-operated LOR parser, PostgreSQL ingest, reconciliation, and reporting procedure |
 | [Label_Printing](Label_Printing/README.md) | Procedures for requesting display/container labels and first-line printing checks |

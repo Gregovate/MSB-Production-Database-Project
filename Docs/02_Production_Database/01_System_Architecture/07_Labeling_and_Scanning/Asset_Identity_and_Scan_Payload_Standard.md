@@ -36,6 +36,51 @@ Rules:
 
 Before changing existing deployed label payloads, verify the current label templates and LabelPrintService implementation. This document records the approved identity contract; it does not assert that every planned object type has already been deployed.
 
+## Container-First Compact Payload Migration
+
+The first approved migration from deployed full scan URLs to the canonical `TYPE:KEY` payload is **Container labels**.
+
+Operational reason:
+
+```text
+phone camera
+    full https://db.sheboyganlights.org/... QR
+    -> convenient because the camera can open the browser route directly
+
+Zebra Bluetooth HID scanner
+    full URL
+    -> slow because every URL character is transmitted as keyboard input
+
+Zebra Bluetooth HID scanner
+    CONT:587
+    -> much shorter/faster keyboard input
+```
+
+Containers are expected to be the highest-volume Setup scanning workflow, so newly printed/replacement Container labels migrate first to:
+
+```text
+CONT:<container_id>
+```
+
+Examples:
+
+```text
+CONT:216
+CONT:587
+```
+
+Migration rules:
+
+- existing deployed Container labels containing full `https://db.sheboyganlights.org/scan/CONT/<id>` URLs remain valid and must continue to resolve;
+- there is no mass-relabel requirement solely to convert existing Container labels;
+- LabelPrintService v4 is the first print path approved to use compact `CONT:<container_id>` for newly printed/replacement Container QR labels;
+- LabelPrintService v3.4 rollback retains its existing full-URL Container payload behavior;
+- Display QR payloads remain full scan URLs for now; a Display compact-payload migration requires a separate accepted decision because direct phone-camera opening remains useful for Display labels;
+- the Scan workflow must resolve full-URL and compact Container inputs to the same durable Container identity and business workflow;
+- scanner-side formatting may optimize legacy full-URL labels, but scanner configuration must not become the only authority for the Container identity rule.
+
+This is a staged physical-payload migration only. The durable Container identity remains the same Production Database `container_id`.
+
 ## Storage Location Versus Park GIS Location
 
 `LOC:<location_code>` is the approved machine-readable pattern for **discrete labeled operational locations**, especially workshop/rack/storage locations.
@@ -159,6 +204,15 @@ camera scan resolving CONT:587
 ```
 
 must identify the same Container and enter the same business workflow.
+
+The same rule applies during the Container payload migration:
+
+```text
+legacy full URL for Container 587
+new compact CONT:587
+```
+
+must resolve to the same Container identity and workflow.
 
 GPS is additional location context. It is not a different Container identity path.
 

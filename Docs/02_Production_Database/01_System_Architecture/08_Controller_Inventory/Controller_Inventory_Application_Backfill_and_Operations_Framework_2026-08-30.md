@@ -159,6 +159,16 @@ NOT_APPLICABLE
 
 Example: a Display such as `FT-MegaStar` may legitimately need two permanent physical controller assignments. One assigned controller must therefore result in `PARTIAL`, not `ASSIGNED`.
 
+## Current 2026 Workbook Bootstrap Boundary
+
+The current working `Controller Inventory & Testing 2026(7).xlsx` list contains **deployed/assigned controllers only**. It is not a mixed deployed-plus-spares inventory and it contains no known spare/available controller rows.
+
+Therefore the initial Controller Inventory bootstrap must not classify any workbook row as `AVAILABLE` or spare merely because its permanent `display_id` relationship has not yet been resolved in the application. An unresolved workbook assignment remains a deployed-controller backfill/review problem, not evidence that the physical controller is stock.
+
+Available/unassigned inventory begins empty for this bootstrap and is populated later only when an actual unassigned/spare physical controller is discovered or deliberately added through the Controller Inventory workflow.
+
+The workbook's deployed/assigned meaning is separate from the controller's current physical location. A controller can remain assigned to its Display(s) while its current `ref.location` is workshop/storage between setup seasons.
+
 ## Available / Spare Controller Stock
 
 A permanent physical controller can exist without any Stage or Display assignment.
