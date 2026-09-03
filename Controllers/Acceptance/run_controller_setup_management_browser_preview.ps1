@@ -52,6 +52,7 @@ $bundleName = "msb-controller-browser-preview-$stamp"
 $localBundle = Join-Path ([System.IO.Path]::GetTempPath()) $bundleName
 $remoteRoot = "/tmp/$bundleName"
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$browserUrl = "http://127.0.0.1:$PreviewPort/controllers"
 
 function Write-LinuxTextFile {
     param(
@@ -66,11 +67,12 @@ function Write-LinuxTextFile {
 Write-Host '========== CONTROLLER SETUP + MANAGEMENT BROWSER PREVIEW =========='
 Write-Host "Server:        $Server"
 Write-Host "Candidate SHA: $CandidateSha"
-Write-Host "Browser URL:   http://127.0.0.1:$PreviewPort/controllers"
+Write-Host "Browser URL:   $browserUrl"
 Write-Host "Preview user:  $PreviewEmail"
 Write-Host
 Write-Host 'This preview uses a disposable current-production PostgreSQL clone.'
 Write-Host 'Production Controller data and the production FieldWiring checkout are not modified.'
+Write-Host 'The browser will open automatically. If it opens before Flask is ready, leave it open and refresh after BROWSER REVIEW READY appears.'
 Write-Host 'Keep this PowerShell window open while reviewing the browser.'
 Write-Host 'When finished, return here and press ENTER so the remote trap can clean up.'
 Write-Host
@@ -87,6 +89,8 @@ try {
 
     Write-Host
     Write-Host 'Preparing disposable browser preview...'
+    Start-Process $browserUrl
+
     $remoteScript = "$remoteRoot/controller_setup_management_browser_preview_server.sh"
     $remoteEntry = "$remoteRoot/controller_setup_management_browser_preview_entry.py"
     $remoteCommand = "chmod 755 '$remoteRoot' && chmod 700 '$remoteScript' && chmod 644 '$remoteEntry' && bash -n '$remoteScript'; timeout --signal=TERM 7200s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
