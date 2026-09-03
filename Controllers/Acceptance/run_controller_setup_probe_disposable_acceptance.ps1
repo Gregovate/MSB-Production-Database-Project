@@ -56,17 +56,24 @@ function Write-PatchedManagementServer {
         throw 'Disposable management runner readiness start marker was not found.'
     }
 
-    $createDbMarker = 'sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \'
-    # In a PowerShell single-quoted string, backslash is literal. Normalize this
-    # marker to the actual Bash text before searching.
-    $createDbMarker = $createDbMarker.Replace('\"', '"')
-    $createDbStart = $text.IndexOf(
-        $createDbMarker,
+    $createDbToken = '    createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"'
+    $createDbToken = $createDbToken.Replace('\"', '"')
+    $createDbLine = $text.IndexOf(
+        $createDbToken,
         $readyStart,
         [System.StringComparison]::Ordinal
     )
-    if ($createDbStart -lt 0) {
-        throw 'Disposable management runner createdb marker was not found after readiness block.'
+    if ($createDbLine -lt 0) {
+        throw 'Disposable management runner createdb line was not found after readiness block.'
+    }
+
+    $createDbStart = $text.LastIndexOf(
+        'sudo docker exec',
+        $createDbLine,
+        [System.StringComparison]::Ordinal
+    )
+    if ($createDbStart -lt $readyStart) {
+        throw 'Disposable management runner createdb docker-exec boundary was not found.'
     }
 
     $newReady = @'
