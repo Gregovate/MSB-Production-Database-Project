@@ -44,28 +44,27 @@ function Write-PatchedManagementServer {
     $text = [System.IO.File]::ReadAllText($Source)
     $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
 
-    # A brand-new postgres image briefly accepts pg_isready connections on its
+    # A brand-new PostgreSQL image briefly accepts pg_isready connections on its
     # temporary initialization server, then intentionally stops that server
     # before starting the final PostgreSQL process. Waiting only on pg_isready
-    # can therefore terminate pg_restore mid-stream with "administrator command".
-    # Reuse the proven Controller label harness sequence: wait for the Docker
-    # entrypoint init-complete marker first, then wait for the final server.
-    $oldReady = @'
-ready=0
-for _ in $(seq 1 120); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
-        ready=1
-        break
-    fi
-    sleep 1
-done
-if [[ "$ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL initialization did not become ready"
-    sudo docker logs "$TEST_CONTAINER" || true
-    exit 6
-fi
-'@
+    # can terminate pg_restore mid-stream with "administrator command".
+    # Replace the child runner's first readiness block structurally instead of
+    # matching an exact multiline string. The markers are narrow and fail closed.
+    $readyMarker = "ready=0`n"
+    $readyStart = $text.IndexOf($readyMarker, [System.StringComparison]::Ordinal)
+    if ($readyStart -lt 0) {
+        throw 'Disposable management runner readiness start marker was not found.'
+    }
+
+    $createDbMarker = 'sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \'
+    $createDbStart = $text.IndexOf(
+        $createDbMarker,
+        $readyStart,
+        [System.StringComparison]::Ordinal
+    )
+    if ($createDbStart -lt 0) {
+        throw 'Disposable management runner createdb marker was not found after readiness block.'
+    }
 
     $newReady = @'
 init_complete=0
@@ -96,33 +95,27 @@ if [[ "$ready" -ne 1 ]]; then
     sudo docker logs "$TEST_CONTAINER" || true
     exit 6
 fi
+
 '@
 
-    if (-not $text.Contains($oldReady)) {
-        throw 'Disposable management runner startup block no longer matches the reviewed patch boundary.'
+    $text = $text.Substring(0, $readyStart) + $newReady + $text.Substring($createDbStart)
+
+    # Preserve disposable logs on failure before the existing cleanup removes
+    # the container. Insert once immediately before the established Cleanup block.
+    $cleanupMarker = "    echo`n    echo `"--- Cleanup ---`"`n"
+    $cleanupStart = $text.IndexOf($cleanupMarker, [System.StringComparison]::Ordinal)
+    if ($cleanupStart -lt 0) {
+        throw 'Disposable management runner cleanup marker was not found.'
     }
-    $text = $text.Replace($oldReady, $newReady)
-
-    $oldCleanup = @'
-    echo
-    echo "--- Cleanup ---"
-    sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
-'@
-    $newCleanup = @'
+    $failureLogs = @'
     if [[ "$status" -ne 0 ]] && sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
         echo
         echo "--- Disposable PostgreSQL logs (failure evidence) ---"
         sudo docker logs "$TEST_CONTAINER" || true
     fi
 
-    echo
-    echo "--- Cleanup ---"
-    sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
 '@
-    if (-not $text.Contains($oldCleanup)) {
-        throw 'Disposable management runner cleanup block no longer matches the reviewed patch boundary.'
-    }
-    $text = $text.Replace($oldCleanup, $newCleanup)
+    $text = $text.Substring(0, $cleanupStart) + $failureLogs + $text.Substring($cleanupStart)
 
     [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
 }
