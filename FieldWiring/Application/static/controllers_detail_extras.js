@@ -40,20 +40,6 @@
     }
   }
 
-  function loadManagementAssets() {
-    if (document.getElementById('controller-management-css')) return;
-    const link = document.createElement('link');
-    link.id = 'controller-management-css';
-    link.rel = 'stylesheet';
-    link.href = 'static/controllers_management.css?v=2026-09-02.1';
-    document.head.appendChild(link);
-
-    const script = document.createElement('script');
-    script.id = 'controller-management-js';
-    script.src = 'static/controllers_management.js?v=2026-09-02.1';
-    document.body.appendChild(script);
-  }
-
   async function loadControllerAccess() {
     try {
       const response = await fetch('api/controller-access', {headers:{Accept:'application/json'}});
@@ -67,7 +53,6 @@
           ? 'Controller management authorized'
           : (controllerAccess.can_print_label ? 'Controller label requests authorized' : 'Controller browse access');
       }
-      if (controllerAccess?.can_manage_controllers) loadManagementAssets();
       return controllerAccess;
     } catch (error) {
       controllerAccess = null;
