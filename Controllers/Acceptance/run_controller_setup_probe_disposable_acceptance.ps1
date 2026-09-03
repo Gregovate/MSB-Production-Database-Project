@@ -35,6 +35,98 @@ function Write-LinuxTextFile {
     [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
 }
 
+function Write-PatchedManagementServer {
+    param(
+        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true)][string]$Destination
+    )
+
+    $text = [System.IO.File]::ReadAllText($Source)
+    $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+
+    # A brand-new postgres image briefly accepts pg_isready connections on its
+    # temporary initialization server, then intentionally stops that server
+    # before starting the final PostgreSQL process. Waiting only on pg_isready
+    # can therefore terminate pg_restore mid-stream with "administrator command".
+    # Reuse the proven Controller label harness sequence: wait for the Docker
+    # entrypoint init-complete marker first, then wait for the final server.
+    $oldReady = @'
+ready=0
+for _ in $(seq 1 120); do
+    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+        ready=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$ready" -ne 1 ]]; then
+    echo "FAIL: disposable PostgreSQL initialization did not become ready"
+    sudo docker logs "$TEST_CONTAINER" || true
+    exit 6
+fi
+'@
+
+    $newReady = @'
+init_complete=0
+for _ in $(seq 1 120); do
+    if sudo docker logs "$TEST_CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up"; then
+        init_complete=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$init_complete" -ne 1 ]]; then
+    echo "FAIL: disposable PostgreSQL initialization did not complete"
+    sudo docker logs "$TEST_CONTAINER" || true
+    exit 6
+fi
+
+ready=0
+for _ in $(seq 1 60); do
+    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+        ready=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$ready" -ne 1 ]]; then
+    echo "FAIL: disposable PostgreSQL final server did not become ready"
+    sudo docker logs "$TEST_CONTAINER" || true
+    exit 6
+fi
+'@
+
+    if (-not $text.Contains($oldReady)) {
+        throw 'Disposable management runner startup block no longer matches the reviewed patch boundary.'
+    }
+    $text = $text.Replace($oldReady, $newReady)
+
+    $oldCleanup = @'
+    echo
+    echo "--- Cleanup ---"
+    sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
+'@
+    $newCleanup = @'
+    if [[ "$status" -ne 0 ]] && sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
+        echo
+        echo "--- Disposable PostgreSQL logs (failure evidence) ---"
+        sudo docker logs "$TEST_CONTAINER" || true
+    fi
+
+    echo
+    echo "--- Cleanup ---"
+    sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
+'@
+    if (-not $text.Contains($oldCleanup)) {
+        throw 'Disposable management runner cleanup block no longer matches the reviewed patch boundary.'
+    }
+    $text = $text.Replace($oldCleanup, $newCleanup)
+
+    [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
+}
+
 Write-Host '========== CONTROLLER SETUP PROBE + MANAGEMENT ACCEPTANCE =========='
 Write-Host "Server:        $Server"
 Write-Host "Candidate SHA: $CandidateSha"
@@ -48,7 +140,7 @@ try {
     New-Item -ItemType Directory -Path $localCore -Force | Out-Null
 
     Write-LinuxTextFile -Source $ParentServer -Destination (Join-Path $localBundle 'controller_setup_probe_disposable_server.sh')
-    Write-LinuxTextFile -Source $ChildServer -Destination (Join-Path $localCore 'controller_management_disposable_server.sh')
+    Write-PatchedManagementServer -Source $ChildServer -Destination (Join-Path $localCore 'controller_management_disposable_server.sh')
 
     # The established child acceptance runner expects one migration filename.
     # Build that disposable-only input by applying reviewed 023 followed by 024.
