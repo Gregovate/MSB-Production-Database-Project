@@ -57,6 +57,9 @@ function Write-PatchedManagementServer {
     }
 
     $createDbMarker = 'sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \'
+    # In a PowerShell single-quoted string, backslash is literal. Normalize this
+    # marker to the actual Bash text before searching.
+    $createDbMarker = $createDbMarker.Replace('\"', '"')
     $createDbStart = $text.IndexOf(
         $createDbMarker,
         $readyStart,
@@ -97,6 +100,7 @@ if [[ "$ready" -ne 1 ]]; then
 fi
 
 '@
+    $newReady = $newReady.Replace('\"', '"')
 
     $text = $text.Substring(0, $readyStart) + $newReady + $text.Substring($createDbStart)
 
@@ -115,6 +119,7 @@ fi
     fi
 
 '@
+    $failureLogs = $failureLogs.Replace('\"', '"')
     $text = $text.Substring(0, $cleanupStart) + $failureLogs + $text.Substring($cleanupStart)
 
     [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
