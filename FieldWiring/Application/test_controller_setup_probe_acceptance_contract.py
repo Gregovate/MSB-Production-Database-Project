@@ -51,6 +51,20 @@ def test_setup_probe_wrapper_uses_foreground_native_ssh_contract() -> None:
     assert "ssh -N" not in code
 
 
+def test_wrapper_patches_disposable_postgres_init_race_before_restore() -> None:
+    source = (ACCEPT / "run_controller_setup_probe_disposable_acceptance.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Write-PatchedManagementServer" in source
+    assert "PostgreSQL init process complete; ready for start up" in source
+    assert 'pg_isready -U "$DB_ACTOR" -d postgres' in source
+    assert "disposable PostgreSQL final server did not become ready" in source
+    assert "Disposable PostgreSQL logs (failure evidence)" in source
+    assert "$text.Contains($oldReady)" in source
+    assert "$text.Replace($oldReady, $newReady)" in source
+
+
 def test_server_gate_is_exact_candidate_read_probe_then_disposable_writes() -> None:
     source = (ACCEPT / "controller_setup_probe_disposable_server.sh").read_text(
         encoding="utf-8"
