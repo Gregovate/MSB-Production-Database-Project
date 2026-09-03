@@ -43,7 +43,7 @@ function Write-StabilizedManagementServer {
 
     $text = [System.IO.File]::ReadAllText($Source)
     $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
-    $lines = $text -split "`n", -1
+    $lines = $text -split "`n"
 
     # Do not rewrite any existing Bash block. Find the unique createdb line and
     # insert one additional readiness gate immediately before its docker exec.
@@ -120,17 +120,7 @@ function Write-StabilizedManagementServer {
     }
 
     [System.IO.File]::WriteAllText($Destination, $output, $utf8NoBom)
-
-    $bash = Get-Command bash -ErrorAction SilentlyContinue
-    if ($null -ne $bash) {
-        & $bash.Source -n $Destination
-        if ($LASTEXITCODE -ne 0) {
-            throw "Generated disposable management runner failed local bash -n with exit code $LASTEXITCODE"
-        }
-        Write-Host 'Generated disposable management runner: bash -n PASS'
-    } else {
-        Write-Host 'Generated disposable management runner: local bash unavailable; server will syntax-check before execution.'
-    }
+    Write-Host 'Generated disposable management runner prepared; server bash -n will validate it before execution.'
 }
 
 Write-Host '========== CONTROLLER SETUP PROBE + MANAGEMENT ACCEPTANCE =========='
