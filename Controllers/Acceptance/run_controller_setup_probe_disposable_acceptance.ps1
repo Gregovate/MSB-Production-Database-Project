@@ -35,7 +35,7 @@ function Write-LinuxTextFile {
     [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
 }
 
-function Write-PatchedManagementServer {
+function Write-StabilizedManagementServer {
     param(
         [Parameter(Mandatory=$true)][string]$Source,
         [Parameter(Mandatory=$true)][string]$Destination
@@ -44,39 +44,29 @@ function Write-PatchedManagementServer {
     $text = [System.IO.File]::ReadAllText($Source)
     $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
 
-    # A brand-new PostgreSQL image briefly accepts pg_isready connections on its
-    # temporary initialization server, then intentionally stops that server
-    # before starting the final PostgreSQL process. Waiting only on pg_isready
-    # can terminate pg_restore mid-stream with "administrator command".
-    # Replace the child runner's first readiness block structurally instead of
-    # matching an exact multiline string. The markers are narrow and fail closed.
-    $readyMarker = "ready=0`n"
-    $readyStart = $text.IndexOf($readyMarker, [System.StringComparison]::Ordinal)
-    if ($readyStart -lt 0) {
-        throw 'Disposable management runner readiness start marker was not found.'
+    # Keep the established child runner intact. A new PostgreSQL image can briefly
+    # satisfy its original pg_isready loop while the Docker entrypoint is still
+    # using the temporary initialization server. Insert a second proven gate just
+    # before createdb: wait for the init-complete marker, then verify the final
+    # PostgreSQL server is accepting connections. Nothing is deleted/rebalanced.
+    $createDbCommand = @'
+sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+    createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"
+'@
+    $createDbCommand = $createDbCommand.Replace('\"', '"')
+
+    $createDbIndex = $text.IndexOf($createDbCommand, [System.StringComparison]::Ordinal)
+    if ($createDbIndex -lt 0) {
+        throw 'Disposable management runner createdb command was not found.'
+    }
+    if ($text.IndexOf($createDbCommand, $createDbIndex + 1, [System.StringComparison]::Ordinal) -ge 0) {
+        throw 'Disposable management runner createdb command is not unique.'
     }
 
-    $createDbToken = '    createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"'
-    $createDbToken = $createDbToken.Replace('\"', '"')
-    $createDbLine = $text.IndexOf(
-        $createDbToken,
-        $readyStart,
-        [System.StringComparison]::Ordinal
-    )
-    if ($createDbLine -lt 0) {
-        throw 'Disposable management runner createdb line was not found after readiness block.'
-    }
-
-    $createDbStart = $text.LastIndexOf(
-        'sudo docker exec',
-        $createDbLine,
-        [System.StringComparison]::Ordinal
-    )
-    if ($createDbStart -lt $readyStart) {
-        throw 'Disposable management runner createdb docker-exec boundary was not found.'
-    }
-
-    $newReady = @'
+    $finalReadyGate = @'
+# The Docker entrypoint uses a temporary initialization server before the final
+# PostgreSQL process. Do not restore until initialization is complete and the
+# final server is accepting connections.
 init_complete=0
 for _ in $(seq 1 120); do
     if sudo docker logs "$TEST_CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up"; then
@@ -91,45 +81,51 @@ if [[ "$init_complete" -ne 1 ]]; then
     exit 6
 fi
 
-ready=0
+final_ready=0
 for _ in $(seq 1 60); do
     if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
         pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
-        ready=1
+        final_ready=1
         break
     fi
     sleep 1
 done
-if [[ "$ready" -ne 1 ]]; then
+if [[ "$final_ready" -ne 1 ]]; then
     echo "FAIL: disposable PostgreSQL final server did not become ready"
     sudo docker logs "$TEST_CONTAINER" || true
     exit 6
 fi
 
 '@
-    $newReady = $newReady.Replace('\"', '"')
+    $finalReadyGate = $finalReadyGate.Replace('\"', '"')
 
-    $text = $text.Substring(0, $readyStart) + $newReady + $text.Substring($createDbStart)
+    $text = $text.Substring(0, $createDbIndex) + $finalReadyGate + $text.Substring($createDbIndex)
 
-    # Preserve disposable logs on failure before the existing cleanup removes
-    # the container. Insert once immediately before the established Cleanup block.
-    $cleanupMarker = "    echo`n    echo `"--- Cleanup ---`"`n"
-    $cleanupStart = $text.IndexOf($cleanupMarker, [System.StringComparison]::Ordinal)
-    if ($cleanupStart -lt 0) {
-        throw 'Disposable management runner cleanup marker was not found.'
+    # Fail locally before SCP if the transformation did not produce the reviewed
+    # structural evidence. Bash syntax is also checked when a local bash exists.
+    foreach ($required in @(
+        'PostgreSQL init process complete; ready for start up',
+        'final_ready=0',
+        'createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"',
+        'pg_restore -U "$DB_ACTOR" -d "$TEST_DB"'
+    )) {
+        if (-not $text.Contains($required)) {
+            throw "Generated disposable management runner is missing required evidence: $required"
+        }
     }
-    $failureLogs = @'
-    if [[ "$status" -ne 0 ]] && sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
-        echo
-        echo "--- Disposable PostgreSQL logs (failure evidence) ---"
-        sudo docker logs "$TEST_CONTAINER" || true
-    fi
-
-'@
-    $failureLogs = $failureLogs.Replace('\"', '"')
-    $text = $text.Substring(0, $cleanupStart) + $failureLogs + $text.Substring($cleanupStart)
 
     [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
+
+    $bash = Get-Command bash -ErrorAction SilentlyContinue
+    if ($null -ne $bash) {
+        & $bash.Source -n $Destination
+        if ($LASTEXITCODE -ne 0) {
+            throw "Generated disposable management runner failed local bash -n with exit code $LASTEXITCODE"
+        }
+        Write-Host 'Generated disposable management runner: bash -n PASS'
+    } else {
+        Write-Host 'Generated disposable management runner: local bash unavailable; server will syntax-check before execution.'
+    }
 }
 
 Write-Host '========== CONTROLLER SETUP PROBE + MANAGEMENT ACCEPTANCE =========='
@@ -145,7 +141,8 @@ try {
     New-Item -ItemType Directory -Path $localCore -Force | Out-Null
 
     Write-LinuxTextFile -Source $ParentServer -Destination (Join-Path $localBundle 'controller_setup_probe_disposable_server.sh')
-    Write-PatchedManagementServer -Source $ChildServer -Destination (Join-Path $localCore 'controller_management_disposable_server.sh')
+    $generatedChild = Join-Path $localCore 'controller_management_disposable_server.sh'
+    Write-StabilizedManagementServer -Source $ChildServer -Destination $generatedChild
 
     # The established child acceptance runner expects one migration filename.
     # Build that disposable-only input by applying reviewed 023 followed by 024.
@@ -168,7 +165,7 @@ try {
 
     Write-Host
     Write-Host 'Starting bounded Controller setup probe / disposable acceptance...'
-    & ssh -tt $Server "chmod 700 '$remoteRoot/controller_setup_probe_disposable_server.sh'; timeout --signal=TERM 1800s bash '$remoteRoot/controller_setup_probe_disposable_server.sh'"
+    & ssh -tt $Server "bash -n '$remoteRoot/controller_setup_probe_disposable_server.sh' && bash -n '$remoteRoot/management-core/controller_management_disposable_server.sh' && chmod 700 '$remoteRoot/controller_setup_probe_disposable_server.sh'; timeout --signal=TERM 1800s bash '$remoteRoot/controller_setup_probe_disposable_server.sh'"
     $remoteExit = $LASTEXITCODE
 
     if ($remoteExit -ne 0) {
