@@ -128,3 +128,18 @@ def test_stale_preview_cleanup_is_narrowly_scoped() -> None:
     assert "reset --hard" not in server
     assert "ProcessName -ne 'ssh'" in wrapper
     assert "Stop-Process" in wrapper
+
+
+def test_stale_preview_cleanup_cannot_kill_its_own_shell() -> None:
+    server = (ACCEPT / "controller_setup_management_browser_preview_cleanup_server.sh").read_text(
+        encoding="utf-8"
+    )
+
+    # The old broad pkill matched the SSH remote shell because that shell's
+    # command line mentioned the future preview-entry path. Only actual Python
+    # preview processes may now be selected for termination.
+    assert "pkill -f" not in server
+    assert "ps -eo pid=,comm=,args=" in server
+    assert "$2 ~ /^python/" in server
+    assert "controller_setup_management_browser_preview_entry\\.py" in server
+    assert 'sudo kill "$pid"' in server
