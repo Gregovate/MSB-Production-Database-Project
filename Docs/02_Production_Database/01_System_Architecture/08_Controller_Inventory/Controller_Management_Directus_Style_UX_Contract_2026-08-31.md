@@ -16,8 +16,11 @@ This document originally described implementing the Controller operational workf
 The accepted architecture is now:
 
 ```text
+Cloudflare Access
+    -> authenticates the protected browser user
+
 Directus
-    -> login / identity / Manager policy authority
+    -> current user / role / policy authorization data
     -> optional simple one-table/reference maintenance only
 
 Controller Inventory browser
@@ -72,8 +75,10 @@ Model rules remain enforced in PostgreSQL. The UI should help the operator by sh
 ### Physical / Operational State
 
 - Current Location — controlled lookup to the accepted storage/location authority
-- Display Attached — boolean/tri-state as required by the stored fact
+- **Physically Attached to Display** — boolean/tri-state physical fact
 - Controller Status — controlled lookup
+
+`Physically Attached to Display` means whether the physical Controller is mounted to, normally stored with, or normally moved with a Display. It does **not** mean that the Controller has a current logical Display assignment. Logical assignments remain governed separately through `ref.controller_display` and the assignment workbench.
 
 Stage is not edited here. Stage remains derived from current Display assignments.
 
@@ -112,13 +117,15 @@ The assignment workflow must never infer permanent physical identity from Networ
 ### Labels
 
 - Label Required — boolean control
-- Print Label — boolean/request action
-- Label Template — controlled lookup to existing `ref.label_template`
+- Print Label — controlled request action
+- Label Template — controlled lookup to existing `ref.label_template` when Controller printing is implemented
 - Label Print Count — read-only
 - Last Printed — read-only
 - Last Printed By — read-only
 
-The Controller Management UI may set `print_label = true` before the external label-service rework is complete. Actual printer handoff remains a separate integration step and must use the established MSB label subsystem.
+The Controller Management UI may set `print_label = true` before the external label-service Controller route is complete. Actual printer handoff remains a separate integration step and must use the established MSB label subsystem.
+
+**Print Label is a physical-output action and must be visually distinct from the blue Save Controller primary database-write action and from blue navigation actions such as Open Field Wiring.** Pending state must remain textually clear (`Print Requested` or equivalent); do not rely on color alone.
 
 ### Audit
 
@@ -131,7 +138,32 @@ Show but do not normally edit:
 - Updated By
 - Updated By Person
 
-Existing MSB user-aware audit behavior remains the governing contract.
+Existing MSB user-aware audit behavior remains the governing contract. Human-facing success notices should identify the authenticated/mapped person rather than presenting the PostgreSQL administrative actor as the requester.
+
+## Contextual Field Help
+
+The production form should provide small `?` help controls beside **non-obvious** field labels rather than filling the form with permanent explanatory paragraphs.
+
+Interaction requirements:
+
+- hover/focus on desktop;
+- click/tap on touch devices;
+- keyboard accessible;
+- one or two concise operator-facing sentences;
+- do not expose database implementation details in ordinary help text.
+
+Initial fields requiring contextual help include:
+
+- Physically Attached to Display;
+- Physical Verification;
+- First UID / UID Count;
+- Programmed Configuration Verification State;
+- Programmed Configuration Source Note;
+- Firmware Verification State;
+- Wiring Source Display;
+- Label Required.
+
+Do not add help icons mechanically to obvious fields such as Serial Number merely for visual consistency.
 
 ## Add Controller
 
@@ -145,9 +177,11 @@ Minimum practical creation flow:
 4. record current physical location when known;
 5. optionally record firmware/serial/hardware revision/year deployed;
 6. keep zero Display assignments valid;
-7. default `label_required = true` and expose `print_label` so a permanent `CTRL:<controller_id>` label can be requested.
+7. default `label_required = true` and expose the governed label request when its physical print route is operational.
 
 The permanent `controller_id` remains PostgreSQL-generated and is never user-entered.
+
+There must be only **one** Add Controller action in the Controller browse toolbar for an authorized Manager/Administrator. Duplicate rendering of that action is a UI defect, not a second workflow.
 
 ## Browser Consistency Rules
 
@@ -158,15 +192,18 @@ Use familiar MSB maintenance patterns where they improve usability:
 - read-only audit/system fields;
 - clear boolean controls;
 - Save / Cancel behavior with unsaved-change protection;
-- Manager-only create/update/relationship commands;
+- contextual `?` help for non-obvious operator concepts;
+- Manager/Admin-only create/update/relationship commands;
 - ordinary MSB users remain read-only;
 - no normal Controller DELETE.
+
+The live unsaved-change warning is accepted behavior and must be preserved.
 
 These are interaction-pattern requirements, not a requirement to render the form inside Directus.
 
 ## Authentication / Authorization Rule
 
-The Controller browser must reuse the existing Directus login/session/Manager policy authority and verify Manager authorization server-side on every write.
+Cloudflare Access authenticates the protected browser user. The Controller backend resolves that trusted identity against current Directus user/role/policy authorization data and verifies Controller capability server-side on every write.
 
 A visible or hidden Edit button is not the security boundary.
 
@@ -174,13 +211,13 @@ Do not make `fieldwiring_app` broadly writable merely to support the browser UI.
 
 ## Acceptance
 
-Controller Management is not complete until a Manager can perform, through the browser-native Controller Management UI, all of the following without raw SQL and without relying on Directus for multi-table coordination:
+Controller Management is not complete until an authorized Manager/Administrator can perform, through the browser-native Controller Management UI, all of the following without raw SQL and without relying on Directus for multi-table coordination:
 
 - add an unassigned Controller;
 - edit its model/status/location and physical facts;
 - maintain its current Network/UID/IP programmed configuration;
 - record/maintain firmware facts;
-- set `print_label`;
+- request a Controller label through the governed path;
 - assign one or many Displays;
 - unassign a Display relationship without deleting the Controller;
 - open Field Wiring from an assignment;
