@@ -10,6 +10,7 @@ Current operational authority is:
 - `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md`
 - `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md`
 - `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Current_Programmed_Configuration_Contract_2026-08-31.md`
+- `Docs/02_Production_Database/01_System_Architecture/08_Controller_Inventory/Controller_Label_Print_Service_Integration_2026-09-03.md`
 
 This `Controllers/` area preserves the bootstrap source, reconciliation evidence, database scripts, diagnostics, migrations, and acceptance artifacts used to create the permanent Controller Inventory. It is no longer the current operational handoff.
 
@@ -175,6 +176,8 @@ label_template_id
 No new `label_id`, `label_type_id`, or Controller-specific template table is authorized.
 
 Current Manager label-request behavior belongs in the browser-native Controller Management workflow. Actual printer handoff remains governed by the existing labeling subsystem.
+
+`Database/025_create_controller_label_print_batches.sql` is the controlled candidate that assigns the accepted 24 mm family/default, adds `ops.controller_label_batch*`, and grants the external print service its bounded execution/finalization access. It must be installed and validated before LabelPrintService Controller polling is enabled.
 
 ## Current Operational Direction
 
