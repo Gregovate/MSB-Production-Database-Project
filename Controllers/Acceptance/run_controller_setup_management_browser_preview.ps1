@@ -88,7 +88,8 @@ try {
     Write-Host
     Write-Host 'Preparing disposable browser preview...'
     $remoteScript = "$remoteRoot/controller_setup_management_browser_preview_server.sh"
-    $remoteCommand = "bash -n '$remoteScript' && chmod 700 '$remoteScript'; timeout --signal=TERM 7200s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
+    $remoteEntry = "$remoteRoot/controller_setup_management_browser_preview_entry.py"
+    $remoteCommand = "chmod 755 '$remoteRoot' && chmod 700 '$remoteScript' && chmod 644 '$remoteEntry' && bash -n '$remoteScript'; timeout --signal=TERM 7200s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
     & ssh -tt -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand
     $remoteExit = $LASTEXITCODE
 
