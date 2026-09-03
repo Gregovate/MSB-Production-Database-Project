@@ -1,5 +1,5 @@
 // Controller Inventory deep links, authenticated capability display, and the
-// first narrow write-side action: request a Controller label.
+// narrow Controller label request action.
 (function () {
   'use strict';
 
@@ -40,6 +40,20 @@
     }
   }
 
+  function loadManagementAssets() {
+    if (document.getElementById('controller-management-css')) return;
+    const link = document.createElement('link');
+    link.id = 'controller-management-css';
+    link.rel = 'stylesheet';
+    link.href = 'static/controllers_management.css?v=2026-09-02.1';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.id = 'controller-management-js';
+    script.src = 'static/controllers_management.js?v=2026-09-02.1';
+    document.body.appendChild(script);
+  }
+
   async function loadControllerAccess() {
     try {
       const response = await fetch('api/controller-access', {headers:{Accept:'application/json'}});
@@ -53,6 +67,7 @@
           ? 'Controller management authorized'
           : (controllerAccess.can_print_label ? 'Controller label requests authorized' : 'Controller browse access');
       }
+      if (controllerAccess?.can_manage_controllers) loadManagementAssets();
       return controllerAccess;
     } catch (error) {
       controllerAccess = null;
@@ -108,9 +123,10 @@
       const payload = await responseJson(response);
       if (!response.ok) throw new Error(payload.error || 'Controller label request failed.');
       const result = payload.controller || {};
+      const requestedBy = result.requested_by || controllerAccess?.display_name || result.updated_by;
       const message = result.request_already_pending
         ? 'A label request was already pending.'
-        : `Label requested${result.updated_by ? ` by ${result.updated_by}` : ''}.`;
+        : `Label requested${requestedBy ? ` by ${requestedBy}` : ''}.`;
       await renderLabelState(controllerId, message);
     } catch (error) {
       if (button) {
