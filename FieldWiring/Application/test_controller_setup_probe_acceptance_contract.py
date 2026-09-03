@@ -4,6 +4,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent.parent
 ACCEPT = REPO_ROOT / "Controllers" / "Acceptance"
+CANDIDATE_SHA = "49ae25d8a1acb8116f3d0a100d22af9a9d57ad18"
 
 
 def test_setup_probe_wrapper_pins_exact_candidate_and_bundles_023_024() -> None:
@@ -11,7 +12,7 @@ def test_setup_probe_wrapper_pins_exact_candidate_and_bundles_023_024() -> None:
         encoding="utf-8"
     )
 
-    assert "1eea0ba437f7e4337e075b769c137ffe032dc27b" in source
+    assert CANDIDATE_SHA in source
     assert "023_create_controller_management_commands.sql" in source
     assert "024_harden_controller_assignment_capability.sql" in source
     assert "$sql023Text.TrimEnd()" in source
@@ -40,7 +41,7 @@ def test_server_gate_is_exact_candidate_read_probe_then_disposable_writes() -> N
         encoding="utf-8"
     )
 
-    assert 'TARGET_SHA="1eea0ba437f7e4337e075b769c137ffe032dc27b"' in source
+    assert f'TARGET_SHA="{CANDIDATE_SHA}"' in source
     assert "worktree add --detach" in source
     assert "python -m pytest" in source
     assert "SET LOCAL ROLE fieldwiring_app" in source
