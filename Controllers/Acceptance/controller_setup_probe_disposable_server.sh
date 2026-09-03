@@ -3,7 +3,7 @@ set -euo pipefail
 
 FIELDWIRING_ROOT="/opt/fieldwiring"
 TARGET_REF="agent/controller-inventory-ref-sandbox"
-TARGET_SHA="1eea0ba437f7e4337e075b769c137ffe032dc27b"
+TARGET_SHA="49ae25d8a1acb8116f3d0a100d22af9a9d57ad18"
 PROD_CONTAINER="msb-postgres"
 PROD_DB="msb"
 DB_ACTOR="msbadmin"
