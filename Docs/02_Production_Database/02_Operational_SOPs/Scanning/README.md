@@ -47,7 +47,7 @@ The Scan page provides two normal ways to start:
 | Enter a code instead of using the camera | [Use Scan Manually](Use_Scan_Manually.md) |
 | Understand what `DISP`, `CONT`, `LOC`, and `CTRL` mean | [QR Code Types and Meanings](QR_Code_Types_and_Meanings.md) |
 | Set up a phone or tablet to scan labels | [Set Up a Phone or Tablet for Scanning](Set_Up_Phone_or_Tablet_for_Scanning.md) |
-| Know which button to choose after I scan something | [What To_Do_After_You_Scan](What_To_Do_After_You_Scan.md) |
+| Know which button to choose after I scan something | [What To Do After You Scan](What_To_Do_After_You_Scan.md) |
 
 ## Current Production Boundary
 
