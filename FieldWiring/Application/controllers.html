@@ -36,30 +36,11 @@
 
   <section class="card toolbar">
     <div class="filters">
-      <label>
-        Search
-        <input id="controller-search" autocomplete="off" placeholder="Controller, Display, Stage, model, serial, location…">
-      </label>
-      <label>
-        Stage / Sub-stage
-        <select id="stage-filter"><option value="">All Stages</option></select>
-      </label>
-      <label>
-        Status
-        <select id="status-filter"><option value="">All statuses</option></select>
-      </label>
-      <label>
-        Model
-        <select id="model-filter"><option value="">All models</option></select>
-      </label>
-      <label>
-        Assignment
-        <select id="assignment-filter">
-          <option value="">All controllers</option>
-          <option value="assigned">Assigned</option>
-          <option value="unassigned">Unassigned</option>
-        </select>
-      </label>
+      <label>Search<input id="controller-search" autocomplete="off" placeholder="Controller, Display, Stage, model, serial, location…"></label>
+      <label>Stage / Sub-stage<select id="stage-filter"><option value="">All Stages</option></select></label>
+      <label>Status<select id="status-filter"><option value="">All statuses</option></select></label>
+      <label>Model<select id="model-filter"><option value="">All models</option></select></label>
+      <label>Assignment<select id="assignment-filter"><option value="">All controllers</option><option value="assigned">Assigned</option><option value="unassigned">Unassigned</option></select></label>
       <button id="refresh-button" type="button">Refresh</button>
       <button id="clear-filters-button" type="button">Clear</button>
     </div>
@@ -69,49 +50,17 @@
 
   <section class="workspace">
     <div class="card list-card">
-      <div class="section-title">
-        <h2>Controllers</h2>
-        <span id="controller-count" class="muted"></span>
-      </div>
+      <div class="section-title"><h2>Controllers</h2><span id="controller-count" class="muted"></span></div>
       <div id="controller-list" class="controller-list" aria-live="polite"></div>
     </div>
-
     <div class="card detail-card">
-      <div id="detail-empty" class="empty-state">
-        Select a controller to see its permanent asset information and current Display assignments.
-      </div>
-
+      <div id="detail-empty" class="empty-state">Select a controller to see its permanent asset information and current Display assignments.</div>
       <div id="detail" hidden>
-        <div class="detail-heading">
-          <div>
-            <div class="eyebrow">Controller</div>
-            <h2 id="detail-id"></h2>
-            <div id="detail-model" class="detail-model"></div>
-          </div>
-          <span id="detail-status" class="pill"></span>
-        </div>
-
+        <div class="detail-heading"><div><div class="eyebrow">Controller</div><h2 id="detail-id"></h2><div id="detail-model" class="detail-model"></div></div><span id="detail-status" class="pill"></span></div>
         <div id="detail-facts" class="fact-grid"></div>
-
-        <section class="detail-section">
-          <div class="section-title">
-            <h3>Current Display Assignments</h3>
-            <span id="assignment-count" class="muted"></span>
-          </div>
-          <div id="assignments" class="assignment-list"></div>
-        </section>
-
-        <section class="detail-section">
-          <div class="section-title">
-            <h3>Firmware History</h3>
-          </div>
-          <div id="firmware-history" class="firmware-history"></div>
-        </section>
-
-        <section class="detail-section directus-note">
-          <strong>Maintenance</strong>
-          <div>Cloudflare Access identifies the signed-in user. Directus remains the role/policy authority. Controller actions are enabled here only when the server authorizes them.</div>
-        </section>
+        <section class="detail-section"><div class="section-title"><h3>Current Display Assignments</h3><span id="assignment-count" class="muted"></span></div><div id="assignments" class="assignment-list"></div></section>
+        <section class="detail-section"><div class="section-title"><h3>Firmware History</h3></div><div id="firmware-history" class="firmware-history"></div></section>
+        <section class="detail-section directus-note"><strong>Maintenance</strong><div>Cloudflare Access identifies the signed-in user. Directus remains the role/policy authority. Controller actions are enabled here only when the server authorizes them.</div></section>
       </div>
     </div>
   </section>
@@ -121,6 +70,6 @@
 <script src="static/controllers_search_context.js"></script>
 <script src="static/controllers_detail_extras.js?v=2026-09-02.2"></script>
 <script src="static/controllers_management.js?v=2026-09-02.1"></script>
-<script src="static/controllers_planner.js?v=2026-09-02.1"></script>
+<script src="static/controllers_planner_v2.js?v=2026-09-02.2"></script>
 </body>
 </html>
