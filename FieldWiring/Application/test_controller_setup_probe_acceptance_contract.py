@@ -4,7 +4,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent.parent
 ACCEPT = REPO_ROOT / "Controllers" / "Acceptance"
-CANDIDATE_SHA = "49ae25d8a1acb8116f3d0a100d22af9a9d57ad18"
+CANDIDATE_SHA = "2fd2067958cc0a903260fe6f089f88ae63a857f1"
 
 
 def _powershell_code_lines(source: str) -> str:
