@@ -265,15 +265,29 @@ DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_
 
 echo
 echo "--- Start exact accepted Flask candidate ---"
-setsid sudo -u fieldwiring -H env \
-    FIELDWIRING_DATABASE_DSN="$DSN" \
-    MSB_PREVIEW_APP_DIR="$APP_DIR" \
-    MSB_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
-    MSB_PREVIEW_HOST="127.0.0.1" \
-    MSB_PREVIEW_PORT="$PREVIEW_PORT" \
-    /opt/fieldwiring/.venv/bin/python "$PREVIEW_ENTRY" \
-    > "$PREVIEW_LOG" 2>&1 &
-PREVIEW_PGID=$!
+# Keep sudo in the foreground so it retains the interactive SSH TTY. Once sudo
+# has switched to the fieldwiring runtime account, that child shell starts the
+# Flask process in its own session and returns the new session/process-group ID.
+PREVIEW_PGID="$(
+    sudo -u fieldwiring -H env \
+        FIELDWIRING_DATABASE_DSN="$DSN" \
+        MSB_PREVIEW_APP_DIR="$APP_DIR" \
+        MSB_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
+        MSB_PREVIEW_HOST="127.0.0.1" \
+        MSB_PREVIEW_PORT="$PREVIEW_PORT" \
+        MSB_PREVIEW_ENTRY="$PREVIEW_ENTRY" \
+        MSB_PREVIEW_LOG="$PREVIEW_LOG" \
+        bash -c '
+            setsid /opt/fieldwiring/.venv/bin/python "$MSB_PREVIEW_ENTRY" \
+                > "$MSB_PREVIEW_LOG" 2>&1 &
+            echo $!
+        '
+)"
+
+if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
+    echo "FAIL: preview Flask process did not return a valid process-group ID: $PREVIEW_PGID"
+    exit 17
+fi
 
 preview_ready=0
 for _ in $(seq 1 30); do
@@ -286,7 +300,7 @@ done
 if [[ "$preview_ready" -ne 1 ]]; then
     echo "FAIL: preview Flask application did not become healthy"
     tail -n 100 "$PREVIEW_LOG" || true
-    exit 17
+    exit 18
 fi
 
 HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
@@ -296,7 +310,7 @@ if [[ "$OPTIONS_CODE" != "200" ]]; then
     echo "FAIL: preview management options returned HTTP $OPTIONS_CODE"
     cat /tmp/controller-preview-options-$STAMP.json || true
     rm -f /tmp/controller-preview-options-$STAMP.json
-    exit 18
+    exit 19
 fi
 rm -f /tmp/controller-preview-options-$STAMP.json
 
