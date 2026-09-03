@@ -229,18 +229,15 @@ psql_test < "$MIGRATION_024"
 
 echo
 echo "--- Validate disposable browser authorization/write boundary ---"
-psql_test -v preview_email="$PREVIEW_EMAIL" <<'SQL'
-DO $block$
-DECLARE
-    v_manage boolean;
-BEGIN
-    SELECT c.can_manage_controllers
-      INTO v_manage
-    FROM ref.controller_browser_capabilities(:'preview_email') c;
-    IF v_manage IS DISTINCT FROM true THEN
-        RAISE EXCEPTION 'Preview operator % does not have Controller management capability', :'preview_email';
-    END IF;
+MANAGE_OK="$(psql_test -qAt -v preview_email="$PREVIEW_EMAIL" -c "SELECT can_manage_controllers FROM ref.controller_browser_capabilities(:'preview_email');")"
+if [[ "$MANAGE_OK" != "t" ]]; then
+    echo "FAIL: preview operator $PREVIEW_EMAIL does not have Controller management capability"
+    exit 15
+fi
 
+psql_test <<'SQL'
+DO $block$
+BEGIN
     IF has_table_privilege('fieldwiring_app', 'ref.controller', 'INSERT')
        OR has_table_privilege('fieldwiring_app', 'ref.controller', 'UPDATE')
        OR has_table_privilege('fieldwiring_app', 'ref.controller', 'DELETE')
@@ -258,7 +255,7 @@ echo "Disposable authorization boundary: PASS"
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
 if [[ -z "$TEST_IP" ]]; then
     echo "FAIL: could not resolve disposable PostgreSQL container IP"
-    exit 15
+    exit 16
 fi
 
 APP_DIR="$CANDIDATE_WORKTREE/FieldWiring/Application"
@@ -287,11 +284,20 @@ done
 if [[ "$preview_ready" -ne 1 ]]; then
     echo "FAIL: preview Flask application did not become healthy"
     tail -n 100 "$PREVIEW_LOG" || true
-    exit 16
+    exit 17
 fi
 
 HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
 ACCESS="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/controller-access")"
+OPTIONS_CODE="$(curl -sS -o /tmp/controller-preview-options-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/controller-management/options")"
+if [[ "$OPTIONS_CODE" != "200" ]]; then
+    echo "FAIL: preview management options returned HTTP $OPTIONS_CODE"
+    cat /tmp/controller-preview-options-$STAMP.json || true
+    rm -f /tmp/controller-preview-options-$STAMP.json
+    exit 18
+fi
+rm -f /tmp/controller-preview-options-$STAMP.json
+
 echo "Preview health: $HEALTH"
 echo "Preview access: $ACCESS"
 echo
