@@ -17,6 +17,7 @@
 | Management boundary | [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md) |
 | Programmed configuration | [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md) |
 | Operational roadmap | [Controller Inventory Operational Implementation Roadmap — 2026-08-31](Controller_Inventory_Operational_Implementation_Roadmap_2026-08-31.md) |
+| Label printing integration | [Controller Label Print-Service Integration — 2026-09-03](Controller_Label_Print_Service_Integration_2026-09-03.md) |
 
 Controller Inventory owns permanent physical Controller identity, current Controller-to-Display relationships, physical Controller facts, and the physical Controller's recorded current programmed configuration. LOR/V7 remains authoritative for current show wiring topology and what the show currently requires.
 
@@ -197,7 +198,7 @@ CTRL:<controller_id>
 
 The browser Print Label command sets the governed `ref.controller.print_label` request flag. The physical polling/print service remains a separate subsystem.
 
-Current limitation: the external LabelPrintService does not yet have accepted Controller template/profile/routing support. Physical Controller label printing is therefore not considered complete simply because the browser request flag exists.
+Current limitation: the external LabelPrintService does not yet poll `ref.controller.print_label` in production. The 24 mm template/profile and deployed scan route are accepted, but the Controller execution-batch schema and V4 consumer remain deployment candidates. Physical Controller label printing is therefore not complete simply because the browser request flag exists.
 
 The accidental pending CTRL 1001 request must be cleared under a bounded production mutation procedure before Controller physical print routing becomes active.
 
