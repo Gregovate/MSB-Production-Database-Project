@@ -9,7 +9,7 @@ This subsystem documents how MSB presents, enriches, and operationally uses wiri
 Current accepted production checkpoint:
 
 ```text
-checkout                    63be47f40be78f608416935ed0583287da9d90e6
+checkout                    72f5b7164f31753a33e5c2a9d83d9a7a6909a417
 FieldWiring                  V0.4.0 / postgres / healthy
 Procedures                   V0.1.0 / postgres / healthy
 Controller fingerprint       578217bcb18e1291ceced673a3de3b27 unchanged at deployment
@@ -37,6 +37,7 @@ Accepted production state includes:
 - contextual operator help and unsaved-change protection;
 - governed Controller Print Label request action, with physical polling/printing owned separately by `MSB_LabelPrintService`;
 - existing Display QR/scan hub includes the independent **Field Wiring** action;
+- Controller Scan route hands permanent Controller ID to Controller Inventory Search/detail;
 - Directus-facing Scan actions use the established `https://db.sheboyganlights.org/` origin;
 - FormView remains available as fallback/reference.
 

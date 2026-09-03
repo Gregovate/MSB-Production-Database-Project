@@ -4,14 +4,14 @@
 |---|---|
 | Status | V0.4.0 CORE DEPLOYED — FOLLOW-UP WORK REMAINS |
 | Issue | #110 |
-| Draft PR | #111 |
+| Merged PR | #111 |
 | Permanent database authority | `ref.controller*` |
 | Primary user experience | Wiring System / Controller Inventory browser |
 | Authentication | Cloudflare Access protected identity |
 | Authorization | Existing Directus user / role / policy data |
 | Operational Controller editing | Browser-native Controller Management |
 | Delete policy | No normal Controller Inventory delete |
-| Current production checkout | `63be47f40be78f608416935ed0583287da9d90e6` |
+| Current production checkout | `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` |
 | FieldWiring production | `V0.4.0 / postgres / healthy` |
 
 ## Purpose
@@ -40,7 +40,7 @@ Controller `1176` remains intentionally unassigned until its new 2026 Matrix Dis
 Current production checkpoint:
 
 ```text
-checkout                    63be47f40be78f608416935ed0583287da9d90e6
+checkout                    72f5b7164f31753a33e5c2a9d83d9a7a6909a417
 FieldWiring                  V0.4.0 / postgres / healthy
 Procedures                   V0.1.0 / postgres / healthy
 Controller fingerprint       578217bcb18e1291ceced673a3de3b27 unchanged

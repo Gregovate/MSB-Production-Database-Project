@@ -68,7 +68,7 @@ As of the 2026-09-03 reconnaissance:
 - `CONT` is accepted for its current purpose: it opens the Directus Container record, where the original design exposes assigned Displays;
 - `LOC` does not yet have complete route/resolution behavior; focused implementation is #88;
 - production Controller Inventory is deployed at `/fieldwiring/controllers` and accepts `?controller_id=<id>` for exact detail selection;
-- the Git-controlled `CTRL` Scan source candidate routes the permanent Controller identity to that existing Controller Inventory instead of building a duplicate result page; deployment and physical acceptance remain pending;
+- the deployed `CTRL` Scan route sends permanent Controller identity to the existing Controller Inventory instead of building a duplicate result page; manual compact/full-URL production entry passed, while physical label/device acceptance remains pending;
 - iPhone behavior is not accepted merely because a camera preview opens; actual barcode/QR decode and correct routing must be physically verified;
 - camera-permission failure/recovery remains #112;
 - operator documentation in #67 must follow corrected deployed behavior rather than freezing current defects into SOPs.
@@ -82,7 +82,7 @@ As of the 2026-09-03 reconnaissance:
 | `DISP` | Source-supported | Input-only verified in current test pass | Physical decode/routing acceptance not recorded in this pass | Camera may open; real-label decode/routing not accepted | Yes — production | Existing Display hub: Directus record, Testing, Container, Work Orders, Field Wiring, and Procedures |
 | `CONT` | Source-supported | End-to-end Container scan reported working; compact ADF output independently verified | Physical decode/routing acceptance not recorded in this pass | Camera may open; real-label decode/routing not accepted | Yes — production | Opens the Directus Container record and its Display assignments; preserve this accepted behavior |
 | `LOC` | Landing-page normalization exists, but destination fails because no route exists | Compact ADF output verified only | Not accepted | Not accepted | No | #88 must supply Location resolution and the minimum Setup-owned operator workflow |
-| `CTRL` | Compact/full-URL normalization is source-supported by the candidate | Compact `CTRL:<id>` input contract; end-to-end production acceptance pending | Full-URL QR decode/routing acceptance pending | Full-URL QR decode/routing acceptance pending | Source candidate only | Redirects to production Controller Inventory with `controller_id=<id>`, which filters Search and opens exact detail |
+| `CTRL` | PASS — compact and full URL entered manually in production | Input-only ADF proof in Google Docs; printed-label end-to-end test pending | Printed-label decode/routing pending | Printed-label decode/routing pending | Yes — production | Redirects to Controller Inventory with `controller_id=<id>`, filters Search, and opens exact detail |
 
 The Controller capture contract is:
 
@@ -108,12 +108,11 @@ Controller Inventory remains the owner of Controller details and actions. Scan o
 
 ## Smallest Ordered Repair Plan
 
-1. Review and merge the bounded `CTRL` source candidate without changing existing `DISP` or `CONT` behavior.
-2. Deploy it through the current Server Management Scan runbook, then accept compact Zebra/manual and full-URL phone/tablet inputs against a real Controller label and the Controller Inventory result.
-3. Complete `LOC` resolution and the minimum Setup-owned operator action under #88; do not infer movement from scan order.
-4. Complete real-label Android/iPhone decode and camera permission/recovery acceptance under #112.
-5. Update the operator SOP and discovery guidance under #67 only after the deployed routes and camera behavior are correct.
-6. Add broader Setup movement/staging/load semantics only where the reconstructed operational process proves they are needed.
+1. After LabelPrintService can print the first Controller label, complete physical Zebra and phone/tablet acceptance against the deployed route and Controller Inventory result.
+2. Complete `LOC` resolution and the minimum Setup-owned operator action under #88; do not infer movement from scan order.
+3. Complete real-label Android/iPhone decode and camera permission/recovery acceptance under #112.
+4. Finish operator SOP review under #67 against the deployed routes and accepted device behavior.
+5. Add broader Setup movement/staging/load semantics only where the reconstructed operational process proves they are needed.
 
 Keep #113 as the umbrella and keep #88, #112, and #67 focused; do not create a new issue for each small finding.
 
@@ -152,7 +151,7 @@ A new Scan engineering thread should begin by:
 1. reading this handoff and Issue #113;
 2. refreshing current remote `main` before editing;
 3. inventorying current `Scan/directus-extension-scan/` source and current deployed Scan baseline/runbook;
-4. documenting the current route matrix for `DISP`, `CONT`, `LOC`, and `CTRL` before changing code;
+4. using the current route matrix above instead of reconstructing `DISP`, `CONT`, `LOC`, and `CTRL` state from chat;
 5. preserving the now-deployed MSB Internal **Open Scan** entry point;
 6. verifying capture methods independently: manual, Zebra HID, Android camera, iPhone camera;
 7. implementing/accepting focused route gaps without redesigning LabelPrintService;

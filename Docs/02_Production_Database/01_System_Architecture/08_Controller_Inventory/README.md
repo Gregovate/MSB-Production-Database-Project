@@ -7,11 +7,12 @@
 | Merged PR | #111 |
 | Permanent identity | `ref.controller.controller_id` |
 | Permanent database | Installed on `msb-prod-db` |
-| Current production checkout | `63be47f40be78f608416935ed0583287da9d90e6` |
-| Immediate application rollback | `e9ab029a17067b38b34f9306069f54899925f73f` |
+| Current production checkout | `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` |
+| Immediate application rollback | `63be47f40be78f608416935ed0583287da9d90e6` |
 | FieldWiring production | `V0.4.0 / postgres / healthy` |
 | Procedures production | `V0.1.0 / postgres / healthy` |
 | Production deployment acceptance | [Controller V0.4.0 Production Deployment Acceptance — 2026-09-03](Controller_V0.4.0_Production_Deployment_Acceptance_2026-09-03.md) |
+| Controller Scan acceptance | [Controller Scan Production Deployment Acceptance — 2026-09-03](../07_Labeling_and_Scanning/Controller_Scan_Production_Deployment_Acceptance_2026-09-03.md) |
 | Authentication / authorization | [Controller Management Authentication / Authorization Contract — 2026-08-31](Controller_Management_Authentication_Authorization_Contract_2026-08-31.md) |
 | Management boundary | [Controller Management Application Boundary — 2026-08-31](Controller_Management_Application_Boundary_2026-08-31.md) |
 | Programmed configuration | [Controller Current Programmed Configuration Contract — 2026-08-31](Controller_Current_Programmed_Configuration_Contract_2026-08-31.md) |
@@ -37,8 +38,8 @@ Accepted permanent inventory remains 177 physical Controllers with IDs `1001` th
 Current V0.4.0 deployment checkpoint:
 
 ```text
-checkout                    63be47f40be78f608416935ed0583287da9d90e6
-rollback checkout           e9ab029a17067b38b34f9306069f54899925f73f
+checkout                    72f5b7164f31753a33e5c2a9d83d9a7a6909a417
+rollback checkout           63be47f40be78f608416935ed0583287da9d90e6
 FieldWiring                  V0.4.0 / postgres / healthy
 Procedures                   V0.1.0 / postgres / healthy
 Controller fingerprint       578217bcb18e1291ceced673a3de3b27 unchanged
@@ -207,7 +208,7 @@ The accepted Scan destination reuses this production browser rather than creatin
     -> /fieldwiring/controllers?controller_id=<controller_id>
 ```
 
-The `controller_id` parameter populates/filters the existing Search control and opens the exact Controller detail. The matching Scan extension change is currently a Git-controlled source candidate and still requires deployment plus physical full-URL QR and compact Zebra HID acceptance before Controller labels are printed in volume.
+The `controller_id` parameter populates/filters the existing Search control and opens the exact Controller detail. The matching Scan extension is deployed; manual compact and full-URL inputs passed in production. Physical full-URL QR, Zebra HID, phone/tablet camera, and useful-distance acceptance remain required before Controller labels are printed in volume.
 
 ## Directus Experiment — Closed
 
@@ -229,7 +230,7 @@ The core Controller planning/maintenance system is deployed. Remaining work is n
 5. write and accept plain-English operator procedures against the deployed V0.4.0 screens;
 6. add final operator procedures after the remaining Production Crew and Read Only capability checks.
 
-PR #111 is merged to `main`, and Controller Inventory V0.4.0 is production-operational. Future Scan deployment remains a separate controlled change.
+PR #111 is merged to `main`, Controller Inventory V0.4.0 is production-operational, and PR #116's bounded Controller Scan handoff is deployed. Physical Controller-label acceptance remains separate from route deployment.
 
 ## Operator Procedures
 

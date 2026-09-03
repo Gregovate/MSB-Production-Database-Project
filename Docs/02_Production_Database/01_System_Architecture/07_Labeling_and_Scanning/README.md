@@ -63,14 +63,14 @@ The Scan hub passes only the permanent `display_id`. Setup, Takedown, and Inspec
 
 No physical QR redesign, second resolver, Procedure schema, alternate Google hierarchy, or duplicate document registry is part of this integration.
 
-**Controller Inventory V0.4.0 is deployed production behavior.** A bounded `CTRL` Scan source candidate now reuses its exact-controller entry contract:
+**Controller Inventory V0.4.0 and its `CTRL` Scan handoff are deployed production behavior.** The Scan route reuses the existing exact-controller entry contract:
 
 ```text
 /scan/CTRL/<controller_id>
     -> /fieldwiring/controllers?controller_id=<controller_id>
 ```
 
-The Controller page uses that parameter to populate/filter Search and open the exact detail panel. The `CTRL` route is not production behavior until the Scan candidate passes the Server Management deployment gate and physical Zebra/camera acceptance.
+The Controller page uses that parameter to populate/filter Search and open the exact detail panel. Manual production entry of both `CTRL:1014` and the full `https://db.sheboyganlights.org/scan/CTRL/1014` URL passed on 2026-09-03. Physical printed-label, Zebra end-to-end, phone/tablet camera, and useful-distance acceptance remain pending until LabelPrintService can print the first Controller label.
 
 The broader Setup/Deployment scan workflow remains separate engineering scope. High-volume Container and Storage Location scanning is expected during setup season, but the real pull/stage/load/delivery process must be reconstructed before broader scan-platform refactoring or transaction semantics are approved.
 
@@ -90,7 +90,8 @@ The LabelPrintService is an external supporting subsystem. If it is unavailable,
 - [Subsystem and Repository Boundary](Subsystem_and_Repository_Boundary.md) — controlling separation among Labeling and Scanning, the Production Database, and LabelPrintService/PRINT-SERVER.
 - [Label Payload and Profile Architecture](Label_Payload_and_Profile_Architecture.md) — current QR-generation/profile reconnaissance and implementation gates.
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Scan/FieldWiring baseline, permanent `display_id` handoff, source-control boundary, failure boundary, acceptance matrix, and deferred regression cases.
-- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, accepted production baseline, and current scan-extension candidate.
+- [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, and accepted production baseline.
+- [Controller Scan Production Deployment Acceptance — 2026-09-03](Controller_Scan_Production_Deployment_Acceptance_2026-09-03.md) — deployed commit/hash/rollback, manual-input acceptance, and explicit physical-test deferrals.
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules.
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) — shared scan-to-Display/hierarchy contract used by Work Orders, FieldWiring, Procedures, Testing, and future field functions.
 - [Field Document Publication and Currentness Contract](Field_Document_Publication_and_Currentness_Contract.md) — shared browser/PDF/offline/currentness rules for field documents reached through the scan/task workflow.
@@ -239,9 +240,9 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 ## Resume Development
 
-### Controller Scan Integration — source candidate ready; deployment/acceptance pending
+### Controller Scan Integration — production deployed; physical-label acceptance pending
 
-Current production Controller Inventory already owns Controller search, detail, assignments, planning, maintenance, and label-request actions. The bounded Scan candidate adds no competing Controller screen or database query.
+Current production Controller Inventory owns Controller search, detail, assignments, planning, maintenance, and label-request actions. The deployed Scan handoff adds no competing Controller screen or database query.
 
 Accepted handoff:
 
@@ -253,9 +254,9 @@ Zebra/manual: CTRL:<controller_id>
     -> Search filtered and exact Controller detail opened
 ```
 
-The Git-controlled `src/index.js` and deployable `dist/index.js` remain identical. The Controller browser initializes its existing Search control from the same `controller_id` parameter already used by FieldWiring cross-links and exact-detail loading.
+The Git-controlled `src/index.js` and deployed `dist/index.js` remain identical. The Controller browser initializes its existing Search control from the same `controller_id` parameter already used by FieldWiring cross-links and exact-detail loading.
 
-Next step is deployment/acceptance through the current `MSB-Server-Management` Display Scan Extension Deployment and Recovery runbook. Verify the live artifact hash, create a timestamped rollback, stage/syntax-check the candidate, restart Directus, and regress existing Display/Container/manual/camera behavior plus compact/full-URL `CTRL` inputs and the Controller Inventory result. Update the Server Management runbook only after that production acceptance.
+Production deployment passed at shared checkout `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` with live Scan SHA-256 `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`. Manual compact and full-URL inputs passed. Complete physical Controller-label, Zebra, camera, and useful-distance acceptance after the separate LabelPrintService can print the first Controller label; do not infer those results from manual entry.
 
 ### Setup/Deployment operational scanning — separate project
 

@@ -182,7 +182,7 @@ phone/tablet camera -> camera decoder
 
 The purchased Zebra DS3678-HD gives the project a real industrial hardware acceptance target. Its USB HID behavior fits the browser-first design, but the hardware must be tested against actual label size/density and actual forklift position before deciding whether HD range is adequate or an ER/XR scanner is required for some tasks.
 
-The 2026-09-03 ADF correction is input-method evidence only: the Zebra emitted compact canonical identifiers correctly in Google Docs. The current Container route is accepted because it opens the Directus Container record and assigned Displays. `LOC` still has no complete route and remains #88. The Git-controlled `CTRL` candidate hands permanent Controller identity to the existing production Controller Inventory Search/detail page; it adds no Setup movement meaning.
+The 2026-09-03 ADF correction is input-method evidence only: the Zebra emitted compact canonical identifiers correctly in Google Docs. The current Container route is accepted because it opens the Directus Container record and assigned Displays. `LOC` still has no complete route and remains #88. The deployed `CTRL` route hands permanent Controller identity to the existing production Controller Inventory Search/detail page; manual compact/full-URL entry passed, and the route adds no Setup movement meaning. Physical printed-label/device acceptance remains pending.
 
 Likely setup interactions may include both scan orders:
 
@@ -254,9 +254,9 @@ Already production-operational:
 
 Current bounded Scan follow-on:
 
-- deploy and accept `/scan/CTRL/<controller_id>` handing off to `/fieldwiring/controllers?controller_id=<controller_id>`;
+- complete physical printed-label Zebra and phone/tablet acceptance for the deployed Controller route after LabelPrintService can print the first label;
 - continue #88 for Location identity resolution and the minimum Setup-owned workflow;
-- physically accept relevant Zebra and phone/tablet label behavior before volume printing new Location or Controller labels.
+- physically accept relevant Location label behavior before volume printing Location labels.
 
 Separate planned operational work includes:
 
@@ -315,15 +315,15 @@ Begin from current `main` and the current responsible runbooks. Do not rediscove
 Read first:
 
 1. [Procedure Application README](../../../../Procedures/Application/README.md) — current standalone Procedure application contract, production status, and Scan entry contract;
-2. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current scan platform handoff and CTRL candidate state;
-3. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary, accepted live Scan baseline, and CTRL source candidate;
+2. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current Scan platform and Controller handoff state;
+3. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary and accepted live Scan baseline;
 4. [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted additive scan integration pattern and failure boundary;
 5. [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) — architecture precedence for Procedure/Field Context;
 6. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md);
 7. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md); and
 8. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment.
 
-### Controller Scan Integration — deployment/acceptance is the current bounded Scan task
+### Controller Scan Integration — route deployed; physical-label acceptance pending
 
 The accepted identity and UX handoff is:
 
@@ -335,7 +335,7 @@ Zebra/manual: CTRL:<controller_id>
     -> existing Controller Inventory filters Search and opens exact detail
 ```
 
-The candidate reuses permanent `ref.controller.controller_id` and the deployed Controller browser. It must pass the documented Server Management deployment gate and real-label Zebra/phone/tablet acceptance before volume Controller label printing.
+The deployed route reuses permanent `ref.controller.controller_id` and the existing Controller browser. Manual compact/full-URL production input passed. It must still pass real-label Zebra/phone/tablet and useful-distance acceptance before volume Controller label printing.
 
 This work must not create:
 
