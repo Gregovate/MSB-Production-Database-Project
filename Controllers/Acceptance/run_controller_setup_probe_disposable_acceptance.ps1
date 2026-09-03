@@ -43,78 +43,83 @@ function Write-StabilizedManagementServer {
 
     $text = [System.IO.File]::ReadAllText($Source)
     $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $lines = $text -split "`n", -1
 
-    # Keep the established child runner intact. A new PostgreSQL image can briefly
-    # satisfy its original pg_isready loop while the Docker entrypoint is still
-    # using the temporary initialization server. Insert a second proven gate just
-    # before createdb: wait for the init-complete marker, then verify the final
-    # PostgreSQL server is accepting connections. Nothing is deleted/rebalanced.
-    $createDbCommand = @'
-sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-    createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"
-'@
-    $createDbCommand = $createDbCommand.Replace('\"', '"')
-
-    $createDbIndex = $text.IndexOf($createDbCommand, [System.StringComparison]::Ordinal)
-    if ($createDbIndex -lt 0) {
-        throw 'Disposable management runner createdb command was not found.'
+    # Do not rewrite any existing Bash block. Find the unique createdb line and
+    # insert one additional readiness gate immediately before its docker exec.
+    $needle = 'createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"'
+    $matches = @()
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        if ($lines[$i].Contains($needle)) {
+            $matches += $i
+        }
     }
-    if ($text.IndexOf($createDbCommand, $createDbIndex + 1, [System.StringComparison]::Ordinal) -ge 0) {
-        throw 'Disposable management runner createdb command is not unique.'
+    if ($matches.Count -ne 1) {
+        throw "Expected exactly one disposable createdb line; found $($matches.Count)."
     }
 
-    $finalReadyGate = @'
-# The Docker entrypoint uses a temporary initialization server before the final
-# PostgreSQL process. Do not restore until initialization is complete and the
-# final server is accepting connections.
-init_complete=0
-for _ in $(seq 1 120); do
-    if sudo docker logs "$TEST_CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up"; then
-        init_complete=1
-        break
-    fi
-    sleep 1
-done
-if [[ "$init_complete" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL initialization did not complete"
-    sudo docker logs "$TEST_CONTAINER" || true
-    exit 6
-fi
+    $createdbLine = [int]$matches[0]
+    if ($createdbLine -lt 1) {
+        throw 'Disposable createdb line has no preceding docker-exec line.'
+    }
+    $insertAt = $createdbLine - 1
+    if (-not $lines[$insertAt].Contains('sudo docker exec')) {
+        throw 'Disposable createdb command is not preceded by the expected docker-exec line.'
+    }
 
-final_ready=0
-for _ in $(seq 1 60); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
-        final_ready=1
-        break
-    fi
-    sleep 1
-done
-if [[ "$final_ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL final server did not become ready"
-    sudo docker logs "$TEST_CONTAINER" || true
-    exit 6
-fi
+    $gate = @(
+        '# Final PostgreSQL startup gate: the image briefly accepts connections on a temporary init server.',
+        'init_complete=0',
+        'for _ in $(seq 1 120); do',
+        '    if sudo docker logs "$TEST_CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up"; then',
+        '        init_complete=1',
+        '        break',
+        '    fi',
+        '    sleep 1',
+        'done',
+        'if [[ "$init_complete" -ne 1 ]]; then',
+        '    echo "FAIL: disposable PostgreSQL initialization did not complete"',
+        '    sudo docker logs "$TEST_CONTAINER" || true',
+        '    exit 6',
+        'fi',
+        '',
+        'final_ready=0',
+        'for _ in $(seq 1 60); do',
+        '    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \',
+        '        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then',
+        '        final_ready=1',
+        '        break',
+        '    fi',
+        '    sleep 1',
+        'done',
+        'if [[ "$final_ready" -ne 1 ]]; then',
+        '    echo "FAIL: disposable PostgreSQL final server did not become ready"',
+        '    sudo docker logs "$TEST_CONTAINER" || true',
+        '    exit 6',
+        'fi',
+        ''
+    )
 
-'@
-    $finalReadyGate = $finalReadyGate.Replace('\"', '"')
+    $before = @()
+    if ($insertAt -gt 0) {
+        $before = @($lines[0..($insertAt - 1)])
+    }
+    $after = @($lines[$insertAt..($lines.Length - 1)])
+    $outputLines = @($before) + @($gate) + @($after)
+    $output = [string]::Join("`n", $outputLines)
 
-    $text = $text.Substring(0, $createDbIndex) + $finalReadyGate + $text.Substring($createDbIndex)
-
-    # Fail locally before SCP if the transformation did not produce the reviewed
-    # structural evidence. Bash syntax is also checked when a local bash exists.
     foreach ($required in @(
         'PostgreSQL init process complete; ready for start up',
         'final_ready=0',
         'createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"',
         'pg_restore -U "$DB_ACTOR" -d "$TEST_DB"'
     )) {
-        if (-not $text.Contains($required)) {
+        if (-not $output.Contains($required)) {
             throw "Generated disposable management runner is missing required evidence: $required"
         }
     }
 
-    [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
+    [System.IO.File]::WriteAllText($Destination, $output, $utf8NoBom)
 
     $bash = Get-Command bash -ErrorAction SilentlyContinue
     if ($null -ne $bash) {
@@ -155,9 +160,8 @@ try {
         $utf8NoBom
     )
 
-    # Native SCP/SSH intentionally own the console directly. Do not pipe,
-    # redirect, Tee-Object, or background these calls; password/sudo prompts
-    # must remain interactive and visible.
+    # Native SCP/SSH intentionally own the console directly so password and sudo
+    # prompts remain interactive and visible.
     & scp -r $localBundle "${Server}:/tmp/"
     if ($LASTEXITCODE -ne 0) {
         throw "SCP acceptance bundle upload failed with exit code $LASTEXITCODE"
