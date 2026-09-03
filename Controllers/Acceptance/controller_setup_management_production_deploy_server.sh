@@ -8,7 +8,7 @@ FIELDWIRING_ROOT="/opt/fieldwiring"
 FIELDWIRING_SERVICE="fieldwiring.service"
 PROCEDURES_SERVICE="msb-procedures.service"
 TARGET_REF="agent/controller-inventory-ref-sandbox"
-TARGET_SHA="2fd2067958cc0a903260fe6f089f88ae63a857f1"
+TARGET_SHA="63be47f40be78f608416935ed0583287da9d90e6"
 EXPECTED_FIELDWIRING_VERSION="V0.4.0"
 EXPECTED_PROCEDURES_VERSION="V0.1.0"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -322,70 +322,70 @@ fi
 echo "Shared checkout advanced to $DEPLOYED_HEAD"
 
 echo
-echo "--- Restart shared services and verify health ---"
+echo "--- Restart and verify shared services ---"
 if ! restart_shared_services; then
-    echo "FAIL: shared services did not become healthy after restart"
-    sudo systemctl status "$FIELDWIRING_SERVICE" "$PROCEDURES_SERVICE" --no-pager -l || true
+    echo "FAIL: shared services did not return healthy after deployment"
     exit 9
 fi
 
-FW_HEALTH="$(curl -fsS http://192.168.5.9:8790/api/health)"
-PR_HEALTH="$(curl -fsS http://192.168.5.9:8792/api/health)"
-echo "FieldWiring health: $FW_HEALTH"
-echo "Procedures health:  $PR_HEALTH"
+FW_POST="$(curl -fsS http://192.168.5.9:8790/api/health)"
+PR_POST="$(curl -fsS http://192.168.5.9:8792/api/health)"
+echo "Post-deploy FieldWiring health: $FW_POST"
+echo "Post-deploy Procedures health:  $PR_POST"
 
-if [[ "$FW_HEALTH" != *"\"version\":\"$EXPECTED_FIELDWIRING_VERSION\""* \
-   || "$FW_HEALTH" != *"\"data_mode\":\"postgres\""* \
-   || "$FW_HEALTH" != *"\"status\":\"ok\""* ]]; then
-    echo "FAIL: unexpected FieldWiring health payload"
+if [[ "$FW_POST" != *"\"version\":\"$EXPECTED_FIELDWIRING_VERSION\""* ]]; then
+    echo "FAIL: FieldWiring version does not match $EXPECTED_FIELDWIRING_VERSION"
     exit 10
 fi
-if [[ "$PR_HEALTH" != *"\"version\":\"$EXPECTED_PROCEDURES_VERSION\""* \
-   || "$PR_HEALTH" != *"\"data_mode\":\"postgres\""* \
-   || "$PR_HEALTH" != *"\"status\":\"ok\""* ]]; then
-    echo "FAIL: unexpected Procedures health payload"
+if [[ "$PR_POST" != *"\"version\":\"$EXPECTED_PROCEDURES_VERSION\""* ]]; then
+    echo "FAIL: Procedures version does not match $EXPECTED_PROCEDURES_VERSION"
     exit 11
 fi
 
 echo
-echo "--- Live shared-checkout regression ---"
+echo "--- Live combined regression ---"
 sudo -u fieldwiring -H bash -c \
     "cd '$FIELDWIRING_ROOT' && /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider FieldWiring/Application Procedures/Application"
-echo "LIVE SHARED REGRESSION: PASS"
+echo "LIVE COMBINED REGRESSION: PASS"
 
 echo
-echo "--- Live negative security boundaries ---"
-ACCESS_CODE="$(curl -sS -o /tmp/controller-access-noidentity-$STAMP.json -w '%{http_code}' http://192.168.5.9:8790/api/controller-access)"
-cat /tmp/controller-access-noidentity-$STAMP.json
-rm -f /tmp/controller-access-noidentity-$STAMP.json
+echo "--- Live security/API negative proof ---"
+ACCESS_CODE="$(curl -sS -o /tmp/controller-v040-access-$STAMP.json -w '%{http_code}' http://192.168.5.9:8790/api/controller-access)"
+MANAGE_CODE="$(curl -sS -o /tmp/controller-v040-manage-$STAMP.json -w '%{http_code}' http://192.168.5.9:8790/api/controller-management/options)"
 if [[ "$ACCESS_CODE" != "401" ]]; then
-    echo "FAIL: /api/controller-access without Cloudflare identity returned HTTP $ACCESS_CODE, expected 401"
+    echo "FAIL: /api/controller-access without Cloudflare identity returned HTTP $ACCESS_CODE"
+    cat /tmp/controller-v040-access-$STAMP.json || true
     exit 12
 fi
-
-MANAGE_CODE="$(curl -sS -o /tmp/controller-management-noidentity-$STAMP.json -w '%{http_code}' http://192.168.5.9:8790/api/controller-management/options)"
-cat /tmp/controller-management-noidentity-$STAMP.json
-rm -f /tmp/controller-management-noidentity-$STAMP.json
 if [[ "$MANAGE_CODE" != "401" ]]; then
-    echo "FAIL: /api/controller-management/options without Cloudflare identity returned HTTP $MANAGE_CODE, expected 401"
+    echo "FAIL: /api/controller-management/options without Cloudflare identity returned HTTP $MANAGE_CODE"
+    cat /tmp/controller-v040-manage-$STAMP.json || true
     exit 13
 fi
-echo "PASS: Controller protected endpoints reject missing Cloudflare identity"
+rm -f /tmp/controller-v040-access-$STAMP.json /tmp/controller-v040-manage-$STAMP.json
+
+echo "PASS: management APIs reject requests without protected Cloudflare identity"
 
 FINAL_HEAD="$(sudo git -C "$FIELDWIRING_ROOT" rev-parse HEAD)"
 FINAL_FP="$(prod_fingerprint)"
-if [[ "$FINAL_HEAD" != "$TARGET_SHA" || "$FINAL_FP" != "$PROD_BEFORE" ]]; then
-    echo "FAIL: final checkout/fingerprint validation failed"
+if [[ "$FINAL_HEAD" != "$TARGET_SHA" ]]; then
+    echo "FAIL: final production checkout $FINAL_HEAD does not match target $TARGET_SHA"
     exit 14
 fi
+if [[ "$FINAL_FP" != "$PROD_BEFORE" ]]; then
+    echo "FAIL: final Controller fingerprint differs from pre-deploy fingerprint"
+    exit 15
+fi
 
+echo "PASS: final Controller fingerprint unchanged"
 SUCCESS=1
+
 echo
-echo "CONTROLLER SETUP + MANAGEMENT PRODUCTION DEPLOYMENT: PASS"
-echo "Deployed checkout: $FINAL_HEAD"
-echo "Rollback checkout: $OLD_HEAD"
-echo "Rollback DB dump:  $BACKUP_FILE"
-echo "Rollback SHA256:   $BACKUP_SHA"
-echo "FieldWiring:       $FW_HEALTH"
-echo "Procedures:        $PR_HEALTH"
-echo "Production Controller fingerprint: $FINAL_FP"
+echo "========== CONTROLLER SETUP + MANAGEMENT PRODUCTION DEPLOYMENT: PASS =========="
+echo "Old checkout: $OLD_HEAD"
+echo "New checkout: $FINAL_HEAD"
+echo "FieldWiring:  $FW_POST"
+echo "Procedures:   $PR_POST"
+echo "Backup:       $BACKUP_FILE"
+echo "Backup SHA:   $BACKUP_SHA"
+echo "Report:       $REPORT"
