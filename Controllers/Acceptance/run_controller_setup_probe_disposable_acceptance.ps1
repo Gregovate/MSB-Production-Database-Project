@@ -10,7 +10,7 @@ $Sql023 = Join-Path $RepoRoot 'Controllers\Database\023_create_controller_manage
 $Sql024 = Join-Path $RepoRoot 'Controllers\Database\024_harden_controller_assignment_capability.sql'
 $ChildServer = Join-Path $ScriptDir 'controller_management_disposable_server.sh'
 $ParentServer = Join-Path $ScriptDir 'controller_setup_probe_disposable_server.sh'
-$CandidateSha = '49ae25d8a1acb8116f3d0a100d22af9a9d57ad18'
+$CandidateSha = '2fd2067958cc0a903260fe6f089f88ae63a857f1'
 
 foreach ($path in @($Sql023, $Sql024, $ChildServer, $ParentServer)) {
     if (-not (Test-Path -LiteralPath $path)) {
