@@ -29,7 +29,10 @@ def test_label_command_is_narrow_security_definer_with_real_actor_handoff() -> N
 def test_command_adapter_uses_explicit_write_transaction_only_for_narrow_function() -> None:
     source = (BASE_DIR / "controller_commands.py").read_text(encoding="utf-8")
 
-    assert "psycopg2.connect(repo.dsn)" in source
+    # The command adapter first validates/narrows Repository to PostgresRepository
+    # and then opens an explicit write connection from that validated object.
+    assert "pg = _postgres(repo)" in source
+    assert "psycopg2.connect(pg.dsn)" in source
     assert "conn.set_session(readonly=False, autocommit=False)" in source
     assert "FROM ref.request_controller_label(%s, %s)" in source
     assert "UPDATE ref.controller" not in source
