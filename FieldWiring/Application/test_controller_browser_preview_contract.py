@@ -64,6 +64,18 @@ def test_browser_preview_uses_separate_local_flask_port_and_foreground_ssh() -> 
     assert 'read -r -p "Press ENTER to stop and clean up the browser preview' in server
 
 
+def test_browser_preview_switches_runtime_user_before_backgrounding_flask() -> None:
+    server = (ACCEPT / "controller_setup_management_browser_preview_server.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "sudo -u fieldwiring -H env" in server
+    assert "bash -c '" in server
+    assert 'setsid /opt/fieldwiring/.venv/bin/python "$MSB_PREVIEW_ENTRY"' in server
+    assert 'echo $!' in server
+    assert "setsid sudo" not in server
+
+
 def test_browser_preview_cleanup_proves_production_unchanged() -> None:
     server = (ACCEPT / "controller_setup_management_browser_preview_server.sh").read_text(
         encoding="utf-8"
