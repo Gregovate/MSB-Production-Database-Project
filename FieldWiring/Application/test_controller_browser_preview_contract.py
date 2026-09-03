@@ -34,9 +34,13 @@ def test_browser_preview_preserves_controller_write_boundary() -> None:
     assert "GRANT INSERT ON" not in server
     assert "GRANT UPDATE ON" not in server
     assert "GRANT DELETE ON" not in server
+    assert "REVOKE ALL ON FUNCTION ref.controller_browser_capabilities(text) FROM PUBLIC" in server
+    assert "REVOKE ALL ON FUNCTION ref.request_controller_label(text,bigint) FROM PUBLIC" in server
     assert "has_table_privilege('fieldwiring_app', 'ref.controller', 'INSERT')" in server
     assert "has_table_privilege('fieldwiring_app', 'ref.controller', 'UPDATE')" in server
     assert "has_table_privilege('fieldwiring_app', 'ref.controller_display', 'INSERT')" in server
+    assert ":'preview_email'" not in server
+    assert "ref.controller_browser_capabilities('$PREVIEW_EMAIL')" in server
     assert 'HTTP_CF_ACCESS_AUTHENTICATED_USER_EMAIL' in entry
     assert "backend import app" in entry
     assert "api/controller-management/options" in server
