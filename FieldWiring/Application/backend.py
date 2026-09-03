@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.3.3."""
+"""MSB FieldWiring browser API and static application host — V0.4.0."""
 
 from __future__ import annotations
 
@@ -15,20 +15,34 @@ from controller_access import (
 )
 from controller_commands import (
     ControllerCommandAuthorizationError,
+    ControllerCommandConflictError,
     ControllerCommandError,
     ControllerCommandNotFoundError,
+    ControllerCommandValidationError,
+    assign_controller_display,
+    create_controller,
+    reassign_controller_display,
     request_controller_label,
+    unassign_controller_display,
+    update_controller,
+    update_controller_display_assignment,
 )
 from controller_inventory import (
     ControllerInventoryError,
     controller_detail,
     controller_list,
 )
+from controller_management import (
+    ControllerManagementAuthorizationError,
+    ControllerManagementError,
+    controller_assignment_display_search,
+    controller_management_options,
+)
 from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.3.3"
+APP_VERSION = "V0.4.0"
 BASE_DIR = Path(__file__).resolve().parent
 CONTROLLER_COMMAND_HEADER = "X-MSB-Controller-Command"
 app = Flask(__name__)
@@ -71,6 +85,27 @@ def require_controller_command_request() -> None:
         raise ControllerCommandAuthorizationError(
             "Controller command request guard is missing"
         )
+
+
+def controller_json_body() -> dict:
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        raise ControllerCommandValidationError(
+            "Controller command requires a JSON object"
+        )
+    return payload
+
+
+def require_controller_manager() -> tuple[Repository, str]:
+    """Resolve presentation-side Manager access; DB commands recheck independently."""
+    repo = repository()
+    email = cloudflare_operator_email(request.headers)
+    access = controller_browser_access(repo, email)
+    if not access.get("can_manage_controllers"):
+        raise ControllerCommandAuthorizationError(
+            "Controller maintenance is not authorized for this account"
+        )
+    return repo, email
 
 
 def operator_config_error(_: ConfigError) -> str:
@@ -252,12 +287,37 @@ def api_controllers() -> Response:
     return jsonify(**data)
 
 
+@app.post("/api/controllers")
+def api_controller_create() -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = create_controller(
+        repository(),
+        email=email,
+        payload=controller_json_body(),
+    )
+    return jsonify(controller=result), 201
+
+
 @app.get("/api/controllers/<int:controller_id>")
 def api_controller_detail(controller_id: int) -> Response:
     data = controller_detail(repository(), controller_id)
     if data is None:
         return jsonify(error="Controller was not found"), 404
     return jsonify(**data)
+
+
+@app.patch("/api/controllers/<int:controller_id>")
+def api_controller_update(controller_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = update_controller(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(controller=result)
 
 
 @app.post("/api/controllers/<int:controller_id>/print-label")
@@ -270,6 +330,75 @@ def api_controller_print_label(controller_id: int) -> Response:
         controller_id=controller_id,
     )
     return jsonify(controller=result)
+
+
+@app.get("/api/controller-management/options")
+def api_controller_management_options() -> Response:
+    repo, email = require_controller_manager()
+    return jsonify(options=controller_management_options(repo, email))
+
+
+@app.get("/api/controller-management/displays")
+def api_controller_management_displays() -> Response:
+    repo, _email = require_controller_manager()
+    query = request.args.get("q", "")
+    return jsonify(displays=controller_assignment_display_search(repo, query))
+
+
+@app.post("/api/controllers/<int:controller_id>/assignments")
+def api_controller_assignment_create(controller_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = assign_controller_display(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(assignment=result), 201
+
+
+@app.patch("/api/controllers/<int:controller_id>/assignments/<int:display_id>")
+def api_controller_assignment_update(controller_id: int, display_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = update_controller_display_assignment(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        display_id=display_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(assignment=result)
+
+
+@app.post("/api/controllers/<int:controller_id>/assignments/<int:display_id>/reassign")
+def api_controller_assignment_reassign(controller_id: int, display_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    result = reassign_controller_display(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        old_display_id=display_id,
+        payload=controller_json_body(),
+    )
+    return jsonify(assignment=result)
+
+
+@app.delete("/api/controllers/<int:controller_id>/assignments/<int:display_id>")
+def api_controller_assignment_delete(controller_id: int, display_id: int) -> Response:
+    require_controller_command_request()
+    email = cloudflare_operator_email(request.headers)
+    payload = controller_json_body()
+    result = unassign_controller_display(
+        repository(),
+        email=email,
+        controller_id=controller_id,
+        display_id=display_id,
+        return_available=payload.get("return_available", True),
+    )
+    return jsonify(assignment=result)
 
 
 @app.get("/api/wiring")
@@ -329,15 +458,53 @@ def controller_command_not_found_error(
     exc: ControllerCommandNotFoundError,
 ) -> tuple[Response, int]:
     return jsonify(
-        error="Controller was not found.",
+        error=str(exc) or "Controller or assignment was not found.",
         engineering_error=str(exc),
     ), 404
+
+
+@app.errorhandler(ControllerCommandValidationError)
+def controller_command_validation_error(
+    exc: ControllerCommandValidationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error=str(exc) or "Controller data is invalid.",
+        engineering_error=str(exc),
+    ), 400
+
+
+@app.errorhandler(ControllerCommandConflictError)
+def controller_command_conflict_error(
+    exc: ControllerCommandConflictError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error=str(exc) or "That Controller relationship already exists.",
+        engineering_error=str(exc),
+    ), 409
 
 
 @app.errorhandler(ControllerCommandError)
 def controller_command_error(exc: ControllerCommandError) -> tuple[Response, int]:
     return jsonify(
         error="Controller action could not be completed.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@app.errorhandler(ControllerManagementAuthorizationError)
+def controller_management_authorization_error(
+    exc: ControllerManagementAuthorizationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="This account is not authorized for Controller maintenance.",
+        engineering_error=str(exc),
+    ), 403
+
+
+@app.errorhandler(ControllerManagementError)
+def controller_management_error(exc: ControllerManagementError) -> tuple[Response, int]:
+    return jsonify(
+        error="Controller maintenance reference data could not be loaded.",
         engineering_error=str(exc),
     ), 503
 
