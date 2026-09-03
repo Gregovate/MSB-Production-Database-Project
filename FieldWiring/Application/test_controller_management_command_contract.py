@@ -85,12 +85,17 @@ def test_backend_exposes_guarded_management_routes() -> None:
     assert "require_controller_manager()" in source
 
 
-def test_manager_ui_is_capability_loaded_and_keeps_print_service_separate() -> None:
+def test_manager_ui_is_capability_gated_and_loaded_once() -> None:
+    html = (BASE_DIR / "controllers.html").read_text(encoding="utf-8")
     extras = (BASE_DIR / "static" / "controllers_detail_extras.js").read_text(encoding="utf-8")
     management = (BASE_DIR / "static" / "controllers_management.js").read_text(encoding="utf-8")
 
+    # Authorization remains server/capability-driven. The management asset is
+    # loaded exactly once by the page; the old second dynamic loader was removed
+    # because it created duplicate Add Controller controls for authorized users.
     assert "can_manage_controllers" in extras
-    assert "controllers_management.js" in extras
+    assert html.count('static/controllers_management.js') == 1
+    assert "controllers_management.js" not in extras
     assert "Add Controller" in management
     assert "Edit Controller" in management
     assert "Manage Assignments" in management
