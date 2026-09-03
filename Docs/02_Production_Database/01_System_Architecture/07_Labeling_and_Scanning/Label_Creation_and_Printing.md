@@ -21,7 +21,7 @@ Operator instructions remain in the separate Operational SOP tree.
 
 ## 2. Asset / Label Scope
 
-Current asset label printing supports Displays, Containers, and Storage Locations. Controller labeling is part of the Controller Inventory subsystem and uses the same shared identity/label conventions where applicable.
+Current production label printing supports Displays and Containers. Storage Location labels have not been printed, and Controller label polling/printing remains in the separate LabelPrintService workstream. Controller labeling uses the same shared identity/label conventions.
 
 FieldWiring also requires a future **Channel / Plug label class**. Those labels are configuration/hookup labels derived from current wiring Channel Names; they are not permanent asset-identity labels.
 
@@ -46,7 +46,7 @@ Examples historically used include:
 - `CONT:587`
 - `LOC:RA-01-A-03`
 - `DISP:251`
-- `CTRL:CL-042`
+- `CTRL:1014`
 
 The encoded identity must resolve to a stable MSB asset identity, not a brittle Directus admin URL.
 

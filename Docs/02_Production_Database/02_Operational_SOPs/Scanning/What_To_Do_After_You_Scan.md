@@ -8,8 +8,8 @@
 | Audience | MSB volunteers and operators |
 | Status | DRAFT — operator review and screenshots required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-08-24 |
-| Keywords | after scan, display record, testing, field wiring, procedures, container, work orders |
+| Last Reviewed | 2026-09-03 |
+| Keywords | after scan, display record, testing, field wiring, procedures, container, controller, work orders |
 
 ## Purpose
 
@@ -80,9 +80,17 @@ The current Container Scan landing page provides:
 
 Do not assume additional Container movement/setup actions are available through Scan until those workflows are implemented and documented.
 
-## Location and Controller Codes
+## After Entering or Scanning a Controller
 
-`LOC` and `CTRL` are approved MSB identity types, but their complete operator Scan workflows are not yet documented as fully deployed.
+The Controller route opens Controller Inventory with the exact Controller ID in Search, one matching Controller shown, and that Controller's detail panel open.
+
+Use the existing Controller Inventory information and actions there. Scan does not provide a second Controller-detail screen.
+
+Physical Controller-label scanning remains pending until the printing service can produce the first label. Manual compact and full-URL Controller entry are deployed.
+
+## Location Codes
+
+`LOC` is an approved MSB identity type, but its complete operator Scan workflow is not yet deployed.
 
 See [QR Code Types and Meanings](QR_Code_Types_and_Meanings.md) for the current boundary.
 

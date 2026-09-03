@@ -8,8 +8,8 @@
 | Audience | MSB volunteers and operators |
 | Status | DRAFT — operator review and screenshots required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-08-24 |
-| Keywords | manual scan, enter code, paste URL, DISP, CONT, scan without camera |
+| Last Reviewed | 2026-09-03 |
+| Keywords | manual scan, enter code, paste URL, DISP, CONT, CTRL, scan without camera |
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Manual entry and camera scanning use the same item identity. Entering `DISP:141`
 
 Open:
 
-**https://db.sheboyganlights.org/scan/**
+**https://my.sheboyganlights.org/scan/**
 
 You should see:
 
@@ -47,6 +47,7 @@ Current examples include:
 ```text
 DISP:141
 CONT:238
+CTRL:1014
 ```
 
 You may also paste a full MSB scan URL.
@@ -62,6 +63,8 @@ Scan will open the landing page for the item type and identifier you entered whe
 For a Display, use [What To Do After You Scan](What_To_Do_After_You_Scan.md) to choose the correct action.
 
 For a Container, the current Scan page provides **Open Container Record** and **Back to Scan**.
+
+For a Controller, Scan opens Controller Inventory with the exact Controller placed in Search, the list filtered, and its detail panel open.
 
 ## Expected Result
 

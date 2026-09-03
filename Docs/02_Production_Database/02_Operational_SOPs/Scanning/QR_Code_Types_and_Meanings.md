@@ -8,7 +8,7 @@
 | Audience | MSB volunteers and operators |
 | Status | DRAFT — operator review required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-08-24 |
+| Last Reviewed | 2026-09-03 |
 | Keywords | QR code, scan code, DISP, CONT, LOC, CTRL, display, container, location, controller |
 
 ## Purpose
@@ -30,7 +30,7 @@ You usually do not need to memorize the prefixes. They simply tell you what kind
 | `DISP` | Display | `DISP:251` | Current Display Scan hub is deployed and verified |
 | `CONT` | Container | `CONT:587` | Current Container Scan landing page exists and opens the Container record |
 | `LOC` | Storage Location | `LOC:RA-01-A-03` | Approved identity type; broader operator Scan workflow is not yet documented as fully deployed |
-| `CTRL` | Controller | `CTRL:CL-042` | Approved identity direction; complete operator Scan workflow depends on the Controller Inventory implementation |
+| `CTRL` | Controller | `CTRL:1014` | Production route opens the exact Controller Inventory record; physical-label testing remains pending |
 
 ## What The Code Does
 
@@ -87,7 +87,9 @@ A Controller code begins with:
 CTRL:
 ```
 
-This is the approved identity pattern for Controller Inventory. The operator Scan behavior should be documented only after that workflow is implemented and accepted.
+The permanent numeric value after `CTRL:` is the Controller ID. Entering a compact value such as `CTRL:1014`, or opening its full Scan URL, routes to Controller Inventory with that Controller selected.
+
+The route and manual-entry behavior are deployed. Physical Controller-label scanning will be accepted after the printing service can produce the first label.
 
 ## Expected Result
 

@@ -1,13 +1,13 @@
 # MSB Controller Inventory and Labeling Plan
 
-**Status:** Planning / engineering foundation  
+**Status:** Historical planning foundation — permanent Controller system is now deployed
 **Purpose:** Define permanent controller asset identity, model/capability data, current snapshot assignment, firmware history, and labeling requirements.
 
 ## 1. Purpose
 
 Controllers require unique permanent identification, accurate hardware/model information, current configuration context, firmware tracking, Work Order linkage when repair is needed, and durable physical labeling.
 
-This document preserves the planning foundation for a dedicated Controller Inventory subsystem.
+This document preserves the planning foundation for the Controller Inventory subsystem. For current production authority, use [Controller Inventory](README.md).
 
 The 2025 working controller inventory source has now been inspected directly. It is useful source evidence, but it is not a finished/current 2026 permanent asset register and must be reconciled with current LOR/V7 topology and E1.31 addressing evidence before PostgreSQL schema implementation.
 
@@ -23,19 +23,19 @@ Applies to electronic controller and related control hardware used by MSB, inclu
 
 Each physical controller requires a stable MSB identity independent of its current deployment location or LOR assignment.
 
-The planning convention uses:
+The implemented permanent identity uses:
 
 ```text
-CTRL:<controller_key>
+CTRL:<controller_id>
 ```
 
 Example:
 
 ```text
-CTRL:CL-042
+CTRL:1014
 ```
 
-The key must remain stable over the controller's lifetime.
+The key is permanent `ref.controller.controller_id` and must remain stable over the Controller's lifetime.
 
 A raw LOR Unit ID, Unit-ID range, DMX/E1.31 universe, universe range, IP address, Display assignment, or Park Location is **not** a permanent controller identity.
 

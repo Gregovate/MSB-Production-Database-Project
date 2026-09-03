@@ -55,7 +55,9 @@ Display scanning is the most complete current Scan workflow.
 
 Container scanning also has a current Scan landing page that opens the Container record.
 
-`LOC` and `CTRL` are approved MSB identity types, but their broader operator workflows must not be assumed to be complete merely because the identifiers exist. The QR Code reference explains that distinction.
+Controller scanning now opens the exact Controller Inventory record. Manual entry of both `CTRL:<controller_id>` and the full Controller Scan URL is deployed and verified. Physical Controller-label scanning remains pending until the printing service can produce the first label.
+
+`LOC` remains an approved identity type without a completed production route or Setup movement workflow. The QR Code reference explains that distinction.
 
 ## Expected Result
 

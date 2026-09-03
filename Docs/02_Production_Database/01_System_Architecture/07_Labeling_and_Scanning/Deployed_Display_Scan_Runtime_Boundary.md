@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PRODUCTION DEPENDENCY — CTRL source candidate ready; production deployment pending |
+| Status | CURRENT PRODUCTION DEPENDENCY — CTRL route deployed; physical-label acceptance pending |
 | Current revision | 2026-09-03 |
 | Owner | MSB Database Administrator |
 | Production host | `msb-prod-db` |
@@ -32,13 +32,17 @@ Directus executes:
 dist/index.js
 ```
 
-The current Server Management runbook records this accepted production SHA-256, including the FieldWiring and Procedures Display-hub actions:
+The current Server Management runbook records this accepted production SHA-256, including the FieldWiring and Procedures Display-hub actions and the Controller Inventory handoff:
 
 ```text
-fb2a98088e363430fb0a303e4c895bae8202f4f253ac22a1481a406eb5b7443a
+3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96
 ```
 
-That hash remains the accepted **live production baseline** until the CTRL-enabled candidate is deployed and accepted through the Server Management safety gate.
+The immediately preceding Scan artifact is retained at:
+
+```text
+/home/msbadmin/backups/directus-scan/pre-ctrl-20260903T112856Z/index.js
+```
 
 The accepted application/business source is version-controlled under:
 
@@ -70,12 +74,11 @@ Verified production routes include:
 /scan/
 /scan/DISP/:key
 /scan/CONT/:key
+/scan/CTRL/:key
 /scan/DISP/:key/test
 /scan/DISP/:key/container
 /scan/DISP/:key/work-orders
 ```
-
-The Git-controlled CTRL candidate adds `/scan/CTRL/:key`; that route is not included in the production inventory above until deployment acceptance is complete.
 
 The scan landing page supports camera scanning, QR codes, 1-D barcodes, manual entry, and URL handling.
 
@@ -193,7 +196,7 @@ The accepted Procedure integration preserves the architectural rules proven by F
 - no Procedure health/API call required just to render the Display hub; and
 - existing Display, Testing, Container, Work Order, and FieldWiring actions remain independently usable if Procedure is unavailable.
 
-## Controller Scan Integration — Source Candidate Ready
+## Controller Scan Integration — Accepted Production Route
 
 Controller Inventory V0.4.0 is merged to `main` and production-operational. It already supports exact detail entry through:
 
@@ -201,9 +204,9 @@ Controller Inventory V0.4.0 is merged to `main` and production-operational. It a
 https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=<controller_id>
 ```
 
-The bounded Scan candidate adds `/scan/CTRL/:key`, validates that the key is a positive integer permanent Controller ID, and redirects to that existing Controller Inventory entry point. The Controller browser initializes its Search control from `controller_id`, filters the list, and opens the exact detail panel.
+The deployed Scan route adds `/scan/CTRL/:key`, validates that the key is a positive integer permanent Controller ID, and redirects to that existing Controller Inventory entry point. The Controller browser initializes its Search control from `controller_id`, filters the list, and opens the exact detail panel.
 
-The candidate does not query Controller tables or duplicate Controller details/actions inside Scan. Camera-readable full URLs and compact Zebra HID/manual values converge on the same route and identity. Production deployment, regression checks, and physical label/device acceptance are still required.
+The route does not query Controller tables or duplicate Controller details/actions inside Scan. Production manual entry of both the full Scan URL and compact canonical value passed on 2026-09-03. Physical printed-label, Zebra end-to-end, phone/tablet camera, and useful-distance acceptance remain pending until LabelPrintService can produce the first Controller label.
 
 ## Future Setup/Deployment Scan Platform Boundary
 
@@ -255,21 +258,23 @@ As of 2026-09-03:
 
 - current scan application source is recovered in Git;
 - FieldWiring Scan Integration is accepted production work;
-- current accepted live scan artifact hash is `fb2a98088e363430fb0a303e4c895bae8202f4f253ac22a1481a406eb5b7443a`;
+- current accepted live scan artifact hash is `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`;
 - the Directus public-origin correction is accepted production behavior;
 - the `/scan/` Synology route is production-operational;
 - standalone Procedure field access and its Display-hub action are production-operational;
 - Controller Inventory V0.4.0 is merged and production-operational;
-- the Git-controlled CTRL route candidate hands permanent `controller_id` to the existing Controller Inventory Search/detail experience;
-- production deployment and device acceptance of the CTRL candidate are pending through the current Server Management runbook;
+- the deployed CTRL route hands permanent `controller_id` to the existing Controller Inventory Search/detail experience;
+- manual full-URL and compact CTRL inputs are production-accepted;
+- physical Controller-label, Zebra end-to-end, camera, and distance acceptance remain pending;
 - the broader Container/Location Setup/Deployment workflow remains separate engineering scope; and
 - no schema or physical QR change is part of this bounded integration.
 
-Before deploying the candidate, read the current Server Management [Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) runbook. Do not rediscover the Directus extension path, current runtime hash, restart procedure, `/scan/` proxy, or rollback process from scratch unless the documented runtime is proven wrong.
+Before any later Scan deployment, read the current Server Management [Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) runbook. Do not rediscover the Directus extension path, current runtime hash, restart procedure, `/scan/` proxy, or rollback process from scratch unless the documented runtime is proven wrong.
 
 ## Related Documents
 
 - [Labeling and Scanning](README.md)
+- [Controller Scan Production Deployment Acceptance — 2026-09-03](Controller_Scan_Production_Deployment_Acceptance_2026-09-03.md)
 - [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md)
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md)

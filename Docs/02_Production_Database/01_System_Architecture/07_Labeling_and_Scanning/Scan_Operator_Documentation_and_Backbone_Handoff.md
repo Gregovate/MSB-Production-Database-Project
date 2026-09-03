@@ -159,11 +159,12 @@ The current Scan application verifies:
 - **Go**;
 - **Scan with Camera**;
 - current Display Scan landing behavior;
-- current Container Scan landing behavior.
+- current Container Scan landing behavior; and
+- deployed Controller handoff to exact Controller Inventory Search/detail from compact or full-URL manual input.
 
 The approved identity standard includes `DISP`, `CONT`, `LOC`, and `CTRL`, but the operator documentation must distinguish approved identity types from workflows actually deployed and accepted.
 
-Do not document a complete `LOC` or `CTRL` operator workflow until the implementation is verified.
+Do not document a complete `LOC` workflow until it is implemented and verified. The deployed `CTRL` route may be documented for manual use; physical Controller-label, Zebra end-to-end, and phone/tablet camera instructions remain pending device acceptance.
 
 ## Remaining Acceptance Work
 
