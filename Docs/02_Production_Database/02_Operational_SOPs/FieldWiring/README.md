@@ -20,7 +20,6 @@ These procedures are for people using the production **Field Wiring** browser. T
 
 ```text
 FieldWiring / Controller Inventory V0.4.0
-Production checkout 63be47f40be78f608416935ed0583287da9d90e6
 ```
 
 FieldWiring is the current MSB field-wiring system. Former FormView instructions are not the current operating procedure.
@@ -41,7 +40,7 @@ If the site does not open or you are told that you do not have access, contact t
 
 FieldWiring shows the current approved wiring information used by the field crew. Use the **Field Hookup** information as the primary wiring instruction. Wiring images are supplemental location/context guidance.
 
-FieldWiring does not replace physical judgment. If the actual Controller, Display, plug, or wiring in front of you does not agree with FieldWiring, stop and report the mismatch rather than changing connections to force them to agree.
+If the actual Controller, Display, plug, or wiring in front of you does not agree with FieldWiring, stop and report the mismatch rather than changing connections to force them to agree.
 
 The wire-label selection/printing workflow is still under development and is not part of this current operator procedure.
 
