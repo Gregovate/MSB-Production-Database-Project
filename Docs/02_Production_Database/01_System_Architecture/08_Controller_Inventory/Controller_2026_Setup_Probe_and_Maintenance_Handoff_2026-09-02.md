@@ -6,7 +6,7 @@
 | Issue | #110 |
 | Draft PR | #111 |
 | Branch | `agent/controller-inventory-ref-sandbox` |
-| Exact application candidate | `1eea0ba437f7e4337e075b769c137ffe032dc27b` |
+| Exact application candidate | `49ae25d8a1acb8116f3d0a100d22af9a9d57ad18` |
 | Production application baseline | `e9ab029a17067b38b34f9306069f54899925f73f` |
 | Production maintenance migrations | 021/022 only; 023/024 are candidate-only |
 | Setup priority | Controller planning/probing plus browser maintenance |
@@ -84,7 +84,7 @@ Network + UID is one address context. A UID used on one Network does not consume
 
 ## Current Candidate — Probe
 
-The exact candidate `1eea0ba437f7e4337e075b769c137ffe032dc27b` adds a Manager/Admin-only **Plan Capacity** workflow to the Controller browser.
+The exact candidate `49ae25d8a1acb8116f3d0a100d22af9a9d57ad18` adds a Manager/Admin-only **Plan Capacity** workflow to the Controller browser.
 
 ### Stage capacity
 
@@ -195,7 +195,7 @@ Controllers/Acceptance/run_controller_setup_probe_disposable_acceptance.ps1
 
 It performs one bounded workflow:
 
-1. pins the exact application candidate `1eea0ba437f7e4337e075b769c137ffe032dc27b`;
+1. pins the exact application candidate `49ae25d8a1acb8116f3d0a100d22af9a9d57ad18`;
 2. creates a detached candidate worktree on `msb-prod-db`;
 3. runs the shared FieldWiring + Procedures pytest suite against that exact candidate;
 4. performs a read-only planner-data/permission probe against current production;
@@ -208,11 +208,15 @@ It performs one bounded workflow:
 
 Production Controller data is not mutated by this acceptance gate.
 
+## Acceptance Finding — 2026-09-02
+
+The first setup-probe acceptance attempt correctly failed during detached regression before any disposable database mutation. The failure was an outdated static test assertion that expected the earlier literal connection form `psycopg2.connect(repo.dsn)`. The command adapter had been deliberately refactored to validate/narrow the repository first and use `pg = _postgres(repo)` followed by `psycopg2.connect(pg.dsn)`. The explicit write transaction and narrow SECURITY DEFINER boundary were unchanged. The static test was corrected to verify the actual governed behavior, and the exact candidate was repinned to `49ae25d8a1acb8116f3d0a100d22af9a9d57ad18`.
+
 ## Exact Resume Point
 
 Before production deployment:
 
-1. run the one-command setup probe / disposable acceptance wrapper;
+1. rerun the one-command setup probe / disposable acceptance wrapper against the corrected exact candidate;
 2. review any planner/SPARE/permission findings rather than weakening the contract to force a pass;
 3. if it passes, prepare a new production deployment package governed by the current MSB-Server-Management Production Database deployment runbook;
 4. deploy migrations 023/024 plus the exact accepted application candidate only after explicit approval;
