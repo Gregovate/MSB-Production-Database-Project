@@ -1,6 +1,7 @@
 # MSB Label Creation and Printing
 
 **Status:** Active design reference; reconcile against current LabelPrintService implementation  
+**Current revision:** 2026-09-03  
 **Purpose:** Define label creation, printing, tracking, quantities, duplicate prevention, and failure handling.
 
 ## 1. Purpose
@@ -23,9 +24,9 @@ Operator instructions remain in the separate Operational SOP tree.
 
 Current asset label printing supports Displays, Containers, and Storage Locations. Controller labeling is part of the Controller Inventory subsystem and uses the same shared identity/label conventions where applicable.
 
-FieldWiring also requires a future **Channel / Plug label class**. Those labels are configuration/hookup labels derived from current wiring Channel Names; they are not permanent asset-identity labels.
+FieldWiring also uses a **Channel / Plug / Wire label class**. These labels are configuration/hookup labels derived from current approved FieldWiring data; they are not permanent asset-identity labels.
 
-See [FieldWiring Channel / Plug Label Printing Requirements](../09_Wiring_System/FieldWiring_Channel_Plug_Label_Printing_Requirements.md).
+See [FieldWiring Channel / Plug Label Printing Requirements](../09_Wiring_System/FieldWiring_Channel_Plug_Label_Printing_Requirements.md) for the controlling FieldWiring request/content contract.
 
 ## 3. Core Requirements
 
@@ -33,9 +34,15 @@ The label system must support selected-item and batch printing, durable labels, 
 
 ## 4. Printer Hardware
 
-The established printer is the Brother P-Touch PT-P950NW network label printer using laminated label stock. Current implementation details are owned by the LabelPrintService and current deployment documentation.
+The established laminated-tape printer is the Brother P-Touch PT-P950NW. Current printer-specific implementation details are owned by LabelPrintService and current deployment documentation.
 
-The FieldWiring Channel / Plug label workflow has a field requirement for **1/2-inch laminated label stock**. A dedicated FieldWiring template has not yet been established and must be tested before production use.
+The accepted FieldWiring Wire label family uses **1/2-inch / 12 mm laminated label stock** and the logical family:
+
+```text
+WIRING_12MM_HORIZONTAL
+```
+
+The approved V4 physical format is a double-sided fold-around wire label. LabelPrintService owns the physical Brother template, media/preflight behavior, and printer mapping.
 
 ## 5. Machine-Readable Identity
 
@@ -50,25 +57,55 @@ Examples historically used include:
 
 The encoded identity must resolve to a stable MSB asset identity, not a brittle Directus admin URL.
 
-FieldWiring Channel / Plug labels are different: their primary purpose is to reproduce current human-readable wiring Channel Names on physical leads/plugs. They must not be treated as permanent asset-identity keys unless a later reviewed design explicitly adds a separate stable identifier.
+FieldWiring Wire labels are different. Their purpose is physical hookup identification using a controller output number plus current human-readable wiring description. They are not permanent machine-readable asset identities and must not be treated as the permanent identity key for a Display, Controller, or wiring relationship.
 
 ## 6. Quantity Rules
 
 - Containers: 2 labels by default so identification remains visible regardless of storage orientation.
-- Displays: 1 label by default.
+- Displays: 1 permanent asset label by default.
 - Storage Locations: 1 label by default.
 - Controllers: quantity and final layout belong to the Controller Inventory subsystem.
-- FieldWiring Channel / Plug labels: quantity comes from the selected physical hookup/lead set and must be reviewed before printing; no hard-coded global quantity rule is established yet.
+- FieldWiring Wire labels: **one physical fold-around label per selected Display / physical-controller-output relationship**.
+
+For FieldWiring this means:
+
+- one Display using multiple physical outputs receives one wire label for each output;
+- two Displays sharing the same programmed channel/output each receive their own wire label using that Display's own current `channel_name`; and
+- E1.31/DMX-controlled devices are counted by resolved physical controller outputs, not raw universe/channel count. For example, a Pixie4D has four output labels when all four outputs are used; a Pixie2D has two when both outputs are used.
+
+The double-sided fold-around rendering repeats one logical label on both sides of the same physical label; it does not double the request quantity.
 
 The application should enforce established quantity rules rather than relying on the operator to remember them.
 
-## 7. Label Content
+## 7. FieldWiring Label Content
 
-Each permanent asset label should contain a human-readable identifier and the appropriate machine-readable barcode or QR code, with sufficient contrast, size, and durability for its operating environment.
+The current approved FieldWiring `channel_name` is the descriptive source for the wire label.
 
-FieldWiring Channel / Plug labels use the current approved **Channel Name** as the essential printed text. The exact 1/2-inch template, text wrapping/truncation rules, font size, and any optional additional context must be validated against real Channel Name lengths before production approval.
+FieldWiring normalization removes only the technical prefix at the beginning of the name:
 
-Normal operators must not be required to retype the Channel Name.
+```text
+<Stage/area short code> + <UID-channel prefix>
+```
+
+The remainder is retained as the descriptive label content.
+
+Example:
+
+```text
+TC 7B-10 Caroler P2 Mouth Closed 1
+    -> Caroler P2 Mouth Closed 1
+```
+
+Tokens such as `P1` or `P2` that occur after the accepted leading prefix are retained. The workflow must not independently strip arbitrary later tokens or require the operator to retype the description.
+
+FieldWiring supplies:
+
+```text
+resolved physical output
+normalized channel_name description
+```
+
+LabelPrintService V4 owns the subsequent line split/rendering for the physical fold-around template.
 
 ## 8. Controlled Printing Workflow
 
@@ -77,9 +114,11 @@ Labels are generated from controlled data records through the application/print 
 Conceptual flow:
 
 ```text
-User selects assets / wiring leads
+User selects assets / FieldWiring Display-output relationships
     ↓
 Application creates controlled print request
+    ↓
+LabelPrintService consumes governed pending work
     ↓
 LabelPrintService renders labels
     ↓
@@ -88,55 +127,110 @@ Brother printer
 Print result recorded
 ```
 
-For FieldWiring, the request should be created from the currently resolved Stage/Sub-stage/Scene and Background/Musical context so the operator can review the exact Channel Name labels before printing.
+For FieldWiring, the request is created from the currently resolved Stage/Sub-stage/Scene and Background/Musical wiring context so the operator can review the selected Display/output relationships and normalized label descriptions before requesting printing.
+
+The Production Database/request side does not choose Brother files, printer queues, or b-PAC implementation details.
 
 ## 9. Batch Printing
 
-The system must support single-item and multi-item batches and operationally useful groupings such as display labels by container.
+The system must support single-item and multi-item batches and operationally useful groupings.
 
-FieldWiring should support selected plug/lead labels and useful controller/output batches without forcing operators to print an entire Stage when only one failed or damaged label needs replacement.
+FieldWiring must support:
+
+- individual Display/output labels;
+- multiple selected outputs for one Display;
+- useful grouped selections such as a Controller's displayed outputs; and
+- targeted reprint of one failed/damaged/missing label.
+
+Convenience grouping must still resolve to one request item per Display/output relationship. A whole Stage print must not be required merely to replace one wire label.
 
 ## 10. Print Tracking
 
 Printing must be auditable. The system should retain enough information to determine:
 
-- who requested printing
-- when it was requested
-- what assets/operational labels were included
-- requested quantities
-- printer/template context where applicable
-- overall and per-item result
-- failure details when available
+- who requested printing;
+- when it was requested;
+- what assets/operational labels were included;
+- requested quantities;
+- logical label family;
+- overall and per-item result; and
+- failure details when available.
 
-For FieldWiring configuration labels, tracking should additionally retain enough wiring provenance to identify the source approved wiring state/Preview or snapshot that supplied the Channel Name.
+For FieldWiring configuration labels, tracking must additionally retain enough wiring provenance to identify the approved wiring state/Preview or snapshot that supplied the selected Display/output relationship and `channel_name`.
+
+Requester attribution belongs on governed request/batch state rather than being reconstructed later from mutable asset records or service logs.
 
 ## 11. Duplicate Prevention and Reprints
 
-Accidental duplicate printing should be prevented. Intentional reprints must remain possible and should capture a reason such as damaged/lost label, printer failure, bad application, changed data, incorrect media, or test print.
+Accidental duplicate printing must be prevented. Intentional reprints must remain possible and should capture a reason such as damaged/lost label, printer failure, bad application, changed data, incorrect media, or test print.
 
 A previously printed label does not prove that a valid physical label is still present on the asset or lead.
 
-FieldWiring must support targeted reprint of selected Channel / Plug labels rather than requiring operators to re-key the text or blindly reprint a whole prior batch.
+FieldWiring must support targeted reprint of selected Display/output labels rather than requiring operators to re-key text or blindly reprint a whole prior batch.
+
+If two Displays legitimately share one technical channel/output, their separate Display/output label requests are not duplicates.
 
 ## 12. Failure Handling
 
-A failed or partially completed job must not mark all requested labels successful. The implementation must preserve enough per-item state to retry failed items without blindly reprinting successful ones.
+A failed or partially completed job must not mark all requested labels successful. The implementation must preserve enough per-item state to retry failed items without blindly reprinting successful or physically uncertain items.
 
-The current LabelPrintService engineering TODO documents that tape-out detection is not reliable: software/spooler success may occur even when usable tape did not physically print.
+LabelPrintService owns 12 mm media preflight, printer readiness, spooler/printer behavior, tape-out handling, and no-double-print runtime safeguards.
 
-Therefore any new FieldWiring workflow requiring 1/2-inch stock must either prove a reliable cartridge/media-width preflight or require explicit operator confirmation of the correct loaded media before printing.
+A pending FieldWiring request is not proof that a physical label printed.
 
 ## 13. Label Layout Management
 
-Layouts should be centrally controlled by the print service. Operators should not need to select templates or modify printer configuration as part of normal use.
+Layouts are centrally controlled by LabelPrintService. Operators do not select `.lbx` files or modify printer configuration as part of normal use.
 
-The current LabelPrintService repository contains Display and Container LBX templates. A dedicated 1/2-inch FieldWiring Channel / Plug template is a future requirement and must be created/tested in the LabelPrintService workstream rather than improvised by field operators.
+For FieldWiring:
 
-## 14. Engineering Boundary
+```text
+Production Database / FieldWiring
+    -> logical family WIRING_12MM_HORIZONTAL
+    -> physical output
+    -> normalized channel_name description
 
-This document defines label-printing requirements. Current executable behavior is owned by the LabelPrintService and associated database/application integration. Any older Directus-Flow-as-printer-orchestrator assumption must be verified before being treated as current.
+LabelPrintService V4
+    -> runtime family mapping
+    -> output formatting
+    -> line1 / line2 split
+    -> double-sided fold-around rendering
+    -> printer/media execution
+```
 
-FieldWiring should submit controlled print requests; LabelPrintService remains responsible for Brother-specific template rendering, printer communication, cutter behavior, and printer/media status handling.
+Actual `.lbx` names, Windows queue names, local paths, Brother object names, and b-PAC details remain LabelPrintService implementation details.
+
+## 14. Authorization Boundary
+
+FieldWiring wire-label request rights are limited to authenticated users in the accepted Directus roles:
+
+```text
+Production Crew
+Manager
+Administrator
+```
+
+Production Crew receives wire-label selection/request rights only. Manager and Administrator retain progressively broader rights under their existing responsible subsystem contracts.
+
+The wire-label workflow must not grant new rights to change:
+
+```text
+channel numbers
+channel_name values
+LOR UID/address values
+```
+
+Those values remain controlled by the authoritative LOR/V7 wiring path.
+
+Browser support for label requests must use narrow governed server/database commands rather than granting broad table DML to the FieldWiring application role.
+
+## 15. Engineering Boundary
+
+This document defines label-printing requirements. Executable physical-print behavior is owned by LabelPrintService and associated database/application integration.
+
+FieldWiring should submit controlled semantic print requests; LabelPrintService remains responsible for Brother-specific rendering, printer communication, cutter behavior, media/printer status handling, and successful execution finalization.
+
+FieldWiring must not create a second printer service or polling mechanism.
 
 ## Related Documentation
 
