@@ -4,7 +4,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent.parent
 ACCEPT = REPO_ROOT / "Controllers" / "Acceptance"
-TARGET_SHA = "2fd2067958cc0a903260fe6f089f88ae63a857f1"
+TARGET_SHA = "63be47f40be78f608416935ed0583287da9d90e6"
 
 
 def test_production_runner_pins_accepted_target_and_migrations_from_target_worktree() -> None:
