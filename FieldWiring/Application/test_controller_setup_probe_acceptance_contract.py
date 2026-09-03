@@ -7,6 +7,20 @@ ACCEPT = REPO_ROOT / "Controllers" / "Acceptance"
 CANDIDATE_SHA = "49ae25d8a1acb8116f3d0a100d22af9a9d57ad18"
 
 
+def _powershell_code_lines(source: str) -> str:
+    """Return executable-looking PowerShell lines, excluding comments.
+
+    Safety comments intentionally name forbidden patterns such as Tee-Object so
+    operators know what not to do. Contract assertions must inspect code rather
+    than fail merely because a prohibited command is mentioned in documentation.
+    """
+    return "\n".join(
+        line
+        for line in source.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    )
+
+
 def test_setup_probe_wrapper_pins_exact_candidate_and_bundles_023_024() -> None:
     source = (ACCEPT / "run_controller_setup_probe_disposable_acceptance.ps1").read_text(
         encoding="utf-8"
@@ -26,14 +40,15 @@ def test_setup_probe_wrapper_uses_foreground_native_ssh_contract() -> None:
     source = (ACCEPT / "run_controller_setup_probe_disposable_acceptance.ps1").read_text(
         encoding="utf-8"
     )
+    code = _powershell_code_lines(source)
 
-    assert "& scp -r" in source
-    assert "& ssh -tt" in source
-    assert "timeout --signal=TERM 1800s" in source
-    assert "Tee-Object" not in source
-    assert "Start-Process" not in source
-    assert "ssh -f" not in source
-    assert "ssh -N" not in source
+    assert "& scp -r" in code
+    assert "& ssh -tt" in code
+    assert "timeout --signal=TERM 1800s" in code
+    assert "Tee-Object" not in code
+    assert "Start-Process" not in code
+    assert "ssh -f" not in code
+    assert "ssh -N" not in code
 
 
 def test_server_gate_is_exact_candidate_read_probe_then_disposable_writes() -> None:
