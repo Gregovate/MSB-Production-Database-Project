@@ -2,190 +2,253 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — future integration requirement |
+| Status | DRAFT — accepted request/content direction; implementation pending |
 | Sub-project | FieldWiring |
-| Current revision | 2026-08-31 |
+| Current revision | 2026-09-03 |
 | Owner | MSB Database Administrator |
 | Code/schema change status | DOCUMENTATION ONLY |
 
 ## Purpose
 
-FieldWiring will eventually need to generate and reprint physical plug/lead labels from current wiring data without requiring operators to hand-key or manually reinterpret LOR Channel Names in Brother label software.
+FieldWiring needs to generate and reprint physical wire/lead labels from current approved wiring data without requiring operators to hand-key or manually reinterpret LOR wiring names in Brother label software.
 
-This is a cross-system integration requirement between FieldWiring and the existing Labeling / LabelPrintService subsystem. It does not authorize a new printer implementation inside FieldWiring.
+This is a cross-system integration requirement between FieldWiring, the Production Database, the Labeling and Scanning contract, and the existing LabelPrintService subsystem. It does not authorize a new printer implementation inside FieldWiring.
 
-## Why This Is Needed
+The physical printing implementation remains owned by `Gregovate/MSB_LabelPrintService`.
 
-FieldWiring has the current approved wiring rows, controller/output context, LOR Channel Name evidence, Display, network, and snapshot provenance needed to create a controlled label request.
-
-However, the literal LOR **Channel Name is not automatically print-ready label text**.
-
-Some LOR Channel Names intentionally contain authoring-only context that helps keep channels straight inside the preview. A representative pattern is:
+## Accepted System Boundary
 
 ```text
-TC 7B-09 Caroler P1 Mouth Open 2
+FieldWiring / Production Database
+    -> operator selects current wiring outputs/leads
+    -> governed request state
+    -> requester attribution / audit
+    -> current wiring provenance
+    -> normalized channel_name content
+
+Labeling and Scanning contract
+    -> logical label family / payload rules
+
+MSB_LabelPrintService V4
+    -> polling / request consumption
+    -> runtime profile mapping
+    -> split normalized channel_name into print lines
+    -> Brother template / media / b-PAC
+    -> physical printing
+    -> successful-print finalization
 ```
 
-In this example:
+FieldWiring and Production Database must not store Brother `.lbx` paths, Windows printer queue names, PRINT-SERVER filesystem paths, or b-PAC implementation details in wiring, Display, Controller, or request records.
 
-- `TC` is Stage/authoring context;
-- `7B` is controller UID/address context;
-- `09` identifies controller channel/output 9;
-- `P1` is additional plug/context carried in the preview name but is not intended physical-label text; and
-- `Caroler Mouth Open 2` is the useful descriptive metadata intended for the physical wiring line.
+## Authoritative Wiring Source
 
-The Stage short code, controller UID, and plug/context token are useful inside the wiring/preview system but are not part of the descriptive physical label.
+LOR/V7 remains authoritative for current show wiring topology.
 
-The controller channel/output number itself is different: it is intentionally printed as a large standalone integer, normally `1` through `16`, and does not by itself identify a specific controller.
+The current FieldWiring wiring path uses the parser-produced Field Wiring / field-lead interpretation, including the same parser logic used to combine Props/SubProps into the wiring view.
 
-The intended direction is therefore:
+For wire labels, the current resolved `channel_name` carried by the FieldWiring row is the authoritative human wiring-name source. FieldWiring must not create a second independent interpretation of the raw Prop/SubProp source merely for printing.
+
+Permanent identities remain:
 
 ```text
-current approved FieldWiring row
-    -> resolve controller physical channel/output number
-    -> resolve useful printable descriptive metadata
-    -> operator selects wiring labels
-    -> FieldWiring creates controlled print request
-    -> existing LabelPrintService
-    -> Brother label printer
+Display     ref.display.display_id
+Controller  ref.controller.controller_id
 ```
 
-Normal operators must not be required to retype or manually strip the LOR source name.
+Network, UID, universe, channel, and output data are current wiring/configuration context and are not permanent asset identity.
 
-## Authoring Name Versus Printed Wiring Label Contract
+## Accepted Channel-Name Normalization Rule
 
-The LOR Channel Name is source evidence and may include preview-authoring scaffolding. It must not be blindly copied to the physical label.
+The label starts from the current approved FieldWiring `channel_name`.
 
-For wiring labels:
-
-- `objChannel` is the physical controller channel/output number, normally an integer from `1` through `16`;
-- `objChannel` is intentionally the visually dominant field on the label;
-- Stage short codes embedded only for preview organization are **not** intended physical-label text;
-- controller UID/address prefixes embedded only for preview organization are **not** intended physical-label text;
-- plug identifiers or other routing/context tokens such as `P1` are **not** intended descriptive physical-label text;
-- `objLine1` / `objLine2` contain only the useful descriptive connection metadata intended for the installer;
-- controller identity, Stage, network, UID/address, plug/routing context, universe, and other resolved wiring context remains available from the FieldWiring system and may be shown in the pre-print review without being printed on the label;
-- the LabelPrintService must not attempt to infer correctness by blindly trimming arbitrary prefixes/tokens from a raw Channel Name string; and
-- if the controller channel/output and printable descriptive metadata cannot be resolved unambiguously from the approved wiring model, the print request should be blocked/reviewed rather than falling back to the entire raw LOR Channel Name.
-
-For the representative source name:
+Before the description is handed to LabelPrintService, remove only the technical prefix at the beginning of the Channel Name:
 
 ```text
-TC 7B-09 Caroler P1 Mouth Open 2
+<Stage/area short code> + <UID-channel prefix>
 ```
 
-the intended semantic label inputs are:
+The remainder of the current `channel_name` is the label description.
+
+Example:
 
 ```text
-objChannel = 9
-objLine1/objLine2 = Caroler / Mouth Open 2 descriptive metadata
+source channel_name
+TC 7B-10 Caroler P2 Mouth Closed 1
+
+physical output
+10
+
+normalized label description
+Caroler P2 Mouth Closed 1
 ```
 
-The exact one-line/two-line split of that descriptive metadata is a rendering decision to be validated against the 12 mm templates. `TC`, `7B`, and `P1` are not intended physical-label text.
+The accepted rule is deliberately narrow:
 
-This is a data-contract boundary, not a cosmetic string-shortening rule.
+- remove the leading short code used for preview/wiring organization;
+- remove the leading UID-channel token used for LOR addressing;
+- retain the remainder of `channel_name` exactly as the descriptive wiring data;
+- do not independently strip later tokens such as `P1`, `P2`, or other text merely because they resemble routing or authoring context;
+- do not hand-key or manually rewrite the description in the normal operator workflow; and
+- if the expected leading technical prefix cannot be resolved under the accepted wiring/parser rules, block/review that label instead of silently guessing.
+
+This normalization belongs with the FieldWiring/Production Database semantic request side because it depends on the accepted wiring interpretation. LabelPrintService must not become a second parser that tries to infer which leading tokens are LOR wiring scaffolding.
+
+## Print-Line Split Boundary
+
+FieldWiring supplies the normalized descriptive `channel_name` content and the resolved physical output.
+
+LabelPrintService V4 owns the physical rendering split into the two label text lines.
+
+Conceptually:
+
+```text
+FieldWiring request
+    physical_output = 10
+    label_description = Caroler P2 Mouth Closed 1
+
+LabelPrintService V4
+    -> formats physical output for the approved template
+    -> splits label_description into objLine1 / objLine2
+    -> repeats the same logical content on both halves of the fold-around label
+```
+
+The Production Database request must not encode Brother object names or duplicate left/right template fields merely because the physical template repeats them.
 
 ## Label Class Boundary
 
-A FieldWiring plug/lead label is a **configuration / hookup label**, not a permanent asset-identity label.
+A FieldWiring wire/lead label is a **configuration / hookup label**, not a permanent asset-identity label.
 
-Unlike a Display, Container, or future Controller QR/identity label, descriptive wiring metadata may change when the approved LOR wiring topology changes.
+Descriptive wiring metadata may change when the approved LOR wiring topology changes. Therefore:
 
-Therefore:
-
-- the printed text is derived from the current approved structured wiring state;
+- the printed content is derived from current approved structured wiring state;
 - print history must retain enough source provenance to identify which wiring build produced the label;
-- a later output assignment or metadata change may require a controlled replacement/reprint; and
-- the plug/lead label must not be used as the permanent identity key for the controller, Display, or wiring relationship.
+- later wiring changes may require a controlled replacement/reprint; and
+- the wire label must not be used as the permanent identity key for the Controller, Display, or wiring relationship.
 
-## Known Printer / Service Context
+## Accepted Label Unit and Quantity
 
-The established printer system is the existing **MSB_LabelPrintService** using the Brother P-Touch PT-P950NW network label printer.
+The physical labeling rule is:
 
-The Production Database labeling design already requires centrally controlled templates, duplicate prevention, intentional reprints, print tracking, and per-item failure handling.
+> **Each Display receives one wire label for each physical controller output used by that Display.**
 
-The LabelPrintService v4 workstream now includes dedicated 12 mm FieldWiring templates:
+A wire-label request item therefore represents one selected Display/output relationship from the current FieldWiring result.
 
-```text
-wiring_label_1_line_horz_12mm.lbx
-wiring_label_2_line_horz_12mm.lbx
-```
+### Shared output/channel behavior
 
-The current object contract is:
+If two Displays share the same programmed channel/output, they remain separate physical Displays and each receives its own wire label using that Display's own current `channel_name`.
 
-```text
-one-line: objChannel, objLine1
-two-line: objChannel, objLine1, objLine2
-```
-
-`objChannel` is the visually dominant physical controller channel/output number, normally `1` through `16`.
-
-`objLine1` / `objLine2` contain only useful descriptive connection metadata. Preview-only Stage/controller-UID and plug/routing context must be excluded by the structured wiring model before the print request reaches LabelPrintService.
-
-The exact structured FieldWiring source fields supplying those objects must be resolved before Wiring printing is implemented.
-
-The field team has specified **1/2-inch / 12 mm laminated label stock** for these plug/lead labels.
-
-Text wrapping/splitting rules, font sizing, cutter behavior, and representative long metadata handling must be tested specifically for this stock before production use.
-
-## Cartridge / Media Preflight
-
-FieldWiring must not assume that the printer has the correct tape cartridge merely because a print request was accepted.
-
-The LabelPrintService v4 preflight work has established Brother SNMP evidence for 12 mm, 24 mm, and 36 mm laminated tape, including no-media, cover-open, and end-of-media states. Wiring printing must use that central printer/media preflight rather than creating a FieldWiring-specific printer check.
-
-For FieldWiring label printing, a production-ready preflight must verify at least:
+Example conceptually:
 
 ```text
-correct printer available
-correct 12 mm laminated media loaded
-required FieldWiring template available
-printer/service ready
+Controller output X
+    Display A -> one label using Display A channel_name
+    Display B -> one label using Display B channel_name
 ```
 
-A software submission response alone must not be treated as proof that the physical labels printed correctly.
+FieldWiring must not deduplicate the two labels merely because their current technical channel/output relationship is shared.
 
-## Controlled Print Workflow
+### Traditional / Pixie output behavior
 
-The normal workflow should be approximately:
+For normal A/C and Pixie relationships, each Display receives one label per resolved physical output used by that Display.
+
+### E1.31 / DMX physical-output behavior
+
+E1.31/DMX-controlled hardware also receives one label per physical controller output.
+
+Examples of the accepted quantity rule include:
 
 ```text
-1. Operator opens resolved FieldWiring context.
-2. Operator selects one or more wiring labels.
-3. FieldWiring resolves controller channel/output number and printable descriptive metadata.
-4. FieldWiring shows a pre-print review of exactly what will be printed plus the supporting Stage/controller/network/plug context.
-5. Operator confirms label count and printable text.
-6. Printer/media/template preflight passes.
-7. FieldWiring submits a controlled request to LabelPrintService.
-8. LabelPrintService renders and prints the batch.
-9. Per-label / per-item result is retained.
-10. Operator can reprint only failed/damaged/missing labels when needed.
+Pixie4D -> 4 physical output labels when all 4 outputs are used by the selected Display/controller relationship
+Pixie2D -> 2 physical output labels when both outputs are used by the selected Display/controller relationship
 ```
 
-The pre-print review should make the source context obvious enough to catch a wrong Stage/Scene/Background/Musical selection before tape is consumed, even when those context fields are intentionally omitted from the physical label.
+The count comes from the resolved physical controller/output relationship presented by FieldWiring, not from raw universe count, raw DMX channel count, or a generic compatibility-view `Controller` value.
 
-## Checks and Balances
+## Logical Label Family
 
-At minimum, the integration must provide:
+The accepted logical Production Database / LabelPrintService family for this label class is:
 
-- controller physical channel/output number sourced from the current approved structured wiring data;
-- printable descriptive metadata sourced from the current approved structured wiring data;
-- no normal hand-keying or manual prefix stripping of label text;
-- raw LOR Channel Name retained as source evidence where useful, but not assumed to be the literal physical-label text;
-- Stage/Sub-stage/Scene and Background/Musical context visible before printing;
-- physical controller/group and Output/Plug context visible when known;
-- Stage, controller-UID, and plug/routing authoring context excluded from the descriptive physical label text;
-- requested label count visible before printing;
-- centrally controlled FieldWiring label template;
-- required 12 mm media/cartridge preflight;
-- protection against accidental duplicate batch printing;
-- intentional reprint capability;
-- a required or selected reprint reason;
-- targeted reprint of selected/failed labels rather than the whole prior batch;
-- per-item print result where technically possible;
-- requester / timestamp tracking;
-- wiring snapshot / Preview provenance sufficient to identify the source data; and
-- no fragile LabelPrintService-only string parser that silently guesses which parts of an arbitrary LOR Channel Name are authoring scaffolding.
+```text
+WIRING_12MM_HORIZONTAL
+```
+
+This identifies the governed 12 mm horizontal Wiring label family without encoding printer-specific implementation.
+
+LabelPrintService V4 owns the runtime mapping from that logical family to the approved Brother printer, 12 mm laminated media, fold-around template, and physical object bindings.
+
+## Approved Physical Format
+
+The current V4 physical format is the double-sided fold-around 12 mm Wiring label.
+
+One logical label contains:
+
+```text
+physical output number
+normalized FieldWiring description
+```
+
+The same logical data is rendered on both halves so the label remains readable after it is folded around the wire/lead.
+
+The double-sided physical format does **not** mean two requested labels. One selected Display/output relationship normally produces one physical fold-around label.
+
+## Operator Selection Workflow
+
+The normal FieldWiring workflow should be:
+
+```text
+1. Operator opens current resolved FieldWiring context.
+2. FieldWiring presents the current Display/controller/output relationships.
+3. Operator selects individual Display/output labels or a useful group of those labels.
+4. FieldWiring shows the exact selected Displays, physical outputs, and normalized label descriptions.
+5. Operator confirms the selected label count.
+6. Production Database creates governed request state with requester/audit/provenance.
+7. LabelPrintService V4 later consumes the governed pending request.
+8. LabelPrintService performs printer/media/template preflight, rendering, and physical printing.
+9. Successful print state is finalized without clearing unrelated pending requests.
+```
+
+Convenience selection such as all outputs for one Display or Controller may be provided, but the underlying request quantity remains one item per Display/output relationship.
+
+The browser must not make hand-entered label text the authority.
+
+## Request Identity and Snapshot Requirement
+
+The current FieldWiring compatibility row does not itself provide a permanent asset-style row identity. A governed wire-label request must therefore snapshot enough information to remain unambiguous even after later LOR changes.
+
+At minimum preserve as applicable:
+
+```text
+request / request-item identity
+permanent display_id
+permanent controller_id when resolved
+physical output
+normalized label description
+raw/current channel_name as source evidence
+current Stage / Sub-stage / Scene context
+Preview identity / revision
+LOR import_run_id / parser provenance
+current network / UID / universe / channel context needed for engineering traceability
+logical label family
+requester / requested timestamp
+```
+
+Network, UID, universe, and channel values are frozen provenance/context, not permanent identity.
+
+Historical request content must not be rewritten merely because a later LOR import changes the current wiring.
+
+## Pending, Duplicate, Cancel, and Reprint Behavior
+
+The request workflow must prevent accidental duplicate physical printing while still allowing intentional replacement labels.
+
+Accepted direction:
+
+- one selected Display/output relationship creates one normal pending request item;
+- an equivalent request already pending must not create another accidental duplicate;
+- a pending item may be cancelled before the downstream print service has claimed/frozen it for execution;
+- completed history remains immutable;
+- an intentional reprint is a new controlled request linked to prior print history where practical;
+- the reprint reason must be retained; and
+- failed/uncertain print execution must not be blindly resubmitted in a way that can double-print an uncertain boundary label.
 
 Useful reprint reasons include:
 
@@ -200,92 +263,149 @@ operator test
 other controlled reason
 ```
 
-## Label Content — Accepted Direction
+## Authorization Boundary
 
-The essential physical-label content is exactly:
-
-```text
-large controller channel/output number
-+ useful descriptive connection metadata
-```
-
-The large controller channel/output number is normally `1` through `16`. It is intentionally printed and does not, by itself, identify a particular controller.
-
-The raw LOR Channel Name may contain additional Stage/controller UID/address and plug/routing scaffolding needed for preview authoring or wiring context and therefore must not be treated as the label specification.
-
-A 12 mm label has limited real estate. `objChannel` is the visually dominant field. `objLine1` / `objLine2` carry only the concise descriptive connection metadata supported by the tested template.
-
-Additional context such as Stage, controller identity, UID/address, plug/routing identifier, Display, network, universe, or source Preview can remain visible in the FieldWiring browser/pre-print review and available through the wiring system rather than being permanently printed on every lead.
-
-The final source-field mapping and representative short/long metadata cases must be validated before production approval.
-
-## Relationship to FieldWiring Physical Presentation
-
-Label printing must use the same physical interpretation presented to the installer while avoiding unnecessary Stage/controller/plug context on the physical wiring line.
-
-Examples:
+Wire-label request authorization is limited to authenticated users in these accepted Directus roles:
 
 ```text
-Traditional A/C
-    physical controller channel/output 1-16 -> objChannel
-    resolved descriptive connection metadata -> objLine1/objLine2
-    Stage + controller UID/address + plug/routing context remain wiring-system context
-
-Pixie
-    physical controller channel/output 1-16 -> objChannel
-    resolved descriptive connection metadata -> objLine1/objLine2
-    controller assignment and plug/routing context remain available in FieldWiring
-
-E1.31
-    accepted physical controller output -> objChannel when that output contract is established
-    resolved descriptive connection metadata -> objLine1/objLine2
-    universe/controller/plug context remains available in FieldWiring unless specifically approved as label text
+Production Crew
+Manager
+Administrator
 ```
 
-Raw LOR Unit IDs, DMX/E1.31 universes, compatibility-view `Controller` values, Stage short codes, or plug/routing tokens must not be substituted into the descriptive physical label text merely because they are easy to extract from the preview.
+The privilege model is intentionally graduated:
+
+```text
+Production Crew
+    -> select/request/cancel wire-label printing as allowed by the request workflow
+    -> no broader wiring or Controller configuration editing
+
+Manager
+    -> wire-label request rights
+    -> additional Manager-level operational rights defined by the responsible subsystem contracts
+
+Administrator
+    -> highest existing administrative rights under the current authorization model
+```
+
+The wire-label implementation must **not** grant any of these roles new rights through this workflow to change:
+
+```text
+channel numbers
+channel_name values
+LOR UID/address values
+```
+
+Those facts remain controlled by the authoritative LOR/V7 wiring path and its existing engineering workflows.
+
+The browser application role must not receive broad table DML merely to support wire-label requests. Reuse the existing protected-browser pattern:
+
+```text
+Cloudflare-authenticated operator
+    -> server-side role/capability validation
+    -> narrow SECURITY DEFINER PostgreSQL command
+    -> fieldwiring_app EXECUTE only
+```
+
+No direct broad INSERT/UPDATE/DELETE grant to `fieldwiring_app` is authorized by this requirement.
+
+## Requester / Audit Behavior
+
+The governed request must capture the human requester at request creation rather than requiring LabelPrintService to infer the actor later from mutable Display or Controller rows.
+
+At minimum retain:
+
+```text
+requested_by
+requested_by_person_id
+requested_at
+```
+
+Normal MSB audit fields and actor resolution rules apply to writable request records/functions.
+
+## Printer / Media Preflight Boundary
+
+FieldWiring does not perform Brother/printer readiness checks.
+
+LabelPrintService V4 owns central preflight for the `WIRING_12MM_HORIZONTAL` family, including the required printer, correct 12 mm laminated media, template availability, printer readiness, and no-double-print safeguards.
+
+A FieldWiring request becoming pending is not proof that the physical label printed.
+
+## Checks and Balances
+
+At minimum, the integration must provide:
+
+- one request item per selected Display/physical-output relationship;
+- separate labels for separate Displays even when they share a channel/output;
+- E1.31/DMX quantity based on resolved physical controller outputs;
+- current `channel_name` as the descriptive source;
+- removal of only the accepted leading short-code + UID-channel prefix;
+- no normal hand-keying of wire-label text;
+- V4-owned split of the normalized description into physical print lines;
+- visible selected label count before request submission;
+- logical family `WIRING_12MM_HORIZONTAL`;
+- requester / timestamp tracking;
+- wiring snapshot / Preview provenance sufficient to identify the source data;
+- accidental duplicate prevention;
+- intentional targeted reprint capability;
+- per-item result where technically possible;
+- no new browser rights to alter channel numbers, Channel Names, or UIDs; and
+- no Brother template/path/printer implementation in FieldWiring.
 
 ## Implementation Boundary
 
-FieldWiring should resolve and request the semantic label content; **MSB_LabelPrintService remains responsible for printer-specific rendering and printer communication**.
-
-This means:
+FieldWiring / Production Database owns the semantic request:
 
 ```text
-FieldWiring / wiring model
-    -> supplies controller channel/output number
-    -> supplies printable descriptive metadata
-
-LabelPrintService
-    -> places channel/output in objChannel
-    -> decides HOW supplied descriptive metadata is rendered in objLine1/objLine2
+which Display/output relationships were selected
+resolved physical output
+normalized channel_name description
+requester / audit
+current wiring provenance
+logical label family
 ```
 
-LabelPrintService must not become a second wiring parser whose correctness depends on reverse-engineering naming prefixes/tokens from LOR Channel Name text.
+LabelPrintService V4 owns the physical execution:
 
-FieldWiring must not create a second independent Brother printer integration if the existing LabelPrintService can be extended to support this label class.
+```text
+polling / claiming pending work
+runtime family mapping
+line1 / line2 split
+output formatting
+fold-around template rendering
+12 mm media / printer preflight
+b-PAC / spooler / printer behavior
+physical printing
+successful-print finalization
+```
 
-The future implementation work should be coordinated with the Labeling and Scanning / LabelPrintService workstream.
+FieldWiring must not create a second independent Brother printer stack or polling mechanism.
 
 ## Acceptance Requirements
 
-Before FieldWiring channel/plug label printing is considered production-ready, test at minimum:
+Before FieldWiring wire-label requesting is considered production-ready, test at minimum:
 
-1. the dedicated 12 mm FieldWiring one-line and two-line templates;
-2. representative controller channel/output values, including normal `1` through `16` values;
-3. representative short and long printable descriptive metadata;
-4. a representative LOR name containing Stage + UID/channel + plug/routing authoring context and prove those non-label tokens are omitted while the resolved channel/output number is retained in `objChannel`;
-5. one-label printing;
-6. multi-label batch printing;
-7. exact structured channel/output and descriptive metadata transfer with no re-keying;
-8. pre-print review showing both printable fields and supporting controller/Stage/plug context;
-9. correct 12 mm media/cartridge preflight;
-10. intentional reprint of one selected label;
-11. partial-batch failure and targeted retry;
-12. accidental duplicate-print protection;
-13. changed structured wiring metadata / replacement-label workflow;
-14. requester and source-provenance tracking;
-15. physical verification that printed labels correspond to the selected controller outputs; and
-16. proof that LabelPrintService does not rely on a fragile hard-coded parser for Stage/UID/address/plug prefixes.
+1. one normal Display/output selection;
+2. one Display using multiple outputs and prove one label per output;
+3. two Displays sharing one programmed channel/output and prove each receives a separate label using its own `channel_name`;
+4. a representative raw `channel_name` with leading short code + UID-channel prefix and prove only that prefix is removed;
+5. a representative value containing `P1`, `P2`, or similar text after the prefix and prove that text is retained;
+6. V4 line splitting of the normalized description without FieldWiring pre-splitting the Brother object fields;
+7. Pixie4D physical-output quantity;
+8. Pixie2D physical-output quantity;
+9. representative E1.31/DMX physical-output selection without substituting universe/channel count for physical output count;
+10. individual-label selection;
+11. multi-label selection for one Display;
+12. useful grouped selection while retaining one request item per Display/output;
+13. accidental duplicate request protection;
+14. cancellation while still pending;
+15. intentional targeted reprint with reason;
+16. requester and source-provenance tracking;
+17. Production Crew can request labels but cannot change channel number/name/UID through this workflow;
+18. Manager and Administrator authorization remains consistent with their existing increasing rights;
+19. `fieldwiring_app` has no broad table DML for the workflow;
+20. correct `WIRING_12MM_HORIZONTAL` handoff to LabelPrintService; and
+21. no FieldWiring dependency on Brother `.lbx` path, Windows printer queue, PRINT-SERVER filesystem layout, or b-PAC internals.
 
 ## Related Documents
 
