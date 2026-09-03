@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -101,7 +102,13 @@ def test_browser_preview_cleanup_proves_production_unchanged() -> None:
     assert 'worktree remove --force "$CANDIDATE_WORKTREE"' in server
     assert 'rm -f "$DUMP_FILE"' in server
     assert 'kill -- -"$PREVIEW_PGID"' in server
-    assert "sudo git -C \"$FIELDWIRING_ROOT\" merge" not in server
+    # merge-base is a read-only ancestry check and must not be mistaken for a
+    # live checkout mutation. Reject only an actual `git ... merge` command.
+    assert re.search(
+        r'^\s*sudo git -C "\$FIELDWIRING_ROOT" merge(?:\s|$)',
+        server,
+        flags=re.MULTILINE,
+    ) is None
     assert "systemctl restart" not in server
 
 
