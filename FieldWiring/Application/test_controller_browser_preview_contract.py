@@ -57,7 +57,8 @@ def test_browser_preview_uses_separate_local_flask_port_and_foreground_ssh() -> 
     assert "$PreviewPort = 8793" in wrapper
     assert '-L "${PreviewPort}:127.0.0.1:${PreviewPort}"' in wrapper
     assert "& ssh -tt -L" in wrapper
-    assert "Start-Process" not in wrapper
+    assert "Start-Process $browserUrl" in wrapper
+    assert "Start-Process ssh" not in wrapper
     assert "Tee-Object" not in wrapper
     assert 'MSB_PREVIEW_HOST="127.0.0.1"' in server
     assert 'http://127.0.0.1:$PREVIEW_PORT/controllers' in server
@@ -102,3 +103,21 @@ def test_browser_preview_cleanup_proves_production_unchanged() -> None:
     assert 'kill -- -"$PREVIEW_PGID"' in server
     assert "sudo git -C \"$FIELDWIRING_ROOT\" merge" not in server
     assert "systemctl restart" not in server
+
+
+def test_stale_preview_cleanup_is_narrowly_scoped() -> None:
+    server = (ACCEPT / "controller_setup_management_browser_preview_cleanup_server.sh").read_text(
+        encoding="utf-8"
+    )
+    wrapper = (ACCEPT / "run_controller_setup_management_browser_preview_cleanup.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "^msb-controller-browser-preview-" in server
+    assert "^/tmp/msb-controller-browser-preview-candidate-" in server
+    assert "/tmp/msb-controller-browser-preview-*" in server
+    assert "msb-postgres" not in server
+    assert "systemctl" not in server
+    assert "reset --hard" not in server
+    assert "ProcessName -ne 'ssh'" in wrapper
+    assert "Stop-Process" in wrapper
