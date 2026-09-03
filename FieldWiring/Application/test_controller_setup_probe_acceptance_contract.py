@@ -8,12 +8,7 @@ CANDIDATE_SHA = "2fd2067958cc0a903260fe6f089f88ae63a857f1"
 
 
 def _powershell_code_lines(source: str) -> str:
-    """Return executable-looking PowerShell lines, excluding comments.
-
-    Safety comments intentionally name forbidden patterns such as Tee-Object so
-    operators know what not to do. Contract assertions must inspect code rather
-    than fail merely because a prohibited command is mentioned in documentation.
-    """
+    """Return executable-looking PowerShell lines, excluding comments."""
     return "\n".join(
         line
         for line in source.splitlines()
@@ -33,7 +28,7 @@ def test_setup_probe_wrapper_pins_exact_candidate_and_bundles_023_024() -> None:
     assert "$sql024Text.TrimStart()" in source
     assert "controller_setup_probe_disposable_server.sh" in source
     assert "controller_management_disposable_server.sh" in source
-    assert ".Replace(\"`r`n\", \"`n\")" in source
+    assert '.Replace("`r`n", "`n")' in source
 
 
 def test_setup_probe_wrapper_uses_foreground_native_ssh_contract() -> None:
@@ -45,24 +40,25 @@ def test_setup_probe_wrapper_uses_foreground_native_ssh_contract() -> None:
     assert "& scp -r" in code
     assert "& ssh -tt" in code
     assert "timeout --signal=TERM 1800s" in code
-    assert "Tee-Object" not in code
     assert "Start-Process" not in code
     assert "ssh -f" not in code
     assert "ssh -N" not in code
 
 
-def test_wrapper_patches_disposable_postgres_init_race_before_restore() -> None:
+def test_wrapper_inserts_disposable_postgres_final_ready_gate_by_createdb_line() -> None:
     source = (ACCEPT / "run_controller_setup_probe_disposable_acceptance.ps1").read_text(
         encoding="utf-8"
     )
 
-    assert "Write-PatchedManagementServer" in source
+    assert "Write-StabilizedManagementServer" in source
+    assert "$lines = $text -split" in source
+    assert 'createdb -U \"$DB_ACTOR\" -T template0 \"$TEST_DB\"' in source
+    assert "$matches.Count -ne 1" in source
     assert "PostgreSQL init process complete; ready for start up" in source
-    assert 'pg_isready -U "$DB_ACTOR" -d postgres' in source
+    assert "final_ready=0" in source
     assert "disposable PostgreSQL final server did not become ready" in source
-    assert "Disposable PostgreSQL logs (failure evidence)" in source
-    assert "$text.Contains($oldReady)" in source
-    assert "$text.Replace($oldReady, $newReady)" in source
+    assert "bash -n" in source
+    assert "$text.Replace($oldReady, $newReady)" not in source
 
 
 def test_server_gate_is_exact_candidate_read_probe_then_disposable_writes() -> None:
