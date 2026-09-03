@@ -4,22 +4,23 @@ This subsystem documents how MSB presents, enriches, and operationally uses wiri
 
 ## Current State
 
-**FieldWiring and its first permanent Controller Inventory integration are production-operational.**
+**FieldWiring and Controller Inventory V0.4.0 are production-operational.**
 
 Current accepted production checkpoint:
 
 ```text
-checkout                    84d6f06e16c43ebb0f6aa21273b999af7f6d455b
-FieldWiring                  V0.3.1 / postgres / healthy
+checkout                    63be47f40be78f608416935ed0583287da9d90e6
+FieldWiring                  V0.4.0 / postgres / healthy
 Procedures                   V0.1.0 / postgres / healthy
-combined live regression     183 passed in 2.39s
+Controller fingerprint       578217bcb18e1291ceced673a3de3b27 unchanged at deployment
 ```
 
 Accepted production state includes:
 
 - FieldWiring browser application: `https://my.sheboyganlights.org/fieldwiring/`;
+- Controller Inventory browser: `https://my.sheboyganlights.org/fieldwiring/controllers`;
 - Display Scan application: `https://my.sheboyganlights.org/scan/`;
-- live read-only PostgreSQL backend;
+- live PostgreSQL-backed FieldWiring/Controller application;
 - systemd-hosted FieldWiring backend on `192.168.5.9:8790`;
 - persistent read-only Google `Display Folders` filesystem operational;
 - protected Synology reverse proxies operational;
@@ -30,6 +31,11 @@ Accepted production state includes:
 - permanent Controller ID/model context in FieldWiring where governed relationships resolve the physical device;
 - FieldWiring -> Controller Inventory cross-links;
 - Controller Inventory -> Field Wiring links from Display assignments;
+- Controller capacity planning against current LOR/V7 evidence;
+- governed Add/Edit Controller maintenance;
+- governed many-to-many Controller-to-Display assignment/edit/reassign/unassign workflow;
+- contextual operator help and unsaved-change protection;
+- governed Controller Print Label request action, with physical polling/printing owned separately by `MSB_LabelPrintService`;
 - existing Display QR/scan hub includes the independent **Field Wiring** action;
 - Directus-facing Scan actions use the established `https://db.sheboyganlights.org/` origin;
 - FormView remains available as fallback/reference.
@@ -48,6 +54,7 @@ For current production/recovery state, begin with:
 
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - [Controller Management Application Boundary — 2026-08-31](../08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md)
+- [Controller V0.4.0 Post-Deployment Operational Decisions — 2026-09-03](../08_Controller_Inventory/Controller_V0.4.0_Post_Deployment_Operational_Decisions_2026-09-03.md)
 - [FieldWiring / Controller Inventory Handoff — 2026-08-20](FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
 - [FieldWiring Application README](../../../../FieldWiring/Application/README.md)
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
@@ -92,23 +99,34 @@ FieldWiring interprets and presents those facts together with current LOR wiring
 
 ## Controller Management Boundary
 
-The working Controller Inventory browser is the accepted read-side foundation for Controller Management.
+Browser-native Controller Management is deployed in FieldWiring V0.4.0.
 
-Directus is **not** the Controller operational editor. It remains the shared login/identity/Manager-policy authority and a secondary simple one-table/reference maintenance tool.
-
-Browser-native Controller Management owns the future Manager workflow:
+Authentication/authorization is:
 
 ```text
-Controller Detail
-    -> authenticated Manager check
-    -> Edit / Add Controller
+Cloudflare Access authenticated email
+    -> protected proxy/origin
+    -> Controller backend
+    -> current Directus user / role / policy capability data
+    -> governed PostgreSQL command
+```
+
+Directus is **not** the Controller operational editor and no Directus login/session bridge is required.
+
+The deployed Manager/Administrator workflow is:
+
+```text
+Controller Inventory
+    -> Plan Capacity
+    -> Add Controller
+    -> Edit Controller
     -> current programmed Network / UID / IP maintenance
-    -> Assign / Reassign / Unassign Displays
-    -> label request action
+    -> Assign / Edit / Reassign / Unassign Displays
+    -> Controller label request action
     -> PostgreSQL validation / audit
 ```
 
-Do not make the read-only `fieldwiring_app` database role broadly writable merely to add Controller management controls.
+The application role must not receive broad Controller table DML merely to support these controls. Controlled writes use narrow server-authorized PostgreSQL functions.
 
 The permanent Controller/Display relationship retains:
 
@@ -142,7 +160,7 @@ DMX + RGB — reviewed dense RGB cases
 
 The generic compatibility-view `Controller` and `StartChannel` columns do not have one universal physical meaning across these families.
 
-Permanent Controller Inventory now supplements physical identity/context where governed relationships resolve the device. Remaining temporary E1.31/family-specific mappings are presentation evidence only and must remain centralized/replaceable until permanent Controller evidence fully covers those cases.
+Permanent Controller Inventory supplements physical identity/context where governed relationships resolve the device. Remaining temporary E1.31/family-specific mappings are presentation evidence only and must remain centralized/replaceable until permanent Controller evidence fully covers those cases.
 
 ## Permanent Controller Resolver Contract
 
@@ -179,6 +197,9 @@ The production application supports:
 - current Display assignments, firmware history, and label state;
 - permanent Controller ID/model context in FieldWiring;
 - bidirectional FieldWiring / Controller Inventory navigation;
+- Controller capacity planning;
+- Controller Add/Edit and assignment management for authorized roles;
+- contextual help for non-obvious Controller fields;
 - collapsible controller/presentation groups;
 - long-list sticky controller context;
 - shared image + Field Hookup workspace on desktop/laptop;
@@ -265,14 +286,16 @@ rather than root-relative `/admin/...` links under `my.sheboyganlights.org`.
 - permanent Display and Controller identities and database-owned relationships;
 - FieldWiring and Scan application/business source;
 - scan-to-FieldWiring `display_id` contract;
-- Wiring/Controller Inventory/Setup integration boundaries.
+- Wiring/Controller Inventory/Setup integration boundaries;
+- governed request state for workflows implemented in the Production Database.
 
 ### FieldWiring responsibility
 
 - task-focused field hookup lookup/presentation;
 - Stage/Sub-stage/Scene-aware scope resolution;
 - device-family-aware physical hookup presentation;
-- permanent Controller context/cross-links as a read consumer;
+- permanent Controller context/cross-links;
+- Controller Inventory operator UX hosted by the shared FieldWiring application;
 - current image/context presentation;
 - browser/desktop/phone UX;
 - currentness/expiration presentation;
@@ -284,8 +307,17 @@ rather than root-relative `/admin/...` links under `my.sheboyganlights.org`.
 - current Controller model/status/location/firmware/programmed configuration;
 - current Controller-to-Display relationships;
 - reviewed duplicated-channel wiring-source relationships;
-- browser-native Manager operational workflow;
+- browser-native governed operational workflow;
 - Controller label request state.
+
+### LabelPrintService responsibility
+
+- polling governed pending print requests that belong to its accepted scope;
+- logical-profile-to-runtime printer/template/media mapping;
+- Brother/b-PAC physical rendering;
+- print-service preflight, finalization, logging, and recovery.
+
+Controller physical print polling belongs in `Gregovate/MSB_LabelPrintService`, not the Controller/FieldWiring application.
 
 ### MSB-Server-Management responsibility
 
@@ -309,15 +341,14 @@ rather than root-relative `/admin/...` links under `my.sheboyganlights.org`.
 
 Current cross-workstream open work includes:
 
-- browser-native authenticated Manager Controller editing;
-- Add Controller shelf-stock workflow;
-- Controller ↔ Display assignment/reassignment/unassignment workbench;
-- Manager `print_label` request action and later label-service handoff;
+- Controller physical label polling/printing in `Gregovate/MSB_LabelPrintService`;
+- FieldWiring wire/plug/channel-label **request** integration as a separate Production Database subproject, with physical polling/printing remaining in LabelPrintService;
 - replacement of remaining temporary FieldWiring physical presentation mappings only when permanent Controller evidence fully covers their real cases;
 - Mega Cube and Whoville Matrix compact CustomGrid expansion, which remains a separate parser-materialization limitation;
-- plug/channel-label request integration;
 - offline/self-contained field copy;
 - deferred Scan regression cases when suitable physical/data examples are available.
+
+Controller reporting is intentionally deferred until normal crew use establishes actual reporting requirements.
 
 ## FormView Cutover Rule
 
@@ -327,12 +358,15 @@ Keep FormView available as fallback/reference until a separate cutover decision 
 
 ## Resume Development
 
-Do not resume from the original FieldWiring recovery or shared-resolver extraction backlog. Those gates are accepted.
+The Controller Inventory V0.4.0 implementation is production-deployed and in PR/branch closeout. Do not reopen its completed Add/Edit/assignment work as a Wiring backlog item.
 
-The current Controller/Wiring resume point is documented in:
+New work should begin as a separate bounded subproject from current repository/runtime evidence. The next known Wiring feature is the governed FieldWiring wire-label request workflow; physical printer polling/rendering remains a separate LabelPrintService responsibility.
+
+For current Controller/Wiring authority use:
 
 - [Controller Inventory](../08_Controller_Inventory/README.md)
 - [Controller Management Application Boundary](../08_Controller_Inventory/Controller_Management_Application_Boundary_2026-08-31.md)
+- [Controller V0.4.0 Post-Deployment Operational Decisions](../08_Controller_Inventory/Controller_V0.4.0_Post_Deployment_Operational_Decisions_2026-09-03.md)
 - [FieldWiring / Controller Inventory Handoff](FieldWiring_Controller_Inventory_Handoff_2026-08-20.md)
 
 Every deployed change affecting FieldWiring or shared resolver code must preserve the FieldWiring + Procedures regression gate. Durable findings and accepted changes must be written into the responsible Controller/Wiring documents during the work rather than reconstructed from conversation history later.
