@@ -26,7 +26,8 @@ The subsystem is in engineering reconnaissance. No Setup Session schema, applica
 Current durable findings and design constraints are preserved in:
 
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
-- [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md) — preserves the current KIT/Container finding that `goes_to` is a broad endpoint such as Park and does not provide the Stage relationship needed by Setup pick-list generation.
+- [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md) — preserves the current KIT/Container finding that `goes_to` is a broad endpoint such as Park and does not provide the complete Setup-support relationship needed by pick-list generation.
+- [Stage GPS Reference Data Reconnaissance — 2026-09-03](../../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md) — preserves the current 31-point park Stage/setup reference-coordinate dataset and the GIS ingestion/identity gates.
 
 ### 2026 MVP boundary
 
@@ -34,7 +35,7 @@ The first Setup Session implementation is intentionally focused on the annual pl
 
 Detailed KIT/material inventory is **deferred by design** from the 2026 MVP. KITs are operationally important future work, but small non-LOR items such as ties, garland, hardware, small structural pieces, some lighting pieces, stakes/cords/plugs/bull line, and similar materials must not be forced into LOR Preview or `ref.display` merely to make the first Setup Session work.
 
-Existing KIT **Containers** are different from detailed KIT contents: the Containers already have permanent identity and can be useful to 2026 planning. Current reconnaissance must determine how those Containers relate durably to the Stage/Setup work they support without repurposing the existing broad `goes_to` endpoint.
+Existing KIT **Containers** are different from detailed KIT contents: the Containers already have permanent identity and are in scope for 2026 planning. If a KIT is known to support the selected Stage/setup area, the KIT Container belongs on that work's physical pick list even though its individual contents are not yet inventoried.
 
 The current engineering reconnaissance owns the detailed scope boundary and future KIT integration direction.
 
@@ -68,7 +69,7 @@ It does **not** own:
 - [#113 — Scan application and Setup-season scanning integration](https://github.com/Gregovate/MSB-Production-Database-Project/issues/113) remains the Scan readiness umbrella.
 - [#88 — Setup-critical Location scan resolution and movement workflow](https://github.com/Gregovate/MSB-Production-Database-Project/issues/88) remains the focused Location/Scan integration work. Its accepted output must be reusable by Setup Session rather than becoming the Setup planner itself.
 - [Containers and Storage](../../04_Containers_and_Storage/README.md) owns permanent Container identity, current Display-to-Container assignments, and home/intended storage relationships.
-- [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md) owns durable site/location identity, authoritative/reference coordinates, coordinate transformation, and spatial calculations.
+- [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md) owns durable site/location identity, authoritative/reference coordinates, coordinate transformation, and spatial calculations. Setup Session consumes the reconciled Stage/site destination references and gives device observations their operational movement meaning.
 - [Testing System](../../05_Testing_System/README.md) provides a useful annual-session pattern for comparison only; Setup Session must be designed around the actual Setup process.
 
 ## Engineering Rule
@@ -89,6 +90,7 @@ Before schema or application implementation:
 - [Setup and Deployment](../README.md)
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
+- [Stage GPS Reference Data Reconnaissance — 2026-09-03](../../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
 - [Scan Workflows and Forklift Operations](../../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md)
 - [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md)
 - [Containers and Storage](../../04_Containers_and_Storage/README.md)
