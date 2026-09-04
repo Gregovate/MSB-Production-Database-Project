@@ -26,6 +26,7 @@ The subsystem is in engineering reconnaissance. No Setup Session schema, applica
 Current durable findings and design constraints are preserved in:
 
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
+- [Historical Setup Planning Evidence — 2024](engineering/Historical_Setup_Planning_Evidence_2024.md) — preserves recoverable planned schedule evidence from the rolling Microsoft Project master and explicitly separates historical plan evidence from actual execution history.
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md) — preserves the current KIT/Container finding that `goes_to` is a broad endpoint such as Park and does not provide the complete Setup-support relationship needed by pick-list generation.
 - [Park Placement Candidate Selection Reconnaissance — 2026-09-03](engineering/Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md) — preserves the known failure modes of naive nearest-Stage logic and candidate ideas for GPS-assisted placement without treating a final workflow as approved.
 - [Park Area Naming and Orientation Reconnaissance — 2026-09-03](engineering/Park_Area_Naming_and_Orientation_Reconnaissance_2026-09-03.md) — preserves the tribal-knowledge/single-point-of-failure problem across MSB Stages, new Scenes, park rental-area numbers, landmarks, and physical geography.
@@ -93,6 +94,7 @@ Before schema or application implementation:
 
 - [Setup and Deployment](../README.md)
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
+- [Historical Setup Planning Evidence — 2024](engineering/Historical_Setup_Planning_Evidence_2024.md)
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
 - [Park Placement Candidate Selection Reconnaissance — 2026-09-03](engineering/Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md)
 - [Park Area Naming and Orientation Reconnaissance — 2026-09-03](engineering/Park_Area_Naming_and_Orientation_Reconnaissance_2026-09-03.md)
