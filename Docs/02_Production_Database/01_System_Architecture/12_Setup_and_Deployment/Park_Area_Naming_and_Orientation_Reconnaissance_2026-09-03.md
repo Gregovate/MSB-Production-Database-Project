@@ -42,35 +42,6 @@ The Stage-level dataset helps answer the tribal-knowledge question:
 
 It does not need to answer every finer placement question inside the Stage.
 
-## Stage coordinates as an orientation/map dataset
-
-A current ExpertGPS/aerial-image view was supplied showing the Stage GPS points plotted and labeled across the park. Visible examples include:
-
-- `07-Whoville-WV`;
-- `08-ElfChoir-EC`;
-- `14-IcicleTunnel-IT`;
-- `06-PostOffice-PO`;
-- `05-FestiveTrees-FT`;
-- `04-FoodCollection-FC`;
-- `17-Candyland-CL`;
-- `19-Santa'sWorkshop-SW`;
-- `11-Sledders-SL`;
-- `24-TraditionalChristmas-TC`;
-- `23-Peanuts-PN`; and
-- many other Stage/setup points.
-
-This visual evidence clarifies the primary practical value of the coordinates supplied in `2026_Stage_GPS.csv`:
-
-> They already define a human-readable **MSB park orientation layer** when plotted over aerial imagery and labeled with MSB Stage/setup names.
-
-The Stage coordinates should therefore not be viewed only as input for future nearest-point, proximity, or placement calculations. Their immediate operational value is that they let the system show volunteers **where MSB-named places are in relation to the real park and to each other**.
-
-For example, a volunteer who is told `Take this to Whoville` can be shown Whoville on the park map relative to nearby MSB landmarks such as Post Office, Festive Trees, Elf Choir, and Food Collection. That solves an orientation problem even if the system never performs an automatic Stage assignment.
-
-This also explains why the current Stage-level CSV is valuable before any Scene-level GIS work exists. It provides a broad, understandable orientation framework using terminology the team already recognizes.
-
-Potential later uses of the same coordinate data — proximity ranking, current-position display, navigation aids, or placement validation — remain separate engineering questions and are not approved merely because the coordinates support them.
-
 ## Scene-level location may become useful, but Scenes are new
 
 Scenes are new this year and are already causing some confusion within the team.
@@ -278,10 +249,10 @@ The external rental-area system should be documented/recognizable where it helps
 - city/park communication can use rental-area terminology while the MSB team continues using Stage/Scene terminology internally;
 - operational orientation remains usable even when the one person who currently knows the complete crosswalk is unavailable.
 
-## Related documents
+## Related Documents
 
 - [Setup Session Engineering Reconnaissance — 2026-09-03](Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Park Placement Candidate Selection Reconnaissance — 2026-09-03](Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md)
-- [Stage GPS Reference Data Reconnaissance — 2026-09-03](../../../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
-- [Setup Session subsystem](../README.md)
+- [Stage GPS Reference Data Reconnaissance — 2026-09-03](../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
+- [Setup and Deployment](README.md)
 - [#122 — Setup Session engineering issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122)
