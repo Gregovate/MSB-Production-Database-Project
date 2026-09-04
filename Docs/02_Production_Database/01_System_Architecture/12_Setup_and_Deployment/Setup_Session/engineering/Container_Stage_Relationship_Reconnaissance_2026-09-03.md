@@ -62,6 +62,60 @@ Therefore, the current operator-visible meaning of `Goes To? = Park` is a **broa
 
 Archived repository architecture also describes `ref.container.goes_to` as an endpoint rather than a Stage relationship. That archived documentation is supporting historical evidence only; exact current production FK/constraint behavior still must be verified from the live schema before schema changes.
 
+## Production Kit Box Query — 2026-09-03
+
+A production DBeaver query was run for all Containers where `container_type_id = 2` (`Kit Box`), including current Home Location, `goes_to`, `display_pallet`, `testing_after_takedown`, and count of linked `ref.display` rows.
+
+The result returned **52 Kit Box Containers**.
+
+Observed totals:
+
+- 52 Kit Box Containers total;
+- 16 Kit Box Containers currently have one or more linked Display rows;
+- 36 Kit Box Containers currently have zero linked Display rows;
+- the 16 linked Kit Boxes account for 108 linked Display rows in total;
+- every returned Kit Box had `goes_to = 2`;
+- no returned Kit Box was marked `display_pallet` in the query result;
+- `testing_after_takedown` varies by Kit and therefore does not identify the Stage relationship by itself.
+
+Kit Boxes with one or more linked Displays were:
+
+- 35 — Magic Igloo kit (Includes skins);
+- 55 — Magic Igloo & PB Igloo Flood Light Kit;
+- 56 — Icicle Tunnel Kit;
+- 57 — Icicle Tunnel Kit;
+- 58 — Candy Land Kit;
+- 59 — Front Entrance Kit;
+- 61 — Polar Bears & Sliding Penguins Kit;
+- 62 — Polar Bear Playground Kit;
+- 63 — Fred Stars;
+- 65 — Santa's Workshop Kit;
+- 66 — Post Office Kit;
+- 67 — Potter's Pole Kit includes the signs;
+- 68 — FC Kit possibly including UTVLight & FC-FoodTruckLight;
+- 70 — Sledders Kit including spacers;
+- 72 — Volunteer Path Lights & Cords; and
+- 79 — Winter Wonderland Kit.
+
+The remaining 36 Kit Boxes currently have zero linked Displays. Those include several clearly Stage/work-oriented descriptions such as `Elf Choir Kit includes spacers`, `Racing Arches Kit`, `Church Tree kit`, `Hwy 42 Kit including spacers`, `Star Cords`, `Traditional Christmas Kit`, and the multiple `Kits for inside Santa's Station` Containers.
+
+### Engineering significance
+
+This result gives the Setup resolver two evidence classes:
+
+```text
+Kit Box with linked Displays
+    -> attempt to derive supported Stage/work scope from those Displays first
+
+Kit Box with no linked Displays
+    -> Stage/work support cannot be derived from Display assignment
+    -> candidate for supplemental Setup-support relationship
+```
+
+Do not assume every linked Kit resolves to only one Stage until the linked Display Stage distribution is queried directly. A Kit may contain Displays from more than one Stage just as other shared Containers do.
+
+Likewise, do not assign Stage relationships to zero-linked Kits by parsing Description text automatically. The names are useful human reconciliation evidence, but the authoritative relationship should be reviewed and stored explicitly if the 2026 Setup planner needs it.
+
 ## Original No-Single-Stage-FK Rationale
 
 The project intentionally avoided establishing one Stage FK on every Container because a Container does not always belong to exactly one Stage.
