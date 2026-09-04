@@ -27,7 +27,7 @@ Read [Labeling and Scanning — Subsystem and Repository Boundary](Subsystem_and
 
 ## Current State
 
-Display and Container label-printing infrastructure exists, but the current operator request surfaces are not equivalent: there is no usable interface to select Displays and request their labels. Controller Inventory has a Print Label request button, while the separate LabelPrintService does not yet consume Controller requests. Those request/polling gaps are separate from Scan identity routing.
+Display and Container label-printing infrastructure exists, but the current operator request surfaces are not equivalent: there is no usable interface to select Displays and request their labels. Controller Inventory and the separate LabelPrintService now produce permanent Controller labels. Remaining print-service issues stay separate from Scan identity routing.
 
 **Display QR lookup is also an implemented production capability.** The current Display scan route is deployed as a Directus endpoint extension on `msb-prod-db` under `/opt/directus/extensions/directus-extension-scan/`. It resolves the permanent Production Database `display_id` and presents the existing Display scan hub.
 
@@ -70,7 +70,7 @@ No physical QR redesign, second resolver, Procedure schema, alternate Google hie
     -> /fieldwiring/controllers?controller_id=<controller_id>
 ```
 
-The Controller page uses that parameter to populate/filter Search and open the exact detail panel. Manual production entry of both `CTRL:1014` and the full `https://db.sheboyganlights.org/scan/CTRL/1014` URL passed on 2026-09-03. Physical printed-label, Zebra end-to-end, phone/tablet camera, and useful-distance acceptance remain pending until LabelPrintService can print the first Controller label.
+The Controller page uses that parameter to populate/filter Search and open the exact detail panel. Manual production entry of both `CTRL:1014` and the full `https://db.sheboyganlights.org/scan/CTRL/1014` URL passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact `CTRL:1031` plus Enter routing. The tablet exposed a remaining Scan defect: the operator had to tap the entry field before the Zebra input was accepted. The phone operating system and useful scan distance were not recorded in that pass.
 
 The broader Setup/Deployment scan workflow remains separate engineering scope. High-volume Container and Storage Location scanning is expected during setup season, but the real pull/stage/load/delivery process must be reconstructed before broader scan-platform refactoring or transaction semantics are approved.
 
@@ -240,7 +240,7 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 ## Resume Development
 
-### Controller Scan Integration — production deployed; physical-label acceptance pending
+### Controller Scan Integration — physical routing accepted; tablet focus repair pending
 
 Current production Controller Inventory owns Controller search, detail, assignments, planning, maintenance, and label-request actions. The deployed Scan handoff adds no competing Controller screen or database query.
 
@@ -256,7 +256,7 @@ Zebra/manual: CTRL:<controller_id>
 
 The Git-controlled `src/index.js` and deployed `dist/index.js` remain identical. The Controller browser initializes its existing Search control from the same `controller_id` parameter already used by FieldWiring cross-links and exact-detail loading.
 
-Production deployment passed at shared checkout `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` with live Scan SHA-256 `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`. Manual compact and full-URL inputs passed. Complete physical Controller-label, Zebra, camera, and useful-distance acceptance after the separate LabelPrintService can print the first Controller label; do not infer those results from manual entry.
+Production deployment passed at shared checkout `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` with live Scan SHA-256 `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`. Manual compact/full-URL inputs and a printed Controller `1031` label through phone-camera and Zebra paths passed. The current tablet still requires the operator to select the entry field before Zebra scanning. Repair and physically accept that initial-focus behavior, then record the tested camera operating systems and useful scan distance.
 
 ### Setup/Deployment operational scanning — separate project
 

@@ -8,7 +8,7 @@
 | Audience | MSB volunteers and operators |
 | Status | DRAFT — operator review and screenshots required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-09-03 |
+| Last Reviewed | 2026-09-04 |
 | Keywords | after scan, display record, testing, field wiring, procedures, container, controller, work orders |
 
 ## Purpose
@@ -86,7 +86,7 @@ The Controller route opens Controller Inventory with the exact Controller ID in 
 
 Use the existing Controller Inventory information and actions there. Scan does not provide a second Controller-detail screen.
 
-Physical Controller-label scanning remains pending until the printing service can produce the first label. Manual compact and full-URL Controller entry are deployed.
+Physical Controller-label scanning is verified with a phone camera and Zebra. On the tested tablet, select the Scan entry field before using the Zebra until the known initial-focus defect is repaired.
 
 ## Location Codes
 

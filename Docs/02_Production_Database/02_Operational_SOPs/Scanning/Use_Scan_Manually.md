@@ -8,7 +8,7 @@
 | Audience | MSB volunteers and operators |
 | Status | DRAFT — operator review and screenshots required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-09-03 |
+| Last Reviewed | 2026-09-04 |
 | Keywords | manual scan, enter code, paste URL, DISP, CONT, CTRL, scan without camera |
 
 ## Purpose
@@ -37,6 +37,8 @@ You should see:
 ### 1. Click or tap the entry box
 
 Select **Scan code or paste URL**.
+
+The current production tablet also requires this selection before a Zebra scan. That extra tap is a known Scan defect under repair, not the intended final scanner workflow.
 
 ### 2. Enter the code
 

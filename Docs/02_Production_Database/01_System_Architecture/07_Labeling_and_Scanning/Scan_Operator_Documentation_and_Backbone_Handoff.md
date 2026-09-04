@@ -160,11 +160,11 @@ The current Scan application verifies:
 - **Scan with Camera**;
 - current Display Scan landing behavior;
 - current Container Scan landing behavior; and
-- deployed Controller handoff to exact Controller Inventory Search/detail from compact or full-URL manual input.
+- deployed Controller handoff to exact Controller Inventory Search/detail from manual, phone-camera, and Zebra input.
 
 The approved identity standard includes `DISP`, `CONT`, `LOC`, and `CTRL`, but the operator documentation must distinguish approved identity types from workflows actually deployed and accepted.
 
-Do not document a complete `LOC` workflow until it is implemented and verified. The deployed `CTRL` route may be documented for manual use; physical Controller-label, Zebra end-to-end, and phone/tablet camera instructions remain pending device acceptance.
+Do not document a complete `LOC` workflow until it is implemented and verified. The deployed `CTRL` route and physical Controller `1031` phone-camera/Zebra result may be documented. Keep the tablet initial-focus defect visible until the repair is deployed and physically accepted, and do not claim separate Android/iPhone acceptance until the tested operating systems are recorded.
 
 ## Remaining Acceptance Work
 
@@ -173,10 +173,11 @@ Before the Scan operator set becomes CURRENT:
 1. review the wording with an operator/volunteer audience in mind;
 2. capture current screenshots from the real Scan UI;
 3. physically verify phone/tablet camera permission and successful scanning on the device types volunteers use;
-4. add those screenshots under `Scanning/images/` and verify Markdown rendering;
-5. complete the Backbone single-source publication/rendering decision;
-6. create/link the corresponding Backbone implementation work when the source-side package is ready;
-7. verify volunteer search/navigation on deployed `my.sheboyganlights.org`.
+4. physically verify Zebra scanning works immediately after Scan opens without first tapping the entry field;
+5. add those screenshots under `Scanning/images/` and verify Markdown rendering;
+6. complete the Backbone single-source publication/rendering decision;
+7. create/link the corresponding Backbone implementation work when the source-side package is ready;
+8. verify volunteer search/navigation on deployed `my.sheboyganlights.org`.
 
 ## Related Documents
 

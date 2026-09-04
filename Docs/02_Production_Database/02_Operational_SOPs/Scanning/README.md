@@ -8,7 +8,7 @@
 | Audience | MSB volunteers, operators, and managers |
 | Status | DRAFT — operator review and screenshots required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-09-03 |
+| Last Reviewed | 2026-09-04 |
 | Keywords | scan, scanning, QR code, display, container, phone, tablet, camera, manual entry, field wiring, procedures |
 
 ## What Is MSB Scan?
@@ -55,7 +55,7 @@ Display scanning is the most complete current Scan workflow.
 
 Container scanning also has a current Scan landing page that opens the Container record.
 
-Controller scanning now opens the exact Controller Inventory record. Manual entry of both `CTRL:<controller_id>` and the full Controller Scan URL is deployed and verified. Physical Controller-label scanning remains pending until the printing service can produce the first label.
+Controller scanning opens the exact Controller Inventory record. Manual entry, a phone-camera scan of the full Controller URL, and a Zebra scan producing `CTRL:<controller_id>` plus Enter are verified. The current production tablet requires the Scan entry field to be selected before Zebra scanning; this is a known defect under #113, not the intended final workflow.
 
 `LOC` remains an approved identity type without a completed production route or Setup movement workflow. The QR Code reference explains that distinction.
 

@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PRODUCTION DEPENDENCY — CTRL route deployed; physical-label acceptance pending |
-| Current revision | 2026-09-03 |
+| Status | CURRENT PRODUCTION DEPENDENCY — CTRL physical scan accepted; tablet HID focus repair pending |
+| Current revision | 2026-09-04 |
 | Owner | MSB Database Administrator |
 | Production host | `msb-prod-db` |
 | Production runtime path | `/opt/directus/extensions/directus-extension-scan/` |
@@ -52,6 +52,7 @@ Scan/directus-extension-scan/
     src/index.js
     dist/index.js
     test/controller-route.test.mjs
+    test/scan-input-focus.test.mjs
 ```
 
 The live deployment does not need to contain the development `src/` tree. Application source belongs in the Production Database repository; live deployment/recovery belongs in Server Management.
@@ -206,7 +207,7 @@ https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=<controller
 
 The deployed Scan route adds `/scan/CTRL/:key`, validates that the key is a positive integer permanent Controller ID, and redirects to that existing Controller Inventory entry point. The Controller browser initializes its Search control from `controller_id`, filters the list, and opens the exact detail panel.
 
-The route does not query Controller tables or duplicate Controller details/actions inside Scan. Production manual entry of both the full Scan URL and compact canonical value passed on 2026-09-03. Physical printed-label, Zebra end-to-end, phone/tablet camera, and useful-distance acceptance remain pending until LabelPrintService can produce the first Controller label.
+The route does not query Controller tables or duplicate Controller details/actions inside Scan. Production manual entry of both the full Scan URL and compact canonical value passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact-value/Enter routing. The tablet required the operator to tap the entry field first, exposing a Scan input-focus defect. The exact phone OS and useful scan distance were not recorded.
 
 ## Future Setup/Deployment Scan Platform Boundary
 
@@ -265,7 +266,8 @@ As of 2026-09-03:
 - Controller Inventory V0.4.0 is merged and production-operational;
 - the deployed CTRL route hands permanent `controller_id` to the existing Controller Inventory Search/detail experience;
 - manual full-URL and compact CTRL inputs are production-accepted;
-- physical Controller-label, Zebra end-to-end, camera, and distance acceptance remain pending;
+- physical Controller-label, phone-camera, and Zebra end-to-end routing are accepted for Controller 1031;
+- tablet initial HID focus, OS-specific camera classification, and useful-distance recording remain pending;
 - the broader Container/Location Setup/Deployment workflow remains separate engineering scope; and
 - no schema or physical QR change is part of this bounded integration.
 
