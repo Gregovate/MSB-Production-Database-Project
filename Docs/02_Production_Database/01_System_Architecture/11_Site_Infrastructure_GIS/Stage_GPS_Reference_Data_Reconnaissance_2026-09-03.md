@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT ENGINEERING RECONNAISSANCE — CRS confirmed; source lineage/database ingestion not yet approved |
+| Status | CURRENT ENGINEERING RECONNAISSANCE — CRS/use contract established; controlled source publication/database ingestion not yet approved |
 | System | Site Infrastructure / GIS |
 | Consumer | Setup Session |
 | Owner | MSB Technical Team |
@@ -13,7 +13,7 @@
 
 Preserve the 2026-09-03 discovery that a current `2026_Stage_GPS.csv` dataset exists with projected Easting/Northing coordinates for the park Stage/setup destinations needed by the Setup Session.
 
-This document records the dataset structure and Setup/GIS significance established during reconnaissance. It does **not** yet declare the uploaded CSV to be the controlled authoritative source or approve database ingestion.
+This document records the dataset structure, source/projection workflow, and Setup/GIS significance established during reconnaissance. It does **not** yet declare the uploaded CSV itself to be the controlled authoritative source or approve database ingestion.
 
 ## Dataset Evidence
 
@@ -50,6 +50,21 @@ Distance to Active Point (Pro Data)
 Bearing (Pro Data)
 ```
 
+## Source / Projection Workflow
+
+Field-process clarification established the current workflow:
+
+```text
+Garmin GPS source data
+    -> convert / project into the MSB working projected coordinate system
+        -> NAD83 HARN WISCRS Sheboygan County Feet (US ft)
+            -> export projected Stage/setup data to CSV
+```
+
+The supplied `2026_Stage_GPS.csv` is therefore an export of GPS data after projection into the MSB working coordinate system, not raw phone-style WGS84 latitude/longitude.
+
+The remaining source-control question is not the coordinate system. It is how MSB will designate and maintain the controlled source/export/revision process for this dataset so future database imports do not depend on an ad hoc copied CSV.
+
 ## Representative Park Destinations
 
 The dataset includes normal Stage destinations such as:
@@ -75,40 +90,39 @@ The separate `30-Santa's Station Entrance` point is important evidence that the 
 
 ## Coordinate-System Boundary
 
-The current Site Infrastructure / GIS contract defines the project working coordinate reference as:
+The current Site Infrastructure / GIS coordinate-use contract is:
 
-`NAD83 HARN WISCRS Sheboygan County Feet (USft)`
+### Reference / park projected CRS
 
-On 2026-09-03, current field-configuration evidence was supplied showing the active GPS coordinate format selected as:
+`EPSG:8158 — NAD83(HARN) / WISCRS Kewaunee, Manitowoc and Sheboygan (ftUS)`
+
+The current GPS/ExpertGPS application label is:
 
 `NAD83 HARN WISCRS Sheboygan County Feet (US ft)`
 
-The spacing in `US ft` is the application/UI label; it represents the same project working coordinate system documented as `USft` in repository engineering documentation.
-
-This confirms that the current GPS workflow uses the established MSB projected Sheboygan County feet coordinate system. The `2026_Stage_GPS.csv` Easting/Northing values are therefore to be interpreted within that same working coordinate system unless later source-lineage evidence proves otherwise.
-
-The CSV itself still does not embed CRS metadata, so future controlled exports/imports should preserve explicit CRS/source metadata rather than relying on operator memory or application configuration alone.
+Current field configuration confirms this is the coordinate format used when the Garmin data is converted/projected for the MSB workflow. The `2026_Stage_GPS.csv` Easting/Northing values are therefore interpreted in this projected CRS.
 
 ### Browser / phone / tablet coordinate input
 
-For the browser-based Setup workflow, device coordinates returned through the standard Web Geolocation API are **WGS84** geographic coordinates, not NAD83(HARN) projected coordinates.
+For the browser-based Setup workflow, device coordinates returned through the standard Web Geolocation API are treated as:
 
-Operational device input should therefore be treated as:
+`EPSG:4326 — WGS84 latitude / longitude`
 
-```text
-WGS84
-    -> latitude / longitude
-    -> decimal degrees
-    -> horizontal accuracy reported in meters
-```
+Operational device input should preserve:
 
-The Setup/GIS integration must transform that WGS84 observation into the confirmed MSB working coordinate system before comparing it to Stage/site Easting/Northing reference coordinates:
+- latitude / longitude in decimal degrees;
+- horizontal accuracy reported in meters;
+- observation timestamp; and
+- actor/device/session attribution where the Setup workflow requires it.
+
+The Setup/GIS integration transforms a derived copy of that WGS84 observation into EPSG:8158 before local projected comparison with Stage/site Easting/Northing coordinates.
 
 ```text
 phone / tablet WGS84 latitude-longitude
-    -> controlled coordinate transformation
-        -> NAD83 HARN WISCRS Sheboygan County Feet (US ft)
-            -> compare against reference Easting/Northing
+    -> preserve raw observation + accuracy
+        -> controlled transformation
+            -> EPSG:8158 projected coordinate
+                -> compare against Stage/site reference Easting/Northing
 ```
 
 This is a datum/projection transformation, not merely a unit conversion from meters to feet. Preserve the original WGS84 device observation and its reported accuracy as operational evidence; do not overwrite it with only the transformed result.
@@ -125,7 +139,7 @@ and
 
 selected Setup work
     -> resolve intended park Stage/setup destination
-        -> reference GIS coordinate/site identity
+        -> EPSG:8158 reference GIS coordinate/site identity
 ```
 
 This creates the future ability to answer:
@@ -135,25 +149,24 @@ This creates the future ability to answer:
 - how far that observation is from the intended destination;
 - whether the device accuracy is good enough to make the comparison meaningful.
 
-The Setup Session owns the business event such as delivered, relocated, or placed. Site Infrastructure / GIS owns the reference spatial identity/coordinates and spatial calculations.
+The Setup Session owns the business event such as delivered, relocated, or placed. Site Infrastructure / GIS owns the reference spatial identity/coordinates, coordinate transformations, and spatial calculations.
 
 ## Reference Coordinates Versus Operational GPS
 
-The supplied Stage GPS data should be treated as candidate **reference destination data**, not as the same thing as device observations captured during Setup.
-
-Keep these classes separate:
+Keep these evidence classes separate:
 
 ```text
-reference Stage/site coordinates
+reference Stage/site coordinate
+    -> EPSG:8158
     -> durable expected destination
 
 phone/tablet GPS observation
-    -> WGS84 latitude/longitude
+    -> WGS84 / EPSG:4326 latitude-longitude
     -> timestamped operational evidence
     -> includes device accuracy where available
 
 transformed operational coordinate
-    -> derived projected coordinate for comparison
+    -> derived EPSG:8158 projected coordinate for comparison
 
 proximity result
     -> derived comparison between observation and reference destination
@@ -174,17 +187,18 @@ Before ingestion:
 5. preserve the human-readable GPS label and source naming for traceability;
 6. avoid introducing a second competing Stage identity.
 
-## Required Source Verification
+## Remaining Source / Data-Control Work
 
 Before this dataset becomes authoritative PostgreSQL reference data, establish:
 
-1. which tool/source produced `2026_Stage_GPS.csv`;
-2. whether the coordinates came directly from Garmin, ExpertGPS, county-imagery refinement, or another controlled process;
-3. whether these are intended Stage center/reference points, setup anchor points, or another operational point definition;
-4. who/what owns future coordinate correction;
-5. whether the 2026 file supersedes or supplements older GPX/waypoint data.
+1. which controlled Garmin/ExpertGPS/source artifact owns future Stage coordinate revisions;
+2. the repeatable export/publication procedure that produces the database-ingestion dataset;
+3. whether the current points are intended Stage centers, setup anchor points, or another operational point definition;
+4. who/what owns future coordinate correction and approval;
+5. whether the 2026 dataset supersedes or supplements older GPX/waypoint data;
+6. how special points such as `Santa's Station Entrance` relate to durable site/location identity.
 
-The coordinate-system question is no longer open: current field configuration confirms `NAD83 HARN WISCRS Sheboygan County Feet (US ft)` for the reference Stage/site data, while browser/mobile Geolocation input is WGS84 latitude/longitude and requires controlled transformation for projected-coordinate comparison.
+The coordinate-system and basic projection-flow questions are no longer open.
 
 ## 2026 Setup MVP Direction
 
@@ -192,10 +206,11 @@ The existence of this dataset means Setup Session does **not** need to invent St
 
 For the first production workflow:
 
-- use durable Stage/site reference data once reconciled and approved;
+- use durable EPSG:8158 Stage/site reference data once reconciled and approved;
 - use phone/tablet WGS84 GPS only as operational observation evidence;
 - preserve the original device latitude/longitude, observation time, and reported accuracy;
-- transform mobile WGS84 latitude/longitude explicitly into the confirmed project working coordinate system where a projected-coordinate comparison is performed;
+- transform mobile WGS84 coordinates explicitly into EPSG:8158 for local projected comparison when needed;
+- calculate local Stage proximity/distance in the common projected CRS where appropriate;
 - do not require exact surveyed accuracy to begin tracking where assets were last seen;
 - do not mark an asset delivered/placed solely because its device coordinate is near the Stage reference point;
 - keep the GIS integration narrow enough to fit the two-week Setup Session implementation window.
