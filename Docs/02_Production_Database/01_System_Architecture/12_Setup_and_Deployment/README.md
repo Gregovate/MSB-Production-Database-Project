@@ -10,6 +10,8 @@ The Stage-oriented folder structure already exists. Setup/Takedown instructions 
 
 The operational database/application workflow for scheduling, pick lists, load order, and forklift scanning is not yet fully engineered. No operator procedure should imply those planned functions are implemented until verified from the current database/application.
 
+**Current Setup Session engineering is owned here by Setup and Deployment.** Start with [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md) for the current planning direction under issue [#122](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122). Scan issues #88 and #113 remain integration dependencies and do not own the annual Setup business workflow. The 2026 Setup Session scope deliberately defers detailed KIT/small-component inventory so the first production workflow can be built from existing Display/Container relationships and proven larger physical dependencies without forcing non-LOR materials into Display identity.
+
 **FieldWiring, Display Scan, and the standalone Procedure application are accepted production baselines.** Procedure is production-operational at `https://my.sheboyganlights.org/procedures/` and uses the shared Field Context resolver plus the existing read-only Google `Display Folders` mount. Do not rediscover or redesign those accepted systems merely to continue Setup/Deployment work.
 
 The bounded **Procedure Display Scan Integration** is accepted production behavior: the Display scan hub passes permanent `display_id` to `/procedures/?display_id=<display_id>`, and Setup/Takedown/Inspection selection remains inside Procedure. Controller Inventory V0.4.0 is also merged and production-operational. Human Procedure-document authoring/alignment and the broader scheduling/pick/load/forklift workflow remain separate work streams.
@@ -26,31 +28,31 @@ Testing answers:
 
 Setup and Deployment answers:
 
-> When should it move, what should move with it, in what order, and what instructions does the crew need at the Stage?
+> What should we work on next, what physical assets do we need for it, what has already moved, where does it go, and what actually got done?
 
-The intended high-level workflow remains:
+The current high-level Setup Session direction is:
 
 ```text
 Testing Complete / Ready for Setup
             ↓
-Schedule Display / Container
+Annual Setup Session backlog / candidate work
             ↓
-Assign Calendar Pull Date
+Choose near-term work for today / tomorrow / next couple of days
             ↓
-Build Pick / Load List
+Resolve required Displays / durable physical assets
             ↓
-Forklift Driver Queue
+Resolve and deduplicate Containers / trailers / required KIT Containers
             ↓
-Scan / Confirm Container or Display
+Build practical pick / load work
             ↓
-Load in Planned Order
+Scan / confirm physical execution
             ↓
-Deliver to Park
+Deliver / stage / relocate / place as appropriate
             ↓
-Confirm Movement / Destination
+Capture actual completion and movement history from normal work
 ```
 
-The goal is to replace informal yearly scheduling and remembered load sequences with a durable, repeatable operational process without disrupting the existing Stage-folder documentation crews already use.
+The goal is to replace informal yearly scheduling and remembered physical dependencies with a durable, repeatable operational process **without requiring a dedicated scheduler to continually maintain a rigid project plan** and without disrupting the existing Stage-folder documentation crews already use.
 
 ## Stage Setup Documentation Boundary
 
@@ -258,19 +260,20 @@ Current bounded Scan follow-on:
 - continue #88 for Location identity resolution and the minimum Setup-owned workflow;
 - physically accept relevant Location label behavior before volume printing Location labels.
 
-Separate planned operational work includes:
+Current Setup Session engineering direction includes:
 
-- setup season/session context;
-- calendar pull scheduling;
-- pick lists;
-- load/trip grouping and sequence;
-- forklift scanning;
-- Container/Location validation;
-- meaningful pull/stage/load/delivery confirmations;
-- prior-year sequence reference;
-- optional durable per-document publication metadata when a demonstrated workflow requires it.
+- one annual Setup Session context;
+- flexible backlog and near-term planning instead of a rigid full-season schedule;
+- multiple practical work items per day where needed;
+- automatic resolution of selected work to required Displays/assets and current Containers/trailers;
+- inclusion of required KIT Containers without requiring detailed KIT contents;
+- deduplicated pick/load work that explains why each physical asset is required;
+- scan-linked actual execution/history so a separate scheduler is not required to keep the plan current;
+- distinction between common park staging and final Setup-area placement;
+- Stage-level park orientation using the existing GPS reference data to reduce tribal knowledge; and
+- planned-versus-actual history useful for later seasons.
 
-These planned operational items are design targets, not implemented schema commitments unless verified in the current database.
+These operational items are design targets, not implemented schema commitments unless verified in the current database.
 
 ## System Boundaries and Dependencies
 
@@ -290,7 +293,7 @@ This subsystem depends on existing Production Database identities and relationsh
 
 It must not redefine permanent Display IDs, Container IDs, storage identities, LOR wiring/topology, or other identities already owned by existing subsystems.
 
-Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory remains a separate future Setup/Deployment need.
+Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory remains a separate future Setup/Deployment need and is explicitly out of the 2026 Setup Session scope.
 
 ## Known Limitations / Open Work
 
@@ -304,7 +307,7 @@ Current Procedure-related open work is separated into these scopes:
 - **additional field acceptance as needed** — complete any broader PC/phone/tablet, print, or offline validation required for the 2026 field workflow; and
 - **durable document metadata only if justified** — engineer Google document IDs or published references only when a demonstrated publication/history requirement cannot be met by the current controlled-folder contract.
 
-Separate Setup/Deployment operational work still includes scheduling, readiness, pull/load planning, Container/Location movement semantics, forklift workflow, hardware acceptance, and related annual workflow state. Do not mix those business-process questions into Procedure Display Scan Integration.
+Separate Setup/Deployment operational work still includes the minimum annual-session/work-item schema, dependency resolver, pick/load output, execution/status/event model, Container/Location movement semantics, orientation/GPS integration, forklift workflow, hardware acceptance, and related annual workflow state. Do not mix those business-process questions into Procedure Display Scan Integration.
 
 ## Resume Development
 
@@ -314,14 +317,15 @@ Begin from current `main` and the current responsible runbooks. Do not rediscove
 
 Read first:
 
-1. [Procedure Application README](../../../../Procedures/Application/README.md) — current standalone Procedure application contract, production status, and Scan entry contract;
-2. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current Scan platform and Controller handoff state;
-3. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary and accepted live Scan baseline;
-4. [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted additive scan integration pattern and failure boundary;
-5. [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) — architecture precedence for Procedure/Field Context;
-6. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md);
-7. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md); and
-8. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment.
+1. [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md) — current engineering direction for annual Setup planning, dependency resolution, execution-linked history, and park orientation;
+2. [Procedure Application README](../../../../Procedures/Application/README.md) — current standalone Procedure application contract, production status, and Scan entry contract;
+3. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current Scan platform and Controller handoff state;
+4. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary and accepted live Scan baseline;
+5. [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted additive scan integration pattern and failure boundary;
+6. [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) — architecture precedence for Procedure/Field Context;
+7. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md);
+8. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md); and
+9. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment.
 
 ### Controller Scan Integration — route deployed; physical-label acceptance pending
 
@@ -349,15 +353,16 @@ Follow the existing Server Management scan-extension runbook for live hash verif
 
 ### Setup workflow engineering
 
-Separately document the real setup-day process from the people who:
+Begin with [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md), then finish the outstanding production/schema evidence needed before proposing the minimum annual-session/work-item model.
 
-- schedule pulls;
-- operate the forklift;
-- identify containers/locations;
-- stage material;
-- load trailers/trucks;
-- receive loads at the park;
-- place containers/displays at their destinations.
+The next engineering sequence is to:
+
+- finish live-schema reconnaissance that prevents duplicate or false relationships;
+- define the minimum annual Setup Session and work-item model for backlog, near-term planning, execution, and history;
+- prove selected-work -> Display/asset -> Container/KIT/trailer dependency resolution against representative Production cases;
+- define the minimum physical pick/load output;
+- define the smallest execution/status/event model that normal scans/actions can maintain; and
+- add Stage-level orientation from the existing GPS reference dataset without building a full GIS platform.
 
 Define business events and exception handling before designing schema, Directus Flows, scan-session state, or a dedicated deployment application.
 
@@ -386,10 +391,11 @@ Do not redesign the established Stage folder structure while solving Procedure Q
 - [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Display scan baseline.
 - [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md) — owns the purchased Zebra scanner baseline and hardware/browser-input acceptance contract.
 - [People and Identity](../03_People_and_Identity/README.md) — provides durable person/user identity and audit attribution.
-- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md) — may provide destination/location context where applicable.
+- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md) — provides park reference-coordinate/geometry ownership and spatial calculation boundaries.
 
 ## Related Documentation
 
+- [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md)
 - [Procedure Application README](../../../../Procedures/Application/README.md)
 - [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
 - [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md)
