@@ -10,7 +10,7 @@ The Stage-oriented folder structure already exists. Setup/Takedown instructions 
 
 The operational database/application workflow for scheduling, pick lists, load order, and forklift scanning is not yet fully engineered. No operator procedure should imply those planned functions are implemented until verified from the current database/application.
 
-The dedicated [Setup Session](Setup_Session/README.md) subsystem now owns engineering of the annual Setup-session planning, physical dependency/pick-list, execution, park movement/GPS, and planned-versus-actual history model under issue [#122](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122). Scan issues #88 and #113 remain integration dependencies and do not own that annual business workflow.
+The dedicated [Setup Session](Setup_Session/README.md) subsystem now owns engineering of the annual Setup-session planning, physical dependency/pick-list, execution, park movement/GPS, and planned-versus-actual history model under issue [#122](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122). Scan issues #88 and #113 remain integration dependencies and do not own that annual business workflow. The 2026 Setup Session MVP deliberately defers detailed KIT/small-component inventory so the first production workflow can be built from existing Display/Container relationships and proven larger physical dependencies without forcing non-LOR materials into Display identity.
 
 **FieldWiring, Display Scan, and the standalone Procedure application are accepted production baselines.** Procedure is production-operational at `https://my.sheboyganlights.org/procedures/` and uses the shared Field Context resolver plus the existing read-only Google `Display Folders` mount. Do not rediscover or redesign those accepted systems merely to continue Setup/Deployment work.
 
@@ -260,18 +260,17 @@ Current bounded Scan follow-on:
 - continue #88 for Location identity resolution and the minimum Setup-owned workflow;
 - physically accept relevant Location label behavior before volume printing Location labels.
 
-Dedicated annual Setup planning/execution work is now owned by the [Setup Session](Setup_Session/README.md) subsystem and issue [#122](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122), including:
+Separate planned operational work includes:
 
 - setup season/session context;
-- flexible work-day planning;
-- physical dependency and pick-list resolution;
-- load/trip grouping;
-- scan-confirmed execution;
-- meaningful pull/stage/load/delivery/relocation/placement events;
-- park GPS/location observations where operationally useful;
-- planned-versus-actual and prior-year planning history.
-
-Optional durable per-document publication metadata remains a separate future concern when a demonstrated document-publication workflow requires it.
+- calendar pull scheduling;
+- pick lists;
+- load/trip grouping and sequence;
+- forklift scanning;
+- Container/Location validation;
+- meaningful pull/stage/load/delivery confirmations;
+- prior-year sequence reference;
+- optional durable per-document publication metadata when a demonstrated workflow requires it.
 
 These planned operational items are design targets, not implemented schema commitments unless verified in the current database.
 
@@ -293,7 +292,7 @@ This subsystem depends on existing Production Database identities and relationsh
 
 It must not redefine permanent Display IDs, Container IDs, storage identities, LOR wiring/topology, or other identities already owned by existing subsystems.
 
-Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory remains a separate future Setup/Deployment need until Setup Session reconnaissance proves the needed inventory/dependency model.
+Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory remains a separate future Setup/Deployment need and is explicitly out of the 2026 Setup Session MVP.
 
 ## Known Limitations / Open Work
 
@@ -307,7 +306,7 @@ Current Procedure-related open work is separated into these scopes:
 - **additional field acceptance as needed** — complete any broader PC/phone/tablet, print, or offline validation required for the 2026 field workflow; and
 - **durable document metadata only if justified** — engineer Google document IDs or published references only when a demonstrated publication/history requirement cannot be met by the current controlled-folder contract.
 
-Separate annual Setup Session operational work is tracked under [Setup Session](Setup_Session/README.md) / #122. Do not mix that business-process work into Procedure Display Scan Integration or allow #88/#113 to become the annual Setup planner.
+Separate Setup/Deployment operational work still includes scheduling, readiness, pull/load planning, Container/Location movement semantics, forklift workflow, hardware acceptance, and related annual workflow state. Do not mix those business-process questions into Procedure Display Scan Integration.
 
 ## Resume Development
 
@@ -325,8 +324,6 @@ Read first:
 6. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md);
 7. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md); and
 8. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment.
-
-For annual Setup planning/pick-list/movement engineering, begin with the dedicated [Setup Session subsystem](Setup_Session/README.md) and its current engineering reconnaissance rather than reconstructing the workflow from this parent portal.
 
 ### Controller Scan Integration — route deployed; physical-label acceptance pending
 
@@ -354,9 +351,7 @@ Follow the existing Server Management scan-extension runbook for live hash verif
 
 ### Setup workflow engineering
 
-Annual Setup-session workflow engineering now belongs under the dedicated [Setup Session](Setup_Session/README.md) subsystem / #122.
-
-Continue documenting the real setup-day process from the people who:
+Separately document the real setup-day process from the people who:
 
 - schedule pulls;
 - operate the forklift;
@@ -386,7 +381,7 @@ Do not redesign the established Stage folder structure while solving Procedure Q
 
 ## Related Systems
 
-- [Setup Session](Setup_Session/README.md) — owns annual Setup planning, dependency/pick-list resolution, execution, park movement/location evidence, and useful prior-year history.
+- [Setup Session](Setup_Session/README.md) — owns annual Setup-session planning, dependency resolution, execution, park movement/location evidence, and planned-versus-actual history.
 - [Testing System](../05_Testing_System/README.md) — establishes testing state/readiness before deployment.
 - [Containers and Storage](../04_Containers_and_Storage/README.md) — owns container identity, assignments, storage-location relationships, and KIT container identity.
 - [Wiring System](../09_Wiring_System/README.md) — provides the proven structured field-context implementation while retaining its own wiring content rules.
@@ -398,7 +393,6 @@ Do not redesign the established Stage folder structure while solving Procedure Q
 
 ## Related Documentation
 
-- [Setup Session Engineering Reconnaissance — 2026-09-03](Setup_Session/engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Procedure Application README](../../../../Procedures/Application/README.md)
 - [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
 - [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md)
