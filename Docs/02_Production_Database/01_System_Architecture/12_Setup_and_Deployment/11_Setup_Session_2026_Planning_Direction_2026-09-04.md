@@ -418,10 +418,10 @@ while allowing the day to change naturally without requiring a separate person t
 ## Related Documents
 
 - [Setup and Deployment](README.md)
-- [Setup Session Engineering Reconnaissance — 2026-09-03](Setup_Session/engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
-- [Historical Setup Planning Evidence — 2024](Setup_Session/engineering/Historical_Setup_Planning_Evidence_2024.md)
-- [Container-to-Stage Relationship Reconnaissance — 2026-09-03](Setup_Session/engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
-- [Park Placement Candidate Selection Reconnaissance — 2026-09-03](Setup_Session/engineering/Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md)
-- [Park Area Naming and Orientation Reconnaissance — 2026-09-03](Setup_Session/engineering/Park_Area_Naming_and_Orientation_Reconnaissance_2026-09-03.md)
+- [Setup Session Engineering Reconnaissance — 2026-09-03](Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
+- [Historical Setup Planning Evidence — 2024](Historical_Setup_Planning_Evidence_2024.md)
+- [Container-to-Stage Relationship Reconnaissance — 2026-09-03](Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
+- [Park Placement Candidate Selection Reconnaissance — 2026-09-03](Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md)
+- [Park Area Naming and Orientation Reconnaissance — 2026-09-03](Park_Area_Naming_and_Orientation_Reconnaissance_2026-09-03.md)
 - [Stage GPS Reference Data Reconnaissance — 2026-09-03](../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
 - [#122 — Setup Session engineering issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122)
