@@ -27,7 +27,8 @@ Current durable findings and design constraints are preserved in:
 
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md) — preserves the current KIT/Container finding that `goes_to` is a broad endpoint such as Park and does not provide the complete Setup-support relationship needed by pick-list generation.
-- [Park Placement Candidate Selection Reconnaissance — 2026-09-03](engineering/Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md) — preserves the rule that business relationships narrow the candidate destinations first, GPS ranks them second, and the operator explicitly confirms the actual placement.
+- [Park Placement Candidate Selection Reconnaissance — 2026-09-03](engineering/Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md) — preserves the known failure modes of naive nearest-Stage logic and candidate ideas for GPS-assisted placement without treating a final workflow as approved.
+- [Park Area Naming and Orientation Reconnaissance — 2026-09-03](engineering/Park_Area_Naming_and_Orientation_Reconnaissance_2026-09-03.md) — preserves the tribal-knowledge/single-point-of-failure problem across MSB Stages, new Scenes, park rental-area numbers, landmarks, and physical geography.
 - [Stage GPS Reference Data Reconnaissance — 2026-09-03](../../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md) — preserves the current 31-point park Stage/setup reference-coordinate dataset and the GIS ingestion/identity gates.
 
 ### 2026 MVP boundary
@@ -38,7 +39,7 @@ Detailed KIT/material inventory is **deferred by design** from the 2026 MVP. KIT
 
 Existing KIT **Containers** are different from detailed KIT contents: the Containers already have permanent identity and are in scope for 2026 planning. If a KIT is known to support the selected Stage/setup area, the KIT Container belongs on that work's physical pick list even though its individual contents are not yet inventoried.
 
-For park placement, GPS is a **decision aid rather than the business authority**. The first workflow must use expected Setup relationships and active work context to narrow plausible destinations, use GPS/proximity only to rank or validate those candidates, and require an operator-confirmed destination. A nearest-Stage algorithm is not accepted because long Stages, overlapping Stages, shared assets, common staging areas, and physical barriers such as the river can make straight-line proximity misleading.
+For park location/orientation, the current requirement is deliberately narrower than a final GIS workflow: GPS proximity must **not** become an automatic Stage-assignment rule, and the system should reduce dependence on tribal knowledge about where named Stages/setup areas physically are. Exact UI, ranking, map, Scene-level refinement, and confirmation behavior remain under reconnaissance.
 
 The current engineering reconnaissance owns the detailed scope boundary and future KIT/GIS integration direction.
 
@@ -72,7 +73,7 @@ It does **not** own:
 - [#113 — Scan application and Setup-season scanning integration](https://github.com/Gregovate/MSB-Production-Database-Project/issues/113) remains the Scan readiness umbrella.
 - [#88 — Setup-critical Location scan resolution and movement workflow](https://github.com/Gregovate/MSB-Production-Database-Project/issues/88) remains the focused Location/Scan integration work. Its accepted output must be reusable by Setup Session rather than becoming the Setup planner itself.
 - [Containers and Storage](../../04_Containers_and_Storage/README.md) owns permanent Container identity, current Display-to-Container assignments, and home/intended storage relationships.
-- [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md) owns durable site/location identity, authoritative/reference coordinates, coordinate transformation, and spatial calculations. Setup Session consumes the reconciled Stage/site destination references and gives device observations their operational movement meaning.
+- [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md) owns durable site/location identity, authoritative/reference coordinates, coordinate transformation, and spatial calculations. Setup Session consumes reconciled Stage/site destination information and gives any device observations their operational movement meaning.
 - [Testing System](../../05_Testing_System/README.md) provides a useful annual-session pattern for comparison only; Setup Session must be designed around the actual Setup process.
 
 ## Engineering Rule
@@ -94,6 +95,7 @@ Before schema or application implementation:
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
 - [Park Placement Candidate Selection Reconnaissance — 2026-09-03](engineering/Park_Placement_Candidate_Selection_Reconnaissance_2026-09-03.md)
+- [Park Area Naming and Orientation Reconnaissance — 2026-09-03](engineering/Park_Area_Naming_and_Orientation_Reconnaissance_2026-09-03.md)
 - [Stage GPS Reference Data Reconnaissance — 2026-09-03](../../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
 - [Scan Workflows and Forklift Operations](../../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md)
 - [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md)
