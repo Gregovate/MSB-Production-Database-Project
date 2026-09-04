@@ -101,7 +101,7 @@ The Zebra ADF emits the compact value `CTRL:<controller_id>` instead of typing t
 https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=<controller_id>
 ```
 
-The URL is a replaceable Scan wrapper, not a second identity. Controller Inventory owns Controller details/actions; Scan does not duplicate that application. The route is deployed, and manual compact/full-URL production entry passed on 2026-09-03. Real printed-label, Zebra, camera, and useful-distance acceptance remain required before Controller labels are printed in volume.
+The URL is a replaceable Scan wrapper, not a second identity. Controller Inventory owns Controller details/actions; Scan does not duplicate that application. The route is deployed, manual compact/full-URL entry passed, and a printed Controller `1031` label passed phone-camera and Zebra DS3678-ER routing on 2026-09-03. The tablet required the entry field to be selected before Zebra input; Scan input-focus repair and documented useful-distance/OS-specific device acceptance remain required.
 
 ## Storage Location Versus Park GIS Location
 
@@ -146,7 +146,7 @@ For Displays, that design is a verified deployed capability. The current product
 
 `/scan/DISP/:key` resolves permanent `ref.display.display_id` and then presents task destinations. New Display field applications such as FieldWiring must extend that existing resolved-identity hub rather than creating another Display QR payload or lookup engine.
 
-The Container route is also deployed and opens the authoritative Directus Container record, where assigned Displays are available. The `CTRL` route is deployed and hands the permanent Controller identity to the existing Controller Inventory Search/detail result. Manual compact/full-URL input is accepted; physical Controller-label/device acceptance remains pending. `LOC` and broader Setup movement behavior remain future work; do not infer that they exist merely because Display, Container, and Controller routing work.
+The Container route is also deployed and opens the authoritative Directus Container record, where assigned Displays are available. The `CTRL` route is deployed and hands the permanent Controller identity to the existing Controller Inventory Search/detail result. Manual compact/full-URL input and a physical Controller label through phone-camera and Zebra paths are accepted; the tablet initial-focus defect remains open. `LOC` and broader Setup movement behavior remain future work; do not infer that they exist merely because Display, Container, and Controller routing work.
 
 See [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) for the verified Display implementation boundary.
 

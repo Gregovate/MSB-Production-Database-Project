@@ -6,7 +6,7 @@
 | System | Labeling and Scanning / Scan / Setup and Deployment |
 | Status | CURRENT WORKING HANDOFF |
 | Owner | MSB Technical Team |
-| Date | 2026-09-03 |
+| Date | 2026-09-04 |
 
 ## Purpose
 
@@ -55,7 +55,7 @@ LOC:<location_code>
 CTRL:<controller_id>
 ```
 
-The Zebra ADF correction was physically checked on 2026-09-03: the scanner types the expected compact canonical value into Google Docs. That proves the HID/ADF input format, not end-to-end Scan application behavior for every identity type.
+The Zebra ADF correction was first checked in Google Docs, then a printed Controller `1031` label passed the production end-to-end route on 2026-09-03. The Zebra emitted `CTRL:1031`, submitted Enter, and opened Controller 1031 after the operator manually selected the Scan entry field.
 
 This is an input-method normalization convenience. The Scan application must not require Zebra-specific behavior. Manual entry, camera decode, Zebra HID input, and supported legacy/full URLs must converge on the same identity resolution where compatibility is required.
 
@@ -68,7 +68,9 @@ As of the 2026-09-03 reconnaissance:
 - `CONT` is accepted for its current purpose: it opens the Directus Container record, where the original design exposes assigned Displays;
 - `LOC` does not yet have complete route/resolution behavior; focused implementation is #88;
 - production Controller Inventory is deployed at `/fieldwiring/controllers` and accepts `?controller_id=<id>` for exact detail selection;
-- the deployed `CTRL` Scan route sends permanent Controller identity to the existing Controller Inventory instead of building a duplicate result page; manual compact/full-URL production entry passed, while physical label/device acceptance remains pending;
+- the deployed `CTRL` Scan route sends permanent Controller identity to the existing Controller Inventory instead of building a duplicate result page;
+- a printed Controller `1031` label passed phone-camera and Zebra DS3678-ER end-to-end routing;
+- the tablet does not reliably focus the Scan entry field when the app opens, so the Zebra currently requires an unnecessary operator tap before scanning; this is an input-focus defect under #113;
 - iPhone behavior is not accepted merely because a camera preview opens; actual barcode/QR decode and correct routing must be physically verified;
 - camera-permission failure/recovery remains #112;
 - operator documentation in #67 must follow corrected deployed behavior rather than freezing current defects into SOPs.
@@ -82,7 +84,7 @@ As of the 2026-09-03 reconnaissance:
 | `DISP` | Source-supported | Input-only verified in current test pass | Physical decode/routing acceptance not recorded in this pass | Camera may open; real-label decode/routing not accepted | Yes — production | Existing Display hub: Directus record, Testing, Container, Work Orders, Field Wiring, and Procedures |
 | `CONT` | Source-supported | End-to-end Container scan reported working; compact ADF output independently verified | Physical decode/routing acceptance not recorded in this pass | Camera may open; real-label decode/routing not accepted | Yes — production | Opens the Directus Container record and its Display assignments; preserve this accepted behavior |
 | `LOC` | Landing-page normalization exists, but destination fails because no route exists | Compact ADF output verified only | Not accepted | Not accepted | No | #88 must supply Location resolution and the minimum Setup-owned operator workflow |
-| `CTRL` | PASS — compact and full URL entered manually in production | Input-only ADF proof in Google Docs; printed-label end-to-end test pending | Printed-label decode/routing pending | Printed-label decode/routing pending | Yes — production | Redirects to Controller Inventory with `controller_id=<id>`, filters Search, and opens exact detail |
+| `CTRL` | PASS — compact and full URL entered manually in production | PASS with printed `CTRL:1031`; current tablet requires the entry field to be tapped first | Not classified — a phone-camera decode passed, but its OS was not recorded | Not classified — a phone-camera decode passed, but its OS was not recorded | Yes — production | Redirects to Controller Inventory with `controller_id=<id>`, filters Search, and opens exact detail |
 
 The Controller capture contract is:
 
@@ -102,15 +104,15 @@ Controller Inventory remains the owner of Controller details and actions. Scan o
 
 ## Label-Request Interface Findings
 
-- Controller Inventory has a **Print Label** request button, but external print-service polling does not yet consume that request; that is separate LabelPrintService work.
+- Controller Inventory and the external LabelPrintService now produce Controller labels; remaining print-service issues stay in that separate workstream.
 - No usable operator interface currently exists to select Displays and request their labels. That is a database/label-request UI gap, not part of the bounded `CTRL` Scan route.
 - Do not volume-print Controller labels until the Scan route, operator destination, Zebra/camera behavior, and real-world scan distance pass the physical-label gate below.
 
 ## Smallest Ordered Repair Plan
 
-1. After LabelPrintService can print the first Controller label, complete physical Zebra and phone/tablet acceptance against the deployed route and Controller Inventory result.
+1. Repair Scan landing-page focus under #113 so Zebra HID works immediately without selecting the field, then physically retest initial load and return-to-Scan behavior.
 2. Complete `LOC` resolution and the minimum Setup-owned operator action under #88; do not infer movement from scan order.
-3. Complete real-label Android/iPhone decode and camera permission/recovery acceptance under #112.
+3. Complete OS-specific Android/iPhone decode and camera permission/recovery acceptance under #112.
 4. Finish operator SOP review under #67 against the deployed routes and accepted device behavior.
 5. Add broader Setup movement/staging/load semantics only where the reconstructed operational process proves they are needed.
 
@@ -153,7 +155,7 @@ A new Scan engineering thread should begin by:
 3. inventorying current `Scan/directus-extension-scan/` source and current deployed Scan baseline/runbook;
 4. using the current route matrix above instead of reconstructing `DISP`, `CONT`, `LOC`, and `CTRL` state from chat;
 5. preserving the now-deployed MSB Internal **Open Scan** entry point;
-6. verifying capture methods independently: manual, Zebra HID, Android camera, iPhone camera;
+6. verifying capture methods independently: manual, Zebra HID, Android camera, iPhone camera, including reliable initial input focus for HID;
 7. implementing/accepting focused route gaps without redesigning LabelPrintService;
 8. continuing #88 for Setup-critical Location and movement semantics;
 9. updating #67 operator docs only after actual device/route acceptance.

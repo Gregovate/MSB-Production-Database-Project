@@ -206,9 +206,32 @@ export default {
 
         let html5QrCode = null;
         let scannerRunning = false;
+        let cameraStarting = false;
 
         function setStatus(message) {
           scanStatus.textContent = message || '';
+        }
+
+        // Mobile browsers do not consistently honor HTML autofocus. Retry the
+        // focus after page activation so a Zebra HID scan can start without an
+        // operator first tapping the field.
+        function focusScanInput() {
+          if (scannerRunning || cameraStarting) return;
+
+          try {
+            input.focus({ preventScroll: true });
+          } catch (err) {
+            input.focus();
+          }
+        }
+
+        function scheduleScanInputFocus() {
+          window.setTimeout(focusScanInput, 0);
+          window.setTimeout(focusScanInput, 250);
+        }
+
+        function isUnfocusedPageSurface(target) {
+          return !target || target === document.body || target === document.documentElement;
         }
 
         // Show any top-level JS errors on screen.
@@ -282,11 +305,13 @@ export default {
 
           if (typeof Html5Qrcode === 'undefined') {
           //  setStatus('Scanner library failed to load.');
+            scheduleScanInputFocus();
             return;
           }
 
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             setStatus('Browser does not support camera access.');
+            scheduleScanInputFocus();
             return;
           }
 
@@ -297,10 +322,10 @@ export default {
 
           reader.style.display = 'block';
           stopBtn.style.display = 'block';
-
-          html5QrCode = new Html5Qrcode('reader');
+          cameraStarting = true;
 
           try {
+            html5QrCode = new Html5Qrcode('reader');
             await html5QrCode.start(
               { facingMode: 'environment' },
               { fps: 10 },
@@ -316,12 +341,15 @@ export default {
             );
 
             scannerRunning = true;
+            cameraStarting = false;
             setStatus('Camera ready');
           } catch (err) {
+            cameraStarting = false;
             console.error('Camera start failed:', err);
             setStatus('Camera start failed: ' + (err && err.message ? err.message : err));
             reader.style.display = 'none';
             stopBtn.style.display = 'none';
+            scheduleScanInputFocus();
           }
         }
 
@@ -333,14 +361,55 @@ export default {
           startCameraScan();
         });
 
-        stopBtn.addEventListener('click', function () {
+        stopBtn.addEventListener('click', async function () {
           // setStatus('Stop button event fired');
-          stopCameraScan();
+          await stopCameraScan();
+          scheduleScanInputFocus();
         });
 
-        // setStatus('Button binding complete');
+        // Restore focus when the browser returns to this page or the page
+        // becomes active again. The delayed retry handles mobile page restore.
+        window.addEventListener('pageshow', scheduleScanInputFocus);
+        window.addEventListener('focus', scheduleScanInputFocus);
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible') {
+            scheduleScanInputFocus();
+          }
+        });
 
-        input.focus();
+        // If a mobile browser still refuses initial focus, capture the first
+        // HID character from the otherwise-unfocused page. Once the input has
+        // focus, normal input/form behavior handles the rest of the scan.
+        document.addEventListener('keydown', function (event) {
+          if (
+            scannerRunning ||
+            event.defaultPrevented ||
+            event.isComposing ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.altKey ||
+            !isUnfocusedPageSurface(event.target)
+          ) {
+            return;
+          }
+
+          if (event.key === 'Enter') {
+            if (input.value.trim()) {
+              event.preventDefault();
+              handleScanValue(input.value);
+            }
+            return;
+          }
+
+          if (event.key && event.key.length === 1) {
+            event.preventDefault();
+            input.value += event.key;
+            focusScanInput();
+          }
+        }, true);
+
+        // setStatus('Button binding complete');
+        scheduleScanInputFocus();
       </script>
         </body>
         </html>

@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | PRODUCTION DEPLOYED — manual input accepted; physical-label/device acceptance pending |
+| Status | PRODUCTION DEPLOYED — manual and physical Controller scan paths accepted; tablet HID focus repair pending |
 | Issue | #113 |
 | Merged PR | #116 |
 | Production host | `msb-prod-db` / `192.168.5.9` |
@@ -84,29 +84,44 @@ Accepted:
 | Manual compact canonical value | PASS |
 | Exact Controller Inventory Search/detail result | PASS |
 
-## Explicitly pending physical acceptance
+## Physical Controller-label acceptance
 
-No physical Controller label could be printed during this acceptance because Controller polling/printing was not yet available in the separate LabelPrintService workstream.
+A production label for Controller `1031` was printed and tested on 2026-09-03.
 
-Do not report the following as passed yet:
+| Input path | Result |
+|---|---|
+| Phone camera decoded `https://db.sheboyganlights.org/scan/CTRL/1031` | PASS |
+| Full QR URL opened Controller 1031 | PASS |
+| Zebra DS3678-ER decoded the same label as `CTRL:1031` | PASS |
+| Zebra ADF Enter submitted the compact identifier | PASS |
+| Controller Inventory opened Controller 1031 | PASS |
 
-- physical Controller label output;
-- Zebra scan of the printed Controller label through the production Scan application;
-- Android or iPhone camera decode of the printed Controller label;
-- automatic Enter/submission from the final Zebra Controller ADF rule; or
-- useful physical scan distance for the final label design.
+The exact phone operating system and practical scan distance were not recorded in this pass. Do not convert this result into separate Android and iPhone acceptance claims until those devices are identified or independently tested.
 
-The Zebra ADF had independently produced the expected compact value in Google Docs earlier on 2026-09-03. That is valid input-format evidence, but it is not a substitute for the pending printed-label end-to-end test.
+## Tablet HID focus defect
+
+The tablet Scan page did not place the cursor in **Scan code or paste URL** when the page opened. The operator had to tap the field before using the Zebra. After the field was selected, the Zebra compact identifier and Enter submission worked correctly.
+
+This is a Scan landing-page input-focus defect. It is not a Controller label, QR payload, route, Controller Inventory, or Zebra ADF defect.
+
+The focused repair under #113 must:
+
+- actively focus the entry field when Scan opens or becomes active;
+- retain the first HID character even if the mobile browser ignores initial autofocus;
+- restore focus after a cancelled or failed camera attempt;
+- avoid hijacking deliberate input in another editable control; and
+- be physically retested on the production tablet without first tapping the field.
 
 ## Resume point
 
-After LabelPrintService produces the first Controller label:
+After the input-focus repair is deployed:
 
-1. confirm its QR contains `https://db.sheboyganlights.org/scan/CTRL/<controller_id>`;
-2. scan the physical label with Zebra and verify the Scan application receives `CTRL:<controller_id>` and submits it;
-3. scan the same physical label with the relevant phone/tablet cameras;
-4. verify every path opens the exact Controller Inventory result; and
-5. record practical scan distance and complete the physical-label gate before volume printing.
+1. open Scan from the normal protected launcher without tapping the entry field;
+2. scan the physical Controller label with the Zebra and verify the first character, complete `CTRL:<controller_id>` value, and Enter submission are all retained;
+3. verify the exact Controller Inventory result opens;
+4. return to Scan and repeat the test to cover browser page restoration;
+5. confirm the focus behavior does not force an unwanted on-screen keyboard or interfere with camera/manual input; and
+6. record the tested phone/tablet operating systems and practical scan distance.
 
 `LOC` route/resolution and Setup movement semantics remain separate work under #88.
 

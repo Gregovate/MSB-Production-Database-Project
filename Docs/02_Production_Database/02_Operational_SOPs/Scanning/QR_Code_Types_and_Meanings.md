@@ -8,7 +8,7 @@
 | Audience | MSB volunteers and operators |
 | Status | DRAFT — operator review required |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-09-03 |
+| Last Reviewed | 2026-09-04 |
 | Keywords | QR code, scan code, DISP, CONT, LOC, CTRL, display, container, location, controller |
 
 ## Purpose
@@ -30,7 +30,7 @@ You usually do not need to memorize the prefixes. They simply tell you what kind
 | `DISP` | Display | `DISP:251` | Current Display Scan hub is deployed and verified |
 | `CONT` | Container | `CONT:587` | Current Container Scan landing page exists and opens the Container record |
 | `LOC` | Storage Location | `LOC:RA-01-A-03` | Approved identity type; broader operator Scan workflow is not yet documented as fully deployed |
-| `CTRL` | Controller | `CTRL:1014` | Production route opens the exact Controller Inventory record; physical-label testing remains pending |
+| `CTRL` | Controller | `CTRL:1014` | Printed Controller label opens the exact Controller Inventory record by phone camera or Zebra |
 
 ## What The Code Does
 
@@ -89,7 +89,7 @@ CTRL:
 
 The permanent numeric value after `CTRL:` is the Controller ID. Entering a compact value such as `CTRL:1014`, or opening its full Scan URL, routes to Controller Inventory with that Controller selected.
 
-The route and manual-entry behavior are deployed. Physical Controller-label scanning will be accepted after the printing service can produce the first label.
+The route, manual-entry behavior, phone-camera QR path, and Zebra compact-value path are deployed and physically verified. On the tested tablet, select the Scan entry field before using the Zebra until the known initial-focus defect is repaired.
 
 ## Expected Result
 
