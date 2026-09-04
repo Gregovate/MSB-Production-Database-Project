@@ -115,55 +115,6 @@ planned work/date/sequence
 
 Historical reconstruction should likewise label evidence as `planned`, `actual`, or `uncertain/inferred` rather than collapsing them.
 
-## Why Microsoft Project failed operationally for MSB Setup
-
-Field-process clarification established that Microsoft Project was **too cumbersome and rigid for the way MSB actually performs Setup**.
-
-The problem was not that Microsoft Project could not represent tasks or produce a detailed schedule. The problem was the continuing operational burden required to keep that schedule synchronized with reality.
-
-MSB Setup changes quickly because of:
-
-- actual volunteer turnout;
-- weather;
-- fatigue;
-- work finishing earlier or later than expected;
-- equipment or material problems;
-- a decision to substitute a smaller or larger job;
-- transport availability;
-- dependencies discovered only after work begins.
-
-A traditional project schedule therefore required frequent manual maintenance: moving tasks, adjusting dates/durations, updating completion/progress, maintaining dependencies, and reconciling the plan after field conditions changed.
-
-MSB does **not** have one person assigned to continuously maintain the Setup schedule as a dedicated project-management responsibility. As a result, the planning artifact quickly stopped representing current reality and failed as an operational tool.
-
-This establishes a major Setup Session design constraint:
-
-> The future Setup planner must remain useful even when nobody is assigned the separate job of keeping a project schedule updated.
-
-The system should capture useful state as a natural by-product of planning and field execution wherever possible.
-
-Examples of the desired direction include, subject to later workflow design:
-
-```text
-planner selects tomorrow's work
-    -> system records the plan
-
-crew actually starts/completes/moves something
-    -> normal Setup workflow records the actual event
-
-plan changes during the day
-    -> operator changes current work with minimal friction
-    -> prior plan remains available where historically useful
-```
-
-Do **not** require volunteers or the Setup coordinator to maintain a Gantt chart, recalculate a dependency network, or continually rewrite estimated durations merely so the database remains current.
-
-This does not mean dependencies, sequence, or estimated effort have no value. It means those concepts must be represented at the level of detail that provides operational value without creating a separate schedule-maintenance job.
-
-A useful acceptance principle is:
-
-> If the system only stays accurate when one knowledgeable person spends significant time updating the plan after every field change, it has reproduced the main failure mode of Microsoft Project.
-
 ## Scene-model boundary
 
 Scenes are new to the current Production Database workflow and should not be retroactively imposed on this 2024 plan.
@@ -192,12 +143,35 @@ This source supports several candidate planner requirements already emerging fro
 - planned start/order/duration as useful planning aids without making the schedule rigid;
 - ability to replan while retaining the original plan where historical learning matters;
 - actual execution captured separately;
-- future comparison of planned effort versus actual effort;
-- no dedicated schedule-maintainer role should be required;
-- actual execution should update useful Setup state through normal work rather than duplicate administrative entry;
-- same-day/next-day replanning must be fast enough to match field reality.
+- future comparison of planned effort versus actual effort.
 
 It also reinforces that the first Setup planner should not depend on the new Scene hierarchy for every work item. The real planning vocabulary may include Stage, Display, Scene, infrastructure/support tasks, and practical work descriptions.
+
+## Microsoft Project failure mode
+
+The historical Microsoft Project source is useful evidence, but the operating model itself failed for MSB.
+
+The problem was not that Microsoft Project could not represent a schedule. It was that the schedule required someone to continually maintain the project file as field reality changed.
+
+MSB does not have one person assigned to the separate job of keeping the Setup schedule synchronized with:
+
+- changing volunteer turnout;
+- weather;
+- actual progress;
+- work completed early or late;
+- equipment/material problems;
+- spontaneous substitutions;
+- tasks split or combined in the field.
+
+Microsoft Project was therefore too cumbersome and rigid for the way Setup actually operates.
+
+This establishes an important acceptance rule for the future Setup Session:
+
+> If the system only stays accurate when one knowledgeable person spends significant time updating the plan after every field change, it has reproduced the main failure mode of Microsoft Project.
+
+The preferred direction is for normal operational actions — selecting/reordering near-term work, scanning physical assets, marking work complete, or recording a defer/change — to maintain most of the useful history automatically.
+
+Do not design a second administrative workflow whose only purpose is to reconcile the plan after the real work occurred.
 
 ## Further historical reconstruction
 
@@ -219,9 +193,10 @@ If exact Microsoft Project fields such as baselines, predecessors, resources, ac
 
 The Production Database should model the actual Setup business process, not Microsoft Project's internal file format.
 
-## Related documents
+## Related Documents
 
-- [Setup Session subsystem](../README.md)
+- [Setup and Deployment](README.md)
+- [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md)
 - [Setup Session Engineering Reconnaissance — 2026-09-03](Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Park Area Naming and Orientation Reconnaissance — 2026-09-03](Park_Area_Naming_and_Orientation_Reconnaissance_2026-09-03.md)
 - [#122 — Setup Session engineering issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122)
