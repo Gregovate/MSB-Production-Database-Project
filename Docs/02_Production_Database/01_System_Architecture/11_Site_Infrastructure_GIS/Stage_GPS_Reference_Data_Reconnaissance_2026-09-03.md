@@ -89,7 +89,29 @@ This confirms that the current GPS workflow uses the established MSB projected S
 
 The CSV itself still does not embed CRS metadata, so future controlled exports/imports should preserve explicit CRS/source metadata rather than relying on operator memory or application configuration alone.
 
-Browser/mobile device GPS normally arrives as latitude/longitude in a different coordinate reference. Operational Setup observations must therefore still be explicitly transformed/normalized before spatial comparison with these reference coordinates.
+### Browser / phone / tablet coordinate input
+
+For the browser-based Setup workflow, device coordinates returned through the standard Web Geolocation API are **WGS84** geographic coordinates, not NAD83(HARN) projected coordinates.
+
+Operational device input should therefore be treated as:
+
+```text
+WGS84
+    -> latitude / longitude
+    -> decimal degrees
+    -> horizontal accuracy reported in meters
+```
+
+The Setup/GIS integration must transform that WGS84 observation into the confirmed MSB working coordinate system before comparing it to Stage/site Easting/Northing reference coordinates:
+
+```text
+phone / tablet WGS84 latitude-longitude
+    -> controlled coordinate transformation
+        -> NAD83 HARN WISCRS Sheboygan County Feet (US ft)
+            -> compare against reference Easting/Northing
+```
+
+This is a datum/projection transformation, not merely a unit conversion from meters to feet. Preserve the original WGS84 device observation and its reported accuracy as operational evidence; do not overwrite it with only the transformed result.
 
 ## Setup Session Significance
 
@@ -126,8 +148,12 @@ reference Stage/site coordinates
     -> durable expected destination
 
 phone/tablet GPS observation
+    -> WGS84 latitude/longitude
     -> timestamped operational evidence
     -> includes device accuracy where available
+
+transformed operational coordinate
+    -> derived projected coordinate for comparison
 
 proximity result
     -> derived comparison between observation and reference destination
@@ -158,7 +184,7 @@ Before this dataset becomes authoritative PostgreSQL reference data, establish:
 4. who/what owns future coordinate correction;
 5. whether the 2026 file supersedes or supplements older GPX/waypoint data.
 
-The coordinate-system question is no longer open: current field configuration confirms `NAD83 HARN WISCRS Sheboygan County Feet (US ft)`.
+The coordinate-system question is no longer open: current field configuration confirms `NAD83 HARN WISCRS Sheboygan County Feet (US ft)` for the reference Stage/site data, while browser/mobile Geolocation input is WGS84 latitude/longitude and requires controlled transformation for projected-coordinate comparison.
 
 ## 2026 Setup MVP Direction
 
@@ -167,8 +193,9 @@ The existence of this dataset means Setup Session does **not** need to invent St
 For the first production workflow:
 
 - use durable Stage/site reference data once reconciled and approved;
-- use phone/tablet GPS only as operational observation evidence;
-- transform mobile latitude/longitude explicitly into the confirmed project working coordinate system where a projected-coordinate comparison is performed;
+- use phone/tablet WGS84 GPS only as operational observation evidence;
+- preserve the original device latitude/longitude, observation time, and reported accuracy;
+- transform mobile WGS84 latitude/longitude explicitly into the confirmed project working coordinate system where a projected-coordinate comparison is performed;
 - do not require exact surveyed accuracy to begin tracking where assets were last seen;
 - do not mark an asset delivered/placed solely because its device coordinate is near the Stage reference point;
 - keep the GIS integration narrow enough to fit the two-week Setup Session implementation window.
