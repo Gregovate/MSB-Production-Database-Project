@@ -21,10 +21,11 @@ Directus table search is not the intended long-term operator workflow for answer
 
 ## Current State
 
-The subsystem is in engineering reconnaissance. No Setup Session schema, application, or operator workflow described here should be treated as implemented until production evidence and acceptance establish it.
+The reconnaissance phase has produced a current 2026 planning direction, but no Setup Session schema, application, or operator workflow should be treated as implemented until production evidence and acceptance establish it.
 
-Current durable findings and design constraints are preserved in:
+Start with the planning direction, then use the focused reconnaissance documents for supporting evidence and unresolved details:
 
+- [Setup Session 2026 Planning Direction — 2026-09-04](engineering/Setup_Session_2026_Planning_Direction_2026-09-04.md) — consolidates the intended first production workflow, establishes the living-work-system direction, records what must not be rebuilt from Microsoft Project, and separates firm direction from remaining design questions.
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Historical Setup Planning Evidence — 2024](engineering/Historical_Setup_Planning_Evidence_2024.md) — preserves recoverable planned schedule evidence from the rolling Microsoft Project master and explicitly separates historical plan evidence from actual execution history.
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md) — preserves the current KIT/Container finding that `goes_to` is a broad endpoint such as Park and does not provide the complete Setup-support relationship needed by pick-list generation.
@@ -93,6 +94,7 @@ Before schema or application implementation:
 ## Related Documents
 
 - [Setup and Deployment](../README.md)
+- [Setup Session 2026 Planning Direction — 2026-09-04](engineering/Setup_Session_2026_Planning_Direction_2026-09-04.md)
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Historical Setup Planning Evidence — 2024](engineering/Historical_Setup_Planning_Evidence_2024.md)
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](engineering/Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
