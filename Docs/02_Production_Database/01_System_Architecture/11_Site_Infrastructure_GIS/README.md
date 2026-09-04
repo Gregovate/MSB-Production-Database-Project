@@ -10,6 +10,8 @@ Field collection uses a Garmin GPSMAP 66sr. ExpertGPS and county aerial imagery 
 
 Production PostgreSQL has PostGIS/geospatial capability available, but no accepted Setup/Deployment operational GIS workflow is currently using it. Before schema or application changes, verify the exact installed extension/version and existing geometry/geography objects rather than assuming how PostGIS is configured.
 
+Current Setup Session reconnaissance has also established that a `2026_Stage_GPS.csv` dataset exists with 31 unique Stage/setup points and populated projected Easting/Northing coordinates. The dataset structure and ingestion gates are preserved in [Stage GPS Reference Data Reconnaissance — 2026-09-03](Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md). The uploaded CSV is not yet declared the controlled authoritative source until its source/export process and CRS are confirmed.
+
 ## Coordinate-System Contract
 
 The working coordinate reference is:
@@ -137,6 +139,8 @@ Do not start by adding generic latitude/longitude columns throughout the Product
 ## Known Open Work
 
 - inventory the existing GPX/ExpertGPS data and waypoint naming/identity rules;
+- confirm the source/export process and exact CRS for the supplied `2026_Stage_GPS.csv` dataset;
+- reconcile the 31 Stage/setup reference points to `ref.stage` and/or durable park site/location identities without assuming one CSV row equals one Stage row;
 - verify production PostGIS configuration and current spatial objects;
 - define durable park Setup destination identities;
 - reconcile park destinations with Stage/Scene/Display/Container relationships;
@@ -151,16 +155,18 @@ For Setup/Deployment GIS work, begin only after the actual Setup movement/placem
 Then review:
 
 1. [Setup and Deployment](../12_Setup_and_Deployment/README.md);
-2. [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md);
-3. [Containers and Storage](../04_Containers_and_Storage/README.md);
-4. existing GPX/ExpertGPS datasets and waypoint conventions;
-5. the live PostgreSQL/PostGIS configuration.
+2. [Stage GPS Reference Data Reconnaissance — 2026-09-03](Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md);
+3. [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md);
+4. [Containers and Storage](../04_Containers_and_Storage/README.md);
+5. existing GPX/ExpertGPS datasets and waypoint conventions;
+6. the live PostgreSQL/PostGIS configuration.
 
 Do not design the GIS database schema from assumptions.
 
 ## Related Systems
 
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
+- [Stage GPS Reference Data Reconnaissance — 2026-09-03](Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
 - [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
 - [Network Infrastructure](../10_Network_Infrastructure/README.md)
