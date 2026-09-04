@@ -255,11 +255,12 @@ Regardless of the final UI or spatial model, future Setup engineering should acc
 - the operator can deliberately record an unexpected Stage/setup area when plans change;
 - original WGS84 observation/time/accuracy can be preserved independently of transformed coordinates and business destination if operational GPS observations are implemented.
 
-## Related documents
+## Related Documents
 
+- [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md)
 - [Setup Session Engineering Reconnaissance — 2026-09-03](Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Container-to-Stage Relationship Reconnaissance — 2026-09-03](Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
-- [Setup Session subsystem](../README.md)
-- [Site Infrastructure / GIS](../../../11_Site_Infrastructure_GIS/README.md)
-- [Stage GPS Reference Data Reconnaissance — 2026-09-03](../../../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
+- [Setup and Deployment](README.md)
+- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
+- [Stage GPS Reference Data Reconnaissance — 2026-09-03](../11_Site_Infrastructure_GIS/Stage_GPS_Reference_Data_Reconnaissance_2026-09-03.md)
 - [#122 — Setup Session engineering issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122)
