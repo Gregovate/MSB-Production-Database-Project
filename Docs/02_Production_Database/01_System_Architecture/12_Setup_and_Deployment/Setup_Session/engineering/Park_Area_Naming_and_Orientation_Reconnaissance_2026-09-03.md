@@ -166,6 +166,7 @@ A new or occasional volunteer should eventually be able to answer questions such
 - Where is Icicle Tunnel?
 - Where is Candyland?
 - Where are Festive Trees?
+- Where is Whoville?
 - Where is the Church relative to the main park?
 - Which side of the river should this delivery use?
 - What broad MSB Stage am I in?
@@ -173,6 +174,18 @@ A new or occasional volunteer should eventually be able to answer questions such
 - If someone refers to a park rental-area number, which MSB work areas does that approximately cover?
 - If city staff says `Area 1`, which MSB Stages/setup areas are they talking about?
 - If an MSB volunteer says `Candyland`, what city/park area should be used when communicating externally?
+
+A particularly representative field instruction is:
+
+> `Take this to Whoville.`
+
+That instruction is meaningful inside MSB but not to a general public mapping/search service. `Whoville`, `Candyland`, `Icicle Tunnel`, and many other names are MSB-local operational place names. A volunteer cannot reasonably be expected to Google those names and discover the correct destination.
+
+Therefore the system should eventually provide a discoverable answer to:
+
+> `Show me where Whoville is.`
+
+The exact implementation remains open. It may be a map, Stage reference point, landmark/access description, current-position view, or another task-focused aid. The requirement is that MSB-local place names become self-explaining inside the MSB system rather than depending on someone already knowing the park layout.
 
 The system does not need to solve all of those with automatic GPS logic.
 
@@ -188,7 +201,7 @@ Possible aids include one or more of:
 - city/rental-area overlays as secondary context;
 - landmark/access notes;
 - current-device location;
-- `Show me where this is` or similar task-focused navigation;
+- `Show me where this is` or `Show me where this goes` task-focused navigation;
 - multiple anchors or richer geometry for long areas where later field use proves necessary.
 
 None of these is approved by this document.
@@ -226,6 +239,7 @@ The external rental-area system should be documented/recognizable where it helps
 
 ## Scenarios any later design should handle
 
+- a new volunteer receiving `Take this to Whoville` can discover where Whoville is from the MSB system without asking the one experienced person who knows the park layout;
 - a new volunteer can locate Candyland from the MSB system without knowing the city rental-area numbering;
 - a volunteer hearing `Area 1` can distinguish that park term from any MSB Stage number;
 - Santa's Workshop, Candyland, Dancing Forest, and Command Center remain distinct MSB work areas even though Park Rental Area 1 spans them;
