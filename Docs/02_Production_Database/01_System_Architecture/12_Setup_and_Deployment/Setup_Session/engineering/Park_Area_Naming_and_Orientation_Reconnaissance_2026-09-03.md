@@ -91,6 +91,46 @@ Therefore:
 
 Do not infer relationships from matching or similar numbers.
 
+## Two operational languages and a required translation layer
+
+Field-process clarification established that MSB and the city effectively speak **different location languages**.
+
+Inside the MSB organization, the normal vocabulary is the MSB production system:
+
+```text
+Stage
+Scene
+Display
+Setup-area names
+```
+
+When communicating with city/park staff, the normal vocabulary is the park's rental-area system:
+
+```text
+Area 1
+Area 3
+Area 4
+Area 5
+Area 6
+```
+
+Neither vocabulary should replace the other. They serve different organizations and different operational purposes.
+
+The current problem is that the translation between them is largely tribal knowledge held by one person. The long-term system therefore needs a **crosswalk/translation layer**, not a forced renaming or merger of the two systems.
+
+Conceptually:
+
+```text
+MSB language
+    Stage / Scene / Display context
+        <-> explicit translation/crosswalk
+            <-> city/park rental-area language
+```
+
+That translation may be one-to-many or many-to-one. For example, one city rental area can contain several distinct MSB Stages.
+
+The same principle should apply to operator-facing guidance: when useful, the system should be able to show both vocabularies together without implying they are the same identity.
+
 ## Field-described rental-area examples
 
 During 2026-09-03 reconnaissance, the current park rental-area relationship was described approximately as follows:
@@ -131,6 +171,8 @@ A new or occasional volunteer should eventually be able to answer questions such
 - What broad MSB Stage am I in?
 - If a Scene name is shown, what Stage is it part of?
 - If someone refers to a park rental-area number, which MSB work areas does that approximately cover?
+- If city staff says `Area 1`, which MSB Stages/setup areas are they talking about?
+- If an MSB volunteer says `Candyland`, what city/park area should be used when communicating externally?
 
 The system does not need to solve all of those with automatic GPS logic.
 
@@ -171,7 +213,8 @@ In particular:
 - do not assume one Stage fits inside exactly one rental area without field evidence;
 - do not force Scene adoption into orientation workflows merely because Scene is available;
 - preserve the parent Stage when Scene-level guidance is introduced;
-- do not rely on one person's memory as the operational crosswalk.
+- do not rely on one person's memory as the operational crosswalk;
+- preserve both the internal MSB vocabulary and the external city/park vocabulary when building a future crosswalk.
 
 ## 2026 MVP significance
 
@@ -189,6 +232,7 @@ The external rental-area system should be documented/recognizable where it helps
 - Sledders and Stacies Island remain distinct MSB Stages even though Park Rental Area 6 covers both;
 - a new Scene name can be shown together with its parent Stage so team members are not forced to infer the relationship;
 - Church-side access remains understandable even when a map/rental-area reference is unfamiliar;
+- city/park communication can use rental-area terminology while the MSB team continues using Stage/Scene terminology internally;
 - operational orientation remains usable even when the one person who currently knows the complete crosswalk is unavailable.
 
 ## Related documents
