@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT ENGINEERING RECONNAISSANCE — implementation not yet approved |
+| Status | CURRENT ENGINEERING RECONNAISSANCE — concepts under consideration; implementation not yet approved |
 | System | Setup Session |
 | Parent system | Setup and Deployment |
 | GIS dependency | Site Infrastructure / GIS |
@@ -11,9 +11,11 @@
 
 ## Purpose
 
-Preserve the field-process decision for how GPS should assist, but not control, park placement of Containers and Displays during Setup.
+Preserve field-process observations, operational problems, and candidate ideas for how GPS/map/location information could assist park placement of Containers and Displays during Setup.
 
-This document exists because a simple nearest-Stage algorithm would be operationally unsafe for MSB.
+This document is **reconnaissance, not an approved workflow design**. The project is intentionally getting tribal knowledge and real field constraints onto paper before deciding how much GIS automation belongs in the 2026 Setup Session.
+
+A simple nearest-Stage algorithm is already known to be unsafe as an automatic decision rule for MSB, but that does not mean a final replacement workflow has been selected.
 
 ## Current capability and evidence
 
@@ -25,6 +27,31 @@ MSB already maintains park infrastructure in ExpertGPS and has current Stage/set
 
 Phones/tablets provide WGS84/EPSG:4326 operational observations. The GIS contract requires preserving the original device observation and transforming a derived copy to EPSG:8158 when projected comparison is needed.
 
+## Operator orientation / tribal-knowledge problem
+
+A separate operational requirement exists even if GPS is never used to auto-select or validate a Stage:
+
+> A volunteer should not need years of MSB tribal knowledge to know where Icicle Tunnel, Candyland, Festive Trees, the Church, or another Stage/setup area physically is in the park.
+
+Today, experienced volunteers know the park layout and can interpret Stage names from memory. A new or occasional volunteer may know the name of the Container or Stage but still not know where to drive, unload, or carry it.
+
+The future Setup workflow should therefore provide some form of **location/orientation guidance** for the selected work area. The exact presentation is intentionally open and could eventually include one or more of:
+
+- a readable Stage/setup-area name and description;
+- a simple park map showing the Stage/setup area;
+- the operator's current position relative to the intended area;
+- a reference point or several useful anchor points;
+- a visual route/access hint where physical access matters;
+- notes such as `Church side of river`, `north end`, `along road`, or another practical landmark;
+- current-day Setup context showing which areas are being worked;
+- a link/button such as `Show me where this goes` rather than an automatic placement decision.
+
+These are **candidate forms of guidance, not approved UI requirements**.
+
+The important requirement is that Stage/location knowledge becomes discoverable from controlled system data rather than remaining only in experienced volunteers' memory.
+
+This orientation problem is related to, but distinct from, recording where an asset was actually placed. A user may need help finding Candyland before any Container scan occurs.
+
 ## Why nearest Stage cannot be authoritative
 
 Field-process examples establish that spatial proximity alone is insufficient:
@@ -35,15 +62,15 @@ Field-process examples establish that spatial proximity alone is insufficient:
 - Containers are commonly unloaded/staged before final distribution, so an asset may temporarily be near a Stage without being placed for that Stage;
 - shared Containers/trailers can legitimately support several Stages.
 
-Therefore:
+Therefore the following is a constraint, not a complete design decision:
 
-> GPS may rank or validate candidates, but GPS proximity must not by itself assign a Container/Display to a Stage or mark it placed.
+> GPS proximity must not by itself assign a Container/Display to a Stage or mark it placed.
 
-## 2026 MVP candidate-selection rule
+## Candidate-selection concept under consideration — not approved
 
-The first production workflow should use **business context first, GPS second, human confirmation last**.
+One plausible low-risk workflow is **business context first, GPS second, human confirmation last**.
 
-Preferred flow:
+Conceptual flow under consideration:
 
 ```text
 scan CONT:<id> or DISP:<id>
@@ -61,25 +88,31 @@ scan CONT:<id> or DISP:<id>
         -> record Setup-owned placement/relocation event
 ```
 
-Do not search all park Stages first merely because GPS is available.
+This is **not yet an approved implementation rule**. It is preserved because it appears to reduce tribal knowledge while avoiding the known failure modes of nearest-point automation.
+
+Do not search all park Stages first merely because GPS is available unless later field testing proves that is useful and safe.
 
 ### Example — single-area Kit
+
+Possible behavior:
 
 ```text
 Container 60 — Elf Choir Kit
     -> expected Setup area: Old Elf Choir
-    -> GPS confirms/ranks that candidate
-    -> operator confirms destination
+    -> location information can help orient/rank that candidate
+    -> operator confirms destination if the workflow requires confirmation
 ```
 
-If one expected area is strongly established by current relationships, the UI may place it first or preselect it for confirmation, but the operator must still have a safe correction path.
+If one expected area is strongly established by current relationships, a future UI might place it first or preselect it for confirmation, but the operator must have a safe correction path if confirmation is used.
 
 ### Example — shared Container
+
+Possible behavior:
 
 ```text
 Container 34 — Arch Trailer
     -> valid Setup support derived from multiple Stages
-    -> GPS ranks the currently plausible Stage candidates
+    -> location information may help rank currently plausible Stage candidates
     -> operator chooses the actual placement/use for this event
 ```
 
@@ -87,13 +120,13 @@ Do not force a shared Container to one permanent Stage merely because of the cur
 
 ### Unexpected placement
 
-The operator must have an `Other Stage / Setup Area` path for deliberate exceptions or changed plans.
+Any future workflow must allow deliberate exceptions or changed plans without silently changing permanent Container/Display relationships.
 
-An unexpected selection should be recorded as an explicit deviation rather than silently rejected or silently changing permanent Container/Display relationships.
+An `Other Stage / Setup Area` path is one possible UI treatment, not yet an approved control.
 
 ## Stage reference points are useful but not full Stage geometry
 
-The current 2026 Stage GPS dataset provides useful reference points and is sufficient for rough candidate ranking.
+The current 2026 Stage GPS dataset provides useful reference points and can support orientation and rough candidate ranking.
 
 It is **not** sufficient to represent the full physical shape of every Stage.
 
@@ -111,50 +144,52 @@ Do not build all of those geometry classes merely to finish the 2026 MVP.
 
 For a 600–800 foot Stage, distance to one reference point can be misleading.
 
-For 2026, that means:
+This establishes constraints for any future design:
 
-- use the reference point only to rank candidates broadly;
-- do not reject a valid Stage merely because the observed device point is far from its single reference point;
+- do not reject a valid Stage merely because an observed device point is far from its single reference point;
 - do not use one universal proximity threshold for all Stages;
-- require operator confirmation.
+- one point may still be useful for general orientation even when it is insufficient for placement validation.
 
-Future improvement may replace point-to-point distance with distance-to-line, distance-to-polygon, or nearest-anchor calculations for long Stages.
+Future improvement could use distance-to-line, distance-to-polygon, multiple anchors, or another representation if field value justifies it.
 
 ## Overlapping-Stage behavior
 
 Traditional Christmas / Peanuts demonstrates that even accurate spatial geometry may overlap operationally.
 
-Therefore spatial containment or nearest-distance cannot be the only discriminator.
+Therefore spatial containment or nearest-distance cannot be the only discriminator if the system eventually assists with candidate selection.
 
-The candidate ranking should also use:
+Potential additional context includes:
 
 - the Container/Display's expected Setup support relationships;
 - the active Setup work planned for that day/session;
 - the asset's permanent Display relationships where applicable;
-- explicit operator selection.
+- explicit operator knowledge/selection.
 
-If two expected areas are physically close or overlapping, both should remain visible candidates.
+If two expected areas are physically close or overlapping, a future workflow must not hide that ambiguity merely to produce one answer.
 
 ## River / barrier behavior
 
 The Church/park river separation demonstrates that straight-line distance is not equivalent to operational accessibility.
 
-For the 2026 MVP, do not attempt to create a full routing/barrier engine.
+This is important both for placement and for orientation. Telling a new volunteer that the Church is "near" a park-side point is not enough if the correct delivery route requires being on the other side of the river.
 
-Instead:
+For the 2026 MVP, no full routing/barrier engine is assumed.
 
-- business-context filtering should normally keep unrelated candidates out of the short list;
-- operator confirmation remains mandatory;
-- a visibly wrong-side candidate must remain correctable;
-- if field testing shows repeated ambiguity, introduce a coarse durable site/zone concept before attempting full route/network analysis.
+Possible future aids include:
 
-A future GIS enhancement may model site zones, access areas, or barrier-aware geometry so the system can distinguish physically separated areas even when Euclidean distance is small.
+- coarse durable site/zone identity;
+- access notes such as `Church side of river`;
+- landmark/direction notes;
+- mapped access points;
+- richer GIS geometry if repeated field use proves it worthwhile.
+
+Do not choose among those approaches until the actual operator workflow is tested.
 
 ## Staging versus final placement
 
 A scan at the common unload/staging area must not automatically assign the Container to the geographically nearest Stage.
 
-The Setup Session needs explicit business meaning for the scan, for example:
+The Setup Session needs to preserve the semantic difference between temporary park staging and a later Stage/setup-area placement. Possible business concepts include:
 
 ```text
 UNLOADED / STAGED
@@ -164,33 +199,31 @@ RELOCATED / PLACED
     -> asset was moved to a selected Stage/setup destination
 ```
 
-The exact event names/schema remain unapproved, but the workflow must preserve this semantic distinction.
+The exact event names/schema remain unapproved.
 
-## Recommended 2026 UI behavior
+## Illustrative UI concepts — not approved
 
-After a park placement/relocation scan, the task-focused UI should show approximately:
+One possible task-focused UI might show:
 
 ```text
 Container 56 — Icicle Tunnel Kit
 
-Expected Setup areas:
-1. Icicle Tunnel        85 ft from current device fix
-2. <another valid area> 240 ft
+Expected Setup area:
+Icicle Tunnel
 
+[Show area on map]
 [Confirm Icicle Tunnel]
 [Choose another Stage / Setup area]
 [Record as staging/unloaded instead]
 
-GPS accuracy: 18 ft
+Current GPS accuracy: 18 ft
 ```
 
-Distances and accuracy are decision aids, not proof of placement.
-
-Do not require the operator to interpret raw Easting/Northing or latitude/longitude values.
+Another workflow may not need all of those controls. The durable requirement is that the operator can discover where the named Setup area is and safely record what actually happened without interpreting raw Easting/Northing or latitude/longitude values.
 
 ## PostGIS 2026 MVP boundary
 
-Because PostGIS is installed but unused, the first implementation can remain deliberately small.
+Because PostGIS is installed but unused, any first implementation can remain deliberately small.
 
 Before schema work, verify:
 
@@ -200,26 +233,27 @@ Before schema work, verify:
 4. no existing GIS schema/table already owns these identities;
 5. the minimum durable site/reference-point and operational-observation representation.
 
-For the 2026 MVP, PostGIS should be used only where it materially helps:
+Potential 2026 uses of PostGIS include:
 
 - controlled coordinate transformation;
-- distance/proximity ranking;
-- later map/query support if needed.
+- distance/proximity calculations;
+- map/query support if it materially reduces operator confusion.
 
-Do not build a full GIS editing system, road-routing system, or generalized spatial inventory to complete Setup Session.
+Do not build a full GIS editing system, road-routing system, or generalized spatial inventory merely to complete Setup Session.
 
-## Acceptance direction
+## Scenarios any later design should handle
 
-The first park placement workflow should pass at least these cases:
+Regardless of the final UI or spatial model, future Setup engineering should account for these real cases:
 
-- a Container with one expected Stage returns that Stage first and allows confirmation/correction;
-- Container 34 / Arch Trailer can present more than one valid Stage candidate without creating a permanent one-Stage assignment;
-- a scan in the common staging area can be recorded as staging rather than the nearest Stage;
-- long Stage placement is not rejected because the single reference point is far away;
-- Traditional Christmas / Peanuts ambiguity does not auto-select one based only on distance;
-- a Church-side placement cannot become irreversible merely because a park-side point is closer in straight-line distance;
-- the operator can deliberately choose another Stage/setup area and the event records that decision;
-- original WGS84 observation/time/accuracy are preserved independently of the transformed coordinate and selected business destination.
+- a new volunteer can determine where a named Stage/setup area is without asking an experienced volunteer;
+- a Container with one expected Stage can be guided toward that area without an irreversible automatic assignment;
+- Container 34 / Arch Trailer can support more than one valid Stage without creating a permanent one-Stage assignment;
+- a scan in the common staging area can remain staging rather than becoming the nearest Stage;
+- long Stage placement is not rejected because a single reference point is far away;
+- Traditional Christmas / Peanuts ambiguity is not falsely collapsed into one answer based only on distance;
+- Church-side versus park-side access remains understandable despite misleading straight-line proximity;
+- the operator can deliberately record an unexpected Stage/setup area when plans change;
+- original WGS84 observation/time/accuracy can be preserved independently of transformed coordinates and business destination if operational GPS observations are implemented.
 
 ## Related documents
 
