@@ -112,9 +112,52 @@ Kit Box with no linked Displays
     -> candidate for supplemental Setup-support relationship
 ```
 
-Do not assume every linked Kit resolves to only one Stage until the linked Display Stage distribution is queried directly. A Kit may contain Displays from more than one Stage just as other shared Containers do.
+Do not assign Stage relationships to zero-linked Kits by parsing Description text automatically. The names are useful human reconciliation evidence, but the authoritative relationship should be reviewed and stored explicitly if the 2026 Setup planner needs it.
 
-Likewise, do not assign Stage relationships to zero-linked Kits by parsing Description text automatically. The names are useful human reconciliation evidence, but the authoritative relationship should be reviewed and stored explicitly if the 2026 Setup planner needs it.
+## Linked Kit Box Stage Distribution — 2026-09-03
+
+A second production query grouped each Kit Box by the distinct `ref.stage` values of its linked Displays.
+
+Of the 16 Kit Boxes with linked Displays:
+
+- **15 resolve to exactly one linked Stage**;
+- **1 resolves to two linked Stages**;
+- none of the linked Kit Boxes in this sample resolved to more than two Stages.
+
+The single multi-Stage Kit is:
+
+- Container 55 — `Magic Igloo & PB Igloo Flood Light Kit`
+  - Stage 21 — Polar Bear Playground;
+  - Stage 26 — Magic Igloo.
+
+Representative single-Stage derivations include:
+
+- Container 58 — Candy Land Kit -> Stage 17 / Candyland;
+- Container 68 — FC Kit -> Stage 04 / Food Collection;
+- Containers 56 and 57 — Icicle Tunnel Kits -> Stage 14 / Icicle Tunnel;
+- Container 35 — Magic Igloo kit -> Stage 26 / Magic Igloo;
+- Container 62 — Polar Bear Playground Kit -> Stage 21 / Polar Bear Playground;
+- Container 66 — Post Office Kit -> Stage 06 / Post Office;
+- Container 65 — Santa's Workshop Kit -> Stage 19 / Santa's Workshop;
+- Container 70 — Sledders Kit -> Stage 11 / Sledders;
+- Container 79 — Winter Wonderland Kit -> Stage 13 / Winter Wonderland.
+
+This is strong production evidence that linked Displays already provide useful Setup-support context for most currently linked Kit Boxes, while also proving that the relationship cannot be universally modeled as one exclusive Stage.
+
+### Physical adjacency / practical Setup grouping
+
+Two linked Kit descriptions initially looked surprising because both resolve through their Displays to Stage 02 / Triangle:
+
+- Container 63 — `Fred Stars`;
+- Container 72 — `Volunteer Path Lights & Cords`.
+
+Field-process clarification established that these physical features are **right next to each other in the park**. Their Stage 02 linkage is therefore not being treated as suspicious or incorrect merely because the Container descriptions do not say `Triangle`.
+
+This establishes an important semantic rule for Setup Session engineering:
+
+> A linked Stage can represent the practical Setup area/work context that uses or services a Container, not necessarily strict inventory ownership implied by the Container's human-readable name.
+
+Do not automatically "correct" a linked Stage merely because Description text suggests a different label. Physical adjacency, crew workflow, and existing Display relationships are relevant evidence.
 
 ## Original No-Single-Stage-FK Rationale
 
@@ -219,13 +262,13 @@ If Candyland, Icicle Tunnel, Polar Bear Playground, Food Collection, or Racing A
 
 ### Example — KIT Container
 
-Selecting Icicle Tunnel may not reach Container 56 merely through Display assignments because the Kit's small contents are intentionally not represented as LOR Displays.
+Selecting Icicle Tunnel can already reach Containers 56 and 57 through their linked Stage-14 Displays. That Stage-support information should be derived rather than separately re-entered merely because the Containers are Kits.
 
-A supplemental relationship can make this physical dependency resolvable without inventorying every Kit item:
+By contrast, selecting Elf Choir cannot currently reach Container 60 through linked Displays because that Kit has zero Display assignments. A supplemental relationship can make that physical dependency resolvable without inventorying every Kit item:
 
 ```text
-Container 56
-    -> supports Stage 14 / Icicle Tunnel
+Container 60
+    -> supports Old Elf Choir setup scope
 ```
 
 The supplemental relationship is therefore a **planning dependency**, not a statement that all Containers have one exclusive Stage owner.
@@ -255,6 +298,7 @@ Do not assume every Container maps to exactly one Stage.
 The KIT examples often appear Stage-oriented, but the broader Container population already demonstrates cross-Stage behavior:
 
 - Container 34 / Arch Trailer stores Displays from six Stages;
+- Container 55 Kit Box derives two linked Stages;
 - Antenna Trailer stores/transports parts for multiple Displays;
 - some Containers may be shared by several Setup jobs;
 - some Display-pallet Containers may themselves become part of a Display;
@@ -264,7 +308,7 @@ If an explicit permanent Container-to-Stage/Setup-support relationship is requir
 
 A many-to-many/support association may therefore be more faithful than a scalar `ref.container.stage_id`, but exact schema remains unapproved until live production objects and the real exception cases are inventoried.
 
-A type-specific rule is also possible. For example, KIT Containers may usually support one Stage while shared trailers support many. Do not encode that assumption before querying the actual data.
+A type-specific rule is also possible. For example, most KIT Containers currently derive one Stage while some shared Kits/trailers derive many. Do not encode a universal one-Stage assumption.
 
 ## Why This Matters for Pick Lists
 
@@ -279,9 +323,9 @@ selected Stage/work
             -> required Containers
 ```
 
-KIT Containers are different. Their detailed contents are deliberately deferred from the 2026 MVP, but the **KIT Container itself already exists and is a meaningful physical dependency**.
+KIT Containers are different only where their physical Setup dependency cannot already be derived from linked Displays. Their detailed contents are deliberately deferred from the 2026 MVP, but the **KIT Container itself already exists and is a meaningful physical dependency**.
 
-Therefore the 2026 MVP does not need detailed KIT contents to benefit from a supplemental Setup-support relationship at the Container level.
+Therefore the 2026 MVP does not need detailed KIT contents to benefit from a supplemental Setup-support relationship at the Container level for the unresolved cases.
 
 Conceptually:
 
@@ -290,11 +334,11 @@ selected Stage/work
     -> required Displays -> Display-bearing Containers
     +
     -> supplemental Container support relationships
-        -> KIT Containers / other non-derived physical dependencies
+        -> zero-linked KIT Containers / other non-derived physical dependencies
             -> deduplicate physical pick list
 ```
 
-This lets a planner include an `Icicle Tunnel Kit` when Stage 14 is selected without inventorying every tie, piece of garland, fastener, spacer, or small lighting component inside the Kit.
+This lets a planner include an `Elf Choir Kit` when Old Elf Choir is selected without inventorying every spacer, tie, piece of garland, fastener, or other small component inside the Kit.
 
 ## 2026 MVP Direction
 
@@ -342,11 +386,12 @@ At minimum verify:
 
 Any proposed Container support solution should correctly handle at least:
 
-- Container 56 — Icicle Tunnel Kit -> supplemental Stage 14 / Icicle Tunnel support;
-- Container 57 — second Icicle Tunnel Kit -> same supporting Stage without conflict;
-- Container 60 — Elf Choir Kit -> correct Elf Choir supporting scope;
-- Container 62 — Polar Bear Playground Kit -> Stage 21;
-- Container 76 — Racing Arches Kit -> Stage 25;
+- Containers 56 and 57 — Icicle Tunnel Kits -> derive Stage 14 through linked Displays without redundant manual support data;
+- Container 60 — Elf Choir Kit -> supplemental Old Elf Choir supporting scope because it currently has zero linked Displays;
+- Container 62 — Polar Bear Playground Kit -> derive Stage 21 through linked Displays;
+- Container 76 — Racing Arches Kit -> supplemental Stage 25 / Racing Arches support because it currently has zero linked Displays;
+- Container 55 — preserve derived support for both Stage 21 / Polar Bear Playground and Stage 26 / Magic Igloo;
+- Containers 63 and 72 — preserve the currently derived Stage 02 practical Setup-area relationship unless contrary field evidence establishes a defect;
 - Container 34 — Arch Trailer -> derive multiple Stage dependencies from its linked Displays and do **not** force it to one Stage;
 - shared Containers that genuinely support multiple Stages;
 - Containers with no Stage/Setup support where that is legitimate.
