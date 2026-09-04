@@ -27,6 +27,14 @@ Current durable findings and design constraints are preserved in:
 
 - [Setup Session Engineering Reconnaissance — 2026-09-03](engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 
+### 2026 MVP boundary
+
+The first Setup Session implementation is intentionally focused on the annual planning/pick-list/execution/location workflow using existing permanent Display/Container relationships and proven larger physical dependencies.
+
+Detailed KIT/material inventory is **deferred by design** from the 2026 MVP. KITs are operationally important future work, but small non-LOR items such as ties, garland, hardware, small structural pieces, some lighting pieces, stakes/cords/plugs/bull line, and similar materials must not be forced into LOR Preview or `ref.display` merely to make the first Setup Session work.
+
+The current engineering reconnaissance owns the detailed scope boundary and future KIT integration direction.
+
 ## Ownership Boundary
 
 Setup Session owns the business meaning of annual Setup planning and execution, including where proven necessary:
@@ -48,7 +56,8 @@ It does **not** own:
 - authoritative GIS reference coordinates;
 - permanent warehouse/home storage semantics;
 - Testing System test-session rules;
-- Stage Setup Procedure document content.
+- Stage Setup Procedure document content;
+- detailed KIT/small-component inventory for the 2026 MVP.
 
 ## Integration Boundaries
 
