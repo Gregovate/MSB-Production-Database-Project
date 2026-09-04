@@ -591,13 +591,13 @@ Detailed KIT/material inventory is not part of this 2026 reconnaissance gate exc
 
 ## Related Systems and Documents
 
-- [Setup Session subsystem portal](../README.md)
-- [Setup and Deployment](../../README.md)
-- [Containers and Storage](../../../04_Containers_and_Storage/README.md)
-- [Testing System](../../../05_Testing_System/README.md)
-- [Labeling and Scanning](../../../07_Labeling_and_Scanning/README.md)
-- [Scan Workflows and Forklift Operations](../../../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md)
-- [Site Infrastructure / GIS](../../../11_Site_Infrastructure_GIS/README.md)
+- [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md)
+- [Setup and Deployment](README.md)
+- [Containers and Storage](../04_Containers_and_Storage/README.md)
+- [Testing System](../05_Testing_System/README.md)
+- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
+- [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md)
+- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [#122 — Setup Session engineering issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122)
 - [#88 — Location scan/movement integration](https://github.com/Gregovate/MSB-Production-Database-Project/issues/88)
 - [#113 — Scan Setup-season integration](https://github.com/Gregovate/MSB-Production-Database-Project/issues/113)
