@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT ENGINEERING RECONNAISSANCE — source/CRS ingestion not yet approved |
+| Status | CURRENT ENGINEERING RECONNAISSANCE — CRS confirmed; source lineage/database ingestion not yet approved |
 | System | Site Infrastructure / GIS |
 | Consumer | Setup Session |
 | Owner | MSB Technical Team |
@@ -13,7 +13,7 @@
 
 Preserve the 2026-09-03 discovery that a current `2026_Stage_GPS.csv` dataset exists with projected Easting/Northing coordinates for the park Stage/setup destinations needed by the Setup Session.
 
-This document records the dataset structure and Setup/GIS significance established during reconnaissance. It does **not** yet declare the uploaded CSV to be the controlled authoritative source, approve database ingestion, or approve a coordinate-reference transformation.
+This document records the dataset structure and Setup/GIS significance established during reconnaissance. It does **not** yet declare the uploaded CSV to be the controlled authoritative source or approve database ingestion.
 
 ## Dataset Evidence
 
@@ -79,14 +79,17 @@ The current Site Infrastructure / GIS contract defines the project working coord
 
 `NAD83 HARN WISCRS Sheboygan County Feet (USft)`
 
-The supplied CSV contains projected Easting/Northing values that are structurally compatible with a projected local-foot workflow, but the CSV itself does not declare its CRS or provenance metadata.
+On 2026-09-03, current field-configuration evidence was supplied showing the active GPS coordinate format selected as:
 
-Therefore:
+`NAD83 HARN WISCRS Sheboygan County Feet (US ft)`
 
-- do not silently assume or rewrite the file CRS;
-- confirm the source/export process before production ingestion;
-- preserve the existing WISCRS working contract when the source is reconciled;
-- transform browser/mobile latitude/longitude observations explicitly before comparing them to reference coordinates.
+The spacing in `US ft` is the application/UI label; it represents the same project working coordinate system documented as `USft` in repository engineering documentation.
+
+This confirms that the current GPS workflow uses the established MSB projected Sheboygan County feet coordinate system. The `2026_Stage_GPS.csv` Easting/Northing values are therefore to be interpreted within that same working coordinate system unless later source-lineage evidence proves otherwise.
+
+The CSV itself still does not embed CRS metadata, so future controlled exports/imports should preserve explicit CRS/source metadata rather than relying on operator memory or application configuration alone.
+
+Browser/mobile device GPS normally arrives as latitude/longitude in a different coordinate reference. Operational Setup observations must therefore still be explicitly transformed/normalized before spatial comparison with these reference coordinates.
 
 ## Setup Session Significance
 
@@ -150,11 +153,12 @@ Before ingestion:
 Before this dataset becomes authoritative PostgreSQL reference data, establish:
 
 1. which tool/source produced `2026_Stage_GPS.csv`;
-2. whether the coordinates came from Garmin, ExpertGPS, county imagery refinement, or another controlled process;
-3. the exact CRS used for the export;
-4. whether these are intended Stage center/reference points, setup anchor points, or another operational point definition;
-5. who/what owns future coordinate correction;
-6. whether the 2026 file supersedes or supplements older GPX/waypoint data.
+2. whether the coordinates came directly from Garmin, ExpertGPS, county-imagery refinement, or another controlled process;
+3. whether these are intended Stage center/reference points, setup anchor points, or another operational point definition;
+4. who/what owns future coordinate correction;
+5. whether the 2026 file supersedes or supplements older GPX/waypoint data.
+
+The coordinate-system question is no longer open: current field configuration confirms `NAD83 HARN WISCRS Sheboygan County Feet (US ft)`.
 
 ## 2026 Setup MVP Direction
 
@@ -164,6 +168,7 @@ For the first production workflow:
 
 - use durable Stage/site reference data once reconciled and approved;
 - use phone/tablet GPS only as operational observation evidence;
+- transform mobile latitude/longitude explicitly into the confirmed project working coordinate system where a projected-coordinate comparison is performed;
 - do not require exact surveyed accuracy to begin tracking where assets were last seen;
 - do not mark an asset delivered/placed solely because its device coordinate is near the Stage reference point;
 - keep the GIS integration narrow enough to fit the two-week Setup Session implementation window.
