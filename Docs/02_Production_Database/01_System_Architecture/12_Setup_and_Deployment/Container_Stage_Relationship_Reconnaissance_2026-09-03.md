@@ -399,16 +399,16 @@ Any proposed Container support solution should correctly handle at least:
 ## Documentation / Ownership Boundary
 
 - Containers and Storage owns permanent Container identity, type, home storage, and existing Container relationships.
-- Setup Session owns the requirement that physical planning can resolve the Containers needed for selected Setup work.
+- Setup and Deployment owns the requirement that physical planning can resolve the Containers needed for selected Setup work.
 - Detailed KIT contents remain future inventory work.
 - LOR must not be expanded to hold non-LOR small component inventory merely to solve this relationship.
 
-When live schema verification establishes the exact current Container FK behavior, update the responsible Containers and Storage engineering authority as well as this Setup Session handoff if the finding changes the permanent Container model.
+When live schema verification establishes the exact current Container FK behavior, update the responsible Containers and Storage engineering authority as well as this Setup/Deployment handoff if the finding changes the permanent Container model.
 
 ## Related Documents
 
-- [Setup Session subsystem](../README.md)
+- [Setup Session 2026 Planning Direction — 2026-09-04](11_Setup_Session_2026_Planning_Direction_2026-09-04.md)
 - [Setup Session Engineering Reconnaissance — 2026-09-03](Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
-- [Containers and Storage](../../../04_Containers_and_Storage/README.md)
-- [Setup and Deployment](../../README.md)
+- [Containers and Storage](../04_Containers_and_Storage/README.md)
+- [Setup and Deployment](README.md)
 - [#122 — Setup Session engineering issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122)
