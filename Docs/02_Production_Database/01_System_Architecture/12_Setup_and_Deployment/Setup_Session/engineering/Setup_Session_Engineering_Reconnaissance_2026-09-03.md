@@ -281,6 +281,60 @@ One movement of Container 34 may satisfy many future/parallel work dependencies.
 
 The annual Setup Session should also know after a shared trailer/Container has already been moved to the park so later work does not incorrectly schedule the same transport again.
 
+## 2026 MVP Scope Boundary — KIT and Small-Component Inventory
+
+Detailed KIT/material inventory is **deliberately deferred from the 2026 Setup Session MVP**.
+
+This was an intentional project decision, not an accidental omission. KITs are operationally important and are expected to become a future inventory subsystem/extension, but adding that domain during the first Setup Session build would mix two separate engineering problems under a two-week implementation window.
+
+Typical KIT contents include:
+
+- ties and attachment material;
+- small structural components;
+- some light strings or lighting pieces used by Displays;
+- garland;
+- hardware;
+- stakes, cords, plugs, bull line, and similar setup supplies; and
+- other smaller physical pieces needed to assemble Displays in the park.
+
+Most of these items are **not LOR objects** and should not be forced into LOR Preview or `ref.display` merely so Setup planning can inventory them. LOR remains the source for show/display identity and topology; Setup/KIT inventory is a separate physical-inventory concern.
+
+During the current system build, the Production Database intentionally captured larger one-off or repeated physical components when they were operationally significant enough to warrant Display-level identity, such as steel arch supports and similar major pieces. Those existing records may be used by the 2026 Setup resolver where they already exist.
+
+The 2026 Setup Session MVP should therefore use this boundary:
+
+```text
+IN SCOPE NOW
+    -> permanent Displays already in Production Database
+    -> current Display-to-Container assignments
+    -> shared Containers/trailers
+    -> larger physical components already represented as Displays
+    -> proven exceptional dependencies needed to generate a workable pick list
+
+DEFERRED
+    -> detailed KIT contents
+    -> small hardware/material inventory
+    -> forcing non-LOR pieces into LOR Preview
+    -> building generalized component/BOM inventory merely to complete Setup Session
+```
+
+The Setup Session architecture must leave a clean future integration point for KIT inventory, but the first production workflow must not depend on that future subsystem.
+
+### Future KIT direction
+
+KIT inventory remains vital future work, likely beginning after the 2026 Setup Session is operational and the real field workflow has produced evidence about what inventory granularity is useful.
+
+Future engineering should determine:
+
+- which KITs exist as durable physical Containers;
+- which contents need individual identity versus quantity/category tracking;
+- whether reusable structural pieces should have durable asset identity;
+- how consumable/replaceable hardware differs from reusable inventory;
+- how KIT requirements attach to Setup work packages without polluting LOR identity; and
+- how Takedown/restocking/shortage history should feed the next season.
+
+Do not let the future KIT design destabilize the current Setup Session dependency resolver.
+
 ## Transport Burden
 
 Some Displays consume an entire trailer and may require approximately three trips to move all pieces to the park.
@@ -489,6 +543,8 @@ Do not engineer Takedown schema from this single example, but preserve the lifec
 - After unloading, the Arch Trailer becomes the base for Who House and stays in the park until Takedown.
 - Who House is stored separately in the workshop and must not be assigned to Container 34 merely to express the trailer-as-base relationship.
 - a `display_pallet` flag exists on Containers to identify Containers that are part of a Display, but the current reconnaissance has not yet established which Display relationship is used or missing in production.
+- detailed KIT/material inventory was intentionally deferred from the 2026 Setup build; KITs contain important non-LOR setup materials but are not required for the first Setup Session MVP.
+- larger one-off/repeated physical components that materially affect Setup were selectively represented as Displays where useful, including steel arch supports and similar major pieces.
 - park work may occur without Wi-Fi/cellular connectivity and may require later synchronization of GPS-backed observations.
 
 ### Still to prove before schema design
@@ -499,7 +555,6 @@ Do not engineer Takedown schema from this single example, but preserve the lifec
 - exact existing representation of Antenna Trailer parts;
 - the correct selectable planning scope(s) for each real Setup job;
 - whether any Setup-specific dependency table is needed after existing Stage/Scene/Display relationships are fully tested;
-- which KIT/material contents need inventory for Setup planning;
 - the minimum transport-burden representation;
 - the minimum crew/effort/history data worth preserving;
 - offline browser/device capabilities and supported field devices;
@@ -507,6 +562,15 @@ Do not engineer Takedown schema from this single example, but preserve the lifec
 - production PostGIS configuration and coordinate-handling implementation;
 - exact event/state model for pick/load/delivery/relocation/placement;
 - how annual Setup state should integrate with Takedown without conflating the two workflows.
+
+### Explicitly deferred from the 2026 MVP
+
+- detailed KIT contents inventory;
+- generalized small-component/BOM inventory;
+- creating LOR/Display records for small physical pieces that are not LOR objects;
+- deciding the long-term inventory granularity for consumables, hardware, ties, garland, small lighting pieces, and similar KIT contents.
+
+These remain future work and must not block the first Setup Session production workflow.
 
 ## Required Next Reconnaissance
 
@@ -522,6 +586,8 @@ Before proposing DDL or application code:
 8. inventory current Scan #88/#113 contracts and determine the clean Setup Session handoff;
 9. verify Site Infrastructure/GIS/PostGIS baseline before designing GPS storage/calculation;
 10. design schema only from that evidence.
+
+Detailed KIT/material inventory is not part of this 2026 reconnaissance gate except to verify that the first Setup Session design does not accidentally depend on it.
 
 ## Related Systems and Documents
 
