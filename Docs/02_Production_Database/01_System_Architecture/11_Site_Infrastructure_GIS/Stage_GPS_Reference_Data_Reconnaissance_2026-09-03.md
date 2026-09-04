@@ -218,7 +218,8 @@ For the first production workflow:
 ## Related Documents
 
 - [Site Infrastructure / GIS](README.md)
-- [Setup Session](../12_Setup_and_Deployment/Setup_Session/README.md)
-- [Setup Session Engineering Reconnaissance](../12_Setup_and_Deployment/Setup_Session/engineering/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
+- [Setup and Deployment](../12_Setup_and_Deployment/README.md)
+- [Setup Session 2026 Planning Direction](../12_Setup_and_Deployment/11_Setup_Session_2026_Planning_Direction_2026-09-04.md)
+- [Setup Session Engineering Reconnaissance](../12_Setup_and_Deployment/Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
 - [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md)
 - [#122 — Setup Session engineering issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122)
