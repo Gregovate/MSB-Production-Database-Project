@@ -64,20 +64,46 @@ function procedureActionLink(label, href, className = '') {
   return `<a class="procedure-action ${className}" href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
 }
 
+function chooseEditableProcedureFiles(files) {
+  const candidates = files || [];
+  const sourceDocs = candidates.filter((file) => file.role === 'SOURCEDOC');
+  if (sourceDocs.length) {
+    return {
+      files: sourceDocs,
+      compatibilityFallback: false
+    };
+  }
+
+  const archive = candidates.filter((file) => file.role === 'ARCHIVE');
+  return {
+    files: archive,
+    compatibilityFallback: archive.length > 0
+  };
+}
+
 function renderEditableProcedures(files) {
   const target = document.getElementById('manager-editable-procedure');
   if (!target) return;
 
-  if (!files?.length) {
+  const selection = chooseEditableProcedureFiles(files);
+  const selectedFiles = selection.files;
+
+  if (!selectedFiles.length) {
     target.innerHTML = `
       <strong>No editable .gdoc source found for this Setup scope.</strong>
-      <div class="procedure-help">Review the Stage's Procedures\\Setup\\Archive and SourceDocs folders.</div>
+      <div class="procedure-help">Checked Procedures\\Setup\\SourceDocs first, then the existing Procedures\\Setup\\Archive legacy location.</div>
     `;
     return;
   }
 
-  target.innerHTML = files.map((file) => {
-    const role = file.role === 'ARCHIVE' ? 'Archive source' : 'SourceDocs source';
+  const compatibilityNotice = selection.compatibilityFallback
+    ? `<div class="procedure-help"><strong>Legacy compatibility:</strong> no editable .gdoc was found in SourceDocs, so this existing Archive .gdoc is being used in place for the 2025 verification pass. The Setup system does not move it.</div>`
+    : '';
+
+  target.innerHTML = `${compatibilityNotice}${selectedFiles.map((file) => {
+    const role = file.role === 'ARCHIVE'
+      ? 'Legacy editable source in Archive'
+      : 'Editable source in SourceDocs';
     const openAction = file.edit_url
       ? procedureActionLink('Open Editable Procedure', file.edit_url)
       : '<span class="procedure-action-disabled">Google Docs link could not be read from this .gdoc shortcut</span>';
@@ -93,7 +119,7 @@ function renderEditableProcedures(files) {
         <div class="procedure-actions">${openAction}${exportAction}</div>
       </div>
     `;
-  }).join('');
+  }).join('')}`;
 }
 
 function renderPublishedPdfs(files) {
