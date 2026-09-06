@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Capture the reusable scheduling requirement established during 2026 Setup planning: MSB needs a human-readable way to define practical Setup work once, reuse it from season to season, preserve ordered phases and prerequisites, schedule work that may span more than one field day, and run many independent crews/tasks in parallel when captains, volunteers, equipment, readiness, and material availability permit.
+Capture the reusable scheduling requirement established during 2026 Setup planning: MSB needs a human-readable way to define practical Setup work once, reuse it from season to season, preserve ordered phases and prerequisites, schedule work that may span more than one field day, run many independent crews/tasks in parallel when captains, volunteers, equipment, readiness, and material availability permit, and freely choose/reorder only the subset of ready work that leaders actually intend to perform.
 
 This document supports the governing Setup Session planning direction. It does **not** create a competing subsystem authority and does not approve PostgreSQL table names, columns, migrations, or final UI technology.
 
@@ -23,11 +23,14 @@ one Stage = one task
 one task = one day
 one date = one Stage
 one day = one active crew/task
+all ready parallel tasks = scheduled today
 ```
 
-All four assumptions are false for real MSB Setup.
+All five assumptions are false for real MSB Setup.
 
 A Stage may require multiple practical phases that must occur in sequence. A practical task may take more than one Setup day. One Setup day may also contain work on several different tasks, and multiple crews may work on different ready tasks at the same time.
+
+Most importantly, the set of tasks that are technically READY is **not** the daily schedule. Leaders deliberately choose which ready/in-progress work to commit to based on the actual day.
 
 The scheduler therefore needs to separate three concepts:
 
@@ -56,6 +59,7 @@ Magic Igloo
     2. Skins
     3. Security Cameras
     4. Lighting
+    5. Plug In / Power Up / Test
 ```
 
 These phases must be performed in order.
@@ -71,6 +75,10 @@ Skins COMPLETE
 
 Security Cameras COMPLETE
     -> Lighting may become READY
+
+Lighting COMPLETE
+    + grass cutting has stopped
+        -> Plug In / Power Up / Test may become READY
 ```
 
 The exact task names and final field data remain subject to leader review, but the scheduler must support this ordered dependency behavior directly.
@@ -111,6 +119,11 @@ MAGIC IGLOO
 4. Lighting
    Status: WAITING
    Waiting for: Security Cameras complete
+
+5. Plug In / Power Up / Test
+   Status: WAITING
+   Waiting for: Lighting complete
+   External gate: grass cutting must be stopped
 ```
 
 The operator should not need to read predecessor IDs, dependency graph notation, Gantt bars, or database keys to understand why work is or is not ready.
@@ -119,6 +132,7 @@ Structured relationships may exist underneath the application, but the applicati
 
 - `Waiting for Skins to be completed`;
 - `Not before November 1`;
+- `Waiting for park grass cutting to stop before power-up/testing`;
 - `Requires SkyTrak and one boom lift`;
 - `Ready now`;
 - `In progress — work can continue today`.
@@ -139,6 +153,7 @@ For each practical task, the minimum useful knowledge may include:
 - expected elapsed effort or typical field duration;
 - date restrictions or preferred installation windows;
 - weather restrictions/preferences;
+- external readiness rules that apply to the task;
 - required Displays/durable physical assets;
 - reviewed supplemental Container/KIT support where Production Database Display relationships cannot derive the dependency;
 - links/handoff to applicable existing Procedure instructions where useful.
@@ -170,6 +185,7 @@ The annual task should retain reusable identity while allowing season-specific f
 - date-gate status;
 - annual equipment availability effect;
 - captain/leader availability effect;
+- external readiness gates such as whether park grass cutting has stopped;
 - actual completion state;
 - useful planned-versus-actual history.
 
@@ -210,6 +226,50 @@ A daily work session may eventually capture only the information worth preservin
 - significant defer/change reason where useful.
 
 Do not require detailed timecard-style data entry unless later field evidence proves it useful.
+
+## Scheduling flexibility and daily commitment
+
+The scheduler must provide **absolute practical flexibility** to reorder and change future work without treating every change as a scheduling failure.
+
+This requirement comes directly from the Microsoft Project failure mode. When many tasks were allowed to proceed in parallel, Microsoft Project effectively placed every parallel task on the same date. That is not how MSB actually plans Setup.
+
+The correct model is:
+
+```text
+READY TASKS
+    = candidate work leaders may choose from
+
+TODAY / SELECTED
+    = the subset leaders have intentionally committed to today
+```
+
+The system must **not** automatically schedule every READY task on the same day merely because dependencies allow them to run in parallel.
+
+Leaders need to be able to:
+
+- move a ready task earlier or later;
+- reorder tomorrow/next-day work freely;
+- remove a task from a proposed day;
+- substitute another ready task when crew, captain, weather, equipment, material, or progress changes;
+- continue an unfinished task on a later day without cloning it;
+- leave other READY tasks unscheduled without treating that as an error; and
+- preserve what was originally planned versus what actually happened where that history is useful.
+
+This flexibility does **not** mean scheduled dates are casual placeholders. MSB tries very hard to complete work on the day it is intentionally scheduled.
+
+Therefore:
+
+```text
+scheduled for today
+    -> serious operating commitment
+
+not completed today
+    -> remain IN PROGRESS / incomplete
+    -> deliberately continue or reschedule
+    -> preserve useful planned-versus-actual history
+```
+
+The scheduler should help leaders make a realistic commitment in the morning rather than auto-filling the calendar with every theoretically possible parallel task.
 
 ## Parallel crew and task requirement
 
@@ -307,6 +367,36 @@ The scheduler should present the two READY jobs as usable candidates even though
 
 Likewise, completing one phase should release only the dependent work that actually requires it. It should not force the organization to finish an entire Stage before crews can work elsewhere.
 
+## Common final Stage phase — plug in / power up / test
+
+The last practical part of every Stage is plugging in/powering up the installed material and testing it.
+
+This is a common Stage-completion requirement and should be represented as real Setup work rather than assumed to happen automatically when physical installation is finished.
+
+A Stage may therefore be physically installed but **not yet ready for final power-up/testing**.
+
+MSB does not power up the installed show material while grass cutting is still occurring in the park. Power-up/testing is held until park grass cutting has stopped.
+
+Conceptually:
+
+```text
+Stage physical installation complete
+    +
+park grass cutting still active
+        -> final Plug In / Power Up / Test task remains NOT READY
+
+Stage physical installation complete
+    +
+park grass cutting stopped / confirmed
+        -> final Plug In / Power Up / Test task may become READY
+```
+
+The grass-cutting operation itself is **not** a Setup Session subsystem. Setup only needs the external readiness fact that the seasonal grass-cutting gate has been cleared.
+
+This rule applies broadly across Stages and must not be hidden as tribal knowledge in individual Procedure documents.
+
+When the grass-cutting gate is cleared, many Stage test tasks may become READY in parallel. The scheduler must still **not** place all of them on that same day automatically. Leaders choose which Stage plug-in/testing work to schedule based on crews, captains, remaining work, time, and other conditions.
+
 ## Dependency model requirement
 
 The scheduler needs simple structured prerequisites without becoming a critical-path project-management engine.
@@ -323,6 +413,7 @@ The system should also support other readiness rules separately from task-to-tas
 
 - not-before dates;
 - external readiness conditions such as underground locate complete;
+- the common park grass-cutting-stopped gate before final power-up/testing;
 - required equipment availability;
 - required captain/leader availability where operationally necessary;
 - weather restrictions or preferences.
@@ -356,6 +447,7 @@ What is still incomplete?
 What is actually ready now?
 What is already in progress and should be continued?
 What is waiting for another task?
+Which READY tasks do we actually intend to commit to today?
 How many parallel crews can we realistically run today?
 Which captains/leaders are available?
 How many volunteers are available?
@@ -363,9 +455,10 @@ What work fits today's crew and available leaders?
 What equipment is available?
 What fits the weather?
 What has a date restriction?
+Has park grass cutting stopped so final Stage power-up/testing can begin?
 ```
 
-The system presents the facts and constraints. Human leaders choose the work and how many parallel crews to run.
+The system presents the facts and constraints. Human leaders choose the work, the order, and how many parallel crews to run.
 
 ## Relationship to material dependency resolution
 
@@ -406,6 +499,8 @@ They must not remain the permanent authoritative source for current Container/KI
 
 The reusable scheduler should eventually be able to link a task to the applicable Procedure experience without copying current database-owned material facts back into the task definition.
 
+The common grass-cutting gate and final Stage plug-in/testing rule belong in reusable Setup planning knowledge, not as duplicated manually maintained text that leaders must rediscover independently in every Stage Procedure.
+
 ## Builder / maintenance tool requirement
 
 MSB currently has no tool for creating reusable Setup tasks.
@@ -423,7 +518,7 @@ Choose Stage / Setup area
         -> enter crew/resource information
         -> associate required Displays/assets
         -> associate captain(s)
-        -> enter date/weather rules where needed
+        -> enter date/weather/external readiness rules where needed
         -> review resulting human-readable plan
 ```
 
@@ -441,6 +536,7 @@ This reusable scheduler must not become:
 - a Gantt-chart maintenance system;
 - automatic critical-path calculation;
 - automatic resource leveling/optimization;
+- automatic scheduling of every READY task;
 - one-task-per-day scheduling;
 - one-active-crew scheduling;
 - a generalized volunteer skills system;
@@ -452,18 +548,23 @@ This reusable scheduler must not become:
 
 Before schema approval, prove the conceptual model against at least:
 
-1. **Magic Igloo** — ordered Frame -> Skins -> Security Cameras -> Lighting sequence, with at least one task capable of spanning multiple days;
+1. **Magic Igloo** — ordered Frame -> Skins -> Security Cameras -> Lighting -> Plug In / Power Up / Test sequence, with at least one task capable of spanning multiple days;
 2. **Food Collection** — early work and later traffic-lane work remain separate and can have different date windows/material dependencies;
 3. a task that can be completed in part on one date and resumed later without cloning the task;
 4. one Setup day containing multiple tasks from more than one Stage;
 5. at least three or four crews working on independent tasks in parallel on the same day when captains/volunteers/resources allow it;
-6. a task blocked by both a prior task and an external readiness condition;
-7. a task whose required equipment makes it unsuitable for a day even though its predecessor is complete;
-8. a task selected for another day because its normal captain/alternate availability changes;
-9. a day where available volunteer count limits how many otherwise-ready tasks can actually be staffed;
-10. a day where available captain count limits parallel work even though enough volunteers are present;
-11. material resolution limited to the selected phase rather than the entire parent Stage;
-12. several parallel selected tasks producing one combined deduplicated physical pick list.
+6. several tasks becoming READY in parallel without all of them being automatically scheduled on the same date;
+7. leaders freely reordering/substituting future READY work while preserving useful planned-versus-actual history;
+8. a task intentionally scheduled for today being treated as a real same-day commitment, with incomplete work carried forward as IN PROGRESS rather than silently rescheduled;
+9. a task blocked by both a prior task and an external readiness condition;
+10. a task whose required equipment makes it unsuitable for a day even though its predecessor is complete;
+11. a task selected for another day because its normal captain/alternate availability changes;
+12. a day where available volunteer count limits how many otherwise-ready tasks can actually be staffed;
+13. a day where available captain count limits parallel work even though enough volunteers are present;
+14. material resolution limited to the selected phase rather than the entire parent Stage;
+15. several parallel selected tasks producing one combined deduplicated physical pick list;
+16. a physically installed Stage whose final Plug In / Power Up / Test task remains NOT READY while grass cutting continues;
+17. grass cutting being confirmed stopped, causing applicable final Stage test tasks to become READY without automatically scheduling all of them for that date.
 
 ## Immediate engineering consequence
 
@@ -474,10 +575,11 @@ The engineering order should be:
 ```text
 1. define reusable practical task/work-plan behavior
 2. prove ordered prerequisites, branching/parallel readiness, and multi-day task continuation
-3. establish annual task state
-4. establish daily work-session and parallel-crew behavior
-5. connect selected tasks to the material dependency resolver/pick list
-6. then build the human-readable planner/scheduler presentation
+3. prove READY-versus-SCHEDULED behavior and free human reordering
+4. establish annual task state and external readiness gates
+5. establish daily work-session and parallel-crew behavior
+6. connect selected tasks to the material dependency resolver/pick list
+7. then build the human-readable planner/scheduler presentation
 ```
 
 A calendar may eventually be one view of this information, but it is not the underlying model.
