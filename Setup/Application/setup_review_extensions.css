@@ -60,6 +60,41 @@
   margin: 10px 0 0;
 }
 
+.instruction-file-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.instruction-file-link,
+.instruction-file-name {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 7px 8px;
+  font-size: .82rem;
+  word-break: break-word;
+}
+
+.instruction-file-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.instruction-file-link:hover {
+  text-decoration: underline;
+}
+
+.instruction-live-warnings {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 12px;
+  color: var(--warning);
+  font-size: .82rem;
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .9em;
