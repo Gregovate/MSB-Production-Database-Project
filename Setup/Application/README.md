@@ -80,7 +80,7 @@ historical source in Archive
 
 The archived original should not be edited in place merely because it contains useful historical content. Preserve it as evidence and revise a working copy.
 
-The prototype records Procedure verification/revision notes locally. When run through `backend.py` with the database and Display Folders configured, it also resolves the current Stage/Sub-stage through the accepted Procedure stack and shows:
+The prototype records Procedure verification/revision notes locally. When run through `backend.py` with the database and Display Folders configured, it also resolves the current Stage/Sub-stage through the same accepted shared field-context / Procedure stack used by the current Procedure application and shows:
 
 - current published Setup PDF filename(s), with a protected read-only open link;
 - direct files currently in `SourceDocs`;
