@@ -1,18 +1,24 @@
-"""Read-only MSB Setup Session prototype host with Procedure review integration.
+"""Read-only MSB Setup Session prototype host with Manager Procedure review.
 
-This prototype backend intentionally performs no PostgreSQL writes and no Google
-Drive writes.  It reuses the accepted shared field-context / Procedure resolver
-to expose current Setup PDFs plus Manager-review metadata for SourceDocs and
-Archive.
+The prototype still performs no PostgreSQL or Google Drive writes.  It reuses
+accepted field-context / Procedure resolution to expose the current Setup PDFs
+plus Manager-only SourceDocs / Archive source metadata.
 
-The existing Procedure field application remains unchanged and read-only.
+Manager review is intentionally different from production-crew presentation:
+Archive/SourceDocs remain hidden from the field Procedure application, while an
+authorized future Manager UI may open an underlying Google Doc for correction.
+If that source is changed, the published PDF in Procedures/Setup must be
+regenerated/replaced before field publication is current again.
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 
@@ -32,7 +38,7 @@ from Procedures.Application.procedure_context import (  # noqa: E402
     resolve_stage_procedure,
 )
 
-APP_VERSION = "V0.0.2-prototype"
+APP_VERSION = "V0.0.3-prototype"
 app = Flask(__name__)
 
 
@@ -105,7 +111,58 @@ def _stage_id_for_key(repo: FieldContextRepository, stage_key: str) -> int:
     return unique[0]
 
 
-def _direct_review_files(folder: Path) -> list[dict[str, Any]]:
+def _google_doc_links(path: Path) -> tuple[str | None, str | None]:
+    """Return (edit_url, pdf_export_url) from a local .gdoc shortcut when safe.
+
+    Google Drive desktop .gdoc files are small shortcut metadata files.  Their
+    exact JSON shape is not treated as authority; we only accept a URL actually
+    present in the file and only when it resolves to docs.google.com/document.
+    """
+    if path.suffix.casefold() != ".gdoc":
+        return None, None
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")[:65536]
+    except OSError:
+        return None, None
+
+    candidates: list[str] = []
+    try:
+        payload = json.loads(raw)
+
+        def walk(value: Any) -> None:
+            if isinstance(value, str):
+                if value.startswith("https://"):
+                    candidates.append(value)
+            elif isinstance(value, dict):
+                for item in value.values():
+                    walk(item)
+            elif isinstance(value, list):
+                for item in value:
+                    walk(item)
+
+        walk(payload)
+    except (json.JSONDecodeError, TypeError):
+        candidates.extend(re.findall(r"https://[^\s\"']+", raw))
+
+    for candidate in candidates:
+        try:
+            parsed = urlparse(candidate)
+        except ValueError:
+            continue
+        if parsed.scheme != "https" or parsed.netloc.casefold() != "docs.google.com":
+            continue
+        match = re.match(r"^/document/d/([^/]+)", parsed.path)
+        if not match:
+            continue
+        doc_id = match.group(1)
+        edit_url = f"https://docs.google.com/document/d/{doc_id}/edit"
+        export_url = f"https://docs.google.com/document/d/{doc_id}/export?format=pdf"
+        return edit_url, export_url
+
+    return None, None
+
+
+def _direct_review_files(folder: Path, *, role: str) -> list[dict[str, Any]]:
     if not folder.is_dir():
         return []
     try:
@@ -119,11 +176,16 @@ def _direct_review_files(folder: Path) -> list[dict[str, Any]]:
             size = path.stat().st_size
         except OSError:
             size = None
+        edit_url, export_url = _google_doc_links(path)
         result.append(
             {
                 "name": path.name,
                 "extension": path.suffix.casefold(),
                 "size": size,
+                "role": role,
+                "editable_google_source": bool(edit_url),
+                "edit_url": edit_url,
+                "pdf_export_url": export_url,
             }
         )
     return result
@@ -142,8 +204,10 @@ def _instruction_package(stage_key: str) -> dict[str, Any]:
 
     task_root_text = str(procedure.get("task_root") or "").strip()
     task_root = Path(task_root_text) if task_root_text else None
-    source_docs = _direct_review_files(task_root / "SourceDocs") if task_root else []
-    archive = _direct_review_files(task_root / "Archive") if task_root else []
+    source_docs = (
+        _direct_review_files(task_root / "SourceDocs", role="SOURCEDOC") if task_root else []
+    )
+    archive = _direct_review_files(task_root / "Archive", role="ARCHIVE") if task_root else []
 
     current_documents = [
         {
@@ -155,6 +219,10 @@ def _instruction_package(stage_key: str) -> dict[str, Any]:
         if item.get("name")
     ]
 
+    editable_sources = [
+        item for item in [*source_docs, *archive] if item.get("editable_google_source")
+    ]
+
     return {
         "stage_key": stage_key,
         "stage_id": stage_id,
@@ -163,6 +231,13 @@ def _instruction_package(stage_key: str) -> dict[str, Any]:
         "current_documents": current_documents,
         "source_docs": source_docs,
         "archive": archive,
+        "editable_sources": editable_sources,
+        "manager_rule": (
+            "Authorized Managers may edit the chosen Google Doc source during verification. "
+            "Archive remains excluded from production-crew navigation, but its .gdoc is not "
+            "treated as immutable when the Manager intentionally uses it as the source. "
+            "After any source edit, replace the published PDF in Procedures/Setup."
+        ),
         "warnings": procedure.get("operator_warnings") or procedure.get("warnings") or [],
     }
 
