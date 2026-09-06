@@ -37,6 +37,34 @@ The system is useful only if it remains useful when no one is assigned the separ
 
 > If the system only stays accurate when one knowledgeable person spends significant time updating the plan after every field change, it has reproduced the main failure mode of Microsoft Project.
 
+## Current 2026 tooling baseline and immediate gap
+
+The intended workflow above is **not yet implemented** as an operator Setup system.
+
+Current operational reality is:
+
+- there is no Setup tool for creating, reviewing, or maintaining reusable practical Setup tasks;
+- there is no Setup tool that takes one practical task and validates the current Production Database Containers/KIT Containers/material relationships needed to perform that task;
+- there is no generated Setup pick list for the warehouse/forklift crew;
+- the existing Procedure application can find and present current Setup Instructions, but Procedure is a document-discovery/how-to system rather than a task-planning, dependency-resolution, or pick-list system; and
+- current Setup Instructions contain useful field knowledge, including some crew/equipment/resource information, but some instructions also repeat Container/KIT requirements that are or should be owned by the Production Database. Those repeated Container/KIT lists are a second source of truth and must not become the permanent basis of the Setup resolver.
+
+The Procedure documents are therefore valuable **evidence** for reconstructing practical Setup tasks and resource requirements, but old material/resource statements must be reviewed before becoming reusable Setup data. Database-owned current facts such as permanent Container identity, current Display-to-Container assignment, home/intended storage, and reviewed KIT/Container support relationships should ultimately be resolved from the Production Database rather than manually maintained in Procedure PDFs.
+
+The first coherent implementation path therefore needs three connected capabilities:
+
+```text
+reusable Setup task definition / maintenance
+    +
+read-only current Setup material baseline / validation
+    ->
+selected task dependency resolution
+    ->
+physical pick list
+```
+
+The material baseline can be engineered read-only before new Setup schema is approved and should be used to expose missing or incorrect permanent relationships. The reusable task model must then identify what a practical task actually requires so the resolver does not simply expand an entire Stage. A useful pick list depends on both.
+
 ## Operating assumptions established by reconnaissance
 
 ### Setup planning is deliberately flexible
@@ -548,14 +576,16 @@ Any 2025 actual-history source that is later recovered should be used to improve
 The next implementation-planning work should be evidence-driven and narrow:
 
 1. finish the outstanding live-schema reconnaissance needed to avoid inventing duplicate relationships;
-2. define the minimum Setup work-item / annual-session data model needed to support remaining-work presentation, phased work, near-term progression, actual execution, and history;
-3. define the minimum calendar/readiness constraint model needed for October 5 start, November 1 Santa's Station gate, VIP readiness, and external blockers without building a Gantt engine;
-4. prove the dependency resolver against several representative Production cases and phased Stage work;
-5. define the minimum physical pick/load output;
-6. define the smallest execution/status/event model that normal scans/actions can maintain across workshop, park arrival, staging, placement, and return-to-workshop movement;
-7. preserve the Work Order boundary for defects/rework;
-8. add Stage-level orientation capability using the existing GPS reference dataset without building a full GIS platform;
-9. test the workflow against real field scenarios before expanding scope.
+2. build the read-only Setup Material Baseline needed to show current Displays, current Display-to-Container assignments, deduplicated Containers/trailers, home/intended storage, known KIT Container support, unassigned Displays, shared Containers, and unresolved relationships for a selected scope;
+3. define the minimum reusable Setup task concept and the mechanism needed to create/review those tasks, including practical task boundaries, resources, prerequisites, and explicit required Displays/durable assets;
+4. define the minimum Setup work-item / annual-session data model needed to support remaining-work presentation, phased work, near-term progression, actual execution, and history;
+5. define the minimum calendar/readiness constraint model needed for October 5 start, November 1 Santa's Station gate, VIP readiness, and external blockers without building a Gantt engine;
+6. prove the dependency resolver against several representative Production cases and phased Stage work, using Production Database material relationships rather than Container/KIT lists copied from Procedure documents;
+7. define the minimum physical pick/load output;
+8. define the smallest execution/status/event model that normal scans/actions can maintain across workshop, park arrival, staging, placement, and return-to-workshop movement;
+9. preserve the Work Order boundary for defects/rework;
+10. add Stage-level orientation capability using the existing GPS reference dataset without building a full GIS platform;
+11. test the workflow against real field scenarios before expanding scope.
 
 Representative resolver/workflow test cases should include:
 
