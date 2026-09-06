@@ -27,13 +27,13 @@ The Setup application follows the current MSB browser-native pattern used by Fie
 
 - browser-native HTML/CSS/JavaScript UI;
 - Flask backend for controlled read/API work;
-- PostgreSQL remains authoritative;
+- PostgreSQL remains authoritative in production;
 - Cloudflare Access identifies the signed-in user when deployed;
 - Directus remains role/policy authority where reused;
 - Manager/Admin writes must go through a governed server-side write boundary;
 - no broad writable browser PostgreSQL role.
 
-The current prototype backend is read-only.
+The current prototype backend does not write PostgreSQL or Google Drive.
 
 ## First prototype scope
 
@@ -49,49 +49,76 @@ The prototype includes:
 - reusable Arch Trailer unload tasks;
 - Container 34 shared-load simulation across Racing Arches, Polar Bear Playground, Icicle Tunnel, Stars, Candyland, and Food Collection;
 - bulk unload behavior where only Displays still traveling with the Container follow later Container movement;
-- Setup Instruction review state on the task detail page;
-- optional live read-only enumeration of current Setup PDFs, SourceDocs, and Archive files through the existing shared Procedure resolver;
+- Setup Procedure review state on the task detail page;
+- Manager-facing discovery of editable Google Doc sources plus the current published Setup PDF;
 - local browser persistence for prototype task/instruction-review edits only.
 
-## Setup Instruction review / publication boundary
+## Manager Setup Procedure workflow
 
-The current Google Drive / Procedure contract is preserved:
-
-```text
-Procedures\Setup\<current instruction>.pdf
-    = current published field instruction
-
-Procedures\Setup\SourceDocs\
-    = editable working/source material
-
-Procedures\Setup\Archive\
-    = historical / superseded source evidence
-```
-
-For 2025 verification, the intended Manager workflow is:
+The Manager screen and production-crew Procedure screen intentionally have different visibility.
 
 ```text
-historical source in Archive
-    -> review alongside reusable Setup task
-        -> create/use editable working copy in SourceDocs
-            -> revise and approve
-                -> publish approved PDF directly in Procedures\Setup
+Production crew
+    -> current published PDF directly in Procedures\Setup
+
+Authorized Manager
+    -> may see/open the applicable .gdoc source in Archive or SourceDocs
+    -> may correct that Google Doc during verification
+    -> must regenerate/export and replace the published PDF after a source change
 ```
 
-The archived original should not be edited in place merely because it contains useful historical content. Preserve it as evidence and revise a working copy.
+`Archive` remains excluded from normal production-crew navigation. That does **not** make an archived `.gdoc` immutable when an authorized Manager deliberately uses that document as the editable source during the 2025 correction pass.
 
-The prototype records Procedure verification/revision notes locally. When run through `backend.py` with the database and Display Folders configured, it also resolves the current Stage/Sub-stage through the same accepted shared field-context / Procedure stack used by the current Procedure application and shows:
+The Manager task detail page therefore presents the Procedure workflow as actions, not as a folder-governance lesson:
 
-- current published Setup PDF filename(s), with a protected read-only open link;
-- direct files currently in `SourceDocs`;
-- direct files currently in `Archive`;
-- resolver warnings where applicable.
+```text
+Editable procedure
+    <source>.gdoc
+    <full source path>
+    [Open Editable Procedure]
+    [Export Updated PDF]
 
-It still does **not** create a SourceDocs working copy or publish a PDF.
+Published field PDF
+    <current>.pdf
+    [Open Current PDF]
 
-Only after this read-side review is accepted should a separate governed authoring/publication command path be designed.
+If the Google Doc is edited, replace the published PDF before marking the instruction verified.
+```
 
-The existing Procedure application and production Display Folders filesystem are read-only. A future Setup Manager authoring/publication path therefore requires its own governed write boundary. It must not broaden the existing read-only Procedure field application or silently make the shared production mount writable.
+The current prototype can open the Google Doc and request Google's PDF export when the mounted `.gdoc` shortcut exposes a resolvable Google document identity. It does not yet automate replacement of the PDF in Google Drive.
+
+## Procedure resolution modes
+
+### Production direction — shared field-context resolver
+
+When a read-only database source is configured, the Setup prototype reuses the accepted shared Field Context / Procedure resolver. This remains the production direction.
+
+### Local validation fallback — exact Stage key only
+
+For local 2025 review, when no database DSN/snapshot is configured but `SETUP_DRIVE_ROOT` is available, the prototype may resolve the Stage folder directly by exact leading Stage key.
+
+Example:
+
+```text
+stage_key = 04
+    -> exactly one direct folder beginning 04-
+    -> G:\Shared drives\Display Folders\04-Food Collection-FC
+```
+
+For Sub-stages, the prototype may inspect one nested folder level when the exact key is not a direct child.
+
+This fallback:
+
+- is prototype-only;
+- requires exactly one matching folder;
+- does not fuzzy-match Stage names;
+- does not replace the universal resolver in production.
+
+For Food Collection, the intended editable source currently being reviewed is:
+
+```text
+G:\Shared drives\Display Folders\04-Food Collection-FC\Procedures\Setup\Archive\04-Food Collection-FC.gdoc
+```
 
 ## Shared Container acceptance rule
 
@@ -128,60 +155,25 @@ Total: 121 Displays.
 
 The broader non-unload task rows are representative provisional review data derived from current Setup planning evidence. Managers/team leaders must verify task boundaries, order, prerequisites, crew, equipment, timing, material, and Procedure applicability in the UI.
 
-## Running locally — static mode
+## Running locally
 
-Static mode validates the task and movement UI but cannot show real Procedure files:
-
-```powershell
-cd Setup\Application
-python -m http.server 8780
-```
-
-Then open:
-
-```text
-http://localhost:8780/
-```
-
-## Running locally — live read-only Procedure review
-
-Run from the repository root or from `Setup\Application` after configuring a read-only database source and the Display Folders root.
-
-The backend accepts Setup-specific environment variables and also reuses the existing Procedure/FieldWiring variable names when already configured:
-
-```text
-SETUP_DATABASE_DSN
-SETUP_DEV_SNAPSHOT
-SETUP_DRIVE_ROOT
-```
-
-Fallbacks accepted:
-
-```text
-PROCEDURE_DATABASE_DSN
-PROCEDURE_DEV_SNAPSHOT
-PROCEDURE_DRIVE_ROOT
-FIELDWIRING_DATABASE_DSN
-FIELDWIRING_DRIVE_ROOT
-```
-
-Example with a Windows Google Drive root:
+Use the project virtual environment, then run the Flask prototype from the repository root:
 
 ```powershell
+.\.venv\Scripts\Activate.ps1
 $env:SETUP_DRIVE_ROOT = 'G:\Shared drives\Display Folders'
-$env:SETUP_DATABASE_DSN = '<existing read-only PostgreSQL DSN>'
 python .\Setup\Application\backend.py
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:8780/
 ```
 
-Do not place credentials in the repository.
+A database DSN is **not required** for the local exact-Stage-key prototype fallback. If `SETUP_DATABASE_DSN`, `PROCEDURE_DATABASE_DSN`, `FIELDWIRING_DATABASE_DSN`, or a configured development snapshot is present, the application uses the shared field-context resolver instead.
 
-After pulling a prototype update, use a hard refresh so the browser reloads the versioned CSS/JavaScript.
+After pulling a prototype update, restart Flask when backend code changed and use a hard browser refresh so the versioned CSS/JavaScript reloads.
 
 ## Production boundary
 
@@ -191,9 +183,7 @@ This prototype does not:
 - create a Setup Session in production;
 - write movement history;
 - modify Google Drive;
-- edit an archived Google Doc;
-- create a SourceDocs working copy;
-- convert/publish a new PDF;
+- automatically replace a published PDF;
 - replace the current Scan or Procedure applications;
 - establish final authorization behavior;
 - approve reconstructed 2025 task order, dependencies, dates, or actuals.
