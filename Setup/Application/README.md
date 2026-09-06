@@ -55,6 +55,31 @@ The prototype includes:
 
 ## Manager Setup Procedure workflow
 
+The Setup application uses the existing documented Procedure folder structure. It does not require a separate Setup-specific document layout and does not require the 2025 verification pass to reorganize existing files first.
+
+Documented structure:
+
+```text
+<Stage / Sub-stage / Scene>\Procedures\Setup\
+    <current field PDF>.pdf
+    Archive\
+    images\
+    SourceDocs\
+```
+
+Normal roles remain:
+
+```text
+Procedures\Setup\SourceDocs
+    = normal editable/source area
+
+Procedures\Setup\Archive
+    = legacy / historical / superseded material
+
+Procedures\Setup
+    = current published field PDF(s)
+```
+
 The Manager screen and production-crew Procedure screen intentionally have different visibility.
 
 ```text
@@ -62,12 +87,26 @@ Production crew
     -> current published PDF directly in Procedures\Setup
 
 Authorized Manager
-    -> may see/open the applicable .gdoc source in Archive or SourceDocs
-    -> may correct that Google Doc during verification
-    -> must regenerate/export and replace the published PDF after a source change
+    -> open the applicable editable .gdoc source
+    -> correct it during 2025 verification
+    -> regenerate/export and replace the published PDF after a source change
 ```
 
-`Archive` remains excluded from normal production-crew navigation. That does **not** make an archived `.gdoc` immutable when an authorized Manager deliberately uses that document as the editable source during the 2025 correction pass.
+### 2025 compatibility rule for existing Archive .gdoc files
+
+Some current editable Google Docs were historically placed in `Procedures\Setup\Archive`. Correcting every folder before Setup Session verification would create unnecessary work and is **not** a prerequisite for the Setup system.
+
+For the 2025 verification cycle, editable-source discovery therefore follows this compatibility rule:
+
+```text
+1. Prefer editable .gdoc file(s) in Procedures\Setup\SourceDocs.
+2. If none exist there, use existing editable .gdoc file(s) in Procedures\Setup\Archive in place.
+3. Do not move or rename the file merely to make Setup Session work.
+4. Production crew still sees only the PDF directly in Procedures\Setup.
+5. If the Manager edits the Google Doc, the published PDF must be replaced before the instruction is marked verified/current.
+```
+
+This compatibility rule does not redefine the documented folder meanings. It allows the Setup application to work against the current installed document estate without blocking on Folder Alignment cleanup.
 
 The Manager task detail page therefore presents the Procedure workflow as actions, not as a folder-governance lesson:
 
@@ -114,11 +153,13 @@ This fallback:
 - does not fuzzy-match Stage names;
 - does not replace the universal resolver in production.
 
-For Food Collection, the intended editable source currently being reviewed is:
+For Food Collection, the existing editable source currently being reviewed is:
 
 ```text
 G:\Shared drives\Display Folders\04-Food Collection-FC\Procedures\Setup\Archive\04-Food Collection-FC.gdoc
 ```
+
+The prototype uses that file in place under the 2025 compatibility rule; it does not require moving it to `SourceDocs`.
 
 ## Shared Container acceptance rule
 
@@ -184,6 +225,7 @@ This prototype does not:
 - write movement history;
 - modify Google Drive;
 - automatically replace a published PDF;
+- reorganize Procedure folders;
 - replace the current Scan or Procedure applications;
 - establish final authorization behavior;
 - approve reconstructed 2025 task order, dependencies, dates, or actuals.
