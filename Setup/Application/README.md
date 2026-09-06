@@ -80,6 +80,17 @@ The archived original should not be edited in place merely because it contains u
 
 The prototype currently records Procedure verification/revision notes only. It does **not** enumerate the live Archive/SourceDocs/current PDF yet and does not publish a PDF.
 
+The next Procedure-integration step should be read-only first:
+
+```text
+selected Setup task
+    -> resolve its Stage/Sub-stage/Scene context through the shared field-context resolver
+    -> show current published Setup PDF(s)
+    -> Manager-only review list of SourceDocs and Archive candidates
+```
+
+Only after that read-side is accepted should a separate governed authoring/publication command path be designed.
+
 The existing Procedure application and production Display Folders filesystem are read-only. A future Setup Manager authoring/publication path therefore requires its own governed write boundary. It must not broaden the existing read-only Procedure field application or silently make the shared production mount writable.
 
 ## Shared Container acceptance rule
