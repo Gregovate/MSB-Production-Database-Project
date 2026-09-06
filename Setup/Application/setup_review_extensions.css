@@ -1,0 +1,73 @@
+.instruction-review-section {
+  background: #fbfcfd;
+}
+
+.instruction-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.instruction-role {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  padding: 11px 12px;
+  display: grid;
+  gap: 5px;
+}
+
+.instruction-role strong {
+  font-size: .9rem;
+}
+
+.instruction-role span {
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.instruction-role.current {
+  border-left: 4px solid var(--success);
+}
+
+.instruction-role.working {
+  border-left: 4px solid var(--accent);
+}
+
+.instruction-role.archive {
+  border-left: 4px solid var(--warning);
+}
+
+.publication-flow {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #f7f9fb;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: .86rem;
+  line-height: 1.5;
+}
+
+.instruction-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, .7fr) minmax(360px, 1.7fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.instruction-boundary {
+  margin: 10px 0 0;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .9em;
+}
+
+@media (max-width: 900px) {
+  .instruction-role-grid,
+  .instruction-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
