@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Capture the reusable scheduling requirement established during 2026 Setup planning: MSB needs a human-readable way to define practical Setup work once, reuse it from season to season, preserve ordered phases and prerequisites, and schedule work that may span more than one field day.
+Capture the reusable scheduling requirement established during 2026 Setup planning: MSB needs a human-readable way to define practical Setup work once, reuse it from season to season, preserve ordered phases and prerequisites, schedule work that may span more than one field day, and run many independent crews/tasks in parallel when captains, volunteers, equipment, readiness, and material availability permit.
 
 This document supports the governing Setup Session planning direction. It does **not** create a competing subsystem authority and does not approve PostgreSQL table names, columns, migrations, or final UI technology.
 
@@ -22,11 +22,12 @@ The Setup scheduler must model the real work rather than assume:
 one Stage = one task
 one task = one day
 one date = one Stage
+one day = one active crew/task
 ```
 
-All three assumptions are false for real MSB Setup.
+All four assumptions are false for real MSB Setup.
 
-A Stage may require multiple practical phases that must occur in sequence. A practical task may take more than one Setup day. One Setup day may also contain work on several different tasks.
+A Stage may require multiple practical phases that must occur in sequence. A practical task may take more than one Setup day. One Setup day may also contain work on several different tasks, and multiple crews may work on different ready tasks at the same time.
 
 The scheduler therefore needs to separate three concepts:
 
@@ -203,11 +204,108 @@ A daily work session may eventually capture only the information worth preservin
 - date;
 - task worked;
 - actual crew size where useful;
+- captain/leader actually used where useful;
 - useful start/finish or elapsed evidence;
 - whether the task completed;
 - significant defer/change reason where useful.
 
 Do not require detailed timecard-style data entry unless later field evidence proves it useful.
+
+## Parallel crew and task requirement
+
+Setup commonly has many tasks underway at the same time. The scheduler must therefore treat the day's work as a **set of parallel crews**, not as one serial queue where only one task can be active.
+
+For example:
+
+```text
+TODAY
+
+Crew 1 — Magic Igloo — Skins
+    Captain: <available captain>
+    Volunteers: 6
+
+Crew 2 — Front Entrance — Erect Arch
+    Captain: <available captain>
+    Volunteers: 6
+
+Crew 3 — Church — Lighting
+    Captain: <available captain>
+    Volunteers: 4
+
+Crew 4 — Food Collection — Perimeter Work
+    Captain: <available captain>
+    Volunteers: 5
+```
+
+All four tasks can proceed concurrently if their own prerequisites, captain/leader needs, crew needs, equipment, date/weather rules, and required material are satisfied.
+
+The practical amount of parallel work is therefore constrained by the combination of:
+
+- how many tasks are actually READY;
+- how many experienced captains/leaders are available to lead those tasks;
+- how many volunteers are available to form useful crews;
+- which equipment is available and whether two tasks compete for the same equipment;
+- whether required Containers/KITs/material are already available at the park or can be pulled;
+- date/weather/readiness constraints; and
+- the leaders' judgment about what combination of work makes sense that day.
+
+The scheduler should make those constraints visible. It should **not** attempt to automatically optimize or resource-level all crews like enterprise project-management software.
+
+### Captain availability versus reusable captain knowledge
+
+The reusable task definition should answer:
+
+> Who normally knows how to lead this task?
+
+The annual/day planning layer should answer:
+
+> Which of those people are actually available today, and who is leading this crew today?
+
+Those are separate facts.
+
+The first model should not assume that every captain relationship is an exclusive scheduling lock. Some future field cases may allow one experienced leader to supervise more than one nearby/simple crew, while other jobs may require a dedicated captain throughout the work. That distinction must come from actual field requirements rather than being invented as a universal rule.
+
+### Volunteer pool versus individual assignment
+
+The first useful scheduler does not require a generalized volunteer-skills system or detailed individual assignment for every volunteer.
+
+A practical minimum is likely:
+
+```text
+Available today: 27 volunteers
+Available captains: 5
+
+Planned crews:
+    Magic Igloo — Skins            7 people
+    Front Entrance — Erect Arch    6 people
+    Church — Lighting              5 people
+    Food Collection — Perimeter    6 people
+
+Unallocated / flexible             3 people
+```
+
+The exact UI and whether specific volunteers are named remains open. The immediate requirement is that leaders can see whether the available volunteer pool and captain pool can support several parallel tasks.
+
+### Parallel readiness is not parent-Stage readiness
+
+A blocked phase in one Stage must not prevent unrelated ready work from proceeding elsewhere.
+
+For example:
+
+```text
+Magic Igloo — Security Cameras
+    WAITING for Skins
+
+Front Entrance — Erect Arch
+    READY
+
+Food Collection — Perimeter Work
+    READY
+```
+
+The scheduler should present the two READY jobs as usable candidates even though Magic Igloo still has unfinished ordered work.
+
+Likewise, completing one phase should release only the dependent work that actually requires it. It should not force the organization to finish an entire Stage before crews can work elsewhere.
 
 ## Dependency model requirement
 
@@ -258,13 +356,16 @@ What is still incomplete?
 What is actually ready now?
 What is already in progress and should be continued?
 What is waiting for another task?
+How many parallel crews can we realistically run today?
+Which captains/leaders are available?
+How many volunteers are available?
 What work fits today's crew and available leaders?
 What equipment is available?
 What fits the weather?
 What has a date restriction?
 ```
 
-The system presents the facts and constraints. Human leaders choose the work.
+The system presents the facts and constraints. Human leaders choose the work and how many parallel crews to run.
 
 ## Relationship to material dependency resolution
 
@@ -283,6 +384,8 @@ selected annual Setup task(s)
 A multi-day task must not regenerate duplicate physical moves merely because a second work session is scheduled. The resolver must consider what material has already been moved to the park.
 
 Likewise, selecting one phase of a Stage must not automatically pull material for later phases.
+
+When several parallel tasks are selected for the same day, the resolver should combine their physical requirements into one deduplicated pick/load view while retaining the reason each Container/KIT is required.
 
 ## Relationship to Procedures
 
@@ -328,6 +431,8 @@ For simple sequential plans, the UI should make the normal order obvious without
 
 For more complex cases, explicit prerequisite selection may be needed.
 
+The builder must not imply that tasks listed beneath the same Stage execute serially by default. A work plan may contain branches and independent tasks that become ready in parallel.
+
 ## Non-goals
 
 This reusable scheduler must not become:
@@ -335,8 +440,9 @@ This reusable scheduler must not become:
 - Microsoft Project;
 - a Gantt-chart maintenance system;
 - automatic critical-path calculation;
-- resource leveling;
+- automatic resource leveling/optimization;
 - one-task-per-day scheduling;
+- one-active-crew scheduling;
 - a generalized volunteer skills system;
 - a generalized equipment-management system;
 - a duplicate Procedure-authoring system;
@@ -350,10 +456,14 @@ Before schema approval, prove the conceptual model against at least:
 2. **Food Collection** — early work and later traffic-lane work remain separate and can have different date windows/material dependencies;
 3. a task that can be completed in part on one date and resumed later without cloning the task;
 4. one Setup day containing multiple tasks from more than one Stage;
-5. a task blocked by both a prior task and an external readiness condition;
-6. a task whose required equipment makes it unsuitable for a day even though its predecessor is complete;
-7. a task selected for another day because its normal captain/alternate availability changes;
-8. material resolution limited to the selected phase rather than the entire parent Stage.
+5. at least three or four crews working on independent tasks in parallel on the same day when captains/volunteers/resources allow it;
+6. a task blocked by both a prior task and an external readiness condition;
+7. a task whose required equipment makes it unsuitable for a day even though its predecessor is complete;
+8. a task selected for another day because its normal captain/alternate availability changes;
+9. a day where available volunteer count limits how many otherwise-ready tasks can actually be staffed;
+10. a day where available captain count limits parallel work even though enough volunteers are present;
+11. material resolution limited to the selected phase rather than the entire parent Stage;
+12. several parallel selected tasks producing one combined deduplicated physical pick list.
 
 ## Immediate engineering consequence
 
@@ -363,9 +473,9 @@ The engineering order should be:
 
 ```text
 1. define reusable practical task/work-plan behavior
-2. prove ordered prerequisites and multi-day task continuation
+2. prove ordered prerequisites, branching/parallel readiness, and multi-day task continuation
 3. establish annual task state
-4. establish daily work-session behavior
+4. establish daily work-session and parallel-crew behavior
 5. connect selected tasks to the material dependency resolver/pick list
 6. then build the human-readable planner/scheduler presentation
 ```
