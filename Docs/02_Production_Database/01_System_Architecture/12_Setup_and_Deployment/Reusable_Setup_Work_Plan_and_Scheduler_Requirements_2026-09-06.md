@@ -53,16 +53,18 @@ Setup work has two important recurring bookends that must be visible in the reus
 
 At the beginning, the required underground electrical/network **locates / field-clearance task** must be completed before the affected installation work begins.
 
-At the end, the Stage's **Plug In / Power Up / Test** task occurs after the physical installation phases and remains blocked until park grass cutting has stopped.
+At the end, the Stage normally has a **Plug In / Power Up / Test** task after the applicable physical installation phases.
+
+Power-up behavior is **not one universal Stage rule**. Some Displays/tasks may be powered and tested while park grass cutting is still occurring; other Displays/tasks must remain unpowered until grass cutting has stopped. That distinction belongs in the reusable task definition for the applicable power-up/testing work.
 
 Conceptually:
 
 ```text
 Locates / field cleared
-    -> Stage installation phases may begin
-        -> final installation phase complete
-            + grass cutting stopped
-                -> Plug In / Power Up / Test may begin
+    -> affected Stage installation phases may begin
+        -> applicable final installation work complete
+            -> evaluate the power-up/testing task's own readiness rule
+                -> Plug In / Power Up / Test may begin when its prerequisites are satisfied
 ```
 
 The locating process itself can remain owned by the existing locator/GIS/site-infrastructure process. The Setup scheduler needs a schedulable/trackable beginning task or readiness checkpoint whose completion releases the affected Setup work.
@@ -103,9 +105,11 @@ Security Cameras COMPLETE
     -> Lighting may become READY
 
 Lighting COMPLETE
-    + grass cutting has stopped
+    + the final power-up/testing task's own readiness rule is satisfied
         -> Plug In / Power Up / Test may become READY
 ```
+
+The exact Magic Igloo power-up rule has not been established by this reconnaissance and must not be inferred merely from the broader grass-cutting discussion.
 
 The exact task names and final field data remain subject to leader review, but the scheduler must support this ordered dependency behavior directly.
 
@@ -152,7 +156,7 @@ MAGIC IGLOO
 6. Plug In / Power Up / Test
    Status: WAITING
    Waiting for: Lighting complete
-   External gate: grass cutting must be stopped
+   Power-up rule: task-specific; review the reusable task definition
 ```
 
 The operator should not need to read predecessor IDs, dependency graph notation, Gantt bars, or database keys to understand why work is or is not ready.
@@ -162,6 +166,7 @@ Structured relationships may exist underneath the application, but the applicati
 - `Waiting for locates / field clearance`;
 - `Waiting for Skins to be completed`;
 - `Not before November 1`;
+- `May be powered/tested while grass cutting continues`;
 - `Waiting for park grass cutting to stop before power-up/testing`;
 - `Requires SkyTrak and one boom lift`;
 - `Ready now`;
@@ -184,6 +189,7 @@ For each practical task, the minimum useful knowledge may include:
 - date restrictions or preferred installation windows;
 - weather restrictions/preferences;
 - external readiness rules that apply to the task;
+- **power-up/testing eligibility for the applicable task/Display work, including whether grass cutting blocks that work**;
 - required Displays/durable physical assets;
 - reviewed supplemental Container/KIT support where Production Database Display relationships cannot derive the dependency;
 - links/handoff to applicable existing Procedure instructions where useful.
@@ -216,7 +222,8 @@ The annual task should retain reusable identity while allowing season-specific f
 - annual equipment availability effect;
 - captain/leader availability effect;
 - annual locate/field-clearance completion where applicable;
-- external readiness gates such as whether park grass cutting has stopped;
+- annual external conditions such as whether park grass cutting has stopped;
+- evaluation of those annual conditions against the reusable task's own power-up/testing rule;
 - actual completion state;
 - useful planned-versus-actual history.
 
@@ -418,35 +425,41 @@ The Setup scheduler does not need to own the technical locating/GIS workflow its
 
 One locate task may serve as a shared prerequisite for several downstream tasks in the same Stage/setup area.
 
-## Common final Stage phase — plug in / power up / test
+## Final Stage phase — plug in / power up / test
 
-The last practical part of every Stage is plugging in/powering up the installed material and testing it.
+The last practical part of a Stage is normally plugging in/powering up the installed material and testing it.
 
-This is a common Stage-completion requirement and should be represented as real Setup work rather than assumed to happen automatically when physical installation is finished.
+This is real Setup work rather than something that should be assumed to happen automatically when physical installation is finished.
 
-A Stage may therefore be physically installed but **not yet ready for final power-up/testing**.
+However, **power-up eligibility must be represented on the applicable task/Display work, not as one universal Stage-wide grass-cutting rule.**
 
-MSB does not power up the installed show material while grass cutting is still occurring in the park. Power-up/testing is held until park grass cutting has stopped.
+Some Displays/tasks can be powered and tested while park grass cutting continues. Other Displays/tasks cannot be powered until grass cutting has stopped. The scheduler must distinguish those cases.
 
 Conceptually:
 
 ```text
-Stage physical installation complete
-    +
-park grass cutting still active
-        -> final Plug In / Power Up / Test task remains NOT READY
+Final installation prerequisites COMPLETE
+    -> evaluate task power-up rule
 
-Stage physical installation complete
-    +
-park grass cutting stopped / confirmed
-        -> final Plug In / Power Up / Test task may become READY
+Task permits power-up while grass cutting continues
+    -> Plug In / Power Up / Test may become READY
+
+Task requires grass cutting to be stopped
+    + grass cutting still active
+        -> Plug In / Power Up / Test remains NOT READY
+
+Task requires grass cutting to be stopped
+    + grass cutting stopped / confirmed
+        -> Plug In / Power Up / Test may become READY
 ```
 
-The grass-cutting operation itself is **not** a Setup Session subsystem. Setup only needs the external readiness fact that the seasonal grass-cutting gate has been cleared.
+The grass-cutting operation itself is **not** a Setup Session subsystem. Setup only needs the annual/current environmental fact that grass cutting is still active or has stopped, then applies that fact only to tasks whose reusable power-up rule requires it.
 
-This rule applies broadly across Stages and must not be hidden as tribal knowledge in individual Procedure documents.
+This distinction must not be hidden as tribal knowledge in individual Procedure documents.
 
-When the grass-cutting gate is cleared, many Stage test tasks may become READY in parallel. The scheduler must still **not** place all of them on that same day automatically. Leaders choose which Stage plug-in/testing work to schedule based on crews, captains, remaining work, time, and other conditions.
+When grass cutting stops, only the power-up/testing tasks whose own rule depended on that gate newly become READY. Tasks that are allowed to power earlier may already have been completed.
+
+As with every other readiness change, newly READY power-up/testing tasks must **not** all be placed on the same day automatically. Leaders choose which work to schedule.
 
 ## Dependency model requirement
 
@@ -465,7 +478,7 @@ The system should also support other readiness rules separately from task-to-tas
 - not-before dates;
 - beginning locate/field-clearance completion where required;
 - other external readiness conditions;
-- the common park grass-cutting-stopped gate before final power-up/testing;
+- task-specific power-up/testing eligibility, including whether grass cutting blocks the task;
 - required equipment availability;
 - required captain/leader availability where operationally necessary;
 - weather restrictions or preferences.
@@ -508,7 +521,8 @@ What work fits today's crew and available leaders?
 What equipment is available?
 What fits the weather?
 What has a date restriction?
-Has park grass cutting stopped so final Stage power-up/testing can begin?
+Which installed Displays/tasks can be powered/tested now?
+Which installed Displays/tasks must still wait for grass cutting to stop?
 ```
 
 The system presents the facts and constraints. Human leaders choose the work, the order, and how many parallel crews to run.
@@ -546,13 +560,14 @@ They are useful evidence for identifying:
 - prerequisites;
 - weather considerations;
 - experienced leaders;
+- power-up/testing restrictions where historically documented;
 - special methods and warnings.
 
 They must not remain the permanent authoritative source for current Container/KIT lists when those facts are or should be owned by the Production Database.
 
 The reusable scheduler should eventually be able to link a task to the applicable Procedure experience without copying current database-owned material facts back into the task definition.
 
-The common beginning locate task, grass-cutting gate, and final Stage plug-in/testing rule belong in reusable Setup planning knowledge, not as duplicated manually maintained text that leaders must rediscover independently in every Stage Procedure.
+The common beginning locate task and the task-specific power-up/testing rule belong in reusable Setup planning knowledge rather than relying on leaders to rediscover those facts independently in each Stage Procedure.
 
 ## Builder / maintenance tool requirement
 
@@ -572,6 +587,7 @@ Choose Stage / Setup area
         -> associate required Displays/assets
         -> associate captain(s)
         -> enter date/weather/external readiness rules where needed
+        -> define the task's power-up/testing eligibility where applicable
         -> review resulting human-readable plan
 ```
 
@@ -601,7 +617,7 @@ This reusable scheduler must not become:
 
 Before schema approval, prove the conceptual model against at least:
 
-1. **Magic Igloo** — ordered Locates / Field Cleared -> Frame -> Skins -> Security Cameras -> Lighting -> Plug In / Power Up / Test sequence, with at least one task capable of spanning multiple days;
+1. **Magic Igloo** — ordered Locates / Field Cleared -> Frame -> Skins -> Security Cameras -> Lighting -> Plug In / Power Up / Test sequence, with at least one task capable of spanning multiple days and without assuming an unverified Magic Igloo-specific grass-cutting rule;
 2. **Food Collection** — early work and later traffic-lane work remain separate and can have different date windows/material dependencies;
 3. a beginning locate task clearing several downstream tasks without duplicating the locate prerequisite as separate work;
 4. a task that can be completed in part on one date and resumed later without cloning the task;
@@ -617,8 +633,9 @@ Before schema approval, prove the conceptual model against at least:
 14. a day where available captain count limits parallel work even though enough volunteers are present;
 15. material resolution limited to the selected phase rather than the entire parent Stage;
 16. several parallel selected tasks producing one combined deduplicated physical pick list;
-17. a physically installed Stage whose final Plug In / Power Up / Test task remains NOT READY while grass cutting continues;
-18. grass cutting being confirmed stopped, causing applicable final Stage test tasks to become READY without automatically scheduling all of them for that date.
+17. a physically installed Display/task that **is allowed** to be powered/tested while grass cutting continues;
+18. a physically installed Display/task whose reusable power-up rule keeps it NOT READY while grass cutting continues;
+19. grass cutting being confirmed stopped, causing only the applicable gated power-up/testing tasks to become READY without automatically scheduling all of them for that date.
 
 ## Immediate engineering consequence
 
@@ -628,9 +645,9 @@ The engineering order should be:
 
 ```text
 1. define reusable practical task/work-plan behavior
-2. prove common beginning/end bookends, ordered prerequisites, branching/parallel readiness, and multi-day task continuation
+2. prove common beginning/end task patterns, ordered prerequisites, branching/parallel readiness, and multi-day task continuation
 3. prove READY-versus-SCHEDULED behavior and free human reordering
-4. establish annual task state and external readiness gates
+4. establish annual task state and task-specific external readiness/power-up rules
 5. establish daily work-session and parallel-crew behavior
 6. connect selected tasks to the material dependency resolver/pick list
 7. then build the human-readable planner/scheduler presentation
