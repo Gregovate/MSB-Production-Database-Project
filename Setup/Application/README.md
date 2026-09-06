@@ -1,10 +1,10 @@
 # Setup Session Application
 
-Status: **PROTOTYPE — 2025 HISTORICAL VERIFICATION UI; NO DATABASE WRITES**
+Status: **PROTOTYPE — 2025 HISTORICAL VERIFICATION UI; NO DATABASE OR DRIVE WRITES**
 
-This folder is the first browser-native Setup Session application prototype.
+This folder contains the first browser-native Setup Session application prototype.
 
-It exists to validate the Setup task model and field workflow with usable screens and provisional data before PostgreSQL DDL is approved.
+It exists to validate the Setup task model, 2025 historical reconstruction, Procedure knowledge, and field movement workflow with usable screens before PostgreSQL DDL or Google Drive write automation is approved.
 
 ## Why this prototype exists
 
@@ -19,7 +19,7 @@ reconstruction evidence
                     -> Admin creates 2026 Setup Session
 ```
 
-Do not treat the provisional task rows in this prototype as approved production truth.
+Do not treat provisional task rows as approved production truth.
 
 ## Application direction
 
@@ -43,11 +43,44 @@ The prototype includes:
 - reusable task review with plain-English predecessor names;
 - explicit separation between reusable definition and 2025 historical actual;
 - verification states: `UNVERIFIED`, `VERIFIED`, `NEEDS CORRECTION`;
-- provisional Magic Igloo phased work;
+- a broader provisional Setup task library across representative Stages instead of only Arch Trailer unload tasks;
+- provisional Magic Igloo phased work and common readiness/power-up tasks;
 - reusable Arch Trailer unload tasks;
 - Container 34 shared-load simulation across Racing Arches, Polar Bear Playground, Icicle Tunnel, Stars, Candyland, and Food Collection;
 - bulk unload behavior where only Displays still traveling with the Container follow later Container movement;
+- Setup Instruction review state on the task detail page;
 - local browser persistence for prototype edits only.
+
+## Setup Instruction review / publication boundary
+
+The current Google Drive / Procedure contract is preserved:
+
+```text
+Procedures\Setup\<current instruction>.pdf
+    = current published field instruction
+
+Procedures\Setup\SourceDocs\
+    = editable working/source material
+
+Procedures\Setup\Archive\
+    = historical / superseded source evidence
+```
+
+For 2025 verification, the intended Manager workflow is:
+
+```text
+historical source in Archive
+    -> review alongside reusable Setup task
+        -> create/use editable working copy in SourceDocs
+            -> revise and approve
+                -> publish approved PDF directly in Procedures\Setup
+```
+
+The archived original should not be edited in place merely because it contains useful historical content. Preserve it as evidence and revise a working copy.
+
+The prototype currently records Procedure verification/revision notes only. It does **not** enumerate the live Archive/SourceDocs/current PDF yet and does not publish a PDF.
+
+The existing Procedure application and production Display Folders filesystem are read-only. A future Setup Manager authoring/publication path therefore requires its own governed write boundary. It must not broaden the existing read-only Procedure field application or silently make the shared production mount writable.
 
 ## Shared Container acceptance rule
 
@@ -82,6 +115,8 @@ Confirmed Container 34 Display grouping used for the movement acceptance case:
 
 Total: 121 Displays.
 
+The broader non-unload task rows are representative provisional review data derived from current Setup planning evidence. Managers/team leaders must verify task boundaries, order, prerequisites, crew, equipment, timing, material, and Procedure applicability in the UI.
+
 ## Running locally
 
 The prototype has no backend dependency. Serve this directory with any static web server, for example:
@@ -97,6 +132,8 @@ Then open:
 http://localhost:8780/
 ```
 
+After pulling a prototype update, use a hard refresh so the browser reloads the versioned CSS/JavaScript.
+
 ## Production boundary
 
 This prototype does not:
@@ -104,10 +141,14 @@ This prototype does not:
 - create or alter PostgreSQL tables;
 - create a Setup Session in production;
 - write movement history;
-- replace the current Scan application;
+- modify Google Drive;
+- edit an archived Google Doc;
+- create a SourceDocs working copy;
+- convert/publish a new PDF;
+- replace the current Scan or Procedure applications;
 - establish final authorization behavior;
 - approve reconstructed 2025 task order, dependencies, dates, or actuals.
 
-Production schema and write APIs remain gated on validation through this UI and the authoritative Setup/Deployment documentation under:
+Production schema, Procedure-review integration, and write APIs remain gated on validation through this UI and the authoritative Setup/Deployment documentation under:
 
 `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment`
