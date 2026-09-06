@@ -40,7 +40,7 @@ from Procedures.Application.procedure_context import (  # noqa: E402
     resolve_stage_procedure,
 )
 
-APP_VERSION = "V0.0.4-prototype"
+APP_VERSION = "V0.0.5-prototype"
 app = Flask(__name__)
 
 
@@ -191,7 +191,9 @@ def _google_doc_id_from_url(candidate: str) -> str | None:
     if parsed.scheme != "https" or parsed.netloc.casefold() != "docs.google.com":
         return None
 
-    match = re.match(r"^/document/d/([A-Za-z0-9_-]+)", parsed.path)
+    # Google Docs URLs may be either /document/d/<id> or
+    # /document/u/<session>/d/<id>. Accept both forms.
+    match = re.match(r"^/document(?:/u/\d+)?/d/([A-Za-z0-9_-]+)", parsed.path)
     if match:
         return match.group(1)
 
@@ -214,7 +216,7 @@ def _google_doc_links(path: Path) -> tuple[str | None, str | None, str | None]:
     ids: list[str] = []
 
     try:
-        payload = json.loads(raw)
+        payload = json.loads(raw.lstrip("\ufeff"))
 
         def walk(value: Any, key_name: str = "") -> None:
             if isinstance(value, str):
@@ -337,7 +339,7 @@ def _local_instruction_package(stage_key: str) -> dict[str, Any]:
     current_documents = _published_pdf_payloads(task_root, stage_key)
     editable_sources = [
         item for item in [*source_docs, *archive]
-        if item.get("extension") == ".gdoc" and item.get("editable_google_source")
+        if item.get("extension") == ".gdoc"
     ]
     status = "AVAILABLE" if current_documents else "NO_CURRENT_DOCUMENTS"
     if not task_root.is_dir():
@@ -391,7 +393,7 @@ def _resolved_instruction_package(stage_key: str) -> dict[str, Any]:
     ]
     editable_sources = [
         item for item in [*source_docs, *archive]
-        if item.get("extension") == ".gdoc" and item.get("editable_google_source")
+        if item.get("extension") == ".gdoc"
     ]
 
     return {
