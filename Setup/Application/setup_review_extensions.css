@@ -95,9 +95,31 @@
   font-size: .82rem;
 }
 
+/*
+ * Desktop task-detail workspace:
+ * the detail card is sticky, so it must own a viewport-bounded scroll area.
+ * Without this, long task/procedure detail extends below the viewport and the
+ * lower controls cannot be reached while the card remains sticky.
+ */
+@media (min-width: 1051px) {
+  .detail-card {
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .9em;
+}
+
+@media (max-width: 1050px) {
+  .detail-card {
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 @media (max-width: 900px) {
