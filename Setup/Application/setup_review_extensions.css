@@ -87,20 +87,135 @@
   text-decoration: underline;
 }
 
+/* Manager Procedure workflow: make the actions primary and keep folder-role
+   details out of the normal review path. */
+.manager-procedure-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 12px;
+  margin: 2px 0 16px;
+}
+
+.manager-procedure-card {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: white;
+  padding: 14px;
+  min-width: 0;
+}
+
+.editable-procedure-card {
+  border-left: 5px solid var(--accent);
+}
+
+.published-procedure-card {
+  border-left: 5px solid var(--success);
+}
+
+.manager-procedure-content {
+  margin-top: 7px;
+}
+
+.procedure-source-item,
+.procedure-pdf-item {
+  display: grid;
+  gap: 6px;
+}
+
+.procedure-source-item + .procedure-source-item,
+.procedure-pdf-item + .procedure-pdf-item {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.procedure-file-name {
+  font-size: 1rem;
+}
+
+.procedure-source-role,
+.procedure-help,
+.procedure-mode-note {
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.4;
+}
+
+.procedure-full-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .78rem;
+  line-height: 1.45;
+  word-break: break-all;
+  background: #f7f9fb;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 8px;
+}
+
+.procedure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.procedure-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  background: var(--accent);
+  color: white;
+  padding: 8px 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.procedure-action.secondary {
+  background: white;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.procedure-action:hover {
+  filter: brightness(.96);
+}
+
+.procedure-action-disabled {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #f4f5f6;
+  color: var(--muted);
+  padding: 8px 12px;
+  font-size: .82rem;
+}
+
+.manager-procedure-reminder {
+  grid-column: 1 / -1;
+  border: 1px solid #e4b44f;
+  border-left: 5px solid var(--warning);
+  border-radius: 8px;
+  background: var(--warning-soft);
+  padding: 11px 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .instruction-live-warnings {
+  grid-column: 1 / -1;
   display: grid;
   gap: 5px;
-  margin: 0 0 12px;
   color: var(--warning);
   font-size: .82rem;
 }
 
-/*
- * Desktop task-detail workspace:
- * the detail card is sticky, so it must own a viewport-bounded scroll area.
- * Without this, long task/procedure detail extends below the viewport and the
- * lower controls cannot be reached while the card remains sticky.
- */
+/* Desktop task-detail workspace: the detail card is sticky, so it must own a
+   viewport-bounded scroll area. */
 @media (min-width: 1051px) {
   .detail-card {
     max-height: calc(100vh - 112px);
@@ -124,7 +239,13 @@ code {
 
 @media (max-width: 900px) {
   .instruction-role-grid,
-  .instruction-edit-grid {
+  .instruction-edit-grid,
+  .manager-procedure-panel {
     grid-template-columns: 1fr;
+  }
+
+  .manager-procedure-reminder,
+  .instruction-live-warnings {
+    grid-column: 1;
   }
 }
