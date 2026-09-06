@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | PROPOSED ENGINEERING DESIGN — no migration or production change approved |
+| Status | PROPOSED ENGINEERING DESIGN — live schema gate completed 2026-09-06; no migration or production change approved |
 | System | Setup and Deployment — Setup Session |
 | Owner | MSB Technical Team |
 | Related issue | [#122 — Engineer annual Setup Session planning, pick-list, movement, and park-location subsystem](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122) |
@@ -10,418 +10,864 @@
 
 ## Purpose
 
-Define the first relational shape needed to replace the working reconstruction spreadsheet with a maintainable, human-readable Setup task catalog and a manual annual scheduler that can later generate current pick lists from Production Database relationships.
+Define the relational shape for the Setup Session after live Production PostgreSQL verification.
 
-This is a schema proposal only. It does not authorize PostgreSQL DDL, migration, Directus configuration, or production changes.
+The subsystem must combine:
 
-## Why the reconstruction workbook is not the production model
+- reusable Setup task knowledge;
+- annual Setup Session state;
+- daily scheduling and actual work history;
+- current Production Database Display/Container/storage truth;
+- Setup-specific Container and Display movement/unload history;
+- a simple manager and field-operator UI.
 
-The current reconstruction workbook is useful evidence, but it combines current candidate tasks and historical evidence in one flat table. The inspected workbook currently contains 177 Task List rows across 22 columns. Only 31 rows are current working/candidate task definitions; 146 rows are historical evidence or historical-plan rows.
+This document is a design proposal only. It does **not** authorize PostgreSQL DDL, migration, Directus configuration, application deployment, or production data changes.
 
-The flat workbook also stores predecessor meaning as free text such as `MI-01 complete`. That creates several problems:
+## Live production schema gate — 2026-09-06
 
-- task identity, display order, predecessor relationships, historical evidence, and annual planning state are mixed together;
-- sorting by Stage changes the visual sequence and makes predecessor meaning difficult to follow;
-- task IDs such as `MI-01` are being used partly as ordering aids even though identity and ordering are separate concerns;
-- one task can span several days but one spreadsheet row does not model repeated planned/actual work sessions cleanly;
-- the workbook is too dense to serve as the team-facing task review experience.
+Read-only DBeaver reconnaissance was run against live database `msb` on PostgreSQL 16.9.
 
-The database model must therefore separate reusable task knowledge from relationships and annual scheduling state.
+Confirmed live facts:
 
-## Existing database boundaries to preserve
+- there are no existing `ref.setup%` or `ops.setup%` tables;
+- no generic `resource`, `equipment`, `vehicle`, `asset`, or `tool` table exists in `ref`/`ops` that Setup must reuse;
+- `ref.season` already contains 2025 and 2026;
+- 2025 is inactive and 2026 is active;
+- `ops.test_session` has 226 rows for 226 distinct Containers for 2026;
+- `ops.test_session` enforces `UNIQUE (season_year, container_id)` and `season_year -> ref.season(season_year)`;
+- Production currently contains 1,056 Displays, of which 1,025 have a Container assignment;
+- all 1,025 assigned Displays resolve through `ref.display.container_id -> ref.container -> ref.storage_location`;
+- 31 Displays currently have no Container assignment;
+- `ref.task_type` is a broad reusable Work Order/task taxonomy and is **not** the practical reusable Setup task catalog;
+- `ops.work_order` uses the existing Stage/non-Stage context precedent of `stage_id` or `work_area_id`;
+- `ref.work_area` exists for non-Stage operational areas such as Office, Command Center, Wood Shop, Food Bank Facility, and Volunteer Trailer;
+- current reference and operational tables use project actor stamping through `ref.set_actor_on_insert()` and `ref.set_actor_on_update()`.
 
-Current project architecture separates stable/reference entities in `ref` from operational workflow in `ops`, with UI-facing views using `ops.v_*`. Existing production systems already use `ref.display`, `ref.container`, `ref.stage`, `ref.person`, `ref.season`, and `ops.*` annual workflow tables.
+These facts replace the earlier provisional assumption that reusable Setup tasks should live in `ops`.
 
-Setup must preserve those authorities:
+## Authority boundaries
 
-- `ref.display` remains Display identity and current Display-to-Container assignment;
-- `ref.container` remains Container/KIT/trailer identity;
-- current Container/storage/location relationships remain owned by the Production Database and are not copied into reusable Setup task text;
-- `ref.stage` remains the normal Stage/Sub-stage orientation vocabulary;
-- `ref.person` remains person identity;
-- annual Setup state belongs in `ops`.
+### Current/master Production truth
 
-The uploaded LOR V7 scene database remains useful for current LOR Stage/Scene/Display completeness evidence, but it does not replace Production PostgreSQL Container/location authority.
+The existing masters remain authoritative:
+
+```text
+ref.display
+    -> durable Display identity
+    -> current Display-to-Container assignment
+
+ref.container
+    -> durable Container / KIT / trailer identity
+    -> current home/storage location
+
+ref.storage_location
+    -> workshop/storage location identity
+
+ref.stage
+    -> durable park Stage/Sub-stage context
+
+ref.work_area
+    -> non-Stage operational area
+
+ref.person
+    -> person identity
+
+ref.season
+    -> annual organization season identity
+```
+
+Setup must not create year-specific Display-to-Container copies and must not introduce generic Container assignment history.
+
+### Reusable Setup knowledge
+
+Reusable task definitions survive across seasons and therefore belong in `ref`.
+
+### Annual operational truth
+
+A Setup Session, annual task state, work-day planning/actuals, and movement events belong in `ops`.
+
+### Procedure boundary
+
+The database owns what work is planned, which Displays/Containers/KITs are required, where current assets are, and what happened during Setup.
+
+Procedures own how the work is performed.
+
+Do not duplicate Container IDs, rack locations, or other current Production Database facts inside Procedure text merely to make Setup work.
 
 ## Core relational model
 
-The first design should separate four layers:
-
 ```text
-Reusable Setup Task Catalog
-    -> stable task identity, human order, crew/resource knowledge
-    -> structured predecessor relationships
-    -> required Displays/assets and supplemental KIT/Container dependencies
+REFERENCE / REUSABLE
 
-Annual Setup Session
-    -> this season's task state
+ref.setup_task
+    -> stable practical task identity
 
-Work Days / Scheduled Task Sessions
-    -> the dates leaders intentionally plan to work a task
-    -> one task may appear on several dates
-    -> one date may contain many parallel tasks
+ref.setup_task_context
+    -> Stage / Work Area context
 
-Derived Pick List
-    -> scheduled task(s)
-    -> required Displays/assets
-    -> current ref.display.container_id
-    + supplemental required KIT/support Containers
-    -> deduplicated current Containers/locations
+ref.setup_task_dependency
+    -> reusable predecessors
+
+ref.setup_task_display
+    -> required Displays
+
+ref.setup_task_container_support
+    -> supplemental KIT/support Containers
+
+ref.setup_task_captain
+    -> normal captain/alternate knowledge
+
+ref.setup_resource
+ref.setup_task_resource_requirement
+    -> small Setup-specific scarce-resource model
+
+
+ANNUAL OPERATION
+
+ops.setup_session
+    -> one Setup Session per season
+
+ops.setup_session_task
+    -> one annual task occurrence/state
+
+ops.setup_work_day
+ops.setup_work_day_task
+    -> planned and actual who/what/when
+
+ops.setup_movement_event
+ops.setup_movement_event_display
+    -> Container/Display field movement and bulk unload evidence
+
+
+DERIVED OPERATIONAL VIEWS
+
+ops.v_setup_task_catalog
+ops.v_setup_remaining_tasks
+ops.v_setup_schedule
+ops.v_setup_pick_list
+ops.v_setup_container_current_state
+ops.v_setup_display_current_state
+ops.v_setup_container_onboard_display
 ```
 
-## Proposed core tables
+The exact names remain proposed until DDL review.
 
-The names below are proposed names, not approved implementation objects.
+## Reusable reference tables
 
-### `ops.setup_task`
+### `ref.setup_task`
 
-One row per reusable practical Setup task.
+One row per practical reusable Setup task.
 
 Minimum fields:
 
-- `setup_task_id` — stable surrogate PK; never encodes task order;
-- `stage_id` — nullable FK to `ref.stage`; null for genuine cross-stage/support work;
-- `task_name` — human-readable scheduled work name;
-- `display_order` — human presentation order within the Stage/setup area;
+- `setup_task_id` — stable surrogate PK; never encodes order;
+- `task_name` — human-readable work name;
+- `display_order` — human presentation order, independent of dependency order;
 - `active_flag`;
-- `definition_status` — candidate/reviewed/current/retired or equivalent controlled state;
+- `definition_status` — candidate/reviewed/current/retired or equivalent;
 - `min_crew`;
 - `preferred_crew`;
 - `elapsed_minutes_min`;
 - `elapsed_minutes_max`;
 - `completion_point` — plain-language definition of done;
-- `weather_notes` and/or later structured weather rule;
+- `weather_notes`;
 - reusable date/window guidance where justified;
-- task-specific power-up/testing rule;
-- notes appropriate to reusable planning knowledge.
+- task-specific power-up/testing guidance where justified;
+- reusable notes;
+- project-standard actor/audit fields.
 
-`display_order` controls how humans see the Stage task list. It is not a dependency and can be changed without changing task identity.
+Task rename rule:
 
-### `ops.setup_task_dependency`
+```text
+same practical work + clearer wording
+    -> same setup_task_id
 
-Self-referential many-to-many predecessor relationship.
+material split / merge / change in practical work unit
+    -> new task identity
+```
+
+### `ref.setup_task_context`
+
+A reusable task must have field context even when it requires no inventory.
+
+A separate relationship table is preferred over a single `stage_id` column because it can support a real cross-area task without later adding ad hoc extra columns.
+
+Minimum fields:
+
+- `setup_task_context_id`;
+- `setup_task_id`;
+- `stage_id` nullable FK to `ref.stage`;
+- `work_area_id` nullable FK to `ref.work_area`;
+- `context_role` such as PRIMARY / RELATED if needed;
+- notes only where required.
+
+Each context row should enforce exactly one of `stage_id` or `work_area_id`.
+
+Most tasks are expected to have one PRIMARY Stage context. Multiple contexts are allowed only where the real work actually spans areas.
+
+Inventory-independent does **not** mean context-independent.
+
+Examples already established:
+
+- Arrange Volunteer Food -> Stage 4 context, no required Display material;
+- Arrange Rental Equipment -> Stage 4/general-area context;
+- Position Volunteer Trailer -> Stage 4/general-area context;
+- Deliver Command Center -> Stage 40 context.
+
+### `ref.setup_task_dependency`
+
+Structured predecessor relationship.
 
 Minimum fields:
 
 - `setup_task_dependency_id`;
-- `setup_task_id` — successor task;
-- `prerequisite_setup_task_id` — task that must be complete first;
-- dependency type/notes only if real field evidence requires more than a hard predecessor.
+- `setup_task_id` — successor;
+- `prerequisite_setup_task_id` — required predecessor;
+- optional notes/type only if field evidence requires more than a hard predecessor.
 
-No predecessor row means the task has no task predecessor.
+Required constraints:
 
-This table is the key fix for the spreadsheet sorting problem. A user can sort the catalog by Stage, task name, captain, or anything else without losing the actual predecessor relationship.
+- unique task/prerequisite pair;
+- no self-dependency.
 
-It also supports cross-Stage dependencies such as Who House waiting for arch work/trailer availability.
+Task display order, dependency order, and one day's planned order remain separate concepts.
 
-### `ops.setup_task_display`
+### `ref.setup_task_display`
 
-Reusable task-to-Display/durable-asset relationship.
+Reusable task-to-Display relationship.
 
 Minimum fields:
 
 - `setup_task_display_id`;
 - `setup_task_id`;
 - `display_id` FK to `ref.display`;
-- optional reason/role where it helps explain why the Display is required.
+- optional role/reason.
 
-This table identifies the physical Displays/assets the task requires. It does **not** store their Container or rack location.
+Do **not** copy Container or storage location here.
 
-At pick-list time:
+At runtime:
 
 ```text
-setup_task_display.display_id
-    -> current ref.display.container_id
-        -> current Container/storage/location authority
+setup task
+    -> required Display
+        -> current ref.display.container_id
+            -> current ref.container
+                -> current ref.storage_location
 ```
 
-Therefore a Display can move to another Container without requiring the reusable Setup task to be edited.
+### `ref.setup_task_container_support`
 
-### `ops.setup_task_container_support`
-
-Supplemental task-to-Container relationship only where the dependency cannot be derived from required Displays.
-
-Minimum fields:
-
-- `setup_task_container_support_id`;
-- `setup_task_id`;
-- `container_id` FK to `ref.container`;
-- `support_reason`;
-- active/reviewed state if needed.
+Supplemental Container relationship used only when the requirement cannot be derived from required Displays.
 
 Examples:
 
-- KIT Containers whose contents are intentionally not represented as Displays;
-- Arch Trailer required later as Who House base/platform;
-- other reviewed support Containers where current Display assignment cannot derive the dependency.
+- KIT Containers whose detailed contents are intentionally not represented as Displays;
+- Arch Trailer later required as the Who House base/platform;
+- another reviewed support Container with a real task dependency.
 
-Do not populate this table with every normal current Display Container. Normal Containers are derived live through `ref.display.container_id`.
+Normal current Display Containers are **not** duplicated here.
 
-### `ops.setup_task_captain`
+### `ref.setup_task_captain`
 
-Reusable task-to-person leadership knowledge.
+Reusable leadership knowledge.
 
 Minimum fields:
 
 - `setup_task_captain_id`;
 - `setup_task_id`;
 - `person_id` FK to `ref.person`;
-- priority/role such as normal captain or alternate where needed.
+- captain/alternate role or priority where useful.
 
-This answers `Who normally knows how to lead this task?` It is separate from the person actually leading a crew on a particular date.
+This is distinct from the captain actually assigned to a particular work day.
 
-### `ops.setup_task_evidence`
+### `ref.setup_resource`
 
-Historical/procedural/leader evidence supporting a reusable task definition without cluttering the team task list.
+A deliberately small Setup-specific resource master is justified because live reconnaissance found no existing generic resource/equipment master.
+
+Initial examples may include:
+
+- SkyTrak;
+- Boom Lift;
+- Tool Cat;
+- Truck;
+- Trailer capability.
+
+This is not a generalized fleet, skills, maintenance, or organization-wide asset system.
+
+### `ref.setup_task_resource_requirement`
 
 Minimum fields:
 
-- `setup_task_evidence_id`;
-- `setup_task_id` nullable while evidence is still being classified;
-- `source_type` — historical report, Setup Procedure, leader review, field notes, etc.;
-- `source_date` / `source_year` where known;
-- `source_reference`;
-- `evidence_summary`;
-- optional observed crew/person-hours/captain fields where the source actually supports them;
-- reviewed state and reviewer attribution using the project's normal actor/audit pattern.
+- `setup_task_resource_requirement_id`;
+- `setup_task_id`;
+- `setup_resource_id`;
+- required quantity;
+- REQUIRED/PREFERRED distinction only if it proves useful;
+- notes.
 
-The 146 historical rows currently mixed into the spreadsheet belong here or in a controlled import/staging equivalent, not in the everyday team task catalog.
-
-## Annual scheduling tables
+## Annual operational tables
 
 ### `ops.setup_session`
 
 One annual Setup Session context.
 
-Minimum fields:
+Proposed minimum fields:
 
 - `setup_session_id`;
-- season reference using the current established season pattern after live-schema verification;
-- session status;
-- official start date;
-- final readiness milestone;
-- annual environmental state needed by Setup, such as grass-cutting-stopped date/state where applicable;
-- notes/audit fields.
+- `season_year` FK to `ref.season(season_year)`;
+- `session_status`;
+- official Setup start date where useful;
+- final readiness/completion date where useful;
+- annual environmental dates/states such as grass-cutting-stopped where justified;
+- notes;
+- project-standard actor/audit fields.
 
-The exact FK/key relationship to `ref.season` must be confirmed from live production before DDL. Existing systems use annual `season_year` and `ref.season` active-season behavior.
+Required relationship:
+
+```text
+UNIQUE (season_year)
+```
+
+Admin creates the annual Setup Session, analogous to establishing the annual Test Session context.
+
+The initial rollout may use statuses such as:
+
+```text
+DRAFT
+VERIFYING
+VERIFIED
+ACTIVE
+CLOSED
+```
+
+Exact status values remain DDL-review material.
 
 ### `ops.setup_session_task`
 
-One annual occurrence/state row for each reusable task that applies this season.
+One annual occurrence/state row for each reusable task included in the session.
 
 Minimum fields:
 
 - `setup_session_task_id`;
 - `setup_session_id`;
 - `setup_task_id`;
-- annual task status;
-- annual not-before date or override where required;
-- completion timestamp/date;
-- completion/person attribution as justified;
-- annual notes/override fields only where the reusable definition does not apply unchanged.
+- stored annual task state;
+- annual not-before date/override where necessary;
+- completion timestamp;
+- completion person;
+- annual notes/override data;
+- actor/audit fields.
 
-The annual task row should carry overall state such as NOT STARTED / IN PROGRESS / COMPLETE / DEFERRED. READY should preferably be derived from task completion, predecessors, dates, and applicable external rules rather than manually maintained when practical.
+Required relationship:
+
+```text
+UNIQUE (setup_session_id, setup_task_id)
+```
+
+READY should normally be derived from predecessors, dates, and applicable external conditions rather than maintained as a manually editable truth.
+
+A useful stored state set is likely smaller:
+
+```text
+NOT_STARTED
+IN_PROGRESS
+COMPLETE
+DEFERRED
+```
+
+Then:
+
+- READY/BLOCKED are derived;
+- PLANNED/SELECTED is derived from work-day scheduling;
+- COMPLETE remains explicit annual fact.
 
 ### `ops.setup_work_day`
 
-One row per actual/planned Setup work date.
+One planned/actual Setup work date within a session.
 
 Minimum fields:
 
 - `setup_work_day_id`;
 - `setup_session_id`;
 - `work_date`;
-- expected/actual volunteer count where useful;
-- general day notes such as weather/resource context;
-- day status if needed.
+- expected volunteer count where useful;
+- actual volunteer count where useful;
+- day status;
+- general weather/resource/day notes;
+- actor/audit fields.
 
 ### `ops.setup_work_day_task`
 
-Manual scheduler assignment and work-session row.
+One task scheduled/worked on one work day.
 
 Minimum fields:
 
 - `setup_work_day_task_id`;
 - `setup_work_day_id`;
 - `setup_session_task_id`;
-- `planned_order` within that day;
-- `captain_person_id` — person actually assigned that day;
-- `planned_crew_size`;
-- `actual_crew_size` where worth preserving;
-- optional start/finish or elapsed evidence;
-- `completed_this_day` or equivalent execution evidence;
-- notes/change reason where useful.
+- `planned_order`;
+- actual captain/person assigned that day;
+- planned crew size;
+- actual crew size;
+- start/finish or elapsed evidence where worth preserving;
+- reschedule/change reason where useful;
+- notes;
+- actor/audit fields.
 
-This table is what gives MSB the needed scheduling flexibility:
+This supports:
 
-- one annual task can have work-day rows on October 8, October 9, and October 10 without cloning the task;
-- one work day can contain many tasks from several Stages in parallel;
-- moving a task from one proposed date to another changes scheduling rows, not the reusable task definition or its predecessor relationships;
-- future READY tasks can remain unscheduled indefinitely until leaders deliberately choose them.
+- one task across several days without cloning it;
+- many parallel tasks on one date;
+- moving a task to another date without altering reusable task identity or dependencies.
 
-## Setup-specific resource planning — proposed second slice
+## Movement and unload subsystem
 
-Resource structure should remain deliberately small and Setup-specific rather than becoming a generalized organization-wide skills/equipment system.
+Movement is a core Setup Session responsibility. It is **not** generic Container history and must not overwrite `ref.container.location_code` or `ref.display.container_id`.
 
-Likely objects after the core task/schedule model is accepted:
+### Required field behavior
 
-- `ops.setup_resource` — scarce planning resources such as SkyTrak, Boom Lift, Tool Cat, truck/trailer capability;
-- `ops.setup_task_resource_requirement` — task + resource + required quantity;
-- `ops.setup_session_resource_availability` — annual/effective-date availability such as 1 boom lift on Oct 5, 2 on Oct 9, 3 on Oct 16.
+A Container scan at a park location establishes that:
 
-Crew size remains directly on the task. Captains use `ref.person` through the task-captain relationship.
+- the Container is at that Setup location;
+- every Display still physically traveling with that Container is also at that location.
 
-Do not build detailed volunteer skills or a general fleet system merely to support the first Setup scheduler.
+A Display stops following later Container movement when it is unloaded or otherwise moved independently.
 
-## Human-readable views / operator surfaces
-
-The database tables are not the team experience.
-
-### `ops.v_setup_task_catalog` — first team-review deliverable
-
-One clean row per reusable current/candidate task, ordered by Stage and `display_order`.
-
-Show only information leaders need to review the real task list:
-
-- Stage / setup area;
-- task order;
-- task name;
-- predecessor task names, rendered in plain language;
-- crew range;
-- normal captain(s);
-- major equipment summary;
-- expected elapsed time;
-- date/weather/power-up notes;
-- completion point;
-- definition/review status.
-
-Historical evidence rows must not appear in this default view. Evidence belongs behind a task detail/drill-down.
-
-This view gives the team the missing place to review `the task list` before the full scheduler is implemented.
-
-### `ops.v_setup_remaining_tasks`
-
-For the active annual session, show one row per incomplete task with:
-
-- Stage/task order/task name;
-- annual status;
-- predecessor completion/readiness explanation;
-- planned date(s), if any;
-- captain/resource summary;
-- blocked/date-gated reason where applicable.
-
-### `ops.v_setup_schedule`
-
-Human-readable manual schedule ordered by date then planned order.
-
-A task that spans several days appears on each intentionally scheduled work day while remaining one annual task.
-
-### `ops.v_setup_pick_list`
-
-Derived from the selected/scheduled work, not manually maintained.
-
-Conceptual query path:
+Example:
 
 ```text
-work date
-    -> scheduled setup_session_task rows
-    -> reusable setup_task
-    -> setup_task_display
-        -> current ref.display.container_id
-    + setup_task_container_support
-    -> deduplicate container_id
-    -> current Container description/location/storage
-    -> explain every task/reason requiring that Container
+mixed Container scanned at Candyland
+    -> Container = Candyland
+    -> every still-onboard Display = Candyland
+
+Candyland Display set unloaded
+    -> those Displays detach from Container movement
+    -> those Displays remain at Candyland
+
+same Container moved/scanned at Whoville
+    -> Container = Whoville
+    -> only remaining onboard Displays = Whoville
+    -> previously unloaded Candyland Displays stay at Candyland
 ```
 
-Exact location-table joins remain gated on live production inventory because current documentation contains `ref.location` / `ref.storage_location` naming evidence that still requires current-schema confirmation.
+This behavior is essential for the Arch Trailer and other mixed Containers.
 
-## Task order versus dependency versus schedule order
+### Baseline carrier rule
 
-These must remain three separate concepts:
+At the beginning of a Setup Session, absent contrary Setup movement evidence:
 
-1. `setup_task.display_order` — how the reusable Stage task list is normally shown to humans;
-2. `setup_task_dependency` — actual prerequisite relationships that control readiness;
-3. `setup_work_day_task.planned_order` — the order/crew plan for one particular date.
+```text
+Display carrier = current ref.display.container_id
+Container home location = current ref.container.location_code
+```
 
-This separation is the central fix for the spreadsheet/MS Project failure mode.
+No thousands-row seasonal snapshot is required merely to establish that baseline.
 
-Sorting a task catalog never changes dependencies. Reordering a future work day never changes the reusable Stage task order. Completing one task can release several successors without automatically scheduling them.
+### `ops.setup_movement_event`
 
-## Recommended implementation slices
+One row per operator/business movement action.
 
-### Slice 1 — Team-review Task Catalog
+Proposed minimum fields:
 
-Build only enough schema and Directus/read-only presentation to let the team review the real task list:
+- `setup_movement_event_id`;
+- `setup_session_id`;
+- `event_type`;
+- `container_id` nullable — scanned/carrier Container where applicable;
+- `setup_session_task_id` nullable — task that explains the event when applicable;
+- destination `stage_id` nullable;
+- destination `work_area_id` nullable;
+- destination `storage_location_code` nullable;
+- `occurred_at`;
+- `source_type`;
+- notes;
+- actor/audit fields.
 
-- `ops.setup_task`;
-- `ops.setup_task_dependency`;
-- `ops.setup_task_captain`;
-- `ops.setup_task_display`;
-- `ops.setup_task_container_support`;
-- `ops.setup_task_evidence`;
-- `ops.v_setup_task_catalog`.
+Likely event semantics:
 
-Seed the current 31 working/candidate definitions from the reconstruction workbook as review data. Keep the 146 historical evidence rows out of the default task view.
+- `CONTAINER_LOCATION` — scan/manual confirmation that a Container is at a destination;
+- `UNLOAD` — selected Displays removed from a Container at destination;
+- `LOAD` — selected Displays attached to a carrier Container;
+- `DISPLAY_LOCATION` — individual/bulk Display movement independent of a Container;
+- `VERIFIED_PRESENT` — correction/verification that a Display is at a location when intermediate scans were missed.
 
-This gives the email/team review a real destination before the annual scheduler exists.
+`source_type` should distinguish evidence such as:
 
-### Slice 2 — Manual annual scheduler
+```text
+SCAN
+MANUAL
+TASK_COMPLETION
+ADMIN_CORRECTION
+```
 
-Add:
+The event names remain proposed. The important requirement is that recorded evidence remains honest: a later verification must not fabricate intermediate movements that were never observed.
 
+### `ops.setup_movement_event_display`
+
+Child rows identify the Displays affected by a display-bearing event.
+
+Minimum fields:
+
+- `setup_movement_event_display_id`;
+- `setup_movement_event_id`;
+- `display_id`;
+- unique event/display pair.
+
+Examples:
+
+- `CONTAINER_LOCATION` normally requires no child Display rows; onboard Display location is derived by carrier propagation;
+- `UNLOAD` contains all Displays unloaded in that operator action;
+- `LOAD` contains all Displays attached/reloaded to the carrier;
+- `DISPLAY_LOCATION` or `VERIFIED_PRESENT` contains the individually/bulk affected Displays.
+
+### Derived current carrier/location state
+
+Do not maintain another manually edited current-location column.
+
+Derive current state from:
+
+1. baseline `ref.display.container_id` / `ref.container.location_code`;
+2. latest Setup movement events in the selected annual session.
+
+Required views/concepts:
+
+- `ops.v_setup_container_current_state`;
+- `ops.v_setup_display_current_state`;
+- `ops.v_setup_container_onboard_display`.
+
+A Display is treated as attached to its baseline/current carrier until an `UNLOAD`, independent Display-location event, or verified-placement event detaches it. A later `LOAD` may explicitly attach it again, including to a different temporary carrier if field reality requires that.
+
+### Bulk unload UI
+
+Individual Display scanning must be the exception, not the standard workflow.
+
+Normal transport workflow:
+
+```text
+scan Container / trailer
+    -> confirm or scan current Setup location
+        -> system inspects Displays still onboard
+            -> system groups expected unload sets using current field context/task knowledge
+                -> operator chooses plain-language action
+```
+
+Example for the Arch Trailer:
+
+```text
+Arch Trailer — Container 34
+Current Setup Location: Racing Arches
+
+Unload:
+[ Racing Arches ]
+[ Polar Bear Playground ]
+[ Candyland ]
+[ Icicle Tunnel ]
+[ Stars ]
+[ Food Collection ]
+[ Move Container only ]
+```
+
+The operator should not need to know that the trailer contains many internal Display IDs or material for several Stages.
+
+Selecting an unload group shows the expected count/list and provides an **Adjust Displays** exception path before confirmation.
+
+After confirmation:
+
+- that Display set is detached at the destination;
+- remaining Displays continue traveling with the Container;
+- subsequent Container scans affect only those remaining onboard.
+
+### Task completion reconciliation
+
+Task completion is stronger evidence than a missing scan.
+
+When a task is marked COMPLETE, the system may reconcile required Display movement when the expected location is unambiguous:
+
+```text
+required Display has no adequate movement record
+    + task completion verifies material is present
+        -> record VERIFIED_PRESENT at the task location
+        -> source = TASK_COMPLETION
+```
+
+Do **not** manufacture missing `LOAD`, `CONTAINER_LOCATION`, or `UNLOAD` events.
+
+Only the Display set actually proven by the completed task is corrected. Completion of one task does not move every Display assigned to the same Container.
+
+## Movement-aware pick list
+
+The pick list is not just a static list of Containers.
+
+Conceptual path:
+
+```text
+selected/scheduled task
+    -> required Displays
+        -> current authoritative Display-to-Container assignment
+    + supplemental support Containers
+        -> deduplicate Container IDs
+            -> compare against Setup movement state
+```
+
+Useful derived states include:
+
+```text
+NEEDS PICKING
+ALREADY AT PARK
+STAGED / PARTIALLY UNLOADED
+REQUIRED DISPLAY SET ALREADY PLACED
+```
+
+A shared Container already at the park must not appear as though it needs to be fetched from storage again simply because another task later requires material still onboard.
+
+## 2025 verification season and 2026 creation
+
+### 2025
+
+2025 is the first Setup Session created for team verification.
+
+Admin creates `ops.setup_session` for existing `ref.season` 2025.
+
+Managers use the UI to distinguish clearly between:
+
+```text
+EDIT REUSABLE TASK
+    -> changes future reusable task knowledge
+
+EDIT 2025 ACTUAL
+    -> corrects historical 2025 fact only
+```
+
+2025 verification should cover:
+
+- task name/boundary;
+- reusable order and predecessors;
+- normal crew/captains/resources;
+- required Displays/KIT/support Containers;
+- historical 2025 dates/actuals where evidence exists;
+- known shared/mixed Container unload groupings.
+
+Current validated `ref.display.container_id` relationships are accepted as the available authoritative Container assignments for 2025 reconstruction.
+
+Do not create seasonal Container-assignment history.
+
+Do not invent 2025 movement events when no evidence exists. Historical movement may remain unknown/partial.
+
+### 2026
+
+After the 2025 verification pass is accepted, Admin creates the 2026 Setup Session.
+
+Creation seeds fresh `ops.setup_session_task` rows from the verified active reusable task catalog.
+
+Do **not** copy forward:
+
+- 2025 completion state;
+- 2025 planned/actual dates;
+- 2025 movement events;
+- 2025 actual crew/duration/delay state.
+
+Reusable task knowledge carries forward; annual execution state does not.
+
+The initial rollout may prevent the UI from offering 2026 creation until 2025 is marked VERIFIED, but this is an initial rollout rule rather than a permanent database law that every future year must enforce identically.
+
+## Permissions / responsibility boundary
+
+### Admin
+
+Admin can:
+
+- create the annual Setup Session;
+- perform annual session-level administrative actions;
+- finalize/close annual verification or season state as designed.
+
+### Managers
+
+Managers can:
+
+- add/edit/rename/reorder reusable Setup tasks;
+- add/retire tasks according to task identity rules;
+- edit dependencies, contexts, captains, resources, Display and support-Container requirements;
+- manage annual scheduling and actuals;
+- correct 2025 historical facts during verification.
+
+### Field operators / transport crews
+
+Field operators should be able to perform simple movement actions without permission to alter reusable task definitions:
+
+- scan Container/Display/location;
+- confirm Container location;
+- bulk unload an expected group;
+- adjust the expected set when reality differs;
+- record an individual exception movement.
+
+The UI must present physical actions, not database structure.
+
+## Actor/audit contract
+
+New Setup tables should follow the existing project actor pattern verified in live production.
+
+Use the applicable project-standard fields, including:
+
+- `created_at`;
+- `created_by` where current standard requires it;
+- `created_by_person_id`;
+- `updated_at`;
+- `updated_by` where current standard requires it;
+- `updated_by_person_id`.
+
+Attach:
+
+```text
+ref.set_actor_on_insert()
+ref.set_actor_on_update()
+```
+
+as appropriate, rather than creating a Setup-specific actor mechanism.
+
+Exact nullability/defaults will be stated in the DDL proposal after comparison with the current migration standards.
+
+## Human-readable views / UI surfaces
+
+### Task Library
+
+Manager-facing reusable catalog:
+
+- context;
+- display order;
+- task name;
+- predecessor names;
+- crew range;
+- normal captain(s);
+- major resources;
+- elapsed time;
+- date/weather/power notes;
+- completion point;
+- material requirements;
+- review/active status.
+
+Managers can add/edit/rename/reorder/retire here.
+
+### Annual Setup Season
+
+Season selector should make the current rollout obvious:
+
+```text
+2025 — Historical Verification
+2026 — created after 2025 verification
+```
+
+Annual UI shows dates, state, captain/crew actuals, reschedule reasons, notes, and movement/material readiness without silently editing reusable definitions.
+
+### Movement / Unload
+
+Action-first field UI:
+
+```text
+Scan Container
+    -> confirm location
+        -> choose what happened here
+```
+
+Examples:
+
+- Unload Racing Arches;
+- Unload Polar Bear Playground;
+- Unload Icicle Tunnel;
+- Move Container only.
+
+The system resolves the underlying Displays.
+
+## Task order, dependency, and schedule order remain separate
+
+1. `ref.setup_task.display_order` — normal human catalog order;
+2. `ref.setup_task_dependency` — actual prerequisites;
+3. `ops.setup_work_day_task.planned_order` — one day's chosen work order.
+
+Sorting the catalog must never alter dependencies. Moving a task to another date must never alter reusable dependency structure.
+
+## Recommended implementation order
+
+Movement is part of the core design now even if the field scan UI is deployed after the first verification screen.
+
+### Slice 1 — Core schema + 2025 verification UI
+
+DDL proposal should include the reusable task foundation and annual session foundation needed to create/select 2025 and review it in the real application.
+
+At minimum:
+
+- `ref.setup_task`;
+- `ref.setup_task_context`;
+- `ref.setup_task_dependency`;
+- `ref.setup_task_display`;
+- `ref.setup_task_container_support`;
+- `ref.setup_task_captain`;
+- `ref.setup_resource`;
+- `ref.setup_task_resource_requirement`;
 - `ops.setup_session`;
 - `ops.setup_session_task`;
+- task-catalog / annual verification views.
+
+Historical source rows are imported/reconstructed under controlled rules; they do not become duplicate reusable tasks.
+
+### Slice 2 — Work-day scheduler and annual actuals
+
+Add/activate:
+
 - `ops.setup_work_day`;
 - `ops.setup_work_day_task`;
-- remaining-work and schedule views.
+- remaining-work and schedule views;
+- manager schedule UI.
 
-This gives leaders the manual scheduler they actually need: unfinished work plus deliberate planned work dates, with absolute ability to move/reorder tasks.
+### Slice 3 — Movement/unload execution
 
-### Slice 3 — Derived pick list
+Add/activate the movement event tables, current-state views, and action-first Scan/Setup UI.
 
-Add the read-only dependency resolver/view using current Production Display-to-Container/storage data plus reviewed supplemental KIT/support Containers.
+The movement **schema and semantics are reviewed with the core design now**; this slice distinction is deployment order, not permission to redesign movement later from scratch.
 
-Do not create a maintained task-to-current-Container copy.
+### Slice 4 — Movement-aware pick list and resource readiness
 
-### Slice 4 — Resource readiness and execution/movement
+Combine scheduled task demand with current Production relationships and movement state so leaders can answer:
 
-Add structured Setup resource availability, then scan/movement execution once the planning and pick-list model is accepted.
+> Given today's planned work, what still has to be brought to the park, what is already there, and what material has already been unloaded/placed?
 
-## Schema questions to resolve before DDL
+## Required acceptance cases
 
-1. Confirm current production actor/audit columns/triggers that every new `ops` table must use.
-2. Confirm the exact annual relationship to `ref.season` and whether `season_year` remains the operational FK/key pattern.
-3. Confirm the current authoritative location/storage objects and fields before defining the pick-list view.
-4. Confirm whether current `ref.stage` alone is sufficient as the primary task grouping for 2026 or whether a current Scene FK is needed immediately.
-5. Confirm whether any real reusable task spans more than one Stage. If yes, replace nullable `stage_id` with a task-to-scope relationship instead of adding ad hoc extra stage columns.
-6. Confirm the smallest useful structured power-up rule set from leader review.
-7. Confirm whether date/window rules need structured recurrence in the reusable task or whether concrete annual `not_before_date` values in `setup_session_task` are sufficient for 2026.
-8. Confirm the current procedure-linking mechanism needed from a task without duplicating Google paths/document IDs.
-9. Confirm whether task definition changes need explicit version rows or whether existing audit history plus retirement/new-task rules are sufficient for the first production season.
+The final schema/UI must represent all of these without spreadsheet tricks or repetitive scanning:
 
-## Acceptance cases for schema review
-
-The relational model must represent without spreadsheet ordering tricks:
-
-- Magic Igloo practical phases with explicit predecessor relationships and multi-day continuation;
+- Magic Igloo practical phases with explicit predecessors and multi-day continuation;
 - independent tasks with no predecessors;
-- several successors becoming READY from one completed task;
-- many parallel tasks across Stages without automatic same-day scheduling;
-- Food Collection early and late phases with separate annual date planning;
-- Who House dependent on earlier arch/trailer availability;
-- current Display-to-Container resolution including Old Elf Choir/Old Man Winter cross-container storage;
-- Container 34 shared across several selected tasks but appearing once on the pick list;
-- KIT Containers included through supplemental reviewed support when Displays cannot derive them;
-- one task scheduled on multiple dates;
-- several tasks scheduled on one date;
-- task-specific power-up/testing eligibility;
+- one completed task releasing several successors without auto-scheduling them;
+- many parallel tasks across Stages on one day;
+- Food Collection early and late phases with separate dates;
+- Who House dependency on earlier arch/trailer availability;
+- current Display-to-Container material resolution;
+- KIT/support Container requirements not derivable from Displays;
+- Container 34 shared across many tasks but appearing once in the movement-aware pick logic;
+- Arch Trailer multi-drop workflow across Racing Arches, Polar Bear Playground, Candyland, Icicle Tunnel, Stars, and Food Collection;
+- one Container scan moving all currently attached Displays;
+- unload of one Display group preventing that group from following later Container scans;
+- later move of the same Container moving only remaining onboard Displays;
+- bulk unload by expected group without scanning every Display;
+- operator adjustment when the expected unload set differs from reality;
+- individual Display move as exception workflow;
+- task completion correcting a forgotten scan through `VERIFIED_PRESENT` without fabricating intermediate events;
+- 2025 historical verification separated from reusable-task editing;
+- Admin-created 2026 session seeded fresh only after the 2025 verification rollout is accepted;
 - team sorting/filtering the task catalog without losing predecessor relationships.
+
+## Remaining DDL-review questions
+
+The major architecture questions are now resolved. Remaining implementation details before production DDL are narrower:
+
+1. exact ID generation style and actor-field nullability/defaults for each new table;
+2. exact controlled status values/check constraints;
+3. exact procedure/function used by Admin to create a Setup Session and seed annual task rows;
+4. exact universal-resolver adapter used by Setup to choose/display Stage/Sub-stage context;
+5. exact procedure-linking mechanism without duplicating document paths/IDs;
+6. exact application/service transaction that performs task-completion movement reconciliation;
+7. whether movement destination needs a durable GIS/site-location FK in the first release or can begin with Stage/Work Area/Storage context while the GIS identity model is completed.
 
 ## Immediate next engineering step
 
-Do **not** add more columns to the reconstruction workbook to solve ordering/scheduling.
+Produce the first **DDL proposal only** for the core Setup schema, beginning with the reusable task catalog and annual 2025 verification/session foundation and including the agreed movement-event objects in the schema review.
 
-The next engineering step is to validate this relational shape against live Production PostgreSQL metadata, then produce the first DDL proposal for **Slice 1 — Team-review Task Catalog** only.
-
-That first slice creates the place the team currently lacks to review and organize the real Setup task list. The annual scheduler and pick-list views build on the same task identities rather than forcing the team to keep working in a spreadsheet.
+Do not execute that DDL in Production until the proposal is reviewed and explicitly approved.
