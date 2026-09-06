@@ -40,7 +40,7 @@ from Procedures.Application.procedure_context import (  # noqa: E402
     resolve_stage_procedure,
 )
 
-APP_VERSION = "V0.0.5-prototype"
+APP_VERSION = "V0.0.6-prototype"
 app = Flask(__name__)
 
 
@@ -418,12 +418,31 @@ def _instruction_package(stage_key: str) -> dict[str, Any]:
     return _local_instruction_package(stage_key)
 
 
+def _resolved_task_root(stage_key: str) -> Path:
+    if not _database_configured():
+        return _local_stage_folder(stage_key) / "Procedures" / "Setup"
+
+    repo = repository()
+    stage_id = _stage_id_for_key(repo, stage_key)
+    procedure = resolve_stage_procedure(
+        repo,
+        stage_id=stage_id,
+        task="Setup",
+        drive_root=drive_root(),
+        whole_stage=True,
+    )
+    task_root_text = str(procedure.get("task_root") or "").strip()
+    if not task_root_text:
+        raise SetupInstructionError("Current Setup task folder could not be resolved.")
+    return Path(task_root_text)
+
+
 def _current_document_path(stage_key: str, name: str) -> Path:
     if not name or "\x00" in name or Path(name).name != name:
         raise SetupInstructionError("Current Setup PDF name is invalid.")
 
     if not _database_configured():
-        task_root = _local_stage_folder(stage_key) / "Procedures" / "Setup"
+        task_root = _resolved_task_root(stage_key)
         candidate = task_root / name
         if candidate.suffix.casefold() != ".pdf" or not candidate.is_file():
             raise SetupInstructionError("Requested PDF is not a current published Setup document.")
@@ -468,6 +487,31 @@ def _current_document_path(stage_key: str, name: str) -> Path:
     return candidate
 
 
+def _editable_document_path(stage_key: str, name: str) -> Path:
+    if not name or "\x00" in name or Path(name).name != name:
+        raise SetupInstructionError("Editable Setup Procedure name is invalid.")
+    if Path(name).suffix.casefold() != ".gdoc":
+        raise SetupInstructionError("Editable Setup Procedure must be a .gdoc file.")
+
+    task_root = _resolved_task_root(stage_key)
+    for folder_name in ("SourceDocs", "Archive"):
+        parent = task_root / folder_name
+        candidate = parent / name
+        if not candidate.is_file():
+            continue
+        try:
+            resolved_parent = parent.resolve(strict=True)
+            resolved_candidate = candidate.resolve(strict=True)
+            resolved_candidate.relative_to(resolved_parent)
+        except (OSError, ValueError) as exc:
+            raise SetupInstructionError("Editable Setup Procedure is outside its allowed folder.") from exc
+        if resolved_candidate.parent != resolved_parent:
+            raise SetupInstructionError("Editable Setup Procedure must be directly in SourceDocs or Archive.")
+        return candidate
+
+    raise SetupInstructionError("Editable Setup Procedure was not found in SourceDocs or Archive.")
+
+
 @app.get("/")
 def index() -> Response:
     return send_from_directory(BASE_DIR, "index.html")
@@ -509,6 +553,26 @@ def setup_current_document() -> Response:
         as_attachment=False,
         download_name=path.name,
     )
+
+
+@app.post("/api/setup-instructions/open-editable")
+def setup_open_editable_document() -> Response:
+    payload = request.get_json(silent=True) or {}
+    stage_key = str(payload.get("stage_key") or "").strip()
+    name = str(payload.get("name") or "").strip()
+    path = _editable_document_path(stage_key, name)
+
+    if os.name != "nt" or not hasattr(os, "startfile"):
+        raise SetupInstructionError(
+            "Opening the local .gdoc through its registered application is only available on the Windows prototype host."
+        )
+
+    try:
+        os.startfile(str(path))  # type: ignore[attr-defined]
+    except OSError as exc:
+        raise SetupInstructionError(f"Windows could not open the editable Setup Procedure: {exc}") from exc
+
+    return jsonify(status="opened", name=path.name, path=str(path))
 
 
 @app.errorhandler(ConfigError)
