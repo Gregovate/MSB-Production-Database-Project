@@ -26,14 +26,14 @@ Do not treat provisional task rows as approved production truth.
 The Setup application follows the current MSB browser-native pattern used by FieldWiring / Controller Inventory:
 
 - browser-native HTML/CSS/JavaScript UI;
-- future Flask backend;
+- Flask backend for controlled read/API work;
 - PostgreSQL remains authoritative;
-- Cloudflare Access identifies the signed-in user;
+- Cloudflare Access identifies the signed-in user when deployed;
 - Directus remains role/policy authority where reused;
 - Manager/Admin writes must go through a governed server-side write boundary;
 - no broad writable browser PostgreSQL role.
 
-The prototype is intentionally static so task concepts and movement behavior can be validated before schema or write APIs are locked.
+The current prototype backend is read-only.
 
 ## First prototype scope
 
@@ -49,7 +49,8 @@ The prototype includes:
 - Container 34 shared-load simulation across Racing Arches, Polar Bear Playground, Icicle Tunnel, Stars, Candyland, and Food Collection;
 - bulk unload behavior where only Displays still traveling with the Container follow later Container movement;
 - Setup Instruction review state on the task detail page;
-- local browser persistence for prototype edits only.
+- optional live read-only enumeration of current Setup PDFs, SourceDocs, and Archive files through the existing shared Procedure resolver;
+- local browser persistence for prototype task/instruction-review edits only.
 
 ## Setup Instruction review / publication boundary
 
@@ -78,18 +79,16 @@ historical source in Archive
 
 The archived original should not be edited in place merely because it contains useful historical content. Preserve it as evidence and revise a working copy.
 
-The prototype currently records Procedure verification/revision notes only. It does **not** enumerate the live Archive/SourceDocs/current PDF yet and does not publish a PDF.
+The prototype records Procedure verification/revision notes locally. When run through `backend.py` with the database and Display Folders configured, it also resolves the current Stage/Sub-stage through the accepted Procedure stack and shows:
 
-The next Procedure-integration step should be read-only first:
+- current published Setup PDF filename(s), with a protected read-only open link;
+- direct files currently in `SourceDocs`;
+- direct files currently in `Archive`;
+- resolver warnings where applicable.
 
-```text
-selected Setup task
-    -> resolve its Stage/Sub-stage/Scene context through the shared field-context resolver
-    -> show current published Setup PDF(s)
-    -> Manager-only review list of SourceDocs and Archive candidates
-```
+It still does **not** create a SourceDocs working copy or publish a PDF.
 
-Only after that read-side is accepted should a separate governed authoring/publication command path be designed.
+Only after this read-side review is accepted should a separate governed authoring/publication command path be designed.
 
 The existing Procedure application and production Display Folders filesystem are read-only. A future Setup Manager authoring/publication path therefore requires its own governed write boundary. It must not broaden the existing read-only Procedure field application or silently make the shared production mount writable.
 
@@ -128,9 +127,9 @@ Total: 121 Displays.
 
 The broader non-unload task rows are representative provisional review data derived from current Setup planning evidence. Managers/team leaders must verify task boundaries, order, prerequisites, crew, equipment, timing, material, and Procedure applicability in the UI.
 
-## Running locally
+## Running locally — static mode
 
-The prototype has no backend dependency. Serve this directory with any static web server, for example:
+Static mode validates the task and movement UI but cannot show real Procedure files:
 
 ```powershell
 cd Setup\Application
@@ -142,6 +141,44 @@ Then open:
 ```text
 http://localhost:8780/
 ```
+
+## Running locally — live read-only Procedure review
+
+Run from the repository root or from `Setup\Application` after configuring a read-only database source and the Display Folders root.
+
+The backend accepts Setup-specific environment variables and also reuses the existing Procedure/FieldWiring variable names when already configured:
+
+```text
+SETUP_DATABASE_DSN
+SETUP_DEV_SNAPSHOT
+SETUP_DRIVE_ROOT
+```
+
+Fallbacks accepted:
+
+```text
+PROCEDURE_DATABASE_DSN
+PROCEDURE_DEV_SNAPSHOT
+PROCEDURE_DRIVE_ROOT
+FIELDWIRING_DATABASE_DSN
+FIELDWIRING_DRIVE_ROOT
+```
+
+Example with a Windows Google Drive root:
+
+```powershell
+$env:SETUP_DRIVE_ROOT = 'G:\Shared drives\Display Folders'
+$env:SETUP_DATABASE_DSN = '<existing read-only PostgreSQL DSN>'
+python .\Setup\Application\backend.py
+```
+
+Then open:
+
+```text
+http://localhost:8780/
+```
+
+Do not place credentials in the repository.
 
 After pulling a prototype update, use a hard refresh so the browser reloads the versioned CSS/JavaScript.
 
@@ -160,6 +197,6 @@ This prototype does not:
 - establish final authorization behavior;
 - approve reconstructed 2025 task order, dependencies, dates, or actuals.
 
-Production schema, Procedure-review integration, and write APIs remain gated on validation through this UI and the authoritative Setup/Deployment documentation under:
+Production schema, Procedure publication writes, and final authorization remain gated on validation through this UI and the authoritative Setup/Deployment documentation under:
 
 `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment`
