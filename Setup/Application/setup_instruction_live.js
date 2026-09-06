@@ -1,4 +1,4 @@
-/* Optional live Procedure-review integration for the Setup prototype. */
+/* Manager-facing live Setup Procedure integration for the 2025 prototype. */
 
 const instructionNotExpected = new Set([
   'OPS-FOOD',
@@ -7,79 +7,151 @@ const instructionNotExpected = new Set([
   'CMD-DELIVER'
 ]);
 
-function ensureInstructionFileContainers() {
+function ensureManagerProcedurePanel() {
   const section = document.getElementById('instruction-review-section');
-  if (!section) return;
-  const roles = section.querySelectorAll('.instruction-role');
-  if (roles.length < 3) return;
+  if (!section) return null;
 
-  if (!document.getElementById('instruction-current-files')) {
-    const current = document.createElement('div');
-    current.id = 'instruction-current-files';
-    current.className = 'instruction-file-list';
-    roles[0].appendChild(current);
+  const heading = section.querySelector('.section-title h3');
+  if (heading) heading.textContent = 'Setup Procedure';
+
+  // The old three-folder governance cards were useful for engineering but are
+  // too indirect for a Manager doing corrections. Keep the underlying folder
+  // roles in the backend; present the action here.
+  section.querySelector('.instruction-role-grid')?.setAttribute('hidden', '');
+  section.querySelector('.publication-flow')?.setAttribute('hidden', '');
+  section.querySelector('.instruction-boundary')?.setAttribute('hidden', '');
+
+  section.querySelectorAll('.action-row button[disabled]').forEach((button) => {
+    button.hidden = true;
+  });
+
+  let panel = document.getElementById('manager-procedure-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'manager-procedure-panel';
+    panel.className = 'manager-procedure-panel';
+    panel.innerHTML = `
+      <div class="manager-procedure-card editable-procedure-card">
+        <div class="eyebrow">Editable procedure</div>
+        <div id="manager-editable-procedure" class="manager-procedure-content">
+          <span class="muted">Checking for the editable Google Doc…</span>
+        </div>
+      </div>
+      <div class="manager-procedure-card published-procedure-card">
+        <div class="eyebrow">Published field PDF</div>
+        <div id="manager-current-pdf" class="manager-procedure-content">
+          <span class="muted">Checking for the current PDF…</span>
+        </div>
+      </div>
+      <div id="manager-procedure-reminder" class="manager-procedure-reminder">
+        If you edit the Google Doc, replace the published PDF before marking the instruction verified.
+      </div>
+      <div id="instruction-live-warnings" class="instruction-live-warnings"></div>
+    `;
+
+    const editGrid = section.querySelector('.instruction-edit-grid');
+    if (editGrid) {
+      editGrid.insertAdjacentElement('beforebegin', panel);
+    } else {
+      section.appendChild(panel);
+    }
   }
-  if (!document.getElementById('instruction-source-files')) {
-    const source = document.createElement('div');
-    source.id = 'instruction-source-files';
-    source.className = 'instruction-file-list';
-    roles[1].appendChild(source);
-  }
-  if (!document.getElementById('instruction-archive-files')) {
-    const archive = document.createElement('div');
-    archive.id = 'instruction-archive-files';
-    archive.className = 'instruction-file-list';
-    roles[2].appendChild(archive);
-  }
-  if (!document.getElementById('instruction-live-warnings')) {
-    const warnings = document.createElement('div');
-    warnings.id = 'instruction-live-warnings';
-    warnings.className = 'instruction-live-warnings';
-    section.querySelector('.publication-flow')?.insertAdjacentElement('afterend', warnings);
-  }
+  return panel;
 }
 
-function renderNamedFiles(targetId, files, { current = false } = {}) {
-  const target = document.getElementById(targetId);
+function procedureActionLink(label, href, className = '') {
+  if (!href) return '';
+  return `<a class="procedure-action ${className}" href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
+}
+
+function renderEditableProcedures(files) {
+  const target = document.getElementById('manager-editable-procedure');
   if (!target) return;
+
   if (!files?.length) {
-    target.innerHTML = '<span class="muted">None found.</span>';
+    target.innerHTML = `
+      <strong>No editable .gdoc source found for this Setup scope.</strong>
+      <div class="procedure-help">Review the Stage's Procedures\\Setup\\Archive and SourceDocs folders.</div>
+    `;
     return;
   }
 
   target.innerHTML = files.map((file) => {
-    const name = escapeHtml(file.name || 'Unnamed file');
-    if (current && file.url) {
-      return `<a class="instruction-file-link" href="${escapeHtml(file.url)}" target="_blank" rel="noopener">${name}</a>`;
-    }
-    const ext = file.extension ? ` <span class="muted">${escapeHtml(file.extension)}</span>` : '';
-    return `<div class="instruction-file-name">${name}${ext}</div>`;
+    const role = file.role === 'ARCHIVE' ? 'Archive source' : 'SourceDocs source';
+    const openAction = file.edit_url
+      ? procedureActionLink('Open Editable Procedure', file.edit_url)
+      : '<span class="procedure-action-disabled">Google Docs link could not be read from this .gdoc shortcut</span>';
+    const exportAction = file.pdf_export_url
+      ? procedureActionLink('Export Updated PDF', file.pdf_export_url, 'secondary')
+      : '';
+
+    return `
+      <div class="procedure-source-item">
+        <strong class="procedure-file-name">${escapeHtml(file.name || 'Unnamed .gdoc')}</strong>
+        <div class="procedure-source-role">${escapeHtml(role)}</div>
+        <div class="procedure-full-path">${escapeHtml(file.path || '')}</div>
+        <div class="procedure-actions">${openAction}${exportAction}</div>
+      </div>
+    `;
   }).join('');
 }
 
+function renderPublishedPdfs(files) {
+  const target = document.getElementById('manager-current-pdf');
+  if (!target) return;
+
+  if (!files?.length) {
+    target.innerHTML = `
+      <strong>No published Setup PDF found.</strong>
+      <div class="procedure-help">After correcting the editable procedure, publish the approved PDF directly in Procedures\\Setup.</div>
+    `;
+    return;
+  }
+
+  target.innerHTML = files.map((file) => `
+    <div class="procedure-pdf-item">
+      <strong class="procedure-file-name">${escapeHtml(file.name || 'Unnamed PDF')}</strong>
+      <div class="procedure-full-path">${escapeHtml(file.path || '')}</div>
+      <div class="procedure-actions">
+        ${file.url ? procedureActionLink('Open Current PDF', file.url, 'secondary') : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderProcedureWarnings(warnings, resolutionMode) {
+  const target = document.getElementById('instruction-live-warnings');
+  if (!target) return;
+  const visibleWarnings = (warnings || []).filter((warning) => {
+    // The local fallback warning is useful engineering context but should not
+    // dominate the Manager workflow. Show only a compact mode note for it.
+    return !String(warning).includes('Local prototype exact-Stage-key');
+  });
+  const modeNote = resolutionMode === 'local-drive-prototype'
+    ? '<div class="procedure-mode-note">Local prototype: resolved from the mounted Display Folders by exact Stage key.</div>'
+    : '';
+  target.innerHTML = `${modeNote}${visibleWarnings.map((warning) => `<div>${escapeHtml(warning)}</div>`).join('')}`;
+}
+
 async function loadLiveInstructionReview(task) {
-  ensureInstructionFileContainers();
+  ensureManagerProcedurePanel();
   if (!task) return;
 
-  const currentState = document.getElementById('instruction-current-state');
-  const currentFiles = document.getElementById('instruction-current-files');
-  const sourceFiles = document.getElementById('instruction-source-files');
-  const archiveFiles = document.getElementById('instruction-archive-files');
+  const editableTarget = document.getElementById('manager-editable-procedure');
+  const currentTarget = document.getElementById('manager-current-pdf');
   const warnings = document.getElementById('instruction-live-warnings');
 
   if (instructionNotExpected.has(task.id)) {
-    if (currentState) currentState.textContent = 'No field Setup instruction is expected for this support task unless a Manager deliberately links one later.';
-    if (currentFiles) currentFiles.innerHTML = '';
-    if (sourceFiles) sourceFiles.innerHTML = '';
-    if (archiveFiles) archiveFiles.innerHTML = '';
+    if (editableTarget) {
+      editableTarget.innerHTML = '<strong>No Setup Procedure expected for this support task.</strong>';
+    }
+    if (currentTarget) currentTarget.innerHTML = '<span class="muted">Not applicable.</span>';
     if (warnings) warnings.innerHTML = '';
     return;
   }
 
-  if (currentState) currentState.textContent = 'Checking the current Procedure resolver…';
-  if (currentFiles) currentFiles.innerHTML = '';
-  if (sourceFiles) sourceFiles.innerHTML = '';
-  if (archiveFiles) archiveFiles.innerHTML = '';
+  if (editableTarget) editableTarget.innerHTML = '<span class="muted">Checking for the editable Google Doc…</span>';
+  if (currentTarget) currentTarget.innerHTML = '<span class="muted">Checking for the published PDF…</span>';
   if (warnings) warnings.innerHTML = '';
 
   try {
@@ -88,29 +160,23 @@ async function loadLiveInstructionReview(task) {
     });
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => ({}));
-      throw new Error(errorPayload.error || `Instruction API returned ${response.status}`);
+      throw new Error(errorPayload.error || `Setup Procedure API returned ${response.status}`);
     }
 
     const payload = await response.json();
     const data = payload.instructions || {};
-    if (currentState) {
-      currentState.textContent = `Resolved Stage/Sub-stage ${task.stageKey}; Procedure status: ${data.status || 'unknown'}.`;
-    }
-    renderNamedFiles('instruction-current-files', data.current_documents || [], { current: true });
-    renderNamedFiles('instruction-source-files', data.source_docs || []);
-    renderNamedFiles('instruction-archive-files', data.archive || []);
-
-    if (warnings && data.warnings?.length) {
-      warnings.innerHTML = data.warnings.map((warning) => `<div>${escapeHtml(warning)}</div>`).join('');
-    }
+    renderEditableProcedures(data.editable_sources || []);
+    renderPublishedPdfs(data.current_documents || []);
+    renderProcedureWarnings(data.warnings || [], data.resolution_mode);
   } catch (error) {
-    if (currentState) {
-      currentState.textContent = 'Live instruction files are not connected in this run. The task/procedure review fields below still work locally.';
+    if (editableTarget) {
+      editableTarget.innerHTML = `
+        <strong>Setup Procedure could not be resolved.</strong>
+        <div class="procedure-help">${escapeHtml(error.message || error)}</div>
+      `;
     }
-    if (currentFiles) currentFiles.innerHTML = '<span class="muted">Run the Flask prototype backend with DB + Display Folders configuration to show current PDFs.</span>';
-    if (sourceFiles) sourceFiles.innerHTML = '<span class="muted">Not connected.</span>';
-    if (archiveFiles) archiveFiles.innerHTML = '<span class="muted">Not connected.</span>';
-    if (warnings) warnings.innerHTML = `<div>${escapeHtml(error.message || error)}</div>`;
+    if (currentTarget) currentTarget.innerHTML = '<span class="muted">Not resolved.</span>';
+    if (warnings) warnings.innerHTML = '';
   }
 }
 
@@ -120,5 +186,5 @@ selectTask = function selectTaskWithLiveInstructions(taskId) {
   loadLiveInstructionReview(taskById(taskId));
 };
 
-ensureInstructionFileContainers();
+ensureManagerProcedurePanel();
 if (selectedTaskId) loadLiveInstructionReview(taskById(selectedTaskId));
