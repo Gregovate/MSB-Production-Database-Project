@@ -14,16 +14,15 @@ function ensureManagerProcedurePanel() {
   const heading = section.querySelector('.section-title h3');
   if (heading) heading.textContent = 'Setup Procedure';
 
-  // Keep engineering/folder-governance content out of the Manager workflow.
-  const legacyRoleGrid = section.querySelector('.instruction-role-grid');
-  const legacyFlow = section.querySelector('.publication-flow');
-  const legacyBoundary = section.querySelector('.instruction-boundary');
-  if (legacyRoleGrid) legacyRoleGrid.style.display = 'none';
-  if (legacyFlow) legacyFlow.style.display = 'none';
-  if (legacyBoundary) legacyBoundary.style.display = 'none';
+  // The old three-folder governance cards were useful for engineering but are
+  // too indirect for a Manager doing corrections. Keep the underlying folder
+  // roles in the backend; present the action here.
+  section.querySelector('.instruction-role-grid')?.setAttribute('hidden', '');
+  section.querySelector('.publication-flow')?.setAttribute('hidden', '');
+  section.querySelector('.instruction-boundary')?.setAttribute('hidden', '');
 
   section.querySelectorAll('.action-row button[disabled]').forEach((button) => {
-    button.style.display = 'none';
+    button.hidden = true;
   });
 
   let panel = document.getElementById('manager-procedure-panel');
@@ -65,12 +64,6 @@ function procedureActionLink(label, href, className = '') {
   return `<a class="procedure-action ${className}" href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
 }
 
-function allGdocSources(data) {
-  const sourceDocs = (data?.source_docs || []).filter((file) => file.extension === '.gdoc');
-  const archive = (data?.archive || []).filter((file) => file.extension === '.gdoc');
-  return [...sourceDocs, ...archive];
-}
-
 function chooseEditableProcedureFiles(files) {
   const candidates = files || [];
   const sourceDocs = candidates.filter((file) => file.role === 'SOURCEDOC');
@@ -88,7 +81,43 @@ function chooseEditableProcedureFiles(files) {
   };
 }
 
-function renderEditableProcedures(files) {
+async function openEditableProcedure(stageKey, fileName, button) {
+  const originalText = button?.textContent || 'Open Editable Procedure';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Opening…';
+  }
+
+  try {
+    const response = await fetch('/api/setup-instructions/open-editable', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ stage_key: stageKey, name: fileName })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || `Open Editable Procedure returned ${response.status}`);
+    }
+    if (button) button.textContent = 'Opened';
+    window.setTimeout(() => {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }, 1200);
+  } catch (error) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+    window.alert(error.message || error);
+  }
+}
+
+function renderEditableProcedures(files, stageKey) {
   const target = document.getElementById('manager-editable-procedure');
   if (!target) return;
 
@@ -111,9 +140,6 @@ function renderEditableProcedures(files) {
     const role = file.role === 'ARCHIVE'
       ? 'Legacy editable source in Archive'
       : 'Editable source in SourceDocs';
-    const openAction = file.edit_url
-      ? procedureActionLink('Open Editable Procedure', file.edit_url)
-      : '<span class="procedure-action-disabled">Editable .gdoc found, but its Google Docs URL could not yet be extracted.</span>';
     const exportAction = file.pdf_export_url
       ? procedureActionLink('Export Updated PDF', file.pdf_export_url, 'secondary')
       : '';
@@ -123,10 +149,19 @@ function renderEditableProcedures(files) {
         <strong class="procedure-file-name">${escapeHtml(file.name || 'Unnamed .gdoc')}</strong>
         <div class="procedure-source-role">${escapeHtml(role)}</div>
         <div class="procedure-full-path">${escapeHtml(file.path || '')}</div>
-        <div class="procedure-actions">${openAction}${exportAction}</div>
+        <div class="procedure-actions">
+          <button type="button" class="procedure-action" data-open-editable data-file-name="${escapeHtml(file.name || '')}">Open Editable Procedure</button>
+          ${exportAction}
+        </div>
       </div>
     `;
   }).join('')}`;
+
+  target.querySelectorAll('[data-open-editable]').forEach((button) => {
+    button.addEventListener('click', () => {
+      openEditableProcedure(stageKey, button.dataset.fileName || '', button);
+    });
+  });
 }
 
 function renderPublishedPdfs(files) {
@@ -156,6 +191,8 @@ function renderProcedureWarnings(warnings, resolutionMode) {
   const target = document.getElementById('instruction-live-warnings');
   if (!target) return;
   const visibleWarnings = (warnings || []).filter((warning) => {
+    // The local fallback warning is useful engineering context but should not
+    // dominate the Manager workflow. Show only a compact mode note for it.
     return !String(warning).includes('Local prototype exact-Stage-key');
   });
   const modeNote = resolutionMode === 'local-drive-prototype'
@@ -196,11 +233,7 @@ async function loadLiveInstructionReview(task) {
 
     const payload = await response.json();
     const data = payload.instructions || {};
-
-    // Do not rely on backend edit-link extraction to decide whether a .gdoc
-    // exists. A real .gdoc is still an editable source even when its shortcut
-    // metadata format is not yet understood by the prototype parser.
-    renderEditableProcedures(allGdocSources(data));
+    renderEditableProcedures(data.editable_sources || [], task.stageKey);
     renderPublishedPdfs(data.current_documents || []);
     renderProcedureWarnings(data.warnings || [], data.resolution_mode);
   } catch (error) {
