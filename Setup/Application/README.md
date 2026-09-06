@@ -44,6 +44,7 @@ The prototype includes:
 - explicit separation between reusable definition and 2025 historical actual;
 - verification states: `UNVERIFIED`, `VERIFIED`, `NEEDS CORRECTION`;
 - a broader provisional Setup task library across representative Stages instead of only Arch Trailer unload tasks;
+- representative general/support work, Mega Cube, Whoville, Elf Choir, Stars, Icicle Tunnel, Candyland, Polar Bear Playground, Racing Arches, Magic Igloo, Food Collection, and Command Center tasks;
 - provisional Magic Igloo phased work and common readiness/power-up tasks;
 - reusable Arch Trailer unload tasks;
 - Container 34 shared-load simulation across Racing Arches, Polar Bear Playground, Icicle Tunnel, Stars, Candyland, and Food Collection;
