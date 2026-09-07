@@ -130,6 +130,7 @@ class SetupRepository:
                     s.stage_name,
                     t.task_action_type,
                     t.display_order,
+                    t.baseline_plan_order,
                     t.active_flag,
                     t.normal_crew_min,
                     t.normal_crew_max,
@@ -144,6 +145,7 @@ class SetupRepository:
                     st.included_flag,
                     st.verification_state,
                     st.execution_status,
+                    st.planned_order,
                     st.planned_date,
                     st.actual_started_at,
                     st.actual_completed_at,
@@ -176,6 +178,8 @@ class SetupRepository:
                 ) dep ON true
                 WHERE t.active_flag OR st.setup_session_task_id IS NOT NULL
                 ORDER BY
+                    st.planned_order NULLS LAST,
+                    t.baseline_plan_order NULLS LAST,
                     s.park_order NULLS LAST,
                     s.sub_order NULLS LAST,
                     s.stage_key NULLS LAST,
