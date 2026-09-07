@@ -1,0 +1,79 @@
+.setup-help-card {
+  max-width: 78rem;
+}
+
+.setup-help-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.setup-help-section {
+  padding: 1rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.65rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-help-section h3 {
+  margin-top: 0;
+}
+
+.setup-help-section p,
+.setup-help-section li {
+  line-height: 1.5;
+}
+
+.setup-help-section ul {
+  margin-bottom: 0;
+  padding-left: 1.25rem;
+}
+
+.preview-review-notice {
+  margin-bottom: 1rem;
+  border-color: #9a6700;
+}
+
+.sequence-explainer {
+  margin: 0.5rem 0 1rem;
+}
+
+.library-task[draggable="true"] {
+  cursor: grab;
+}
+
+.library-task[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.library-task.dragging {
+  opacity: 0.45;
+}
+
+.library-task.drop-target {
+  outline: 2px dashed var(--accent, #0b6fa4);
+  outline-offset: -4px;
+}
+
+.library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.library-actions .stage-move-up,
+.library-actions .stage-move-down {
+  min-width: 2.25rem;
+  padding-inline: 0.45rem;
+}
+
+.library-actions .copy-task {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .setup-help-grid {
+    grid-template-columns: 1fr;
+  }
+}
