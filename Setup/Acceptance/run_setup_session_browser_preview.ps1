@@ -12,7 +12,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'setup_session_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/setup-session-production-foundation'
-$CandidateSha = '92110b8ffb06572b746a7599af6a66f45a5a997f'
+$CandidateSha = 'c0b6e4342129516f2f9b344acd4331f4e068e23b'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -79,13 +79,14 @@ function Write-LinuxTextFile {
     [System.IO.File]::WriteAllText($Destination, $text, $utf8NoBom)
 }
 
-Write-Host '========== SETUP SESSION BROWSER PREVIEW =========='
+Write-Host '========== SETUP SESSION FINAL BROWSER PREVIEW =========='
 Write-Host "Server:        $Server"
 Write-Host "Candidate SHA: $CandidateSha"
 Write-Host "Browser URL:   $browserUrl"
 Write-Host "Preview user:  $PreviewEmail"
 Write-Host
 Write-Host 'This preview uses a disposable current-production PostgreSQL clone.'
+Write-Host 'Migrations 008-012 are applied only to that disposable clone.'
 Write-Host 'Production Setup data and the live shared application checkout are not modified.'
 Write-Host 'The browser is not auto-opened; wait for SETUP BROWSER REVIEW READY before opening it.'
 Write-Host 'Keep this PowerShell window open while reviewing the browser.'
@@ -104,8 +105,7 @@ try {
 
     $serverText = [System.IO.File]::ReadAllText($localServer)
 
-    # Keep the checked-in server harness reusable while packaging the exact accepted
-    # candidate selected above for this browser-review run.
+    # Package the exact accepted candidate selected above for this browser-review run.
     $targetOld = 'TARGET_SHA="c72644f02b825acb830603fe6b4f7bd48713b681"'
     $targetNew = "TARGET_SHA=`"$CandidateSha`""
     if (-not $serverText.Contains($targetOld)) {
@@ -113,15 +113,16 @@ try {
     }
     $serverText = $serverText.Replace($targetOld, $targetNew)
 
-    # Include all accepted browser-review contracts in the exact detached-candidate gate.
+    # Include all final browser-review contracts in the exact detached-candidate gate.
     $testOld = '        Setup/Application/test_setup_google_doc_index_contract.py'
-    $testNew = "        Setup/Application/test_setup_google_doc_index_contract.py \`n        Setup/Application/test_setup_review_usability_contract.py \`n        Setup/Application/test_setup_next_pass_contract.py"
+    $testNew = "        Setup/Application/test_setup_google_doc_index_contract.py \`n        Setup/Application/test_setup_review_usability_contract.py \`n        Setup/Application/test_setup_next_pass_contract.py \`n        Setup/Application/test_setup_final_scope_contract.py"
     if (-not $serverText.Contains($testOld)) {
         throw 'Setup browser preview server template no longer contains the expected detached regression list.'
     }
     $serverText = $serverText.Replace($testOld, $testNew)
 
-    # Extend the disposable-clone migration set. Production remains pg_dump + SELECT only.
+    # Extend the disposable-clone migration set through the final review seed.
+    # Production remains pg_dump + SELECT only.
     $migrationOld = @'
 RESOURCE_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/008_create_setup_resource_management_commands.sql"
 [[ -s "$RESOURCE_MIGRATION" ]] || {
@@ -133,7 +134,14 @@ RESOURCE_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/008_create_setup_resource
 RESOURCE_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/008_create_setup_resource_management_commands.sql"
 NEXT_PASS_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/009_create_setup_scope_schedule_execution_commands.sql"
 REVIEW_CORRECTION_SEED="$CANDIDATE_WORKTREE/Setup/Database/010_seed_2025_stage02_elf_scope_corrections.sql"
-for migration_file in "$RESOURCE_MIGRATION" "$NEXT_PASS_MIGRATION" "$REVIEW_CORRECTION_SEED"; do
+PLANNING_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/011_create_setup_planning_order_and_crew_lanes.sql"
+PARK_INFRASTRUCTURE_SEED="$CANDIDATE_WORKTREE/Setup/Database/012_seed_site_infrastructure_review_tasks.sql"
+for migration_file in \
+    "$RESOURCE_MIGRATION" \
+    "$NEXT_PASS_MIGRATION" \
+    "$REVIEW_CORRECTION_SEED" \
+    "$PLANNING_MIGRATION" \
+    "$PARK_INFRASTRUCTURE_SEED"; do
     [[ -s "$migration_file" ]] || {
         echo "FAIL: accepted Setup candidate is missing required disposable migration/seed: $migration_file"
         exit 15
@@ -156,10 +164,16 @@ psql_test < "$NEXT_PASS_MIGRATION"
 echo "Disposable Setup scope/schedule/execution migration 009: PASS"
 psql_test < "$REVIEW_CORRECTION_SEED"
 echo "Disposable Setup 2025 review corrections 010: PASS"
+psql_test < "$PLANNING_MIGRATION"
+echo "Disposable Setup planned-order/crew-lane migration 011: PASS"
+psql_test < "$PARK_INFRASTRUCTURE_SEED"
+echo "Disposable Setup Command Center/Park Infrastructure seed 012: PASS"
 
-# Give the Captain/Perform Work screen one intentionally incomplete task in the
-# disposable clone. This changes no Production history and makes completion UI
-# testable without inventing a permanent 2026 session during browser review.
+# Give the Captain/Perform Work screen one additional familiar task that is
+# intentionally incomplete in the disposable clone. This changes no Production
+# history and makes completion UI testable without inventing a permanent 2026
+# session during browser review. Seed 012 separately leaves the Command Center
+# connectivity chain ready/not-ready for prerequisite testing.
 psql_test <<'SQL'
 UPDATE ops.setup_session_task st
 SET execution_status = 'READY',
@@ -180,11 +194,13 @@ WHERE st.setup_session_id = ss.setup_session_id
 DO $block$
 DECLARE
     v_stage02 integer;
+    v_stage40 integer;
     v_mega_scene bigint;
     v_fred_scene bigint;
     v_count integer;
 BEGIN
     SELECT stage_id INTO v_stage02 FROM ref.stage WHERE stage_key = '02';
+    SELECT stage_id INTO v_stage40 FROM ref.stage WHERE stage_key = '40';
     SELECT lor_scene_id INTO v_mega_scene FROM ref.lor_scene
       WHERE stage_id = v_stage02 AND scene_name = '02-Mega Tree';
     SELECT lor_scene_id INTO v_fred_scene FROM ref.lor_scene
@@ -220,17 +236,42 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Elf Choir Locates prerequisite is missing';
     END IF;
+
+    SELECT count(*) INTO v_count
+    FROM ref.setup_task
+    WHERE stage_id = v_stage40
+      AND task_name IN (
+        'Deliver and Set Up Command Center Trailer',
+        'Install WiFi Antenna',
+        'Install Gateway and Test Internet Connection',
+        'Deploy Hotspots'
+      );
+    IF v_count <> 4 THEN
+        RAISE EXCEPTION 'Stage 40 Command Center should contain four review tasks; found %', v_count;
+    END IF;
+
+    SELECT count(*) INTO v_count
+    FROM ref.setup_task
+    WHERE stage_id IS NULL
+      AND task_name IN ('Remove Street Lights','Convert Street Lights to Show Power','Turn On Site Breakers');
+    IF v_count <> 3 THEN
+        RAISE EXCEPTION 'Park Infrastructure should contain three no-Stage review tasks; found %', v_count;
+    END IF;
+
+    IF to_regprocedure('ops.set_setup_work_day_task(text,bigint,bigint,text,integer,integer,boolean)') IS NOT NULL THEN
+        RAISE EXCEPTION 'Pre-crew-lane scheduling command signature still exists after migration 011';
+    END IF;
 END
 $block$;
 SQL
-echo "Stage/Scene review correction validation: PASS"
+echo "Final Stage/Scene/Command Center/Park Infrastructure validation: PASS"
 '@
     if (-not $serverText.Contains($applyOld)) {
         throw 'Setup browser preview server template no longer contains the expected migration-008 apply block.'
     }
     $serverText = $serverText.Replace($applyOld, $applyNew)
 
-    # Strengthen the least-privilege gate for the new command layer.
+    # Strengthen the least-privilege gate for the final command layer.
     $boundaryNeedle = "    IF has_table_privilege('fieldwiring_app', 'directus_users', 'SELECT') THEN"
     $boundaryInsert = @'
     IF has_table_privilege('fieldwiring_app', 'ops.setup_task_progress', 'INSERT')
@@ -239,15 +280,17 @@ echo "Stage/Scene review correction validation: PASS"
        OR has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'UPDATE')
        OR has_table_privilege('fieldwiring_app', 'ref.setup_task_dependency', 'INSERT')
        OR has_table_privilege('fieldwiring_app', 'ref.setup_task_dependency', 'UPDATE') THEN
-        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad V0.2 Setup DML';
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad V0.3 Setup DML';
     END IF;
 
     IF NOT has_function_privilege('fieldwiring_app', 'ref.set_setup_task_scope(text,bigint,integer,bigint)', 'EXECUTE')
        OR NOT has_function_privilege('fieldwiring_app', 'ref.set_setup_task_dependency(text,bigint,bigint,text,boolean)', 'EXECUTE')
        OR NOT has_function_privilege('fieldwiring_app', 'ops.upsert_setup_work_day(text,integer,date,text,text)', 'EXECUTE')
-       OR NOT has_function_privilege('fieldwiring_app', 'ops.set_setup_work_day_task(text,bigint,bigint,text,integer,integer,boolean)', 'EXECUTE')
-       OR NOT has_function_privilege('fieldwiring_app', 'ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)', 'EXECUTE') THEN
-        RAISE EXCEPTION 'Preview fieldwiring_app lacks one or more narrow V0.2 Setup commands';
+       OR NOT has_function_privilege('fieldwiring_app', 'ops.set_setup_work_day_task(text,bigint,bigint,text,text,integer,integer,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('fieldwiring_app', 'ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('fieldwiring_app', 'ops.set_setup_session_task_planned_order(text,bigint,integer,text)', 'EXECUTE')
+       OR NOT has_function_privilege('fieldwiring_app', 'ops.promote_setup_session_order_to_baseline(text,integer)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks one or more narrow V0.3 Setup commands';
     END IF;
 
 '@
@@ -256,7 +299,7 @@ echo "Stage/Scene review correction validation: PASS"
     }
     $serverText = $serverText.Replace($boundaryNeedle, $boundaryInsert + $boundaryNeedle)
 
-    # Validate the new read surfaces after Flask starts, before telling the operator
+    # Validate final read surfaces after Flask starts, before telling the operator
     # the browser review is ready.
     $apiNeedle = 'PROCEDURE_CODE="$(curl -sS -o /tmp/setup-preview-procedure-$STAMP.json -w ''%{http_code}'' "http://127.0.0.1:$PREVIEW_PORT/api/setup/procedure?stage_key=04")"'
     $apiInsert = @'
@@ -266,14 +309,32 @@ for endpoint in \
     "/api/setup/execution?season_year=2025"; do
     NEXT_CODE="$(curl -sS -o /tmp/setup-preview-next-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT$endpoint")"
     if [[ "$NEXT_CODE" != "200" ]]; then
-        echo "FAIL: Setup V0.2 API $endpoint returned HTTP $NEXT_CODE"
+        echo "FAIL: Setup V0.3 API $endpoint returned HTTP $NEXT_CODE"
         cat /tmp/setup-preview-next-$STAMP.json || true
         rm -f /tmp/setup-preview-next-$STAMP.json
         exit 28
     fi
 done
 rm -f /tmp/setup-preview-next-$STAMP.json
-echo "Stage/Scene + Schedule + Captain read APIs: PASS"
+echo "Organization + ordered backlog + Schedule + Captain read APIs: PASS"
+
+PI_TASK_ID="$(psql_test -qAt -c "SELECT setup_task_id FROM ref.setup_task WHERE stage_id IS NULL AND task_name = 'Remove Street Lights' LIMIT 1;")"
+CC_TASK_ID="$(psql_test -qAt -c "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='40' AND t.task_name='Deliver and Set Up Command Center Trailer' LIMIT 1;")"
+for task_id in "$PI_TASK_ID" "$CC_TASK_ID"; do
+    [[ "$task_id" =~ ^[0-9]+$ ]] || {
+        echo "FAIL: final task-specific Procedure validation could not resolve a task ID"
+        exit 28
+    }
+    TASK_PROCEDURE_CODE="$(curl -sS -o /tmp/setup-preview-task-procedure-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task_id/procedure")"
+    if [[ "$TASK_PROCEDURE_CODE" != "200" ]]; then
+        echo "FAIL: task-specific Setup Procedure API for task $task_id returned HTTP $TASK_PROCEDURE_CODE"
+        cat /tmp/setup-preview-task-procedure-$STAMP.json || true
+        rm -f /tmp/setup-preview-task-procedure-$STAMP.json
+        exit 28
+    fi
+done
+rm -f /tmp/setup-preview-task-procedure-$STAMP.json
+echo "Stage 40 + Park Infrastructure task-specific Procedure APIs: PASS"
 
 '@
     if (-not $serverText.Contains($apiNeedle)) {
@@ -295,9 +356,13 @@ echo "Stage/Scene + Schedule + Captain read APIs: PASS"
     $readyNew = @'
 echo "Review Stage/Scene grouping, inline/collapsible gaps, cross-area drag/drop, and Copy destination focus."
 echo "Verify prerequisite Add/Remove using Elf Choir Locates -> Set Scaffold and Elves."
-echo "Review the lightweight Schedule tab (Morning / Afternoon / All Day; parallel tasks allowed)."
+echo "Review the annual ordered backlog and toggle Unscheduled / Scheduled / In Progress / Completed."
+echo "Review the rolling Schedule board with Morning / Afternoon / All Day and Crew A / B / C lanes."
+echo "Stage 40 Command Center should own trailer/WiFi/gateway/hotspot tasks even with no wired inventory items."
+echo "Park Infrastructure should show truly no-Stage work such as street lights and breakers."
 echo "Review Perform Work: Fred''s Stars is PREVIEW-ONLY READY so crew/progress/completion can be exercised."
 echo "Perform Work should include the current published Setup Procedure PDF when one resolves."
+echo "Park Infrastructure Procedure lookup targets exactly: 41 Park Infrastructure-PI/Procedures/Setup."
 echo "Material/location context is read-only in this pass; movement/scanning writes remain intentionally absent."
 '@
     if (-not $serverText.Contains($readyOld)) {
