@@ -1,0 +1,126 @@
+:root {
+  --theme-input: #ffffff;
+  --theme-subtle: #f8fafb;
+  --theme-soft: #eef2f5;
+  --theme-stage: #f2f5f7;
+  --theme-pill: #edf0f3;
+  --theme-pill-text: #4d5964;
+  --theme-dependency: #3f4b57;
+  --theme-notice-bg: #fffbe8;
+  --theme-notice-border: #eadc92;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0b1220;
+    --card: #111a2b;
+    --border: #334155;
+    --text: #f1f5f9;
+    --muted: #aab6c5;
+    --accent: #2f81f7;
+    --accent-soft: #15243a;
+    --success: #5fd39a;
+    --success-soft: #123324;
+    --warning: #ffc56c;
+    --warning-soft: #3a2a11;
+    --danger: #ff8a80;
+    --danger-soft: #3a1d20;
+    --shadow: 0 2px 8px rgb(0 0 0 / 28%);
+    --theme-input: #0f172a;
+    --theme-subtle: #0f172a;
+    --theme-soft: #172033;
+    --theme-stage: #172033;
+    --theme-pill: #202b3d;
+    --theme-pill-text: #c7d2df;
+    --theme-dependency: #c2ccd8;
+    --theme-notice-bg: #342d16;
+    --theme-notice-border: #6e5f24;
+  }
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --card: #111a2b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --muted: #aab6c5;
+  --accent: #2f81f7;
+  --accent-soft: #15243a;
+  --success: #5fd39a;
+  --success-soft: #123324;
+  --warning: #ffc56c;
+  --warning-soft: #3a2a11;
+  --danger: #ff8a80;
+  --danger-soft: #3a1d20;
+  --shadow: 0 2px 8px rgb(0 0 0 / 28%);
+  --theme-input: #0f172a;
+  --theme-subtle: #0f172a;
+  --theme-soft: #172033;
+  --theme-stage: #172033;
+  --theme-pill: #202b3d;
+  --theme-pill-text: #c7d2df;
+  --theme-dependency: #c2ccd8;
+  --theme-notice-bg: #342d16;
+  --theme-notice-border: #6e5f24;
+}
+
+input,
+select,
+textarea,
+button.secondary,
+.task-row,
+.manager-procedure-card {
+  background: var(--theme-input);
+  color: var(--text);
+}
+
+.notice {
+  background: var(--theme-notice-bg);
+  border-color: var(--theme-notice-border);
+}
+
+.task-dependency {
+  color: var(--theme-dependency);
+}
+
+.pill,
+.pill.unverified {
+  background: var(--theme-pill);
+  color: var(--theme-pill-text);
+}
+
+.chip,
+.material-box,
+.movement-task-detail,
+.event-row,
+.procedure-full-path,
+.instruction-file-link,
+.instruction-file-name {
+  background: var(--theme-subtle);
+  color: var(--text);
+}
+
+.library-stage-heading,
+.review-stage-heading,
+.stage-gap-row {
+  background: var(--theme-stage);
+}
+
+.procedure-action.secondary,
+.procedure-action-disabled {
+  background: var(--theme-input);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .brand img,
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .brand img {
+    filter: brightness(1.12) contrast(.95);
+  }
+}
