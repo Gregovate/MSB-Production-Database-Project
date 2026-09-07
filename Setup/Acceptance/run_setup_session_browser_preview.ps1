@@ -34,18 +34,16 @@ $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
 # implementation file. Launcher-only changes remain outside the candidate.
 $candidateSource = "`$CandidateSha = 'c0b6e4342129516f2f9b344acd4331f4e068e23b'"
 $candidateReplacement = "`$CandidateSha = '7362c6aece365448f21cb91f4ceebf2752da3375'"
-$text = Replace-Required $text $candidateSource $candidateReplacement 'candidate SHA assignment'
+$text = Replace-Required -Source $text -Needle $candidateSource -Replacement $candidateReplacement -Description 'candidate SHA assignment'
 
-$text = Replace-Required \
-    $text \
-    "Write-Host 'Migrations 008-012 are applied only to that disposable clone.'" \
-    "Write-Host 'Migrations 008-014 are applied only to that disposable clone.'" \
-    'migration status banner'
+$statusNeedle = "Write-Host 'Migrations 008-012 are applied only to that disposable clone.'"
+$statusReplacement = "Write-Host 'Migrations 008-014 are applied only to that disposable clone.'"
+$text = Replace-Required -Source $text -Needle $statusNeedle -Replacement $statusReplacement -Description 'migration status banner'
 
 # Add the contracts created from the 2026-09-07 Manager acceptance findings.
 $testNeedle = '        Setup/Application/test_setup_final_scope_contract.py"'
 $testReplacement = '        Setup/Application/test_setup_final_scope_contract.py \`n        Setup/Application/test_setup_browser_acceptance_findings_contract.py"'
-$text = Replace-Required $text $testNeedle $testReplacement 'acceptance contract list'
+$text = Replace-Required -Source $text -Needle $testNeedle -Replacement $testReplacement -Description 'acceptance contract list'
 
 # Extend the generated disposable-server migration declaration block through
 # the task-creation correction and Scene field-context read grant.
@@ -55,7 +53,7 @@ PARK_INFRASTRUCTURE_SEED="$CANDIDATE_WORKTREE/Setup/Database/012_seed_site_infra
 CREATE_TASK_FIX="$CANDIDATE_WORKTREE/Setup/Database/013_fix_setup_task_creation_command.sql"
 SCENE_CONTEXT_GRANT="$CANDIDATE_WORKTREE/Setup/Database/014_grant_setup_scene_field_context_read.sql"
 '@
-$text = Replace-Required $text $migrationNeedle $migrationReplacement 'migration 012 declaration'
+$text = Replace-Required -Source $text -Needle $migrationNeedle -Replacement $migrationReplacement -Description 'migration 012 declaration'
 
 $loopNeedle = '    "$PARK_INFRASTRUCTURE_SEED"; do'
 $loopReplacement = @'
@@ -63,7 +61,7 @@ $loopReplacement = @'
     "$CREATE_TASK_FIX" \
     "$SCENE_CONTEXT_GRANT"; do
 '@
-$text = Replace-Required $text $loopNeedle $loopReplacement 'disposable migration file loop'
+$text = Replace-Required -Source $text -Needle $loopNeedle -Replacement $loopReplacement -Description 'disposable migration file loop'
 
 $applyNeedle = @'
 psql_test < "$PARK_INFRASTRUCTURE_SEED"
@@ -77,7 +75,7 @@ echo "Disposable Setup reusable-task creation correction 013: PASS"
 psql_test < "$SCENE_CONTEXT_GRANT"
 echo "Disposable Setup Scene/material read grant 014: PASS"
 '@
-$text = Replace-Required $text $applyNeedle $applyReplacement 'migration apply block'
+$text = Replace-Required -Source $text -Needle $applyNeedle -Replacement $applyReplacement -Description 'migration apply block'
 
 # After the existing final seed validation, prove the exact Add Task command
 # works inside a transaction that is rolled back, then create a preview-only
@@ -228,7 +226,7 @@ $block$;
 SQL
 echo "Preview-only 2025-09-13 Morning Crew A/B scheduling example: PASS"
 '@
-$text = Replace-Required $text $validationNeedle $validationReplacement 'final seed validation marker'
+$text = Replace-Required -Source $text -Needle $validationNeedle -Replacement $validationReplacement -Description 'final seed validation marker'
 
 # Add a post-start API assertion proving the Captain material resolver follows
 # current Scene -> Display -> Container truth for Fred's Stars.
@@ -263,7 +261,7 @@ print("Fred's Stars Scene -> 16 Displays -> Container 63 field context: PASS")
 PY
 rm -f "$FRED_CONTEXT"
 '@
-$text = Replace-Required $text $procedureGateNeedle $procedureGateReplacement 'task-specific Procedure API gate'
+$text = Replace-Required -Source $text -Needle $procedureGateNeedle -Replacement $procedureGateReplacement -Description 'task-specific Procedure API gate'
 
 # Make the review guidance tell the operator that the scheduling board has a
 # disposable parallel-crew example ready for immediate inspection.
@@ -272,14 +270,14 @@ $readyReplacement = @'
 echo "Review the rolling Schedule board with Morning / Afternoon / All Day and Crew A / B / C lanes."
 echo "Preview-only 2025-09-13 Morning includes Crew A (Fred's Stars) and Crew B (Command Center) so parallel scheduling can be tested immediately."
 '@
-$text = Replace-Required $text $readyNeedle $readyReplacement 'schedule review guidance'
+$text = Replace-Required -Source $text -Needle $readyNeedle -Replacement $readyReplacement -Description 'schedule review guidance'
 
 # The implementation normally derives Setup/Acceptance from its own file path.
 # Because it is executed from memory here, supply the same directory explicitly.
 $literalScriptDir = $PSScriptRoot.Replace("'", "''")
 $sourceLine = '$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path'
 $replacementLine = "`$ScriptDir = '$literalScriptDir'"
-$text = Replace-Required $text $sourceLine $replacementLine 'ScriptDir initialization'
+$text = Replace-Required -Source $text -Needle $sourceLine -Replacement $replacementLine -Description 'ScriptDir initialization'
 
 # Normalize again after wrapper-inserted here-strings so generated Linux shell
 # content cannot inherit Windows CRLF from this wrapper source.
