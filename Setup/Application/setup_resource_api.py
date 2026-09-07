@@ -1,12 +1,11 @@
 """Protected Setup equipment/resource API."""
 from __future__ import annotations
 
-from typing import Any
-
 import psycopg2
 from flask import Blueprint, Response, jsonify
 
 from setup_api import (
+    SetupAuthenticationError,
     SetupCommandError,
     json_body,
     require_manager,
@@ -59,6 +58,16 @@ def api_setup_task_resource_update(
         payload=json_body(),
     )
     return jsonify(setup_task_resource=result)
+
+
+@setup_resource_api.errorhandler(SetupAuthenticationError)
+def setup_resource_authentication_error(
+    exc: SetupAuthenticationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup Session sign-in identity is unavailable",
+        engineering_error=str(exc),
+    ), 401
 
 
 @setup_resource_api.errorhandler(SetupCommandError)
