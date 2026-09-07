@@ -5,7 +5,7 @@
 | Document Type | Internal Web Backbone Integration Handoff |
 | Source System | Production Database — Setup and Deployment |
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
-| Status | READY FOR IMPLEMENTATION — `/setup/` operational; UI/workflow in live evaluation |
+| Status | IMPLEMENTED — Backbone PR #11 merged; live publish/verification pending |
 | Owner | MSB Production Database / Setup documentation owner |
 | Last Reviewed | 2026-09-07 |
 
@@ -54,6 +54,8 @@ Detailed Manager guide:
 ```text
 Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md
 ```
+
+These source documents remain in the open Setup PR stack and are not yet on Production Database `main`. Backbone therefore does **not** link ordinary users to those GitHub `main` paths yet. The live application is the stable current operator entry point.
 
 ## Preferred Application Entry Point
 
@@ -195,6 +197,25 @@ Do not advertise the following as current operator workflows:
 
 Those remain outside the current accepted Production-ready boundary.
 
+## Backbone Implementation
+
+Backbone PR **#11** merged to `main` on 2026-09-07.
+
+Implemented source:
+
+```text
+my/committees/production/index.html
+```
+
+The Production page now includes:
+
+- **Review 2025 Setup — Live Review / Training** -> `https://my.sheboyganlights.org/setup/`;
+- plain-English 2025 review/training purpose text;
+- the existing Procedure application retained as the field Setup/Takedown/Inspection destination; and
+- visible version indicator `Production Portal v1.2 — Updated 2026-09-07`.
+
+Live publish remains pending the Backbone controlled publisher dry-run and verified one-file deployment.
+
 ## Acceptance Criteria
 
 Backbone integration is VERIFIED only when all applicable checks pass:
@@ -202,22 +223,19 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 1. the Production index/task navigation includes an appropriate Setup action;
 2. the action points to `https://my.sheboyganlights.org/setup/`;
 3. the 2025 historical review purpose is understandable in plain language;
-4. search/navigation can find Setup using ordinary task terms;
-5. the obsolete static Setup/Takedown page is not linked or promoted;
-6. engineering/acceptance/database source paths are absent from normal operator search/navigation;
-7. no duplicate editable copy of the source operator procedure is created in Backbone;
-8. maintained `index.html` pages preserve their required visible version indicators; and
-9. deployed intranet verification confirms the intended Production page reaches the protected Setup application.
+4. the obsolete static Setup/Takedown page is not linked or promoted;
+5. engineering/acceptance/database source paths are absent from normal operator navigation;
+6. no duplicate editable copy of the source operator procedure is created in Backbone;
+7. maintained `index.html` pages preserve their required visible version indicators; and
+8. deployed intranet verification confirms the intended Production page reaches the protected Setup application.
 
 ## Backbone State
 
 ```text
-READY FOR IMPLEMENTATION
+IMPLEMENTED — PR #11 merged; live publish/verification pending
 ```
 
-Source route/runtime acceptance is complete. Backbone issue `#10` may proceed using this handoff and the Backbone repository's own project rules/deployment procedure.
-
-After source changes are made, use `IMPLEMENTED`. After deployed intranet verification, use `VERIFIED` and record the acceptance evidence.
+After deployed intranet verification, change this state to `VERIFIED` and record the acceptance evidence.
 
 ## Related Documents
 
