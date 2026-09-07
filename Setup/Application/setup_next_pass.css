@@ -1,4 +1,4 @@
-/* Setup V0.2 browser-review Stage/Scene, schedule, and Captain surfaces. */
+/* Setup V0.3 browser-review Site-wide/Stage/Scene, planning, crew-lane, and Captain surfaces. */
 
 .next-library-tools {
   display: flex;
@@ -19,6 +19,17 @@
 .next-stage-group {
   margin: 0 0 0.8rem;
   overflow: clip;
+}
+
+.next-sitewide-group {
+  border-style: dashed;
+}
+
+.next-sitewide-note {
+  padding: 0.7rem 0.9rem;
+  color: var(--muted, #64748b);
+  background: var(--soft, #f5f8fb);
+  border-bottom: 1px solid var(--border, #d9e0e8);
 }
 
 .next-stage-group > summary,
@@ -100,12 +111,14 @@
   grid-template-columns: 4rem minmax(14rem, 1fr) minmax(12rem, 0.9fr) auto;
 }
 
-.next-task-row.dragging {
+.next-task-row.dragging,
+.next-plan-row.dragging {
   opacity: 0.45;
 }
 
 .next-task-row.drop-target,
-.next-scope-dropzone.drop-target {
+.next-scope-dropzone.drop-target,
+.next-plan-row.drop-target {
   background: var(--accent-soft, #e7f2fb);
 }
 
@@ -154,9 +167,81 @@
   border-bottom: 1px solid var(--border, #d9e0e8);
 }
 
+.next-plan-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0.9rem 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-plan-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.next-planning-backlog {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.next-plan-row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(16rem, 1.4fr) minmax(10rem, 0.7fr) minmax(8rem, 0.55fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--panel, #fff);
+}
+
+.next-plan-order {
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.next-plan-main,
+.next-plan-state,
+.next-plan-meta {
+  min-width: 0;
+}
+
+.next-plan-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.next-blocked {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.next-plan-meta {
+  font-size: 0.82rem;
+  color: var(--muted, #64748b);
+}
+
+.next-plan-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.next-near-term-card {
+  margin-top: 1rem;
+}
+
 .next-schedule-form {
   display: grid;
-  grid-template-columns: 10rem 10rem minmax(16rem, 1fr) 9rem auto;
+  grid-template-columns: 10rem 10rem 9rem minmax(16rem, 1fr) 9rem auto;
   gap: 0.7rem;
   align-items: end;
   margin: 1rem 0;
@@ -185,6 +270,25 @@
 
 .next-shift h4 {
   margin: 0 0 0.45rem;
+}
+
+.next-crew-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem;
+}
+
+.next-crew-lane {
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--panel, #fff);
+}
+
+.next-crew-lane h5 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
 }
 
 .next-perform-task {
@@ -247,13 +351,18 @@
   font-weight: 700;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
+  .next-plan-row,
   .next-task-row,
   .next-schedule-form,
   .next-dependency-add,
   .next-perform-grid,
   .next-completion-form {
     grid-template-columns: 1fr;
+  }
+
+  .next-plan-order {
+    text-align: left;
   }
 
   .next-completion-form label,
