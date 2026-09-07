@@ -74,8 +74,8 @@ def json_body() -> dict[str, Any]:
 
 def require_reader() -> tuple[SetupRepository, str, dict[str, Any]]:
     """Require an active Directus user/policy authorized to view Setup."""
-    repo = setup_repository()
     email = authenticated_email()
+    repo = setup_repository()
     access = repo.capabilities(email)
     if not access.get("can_read_setup"):
         raise SetupCommandError("Setup read access is not authorized for this account")
