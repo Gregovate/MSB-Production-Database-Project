@@ -30,7 +30,6 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     text = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
     resource_text = (APP_DIR / "setup_resource_review.js").read_text(encoding="utf-8")
     next_text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
-    # Detect actual browser-storage API use without failing on explanatory comments.
     assert "localStorage." not in text
     assert "localStorage." not in resource_text
     assert "localStorage." not in next_text
@@ -43,6 +42,8 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     assert "api/setup/organization" in next_text
     assert "api/setup/schedule" in next_text
     assert "api/setup/execution" in next_text
+    assert "planned-order" in next_text
+    assert "promote-baseline" in next_text
 
 
 def test_production_runtime_declares_gunicorn() -> None:
@@ -64,7 +65,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.2.0-browser-review"
+    assert payload["version"] == "V0.3.0-final-browser-review"
 
     for asset in (
         "/setup.css",
@@ -102,12 +103,9 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
 
     assert client.get("/api/setup-instructions?stage_key=04").status_code == 404
 
-    no_identity = client.get("/api/setup/access")
-    assert no_identity.status_code == 401
-    no_resource_identity = client.get("/api/setup/resources")
-    assert no_resource_identity.status_code == 401
-    no_next_identity = client.get("/api/setup/organization")
-    assert no_next_identity.status_code == 401
+    assert client.get("/api/setup/access").status_code == 401
+    assert client.get("/api/setup/resources").status_code == 401
+    assert client.get("/api/setup/organization").status_code == 401
 
 
 def test_production_entry_point_uses_distinct_flask_app() -> None:
@@ -117,23 +115,30 @@ def test_production_entry_point_uses_distinct_flask_app() -> None:
     assert production_backend.app is not backend.app
 
 
-def test_production_api_contains_protected_read_surfaces() -> None:
+def test_production_api_contains_protected_read_and_command_surfaces() -> None:
     from production_backend import app
 
     rules = {rule.rule for rule in app.url_map.iter_rules()}
-    assert "/api/setup/tasks" in rules
-    assert "/api/setup/movement-summary" in rules
-    assert "/api/setup/procedure" in rules
-    assert "/api/setup/procedure/current" in rules
-    assert "/api/setup/resources" in rules
-    assert "/api/setup/tasks/<int:setup_task_id>/resources" in rules
-    assert "/api/setup/tasks/<int:setup_task_id>/resources/<int:setup_resource_id>" in rules
-    assert "/api/setup/organization" in rules
-    assert "/api/setup/tasks/<int:setup_task_id>/scope" in rules
-    assert "/api/setup/tasks/<int:setup_task_id>/dependencies/<int:prerequisite_setup_task_id>" in rules
-    assert "/api/setup/schedule" in rules
-    assert "/api/setup/work-days" in rules
-    assert "/api/setup/work-days/<int:setup_work_day_id>/tasks/<int:setup_session_task_id>" in rules
-    assert "/api/setup/execution" in rules
-    assert "/api/setup/session-tasks/<int:setup_session_task_id>/progress" in rules
-    assert "/api/setup/tasks/<int:setup_task_id>/field-context" in rules
+    for expected in (
+        "/api/setup/tasks",
+        "/api/setup/movement-summary",
+        "/api/setup/procedure",
+        "/api/setup/procedure/current",
+        "/api/setup/resources",
+        "/api/setup/tasks/<int:setup_task_id>/resources",
+        "/api/setup/tasks/<int:setup_task_id>/resources/<int:setup_resource_id>",
+        "/api/setup/organization",
+        "/api/setup/tasks/<int:setup_task_id>/scope",
+        "/api/setup/tasks/<int:setup_task_id>/dependencies/<int:prerequisite_setup_task_id>",
+        "/api/setup/session-tasks/<int:setup_session_task_id>/planned-order",
+        "/api/setup/planning/promote-baseline",
+        "/api/setup/schedule",
+        "/api/setup/work-days",
+        "/api/setup/work-days/<int:setup_work_day_id>/tasks/<int:setup_session_task_id>",
+        "/api/setup/execution",
+        "/api/setup/session-tasks/<int:setup_session_task_id>/progress",
+        "/api/setup/tasks/<int:setup_task_id>/field-context",
+        "/api/setup/tasks/<int:setup_task_id>/procedure",
+        "/api/setup/tasks/<int:setup_task_id>/procedure/current",
+    ):
+        assert expected in rules
