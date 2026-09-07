@@ -6,7 +6,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 ACCEPT = SETUP_DIR / "Acceptance"
-CANDIDATE_SHA = "874a1f7d090676b97de1881df973fab08985085a"
+CANDIDATE_SHA = "c72644f02b825acb830603fe6b4f7bd48713b681"
 
 
 def test_preview_harness_files_exist() -> None:
@@ -68,7 +68,6 @@ def test_preview_uses_separate_local_port_and_foreground_ssh() -> None:
     assert 'http://127.0.0.1:$PREVIEW_PORT/' in server
     assert '& ssh -tt -L "${PreviewPort}:127.0.0.1:${PreviewPort}"' in wrapper
     assert 'Start-Process $browserUrl' not in wrapper
-    assert 'SETUP BROWSER REVIEW READY' in wrapper
     assert 'setsid /opt/fieldwiring/.venv/bin/python "$MSB_SETUP_PREVIEW_ENTRY"' in server
     assert "setsid sudo" not in server
 
@@ -85,17 +84,19 @@ def test_preview_uses_production_setup_app_and_read_only_display_folders() -> No
     assert "test -x /mnt/msb-display-folders" in server
 
 
-def test_preview_bridges_google_doc_identity_without_exposing_rclone_credentials() -> None:
+def test_preview_uses_lazy_google_doc_link_view_without_recursive_scan() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
 
-    assert 'sudo -u msb-docs-fs -H /usr/bin/rclone lsjson' in server
-    assert '--original' in server
-    assert 'SETUP_GOOGLE_DOC_INDEX="$GOOGLE_DOC_INDEX"' in server
-    assert 'sudo chown msb-docs-fs:msb-docs-read "$GOOGLE_DOC_INDEX"' in server
-    assert 'sudo chmod 0640 "$GOOGLE_DOC_INDEX"' in server
+    assert '/usr/bin/rclone mount msb-display-folders:' in server
+    assert '--drive-export-formats link.html' in server
+    assert 'SETUP_GOOGLE_DOC_LINK_ROOT="$GOOGLE_DOC_LINK_ROOT"' in server
+    assert 'Lazy Google Doc link view: PASS' in server
     assert 'Mega Cube Google Doc/native Word discrimination: PASS' in server
-    assert '03-Mega Cube-MC Setup Procedure.gdoc' in server
-    assert 'Randy' in server
+    assert '03-Mega Cube-MC Setup Procedure.link.html' in server
+    assert 'Mega Cube - Randy.docx' in server
+    assert 'rclone lsjson' not in server
+    assert '--recursive' not in server
+    assert 'SETUP_GOOGLE_DOC_INDEX=' not in server
 
 
 def test_preview_checks_resource_api_and_review_target() -> None:
@@ -105,7 +106,7 @@ def test_preview_checks_resource_api_and_review_target() -> None:
     assert 'Equipment / Resources Needed' in server
 
 
-def test_preview_cleanup_guards_live_checkout_and_setup_fingerprint() -> None:
+def test_preview_cleanup_guards_live_checkout_setup_fingerprint_and_link_mount() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
     cleanup = (ACCEPT / "setup_session_browser_preview_cleanup_server.sh").read_text(encoding="utf-8")
 
@@ -116,6 +117,7 @@ def test_preview_cleanup_guards_live_checkout_and_setup_fingerprint() -> None:
     assert "live shared checkout unchanged" in server
     assert "worktree remove --force" in server
     assert "docker rm -f" in server
-    assert 'rm -f "$DUMP_FILE" "$GOOGLE_DOC_INDEX"' in server
+    assert 'mountpoint -q "$GOOGLE_DOC_LINK_ROOT"' in server
+    assert 'fusermount -u "$GOOGLE_DOC_LINK_ROOT"' in server
     assert "msb-setup-browser-preview-candidate-" in cleanup
     assert "msb-setup-browser-preview-" in cleanup
