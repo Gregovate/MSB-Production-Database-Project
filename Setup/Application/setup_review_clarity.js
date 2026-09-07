@@ -172,12 +172,13 @@ renderReviewList = function renderAnnualVerificationQueue() {
     `);
   });
 
-  el('review-list').innerHTML = sections.join('') || '<div class="empty-state">No 2025 tasks match this filter.</div>';
+  const reviewList = el('review-list');
+  reviewList.innerHTML = sections.join('') || '<div class="empty-state">No 2025 tasks match this filter.</div>';
 
-  document.querySelectorAll('.task-row').forEach((row) => {
+  reviewList.querySelectorAll('.task-row').forEach((row) => {
     row.addEventListener('click', () => selectTask(row.dataset.taskId));
   });
-  document.querySelectorAll('.add-stage-task').forEach((button) => {
+  reviewList.querySelectorAll('.add-stage-task').forEach((button) => {
     button.addEventListener('click', (event) => {
       event.stopPropagation();
       addProvisionalTaskForStage(button.dataset.stageKey || '');
@@ -225,17 +226,18 @@ renderLibrary = function renderReusableTaskCatalog() {
     `;
   });
 
-  el('library-list').innerHTML = sections.join('');
+  const libraryList = el('library-list');
+  libraryList.innerHTML = sections.join('');
 
-  document.querySelectorAll('.open-task').forEach((button) => {
+  libraryList.querySelectorAll('.open-task').forEach((button) => {
     button.addEventListener('click', () => {
       showView('review');
       selectTask(button.dataset.taskId);
     });
   });
-  document.querySelectorAll('.move-up').forEach((button) => button.addEventListener('click', () => moveTask(button.dataset.taskId, -1)));
-  document.querySelectorAll('.move-down').forEach((button) => button.addEventListener('click', () => moveTask(button.dataset.taskId, 1)));
-  document.querySelectorAll('.add-stage-task').forEach((button) => {
+  libraryList.querySelectorAll('.move-up').forEach((button) => button.addEventListener('click', () => moveTask(button.dataset.taskId, -1)));
+  libraryList.querySelectorAll('.move-down').forEach((button) => button.addEventListener('click', () => moveTask(button.dataset.taskId, 1)));
+  libraryList.querySelectorAll('.add-stage-task').forEach((button) => {
     button.addEventListener('click', () => addProvisionalTaskForStage(button.dataset.stageKey || ''));
   });
 };
