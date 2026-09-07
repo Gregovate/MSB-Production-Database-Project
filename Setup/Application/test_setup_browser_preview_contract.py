@@ -6,7 +6,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 ACCEPT = SETUP_DIR / "Acceptance"
-CANDIDATE_SHA = "9dd1b173db8af6c72b2b6cf0bbd831d5dd8a7d8b"
+CANDIDATE_SHA = "4c7e0b40baf1a6785be7635f149822ea6110c442"
 
 
 def test_preview_harness_files_exist() -> None:
@@ -33,6 +33,15 @@ def test_preview_pins_exact_candidate_and_disposable_database() -> None:
     assert 'Preview writes: disposable PostgreSQL clone only' in server
 
 
+def test_preview_applies_resource_migration_only_to_disposable_clone() -> None:
+    server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
+    assert '008_create_setup_resource_management_commands.sql' in server
+    assert 'psql_test < "$RESOURCE_MIGRATION"' in server
+    assert 'Disposable Setup resource migration 008: PASS' in server
+    assert 'ref.create_setup_resource(text,text,text,text)' in server
+    assert 'ref.set_setup_task_resource(text,bigint,integer,integer,text,text,boolean)' in server
+
+
 def test_preview_preserves_setup_authorization_and_no_broad_dml() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
 
@@ -43,6 +52,7 @@ def test_preview_preserves_setup_authorization_and_no_broad_dml() -> None:
     assert "ref.update_setup_task(" in server
     assert "ops.update_setup_session_task_review(" in server
     assert "has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')" in server
+    assert "has_table_privilege('fieldwiring_app', 'ref.setup_task_resource', 'UPDATE')" in server
     assert "has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')" in server
     assert "has_table_privilege('fieldwiring_app', 'ops.setup_movement_event', 'INSERT')" in server
     assert "has_table_privilege('fieldwiring_app', 'directus_users', 'SELECT')" in server
@@ -74,11 +84,20 @@ def test_preview_uses_production_setup_app_and_read_only_display_folders() -> No
     assert "test -x /mnt/msb-display-folders" in server
 
 
+def test_preview_checks_resource_api_and_review_target() -> None:
+    server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
+    assert '/api/setup/resources' in server
+    assert 'Front Entrance should show SkyTrak + Boom Lift' in server
+    assert 'Equipment / Resources Needed' in server
+
+
 def test_preview_cleanup_guards_live_checkout_and_setup_fingerprint() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
     cleanup = (ACCEPT / "setup_session_browser_preview_cleanup_server.sh").read_text(encoding="utf-8")
 
     assert "prod_fingerprint()" in server
+    assert "FROM ref.setup_resource r" in server
+    assert "FROM ref.setup_task_resource tr" in server
     assert "Production Setup fingerprint unchanged" in server
     assert "live shared checkout unchanged" in server
     assert "worktree remove --force" in server
