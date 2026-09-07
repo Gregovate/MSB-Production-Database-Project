@@ -54,12 +54,40 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert payload["status"] == "ok"
     assert payload["version"] == "V0.1.0-production-foundation"
 
-    assert client.get("/index.html").status_code == 404
-    assert client.get("/setup.js").status_code == 404
+    for asset in (
+        "/setup.css",
+        "/setup_review_clarity.css",
+        "/setup_theme.css",
+        "/setup_theme.js",
+        "/setup_production.css",
+        "/setup_production.js",
+    ):
+        assert client.get(asset).status_code == 200
+
+    for forbidden in (
+        "/production.html",
+        "/index.html",
+        "/setup.js",
+        "/setup_review_extensions.js",
+        "/setup_instruction_live.js",
+        "/backend.py",
+        "/setup_api.py",
+        "/setup_repository.py",
+        "/requirements.txt",
+    ):
+        assert client.get(forbidden).status_code == 404
+
     assert client.get("/api/setup-instructions?stage_key=04").status_code == 404
 
     no_identity = client.get("/api/setup/access")
     assert no_identity.status_code == 401
+
+
+def test_production_entry_point_uses_distinct_flask_app() -> None:
+    import backend
+    import production_backend
+
+    assert production_backend.app is not backend.app
 
 
 def test_production_api_contains_protected_read_surfaces() -> None:
