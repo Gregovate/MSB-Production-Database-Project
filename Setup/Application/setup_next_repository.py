@@ -1,4 +1,4 @@
-"""Repository for Setup V0.2 browser-review organization and field workflows."""
+"""Repository for Setup V0.3 browser-review organization, planning, and field workflows."""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -43,13 +43,26 @@ class SetupNextRepository:
             """)
             scenes = [dict(r) for r in cur.fetchall()]
             cur.execute("""
-                SELECT t.setup_task_id, t.stage_id, t.lor_scene_id, ls.scene_name
+                SELECT t.setup_task_id, t.stage_id, t.lor_scene_id, ls.scene_name,
+                       t.baseline_plan_order
                 FROM ref.setup_task t
                 LEFT JOIN ref.lor_scene ls ON ls.lor_scene_id = t.lor_scene_id
                 ORDER BY t.setup_task_id
             """)
             scopes = [dict(r) for r in cur.fetchall()]
         return {"scenes": scenes, "task_scopes": scopes}
+
+    def task_scope(self, task_id: int) -> dict[str, Any]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT t.setup_task_id, t.task_name, t.stage_id, s.stage_key,
+                       s.stage_name, t.lor_scene_id, ls.scene_name
+                FROM ref.setup_task t
+                LEFT JOIN ref.stage s ON s.stage_id = t.stage_id
+                LEFT JOIN ref.lor_scene ls ON ls.lor_scene_id = t.lor_scene_id
+                WHERE t.setup_task_id = %s
+            """, (task_id,))
+            return self._one(cur, "Setup task was not found")
 
     def set_scope(self, *, email: str, task_id: int, stage_id: int | None, scene_id: int | None) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -68,6 +81,27 @@ class SetupNextRepository:
             conn.commit()
             return result
 
+    def set_planned_order(self, *, email: str, session_task_id: int,
+                          planned_order: int, reason: str | None) -> dict[str, Any]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.set_setup_session_task_planned_order(%s,%s,%s,%s)",
+                (email, session_task_id, planned_order, reason),
+            )
+            result = self._one(cur, "Setup planned-order command returned no result")
+            conn.commit()
+            return result
+
+    def promote_plan_baseline(self, *, email: str, season_year: int) -> dict[str, Any]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.promote_setup_session_order_to_baseline(%s,%s)",
+                (email, season_year),
+            )
+            result = self._one(cur, "Setup baseline-promotion command returned no result")
+            conn.commit()
+            return result
+
     def schedule(self, season_year: int) -> dict[str, list[dict[str, Any]]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
@@ -81,9 +115,11 @@ class SetupNextRepository:
             days = [dict(r) for r in cur.fetchall()]
             cur.execute("""
                 SELECT wd.setup_work_day_id, wdt.setup_session_task_id,
-                       wdt.shift_code, wdt.sort_order, wdt.planned_crew_count,
-                       wdt.actual_crew_count, wdt.started_at, wdt.completed_at,
-                       wdt.notes, st.execution_status, t.setup_task_id, t.task_name,
+                       wdt.shift_code, wdt.crew_lane, wdt.sort_order,
+                       wdt.planned_crew_count, wdt.actual_crew_count,
+                       wdt.started_at, wdt.completed_at, wdt.notes,
+                       st.execution_status, st.planned_order,
+                       t.baseline_plan_order, t.setup_task_id, t.task_name,
                        t.stage_id, s.stage_key, s.stage_name, t.lor_scene_id,
                        ls.scene_name
                 FROM ops.setup_work_day wd
@@ -96,7 +132,7 @@ class SetupNextRepository:
                 WHERE ss.season_year = %s
                 ORDER BY wd.work_date,
                     CASE wdt.shift_code WHEN 'ALL_DAY' THEN 0 WHEN 'MORNING' THEN 1 ELSE 2 END,
-                    wdt.sort_order, t.display_order, t.setup_task_id
+                    wdt.crew_lane, wdt.sort_order, st.planned_order, t.setup_task_id
             """, (season_year,))
             assignments = [dict(r) for r in cur.fetchall()]
         return {"work_days": days, "assignments": assignments}
@@ -111,12 +147,14 @@ class SetupNextRepository:
             return result
 
     def set_work_day_task(self, *, email: str, work_day_id: int, session_task_id: int,
-                          shift: str, sort_order: int, planned_crew: int | None,
-                          active: bool) -> dict[str, Any]:
+                          shift: str, crew_lane: str, sort_order: int,
+                          planned_crew: int | None, active: bool) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM ops.set_setup_work_day_task(%s,%s,%s,%s,%s,%s,%s)",
-                        (email, work_day_id, session_task_id, shift, sort_order,
-                         planned_crew, active))
+            cur.execute(
+                "SELECT * FROM ops.set_setup_work_day_task(%s,%s,%s,%s,%s,%s,%s,%s)",
+                (email, work_day_id, session_task_id, shift, crew_lane, sort_order,
+                 planned_crew, active),
+            )
             result = self._one(cur, "Setup scheduled-task command returned no result")
             conn.commit()
             return result
@@ -125,18 +163,21 @@ class SetupNextRepository:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT st.setup_session_task_id, st.setup_session_id, st.setup_task_id,
-                       st.execution_status, st.verification_state, st.planned_date,
+                       st.execution_status, st.verification_state, st.planned_order,
+                       st.planned_date, st.plan_change_reason,
                        st.actual_started_at, st.actual_completed_at, st.actual_crew_count,
                        st.completion_note, st.completed_by_person_id,
                        nullif(btrim(concat_ws(' ', cp.first_name, cp.last_name)), '') AS completed_by_name,
-                       t.task_name, t.task_action_type, t.display_order, t.stage_id,
+                       t.task_name, t.task_action_type, t.display_order,
+                       t.baseline_plan_order, t.stage_id,
                        s.stage_key, s.stage_name, t.lor_scene_id, ls.scene_name,
                        t.normal_crew_min, t.normal_crew_max, t.expected_duration_minutes,
                        t.completion_point, t.readiness_note, t.weather_note,
                        coalesce(dep.prerequisites_complete, true) AS prerequisites_complete,
                        coalesce(dep.prerequisite_count, 0) AS prerequisite_count,
                        coalesce(progress.progress_entries, 0) AS progress_entries,
-                       coalesce(progress.completed_quantity, 0) AS completed_quantity
+                       coalesce(progress.completed_quantity, 0) AS completed_quantity,
+                       coalesce(schedule.scheduled_count, 0) AS scheduled_count
                 FROM ops.setup_session_task st
                 JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
                 JOIN ref.setup_task t ON t.setup_task_id = st.setup_task_id
@@ -158,10 +199,15 @@ class SetupNextRepository:
                     FROM ops.setup_task_progress p
                     WHERE p.setup_session_task_id = st.setup_session_task_id
                 ) progress ON true
+                LEFT JOIN LATERAL (
+                    SELECT count(*) AS scheduled_count
+                    FROM ops.setup_work_day_task wdt
+                    WHERE wdt.setup_session_task_id = st.setup_session_task_id
+                ) schedule ON true
                 WHERE ss.season_year = %s AND st.included_flag AND t.active_flag
-                ORDER BY s.park_order NULLS LAST, s.sub_order NULLS LAST,
-                         s.stage_key NULLS LAST, ls.scene_name NULLS FIRST,
-                         t.display_order, t.setup_task_id
+                ORDER BY st.planned_order NULLS LAST,
+                         t.baseline_plan_order NULLS LAST,
+                         t.setup_task_id
             """, (season_year,))
             return [dict(r) for r in cur.fetchall()]
 
