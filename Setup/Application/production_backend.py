@@ -16,7 +16,7 @@ from setup_api import setup_api
 from setup_resource_api import setup_resource_api
 from setup_next_api import setup_next_api
 
-PRODUCTION_VERSION = "V0.3.0-final-browser-review"
+PRODUCTION_VERSION = "V0.3.2-final-browser-review"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -31,6 +31,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_review_usability.js",
         "setup_next_pass.css",
         "setup_next_pass.js",
+        "setup_acceptance_fixes.css",
+        "setup_acceptance_fixes.js",
     }
 )
 
