@@ -58,12 +58,6 @@ Validated pre-promotion rollback archive:
 
 ```text
 /home/msbadmin/backups/setup-v034/msb_pre_setup_v034_20260907T202706Z.dump
-SHA256 e09bd97010b464fe307176a8d8eef14fce0409f03ec6
-```
-
-**Correction:** the SHA line above is not the rollback archive hash. The accepted rollback archive hash is:
-
-```text
 SHA256 e09bd97010b464fe307a9fbe0192c9ca4189fd562215f4eaa93e02a2d08f89a5
 ```
 
