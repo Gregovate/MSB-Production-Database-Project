@@ -2,162 +2,370 @@
 
 ## Purpose
 
-Use this guide while reviewing the Setup Session browser candidate and the reconstructed 2025 Setup work plan.
+Use this guide while reviewing the final Setup Session browser candidate and the reconstructed 2025 Setup work plan.
 
-The current candidate is primarily for:
+The current disposable candidate is intended to let Managers test the operating model before Production installation:
 
-- reviewing and correcting reusable Setup tasks;
-- verifying reconstructed 2025 annual information;
-- reviewing Stage sequence, crew/time expectations, equipment/resources, prerequisites, and Setup Procedures;
-- identifying missing tasks or relationships before Production rollout.
+- correct reusable Setup tasks;
+- verify reconstructed 2025 annual information;
+- organize reusable work by **Site-wide / Infrastructure**, Stage-level, or Scene-level scope;
+- maintain prerequisites;
+- review crew/time and equipment/resource expectations;
+- establish reusable and annual Setup order;
+- schedule only the next practical few work days;
+- dispatch parallel Crew A / B / C lanes;
+- open the current published Setup Procedure PDF from the Captain view;
+- see mapped material/current-location context; and
+- record task progress/completion in the disposable clone.
 
-Scheduling, Pick Lists, and field movement/scanning are not yet active in this browser candidate. Do not infer those workflows from the current placeholder screens.
+Pick List generation and movement/scanning **writes** remain later guarded work. The final review candidate does not pretend those are complete.
+
+## The Setup philosophy
+
+This subsystem is deliberately not a traditional project-management schedule.
+
+The normal operating cycle is:
+
+```text
+know all remaining Setup work
+    -> keep it in a useful planned order
+    -> look at prerequisites/readiness/resources
+    -> schedule only the next few practical days
+    -> perform work
+    -> record progress/completion
+    -> return to the remaining ordered backlog
+    -> plan the next few days
+```
+
+Most unfinished work should be **unscheduled** most of the time. That is normal and intentional.
+
+Do not create tasks merely because a physical action happens. A task belongs in Setup when it helps someone make a decision, can realistically be missed, has a useful prerequisite/resource, needs meaningful progress/completion tracking, or creates historical learning worth carrying forward.
+
+Routine unloading that is simply implied by delivering material is not a separate task unless the unloading itself has meaningful logistics or control value.
 
 ## Reusable task versus annual task
 
-A **Reusable Task** describes practical work that normally exists every Setup season. Examples include erecting a structure, positioning a trailer, unloading a shared trailer, hanging lights, or completing electrical/network connections.
+A **Reusable Task** describes practical work that normally exists every Setup season.
 
-Reusable information includes normal crew size, expected duration, equipment/resources, completion point, readiness/weather notes, Stage, and normal within-Stage sequence.
+Reusable information includes:
 
-The **2025 Annual Historical Actual** is the 2025 occurrence of that reusable work. Annual notes, actual crew, actual duration, and verification state belong to the annual record and do not redefine the reusable task.
+- task name and active state;
+- Site-wide / Stage / Scene scope;
+- normal local sequence (`10`, `20`, `30`...);
+- normal crew range and expected duration;
+- equipment/resources;
+- prerequisites;
+- completion point;
+- readiness/weather notes; and
+- reusable global Setup baseline order.
 
-## Verify a 2025 task
+An **Annual Task** is that reusable task's occurrence in one Setup season.
 
-Open a task from the **2025 Verification** queue and review both sides of the task detail.
+Annual information includes:
 
-Use the verification states as follows:
+- verification state;
+- execution state;
+- annual planned order;
+- short-horizon date/shift/crew-lane assignment when scheduled;
+- annual notes / reason for plan change;
+- progress entries; and
+- actual completion evidence.
 
-- **UNVERIFIED** — nobody has accepted the reconstruction yet.
-- **VERIFIED** — the reusable definition and 2025 information are a reasonable representation of the work.
-- **NEEDS CORRECTION** — something must be corrected before the task is accepted.
+A strange year can therefore change the annual plan without corrupting the reusable baseline. For example, 2026 road construction may force unusual access/order that should not automatically carry into 2027.
 
-Correct the reusable task definition when the normal recurring work is wrong. Correct the annual review when only the 2025 facts are wrong.
+## Task scope: Site-wide, Stage, or Scene
 
-## Stage sequence
+Reusable tasks can belong to one of three practical scopes.
 
-The reusable task sequence numbers such as `10`, `20`, `30`, and `40` describe the normal precedence **within one Stage**.
+### Site-wide / Infrastructure
 
-Example:
+Use this for critical Setup work that is not owned by an LOR Stage or Scene.
 
-```text
-Magic Igloo
-10  Erect frame
-20  Install skins
-30  Finish lighting / cameras / signs
-```
+Examples include:
 
-These numbers are useful planning precedence. They do **not** mean the entire Setup day is one serial task list.
+- Command Center trailer setup;
+- WiFi antenna / gateway / internet setup;
+- hotspot deployment;
+- street-light removal;
+- street-light fuse conversion for show power; and
+- site breaker activation.
 
-Managers may reorder reusable tasks within a Stage by dragging them in the Reusable Task Catalog or by using the up/down controls. The application renumbers the Stage sequence in increments of 10.
+These tasks are **not LOR-derived**. Do not create a fake Stage, Scene, or Preview to hold them.
 
-## Parallel work and future daily scheduling
-
-Setup routinely uses parallel crews. A work day may have one crew on Stow Storm while another works on Elf Choir and another handles support/logistics.
-
-The planned scheduling model is:
-
-- work date;
-- shift: **Morning**, **Afternoon**, or **All Day**;
-- multiple parallel tasks/crews within a shift;
-- a task may appear on more than one date/shift when the practical job spans multiple days.
-
-A reusable task's Stage sequence remains useful as normal precedence even when the actual schedule differs.
-
-## Multi-day tasks and readiness
-
-Do not split a practical task merely because it spans more than one work day.
-
-Example: Festive Trees can remain one reusable task even though canopy wrapping may continue across multiple shifts/days. The annual task remains **IN_PROGRESS** until the practical task is actually complete.
-
-Readiness is separate from precedence. Festive Trees should remain **NOT_READY** until the leaves have fallen from the trees. Once that external condition is satisfied, a Manager can make it **READY** for scheduling when the scheduling workflow is implemented.
-
-## Prerequisites
-
-A prerequisite means work cannot practically proceed until another reusable task is complete. Prerequisites may cross Stage boundaries.
-
-Example: the Arch Trailer unload circuit is a serial logistics chain feeding parallel installation work:
+Their field Procedures live under the controlled non-LOR Google Drive root:
 
 ```text
-Unload Racing Arches
-  -> Unload Polar Bear Arch
-  -> Unload Candyland Arch
-  -> Unload Icicle Tunnel arches
-  -> Unload 24 Stars
-  -> Unload Food Collection arches
-  -> Arch Trailer available for Who House support
+G:\Shared drives\Display Folders\Site Infrastructure\Procedures\Setup
 ```
 
-Installation crews can begin work after their material is unloaded while the trailer continues to the next destination.
+See the Google Drive operator procedure:
 
-The full Arch Trailer drop-off circuit normally takes about **90 minutes total with 2 people**. Do not treat each unload stop as a separate one-hour labor estimate.
+`Docs/00_Project_Overview/Google_Drive/operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md`
 
-Dependency editing is not exposed in the current browser candidate. During review, flag missing or incorrect prerequisites for correction before field scheduling is accepted.
+### Stage-level / General
+
+Use Stage-level when the practical task applies to the Stage generally and should not be forced into one Scene.
+
+### Scene-level
+
+Use Scene-level when a current LOR Scene is the natural reusable organizational home for the work.
+
+The Manager assigns Scene scope explicitly. Setup does not infer it from task names or Display names.
+
+The Reusable Task Catalog groups all three scopes and makes Stage/Scene groups collapsible.
+
+## Reusable local sequence
+
+Within Site-wide, one Stage-level bucket, or one Scene, the reusable sequence uses numbers such as:
+
+```text
+10
+20
+30
+40
+```
+
+This is the normal local precedence for that area. The gaps are useful because a newly discovered task can temporarily be inserted at `15` or `25`, then the group can be normalized back into manageable increments of 10.
+
+Managers can reorder by drag/drop or the up/down controls.
+
+This sequence does **not** mean all of Setup runs as one serial line.
+
+## Reusable global Setup baseline versus annual planned order
+
+The final planning model has two whole-Setup orders.
+
+### Reusable global baseline
+
+This is the normal starting order we learn over time. Once a useful overall pattern becomes established, the next annual Setup Session can inherit it instead of starting from a blank list.
+
+### Annual planned order
+
+This is the current season's working opinion of what should happen next across the entire remaining Setup backlog.
+
+It can change frequently because of:
+
+- road construction or access restrictions;
+- weather;
+- volunteer turnout;
+- lift / vehicle availability;
+- leaves not yet fallen;
+- material problems;
+- predecessor work taking longer than expected; or
+- an unexpected opportunity to get another area done early.
+
+Reordering the annual plan does not automatically change the reusable baseline.
+
+Use **Use Current Order as Future Baseline** only when the annual order represents generally useful learning that should carry forward. Do not promote a one-year oddity such as road construction merely because it affected 2026.
+
+## Planning filters
+
+The planning screen is one annual ordered backlog. The status controls only expand or contract what is visible.
+
+The normal filter set is:
+
+```text
+Unscheduled
+Scheduled
+In Progress
+Completed
+```
+
+The default emphasizes unfinished work and keeps completed work out of the way.
+
+Filtering does **not** reorder or duplicate tasks. A task keeps its annual planned-order position even while hidden.
+
+A task may also show **Blocked / Not Ready**. That is not a separate copy of the task; it means the task remains in the planning order but cannot practically proceed yet.
+
+## Prerequisites and readiness
+
+A prerequisite means another reusable task must complete first.
+
+Example — Elf Choir:
+
+```text
+Locates
+    -> Set Scaffold and Elves
+        -> Install Notes and Conductor
+```
+
+Managers can add/remove prerequisites in the task review screen. Circular dependencies and self-dependencies are blocked by the database command layer.
+
+Readiness is different from prerequisites.
+
+Example: Festive Trees can have its predecessors complete and still remain **NOT_READY** until leaves have fallen from the trees.
+
+Blocked/not-ready work can remain high in the planned order so Management remembers its importance without falsely treating it as executable work.
 
 ## Copy a reusable task
 
 Use **Copy** when a new task is substantially similar to an existing reusable task.
 
-The review candidate copies:
+The candidate copies:
 
-- reusable task definition fields;
+- reusable definition fields;
 - normal crew/time expectations;
-- readiness/weather/reusable notes;
+- readiness/weather/reusable notes; and
 - structured equipment/resource assignments.
 
-It intentionally does **not** copy:
+It does **not** blindly copy:
 
-- prerequisites/dependencies;
-- annual history or verification state.
+- prerequisites; or
+- previous annual actual/history.
 
-Review the new task before using it. A copied task receives a new reusable task identity.
+Choose the destination Site-wide / Stage / Scene scope. The destination group is brought into view so the copied task can be reordered immediately.
 
-## Equipment and resources
+The copied task gets a new reusable identity and appears as a new UNVERIFIED annual occurrence in an open Setup Session.
 
-Use **Equipment / Resources Needed** for structured recurring requirements such as lifts, vehicles, trailers, and tools. Quantity and Required/Preferred status belong here rather than being buried only in notes.
+## Rolling-horizon scheduling
 
-Equipment requirements are part of the reusable task definition because they are needed for future planning and schedule conflict checks.
+Do not schedule the whole Setup season.
+
+A normal workflow is to plan approximately the first few days, perform that work, then return to the ordered backlog and choose the next practical few days.
+
+The near-term work-day assignment contains:
+
+- date;
+- shift — **Morning**, **Afternoon**, or **All Day**;
+- crew lane — normally **Crew A**, **Crew B**, and occasionally **Crew C**;
+- selected task; and
+- planned crew count.
+
+An unscheduled task remains valid work and remains visible in the annual backlog.
+
+Removing a near-term schedule assignment returns the task to the unscheduled planning pool rather than deleting the task.
+
+## Parallel crew lanes
+
+Crew lanes are a lightweight dispatch aid, not an individual volunteer roster.
+
+Example:
+
+```text
+Saturday
+
+MORNING
+    Crew A                  Crew B                  Crew C (if needed)
+    Stage/Scene X           Stage/Scene Y           Site-wide work
+    Task(s)                 Task(s)                 Task(s)
+
+AFTERNOON
+    Crew A                  Crew B
+    Stage/Scene Z           Stage/Scene Q
+```
+
+Several tasks can run in the same shift because Setup commonly has parallel crews.
+
+Do not turn Crew A/B/C into permanent people assignments. The purpose is simply to show that separate groups are working in parallel.
+
+## Multi-day tasks and progress
+
+Do not split a practical task solely because it lasts more than one work period.
+
+Festive Trees is the model example. One reusable/annual task can remain **IN_PROGRESS** across multiple days while Captains record useful progress such as:
+
+```text
+Crew size: 4
+Completed quantity: 3
+Which units: Trees 1, 3, 4
+Note: tall lift unavailable after noon
+```
+
+The entire annual task is marked COMPLETE only when the practical job is truly finished.
+
+## Captain / Perform Work screen
+
+The field-execution screen brings together what a Captain needs for a selected task:
+
+- task and scope;
+- completion point / readiness / weather notes;
+- prerequisite state;
+- expected crew/time;
+- structured equipment/resources;
+- mapped Displays/support Containers and their current Setup/home-location context;
+- current published Setup Procedure PDF;
+- prior progress entries; and
+- progress/completion controls.
+
+For ordinary completion:
+
+- crew size is required;
+- completion/progress note is optional;
+- authenticated operator/Captain is recorded by the governed command;
+- completion time is recorded automatically.
+
+The Captain should not need to leave this screen to hunt for the field PDF.
 
 ## Setup Procedures
 
-The task detail shows the current published Setup PDF when one is available.
+### Stage / Scene procedures
 
-Managers may also see the editable Google Docs source. `SourceDocs` is preferred; `Archive` is the accepted compatibility fallback for existing 2025 source material.
+Stage-level tasks resolve the existing marked Stage Procedure root.
 
-The field PDF and editable source serve different purposes:
+Scene-level tasks resolve the selected current Scene through the shared Field Context / Procedure resolver. Setup does not guess a Scene from the task name.
 
-- published PDF = current field instruction;
-- editable Google Doc = Manager-maintained source used to revise the published procedure.
+### Site-wide / Infrastructure procedures
 
-## Pick Lists — planned workflow
-
-The future Pick List is generated from the tasks selected for a work day/shift:
+Site-wide tasks resolve the controlled non-LOR root:
 
 ```text
-scheduled Setup tasks
-  -> required Displays/assets
-  -> current Display-to-Container assignments
-  + supplemental required/support KIT Containers
-  -> deduplicate shared Containers/trailers
-  -> show why each physical item is needed
+G:\Shared drives\Display Folders\Site Infrastructure
 ```
 
-A Pick List replaces manual material bookkeeping. It does **not** automatically replace a real Prepare/Load task if people genuinely spend meaningful labor preparing, organizing, or loading material.
+That folder reuses the existing Procedure structure and marker contract but does not participate in LOR hierarchy resolution.
 
-Shared Containers such as Container 34 / Arch Trailer must appear once on a Pick List with all relevant reasons rather than as duplicate Container rows.
+Current published PDFs belong directly in:
 
-## Completion view — planned workflow
+```text
+Site Infrastructure\Procedures\Setup
+```
 
-The future field-execution view should default to incomplete work so completed tasks stop cluttering the active list. Operators/Managers should be able to switch among:
+Editable Setup sources belong in:
 
-- Incomplete;
-- Completed;
-- All.
+```text
+Site Infrastructure\Procedures\Setup\SourceDocs
+```
 
-Completing one day's work on a multi-day task must not complete the entire annual task unless the practical task is actually finished.
+Historical/superseded Setup material belongs in:
 
-## Movement and scanning — planned workflow
+```text
+Site Infrastructure\Procedures\Setup\Archive
+```
 
-Scanning identifies the physical object. Setup Session owns the business meaning of the action.
+Setup-local images belong in:
+
+```text
+Site Infrastructure\Procedures\Setup\images
+```
+
+## Equipment and resources
+
+Use structured equipment/resource assignments for recurring requirements such as lifts, vehicles, trailers, and tools.
+
+Quantity and Required/Preferred status belong in the structured relationship rather than only in free-text notes.
+
+Do not invent resource counts. For example, Stage 02 panel installation needs one powered stake pounder for the task while both Short Stake Pounder and Tall Stake Pounder exist as distinct available resource types.
+
+## Pick Lists — next guarded layer
+
+The intended Pick List flow remains:
+
+```text
+selected near-term Setup work
+    -> required Displays/assets
+    -> current Display-to-Container assignments
+    + supplemental required/support KIT Containers
+    -> deduplicate shared Containers/trailers
+    -> show why each physical item is needed
+```
+
+A Pick List replaces manual material bookkeeping. It does not create fake labor tasks.
+
+Container 34 / Arch Trailer is a special logistics case because it carries material for several areas and later becomes the Who House base. Ordinary unload steps should not become six separate user-facing work tasks merely because material must come off the trailer.
+
+## Movement and scanning — current boundary
+
+Scanning identifies a physical object. Setup owns the operational meaning of a future movement action.
 
 Examples of permanent identifiers include:
 
@@ -167,12 +375,19 @@ CONT:<container_id>
 LOC:<location_code>
 ```
 
-A scan alone must not create a destructive movement event merely because two identifiers were scanned in sequence. Setup must present the intended action and ask for the appropriate confirmation.
+The Captain screen can already consume annual/current material-location state for information.
 
-The current browser candidate does not yet expose the audited movement command layer.
+The final browser-review candidate still does **not** install movement/scanning write commands. No scan should silently create a destructive movement event merely because identifiers were scanned in sequence.
 
 ## Browser-review safety
 
-When using the disposable browser-review harness at `127.0.0.1:8794`, changes are written only to the disposable PostgreSQL clone and are removed during cleanup. They are not Production edits.
+The final browser review runs at `127.0.0.1:8794` against a disposable PostgreSQL clone captured from current Production.
 
-Use the browser review to learn the workflow, test Manager actions, and identify corrections. Production installation remains a separate acceptance gate.
+Migrations and review seeds not yet approved for Production are applied only inside that clone.
+
+Changes made through the browser are discarded during cleanup. The harness verifies:
+
+- Production Setup data fingerprint is unchanged; and
+- the live shared application checkout is unchanged.
+
+Production installation remains a separate acceptance gate after this final browser pass.
