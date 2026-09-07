@@ -5,7 +5,7 @@
 | Document Type | Internal Web Backbone Integration Handoff |
 | Source System | Production Database — Setup and Deployment |
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
-| Status | PENDING — permanent `/setup/` route deployment in progress |
+| Status | READY FOR IMPLEMENTATION — `/setup/` operational; UI/workflow in live evaluation |
 | Owner | MSB Production Database / Setup documentation owner |
 | Last Reviewed | 2026-09-07 |
 
@@ -14,6 +14,26 @@
 Define what the Internal Web Backbone should expose for Setup and Deployment without copying engineering history into the operator experience or creating a competing documentation authority.
 
 The source Setup subsystem remains authoritative. The Backbone should publish navigation/search/application entry points that lead users to the current controlled source or protected application.
+
+## Current Source-System State
+
+The Production Setup application is live and protected at:
+
+```text
+https://my.sheboyganlights.org/setup/
+```
+
+Accepted source-side checks include:
+
+```text
+Synology /setup/ route                = operational
+public Setup health                   = PASS
+Cloudflare-authenticated browser use  = PASS
+2025 Production data rendering        = PASS
+post-deployment invariants            = PASS
+```
+
+The **runtime is accepted**, but the Setup UI/workflow remains in live evaluation while Managers use the real 2025 Historical Verification session. Backbone navigation should therefore present the application as available for current 2025 review/training without implying that all Setup features are final.
 
 ## Canonical Operator Portal
 
@@ -29,9 +49,15 @@ Canonical operator procedure index:
 Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/README.md
 ```
 
+Detailed Manager guide:
+
+```text
+Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md
+```
+
 ## Preferred Application Entry Point
 
-When live acceptance is complete, the normal protected Setup action link is:
+Normal protected Setup action link:
 
 ```text
 https://my.sheboyganlights.org/setup/
@@ -39,13 +65,13 @@ https://my.sheboyganlights.org/setup/
 
 This is a `my.` action application and requires the established Google/Cloudflare Access perimeter.
 
-Do not send ordinary users to repository application source, database migration files, or a temporary preview listener when the protected production route is available.
+Do not send ordinary users to repository application source, database migration files, server runbooks, or old preview listeners.
 
 ## Operator Tasks That Should Be Discoverable
 
-Initial task choice:
+Primary current task:
 
-- **Review and Correct the 2025 Setup History** — authorized reviewers use the real 2025 Production-backed Historical Verification session to correct annual history and improve reusable Setup knowledge before the 2026 Setup Session is created.
+- **Review and Correct the 2025 Setup History** — Managers/reviewers use the real Production-backed 2025 Historical Verification session to verify annual history, add/correct reusable tasks and resources, improve reusable Setup knowledge, ask questions, and suggest workflow/UI improvements before the 2026 Setup Session is created.
 
 Canonical source procedure:
 
@@ -53,7 +79,31 @@ Canonical source procedure:
 operatorSOP/Review_2025_Setup_History.md
 ```
 
+Useful supporting action link:
+
+- **Open Setup Application** — `https://my.sheboyganlights.org/setup/`
+
 Future Setup task choices should be added only after the corresponding workflow is production-operational and documented in the source subsystem.
+
+## Suggested Plain-Language Copy
+
+Primary card/action title:
+
+```text
+Review 2025 Setup
+```
+
+Description:
+
+> Review what happened during 2025 Setup, correct what you know, add missing reusable tasks or resources, and help improve the Setup workflow before the 2026 plan is created.
+
+Secondary label/status when useful:
+
+```text
+Live review / training
+```
+
+Do not label the application as a prototype or as fully finalized. The accurate operator meaning is that it is live Production software currently being evaluated through real 2025 review work.
 
 ## Search / Discovery Metadata
 
@@ -65,14 +115,13 @@ Setup
 Historical Verification
 Setup training
 review Setup history
+add Setup task
+Setup resources
+verify Setup task
 reusable Setup task
 2026 Setup baseline
 Setup plan
 ```
-
-Operator-facing description:
-
-> Review and correct the 2025 Setup record, improve reusable Setup knowledge, and prepare the baseline used to build the 2026 Setup plan.
 
 ## Important Operator Meaning
 
@@ -88,13 +137,11 @@ Reusable Task changes
 
 The selected Setup Session controls the allowed operational year. The 2025 review area accepts 2025 operational dates only.
 
-Do not expose database/schema implementation details to ordinary operators merely to explain this rule.
-
 ## Authorization / Link Boundary
 
 The `/setup/` link may be visible as an internal action destination, but possession of the link does not grant application capability.
 
-The protected application performs its own authenticated identity and authorization checks. Backbone must not attempt to recreate Setup Manager/Administrator authorization logic.
+The protected application performs its own authenticated identity and authorization checks. Backbone must not recreate Setup Manager/Administrator authorization logic.
 
 ## Exclude from Normal Operator Navigation
 
@@ -111,39 +158,39 @@ PostgreSQL rollback archive paths
 server systemd/nginx/UFW instructions
 ```
 
-Engineering material may be available through a clearly separated contributor/engineering path when appropriate, but it must not compete with operator navigation.
+Engineering material may remain available through a clearly separated contributor/engineering path when appropriate, but it must not compete with operator navigation.
 
-## Legacy / Compatibility Link Rule
+## Current Feature Boundary
 
-Existing dated Setup/Deployment engineering documents in the parent folder are supporting historical/current engineering evidence. They should not become new intranet operator dependencies merely because they remain in the repository for compatibility.
+Do not advertise the following as current operator workflows:
 
-The Backbone should prefer the canonical operator portal and operatorSOP index above.
+- Pick List generation; or
+- Container/Display movement/scanning write commands.
 
-## Images
-
-No Setup operator-documentation images are required for the initial 2025 review procedure. If screenshots are later added, they should live under the Setup subsystem's controlled `images/` location and be referenced from the source operator procedure rather than copied independently into Backbone content.
+Those remain outside the current accepted Production-ready boundary.
 
 ## Acceptance Criteria
 
 Backbone integration is VERIFIED only when all applicable checks pass:
 
-1. `https://my.sheboyganlights.org/setup/` is production-operational and protected by the normal Access perimeter;
-2. the intranet presents Setup as an internal action/workflow rather than an engineering document tree;
-3. the 2025 historical review procedure is discoverable by plain-language task/search terms;
-4. the preferred application link points to `/setup/` rather than GitHub or a preview port;
+1. the Production index/task navigation includes an appropriate Setup action;
+2. the action points to `https://my.sheboyganlights.org/setup/`;
+3. the 2025 historical review purpose is understandable in plain language;
+4. search/navigation can find Setup using ordinary task terms;
 5. engineering/acceptance/database source paths are absent from normal operator search/navigation;
-6. no duplicate editable copy of the operator procedure is created in the Backbone repository; and
-7. a deployed intranet check confirms navigation reaches the intended Setup application/procedure.
+6. no duplicate editable copy of the source operator procedure is created in Backbone;
+7. maintained `index.html` pages preserve their required visible version indicators; and
+8. deployed intranet verification confirms the intended Production page reaches the protected Setup application.
 
 ## Backbone State
 
 ```text
-PENDING
+READY FOR IMPLEMENTATION
 ```
 
-Reason: source handoff exists, but permanent `/setup/` service/public-route acceptance and Backbone implementation have not yet completed.
+Source route/runtime acceptance is complete. Backbone issue `#10` may proceed using this handoff and the Backbone repository's own project rules/deployment procedure.
 
-When Backbone source is updated, change this state to `IMPLEMENTED`. After deployed intranet verification, change it to `VERIFIED` and record the acceptance reference.
+After source changes are made, use `IMPLEMENTED`. After deployed intranet verification, use `VERIFIED` and record the acceptance evidence.
 
 ## Related Documents
 
