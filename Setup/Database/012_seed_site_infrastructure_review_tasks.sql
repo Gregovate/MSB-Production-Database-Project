@@ -301,5 +301,5 @@ JOIN ops.setup_session_task st ON st.setup_task_id = t.setup_task_id
 JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
 LEFT JOIN ref.stage s ON s.stage_id = t.stage_id
 WHERE ss.season_year = 2025
-  AND t.setup_task_id IN (SELECT setup_task_id FROM _setup_review_map)
+  AND t.reusable_notes LIKE '[Setup review seed %'
 ORDER BY st.planned_order, t.setup_task_id;
