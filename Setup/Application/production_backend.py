@@ -35,6 +35,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_acceptance_fixes.js",
         "setup_session_year_guard.css",
         "setup_session_year_guard.js",
+        "setup_analytics.js",
     }
 )
 
