@@ -23,7 +23,7 @@ from setup_google_docs import preferred_editable_sources, runtime_google_sources
 from setup_next_repository import SetupNextRepository, SetupNextRepositoryError
 
 setup_next_api = Blueprint("setup_next_api", __name__)
-SITE_INFRASTRUCTURE_FOLDER = "Site Infrastructure"
+PARK_INFRASTRUCTURE_FOLDER = "41 Park Infrastructure-PI"
 
 
 def repo() -> SetupNextRepository:
@@ -87,8 +87,8 @@ def _manager_sources(instructions: dict[str, Any], access: dict[str, Any]) -> di
     return instructions
 
 
-def _site_infrastructure_instructions(access: dict[str, Any]) -> dict[str, Any]:
-    root = Path(drive_root()) / SITE_INFRASTRUCTURE_FOLDER
+def _park_infrastructure_instructions(access: dict[str, Any]) -> dict[str, Any]:
+    root = Path(drive_root()) / PARK_INFRASTRUCTURE_FOLDER
     procedures_root = root / "Procedures"
     task_root = procedures_root / "Setup"
     warnings: list[str] = []
@@ -108,11 +108,11 @@ def _site_infrastructure_instructions(access: dict[str, Any]) -> dict[str, Any]:
     }
 
     if not root.is_dir():
-        warnings.append(f"Site Infrastructure Procedure root is missing: {root}")
+        warnings.append(f"Park Infrastructure Procedure root is missing: {root}")
         return _manager_sources(result, access)
     if not (root / MARKER_NAME).is_file():
         result["status"] = "UNAPPROVED_SCOPE"
-        warnings.append(f"Site Infrastructure root marker is missing: {root / MARKER_NAME}")
+        warnings.append(f"Park Infrastructure root marker is missing: {root / MARKER_NAME}")
         return _manager_sources(result, access)
     if not procedures_root.is_dir():
         result["status"] = "PROCEDURES_UNAVAILABLE"
@@ -186,7 +186,7 @@ def _task_instructions(setup_task_id: int, access: dict[str, Any]) -> tuple[dict
         instructions["setup_task_id"] = setup_task_id
         return task, instructions
 
-    instructions = _site_infrastructure_instructions(access)
+    instructions = _park_infrastructure_instructions(access)
     instructions["setup_task_id"] = setup_task_id
     return task, instructions
 
@@ -198,12 +198,12 @@ def _safe_pdf_name(name: str) -> str:
     return safe_name
 
 
-def _site_current_document(name: str) -> Path:
+def _park_current_document(name: str) -> Path:
     safe_name = _safe_pdf_name(name)
-    folder = Path(drive_root()) / SITE_INFRASTRUCTURE_FOLDER / "Procedures" / "Setup"
+    folder = Path(drive_root()) / PARK_INFRASTRUCTURE_FOLDER / "Procedures" / "Setup"
     path = folder / safe_name
     if not path.is_file() or path.parent != folder:
-        raise SetupCommandError("Current Site Infrastructure PDF was not found")
+        raise SetupCommandError("Current Park Infrastructure PDF was not found")
     return path
 
 
@@ -390,7 +390,7 @@ def api_setup_task_procedure_current(setup_task_id: int) -> Response:
     path = (
         _stage_scene_current_document(task, name)
         if task.get("stage_id") is not None
-        else _site_current_document(name)
+        else _park_current_document(name)
     )
     return send_file(
         path,
