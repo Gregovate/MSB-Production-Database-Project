@@ -6,7 +6,7 @@
 | Repository | MSB Production Database Project |
 | Status | CURRENT |
 | Owner | Production documentation owner / administrator |
-| Last Reviewed | 2026-08-24 |
+| Last Reviewed | 2026-09-07 |
 
 ## Purpose
 
@@ -52,11 +52,13 @@ A subsystem is not `CONVERTED` until all applicable items are complete:
 |---|---|---|---|---|---|---|
 | Google Drive / Display Folder Operations | BACKBONE PENDING | COMPLETE — no embedded Markdown images found in the current engineering overview, path contract, or converted operator procedures; subsystem `images/` established | COMPLETE for affected tool references — Google Drive docs link to Folder Alignment/Preview Authoring owners rather than relocating their executables | EXISTS | PENDING — Backbone issue #2 | Source conversion complete. Operator portal/SOP split complete; engineering overview and path contract relocated under `engineering/`; old paths are compatibility pointers; canonical operator/engineering links validated; stale System Blueprint reference replaced with current Production Database architecture portal. |
 | Folder Alignment | BACKBONE PENDING | COMPLETE — no embedded Markdown images found in the current engineering design or converted operator procedures; subsystem `images/` established | COMPLETE — Windows/Linux Folder Alignment launchers still target `Folder_Alignment/folder_alignment.py`; PreviewBackground launchers still target `update_previewbackground_folders.py`; Procedures updater still targets `update_procedure_structure.py`; all targets verified present | EXISTS | PENDING — Backbone issue #2 | Source conversion complete. Operator portal, run/review SOPs, engineering portal, engineering design relocation, compatibility pointer, canonical links, and parent Data Extraction engineering link verified. |
+| Setup / Takedown / Procedure | IN PROGRESS | NOT YET REQUIRED — no new subsystem documentation images added during the V0.3.4 conversion | IN PROGRESS — Setup application/acceptance paths remain in place; no working implementation files moved during documentation conversion | EXISTS | PENDING — Backbone issue #10 | Root README converted to operator/user portal; `operatorSOP/` and `engineering/` portals created; 2025 Historical Review / Training operator procedure added; old engineering-heavy root README preserved under `engineering/`; Backbone handoff added. Source/runtime acceptance, link audit, final application route, and Backbone deployment remain open. |
 | Parser / Data Extraction | LEGACY | NOT STARTED | CURRENT PATHS VERIFIED DURING PROOF — `run_parse_props.ps1` still targets `Parser/parse_props_v7_scene_parser.py`; `run_lor_runner.ps1` still targets `lor_operator_runner.py`, `parse_props_v7_scene_parser.py`, `lor_version_checker.py`, and `LOR2DB/01_Ingest/postgres_ingest_from_lor_sqlite_v7.py`; all targets verified present | N/A for this proof | N/A | Parser is not being converted in PR #62. This verification only confirms the current documentation restructuring did not break parser/runner execution paths. |
 
 ## Active Backbone Work
 
 - `Gregovate/MSB-Internal-Web-Backbone` issue **#2** — `Integrate converted Google Drive and Folder Alignment operator portals`
+- `Gregovate/MSB-Internal-Web-Backbone` issue **#10** — `Integrate Setup operator portal and /setup application`
 
 Source conversion and live intranet deployment are separate milestones. Do not mark these subsystems `VERIFIED` until the deployed Backbone result is checked.
 
@@ -68,7 +70,6 @@ The sequence below is not a commitment to convert everything at once. Convert on
 |---|---|---|
 | Preview Authoring | LEGACY | Contains current operator procedures including wiring-diagram creation; image ownership and any tool/script references must be inventoried before moving docs. |
 | Field Wiring | LEGACY | Current engineering documentation under Production Database architecture; operator experience is primarily the production application. |
-| Setup / Takedown / Procedure | LEGACY | Current engineering/handoff history is mixed under Setup/Deployment architecture; field Stage instructions are a separate document class. |
 | Labeling and Scanning | LEGACY | Cross-system operator and engineering ownership requires review before conversion. |
 | Testing / Repairs | LEGACY | Existing central Operational SOP structure remains valid until this subsystem is deliberately reviewed. |
 | Containers | LEGACY | Existing operator SOPs remain in current location until subsystem ownership/navigation review. |
