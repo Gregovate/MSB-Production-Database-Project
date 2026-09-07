@@ -34,17 +34,9 @@ if (( ${#preview_pids[@]} > 0 )); then
     done
 fi
 
-# Remove only temporary Setup Google-Doc link-view mounts/processes.
-for link_root in /tmp/msb-setup-google-links-*; do
-    [[ -e "$link_root" ]] || continue
-    if mountpoint -q "$link_root" 2>/dev/null; then
-        echo "Unmounting stale Setup Google Doc link view: $link_root"
-        sudo fusermount -u "$link_root" >/dev/null 2>&1 \
-            || sudo umount "$link_root" >/dev/null 2>&1 \
-            || true
-    fi
-done
-
+# Stop stale Setup Google-Doc rclone processes before unmounting their roots.
+# The mount roots are owned by msb-docs-fs, so removal from sticky /tmp must be
+# performed with sudo rather than as msbadmin.
 mapfile -t link_pids < <(
     ps -eo pid=,comm=,args= \
         | awk '
@@ -71,7 +63,17 @@ fi
 
 for link_root in /tmp/msb-setup-google-links-*; do
     [[ -e "$link_root" ]] || continue
-    rm -rf -- "$link_root"
+    if mountpoint -q "$link_root" 2>/dev/null; then
+        echo "Unmounting stale Setup Google Doc link view: $link_root"
+        sudo fusermount -u "$link_root" >/dev/null 2>&1 \
+            || sudo umount "$link_root" >/dev/null 2>&1 \
+            || true
+    fi
+    if mountpoint -q "$link_root" 2>/dev/null; then
+        echo "FAIL: stale Setup Google Doc link view is still mounted: $link_root"
+        exit 3
+    fi
+    sudo rm -rf -- "$link_root"
 done
 
 mapfile -t preview_containers < <(
