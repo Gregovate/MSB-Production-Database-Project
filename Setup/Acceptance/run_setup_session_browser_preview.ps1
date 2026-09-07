@@ -126,7 +126,9 @@ try {
     $remoteScript = "$remoteRoot/setup_session_browser_preview_server.sh"
     $remoteEntry = "$remoteRoot/setup_session_browser_preview_entry.py"
     $remoteCleanup = "$remoteRoot/setup_session_browser_preview_cleanup_server.sh"
-    $remoteCommand = "chmod 700 '$uploadCleanup' && bash -n '$uploadCleanup' && bash '$uploadCleanup' '$PreviewPort' && mv '$uploadRoot' '$remoteRoot' && chmod 755 '$remoteRoot' && chmod 700 '$remoteScript' '$remoteCleanup' && chmod 644 '$remoteEntry' && bash -n '$remoteScript' && timeout --signal=TERM 7200s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
+    # Keep a safety ceiling for abandoned previews without cutting off a normal
+    # multi-hour operator browser review. Eight hours matches a full review session.
+    $remoteCommand = "chmod 700 '$uploadCleanup' && bash -n '$uploadCleanup' && bash '$uploadCleanup' '$PreviewPort' && mv '$uploadRoot' '$remoteRoot' && chmod 755 '$remoteRoot' && chmod 700 '$remoteScript' '$remoteCleanup' && chmod 644 '$remoteEntry' && bash -n '$remoteScript' && timeout --signal=TERM 28800s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
 
     & ssh -tt -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand
     $remoteExit = $LASTEXITCODE
