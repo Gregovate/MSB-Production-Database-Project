@@ -7,8 +7,9 @@ from typing import Any
 import psycopg2
 from flask import Blueprint, Response, jsonify, request, send_file
 
-from backend import _current_document_path, _instruction_package, drive_root
+from backend import drive_root, repository as field_context_repository
 from FieldWiring.Application.field_context_resolver import MARKER_NAME
+from Procedures.Application.procedure_context import resolve_stage_procedure
 from setup_api import (
     json_body,
     require_manager,
@@ -135,13 +136,53 @@ def _site_infrastructure_instructions(access: dict[str, Any]) -> dict[str, Any]:
     return _manager_sources(result, access)
 
 
+def _stage_scene_instructions(task: dict[str, Any], access: dict[str, Any]) -> dict[str, Any]:
+    stage_id = task.get("stage_id")
+    if stage_id is None:
+        raise SetupCommandError("Stage/Scene Procedure resolution requires a Stage")
+
+    scene_uuid = str(task.get("scene_uuid") or "").strip() or None
+    preview_uuid = str(task.get("preview_uuid") or "").strip() or None
+    scene_scoped = task.get("lor_scene_id") is not None
+    procedure = resolve_stage_procedure(
+        field_context_repository(),
+        stage_id=int(stage_id),
+        task="Setup",
+        drive_root=drive_root(),
+        whole_stage=not scene_scoped,
+        preview_uuid=preview_uuid if scene_scoped else None,
+        scene_uuid=scene_uuid if scene_scoped else None,
+    )
+    documents = [
+        {
+            "name": item.get("name"),
+            "path": item.get("path"),
+            "size": item.get("size"),
+        }
+        for item in (procedure.get("documents") or [])
+        if item.get("name")
+    ]
+    instructions: dict[str, Any] = {
+        "status": procedure.get("status"),
+        "task": "Setup",
+        "scope_type": procedure.get("scope_type"),
+        "scope_root": procedure.get("scope_root"),
+        "procedures_root": procedure.get("procedures_root"),
+        "task_root": procedure.get("task_root"),
+        "current_documents": documents,
+        "documents": documents,
+        "images": procedure.get("images") or [],
+        "editable_sources": [],
+        "warnings": procedure.get("operator_warnings") or procedure.get("warnings") or [],
+        "selected_context": procedure.get("selected_context"),
+    }
+    return _manager_sources(instructions, access)
+
+
 def _task_instructions(setup_task_id: int, access: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     task = repo().task_scope(setup_task_id)
-    stage_key = str(task.get("stage_key") or "").strip()
-    if stage_key:
-        instructions = dict(_instruction_package(stage_key))
-        instructions = _manager_sources(instructions, access)
-        instructions["scope_type"] = "SCENE" if task.get("lor_scene_id") is not None else "STAGE"
+    if task.get("stage_id") is not None:
+        instructions = _stage_scene_instructions(task, access)
         instructions["setup_task_id"] = setup_task_id
         return task, instructions
 
@@ -150,15 +191,59 @@ def _task_instructions(setup_task_id: int, access: dict[str, Any]) -> tuple[dict
     return task, instructions
 
 
-def _site_current_document(name: str) -> Path:
+def _safe_pdf_name(name: str) -> str:
     safe_name = Path(name or "").name
     if not safe_name or safe_name != name or not safe_name.casefold().endswith(".pdf"):
-        raise SetupCommandError("A current Site Infrastructure PDF name is required")
+        raise SetupCommandError("A current Setup PDF name is required")
+    return safe_name
+
+
+def _site_current_document(name: str) -> Path:
+    safe_name = _safe_pdf_name(name)
     folder = Path(drive_root()) / SITE_INFRASTRUCTURE_FOLDER / "Procedures" / "Setup"
     path = folder / safe_name
     if not path.is_file() or path.parent != folder:
         raise SetupCommandError("Current Site Infrastructure PDF was not found")
     return path
+
+
+def _stage_scene_current_document(task: dict[str, Any], name: str) -> Path:
+    safe_name = _safe_pdf_name(name)
+    stage_id = task.get("stage_id")
+    if stage_id is None:
+        raise SetupCommandError("Stage/Scene Procedure resolution requires a Stage")
+    scene_scoped = task.get("lor_scene_id") is not None
+    procedure = resolve_stage_procedure(
+        field_context_repository(),
+        stage_id=int(stage_id),
+        task="Setup",
+        drive_root=drive_root(),
+        whole_stage=not scene_scoped,
+        preview_uuid=(str(task.get("preview_uuid") or "").strip() or None) if scene_scoped else None,
+        scene_uuid=(str(task.get("scene_uuid") or "").strip() or None) if scene_scoped else None,
+    )
+    task_root_text = str(procedure.get("task_root") or "").strip()
+    if not task_root_text:
+        raise SetupCommandError("Current Setup Procedure folder could not be resolved")
+    task_root = Path(task_root_text)
+    matched = next(
+        (item for item in (procedure.get("documents") or []) if item.get("name") == safe_name),
+        None,
+    )
+    if matched is None:
+        raise SetupCommandError("Requested PDF is not a current published Setup document")
+    candidate = Path(str(matched.get("path") or ""))
+    if not candidate.is_file():
+        raise SetupCommandError("Requested current Setup PDF is unavailable")
+    try:
+        resolved_root = task_root.resolve(strict=True)
+        resolved_candidate = candidate.resolve(strict=True)
+        resolved_candidate.relative_to(resolved_root)
+    except (OSError, ValueError) as exc:
+        raise SetupCommandError("Requested PDF is outside the resolved Setup folder") from exc
+    if resolved_candidate.parent != resolved_root:
+        raise SetupCommandError("Requested PDF is not directly published in Procedures/Setup")
+    return candidate
 
 
 @setup_next_api.get("/api/setup/organization")
@@ -302,8 +387,11 @@ def api_setup_task_procedure_current(setup_task_id: int) -> Response:
     _base_repo, _email, _access = require_reader()
     task = repo().task_scope(setup_task_id)
     name = request.args.get("name", "").strip()
-    stage_key = str(task.get("stage_key") or "").strip()
-    path = _current_document_path(stage_key, name) if stage_key else _site_current_document(name)
+    path = (
+        _stage_scene_current_document(task, name)
+        if task.get("stage_id") is not None
+        else _site_current_document(name)
+    )
     return send_file(
         path,
         conditional=True,
