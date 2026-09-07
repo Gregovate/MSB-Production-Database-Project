@@ -19,6 +19,8 @@ def test_production_html_uses_database_client_only() -> None:
     assert "setup_review_usability.js" in text
     assert "setup_next_pass.js" in text
     assert "setup_next_pass.css" in text
+    assert "setup_acceptance_fixes.js" in text
+    assert "setup_acceptance_fixes.css" in text
     assert "setup.js" not in text
     assert "setup_review_extensions.js" not in text
     assert "setup_instruction_live.js" not in text
@@ -30,9 +32,11 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     text = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
     resource_text = (APP_DIR / "setup_resource_review.js").read_text(encoding="utf-8")
     next_text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    acceptance_text = (APP_DIR / "setup_acceptance_fixes.js").read_text(encoding="utf-8")
     assert "localStorage." not in text
     assert "localStorage." not in resource_text
     assert "localStorage." not in next_text
+    assert "localStorage." not in acceptance_text
     assert "initialTasks" not in text
     assert "msb.setup.prototype" not in text
     assert "X-MSB-Setup-Command" in text
@@ -65,7 +69,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.0-final-browser-review"
+    assert payload["version"] == "V0.3.2-final-browser-review"
 
     for asset in (
         "/setup.css",
@@ -80,6 +84,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_review_usability.js",
         "/setup_next_pass.css",
         "/setup_next_pass.js",
+        "/setup_acceptance_fixes.css",
+        "/setup_acceptance_fixes.js",
     ):
         assert client.get(asset).status_code == 200
 
