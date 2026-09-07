@@ -4,13 +4,13 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 ANALYTICS_VERSION = "2026-09-07.1"
 MEASUREMENT_ID = "G-X08ZTSY0VV"
-VISIBLE_VERSION = "Setup Session V0.3.4 — UI revision 2026-09-07.1"
+VISIBLE_UPDATE = "Updated 2026-09-07"
 
 
-def test_setup_page_loads_versioned_analytics_asset_and_visible_version() -> None:
+def test_setup_page_loads_versioned_analytics_asset_and_visible_update() -> None:
     source = (BASE_DIR / "production.html").read_text(encoding="utf-8")
     assert f"setup_analytics.js?v={ANALYTICS_VERSION}" in source
-    assert VISIBLE_VERSION in source
+    assert VISIBLE_UPDATE in source
 
 
 def test_setup_analytics_asset_is_served() -> None:
