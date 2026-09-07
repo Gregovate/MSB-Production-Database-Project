@@ -1,10 +1,15 @@
 param(
     [string]$Server = 'msbadmin@192.168.5.9',
-    [int]$PreviewPort = 8794,
+    [Parameter(Mandatory=$true)]
+    [int]$PreviewPort,
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org'
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($PreviewPort -eq 8794) {
+    throw 'PreviewPort 8794 is the live Production Setup listener and must never be used for browser preview.'
+}
 
 $patchImpl = Join-Path $PSScriptRoot 'run_setup_session_browser_preview_patch_impl.ps1'
 if (-not (Test-Path -LiteralPath $patchImpl)) {
