@@ -6,7 +6,8 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 ACCEPT = SETUP_DIR / "Acceptance"
-CANDIDATE_SHA = "c72644f02b825acb830603fe6b4f7bd48713b681"
+CANDIDATE_SHA = "831bbc70311479b33a062842ba60e71ccfa0ce86"
+SERVER_SHA_PLACEHOLDER = "c72644f02b825acb830603fe6b4f7bd48713b681"
 
 
 def test_preview_harness_files_exist() -> None:
@@ -23,14 +24,24 @@ def test_preview_pins_exact_candidate_and_disposable_database() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
     wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
 
-    assert f'TARGET_SHA="{CANDIDATE_SHA}"' in server
     assert f"$CandidateSha = '{CANDIDATE_SHA}'" in wrapper
+    assert f'$targetOld = \'TARGET_SHA="{SERVER_SHA_PLACEHOLDER}"\'' in wrapper
+    assert '$targetNew = "TARGET_SHA=`"$CandidateSha`""' in wrapper
+    assert '$serverText = $serverText.Replace($targetOld, $targetNew)' in wrapper
+    assert f'TARGET_SHA="{SERVER_SHA_PLACEHOLDER}"' in server
     assert 'TEST_CONTAINER="msb-setup-browser-preview-' in server
     assert 'pg_dump -U "$DB_ACTOR" -d "$PROD_DB" -Fc' in server
     assert 'pg_restore -U "$DB_ACTOR" -d "$TEST_DB" --no-owner --no-acl --exit-on-error' in server
     assert 'SETUP_DATABASE_DSN="$DSN"' in server
     assert 'Production DB:  pg_dump + SELECT only' in server
     assert 'Preview writes: disposable PostgreSQL clone only' in server
+
+
+def test_preview_packages_manager_review_contract_into_detached_gate() -> None:
+    wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
+    assert "test_setup_google_doc_index_contract.py" in wrapper
+    assert "test_setup_review_usability_contract.py" in wrapper
+    assert "$serverText = $serverText.Replace($testOld, $testNew)" in wrapper
 
 
 def test_preview_applies_resource_migration_only_to_disposable_clone() -> None:
