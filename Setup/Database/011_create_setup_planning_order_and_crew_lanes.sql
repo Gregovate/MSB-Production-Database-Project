@@ -2,7 +2,7 @@
 MSB Setup Session — reusable/annual planning order and parallel crew lanes
 Issue: #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-07 V0.3.0
+Revision: 2026-09-07 V0.3.1
 
 Purpose:
   Add the final planning model established during Manager browser review:
@@ -10,7 +10,7 @@ Purpose:
   - an annual planned-order override independent of calendar dates;
   - rolling-horizon scheduling without requiring every task to have a date;
   - parallel crew lanes on scheduled work (Crew A/B/C/etc.);
-  - explicit support for Site-wide / Infrastructure reusable tasks by using the
+  - explicit support for Park Infrastructure reusable tasks by using the
     existing valid no-Stage/no-Scene task scope.
 
 Design rules:
@@ -19,8 +19,8 @@ Design rules:
   - planned_order is the annual Manager-adjustable whole-Setup order.
   - work-day/shift/crew-lane assignment is a short-horizon commitment only.
   - absence from a work day is a normal UNSCHEDULED state, not an error.
-  - a no-Stage/no-Scene task is Site-wide / Infrastructure work; it is not an
-    invitation to fabricate LOR Stage/Scene identity.
+  - a no-Stage/no-Scene task is Site-wide / Park Infrastructure work; it is not
+    an invitation to fabricate LOR Stage/Scene identity.
 ============================================================================ */
 
 BEGIN;
@@ -67,7 +67,8 @@ ALTER TABLE ops.setup_session_task
     );
 
 /* Existing tasks receive a deterministic starting baseline. Leave 10..90 open
-   for high-priority Site-wide / Infrastructure work discovered during review. */
+   for high-priority Command Center / Park Infrastructure work discovered during
+   review. */
 WITH ordered AS (
     SELECT
         t.setup_task_id,
@@ -314,6 +315,12 @@ ALTER TABLE ops.setup_work_day_task
 CREATE INDEX IF NOT EXISTS ix_setup_work_day_task_crew_lane
     ON ops.setup_work_day_task(setup_work_day_id, shift_code, crew_lane, sort_order, setup_session_task_id);
 
+/* Migration 009 exposed the pre-crew-lane scheduling command. The V0.3 command
+   supersedes it; do not leave both signatures callable. */
+DROP FUNCTION IF EXISTS ops.set_setup_work_day_task(
+    text,bigint,bigint,text,integer,integer,boolean
+);
+
 CREATE OR REPLACE FUNCTION ops.set_setup_work_day_task(
     p_email text,
     p_setup_work_day_id bigint,
@@ -433,5 +440,5 @@ GRANT EXECUTE ON FUNCTION ops.set_setup_work_day_task(text,bigint,bigint,text,te
 COMMIT;
 
 SELECT
-    '2026-09-07-setup-planning-order-crew-lanes-v0.3.0' AS applied_revision,
+    '2026-09-07-setup-planning-order-crew-lanes-v0.3.1' AS applied_revision,
     current_user AS applied_by;
