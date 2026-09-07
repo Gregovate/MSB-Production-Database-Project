@@ -1,0 +1,159 @@
+"""Google-native Setup Procedure discovery for the Linux rclone runtime.
+
+Windows Google Drive for Desktop exposes native Google Docs as ``.gdoc`` shortcut
+files. The production rclone mount exports the same Google-native document as a
+``.docx`` file, making it indistinguishable from a real Word document through the
+mounted filesystem alone.
+
+The server runtime therefore supplies a read-only rclone ``lsjson --original -M``
+metadata index through ``SETUP_GOOGLE_DOC_INDEX``. This module consumes only that
+sanitized index; the Setup/FieldWiring service account never receives the rclone
+OAuth configuration or token.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+from pathlib import Path
+from typing import Any
+
+GOOGLE_DOC_CONTENT_TYPE = "application/vnd.google-apps.document"
+GOOGLE_DOC_ID_RE = re.compile(r"^[A-Za-z0-9_-]{10,}$")
+
+
+def _normalized_relative_task_root(task_root: str, drive_root: str) -> str | None:
+    try:
+        task = Path(task_root).resolve(strict=False)
+        root = Path(drive_root).resolve(strict=False)
+        relative = task.relative_to(root)
+    except (OSError, ValueError):
+        return None
+    return relative.as_posix().strip("/")
+
+
+def _virtual_gdoc_name(exported_name: str) -> str:
+    folded = exported_name.casefold()
+    if folded.endswith(".link.html"):
+        base = exported_name[: -len(".link.html")]
+    else:
+        base = Path(exported_name).stem
+    return f"{base}.gdoc"
+
+
+def _load_index(path: Path) -> list[dict[str, Any]]:
+    raw = path.read_text(encoding="utf-8", errors="strict")
+    payload = json.loads(raw.lstrip("\ufeff"))
+    if isinstance(payload, dict):
+        payload = payload.get("items")
+    if not isinstance(payload, list):
+        raise ValueError("Setup Google Doc index must contain a JSON list")
+    return [item for item in payload if isinstance(item, dict)]
+
+
+def indexed_google_sources(
+    *,
+    task_root: str,
+    drive_root: str,
+    index_path: str | None = None,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Return Google-native editable sources proved by the rclone metadata index.
+
+    Only direct children of ``Procedures/Setup/SourceDocs`` or ``Archive`` are
+    eligible. Native Word documents are excluded because their metadata content
+    type is not ``application/vnd.google-apps.document``.
+    """
+    configured = (index_path if index_path is not None else os.environ.get("SETUP_GOOGLE_DOC_INDEX", "")).strip()
+    if not configured:
+        return [], []
+
+    relative_root = _normalized_relative_task_root(task_root, drive_root)
+    if not relative_root:
+        return [], ["Google Doc metadata index could not map the resolved Setup folder to Display Folders."]
+
+    index_file = Path(configured)
+    try:
+        items = _load_index(index_file)
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        return [], [f"Google Doc metadata index is unavailable: {exc}"]
+
+    prefixes = {
+        "SOURCEDOC": f"{relative_root}/SourceDocs/",
+        "ARCHIVE": f"{relative_root}/Archive/",
+    }
+    results: list[dict[str, Any]] = []
+
+    for item in items:
+        metadata = item.get("Metadata") if isinstance(item.get("Metadata"), dict) else {}
+        if str(metadata.get("content-type") or "").casefold() != GOOGLE_DOC_CONTENT_TYPE:
+            continue
+
+        remote_path = str(item.get("Path") or "").replace("\\", "/").strip("/")
+        role = None
+        direct_name = None
+        for candidate_role, prefix in prefixes.items():
+            if remote_path.startswith(prefix):
+                remainder = remote_path[len(prefix):]
+                if remainder and "/" not in remainder:
+                    role = candidate_role
+                    direct_name = remainder
+                break
+        if not role or not direct_name:
+            continue
+
+        doc_id = str(item.get("OrigID") or item.get("ID") or "").strip()
+        if not GOOGLE_DOC_ID_RE.fullmatch(doc_id):
+            continue
+
+        virtual_name = _virtual_gdoc_name(direct_name)
+        virtual_remote_path = remote_path.rsplit("/", 1)[0] + "/" + virtual_name
+        results.append(
+            {
+                "name": virtual_name,
+                "path": f"Google Drive:/{virtual_remote_path}",
+                "drive_path": remote_path,
+                "extension": ".gdoc",
+                "size": None,
+                "role": role,
+                "editable_google_source": True,
+                "edit_url": f"https://docs.google.com/document/d/{doc_id}/edit",
+                "pdf_export_url": f"https://docs.google.com/document/d/{doc_id}/export?format=pdf",
+                "google_doc_id": doc_id,
+                "source_backend": "rclone-metadata-index",
+            }
+        )
+
+    return results, []
+
+
+def preferred_editable_sources(
+    filesystem_sources: list[dict[str, Any]],
+    indexed_sources: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Apply the accepted SourceDocs-first, Archive-fallback Manager rule."""
+    candidates = [
+        item
+        for item in [*filesystem_sources, *indexed_sources]
+        if item.get("extension") == ".gdoc" and item.get("edit_url")
+    ]
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in candidates:
+        identity = str(item.get("google_doc_id") or "").strip()
+        if identity:
+            key = ("id", identity)
+        else:
+            key = (
+                str(item.get("role") or "").upper(),
+                str(item.get("name") or "").casefold(),
+            )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+
+    source_docs = [item for item in deduped if str(item.get("role") or "").upper() == "SOURCEDOC"]
+    if source_docs:
+        return source_docs
+    return [item for item in deduped if str(item.get("role") or "").upper() == "ARCHIVE"]
