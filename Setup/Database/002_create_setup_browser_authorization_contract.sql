@@ -2,7 +2,7 @@
 MSB Setup Session — browser authorization contract
 Issue: #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-06 V0.2.0
+Revision: 2026-09-06 V0.3.0
 
 Pattern:
   Reuses the accepted Controller Management boundary:
@@ -12,14 +12,19 @@ Pattern:
     access to Directus system tables.
 
 Capabilities:
-  Production Crew / Volunteer -> read Setup only.
-  Manager                     -> read + manage reusable/annual Setup data.
-  Administrator/admin_access  -> read + manage + create annual Setup Session.
+  Production Crew / Volunteer -> read Setup + Container/Display movement/scanning.
+  Manager                     -> movement + manage reusable/annual Setup data.
+  Administrator/admin_access  -> Manager capabilities + create annual Setup Session.
 
-Important:
-  Production Crew / Volunteer does not receive Setup write capability from this
-  contract. Field movement/status writes are Manager/Admin actions unless a
-  later explicitly reviewed capability is added.
+Initial conservative rollout:
+  - Production Crew / Volunteer may record only governed physical movement
+    actions such as Container/Display scans, moves, and unload confirmations.
+  - Production Crew / Volunteer may not edit reusable task definitions,
+    dependencies, annual verification/actuals, planning/schedule data, or
+    Procedure-maintenance data.
+  - Generic task-completion writes are NOT granted to Production Crew /
+    Volunteer by this contract. That may be added later as a separate reviewed
+    capability if field experience supports it.
 ============================================================================ */
 
 BEGIN;
@@ -46,6 +51,7 @@ RETURNS TABLE (
     role_name text,
     policy_names text[],
     can_read_setup boolean,
+    can_move_setup_assets boolean,
     can_manage_setup boolean,
     can_admin_setup boolean
 )
@@ -114,7 +120,7 @@ AS $function$
                           OR p.name IN ('Volunteer', 'Production Crew', 'Manager', 'Administrator')
                       )
                 )
-            ) AS can_read
+            ) AS can_field
         FROM user_row u
     )
     SELECT
@@ -122,7 +128,8 @@ AS $function$
         coalesce(r.display_name, r.email) AS display_name,
         r.role_name,
         r.policy_names,
-        r.can_read AS can_read_setup,
+        r.can_field AS can_read_setup,
+        r.can_field AS can_move_setup_assets,
         r.can_manage AS can_manage_setup,
         r.can_admin AS can_admin_setup
     FROM resolved r;
