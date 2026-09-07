@@ -1,7 +1,6 @@
 :root {
   --theme-input: #ffffff;
   --theme-subtle: #f8fafb;
-  --theme-soft: #eef2f5;
   --theme-stage: #f2f5f7;
   --theme-pill: #edf0f3;
   --theme-pill-text: #4d5964;
@@ -29,13 +28,16 @@
     --shadow: 0 2px 8px rgb(0 0 0 / 28%);
     --theme-input: #0f172a;
     --theme-subtle: #0f172a;
-    --theme-soft: #172033;
     --theme-stage: #172033;
     --theme-pill: #202b3d;
     --theme-pill-text: #c7d2df;
     --theme-dependency: #c2ccd8;
     --theme-notice-bg: #342d16;
     --theme-notice-border: #6e5f24;
+  }
+
+  html:not([data-theme="light"]) .brand img {
+    filter: brightness(1.12) contrast(.95);
   }
 }
 
@@ -61,13 +63,16 @@ html[data-theme="dark"] {
   --shadow: 0 2px 8px rgb(0 0 0 / 28%);
   --theme-input: #0f172a;
   --theme-subtle: #0f172a;
-  --theme-soft: #172033;
   --theme-stage: #172033;
   --theme-pill: #202b3d;
   --theme-pill-text: #c7d2df;
   --theme-dependency: #c2ccd8;
   --theme-notice-bg: #342d16;
   --theme-notice-border: #6e5f24;
+}
+
+html[data-theme="dark"] .brand img {
+  filter: brightness(1.12) contrast(.95);
 }
 
 input,
@@ -116,11 +121,4 @@ button.secondary,
 .procedure-action-disabled {
   background: var(--theme-input);
   color: var(--text);
-}
-
-html[data-theme="dark"] .brand img,
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme="light"]) .brand img {
-    filter: brightness(1.12) contrast(.95);
-  }
 }
