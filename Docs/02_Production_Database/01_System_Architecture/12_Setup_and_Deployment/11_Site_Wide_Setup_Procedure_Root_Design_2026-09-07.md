@@ -4,7 +4,7 @@
 |---|---|
 | Status | DESIGN DIRECTION — Issue #122; not yet Production deployed |
 | Owner | Setup and Deployment |
-| Scope | Non-LOR Setup work such as Command Center, WiFi, site power, street lights, and other site-wide/infrastructure tasks |
+| Scope | Non-LOR Setup work such as park-wide site power, street lights, breakers, and other infrastructure tasks with no appropriate Stage/Scene owner |
 
 ## Problem
 
@@ -12,15 +12,14 @@ Setup Session has a demonstrated class of critical reusable work that does not b
 
 Examples identified during Manager review include:
 
-- deliver and set up the Command Center trailer;
-- install the WiFi antenna in the tree, including boom-lift work and aiming toward the remote endpoint;
-- install the gateway and test the internet connection;
-- deploy hotspots after internet connectivity is verified;
-- remove street lights;
-- convert street lights to show power by switching fuses; and
-- turn on breakers / perform other site-wide power-enablement work.
+- remove street lights where required for show operation;
+- convert street-light circuits to show power by switching approved fuses;
+- turn on site breakers; and
+- other genuinely park-wide infrastructure work with no appropriate Stage/Scene owner.
 
 These are real Setup tasks because they require intentional planning, may have prerequisites/resources, can be missed, and produce useful annual execution history. They are not LOR-authored work and should not derive identity or filesystem placement from LOR Preview/Scene evidence.
+
+A task does **not** become Site-wide merely because it has no wired inventory items. `40-CommandCenter`, for example, is a legitimate Stage with its own current LOR Preview even though that Preview may contain no wired inventory items. Command Center Setup tasks and Procedures remain Stage-40 work when Stage 40 is the correct operational owner.
 
 ## Required boundary
 
@@ -70,12 +69,13 @@ G:\Shared drives\Display Folders\41 Park Infrastructure-PI\
 
 The leading `41` keeps this folder adjacent to the existing numbered park-area folders in normal Windows/Google Drive sorting. **The space after `41` is deliberate.**
 
-Current Folder Alignment classifies any top-level folder beginning `NN-` as a Stage candidate. Therefore:
+Current Folder Alignment recognizes top-level Stage candidates using the `NN-...` form. Therefore:
 
 ```text
-41-Park Infrastructure-PI   INVALID for this use — collides with Stage-folder classification
-41 Park Infrastructure-PI   APPROVED — sortable, explicit non-LOR root
+41 Park Infrastructure-PI
 ```
+
+remains outside the Stage-folder classifier while still sorting in the intended location.
 
 `PI` is a human-facing Park Infrastructure code only. It is not an LOR Stage short code and does not establish Stage 41.
 
@@ -127,12 +127,14 @@ Site-wide/infrastructure tasks participate in the normal Setup model:
 
 They do **not** require LOR membership.
 
+Scheduling remains fully available because Setup Session schedules reusable/annual task records, not LOR folders.
+
 ## Engineering work still required
 
 Before Production deployment:
 
 1. create and mark `41 Park Infrastructure-PI` according to the Google Drive operator procedure;
-2. verify Setup task scope identifies site-wide/infrastructure work without inventing a Stage/Scene;
+2. verify Setup task scope identifies park-wide/no-Stage work without inventing a Stage/Scene;
 3. verify Procedure-root resolution safely consumes only the approved non-LOR root;
 4. keep tests proving LOR Stage/Scene resolution remains unchanged;
 5. keep tests proving arbitrary browser filesystem paths cannot select a non-LOR root;
@@ -142,6 +144,7 @@ Before Production deployment:
 ## Related authority
 
 - `Docs/00_Project_Overview/Google_Drive/operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md`
+- `Docs/01_LOR_System/02_Data_Extraction/Folder_Alignment/engineering/Park_Infrastructure_Non_LOR_Root_2026-09-07.md`
 - `System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md`
 - `Docs/00_Project_Overview/Google_Drive/engineering/Google_Drive_Path_Resolution_Contract.md`
 - `Procedures/Application/README.md`
