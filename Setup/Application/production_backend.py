@@ -26,6 +26,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_production.js",
         "setup_resource_review.css",
         "setup_resource_review.js",
+        "setup_review_usability.css",
+        "setup_review_usability.js",
     }
 )
 
