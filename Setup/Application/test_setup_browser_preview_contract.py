@@ -6,7 +6,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 ACCEPT = SETUP_DIR / "Acceptance"
-CANDIDATE_SHA = "4c7e0b40baf1a6785be7635f149822ea6110c442"
+CANDIDATE_SHA = "874a1f7d090676b97de1881df973fab08985085a"
 
 
 def test_preview_harness_files_exist() -> None:
@@ -84,6 +84,19 @@ def test_preview_uses_production_setup_app_and_read_only_display_folders() -> No
     assert "test -x /mnt/msb-display-folders" in server
 
 
+def test_preview_bridges_google_doc_identity_without_exposing_rclone_credentials() -> None:
+    server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
+
+    assert 'sudo -u msb-docs-fs -H /usr/bin/rclone lsjson' in server
+    assert '--original' in server
+    assert 'SETUP_GOOGLE_DOC_INDEX="$GOOGLE_DOC_INDEX"' in server
+    assert 'sudo chown msb-docs-fs:msb-docs-read "$GOOGLE_DOC_INDEX"' in server
+    assert 'sudo chmod 0640 "$GOOGLE_DOC_INDEX"' in server
+    assert 'Mega Cube Google Doc/native Word discrimination: PASS' in server
+    assert '03-Mega Cube-MC Setup Procedure.gdoc' in server
+    assert 'Randy' in server
+
+
 def test_preview_checks_resource_api_and_review_target() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
     assert '/api/setup/resources' in server
@@ -102,5 +115,6 @@ def test_preview_cleanup_guards_live_checkout_and_setup_fingerprint() -> None:
     assert "live shared checkout unchanged" in server
     assert "worktree remove --force" in server
     assert "docker rm -f" in server
+    assert 'rm -f "$DUMP_FILE" "$GOOGLE_DOC_INDEX"' in server
     assert "msb-setup-browser-preview-candidate-" in cleanup
     assert "msb-setup-browser-preview-" in cleanup
