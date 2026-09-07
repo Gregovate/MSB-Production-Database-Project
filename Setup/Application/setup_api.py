@@ -1,4 +1,4 @@
-"""Protected production API for Setup Session Manager/Admin workflows."""
+"""Protected production API for Setup Session role-governed workflows."""
 from __future__ import annotations
 
 import os
@@ -20,7 +20,7 @@ class SetupAuthenticationError(RuntimeError):
 
 
 class SetupCommandError(RuntimeError):
-    """Browser write request did not satisfy the command boundary."""
+    """Setup request did not satisfy the authorization/command boundary."""
 
 
 def setup_database_dsn() -> str:
@@ -63,10 +63,30 @@ def json_body() -> dict[str, Any]:
     return payload
 
 
-def require_manager() -> tuple[SetupRepository, str, dict[str, Any]]:
+def require_reader() -> tuple[SetupRepository, str, dict[str, Any]]:
+    """Require an active Directus user/policy authorized to view Setup."""
     repo = setup_repository()
     email = authenticated_email()
     access = repo.capabilities(email)
+    if not access.get("can_read_setup"):
+        raise SetupCommandError("Setup read access is not authorized for this account")
+    return repo, email, access
+
+
+def require_movement_operator() -> tuple[SetupRepository, str, dict[str, Any]]:
+    """Authorize Container/Display movement/scanning only.
+
+    This capability is intentionally separate from reusable-task, annual-review,
+    planning, schedule, Procedure-maintenance, and generic task-completion writes.
+    """
+    repo, email, access = require_reader()
+    if not access.get("can_move_setup_assets"):
+        raise SetupCommandError("Setup asset movement is not authorized for this account")
+    return repo, email, access
+
+
+def require_manager() -> tuple[SetupRepository, str, dict[str, Any]]:
+    repo, email, access = require_reader()
     if not access.get("can_manage_setup"):
         raise SetupCommandError("Setup maintenance is not authorized for this account")
     return repo, email, access
@@ -87,23 +107,23 @@ def api_setup_access() -> Response:
 
 @setup_api.get("/api/setup/seasons")
 def api_setup_seasons() -> Response:
-    authenticated_email()
-    return jsonify(seasons=setup_repository().seasons())
+    repo, _email, _access = require_reader()
+    return jsonify(seasons=repo.seasons())
 
 
 @setup_api.get("/api/setup/stages")
 def api_setup_stages() -> Response:
-    authenticated_email()
-    return jsonify(stages=setup_repository().stages())
+    repo, _email, _access = require_reader()
+    return jsonify(stages=repo.stages())
 
 
 @setup_api.get("/api/setup/tasks")
 def api_setup_tasks() -> Response:
-    authenticated_email()
+    repo, _email, _access = require_reader()
     raw_year = request.args.get("season_year", "").strip()
     if not raw_year.isdigit():
         raise SetupCommandError("season_year is required")
-    return jsonify(tasks=setup_repository().tasks(int(raw_year)))
+    return jsonify(tasks=repo.tasks(int(raw_year)))
 
 
 @setup_api.post("/api/setup/sessions")
