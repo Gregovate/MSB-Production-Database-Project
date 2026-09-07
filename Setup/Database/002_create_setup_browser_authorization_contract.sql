@@ -2,7 +2,7 @@
 MSB Setup Session — browser authorization contract
 Issue: #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-06 V0.1.0
+Revision: 2026-09-06 V0.2.0
 
 Pattern:
   Reuses the accepted Controller Management boundary:
@@ -12,9 +12,14 @@ Pattern:
     access to Directus system tables.
 
 Capabilities:
-  Production Crew / Volunteer -> execute field Setup work/movement.
-  Manager                     -> execute + manage reusable/annual Setup data.
-  Administrator/admin_access  -> execute + manage + create annual Setup Session.
+  Production Crew / Volunteer -> read Setup only.
+  Manager                     -> read + manage reusable/annual Setup data.
+  Administrator/admin_access  -> read + manage + create annual Setup Session.
+
+Important:
+  Production Crew / Volunteer does not receive Setup write capability from this
+  contract. Field movement/status writes are Manager/Admin actions unless a
+  later explicitly reviewed capability is added.
 ============================================================================ */
 
 BEGIN;
@@ -40,7 +45,7 @@ RETURNS TABLE (
     display_name text,
     role_name text,
     policy_names text[],
-    can_execute_setup boolean,
+    can_read_setup boolean,
     can_manage_setup boolean,
     can_admin_setup boolean
 )
@@ -95,7 +100,21 @@ AS $function$
                            OR (u.role_id IS NOT NULL AND a.role = u.role_id))
                       AND (p.admin_access OR p.name = 'Administrator')
                 )
-            ) AS can_admin
+            ) AS can_admin,
+            (
+                u.role_name IN ('Production Crew', 'Manager', 'Administrator')
+                OR EXISTS (
+                    SELECT 1
+                    FROM public.directus_access a
+                    JOIN public.directus_policies p ON p.id = a.policy
+                    WHERE (a."user" = u.user_id
+                           OR (u.role_id IS NOT NULL AND a.role = u.role_id))
+                      AND (
+                          p.admin_access
+                          OR p.name IN ('Volunteer', 'Production Crew', 'Manager', 'Administrator')
+                      )
+                )
+            ) AS can_read
         FROM user_row u
     )
     SELECT
@@ -103,11 +122,7 @@ AS $function$
         coalesce(r.display_name, r.email) AS display_name,
         r.role_name,
         r.policy_names,
-        (
-            r.can_manage
-            OR r.role_name = 'Production Crew'
-            OR 'Volunteer' = ANY(r.policy_names)
-        ) AS can_execute_setup,
+        r.can_read AS can_read_setup,
         r.can_manage AS can_manage_setup,
         r.can_admin AS can_admin_setup
     FROM resolved r;
