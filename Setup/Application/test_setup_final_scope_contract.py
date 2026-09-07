@@ -79,3 +79,10 @@ def test_seed_verification_query_does_not_reference_dropped_temp_map_after_commi
     after_commit = seed.split("COMMIT;", 1)[1]
     assert "_setup_review_map" not in after_commit
     assert "reusable_notes LIKE '[Setup review seed %'" in after_commit
+
+
+def test_crew_lane_migration_supersedes_old_schedule_command_signature() -> None:
+    migration = read(REPO_ROOT / "Setup" / "Database" / "011_create_setup_planning_order_and_crew_lanes.sql")
+    assert "DROP FUNCTION IF EXISTS ops.set_setup_work_day_task(" in migration
+    assert "text,bigint,bigint,text,integer,integer,boolean" in migration
+    assert "ops.set_setup_work_day_task(text,bigint,bigint,text,text,integer,integer,boolean)" in migration
