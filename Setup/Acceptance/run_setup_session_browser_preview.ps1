@@ -12,7 +12,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'setup_session_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/setup-session-production-foundation'
-$CandidateSha = 'c72644f02b825acb830603fe6b4f7bd48713b681'
+$CandidateSha = '831bbc70311479b33a062842ba60e71ccfa0ce86'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -102,10 +102,28 @@ try {
     Write-LinuxTextFile -Source $PreviewEntry -Destination $localEntry
     Write-LinuxTextFile -Source $CleanupServerScript -Destination $localCleanup
 
+    $serverText = [System.IO.File]::ReadAllText($localServer)
+
+    # Keep the checked-in server harness reusable while packaging the exact accepted
+    # candidate selected above for this browser-review run.
+    $targetOld = 'TARGET_SHA="c72644f02b825acb830603fe6b4f7bd48713b681"'
+    $targetNew = "TARGET_SHA=`"$CandidateSha`""
+    if (-not $serverText.Contains($targetOld)) {
+        throw 'Setup browser preview server template no longer contains the expected candidate SHA placeholder.'
+    }
+    $serverText = $serverText.Replace($targetOld, $targetNew)
+
+    # Include the Manager-review usability contract in the detached candidate gate.
+    $testOld = '        Setup/Application/test_setup_google_doc_index_contract.py'
+    $testNew = "        Setup/Application/test_setup_google_doc_index_contract.py \`n        Setup/Application/test_setup_review_usability_contract.py"
+    if (-not $serverText.Contains($testOld)) {
+        throw 'Setup browser preview server template no longer contains the expected detached regression list.'
+    }
+    $serverText = $serverText.Replace($testOld, $testNew)
+
     # The preview server performs one post-start JSON validation with the production
     # Python runtime. /opt/fieldwiring is intentionally not traversable by msbadmin,
     # so package that one validator under the fieldwiring runtime account as well.
-    $serverText = [System.IO.File]::ReadAllText($localServer)
     $validatorOld = "/opt/fieldwiring/.venv/bin/python - `"`$MEGA_PROCEDURE`" <<'PY'"
     $validatorNew = "sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - `"`$MEGA_PROCEDURE`" <<'PY'"
     if (-not $serverText.Contains($validatorOld)) {
