@@ -1,63 +1,114 @@
 # Setup Session Application
 
-Status: **PROTOTYPE — 2025 HISTORICAL VERIFICATION UI; NO DATABASE OR DRIVE WRITES**
+Status: **PRODUCTION RUNTIME OPERATIONAL — 2025 HISTORICAL REVIEW / TRAINING; UI/WORKFLOW IN LIVE EVALUATION**
 
-This folder contains the first browser-native Setup Session application prototype.
+This folder contains the browser-native Setup Session application used for the Production-backed 2025 Historical Verification workflow.
 
-It exists to validate the Setup task model, 2025 historical reconstruction, Procedure knowledge, and field movement workflow with usable screens before PostgreSQL DDL or Google Drive write automation is approved.
-
-## Why this prototype exists
-
-The historical reconstruction spreadsheet is evidence, not a reliable review UI. Sorting changed the visible order and several right-side keys were difficult to interpret. The first validation target is therefore the application experience itself:
+The application is live at:
 
 ```text
-reconstruction evidence
-    -> provisional 2025 task data
-        -> usable browser UI
-            -> manager/team verification and correction
-                -> approved reusable task catalog
-                    -> Admin creates 2026 Setup Session
+https://my.sheboyganlights.org/setup/
 ```
 
-Do not treat provisional task rows as approved production truth.
+The current Production entry point is:
 
-## Application direction
+```text
+Setup/Application/production_backend.py
+```
 
-The Setup application follows the current MSB browser-native pattern used by FieldWiring / Controller Inventory:
+Current reported version:
 
-- browser-native HTML/CSS/JavaScript UI;
-- Flask backend for controlled read/API work;
-- PostgreSQL remains authoritative in production;
-- Cloudflare Access identifies the signed-in user when deployed;
-- Directus remains role/policy authority where reused;
-- Manager/Admin writes must go through a governed server-side write boundary;
-- no broad writable browser PostgreSQL role.
+```text
+V0.3.4-shared-season-guard-review
+```
 
-The current prototype backend does not write PostgreSQL or Google Drive.
+## Current Production Meaning
 
-## First prototype scope
+The 2025 Setup Session is real Production data, not disposable test data.
 
-The prototype includes:
+Managers/reviewers use it to:
 
-- `2025 — Historical Verification` season context;
-- reusable task review with plain-English predecessor names;
-- explicit separation between reusable definition and 2025 historical actual;
-- verification states: `UNVERIFIED`, `VERIFIED`, `NEEDS CORRECTION`;
-- a broader provisional Setup task library across representative Stages instead of only Arch Trailer unload tasks;
-- representative general/support work, Mega Cube, Whoville, Elf Choir, Stars, Icicle Tunnel, Candyland, Polar Bear Playground, Racing Arches, Magic Igloo, Food Collection, and Command Center tasks;
-- provisional Magic Igloo phased work and common readiness/power-up tasks;
-- reusable Arch Trailer unload tasks;
-- Container 34 shared-load simulation across Racing Arches, Polar Bear Playground, Icicle Tunnel, Stars, Candyland, and Food Collection;
-- bulk unload behavior where only Displays still traveling with the Container follow later Container movement;
-- Setup Procedure review state on the task detail page;
-- Manager-facing discovery of editable Google Doc sources plus the current published Setup PDF;
-- local browser persistence for prototype task/instruction-review edits only.
+- reconstruct and correct 2025 annual Setup information;
+- verify records where evidence exists;
+- add/correct reusable Setup tasks;
+- add/correct reusable resources and prerequisites;
+- improve task scope, order, crew/time/readiness information;
+- review current Setup Procedure context; and
+- identify UI/workflow/data-model problems before the 2026 Setup Session is created.
 
-## Manager Setup Procedure workflow
+Production deployment is accepted, but the Setup/UI subsystem is intentionally **not final**. PRs #123, #124, and #125 remain open while real-use findings are collected and resolved.
 
-The Setup application uses the existing documented Procedure folder structure. It does not require a separate Setup-specific document layout and does not require the 2025 verification pass to reorganize existing files first.
+## Application Architecture
 
-Documented structure:
+The Production application follows the MSB browser-native pattern:
+
+```text
+browser
+  -> Cloudflare Access
+  -> Synology /setup/ reverse proxy
+  -> msb-setup.service on 192.168.5.9:8794
+  -> production_backend.py
+  -> Setup APIs/repositories
+  -> PostgreSQL msb through fieldwiring_app
+  -> shared Field Context / Procedure resolver
+  -> read-only Display Folders / Google-native link view
+```
+
+Key boundaries:
+
+- PostgreSQL remains authoritative;
+- Cloudflare Access provides authenticated identity at the perimeter;
+- Setup capabilities are resolved server-side;
+- writes use narrow governed PostgreSQL command functions;
+- the browser does not receive broad table DML authority;
+- Stage/Sub-stage/Scene path resolution reuses the accepted shared resolver; and
+- Google Drive Procedure publishing remains separately controlled.
+
+## Annual vs Reusable Data
+
+The application deliberately separates:
+
+```text
+Annual 2025 information
+    = what happened or was planned in 2025
+
+Reusable Setup knowledge
+    = normal task/resource/prerequisite/scope/order information
+      that may carry forward to later seasons
+```
+
+A one-off 2025 condition must not be written into reusable knowledge merely to make the historical record fit.
+
+## Session-Year Guard
+
+The selected Setup Session owns the allowed operational year.
+
+```text
+2025 session -> 2025 operational dates/timestamps only
+2026 session -> 2026 operational dates/timestamps only
+```
+
+The browser constrains date controls and the database independently enforces the same rule. Audit timestamps remain real current timestamps.
+
+## Current Manager / Reviewer Capabilities
+
+The live review workflow supports the current governed application behavior for:
+
+- reading the 2025 annual task list;
+- reviewing verification state;
+- correcting supported annual information;
+- creating/copying reusable tasks;
+- maintaining task scope and order;
+- maintaining prerequisites;
+- maintaining structured equipment/resources;
+- reviewing supported planning information; and
+- opening current Setup Procedure/document context.
+
+Only Administrators may create annual Setup Sessions or promote an annual planned order into the reusable future baseline.
+
+## Procedure / Google Drive Contract
+
+Stage- and Scene-scoped tasks use the established Procedure layout:
 
 ```text
 <Stage / Sub-stage / Scene>\Procedures\Setup\
@@ -67,169 +118,88 @@ Documented structure:
     SourceDocs\
 ```
 
-Normal roles remain:
+Park-wide work with no appropriate LOR Stage/Scene uses:
 
 ```text
-Procedures\Setup\SourceDocs
-    = normal editable/source area
-
-Procedures\Setup\Archive
-    = legacy / historical / superseded material
-
-Procedures\Setup
-    = current published field PDF(s)
+G:\Shared drives\Display Folders\41 Park Infrastructure-PI\Procedures\Setup
 ```
 
-The Manager screen and production-crew Procedure screen intentionally have different visibility.
+The application may expose both the current published PDF and an editable Google-native source to authorized Managers. If the editable procedure is corrected, the current published PDF must also be updated before the instruction is treated as current.
+
+The runtime uses `/mnt/msb-setup-google-links` to expose link-form representations of native Google documents without converting normal Word documents.
+
+## Production Runtime
+
+Permanent source checkout:
 
 ```text
-Production crew
-    -> current published PDF directly in Procedures\Setup
-
-Authorized Manager
-    -> open the applicable editable .gdoc source
-    -> correct it during 2025 verification
-    -> regenerate/export and replace the published PDF after a source change
+/opt/msb-setup
 ```
 
-### 2025 compatibility rule for existing Archive .gdoc files
-
-Some current editable Google Docs were historically placed in `Procedures\Setup\Archive`. Correcting every folder before Setup Session verification would create unnecessary work and is **not** a prerequisite for the Setup system.
-
-For the 2025 verification cycle, editable-source discovery therefore follows this compatibility rule:
+Current deployed source SHA:
 
 ```text
-1. Prefer editable .gdoc file(s) in Procedures\Setup\SourceDocs.
-2. If none exist there, use existing editable .gdoc file(s) in Procedures\Setup\Archive in place.
-3. Do not move or rename the file merely to make Setup Session work.
-4. Production crew still sees only the PDF directly in Procedures\Setup.
-5. If the Manager edits the Google Doc, the published PDF must be replaced before the instruction is marked verified/current.
+c0639c5b04de667176a8d8eef14fce0409f03ec6
 ```
 
-This compatibility rule does not redefine the documented folder meanings. It allows the Setup application to work against the current installed document estate without blocking on Folder Alignment cleanup.
+Service/runtime facts are owned by `Gregovate/MSB-Server-Management`.
 
-The Manager task detail page therefore presents the Procedure workflow as actions, not as a folder-governance lesson:
+Current accepted service state:
 
 ```text
-Editable procedure
-    <source>.gdoc
-    <full source path>
-    [Open Editable Procedure]
-    [Export Updated PDF]
-
-Published field PDF
-    <current>.pdf
-    [Open Current PDF]
-
-If the Google Doc is edited, replace the published PDF before marking the instruction verified.
+msb-setup.service              = active / enabled
+msb-setup-google-links.service = active / enabled
+listener                       = 192.168.5.9:8794
+public route                   = https://my.sheboyganlights.org/setup/
 ```
 
-The current prototype can open the Google Doc and request Google's PDF export when the mounted `.gdoc` shortcut exposes a resolvable Google document identity. It does not yet automate replacement of the PDF in Google Drive.
+## Prototype Lineage
 
-## Procedure resolution modes
+Earlier files in this folder include prototype-era UI and local validation support. They remain useful lineage and test evidence, but they are not the Production entry point.
 
-### Production direction — shared field-context resolver
+Do not infer current Production behavior from old prototype comments or local-storage-only code paths. Current authority is the Production entry point, current tests, current database migrations, and the Setup engineering handoff.
 
-When a read-only database source is configured, the Setup prototype reuses the accepted shared Field Context / Procedure resolver. This remains the production direction.
+## Current Boundaries
 
-### Local validation fallback — exact Stage key only
+Still outside the accepted Production-ready workflow:
 
-For local 2025 review, when no database DSN/snapshot is configured but `SETUP_DRIVE_ROOT` is available, the prototype may resolve the Stage folder directly by exact leading Stage key.
+- Pick List generation; and
+- Container/Display movement/scanning write commands.
 
-Example:
+Do not infer movement history merely because identifiers are scanned or because a review action occurs.
 
-```text
-stage_key = 04
-    -> exactly one direct folder beginning 04-
-    -> G:\Shared drives\Display Folders\04-Food Collection-FC
-```
+The application also does not automatically publish revised PDFs back into Google Drive.
 
-For Sub-stages, the prototype may inspect one nested folder level when the exact key is not a direct child.
+## Testing / Live Evaluation
 
-This fallback:
+Automated contract tests remain useful for application changes, but final UI/workflow acceptance depends on real 2025 review use by Managers.
 
-- is prototype-only;
-- requires exactly one matching folder;
-- does not fuzzy-match Stage names;
-- does not replace the universal resolver in production.
+During live evaluation, collect:
 
-For Food Collection, the existing editable source currently being reviewed is:
+- bugs;
+- confusing labels or fields;
+- missing information;
+- difficult task/resource/prerequisite workflows;
+- navigation/search/filter issues;
+- operational suggestions; and
+- places where the UI does not match how Setup work is actually planned or performed.
 
-```text
-G:\Shared drives\Display Folders\04-Food Collection-FC\Procedures\Setup\Archive\04-Food Collection-FC.gdoc
-```
+Do not create fake Production work days, movement events, or throwaway records merely to exercise controls.
 
-The prototype uses that file in place under the 2025 compatibility rule; it does not require moving it to `SourceDocs`.
+## Engineering Resume
 
-## Shared Container acceptance rule
+Before changing the application:
 
-For Container 34 / Arch Trailer:
+1. read `System_Documentation/Project_Rules/README.md`;
+2. read `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`;
+3. read the current Production engineering handoff;
+4. review PRs #123, #124, and #125 together;
+5. review current manager/reviewer findings; and
+6. use `Gregovate/MSB-Server-Management` for live runtime facts and deployment runbooks.
 
-```text
-scan/move Container to destination
-    -> all Displays still WITH_CONTAINER inherit that Setup location
+## Related Documentation
 
-execute reusable unload task
-    -> expected Display group is unloaded at that location
-    -> those Displays detach from Container movement
-
-move Container again
-    -> only Displays still WITH_CONTAINER follow it
-```
-
-Completing or correcting a Display/task may later reconcile missed movement evidence, but the system must never invent intermediate movement events that were not observed.
-
-## Prototype-only data
-
-The first screen intentionally uses known representative facts and clearly marks task details as provisional. It is not a replacement for the 2025 historical verification process.
-
-Confirmed Container 34 Display grouping used for the movement acceptance case:
-
-- Racing Arches — 48 Displays
-- Icicle Tunnel — 36 Displays
-- Stars — 24 Displays
-- Food Collection — 8 Displays
-- Polar Bear Playground — 3 Displays
-- Candyland — 2 Displays
-
-Total: 121 Displays.
-
-The broader non-unload task rows are representative provisional review data derived from current Setup planning evidence. Managers/team leaders must verify task boundaries, order, prerequisites, crew, equipment, timing, material, and Procedure applicability in the UI.
-
-## Running locally
-
-Use the project virtual environment, then run the Flask prototype from the repository root:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-$env:SETUP_DRIVE_ROOT = 'G:\Shared drives\Display Folders'
-python .\Setup\Application\backend.py
-```
-
-Open:
-
-```text
-http://localhost:8780/
-```
-
-A database DSN is **not required** for the local exact-Stage-key prototype fallback. If `SETUP_DATABASE_DSN`, `PROCEDURE_DATABASE_DSN`, `FIELDWIRING_DATABASE_DSN`, or a configured development snapshot is present, the application uses the shared field-context resolver instead.
-
-After pulling a prototype update, restart Flask when backend code changed and use a hard browser refresh so the versioned CSS/JavaScript reloads.
-
-## Production boundary
-
-This prototype does not:
-
-- create or alter PostgreSQL tables;
-- create a Setup Session in production;
-- write movement history;
-- modify Google Drive;
-- automatically replace a published PDF;
-- reorganize Procedure folders;
-- replace the current Scan or Procedure applications;
-- establish final authorization behavior;
-- approve reconstructed 2025 task order, dependencies, dates, or actuals.
-
-Production schema, Procedure publication writes, and final authorization remain gated on validation through this UI and the authoritative Setup/Deployment documentation under:
-
-`Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment`
+- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md`
+- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md`
+- `Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md`
+- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-07.md`
