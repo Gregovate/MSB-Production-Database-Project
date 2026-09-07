@@ -1,0 +1,59 @@
+.review-stage {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.review-stage-heading {
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #eef3f7;
+  border: 1px solid var(--border);
+  font-weight: 800;
+  font-size: .88rem;
+}
+
+.review-stage .task-row {
+  margin: 0;
+}
+
+.stage-gap-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #fafbfc;
+  padding: 12px;
+}
+
+.missing-stage .review-stage-heading,
+.missing-stage .library-stage-heading {
+  background: #fff8e8;
+}
+
+.missing-stage .stage-gap-row {
+  border-left: 5px solid var(--warning);
+}
+
+#summary-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  #summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  #summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-gap-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
