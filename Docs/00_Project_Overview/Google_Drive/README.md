@@ -12,7 +12,15 @@ If you are repairing or organizing an existing Stage/Scene, start with:
 
 If you are creating the non-LOR Procedure root for site-wide Setup work such as Command Center, WiFi, street lights, or site power, start with:
 
-- [Create the Site Infrastructure Procedure Folder](operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md)
+- [Create the Park Infrastructure Procedure Folder](operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md)
+
+The approved physical folder name is:
+
+```text
+G:\Shared drives\Display Folders\41 Park Infrastructure-PI
+```
+
+The space after `41` is intentional. Do **not** name this folder `41-Park Infrastructure-PI`; current Folder Alignment treats top-level `NN-` names as Stage candidates.
 
 ## What Do You Need To Do?
 
@@ -21,7 +29,7 @@ If you are creating the non-LOR Procedure root for site-wide Setup work such as 
 - [Repair or organize an existing Stage / Scene](operatorSOP/Repair_Existing_Stage_Scene.md)
 - [Add or verify MSB marker files](operatorSOP/Add_Verify_Marker_Files.md)
 - [Create a new Stage / Sub-stage / Scene documentation folder](operatorSOP/Create_Stage_Substage_Scene_Folder.md)
-- [Create the Site Infrastructure non-LOR Procedure folder](operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md)
+- [Create the `41 Park Infrastructure-PI` non-LOR Procedure folder](operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md)
 - [Align a legacy Setup document to the correct Stage / Scene](operatorSOP/Align_Legacy_Setup_Documents.md)
 - [Publish a current Setup instruction](operatorSOP/Publish_Current_Setup_Instruction.md)
 - [Create or update a field wiring diagram](../../01_LOR_System/01_Preview_Authoring/D_Create_Wiring_Backgrounds..md)
@@ -42,7 +50,7 @@ The normal team workflow should use those field systems to find current Wiring a
 | Material | Current published location | Working/history location |
 |---|---|---|
 | Stage/Scene Setup PDF | `<scope>\Procedures\Setup` | `SourceDocs` / `Archive` |
-| Site-wide / Infrastructure Setup PDF | `Site Infrastructure\Procedures\Setup` | `SourceDocs` / `Archive` |
+| Site-wide / Infrastructure Setup PDF | `41 Park Infrastructure-PI\Procedures\Setup` | `SourceDocs` / `Archive` |
 | Setup instruction images | `Procedures\Setup\images` | — |
 | Takedown PDF | `Procedures\Takedown` | `SourceDocs` / `Archive` |
 | Takedown instruction images | `Procedures\Takedown\images` | — |
@@ -54,7 +62,7 @@ The normal team workflow should use those field systems to find current Wiring a
 
 Putting a current field document in `Archive` or `SourceDocs` can prevent the field application from presenting it as current material.
 
-`Site Infrastructure` is a controlled **non-LOR** Setup Procedure root. Do not create a fake Stage, Scene, Preview, or LOR-derived name merely to store those Procedures.
+`41 Park Infrastructure-PI` is a controlled **non-LOR** Setup Procedure root. The numeric prefix exists only to keep the folder near the numbered park areas in normal sorting. It does not create LOR Stage 41, and `PI` is not an LOR Stage short code.
 
 ## Engineering
 
@@ -68,4 +76,4 @@ Start here only when you need to understand, troubleshoot, validate, or change h
 
 Do not guess by moving, renaming, deleting, or creating a folder based only on a similar filename.
 
-Use the Folder Alignment worklist for Stage/Scene material, preserve uncertain legacy material, and flag the item for review. For site-wide Setup work, use the dedicated `Site Infrastructure` Procedure-root procedure rather than forcing the work into LOR organization.
+Use the Folder Alignment worklist for Stage/Scene material, preserve uncertain legacy material, and flag the item for review. For site-wide Setup work, use the dedicated `41 Park Infrastructure-PI` Procedure-root procedure rather than forcing the work into LOR organization.
