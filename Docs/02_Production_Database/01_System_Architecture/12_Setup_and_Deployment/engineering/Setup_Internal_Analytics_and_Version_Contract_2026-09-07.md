@@ -1,4 +1,4 @@
-# Setup Internal Analytics and Visible Version Contract — 2026-09-07
+# Setup Internal Analytics and Visible Update Contract — 2026-09-07
 
 | Document Control | Value |
 |---|---|
@@ -9,17 +9,17 @@
 | GA4 property | MSB Internal Intranet |
 | Measurement ID | `G-X08ZTSY0VV` |
 | Analytics asset version | `2026-09-07.1` |
-| Visible application version | `Setup Session V0.3.4 — UI revision 2026-09-07.1` |
+| Visible page marker | `Updated 2026-09-07` |
 | Governing rule | `System_Documentation/Project_Rules/Internal_Web_Analytics_Rule.md` |
 
 ## Purpose
 
-Define the analytics and visible-deployment-version requirements for the Setup application so direct application use can be measured and an operator can identify the deployed UI revision without inspecting server files.
+Define the analytics and visible-update requirements for the Setup application so direct application use can be measured and an operator can identify how recently the deployed page was revised without inspecting server files.
 
 This contract was added after live Setup deployment exposed two acceptance gaps:
 
 1. the Setup application had no GA4 integration even though the Production Database project rule requires analytics for applications under `my.sheboyganlights.org`; and
-2. `production.html` had cache-busting asset revisions but no visible application revision/version marker.
+2. `production.html` had cache-busting asset revisions but no visible updated/version marker.
 
 ## GA4 Contract
 
@@ -72,25 +72,25 @@ Google Signals and advertising personalization remain disabled.
 
 GA4 is not the Setup audit log. User accountability and record-change history remain in MSB-controlled application/database logging.
 
-## Visible Version Contract
+## Visible Updated-Date Contract
 
-The Setup Production page must display a visible revision near the bottom of the page.
+The Setup Production page must display a small visible update marker near the bottom of the page.
 
 Current source marker:
 
 ```text
-Setup Session V0.3.4 — UI revision 2026-09-07.1
+Updated 2026-09-07
 ```
 
-The backend health endpoint continues to report the application release line:
+A semantic/application version is not required merely to satisfy this human-facing freshness marker. The backend health endpoint remains the technical application-release authority and currently reports:
 
 ```text
 V0.3.4-shared-season-guard-review
 ```
 
-The visible UI revision is intentionally more specific than the backend release line so cache/static-asset changes can be verified without pretending that every static correction is a new database/API release.
+The visible update date answers the simpler operator question: "Am I looking at the recently updated page?"
 
-When a maintained Setup UI revision changes, update the visible marker and affected cache-busting asset versions together as appropriate.
+When the maintained Setup page changes materially, update the visible date. Internal asset cache/version parameters remain separate technical controls and should be bumped when the corresponding asset changes.
 
 ## Production Asset Boundary
 
@@ -105,7 +105,7 @@ Setup/Application/test_setup_internal_analytics_contract.py
 They verify:
 
 - the Production page loads the versioned analytics asset;
-- the visible Setup version/revision is present;
+- the visible `Updated YYYY-MM-DD` marker is present;
 - the Production backend serves the analytics asset;
 - the approved Measurement ID is used;
 - Google Signals/ad personalization are disabled;
@@ -117,7 +117,7 @@ They verify:
 This contract is not fully accepted until the deployed Setup application proves:
 
 ```text
-[ ] /setup/ visibly shows the expected UI revision
+[ ] /setup/ visibly shows Updated 2026-09-07
 [ ] /setup/setup_analytics.js?v=2026-09-07.1 is served
 [ ] browser network/source confirms Measurement ID G-X08ZTSY0VV
 [ ] direct /setup/ page view appears in the MSB Internal Intranet GA4 property
