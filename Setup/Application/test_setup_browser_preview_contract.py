@@ -136,5 +136,6 @@ def test_stale_cleanup_handles_msb_docs_fs_owned_mount_root_and_fails_closed() -
 
     assert 'sudo rm -rf -- "$link_root"' in cleanup
     assert 'FAIL: stale Setup Google Doc link view is still mounted' in cleanup
-    assert "&& timeout --signal=TERM 7200s bash '$remoteScript'" in wrapper
-    assert "; timeout --signal=TERM 7200s bash '$remoteScript'" not in wrapper
+    assert "&& timeout --signal=TERM 28800s bash '$remoteScript'" in wrapper
+    assert "; timeout --signal=TERM 28800s bash '$remoteScript'" not in wrapper
+    assert 'timeout --signal=TERM 7200s' not in wrapper
