@@ -34,6 +34,46 @@ if (( ${#preview_pids[@]} > 0 )); then
     done
 fi
 
+# Remove only temporary Setup Google-Doc link-view mounts/processes.
+for link_root in /tmp/msb-setup-google-links-*; do
+    [[ -e "$link_root" ]] || continue
+    if mountpoint -q "$link_root" 2>/dev/null; then
+        echo "Unmounting stale Setup Google Doc link view: $link_root"
+        sudo fusermount -u "$link_root" >/dev/null 2>&1 \
+            || sudo umount "$link_root" >/dev/null 2>&1 \
+            || true
+    fi
+done
+
+mapfile -t link_pids < <(
+    ps -eo pid=,comm=,args= \
+        | awk '
+            $2 == "rclone" &&
+            $0 ~ /\/tmp\/msb-setup-google-links-/ {
+                print $1
+            }
+        '
+)
+for pid in "${link_pids[@]}"; do
+    [[ -n "$pid" ]] || continue
+    echo "Stopping stale Setup Google Doc rclone process: $pid"
+    sudo kill "$pid" >/dev/null 2>&1 || true
+done
+if (( ${#link_pids[@]} > 0 )); then
+    sleep 1
+    for pid in "${link_pids[@]}"; do
+        [[ -n "$pid" ]] || continue
+        if sudo kill -0 "$pid" >/dev/null 2>&1; then
+            sudo kill -KILL "$pid" >/dev/null 2>&1 || true
+        fi
+    done
+fi
+
+for link_root in /tmp/msb-setup-google-links-*; do
+    [[ -e "$link_root" ]] || continue
+    rm -rf -- "$link_root"
+done
+
 mapfile -t preview_containers < <(
     sudo docker ps -a --format '{{.Names}}' | grep '^msb-setup-browser-preview-' || true
 )
