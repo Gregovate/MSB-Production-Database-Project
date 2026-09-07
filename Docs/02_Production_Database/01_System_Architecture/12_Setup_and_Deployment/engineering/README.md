@@ -5,7 +5,7 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — permanent Setup application deployment in progress |
+| Status | CURRENT HANDOFF — Production runtime accepted; UI/workflow in live evaluation |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-07 |
 
@@ -15,32 +15,44 @@ The operator-facing instructions are separate under [`../operatorSOP/`](../opera
 
 ## Current State
 
-The V0.3.4 Production database promotion is accepted.
+Production deployment is operational and accepted at the runtime level.
 
 ```text
-2025 Setup Session          = HISTORICAL_VERIFICATION
-2025 annual tasks           = 57
-2025 UNVERIFIED tasks       = 57
-2026 Setup Sessions         = 0
-Setup work days             = 0
-Setup movement events       = 0
-active reusable Setup tasks = 57
+public application             = https://my.sheboyganlights.org/setup/
+application version            = V0.3.4-shared-season-guard-review
+2025 Setup Session             = HISTORICAL_VERIFICATION
+2025 annual tasks              = 57
+2025 UNVERIFIED tasks          = 57
+2026 Setup Sessions            = 0
+Setup work days                = 0
+Setup movement events          = 0
+active reusable Setup tasks    = 57
 ```
 
-The permanent protected application/service route is still being deployed. Intended public entry point:
+Accepted runtime state includes:
 
 ```text
-https://my.sheboyganlights.org/setup/
+/opt/msb-setup                 = permanent detached worktree
+msb-setup.service              = active / enabled
+msb-setup-google-links.service = active / enabled
+listener                       = 192.168.5.9:8794
+UFW                            = 8794/tcp from Synology 192.168.5.4 only
+Synology /setup/ route         = active
+Cloudflare-authenticated view  = PASS; real 2025 data rendered
+post-reboot invariants         = PASS
 ```
+
+The Setup/UI subsystem is **not final**. The three Setup PRs remain open drafts while managers use the 2025 session for real reconstruction/training and expose usability, workflow, data-model, and documentation problems.
 
 ## Start Here
 
-- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — current database/application/runtime boundary and exact resume point.
+- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — current database/application/runtime state, accepted deployment evidence, open PR structure, and live-evaluation resume point.
 - [Internal Web Backbone Handoff](Internal_Web_Backbone_Handoff.md) — source-subsystem contract for intranet navigation/search/application entry points.
+- [Setup Session Shared Review and Season-Year Guard](../Setup_Session_Shared_Review_and_Season_Year_Guard_2026-09-07.md) — annual-vs-reusable data boundary and session-year enforcement.
 
 ## Authoritative Implementation Sources
 
-Application/runtime source:
+Application source:
 
 ```text
 Setup/Application/
@@ -58,47 +70,72 @@ Production acceptance/install material:
 Setup/Acceptance/
 ```
 
-The Production Database owns Setup application/business/database behavior. `Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, and host permission facts.
+The Production Database repository owns Setup application/business/database behavior. `Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, and host permission facts.
 
-## Existing Engineering Evidence
+## Current PR Structure
 
-The dated engineering and historical evidence already stored directly in `12_Setup_and_Deployment/` remains valid supporting material. It is not being mass-moved during this conversion because that would create unnecessary inbound-link risk.
+The active Setup work remains intentionally open across three draft PRs:
 
-Important current planning/reconnaissance documents include:
+```text
+#123  reconnaissance / planning documentation lineage
+#124  browser UI / verification lineage
+#125  Production foundation / database / runtime lineage
+```
 
-- [`../11_Setup_Session_2026_Planning_Direction_2026-09-04.md`](../11_Setup_Session_2026_Planning_Direction_2026-09-04.md)
-- [`../Reusable_Setup_Work_Plan_and_Scheduler_Requirements_2026-09-06.md`](../Reusable_Setup_Work_Plan_and_Scheduler_Requirements_2026-09-06.md)
-- [`../Setup_Session_Engineering_Reconnaissance_2026-09-03.md`](../Setup_Session_Engineering_Reconnaissance_2026-09-03.md)
-- [`../Historical_Setup_Planning_Evidence_2024.md`](../Historical_Setup_Planning_Evidence_2024.md)
-- [`../Container_Stage_Relationship_Reconnaissance_2026-09-03.md`](../Container_Stage_Relationship_Reconnaissance_2026-09-03.md)
-
-Older Procedure/shared-field-context acceptance records in the parent folder remain historical engineering evidence and should not be exposed as normal operator task choices.
+Do not merge/close this stack merely because the application is reachable. Final normalization and merge should wait until enough real 2025 review use has occurred to identify and resolve material UI/workflow findings.
 
 ## Critical Runtime Permission Boundary
 
-`msbadmin` is the SSH administrator but does not have the `msb-docs-read` traversal permissions used by the `fieldwiring` runtime account on `/mnt/msb-display-folders`.
+`msbadmin` is the SSH administrator but does not have the `msb-docs-read` traversal permissions used by the `fieldwiring` runtime account on `/mnt/msb-display-folders` and `/mnt/msb-setup-google-links`.
 
-Setup/Procedure filesystem validation must run under the runtime account. The permanent server-side rule and recovery detail belong in `Gregovate/MSB-Server-Management`; this subsystem records the dependency so future application work does not misdiagnose the permission boundary as an application defect.
+Runtime-path validation must run as `fieldwiring`. Server-side detail and recovery procedure belong in `Gregovate/MSB-Server-Management`.
+
+## Known Boundaries / Open Work
+
+Current live-review scope includes:
+
+- 2025 annual review/verification;
+- reusable task creation/copy and maintenance;
+- task scope/order/prerequisite/resource maintenance;
+- supported planning/review controls;
+- Procedure/document context; and
+- authenticated multi-user browser access.
+
+Still outside the accepted Production-ready workflow:
+
+- Pick List generation; and
+- Container/Display movement/scanning write commands.
+
+Live evaluation should also capture questions and suggestions that are not traditional software defects. The 2025 review is the usability and operating-model test bed before 2026 is created.
 
 ## Resume Development
+
+Before changing this subsystem:
+
+1. read the Production Database Project Rules;
+2. review PRs #123, #124, and #125 together rather than treating one as the whole subsystem;
+3. read the Production Engineering Handoff linked above;
+4. review current live-use findings from managers/reviewers;
+5. preserve the accepted 2025/2026 annual-vs-reusable boundary;
+6. use `Gregovate/MSB-Server-Management` for current runtime/service/proxy facts; and
+7. keep operator docs and engineering docs synchronized when behavior changes.
 
 Current resume point:
 
 ```text
-V0.3.4 database promotion             = ACCEPTED
-Production Database branch            = agent/setup-session-production-foundation
-accepted database/app source SHA      = 2b94e0ecb21fde88ce20acc24855fc1c84d21eb6
-PR                                     = #125 draft, updated with live DB state
-old disposable Setup preview          = identified on 127.0.0.1:8794
-permanent Setup service               = not yet installed
-public /setup/ route                  = not yet installed
+Production runtime                    = ACCEPTED
+Cloudflare-authenticated 2025 view    = ACCEPTED
+post-deployment invariants            = ACCEPTED
+UI/workflow                           = LIVE EVALUATION
+2026 Setup Session                    = NOT CREATED
+PR #123 / #124 / #125                 = OPEN DRAFTS
+Backbone source handoff               = READY FOR IMPLEMENTATION
 ```
-
-Next work must use Server Management runtime authority for service/permission/proxy deployment, then return here to record live application acceptance and merge readiness.
 
 ## Related Systems
 
 - [Setup and Deployment operator portal](../README.md)
 - [Operator procedures](../operatorSOP/README.md)
+- [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Labeling and Scanning](../../07_Labeling_and_Scanning/README.md)
 - [Wiring System](../../09_Wiring_System/README.md)
