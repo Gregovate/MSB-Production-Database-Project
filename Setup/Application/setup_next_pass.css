@@ -1,0 +1,268 @@
+/* Setup V0.2 browser-review Stage/Scene, schedule, and Captain surfaces. */
+
+.next-library-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.next-stage-group,
+.next-scope-group,
+.next-schedule-day,
+.next-perform-task {
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.65rem;
+  background: var(--panel, #fff);
+}
+
+.next-stage-group {
+  margin: 0 0 0.8rem;
+  overflow: clip;
+}
+
+.next-stage-group > summary,
+.next-scope-group > summary,
+.next-schedule-day > summary,
+.next-perform-task > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.next-stage-group > summary::-webkit-details-marker,
+.next-scope-group > summary::-webkit-details-marker,
+.next-schedule-day > summary::-webkit-details-marker,
+.next-perform-task > summary::-webkit-details-marker {
+  display: none;
+}
+
+.next-stage-group > summary::before,
+.next-scope-group > summary::before,
+.next-schedule-day > summary::before,
+.next-perform-task > summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.45rem;
+}
+
+.next-stage-group[open] > summary::before,
+.next-scope-group[open] > summary::before,
+.next-schedule-day[open] > summary::before,
+.next-perform-task[open] > summary::before {
+  content: '▾';
+}
+
+.next-stage-group > .library-stage-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.next-stage-body {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.7rem;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+
+.next-scope-group {
+  overflow: clip;
+}
+
+.next-scope-group > summary {
+  padding: 0.55rem 0.75rem;
+  font-weight: 700;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-count {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 500;
+  opacity: 0.72;
+}
+
+.next-scope-dropzone {
+  min-height: 2.6rem;
+  transition: background 120ms ease;
+}
+
+.next-inline-gap,
+.next-stage-empty {
+  padding: 0.75rem 0.9rem;
+  border-top: 1px dashed var(--border, #d9e0e8);
+  color: var(--muted, #64748b);
+}
+
+.next-task-row {
+  grid-template-columns: 4rem minmax(14rem, 1fr) minmax(12rem, 0.9fr) auto;
+}
+
+.next-task-row.dragging {
+  opacity: 0.45;
+}
+
+.next-task-row.drop-target,
+.next-scope-dropzone.drop-target {
+  background: var(--accent-soft, #e7f2fb);
+}
+
+.next-task-main {
+  min-width: 0;
+}
+
+.next-dialog {
+  width: min(38rem, calc(100% - 2rem));
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: var(--panel, #fff);
+  color: var(--text, #172033);
+}
+
+.next-dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.next-dialog form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.next-dependency-editor {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+
+.next-dependency-add {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(12rem, 1fr) auto;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.next-dependency-row,
+.next-schedule-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border, #d9e0e8);
+}
+
+.next-schedule-form {
+  display: grid;
+  grid-template-columns: 10rem 10rem minmax(16rem, 1fr) 9rem auto;
+  gap: 0.7rem;
+  align-items: end;
+  margin: 1rem 0;
+}
+
+.next-schedule-day {
+  margin: 0.7rem 0;
+  overflow: clip;
+}
+
+.next-schedule-day > summary,
+.next-perform-task > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  font-weight: 700;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-shift {
+  padding: 0.75rem 0.9rem;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+
+.next-shift h4 {
+  margin: 0 0 0.45rem;
+}
+
+.next-perform-task {
+  margin: 0.7rem 0;
+  overflow: clip;
+}
+
+.next-perform-body {
+  padding: 0.9rem;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+
+.next-perform-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.next-perform-grid section {
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+}
+
+.next-perform-grid h4,
+.next-progress-history h4 {
+  margin-top: 0;
+}
+
+.next-progress-history {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+}
+
+.next-completion-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-completion-form label:nth-of-type(3),
+.next-completion-form label:nth-of-type(4),
+.next-completion-form .checkbox-label,
+.next-completion-form button {
+  grid-column: 1 / -1;
+}
+
+.next-complete-banner {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border: 1px solid #1f7a4c;
+  border-radius: 0.55rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1000px) {
+  .next-task-row,
+  .next-schedule-form,
+  .next-dependency-add,
+  .next-perform-grid,
+  .next-completion-form {
+    grid-template-columns: 1fr;
+  }
+
+  .next-completion-form label,
+  .next-completion-form button {
+    grid-column: auto;
+  }
+
+  .next-library-tools {
+    width: 100%;
+    margin-left: 0;
+  }
+}
