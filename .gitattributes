@@ -1,0 +1,4 @@
+# Setup browser-preview launcher contains multiline PowerShell here-strings that
+# are matched against an LF-normalized Linux shell template. Keep this launcher
+# LF-only on Windows so exact guarded replacements remain deterministic.
+Setup/Acceptance/run_setup_session_browser_preview.ps1 text eol=lf
