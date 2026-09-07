@@ -56,7 +56,8 @@ class SetupNextRepository:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT t.setup_task_id, t.task_name, t.stage_id, s.stage_key,
-                       s.stage_name, t.lor_scene_id, ls.scene_name
+                       s.stage_name, t.lor_scene_id, ls.scene_name,
+                       ls.scene_uuid, ls.preview_uuid
                 FROM ref.setup_task t
                 LEFT JOIN ref.stage s ON s.stage_id = t.stage_id
                 LEFT JOIN ref.lor_scene ls ON ls.lor_scene_id = t.lor_scene_id
