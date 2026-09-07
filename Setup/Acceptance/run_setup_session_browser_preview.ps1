@@ -102,6 +102,18 @@ try {
     Write-LinuxTextFile -Source $PreviewEntry -Destination $localEntry
     Write-LinuxTextFile -Source $CleanupServerScript -Destination $localCleanup
 
+    # The preview server performs one post-start JSON validation with the production
+    # Python runtime. /opt/fieldwiring is intentionally not traversable by msbadmin,
+    # so package that one validator under the fieldwiring runtime account as well.
+    $serverText = [System.IO.File]::ReadAllText($localServer)
+    $validatorOld = "/opt/fieldwiring/.venv/bin/python - `"`$MEGA_PROCEDURE`" <<'PY'"
+    $validatorNew = "sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - `"`$MEGA_PROCEDURE`" <<'PY'"
+    if (-not $serverText.Contains($validatorOld)) {
+        throw 'Setup browser preview server template no longer contains the expected Mega Cube validator command.'
+    }
+    $serverText = $serverText.Replace($validatorOld, $validatorNew)
+    [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
+
     & scp -r $localBundle "${Server}:/tmp/"
     if ($LASTEXITCODE -ne 0) {
         throw "SCP Setup browser preview bundle upload failed with exit code $LASTEXITCODE"
