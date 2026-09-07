@@ -52,8 +52,8 @@ def test_next_pass_browser_has_stage_scene_drag_copy_and_collapsible_groups() ->
     assert "draggable=" in text
     assert "api/setup/tasks/${taskId}/scope" in text
     assert "Copy Reusable Task" in text
-    assert "Destination Stage" in text
-    assert "Destination area" in text
+    assert "<label>Destination<select" in text
+    assert "<label>Stage area<select" in text
     assert "scrollIntoView" in text
     assert "Stage-level / General" in text
     assert "Scene —" in text
@@ -74,7 +74,7 @@ def test_next_pass_browser_exposes_prerequisite_schedule_and_captain_execution()
     assert "api/setup/execution" in text
     assert "api/setup/tasks/${taskId}/field-context" in text
     assert "Published Setup Procedure" in text
-    assert "api/setup/procedure/current" in text
+    assert "api/setup/tasks/${taskId}/procedure/current" in text
     assert "Crew size" in text
     assert "Completed quantity" in text
     assert "Which units / what was completed" in text
