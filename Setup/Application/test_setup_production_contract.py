@@ -14,6 +14,8 @@ if str(REPO_ROOT) not in sys.path:
 def test_production_html_uses_database_client_only() -> None:
     text = (APP_DIR / "production.html").read_text(encoding="utf-8")
     assert "setup_production.js" in text
+    assert "setup_resource_review.js" in text
+    assert "setup_resource_review.css" in text
     assert "setup.js" not in text
     assert "setup_review_extensions.js" not in text
     assert "setup_instruction_live.js" not in text
@@ -23,14 +25,16 @@ def test_production_html_uses_database_client_only() -> None:
 
 def test_production_client_has_no_browser_local_prototype_state() -> None:
     text = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
-    # Detect actual browser-storage API use without failing on an explanatory
-    # comment that merely names localStorage.
+    resource_text = (APP_DIR / "setup_resource_review.js").read_text(encoding="utf-8")
+    # Detect actual browser-storage API use without failing on explanatory comments.
     assert "localStorage." not in text
+    assert "localStorage." not in resource_text
     assert "initialTasks" not in text
     assert "msb.setup.prototype" not in text
     assert "X-MSB-Setup-Command" in text
     assert "api/setup/tasks" in text
     assert "api/setup/procedure" in text
+    assert "api/setup/resources" in resource_text
 
 
 def test_production_runtime_declares_gunicorn() -> None:
@@ -52,7 +56,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.1.0-production-foundation"
+    assert payload["version"] == "V0.1.1-production-foundation"
 
     for asset in (
         "/setup.css",
@@ -61,6 +65,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_theme.js",
         "/setup_production.css",
         "/setup_production.js",
+        "/setup_resource_review.css",
+        "/setup_resource_review.js",
     ):
         assert client.get(asset).status_code == 200
 
@@ -73,6 +79,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/backend.py",
         "/setup_api.py",
         "/setup_repository.py",
+        "/setup_resource_api.py",
+        "/setup_resource_repository.py",
         "/requirements.txt",
     ):
         assert client.get(forbidden).status_code == 404
@@ -81,6 +89,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
 
     no_identity = client.get("/api/setup/access")
     assert no_identity.status_code == 401
+    no_resource_identity = client.get("/api/setup/resources")
+    assert no_resource_identity.status_code == 401
 
 
 def test_production_entry_point_uses_distinct_flask_app() -> None:
@@ -98,3 +108,6 @@ def test_production_api_contains_protected_read_surfaces() -> None:
     assert "/api/setup/movement-summary" in rules
     assert "/api/setup/procedure" in rules
     assert "/api/setup/procedure/current" in rules
+    assert "/api/setup/resources" in rules
+    assert "/api/setup/tasks/<int:setup_task_id>/resources" in rules
+    assert "/api/setup/tasks/<int:setup_task_id>/resources/<int:setup_resource_id>" in rules
