@@ -7,6 +7,7 @@ from flask import Blueprint, Response, jsonify
 from setup_api import (
     SetupAuthenticationError,
     SetupCommandError,
+    authenticated_email,
     json_body,
     require_manager,
     require_reader,
@@ -25,12 +26,14 @@ def resource_repository() -> SetupResourceRepository:
 
 @setup_resource_api.get("/api/setup/resources")
 def api_setup_resources() -> Response:
+    authenticated_email()
     require_reader()
     return jsonify(resources=resource_repository().catalog())
 
 
 @setup_resource_api.get("/api/setup/tasks/<int:setup_task_id>/resources")
 def api_setup_task_resources(setup_task_id: int) -> Response:
+    authenticated_email()
     require_reader()
     return jsonify(resources=resource_repository().task_resources(setup_task_id))
 
