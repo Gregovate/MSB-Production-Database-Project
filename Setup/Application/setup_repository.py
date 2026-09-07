@@ -192,6 +192,38 @@ class SetupRepository:
                 rows.append(item)
             return rows
 
+    def movement_summary(self, season_year: int) -> dict[str, Any]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    ss.setup_session_id,
+                    ss.session_status,
+                    (SELECT count(*)
+                       FROM ops.setup_display_state ds
+                      WHERE ds.setup_session_id = ss.setup_session_id) AS display_state_rows,
+                    (SELECT count(*)
+                       FROM ops.setup_container_state cs
+                      WHERE cs.setup_session_id = ss.setup_session_id) AS container_state_rows,
+                    (SELECT count(*)
+                       FROM ops.setup_movement_event me
+                      WHERE me.setup_session_id = ss.setup_session_id) AS movement_event_rows
+                FROM ops.setup_session ss
+                WHERE ss.season_year = %s
+                """,
+                (season_year,),
+            )
+            row = cur.fetchone()
+        if row is None:
+            return {
+                "setup_session_id": None,
+                "session_status": None,
+                "display_state_rows": 0,
+                "container_state_rows": 0,
+                "movement_event_rows": 0,
+            }
+        return dict(row)
+
     def create_session(self, *, email: str, season_year: int, status: str) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
