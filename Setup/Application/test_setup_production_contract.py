@@ -16,6 +16,9 @@ def test_production_html_uses_database_client_only() -> None:
     assert "setup_production.js" in text
     assert "setup_resource_review.js" in text
     assert "setup_resource_review.css" in text
+    assert "setup_review_usability.js" in text
+    assert "setup_next_pass.js" in text
+    assert "setup_next_pass.css" in text
     assert "setup.js" not in text
     assert "setup_review_extensions.js" not in text
     assert "setup_instruction_live.js" not in text
@@ -26,15 +29,20 @@ def test_production_html_uses_database_client_only() -> None:
 def test_production_client_has_no_browser_local_prototype_state() -> None:
     text = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
     resource_text = (APP_DIR / "setup_resource_review.js").read_text(encoding="utf-8")
+    next_text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
     # Detect actual browser-storage API use without failing on explanatory comments.
     assert "localStorage." not in text
     assert "localStorage." not in resource_text
+    assert "localStorage." not in next_text
     assert "initialTasks" not in text
     assert "msb.setup.prototype" not in text
     assert "X-MSB-Setup-Command" in text
     assert "api/setup/tasks" in text
     assert "api/setup/procedure" in text
     assert "api/setup/resources" in resource_text
+    assert "api/setup/organization" in next_text
+    assert "api/setup/schedule" in next_text
+    assert "api/setup/execution" in next_text
 
 
 def test_production_runtime_declares_gunicorn() -> None:
@@ -56,7 +64,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.1.1-production-foundation"
+    assert payload["version"] == "V0.2.0-browser-review"
 
     for asset in (
         "/setup.css",
@@ -67,6 +75,10 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_production.js",
         "/setup_resource_review.css",
         "/setup_resource_review.js",
+        "/setup_review_usability.css",
+        "/setup_review_usability.js",
+        "/setup_next_pass.css",
+        "/setup_next_pass.js",
     ):
         assert client.get(asset).status_code == 200
 
@@ -81,6 +93,9 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_repository.py",
         "/setup_resource_api.py",
         "/setup_resource_repository.py",
+        "/setup_next_api.py",
+        "/setup_next_repository.py",
+        "/setup_operations_repository.py",
         "/requirements.txt",
     ):
         assert client.get(forbidden).status_code == 404
@@ -91,6 +106,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert no_identity.status_code == 401
     no_resource_identity = client.get("/api/setup/resources")
     assert no_resource_identity.status_code == 401
+    no_next_identity = client.get("/api/setup/organization")
+    assert no_next_identity.status_code == 401
 
 
 def test_production_entry_point_uses_distinct_flask_app() -> None:
@@ -111,3 +128,12 @@ def test_production_api_contains_protected_read_surfaces() -> None:
     assert "/api/setup/resources" in rules
     assert "/api/setup/tasks/<int:setup_task_id>/resources" in rules
     assert "/api/setup/tasks/<int:setup_task_id>/resources/<int:setup_resource_id>" in rules
+    assert "/api/setup/organization" in rules
+    assert "/api/setup/tasks/<int:setup_task_id>/scope" in rules
+    assert "/api/setup/tasks/<int:setup_task_id>/dependencies/<int:prerequisite_setup_task_id>" in rules
+    assert "/api/setup/schedule" in rules
+    assert "/api/setup/work-days" in rules
+    assert "/api/setup/work-days/<int:setup_work_day_id>/tasks/<int:setup_session_task_id>" in rules
+    assert "/api/setup/execution" in rules
+    assert "/api/setup/session-tasks/<int:setup_session_task_id>/progress" in rules
+    assert "/api/setup/tasks/<int:setup_task_id>/field-context" in rules
