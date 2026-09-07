@@ -67,7 +67,8 @@ def test_preview_uses_separate_local_port_and_foreground_ssh() -> None:
     assert 'MSB_SETUP_PREVIEW_HOST="127.0.0.1"' in server
     assert 'http://127.0.0.1:$PREVIEW_PORT/' in server
     assert '& ssh -tt -L "${PreviewPort}:127.0.0.1:${PreviewPort}"' in wrapper
-    assert 'Start-Process $browserUrl' in wrapper
+    assert 'Start-Process $browserUrl' not in wrapper
+    assert 'SETUP BROWSER REVIEW READY' in wrapper
     assert 'setsid /opt/fieldwiring/.venv/bin/python "$MSB_SETUP_PREVIEW_ENTRY"' in server
     assert "setsid sudo" not in server
 
