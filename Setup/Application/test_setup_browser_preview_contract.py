@@ -72,6 +72,13 @@ def test_preview_uses_separate_local_port_and_foreground_ssh() -> None:
     assert "setsid sudo" not in server
 
 
+def test_preview_packages_post_start_validator_under_fieldwiring_account() -> None:
+    wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
+    assert '$validatorOld = "/opt/fieldwiring/.venv/bin/python -' in wrapper
+    assert '$validatorNew = "sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python -' in wrapper
+    assert '$serverText = $serverText.Replace($validatorOld, $validatorNew)' in wrapper
+
+
 def test_preview_uses_production_setup_app_and_read_only_display_folders() -> None:
     entry = (ACCEPT / "setup_session_browser_preview_entry.py").read_text(encoding="utf-8")
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
