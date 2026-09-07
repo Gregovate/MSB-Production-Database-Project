@@ -231,7 +231,39 @@ class SetupNextRepository:
     def field_context(self, *, task_id: int, season_year: int) -> dict[str, list[dict[str, Any]]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT d.display_id, d.display_name, d.container_id, ds.position_mode,
+                WITH task_context AS (
+                    SELECT t.setup_task_id, t.lor_scene_id
+                    FROM ref.setup_task t
+                    WHERE t.setup_task_id = %s
+                ),
+                display_scope AS (
+                    SELECT td.display_id,
+                           td.relationship_type,
+                           td.notes AS relationship_notes,
+                           'TASK_MAP'::text AS relationship_source
+                    FROM ref.setup_task_display td
+                    JOIN task_context tc ON tc.setup_task_id = td.setup_task_id
+
+                    UNION ALL
+
+                    SELECT lsd.display_id,
+                           'SCENE_SCOPE'::text AS relationship_type,
+                           'Derived from current LOR Scene membership.'::text AS relationship_notes,
+                           'SCENE'::text AS relationship_source
+                    FROM task_context tc
+                    JOIN ref.lor_scene_display lsd
+                      ON lsd.lor_scene_id = tc.lor_scene_id
+                    WHERE tc.lor_scene_id IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM ref.setup_task_display td
+                          WHERE td.setup_task_id = tc.setup_task_id
+                            AND td.display_id = lsd.display_id
+                      )
+                )
+                SELECT d.display_id, d.display_name, d.container_id,
+                       c.description AS container_description,
+                       ds.position_mode,
                        CASE WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
                             ELSE cs.current_stage_id END AS current_stage_id,
                        current_stage.stage_key AS current_stage_key,
@@ -239,9 +271,10 @@ class SetupNextRepository:
                        CASE WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
                             ELSE cs.current_location_note END AS current_location_note,
                        c.location_code AS home_location_code,
-                       td.relationship_type, td.notes AS relationship_notes
-                FROM ref.setup_task_display td
-                JOIN ref.display d ON d.display_id = td.display_id
+                       scope.relationship_type, scope.relationship_notes,
+                       scope.relationship_source
+                FROM display_scope scope
+                JOIN ref.display d ON d.display_id = scope.display_id
                 LEFT JOIN ref.container c ON c.container_id = d.container_id
                 LEFT JOIN ops.setup_session ss ON ss.season_year = %s
                 LEFT JOIN ops.setup_display_state ds
@@ -252,12 +285,12 @@ class SetupNextRepository:
                   ON current_stage.stage_id = CASE
                       WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
                       ELSE cs.current_stage_id END
-                WHERE td.setup_task_id = %s
                 ORDER BY d.container_id NULLS LAST, d.display_name, d.display_id
-            """, (season_year, task_id))
+            """, (task_id, season_year))
             displays = [dict(r) for r in cur.fetchall()]
             cur.execute("""
-                SELECT c.container_id, c.location_code AS home_location_code,
+                SELECT c.container_id, c.description AS container_description,
+                       c.location_code AS home_location_code,
                        cs.current_stage_id, s.stage_key AS current_stage_key,
                        s.stage_name AS current_stage_name, cs.current_location_note,
                        tc.relationship_type, tc.notes AS relationship_notes
