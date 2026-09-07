@@ -12,7 +12,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'setup_session_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/setup-session-production-foundation'
-$CandidateSha = '4c7e0b40baf1a6785be7635f149822ea6110c442'
+$CandidateSha = '874a1f7d090676b97de1881df973fab08985085a'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
