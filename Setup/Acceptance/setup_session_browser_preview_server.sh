@@ -8,7 +8,7 @@ IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
 TARGET_REF="agent/setup-session-production-foundation"
-TARGET_SHA="4c7e0b40baf1a6785be7635f149822ea6110c442"
+TARGET_SHA="874a1f7d090676b97de1881df973fab08985085a"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/setup_session_browser_preview_entry.py"
 PREVIEW_PORT="${1:-8794}"
@@ -22,6 +22,8 @@ DUMP_FILE="$SCRIPT_DIR/production.dump"
 CANDIDATE_WORKTREE="/tmp/msb-setup-browser-preview-candidate-$STAMP"
 REPORT="/tmp/MSB_Setup_Session_Browser_Preview_$STAMP.txt"
 PREVIEW_LOG="/tmp/MSB_Setup_Session_Browser_Preview_Flask_$STAMP.log"
+GOOGLE_DOC_INDEX="/tmp/MSB_Setup_Google_Doc_Index_$STAMP.json"
+RCLONE_CONFIG="/var/lib/msb-docs-fs/.config/rclone/rclone.conf"
 PREVIEW_PGID=""
 PROD_BEFORE=""
 LIVE_HEAD=""
@@ -96,7 +98,7 @@ cleanup() {
         sudo git -C "$FIELDWIRING_ROOT" worktree remove --force "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
     fi
 
-    rm -f "$DUMP_FILE" >/dev/null 2>&1 || true
+    rm -f "$DUMP_FILE" "$GOOGLE_DOC_INDEX" >/dev/null 2>&1 || true
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
 
     echo
@@ -211,9 +213,32 @@ sudo -u fieldwiring -H bash -c "
     cd '$CANDIDATE_WORKTREE'
     /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider \
         Setup/Application/test_setup_production_contract.py \
-        Setup/Application/test_setup_resource_management_contract.py
+        Setup/Application/test_setup_resource_management_contract.py \
+        Setup/Application/test_setup_google_doc_index_contract.py
 "
 echo "Exact detached Setup candidate regression: PASS"
+
+echo
+echo "--- Build sanitized Google Doc metadata index ---"
+# The rclone OAuth configuration remains readable only by msb-docs-fs. The
+# browser application receives a sanitized lsjson metadata file containing IDs,
+# paths, and content types but no rclone credentials/tokens.
+sudo -u msb-docs-fs -H /usr/bin/rclone lsjson \
+    msb-display-folders: \
+    --config "$RCLONE_CONFIG" \
+    --recursive \
+    --files-only \
+    --original \
+    -M \
+    --include '**/Procedures/Setup/SourceDocs/**' \
+    --include '**/Procedures/Setup/Archive/**' \
+    > "$GOOGLE_DOC_INDEX"
+
+test -s "$GOOGLE_DOC_INDEX"
+sudo chown msb-docs-fs:msb-docs-read "$GOOGLE_DOC_INDEX"
+sudo chmod 0640 "$GOOGLE_DOC_INDEX"
+sudo -u fieldwiring -H test -r "$GOOGLE_DOC_INDEX"
+echo "Sanitized Google Doc metadata index: PASS"
 
 echo
 echo "--- Capture current production into disposable clone ---"
@@ -359,6 +384,7 @@ PREVIEW_PGID="$(
     sudo -u fieldwiring -H env \
         SETUP_DATABASE_DSN="$DSN" \
         SETUP_DRIVE_ROOT="/mnt/msb-display-folders" \
+        SETUP_GOOGLE_DOC_INDEX="$GOOGLE_DOC_INDEX" \
         MSB_SETUP_PREVIEW_APP_DIR="$APP_DIR" \
         MSB_SETUP_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
         MSB_SETUP_PREVIEW_HOST="127.0.0.1" \
@@ -421,6 +447,36 @@ if [[ "$PROCEDURE_CODE" != "200" ]]; then
 fi
 rm -f /tmp/setup-preview-procedure-$STAMP.json
 
+MEGA_PROCEDURE="/tmp/setup-preview-mega-procedure-$STAMP.json"
+MEGA_CODE="$(curl -sS -o "$MEGA_PROCEDURE" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/procedure?stage_key=03a")"
+if [[ "$MEGA_CODE" != "200" ]]; then
+    echo "FAIL: Mega Cube Setup Procedure API returned HTTP $MEGA_CODE"
+    cat "$MEGA_PROCEDURE" || true
+    rm -f "$MEGA_PROCEDURE"
+    exit 25
+fi
+
+/opt/fieldwiring/.venv/bin/python - "$MEGA_PROCEDURE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    payload = json.load(handle)
+sources = payload.get("instructions", {}).get("editable_sources", [])
+official = [item for item in sources if item.get("name") == "03-Mega Cube-MC Setup Procedure.gdoc"]
+if len(official) != 1:
+    raise SystemExit("FAIL: official Mega Cube Google Doc was not resolved exactly once")
+item = official[0]
+if item.get("source_backend") != "rclone-metadata-index":
+    raise SystemExit("FAIL: Mega Cube Google Doc did not come from rclone metadata proof")
+if not item.get("google_doc_id") or not str(item.get("edit_url", "")).startswith("https://docs.google.com/document/d/"):
+    raise SystemExit("FAIL: Mega Cube editable Google Doc link is incomplete")
+if any("Randy" in str(candidate.get("name", "")) for candidate in sources):
+    raise SystemExit("FAIL: native Randy Word document was misclassified as editable Google Doc")
+print("Mega Cube Google Doc/native Word discrimination: PASS")
+PY
+rm -f "$MEGA_PROCEDURE"
+
 echo "Preview health: $HEALTH"
 echo "Preview access: $ACCESS"
 echo
@@ -435,6 +491,7 @@ echo "Production checkout and Setup data remain unchanged."
 echo
 echo "Review the narrower task queue and the Equipment / Resources Needed section."
 echo "Front Entrance should show SkyTrak + Boom Lift from structured DB relationships."
+echo "Mega Cube should show the official Google Doc as editable, not Randy's native .docx."
 echo "Manager Add/Update/Remove Resource actions change the disposable clone only."
 echo "Any Save/Verify/Add Task action also changes the disposable clone only."
 echo "Movement remains intentionally non-writable in this candidate."
