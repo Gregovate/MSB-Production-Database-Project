@@ -1,43 +1,41 @@
 """MSB Setup Session protected production application host.
 
-The local prototype remains available through backend.py on the prototype branch.
-This entry point deliberately serves production.html, registers the database-backed
-Cloudflare/Directus-governed API, and blocks prototype-only Procedure/UI routes so
-shared users cannot accidentally operate against browser-local prototype state.
+This entry point is deliberately separate from the local prototype Flask app.
+It serves only the shared Production UI/static assets plus the protected
+Cloudflare/Directus-governed Setup API. Prototype routes and source files are
+not exposed by this WSGI application.
 """
 from __future__ import annotations
 
 import os
 
-from flask import abort, jsonify, request, send_from_directory
+from flask import Flask, abort, jsonify, send_from_directory
 
-from backend import BASE_DIR, app
+from backend import BASE_DIR
 from setup_api import setup_api
 
 PRODUCTION_VERSION = "V0.1.0-production-foundation"
+PRODUCTION_ASSETS = frozenset(
+    {
+        "setup.css",
+        "setup_review_clarity.css",
+        "setup_theme.css",
+        "setup_theme.js",
+        "setup_production.css",
+        "setup_production.js",
+    }
+)
 
+app = Flask(__name__)
 app.register_blueprint(setup_api)
 
 
-@app.before_request
-def block_prototype_only_routes() -> None:
-    """Do not expose the local prototype surfaces from the production service."""
-    if request.path.startswith("/api/setup-instructions"):
-        abort(404)
-    if request.path in {
-        "/index.html",
-        "/setup.js",
-        "/setup_review_extensions.js",
-        "/setup_instruction_live.js",
-        "/setup_review_clarity.js",
-    }:
-        abort(404)
-
-
+@app.get("/")
 def production_index():
     return send_from_directory(BASE_DIR, "production.html")
 
 
+@app.get("/api/health")
 def production_health():
     mode = "postgres" if any(
         os.environ.get(name, "").strip()
@@ -46,9 +44,11 @@ def production_health():
     return jsonify(status="ok", version=PRODUCTION_VERSION, data_mode=mode)
 
 
-# Replace the prototype root/health view functions only in this production entry point.
-app.view_functions["index"] = production_index
-app.view_functions["health"] = production_health
+@app.get("/<path:name>")
+def production_asset(name: str):
+    if name not in PRODUCTION_ASSETS:
+        abort(404)
+    return send_from_directory(BASE_DIR, name)
 
 
 if __name__ == "__main__":
