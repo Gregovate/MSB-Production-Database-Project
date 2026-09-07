@@ -1,0 +1,24 @@
+.setup-session-year-guard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-left: 0.3rem solid var(--accent, #126a9a);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-session-year-guard strong {
+  white-space: nowrap;
+}
+
+.setup-session-year-guard span {
+  color: var(--muted, #64748b);
+}
+
+.admin-only[hidden] {
+  display: none !important;
+}
