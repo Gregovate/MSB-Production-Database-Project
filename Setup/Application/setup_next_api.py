@@ -12,6 +12,7 @@ from FieldWiring.Application.field_context_resolver import MARKER_NAME
 from Procedures.Application.procedure_context import resolve_stage_procedure
 from setup_api import (
     json_body,
+    require_admin,
     require_manager,
     require_reader,
     require_setup_command,
@@ -301,7 +302,7 @@ def api_setup_planned_order(setup_session_task_id: int) -> Response:
 @setup_next_api.post("/api/setup/planning/promote-baseline")
 def api_setup_promote_baseline() -> Response:
     require_setup_command()
-    _base_repo, email, _access = require_manager()
+    _base_repo, email, _access = require_admin()
     payload = json_body()
     year = payload.get("season_year")
     if not isinstance(year, int):
