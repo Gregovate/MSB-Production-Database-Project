@@ -12,7 +12,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'setup_session_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/setup-session-production-foundation'
-$CandidateSha = '874a1f7d090676b97de1881df973fab08985085a'
+$CandidateSha = 'c72644f02b825acb830603fe6b4f7bd48713b681'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -87,7 +87,7 @@ Write-Host "Preview user:  $PreviewEmail"
 Write-Host
 Write-Host 'This preview uses a disposable current-production PostgreSQL clone.'
 Write-Host 'Production Setup data and the live shared application checkout are not modified.'
-Write-Host 'Do not open the browser URL until the remote output says SETUP BROWSER REVIEW READY.'
+Write-Host 'The browser is not auto-opened; wait for SETUP BROWSER REVIEW READY before opening it.'
 Write-Host 'Keep this PowerShell window open while reviewing the browser.'
 Write-Host 'When finished, return here and press ENTER so the remote trap can clean up.'
 Write-Host
@@ -109,7 +109,6 @@ try {
 
     Write-Host
     Write-Host 'Cleaning stale Setup preview state and preparing disposable browser preview...'
-    Write-Host "Wait for SETUP BROWSER REVIEW READY, then open: $browserUrl"
 
     $uploadCleanup = "$uploadRoot/setup_session_browser_preview_cleanup_server.sh"
     $remoteScript = "$remoteRoot/setup_session_browser_preview_server.sh"
