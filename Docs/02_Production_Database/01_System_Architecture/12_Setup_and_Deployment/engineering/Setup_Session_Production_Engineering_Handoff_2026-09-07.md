@@ -4,15 +4,15 @@
 |---|---|
 | Document Type | Engineering Handoff |
 | System | Production Database — Setup Session |
-| Status | CURRENT HANDOFF — database accepted, protected application deployment in progress |
+| Status | CURRENT HANDOFF — Production runtime accepted; UI/workflow in live evaluation |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-07 |
 
 ## Purpose
 
-Preserve the accepted Setup Session V0.3.4 Production database state, intended 2025 historical-review operating model, security boundaries, runtime dependencies, rollback evidence, and exact resume point so subsequent work does not depend on chat history.
+Preserve the accepted Setup Session V0.3.4 Production state, operating model, security boundaries, runtime dependencies, rollback evidence, open PR structure, and current live-evaluation resume point so later work can start from repository evidence instead of chat history.
 
-## Operating Model
+## Current Operating Model
 
 The real 2025 Production-backed Setup Session is the shared historical reconstruction and training area.
 
@@ -20,10 +20,12 @@ Authorized reviewers use it to:
 
 - reconstruct and correct 2025 annual Setup facts;
 - learn the Setup application using real data;
-- improve reusable Setup task knowledge where the corrected rule should carry forward; and
-- establish a clean reusable baseline before an Administrator creates the 2026 Setup Session.
+- add or correct reusable Setup tasks, resources, prerequisites, scope, order, and other permanent Setup knowledge where appropriate;
+- verify records where evidence exists;
+- leave uncertain records UNVERIFIED or mark them NEEDS CORRECTION; and
+- identify UI/workflow/data-model/documentation problems before the 2026 Setup Session is created.
 
-The selected Setup Session controls the allowable operational year:
+The selected Setup Session owns the allowable operational year:
 
 ```text
 2025 session -> 2025 operational dates/timestamps only
@@ -34,53 +36,42 @@ Audit/recording timestamps remain current truthful timestamps.
 
 ## Production Database Promotion
 
-Exact source used for the controlled promotion:
+Production V0.3.4 promotion is accepted.
+
+Durable migration sequence applied:
 
 ```text
-branch = agent/setup-session-production-foundation
-SHA    = 2b94e0ecb21fde88ce20acc24855fc1c84d21eb6
-PR     = #125
+008
+009
+010
+011
+013
+014
+015
+016
+017
 ```
 
-Read-only Production preflight passed with:
+Migration `012` was intentionally excluded because it contains disposable browser-review reset/seed behavior and must never be applied to Production.
+
+Validated pre-promotion rollback archive:
 
 ```text
-READY_FOR_CONTROLLED_V034_PROMOTION
+/home/msbadmin/backups/setup-v034/msb_pre_setup_v034_20260907T202706Z.dump
+SHA256 e09bd97010b464fe307176a8d8eef14fce0409f03ec6
 ```
 
-Approved durable migration sequence applied in order:
+**Correction:** the SHA line above is not the rollback archive hash. The accepted rollback archive hash is:
 
 ```text
-008_create_setup_resource_management_commands.sql
-009_create_setup_scope_schedule_execution_commands.sql
-010_seed_2025_stage02_elf_scope_corrections.sql
-011_create_setup_planning_order_and_crew_lanes.sql
-013_fix_setup_task_creation_command.sql
-014_grant_setup_scene_field_context_read.sql
-015_harden_setup_command_conflict_targets.sql
-016_seed_command_center_park_infrastructure_production.sql
-017_enforce_setup_session_year_and_admin_promotion.sql
+SHA256 e09bd97010b464fe307a9fbe0192c9ca4189fd562215f4eaa93e02a2d08f89a5
 ```
 
-`012_seed_site_infrastructure_review_tasks.sql` was intentionally excluded because it contains disposable browser-review reset/seed behavior.
+The archive is PostgreSQL custom format and `pg_restore -l` validation passed.
 
-## Production Validation
+## Accepted Production Data State
 
-Migration-level acceptance included:
-
-```text
-008: narrow resource commands present; broad task-resource UPDATE denied
-009: scope/schedule/execution layer committed successfully
-010: 2025 annual tasks increased to 50; all remained UNVERIFIED
-011: planning-order / crew-lane revision marker applied
-013: create-task conflict-target fix applied
-014: Scene/display read enabled; broad Display/Container UPDATE denied
-015: resource/dependency/scheduling conflict targets hardened
-016: seven Command Center / Park Infrastructure tasks created as UNVERIFIED / COMPLETE 2025 rows
-017: work-day, annual-task, and movement year guards present; future-baseline promotion requires Administrator
-```
-
-Final read-only Production state:
+Final post-cutover / post-reboot read-only invariant check:
 
 ```text
 setup_session_id          = 1
@@ -94,23 +85,78 @@ movement_events           = 0
 active_reusable_tasks     = 57
 ```
 
-## Rollback Evidence
+This proves deployment, Directus reload, and host reboot did not alter Setup operational data.
 
-Pre-promotion PostgreSQL custom-format dump:
+## Accepted Application / Runtime State
 
-```text
-/home/msbadmin/backups/setup-v034/msb_pre_setup_v034_20260907T202706Z.dump
-```
-
-SHA256:
+Protected Production entry point:
 
 ```text
-e09bd97010b464fe307a9fbe0192c9ca4189fd562215f4eaa93e02a2d08f89a5
+https://my.sheboyganlights.org/setup/
 ```
 
-`pg_restore -l` successfully read the archive and reported the expected `msb` database catalog.
+Application version:
 
-Do not delete this archive during normal Setup application deployment cleanup.
+```text
+V0.3.4-shared-season-guard-review
+```
+
+Permanent source/runtime:
+
+```text
+/opt/msb-setup
+source SHA = c0639c5b04de667176a8d8eef14fce0409f03ec6
+msb-setup.service = active / enabled
+listener = 192.168.5.9:8794
+msb-setup-google-links.service = active / enabled
+```
+
+Accepted network/proxy state:
+
+```text
+UFW 8794/tcp ALLOW IN 192.168.5.4
+Synology /setup -> /setup/ redirect = PASS
+/setup/ root = HTTP 200
+/setup/api/health = expected V0.3.4 payload
+Cloudflare-authenticated browser access = PASS
+real 2025 Production data rendered = PASS
+Procedures regression = PASS
+```
+
+The first Setup Synology route cutover was safely rolled back after the first immediate post-reload request returned Synology 404. The Server Management reverse-proxy runbook was corrected with a bounded post-reload readiness gate. The accepted retry became healthy on attempt 2.
+
+## Host Reboot / Directus Reload
+
+Ubuntu required a reboot for:
+
+```text
+linux-image-7.0.0-31-generic
+```
+
+One controlled host reboot both activated the kernel and reloaded Directus after the Setup schema promotion.
+
+Accepted post-reboot state:
+
+```text
+kernel                         = 7.0.0-31-generic
+reboot-required marker         = cleared
+msb-postgres                   = running / healthy / unless-stopped
+msb-directus                   = running / unless-stopped
+Directus image                 = directus/directus:11.17.1
+Directus extensions            = directus-extension-scan, directus-extension-stamp-actor-fields
+Directus startup               = online; no blocking startup errors
+fieldwiring.service            = active / enabled
+msb-procedures.service         = active / enabled
+msb-display-folders.service    = active / enabled
+msb-setup-google-links.service = active / enabled
+msb-setup.service              = active / enabled
+FieldWiring health             = V0.4.0 PASS
+Procedures health              = V0.1.0 PASS
+Setup health                   = V0.3.4 PASS
+public Setup / Procedures      = PASS
+```
+
+Two noncritical staging containers were not recovered by guesswork. One exited cleanly with `restart=no`; another no longer existed and had no repository-owned lifecycle contract. Server Management records this staging-container lifecycle documentation gap.
 
 ## Authorization Boundary
 
@@ -118,9 +164,9 @@ The protected Setup API uses:
 
 ```text
 Cloudflare Access authenticated email
-  -> Directus/ref.person capability lookup
-  -> server-side Setup role enforcement
-  -> narrow PostgreSQL SECURITY DEFINER command
+  -> Setup backend capability lookup
+  -> Directus/ref.person authorization source
+  -> narrow PostgreSQL command functions
 ```
 
 A shared link alone does not grant write authority.
@@ -130,27 +176,9 @@ Managers/reviewers may work on the 2025 annual session and reusable Setup knowle
 - create annual Setup Sessions; and
 - promote an annual plan order to the reusable future baseline.
 
-`fieldwiring_app` must not receive broad table DML merely to support browser actions.
+`fieldwiring_app` does not receive broad table DML merely to support browser actions.
 
-## Year Guard Boundary
-
-Migration 017 enforces the selected Setup Session year at both the command and table level for:
-
-```text
-ops.setup_work_day.work_date
-ops.setup_session_task.planned_date
-ops.setup_session_task.actual_started_at
-ops.setup_session_task.actual_completed_at
-ops.setup_movement_event.occurred_at
-```
-
-`timestamptz` operational-year checks use `America/Chicago`.
-
-Audit timestamps such as `created_at`, `updated_at`, and progress-recording timestamps are intentionally not season-limited.
-
-## 2025 Annual vs Reusable Knowledge
-
-This distinction is part of the application contract:
+## Annual vs Reusable Boundary
 
 ```text
 annual 2025 change
@@ -162,124 +190,103 @@ Reusable Task change
 
 Reviewers must not encode a one-off 2025 condition into reusable knowledge merely to make the historical record fit.
 
-## Application Source Boundary
-
-Protected Production entry point:
-
-```text
-Setup/Application/production_backend.py
-```
-
-Expected version:
-
-```text
-V0.3.4-shared-season-guard-review
-```
-
-Protected Setup APIs require `Cf-Access-Authenticated-User-Email`. Write commands additionally require the same-origin application command shape including:
-
-```text
-X-MSB-Setup-Command: 1
-Content-Type: application/json
-```
-
-The application consumes an explicit Setup PostgreSQL DSN and shared Display Folders root. It reuses the accepted shared Field Context / Procedure resolver rather than creating another Stage/Sub-stage/Scene resolver.
-
-## Runtime / Filesystem Dependency
+## Runtime / Filesystem Boundary
 
 Server/runtime authority is `Gregovate/MSB-Server-Management`.
 
-Critical dependency:
+Critical runtime identity:
 
 ```text
 service account          = fieldwiring
 supplementary group      = msb-docs-read
 Display Folders mount    = /mnt/msb-display-folders (read-only)
+Google native link view  = /mnt/msb-setup-google-links
 ```
 
-`msbadmin` does not have the same `msb-docs-read` traversal rights. Direct filesystem acceptance under `/mnt/msb-display-folders` must run under the `fieldwiring` runtime account.
+`msbadmin` is the SSH/system administrator but does not have the same runtime traversal rights. Filesystem/runtime validation under these paths must run as `fieldwiring`.
 
-This is an established Production failure class from the rejected first Setup resolver acceptance on 2026-08-28 and must not be rediscovered as a new application defect.
+## Current Live-Evaluation Scope
 
-## Protected Route Target
+Managers can use the 2025 session for real review/training work, including:
 
-Permanent intended application route:
+- annual verification/correction;
+- reusable task creation/copy and maintenance;
+- task scope/order maintenance;
+- prerequisites;
+- structured equipment/resources;
+- supported planning/review controls; and
+- Procedure/document context.
+
+Still outside the current accepted Production-ready workflow:
+
+- Pick List generation; and
+- Container/Display movement/scanning write commands.
+
+Do not create fake work days, fake movements, or throwaway Production records merely to test the UI.
+
+## Open PR Structure
+
+The Setup subsystem remains open across three draft Production Database PRs:
 
 ```text
-https://my.sheboyganlights.org/setup/
+#123  Document Setup Session subsystem reconnaissance
+#124  Prototype 2025 Setup Session verification UI
+#125  Build Setup Session production foundation
 ```
 
-Expected runtime shape:
+These PRs intentionally remain open while the 2025 session is used in practice. Production availability is not the same as final UI/workflow acceptance.
+
+Before final merge:
+
+1. gather enough real 2025 review use to expose material UI/workflow issues;
+2. correct accepted defects and documentation errors;
+3. keep operator/plain-English and engineering documentation synchronized;
+4. complete the Internal Web Backbone integration and deployed navigation verification;
+5. review issues/findings from managers;
+6. normalize the three-PR stack without losing lineage; and
+7. merge only when the subsystem is ready to be treated as the accepted baseline for 2026 planning.
+
+## Internal Web Backbone State
+
+Source handoff is now **READY FOR IMPLEMENTATION** because the protected `/setup/` route is operational and authenticated 2025 data rendering has passed.
+
+Backbone implementation must still:
+
+- present Setup as a task/action, not an engineering document tree;
+- link to `https://my.sheboyganlights.org/setup/`;
+- make the 2025 review procedure discoverable in plain language; and
+- avoid exposing engineering/database/acceptance internals to ordinary operators.
+
+Source handoff:
+
+[Internal Web Backbone Handoff](Internal_Web_Backbone_Handoff.md)
+
+Backbone issue:
 
 ```text
-Cloudflare Access
-  -> Synology protected nginx path-prefix proxy
-  -> msb-setup.service
-  -> 192.168.5.9:8794
-  -> production_backend.py
+Gregovate/MSB-Internal-Web-Backbone #10
 ```
-
-The existing `fieldwiring.service` on 8790 and `msb-procedures.service` on 8792 remain separate accepted services.
-
-## Old Preview Identified
-
-Live inspection before permanent service deployment found:
-
-```text
-listener = 127.0.0.1:8794
-PID      = 3258879
-user     = fieldwiring
-command  = /opt/fieldwiring/.venv/bin/python /tmp/msb-setup-browser-preview-20260907-135435/setup_session_browser_preview_entry.py
-cwd      = /tmp
-```
-
-This is the disposable Setup browser preview, not a documented Production service. It must be cleaned up before the permanent Setup service claims port 8794.
-
-A separate `/proc/<pid>/environ` inspection attempt failed because shell input redirection was opened as `msbadmin` before the sudo target process ran. No protected environment values are required for this deployment decision.
-
-## Documentation / Intranet Boundary
-
-The Setup subsystem is being converted to the Production documentation structure:
-
-```text
-12_Setup_and_Deployment/
-├── README.md
-├── operatorSOP/
-│   ├── README.md
-│   └── Review_2025_Setup_History.md
-└── engineering/
-    ├── README.md
-    ├── Internal_Web_Backbone_Handoff.md
-    └── Setup_Session_Production_Engineering_Handoff_2026-09-07.md
-```
-
-Existing dated engineering evidence at the parent level is not being mass-moved during this deployment because of inbound-link and historical-reference risk. The engineering portal links to current supporting authorities.
-
-`Gregovate/MSB-Internal-Web-Backbone` should consume the source-subsystem handoff rather than scraping engineering history into normal operator navigation.
-
-## PR / Merge State
-
-PR #125 has been updated to reflect the actual Production database promotion and the remaining application/service/public-route gate. It must not be merged until live `/setup/` acceptance and final documentation closeout pass.
-
-The current Setup work is stacked across draft PRs #123, #124, and #125. Before final merge, normalize the stack so the accepted documentation, prototype lineage, production implementation, and deployment evidence land on `main` without losing history or leaving competing current authorities.
 
 ## Resume Point
 
 ```text
-Database V0.3.4 promotion       = ACCEPTED
-2025 historical session         = 57 / 57 UNVERIFIED
-2026 session                    = absent
-work days / movement events     = 0 / 0
-rollback archive                = validated and retained
-old preview on 8794             = positively identified
-permanent Setup service         = not installed
-public /setup/ route            = not installed
+Database V0.3.4 promotion           = ACCEPTED
+Production runtime                  = ACCEPTED
+Cloudflare-authenticated 2025 view  = ACCEPTED
+post-deployment invariants          = ACCEPTED
+2025 historical session             = 57 / 57 UNVERIFIED at deployment baseline
+2026 session                        = absent
+UI/workflow                         = LIVE EVALUATION
+PR #123 / #124 / #125               = OPEN DRAFTS
+Backbone source handoff             = READY FOR IMPLEMENTATION
 ```
 
-Next engineering action is Server Management controlled cleanup/install of the permanent Setup runtime, followed by direct/public acceptance and documentation finalization.
+Next engineering work should come from real manager/reviewer findings and the Backbone integration, not from reconstructing deployment state.
 
 ## Related Documents
 
 - [Setup engineering portal](README.md)
 - [Setup operator procedures](../operatorSOP/README.md)
-- [Internal Web Backbone handoff](Internal_Web_Backbone_Handoff.md)
+- [Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
+- [Shared Review and Season-Year Guard](../Setup_Session_Shared_Review_and_Season_Year_Guard_2026-09-07.md)
+- [Internal Web Backbone Handoff](Internal_Web_Backbone_Handoff.md)
