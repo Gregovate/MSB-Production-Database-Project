@@ -5,8 +5,9 @@ import os
 from typing import Any
 
 import psycopg2
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify, request, send_file
 
+from backend import _current_document_path, _instruction_package
 from setup_repository import SetupRepository, SetupRepositoryError
 
 setup_api = Blueprint("setup_api", __name__)
@@ -124,6 +125,46 @@ def api_setup_tasks() -> Response:
     if not raw_year.isdigit():
         raise SetupCommandError("season_year is required")
     return jsonify(tasks=repo.tasks(int(raw_year)))
+
+
+@setup_api.get("/api/setup/movement-summary")
+def api_setup_movement_summary() -> Response:
+    repo, _email, _access = require_reader()
+    raw_year = request.args.get("season_year", "").strip()
+    if not raw_year.isdigit():
+        raise SetupCommandError("season_year is required")
+    return jsonify(movement=repo.movement_summary(int(raw_year)))
+
+
+@setup_api.get("/api/setup/procedure")
+def api_setup_procedure() -> Response:
+    _repo, _email, access = require_reader()
+    stage_key = request.args.get("stage_key", "").strip()
+    if not stage_key:
+        raise SetupCommandError("stage_key is required")
+
+    instructions = dict(_instruction_package(stage_key))
+    if not access.get("can_manage_setup"):
+        instructions["source_docs"] = []
+        instructions["archive"] = []
+        instructions["editable_sources"] = []
+        instructions.pop("manager_rule", None)
+    return jsonify(instructions=instructions)
+
+
+@setup_api.get("/api/setup/procedure/current")
+def api_setup_procedure_current() -> Response:
+    require_reader()
+    stage_key = request.args.get("stage_key", "").strip()
+    name = request.args.get("name", "").strip()
+    path = _current_document_path(stage_key, name)
+    return send_file(
+        path,
+        conditional=True,
+        max_age=60,
+        as_attachment=False,
+        download_name=path.name,
+    )
 
 
 @setup_api.post("/api/setup/sessions")
