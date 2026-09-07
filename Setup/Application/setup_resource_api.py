@@ -13,6 +13,7 @@ from setup_api import (
     require_setup_command,
     setup_database_dsn,
 )
+from setup_repository import SetupRepositoryError
 from setup_resource_repository import SetupResourceRepository, SetupResourceRepositoryError
 
 setup_resource_api = Blueprint("setup_resource_api", __name__)
@@ -75,9 +76,10 @@ def setup_resource_command_error(exc: SetupCommandError) -> tuple[Response, int]
     return jsonify(error=str(exc), engineering_error=str(exc)), 403
 
 
+@setup_resource_api.errorhandler(SetupRepositoryError)
 @setup_resource_api.errorhandler(SetupResourceRepositoryError)
 def setup_resource_repository_error(
-    exc: SetupResourceRepositoryError,
+    exc: SetupRepositoryError | SetupResourceRepositoryError,
 ) -> tuple[Response, int]:
     return jsonify(
         error="Setup equipment/resources are temporarily unavailable.",
