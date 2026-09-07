@@ -9,6 +9,7 @@ Ordinary operation belongs in the [Folder Alignment](../README.md) operator port
 ## Current Engineering Authority
 
 - [Folder Alignment Engineering Design](Folder_Alignment_Engineering_Design.md)
+- [Park Infrastructure Non-LOR Root — Folder Alignment Boundary](Park_Infrastructure_Non_LOR_Root_2026-09-07.md)
 
 ## Implementation
 
@@ -32,7 +33,17 @@ Folder Alignment owns:
 - worklist/report behavior; and
 - the bounded additive PreviewBackground updater contract.
 
-Google Drive / Display Folder maintenance procedures own the human document/folder changes performed after review.
+The controlled top-level folder:
+
+```text
+41 Park Infrastructure-PI
+```
+
+is an intentional **non-LOR** Setup/Procedure root under `Display Folders`. It must remain outside Stage/Sub-stage/Scene classification. Its leading `41` is a human sort aid only; the space after `41` deliberately avoids the active top-level `NN-...` Stage candidate pattern.
+
+Do not infer Stage 41 from this folder, and do not use lack of wired inventory as evidence that an existing Stage belongs here. `40-CommandCenter`, for example, remains a real Stage even when its Preview has no wired inventory items.
+
+Google Drive / Display Folder maintenance procedures own the human document/folder changes performed after review. Setup and Deployment owns which reusable tasks are assigned to Stage/Scene versus Site-wide / Infrastructure scope.
 
 ## Documentation Layout
 
@@ -43,6 +54,7 @@ Folder_Alignment/
 ├── engineering/
 │   ├── README.md              this engineering handoff
 │   ├── Folder_Alignment_Engineering_Design.md
+│   ├── Park_Infrastructure_Non_LOR_Root_2026-09-07.md
 │   └── Internal_Web_Backbone_Handoff.md
 └── images/                    subsystem documentation images when needed
 ```
