@@ -10,7 +10,7 @@ If you are repairing or organizing an existing Stage/Scene, start with:
 
 - [Repair or Organize an Existing Stage / Scene](operatorSOP/Repair_Existing_Stage_Scene.md)
 
-If you are creating the non-LOR Procedure root for site-wide Setup work such as Command Center, WiFi, street lights, or site power, start with:
+If you are creating the non-LOR Procedure root for truly park-wide Setup work such as street-light work, site breakers, or other infrastructure tasks with no appropriate Stage/Scene owner, start with:
 
 - [Create the Park Infrastructure Procedure Folder](operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md)
 
@@ -20,7 +20,11 @@ The approved physical folder name is:
 G:\Shared drives\Display Folders\41 Park Infrastructure-PI
 ```
 
-The space after `41` is intentional. Do **not** name this folder `41-Park Infrastructure-PI`; current Folder Alignment treats top-level `NN-` names as Stage candidates.
+The leading `41` is only a human sort aid. The space after `41` is intentional and keeps this folder outside the active Folder Alignment top-level `NN-...` Stage candidate pattern.
+
+`41 Park Infrastructure-PI` has no LOR Preview and does not create Stage 41.
+
+Do not use this folder merely because a Stage has no wired inventory. For example, `40-CommandCenter` remains a legitimate Stage because it has its own current Stage/Preview context; its Setup tasks and Procedures belong under Stage 40 when that is the correct operational owner.
 
 ## What Do You Need To Do?
 
@@ -50,7 +54,7 @@ The normal team workflow should use those field systems to find current Wiring a
 | Material | Current published location | Working/history location |
 |---|---|---|
 | Stage/Scene Setup PDF | `<scope>\Procedures\Setup` | `SourceDocs` / `Archive` |
-| Site-wide / Infrastructure Setup PDF | `41 Park Infrastructure-PI\Procedures\Setup` | `SourceDocs` / `Archive` |
+| Park-wide / no-Stage Setup PDF | `41 Park Infrastructure-PI\Procedures\Setup` | `SourceDocs` / `Archive` |
 | Setup instruction images | `Procedures\Setup\images` | — |
 | Takedown PDF | `Procedures\Takedown` | `SourceDocs` / `Archive` |
 | Takedown instruction images | `Procedures\Takedown\images` | — |
@@ -71,9 +75,10 @@ Engineering documentation is intentionally separate from the operator procedures
 Start here only when you need to understand, troubleshoot, validate, or change how the Google Drive integrations work:
 
 - [Google Drive Engineering](engineering/README.md)
+- [Folder Alignment Park Infrastructure non-LOR boundary](../../01_LOR_System/02_Data_Extraction/Folder_Alignment/engineering/Park_Infrastructure_Non_LOR_Root_2026-09-07.md)
 
 ## If You Are Unsure
 
 Do not guess by moving, renaming, deleting, or creating a folder based only on a similar filename.
 
-Use the Folder Alignment worklist for Stage/Scene material, preserve uncertain legacy material, and flag the item for review. For site-wide Setup work, use the dedicated `41 Park Infrastructure-PI` Procedure-root procedure rather than forcing the work into LOR organization.
+Use the Folder Alignment worklist for Stage/Scene material, preserve uncertain legacy material, and flag the item for review. For truly park-wide Setup work with no Stage/Scene owner, use the dedicated `41 Park Infrastructure-PI` Procedure-root procedure rather than forcing the work into LOR organization.
