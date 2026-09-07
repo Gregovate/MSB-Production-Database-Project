@@ -14,8 +14,9 @@ from flask import Flask, abort, jsonify, send_from_directory
 from backend import BASE_DIR
 from setup_api import setup_api
 from setup_resource_api import setup_resource_api
+from setup_next_api import setup_next_api
 
-PRODUCTION_VERSION = "V0.1.1-production-foundation"
+PRODUCTION_VERSION = "V0.2.0-browser-review"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -28,12 +29,15 @@ PRODUCTION_ASSETS = frozenset(
         "setup_resource_review.js",
         "setup_review_usability.css",
         "setup_review_usability.js",
+        "setup_next_pass.css",
+        "setup_next_pass.js",
     }
 )
 
 app = Flask(__name__)
 app.register_blueprint(setup_api)
 app.register_blueprint(setup_resource_api)
+app.register_blueprint(setup_next_api)
 
 
 @app.get("/")
