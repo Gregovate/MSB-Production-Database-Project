@@ -8,7 +8,7 @@ IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
 TARGET_REF="agent/setup-session-production-foundation"
-TARGET_SHA="9dd1b173db8af6c72b2b6cf0bbd831d5dd8a7d8b"
+TARGET_SHA="4c7e0b40baf1a6785be7635f149822ea6110c442"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/setup_session_browser_preview_entry.py"
 PREVIEW_PORT="${1:-8794}"
@@ -44,6 +44,14 @@ prod_fingerprint() {
                 coalesce((
                     SELECT string_agg(row_to_json(t)::text, '' ORDER BY t.setup_task_id)
                     FROM ref.setup_task t
+                ), '') || '|' ||
+                coalesce((
+                    SELECT string_agg(row_to_json(r)::text, '' ORDER BY r.setup_resource_id)
+                    FROM ref.setup_resource r
+                ), '') || '|' ||
+                coalesce((
+                    SELECT string_agg(row_to_json(tr)::text, '' ORDER BY tr.setup_task_id, tr.setup_resource_id)
+                    FROM ref.setup_task_resource tr
                 ), '') || '|' ||
                 coalesce((
                     SELECT string_agg(row_to_json(s)::text, '' ORDER BY s.setup_session_id)
@@ -192,11 +200,18 @@ if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$TAR
 fi
 sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
 
+RESOURCE_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/008_create_setup_resource_management_commands.sql"
+[[ -s "$RESOURCE_MIGRATION" ]] || {
+    echo "FAIL: accepted Setup candidate is missing migration 008"
+    exit 15
+}
+
 sudo -u fieldwiring -H bash -c "
     cd /tmp
     cd '$CANDIDATE_WORKTREE'
     /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider \
-        Setup/Application/test_setup_production_contract.py
+        Setup/Application/test_setup_production_contract.py \
+        Setup/Application/test_setup_resource_management_contract.py
 "
 echo "Exact detached Setup candidate regression: PASS"
 
@@ -227,7 +242,7 @@ done
 if [[ "$init_complete" -ne 1 ]]; then
     echo "FAIL: disposable PostgreSQL initialization did not complete"
     sudo docker logs "$TEST_CONTAINER" || true
-    exit 15
+    exit 16
 fi
 
 ready=0
@@ -241,7 +256,7 @@ for _ in $(seq 1 60); do
 done
 if [[ "$ready" -ne 1 ]]; then
     echo "FAIL: disposable PostgreSQL final server did not become ready"
-    exit 16
+    exit 17
 fi
 
 sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
@@ -275,12 +290,17 @@ GRANT EXECUTE ON FUNCTION ref.update_setup_task(text,bigint,text,integer,text,in
 GRANT EXECUTE ON FUNCTION ops.update_setup_session_task_review(text,bigint,text,timestamp with time zone,timestamp with time zone,integer,integer,text) TO fieldwiring_app;
 SQL
 
+# Production does not have migration 008 yet. Apply it only to the disposable
+# clone so the corrected resource UI can be reviewed before production approval.
+psql_test < "$RESOURCE_MIGRATION"
+echo "Disposable Setup resource migration 008: PASS"
+
 echo
 echo "--- Validate disposable Setup authorization/write boundary ---"
 MANAGE_OK="$(psql_test -qAt -c "SELECT can_manage_setup FROM ref.setup_browser_capabilities('$PREVIEW_EMAIL');")"
 if [[ "$MANAGE_OK" != "t" ]]; then
     echo "FAIL: preview operator $PREVIEW_EMAIL does not have Setup Manager capability"
-    exit 17
+    exit 18
 fi
 
 psql_test <<'SQL'
@@ -289,6 +309,9 @@ BEGIN
     IF has_table_privilege('fieldwiring_app', 'ref.setup_task', 'INSERT')
        OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')
        OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task_resource', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task_resource', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task_resource', 'DELETE')
        OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'INSERT')
        OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')
        OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'DELETE')
@@ -298,6 +321,18 @@ BEGIN
 
     IF has_function_privilege('fieldwiring_app', 'ref.setup_management_actor(text,boolean)', 'EXECUTE') THEN
         RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly can execute internal Setup actor helper';
+    END IF;
+
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.create_setup_resource(text,text,text,text)',
+        'EXECUTE'
+    ) OR NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.set_setup_task_resource(text,bigint,integer,integer,text,text,boolean)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks narrow Setup resource commands';
     END IF;
 
     IF has_table_privilege('fieldwiring_app', 'directus_users', 'SELECT') THEN
@@ -312,7 +347,7 @@ echo "Disposable Setup authorization boundary: PASS"
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
 if [[ -z "$TEST_IP" ]]; then
     echo "FAIL: could not resolve disposable PostgreSQL container IP"
-    exit 18
+    exit 19
 fi
 
 APP_DIR="$CANDIDATE_WORKTREE/Setup/Application"
@@ -340,7 +375,7 @@ PREVIEW_PGID="$(
 
 if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
     echo "FAIL: Setup preview process did not return a valid process-group ID: $PREVIEW_PGID"
-    exit 19
+    exit 20
 fi
 
 preview_ready=0
@@ -354,7 +389,7 @@ done
 if [[ "$preview_ready" -ne 1 ]]; then
     echo "FAIL: Setup preview application did not become healthy"
     tail -n 100 "$PREVIEW_LOG" || true
-    exit 20
+    exit 21
 fi
 
 HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
@@ -364,16 +399,25 @@ if [[ "$TASKS_CODE" != "200" ]]; then
     echo "FAIL: Setup preview task API returned HTTP $TASKS_CODE"
     cat /tmp/setup-preview-tasks-$STAMP.json || true
     rm -f /tmp/setup-preview-tasks-$STAMP.json
-    exit 21
+    exit 22
 fi
 rm -f /tmp/setup-preview-tasks-$STAMP.json
+
+RESOURCES_CODE="$(curl -sS -o /tmp/setup-preview-resources-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/resources")"
+if [[ "$RESOURCES_CODE" != "200" ]]; then
+    echo "FAIL: Setup preview resource catalog returned HTTP $RESOURCES_CODE"
+    cat /tmp/setup-preview-resources-$STAMP.json || true
+    rm -f /tmp/setup-preview-resources-$STAMP.json
+    exit 23
+fi
+rm -f /tmp/setup-preview-resources-$STAMP.json
 
 PROCEDURE_CODE="$(curl -sS -o /tmp/setup-preview-procedure-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/procedure?stage_key=04")"
 if [[ "$PROCEDURE_CODE" != "200" ]]; then
     echo "FAIL: Setup preview Procedure API returned HTTP $PROCEDURE_CODE"
     cat /tmp/setup-preview-procedure-$STAMP.json || true
     rm -f /tmp/setup-preview-procedure-$STAMP.json
-    exit 22
+    exit 24
 fi
 rm -f /tmp/setup-preview-procedure-$STAMP.json
 
@@ -389,8 +433,10 @@ echo "This is candidate $TARGET_SHA against a DISPOSABLE current-production clon
 echo "Preview identity: $PREVIEW_EMAIL"
 echo "Production checkout and Setup data remain unchanged."
 echo
-echo "Review the 2025 queue, reusable catalog, Procedure links, and Manager edits."
-echo "Any Save/Verify/Add Task action changes the disposable clone only."
+echo "Review the narrower task queue and the Equipment / Resources Needed section."
+echo "Front Entrance should show SkyTrak + Boom Lift from structured DB relationships."
+echo "Manager Add/Update/Remove Resource actions change the disposable clone only."
+echo "Any Save/Verify/Add Task action also changes the disposable clone only."
 echo "Movement remains intentionally non-writable in this candidate."
 echo
 echo "When review is finished, return to this PowerShell window and press ENTER."
