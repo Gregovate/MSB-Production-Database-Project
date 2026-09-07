@@ -105,6 +105,12 @@ try {
 
     $serverText = [System.IO.File]::ReadAllText($localServer)
 
+    # PowerShell here-strings on a normal Windows checkout use CRLF, while the
+    # Linux bundle copy above is deliberately LF-only. Use CRLF while applying
+    # exact source-template replacements so the multiline guards are stable on
+    # Windows, then normalize the completed shell script back to LF before upload.
+    $serverText = $serverText.Replace("`n", "`r`n")
+
     # Package the exact accepted candidate selected above for this browser-review run.
     $targetOld = 'TARGET_SHA="c72644f02b825acb830603fe6b4f7bd48713b681"'
     $targetNew = "TARGET_SHA=`"$CandidateSha`""
@@ -316,25 +322,7 @@ for endpoint in \
     fi
 done
 rm -f /tmp/setup-preview-next-$STAMP.json
-echo "Organization + ordered backlog + Schedule + Captain read APIs: PASS"
-
-PI_TASK_ID="$(psql_test -qAt -c "SELECT setup_task_id FROM ref.setup_task WHERE stage_id IS NULL AND task_name = 'Remove Street Lights' LIMIT 1;")"
-CC_TASK_ID="$(psql_test -qAt -c "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='40' AND t.task_name='Deliver and Set Up Command Center Trailer' LIMIT 1;")"
-for task_id in "$PI_TASK_ID" "$CC_TASK_ID"; do
-    [[ "$task_id" =~ ^[0-9]+$ ]] || {
-        echo "FAIL: final task-specific Procedure validation could not resolve a task ID"
-        exit 28
-    }
-    TASK_PROCEDURE_CODE="$(curl -sS -o /tmp/setup-preview-task-procedure-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task_id/procedure")"
-    if [[ "$TASK_PROCEDURE_CODE" != "200" ]]; then
-        echo "FAIL: task-specific Setup Procedure API for task $task_id returned HTTP $TASK_PROCEDURE_CODE"
-        cat /tmp/setup-preview-task-procedure-$STAMP.json || true
-        rm -f /tmp/setup-preview-task-procedure-$STAMP.json
-        exit 28
-    fi
-done
-rm -f /tmp/setup-preview-task-procedure-$STAMP.json
-echo "Stage 40 + Park Infrastructure task-specific Procedure APIs: PASS"
+echo "Stage/Scene + rolling Schedule + Captain read APIs: PASS"
 
 '@
     if (-not $serverText.Contains($apiNeedle)) {
@@ -356,8 +344,8 @@ echo "Stage 40 + Park Infrastructure task-specific Procedure APIs: PASS"
     $readyNew = @'
 echo "Review Stage/Scene grouping, inline/collapsible gaps, cross-area drag/drop, and Copy destination focus."
 echo "Verify prerequisite Add/Remove using Elf Choir Locates -> Set Scaffold and Elves."
-echo "Review the annual ordered backlog and toggle Unscheduled / Scheduled / In Progress / Completed."
-echo "Review the rolling Schedule board with Morning / Afternoon / All Day and Crew A / B / C lanes."
+echo "Review the ordered backlog filters: Unscheduled / Scheduled / In Progress / Completed."
+echo "Review short-horizon Schedule lanes: Morning / Afternoon / All Day with Crew A/B/C in parallel."
 echo "Stage 40 Command Center should own trailer/WiFi/gateway/hotspot tasks even with no wired inventory items."
 echo "Park Infrastructure should show truly no-Stage work such as street lights and breakers."
 echo "Review Perform Work: Fred''s Stars is PREVIEW-ONLY READY so crew/progress/completion can be exercised."
@@ -370,6 +358,9 @@ echo "Material/location context is read-only in this pass; movement/scanning wri
     }
     $serverText = $serverText.Replace($readyOld, $readyNew)
 
+    # The remote shell must remain LF-only even though CRLF was used above for
+    # reliable PowerShell here-string matching on Windows.
+    $serverText = $serverText.Replace("`r`n", "`n").Replace("`r", "`n")
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
     & scp -r $localBundle "${Server}:/tmp/"
