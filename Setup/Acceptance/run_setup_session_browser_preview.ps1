@@ -12,7 +12,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'setup_session_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'setup_session_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/setup-session-production-foundation'
-$CandidateSha = '831bbc70311479b33a062842ba60e71ccfa0ce86'
+$CandidateSha = '92110b8ffb06572b746a7599af6a66f45a5a997f'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -113,13 +113,173 @@ try {
     }
     $serverText = $serverText.Replace($targetOld, $targetNew)
 
-    # Include the Manager-review usability contract in the detached candidate gate.
+    # Include all accepted browser-review contracts in the exact detached-candidate gate.
     $testOld = '        Setup/Application/test_setup_google_doc_index_contract.py'
-    $testNew = "        Setup/Application/test_setup_google_doc_index_contract.py \`n        Setup/Application/test_setup_review_usability_contract.py"
+    $testNew = "        Setup/Application/test_setup_google_doc_index_contract.py \`n        Setup/Application/test_setup_review_usability_contract.py \`n        Setup/Application/test_setup_next_pass_contract.py"
     if (-not $serverText.Contains($testOld)) {
         throw 'Setup browser preview server template no longer contains the expected detached regression list.'
     }
     $serverText = $serverText.Replace($testOld, $testNew)
+
+    # Extend the disposable-clone migration set. Production remains pg_dump + SELECT only.
+    $migrationOld = @'
+RESOURCE_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/008_create_setup_resource_management_commands.sql"
+[[ -s "$RESOURCE_MIGRATION" ]] || {
+    echo "FAIL: accepted Setup candidate is missing migration 008"
+    exit 15
+}
+'@
+    $migrationNew = @'
+RESOURCE_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/008_create_setup_resource_management_commands.sql"
+NEXT_PASS_MIGRATION="$CANDIDATE_WORKTREE/Setup/Database/009_create_setup_scope_schedule_execution_commands.sql"
+REVIEW_CORRECTION_SEED="$CANDIDATE_WORKTREE/Setup/Database/010_seed_2025_stage02_elf_scope_corrections.sql"
+for migration_file in "$RESOURCE_MIGRATION" "$NEXT_PASS_MIGRATION" "$REVIEW_CORRECTION_SEED"; do
+    [[ -s "$migration_file" ]] || {
+        echo "FAIL: accepted Setup candidate is missing required disposable migration/seed: $migration_file"
+        exit 15
+    }
+done
+'@
+    if (-not $serverText.Contains($migrationOld)) {
+        throw 'Setup browser preview server template no longer contains the expected migration declaration block.'
+    }
+    $serverText = $serverText.Replace($migrationOld, $migrationNew)
+
+    $applyOld = @'
+psql_test < "$RESOURCE_MIGRATION"
+echo "Disposable Setup resource migration 008: PASS"
+'@
+    $applyNew = @'
+psql_test < "$RESOURCE_MIGRATION"
+echo "Disposable Setup resource migration 008: PASS"
+psql_test < "$NEXT_PASS_MIGRATION"
+echo "Disposable Setup scope/schedule/execution migration 009: PASS"
+psql_test < "$REVIEW_CORRECTION_SEED"
+echo "Disposable Setup 2025 review corrections 010: PASS"
+
+# Give the Captain/Perform Work screen one intentionally incomplete task in the
+# disposable clone. This changes no Production history and makes completion UI
+# testable without inventing a permanent 2026 session during browser review.
+psql_test <<'SQL'
+UPDATE ops.setup_session_task st
+SET execution_status = 'READY',
+    actual_started_at = NULL,
+    actual_completed_at = NULL,
+    actual_crew_count = NULL,
+    actual_duration_minutes = NULL,
+    completion_note = NULL,
+    completed_by_person_id = NULL,
+    annual_notes = concat_ws(E'\n', nullif(st.annual_notes, ''),
+        '[PREVIEW ONLY] Execution reset to READY so Captain completion can be exercised in the disposable browser review.')
+FROM ops.setup_session ss, ref.setup_task t
+WHERE st.setup_session_id = ss.setup_session_id
+  AND st.setup_task_id = t.setup_task_id
+  AND ss.season_year = 2025
+  AND t.task_name = 'Install Fred''s Stars';
+
+DO $block$
+DECLARE
+    v_stage02 integer;
+    v_mega_scene bigint;
+    v_fred_scene bigint;
+    v_count integer;
+BEGIN
+    SELECT stage_id INTO v_stage02 FROM ref.stage WHERE stage_key = '02';
+    SELECT lor_scene_id INTO v_mega_scene FROM ref.lor_scene
+      WHERE stage_id = v_stage02 AND scene_name = '02-Mega Tree';
+    SELECT lor_scene_id INTO v_fred_scene FROM ref.lor_scene
+      WHERE stage_id = v_stage02 AND scene_name = '02-Fred''s Stars';
+
+    SELECT count(*) INTO v_count FROM ref.setup_task
+      WHERE lor_scene_id = v_mega_scene
+        AND task_name IN ('Prepare / Load Light Strings','Erect / Position Mega Tree Structure','Hang and Secure Light Strings','Complete Electrical / Network Connections');
+    IF v_count <> 4 THEN
+        RAISE EXCEPTION 'Stage 02 Mega Tree Scene should contain four reconstructed tasks; found %', v_count;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM ref.setup_task t
+        JOIN ref.setup_task_resource tr ON tr.setup_task_id = t.setup_task_id
+        JOIN ref.setup_resource r ON r.setup_resource_id = tr.setup_resource_id
+        WHERE t.lor_scene_id = v_fred_scene
+          AND t.task_name = 'Install Fred''s Stars'
+          AND t.normal_crew_min = 2 AND t.normal_crew_max = 3
+          AND r.resource_name = 'Boom Lift' AND tr.quantity_required = 1
+    ) THEN
+        RAISE EXCEPTION 'Fred''s Stars browser-review correction is incomplete';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ref.setup_task scaffold
+        JOIN ref.stage s ON s.stage_id = scaffold.stage_id AND s.stage_key = '08'
+        JOIN ref.setup_task_dependency d ON d.setup_task_id = scaffold.setup_task_id
+        JOIN ref.setup_task locates ON locates.setup_task_id = d.prerequisite_setup_task_id
+        WHERE scaffold.task_name = 'Set Scaffold and Elves'
+          AND locates.task_name = 'Locates'
+    ) THEN
+        RAISE EXCEPTION 'Elf Choir Locates prerequisite is missing';
+    END IF;
+END
+$block$;
+SQL
+echo "Stage/Scene review correction validation: PASS"
+'@
+    if (-not $serverText.Contains($applyOld)) {
+        throw 'Setup browser preview server template no longer contains the expected migration-008 apply block.'
+    }
+    $serverText = $serverText.Replace($applyOld, $applyNew)
+
+    # Strengthen the least-privilege gate for the new command layer.
+    $boundaryNeedle = "    IF has_table_privilege('fieldwiring_app', 'directus_users', 'SELECT') THEN"
+    $boundaryInsert = @'
+    IF has_table_privilege('fieldwiring_app', 'ops.setup_task_progress', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_task_progress', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task_dependency', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task_dependency', 'UPDATE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad V0.2 Setup DML';
+    END IF;
+
+    IF NOT has_function_privilege('fieldwiring_app', 'ref.set_setup_task_scope(text,bigint,integer,bigint)', 'EXECUTE')
+       OR NOT has_function_privilege('fieldwiring_app', 'ref.set_setup_task_dependency(text,bigint,bigint,text,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('fieldwiring_app', 'ops.upsert_setup_work_day(text,integer,date,text,text)', 'EXECUTE')
+       OR NOT has_function_privilege('fieldwiring_app', 'ops.set_setup_work_day_task(text,bigint,bigint,text,integer,integer,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('fieldwiring_app', 'ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks one or more narrow V0.2 Setup commands';
+    END IF;
+
+'@
+    if (-not $serverText.Contains($boundaryNeedle)) {
+        throw 'Setup browser preview server template no longer contains the expected authorization boundary insertion point.'
+    }
+    $serverText = $serverText.Replace($boundaryNeedle, $boundaryInsert + $boundaryNeedle)
+
+    # Validate the new read surfaces after Flask starts, before telling the operator
+    # the browser review is ready.
+    $apiNeedle = 'PROCEDURE_CODE="$(curl -sS -o /tmp/setup-preview-procedure-$STAMP.json -w ''%{http_code}'' "http://127.0.0.1:$PREVIEW_PORT/api/setup/procedure?stage_key=04")"'
+    $apiInsert = @'
+for endpoint in \
+    "/api/setup/organization" \
+    "/api/setup/schedule?season_year=2025" \
+    "/api/setup/execution?season_year=2025"; do
+    NEXT_CODE="$(curl -sS -o /tmp/setup-preview-next-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT$endpoint")"
+    if [[ "$NEXT_CODE" != "200" ]]; then
+        echo "FAIL: Setup V0.2 API $endpoint returned HTTP $NEXT_CODE"
+        cat /tmp/setup-preview-next-$STAMP.json || true
+        rm -f /tmp/setup-preview-next-$STAMP.json
+        exit 28
+    fi
+done
+rm -f /tmp/setup-preview-next-$STAMP.json
+echo "Stage/Scene + Schedule + Captain read APIs: PASS"
+
+'@
+    if (-not $serverText.Contains($apiNeedle)) {
+        throw 'Setup browser preview server template no longer contains the expected Procedure API insertion point.'
+    }
+    $serverText = $serverText.Replace($apiNeedle, $apiInsert + $apiNeedle)
 
     # The preview server performs one post-start JSON validation with the production
     # Python runtime. /opt/fieldwiring is intentionally not traversable by msbadmin,
@@ -130,6 +290,21 @@ try {
         throw 'Setup browser preview server template no longer contains the expected Mega Cube validator command.'
     }
     $serverText = $serverText.Replace($validatorOld, $validatorNew)
+
+    $readyOld = 'echo "Review the narrower task queue and the Equipment / Resources Needed section."'
+    $readyNew = @'
+echo "Review Stage/Scene grouping, inline/collapsible gaps, cross-area drag/drop, and Copy destination focus."
+echo "Verify prerequisite Add/Remove using Elf Choir Locates -> Set Scaffold and Elves."
+echo "Review the lightweight Schedule tab (Morning / Afternoon / All Day; parallel tasks allowed)."
+echo "Review Perform Work: Fred''s Stars is PREVIEW-ONLY READY so crew/progress/completion can be exercised."
+echo "Perform Work should include the current published Setup Procedure PDF when one resolves."
+echo "Material/location context is read-only in this pass; movement/scanning writes remain intentionally absent."
+'@
+    if (-not $serverText.Contains($readyOld)) {
+        throw 'Setup browser preview server template no longer contains the expected review guidance line.'
+    }
+    $serverText = $serverText.Replace($readyOld, $readyNew)
+
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
     & scp -r $localBundle "${Server}:/tmp/"
