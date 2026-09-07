@@ -7,7 +7,13 @@ from typing import Any
 import psycopg2
 from flask import Blueprint, Response, jsonify, request, send_file
 
-from backend import _current_document_path, _instruction_package
+from backend import (
+    ConfigError,
+    ProcedureContextError,
+    SetupInstructionError,
+    _current_document_path,
+    _instruction_package,
+)
 from setup_repository import SetupRepository, SetupRepositoryError
 
 setup_api = Blueprint("setup_api", __name__)
@@ -231,6 +237,24 @@ def setup_repository_error(exc: SetupRepositoryError) -> tuple[Response, int]:
         error="Setup Session is temporarily unavailable because its database source is not ready.",
         engineering_error=str(exc),
     ), 503
+
+
+@setup_api.errorhandler(ConfigError)
+def setup_config_error(exc: ConfigError) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup Procedure review is not connected to the current document source.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@setup_api.errorhandler(ProcedureContextError)
+def setup_procedure_context_error(exc: ProcedureContextError) -> tuple[Response, int]:
+    return jsonify(error="Setup Procedure context could not be resolved.", engineering_error=str(exc)), 400
+
+
+@setup_api.errorhandler(SetupInstructionError)
+def setup_instruction_error(exc: SetupInstructionError) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 400
 
 
 @setup_api.errorhandler(psycopg2.Error)
