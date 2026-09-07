@@ -8,7 +8,7 @@
 
 ## Problem
 
-Setup Session now has a demonstrated class of critical reusable work that does not belong to any LOR Stage or Scene and must not be forced into one merely to obtain a Procedure path.
+Setup Session has a demonstrated class of critical reusable work that does not belong to any LOR Stage or Scene and must not be forced into one merely to obtain a Procedure path.
 
 Examples identified during Manager review include:
 
@@ -46,14 +46,14 @@ Site-wide/infrastructure Setup work needs the **same Procedure subsystem structu
 
 Do not create a fake Stage, fake Scene, fake LOR Preview, or LOR-derived folder merely to host these documents.
 
-## Proposed controlled non-LOR root
+## Approved controlled non-LOR root
 
 Keep the documentation in the existing Google Shared Drive `Display Folders` repository so Setup does not create a second unrelated document repository.
 
-The working folder direction is:
+The approved folder is:
 
 ```text
-G:\Shared drives\Display Folders\Site Infrastructure\
+G:\Shared drives\Display Folders\41 Park Infrastructure-PI\
     _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
     Procedures\
         _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
@@ -68,20 +68,27 @@ G:\Shared drives\Display Folders\Site Infrastructure\
             SourceDocs\
 ```
 
-`Site Infrastructure` is intentionally not named like an `NN-Name-XY` Stage and is not part of LOR hierarchy classification.
+The leading `41` keeps this folder adjacent to the existing numbered park-area folders in normal Windows/Google Drive sorting. **The space after `41` is deliberate.**
 
-The final folder name must be accepted as part of Folder Alignment / Google Drive governance before Production use. The important contract is the **non-LOR controlled root**, not this literal display name alone.
+Current Folder Alignment classifies any top-level folder beginning `NN-` as a Stage candidate. Therefore:
+
+```text
+41-Park Infrastructure-PI   INVALID for this use — collides with Stage-folder classification
+41 Park Infrastructure-PI   APPROVED — sortable, explicit non-LOR root
+```
+
+`PI` is a human-facing Park Infrastructure code only. It is not an LOR Stage short code and does not establish Stage 41.
+
+The shared FieldWiring/Procedure structured-scope resolver remains unchanged. It starts from known database/LOR Stage context and does not enumerate the Display Folders root looking for this folder.
 
 ## Resolution model
 
-The current Procedure application correctly appends only the fixed Procedure branch after a structured Stage/Scene root has been resolved. That behavior should be reused.
-
-For site-wide Setup tasks, the intended flow is instead:
+For site-wide Setup tasks, the flow is:
 
 ```text
 Reusable Setup task
     -> explicit Site-wide / Infrastructure scope
-    -> controlled non-LOR documentation root
+    -> controlled 41 Park Infrastructure-PI root
     -> validate root marker
     -> validate Procedures marker
     -> fixed Procedures/Setup branch
@@ -89,7 +96,7 @@ Reusable Setup task
     -> Captain / Perform Work screen
 ```
 
-The non-LOR root must be selected server-side from governed Setup context. Browser input must not become an arbitrary filesystem path.
+The non-LOR root is selected server-side from governed Setup context. Browser input must not become an arbitrary filesystem path.
 
 This is an extension of the Procedure-root contract, not a second generic filesystem resolver. The existing Stage/Sub-stage/Scene resolver remains unchanged for LOR/area-scoped work.
 
@@ -124,16 +131,17 @@ They do **not** require LOR membership.
 
 Before Production deployment:
 
-1. accept the controlled non-LOR folder name/location through Google Drive / Folder Alignment governance;
-2. extend the Setup task-scope contract to identify site-wide/infrastructure work without inventing a Stage/Scene;
-3. extend Procedure-root resolution so approved Setup-only roots can reuse the existing marker + `Procedures/<task>` adapter safely;
-4. add tests proving LOR Stage/Scene resolution remains unchanged;
-5. add tests proving arbitrary browser filesystem paths cannot select a non-LOR root;
-6. add Captain-screen tests for current published PDF presentation from a site-wide task; and
-7. update the Stage Setup Documentation Standard / Google Drive Path Resolution Contract to recognize approved non-LOR Setup Procedure roots.
+1. create and mark `41 Park Infrastructure-PI` according to the Google Drive operator procedure;
+2. verify Setup task scope identifies site-wide/infrastructure work without inventing a Stage/Scene;
+3. verify Procedure-root resolution safely consumes only the approved non-LOR root;
+4. keep tests proving LOR Stage/Scene resolution remains unchanged;
+5. keep tests proving arbitrary browser filesystem paths cannot select a non-LOR root;
+6. validate Captain-screen current published PDF presentation from a site-wide task; and
+7. update any remaining documentation authority that still assumes all Setup Procedure roots are Stage/Scene roots.
 
 ## Related authority
 
+- `Docs/00_Project_Overview/Google_Drive/operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md`
 - `System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md`
 - `Docs/00_Project_Overview/Google_Drive/engineering/Google_Drive_Path_Resolution_Contract.md`
 - `Procedures/Application/README.md`
