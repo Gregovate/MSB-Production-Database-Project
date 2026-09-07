@@ -1,11 +1,14 @@
-"""Protected API for Setup V0.2 organization, scheduling, and Captain execution."""
+"""Protected API for Setup V0.3 organization, planning, scheduling, and Captain execution."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import psycopg2
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify, request, send_file
 
+from backend import _current_document_path, _instruction_package, drive_root
+from FieldWiring.Application.field_context_resolver import MARKER_NAME
 from setup_api import (
     json_body,
     require_manager,
@@ -15,9 +18,11 @@ from setup_api import (
     SetupAuthenticationError,
     SetupCommandError,
 )
+from setup_google_docs import preferred_editable_sources, runtime_google_sources
 from setup_next_repository import SetupNextRepository, SetupNextRepositoryError
 
 setup_next_api = Blueprint("setup_next_api", __name__)
+SITE_INFRASTRUCTURE_FOLDER = "Site Infrastructure"
 
 
 def repo() -> SetupNextRepository:
@@ -40,6 +45,120 @@ def nullable_int(value: Any, name: str) -> int | None:
         return int(value)
     except (TypeError, ValueError) as exc:
         raise SetupCommandError(f"{name} must be an integer") from exc
+
+
+def _direct_pdfs(folder: Path) -> list[dict[str, Any]]:
+    if not folder.is_dir():
+        return []
+    try:
+        files = [p for p in folder.iterdir() if p.is_file() and p.suffix.casefold() == ".pdf"]
+    except OSError:
+        return []
+    return [
+        {"name": p.name, "path": str(p), "size": p.stat().st_size}
+        for p in sorted(files, key=lambda item: item.name.casefold())
+    ]
+
+
+def _manager_sources(instructions: dict[str, Any], access: dict[str, Any]) -> dict[str, Any]:
+    if not access.get("can_manage_setup"):
+        instructions["editable_sources"] = []
+        instructions.pop("manager_rule", None)
+        return instructions
+
+    task_root = str(instructions.get("task_root") or "").strip()
+    runtime_sources: list[dict[str, Any]] = []
+    runtime_warnings: list[str] = []
+    if task_root:
+        runtime_sources, runtime_warnings = runtime_google_sources(
+            task_root=task_root,
+            drive_root=str(drive_root()),
+        )
+    instructions["editable_sources"] = preferred_editable_sources(
+        list(instructions.get("editable_sources") or []),
+        runtime_sources,
+    )
+    if runtime_warnings:
+        instructions["warnings"] = [
+            *(instructions.get("warnings") or []),
+            *runtime_warnings,
+        ]
+    return instructions
+
+
+def _site_infrastructure_instructions(access: dict[str, Any]) -> dict[str, Any]:
+    root = Path(drive_root()) / SITE_INFRASTRUCTURE_FOLDER
+    procedures_root = root / "Procedures"
+    task_root = procedures_root / "Setup"
+    warnings: list[str] = []
+
+    result: dict[str, Any] = {
+        "status": "UNRESOLVED_SCOPE",
+        "task": "Setup",
+        "scope_type": "SITE_WIDE",
+        "scope_root": str(root),
+        "procedures_root": str(procedures_root),
+        "task_root": str(task_root),
+        "current_documents": [],
+        "documents": [],
+        "images": [],
+        "editable_sources": [],
+        "warnings": warnings,
+    }
+
+    if not root.is_dir():
+        warnings.append(f"Site Infrastructure Procedure root is missing: {root}")
+        return _manager_sources(result, access)
+    if not (root / MARKER_NAME).is_file():
+        result["status"] = "UNAPPROVED_SCOPE"
+        warnings.append(f"Site Infrastructure root marker is missing: {root / MARKER_NAME}")
+        return _manager_sources(result, access)
+    if not procedures_root.is_dir():
+        result["status"] = "PROCEDURES_UNAVAILABLE"
+        warnings.append(f"Procedure subsystem folder is missing: {procedures_root}")
+        return _manager_sources(result, access)
+    if not (procedures_root / MARKER_NAME).is_file():
+        result["status"] = "PROCEDURES_UNAVAILABLE"
+        warnings.append(f"Procedure subsystem marker is missing: {procedures_root / MARKER_NAME}")
+        return _manager_sources(result, access)
+    if not task_root.is_dir():
+        result["status"] = "TASK_UNAVAILABLE"
+        warnings.append(f"Procedure task folder is missing: {task_root}")
+        return _manager_sources(result, access)
+
+    documents = _direct_pdfs(task_root)
+    result["current_documents"] = documents
+    result["documents"] = documents
+    result["status"] = "AVAILABLE" if documents else "NO_CURRENT_DOCUMENTS"
+    if not documents:
+        warnings.append(f"No current published Setup PDF is present in {task_root}")
+    return _manager_sources(result, access)
+
+
+def _task_instructions(setup_task_id: int, access: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    task = repo().task_scope(setup_task_id)
+    stage_key = str(task.get("stage_key") or "").strip()
+    if stage_key:
+        instructions = dict(_instruction_package(stage_key))
+        instructions = _manager_sources(instructions, access)
+        instructions["scope_type"] = "SCENE" if task.get("lor_scene_id") is not None else "STAGE"
+        instructions["setup_task_id"] = setup_task_id
+        return task, instructions
+
+    instructions = _site_infrastructure_instructions(access)
+    instructions["setup_task_id"] = setup_task_id
+    return task, instructions
+
+
+def _site_current_document(name: str) -> Path:
+    safe_name = Path(name or "").name
+    if not safe_name or safe_name != name or not safe_name.casefold().endswith(".pdf"):
+        raise SetupCommandError("A current Site Infrastructure PDF name is required")
+    folder = Path(drive_root()) / SITE_INFRASTRUCTURE_FOLDER / "Procedures" / "Setup"
+    path = folder / safe_name
+    if not path.is_file() or path.parent != folder:
+        raise SetupCommandError("Current Site Infrastructure PDF was not found")
+    return path
 
 
 @setup_next_api.get("/api/setup/organization")
@@ -75,6 +194,34 @@ def api_setup_dependency(setup_task_id: int, prerequisite_setup_task_id: int) ->
         active=bool(payload.get("active", True)),
     )
     return jsonify(dependency=result)
+
+
+@setup_next_api.patch("/api/setup/session-tasks/<int:setup_session_task_id>/planned-order")
+def api_setup_planned_order(setup_session_task_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    order = nullable_int(payload.get("planned_order"), "planned_order")
+    if order is None:
+        raise SetupCommandError("planned_order is required")
+    result = repo().set_planned_order(
+        email=email,
+        session_task_id=setup_session_task_id,
+        planned_order=order,
+        reason=(str(payload.get("plan_change_reason") or "").strip() or None),
+    )
+    return jsonify(planning=result)
+
+
+@setup_next_api.post("/api/setup/planning/promote-baseline")
+def api_setup_promote_baseline() -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    year = payload.get("season_year")
+    if not isinstance(year, int):
+        raise SetupCommandError("season_year must be an integer")
+    return jsonify(baseline=repo().promote_plan_baseline(email=email, season_year=year))
 
 
 @setup_next_api.get("/api/setup/schedule")
@@ -114,6 +261,7 @@ def api_setup_work_day_task(setup_work_day_id: int, setup_session_task_id: int) 
         work_day_id=setup_work_day_id,
         session_task_id=setup_session_task_id,
         shift=str(payload.get("shift_code") or "ALL_DAY"),
+        crew_lane=(str(payload.get("crew_lane") or "A").strip() or "A"),
         sort_order=nullable_int(payload.get("sort_order"), "sort_order") or 100,
         planned_crew=nullable_int(payload.get("planned_crew_count"), "planned_crew_count"),
         active=bool(payload.get("active", True)),
@@ -140,6 +288,29 @@ def api_setup_field_context(setup_task_id: int) -> Response:
         task_id=setup_task_id,
         season_year=required_year(),
     ))
+
+
+@setup_next_api.get("/api/setup/tasks/<int:setup_task_id>/procedure")
+def api_setup_task_procedure(setup_task_id: int) -> Response:
+    _base_repo, _email, access = require_reader()
+    _task, instructions = _task_instructions(setup_task_id, access)
+    return jsonify(instructions=instructions)
+
+
+@setup_next_api.get("/api/setup/tasks/<int:setup_task_id>/procedure/current")
+def api_setup_task_procedure_current(setup_task_id: int) -> Response:
+    _base_repo, _email, _access = require_reader()
+    task = repo().task_scope(setup_task_id)
+    name = request.args.get("name", "").strip()
+    stage_key = str(task.get("stage_key") or "").strip()
+    path = _current_document_path(stage_key, name) if stage_key else _site_current_document(name)
+    return send_file(
+        path,
+        conditional=True,
+        max_age=60,
+        as_attachment=False,
+        download_name=path.name,
+    )
 
 
 @setup_next_api.post("/api/setup/session-tasks/<int:setup_session_task_id>/progress")
