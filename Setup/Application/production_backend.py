@@ -16,7 +16,7 @@ from setup_api import setup_api
 from setup_resource_api import setup_resource_api
 from setup_next_api import setup_next_api
 
-PRODUCTION_VERSION = "V0.2.0-browser-review"
+PRODUCTION_VERSION = "V0.3.0-final-browser-review"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
