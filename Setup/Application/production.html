@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="setup_production.css?v=2026-09-07.1">
   <link rel="stylesheet" href="setup_resource_review.css?v=2026-09-07.1">
   <link rel="stylesheet" href="setup_review_usability.css?v=2026-09-07.2">
+  <link rel="stylesheet" href="setup_next_pass.css?v=2026-09-07.3">
 </head>
 <body>
 <header class="site-header">
@@ -129,7 +130,7 @@
           <section class="detail-section">
             <h3>Prerequisites</h3>
             <div id="detail-dependencies" class="chip-row"></div>
-            <div class="hint">Dependency editing is not exposed in the first shared release; existing relationships remain visible for verification.</div>
+            <div class="hint">Managers can maintain reusable prerequisites in this review candidate. Circular dependencies are blocked by the database command layer.</div>
           </section>
 
           <section class="detail-section">
@@ -188,10 +189,10 @@
 
   <section id="movement-view" class="view">
     <div class="card">
-      <div class="eyebrow">Initial conservative rollout</div>
+      <div class="eyebrow">Movement integration boundary</div>
       <h2>Container / Display Movement and Scanning</h2>
-      <p>Production Crew and Managers are authorized for governed Setup movement/scanning, but the narrow movement commands are not installed yet.</p>
-      <p class="muted">No simulation is exposed in the Production application. This view will become active only after the audited movement command layer is installed and accepted.</p>
+      <p>Setup can now show annual/current task material locations on the Captain screen. Production Crew and Managers remain authorized for governed movement/scanning, but the narrow movement write commands are not installed yet.</p>
+      <p class="muted">No simulation is exposed. Scanning identifies the physical object; Setup owns the operational meaning of a future confirmed movement.</p>
       <div class="fact-grid">
         <div><span>Annual Display state rows</span><strong id="movement-display-state">—</strong></div>
         <div><span>Annual Container state rows</span><strong id="movement-container-state">—</strong></div>
@@ -205,5 +206,6 @@
 <script src="setup_production.js?v=2026-09-07.1"></script>
 <script src="setup_resource_review.js?v=2026-09-07.1"></script>
 <script src="setup_review_usability.js?v=2026-09-07.2"></script>
+<script src="setup_next_pass.js?v=2026-09-07.3"></script>
 </body>
 </html>
