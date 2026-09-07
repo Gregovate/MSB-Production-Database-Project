@@ -13,7 +13,9 @@ from backend import (
     SetupInstructionError,
     _current_document_path,
     _instruction_package,
+    drive_root,
 )
+from setup_google_docs import indexed_google_sources, preferred_editable_sources
 from setup_repository import SetupRepository, SetupRepositoryError
 
 setup_api = Blueprint("setup_api", __name__)
@@ -150,7 +152,25 @@ def api_setup_procedure() -> Response:
         raise SetupCommandError("stage_key is required")
 
     instructions = dict(_instruction_package(stage_key))
-    if not access.get("can_manage_setup"):
+    if access.get("can_manage_setup"):
+        task_root = str(instructions.get("task_root") or "").strip()
+        indexed_sources: list[dict[str, Any]] = []
+        index_warnings: list[str] = []
+        if task_root:
+            indexed_sources, index_warnings = indexed_google_sources(
+                task_root=task_root,
+                drive_root=str(drive_root()),
+            )
+        instructions["editable_sources"] = preferred_editable_sources(
+            list(instructions.get("editable_sources") or []),
+            indexed_sources,
+        )
+        if index_warnings:
+            instructions["warnings"] = [
+                *(instructions.get("warnings") or []),
+                *index_warnings,
+            ]
+    else:
         instructions["source_docs"] = []
         instructions["archive"] = []
         instructions["editable_sources"] = []
