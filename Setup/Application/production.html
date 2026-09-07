@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="setup_production.css?v=2026-09-07.1">
   <link rel="stylesheet" href="setup_resource_review.css?v=2026-09-07.1">
   <link rel="stylesheet" href="setup_review_usability.css?v=2026-09-07.2">
-  <link rel="stylesheet" href="setup_next_pass.css?v=2026-09-07.3">
+  <link rel="stylesheet" href="setup_next_pass.css?v=2026-09-07.4">
 </head>
 <body>
 <header class="site-header">
@@ -82,7 +82,7 @@
             <fieldset id="reusable-fieldset" class="production-fieldset">
               <legend>Reusable Task Definition</legend>
               <label>Task name<input id="edit-task-name" type="text"></label>
-              <label>Stage<select id="edit-stage-id"></select></label>
+              <label>Stage / Site-wide scope<select id="edit-stage-id"></select></label>
               <label>Task type
                 <select id="edit-action-type">
                   <option value="WORK">Work</option>
@@ -165,7 +165,7 @@
 
       <form id="add-task-form" class="add-task-form manager-only" hidden>
         <div class="compact-grid three">
-          <label>Stage<select id="add-stage-id" required></select></label>
+          <label>Stage / Site-wide scope<select id="add-stage-id"></select></label>
           <label>Task type
             <select id="add-action-type">
               <option value="WORK">Work</option>
@@ -206,6 +206,6 @@
 <script src="setup_production.js?v=2026-09-07.1"></script>
 <script src="setup_resource_review.js?v=2026-09-07.1"></script>
 <script src="setup_review_usability.js?v=2026-09-07.2"></script>
-<script src="setup_next_pass.js?v=2026-09-07.3"></script>
+<script src="setup_next_pass.js?v=2026-09-07.4"></script>
 </body>
 </html>
