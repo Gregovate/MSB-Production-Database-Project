@@ -7,12 +7,12 @@ import psycopg2
 from flask import Blueprint, Response, jsonify, request
 
 from setup_api import (
-    authenticated_email,
     json_body,
     require_manager,
     require_reader,
     require_setup_command,
     setup_database_dsn,
+    SetupAuthenticationError,
     SetupCommandError,
 )
 from setup_next_repository import SetupNextRepository, SetupNextRepositoryError
@@ -162,6 +162,19 @@ def api_setup_record_progress(setup_session_task_id: int) -> tuple[Response, int
         mark_complete=bool(payload.get("mark_complete", False)),
     )
     return jsonify(progress=result), 201
+
+
+@setup_next_api.errorhandler(SetupAuthenticationError)
+def setup_next_authentication_error(exc: SetupAuthenticationError) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup Session sign-in identity is unavailable",
+        engineering_error=str(exc),
+    ), 401
+
+
+@setup_next_api.errorhandler(SetupCommandError)
+def setup_next_command_error(exc: SetupCommandError) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 403
 
 
 @setup_next_api.errorhandler(SetupNextRepositoryError)
