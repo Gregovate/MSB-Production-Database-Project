@@ -1,4 +1,4 @@
-# Create the Site Infrastructure Procedure Folder
+# Create the Park Infrastructure Procedure Folder
 
 | Document Control | Value |
 |---|---|
@@ -6,10 +6,10 @@
 | System | Google Shared Drive — Display Folders |
 | Task | Create the controlled non-LOR Procedure root for site-wide Setup work |
 | Audience | Production documentation maintainers and Setup Managers |
-| Status | CURRENT FOR SETUP V0.2 BUILD-OUT |
+| Status | CURRENT FOR SETUP V0.3 BUILD-OUT |
 | Owner | Setup and Deployment / Production documentation owner |
 | Last Reviewed | 2026-09-07 |
-| Keywords | Site Infrastructure, site-wide, Setup, Procedures, Google Drive, non-LOR, Command Center, WiFi, street lights, breakers |
+| Keywords | Park Infrastructure, site-wide, Setup, Procedures, Google Drive, non-LOR, Command Center, WiFi, street lights, breakers |
 
 [↑ Google Drive / Display Folder Operations](../README.md)
 
@@ -34,17 +34,26 @@ These are real Setup tasks, but they are **not LOR tasks** and must not be assig
 Create this folder directly under the existing Google Shared Drive **Display Folders** root:
 
 ```text
-G:\Shared drives\Display Folders\Site Infrastructure
+G:\Shared drives\Display Folders\41 Park Infrastructure-PI
 ```
 
-`Site Infrastructure` is intentionally not named like an `NN-Name-XY` Stage. It is a controlled non-LOR Setup documentation root.
+The leading `41` keeps this operational folder beside the numbered park-area folders in normal Windows/Google Drive sorting. **There is intentionally no hyphen immediately after `41`.**
+
+This distinction is required because current Folder Alignment classifies any top-level folder beginning `NN-` as a Stage candidate. Therefore:
+
+```text
+41-Park Infrastructure-PI   DO NOT USE — looks like an LOR Stage to Folder Alignment
+41 Park Infrastructure-PI   APPROVED — sortable non-LOR Setup root
+```
+
+`41 Park Infrastructure-PI` is a controlled non-LOR Setup documentation root. `PI` is a human-facing Park Infrastructure code only; it is not an LOR Stage short code and does not create Stage 41.
 
 Do not create an LOR Preview, Stage, Scene, `PreviewBackground`, or `Wiring` branch for this folder merely to satisfy another system.
 
 ## Create This Folder Structure
 
 ```text
-Site Infrastructure/
+41 Park Infrastructure-PI/
 │
 ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 │
@@ -79,7 +88,7 @@ _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
 Required markers:
 
 ```text
-Site Infrastructure root            YES
+41 Park Infrastructure-PI root       YES
 Procedures                           YES
 Procedures\Inspection               NO
 Procedures\Setup                    NO
@@ -101,7 +110,7 @@ Do not add markers to every child folder.
 Put the current PDFs directly in:
 
 ```text
-Site Infrastructure\Procedures\Setup
+41 Park Infrastructure-PI\Procedures\Setup
 ```
 
 Examples may eventually include:
@@ -120,7 +129,7 @@ The exact current document names may evolve. The folder contract is authoritativ
 Put editable working/source material in:
 
 ```text
-Site Infrastructure\Procedures\Setup\SourceDocs
+41 Park Infrastructure-PI\Procedures\Setup\SourceDocs
 ```
 
 A Google Doc may remain the editable source while its published PDF is the normal Captain/field copy.
@@ -130,7 +139,7 @@ A Google Doc may remain the editable source while its published PDF is the norma
 Put superseded Setup material in:
 
 ```text
-Site Infrastructure\Procedures\Setup\Archive
+41 Park Infrastructure-PI\Procedures\Setup\Archive
 ```
 
 Archived files are not current field authority.
@@ -140,7 +149,7 @@ Archived files are not current field authority.
 Put Setup Procedure images in:
 
 ```text
-Site Infrastructure\Procedures\Setup\images
+41 Park Infrastructure-PI\Procedures\Setup\images
 ```
 
 Do not create a separate competing image folder for the same Procedure family.
@@ -148,22 +157,24 @@ Do not create a separate competing image folder for the same Procedure family.
 ## Procedure
 
 1. Open `G:\Shared drives\Display Folders`.
-2. Confirm there is not already a reviewed `Site Infrastructure` folder.
-3. Create `Site Infrastructure` exactly as shown.
-4. Create the complete `Procedures` structure shown above.
-5. Add the standard marker directly in the `Site Infrastructure` root.
-6. Add the standard marker directly in `Site Infrastructure\Procedures`.
-7. Do **not** add markers to `Inspection`, `Setup`, `Takedown`, `images`, `Archive`, or `SourceDocs`.
-8. Put current published Setup PDFs directly in `Procedures\Setup`.
-9. Put editable Setup source documents in `Procedures\Setup\SourceDocs`.
-10. Put superseded/historical Setup material in `Procedures\Setup\Archive`.
-11. Put Procedure-local Setup images in `Procedures\Setup\images`.
-12. Do not create an LOR Preview, fake Stage/Scene, `PreviewBackground`, or `Wiring` branch for this root unless a later approved use independently requires one.
-13. Verify the completed structure against the checklist below.
+2. If `41-Park Infrastructure-PI` already exists and is still empty/new, rename it to `41 Park Infrastructure-PI` before building it out.
+3. Confirm there is not already another reviewed Park Infrastructure root.
+4. Create or use `41 Park Infrastructure-PI` exactly as shown.
+5. Create the complete `Procedures` structure shown above.
+6. Add the standard marker directly in the `41 Park Infrastructure-PI` root.
+7. Add the standard marker directly in `41 Park Infrastructure-PI\Procedures`.
+8. Do **not** add markers to `Inspection`, `Setup`, `Takedown`, `images`, `Archive`, or `SourceDocs`.
+9. Put current published Setup PDFs directly in `Procedures\Setup`.
+10. Put editable Setup source documents in `Procedures\Setup\SourceDocs`.
+11. Put superseded/historical Setup material in `Procedures\Setup\Archive`.
+12. Put Procedure-local Setup images in `Procedures\Setup\images`.
+13. Do not create an LOR Preview, fake Stage/Scene, `PreviewBackground`, or `Wiring` branch for this root unless a later approved use independently requires one.
+14. Verify the completed structure against the checklist below.
 
 ## Build Checklist
 
-- [ ] `G:\Shared drives\Display Folders\Site Infrastructure` exists.
+- [ ] `G:\Shared drives\Display Folders\41 Park Infrastructure-PI` exists.
+- [ ] The folder name does **not** begin `41-`.
 - [ ] The root marker is present.
 - [ ] `Procedures` exists and has its marker.
 - [ ] `Inspection`, `Setup`, and `Takedown` exist.
@@ -177,14 +188,14 @@ Do not create a separate competing image folder for the same Procedure family.
 
 ## Setup Application Boundary
 
-The Setup Session application will identify these tasks as **Site-wide / Infrastructure** work.
+The Setup Session application identifies these tasks as **Site-wide / Infrastructure** work.
 
 The intended resolution path is:
 
 ```text
 Reusable Setup task
     -> Site-wide / Infrastructure scope
-    -> controlled Site Infrastructure root
+    -> controlled 41 Park Infrastructure-PI root
     -> validate root marker
     -> validate Procedures marker
     -> Procedures\Setup
@@ -197,6 +208,7 @@ The browser must never accept an arbitrary filesystem path from an operator to s
 
 ## If Something Is Wrong
 
+- **The folder is named `41-Park Infrastructure-PI`:** rename it to `41 Park Infrastructure-PI` before treating it as controlled; `41-` collides with the Stage-folder classifier.
 - **A Stage/Scene folder was created instead:** stop; do not add fake LOR context. Use this non-LOR root.
 - **The folder already exists with legacy material:** do not overwrite or bulk-move files. Review the material before restructuring it.
 - **A current PDF is in `Archive` or `SourceDocs`:** it will not be treated as the normal current field publication; move/re-publish only after review.
