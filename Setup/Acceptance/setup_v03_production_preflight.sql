@@ -1,5 +1,5 @@
 /* ============================================================================
-MSB Setup Session V0.3 — Production promotion preflight
+MSB Setup Session V0.3.4 — Production promotion preflight
 Issue: #122
 Mode: READ ONLY
 Revision: 2026-09-07
@@ -7,8 +7,17 @@ Revision: 2026-09-07
 Purpose:
   Prove the Production database is still at the accepted Setup foundation
   (through 007), that the 2025 historical-verification session is the only Setup
-  session, and that the durable V0.3 promotion can proceed without colliding
-  with partial prior installs or duplicate reconstruction tasks.
+  session, that existing historical operational dates do not violate the new
+  session-year rule, and that the durable V0.3.4 promotion can proceed without
+  colliding with partial prior installs or duplicate reconstruction tasks.
+
+Promotion boundary after PASS:
+  - durable migrations/commands only;
+  - 2025 confirmed reconstruction only;
+  - no disposable preview seed 012;
+  - no fake schedule rows or READY resets;
+  - no 2026 Setup Session;
+  - no movement/scanning write commands.
 ============================================================================ */
 
 \set ON_ERROR_STOP on
@@ -25,6 +34,11 @@ DECLARE
     v_stage02 integer;
     v_fred_scene_count integer;
     v_mega_scene_count integer;
+    v_bad_work_days integer;
+    v_bad_planned_dates integer;
+    v_bad_actual_starts integer;
+    v_bad_actual_completions integer;
+    v_bad_movement_times integer;
 BEGIN
     IF current_database() <> 'msb' THEN
         RAISE EXCEPTION 'Expected Production database msb; connected to %', current_database();
@@ -42,7 +56,7 @@ BEGIN
     FROM ops.setup_session
     WHERE season_year = 2026;
     IF v_2026_count <> 0 THEN
-        RAISE EXCEPTION '2026 Setup Session already exists; stop before V0.3 Production promotion';
+        RAISE EXCEPTION '2026 Setup Session already exists; stop before V0.3.4 Production promotion';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fieldwiring_app') THEN
@@ -70,7 +84,10 @@ BEGIN
         WHERE table_schema = 'ops' AND table_name = 'setup_work_day_task' AND column_name = 'crew_lane'
     ) OR to_regprocedure('ref.create_setup_resource(text,text,text,text)') IS NOT NULL
       OR to_regprocedure('ref.set_setup_task_scope(text,bigint,integer,bigint)') IS NOT NULL
-      OR to_regprocedure('ops.set_setup_session_task_planned_order(text,bigint,integer,text)') IS NOT NULL THEN
+      OR to_regprocedure('ops.set_setup_session_task_planned_order(text,bigint,integer,text)') IS NOT NULL
+      OR to_regprocedure('ops.enforce_setup_work_day_session_year()') IS NOT NULL
+      OR to_regprocedure('ops.enforce_setup_session_task_operational_year()') IS NOT NULL
+      OR to_regprocedure('ops.enforce_setup_movement_event_session_year()') IS NOT NULL THEN
         RAISE EXCEPTION 'Production contains one or more post-007 Setup objects. Stop and inventory the partial state before promotion.';
     END IF;
 
@@ -122,7 +139,51 @@ BEGIN
             'Turn On Site Breakers'
         )
     ) THEN
-        RAISE EXCEPTION 'One or more V0.3 reconstruction tasks already exist; stop and inventory before promotion';
+        RAISE EXCEPTION 'One or more V0.3.4 reconstruction tasks already exist; stop and inventory before promotion';
+    END IF;
+
+    /* Existing Production rows must already be compatible with the generic
+       Setup-session-year rule before triggers are installed. */
+    SELECT count(*) INTO v_bad_work_days
+    FROM ops.setup_work_day wd
+    JOIN ops.setup_session ss ON ss.setup_session_id = wd.setup_session_id
+    WHERE extract(year FROM wd.work_date)::integer <> ss.season_year;
+
+    SELECT count(*) INTO v_bad_planned_dates
+    FROM ops.setup_session_task st
+    JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
+    WHERE st.planned_date IS NOT NULL
+      AND extract(year FROM st.planned_date)::integer <> ss.season_year;
+
+    SELECT count(*) INTO v_bad_actual_starts
+    FROM ops.setup_session_task st
+    JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
+    WHERE st.actual_started_at IS NOT NULL
+      AND extract(year FROM (st.actual_started_at AT TIME ZONE 'America/Chicago'))::integer <> ss.season_year;
+
+    SELECT count(*) INTO v_bad_actual_completions
+    FROM ops.setup_session_task st
+    JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
+    WHERE st.actual_completed_at IS NOT NULL
+      AND extract(year FROM (st.actual_completed_at AT TIME ZONE 'America/Chicago'))::integer <> ss.season_year;
+
+    SELECT count(*) INTO v_bad_movement_times
+    FROM ops.setup_movement_event me
+    JOIN ops.setup_session ss ON ss.setup_session_id = me.setup_session_id
+    WHERE me.occurred_at IS NOT NULL
+      AND extract(year FROM (me.occurred_at AT TIME ZONE 'America/Chicago'))::integer <> ss.season_year;
+
+    IF v_bad_work_days <> 0
+       OR v_bad_planned_dates <> 0
+       OR v_bad_actual_starts <> 0
+       OR v_bad_actual_completions <> 0
+       OR v_bad_movement_times <> 0 THEN
+        RAISE EXCEPTION 'Existing Setup data violates session-year guard: work_days %, planned_dates %, actual_starts %, actual_completions %, movement_times %',
+            v_bad_work_days,
+            v_bad_planned_dates,
+            v_bad_actual_starts,
+            v_bad_actual_completions,
+            v_bad_movement_times;
     END IF;
 END
 $preflight$;
@@ -140,6 +201,9 @@ FROM ops.setup_session ss
 WHERE ss.season_year = 2025;
 
 SELECT
-    'READY_FOR_CONTROLLED_V03_PROMOTION' AS preflight_status,
+    'READY_FOR_CONTROLLED_V034_PROMOTION' AS preflight_status,
+    true AS production_backed_2025_review,
+    true AS session_year_guard_required,
+    true AS future_baseline_admin_only,
     false AS creates_2026_session,
     false AS enables_movement_writes;
