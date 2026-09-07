@@ -87,6 +87,7 @@ Write-Host "Preview user:  $PreviewEmail"
 Write-Host
 Write-Host 'This preview uses a disposable current-production PostgreSQL clone.'
 Write-Host 'Production Setup data and the live shared application checkout are not modified.'
+Write-Host 'Do not open the browser URL until the remote output says SETUP BROWSER REVIEW READY.'
 Write-Host 'Keep this PowerShell window open while reviewing the browser.'
 Write-Host 'When finished, return here and press ENTER so the remote trap can clean up.'
 Write-Host
@@ -108,7 +109,7 @@ try {
 
     Write-Host
     Write-Host 'Cleaning stale Setup preview state and preparing disposable browser preview...'
-    Start-Process $browserUrl
+    Write-Host "Wait for SETUP BROWSER REVIEW READY, then open: $browserUrl"
 
     $uploadCleanup = "$uploadRoot/setup_session_browser_preview_cleanup_server.sh"
     $remoteScript = "$remoteRoot/setup_session_browser_preview_server.sh"
