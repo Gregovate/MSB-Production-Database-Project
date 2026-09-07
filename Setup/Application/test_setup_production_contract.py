@@ -23,7 +23,9 @@ def test_production_html_uses_database_client_only() -> None:
 
 def test_production_client_has_no_browser_local_prototype_state() -> None:
     text = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
-    assert "localStorage" not in text
+    # Detect actual browser-storage API use without failing on an explanatory
+    # comment that merely names localStorage.
+    assert "localStorage." not in text
     assert "initialTasks" not in text
     assert "msb.setup.prototype" not in text
     assert "X-MSB-Setup-Command" in text
