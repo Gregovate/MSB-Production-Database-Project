@@ -65,7 +65,33 @@ https://my.sheboyganlights.org/setup/
 
 This is a `my.` action application and requires the established Google/Cloudflare Access perimeter.
 
-Do not send ordinary users to repository application source, database migration files, server runbooks, or old preview listeners.
+Do not send ordinary users to repository application source, database migration files, server runbooks, old preview listeners, or obsolete hand-built Setup navigation pages.
+
+## Obsolete Backbone Page
+
+The former static Production Setup/Takedown page:
+
+```text
+my/committees/production/setup-takedown-testing/index.html
+```
+
+is obsolete.
+
+Do not:
+
+- update or revive its direct Google Doc list;
+- link to it from current Production navigation;
+- treat it as the current Setup portal; or
+- make new Setup workflows depend on it.
+
+The live Setup application and the current Procedure application replace the need for that hand-built page:
+
+```text
+https://my.sheboyganlights.org/setup/
+https://my.sheboyganlights.org/procedures/
+```
+
+The obsolete static artifact may be removed later through the Backbone repository's controlled deployment/removal process. Its existence must not block current Production navigation work.
 
 ## Operator Tasks That Should Be Discoverable
 
@@ -177,10 +203,11 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 2. the action points to `https://my.sheboyganlights.org/setup/`;
 3. the 2025 historical review purpose is understandable in plain language;
 4. search/navigation can find Setup using ordinary task terms;
-5. engineering/acceptance/database source paths are absent from normal operator search/navigation;
-6. no duplicate editable copy of the source operator procedure is created in Backbone;
-7. maintained `index.html` pages preserve their required visible version indicators; and
-8. deployed intranet verification confirms the intended Production page reaches the protected Setup application.
+5. the obsolete static Setup/Takedown page is not linked or promoted;
+6. engineering/acceptance/database source paths are absent from normal operator search/navigation;
+7. no duplicate editable copy of the source operator procedure is created in Backbone;
+8. maintained `index.html` pages preserve their required visible version indicators; and
+9. deployed intranet verification confirms the intended Production page reaches the protected Setup application.
 
 ## Backbone State
 
