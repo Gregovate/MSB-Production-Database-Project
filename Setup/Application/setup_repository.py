@@ -41,7 +41,8 @@ class SetupRepository:
                     display_name,
                     role_name,
                     policy_names,
-                    can_execute_setup,
+                    can_read_setup,
+                    can_move_setup_assets,
                     can_manage_setup,
                     can_admin_setup
                 FROM ref.setup_browser_capabilities(%s)
@@ -57,7 +58,8 @@ class SetupRepository:
                 "display_name": normalized,
                 "role_name": None,
                 "policy_names": [],
-                "can_execute_setup": False,
+                "can_read_setup": False,
+                "can_move_setup_assets": False,
                 "can_manage_setup": False,
                 "can_admin_setup": False,
             }
@@ -69,7 +71,8 @@ class SetupRepository:
             "display_name": item.get("display_name") or normalized,
             "role_name": item.get("role_name"),
             "policy_names": list(item.get("policy_names") or []),
-            "can_execute_setup": bool(item.get("can_execute_setup")),
+            "can_read_setup": bool(item.get("can_read_setup")),
+            "can_move_setup_assets": bool(item.get("can_move_setup_assets")),
             "can_manage_setup": bool(item.get("can_manage_setup")),
             "can_admin_setup": bool(item.get("can_admin_setup")),
         }
