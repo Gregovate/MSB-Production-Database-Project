@@ -20,8 +20,8 @@ $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
 # Pin the detached application candidate without modifying the larger validated
 # implementation file. This keeps launcher-only fixes outside the application
 # candidate while still making the review reproducible.
-$candidateSource = "$CandidateSha = 'c0b6e4342129516f2f9b344acd4331f4e068e23b'"
-$candidateReplacement = "$CandidateSha = 'a3467b0228b3e8403cf42c3021bd519155b6c89d'"
+$candidateSource = "`$CandidateSha = 'c0b6e4342129516f2f9b344acd4331f4e068e23b'"
+$candidateReplacement = "`$CandidateSha = 'a3467b0228b3e8403cf42c3021bd519155b6c89d'"
 if (-not $text.Contains($candidateSource)) {
     throw 'Setup browser preview implementation no longer contains the expected candidate SHA assignment.'
 }
