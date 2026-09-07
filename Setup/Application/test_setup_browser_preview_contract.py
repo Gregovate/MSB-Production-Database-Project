@@ -6,7 +6,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 ACCEPT = SETUP_DIR / "Acceptance"
-CANDIDATE_SHA = "831bbc70311479b33a062842ba60e71ccfa0ce86"
+CANDIDATE_SHA = "92110b8ffb06572b746a7599af6a66f45a5a997f"
 SERVER_SHA_PLACEHOLDER = "c72644f02b825acb830603fe6b4f7bd48713b681"
 
 
@@ -37,24 +37,42 @@ def test_preview_pins_exact_candidate_and_disposable_database() -> None:
     assert 'Preview writes: disposable PostgreSQL clone only' in server
 
 
-def test_preview_packages_manager_review_contract_into_detached_gate() -> None:
+def test_preview_packages_full_review_contract_into_detached_gate() -> None:
     wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
     assert "test_setup_google_doc_index_contract.py" in wrapper
     assert "test_setup_review_usability_contract.py" in wrapper
+    assert "test_setup_next_pass_contract.py" in wrapper
     assert "$serverText = $serverText.Replace($testOld, $testNew)" in wrapper
 
 
-def test_preview_applies_resource_migration_only_to_disposable_clone() -> None:
+def test_preview_applies_008_009_010_only_to_disposable_clone() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
+    wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
     assert '008_create_setup_resource_management_commands.sql' in server
-    assert 'psql_test < "$RESOURCE_MIGRATION"' in server
-    assert 'Disposable Setup resource migration 008: PASS' in server
-    assert 'ref.create_setup_resource(text,text,text,text)' in server
-    assert 'ref.set_setup_task_resource(text,bigint,integer,integer,text,text,boolean)' in server
+    assert '009_create_setup_scope_schedule_execution_commands.sql' in wrapper
+    assert '010_seed_2025_stage02_elf_scope_corrections.sql' in wrapper
+    assert 'psql_test < "$RESOURCE_MIGRATION"' in wrapper
+    assert 'psql_test < "$NEXT_PASS_MIGRATION"' in wrapper
+    assert 'psql_test < "$REVIEW_CORRECTION_SEED"' in wrapper
+    assert 'Disposable Setup scope/schedule/execution migration 009: PASS' in wrapper
+    assert 'Disposable Setup 2025 review corrections 010: PASS' in wrapper
+    assert '[PREVIEW ONLY] Execution reset to READY' in wrapper
+    assert 'Production DB:  pg_dump + SELECT only' in server
+
+
+def test_preview_validates_stage_scene_review_corrections() -> None:
+    wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
+    assert "02-Mega Tree" in wrapper
+    assert "02-Fred''s Stars" in wrapper
+    assert "Install Fred''s Stars" in wrapper
+    assert "Boom Lift" in wrapper
+    assert "Elf Choir Locates prerequisite is missing" in wrapper
+    assert "Stage/Scene review correction validation: PASS" in wrapper
 
 
 def test_preview_preserves_setup_authorization_and_no_broad_dml() -> None:
     server = (ACCEPT / "setup_session_browser_preview_server.sh").read_text(encoding="utf-8")
+    wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
 
     assert "ref.setup_browser_capabilities(text)" in server
     assert "ref.setup_management_actor(text,boolean)" in server
@@ -67,6 +85,13 @@ def test_preview_preserves_setup_authorization_and_no_broad_dml() -> None:
     assert "has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')" in server
     assert "has_table_privilege('fieldwiring_app', 'ops.setup_movement_event', 'INSERT')" in server
     assert "has_table_privilege('fieldwiring_app', 'directus_users', 'SELECT')" in server
+    assert "has_table_privilege('fieldwiring_app', 'ops.setup_task_progress', 'INSERT')" in wrapper
+    assert "has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'UPDATE')" in wrapper
+    assert "has_table_privilege('fieldwiring_app', 'ref.setup_task_dependency', 'INSERT')" in wrapper
+    assert "ref.set_setup_task_scope(text,bigint,integer,bigint)" in wrapper
+    assert "ref.set_setup_task_dependency(text,bigint,bigint,text,boolean)" in wrapper
+    assert "ops.upsert_setup_work_day(text,integer,date,text,text)" in wrapper
+    assert "ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)" in wrapper
 
 
 def test_preview_uses_separate_local_port_and_foreground_ssh() -> None:
@@ -115,6 +140,17 @@ def test_preview_uses_lazy_google_doc_link_view_without_recursive_scan() -> None
     assert 'rclone lsjson' not in server
     assert '--recursive' not in server
     assert 'SETUP_GOOGLE_DOC_INDEX=' not in server
+
+
+def test_preview_checks_new_stage_scene_schedule_and_captain_read_surfaces() -> None:
+    wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
+    assert "/api/setup/organization" in wrapper
+    assert "/api/setup/schedule?season_year=2025" in wrapper
+    assert "/api/setup/execution?season_year=2025" in wrapper
+    assert "Stage/Scene + Schedule + Captain read APIs: PASS" in wrapper
+    assert "Review Stage/Scene grouping" in wrapper
+    assert "Perform Work" in wrapper
+    assert "movement/scanning writes remain intentionally absent" in wrapper
 
 
 def test_preview_checks_resource_api_and_review_target() -> None:
