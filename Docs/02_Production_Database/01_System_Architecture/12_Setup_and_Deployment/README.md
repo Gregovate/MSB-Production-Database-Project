@@ -1,405 +1,76 @@
 # Setup and Deployment
 
-## Current State
+| Document Control | Value |
+|---|---|
+| Document Type | Operator / User Portal |
+| System | Production Database — Setup and Deployment |
+| Audience | MSB volunteers, reviewers, managers, and Setup operators |
+| Status | DRAFT — permanent Setup application route deployment in progress |
+| Owner | MSB Production Database / Setup administrator |
+| Last Reviewed | 2026-09-07 |
+| Keywords | Setup, 2025 review, training, 2026 plan, Setup procedures, deployment |
 
-**Status: DOCUMENTATION ACTIVE / PROCEDURE FIELD ACCESS PRODUCTION-OPERATIONAL**
+Setup and Deployment covers the work of planning and carrying out the annual move from storage to the park, plus the Setup information crews need while installing the show.
 
-This subsystem covers planning, scheduling, staging, loading, scanning, and moving tested displays and containers from storage to the park for annual setup, plus takedown-related field documentation where it belongs with the same Stage material.
+The current Setup Session work is focused on reconstructing **2025** accurately so MSB has a clean reusable starting point for the **2026** Setup plan.
 
-The Stage-oriented folder structure already exists. Setup/Takedown instructions are being organized into those existing Stage folders and use the same Stage-oriented convention already used by Wiring documentation.
+## Start Here
 
-The operational database/application workflow for scheduling, pick lists, load order, and forklift scanning is not yet fully engineered. No operator procedure should imply those planned functions are implemented until verified from the current database/application.
+### Review the 2025 Setup history
 
-**FieldWiring, Display Scan, and the standalone Procedure application are accepted production baselines.** Procedure is production-operational at `https://my.sheboyganlights.org/procedures/` and uses the shared Field Context resolver plus the existing read-only Google `Display Folders` mount. Do not rediscover or redesign those accepted systems merely to continue Setup/Deployment work.
+Authorized reviewers use the real 2025 Production-backed Setup Session to correct what happened in 2025 and improve reusable Setup knowledge.
 
-The bounded **Procedure Display Scan Integration** is accepted production behavior: the Display scan hub passes permanent `display_id` to `/procedures/?display_id=<display_id>`, and Setup/Takedown/Inspection selection remains inside Procedure. Controller Inventory V0.4.0 is also merged and production-operational. Human Procedure-document authoring/alignment and the broader scheduling/pick/load/forklift workflow remain separate work streams.
+[Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md)
 
-MSB has purchased a **Zebra DS3678-HD cordless ultra-rugged 1-D/2-D scanner kit** for the workshop forklift. It uses the Zebra 3600-series USB cradle and supports USB HID keyboard input. Because this is the **HD (High Density)** variant rather than an ER/XR extended-range model, its actual suitability from the forklift seat must be tested with real MSB Container and Storage Location labels before it is accepted as the final forklift-distance standard. See [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md).
-
-## Design Intent
-
-The Setup and Deployment subsystem will provide a repeatable operational plan for moving displays and containers from storage to the park while keeping field instructions easy to find from the same established Stage organization used by Wiring.
-
-Testing answers:
-
-> Is this display/container ready?
-
-Setup and Deployment answers:
-
-> When should it move, what should move with it, in what order, and what instructions does the crew need at the Stage?
-
-The intended high-level workflow remains:
+The permanent protected application will be:
 
 ```text
-Testing Complete / Ready for Setup
-            ↓
-Schedule Display / Container
-            ↓
-Assign Calendar Pull Date
-            ↓
-Build Pick / Load List
-            ↓
-Forklift Driver Queue
-            ↓
-Scan / Confirm Container or Display
-            ↓
-Load in Planned Order
-            ↓
-Deliver to Park
-            ↓
-Confirm Movement / Destination
+https://my.sheboyganlights.org/setup/
 ```
 
-The goal is to replace informal yearly scheduling and remembered load sequences with a durable, repeatable operational process without disrupting the existing Stage-folder documentation crews already use.
+The route is still being installed and should not be treated as production-operational until this portal is updated after live acceptance.
 
-## Stage Setup Documentation Boundary
+### Find current Stage Setup instructions
 
-Field-facing **Stage Setup Instructions are a separate document class from repository Operational SOPs**.
-
-They are used by volunteers physically setting up Stages/Scenes in the park and should remain simple, visual, and Stage-oriented. Their normal published experience may be a PDF or other rendered field document even when the editable source is a Google Doc or controlled repository source/template.
-
-The project-specific governance for these documents is defined in the [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md).
-
-The controlled structural starting point is the [Stage Setup Instruction Template](../../../../System_Documentation/Templates/Stage_Setup_Instruction_Template.md).
-
-A separate contributor/operator procedure is still required for creating, revising, archiving, publishing, and verifying Setup Instructions from that template/source. That contributor workflow should not be confused with the field instruction itself.
-
-## Stage Folder Documentation Contract
-
-The existing Google Shared Drive Stage/Scene folder structure is the human-facing organizational anchor for setup work.
-
-- Wiring and Setup/Takedown documentation share the same Stage-oriented organizational model.
-- The existing Google Drive document-organization and Folder Alignment work controls the actual folder structure and migration of legacy material.
-- Setup instructions should be placed and maintained within the existing Stage/Scene structure rather than creating a separate unrelated setup-document tree.
-- [Wiring System](../09_Wiring_System/README.md) owns wiring content in that structure.
-- Setup and Deployment owns setup/takedown instruction behavior and the application integration contract for finding applicable Procedure documents.
-- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) owns permanent QR/scanning integration patterns, but QR lookup does not become the content authority.
-- [Procedure System Field Context Handoff](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) remains the architecture handoff that resolved the original Procedure/FieldWiring conflicts.
-
-This framework does not by itself define or approve a new database schema.
-
-## Document Resolution and Field UX
-
-The accepted current field-access path is:
+For current published Setup/Takedown/Inspection documents by Display, Stage, Sub-stage, or Scene, use the existing protected Procedure application:
 
 ```text
-Display QR or manual Display/Stage/Scene lookup
-    ↓
-Permanent Display identity when applicable
-    ↓
-Production Database relationships
-    ↓
-shared/proven FieldWiring structured Stage / Sub-stage / Scene resolver
-    ↓
-fixed applicable structured root
-    ↓
-validate structured-root marker
-    ↓
-validate <scope>/Procedures marker
-    ↓
-Procedure task adapter selects fixed child
-    ↓
-<scope>/Procedures/Setup
-or <scope>/Procedures/Takedown
-or <scope>/Procedures/Inspection
-    ↓
-bounded current-document discovery from the read-only Google filesystem
-    ↓
-my.sheboyganlights.org
-    ↓
-current field PDF / rendered instruction
+https://my.sheboyganlights.org/procedures/
 ```
 
-The QR code identifies the asset. It does not contain a Google Drive folder path or manually maintained direct Procedure-document URL.
+Field-facing Stage Setup Instructions remain separate from repository operator procedures. They are the documents crews use while physically installing Stages/Scenes in the park.
 
-The Production Database owns the durable identities and relationships used to determine the structured Stage/Scene context. The database does not become the editing system for Procedure content.
+## What Do You Need To Do?
 
-For the current read-only Procedure browser, a PostgreSQL row or stored Google document ID for every current published PDF is **not a prerequisite**. Once the current structured root and marked `Procedures` subsystem root are validated, the application selects the exact known `Setup`, `Takedown`, or `Inspection` child and enumerates the current published files directly in that task folder while excluding `Archive` and `SourceDocs`.
+- [Review or correct the 2025 Setup history](operatorSOP/Review_2025_Setup_History.md)
+- [See all Setup operator procedures](operatorSOP/README.md)
+- [Maintain or publish Stage Setup documents](../../../00_Project_Overview/Google_Drive/README.md)
+- [Open Setup/Procedure documents](https://my.sheboyganlights.org/procedures/)
+- [Engineering / development / recovery](engineering/README.md)
 
-Durable per-document metadata remains a future engineering option when approval workflow, revision history, source-to-publication lineage, supersession, audit, or stable document identity demonstrates a need for it. Do not create schema merely because older documentation listed document-ID storage as unresolved.
+## Important 2025 Review Rule
 
-`my.sheboyganlights.org` is the normal field presentation layer. Field volunteers should not need to understand the GitHub repository, database schema, Google Drive organization, or source-document mechanics to reach the current Setup instruction.
-
-## Resolver Reuse Boundary
-
-Procedure **reuses the proven shared FieldWiring structured-scope resolver** rather than maintaining a second independent Display-to-Stage/Scene algorithm.
-
-The shared resolver answers:
-
-> Which current marked Stage / Sub-stage / Scene root owns this context?
-
-The Procedure adapter then answers:
-
-> Which current documents are published in the selected Procedure task branch beneath that already-resolved root?
-
-This means Wiring and Procedures share scope resolution but do not share task-specific content rules:
+There are two different kinds of information in the Setup application:
 
 ```text
-resolved structured root
-    |
-    +--> FieldWiring -> marked Wiring root -> BackgroundStage or MusicalStage
-    |
-    +--> Procedures  -> marked Procedures root -> Setup, Takedown, or Inspection
+2025 annual information
+    = what happened in 2025
+
+Reusable Task information
+    = normal Setup knowledge that may carry forward
 ```
 
-Both systems use the same subsystem-root marker pattern: the resolved structured scope is marked, then the owning application subsystem root (`Wiring` or `Procedures`) is marked. Their fixed child branches are selected by folder name and do not require a second marker layer. `Archive` and `SourceDocs` remain excluded from normal field presentation.
+A correction that only applies to 2025 belongs in the 2025 annual history. A correction to how MSB normally performs a task belongs in the reusable task definition.
 
-## Scan / Forklift Direction
+The selected Setup Session controls the allowable operational year. The 2025 session accepts 2025 operational dates only.
 
-The permanent Display scan platform is production-operational and resolves `DISP:<display_id>` using permanent Production Database identity. Procedure Display Scan Integration consumes that existing identity contract; no physical Display QR redesign is required.
-
-The agreed operator-facing Scan behavior is:
-
-```text
-Display scan hub
-    -> Procedures
-        -> /procedures/?display_id=<permanent display_id>
-            -> existing Procedure page
-                -> operator chooses Setup, Takedown, or Inspection
-```
-
-The Scan hub passes only `display_id`, does not duplicate the three Procedure task buttons, and does not call Procedure merely to decide whether the link should render. This is accepted production behavior. Do not invent a second resolver, encode Stage/Scene/Google paths in the QR, or make the Display hub depend on Procedure health merely to render the Procedures action.
-
-Setup is also expected to become a high-volume scan workflow for deployment operations rather than only document lookup.
-
-Durable physical identities remain the starting point:
-
-```text
-DISP:<permanent display_id>
-CONT:<permanent container_id>
-LOC:<operational storage/location code>
-CTRL:<permanent controller_id>
-```
-
-Annual setup dates, load numbers, staging status, and other transient workflow state must not be encoded into the permanent labels.
-
-The application should be designed so both of these input paths produce the same canonical asset/location payload:
-
-```text
-industrial scanner -> HID keyboard input
-phone/tablet camera -> camera decoder
-```
-
-The purchased Zebra DS3678-HD gives the project a real industrial hardware acceptance target. Its USB HID behavior fits the browser-first design, but the hardware must be tested against actual label size/density and actual forklift position before deciding whether HD range is adequate or an ER/XR scanner is required for some tasks.
-
-The 2026-09-03 ADF correction is input-method evidence only: the Zebra emitted compact canonical identifiers correctly in Google Docs. The current Container route is accepted because it opens the Directus Container record and assigned Displays. `LOC` still has no complete route and remains #88. The deployed `CTRL` route hands permanent Controller identity to the existing production Controller Inventory Search/detail page; manual compact/full-URL entry passed, and the route adds no Setup movement meaning. Physical printed-label/device acceptance remains pending.
-
-Likely setup interactions may include both scan orders:
-
-```text
-Container -> Location
-Location -> Container
-```
-
-The real setup-day process must determine what each pair means: pull confirmation, staging, load assignment, destination validation, storage relocation, or another business event. Do not invent transaction semantics from the scanner hardware.
-
-## Annual Operating Cycle
-
-`ref.season` remains the annual operational context. The documented working cycle is approximately:
-
-- Testing begins in January.
-- Setup/show preparation begins around the end of September.
-- Takedown begins around January 1.
-- After takedown, the next testing cycle begins again.
-
-Detailed testing-season procedures belong with [Testing System](../05_Testing_System/README.md); detailed Setup field instructions live with the established Stage/Scene documentation structure.
-
-## Design Principles
-
-### PostgreSQL remains the operational system of record
-
-Scheduling, operational movement events, load grouping, scan confirmations, deployment status, and durable Stage/Scene/asset relationships remain in the Production Database when those workflows are engineered.
-
-Generic container movement history is not a goal. Movement/history should be recorded only when the Setup/Deployment workflow actually needs a reconstructable event trail.
-
-### Google Shared Drive remains the field-document repository
-
-The shared read-only server filesystem exists so Procedure applications can consume the same human-maintained `Display Folders` hierarchy already used by FieldWiring.
-
-Do not create a second Procedure-only Google hierarchy, duplicate mount, downloaded mirror, or database binary-document store merely to present current procedures.
-
-### Field document content remains separate from database internals
-
-The database resolves the current physical context without requiring field volunteers to operate inside PostgreSQL, Directus, GitHub, or Google Drive.
-
-A simple PDF/rendered instruction at the Stage/Scene level is preferred when that gives the crew the best user experience.
-
-### Directus is an initial management interface, not the field-document UX requirement
-
-The scheduling and management portion of this subsystem is expected to be controlled through Directus initially where practical.
-
-A dedicated task-focused field interface may be added where Directus is not suitable. Any such application must continue to use the Production Database as the authoritative operational data source.
-
-### Testing remains a separate subsystem
-
-Testing and Setup/Deployment are related but distinct workflows.
-
-A successful test may establish that an item is ready for setup, but the Testing subsystem does not own deployment dates, load order, transport grouping, park delivery, or the content of Stage Setup Instructions.
-
-### Preserve useful yearly deployment and documentation history
-
-The system should preserve the actual sequence used each year when that history is useful for planning the next season. Historical deployment records should not be overwritten merely because a new year's schedule is created.
-
-Legacy and superseded Setup instructions should be archived through the established Stage documentation process rather than deleted or left mixed with current field instructions.
-
-## Current and Planned Responsibilities
-
-Already production-operational:
-
-- current Setup/Takedown/Inspection document lookup by Display/Stage/Scene;
-- field-friendly Procedure presentation through `my.sheboyganlights.org/procedures/`;
-- shared Field Context resolution and read-only Google `Display Folders` consumption;
-- the one-button Procedures action on the Display scan hub;
-- Controller Inventory V0.4.0 and its exact-controller deep-link input.
-
-Current bounded Scan follow-on:
-
-- complete physical printed-label Zebra and phone/tablet acceptance for the deployed Controller route after LabelPrintService can print the first label;
-- continue #88 for Location identity resolution and the minimum Setup-owned workflow;
-- physically accept relevant Location label behavior before volume printing Location labels.
-
-Separate planned operational work includes:
-
-- setup season/session context;
-- calendar pull scheduling;
-- pick lists;
-- load/trip grouping and sequence;
-- forklift scanning;
-- Container/Location validation;
-- meaningful pull/stage/load/delivery confirmations;
-- prior-year sequence reference;
-- optional durable per-document publication metadata when a demonstrated workflow requires it.
-
-These planned operational items are design targets, not implemented schema commitments unless verified in the current database.
-
-## System Boundaries and Dependencies
-
-This subsystem depends on existing Production Database identities and relationships, including where applicable:
-
-- permanent Display identity and Stage/Scene relationships;
-- the accepted FieldWiring structured-context behavior;
-- the accepted Display scan platform;
-- the accepted standalone Procedure application;
-- the shared read-only Google `Display Folders` filesystem;
-- containers and storage locations;
-- testing readiness/state;
-- people/volunteer identity;
-- rugged tablet/industrial scanner hardware;
-- Stage/Scene identity and established documentation organization; and
-- site/stage/location information needed for deployment planning.
-
-It must not redefine permanent Display IDs, Container IDs, storage identities, LOR wiring/topology, or other identities already owned by existing subsystems.
-
-Containers of type **KIT** already exist and may hold loose setup materials instead of Displays. Detailed kit-contents inventory remains a separate future Setup/Deployment need.
-
-## Known Limitations / Open Work
-
-The standalone Procedure field-access application is accepted production work. Do not reopen its shared resolver, Google hierarchy, Procedure marker contract, or current-document discovery architecture unless a demonstrated production defect requires it.
-
-Current Procedure-related open work is separated into these scopes:
-
-- **Procedure Display Scan Integration** — accepted production behavior; preserve the permanent `display_id` handoff and downstream ownership boundary;
-- **Procedure document authoring/alignment** — continue the legacy Setup-document review, alignment, archive, and publication work in the existing Stage/Scene `Display Folders` hierarchy;
-- **Contributor/operator documentation** — finalize the Stage Setup Instruction contributor workflow and the editable-source versus published-PDF relationship where Google Docs remain in use;
-- **additional field acceptance as needed** — complete any broader PC/phone/tablet, print, or offline validation required for the 2026 field workflow; and
-- **durable document metadata only if justified** — engineer Google document IDs or published references only when a demonstrated publication/history requirement cannot be met by the current controlled-folder contract.
-
-Separate Setup/Deployment operational work still includes scheduling, readiness, pull/load planning, Container/Location movement semantics, forklift workflow, hardware acceptance, and related annual workflow state. Do not mix those business-process questions into Procedure Display Scan Integration.
-
-## Resume Development
-
-### Current production baseline
-
-Begin from current `main` and the current responsible runbooks. Do not rediscover the old live-only scan extension, redesign the physical QR, rebuild the Google filesystem connection, or reconstruct Procedure deployment from chat history.
-
-Read first:
-
-1. [Procedure Application README](../../../../Procedures/Application/README.md) — current standalone Procedure application contract, production status, and Scan entry contract;
-2. [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — current Scan platform and Controller handoff state;
-3. [Deployed Display Scan Runtime Boundary](../07_Labeling_and_Scanning/Deployed_Display_Scan_Runtime_Boundary.md) — current Git/runtime boundary and accepted live Scan baseline;
-4. [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted additive scan integration pattern and failure boundary;
-5. [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md) — architecture precedence for Procedure/Field Context;
-6. [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md);
-7. [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md); and
-8. [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) before any scan deployment.
-
-### Controller Scan Integration — route deployed; physical-label acceptance pending
-
-The accepted identity and UX handoff is:
-
-```text
-camera QR: https://db.sheboyganlights.org/scan/CTRL/<controller_id>
-Zebra/manual: CTRL:<controller_id>
-    -> /scan/CTRL/<controller_id>
-    -> /fieldwiring/controllers?controller_id=<controller_id>
-    -> existing Controller Inventory filters Search and opens exact detail
-```
-
-The deployed route reuses permanent `ref.controller.controller_id` and the existing Controller browser. Manual compact/full-URL production input passed. It must still pass real-label Zebra/phone/tablet and useful-distance acceptance before volume Controller label printing.
-
-This work must not create:
-
-- a second Controller result application;
-- a second Controller identity;
-- Controller database or movement mutations merely from scanning;
-- annual Setup state in the permanent Controller label; or
-- a dependency on Zebra-specific formatting.
-
-Follow the existing Server Management scan-extension runbook for live hash verification, rollback capture, staging, syntax validation, restart, and regression testing. Operational discoveries made during this work must be written into the responsible runbook before later steps depend on them.
-
-### Setup workflow engineering
-
-Separately document the real setup-day process from the people who:
-
-- schedule pulls;
-- operate the forklift;
-- identify containers/locations;
-- stage material;
-- load trailers/trucks;
-- receive loads at the park;
-- place containers/displays at their destinations.
-
-Define business events and exception handling before designing schema, Directus Flows, scan-session state, or a dedicated deployment application.
-
-### Hardware acceptance
-
-Begin hardware testing with the [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md) handoff and the purchased Zebra DS3678-HD. Use actual labels and measured working distances rather than theoretical family-level specifications.
-
-### Setup-document authoring work
-
-For Setup-document authoring/alignment work, continue with:
-
-1. the [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md);
-2. the current [Google Drive Document Organization Procedure](../../../00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md);
-3. the current Folder Alignment work/report;
-4. the controlled [Stage Setup Instruction Template](../../../../System_Documentation/Templates/Stage_Setup_Instruction_Template.md); and
-5. the real Stage/Scene documents currently being reviewed and archived.
-
-Do not redesign the established Stage folder structure while solving Procedure QR integration, PDF publishing, or intranet UX.
+Only an Administrator may create a new annual Setup Session or promote an annual order into the future reusable baseline.
 
 ## Related Systems
 
-- [Testing System](../05_Testing_System/README.md) — establishes testing state/readiness before deployment.
-- [Containers and Storage](../04_Containers_and_Storage/README.md) — owns container identity, assignments, storage-location relationships, and KIT container identity.
-- [Wiring System](../09_Wiring_System/README.md) — provides the proven structured field-context implementation while retaining its own wiring content rules.
-- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md) — owns permanent labels and the accepted scan-routing integration pattern.
-- [FieldWiring Scan Integration Engineering Handoff](../07_Labeling_and_Scanning/FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Display scan baseline.
-- [Scanner Hardware and Tablet Integration](../07_Labeling_and_Scanning/Scanner_Hardware_and_Tablet_Integration.md) — owns the purchased Zebra scanner baseline and hardware/browser-input acceptance contract.
-- [People and Identity](../03_People_and_Identity/README.md) — provides durable person/user identity and audit attribution.
-- [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md) — may provide destination/location context where applicable.
+- [Operator procedures](operatorSOP/README.md)
+- [Engineering handoff](engineering/README.md)
+- [Labeling and Scanning](../07_Labeling_and_Scanning/README.md)
+- [Wiring System](../09_Wiring_System/README.md)
 
-## Related Documentation
-
-- [Procedure Application README](../../../../Procedures/Application/README.md)
-- [Procedure System Field Context Handoff — 2026-08-22](00_Procedure_System_Field_Context_Handoff_2026-08-22.md)
-- [Stage Setup Documentation Standard](../../../../System_Documentation/Project_Rules/Stage_Setup_Documentation_Standard.md)
-- [Stage Setup Instruction Template](../../../../System_Documentation/Templates/Stage_Setup_Instruction_Template.md)
-- [Google Drive Document Organization Procedure](../../../00_Project_Overview/01-Google_Drive_Document_Organization_Procedure.md)
-- [Field Context Resolution Contract](../07_Labeling_and_Scanning/Field_Context_Resolution_Contract.md)
-- [FieldWiring Drive Context Resolver Engineering Design](../09_Wiring_System/FieldWiring_Drive_Context_Resolver_Engineering_Design.md)
-- [Documentation Maintenance Rule](../../../../System_Documentation/Standards/Documentation_Maintenance_Rule.md)
-- [Document Control Standard](../../../../System_Documentation/Standards/Document_Control_Standard.md)
-- [Linking and Navigation Standard](../../../../System_Documentation/Standards/Linking_and_Navigation_Standard.md)
-- [MSB-Server-Management Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md)
-
-Repository Operational SOPs remain appropriate for database/application tasks in this subsystem when those tasks are implemented. They are not the storage or format model for the field-facing Stage Setup Instructions themselves.
+The prior engineering-heavy Setup/Deployment root portal was preserved unchanged during this documentation conversion at [`engineering/Legacy_Setup_and_Deployment_Engineering_Portal_2026-09-07.md`](engineering/Legacy_Setup_and_Deployment_Engineering_Portal_2026-09-07.md) so established technical history and inbound references are not lost.
