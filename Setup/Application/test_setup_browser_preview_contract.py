@@ -128,3 +128,13 @@ def test_preview_cleanup_guards_live_checkout_setup_fingerprint_and_link_mount()
     assert 'fusermount -u "$GOOGLE_DOC_LINK_ROOT"' in server
     assert "msb-setup-browser-preview-candidate-" in cleanup
     assert "msb-setup-browser-preview-" in cleanup
+
+
+def test_stale_cleanup_handles_msb_docs_fs_owned_mount_root_and_fails_closed() -> None:
+    cleanup = (ACCEPT / "setup_session_browser_preview_cleanup_server.sh").read_text(encoding="utf-8")
+    wrapper = (ACCEPT / "run_setup_session_browser_preview.ps1").read_text(encoding="utf-8")
+
+    assert 'sudo rm -rf -- "$link_root"' in cleanup
+    assert 'FAIL: stale Setup Google Doc link view is still mounted' in cleanup
+    assert "&& timeout --signal=TERM 7200s bash '$remoteScript'" in wrapper
+    assert "; timeout --signal=TERM 7200s bash '$remoteScript'" not in wrapper
