@@ -76,6 +76,48 @@ def test_material_context_has_theme_safe_responsive_styles():
     assert "var(--border)" in css
 
 
+def test_captain_ui_uses_directory_people_and_preserves_reusable_knowledge_boundary():
+    js = read("setup_training_ux.js")
+    css = read("setup_training_ux.css")
+    assert "Task Captains / Knowledge Owners" in js
+    assert "2025 crew names do not assign Captains automatically" in js
+    assert "Person from MSB directory" in js
+    assert "CAPTAIN" in js
+    assert "ALTERNATE" in js
+    assert "ADVISOR" in js
+    assert "api/setup/captain-people" in js
+    assert "/captains`" in js or "/captains'" in js
+    assert "No Captain / Alternate / Advisor assigned" in js
+    assert ".setup-captain-section" in css
+    assert ".setup-captain-manager[hidden]" in css
+
+
+def test_captain_database_contract_uses_existing_relation_and_narrow_commands():
+    sql = read_db("020_add_setup_captain_management_commands.sql")
+    assert "ref.setup_task_captain" in sql
+    assert "ref.setup_task_captain_list" in sql
+    assert "ref.setup_captain_person_list" in sql
+    assert "ref.set_setup_task_captain" in sql
+    assert "CAPTAIN', 'ALTERNATE', 'ADVISOR" in sql
+    assert "ON CONFLICT (setup_task_id, person_id)" in sql
+    assert "DELETE FROM ref.setup_task_captain" in sql
+    assert "ref.setup_management_actor(p_email, false)" in sql
+    assert "GRANT EXECUTE ON FUNCTION ref.set_setup_task_captain" in sql
+    assert "TO fieldwiring_app" in sql
+
+
+def test_captain_api_reads_projections_and_writes_only_security_definer_command():
+    api_source = read("setup_training_api.py")
+    ast.parse(api_source)
+    assert '@setup_training_api.get("/api/setup/tasks/<int:setup_task_id>/captains")' in api_source
+    assert '@setup_training_api.get("/api/setup/captain-people")' in api_source
+    assert '@setup_training_api.patch("/api/setup/tasks/<int:setup_task_id>/captains/<int:person_id>")' in api_source
+    assert "ref.setup_task_captain_list" in api_source
+    assert "ref.setup_captain_person_list" in api_source
+    assert "ref.set_setup_task_captain" in api_source
+    assert "require_manager()" in api_source
+
+
 def test_reconstruction_delete_is_visible_only_in_historical_manager_context():
     js = read("setup_training_ux.js")
     css = read("setup_training_ux.css")
@@ -106,7 +148,7 @@ def test_reconstruction_delete_command_fails_closed_on_real_history():
     assert "DELETE FROM ref.setup_task_resource" in sql
     assert "DELETE FROM ref.setup_task t" in sql
     assert "GRANT EXECUTE ON FUNCTION ref.delete_setup_reconstruction_task(text,bigint) TO fieldwiring_app" in sql
-    assert "CASCADE" in sql  # documented as explicitly forbidden for the final task delete
+    assert "Do not CASCADE" in sql
 
 
 def test_training_api_is_registered_and_static_assets_are_allowlisted():
