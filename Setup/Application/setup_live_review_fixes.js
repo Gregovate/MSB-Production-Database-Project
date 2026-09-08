@@ -108,6 +108,104 @@
     };
   }
 
+  function ensureTaskSectionPurpose(container, text, anchor = null) {
+    if (!container || container.querySelector(':scope > .task-section-purpose')) return;
+    const purpose = document.createElement('div');
+    purpose.className = 'task-section-purpose';
+    purpose.textContent = text;
+    if (anchor) anchor.insertAdjacentElement('afterend', purpose);
+    else container.prepend(purpose);
+  }
+
+  function ensureSectionEyebrow(container, text) {
+    if (!container || container.querySelector(':scope > .eyebrow')) return;
+    const eyebrow = document.createElement('div');
+    eyebrow.className = 'eyebrow';
+    eyebrow.textContent = text;
+    container.prepend(eyebrow);
+  }
+
+  function installTaskDetailHierarchy() {
+    const reusableFieldset = document.getElementById('reusable-fieldset');
+    const annualFieldset = document.getElementById('annual-fieldset');
+    const definitionSection = reusableFieldset?.closest('.detail-section');
+    if (definitionSection) {
+      definitionSection.classList.add('task-detail-panel', 'task-detail-definition');
+      reusableFieldset.classList.add('task-detail-subpanel');
+      annualFieldset?.classList.add('task-detail-subpanel');
+
+      const reusableLegend = reusableFieldset.querySelector('legend');
+      if (reusableLegend) reusableLegend.textContent = '1. Reusable Task Definition';
+      ensureTaskSectionPurpose(
+        reusableFieldset,
+        'Permanent Setup knowledge used year after year. Change this when the normal task itself changes.',
+        reusableLegend
+      );
+
+      const annualLegend = annualFieldset?.querySelector('legend');
+      ensureTaskSectionPurpose(
+        annualFieldset,
+        '2025-only historical facts and notes. These annual actuals do not redefine the reusable task.',
+        annualLegend
+      );
+    }
+
+    const prerequisiteSection = document.getElementById('detail-dependencies')?.closest('.detail-section');
+    if (prerequisiteSection) {
+      prerequisiteSection.classList.add('task-detail-panel', 'task-detail-prerequisites');
+      const heading = prerequisiteSection.querySelector(':scope > h3');
+      if (heading) heading.textContent = '2. Prerequisites';
+      ensureTaskSectionPurpose(
+        prerequisiteSection,
+        'What must be complete before this task can start. Use prerequisites to teach the work sequence and prevent crews from starting too early.',
+        heading
+      );
+    }
+
+    const resourceSection = document.getElementById('setup-resource-section');
+    if (resourceSection) {
+      resourceSection.classList.add('task-detail-panel', 'task-detail-resources');
+      const heading = resourceSection.querySelector('.resource-section-header h3');
+      if (heading) heading.textContent = '3. Equipment / Resources';
+      const headerNote = resourceSection.querySelector('.resource-section-header > .muted');
+      if (headerNote) headerNote.textContent = 'Current task requirements are listed first.';
+      const resourceHeader = resourceSection.querySelector('.resource-section-header');
+      ensureTaskSectionPurpose(
+        resourceSection,
+        'Tools, equipment, vehicles, trailers, and other reusable resources needed to perform this task. Quantity is how many this task needs.',
+        resourceHeader
+      );
+
+      const existingHeading = resourceSection.querySelector('.resource-existing-block .resource-manager-heading');
+      ensureSectionEyebrow(existingHeading, 'Task requirement');
+      const existingTitle = existingHeading?.querySelector('h4');
+      if (existingTitle) existingTitle.textContent = 'Add or update a resource requirement for this task';
+
+      const catalogBlock = resourceSection.querySelector('.resource-create-block');
+      catalogBlock?.classList.add('task-resource-catalog-block');
+      const catalogHeading = catalogBlock?.querySelector('.resource-manager-heading');
+      ensureSectionEyebrow(catalogHeading, 'Resource catalog');
+      const catalogTitle = catalogHeading?.querySelector('h4');
+      if (catalogTitle) catalogTitle.textContent = 'Create New Catalog Resource';
+      const catalogHint = catalogHeading?.querySelector('.hint');
+      if (catalogHint) {
+        catalogHint.textContent = 'Use this only when the reusable resource does not already exist. Create it once; it can then be assigned to any task.';
+      }
+    }
+
+    const procedureSection = document.getElementById('production-current-pdf')?.closest('.detail-section');
+    if (procedureSection) {
+      procedureSection.classList.add('task-detail-panel', 'task-detail-procedures');
+      const heading = procedureSection.querySelector(':scope > h3');
+      if (heading) heading.textContent = '4. Setup Procedures';
+      ensureTaskSectionPurpose(
+        procedureSection,
+        'Published field instructions and the editable source used to perform and maintain this task.',
+        heading
+      );
+    }
+  }
+
   function normalizedSearch() {
     return String(document.getElementById('setup-task-search')?.value || '')
       .trim()
@@ -245,6 +343,7 @@
   };
 
   normalizeCurrentSetupOrganization();
+  installTaskDetailHierarchy();
   installSearch();
   if (appState.tasks?.length) {
     renderReviewList();
