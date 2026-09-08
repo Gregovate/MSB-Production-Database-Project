@@ -7,7 +7,7 @@
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
 | Status | CURRENT HANDOFF — Production runtime accepted; UI/workflow in live evaluation |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-07 |
+| Last Reviewed | 2026-09-08 |
 
 This is the engineering starting point for Setup Session architecture, database behavior, application contracts, deployment state, and resume information.
 
@@ -50,7 +50,8 @@ A follow-up acceptance defect is now implemented in source and pending Productio
 
 ## Start Here
 
-- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — current database/application/runtime state, accepted deployment evidence, open PR structure, and live-evaluation resume point.
+- [2025 Live Review Work Ledger — 2026-09-08](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) — current recovered live-evaluation work ledger: Catalog navigation, annual-to-Reusable-Task reconciliation, ASSIGNED queue behavior, Captain/knowledge-owner rules, Rick-note interpretation, candidate-versus-Production status, disposable acceptance gate, stale-test blocker, unresolved findings, and exact resume order.
+- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — current accepted Production database/application/runtime state, rollback evidence, open PR structure, and live-evaluation baseline.
 - [Setup Internal Analytics and Visible Update Contract — 2026-09-07](Setup_Internal_Analytics_and_Version_Contract_2026-09-07.md) — GA4 Measurement ID/privacy boundary, versioned analytics asset, visible updated-date marker, contract tests, and remaining Production acceptance gate.
 - [Internal Web Backbone Handoff](Internal_Web_Backbone_Handoff.md) — source-subsystem contract for intranet navigation/search/application entry points.
 - [Setup Session Shared Review and Season-Year Guard](../Setup_Session_Shared_Review_and_Season_Year_Guard_2026-09-07.md) — annual-vs-reusable data boundary and session-year enforcement.
@@ -119,6 +120,8 @@ Current acceptance follow-up:
 - verify the visible `Updated 2026-09-07` marker in the live browser; and
 - preserve the analytics privacy boundary that excludes identity, query strings, and Production record identifiers.
 
+The newer 2025 live-review candidate and its exact deployment gate are tracked in the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md). Do not treat candidate-only migrations or UI controls as Production behavior until the full Setup/Application suite, disposable acceptance, controlled promotion, and browser acceptance have passed.
+
 Live evaluation should also capture questions and suggestions that are not traditional software defects. The 2025 review is the usability and operating-model test bed before 2026 is created.
 
 ## Resume Development
@@ -126,15 +129,16 @@ Live evaluation should also capture questions and suggestions that are not tradi
 Before changing this subsystem:
 
 1. read the Production Database Project Rules;
-2. review PRs #123, #124, and #125 together rather than treating one as the whole subsystem;
-3. read the Production Engineering Handoff linked above;
-4. read the Setup analytics/update contract before changing browser instrumentation or visible freshness behavior;
-5. review current live-use findings from managers/reviewers;
-6. preserve the accepted 2025/2026 annual-vs-reusable boundary;
-7. use `Gregovate/MSB-Server-Management` for current runtime/service/proxy facts; and
-8. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when behavior changes.
+2. read the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for the latest candidate status, review rules, and exact resume order;
+3. review PRs #123, #124, and #125 together rather than treating one as the whole subsystem;
+4. read the Production Engineering Handoff linked above for the accepted Production runtime baseline;
+5. read the Setup analytics/update contract before changing browser instrumentation or visible freshness behavior;
+6. review current live-use findings from managers/reviewers;
+7. preserve the accepted 2025/2026 annual-vs-reusable boundary;
+8. use `Gregovate/MSB-Server-Management` for current runtime/service/proxy facts; and
+9. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when behavior changes.
 
-Current resume point:
+Current accepted Production baseline remains:
 
 ```text
 Production runtime                    = ACCEPTED
@@ -147,6 +151,8 @@ operator/engineering docs on main     = RELEASED
 Backbone Production page              = PUBLISHED; documentation-link correction in progress
 Setup GA4 + visible updated date      = IMPLEMENTED IN SOURCE; DEPLOYMENT PENDING
 ```
+
+For the newer candidate stop point — including migrations 019–021, ASSIGNED queue behavior, Captain management, reconstruction-safe delete, Catalog return navigation, the disposable-clone result, and the stale-test blocker — use the live-review ledger rather than inferring status from this older Production baseline.
 
 ## Related Systems
 
