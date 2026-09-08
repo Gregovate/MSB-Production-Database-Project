@@ -66,6 +66,8 @@ Reusable Task
     = durable Setup task knowledge that may carry forward
 ```
 
+The Reusable Task Catalog is the durable knowledge layer. The left-side 2025 list is a reconstruction/review queue for annual occurrences, not a second independent task catalog.
+
 ### ASSIGNED means reconciliation, not execution
 
 `ASSIGNED` is a **reconciliation state**. It does not mean work was performed, completed, scheduled, or verified as an operational fact.
@@ -107,6 +109,36 @@ annual item currently points to reusable task A
 ```
 
 Migration 021 deliberately leaves that workflow separate. Do not simulate reassignment by deleting useful history or manually editing identity relationships outside a governed command.
+
+### Large 2025 reconstruction import gate
+
+Do **not** bulk-load the next spreadsheet/reconstruction task set until mistakes are safely correctable through the intended reconstruction controls.
+
+The review already demonstrated that provisional task boundaries can be wrong, duplicated, over-split, under-split, or attached to the wrong reusable identity. A large import before safe correction is available would turn cheap reconstruction mistakes into expensive cleanup.
+
+The current pre-import priorities are therefore:
+
+1. safe reconstruction delete;
+2. clear Catalog/Verification navigation;
+3. ASSIGNED queue reconciliation;
+4. Captain/knowledge-owner management; and
+5. the governed reassign/merge path when the annual item belongs to a different reusable task.
+
+Only after these correction paths are accepted should the next large 2025 spreadsheet import proceed.
+
+### Reusable Stage-level task families identified during review
+
+The reconstruction discussion also established recurring practical Stage-level task families that should be represented when they are real, independently useful Setup work:
+
+```text
+Locates
+Lay Cords
+Plug In / Power
+Network Connection
+Testing
+```
+
+These are examples of reusable task families, not an instruction to manufacture identical tasks for every Stage. Create them where the practical work, prerequisites, planning value, or completion boundary actually supports a separate reusable task.
 
 ## 3. Rick Hoffmann Historical-Note Review Rules
 
@@ -155,6 +187,7 @@ These rules are part of the review method, not one-off exceptions for a single R
 | ASSIGNED reconciliation state | **IMPLEMENTED + DISPOSABLE-CLONE VALIDATED** | Migration 021 accepts ASSIGNED as a reconciliation state. Not yet Production promoted. |
 | ASSIGNED left-side queue behavior | **IMPLEMENTED + CONTRACT TESTED** | `Mark Assigned`, default queue removal, and Assigned filter are in candidate source. Browser acceptance remains part of post-promotion validation after full test suite is green. |
 | Reassign/merge annual item to a different Reusable Task | **NOT IMPLEMENTED** | Separate governed workflow still required. |
+| Large 2025 spreadsheet/reconstruction import | **BLOCKED BY CORRECTION WORKFLOW** | Do not bulk-load until reconstruction mistakes are safely deletable and the reconciliation/correction path is accepted. |
 | Resource editor clarity | **CAPTURED LIVE-EVALUATION DEFECT** | Current UX can make adding an existing catalog resource look like editing the selected assignment. Must clearly distinguish current requirements, add existing resource, update assignment, and create new catalog resource. Verify current branch status before closeout. |
 | Task/Stage search | **CAPTURED LIVE-EVALUATION FINDING** | Verify current branch and Production behavior before declaring resolved. |
 | Dark-mode contrast | **CAPTURED LIVE-EVALUATION FINDING** | Signed-in/access badge, Catalog surfaces, and Needs Correction warning were reported. Verify current branch and Production behavior before closeout. |
@@ -213,7 +246,23 @@ Tasks added or reorganized during the live 2026 Manager review are real Producti
 
 Do not turn the reconstruction cleanup exercise into fabricated historical precision.
 
-## 7. System Ownership Boundaries During Review
+## 7. Material / Logistics Knowledge Goal
+
+Before simplifying or shrinking Procedure text, the Reusable Task Catalog should expose the authoritative operational context needed to replace tribal knowledge:
+
+```text
+required Displays / durable assets
+    -> current Containers / trailers
+    -> current or home locations
+    -> supplemental KIT/support Containers where needed
+    -> authoritative Controller context from FieldWiring / Controller Inventory
+```
+
+The Catalog should explain **why** each physical dependency is present. It must not hard-code current IDs or locations into Procedure prose just to make the information visible.
+
+The candidate Material / Logistics section is an important step, but Controller context is still explicitly unresolved in that surface. Do not call the broader tribal-knowledge replacement goal complete until the authoritative controller relationship can be surfaced coherently too.
+
+## 8. System Ownership Boundaries During Review
 
 Keep the following ownership rules intact while consolidating historical knowledge:
 
@@ -238,7 +287,7 @@ Do not copy current asset IDs/locations into Procedures or historical notes mere
 
 Detailed KIT **contents** remain outside the current 2026 MVP, but the existing KIT **Container** can be a real physical Setup dependency and may need a supplemental reviewed reusable relationship when Display links cannot derive it.
 
-## 8. Non-Negotiable Production Boundaries
+## 9. Non-Negotiable Production Boundaries
 
 Until explicitly changed by accepted work:
 
@@ -246,11 +295,12 @@ Until explicitly changed by accepted work:
 - no fake Production work days, movement events, or throwaway Setup records should be created for acceptance testing;
 - candidate migrations 019–021 are not Production baseline merely because disposable validation passed;
 - Production must not be used as the write target for candidate acceptance;
+- do not bulk-load the next large 2025 spreadsheet task set before the reconstruction correction/reconciliation workflow is accepted;
 - Pick List generation is still outside the current live Production workflow;
 - Container/Display movement/scanning writes are still outside the current accepted review workflow; and
 - no broad table DML should be granted to `fieldwiring_app` to make browser operations easier.
 
-## 9. Exact Resume Order
+## 10. Exact Resume Order
 
 Resume from this sequence rather than reconstructing the prior chat:
 
@@ -272,9 +322,10 @@ Resume from this sequence rather than reconstructing the prior chat:
 8. Update operator documentation only after the candidate behavior is actually deployed and accepted. Do not document candidate-only controls as already live Production behavior.
 9. Continue the Rick-note / 2025 reconstruction review using the interpretation rules in this ledger.
 10. Design the separate governed reassign/merge workflow when a 2025 annual item belongs to a different reusable task.
-11. Keep issue #122 and PR #125 open until real remaining work and acceptance gates are resolved; then normalize the stacked Setup PR lineage without losing history.
+11. Only after the correction/reconciliation workflow is accepted, resume the larger 2025 spreadsheet reconstruction import and use the recurring Stage-level task families as reviewed patterns rather than automatic templates.
+12. Keep issue #122 and PR #125 open until real remaining work and acceptance gates are resolved; then normalize the stacked Setup PR lineage without losing history.
 
-## 10. Stop Point — 2026-09-08
+## 11. Stop Point — 2026-09-08
 
 ```text
 Production runtime V0.3.4                     = ACCEPTED / UNCHANGED
@@ -287,6 +338,7 @@ Captain management candidate                  = IMPLEMENTED / DISPOSABLE VALIDAT
 ASSIGNED database state candidate              = IMPLEMENTED / DISPOSABLE VALIDATED
 ASSIGNED queue/browser candidate               = IMPLEMENTED / CONTRACT TESTED
 reassign to different reusable task           = NOT IMPLEMENTED
+large 2025 spreadsheet import                  = BLOCKED BY CORRECTION/RECONCILIATION GATE
 full Setup/Application suite                   = 83 PASS / 15 STALE FAILURES
 Production deployment of this candidate        = BLOCKED UNTIL FULL SUITE GREEN
 Rick-note review method                        = NOW DURABLY RECORDED HERE
