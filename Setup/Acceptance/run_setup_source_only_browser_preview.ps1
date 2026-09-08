@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$CandidateSha = 'f966ec82f31902e864a0c9d18c2e2cf21d792da8'
+$CandidateSha = '51c739bd85115c9f5d2853763e8e1450ac381407'
 $ExpectedBranch = 'agent/setup-session-production-foundation'
 
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
