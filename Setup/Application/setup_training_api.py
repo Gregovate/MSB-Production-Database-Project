@@ -62,7 +62,8 @@ def setup_training_command_error(exc: SetupCommandError) -> tuple[Response, int]
 
 @setup_training_api.errorhandler(psycopg2.Error)
 def setup_training_database_error(exc: psycopg2.Error) -> tuple[Response, int]:
-    message = str(getattr(exc, "diag", None).message_primary if getattr(exc, "diag", None) else "" or exc).strip()
+    primary = getattr(getattr(exc, "diag", None), "message_primary", None)
+    message = str(primary or exc).strip()
     return jsonify(
         error=message or "Setup reconstruction correction was rejected by the database.",
         engineering_error=str(exc),
