@@ -102,6 +102,21 @@ try {
     }
     $serverText = $serverText.Replace($regressionNeedle, $regressionReplacement)
 
+    # Any runtime use of /opt/fieldwiring/.venv must execute as the fieldwiring
+    # service account. The preview app already follows that rule; the two JSON
+    # parser probes after startup previously ran as msbadmin and failed with
+    # Permission denied even though the candidate app itself was healthy.
+    $parserNeedle = '| "$PYTHON" -c'
+    $parserReplacement = '| sudo -u fieldwiring -H "$PYTHON" -c'
+    $parserCount = ([regex]::Matches($serverText, [regex]::Escape($parserNeedle))).Count
+    if ($parserCount -ne 2) {
+        throw "Source-only preview Python probe match count was $parserCount; expected exactly 2."
+    }
+    $serverText = $serverText.Replace($parserNeedle, $parserReplacement)
+    if ($serverText.Contains($parserNeedle)) {
+        throw 'Source-only preview still contains a Python probe outside the fieldwiring account.'
+    }
+
     # A freshly initialized postgres/postgis container starts a temporary
     # bootstrap PostgreSQL server before the entrypoint execs the final PID-1
     # postgres process. pg_isready can therefore succeed too early and a restore
