@@ -60,6 +60,18 @@ def test_disposable_runner_applies_only_training_migrations_to_clone() -> None:
     assert "Production Setup fingerprint unchanged" in runner
 
 
+def test_disposable_runner_replays_migrations_and_proves_idempotence() -> None:
+    runner = read_acceptance("setup_training_disposable_acceptance_server.sh")
+    assert runner.count('psql_test < "$M019"') == 2
+    assert runner.count('psql_test < "$M020"') == 2
+    assert runner.count('psql_test < "$M021"') == 2
+    assert "--- Reapply candidate migrations to prove idempotence ---" in runner
+    assert "IDEMPOTENCE_BEFORE" in runner
+    assert "IDEMPOTENCE_AFTER" in runner
+    assert "FAIL: candidate migration replay changed governed Setup data" in runner
+    assert "PASS: migrations 019-021 replay cleanly with governed Setup data unchanged" in runner
+
+
 def test_disposable_validation_proves_delete_captain_assigned_and_least_privilege() -> None:
     validation = read_acceptance("setup_training_disposable_validation.sql")
     assert "ref.delete_setup_reconstruction_task" in validation
