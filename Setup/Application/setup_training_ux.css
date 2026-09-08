@@ -22,14 +22,100 @@
   transition: outline-color 1.2s ease;
 }
 
-#delete-reconstruction-task.danger {
+#delete-reconstruction-task.danger,
+.setup-captain-actions button.danger {
   color: var(--danger);
   border-color: var(--danger);
   background: var(--danger-soft);
 }
 
-#delete-reconstruction-task.danger:hover:not(:disabled) {
+#delete-reconstruction-task.danger:hover:not(:disabled),
+.setup-captain-actions button.danger:hover:not(:disabled) {
   filter: brightness(1.05);
+}
+
+.setup-captain-section {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--theme-subtle);
+}
+
+.setup-captain-heading h4 {
+  margin: 0 0 4px;
+}
+
+.setup-captain-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.setup-captain-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--theme-input);
+}
+
+.setup-captain-role {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--theme-pill);
+  color: var(--theme-pill-text);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.setup-captain-note {
+  margin-top: 5px;
+  font-size: .88rem;
+}
+
+.setup-captain-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.setup-captain-gap,
+.setup-captain-load-error {
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.setup-captain-load-error {
+  margin-bottom: 10px;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.setup-captain-manager {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.setup-captain-manager[hidden] {
+  display: none;
+}
+
+.setup-captain-picker-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, .8fr) minmax(320px, 1.2fr);
+  gap: 12px;
+}
+
+#setup-captain-person {
+  min-height: 9rem;
 }
 
 .task-detail-material {
@@ -137,10 +223,15 @@
   .setup-material-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .setup-captain-picker-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
-  .setup-return-library-wrap {
+  .setup-return-library-wrap,
+  .setup-captain-row {
     align-items: flex-start;
     flex-direction: column;
   }
