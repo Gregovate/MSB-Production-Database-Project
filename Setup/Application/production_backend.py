@@ -70,7 +70,8 @@ def production_health():
 def production_asset(name: str):
     if name not in PRODUCTION_ASSETS:
         abort(404)
-    return send_from_directory(BASE_DIR, name)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return send_from_directory(BASE_DIR, name, mimetype=mimetype)
 
 
 if __name__ == "__main__":
