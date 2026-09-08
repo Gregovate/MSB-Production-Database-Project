@@ -41,6 +41,23 @@ def _normalized_relative_task_root(task_root: str, drive_root: str) -> str | Non
     return relative.as_posix().strip("/")
 
 
+def _casefold_child_dir(parent: Path, wanted_name: str) -> Path | None:
+    """Resolve one direct child directory by name without Windows-only casing assumptions."""
+    if not parent.is_dir():
+        return None
+    try:
+        matches = [
+            item
+            for item in parent.iterdir()
+            if item.is_dir() and item.name.casefold() == wanted_name.casefold()
+        ]
+    except OSError:
+        return None
+    if len(matches) != 1:
+        return None
+    return matches[0]
+
+
 def _virtual_gdoc_name(exported_name: str) -> str:
     folded = exported_name.casefold()
     if folded.endswith(".link.html"):
@@ -73,8 +90,9 @@ def linked_google_sources(
     """Return Google-native editable sources from the lazy rclone link view.
 
     Only direct children of ``Procedures/Setup/SourceDocs`` or ``Archive`` are
-    eligible. A native ``.docx`` never qualifies because only Google-native Docs
-    are exposed as ``.link.html`` in this view.
+    eligible. Legacy folder capitalization is tolerated because Windows Drive
+    paths historically treated names such as ``archive`` and ``Archive`` as the
+    same location, while the Linux/rclone view is case-sensitive.
     """
     configured = (
         link_root
@@ -99,8 +117,8 @@ def linked_google_sources(
     warnings: list[str] = []
 
     for role, folder_name in (("SOURCEDOC", "SourceDocs"), ("ARCHIVE", "Archive")):
-        folder = linked_task_root / folder_name
-        if not folder.is_dir():
+        folder = _casefold_child_dir(linked_task_root, folder_name)
+        if folder is None:
             continue
         try:
             files = [
@@ -109,7 +127,7 @@ def linked_google_sources(
                 if item.is_file() and item.name.casefold().endswith(".link.html")
             ]
         except OSError as exc:
-            warnings.append(f"Google Doc link view could not enumerate {folder_name}: {exc}")
+            warnings.append(f"Google Doc link view could not enumerate {folder.name}: {exc}")
             continue
 
         for path in sorted(files, key=lambda item: item.name.casefold()):
@@ -125,7 +143,7 @@ def linked_google_sources(
                 {
                     "name": virtual_name,
                     "path": str(path),
-                    "drive_path": f"{relative_root}/{folder_name}/{path.name}",
+                    "drive_path": f"{relative_root}/{folder.name}/{path.name}",
                     "extension": ".gdoc",
                     "size": None,
                     "role": role,
@@ -192,7 +210,7 @@ def indexed_google_sources(
         role = None
         direct_name = None
         for candidate_role, prefix in prefixes.items():
-            if remote_path.startswith(prefix):
+            if remote_path.casefold().startswith(prefix.casefold()):
                 remainder = remote_path[len(prefix):]
                 if remainder and "/" not in remainder:
                     role = candidate_role
