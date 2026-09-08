@@ -107,6 +107,8 @@ try {
     # postgres process. pg_isready can therefore succeed too early and a restore
     # can be terminated during that handoff. Require both final PID-1=postgres
     # and pg_isready before creating/restoring the disposable review database.
+    # This is a disposable-preview timing guard only; Production PostgreSQL is
+    # still accessed by pg_dump/SELECT and is never restarted or modified here.
     $startupNeedle = @'
 ready=0
 for _ in $(seq 1 120); do
