@@ -47,3 +47,45 @@ def test_live_review_restores_task_and_stage_search() -> None:
     assert "renderLibraryWithLiveSearch" in js
     for field in ("task_name", "stage_key", "stage_name", "scene_name", "task_action_type"):
         assert field in js
+
+
+def test_live_review_filters_raw_lor_rows_to_true_setup_scenes() -> None:
+    js = (APP_DIR / "setup_live_review_fixes.js").read_text(encoding="utf-8")
+
+    # The live Setup UI must follow the existing Folder Alignment naming contract
+    # rather than treating every ref.lor_scene row as a scheduler Scene.
+    for marker in (
+        "classifySetupLORSceneName",
+        "isTrueSetupScene",
+        "DISPLAY_OR_GROUP",
+        "STAGE_ROOT",
+        "SUB_STAGE_ROOT",
+        "NON_SCENE_LOR_GROUP_PRESENTED_AT_STAGE",
+        "loadNextOrganizationWithTrueScenes",
+        "normalizeCurrentSetupOrganization",
+    ):
+        assert marker in js
+
+    # Production acceptance fixtures from the Manager review.
+    for true_scene in (
+        "01-Front Gate",
+        "02-Mega Tree",
+        "02-Fred's Stars",
+    ):
+        assert true_scene in js
+
+    for display_group in (
+        "Abominable",
+        "CharlieInTheBox",
+        "Frosty",
+        "Headlights",
+        "Narwhal",
+        "Signage",
+        "US Flag",
+        "Volunteer Path Lights",
+    ):
+        assert display_group in js
+
+    # Scheduler / Perform Work labels must use the same normalized scope view.
+    assert "nextTaskLabelWithTrueSceneScope" in js
+    assert "nextTaskScopeLabelWithTrueSceneScope" in js
