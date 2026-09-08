@@ -36,6 +36,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_session_year_guard.css",
         "setup_session_year_guard.js",
         "setup_analytics.js",
+        "setup_live_review_fixes.css",
+        "setup_live_review_fixes.js",
     }
 )
 
