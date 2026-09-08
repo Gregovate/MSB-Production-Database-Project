@@ -15,6 +15,7 @@ from backend import BASE_DIR
 from setup_api import setup_api
 from setup_resource_api import setup_resource_api
 from setup_next_api import setup_next_api
+from setup_training_api import setup_training_api
 
 PRODUCTION_VERSION = "V0.3.4-shared-season-guard-review"
 PRODUCTION_ASSETS = frozenset(
@@ -38,6 +39,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_analytics.js",
         "setup_live_review_fixes.css",
         "setup_live_review_fixes.js",
+        "setup_training_ux.css",
+        "setup_training_ux.js",
     }
 )
 
@@ -45,6 +48,7 @@ app = Flask(__name__)
 app.register_blueprint(setup_api)
 app.register_blueprint(setup_resource_api)
 app.register_blueprint(setup_next_api)
+app.register_blueprint(setup_training_api)
 
 
 @app.get("/")
