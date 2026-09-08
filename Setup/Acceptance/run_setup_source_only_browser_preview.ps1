@@ -117,6 +117,28 @@ try {
         throw 'Source-only preview still contains a Python probe outside the fieldwiring account.'
     }
 
+    # The preview Flask process is deliberately started as fieldwiring. Cleanup
+    # must signal that process group as the same runtime account; msbadmin cannot
+    # signal a fieldwiring-owned process directly. The prior cleanup swallowed
+    # that permission failure and left the preview TCP listener behind.
+    $cleanupNeedle = @'
+        kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+        sleep 1
+        kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+'@
+    $cleanupReplacement = @'
+        sudo -u fieldwiring -H kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+        sleep 1
+        sudo -u fieldwiring -H kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+'@
+    $cleanupNeedle = $cleanupNeedle.Replace("`r`n", "`n").Replace("`r", "`n")
+    $cleanupReplacement = $cleanupReplacement.Replace("`r`n", "`n").Replace("`r", "`n")
+    $cleanupCount = ([regex]::Matches($serverText, [regex]::Escape($cleanupNeedle))).Count
+    if ($cleanupCount -ne 1) {
+        throw "Source-only preview cleanup match count was $cleanupCount; expected exactly 1."
+    }
+    $serverText = $serverText.Replace($cleanupNeedle, $cleanupReplacement)
+
     # A freshly initialized postgres/postgis container starts a temporary
     # bootstrap PostgreSQL server before the entrypoint execs the final PID-1
     # postgres process. pg_isready can therefore succeed too early and a restore
