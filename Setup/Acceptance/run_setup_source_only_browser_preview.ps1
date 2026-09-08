@@ -143,6 +143,14 @@ if [[ "$ready" -ne 1 ]]; then
 fi
 echo "Disposable PostgreSQL final server ready: PASS"
 '@
+
+    # Single-quoted PowerShell here-strings already preserve literal shell
+    # quotes. Remove PowerShell-side backslash escaping before matching the
+    # normalized Linux shell source; otherwise the needle contains \" while the
+    # shell file contains ordinary double quotes and the guard can never match.
+    $startupNeedle = $startupNeedle.Replace('\"', '"')
+    $startupReplacement = $startupReplacement.Replace('\"', '"')
+
     if (-not $serverText.Contains($startupNeedle)) {
         throw 'Source-only preview server no longer contains the expected disposable PostgreSQL readiness gate.'
     }
