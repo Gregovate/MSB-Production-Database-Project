@@ -22,6 +22,16 @@
   transition: outline-color 1.2s ease;
 }
 
+#delete-reconstruction-task.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+#delete-reconstruction-task.danger:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
 .task-detail-material {
   border-left: 4px solid var(--accent);
 }
