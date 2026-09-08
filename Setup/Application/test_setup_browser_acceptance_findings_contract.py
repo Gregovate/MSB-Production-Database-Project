@@ -13,6 +13,15 @@ def test_reusable_task_creation_ambiguity_is_corrected() -> None:
     assert "GRANT EXECUTE ON FUNCTION ref.create_setup_task" in sql
 
 
+def test_prerequisite_cycle_reference_ambiguity_is_corrected() -> None:
+    sql = (DB_DIR / "018_fix_setup_dependency_cycle_reference.sql").read_text(encoding="utf-8")
+    assert "FROM prerequisite_chain c" in sql
+    assert "WHERE c.setup_task_id = p_setup_task_id" in sql
+    assert "WHERE setup_task_id = p_setup_task_id" not in sql
+    assert "ON CONFLICT ON CONSTRAINT pk_setup_task_dependency" in sql
+    assert "GRANT EXECUTE ON FUNCTION ref.set_setup_task_dependency" in sql
+
+
 def test_scene_field_context_derives_existing_scene_displays_without_manual_duplication() -> None:
     text = (APP_DIR / "setup_next_repository.py").read_text(encoding="utf-8")
     assert "FROM ref.setup_task_display" in text
