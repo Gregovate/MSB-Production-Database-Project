@@ -27,7 +27,8 @@
   margin-bottom: 0.75rem;
 }
 
-.resource-section-header h3 {
+.resource-section-header h3,
+.resource-manager-heading h4 {
   margin: 0;
 }
 
@@ -70,11 +71,29 @@
 }
 
 .resource-manager-panel {
+  display: grid;
+  gap: 0.9rem;
   margin-top: 0.9rem;
-  padding: 0.85rem;
+}
+
+.resource-manager-block {
+  padding: 0.9rem;
   border: 1px solid var(--border, #d9e0e8);
   border-radius: 0.6rem;
   background: var(--soft, #f5f8fb);
+}
+
+.resource-create-block {
+  background: var(--card, #fff);
+  border-style: dashed;
+}
+
+.resource-manager-heading {
+  margin-bottom: 0.75rem;
+}
+
+.resource-manager-heading .hint {
+  margin-top: 0.25rem;
 }
 
 .resource-edit-grid {
@@ -83,14 +102,17 @@
   gap: 0.65rem;
 }
 
+.resource-selection-state {
+  min-height: 1.2rem;
+  margin-top: 0.35rem;
+  font-size: 0.84rem;
+}
+
 .resource-new-form {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) 150px minmax(180px, 1fr) auto;
   gap: 0.65rem;
   align-items: end;
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--border, #d9e0e8);
 }
 
 .resource-inline-actions {
