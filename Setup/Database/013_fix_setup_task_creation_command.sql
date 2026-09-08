@@ -6,9 +6,9 @@ Revision: 2026-09-07 V0.3.2
 
 Purpose:
   Correct ref.create_setup_task() after browser acceptance exposed PostgreSQL
-  ambiguity in the ON CONFLICT target. The function RETURNS a column named
-  setup_task_id, so the unqualified ON CONFLICT (setup_session_id, setup_task_id)
-  reference can be parsed as ambiguous inside PL/pgSQL.
+  ambiguity in the column-list ON CONFLICT target. The function RETURNS a
+  column named setup_task_id, so a bare two-column conflict target can be parsed
+  as ambiguous inside PL/pgSQL.
 
 Correction:
   Target the already-governed uq_setup_session_task constraint by name.
