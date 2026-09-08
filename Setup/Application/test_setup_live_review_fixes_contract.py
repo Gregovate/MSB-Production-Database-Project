@@ -52,17 +52,18 @@ def test_live_review_restores_task_and_stage_search() -> None:
 def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
 
-    # These four assets changed during the 2026-09-08 Production review.
-    # Their URL revisions must advance together so a normal protected-route
-    # refresh cannot reuse the previous browser/edge cached implementation.
+    # Resource assets remain at the accepted 2026-09-08.1 revision. The live
+    # review JS advanced again after the initial Scene-filter implementation
+    # exposed an initialization-order race in Production.
     for asset in (
         "setup_resource_review.css?v=2026-09-08.1",
         "setup_resource_review.js?v=2026-09-08.1",
         "setup_live_review_fixes.css?v=2026-09-08.1",
-        "setup_live_review_fixes.js?v=2026-09-08.1",
+        "setup_live_review_fixes.js?v=2026-09-08.2",
     ):
         assert asset in html
 
+    assert "setup_live_review_fixes.js?v=2026-09-08.1" not in html
     assert "setup_live_review_fixes.js?v=2026-09-07.1" not in html
     assert "setup_live_review_fixes.css?v=2026-09-07.1" not in html
 
@@ -107,3 +108,19 @@ def test_live_review_filters_raw_lor_rows_to_true_setup_scenes() -> None:
     # Scheduler / Perform Work labels must use the same normalized scope view.
     assert "nextTaskLabelWithTrueSceneScope" in js
     assert "nextTaskScopeLabelWithTrueSceneScope" in js
+
+
+def test_library_render_normalizes_scene_scope_before_first_render() -> None:
+    js = (APP_DIR / "setup_live_review_fixes.js").read_text(encoding="utf-8")
+
+    # setup_next_pass.js begins initializeNextPass() before this later script
+    # loads. The first organization request can therefore already be in flight
+    # when loadNextOrganization is wrapped. Normalizing immediately before every
+    # library render closes that race: the resumed initializer calls the current
+    # global renderLibrary wrapper, which filters raw LOR rows before markup is
+    # created.
+    marker = "renderLibrary = function renderLibraryWithLiveSearch() {"
+    body = js.split(marker, 1)[1].split("};", 1)[0]
+    assert "normalizeCurrentSetupOrganization();" in body
+    assert "priorRenderLibrary();" in body
+    assert body.index("normalizeCurrentSetupOrganization();") < body.index("priorRenderLibrary();")
