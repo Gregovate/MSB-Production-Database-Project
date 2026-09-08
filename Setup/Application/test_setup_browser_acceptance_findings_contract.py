@@ -54,6 +54,23 @@ def test_reusable_catalog_has_contextual_add_task_workflow() -> None:
     assert "lor_scene_id: sceneId" in text
 
 
+def test_resource_editor_separates_existing_assignment_from_catalog_creation() -> None:
+    js = (APP_DIR / "setup_resource_review.js").read_text(encoding="utf-8")
+    css = (APP_DIR / "setup_resource_review.css").read_text(encoding="utf-8")
+
+    assert "Add existing equipment/resource to this task" in js
+    assert "Existing resource" in js
+    assert "Add Resource to Task" in js
+    assert "Update Resource Requirement" in js
+    assert "already on task" in js
+    assert "Need something that is not in the catalog?" in js
+    assert "Create New Catalog Resource" in js
+    assert "syncSetupResourceSelection" in js
+    assert "resourceAssignmentById" in js
+    assert "resource-existing-block" in css
+    assert "resource-create-block" in css
+
+
 def test_captain_completion_is_compact_and_multi_unit_detail_is_optional() -> None:
     js = (APP_DIR / "setup_acceptance_fixes.js").read_text(encoding="utf-8")
     css = (APP_DIR / "setup_acceptance_fixes.css").read_text(encoding="utf-8")
