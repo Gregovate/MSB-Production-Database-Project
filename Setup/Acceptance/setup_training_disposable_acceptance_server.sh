@@ -176,6 +176,25 @@ psql_test() {
         psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" "$@"
 }
 
+test_fingerprint() {
+    psql_test -qAt -c "
+        SELECT md5(
+            coalesce((SELECT string_agg(row_to_json(t)::text, '' ORDER BY t.setup_task_id) FROM ref.setup_task t), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(d)::text, '' ORDER BY d.setup_task_id, d.prerequisite_setup_task_id) FROM ref.setup_task_dependency d), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(td)::text, '' ORDER BY td.setup_task_id, td.display_id) FROM ref.setup_task_display td), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(tc)::text, '' ORDER BY tc.setup_task_id, tc.container_id) FROM ref.setup_task_container_support tc), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(c)::text, '' ORDER BY c.setup_task_id, c.person_id) FROM ref.setup_task_captain c), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(tr)::text, '' ORDER BY tr.setup_task_id, tr.setup_resource_id) FROM ref.setup_task_resource tr), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(s)::text, '' ORDER BY s.setup_session_id) FROM ops.setup_session s), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(st)::text, '' ORDER BY st.setup_session_task_id) FROM ops.setup_session_task st), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(wd)::text, '' ORDER BY wd.setup_work_day_id) FROM ops.setup_work_day wd), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(wdt)::text, '' ORDER BY wdt.setup_work_day_id, wdt.setup_session_task_id) FROM ops.setup_work_day_task wdt), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(p)::text, '' ORDER BY p.setup_task_progress_id) FROM ops.setup_task_progress p), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(me)::text, '' ORDER BY me.setup_movement_event_id) FROM ops.setup_movement_event me), '')
+        );
+    "
+}
+
 psql_test <<'SQL'
 DO $role$
 BEGIN
@@ -194,6 +213,30 @@ psql_test < "$M020"
 echo "Migration 020 Captain management: PASS"
 psql_test < "$M021"
 echo "Migration 021 ASSIGNED reconciliation state: PASS"
+
+IDEMPOTENCE_BEFORE="$(test_fingerprint)"
+if [[ -z "$IDEMPOTENCE_BEFORE" ]]; then
+    echo "FAIL: disposable Setup fingerprint was empty before migration replay"
+    exit 10
+fi
+
+echo
+echo "--- Reapply candidate migrations to prove idempotence ---"
+psql_test < "$M019"
+echo "Migration 019 idempotence replay: PASS"
+psql_test < "$M020"
+echo "Migration 020 idempotence replay: PASS"
+psql_test < "$M021"
+echo "Migration 021 idempotence replay: PASS"
+
+IDEMPOTENCE_AFTER="$(test_fingerprint)"
+echo "Disposable governed Setup fingerprint before replay: $IDEMPOTENCE_BEFORE"
+echo "Disposable governed Setup fingerprint after replay:  $IDEMPOTENCE_AFTER"
+if [[ -z "$IDEMPOTENCE_AFTER" || "$IDEMPOTENCE_AFTER" != "$IDEMPOTENCE_BEFORE" ]]; then
+    echo "FAIL: candidate migration replay changed governed Setup data"
+    exit 10
+fi
+echo "PASS: migrations 019-021 replay cleanly with governed Setup data unchanged"
 
 echo
 echo "--- Run feature-specific disposable assertions ---"
