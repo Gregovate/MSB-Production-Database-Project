@@ -124,22 +124,6 @@
     });
   }
 
-  /* The Equipment / Resources section is inserted dynamically. During live
-     Manager review the resource list rendered correctly while its manager
-     editor remained hidden even for an Administrator. Re-apply the capability
-     after access and resource rendering so the existing governed Create and
-     Add / Update controls cannot be stranded by script/render timing. */
-  function syncAuthorizedResourceEditor() {
-    if (typeof ensureSetupResourceSection === 'function') ensureSetupResourceSection();
-    const manager = document.getElementById('setup-resource-manager');
-    if (!manager) return;
-    const canManage = Boolean(appState?.access?.can_manage_setup);
-    manager.hidden = !canManage;
-    manager.querySelectorAll('select, input, button').forEach((control) => {
-      control.disabled = !canManage;
-    });
-  }
-
   const priorRenderReviewList = renderReviewList;
   renderReviewList = function renderReviewListWithLiveSearch() {
     priorRenderReviewList();
@@ -152,26 +136,7 @@
     applyLibrarySearch();
   };
 
-  if (typeof applyAccess === 'function') {
-    const priorApplyAccess = applyAccess;
-    applyAccess = function applyAccessWithLiveFixes(...args) {
-      const result = priorApplyAccess(...args);
-      syncAuthorizedResourceEditor();
-      return result;
-    };
-  }
-
-  if (typeof renderSetupTaskResources === 'function') {
-    const priorRenderSetupTaskResources = renderSetupTaskResources;
-    renderSetupTaskResources = function renderSetupTaskResourcesWithManagerAccess(...args) {
-      const result = priorRenderSetupTaskResources(...args);
-      syncAuthorizedResourceEditor();
-      return result;
-    };
-  }
-
   installSearch();
-  syncAuthorizedResourceEditor();
   if (appState.tasks?.length) {
     renderReviewList();
     renderLibrary();
