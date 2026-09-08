@@ -36,7 +36,7 @@ def test_final_schedule_has_parallel_crew_lanes_without_person_roster() -> None:
     assert "MORNING" in client
     assert "AFTERNOON" in client
     assert "ALL_DAY" in client
-    assert "individual volunteer" not in client.lower()
+    assert "parallel crew groups, not individual volunteer rosters" in client.lower()
 
 
 def test_planning_screen_is_ordered_backlog_with_visibility_filters() -> None:
@@ -64,7 +64,7 @@ def test_sitewide_scope_is_first_class_and_not_lor_derived() -> None:
     seed = (DB_DIR / "012_seed_site_infrastructure_review_tasks.sql").read_text(encoding="utf-8")
     assert "Site-wide / Infrastructure" in client
     assert "no LOR Stage/Scene" in client
-    assert 'SITE_INFRASTRUCTURE_FOLDER = "Site Infrastructure"' in api
+    assert 'PARK_INFRASTRUCTURE_FOLDER = "41 Park Infrastructure-PI"' in api
     assert "stage_id IS NULL" in seed
     for task in (
         "Deliver and Set Up Command Center Trailer",
@@ -88,16 +88,17 @@ def test_task_procedure_route_resolves_sitewide_stage_or_exact_scene_server_side
     assert "resolve_stage_procedure" in api
     assert "scene_uuid" in api
     assert "whole_stage=not scene_scoped" in api
-    assert "Site Infrastructure" in api
+    assert "Park Infrastructure" in api
+    assert 'PARK_INFRASTRUCTURE_FOLDER = "41 Park Infrastructure-PI"' in api
     assert "MARKER_NAME" in api
     assert "Path(name or \"\").name" in api
     assert "scene_uuid" in repo
     assert "preview_uuid" in repo
 
 
-def test_site_infrastructure_folder_sop_is_buildable_and_uses_existing_marker_contract() -> None:
+def test_park_infrastructure_folder_sop_is_buildable_and_uses_existing_marker_contract() -> None:
     text = SITE_SOP.read_text(encoding="utf-8")
-    assert r"G:\Shared drives\Display Folders\Site Infrastructure" in text
+    assert r"G:\Shared drives\Display Folders\41 Park Infrastructure-PI" in text
     assert "_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt" in text
     for folder in (
         "Procedures/",
