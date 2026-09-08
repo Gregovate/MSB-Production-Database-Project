@@ -53,17 +53,18 @@ def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
 
     # Resource assets remain at the accepted 2026-09-08.1 revision. The live
-    # review JS advanced again after the initial Scene-filter implementation
-    # exposed an initialization-order race in Production.
+    # review pair advances together for the task-detail hierarchy pass so both
+    # the teaching markup behavior and the final dark/light-safe styles refresh.
     for asset in (
         "setup_resource_review.css?v=2026-09-08.1",
         "setup_resource_review.js?v=2026-09-08.1",
-        "setup_live_review_fixes.css?v=2026-09-08.1",
-        "setup_live_review_fixes.js?v=2026-09-08.2",
+        "setup_live_review_fixes.css?v=2026-09-08.3",
+        "setup_live_review_fixes.js?v=2026-09-08.3",
     ):
         assert asset in html
 
-    assert "setup_live_review_fixes.js?v=2026-09-08.1" not in html
+    assert "setup_live_review_fixes.js?v=2026-09-08.2" not in html
+    assert "setup_live_review_fixes.css?v=2026-09-08.1" not in html
     assert "setup_live_review_fixes.js?v=2026-09-07.1" not in html
     assert "setup_live_review_fixes.css?v=2026-09-07.1" not in html
 
@@ -124,3 +125,42 @@ def test_library_render_normalizes_scene_scope_before_first_render() -> None:
     assert "normalizeCurrentSetupOrganization();" in body
     assert "priorRenderLibrary();" in body
     assert body.index("normalizeCurrentSetupOrganization();") < body.index("priorRenderLibrary();")
+
+
+def test_task_detail_sections_teach_their_purpose_without_visual_noise() -> None:
+    js = (APP_DIR / "setup_live_review_fixes.js").read_text(encoding="utf-8")
+    css = (APP_DIR / "setup_live_review_fixes.css").read_text(encoding="utf-8")
+
+    for marker in (
+        "installTaskDetailHierarchy",
+        "1. Reusable Task Definition",
+        "2. Prerequisites",
+        "3. Equipment / Resources",
+        "4. Setup Procedures",
+        "Permanent Setup knowledge used year after year",
+        "What must be complete before this task can start",
+        "Quantity is how many this task needs",
+        "Published field instructions and the editable source",
+        "Resource catalog",
+        "Create New Catalog Resource",
+        "Use this only when the reusable resource does not already exist",
+    ):
+        assert marker in js
+
+    for selector in (
+        ".detail-section.task-detail-panel",
+        ".task-detail-definition",
+        ".task-detail-prerequisites",
+        ".task-detail-resources",
+        ".task-detail-procedures",
+        ".task-detail-subpanel",
+        ".task-section-purpose",
+        ".task-resource-catalog-block",
+    ):
+        assert selector in css
+
+    # Use existing theme-safe semantic colors rather than introducing a bright
+    # independent palette that would drift between light and dark mode.
+    assert "--task-section-accent: var(--accent);" in css
+    assert "--task-section-accent: var(--warning);" in css
+    assert "--task-section-accent: var(--success);" in css
