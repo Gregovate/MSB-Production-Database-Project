@@ -64,3 +64,13 @@ def test_training_preview_keeps_exact_candidate_and_live_port_guards() -> None:
     # advancing or modifying the live /opt/msb-setup checkout.
     assert "[scriptblock]::Create($text)" in launcher
     assert "git -C" not in launcher
+
+
+def test_training_preview_uses_valid_powershell_command_continuation() -> None:
+    launcher = read_acceptance("run_setup_training_browser_preview.ps1")
+
+    # A backslash is a shell continuation, not a PowerShell continuation. Using
+    # it after Replace-Required caused PowerShell to invoke the function before
+    # all mandatory named parameters were supplied and prompt interactively for
+    # the missing Needle parameter.
+    assert not any(line.rstrip().endswith("\\") for line in launcher.splitlines())
