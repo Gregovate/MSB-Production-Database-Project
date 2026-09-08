@@ -31,6 +31,23 @@ class SetupRepository:
         finally:
             conn.close()
 
+    @contextmanager
+    def write_connect(self) -> Iterator[Any]:
+        """Open one explicit read-write transaction for a governed command.
+
+        The shared fieldwiring_app login intentionally defaults transactions to
+        read-only. Setup writes are allowed only through the narrow SECURITY
+        DEFINER command functions, so the application must opt in to read-write
+        mode for exactly those command transactions while ordinary reads retain
+        the role-level read-only backstop.
+        """
+        conn = psycopg2.connect(self.dsn)
+        try:
+            conn.set_session(readonly=False, autocommit=False)
+            yield conn
+        finally:
+            conn.close()
+
     def capabilities(self, email: str) -> dict[str, Any]:
         normalized = (email or "").strip().lower()
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -229,7 +246,7 @@ class SetupRepository:
         return dict(row)
 
     def create_session(self, *, email: str, season_year: int, status: str) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT *
@@ -258,7 +275,7 @@ class SetupRepository:
             payload.get("weather_note"),
             payload.get("reusable_notes"),
         )
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT * FROM ref.create_setup_task(
@@ -296,7 +313,7 @@ class SetupRepository:
             payload.get("weather_note"),
             payload.get("reusable_notes"),
         )
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT * FROM ref.update_setup_task(
@@ -318,7 +335,7 @@ class SetupRepository:
         setup_session_task_id: int,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT * FROM ops.update_setup_session_task_review(
