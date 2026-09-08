@@ -6,6 +6,9 @@
     taskId: null,
     scrollY: 0
   };
+  const materialState = {
+    requestToken: 0
+  };
 
   function navigationHost() {
     return document.querySelector('#review-detail .detail-heading');
@@ -66,6 +69,156 @@
     updateLibraryReturnControl();
   }
 
+  function ensureMaterialSection() {
+    const procedureSection = document.getElementById('production-current-pdf')?.closest('.detail-section');
+    if (!procedureSection) return null;
+
+    let section = document.getElementById('setup-material-context-section');
+    if (!section) {
+      section = document.createElement('section');
+      section.id = 'setup-material-context-section';
+      section.className = 'detail-section task-detail-panel task-detail-material';
+      section.innerHTML = `
+        <h3>4. Material / Logistics Context</h3>
+        <div class="task-section-purpose">
+          Database-resolved physical context for this reusable task. Use this to verify that Setup knows what is needed and where it currently belongs; do not copy these IDs into the Procedure just to preserve tribal knowledge.
+        </div>
+        <div id="setup-material-context-summary" class="setup-material-summary"></div>
+        <div id="setup-material-context-body" class="setup-material-body">
+          <span class="muted">Select a task to resolve current material context.</span>
+        </div>
+      `;
+      procedureSection.insertAdjacentElement('beforebegin', section);
+    }
+
+    const procedureHeading = procedureSection.querySelector(':scope > h3');
+    if (procedureHeading) procedureHeading.textContent = '5. Setup Procedures';
+    return section;
+  }
+
+  function contextLocation(row) {
+    if (row.current_location_note) return row.current_location_note;
+    if (row.current_stage_key || row.current_stage_name) {
+      return `Stage ${row.current_stage_key || '—'} — ${row.current_stage_name || ''}`.trim();
+    }
+    if (row.home_location_code) return `Home ${row.home_location_code}`;
+    return 'Location not resolved';
+  }
+
+  function whyIncluded(row) {
+    if (row.relationship_source === 'SCENE') return 'Current LOR Scene membership';
+    if (row.relationship_source === 'TASK_MAP') return 'Explicit reusable-task Display mapping';
+    if (row.relationship_type) return String(row.relationship_type).replaceAll('_', ' ');
+    return 'Database relationship';
+  }
+
+  function renderMaterialContext(context) {
+    ensureMaterialSection();
+    const summary = document.getElementById('setup-material-context-summary');
+    const body = document.getElementById('setup-material-context-body');
+    if (!summary || !body) return;
+
+    const displays = Array.isArray(context?.displays) ? context.displays : [];
+    const supportContainers = Array.isArray(context?.support_containers) ? context.support_containers : [];
+    const containerIds = new Set();
+    displays.forEach((row) => {
+      if (row.container_id != null) containerIds.add(Number(row.container_id));
+    });
+    supportContainers.forEach((row) => {
+      if (row.container_id != null) containerIds.add(Number(row.container_id));
+    });
+    const unresolvedDisplays = displays.filter((row) => row.container_id == null);
+
+    summary.innerHTML = `
+      <div><span>Displays resolved</span><strong>${displays.length}</strong></div>
+      <div><span>Containers resolved</span><strong>${containerIds.size}</strong></div>
+      <div><span>Support / KIT Containers</span><strong>${supportContainers.length}</strong></div>
+      <div><span>Displays without Container</span><strong>${unresolvedDisplays.length}</strong></div>
+    `;
+
+    const groups = new Map();
+    displays.forEach((row) => {
+      const key = row.container_id == null ? 'UNCONTAINED' : String(row.container_id);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    });
+
+    const displayGroups = [...groups.entries()].map(([key, rows]) => {
+      const first = rows[0] || {};
+      const title = key === 'UNCONTAINED'
+        ? 'Displays without a current Container relationship'
+        : `Container ${escapeHtml(key)}${first.container_description ? ` — ${escapeHtml(first.container_description)}` : ''}`;
+      const location = contextLocation(first);
+      return `
+        <details class="setup-material-container" open>
+          <summary>
+            <span><strong>${title}</strong></span>
+            <span class="setup-material-count">${rows.length} Display${rows.length === 1 ? '' : 's'}</span>
+          </summary>
+          <div class="setup-material-location">Current / home context: ${escapeHtml(location)}</div>
+          <div class="setup-material-display-list">
+            ${rows.map((row) => `
+              <div class="setup-material-display-row">
+                <div><strong>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.display_name || '')}</strong></div>
+                <div class="muted">Why included: ${escapeHtml(whyIncluded(row))}${row.relationship_notes ? ` · ${escapeHtml(row.relationship_notes)}` : ''}</div>
+              </div>
+            `).join('')}
+          </div>
+        </details>
+      `;
+    }).join('');
+
+    const supportMarkup = supportContainers.length ? `
+      <div class="setup-support-container-block">
+        <h4>Supplemental support / KIT Containers</h4>
+        ${supportContainers.map((row) => `
+          <div class="setup-support-container-row">
+            <strong>Container ${escapeHtml(row.container_id)}${row.container_description ? ` — ${escapeHtml(row.container_description)}` : ''}</strong>
+            <div class="muted">${escapeHtml(String(row.relationship_type || 'SUPPORT').replaceAll('_', ' '))}${row.relationship_notes ? ` · ${escapeHtml(row.relationship_notes)}` : ''}</div>
+            <div class="muted">Current / home context: ${escapeHtml(contextLocation(row))}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    const emptyMarkup = !displays.length && !supportContainers.length
+      ? '<div class="empty-state">No Display or supplemental Container relationship is currently resolved for this reusable task. That is a visible knowledge gap, not permission to copy IDs from the Procedure.</div>'
+      : '';
+
+    body.innerHTML = `
+      ${emptyMarkup}
+      ${displayGroups}
+      ${supportMarkup}
+      <div class="setup-controller-context-note">
+        <strong>Controllers:</strong> Catalog controller context is not surfaced by this resolver yet. It must come from the existing authoritative FieldWiring/controller relationships rather than from hard-coded Procedure text.
+      </div>
+    `;
+  }
+
+  async function loadMaterialContext(taskId) {
+    const section = ensureMaterialSection();
+    if (!section || taskId == null || appState.seasonYear == null) return;
+
+    const token = ++materialState.requestToken;
+    const summary = document.getElementById('setup-material-context-summary');
+    const body = document.getElementById('setup-material-context-body');
+    if (summary) summary.innerHTML = '';
+    if (body) body.innerHTML = '<span class="muted">Resolving Displays, Containers, and support Containers from the Production Database…</span>';
+
+    try {
+      const payload = await api(
+        `api/setup/tasks/${Number(taskId)}/field-context?season_year=${encodeURIComponent(appState.seasonYear)}`
+      );
+      if (token !== materialState.requestToken) return;
+      renderMaterialContext(payload.context || {});
+    } catch (error) {
+      if (token !== materialState.requestToken) return;
+      if (body) {
+        body.innerHTML = `<div class="empty-state">Material / logistics context could not be resolved: ${escapeHtml(error.message || error)}</div>`;
+      }
+    }
+  }
+
   /*
    * Capture Catalog Open before the existing bubble handler switches views.
    * This preserves the user's Catalog context without changing the existing
@@ -93,12 +246,14 @@
   /* Keep the return control visible across saves/reloads of the open task. */
   if (typeof selectTask === 'function') {
     const priorSelectTask = selectTask;
-    selectTask = function selectTaskWithCatalogReturn(taskId) {
+    selectTask = function selectTaskWithTrainingContext(taskId) {
       const result = priorSelectTask(taskId);
       requestAnimationFrame(updateLibraryReturnControl);
+      loadMaterialContext(taskId);
       return result;
     };
   }
 
   ensureLibraryReturnControl();
+  ensureMaterialSection();
 })();
