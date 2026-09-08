@@ -1,11 +1,17 @@
+import ast
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+DB_ROOT = ROOT.parent / "Database"
 
 
 def read(name: str) -> str:
     return (ROOT / name).read_text(encoding="utf-8")
+
+
+def read_db(name: str) -> str:
+    return (DB_ROOT / name).read_text(encoding="utf-8")
 
 
 def test_training_ux_assets_are_loaded_after_live_review_fixes():
@@ -68,3 +74,51 @@ def test_material_context_has_theme_safe_responsive_styles():
     assert ".setup-controller-context-note" in css
     assert "var(--theme-subtle)" in css
     assert "var(--border)" in css
+
+
+def test_reconstruction_delete_is_visible_only_in_historical_manager_context():
+    js = read("setup_training_ux.js")
+    css = read("setup_training_ux.css")
+    assert "Delete Reconstruction Task" in js
+    assert "HISTORICAL_VERIFICATION" in js
+    assert "setup_session_task_id != null" in js
+    assert "reconstruction-delete" in js
+    assert "commandOptions('DELETE', {})" in js
+    assert "work-day, progress, movement, planning, or actual execution history" in js
+    assert "#delete-reconstruction-task.danger" in css
+
+
+def test_reconstruction_delete_command_fails_closed_on_real_history():
+    sql = read_db("019_add_reconstruction_safe_task_delete.sql")
+    assert "ref.delete_setup_reconstruction_task" in sql
+    assert "ss.session_status <> 'HISTORICAL_VERIFICATION'" in sql
+    assert "ops.setup_work_day_task" in sql
+    assert "ops.setup_task_progress" in sql
+    assert "ops.setup_movement_event" in sql
+    assert "st.actual_started_at IS NOT NULL" in sql
+    assert "st.actual_completed_at IS NOT NULL" in sql
+    assert "st.completed_by_person_id IS NOT NULL" in sql
+    assert "DELETE FROM ops.setup_session_task" in sql
+    assert "DELETE FROM ref.setup_task_dependency" in sql
+    assert "DELETE FROM ref.setup_task_display" in sql
+    assert "DELETE FROM ref.setup_task_container_support" in sql
+    assert "DELETE FROM ref.setup_task_captain" in sql
+    assert "DELETE FROM ref.setup_task_resource" in sql
+    assert "DELETE FROM ref.setup_task t" in sql
+    assert "GRANT EXECUTE ON FUNCTION ref.delete_setup_reconstruction_task(text,bigint) TO fieldwiring_app" in sql
+    assert "CASCADE" in sql  # documented as explicitly forbidden for the final task delete
+
+
+def test_training_api_is_registered_and_static_assets_are_allowlisted():
+    host = read("production_backend.py")
+    api_source = read("setup_training_api.py")
+    ast.parse(host)
+    ast.parse(api_source)
+    assert "from setup_training_api import setup_training_api" in host
+    assert "app.register_blueprint(setup_training_api)" in host
+    assert '"setup_training_ux.css"' in host
+    assert '"setup_training_ux.js"' in host
+    assert '@setup_training_api.delete("/api/setup/tasks/<int:setup_task_id>/reconstruction-delete")' in api_source
+    assert "ref.delete_setup_reconstruction_task" in api_source
+    assert "conn.set_session(readonly=False, autocommit=False)" in api_source
+    assert "conn.rollback()" in api_source
