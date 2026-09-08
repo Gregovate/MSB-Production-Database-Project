@@ -83,6 +83,10 @@
   background: var(--soft, #f5f8fb);
 }
 
+.resource-existing-block {
+  background: var(--soft, #f5f8fb);
+}
+
 .resource-create-block {
   background: var(--card, #fff);
   border-style: dashed;
