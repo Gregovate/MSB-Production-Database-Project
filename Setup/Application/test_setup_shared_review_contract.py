@@ -16,8 +16,8 @@ def test_shared_2025_review_is_explicitly_permanent_and_year_bounded() -> None:
         / "Setup_Session_Manager_Review_Guide.md"
     ).read_text(encoding="utf-8")
     assert "not disposable test data" in guide.lower()
-    assert "2025 historical review" in guide
-    assert "2025 dates" in guide
+    assert "2025 Historical Verification" in guide
+    assert "must be in 2025" in guide
     assert "Administrator" in guide
     assert "41 Park Infrastructure-PI" in guide
     assert "40-CommandCenter" in guide
