@@ -14,18 +14,19 @@ def read_acceptance(name: str) -> str:
 def test_training_preview_reuses_hardened_disposable_clone_preview() -> None:
     launcher = read_acceptance("run_setup_training_browser_preview.ps1")
     base = read_acceptance("run_setup_source_only_browser_preview.ps1")
+    server = read_acceptance("setup_source_only_browser_preview_server.sh")
 
     assert f"$AcceptedCandidateSha = '{ACCEPTED_CANDIDATE_SHA}'" in launcher
     assert "run_setup_source_only_browser_preview.ps1" in launcher
     assert "disposable current-Production clone" in launcher
 
-    # The hardened base remains responsible for the safety boundary: Production
-    # is dump/SELECT only, the application runs against a disposable clone, and
-    # both Production data and the live Setup checkout are checked unchanged.
-    assert "Production DB: pg_dump + SELECT only" in base
-    assert "Preview writes: disposable current-production clone only" in base
-    assert "PASS: Production Setup fingerprint unchanged" in base
-    assert "PASS: live Setup checkout unchanged" in base
+    # The PowerShell base owns the local wrapper/SSH boundary, while the server
+    # runner owns the database/read-only/live-checkout safety assertions.
+    assert "Production Setup data and /opt/msb-setup remain unchanged" in base
+    assert "Production DB: pg_dump + SELECT only" in server
+    assert "Preview writes: disposable current-production clone only" in server
+    assert "PASS: Production Setup fingerprint unchanged" in server
+    assert "PASS: live Setup checkout unchanged" in server
 
 
 def test_training_preview_installs_only_019_020_021_into_clone() -> None:
