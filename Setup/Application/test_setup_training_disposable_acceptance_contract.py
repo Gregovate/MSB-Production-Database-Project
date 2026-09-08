@@ -36,7 +36,10 @@ def test_disposable_runner_reads_production_only_by_dump_and_select() -> None:
     assert "docker exec -i \"$PROD_CONTAINER\" pg_restore --list < \"$DUMP_FILE\"" in runner
     assert 'cat "$DUMP_FILE" |' not in runner
     assert '--network "$NETWORK"' in runner
-    assert "-p " not in runner
+    # Reject Docker host-port publication specifically. Do not use a blanket
+    # '-p ' search because normal shell commands such as `mkdir -p` are valid.
+    assert "docker run -d -p " not in runner
+    assert "docker run -d \\\n    -p " not in runner
     assert "--publish" not in runner
 
 
