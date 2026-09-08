@@ -1,0 +1,30 @@
+/* Setup training/live-use UX corrections discovered during 2025 reconstruction. */
+
+.setup-return-library-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0 12px;
+  margin-bottom: 6px;
+  background: var(--surface, Canvas);
+}
+
+.setup-return-library-wrap[hidden] {
+  display: none;
+}
+
+.setup-return-highlight {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+  transition: outline-color 1.2s ease;
+}
+
+@media (max-width: 760px) {
+  .setup-return-library-wrap {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
