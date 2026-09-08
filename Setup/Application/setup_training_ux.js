@@ -219,6 +219,89 @@
     }
   }
 
+  function historicalReconstructionSelected() {
+    const season = typeof currentSeasonRecord === 'function' ? currentSeasonRecord() : null;
+    return season?.session_status === 'HISTORICAL_VERIFICATION';
+  }
+
+  function ensureReconstructionDeleteControl() {
+    const actions = document.getElementById('reusable-manager-actions');
+    if (!actions || document.getElementById('delete-reconstruction-task')) return;
+
+    const button = document.createElement('button');
+    button.id = 'delete-reconstruction-task';
+    button.type = 'button';
+    button.className = 'danger';
+    button.textContent = 'Delete Reconstruction Task';
+    button.hidden = true;
+    actions.appendChild(button);
+    button.addEventListener('click', deleteSelectedReconstructionTask);
+  }
+
+  function updateReconstructionDeleteControl(taskId = appState.selectedTaskId) {
+    ensureReconstructionDeleteControl();
+    const button = document.getElementById('delete-reconstruction-task');
+    if (!button) return;
+    const task = taskById(taskId);
+    button.hidden = !(
+      appState.access?.can_manage_setup
+      && historicalReconstructionSelected()
+      && task?.setup_session_task_id != null
+    );
+  }
+
+  async function deleteSelectedReconstructionTask() {
+    const task = taskById(appState.selectedTaskId);
+    if (!task || !appState.access?.can_manage_setup || !historicalReconstructionSelected()) return;
+
+    const confirmed = window.confirm(
+      `Delete "${task.task_name}" completely from the ${appState.seasonYear} reconstruction and the Reusable Task Catalog?\n\n`
+      + 'This is intended for reconstruction mistakes only. The database will refuse the delete if the task has work-day, progress, movement, planning, or actual execution history.\n\n'
+      + 'This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    const returnToLibrary = returnState.fromLibrary;
+    try {
+      setBusy(true);
+      const result = await api(
+        `api/setup/tasks/${task.setup_task_id}/reconstruction-delete`,
+        commandOptions('DELETE', {})
+      );
+      const deleted = result.deleted_task || {};
+      materialState.requestToken += 1;
+      appState.selectedTaskId = null;
+      clearLibraryOrigin();
+      await reloadTasks(null);
+      if (typeof loadNextOrganization === 'function') await loadNextOrganization(false);
+      if (typeof loadNextSchedule === 'function') await loadNextSchedule();
+
+      const detail = document.getElementById('review-detail');
+      const empty = document.getElementById('review-empty');
+      if (detail) detail.hidden = true;
+      if (empty) empty.hidden = false;
+
+      if (returnToLibrary) {
+        renderLibrary();
+        showView('library');
+      } else {
+        showView('review');
+      }
+
+      setAlert(
+        `Deleted reconstruction task ${deleted.setup_task_id || task.setup_task_id}. `
+        + `${deleted.deleted_annual_rows ?? 0} annual row(s) and its reusable definition were removed.`,
+        'ok'
+      );
+    } catch (error) {
+      setAlert(error.message || error, 'error');
+      window.alert(error.message || error);
+    } finally {
+      setBusy(false);
+      updateReconstructionDeleteControl();
+    }
+  }
+
   /*
    * Capture Catalog Open before the existing bubble handler switches views.
    * This preserves the user's Catalog context without changing the existing
@@ -243,12 +326,13 @@
     }
   }, true);
 
-  /* Keep the return control visible across saves/reloads of the open task. */
+  /* Keep contextual controls visible across saves/reloads of the open task. */
   if (typeof selectTask === 'function') {
     const priorSelectTask = selectTask;
     selectTask = function selectTaskWithTrainingContext(taskId) {
       const result = priorSelectTask(taskId);
       requestAnimationFrame(updateLibraryReturnControl);
+      updateReconstructionDeleteControl(taskId);
       loadMaterialContext(taskId);
       return result;
     };
@@ -256,4 +340,5 @@
 
   ensureLibraryReturnControl();
   ensureMaterialSection();
+  ensureReconstructionDeleteControl();
 })();
