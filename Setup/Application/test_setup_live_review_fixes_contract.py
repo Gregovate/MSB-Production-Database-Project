@@ -49,6 +49,24 @@ def test_live_review_restores_task_and_stage_search() -> None:
         assert field in js
 
 
+def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+
+    # These four assets changed during the 2026-09-08 Production review.
+    # Their URL revisions must advance together so a normal protected-route
+    # refresh cannot reuse the previous browser/edge cached implementation.
+    for asset in (
+        "setup_resource_review.css?v=2026-09-08.1",
+        "setup_resource_review.js?v=2026-09-08.1",
+        "setup_live_review_fixes.css?v=2026-09-08.1",
+        "setup_live_review_fixes.js?v=2026-09-08.1",
+    ):
+        assert asset in html
+
+    assert "setup_live_review_fixes.js?v=2026-09-07.1" not in html
+    assert "setup_live_review_fixes.css?v=2026-09-07.1" not in html
+
+
 def test_live_review_filters_raw_lor_rows_to_true_setup_scenes() -> None:
     js = (APP_DIR / "setup_live_review_fixes.js").read_text(encoding="utf-8")
 
