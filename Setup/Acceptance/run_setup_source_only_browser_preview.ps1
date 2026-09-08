@@ -102,6 +102,50 @@ try {
     }
     $serverText = $serverText.Replace($regressionNeedle, $regressionReplacement)
 
+    # A freshly initialized postgres/postgis container starts a temporary
+    # bootstrap PostgreSQL server before the entrypoint execs the final PID-1
+    # postgres process. pg_isready can therefore succeed too early and a restore
+    # can be terminated during that handoff. Require both final PID-1=postgres
+    # and pg_isready before creating/restoring the disposable review database.
+    $startupNeedle = @'
+ready=0
+for _ in $(seq 1 120); do
+    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+        ready=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$ready" -ne 1 ]]; then
+    echo "FAIL: disposable PostgreSQL did not become ready"
+    exit 10
+fi
+'@
+    $startupReplacement = @'
+ready=0
+for _ in $(seq 1 120); do
+    pid1_comm="$(sudo docker exec "$TEST_CONTAINER" sh -c 'cat /proc/1/comm' 2>/dev/null || true)"
+    if [[ "$pid1_comm" == "postgres" ]] && \
+       sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+           pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+        ready=1
+        break
+    fi
+    sleep 1
+done
+if [[ "$ready" -ne 1 ]]; then
+    echo "FAIL: disposable PostgreSQL final server did not become ready"
+    sudo docker logs --tail 100 "$TEST_CONTAINER" || true
+    exit 10
+fi
+echo "Disposable PostgreSQL final server ready: PASS"
+'@
+    if (-not $serverText.Contains($startupNeedle)) {
+        throw 'Source-only preview server no longer contains the expected disposable PostgreSQL readiness gate.'
+    }
+    $serverText = $serverText.Replace($startupNeedle, $startupReplacement)
+
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
     Write-Host '========== SETUP SOURCE-ONLY BROWSER PREVIEW =========='
