@@ -74,6 +74,17 @@ try {
     Write-LinuxTextFile -Source $ServerScript -Destination $localServer
     Write-LinuxTextFile -Source $EntryScript -Destination $localEntry
 
+    # Keep the target-user child process independent of inherited shell
+    # variables. The Production Python path is a current documented runtime fact.
+    $serverText = [System.IO.File]::ReadAllText($localServer)
+    $pythonNeedle = '            setsid "$PYTHON" "$PREVIEW_ENTRY" > "$PREVIEW_LOG" 2>&1 &'
+    $pythonReplacement = '            setsid /opt/fieldwiring/.venv/bin/python "$PREVIEW_ENTRY" > "$PREVIEW_LOG" 2>&1 &'
+    if (-not $serverText.Contains($pythonNeedle)) {
+        throw 'Source-only preview server no longer contains the expected Python launch command.'
+    }
+    $serverText = $serverText.Replace($pythonNeedle, $pythonReplacement)
+    [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
+
     Write-Host '========== SETUP SOURCE-ONLY BROWSER PREVIEW =========='
     Write-Host "Candidate SHA: $CandidateSha"
     Write-Host "Preview URL:   http://127.0.0.1:$PreviewPort/"
