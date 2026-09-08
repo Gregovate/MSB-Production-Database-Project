@@ -107,23 +107,16 @@ try {
     # postgres process. pg_isready can therefore succeed too early and a restore
     # can be terminated during that handoff. Require both final PID-1=postgres
     # and pg_isready before creating/restoring the disposable review database.
-    # This is a disposable-preview timing guard only; Production PostgreSQL is
-    # still accessed by pg_dump/SELECT and is never restarted or modified here.
-    $startupNeedle = @'
-ready=0
-for _ in $(seq 1 120); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
-        ready=1
-        break
-    fi
-    sleep 1
-done
-if [[ "$ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL did not become ready"
-    exit 10
-fi
-'@
+    # Match the old readiness block structurally instead of by exact multi-line
+    # string comparison so CR/LF, quoting, or harmless whitespace differences do
+    # not make the launcher reject its own source template.
+    $startupPattern = '(?ms)^ready=0\nfor _ in \$\(seq 1 120\); do\n.*?^if \[\[ "\$ready" -ne 1 \]\]; then\n    echo "FAIL: disposable PostgreSQL did not become ready"\n    exit 10\nfi\n'
+    $startupRegex = [regex]::new($startupPattern)
+    $startupMatches = $startupRegex.Matches($serverText)
+    if ($startupMatches.Count -ne 1) {
+        throw "Source-only preview readiness gate match count was $($startupMatches.Count); expected exactly 1."
+    }
+
     $startupReplacement = @'
 ready=0
 for _ in $(seq 1 120); do
@@ -144,17 +137,10 @@ fi
 echo "Disposable PostgreSQL final server ready: PASS"
 '@
 
-    # Single-quoted PowerShell here-strings already preserve literal shell
-    # quotes. Remove PowerShell-side backslash escaping before matching the
-    # normalized Linux shell source; otherwise the needle contains \" while the
-    # shell file contains ordinary double quotes and the guard can never match.
-    $startupNeedle = $startupNeedle.Replace('\"', '"')
-    $startupReplacement = $startupReplacement.Replace('\"', '"')
-
-    if (-not $serverText.Contains($startupNeedle)) {
-        throw 'Source-only preview server no longer contains the expected disposable PostgreSQL readiness gate.'
-    }
-    $serverText = $serverText.Replace($startupNeedle, $startupReplacement)
+    # .NET regex replacement treats $ as a group token. Double it so the shell
+    # variables and command substitutions are emitted literally.
+    $startupReplacementForRegex = $startupReplacement.Replace('$', '$$')
+    $serverText = $startupRegex.Replace($serverText, $startupReplacementForRegex, 1)
 
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
