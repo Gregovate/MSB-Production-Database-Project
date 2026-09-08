@@ -10,6 +10,9 @@ def test_live_review_dark_mode_defines_next_pass_surface_aliases() -> None:
     assert "--panel: var(--card);" in css
     assert "--soft: var(--theme-subtle);" in css
     assert ".access-badge" in css
+    assert "background: var(--soft);" in css
+    assert "color: var(--text);" in css
+    assert "border-color: var(--border);" in css
     assert ".next-task-row" in css
     assert "background: var(--panel);" in css
 
