@@ -17,25 +17,49 @@
   border-color: var(--border);
 }
 
+/* Reusable Task Catalog: every nested surface must follow the shared palette.
+   Earlier CSS fixed the outer Stage shell but left the Stage body / scope body /
+   dropzone / task area able to inherit light fallbacks. */
 .next-stage-group,
+.next-stage-body,
+.next-sitewide-note,
+.next-scope-group,
+.next-scope-group > summary,
+.next-scope-dropzone,
+.next-task-row,
+.acceptance-scope-actions,
+.next-dialog,
+.next-plan-row,
+.next-crew-lane,
+.next-perform-task,
+.next-perform-body {
+  color: var(--text);
+}
+
+.next-stage-group,
+.next-stage-body,
 .next-scope-group,
 .next-scope-dropzone,
 .next-task-row,
 .next-dialog,
 .next-plan-row,
 .next-crew-lane,
-.next-perform-task {
-  color: var(--text);
+.next-perform-task,
+.next-perform-body {
+  background: var(--panel);
 }
 
-.next-task-row,
-.next-plan-row,
-.next-crew-lane,
-.next-dialog,
-.next-stage-group,
-.next-scope-group,
-.next-perform-task {
-  background: var(--panel);
+.next-sitewide-note,
+.next-scope-group > summary,
+.acceptance-scope-actions {
+  background: var(--soft);
+}
+
+.next-task-row .task-meta,
+.next-inline-gap,
+.next-stage-empty,
+.next-count {
+  color: var(--muted);
 }
 
 .setup-live-search {
