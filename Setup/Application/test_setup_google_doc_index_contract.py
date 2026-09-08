@@ -83,6 +83,32 @@ def test_lazy_link_view_distinguishes_google_doc_without_global_index(tmp_path: 
     assert "Randy" not in json.dumps(sources)
 
 
+def test_lazy_link_view_accepts_legacy_lowercase_archive_folder(tmp_path: Path) -> None:
+    drive_root = tmp_path / "Display Folders"
+    relative = Path("02-Triangle-TR") / "02-Mega Tree" / "Procedures" / "Setup"
+    task_root = drive_root / relative
+    task_root.mkdir(parents=True)
+
+    link_root = tmp_path / "Google Links"
+    archive = link_root / relative / "archive"
+    archive.mkdir(parents=True)
+    (archive / "02-Mega Tree Setup Procedure.link.html").write_text(
+        '<a href="https://docs.google.com/document/d/megatreedoc123456789/edit">Mega Tree</a>',
+        encoding="utf-8",
+    )
+
+    sources, warnings = linked_google_sources(
+        task_root=str(task_root),
+        drive_root=str(drive_root),
+        link_root=str(link_root),
+    )
+
+    assert warnings == []
+    assert [item["name"] for item in sources] == ["02-Mega Tree Setup Procedure.gdoc"]
+    assert sources[0]["role"] == "ARCHIVE"
+    assert "/archive/" in sources[0]["drive_path"]
+
+
 def test_source_docs_preferred_over_archive() -> None:
     archive = {
         "name": "Old.gdoc",
@@ -133,6 +159,34 @@ def test_google_doc_index_only_accepts_direct_setup_source_children(tmp_path: Pa
     )
     assert warnings == []
     assert [item["name"] for item in sources] == ["Official.gdoc"]
+
+
+def test_google_doc_index_accepts_legacy_folder_capitalization(tmp_path: Path) -> None:
+    drive_root = tmp_path / "Display Folders"
+    task_root = drive_root / "02-Triangle-TR" / "02-Mega Tree" / "Procedures" / "Setup"
+    task_root.mkdir(parents=True)
+    index = tmp_path / "index.json"
+    index.write_text(
+        json.dumps(
+            [
+                {
+                    "Path": "02-Triangle-TR/02-Mega Tree/Procedures/Setup/archive/02-Mega Tree Setup Procedure.docx",
+                    "ID": "megatreedoc123456789",
+                    "Metadata": {"content-type": "application/vnd.google-apps.document"},
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    sources, warnings = indexed_google_sources(
+        task_root=str(task_root),
+        drive_root=str(drive_root),
+        index_path=str(index),
+    )
+    assert warnings == []
+    assert [item["name"] for item in sources] == ["02-Mega Tree Setup Procedure.gdoc"]
+    assert sources[0]["role"] == "ARCHIVE"
 
 
 def test_runtime_prefers_lazy_link_view_over_index(tmp_path: Path, monkeypatch) -> None:
