@@ -1,0 +1,74 @@
+/* Real Production review corrections discovered during 2025 Manager use. */
+
+/* setup_next_pass.css uses --panel/--soft but the shared theme did not define
+   them. Keep those aliases tied to the canonical Setup theme variables so
+   light/dark/system mode all resolve through one palette. */
+:root {
+  --panel: var(--card);
+  --soft: var(--theme-subtle);
+}
+
+.access-badge,
+.next-stage-group,
+.next-scope-group,
+.next-scope-dropzone,
+.next-task-row,
+.next-dialog,
+.next-plan-row,
+.next-crew-lane,
+.next-perform-task {
+  color: var(--text);
+}
+
+.next-task-row,
+.next-plan-row,
+.next-crew-lane,
+.next-dialog,
+.next-stage-group,
+.next-scope-group,
+.next-perform-task {
+  background: var(--panel);
+}
+
+.setup-live-search {
+  display: flex;
+  align-items: end;
+  gap: 0.65rem;
+  margin: 0 0 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--card);
+}
+
+.setup-live-search label {
+  flex: 1;
+  margin: 0;
+}
+
+.setup-live-search input {
+  min-width: min(32rem, 100%);
+}
+
+.setup-live-search .search-help {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.setup-live-search-empty {
+  padding: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .setup-live-search {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .setup-live-search .search-help {
+    white-space: normal;
+  }
+}
