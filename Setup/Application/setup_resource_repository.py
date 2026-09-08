@@ -26,6 +26,16 @@ class SetupResourceRepository:
         finally:
             conn.close()
 
+    @contextmanager
+    def write_connect(self) -> Iterator[Any]:
+        """Open one explicit read-write transaction for a governed command."""
+        conn = psycopg2.connect(self.dsn)
+        try:
+            conn.set_session(readonly=False, autocommit=False)
+            yield conn
+        finally:
+            conn.close()
+
     def catalog(self) -> list[dict[str, Any]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -73,7 +83,7 @@ class SetupResourceRepository:
             return [dict(row) for row in cur.fetchall()]
 
     def create_resource(self, *, email: str, payload: dict[str, Any]) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT *
@@ -100,7 +110,7 @@ class SetupResourceRepository:
         setup_resource_id: int,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT *
