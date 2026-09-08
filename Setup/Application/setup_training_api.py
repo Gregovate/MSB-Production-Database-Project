@@ -11,6 +11,8 @@ from flask import Blueprint, Response, jsonify
 from psycopg2.extras import RealDictCursor
 
 from setup_api import (
+    SetupAuthenticationError,
+    SetupCommandError,
     require_manager,
     require_setup_command,
     setup_database_dsn,
@@ -43,3 +45,30 @@ def api_delete_reconstruction_task(setup_task_id: int) -> Response:
         raise
     finally:
         conn.close()
+
+
+@setup_training_api.errorhandler(SetupAuthenticationError)
+def setup_training_authentication_error(exc: SetupAuthenticationError) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup Session sign-in identity is unavailable",
+        engineering_error=str(exc),
+    ), 401
+
+
+@setup_training_api.errorhandler(SetupCommandError)
+def setup_training_command_error(exc: SetupCommandError) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 403
+
+
+@setup_training_api.errorhandler(psycopg2.Error)
+def setup_training_database_error(exc: psycopg2.Error) -> tuple[Response, int]:
+    message = str(getattr(exc, "diag", None).message_primary if getattr(exc, "diag", None) else "" or exc).strip()
+    return jsonify(
+        error=message or "Setup reconstruction correction was rejected by the database.",
+        engineering_error=str(exc),
+    ), 409
+
+
+@setup_training_api.errorhandler(RuntimeError)
+def setup_training_runtime_error(exc: RuntimeError) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 500
