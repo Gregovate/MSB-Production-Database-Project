@@ -1,6 +1,113 @@
 /* Real Production review corrections discovered during 2025 Manager use. */
 
 (() => {
+  /*
+   * Setup must not equate every ref.lor_scene row with a real scheduling Scene.
+   * Keep this classification aligned with the established Folder Alignment
+   * contract:
+   *
+   *   NN-Name-XY   -> STAGE_ROOT
+   *   NNa-Name-XY  -> SUB_STAGE_ROOT
+   *   NN-Name       -> SCENE
+   *   NNa-Name      -> SCENE
+   *   Root          -> ROOT
+   *   unprefixed    -> DISPLAY_OR_GROUP
+   *
+   * Live acceptance examples:
+   *   true Scenes: 01-Front Gate, 02-Mega Tree, 02-Fred's Stars
+   *   display/group rows: Abominable, CharlieInTheBox, Frosty, Headlights,
+   *   Narwhal, Signage, US Flag, Volunteer Path Lights
+   */
+  const setupScenePrefix = /^\s*(\d{2}[A-Za-z]?)-(.+?)\s*$/;
+  const setupRootSuffix = /-[A-Za-z]{2}\s*$/;
+
+  function classifySetupLORSceneName(value) {
+    const name = String(value || '').trim();
+    if (!name) return 'DISPLAY_OR_GROUP';
+    if (name.toLocaleLowerCase() === 'root') return 'ROOT';
+
+    const match = name.match(setupScenePrefix);
+    if (!match) return 'DISPLAY_OR_GROUP';
+
+    if (setupRootSuffix.test(name)) {
+      return match[1].length === 3 ? 'SUB_STAGE_ROOT' : 'STAGE_ROOT';
+    }
+    return 'SCENE';
+  }
+
+  function setupSceneToken(value) {
+    const match = String(value || '').trim().match(setupScenePrefix);
+    return match ? match[1].toLocaleLowerCase() : '';
+  }
+
+  function setupStageForId(stageId) {
+    return (appState.stages || []).find((stage) => Number(stage.stage_id) === Number(stageId));
+  }
+
+  function isTrueSetupScene(scene) {
+    if (!scene || classifySetupLORSceneName(scene.scene_name) !== 'SCENE') return false;
+    const stage = setupStageForId(scene.stage_id);
+    if (!stage) return false;
+    return setupSceneToken(scene.scene_name) === String(stage.stage_key || '').trim().toLocaleLowerCase();
+  }
+
+  function normalizeSetupScope(scope) {
+    if (!scope?.lor_scene_id || isTrueSetupScene(scope)) return scope;
+    return {
+      ...scope,
+      source_lor_scene_id: scope.lor_scene_id,
+      source_scene_name: scope.scene_name || null,
+      scope_warning: 'NON_SCENE_LOR_GROUP_PRESENTED_AT_STAGE',
+      lor_scene_id: null,
+      scene_name: null
+    };
+  }
+
+  function normalizeTaskScopeForDisplay(task) {
+    if (!task?.lor_scene_id || isTrueSetupScene(task)) return task;
+    return {
+      ...task,
+      lor_scene_id: null,
+      scene_name: null
+    };
+  }
+
+  function normalizeCurrentSetupOrganization() {
+    if (typeof setupNextState === 'undefined') return;
+    setupNextState.scenes = (setupNextState.scenes || []).filter(isTrueSetupScene);
+    setupNextState.taskScopes = new Map(
+      [...(setupNextState.taskScopes || new Map()).entries()].map(([taskId, scope]) => [
+        taskId,
+        normalizeSetupScope(scope)
+      ])
+    );
+    if (typeof applyNextTaskScopes === 'function') applyNextTaskScopes();
+  }
+
+  if (typeof loadNextOrganization === 'function') {
+    const priorLoadNextOrganization = loadNextOrganization;
+    loadNextOrganization = async function loadNextOrganizationWithTrueScenes(render = true) {
+      const result = await priorLoadNextOrganization(false);
+      normalizeCurrentSetupOrganization();
+      if (render && appState.tasks?.length) renderLibrary();
+      return result;
+    };
+  }
+
+  if (typeof nextTaskLabel === 'function') {
+    const priorNextTaskLabel = nextTaskLabel;
+    nextTaskLabel = function nextTaskLabelWithTrueSceneScope(task) {
+      return priorNextTaskLabel(normalizeTaskScopeForDisplay(task));
+    };
+  }
+
+  if (typeof nextTaskScopeLabel === 'function') {
+    const priorNextTaskScopeLabel = nextTaskScopeLabel;
+    nextTaskScopeLabel = function nextTaskScopeLabelWithTrueSceneScope(task) {
+      return priorNextTaskScopeLabel(normalizeTaskScopeForDisplay(task));
+    };
+  }
+
   function normalizedSearch() {
     return String(document.getElementById('setup-task-search')?.value || '')
       .trim()
@@ -136,6 +243,7 @@
     applyLibrarySearch();
   };
 
+  normalizeCurrentSetupOrganization();
   installSearch();
   if (appState.tasks?.length) {
     renderReviewList();
