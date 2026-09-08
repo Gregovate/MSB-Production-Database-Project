@@ -25,6 +25,8 @@ def test_live_review_dark_mode_defines_next_pass_surface_aliases() -> None:
     assert "background: var(--panel);" in css
     assert "background: var(--soft);" in css
     assert ".next-task-row .task-meta" in css
+    assert 'html[data-theme="dark"] button.warning' in css
+    assert "color: #18212b;" in css
 
 
 def test_live_review_restores_task_and_stage_search() -> None:
