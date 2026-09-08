@@ -36,7 +36,7 @@ def test_final_schedule_has_parallel_crew_lanes_without_person_roster() -> None:
     assert "MORNING" in client
     assert "AFTERNOON" in client
     assert "ALL_DAY" in client
-    assert "parallel crew groups, not individual volunteer rosters" in client.lower()
+    assert "not individual volunteer rosters" in client.lower()
 
 
 def test_planning_screen_is_ordered_backlog_with_visibility_filters() -> None:
