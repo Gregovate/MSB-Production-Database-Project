@@ -22,59 +22,73 @@ function ensureSetupResourceSection() {
         <div class="eyebrow">Reusable task requirement</div>
         <h3>Equipment / Resources Needed</h3>
       </div>
-      <span class="muted">Structured resource relationships</span>
+      <span class="muted">Current requirements are listed first.</span>
     </div>
     <div id="setup-resource-list" class="resource-list">
       <span class="muted">Select a task to load equipment/resources.</span>
     </div>
-    <div id="setup-resource-manager" class="resource-manager-panel manager-only" hidden>
-      <div class="eyebrow">Manager correction</div>
-      <div class="resource-edit-grid">
-        <label>Resource
-          <select id="setup-resource-select"></select>
-        </label>
-        <label>Quantity
-          <input id="setup-resource-quantity" type="number" min="1" value="1">
-        </label>
-        <label>Requirement
-          <select id="setup-resource-requirement">
-            <option value="REQUIRED">Required</option>
-            <option value="PREFERRED">Preferred</option>
-          </select>
-        </label>
-      </div>
-      <label>Relationship notes
-        <input id="setup-resource-notes" type="text" placeholder="Optional task-specific equipment note">
-      </label>
-      <div class="action-row">
-        <button id="setup-resource-save" type="button">Add / Update Resource</button>
-      </div>
 
-      <form id="setup-new-resource-form" class="resource-new-form">
-        <label>New resource name
-          <input id="setup-new-resource-name" type="text" placeholder="Example: 60-ft Boom Lift">
-        </label>
-        <label>Type
-          <select id="setup-new-resource-type">
-            <option value="EQUIPMENT">Equipment</option>
-            <option value="VEHICLE">Vehicle</option>
-            <option value="TRAILER">Trailer</option>
-            <option value="TOOL">Tool</option>
-            <option value="OTHER">Other</option>
-          </select>
-        </label>
-        <label>Catalog notes
-          <input id="setup-new-resource-notes" type="text" placeholder="Optional reusable description">
-        </label>
-        <div class="resource-inline-actions">
-          <button type="submit" class="secondary">Create Resource</button>
+    <div id="setup-resource-manager" class="resource-manager-panel manager-only" hidden>
+      <section class="resource-manager-block resource-existing-block">
+        <div class="resource-manager-heading">
+          <h4>Add existing equipment/resource to this task</h4>
+          <div class="hint">Choose an item from the reusable resource catalog. If it is already assigned, this form updates that requirement.</div>
         </div>
-      </form>
+        <div class="resource-edit-grid">
+          <label>Existing resource
+            <select id="setup-resource-select"></select>
+          </label>
+          <label>Quantity
+            <input id="setup-resource-quantity" type="number" min="1" value="1">
+          </label>
+          <label>Requirement
+            <select id="setup-resource-requirement">
+              <option value="REQUIRED">Required</option>
+              <option value="PREFERRED">Preferred</option>
+            </select>
+          </label>
+        </div>
+        <label>Task-specific notes
+          <input id="setup-resource-notes" type="text" placeholder="Optional note for this task only">
+        </label>
+        <div id="setup-resource-selection-state" class="resource-selection-state muted"></div>
+        <div class="action-row">
+          <button id="setup-resource-save" type="button">Add Resource to Task</button>
+        </div>
+      </section>
+
+      <section class="resource-manager-block resource-create-block">
+        <div class="resource-manager-heading">
+          <h4>Need something that is not in the catalog?</h4>
+          <div class="hint">Create it once as reusable equipment/resource, then add it to this task above.</div>
+        </div>
+        <form id="setup-new-resource-form" class="resource-new-form">
+          <label>New resource name
+            <input id="setup-new-resource-name" type="text" placeholder="Example: 60-ft Boom Lift">
+          </label>
+          <label>Type
+            <select id="setup-new-resource-type">
+              <option value="EQUIPMENT">Equipment</option>
+              <option value="VEHICLE">Vehicle</option>
+              <option value="TRAILER">Trailer</option>
+              <option value="TOOL">Tool</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label>Catalog notes
+            <input id="setup-new-resource-notes" type="text" placeholder="Optional reusable description">
+          </label>
+          <div class="resource-inline-actions">
+            <button type="submit" class="secondary">Create New Catalog Resource</button>
+          </div>
+        </form>
+      </section>
     </div>
   `;
   dependencySection.insertAdjacentElement('afterend', section);
 
   document.getElementById('setup-resource-save')?.addEventListener('click', saveSetupTaskResource);
+  document.getElementById('setup-resource-select')?.addEventListener('change', syncSetupResourceSelection);
   document.getElementById('setup-new-resource-form')?.addEventListener('submit', createSetupResource);
   return section;
 }
@@ -93,16 +107,57 @@ async function loadSetupResourceCatalog(force = false) {
   return setupResourceState.catalog;
 }
 
+function resourceAssignmentById(resourceId) {
+  return setupResourceState.taskResources.find(
+    (item) => Number(item.setup_resource_id) === Number(resourceId)
+  ) || null;
+}
+
+function syncSetupResourceSelection() {
+  const select = document.getElementById('setup-resource-select');
+  const save = document.getElementById('setup-resource-save');
+  const state = document.getElementById('setup-resource-selection-state');
+  const quantity = document.getElementById('setup-resource-quantity');
+  const requirement = document.getElementById('setup-resource-requirement');
+  const notes = document.getElementById('setup-resource-notes');
+  if (!select || !save || !quantity || !requirement || !notes) return;
+
+  const resourceId = Number(select.value || 0);
+  const selected = setupResourceState.catalog.find(
+    (item) => Number(item.setup_resource_id) === resourceId
+  );
+  const assignment = resourceAssignmentById(resourceId);
+
+  if (assignment) {
+    quantity.value = assignment.quantity_required ?? 1;
+    requirement.value = assignment.requirement_type || 'REQUIRED';
+    notes.value = assignment.notes || '';
+    save.textContent = 'Update Resource Requirement';
+    if (state) state.textContent = `${assignment.resource_name} is already assigned to this task. Saving will update its quantity, requirement, or task-specific note.`;
+  } else {
+    quantity.value = 1;
+    requirement.value = 'REQUIRED';
+    notes.value = '';
+    save.textContent = 'Add Resource to Task';
+    if (state) state.textContent = selected
+      ? `${selected.resource_name} is not currently assigned to this task.`
+      : 'Choose a reusable resource to add to this task.';
+  }
+}
+
 function renderSetupResourceCatalog() {
   const select = document.getElementById('setup-resource-select');
   if (!select) return;
   const previous = select.value;
-  select.innerHTML = setupResourceState.catalog.map((resource) => (
-    `<option value="${resource.setup_resource_id}">${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)}</option>`
-  )).join('');
+  select.innerHTML = setupResourceState.catalog.map((resource) => {
+    const assigned = Boolean(resourceAssignmentById(resource.setup_resource_id));
+    const suffix = assigned ? ' · already on task' : '';
+    return `<option value="${resource.setup_resource_id}">${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)}${suffix}</option>`;
+  }).join('');
   if (previous && setupResourceState.catalog.some((item) => String(item.setup_resource_id) === previous)) {
     select.value = previous;
   }
+  syncSetupResourceSelection();
 }
 
 function resourceAssignmentPayload(resource, activeFlag = true) {
@@ -121,9 +176,10 @@ function renderSetupTaskResources(task) {
   if (!setupResourceState.taskResources.length) {
     target.innerHTML = `
       <div class="empty-state resource-empty">
-        No structured equipment/resource requirement is recorded for this reusable task yet.
+        No equipment/resource requirement is recorded for this reusable task yet.
       </div>
     `;
+    renderSetupResourceCatalog();
     syncSetupResourceManagerVisibility();
     return;
   }
@@ -154,6 +210,7 @@ function renderSetupTaskResources(task) {
   target.querySelectorAll('.resource-remove').forEach((button) => {
     button.addEventListener('click', () => removeSetupTaskResource(task, Number(button.dataset.resourceId)));
   });
+  renderSetupResourceCatalog();
   syncSetupResourceManagerVisibility();
 }
 
@@ -192,6 +249,12 @@ async function saveSetupTaskResource() {
     return;
   }
 
+  const assignmentBefore = resourceAssignmentById(resourceId);
+  const catalogResource = setupResourceState.catalog.find(
+    (item) => Number(item.setup_resource_id) === resourceId
+  );
+  const resourceName = assignmentBefore?.resource_name || catalogResource?.resource_name || `Resource ${resourceId}`;
+
   try {
     setBusy(true);
     await api(
@@ -203,7 +266,12 @@ async function saveSetupTaskResource() {
         active_flag: true
       })
     );
-    setAlert('Equipment/resource requirement saved to the shared Setup task.', 'ok');
+    setAlert(
+      assignmentBefore
+        ? `${resourceName} requirement updated for this reusable task.`
+        : `${resourceName} added to this reusable task.`,
+      'ok'
+    );
     await loadSetupTaskResources(task);
   } catch (error) {
     setAlert(error.message || error, 'error');
@@ -215,9 +283,7 @@ async function saveSetupTaskResource() {
 
 async function removeSetupTaskResource(task, resourceId) {
   if (!appState.access?.can_manage_setup) return;
-  const assignment = setupResourceState.taskResources.find(
-    (item) => Number(item.setup_resource_id) === Number(resourceId)
-  );
+  const assignment = resourceAssignmentById(resourceId);
   if (!assignment) return;
   if (!window.confirm(`Remove ${assignment.resource_name} from this reusable task?`)) return;
 
@@ -259,9 +325,12 @@ async function createSetupResource(event) {
     setupResourceState.catalogLoaded = false;
     await loadSetupResourceCatalog(true);
     const newId = payload.setup_resource?.setup_resource_id;
-    if (newId) document.getElementById('setup-resource-select').value = String(newId);
+    if (newId) {
+      document.getElementById('setup-resource-select').value = String(newId);
+      syncSetupResourceSelection();
+    }
     document.getElementById('setup-new-resource-form')?.reset();
-    setAlert(`Reusable resource ${name} created. Add it to the selected task when ready.`, 'ok');
+    setAlert(`Reusable resource ${name} created in the catalog. It is selected above; click Add Resource to Task to assign it.`, 'ok');
   } catch (error) {
     setAlert(error.message || error, 'error');
     window.alert(error.message || error);
