@@ -137,10 +137,22 @@ fi
 echo "Disposable PostgreSQL final server ready: PASS"
 '@
 
+    # PowerShell here-strings use the host checkout's newline convention. Force
+    # the injected shell block back to LF before inserting it into the already
+    # normalized Linux script. This specifically prevents $'do\r' syntax errors
+    # when the launcher is run from a Windows checkout.
+    $startupReplacement = $startupReplacement.Replace("`r`n", "`n").Replace("`r", "`n")
+
     # .NET regex replacement treats $ as a group token. Double it so the shell
     # variables and command substitutions are emitted literally.
     $startupReplacementForRegex = $startupReplacement.Replace('$', '$$')
     $serverText = $startupRegex.Replace($serverText, $startupReplacementForRegex, 1)
+
+    # Fail locally before SCP if any CR characters were reintroduced by a later
+    # Windows-side transformation. The generated server script must be LF-only.
+    if ($serverText.Contains("`r")) {
+        throw 'Generated source-only preview server contains CR characters; refusing to upload.'
+    }
 
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
@@ -161,7 +173,7 @@ echo "Disposable PostgreSQL final server ready: PASS"
 
     $remoteServer = "/tmp/$remoteServerName"
     $remoteEntry = "/tmp/$remoteEntryName"
-    $remoteCommand = "chmod 700 '$remoteServer'; cd /tmp; cp '$remoteEntry' ./setup_session_browser_preview_entry.py; bash '$remoteServer' '$CandidateSha' '$PreviewPort' '$PreviewEmail'; rc=`$?; rm -f '$remoteServer' '$remoteEntry' ./setup_session_browser_preview_entry.py; exit `$rc"
+    $remoteCommand = "chmod 700 '$remoteServer'; cd /tmp; cp '$remoteEntry' ./setup_session_browser_preview_entry.py; bash -n '$remoteServer'; rc=`$?; if [ `$rc -eq 0 ]; then bash '$remoteServer' '$CandidateSha' '$PreviewPort' '$PreviewEmail'; rc=`$?; fi; rm -f '$remoteServer' '$remoteEntry' ./setup_session_browser_preview_entry.py; exit `$rc"
 
     Write-Host 'Keep this PowerShell window open during browser review.'
     Write-Host 'When the server reports SETUP SOURCE-ONLY BROWSER REVIEW READY, open the Preview URL.'
