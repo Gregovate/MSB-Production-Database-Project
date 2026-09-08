@@ -8,7 +8,15 @@
   --soft: var(--theme-subtle);
 }
 
-.access-badge,
+/* The signed-in user/access badge previously inherited light text while its
+   fallback background stayed light, making the user name/role disappear in
+   dark mode. Keep both foreground and background on the shared theme palette. */
+.access-badge {
+  background: var(--soft);
+  color: var(--text);
+  border-color: var(--border);
+}
+
 .next-stage-group,
 .next-scope-group,
 .next-scope-dropzone,
