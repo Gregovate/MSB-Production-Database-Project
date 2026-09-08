@@ -34,21 +34,13 @@ function Replace-Required {
 $text = [System.IO.File]::ReadAllText($BaseWrapper)
 $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
 
-$text = Replace-Required \
-    -Source $text \
-    -Needle "`$CandidateSha = '51c739bd85115c9f5d2853763e8e1450ac381407'" \
-    -Replacement "`$CandidateSha = '$AcceptedCandidateSha'" \
-    -Description 'source-only candidate SHA assignment'
+$text = Replace-Required -Source $text -Needle "`$CandidateSha = '51c739bd85115c9f5d2853763e8e1450ac381407'" -Replacement "`$CandidateSha = '$AcceptedCandidateSha'" -Description 'source-only candidate SHA assignment'
 
 # A dynamically compiled wrapper has no reliable MyInvocation path. Pin the
 # real Acceptance directory so the base wrapper still resolves its server and
 # entry templates from this checkout.
 $scriptDirLiteral = $PSScriptRoot.Replace("'", "''")
-$text = Replace-Required \
-    -Source $text \
-    -Needle '$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path' \
-    -Replacement "`$ScriptDir = '$scriptDirLiteral'" \
-    -Description 'base wrapper ScriptDir initialization'
+$text = Replace-Required -Source $text -Needle '$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path' -Replacement "`$ScriptDir = '$scriptDirLiteral'" -Description 'base wrapper ScriptDir initialization'
 
 # Insert one bounded patch into the generated disposable server. The base
 # wrapper already restores a current Production dump into an isolated container,
@@ -87,11 +79,7 @@ $insertBlock = @'
 
 '@
 $insertBlock = $insertBlock.Replace("`r`n", "`n").Replace("`r", "`n")
-$text = Replace-Required \
-    -Source $text \
-    -Needle $insertNeedle \
-    -Replacement ($insertBlock + $insertNeedle) \
-    -Description 'training migration patch insertion point'
+$text = Replace-Required -Source $text -Needle $insertNeedle -Replacement ($insertBlock + $insertNeedle) -Description 'training migration patch insertion point'
 
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP TRAINING / RECONSTRUCTION BROWSER PREVIEW')
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP TRAINING / RECONSTRUCTION BROWSER REVIEW READY')
