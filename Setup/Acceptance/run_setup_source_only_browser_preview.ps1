@@ -83,6 +83,25 @@ try {
         throw 'Source-only preview server no longer contains the expected Python launch command.'
     }
     $serverText = $serverText.Replace($pythonNeedle, $pythonReplacement)
+
+    # The legacy Setup contract glob includes retired browser-preview and early
+    # planning assertions that no longer describe the accepted Production
+    # architecture. The source-only review must gate on the same current focused
+    # acceptance suite used for the live source-only deployment.
+    $regressionNeedle = "    '`$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application/test_setup_*contract.py"
+    $regressionReplacement = @(
+        "    '`$PYTHON' -m pytest -q -p no:cacheprovider \",
+        '      Setup/Application/test_setup_live_review_fixes_contract.py \',
+        '      Setup/Application/test_setup_google_doc_index_contract.py \',
+        '      Setup/Application/test_setup_browser_acceptance_findings_contract.py \',
+        '      Setup/Application/test_setup_production_contract.py \',
+        '      Setup/Application/test_setup_next_pass_contract.py'
+    ) -join "`n"
+    if (-not $serverText.Contains($regressionNeedle)) {
+        throw 'Source-only preview server no longer contains the expected legacy contract glob.'
+    }
+    $serverText = $serverText.Replace($regressionNeedle, $regressionReplacement)
+
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
     Write-Host '========== SETUP SOURCE-ONLY BROWSER PREVIEW =========='
