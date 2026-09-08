@@ -2,7 +2,7 @@
 MSB Setup Session — reusable task Captain / knowledge-owner management
 Issue: #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-08 V0.1.0
+Revision: 2026-09-08 V0.1.1
 
 Purpose:
   Make the existing ref.setup_task_captain relationship usable from the
@@ -176,7 +176,10 @@ BEGIN
             v_sort,
             nullif(btrim(p_notes), '')
         )
-        ON CONFLICT (setup_task_id, person_id)
+        /* RETURNS TABLE exposes setup_task_id/person_id as PL/pgSQL variables,
+           so a column-list conflict target is ambiguous here. Pin the existing
+           primary-key constraint explicitly instead. */
+        ON CONFLICT ON CONSTRAINT pk_setup_task_captain
         DO UPDATE SET
             captain_role = EXCLUDED.captain_role,
             sort_order = EXCLUDED.sort_order,
