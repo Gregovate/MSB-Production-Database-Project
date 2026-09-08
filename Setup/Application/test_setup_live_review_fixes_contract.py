@@ -13,8 +13,18 @@ def test_live_review_dark_mode_defines_next_pass_surface_aliases() -> None:
     assert "background: var(--soft);" in css
     assert "color: var(--text);" in css
     assert "border-color: var(--border);" in css
-    assert ".next-task-row" in css
+    for selector in (
+        ".next-stage-body",
+        ".next-sitewide-note",
+        ".next-scope-group > summary",
+        ".next-scope-dropzone",
+        ".next-task-row",
+        ".acceptance-scope-actions",
+    ):
+        assert selector in css
     assert "background: var(--panel);" in css
+    assert "background: var(--soft);" in css
+    assert ".next-task-row .task-meta" in css
 
 
 def test_live_review_restores_task_and_stage_search() -> None:
