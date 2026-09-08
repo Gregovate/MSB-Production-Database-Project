@@ -99,7 +99,7 @@ def test_captain_database_contract_uses_existing_relation_and_narrow_commands():
     assert "ref.setup_captain_person_list" in sql
     assert "ref.set_setup_task_captain" in sql
     assert "CAPTAIN', 'ALTERNATE', 'ADVISOR" in sql
-    assert "ON CONFLICT (setup_task_id, person_id)" in sql
+    assert "ON CONFLICT ON CONSTRAINT pk_setup_task_captain" in sql
     assert "DELETE FROM ref.setup_task_captain" in sql
     assert "ref.setup_management_actor(p_email, false)" in sql
     assert "GRANT EXECUTE ON FUNCTION ref.set_setup_task_captain" in sql
