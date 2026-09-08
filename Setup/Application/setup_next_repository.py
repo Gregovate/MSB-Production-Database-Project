@@ -26,6 +26,16 @@ class SetupNextRepository:
         finally:
             conn.close()
 
+    @contextmanager
+    def write_connect(self) -> Iterator[Any]:
+        """Open one explicit read-write transaction for a governed command."""
+        conn = psycopg2.connect(self.dsn)
+        try:
+            conn.set_session(readonly=False, autocommit=False)
+            yield conn
+        finally:
+            conn.close()
+
     @staticmethod
     def _one(cur: Any, message: str) -> dict[str, Any]:
         row = cur.fetchone()
@@ -66,7 +76,7 @@ class SetupNextRepository:
             return self._one(cur, "Setup task was not found")
 
     def set_scope(self, *, email: str, task_id: int, stage_id: int | None, scene_id: int | None) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM ref.set_setup_task_scope(%s,%s,%s,%s)",
                         (email, task_id, stage_id, scene_id))
             result = self._one(cur, "Setup task scope command returned no result")
@@ -75,7 +85,7 @@ class SetupNextRepository:
 
     def set_dependency(self, *, email: str, task_id: int, prerequisite_id: int,
                        note: str | None, active: bool) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM ref.set_setup_task_dependency(%s,%s,%s,%s,%s)",
                         (email, task_id, prerequisite_id, note, active))
             result = self._one(cur, "Setup prerequisite command returned no result")
@@ -84,7 +94,7 @@ class SetupNextRepository:
 
     def set_planned_order(self, *, email: str, session_task_id: int,
                           planned_order: int, reason: str | None) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 "SELECT * FROM ops.set_setup_session_task_planned_order(%s,%s,%s,%s)",
                 (email, session_task_id, planned_order, reason),
@@ -94,7 +104,7 @@ class SetupNextRepository:
             return result
 
     def promote_plan_baseline(self, *, email: str, season_year: int) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 "SELECT * FROM ops.promote_setup_session_order_to_baseline(%s,%s)",
                 (email, season_year),
@@ -140,7 +150,7 @@ class SetupNextRepository:
 
     def upsert_work_day(self, *, email: str, season_year: int, work_date: str,
                         status: str, notes: str | None) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM ops.upsert_setup_work_day(%s,%s,%s::date,%s,%s)",
                         (email, season_year, work_date, status, notes))
             result = self._one(cur, "Setup work-day command returned no result")
@@ -150,7 +160,7 @@ class SetupNextRepository:
     def set_work_day_task(self, *, email: str, work_day_id: int, session_task_id: int,
                           shift: str, crew_lane: str, sort_order: int,
                           planned_crew: int | None, active: bool) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 "SELECT * FROM ops.set_setup_work_day_task(%s,%s,%s,%s,%s,%s,%s,%s)",
                 (email, work_day_id, session_task_id, shift, crew_lane, sort_order,
@@ -310,7 +320,7 @@ class SetupNextRepository:
                         work_day_id: int | None, shift: str, crew_count: int,
                         quantity: int | None, units: str | None, note: str | None,
                         mark_complete: bool) -> dict[str, Any]:
-        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT * FROM ops.record_setup_task_progress(
                     %s,%s,%s,%s,%s,%s,%s,%s,%s
