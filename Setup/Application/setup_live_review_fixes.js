@@ -239,6 +239,7 @@
 
   const priorRenderLibrary = renderLibrary;
   renderLibrary = function renderLibraryWithLiveSearch() {
+    normalizeCurrentSetupOrganization();
     priorRenderLibrary();
     applyLibrarySearch();
   };
