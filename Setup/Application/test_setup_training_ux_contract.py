@@ -37,3 +37,34 @@ def test_return_control_is_sticky_and_hidden_when_not_in_catalog_flow():
     assert ".setup-return-library-wrap" in css
     assert "position: sticky" in css
     assert ".setup-return-library-wrap[hidden]" in css
+
+
+def test_catalog_detail_adds_database_resolved_material_logistics_section():
+    js = read("setup_training_ux.js")
+    assert "4. Material / Logistics Context" in js
+    assert "5. Setup Procedures" in js
+    assert "field-context?season_year=" in js
+    assert "Displays resolved" in js
+    assert "Containers resolved" in js
+    assert "Support / KIT Containers" in js
+    assert "Displays without Container" in js
+    assert "Current LOR Scene membership" in js
+    assert "Explicit reusable-task Display mapping" in js
+
+
+def test_material_context_exposes_knowledge_gaps_instead_of_hard_coding_ids():
+    js = read("setup_training_ux.js")
+    assert "No Display or supplemental Container relationship is currently resolved" in js
+    assert "Controllers:" in js
+    assert "authoritative FieldWiring/controller relationships" in js
+    assert "hard-coded Procedure text" in js
+
+
+def test_material_context_has_theme_safe_responsive_styles():
+    css = read("setup_training_ux.css")
+    assert ".setup-material-summary" in css
+    assert ".setup-material-container" in css
+    assert ".setup-support-container-block" in css
+    assert ".setup-controller-context-note" in css
+    assert "var(--theme-subtle)" in css
+    assert "var(--border)" in css
