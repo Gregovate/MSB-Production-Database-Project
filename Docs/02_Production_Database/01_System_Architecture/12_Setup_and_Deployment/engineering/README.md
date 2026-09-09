@@ -45,7 +45,9 @@ Known immediate catalog findings after deployment:
 - physical `Set Up Frosty` is missing; transport-only `Bring Frosty to park` was correctly excluded from reusable work, but the physical setup task was never created;
 - Frosty setup must precede the applicable Stars setup work;
 - confirmed duplicate/bad reusable Catalog definitions from reconstruction/merge may have **no annual historical row** and must be removed before 2026 planning rather than propagated forward;
-- the governed database reconstruction-delete command already supports Catalog-only safe deletion and fails closed on protected planning/execution history, but the Manager UI currently hides Delete without annual-session context; PR #137 restores that UI path; and
+- the governed database reconstruction-delete command already supports Catalog-only safe deletion and fails closed on protected planning/execution history, but the Manager UI currently hides Delete without annual-session context; PR #137 restores that UI path;
+- PR #136 moves the separate `Save Effort` control beside the Physical Effort selector so Catalog cleanup is less error-prone;
+- PR #139 combines the #136 and #137 source-only fixes onto one forward-descendant deployment candidate from the accepted Production SHA; and
 - these findings belong in live Catalog correction + predecessor/readiness work, not in another bulk reconstruction import.
 
 Production corrections already include:
@@ -106,7 +108,9 @@ Primary current work remains:
 ```text
 #122  Setup Session engineering / planning / Pick List / movement umbrella
 #125  Production foundation / application lineage and eventual merge/closeout
-#137  restore Catalog-only reconstruction Delete Task UI before 2026 propagation
+#139  combined source-only cleanup deployment candidate: Save Effort placement + Catalog Delete
+#136  source lineage for Save Effort placement
+#137  source lineage for Catalog-only reconstruction Delete Task UI
 #133  reusable task drag/drop between Stage-level and Scene scopes
 #130  global People / Capability / Qualification catalog consumed by Setup
 #132  Captain work-report duration / multi-day effort capture
@@ -171,6 +175,9 @@ Important current rules:
 - preferred order and prerequisites matter more than false long-range date precision;
 - the reusable task catalog may be organized by Stage for visualization, but Stage completion is not a scheduling gate;
 - planning needs a separate cross-Stage candidate view showing Available / Blocked / In-Progress work before tasks receive dates;
+- normal Catalog drag already works for reordering within a Stage/Scene and for moving tasks between visible Stage areas; preserve that behavior;
+- predecessor entry needs a faster interaction for the large 2025 dependency pass: current operator direction is **Shift-drag the later/dependent task onto its predecessor** to create the dependency without moving either task; ordinary unmodified drag must retain its existing reorder/scope meaning;
+- modifier-drag dependency creation should use the existing governed `ref.set_setup_task_dependency(...)` write path and provide explicit success/failure feedback rather than silently creating an ambiguous relationship;
 - generic `Staging to Park` is obsolete as a reusable task;
 - mixed-stage Containers/trailers must be detected from authoritative contents and mobilized when the first carried item is needed;
 - Container-specific post-arrival behavior may be full unload, park/mobile storage, special transformation, or ordered partial unload and must not be guessed; and
@@ -190,10 +197,13 @@ See [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09
 
 Still unresolved or intentionally separate:
 
-- remove confirmed duplicate/bad reusable Catalog definitions introduced during reconstruction/merge before 2026 propagation; PR #137 must restore the Catalog-only Manager Delete UI while the database remains fail-closed on protected history;
+- deploy/accept PR #139 so `Save Effort` placement and Catalog-only `Delete Task` are available during 2025 cleanup;
+- remove confirmed duplicate/bad reusable Catalog definitions introduced during reconstruction/merge before 2026 propagation;
 - live catalog completion/correction as additional real task knowledge is found, including missing `Set Up Frosty`;
 - reviewed predecessor/readiness pass across the current reusable catalog; dependencies are intentionally zero until this is rebuilt;
+- efficient predecessor-editing interaction for that pass, preserving existing normal drag/reorder/scope behavior while adding explicit Shift-drag dependency creation;
 - classification of historical sequencing into **hard predecessor**, **preferred order**, or **readiness condition**;
+- investigate and correct the Display/material/Container resolver so Scene membership does not overstate task ownership/material requirements and the future Pick List can trust the result;
 - cross-Stage candidate planning surface and candidate-to-work-day workflow;
 - work-day scheduling UX for Morning / Afternoon / All Day, parallel crews, and repeat scheduling of multi-day tasks;
 - controlled reassign/merge when a 2025 annual item belongs to a different reusable task;
@@ -209,15 +219,17 @@ Detailed KIT contents remain outside the current 2026 MVP, but an existing KIT C
 
 ## 2026 Session Gate
 
-Do **not** create the 2026 Setup Session yet.
+**Operator decision: do not create the 2026 Setup Session until the reconstructed 2025 Setup plan is complete.**
 
-Before 2026 creation:
+Before 2026 creation, at minimum:
 
 - remove confirmed reconstruction duplicates/bad reusable definitions so they are not propagated;
-- correct missing real work such as `Set Up Frosty`; and
-- make the predecessor/readiness pass useful enough to establish the dependency/readiness rules needed by the candidate planning view.
+- correct missing real work such as `Set Up Frosty` and other omissions discovered during live review;
+- complete the reviewed predecessor/readiness pass, distinguishing hard predecessors from preferred order and area-specific readiness conditions;
+- resolve material/Display ownership sufficiently that the task-to-Display-to-Container result can support planning/Pick List work without known false relationships; and
+- finish the 2025 reusable planning model rather than copying a knowingly incomplete reconstruction into 2026.
 
-Creating 2026 before those corrections would copy known reconstruction mistakes and an intentionally dependency-empty Catalog into annual planning prematurely.
+The 2025 Production-backed review remains the proving ground until that plan is complete.
 
 ## Critical Runtime Permission Boundary
 
@@ -237,7 +249,7 @@ Before changing this subsystem:
 6. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
 7. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
 8. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing logistics/pick behavior;
-9. review Issue #122, PR #125, and PR #137 for the newest live findings, Catalog cleanup gate, and merge/closeout state;
+9. review Issue #122, PR #125, and PR #139 for the newest live findings, Catalog cleanup gate, and deployment/merge state; use #136/#137 as source lineage for the combined cleanup candidate;
 10. preserve annual 2025 facts separately from reusable future knowledge;
 11. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
 12. use Issue #130 / 03 People and Identity for global skill/qualification work;
