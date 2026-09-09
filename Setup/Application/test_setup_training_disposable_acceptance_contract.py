@@ -22,6 +22,7 @@ def test_disposable_wrapper_uses_one_bundle_transfer_and_foreground_ssh() -> Non
     assert "UTF8Encoding" in wrapper
     assert "git -C $repo rev-parse HEAD" in wrapper
     assert "$head -ne $CandidateSha" in wrapper
+    assert "022_require_active_setup_captain_people.sql" in wrapper
 
 
 def test_disposable_runner_reads_production_only_by_dump_and_select() -> None:
@@ -49,11 +50,13 @@ def test_disposable_runner_applies_only_training_migrations_to_clone() -> None:
         "019_add_reconstruction_safe_task_delete.sql",
         "020_add_setup_captain_management_commands.sql",
         "021_add_setup_assigned_reconciliation_state.sql",
+        "022_require_active_setup_captain_people.sql",
     ):
         assert migration in runner
     assert 'psql_test < "$M019"' in runner
     assert 'psql_test < "$M020"' in runner
     assert 'psql_test < "$M021"' in runner
+    assert 'psql_test < "$M022"' in runner
     assert 'psql_test < "$VALIDATION"' in runner
     assert "DISPOSABLE_SETUP_TRAINING_ACCEPTANCE_PASS" in runner
     assert "sudo docker rm -f \"$TEST_CONTAINER\"" in runner
@@ -65,11 +68,12 @@ def test_disposable_runner_replays_migrations_and_proves_idempotence() -> None:
     assert runner.count('psql_test < "$M019"') == 2
     assert runner.count('psql_test < "$M020"') == 2
     assert runner.count('psql_test < "$M021"') == 2
+    assert runner.count('psql_test < "$M022"') == 2
     assert "--- Reapply candidate migrations to prove idempotence ---" in runner
     assert "IDEMPOTENCE_BEFORE" in runner
     assert "IDEMPOTENCE_AFTER" in runner
     assert "FAIL: candidate migration replay changed governed Setup data" in runner
-    assert "PASS: migrations 019-021 replay cleanly with governed Setup data unchanged" in runner
+    assert "PASS: migrations 019-022 replay cleanly with governed Setup data unchanged" in runner
 
 
 def test_disposable_validation_proves_delete_captain_assigned_and_least_privilege() -> None:
@@ -78,6 +82,8 @@ def test_disposable_validation_proves_delete_captain_assigned_and_least_privileg
     assert "ref.set_setup_task_captain" in validation
     assert "ref.setup_task_captain_list" in validation
     assert "ref.setup_captain_person_list" in validation
+    assert "Captain person projection exposed an inactive ref.person row" in validation
+    assert "Inactive person was unexpectedly accepted for a Captain assignment" in validation
     assert "'ASSIGNED'" in validation
     assert "planned_date = DATE '2025-10-01'" in validation
     assert "foreign_key_violation" in validation
