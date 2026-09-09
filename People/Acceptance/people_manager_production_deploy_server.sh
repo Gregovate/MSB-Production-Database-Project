@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 PROD_CONTAINER="msb-postgres"
 PROD_DB="msb"
@@ -219,6 +220,16 @@ fi
 if ! sudo -u fieldwiring -H test -x "$PRODUCTION_PYTHON" \
    || ! sudo -u fieldwiring -H test -x "$PRODUCTION_GUNICORN"; then
     echo "FAIL: fieldwiring cannot execute the documented shared Python/Gunicorn runtime"
+    exit 3
+fi
+
+if ! sudo test -f "$PGPASS_FILE"; then
+    echo "FAIL: documented fieldwiring .pgpass is missing"
+    exit 3
+fi
+if [[ "$(sudo stat -c '%U:%G %a' "$PGPASS_FILE")" != "fieldwiring:fieldwiring 600" ]]; then
+    echo "FAIL: fieldwiring .pgpass owner/mode does not match accepted runtime contract"
+    sudo stat -c '%U:%G %a %n' "$PGPASS_FILE"
     exit 3
 fi
 
@@ -559,7 +570,7 @@ echo
 echo "--- Add source-limited UFW rule for Synology only ---"
 sudo ufw allow from 192.168.5.4 to any port "$PEOPLE_PORT" proto tcp comment 'Synology to MSB People'
 UFW_ADDED=1
-if ! sudo ufw status | grep -E "${PEOPLE_PORT}/tcp[[:space:]]+ALLOW[[:space:]]+192\.168\.5\.4" >/dev/null; then
+if ! sudo ufw status | grep -E "${PEOPLE_PORT}/tcp[[:space:]]+ALLOW([[:space:]]+IN)?[[:space:]]+192\.168\.5\.4" >/dev/null; then
     echo "FAIL: expected source-limited People UFW rule was not found"
     sudo ufw status numbered
     exit 24
