@@ -189,6 +189,27 @@ The current prerequisite set is intentionally empty after reconstruction. Rebuil
 
 Current confirmed example: `Set Up Frosty` must be added and must precede the applicable Stars setup work.
 
+### Area-specific grounds readiness
+
+Grass cutting/mulching is a **readiness condition**, not one blanket park-wide predecessor. Different parts of the park become ready at different times.
+
+For example, `Lay Cords` in Stage 00 may have hard Setup-task predecessors such as the applicable sign-setup tasks, while also requiring this field condition:
+
+```text
+Mowing/mulching complete in the Stage 00 HWY 42 cord-laying area.
+```
+
+Do **not** create a fake global `Grass Cutting Complete` task unless MSB actually performs and tracks that work as a Setup task. Do not wait for all grass cutting/mulching in the park to finish before considering one area ready.
+
+The current `Readiness note` field is informational only. It can preserve the reusable area-specific rule now, but it does not yet change scheduler availability. A future structured readiness control must allow each task/work area to become READY independently.
+
+When building tasks now:
+
+1. add actual Setup tasks that must finish first as prerequisites;
+2. put area-specific external conditions such as mowing/mulching in the Readiness note;
+3. do not turn preferred order or field conditions into fake task dependencies; and
+4. report any readiness condition that must eventually control **Available to Schedule**.
+
 ## Procedures and Instructions
 
 Where a Setup task has a current published Setup procedure, the application may show that procedure and, for authorized Managers, the editable source used to maintain it.
@@ -205,6 +226,7 @@ Report things such as:
 - task organization that does not match real work;
 - resources or prerequisites that are difficult to represent;
 - missing or misleading Material / Logistics relationships;
+- missing structured readiness behavior needed for field conditions;
 - missing search/filter/navigation behavior; and
 - ideas that would make 2026 planning or field work easier.
 
@@ -217,7 +239,7 @@ Normal reviewers/managers cannot:
 - create the 2026 Setup Session; or
 - promote an annual order into the reusable future baseline unless they have Administrator authority.
 
-Pick List generation, governed task-to-Display ownership editing, and Container/Display movement/scanning writes are not part of the current live workflow.
+Pick List generation, governed task-to-Display ownership editing, structured annual readiness gating, and Container/Display movement/scanning writes are not part of the current live workflow.
 
 ## What Successful Review Looks Like
 
@@ -229,6 +251,7 @@ A useful review leaves:
 - missing reusable tasks added directly to the current PostgreSQL catalog;
 - reusable task scope, resources, effort, prerequisites/readiness, order, and normal expectations improved where the change should carry forward;
 - practical Display work packages identified without creating one task per Display or assigning a Display to multiple tasks;
+- area-specific readiness captured without inventing one blanket park-wide completion condition;
 - no fake records created only for testing; and
 - no 2026 Session created before the catalog/predecessor model is ready.
 
