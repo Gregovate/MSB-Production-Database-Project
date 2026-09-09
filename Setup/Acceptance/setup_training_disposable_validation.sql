@@ -4,6 +4,7 @@ DO $validation$
 DECLARE
     v_manager_email text;
     v_person_id integer;
+    v_inactive_person_id integer;
     v_safe_task bigint;
     v_safe_annual bigint;
     v_block_task bigint;
@@ -12,6 +13,7 @@ DECLARE
     v_state text;
     v_role text;
     v_blocked boolean := false;
+    v_inactive_blocked boolean := false;
 BEGIN
     SELECT lower(u.email)
       INTO v_manager_email
@@ -64,6 +66,16 @@ BEGIN
         RAISE EXCEPTION 'fieldwiring_app unexpectedly has broad Setup table DML';
     END IF;
 
+    IF EXISTS (
+        SELECT 1
+        FROM ref.setup_captain_person_list() c
+        JOIN ref.person p
+          ON p.person_id = c.person_id
+        WHERE NOT p.active_flag
+    ) THEN
+        RAISE EXCEPTION 'Captain person projection exposed an inactive ref.person row';
+    END IF;
+
     SELECT person_id
       INTO v_person_id
     FROM ref.setup_captain_person_list()
@@ -72,6 +84,18 @@ BEGIN
 
     IF v_person_id IS NULL THEN
         RAISE EXCEPTION 'Captain person projection returned no candidate person';
+    END IF;
+
+    INSERT INTO ref.person(first_name, last_name, active_flag)
+    VALUES ('[DISPOSABLE]', 'Inactive Captain Candidate', false)
+    RETURNING person_id INTO v_inactive_person_id;
+
+    IF EXISTS (
+        SELECT 1
+        FROM ref.setup_captain_person_list()
+        WHERE person_id = v_inactive_person_id
+    ) THEN
+        RAISE EXCEPTION 'Disposable inactive person was exposed by Captain person projection';
     END IF;
 
     SELECT setup_task_id
@@ -103,6 +127,26 @@ BEGIN
 
     IF v_safe_annual IS NULL THEN
         RAISE EXCEPTION 'Disposable reusable task did not receive a historical annual shell';
+    END IF;
+
+    BEGIN
+        PERFORM *
+        FROM ref.set_setup_task_captain(
+            v_manager_email,
+            v_safe_task,
+            v_inactive_person_id,
+            'CAPTAIN',
+            10,
+            'Inactive person must be refused',
+            true
+        );
+    EXCEPTION
+        WHEN invalid_parameter_value THEN
+            v_inactive_blocked := true;
+    END;
+
+    IF NOT v_inactive_blocked THEN
+        RAISE EXCEPTION 'Inactive person was unexpectedly accepted for a Captain assignment';
     END IF;
 
     PERFORM *
