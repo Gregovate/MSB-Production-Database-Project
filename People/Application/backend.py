@@ -1,22 +1,18 @@
-"""MSB People Manager — Milestone 1 browser application.
+"""MSB People Manager — global People and Identity browser application.
 
-Milestone 1 intentionally owns only governed ref.person contact maintenance:
-- manager-authorized search/detail;
-- duplicate review;
-- reserved @sheboyganlights.org email candidates;
-- safe create/update;
-- active/inactive lifecycle;
-- current foreign-key dependency visibility.
+The People Manager owns governed contact maintenance plus reusable capability,
+qualification, and Setup/Takedown eligibility metadata. It exposes current
+Setup Captain/Alternate/Advisor relationships read-only.
 
-It does not create Directus users, create Google Workspace accounts, change
-Directus roles/policies, edit directus_user_id/pg_login_name, or delete people.
+It does not create Google Workspace accounts, Directus users, PostgreSQL logins,
+or delete/merge person identities.
 """
 
 from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -25,7 +21,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from psycopg2 import Error as PsycopgError
 from psycopg2.extras import RealDictCursor
 
-APP_VERSION = "V0.1.1"
+APP_VERSION = "V0.2.0"
 BASE_DIR = Path(__file__).resolve().parent
 PEOPLE_COMMAND_HEADER = "X-MSB-People-Command"
 CLOUDFLARE_EMAIL_HEADER = "Cf-Access-Authenticated-User-Email"
@@ -72,7 +68,6 @@ def json_body() -> dict[str, Any]:
 
 
 def require_command_request() -> None:
-    """Require the same-origin non-simple request shape for People mutations."""
     if not request.is_json:
         raise PeopleApiError("People command requires an application/json request.", 403)
     if request.headers.get(PEOPLE_COMMAND_HEADER, "") != "1":
@@ -119,6 +114,18 @@ def require_people_manager() -> str:
     return email
 
 
+def json_row(row: Any) -> dict[str, Any]:
+    item = dict(row)
+    for key, value in item.items():
+        if isinstance(value, (datetime, date)):
+            item[key] = value.isoformat()
+    return item
+
+
+def rows(cur: Any) -> list[dict[str, Any]]:
+    return [json_row(row) for row in cur.fetchall()]
+
+
 def duplicate_arguments(payload: dict[str, Any]) -> tuple[Any, ...]:
     return (
         payload.get("first_name"),
@@ -158,17 +165,10 @@ def person_command_payload(payload: dict[str, Any], *, update: bool) -> dict[str
     return payload
 
 
-def json_row(row: Any) -> dict[str, Any]:
-    """Serialize PostgreSQL timestamps without losing optimistic-lock precision."""
-    item = dict(row)
-    for key, value in item.items():
-        if isinstance(value, datetime):
-            item[key] = value.isoformat()
-    return item
-
-
-def rows(cur: Any) -> list[dict[str, Any]]:
-    return [json_row(row) for row in cur.fetchall()]
+def ensure_allowed(payload: dict[str, Any], allowed: set[str]) -> None:
+    unknown = set(payload) - allowed
+    if unknown:
+        raise PeopleApiError(f"Unsupported fields: {', '.join(sorted(unknown))}")
 
 
 @app.get("/")
@@ -198,20 +198,35 @@ def health() -> Response:
             """
             SELECT
                 to_regclass('ref.person') IS NOT NULL,
+                to_regclass('ref.person_capability_type') IS NOT NULL,
+                to_regclass('ref.person_qualification_type') IS NOT NULL,
+                to_regclass('ref.person_setup_role') IS NOT NULL,
                 to_regprocedure('ref.people_search(text,text,boolean)') IS NOT NULL,
-                to_regprocedure('ref.create_person_from_people_manager(text,text,text,text,text,text,text,boolean,boolean,boolean)') IS NOT NULL,
-                to_regprocedure('ref.update_person_from_people_manager(text,integer,text,text,text,text,text,text,boolean,timestamptz,boolean,boolean)') IS NOT NULL
+                to_regprocedure('ref.people_person_capabilities(text,integer,boolean)') IS NOT NULL,
+                to_regprocedure('ref.people_person_qualifications(text,integer,boolean)') IS NOT NULL,
+                to_regprocedure('ref.people_person_setup_roles(text,integer)') IS NOT NULL
             """
         )
-        person_table, search_fn, create_fn, update_fn = cur.fetchone()
+        (
+            person_table,
+            capability_table,
+            qualification_table,
+            setup_role_table,
+            search_fn,
+            capability_fn,
+            qualification_fn,
+            setup_role_fn,
+        ) = cur.fetchone()
     return jsonify(
         status="ok",
         version=APP_VERSION,
         person_table=bool(person_table),
+        capability_contract=bool(capability_table and capability_fn),
+        qualification_contract=bool(qualification_table and qualification_fn),
+        setup_role_contract=bool(setup_role_table and setup_role_fn),
         search_contract=bool(search_fn),
-        create_contract=bool(create_fn),
-        update_contract=bool(update_fn),
         delete_exposed=False,
+        merge_exposed=False,
         google_provisioning_exposed=False,
         directus_identity_edit_exposed=False,
     )
@@ -262,10 +277,7 @@ def api_email_candidates() -> Response:
     require_command_request()
     email = require_people_manager()
     payload = json_body()
-    allowed = {"first_name", "last_name", "exclude_person_id"}
-    unknown = set(payload) - allowed
-    if unknown:
-        raise PeopleApiError(f"Unsupported fields: {', '.join(sorted(unknown))}")
+    ensure_allowed(payload, {"first_name", "last_name", "exclude_person_id"})
 
     with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -286,17 +298,17 @@ def api_duplicate_candidates() -> Response:
     require_command_request()
     email = require_people_manager()
     payload = json_body()
-    allowed = {
-        "first_name",
-        "last_name",
-        "email",
-        "personal_email",
-        "cell_phone",
-        "exclude_person_id",
-    }
-    unknown = set(payload) - allowed
-    if unknown:
-        raise PeopleApiError(f"Unsupported fields: {', '.join(sorted(unknown))}")
+    ensure_allowed(
+        payload,
+        {
+            "first_name",
+            "last_name",
+            "email",
+            "personal_email",
+            "cell_phone",
+            "exclude_person_id",
+        },
+    )
 
     with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -378,6 +390,281 @@ def api_update_person(person_id: int) -> Response:
     return jsonify(person=result)
 
 
+@app.get("/api/catalogs/capabilities")
+def api_capability_catalog() -> Response:
+    email = require_people_manager()
+    include_inactive = request.args.get("include_inactive", "").lower() in {"1", "true", "yes"}
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_capability_catalog(%s, %s)",
+            (email, include_inactive),
+        )
+        items = rows(cur)
+    return jsonify(capabilities=items)
+
+
+@app.post("/api/catalogs/capabilities")
+def api_upsert_capability_type() -> Response:
+    require_command_request()
+    email = require_people_manager()
+    payload = json_body()
+    ensure_allowed(
+        payload,
+        {
+            "person_capability_type_id",
+            "capability_name",
+            "capability_category",
+            "notes",
+            "active_flag",
+            "sort_order",
+        },
+    )
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT * FROM ref.upsert_people_capability_type(
+                %s, %s, %s, %s, %s, %s, %s
+            )
+            """,
+            (
+                email,
+                payload.get("person_capability_type_id"),
+                payload.get("capability_name"),
+                payload.get("capability_category", "OTHER"),
+                payload.get("notes"),
+                payload.get("active_flag", True),
+                payload.get("sort_order", 100),
+            ),
+        )
+        result = json_row(cur.fetchone())
+        conn.commit()
+    return jsonify(capability=result)
+
+
+@app.get("/api/people/<int:person_id>/capabilities")
+def api_person_capabilities(person_id: int) -> Response:
+    email = require_people_manager()
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_person_capabilities(%s, %s, true)",
+            (email, person_id),
+        )
+        items = rows(cur)
+    return jsonify(capabilities=items)
+
+
+@app.put("/api/people/<int:person_id>/capabilities/<int:capability_type_id>")
+def api_set_person_capability(person_id: int, capability_type_id: int) -> Response:
+    require_command_request()
+    email = require_people_manager()
+    payload = json_body()
+    ensure_allowed(payload, {"active_flag", "notes"})
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.set_people_person_capability(%s, %s, %s, %s, %s)",
+            (
+                email,
+                person_id,
+                capability_type_id,
+                payload.get("active_flag", True),
+                payload.get("notes"),
+            ),
+        )
+        result = json_row(cur.fetchone())
+        conn.commit()
+    return jsonify(capability=result)
+
+
+@app.get("/api/catalogs/qualifications")
+def api_qualification_catalog() -> Response:
+    email = require_people_manager()
+    include_inactive = request.args.get("include_inactive", "").lower() in {"1", "true", "yes"}
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_qualification_catalog(%s, %s)",
+            (email, include_inactive),
+        )
+        items = rows(cur)
+    return jsonify(qualifications=items)
+
+
+@app.post("/api/catalogs/qualifications")
+def api_upsert_qualification_type() -> Response:
+    require_command_request()
+    email = require_people_manager()
+    payload = json_body()
+    ensure_allowed(
+        payload,
+        {
+            "person_qualification_type_id",
+            "qualification_name",
+            "notes",
+            "active_flag",
+            "sort_order",
+        },
+    )
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT * FROM ref.upsert_people_qualification_type(
+                %s, %s, %s, %s, %s, %s
+            )
+            """,
+            (
+                email,
+                payload.get("person_qualification_type_id"),
+                payload.get("qualification_name"),
+                payload.get("notes"),
+                payload.get("active_flag", True),
+                payload.get("sort_order", 100),
+            ),
+        )
+        result = json_row(cur.fetchone())
+        conn.commit()
+    return jsonify(qualification_type=result)
+
+
+@app.get("/api/people/<int:person_id>/qualifications")
+def api_person_qualifications(person_id: int) -> Response:
+    email = require_people_manager()
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_person_qualifications(%s, %s, true)",
+            (email, person_id),
+        )
+        items = rows(cur)
+    return jsonify(qualifications=items)
+
+
+def qualification_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    ensure_allowed(
+        payload,
+        {
+            "person_qualification_type_id",
+            "completed_on",
+            "valid_from",
+            "expires_on",
+            "qualification_role",
+            "certificate_number",
+            "evidence_reference",
+            "active_flag",
+            "notes",
+        },
+    )
+    if not payload.get("person_qualification_type_id"):
+        raise PeopleApiError("Qualification type is required.")
+    return payload
+
+
+@app.post("/api/people/<int:person_id>/qualifications")
+def api_add_person_qualification(person_id: int) -> Response:
+    require_command_request()
+    email = require_people_manager()
+    payload = qualification_payload(json_body())
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT * FROM ref.upsert_people_person_qualification(
+                %s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            """,
+            (
+                email,
+                person_id,
+                payload.get("person_qualification_type_id"),
+                payload.get("completed_on"),
+                payload.get("valid_from"),
+                payload.get("expires_on"),
+                payload.get("qualification_role"),
+                payload.get("certificate_number"),
+                payload.get("evidence_reference"),
+                payload.get("active_flag", True),
+                payload.get("notes"),
+            ),
+        )
+        result = json_row(cur.fetchone())
+        conn.commit()
+    return jsonify(qualification=result), 201
+
+
+@app.patch("/api/people/<int:person_id>/qualifications/<int:qualification_id>")
+def api_update_person_qualification(person_id: int, qualification_id: int) -> Response:
+    require_command_request()
+    email = require_people_manager()
+    payload = qualification_payload(json_body())
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT * FROM ref.upsert_people_person_qualification(
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            """,
+            (
+                email,
+                qualification_id,
+                person_id,
+                payload.get("person_qualification_type_id"),
+                payload.get("completed_on"),
+                payload.get("valid_from"),
+                payload.get("expires_on"),
+                payload.get("qualification_role"),
+                payload.get("certificate_number"),
+                payload.get("evidence_reference"),
+                payload.get("active_flag", True),
+                payload.get("notes"),
+            ),
+        )
+        result = json_row(cur.fetchone())
+        conn.commit()
+    return jsonify(qualification=result)
+
+
+@app.get("/api/people/<int:person_id>/setup-roles")
+def api_person_setup_roles(person_id: int) -> Response:
+    email = require_people_manager()
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_person_setup_roles(%s, %s)",
+            (email, person_id),
+        )
+        items = rows(cur)
+    return jsonify(roles=items)
+
+
+@app.put("/api/people/<int:person_id>/setup-roles/<string:role_code>")
+def api_set_person_setup_role(person_id: int, role_code: str) -> Response:
+    require_command_request()
+    email = require_people_manager()
+    payload = json_body()
+    ensure_allowed(payload, {"active_flag", "notes"})
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.set_people_person_setup_role(%s, %s, %s, %s, %s)",
+            (
+                email,
+                person_id,
+                role_code,
+                payload.get("active_flag", True),
+                payload.get("notes"),
+            ),
+        )
+        result = json_row(cur.fetchone())
+        conn.commit()
+    return jsonify(role=result)
+
+
+@app.get("/api/people/<int:person_id>/leadership")
+def api_person_task_leadership(person_id: int) -> Response:
+    email = require_people_manager()
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_person_task_leadership(%s, %s)",
+            (email, person_id),
+        )
+        items = rows(cur)
+    return jsonify(leadership=items)
+
+
 @app.errorhandler(PeopleApiError)
 def people_api_error(exc: PeopleApiError) -> tuple[Response, int]:
     return jsonify(error=str(exc)), exc.status
@@ -391,7 +678,7 @@ def postgres_error(exc: PsycopgError) -> tuple[Response, int]:
     if sqlstate == "42501":
         return jsonify(error="This account is not authorized for that People action.", engineering_error=detail), 403
     if sqlstate == "P0002":
-        return jsonify(error=detail or "Person was not found.", engineering_error=detail), 404
+        return jsonify(error=detail or "People record was not found.", engineering_error=detail), 404
     if sqlstate in {"23505", "P0001", "40001"}:
         return jsonify(error=detail or "People record conflicts with current data.", engineering_error=detail), 409
     if sqlstate in {"22023", "23514", "22P02"}:
