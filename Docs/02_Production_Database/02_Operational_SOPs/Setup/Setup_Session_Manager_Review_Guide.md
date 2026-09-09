@@ -162,6 +162,98 @@ The Manager assigns scope explicitly. Do not infer Scene ownership merely from a
 
 Issue #133 tracks the current drag/drop limitation between Stage-level and Scene scope. That limitation is non-blocking because governed scope editing still exists.
 
+## Understand Task Scope, Display Ownership, and Containers
+
+These are three different concepts. Do not use one as a substitute for another.
+
+### Task scope answers: where does this work belong?
+
+Stage/Scene scope describes the physical Setup area or organizational home of the work. A task may belong to a Stage or Scene even when **no Display is assigned to that task**.
+
+Example:
+
+```text
+Grease Bearings
+    -> belongs at 01-Front Gate
+    -> requires the gate bearings to be greased
+    -> has no Display work-package assignment
+```
+
+Do not move that task to Santa's Workshop or another area merely because no Display is attached to it. The task belongs where the work is physically performed.
+
+### Display ownership answers: which Displays are this task's physical work package?
+
+Display assignment is optional and separate from task scope.
+
+Current operating rule:
+
+```text
+one Display
+    -> zero or one reusable Setup task
+
+one reusable Setup task
+    -> zero, one, or many Displays
+```
+
+A Display must **not** appear in two different reusable Setup tasks. If a Display belongs to a Setup work package, one task owns that Display for reusable Setup planning/reporting.
+
+Do not create one task per panel merely to make Display relationships easy. Build tasks at the practical crew/work-package level.
+
+Examples:
+
+```text
+Set Up Traffic Signs
+    -> one reusable task
+    -> owns all Traffic Sign Displays assigned to that work package
+
+Set Up MSB & Rotary Signs
+    -> one reusable task
+    -> owns the MSB/Rotary sign Displays assigned to that work package
+
+Volunteer Path Setup
+    -> separate reusable task when it is normally assigned to a parallel crew
+```
+
+LOR Scene/display-group information may help identify a logical batch of Displays, but it does **not** mean every task located in that Scene automatically owns every Display in that Scene.
+
+### Containers answer: how do the Displays/material get to the park?
+
+A Container is normally the storage/transport mechanism. It does not determine the task's Stage/Scene scope and does not create Display ownership.
+
+For Display-bearing tasks, the intended direction is:
+
+```text
+reusable Setup task
+    -> its assigned Display work package
+    -> each Display's current Container assignment
+    -> current storage/location information
+```
+
+This allows the future Pick List to determine what physical Containers must move without forcing operators to define task scope from Container storage.
+
+Some Containers are themselves used as part of the deployed show. Containers marked as part of a Display (the existing `display_pallet` concept) are not ordinary empty transport Containers after Setup. When their deployed role requires them to remain at the park, they stay there through the show and return during Takedown rather than automatically returning to the workshop when their cargo is unloaded.
+
+Keep that deployed-Container behavior separate from reusable task-to-Display ownership.
+
+### Current Material / Logistics UI limitation
+
+The current Material / Logistics resolver does not yet fully enforce this operating model. In particular, Scene scope can currently cause Displays to appear under a task even when the task does not own those Displays, while some Stage-level Display-bearing tasks can show zero Displays because their explicit work-package assignment has not been populated.
+
+Treat those Material / Logistics results as **under active correction** while the task/Display ownership workflow is built. Do not create fake tasks or move tasks to the wrong scope to make that panel look populated.
+
+While building the reusable catalog now, focus on:
+
+- the correct practical task boundary;
+- correct Stage/Scene location;
+- crew size and expected duration;
+- completion point;
+- equipment/resources;
+- effort;
+- predecessors; and
+- readiness conditions.
+
+When a task clearly represents a Display work package, record/report the intended group of Displays so the governed assignment can be established. Do not manually duplicate one Display across multiple tasks.
+
 ## Review Resources and Effort
 
 Use structured resources for recurring requirements such as lifts, vehicles, trailers, tools, and stake pounders.
@@ -233,6 +325,8 @@ Live now:
 
 Not yet Production-operational as complete workflows:
 
+- Manager-facing task-to-Display ownership assignment;
+- corrected Material / Logistics resolution under the one-Display/one-task rule;
 - cross-Stage candidate planning / short-horizon scheduler surface;
 - Pick List generation;
 - mixed-stage Container annual mobilization/unload-state workflow; and
