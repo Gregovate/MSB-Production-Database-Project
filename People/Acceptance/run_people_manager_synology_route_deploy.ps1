@@ -57,7 +57,9 @@ try {
     $localServer = Join-Path $localBundle 'people_manager_synology_route_deploy_server.sh'
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
-    & scp -P $SynologyPort -r $localBundle "${SynologyServer}:/tmp/"
+    # DSM's SSH service is valid for administration, but it does not expose the
+    # SFTP subsystem expected by modern OpenSSH scp. Force legacy SCP protocol.
+    & scp -O -P $SynologyPort -r $localBundle "${SynologyServer}:/tmp/"
     if ($LASTEXITCODE -ne 0) {
         throw "SCP People Synology route bundle failed with exit code $LASTEXITCODE"
     }
