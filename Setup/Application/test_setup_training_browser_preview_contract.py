@@ -4,7 +4,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 ACCEPT = SETUP_DIR / "Acceptance"
-ACCEPTED_CANDIDATE_SHA = "16f0989cbc873bf914d95a4562255a584e5cdbf3"
+ACCEPTED_CANDIDATE_SHA = "7ff3aa2c851f0e8d31cffc3361dc6e41b800c3f0"
 
 
 def read_acceptance(name: str) -> str:
@@ -29,20 +29,22 @@ def test_training_preview_reuses_hardened_disposable_clone_preview() -> None:
     assert "PASS: live Setup checkout unchanged" in server
 
 
-def test_training_preview_installs_only_019_020_021_into_clone() -> None:
+def test_training_preview_installs_only_019_020_021_022_into_clone() -> None:
     launcher = read_acceptance("run_setup_training_browser_preview.ps1")
 
     for migration in (
         "019_add_reconstruction_safe_task_delete.sql",
         "020_add_setup_captain_management_commands.sql",
         "021_add_setup_assigned_reconciliation_state.sql",
+        "022_require_active_setup_captain_people.sql",
     ):
         assert migration in launcher
 
     assert 'psql_test < "$M019"' in launcher
     assert 'psql_test < "$M020"' in launcher
     assert 'psql_test < "$M021"' in launcher
-    assert "Disposable Setup training/reconstruction migrations 019-021: PASS" in launcher
+    assert 'psql_test < "$M022"' in launcher
+    assert "Disposable Setup training/reconstruction migrations 019-022: PASS" in launcher
 
     # Do not revive the older V0.3 browser-preview migration stack for this
     # current-Production-clone review.
