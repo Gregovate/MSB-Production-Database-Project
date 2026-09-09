@@ -73,30 +73,42 @@ The disposable database acceptance passed on 2026-09-09 for exact candidate:
 
 People Manager changes what an operator sees and edits, so the next gate is the Server Management `Pre_Production_Browser_Review_Runbook.md`.
 
-From the same branch and a clean Windows worktree:
+### Current preview-port rule
+
+The later Setup browser-review implementation corrected two earlier preview-launcher behaviors and those corrections are now part of the generic Server Management runbook:
+
+- the preview port is an explicit required parameter, not a silent default;
+- the browser is not auto-opened before the remote runner reaches `BROWSER REVIEW READY`.
+
+Production Setup now permanently owns `192.168.5.9:8794`. `8794` must never be used or cleaned as a browser-preview port.
+
+From the same branch and a clean Windows worktree, choose a non-Production candidate port and let the server-side preflight verify that it is actually unused. Example:
 
 ```powershell
 git pull
-.\People\Acceptance\run_people_manager_browser_preview.ps1
+.\People\Acceptance\run_people_manager_browser_preview.ps1 -PreviewPort 8795
 ```
 
-Default review parameters are:
+`8795` is only an operator-selected candidate in this example; the preview runner still fails closed if that port is listening on `msb-prod-db`. Do not substitute a documented Production listener.
+
+Default review identity remains:
 
 ```text
-server        = msbadmin@192.168.5.9
-preview port  = 8794
-preview user  = gliebig@sheboyganlights.org
+preview user = gliebig@sheboyganlights.org
 ```
 
-The default identity is the established Administrator-context preview identity used by the prior Controller browser-review pattern. The People runner does not assume that is sufficient: it re-resolves current Directus/ref.person authorization in the fresh disposable clone and fails closed before Flask launch if the identity no longer has People Manager capability or is not mapped to a governed person.
+The identity is the established Administrator-context preview identity used by prior browser review. The People runner re-resolves current Directus/ref.person authorization in the fresh disposable clone and fails closed before Flask launch if the identity no longer has People Manager capability or is not mapped to a governed person.
 
 The browser-review wrapper and server runner follow the existing runbook pattern:
 
 - require the People feature branch and a clean local worktree;
+- require an explicit preview port and reject documented Production listeners, including live Setup `8794`;
 - pin the exact disposable-accepted candidate SHA above;
 - refuse to proceed if `People/Application` or `People/Database` changed after that accepted SHA;
 - use one bundled SCP transfer plus one foreground SSH session;
 - use an SSH localhost tunnel rather than publishing the preview port;
+- do not auto-open the browser during SCP/cleanup/preparation;
+- verify the selected server port is unused before preview startup;
 - verify the Production FieldWiring service/health and live checkout before preview;
 - create a detached worktree for the exact accepted People candidate without moving the Production checkout;
 - run the People candidate regression with the documented Production Python runtime;
@@ -104,14 +116,15 @@ The browser-review wrapper and server runner follow the existing runbook pattern
 - create clone-only `people_app` LOGIN credentials and apply only migrations `001` and `002` to that clone;
 - re-assert current People authorization and the no-broad-table-DML boundary;
 - launch the exact accepted People Flask application bound to `127.0.0.1` with a preview-only identity injector and a DSN that points only to the disposable clone;
+- print `BROWSER REVIEW READY` and the selected localhost URL only after Flask/API checks pass;
 - keep the foreground PowerShell/SSH session open while Greg reviews the real browser workflow;
 - tear down the Flask process, disposable database, dump, worktree, and temporary bundle after ENTER; and
 - re-prove Production `ref.person`, the Production checkout, FieldWiring health, and the temporary preview port are unchanged/clean.
 
-The browser opens at:
+After the runner prints `BROWSER REVIEW READY`, open the URL it prints, for example:
 
 ```text
-http://127.0.0.1:8794/
+http://127.0.0.1:8795/
 ```
 
 Minimum People-specific operator review:
@@ -126,11 +139,13 @@ Minimum People-specific operator review:
 8. confirm there is no person delete action; and
 9. refresh/reopen records and confirm the disposable-clone state is presented consistently.
 
-If the foreground preview is interrupted and stale resources remain, use the dedicated runbook-pattern cleanup wrapper:
+If the foreground preview is interrupted and stale resources remain, use the same explicit preview port with the dedicated cleanup wrapper:
 
 ```powershell
-.\People\Acceptance\run_people_manager_browser_preview_cleanup.ps1
+.\People\Acceptance\run_people_manager_browser_preview_cleanup.ps1 -PreviewPort 8795
 ```
+
+Never pass a Production listener such as `8794` to the cleanup wrapper.
 
 The retained browser-review evidence paths are:
 
