@@ -8,7 +8,9 @@ SQL_003 = (ROOT / "Database" / "003_create_people_metadata_contract.sql").read_t
 SQL = SQL_001 + "\n" + SQL_002 + "\n" + SQL_003
 BACKEND = (BASE_DIR / "backend.py").read_text(encoding="utf-8")
 HTML = (BASE_DIR / "index.html").read_text(encoding="utf-8")
+CSS = (BASE_DIR / "people.css").read_text(encoding="utf-8")
 JS = (BASE_DIR / "people.js").read_text(encoding="utf-8")
+THEME = (BASE_DIR / "static" / "people_theme.js").read_text(encoding="utf-8")
 ANALYTICS = (BASE_DIR / "static" / "analytics.js").read_text(encoding="utf-8")
 
 
@@ -150,9 +152,23 @@ def test_backend_exposes_people_metadata_routes() -> None:
     assert "ref.set_people_person_setup_role" in BACKEND
 
 
+def test_ui_uses_shared_msb_application_shell_and_theme() -> None:
+    assert 'class="site-header"' in HTML
+    assert 'class="brand"' in HTML
+    assert 'id="screen-logo"' in HTML
+    assert "msb-blue-logo-600-plain.svg" in HTML
+    assert 'id="theme-toggle"' in HTML
+    assert "static/people_theme.js?v=2026-09-09.1" in HTML
+    assert "msb-theme" in THEME
+    assert "prefers-color-scheme: dark" in CSS
+    assert 'html[data-theme="dark"]' in CSS
+    assert "grid-template-columns:390px minmax(0,1fr)" in CSS
+    assert 'id="identityPanel" class="card technical-details"' in HTML
+
+
 def test_ui_loads_versioned_analytics_and_explains_reserved_email() -> None:
     assert "static/analytics.js?v=2026-09-09.1" in HTML
-    assert "people.js?v=2026-09-09.2" in HTML
+    assert "people.js?v=2026-09-09.3" in HTML
     assert "Reserving it does not create the Google Workspace account" in HTML
     assert "Potential duplicate review" in HTML
     assert "People Manager exposes no person delete action" in HTML
@@ -162,7 +178,7 @@ def test_ui_exposes_people_metadata_fields() -> None:
     for heading in (
         "Capabilities",
         "Qualifications",
-        "Setup / Takedown participation & eligibility",
+        "Setup / Takedown participation &amp; eligibility",
         "Reusable-task leadership",
     ):
         assert heading in HTML
@@ -181,7 +197,7 @@ def test_ui_exposes_people_metadata_fields() -> None:
     ):
         assert f'id="{field_id}"' in HTML
 
-    assert "These roles describe participation or leadership eligibility. They do not create Captain assignments." in HTML
+    assert "These do not create Captain assignments." in HTML
     assert "Read-only current Captain, Alternate, and Advisor assignments" in HTML
 
 
