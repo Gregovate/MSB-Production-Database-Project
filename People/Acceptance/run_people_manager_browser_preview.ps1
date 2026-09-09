@@ -13,7 +13,8 @@ $ServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'people_manager_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/people-manager-milestone1-20260908'
-$CandidateSha = '2de2d244ec7259e52f9d312587a86ef38c7f512f'
+$CandidateSha = 'de549757c8d040d34494304a08944f7f4b444b30'
+$DatabaseAcceptedSha = 'deaa9157282e59e8acd6a7da2a82fc9296e44f20'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -47,9 +48,11 @@ if ($dirty) {
     throw 'Local worktree is not clean. Pull/commit/stash/revert before packaging the preview.'
 }
 
-& git -C $RepoRoot cat-file -e "${CandidateSha}^{commit}"
-if ($LASTEXITCODE -ne 0) {
-    throw "People browser-review candidate commit is not available locally: $CandidateSha"
+foreach ($sha in @($CandidateSha, $DatabaseAcceptedSha)) {
+    & git -C $RepoRoot cat-file -e "${sha}^{commit}"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Required People candidate commit is not available locally: $sha"
+    }
 }
 
 & git -C $RepoRoot merge-base --is-ancestor $CandidateSha HEAD
@@ -57,8 +60,6 @@ if ($LASTEXITCODE -ne 0) {
     throw "People browser-review candidate $CandidateSha is not an ancestor of the current branch head."
 }
 
-# Acceptance/harness documentation may advance after the browser candidate,
-# but application/database behavior must remain exactly pinned for review.
 $changedCandidateFiles = @(& git -C $RepoRoot diff --name-only "$CandidateSha..HEAD" -- People/Application People/Database)
 if ($LASTEXITCODE -ne 0) {
     throw 'Unable to compare current branch with the People browser-review candidate.'
@@ -67,15 +68,20 @@ if ($changedCandidateFiles.Count -gt 0) {
     throw "People Application/Database files changed after browser-review candidate $CandidateSha. Re-run engineering acceptance before browser review.`n$($changedCandidateFiles -join "`n")"
 }
 
-# Ctrl+C can leave the local SSH tunnel listening after the remote preview
-# stops. Stop only ssh.exe on this explicitly selected preview port. Refuse to
-# terminate any unrelated local process.
+# The disposable-accepted database/API behavior must remain unchanged. Browser
+# review may advance presentation/theme/static-regression files only.
+$behaviorChanges = @(& git -C $RepoRoot diff --name-only "$DatabaseAcceptedSha..$CandidateSha" -- People/Database People/Application/backend.py People/Application/people.js)
+if ($LASTEXITCODE -ne 0) {
+    throw 'Unable to verify accepted People database/API behavior against the browser candidate.'
+}
+if ($behaviorChanges.Count -gt 0) {
+    throw "People database/API behavior changed after disposable acceptance. Re-run disposable acceptance before browser review.`n$($behaviorChanges -join "`n")"
+}
+
 $localListeners = @(Get-NetTCPConnection -LocalPort $PreviewPort -State Listen -ErrorAction SilentlyContinue)
 foreach ($listener in $localListeners) {
     $owner = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
-    if ($null -eq $owner) {
-        continue
-    }
+    if ($null -eq $owner) { continue }
     if ($owner.ProcessName -ne 'ssh') {
         throw "Local preview port $PreviewPort is owned by non-SSH process $($owner.ProcessName) PID $($owner.Id). Not stopping it automatically."
     }
@@ -84,8 +90,6 @@ foreach ($listener in $localListeners) {
 }
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-# Upload outside the stale-preview cleanup glob. After cleanup passes, the
-# uploaded bundle is moved to the normal preview prefix for bounded teardown.
 $bundleName = "msb-people-preview-session-$stamp"
 $localBundle = Join-Path ([System.IO.Path]::GetTempPath()) $bundleName
 $uploadRoot = "/tmp/$bundleName"
@@ -104,16 +108,16 @@ function Write-LinuxTextFile {
 }
 
 Write-Host '========== PEOPLE MANAGER PRE-PRODUCTION BROWSER REVIEW =========='
-Write-Host "Server:        $Server"
-Write-Host "Candidate SHA: $CandidateSha"
-Write-Host "Browser URL:   $browserUrl"
-Write-Host "Preview user:  $PreviewEmail"
+Write-Host "Server:              $Server"
+Write-Host "Browser candidate:   $CandidateSha"
+Write-Host "DB accepted SHA:     $DatabaseAcceptedSha"
+Write-Host "Browser URL:         $browserUrl"
+Write-Host "Preview user:        $PreviewEmail"
 Write-Host 'Authority: MSB-Server-Management — Pre_Production_Browser_Review_Runbook.md'
 Write-Host 'Clone authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md'
 Write-Host
-Write-Host 'This runs the disposable-accepted People metadata runtime plus the corrected regression assertion against a new current-Production clone.'
-Write-Host 'Runtime application/database files are unchanged from disposable-accepted SHA deaa9157282e59e8acd6a7da2a82fc9296e44f20.'
-Write-Host 'The clone receives People migrations 001, 002, and 003 only; Production remains read-only for preview preparation.'
+Write-Host 'The browser candidate keeps the disposable-accepted People database/backend behavior unchanged.'
+Write-Host 'Its additional changes are presentation/theme/static-regression corrections from browser review.'
 Write-Host 'Production ref.person, the Production checkout, and fieldwiring.service are not changed.'
 Write-Host 'The browser is not auto-opened; wait for BROWSER REVIEW READY before opening the URL shown above.'
 Write-Host 'Keep this PowerShell window open during review.'
@@ -144,9 +148,6 @@ try {
     $remoteCleanup = "$remoteRoot/people_manager_browser_preview_cleanup_server.sh"
     $remoteCommand = "chmod 700 '$uploadCleanup' && bash -n '$uploadCleanup' && bash '$uploadCleanup' '$PreviewPort' && mv '$uploadRoot' '$remoteRoot' && chmod 755 '$remoteRoot' && chmod 700 '$remoteScript' '$remoteCleanup' && chmod 644 '$remoteEntry' && bash -n '$remoteScript' && timeout --signal=TERM 7200s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
 
-    # Foreground SSH owns the console directly so SSH/sudo prompts and the final
-    # operator ENTER remain usable. The tunnel exposes only the temporary
-    # localhost preview listener to this workstation.
     & ssh -tt -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand
     $remoteExit = $LASTEXITCODE
 
