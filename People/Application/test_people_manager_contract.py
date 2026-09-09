@@ -193,7 +193,7 @@ def test_ui_wires_metadata_commands() -> None:
     assert "createQualificationType" in JS
     assert "saveSetupRoles" in JS
     assert "renderLeadership" in JS
-    assert "api/people/${state.selectedPersonId}/leadership" in JS
+    assert "api(`api/people/${personId}/leadership`)" in JS
 
 
 def test_ui_sends_duplicate_ack_and_optimistic_lock() -> None:
