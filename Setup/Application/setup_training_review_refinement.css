@@ -16,6 +16,22 @@
   display: none;
 }
 
+/* The Catalog return action is navigation, not another primary save action.
+   Give it a distinct theme-aware treatment with enough visual contrast in both
+   light and dark mode while keeping the primary Save action dominant. */
+#reusable-manager-actions #setup-return-library {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+#reusable-manager-actions #setup-return-library:hover,
+#reusable-manager-actions #setup-return-library:focus-visible {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
 .setup-reusable-match-target {
   margin: 10px 0 8px;
   padding: 10px 12px;
