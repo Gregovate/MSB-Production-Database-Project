@@ -55,6 +55,17 @@ def test_return_control_moves_beside_reusable_task_actions_and_remains_contextua
     assert "position: static" in refinement_css
 
 
+def test_return_control_has_distinct_theme_safe_navigation_treatment():
+    css = read("setup_training_review_refinement.css")
+    assert "#reusable-manager-actions #setup-return-library" in css
+    assert "background: var(--accent-soft)" in css
+    assert "color: var(--text)" in css
+    assert "border-color: var(--accent)" in css
+    assert "#setup-return-library:hover" in css
+    assert "#setup-return-library:focus-visible" in css
+    assert "color: #ffffff" in css
+
+
 def test_catalog_detail_adds_database_resolved_material_logistics_section():
     js = read("setup_training_ux.js")
     assert "4. Material / Logistics Context" in js
