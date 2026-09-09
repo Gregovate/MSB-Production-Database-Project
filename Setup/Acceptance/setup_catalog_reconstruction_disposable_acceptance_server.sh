@@ -197,7 +197,7 @@ test_fingerprint() {
     "
 }
 
-psql_test -c "DO \\$role\\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fieldwiring_app') THEN CREATE ROLE fieldwiring_app LOGIN; END IF; END \\$role\\$;"
+psql_test -c "DO \$role\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fieldwiring_app') THEN CREATE ROLE fieldwiring_app LOGIN; END IF; END \$role\$;"
 
 sudo docker exec "$TEST_CONTAINER" mkdir -p "$CONTAINER_DB_DIR/reconstruction"
 sudo docker cp "$BUNDLE_DIR/Setup/Database/023_add_setup_task_effort.sql" \
