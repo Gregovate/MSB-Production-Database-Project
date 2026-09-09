@@ -3,8 +3,6 @@ INSERT INTO setup_catalog_reconstruction(
     task_action_type, display_order, baseline_plan_order,
     normal_crew_min, normal_crew_max, expected_duration_minutes, effort_level
 ) VALUES
-    ('C095', NULL, 'OMW network locating', 39, 277, 'WORK', 60, 1210, NULL, NULL, NULL, NULL),
-    ('C096', NULL, 'Finish OMW panels', 39, 277, 'WORK', 70, 1220, NULL, NULL, NULL, NULL),
     ('C143', NULL, 'Hang Harness & Lights', 50, NULL, 'WORK', 10, 1230, NULL, NULL, NULL, NULL),
     ('C144', NULL, 'Plug in Power & Network', 50, NULL, 'WORK', 20, 1240, NULL, NULL, NULL, NULL),
     ('C154', NULL, 'Glistening Grove labeling', 52, NULL, 'WORK', 40, 1250, NULL, NULL, NULL, NULL),
@@ -16,8 +14,8 @@ INSERT INTO setup_catalog_reconstruction(
     ('C142', NULL, 'Santa''s Workshop Plug in Power & Network', 49, NULL, 'WORK', 30, 1310, NULL, NULL, NULL, NULL),
     ('C042', 67, 'Lay Cords', 30, NULL, 'WORK', 30, 1320, NULL, NULL, NULL, NULL),
     ('C186', NULL, 'Lay Claymation cords', 32, NULL, 'WORK', 10, 1330, NULL, NULL, NULL, NULL),
-    ('C176', NULL, 'Quarry exterior setup', 57, NULL, 'WORK', 50, 1340, NULL, NULL, NULL, NULL),
-    ('C177', NULL, 'Quarry interior setup', 57, NULL, 'WORK', 60, 1350, NULL, NULL, NULL, NULL),
+    ('C176', NULL, 'Santa''s Station exterior setup', 57, NULL, 'WORK', 50, 1340, NULL, NULL, NULL, NULL),
+    ('C177', NULL, 'Santa''s Station interior setup', 57, NULL, 'WORK', 60, 1350, NULL, NULL, NULL, NULL),
     ('C076', NULL, 'Who Panels & Racks', 37, NULL, 'WORK', 30, 1360, NULL, NULL, NULL, 'MODERATE'),
     ('C077', NULL, 'Plug in Power & Network', 37, NULL, 'WORK', 40, 1370, NULL, NULL, NULL, NULL),
     ('C074', 14, 'Build / Finish Who House on Arch Trailer', 37, NULL, 'WORK', 50, 1380, NULL, NULL, NULL, 'MODERATE'),
@@ -39,7 +37,6 @@ INSERT INTO setup_catalog_reconstruction(
     ('C054', NULL, 'Tent and Collection Sign', 34, NULL, 'WORK', 40, 1540, NULL, NULL, NULL, NULL),
     ('C064', 9, 'Set Food Collection Traffic Lanes', 34, NULL, 'WORK', 70, 1550, NULL, NULL, NULL, NULL),
     ('C100', 19, 'Put Up 24 Stars', 40, NULL, 'WORK', 30, 1560, NULL, NULL, NULL, 'MODERATE'),
-    ('C191', NULL, 'Bring Frosty to park', 43, 259, 'WORK', 10, 1570, NULL, NULL, NULL, 'LIGHT'),
     ('C065', NULL, 'Level Thank You sign', 54, NULL, 'WORK', 150, 1580, NULL, NULL, NULL, NULL),
     ('C215', NULL, 'Install Santa''s Station lights', 57, NULL, 'WORK', 30, 1590, NULL, NULL, NULL, NULL),
-    ('C178', NULL, 'Clean up Quarry cords', 57, NULL, 'WORK', 70, 1600, NULL, NULL, NULL, NULL);
+    ('C178', NULL, 'Clean up Santa''s Station cords', 57, NULL, 'WORK', 70, 1600, NULL, NULL, NULL, NULL);
