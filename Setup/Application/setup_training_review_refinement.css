@@ -1,0 +1,133 @@
+/* Browser-review refinements from the 2026-09-08 Setup reconstruction preview. */
+
+#reusable-manager-actions .setup-return-library-wrap {
+  position: static;
+  display: contents;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+#reusable-manager-actions .setup-return-library-wrap[hidden] {
+  display: none;
+}
+
+#reusable-manager-actions .setup-return-library-wrap .muted {
+  display: none;
+}
+
+.setup-reusable-match-target {
+  margin: 10px 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--theme-subtle);
+  font-size: .9rem;
+}
+
+.setup-reusable-match-target[hidden] {
+  display: none;
+}
+
+.setup-reusable-match-target strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.setup-captain-picker-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#setup-captain-person {
+  min-height: 0;
+}
+
+.setup-captain-typeahead-help,
+.setup-captain-typeahead-chosen {
+  margin-top: 5px;
+  font-size: .82rem;
+}
+
+.setup-captain-typeahead-results {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 6px;
+  max-height: 16rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--theme-input);
+}
+
+.setup-captain-typeahead-results[hidden] {
+  display: none;
+}
+
+.setup-captain-typeahead-match {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+}
+
+.setup-captain-no-match {
+  padding: 8px;
+}
+
+.setup-material-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setup-controller-context-compact {
+  margin-top: 10px;
+}
+
+.setup-material-details-dialog {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--card);
+}
+
+.setup-material-details-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.setup-material-dialog-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.setup-material-dialog-heading h3 {
+  margin: 2px 0 0;
+}
+
+.setup-material-dialog-content {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  max-height: calc(86vh - 82px);
+  overflow: auto;
+}
+
+@media (max-width: 760px) {
+  .setup-material-dialog-heading {
+    align-items: flex-start;
+  }
+}
