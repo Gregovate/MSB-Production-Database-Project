@@ -4,7 +4,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 ACCEPT = SETUP_DIR / "Acceptance"
-ACCEPTED_CANDIDATE_SHA = "83b9172c79b02898ebf3f6207f2d51c4c7fdbf76"
+ACCEPTED_CANDIDATE_SHA = "aaf7de1c1d457b3dfaafe061f084a044cdf2abb7"
 
 
 def read_acceptance(name: str) -> str:
