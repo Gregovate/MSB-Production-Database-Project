@@ -19,9 +19,9 @@ def test_training_ux_assets_are_loaded_after_live_review_fixes():
     live_index = html.index("setup_live_review_fixes.js?v=2026-09-08.3")
     training_index = html.index("setup_training_ux.js?v=2026-09-08.1")
     assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
-    refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-09.2")
+    refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-09.3")
     assert "setup_training_ux.css?v=2026-09-08.1" in html
-    assert "setup_training_review_refinement.css?v=2026-09-08.1" in html
+    assert "setup_training_review_refinement.css?v=2026-09-09.3" in html
     assert training_index > live_index
     assert refinement_index > assigned_index > training_index
 
