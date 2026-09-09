@@ -2,6 +2,12 @@
 
 These procedures are for Managers and Administrators using the **People Manager** browser to maintain durable volunteer/contact information, capabilities, qualifications, and Setup/Takedown eligibility.
 
+Production application:
+
+```text
+https://my.sheboyganlights.org/people/
+```
+
 ## What Do You Need To Do?
 
 | I want to... | Go to |
@@ -19,7 +25,7 @@ These procedures are for Managers and Administrators using the **People Manager*
 
 People Manager is an authenticated MSB application. Cloudflare Access identifies the signed-in user and current Directus role/policy information controls whether People maintenance is available.
 
-The accepted People Manager maintenance workflow is for **Manager / Administrator context**. If People Manager reports that the account is not authorized, do not work around the application through Directus tables or direct PostgreSQL edits.
+People Manager maintenance is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. If People Manager reports that the account is not authorized, do not work around the application through Directus tables or direct PostgreSQL edits.
 
 ## Important Boundaries
 
