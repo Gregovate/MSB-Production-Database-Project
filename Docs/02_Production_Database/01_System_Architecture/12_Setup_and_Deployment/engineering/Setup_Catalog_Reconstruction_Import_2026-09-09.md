@@ -2,60 +2,78 @@
 
 | Document Control | Value |
 |---|---|
-| Document Type | Engineering Reconstruction / Import Contract |
+| Document Type | Engineering Reconstruction / Import Record |
 | System | Production Database — Setup Session |
-| Status | IMPLEMENTATION CANDIDATE — disposable Production-clone acceptance required before Production consideration |
+| Status | ACCEPTED IN PRODUCTION — one-time reconstruction complete; current PostgreSQL catalog is the ongoing working baseline |
 | Owner | MSB Production Database engineering |
 | Related Work | Issue #122; Setup Catalog Reconciliation Workflow; Setup Smart Scheduler Workflow |
 
 ## Purpose
 
-Define the controlled conversion of the reviewed 2022/2025 reconstruction workbook into the reusable Setup catalog that will become the basis for future Setup planning before a 2026 Setup Session is created.
+Record the controlled conversion of the reviewed 2022/2025 reconstruction workbook into the reusable Setup catalog that now serves as the current Production working baseline.
 
-This is the point where provisional historical reconstruction is intentionally normalized into current Production Stage/Scene identity and permanent reusable task knowledge.
+This was the point where provisional historical reconstruction was normalized into current Production Stage/Scene identity and permanent reusable task knowledge. It is now a **deployment/history record**, not the ongoing task master.
 
-## Source Authority
+## Current Authority After Import
 
-The candidate is based on:
+The one-time reconstruction import is complete.
+
+From this point forward:
+
+```text
+current Production PostgreSQL reusable catalog
+    = working task baseline
+
+reviewed one-list workbook / 2022 schedule / 2025 notes
+    = historical and reconstruction evidence
+```
+
+Do not maintain a second spreadsheet as a parallel authoritative task list. Continue building, correcting, organizing, and enriching reusable tasks against the current PostgreSQL data through the governed Setup application/database commands.
+
+## Source Authority Used For The Import
+
+The accepted import was based on:
 
 1. the operator-reviewed `MSB_Setup_ONE_LIST_Reconciliation_20260909_WITH_EFFORT` workbook;
-2. the current Production reusable-task snapshot containing 68 active reusable tasks before reconstruction;
-3. the current Production `ref.stage` / `ref.lor_scene` inventory exported 2026-09-09; and
+2. the Production reusable-task snapshot containing 68 active reusable tasks before reconstruction;
+3. the Production `ref.stage` / `ref.lor_scene` inventory exported 2026-09-09; and
 4. operator-confirmed mappings and task-boundary decisions made during the reconstruction review.
 
-Historical Stage numbers are not durable identity. Current Production Stage/Scene IDs control.
+Historical Stage numbers were not treated as durable identity. Current Production Stage/Scene IDs controlled the import.
 
-## Candidate Catalog Result
+## Accepted Catalog Result
 
-The controlled candidate targets:
+Production acceptance established:
 
 ```text
 active reusable tasks after reconstruction = 185
+total reusable task rows                    = 187
 existing reusable identities retained       = 66
 new reusable definitions                    = 119
 provisional task 40                         = retired/inactive
 provisional task 58 "light"                 = retired/inactive
 new 2025 annual rows                        = 0
 reusable dependency rows after import       = 0
+2026 Setup Sessions                         = 0
 ```
 
-Task 40 (`Deliver Command Center`) is the obsolete provisional duplicate. Existing task 51 (`Deliver and Set Up Command Center Trailer`) is retained as the reusable Command Center task.
+Task 40 (`Deliver Command Center`) was the obsolete provisional duplicate. Existing task 51 (`Deliver and Set Up Command Center Trailer`) was retained as the reusable Command Center task.
 
-Task 58 (`light`) is a junk provisional reconstruction row and is retired.
+Task 58 (`light`) was a junk provisional reconstruction row and was retired.
 
-Retirement preserves the historical shells rather than deleting history. Their 2025 annual occurrences are excluded from the historical session.
+Retirement preserved the historical shells rather than deleting history. Their 2025 annual occurrences were excluded from the historical session.
 
 ## 2025 Annual Boundary
 
-The reconstructed catalog is future reusable knowledge. Newly reconstructed reusable tasks must **not** be fabricated as 2025 annual occurrences simply because the catalog is being improved during 2025 review.
+The reconstructed catalog is reusable knowledge. Newly reconstructed reusable tasks were **not** fabricated as 2025 annual occurrences simply because the catalog was improved during 2025 review.
 
-Therefore migration 024 creates reusable tasks directly and does not call the normal browser creation command that automatically appends new tasks to open sessions.
+Migration 024 therefore created reusable tasks directly and did not use the normal browser creation behavior that appends new tasks to an open session.
 
-Existing 2025 historical rows remain historical evidence. The future 2026 Setup Session will be created only after the reusable catalog and predecessor/readiness model are accepted.
+Existing 2025 historical rows remain historical evidence. The future 2026 Setup Session will be created only after the live reusable catalog and predecessor/readiness model are useful enough for planning.
 
 ## Effort Metadata
 
-The only new reusable planning metadata introduced by this reconstruction is:
+The reusable planning metadata introduced by this reconstruction is:
 
 ```text
 ref.setup_task.effort_level
@@ -70,9 +88,9 @@ HEAVY
 NULL = not yet reviewed / unknown
 ```
 
-The reviewed workbook used `MEDIUM` in some rows; the database vocabulary normalizes those values to `MODERATE`.
+The reviewed workbook used `MEDIUM` in some rows; the database vocabulary normalized those values to `MODERATE`.
 
-Candidate reviewed counts:
+Accepted Production counts:
 
 ```text
 LIGHT       8
@@ -81,11 +99,11 @@ HEAVY       4
 NULL       161
 ```
 
-No `planning_role`, trailer-specific flag, or special Arch/Antenna classification is introduced.
+No `planning_role`, trailer-specific flag, or special Arch/Antenna classification was introduced.
 
-## Existing Ordering Model Is Reused
+## Existing Ordering Model Reused
 
-No new scheduler-order column is required for this import.
+No duplicate scheduler-order column was added.
 
 Existing model:
 
@@ -97,27 +115,27 @@ ops.setup_work_day_task.sort_order        order inside scheduled work
 ops.setup_work_day_task.crew_lane         parallel temporary crew lane
 ```
 
-The reviewed historical dates/order are used only to seed a practical reusable `baseline_plan_order`. They are evidence of sequencing, not future calendar dates.
+Historical dates/order were used only to seed a practical reusable `baseline_plan_order`. They remain sequencing evidence, not future calendar dates.
 
 ## Canonical Task Names
 
-Equivalent locating work is normalized to:
+Equivalent locating work was normalized to:
 
 ```text
 Locate Power & Network
 ```
 
-The candidate contains ten such reusable tasks in the appropriate current Stage/Scene scopes.
+The accepted import produced ten such reusable tasks in the reviewed current scopes.
 
-Equivalent panel-position marking is normalized to:
+Equivalent panel-position marking was normalized to:
 
 ```text
 Layout Panels
 ```
 
-The candidate contains four such reusable tasks.
+The accepted import produced four such reusable tasks.
 
-This normalization does **not** collapse physically different work such as:
+This normalization did **not** collapse physically different work such as:
 
 - `Layout Trees`;
 - `Layout New Trees`;
@@ -128,9 +146,9 @@ Those remain distinct reusable tasks where field practice supports them.
 
 ## OMW / Heat Mister Reconciliation
 
-Historical `OMW / Heat Mister` evidence resolves to current Global Warming Stage identity, with the relevant Global Warming Scene.
+Historical `OMW / Heat Mister` evidence resolved to current Global Warming Stage identity.
 
-The reusable sequence retains the core work:
+The reusable sequence retained the core work:
 
 ```text
 Locate Power & Network
@@ -151,11 +169,11 @@ remain evidence for those reusable tasks rather than becoming three additional r
 
 ## Pure Logistics Versus Real Setup Work
 
-The reconstruction deliberately distinguishes logistics from work that must itself be planned/reported.
+The reconstruction deliberately distinguished logistics from work that must itself be planned/reported.
 
 ### Pure logistics
 
-Ordinary transport-only evidence is not promoted to a reusable Setup task merely because the old schedule recorded a move. Examples removed from the reusable candidate include:
+Ordinary transport-only evidence was not promoted to a reusable Setup task merely because an old schedule recorded a move. Examples excluded from the reusable import included:
 
 ```text
 Deliver Horse & Sleigh to park
@@ -169,9 +187,25 @@ The future Pick List / movement workflow owns ordinary material mobilization.
 
 Moves that are actual work because they physically unlock access to stored Displays/material remain real reusable tasks.
 
-This captures the operational reason large items appeared at the beginning of the historical schedule: some large trailers/Displays must leave the workshop before crews can reach racks and other Setup material.
-
 These are modeled as ordinary reusable tasks, not with a separate planning-role field.
+
+## Known Post-Import Catalog Finding — Frosty
+
+The logistics distinction above exposed one omission after Production deployment.
+
+`Bring Frosty to park` was correctly excluded because transportation itself is logistics. However, no separate reusable physical task was created for the actual Frosty setup.
+
+Current correction required in the live PostgreSQL catalog:
+
+```text
+Stage 02 — Triangle
+    Frosty work
+        Set Up Frosty
+```
+
+The operator confirmed that Frosty must be set up before the applicable Stars setup work. Add the physical Frosty task to the current catalog, then establish that dependency during the reviewed predecessor pass.
+
+This is an example of the post-import operating rule: **correct the current PostgreSQL catalog directly rather than reopening the reconstruction workbook as a master list.**
 
 ## Mixed-Stage Containers and Trailers
 
@@ -191,11 +225,11 @@ shared Container / trailer
     -> required unload group becomes actionable when its Setup work needs it
 ```
 
-The current reusable `UNLOAD_CONTAINER` tasks remain valid where unloading is itself meaningful physical work. The future Pick List/movement layer must support the same model for Arch Trailer, Antenna Trailer, and future shared trailers without adding `is_arch_trailer`, `is_mixed_stage_trailer`, or equivalent special-case flags.
+The reusable `UNLOAD_CONTAINER` tasks remain valid where unloading is itself meaningful physical work. The future Pick List/movement layer must support the same model for Arch Trailer, Antenna Trailer, and future shared trailers without special-case flags.
 
 ## Aggregate Historical Evidence Is Not a Reusable Task
 
-Cross-area shorthand rows are retained as evidence but are not converted into one synthetic reusable task.
+Cross-area shorthand rows remain evidence but were not converted into synthetic reusable tasks.
 
 Examples:
 
@@ -209,25 +243,25 @@ Reusable work belongs in the actual current Stage/Scene scope where the work is 
 
 ## Santa's Station Name Normalization
 
-Historical `Quarry` evidence resolves to current Santa's Station Stage identity.
+Historical `Quarry` evidence resolved to current Santa's Station Stage identity.
 
-Reusable task names in the candidate use Santa's Station naming rather than perpetuating the old Quarry name.
+Reusable task names in the accepted catalog use Santa's Station naming rather than perpetuating the old Quarry name.
 
-Historical source documents can continue to show Quarry because that is what they were called at the time; the reusable current catalog does not.
+Historical source documents can continue to show Quarry because that is what they were called at the time.
 
 ## Dependency Reset and Next Pass
 
-The old dependency set is not trusted after the scope/identity reconstruction.
+The old dependency set was not trusted after the scope/identity reconstruction.
 
-Migration 024 intentionally clears:
+Migration 024 intentionally cleared:
 
 ```text
 ref.setup_task_dependency
 ```
 
-This is not the final scheduler state. It creates a clean dependency baseline for the separate reviewed predecessor/readiness pass.
+Production currently has zero reusable dependency rows by design.
 
-Before creating the 2026 Setup Session, that next pass must distinguish:
+The next reviewed pass must distinguish:
 
 ```text
 HARD PREDECESSOR
@@ -237,22 +271,26 @@ READINESS CONDITION
 
 Examples include:
 
+- Frosty setup before the applicable Stars work;
 - Locates before Layout where field practice requires it;
 - Layout before physical installation where locations must be marked;
 - grass cutting stopped before cord laying;
 - physical assembly before downstream power/network work;
-- genuine workshop-access tasks before work that cannot be physically reached.
+- genuine workshop-access tasks before work that cannot be physically reached; and
+- ordered Arch Trailer unload/access dependencies where the shared physical trailer constrains later work.
 
-## Disposable Acceptance Gate
+Do not create the 2026 Setup Session before this pass is useful enough for the planning workflow.
 
-Candidate migrations:
+## Acceptance Evidence
+
+Accepted migrations:
 
 ```text
 023_add_setup_task_effort.sql
 024_reconstruct_setup_catalog_from_reviewed_one_list.sql
 ```
 
-Migration 024 sources its reviewed catalog rows from:
+Migration 024 sourced its reviewed rows from:
 
 ```text
 Setup/Database/reconstruction/024_catalog_batch_01.sql
@@ -260,41 +298,28 @@ Setup/Database/reconstruction/024_catalog_batch_01.sql
 Setup/Database/reconstruction/024_catalog_batch_05.sql
 ```
 
-Acceptance tooling:
+Disposable Production-clone validation passed before Production mutation.
+
+Final accepted Production deployment:
 
 ```text
-Setup/Acceptance/run_setup_catalog_reconstruction_disposable_acceptance.ps1
-Setup/Acceptance/setup_catalog_reconstruction_disposable_acceptance_server.sh
-Setup/Acceptance/setup_catalog_reconstruction_disposable_validation.sql
+Setup runtime SHA                    = 5a8a317357ffa5d77c38bc4df63fe6c7b451dbaf
+active reusable tasks                = 185
+total reusable task rows             = 187
+dependencies                         = 0
+2026 Setup Sessions                  = 0
+Production Setup fingerprint         = f0b98ac75e297a08eabc3df040708c08
+rollback archive                     = /home/msbadmin/backups/setup-catalog/msb-pre-setup-catalog-20260909T184826.dump
+deployment report                    = /home/msbadmin/setup-acceptance-reports/Setup_Catalog_Reconstruction_Production_Deploy_20260909T184826.txt
+wrapper result                       = SETUP_CATALOG_RECONSTRUCTION_PRODUCTION_DEPLOYMENT_PASS
 ```
 
-The acceptance runner may read Production with `pg_dump` and `SELECT` only. All schema/data writes occur in a disposable PostgreSQL clone restored from current Production.
+The Production deployment completed with 134 application tests passing, protected negative-path HTTP 401 acceptance, public `/setup/` health PASS, and the final Production fingerprint matching the accepted post-catalog state.
 
-The disposable validation must prove at minimum:
+## Production Change Rule Going Forward
 
-- 185 active reusable tasks;
-- 66 existing identities retained and 119 new definitions created by the migration source;
-- tasks 40 and 58 inactive;
-- task 51 preserved;
-- 10 canonical `Locate Power & Network` tasks;
-- 4 canonical `Layout Panels` tasks;
-- accepted effort counts;
-- no new annual rows for task IDs created by reconstruction;
-- no 2026+ Setup Session;
-- zero reusable dependencies pending the predecessor pass;
-- valid current Stage/Scene foreign-key pairing; and
-- Production Setup fingerprint unchanged after disposable acceptance.
+This accepted import does not authorize future ad hoc Production changes.
 
-## Production Gate
+Future Production database/application mutations still require the current project rules and the governing Production Database deployment runbook from `Gregovate/MSB-Server-Management`.
 
-Passing disposable acceptance does not authorize Production mutation.
-
-Any Production application of migrations 023/024 requires:
-
-1. current candidate SHA identified;
-2. current Production preflight;
-3. retrieval and reading of the governing Production Database deployment runbook from `Gregovate/MSB-Server-Management` in that workstream;
-4. explicit operator approval for the Production mutation; and
-5. post-deployment catalog/browser acceptance before proceeding to the predecessor pass.
-
-No 2026 Setup Session should be created as part of this reconstruction deployment.
+Routine Manager task maintenance that is already exposed through governed application commands is normal Production use and should operate on the current PostgreSQL catalog rather than through another reconstruction migration.
