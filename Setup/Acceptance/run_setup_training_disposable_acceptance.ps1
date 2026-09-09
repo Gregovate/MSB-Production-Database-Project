@@ -30,6 +30,7 @@ $files = @(
     'Setup\Database\019_add_reconstruction_safe_task_delete.sql',
     'Setup\Database\020_add_setup_captain_management_commands.sql',
     'Setup\Database\021_add_setup_assigned_reconciliation_state.sql',
+    'Setup\Database\022_require_active_setup_captain_people.sql',
     'Setup\Acceptance\setup_training_disposable_validation.sql',
     'Setup\Acceptance\setup_training_disposable_acceptance_server.sh'
 )
