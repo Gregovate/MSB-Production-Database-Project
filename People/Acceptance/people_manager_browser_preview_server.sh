@@ -9,7 +9,7 @@ NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 TARGET_REF="agent/people-manager-milestone1-20260908"
-TARGET_SHA="0d099437ceddb6c9019eca7353e65d84a310c633"
+TARGET_SHA="deaa9157282e59e8acd6a7da2a82fc9296e44f20"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/people_manager_browser_preview_entry.py"
 PREVIEW_PORT="${1:?preview port argument is required}"
@@ -166,8 +166,7 @@ if ! sudo docker network inspect "$NETWORK" >/dev/null 2>&1; then
     exit 9
 fi
 # Server Management runtime boundary: msbadmin cannot traverse protected
-# application paths. Validate the production Python runtime as fieldwiring,
-# which is the account that is authorized to traverse and execute it.
+# application paths. Validate the production Python runtime as fieldwiring.
 if ! sudo -u fieldwiring -H test -x "$PRODUCTION_PYTHON"; then
     echo "FAIL: fieldwiring runtime account cannot execute documented production Python: $PRODUCTION_PYTHON"
     exit 10
@@ -193,16 +192,17 @@ PROD_BEFORE="$(prod_fingerprint)"
 echo "Production ref.person fingerprint: $PROD_BEFORE"
 
 echo
-echo "--- Fetch exact accepted People candidate ---"
+echo "--- Fetch exact disposable-accepted People metadata candidate ---"
 sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
 
 MIGRATION_001="$CANDIDATE_WORKTREE/People/Database/001_create_people_manager_contract.sql"
 MIGRATION_002="$CANDIDATE_WORKTREE/People/Database/002_harden_people_search_phone_filter.sql"
+MIGRATION_003="$CANDIDATE_WORKTREE/People/Database/003_create_people_metadata_contract.sql"
 APP_DIR="$CANDIDATE_WORKTREE/People/Application"
 TEST_FILE="$CANDIDATE_WORKTREE/People/Application/test_people_manager_contract.py"
-for f in "$MIGRATION_001" "$MIGRATION_002" "$APP_DIR/backend.py" "$APP_DIR/index.html" "$TEST_FILE"; do
+for f in "$MIGRATION_001" "$MIGRATION_002" "$MIGRATION_003" "$APP_DIR/backend.py" "$APP_DIR/index.html" "$TEST_FILE"; do
     [[ -s "$f" ]] || { echo "FAIL: exact accepted candidate file missing: $f"; exit 14; }
 done
 
@@ -264,11 +264,12 @@ psql_test_quiet() {
 }
 
 echo
-echo "--- Apply exact accepted People migrations to disposable clone ---"
+echo "--- Apply exact accepted People migrations 001-003 to disposable clone ---"
 psql_test -c "CREATE ROLE people_app LOGIN PASSWORD '$APP_PASSWORD';"
 psql_test < "$MIGRATION_001"
 psql_test < "$MIGRATION_002"
-echo "People candidate migrations applied to disposable clone only"
+psql_test < "$MIGRATION_003"
+echo "People candidate migrations 001-003 applied to disposable clone only"
 
 echo
 echo "--- Validate preview authorization and least-privilege boundary ---"
@@ -290,8 +291,15 @@ BEGIN
     IF has_table_privilege('people_app', 'ref.person', 'SELECT')
        OR has_table_privilege('people_app', 'ref.person', 'INSERT')
        OR has_table_privilege('people_app', 'ref.person', 'UPDATE')
-       OR has_table_privilege('people_app', 'ref.person', 'DELETE') THEN
-        RAISE EXCEPTION 'Preview people_app unexpectedly has direct ref.person privileges';
+       OR has_table_privilege('people_app', 'ref.person', 'DELETE')
+       OR has_table_privilege('people_app', 'ref.person_capability_type', 'SELECT')
+       OR has_table_privilege('people_app', 'ref.person_capability', 'SELECT')
+       OR has_table_privilege('people_app', 'ref.person_qualification_type', 'SELECT')
+       OR has_table_privilege('people_app', 'ref.person_qualification', 'SELECT')
+       OR has_table_privilege('people_app', 'ref.person_setup_role', 'SELECT')
+       OR has_table_privilege('people_app', 'ref.setup_task', 'SELECT')
+       OR has_table_privilege('people_app', 'ref.setup_task_captain', 'SELECT') THEN
+        RAISE EXCEPTION 'Preview people_app unexpectedly has direct People/Setup table privileges';
     END IF;
     IF has_table_privilege('people_app', 'public.directus_users', 'SELECT')
        OR has_table_privilege('people_app', 'public.directus_roles', 'SELECT')
@@ -305,7 +313,18 @@ BEGIN
        OR NOT has_function_privilege('people_app', 'ref.people_duplicate_candidates(text,text,text,text,text,text,integer)', 'EXECUTE')
        OR NOT has_function_privilege('people_app', 'ref.people_email_candidates(text,text,text,integer)', 'EXECUTE')
        OR NOT has_function_privilege('people_app', 'ref.create_person_from_people_manager(text,text,text,text,text,text,text,boolean,boolean,boolean)', 'EXECUTE')
-       OR NOT has_function_privilege('people_app', 'ref.update_person_from_people_manager(text,integer,text,text,text,text,text,text,boolean,timestamptz,boolean,boolean)', 'EXECUTE') THEN
+       OR NOT has_function_privilege('people_app', 'ref.update_person_from_people_manager(text,integer,text,text,text,text,text,text,boolean,timestamptz,boolean,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.people_capability_catalog(text,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.people_qualification_catalog(text,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.people_person_capabilities(text,integer,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.people_person_qualifications(text,integer,boolean)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.people_person_setup_roles(text,integer)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.people_person_task_leadership(text,integer)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.upsert_people_capability_type(text,integer,text,text,text,boolean,integer)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.set_people_person_capability(text,integer,integer,boolean,text)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.upsert_people_qualification_type(text,integer,text,text,boolean,integer)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.upsert_people_person_qualification(text,bigint,integer,integer,date,date,date,text,text,text,boolean,text)', 'EXECUTE')
+       OR NOT has_function_privilege('people_app', 'ref.set_people_person_setup_role(text,integer,text,boolean,text)', 'EXECUTE') THEN
         RAISE EXCEPTION 'Preview people_app is missing approved People function execution';
     END IF;
 END
@@ -373,39 +392,50 @@ fi
 HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
 ACCESS="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/access")"
 PEOPLE_CODE="$(curl -sS -o /tmp/people-preview-list-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/people")"
-if [[ "$PEOPLE_CODE" != "200" ]]; then
-    echo "FAIL: People Manager preview list returned HTTP $PEOPLE_CODE"
-    cat /tmp/people-preview-list-$STAMP.json || true
-    rm -f /tmp/people-preview-list-$STAMP.json
+CAP_CODE="$(curl -sS -o /tmp/people-preview-cap-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/catalogs/capabilities")"
+QUAL_CODE="$(curl -sS -o /tmp/people-preview-qual-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/catalogs/qualifications")"
+ROLE_CODE="$(curl -sS -o /tmp/people-preview-role-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/people/$ACTOR_PERSON_ID/setup-roles")"
+LEAD_CODE="$(curl -sS -o /tmp/people-preview-lead-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/people/$ACTOR_PERSON_ID/leadership")"
+
+if [[ "$PEOPLE_CODE" != "200" || "$CAP_CODE" != "200" || "$QUAL_CODE" != "200" || "$ROLE_CODE" != "200" || "$LEAD_CODE" != "200" ]]; then
+    echo "FAIL: People Manager preview API readiness failed"
+    echo "people=$PEOPLE_CODE capabilities=$CAP_CODE qualifications=$QUAL_CODE setup_roles=$ROLE_CODE leadership=$LEAD_CODE"
+    for f in /tmp/people-preview-list-$STAMP.json /tmp/people-preview-cap-$STAMP.json /tmp/people-preview-qual-$STAMP.json /tmp/people-preview-role-$STAMP.json /tmp/people-preview-lead-$STAMP.json; do
+        [[ -s "$f" ]] && cat "$f" || true
+    done
+    rm -f /tmp/people-preview-list-$STAMP.json /tmp/people-preview-cap-$STAMP.json /tmp/people-preview-qual-$STAMP.json /tmp/people-preview-role-$STAMP.json /tmp/people-preview-lead-$STAMP.json
     exit 22
 fi
-rm -f /tmp/people-preview-list-$STAMP.json
+rm -f /tmp/people-preview-list-$STAMP.json /tmp/people-preview-cap-$STAMP.json /tmp/people-preview-qual-$STAMP.json /tmp/people-preview-role-$STAMP.json /tmp/people-preview-lead-$STAMP.json
 
 echo "Preview health: $HEALTH"
 echo "Preview access: $ACCESS"
+echo "Preview People metadata APIs: PASS"
 echo
 echo "============================================================"
 echo "BROWSER REVIEW READY"
 echo "Open on the Windows workstation:"
 echo "  http://127.0.0.1:$PREVIEW_PORT/"
 echo
-echo "Exact browser-review candidate: $TARGET_SHA"
-echo "Preview identity:               $PREVIEW_EMAIL"
+echo "Exact disposable-accepted candidate: $TARGET_SHA"
+echo "Preview identity:                   $PREVIEW_EMAIL"
 echo "Production checkout and ref.person remain unchanged."
 echo "Every browser write goes to the disposable current-Production clone."
 echo
 echo "People review checklist:"
 echo "  1. Search by name/email/phone and try Include inactive."
-echo "  2. Open existing people; inspect protected identity and relationships."
-echo "  3. Open a Directus-linked person; confirm MSB email/build controls are protected."
-echo "  4. Add a clone-only person; use Build email and Save person."
-echo "  5. Edit that clone-only person's contact data; save, deactivate, then reactivate."
-echo "  6. Re-test an existing inactive person: activate and save without a false stale-record conflict."
-echo "  7. Trigger a duplicate-name/contact warning and review the acknowledgement behavior."
-echo "  8. Trigger an MSB-email collision and review alternate-email acknowledgement."
-echo "  9. Confirm there is no person delete action."
+echo "  2. Add a clone-only person; Build email and Save person."
+echo "  3. Edit/deactivate/reactivate the same clone-only person."
+echo "  4. Add a capability catalog item, assign it to the person, edit notes, deactivate/reactivate it."
+echo "  5. Add a qualification type and person qualification; exercise completed/valid/expiry dates, role, certificate, evidence, notes, and active state."
+echo "  6. Toggle Setup Volunteer, Takedown Volunteer, Captain Candidate, and Advisor Candidate; reopen the person and confirm state persists."
+echo "  7. Open a person with existing reusable-task Captain/Alternate/Advisor assignments and confirm leadership is visible but not editable here."
+echo "  8. Open a Directus-linked person; confirm protected MSB email/identity behavior remains correct."
+echo "  9. Re-test an existing inactive person: activate and save without a false stale-record conflict."
+echo " 10. Trigger duplicate-name/contact and MSB-email collision review paths."
+echo " 11. Confirm there is no person delete action and no merge action in this candidate."
 echo
-echo "Suggested clone-only last name for easy cleanup/review: Preview$STAMP"
+echo "Suggested clone-only last name for easy review: Preview$STAMP"
 echo
 echo "When review is finished, return to this PowerShell window and press ENTER."
 echo "============================================================"
