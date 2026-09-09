@@ -148,32 +148,31 @@ sudo docker run -d \
     -e POSTGRES_DB=postgres \
     "$IMAGE" >/dev/null
 
-init_complete=0
+# postgis/postgis:16-3.5 starts a temporary PostgreSQL server during image
+# initialization. pg_isready may succeed during that temporary phase, so require
+# the final container PID 1 process to be postgres as well as pg_isready success.
+ready=0
+pid1=""
 for _ in $(seq 1 120); do
-    if sudo docker logs "$TEST_CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up"; then
-        init_complete=1
+    if [[ "$(sudo docker inspect "$TEST_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]]; then
         break
     fi
-    sleep 1
-done
-if [[ "$init_complete" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL initialization did not complete"
-    sudo docker logs "$TEST_CONTAINER" || true
-    exit 8
-fi
 
-ready=0
-for _ in $(seq 1 60); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+    pid1="$(sudo docker exec "$TEST_CONTAINER" sh -c 'cat /proc/1/comm' 2>/dev/null | tr -d '\r\n' || true)"
+
+    if [[ "$pid1" == "postgres" ]] && \
+       sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+           pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
         ready=1
         break
     fi
     sleep 1
 done
 if [[ "$ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL did not become ready"
-    exit 9
+    echo "FAIL: disposable PostgreSQL did not reach final post-init ready state"
+    echo "Observed PID 1 command: ${pid1:-unknown}"
+    sudo docker logs "$TEST_CONTAINER" || true
+    exit 8
 fi
 
 sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
