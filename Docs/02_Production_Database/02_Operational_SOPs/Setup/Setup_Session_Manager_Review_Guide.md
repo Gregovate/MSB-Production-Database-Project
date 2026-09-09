@@ -5,22 +5,32 @@
 | Document Type | Operator / Manager Procedure |
 | System | Production Database — Setup Session |
 | Audience | Setup Managers, reviewers, and administrators |
-| Status | CURRENT — live 2025 review/training workflow; UI/workflow evaluation remains open |
+| Status | CURRENT — live 2025 review plus current reusable-task development |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-07 |
+| Last Reviewed | 2026-09-09 |
 
 ## Purpose
 
 Use this guide for the live Setup application and the Production-backed **2025 Historical Verification** session.
 
-The 2025 session has two purposes:
-
-- reconstruct and improve the real 2025 Setup record; and
-- train future Setup Managers by using the actual workflow before the 2026 Setup Session is created.
+The 2025 session remains the annual review/training context, but the reusable catalog is now also the live working baseline for 2026 preparation.
 
 This is **not disposable test data**. Changes saved in the application are real Production Database records.
 
-The application itself is still under live evaluation. Managers should report questions, suggestions, missing information, confusing screens, and workflow problems instead of silently adapting around them.
+## Current PostgreSQL Baseline
+
+The reusable catalog reconstruction was accepted in Production on 2026-09-09:
+
+```text
+active reusable tasks      = 185
+total reusable task rows   = 187
+reusable prerequisites     = 0
+2026 Setup Sessions        = 0
+```
+
+The prerequisite count is intentionally zero pending the reviewed predecessor/readiness pass.
+
+The reviewed reconstruction workbook, 2025 notes, and recovered 2022 schedule remain evidence. They are not a parallel task master. Continue building and correcting reusable tasks against the **current PostgreSQL catalog**.
 
 ## Open the Application
 
@@ -32,7 +42,7 @@ https://my.sheboyganlights.org/setup/
 
 Sign in through the normal MSB Google/Cloudflare Access login.
 
-Confirm the selected session is:
+Confirm the selected annual session is:
 
 ```text
 2025 — Historical Verification
@@ -46,27 +56,15 @@ The selected Setup Session controls the allowable operational year.
 2025 Historical Verification
     -> work dates and historical actual dates must be in 2025
 
-2026 Setup Session
+future 2026 Setup Session
     -> work dates and operational dates must be in 2026
 ```
 
-The browser limits date controls to the selected year, and the database independently rejects an operational date from the wrong year.
+Audit timestamps remain truthful current timestamps.
 
-Audit timestamps remain truthful. If you correct a 2025 task during 2026, the historical operational date may be 2025 while the database records the correction as having been made in 2026.
+Only an Administrator may create a new annual Setup Session or promote an annual order into the reusable future baseline.
 
-## Roles and Authority
-
-A shared link does not grant authority. Each user must authenticate and have the appropriate Setup capability.
-
-Current responsibilities are:
-
-- **Reader / field user** — view permitted Setup information;
-- **Manager / reviewer** — review and correct annual 2025 information, maintain reusable tasks, task scope, prerequisites, resources, order, and supported planning information; and
-- **Administrator** — all Manager capabilities plus annual Setup Session creation and promotion of an annual order into the reusable future baseline.
-
-Only an Administrator should create the 2026 Setup Session.
-
-Only an Administrator can use **Use Current Order as Future Baseline**.
+Do **not** create the 2026 Setup Session yet. The current catalog and predecessor/readiness model must first be useful enough for planning.
 
 ## Annual 2025 Information vs Reusable Setup Knowledge
 
@@ -76,14 +74,12 @@ This distinction is fundamental.
 
 Annual information describes what happened or was planned in 2025:
 
-- verification state;
+- verification/reconciliation state;
 - annual planned order;
-- 2025 work-day/date/shift/crew-lane assignments when used;
 - 2025 crew/time evidence;
-- annual notes; and
-- progress/completion evidence.
-
-These records belong only to the 2025 Setup Session.
+- annual notes;
+- progress/completion evidence; and
+- 2025 work-day/date/shift assignments where used.
 
 ### Reusable Setup knowledge
 
@@ -93,13 +89,12 @@ Reusable information describes how the work normally exists across seasons:
 - Park Infrastructure / Stage / Scene scope;
 - normal local sequence/order;
 - normal crew range and expected duration;
+- Physical Effort (`LIGHT`, `MODERATE`, `HEAVY`, or unreviewed);
 - equipment/resources;
 - prerequisites;
 - completion point;
 - readiness/weather notes; and
 - reusable whole-Setup baseline order.
-
-Edits to reusable information are intentionally permanent and may be used when the Administrator later creates 2026.
 
 Before changing reusable information, ask:
 
@@ -107,44 +102,45 @@ Before changing reusable information, ask:
 
 If it only happened in 2025, keep it in annual history.
 
-## Review and Verify Existing Tasks
+## Review / Reconciliation States
 
-For each task you review:
-
-1. Open the task in the 2025 session.
-2. Read the reusable definition and annual 2025 information separately.
-3. Compare them with what you know and with reliable procedures/evidence.
-4. Correct only information you can support.
-5. Add annual notes when useful 2025-specific detail should be preserved.
-6. Set the verification state only after the record has actually been reviewed.
-
-Verification states are:
+Current annual verification/reconciliation states are:
 
 ```text
 UNVERIFIED
+NEEDS_CORRECTION
 VERIFIED
-NEEDS CORRECTION
+ASSIGNED
 ```
 
-Leave a task UNVERIFIED when you do not know enough. Use NEEDS CORRECTION when you know something is wrong but the correct answer still needs work.
+Use them as follows:
 
-Do not mark a task VERIFIED merely because the task exists.
+- `UNVERIFIED` — not yet sufficiently reviewed;
+- `NEEDS_CORRECTION` — known to be wrong/incomplete and still needs work;
+- `VERIFIED` — reviewed as the accepted annual record;
+- `ASSIGNED` — the annual item is accepted as belonging to its current reusable task definition.
 
-## Add Missing Reusable Tasks
+`ASSIGNED` is a **reconciliation state, not execution/completion state**. Assigned rows are preserved and can be filtered deliberately, but leave the default actionable review queue.
 
-If real Setup work is missing, Managers may add a reusable task when that work should normally exist beyond one historical occurrence.
+Reassigning/merging an annual item to a different reusable task remains a separate governed workflow.
 
-Use **Add Task Here** in the correct scope. Use **Copy** when the new task is substantially similar to an existing task, then review the copy carefully.
+## Add or Correct Reusable Tasks
+
+If real Setup work is missing, Managers may add a reusable task when the work should normally exist beyond one historical occurrence.
+
+Use **Add Task Here** in the correct scope. Use **Copy** when a new task is substantially similar to an existing task, then review the copy carefully.
 
 A task is useful when it:
 
 - can realistically be missed;
 - affects readiness, planning, or resources;
 - has meaningful prerequisites;
-- needs useful progress/completion tracking; or
+- needs progress/completion tracking; or
 - preserves operational learning worth carrying forward.
 
-Do not create separate tasks for ordinary actions that are already implied by the real work.
+Do not create separate reusable tasks for ordinary transport when movement/logistics owns that action.
+
+Current example: `Bring Frosty to park` is logistics evidence and should not become the reusable task. The missing reusable work is physical **`Set Up Frosty`**, and Frosty setup must precede the applicable Stars setup work.
 
 ## Choose the Correct Scope
 
@@ -154,170 +150,107 @@ Reusable tasks can belong to three practical scopes.
 
 Use this only for park-wide work with no appropriate LOR Stage or Scene owner.
 
-Examples include street-light and site-breaker work.
-
-These Procedures use:
-
-```text
-G:\Shared drives\Display Folders\41 Park Infrastructure-PI
-```
-
-Do not create a fake LOR Stage, Scene, or Preview merely to hold park-wide work.
-
 ### Stage-level / General
 
 Use Stage-level when the task belongs to a real LOR Stage generally but should not be forced into a Scene.
-
-`40-CommandCenter` is the important example. It remains legitimate Stage 40 because it has a real LOR Preview, even though its Preview currently has no wired inventory items.
 
 ### Scene
 
 Use Scene scope when a current LOR Scene is the natural reusable organizational home for the work.
 
-The Manager assigns Scene scope explicitly. Do not infer Scene ownership merely from a task or Display name.
+The Manager assigns scope explicitly. Do not infer Scene ownership merely from a task or Display name.
 
-## Review Resources
+Issue #133 tracks the current drag/drop limitation between Stage-level and Scene scope. That limitation is non-blocking because governed scope editing still exists.
 
-Use structured resources for recurring requirements such as:
+## Review Resources and Effort
 
-- lifts;
-- vehicles;
-- trailers;
-- tools;
-- stake pounders; and
-- other equipment required to perform the task.
+Use structured resources for recurring requirements such as lifts, vehicles, trailers, tools, and stake pounders.
 
 Review:
 
-- the correct resource;
+- correct resource;
 - quantity;
-- Required vs Preferred status; and
+- Required vs Preferred status;
+- Physical Effort where known; and
 - whether the requirement belongs as reusable knowledge.
 
-Do not invent quantities merely to fill a field.
-
-If a resource itself is missing from the catalog and the application permits you to add it, use a clear durable name that represents the real equipment/resource rather than a one-time note.
+Do not invent quantities or effort values merely to fill fields.
 
 ## Review Prerequisites and Readiness
 
 A prerequisite means another reusable task must complete first.
 
-Example:
+Readiness is different: a task may have all predecessors complete but still be blocked by leaves, weather, access, equipment, grass cutting, or another practical condition.
+
+The 2026-09-09 catalog reconstruction intentionally reset all reusable dependencies. The next review pass must rebuild them deliberately and distinguish:
 
 ```text
-Locates / Field Cleared
-    -> Set Scaffold and Elves
-        -> Install Notes and Conductor
+HARD PREDECESSOR
+PREFERRED ORDER
+READINESS CONDITION
 ```
 
-Readiness is different from a prerequisite. A task may have all prerequisites satisfied but still be NOT_READY because of weather, leaves, access, equipment, or another practical condition.
+Do not rebuild a rigid chain merely because tasks happened in that order once.
 
-Use prerequisites only for real repeatable dependencies. Do not build a rigid serial chain just because tasks were performed in that order once.
+## Review Order and Planning
 
-## Review Order
-
-The system keeps two different whole-Setup orders.
-
-### Reusable baseline order
-
-This is the normal starting order learned over time. Only an Administrator may promote an annual order into this future baseline.
-
-### Annual planned order
-
-This is the current Setup Session's working opinion of what should happen next.
-
-It may legitimately differ because of weather, volunteer turnout, equipment, access, road work, leaves, material problems, or opportunities to complete another area early.
-
-A strange 2025 order should remain a 2025 fact unless it represents a genuinely better reusable rule.
-
-## Rolling-Horizon Planning
-
-The Setup system is not intended to be a rigid Gantt schedule.
-
-The normal operating cycle is:
+Keep these concepts separate:
 
 ```text
-know all remaining Setup work
-    -> keep it in useful order
-    -> check prerequisites/readiness/resources
-    -> schedule only the next few practical days
-    -> perform work
-    -> record progress/completion
-    -> return to the remaining backlog
+Stage / Scene organization
+reusable local task order
+reusable whole-Setup baseline order
+annual planned order
+short-horizon work-day / shift / crew plan
 ```
 
-Most unfinished work should remain unscheduled most of the time. That is normal.
+Setup is not intended to be a rigid season-long Gantt schedule. Plan the next practical few work days, then revise as progress, weather, volunteer turnout, equipment, and site conditions change.
 
-## Multi-Day Work and Progress
-
-Do not split a practical task merely because it lasts more than one work period.
-
-One annual task may remain IN_PROGRESS while progress is recorded over several work periods. Complete it only when the practical job is complete.
+Tasks may span multiple days and may use parallel crews. A task remains `IN_PROGRESS` until its practical completion point is reached.
 
 ## Procedures
 
-Stage- and Scene-scoped tasks use the established marked Google Drive Procedure structure.
-
-Park Infrastructure uses:
+Stage- and Scene-scoped tasks use the established Google Drive Procedure structure. Park Infrastructure uses:
 
 ```text
 G:\Shared drives\Display Folders\41 Park Infrastructure-PI
 ```
 
-Where the application shows a current published Setup PDF, review whether it still matches the work. Authorized Managers may also see the editable source used to maintain it.
-
-If an editable procedure is corrected, update the current published PDF before treating the instruction as current.
-
-## Ask Questions and Make Suggestions
-
-This review period is also how we improve the application before the 2026 Setup cycle.
-
-Report things such as:
-
-- a field or label you do not understand;
-- missing information you need to make a decision;
-- information that appears duplicated or unnecessary;
-- a task that belongs in a different place;
-- difficulty representing a resource or prerequisite;
-- an awkward or repetitive workflow;
-- missing search/filter/navigation behavior;
-- a screen that does not match how Setup crews actually work;
-- a task/data problem that the application makes hard to correct; and
-- ideas that would make 2026 planning or field work easier.
-
-A useful finding does not have to be a software bug. Operational suggestions are part of the evaluation.
+Where the application shows a current published Setup PDF, review whether it still matches the work. If an editable procedure is corrected, update the published PDF before treating the instruction as current.
 
 ## Current Live Boundary
 
 Live now:
 
 - Production-backed 2025 review/training;
-- verification and correction of annual 2025 information;
-- reusable task creation/copy and maintenance;
-- task scope/order/prerequisite/resource maintenance;
-- supported annual planning/review controls;
+- 185-active-task reusable PostgreSQL catalog;
+- annual review/reconciliation including `ASSIGNED`;
+- reusable task create/copy/maintenance;
+- Stage/Scene scope and order maintenance;
+- resource, effort, prerequisite, crew/time/readiness maintenance;
 - Procedure/document context; and
 - authenticated browser access.
 
-Not yet part of the current Production-ready workflow:
+Not yet Production-operational as complete workflows:
 
-- Pick List generation; and
-- Container/Display movement/scanning write commands.
+- cross-Stage candidate planning / short-horizon scheduler surface;
+- Pick List generation;
+- mixed-stage Container annual mobilization/unload-state workflow; and
+- Container/Display movement/scanning writes and park-location execution evidence.
 
-Do not infer a movement event merely because an identifier was scanned or a review action occurred.
+## Current Task Development Rule
 
-## 2025 Review to 2026 Transition
+Use current PostgreSQL first.
 
-There is currently no 2026 Setup Session.
+```text
+current reusable task data
+    -> identify gap/correction
+    -> verify scope and practical task boundary
+    -> correct/add through governed Setup controls
+    -> add predecessor/readiness/resource/effort knowledge when known
+```
 
-When the Administrator decides the 2025 reconstruction is useful enough and explicitly creates 2026:
-
-- 2026 gets its own annual task rows;
-- the date guard changes automatically to 2026;
-- 2025 annual records remain 2025 records; and
-- reusable task knowledge continues forward.
-
-No Manager/reviewer action inside the 2025 session should implicitly create or schedule 2026.
+Do not restart a large spreadsheet import merely because a missing task is discovered.
 
 ## Related Documents
 
