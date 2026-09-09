@@ -1,6 +1,7 @@
 param(
     [string]$Server = 'msbadmin@192.168.5.9',
-    [int]$PreviewPort = 8794,
+    [Parameter(Mandatory=$true)]
+    [int]$PreviewPort,
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org'
 )
 
@@ -23,8 +24,11 @@ foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
     throw 'PreviewPort must be between 1024 and 65535.'
 }
-if ($PreviewPort -in @(8055, 8790, 8792, 8793)) {
-    throw "PreviewPort $PreviewPort conflicts with a governed/reserved MSB listener."
+if ($PreviewPort -eq 8794) {
+    throw 'PreviewPort 8794 is the live Production Setup listener and must never be used for browser preview.'
+}
+if ($PreviewPort -in @(8055, 8790, 8792)) {
+    throw "PreviewPort $PreviewPort conflicts with a governed Production listener."
 }
 if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
     throw 'PreviewEmail is not a valid email address.'
@@ -64,8 +68,8 @@ if ($changedCandidateFiles.Count -gt 0) {
     throw "People Application/Database files changed after accepted candidate $CandidateSha. Re-run engineering/disposable acceptance before browser review.`n$($changedCandidateFiles -join "`n")"
 }
 
-# Ctrl+C can leave the local SSH tunnel listening even after the remote preview
-# has stopped. Stop only ssh.exe on this dedicated preview port and refuse to
+# Ctrl+C can leave the local SSH tunnel listening after the remote preview
+# stops. Stop only ssh.exe on this explicitly selected preview port. Refuse to
 # terminate any unrelated local process.
 $localListeners = @(Get-NetTCPConnection -LocalPort $PreviewPort -State Listen -ErrorAction SilentlyContinue)
 foreach ($listener in $localListeners) {
@@ -110,7 +114,7 @@ Write-Host 'Clone authority: MSB-Server-Management — PostgreSQL_Disposable_Acc
 Write-Host
 Write-Host 'This runs the exact disposable-accepted People candidate against a new current-Production clone.'
 Write-Host 'Production ref.person, the Production checkout, and fieldwiring.service are not changed.'
-Write-Host 'The browser will open automatically. If it opens before BROWSER REVIEW READY, leave it open and refresh afterward.'
+Write-Host 'The browser is not auto-opened; wait for BROWSER REVIEW READY before opening the URL shown above.'
 Write-Host 'Keep this PowerShell window open during review.'
 Write-Host 'When finished, return here and press ENTER so the governed teardown can complete.'
 Write-Host
@@ -132,7 +136,6 @@ try {
 
     Write-Host
     Write-Host 'Cleaning stale People preview state and preparing disposable browser review...'
-    Start-Process $browserUrl
 
     $uploadCleanup = "$uploadRoot/people_manager_browser_preview_cleanup_server.sh"
     $remoteScript = "$remoteRoot/people_manager_browser_preview_server.sh"
