@@ -9,7 +9,7 @@ NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 TARGET_REF="agent/people-manager-milestone1-20260908"
-TARGET_SHA="deaa9157282e59e8acd6a7da2a82fc9296e44f20"
+TARGET_SHA="2de2d244ec7259e52f9d312587a86ef38c7f512f"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/people_manager_browser_preview_entry.py"
 PREVIEW_PORT="${1:?preview port argument is required}"
@@ -192,7 +192,7 @@ PROD_BEFORE="$(prod_fingerprint)"
 echo "Production ref.person fingerprint: $PROD_BEFORE"
 
 echo
-echo "--- Fetch exact disposable-accepted People metadata candidate ---"
+echo "--- Fetch exact disposable-accepted People metadata runtime plus test repair ---"
 sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
@@ -206,7 +206,7 @@ for f in "$MIGRATION_001" "$MIGRATION_002" "$MIGRATION_003" "$APP_DIR/backend.py
     [[ -s "$f" ]] || { echo "FAIL: exact accepted candidate file missing: $f"; exit 14; }
 done
 
-echo "Exact accepted candidate worktree: $CANDIDATE_WORKTREE"
+echo "Exact browser-review candidate worktree: $CANDIDATE_WORKTREE"
 
 echo
 echo "--- Detached candidate regression in documented production Python ---"
@@ -417,7 +417,8 @@ echo "BROWSER REVIEW READY"
 echo "Open on the Windows workstation:"
 echo "  http://127.0.0.1:$PREVIEW_PORT/"
 echo
-echo "Exact disposable-accepted candidate: $TARGET_SHA"
+echo "Exact browser-review candidate: $TARGET_SHA"
+echo "Runtime application/database accepted at: deaa9157282e59e8acd6a7da2a82fc9296e44f20"
 echo "Preview identity:                   $PREVIEW_EMAIL"
 echo "Production checkout and ref.person remain unchanged."
 echo "Every browser write goes to the disposable current-Production clone."
