@@ -6,16 +6,25 @@
 | System | Production Database — Setup and Deployment |
 | Task | Review and correct the 2025 Setup history |
 | Audience | Authorized Setup reviewers and managers |
-| Status | CURRENT — live 2025 review/training workflow; UI/workflow evaluation remains open |
+| Status | CURRENT — live 2025 review plus current reusable-task development |
 | Owner | MSB Setup administrator |
-| Last Reviewed | 2026-09-07 |
+| Last Reviewed | 2026-09-09 |
 | Keywords | Setup, 2025, historical review, training, reusable task, resources, verification |
 
 ## Purpose
 
-Use the real 2025 Setup Session to reconstruct what happened during the 2025 Setup season, improve reusable Setup knowledge, and learn the Setup application before the 2026 Setup Session is created.
+Use the real 2025 Setup Session to preserve/correct 2025 history while improving reusable Setup knowledge before the 2026 Setup Session is created.
 
-This is both a historical review area and a training area. Changes are real Production changes. The application itself is also still under live evaluation, so questions, suggestions, confusing screens, missing controls, and workflow problems should be reported rather than silently worked around.
+Changes are real Production changes. The reusable catalog reconstruction was accepted in Production on 2026-09-09, and current PostgreSQL is now the working source for task development.
+
+```text
+active reusable tasks    = 185
+total reusable rows      = 187
+reusable prerequisites   = 0
+2026 Setup Sessions      = 0
+```
+
+Historical spreadsheets/schedules remain evidence; they are not a parallel ongoing task master.
 
 ## Open the Setup Application
 
@@ -41,7 +50,7 @@ For this session:
 allowed operational dates = 2025 only
 ```
 
-The browser limits operational dates to 2025 and the database independently enforces the same rule. A correction recorded during 2026 may still have a 2025 operational date; its audit/update timestamp remains the real 2026 recording time.
+The browser limits operational dates to 2025 and the database independently enforces the same rule. Audit/update timestamps remain the real current recording time.
 
 ## Understand the Two Kinds of Changes
 
@@ -49,14 +58,12 @@ The browser limits operational dates to 2025 and the database independently enfo
 
 These changes describe what happened or was planned in 2025. Examples include:
 
-- verification state;
+- verification/reconciliation state;
 - actual crew count or duration when known;
 - actual start/completion information when known;
 - annual notes;
 - 2025-specific planned order; and
 - 2025 work-day/scheduling information when useful for reconstruction.
-
-These changes belong to 2025 and do not become 2026 history.
 
 ### Reusable Task knowledge
 
@@ -66,45 +73,39 @@ These changes describe how MSB normally performs Setup work. Examples include:
 - Park Infrastructure / Stage / Scene scope;
 - normal local sequence/order;
 - normal crew size and expected duration;
-- prerequisites;
+- Physical Effort;
+- prerequisites/readiness;
 - equipment/resources and quantities;
-- completion point;
-- readiness/weather notes; and
+- completion point; and
 - other reusable instructions that should carry forward.
 
-Reusable Task changes are permanent Setup knowledge and may become part of the starting point for future seasons.
+Reusable Task changes are permanent Setup knowledge and may become part of future seasons.
 
-Before changing reusable information, ask:
+## Review / Reconciliation States
 
-> Is this a general Setup rule we want to carry forward, or is this only something that happened in 2025?
-
-If it happened only in 2025, record it in the annual history instead.
-
-## Review a Task
-
-1. Open the 2025 Historical Verification session.
-2. Select a task from the review list.
-3. Read the reusable task information and the 2025 annual information separately.
-4. Compare the record with what you know, current procedures, and other reliable 2025 evidence.
-5. Correct only fields you can support.
-6. Add useful annual notes when the information is specific to 2025.
-7. Set the verification state only after the record has actually been reviewed.
-
-Normal verification states are:
+Current states are:
 
 ```text
 UNVERIFIED
+NEEDS_CORRECTION
 VERIFIED
-NEEDS CORRECTION
+ASSIGNED
 ```
 
-Do not mark a task VERIFIED merely because it exists.
+- `UNVERIFIED` — not yet sufficiently reviewed.
+- `NEEDS_CORRECTION` — known to need work.
+- `VERIFIED` — accepted annual record after review.
+- `ASSIGNED` — accepted as belonging to its current reusable task definition.
 
-## Add Missing Tasks
+`ASSIGNED` is a reconciliation state, not an execution/completion state. Assigned items leave the default actionable queue but remain available through the Assigned filter.
 
-If a real Setup activity is missing, Managers may add a reusable task when the work should exist as a normal Setup task beyond just one historical occurrence.
+Reassigning/merging an annual item to a different reusable task remains a separate governed workflow.
 
-Before adding it, decide the appropriate scope:
+## Add Missing Reusable Tasks
+
+If real Setup work is missing, Managers may add a reusable task when the work should normally exist beyond one historical occurrence.
+
+Use the correct scope:
 
 ```text
 Park Infrastructure / no LOR Stage
@@ -112,25 +113,23 @@ Stage-level / General
 Scene
 ```
 
-Use **Add Task Here** in the appropriate scope. Use **Copy** when a new reusable task is substantially similar to an existing one, then review the copied definition carefully.
+Use **Add Task Here** or **Copy** where appropriate.
 
-Do not create a task for every ordinary action. A task is useful when it can realistically be missed, affects planning/readiness/resources, needs progress/completion tracking, or preserves historical learning worth carrying forward.
+Do not create a reusable task for ordinary transport merely because an old schedule recorded it. Example: `Bring Frosty to park` remains logistics evidence; the missing reusable work is physical `Set Up Frosty`.
 
-## Review Resources and Prerequisites
+## Review Resources, Effort, Prerequisites, and Readiness
 
-For reusable tasks, check whether the practical requirements are represented correctly.
+For reusable tasks, check whether practical requirements are represented correctly:
 
-Examples include:
+- lifts/vehicles/trailers/tools;
+- powered stake pounders or other recurring resources;
+- Physical Effort where known;
+- predecessor tasks that must complete first; and
+- readiness conditions that block work even when predecessors are complete.
 
-- lifts;
-- vehicles;
-- trailers;
-- tools;
-- powered stake pounders;
-- other recurring equipment/resources; and
-- predecessor tasks that must complete first.
+The current prerequisite set is intentionally empty after reconstruction. Rebuild dependencies deliberately and distinguish hard predecessor, preferred order, and readiness condition. Do not invent dependencies merely to fill fields.
 
-Use structured resources and prerequisites where they represent repeatable Setup knowledge. Do not invent quantities or dependencies just to fill fields.
+Current confirmed example: `Set Up Frosty` must be added and must precede the applicable Stars setup work.
 
 ## Procedures and Instructions
 
@@ -138,46 +137,40 @@ Where a Setup task has a current published Setup procedure, the application may 
 
 If an editable procedure is corrected, the current published PDF must also be updated before the instruction is treated as current.
 
-Detailed document-publishing instructions are owned by the Google Drive / Display Folder workflow. Do not reorganize folders merely to make the Setup review screen look cleaner.
-
 ## Ask Questions and Make Suggestions
 
-The application is intentionally being evaluated through real use. During the review period, report things such as:
+Report things such as:
 
 - information that is hard to understand;
-- fields that appear unnecessary;
-- missing information you need to make a Setup decision;
+- missing information needed to make a Setup decision;
 - awkward or repetitive steps;
-- task organization that does not match how crews actually work;
+- task organization that does not match real work;
 - resources or prerequisites that are difficult to represent;
-- confusing wording;
 - missing search/filter/navigation behavior; and
-- ideas that would make the 2026 Setup process easier.
+- ideas that would make 2026 planning or field work easier.
 
-A useful finding does not have to be a software bug. Workflow and data-model suggestions are part of this review.
+Issue #133 separately tracks Stage-level ↔ Scene drag/drop. The limitation is non-blocking because governed scope editing still exists.
 
 ## What Reviewers Cannot Do
 
 Normal reviewers/managers cannot:
 
 - create the 2026 Setup Session; or
-- use **Use Current Order as Future Baseline** unless they have Administrator authority.
+- promote an annual order into the reusable future baseline unless they have Administrator authority.
 
-Those controls are intentionally restricted so training/review work in the 2025 session cannot accidentally create or promote future-season state.
-
-Pick List generation and Container/Display movement/scanning writes are not part of the current live-review workflow.
+Pick List generation and Container/Display movement/scanning writes are not part of the current live workflow.
 
 ## What Successful Review Looks Like
 
-A useful 2025 review leaves:
+A useful review leaves:
 
 - 2025 annual facts corrected where evidence exists;
 - uncertain information left UNVERIFIED or marked NEEDS CORRECTION;
-- missing reusable tasks added where appropriate;
-- reusable task scope, resources, prerequisites, order, and normal expectations improved where the change should carry forward;
-- no 2026 operational dates in the 2025 session;
+- accepted annual-to-reusable identity mappings marked ASSIGNED where appropriate;
+- missing reusable tasks added directly to the current PostgreSQL catalog;
+- reusable task scope, resources, effort, prerequisites/readiness, order, and normal expectations improved where the change should carry forward;
 - no fake records created only for testing; and
-- questions, suggestions, and UI/workflow issues captured for follow-up before final subsystem acceptance.
+- no 2026 Session created before the catalog/predecessor model is ready.
 
 ## Related Documents
 
