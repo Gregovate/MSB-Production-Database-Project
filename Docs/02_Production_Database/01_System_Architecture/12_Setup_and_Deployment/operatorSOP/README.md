@@ -5,9 +5,9 @@
 | Document Type | Operator Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | MSB reviewers, managers, and Setup operators |
-| Status | CURRENT — Production runtime operational; UI/workflow in live evaluation |
+| Status | CURRENT — Production reusable catalog rebuilt; live review/task development continues |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-07 |
+| Last Reviewed | 2026-09-09 |
 | Keywords | Setup, 2025, historical review, training, reusable tasks, resources, 2026 baseline |
 
 Use this area for plain-English instructions for working in the Setup application. Engineering, database, service, permission, and deployment details belong in [`../engineering/`](../engineering/README.md).
@@ -26,22 +26,37 @@ The current shared working session is:
 2025 — Historical Verification
 ```
 
-The application uses real Production data. It is available for manager/reviewer use now, but the UI/workflow is still being evaluated through real 2025 review work.
+The application uses real Production data.
+
+The reusable catalog reconstruction was accepted in Production on 2026-09-09. Current working baseline:
+
+```text
+active reusable tasks    = 185
+total reusable rows      = 187
+reusable prerequisites   = 0
+2026 Setup Sessions      = 0
+```
+
+The prerequisite count is intentionally zero until the reviewed predecessor/readiness pass rebuilds the real dependency model.
+
+The current PostgreSQL catalog is now the working source for task development. The reconstruction workbook and historical schedules remain evidence, but operators/managers should continue adding and correcting real reusable tasks in the live Setup application rather than maintaining a separate spreadsheet master.
 
 ## What Do You Need To Do?
 
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — verify 2025 information, improve reusable Setup knowledge, add missing tasks/resources where appropriate, and record questions or suggestions.
 
-Additional task procedures will be added only when the corresponding workflow is actually production-operational.
+Additional task procedures will be added only when the corresponding workflow is actually Production-operational.
 
 ## Important Boundaries
 
 - The 2025 review area uses real Production data.
 - Annual 2025 corrections stay with the 2025 Setup Session.
 - Reusable Task changes are permanent Setup knowledge and may affect future seasons.
+- Continue reusable task development against the current PostgreSQL catalog; do not recreate a parallel spreadsheet master.
 - Operational dates entered for the selected Setup Session must be in that session's year.
 - Only an Administrator may create a new annual Setup Session or carry annual order forward as the future reusable baseline.
-- Pick Lists and Container/Display movement/scanning writes are not part of the current live-review workflow.
+- Do not create the 2026 Setup Session until the current catalog and predecessor/readiness pass are useful enough for planning.
+- Pick Lists and Container/Display movement/scanning writes are not part of the current live workflow.
 - Do not create fake records merely to test the UI. Use real review work and report workflow/UI findings instead.
 
 ## During Live Evaluation
@@ -49,13 +64,15 @@ Additional task procedures will be added only when the corresponding workflow is
 Managers and reviewers are encouraged to:
 
 - open tasks and compare annual 2025 information with reusable task information;
-- add genuinely missing reusable tasks;
+- add genuinely missing reusable tasks discovered during live review;
 - add/correct resources and prerequisites;
-- correct task scope, order, crew/time expectations, and notes where supported;
+- correct task scope, order, crew/time expectations, effort, and notes where supported;
 - verify records only when they have actually been reviewed;
 - leave uncertain information UNVERIFIED or mark it NEEDS CORRECTION;
 - ask questions and make suggestions about confusing, missing, or inefficient workflow; and
 - report UI problems instead of working around them silently.
+
+A current example is the missing physical `Set Up Frosty` task discovered after catalog deployment. The old transport entry `Bring Frosty to park` remains logistics evidence; the live catalog needs the reusable physical setup task and its Stars prerequisite relationship.
 
 ## Related Documents
 
