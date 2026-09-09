@@ -47,6 +47,7 @@ The broad Setup subsystem remains open for real 2025 evaluation. Production avai
 
 ## Start Here
 
+- [Setup Catalog Reconstruction Import — 2026-09-09](Setup_Catalog_Reconstruction_Import_2026-09-09.md) — current implementation candidate for converting the reviewed one-list reconstruction into a normalized reusable catalog before 2026 creation: effort metadata, current Stage/Scene identity, Locate/Layout normalization, logistics boundary, mixed-stage Container rule, dependency reset, and disposable acceptance gate.
 - [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — operator-confirmed planning model: short planning horizon, preferred-order scheduling, Needs Scheduling queue, Sunday avoidance, weather constraints, grass-cutting dependency for cords, multi-day tasks, crew/hour interpretation, mixed-stage Container mobilization, and Rick spreadsheet evidence rules.
 - [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — operator-confirmed missing planning surface between reusable Stage-organized tasks and the short-range schedule: cross-Stage Available/Blocked/In-Progress candidates, operator choice of what can/should happen next, and Arch Trailer unload/access order.
 - [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — standalone Setup Pick List direction: tablet-first workflow, scan integration, task-to-Container resolver, mixed-stage Container behavior, and explicit statement that Pick List generation is not yet implemented.
@@ -194,17 +195,18 @@ Before changing this subsystem:
 
 1. read the Production Database Project Rules;
 2. read this engineering portal;
-3. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
-4. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
-5. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing staging/logistics/pick behavior;
-6. review issue #122 and PR #125 for newest live-reconstruction findings;
-7. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
-8. preserve annual 2025 facts separately from reusable future knowledge;
-9. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
-10. use issue #130 / 03 People and Identity for global skill/qualification work;
-11. use issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
-12. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
-13. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
+3. read the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) while the reusable-catalog import candidate is active;
+4. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
+5. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
+6. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing staging/logistics/pick behavior;
+7. review issue #122 and PR #125 for newest live-reconstruction findings;
+8. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
+9. preserve annual 2025 facts separately from reusable future knowledge;
+10. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
+11. use issue #130 / 03 People and Identity for global skill/qualification work;
+12. use issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
+13. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
+14. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
 
 ## Related Systems
 
