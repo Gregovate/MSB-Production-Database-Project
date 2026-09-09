@@ -38,6 +38,13 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* The original select remains as the backing value store for the type-ahead.
+   Some global label/select rules override the browser's default [hidden]
+   behavior, so force the backing control completely out of the rendered UI. */
+.setup-captain-picker-grid > label[hidden] {
+  display: none !important;
+}
+
 #setup-captain-person {
   min-height: 0;
 }
