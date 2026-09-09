@@ -1,6 +1,6 @@
 # People Manager Acceptance
 
-People Manager application/database changes must be proven against a disposable database restored from the current Production database before any Production mutation.
+People Manager must be proven against a disposable database restored from the current Production database before any Production mutation.
 
 ## Governing Runtime Authority
 
@@ -25,122 +25,106 @@ Gregovate/MSB-Server-Management
 docs/server/Production_Database_Change_Deployment_Runbook.md
 ```
 
-Do not invent alternate SSH, Docker, PostgreSQL clone, readiness, preview-process, cleanup, or Production deployment procedures in the People feature.
+The files in this `People/Acceptance/` folder provide only People-specific candidate migrations, assertions, browser-review entry/cleanup pieces, and retained evidence. Do not invent alternate SSH, Docker, PostgreSQL clone, readiness, preview-process, cleanup, or Production deployment behavior here.
 
-## Current Acceptance State — 2026-09-09
+## Current accepted database/backend gate
 
-The original contact/identity candidate passed disposable acceptance, but the governed browser review later returned:
-
-```text
-CHANGES REQUIRED — RETURN TO ENGINEERING
-```
-
-The operator finding was that the screen omitted capabilities, formal qualifications, Setup/Takedown participation/eligibility, and reusable-task leadership visibility already required by issue #130.
-
-Those areas are now implemented through:
+Exact People metadata application/database candidate accepted by the 2026-09-09 current-Production disposable-clone gate:
 
 ```text
-People/Database/001_create_people_manager_contract.sql
-People/Database/002_harden_people_search_phone_filter.sql
-People/Database/003_create_people_metadata_contract.sql
-People/Application/*
+deaa9157282e59e8acd6a7da2a82fc9296e44f20
 ```
 
-The new application/database candidate is **not accepted yet**. Because application/database behavior changed, the previous disposable PASS does not carry forward.
-
-Required order now:
+Server report:
 
 ```text
-fresh current-Production disposable acceptance of 001 + 002 + 003
-    -> exact candidate browser review
-    -> operator disposition
-    -> separate Production deployment gate only if accepted
+/tmp/MSB_People_Manager_Disposable_20260909-183640.txt
 ```
 
-## Disposable Acceptance Runner
+Production `ref.person` fingerprint remained unchanged:
 
-From Greg's Windows repository checkout:
+```text
+47f494107952a84f30a406374b8d01d7
+```
+
+Accepted clone behavior includes:
+
+- least-privilege People metadata boundary;
+- person create + reserved MSB email;
+- same-person deactivate/reactivate;
+- capability catalog + person capability;
+- formal qualification dates/evidence;
+- Setup/Takedown participation and eligibility roles;
+- existing reusable-task leadership visible but not directly writable by `people_app`;
+- metadata actor/audit stamping; and
+- no normal People delete function.
+
+## Current browser-review candidate
+
+Browser review found the initial People presentation inconsistent with the established MSB browser applications. That finding is retained in:
+
+```text
+People_Manager_UI_Consistency_Browser_Finding_2026-09-09.md
+```
+
+The corrected browser candidate is:
+
+```text
+de549757c8d040d34494304a08944f7f4b444b30
+```
+
+The browser launcher independently proves that `People/Database`, `People/Application/backend.py`, and `People/Application/people.js` are unchanged from the disposable-accepted SHA before it starts this presentation-only correction.
+
+The corrected UI now follows the established MSB application conventions:
+
+- official Making Spirits Bright blue logo and shared application header;
+- shared `msb-theme` Dark / Light behavior;
+- FieldWiring / Controller style color tokens, cards, borders, buttons, and compact typography;
+- sticky compact People list at left and separated detail cards at right;
+- Contact, Capabilities, Qualifications, Setup/Takedown roles, and reusable-task leadership separated into distinct cards;
+- protected system state moved to a collapsed technical-details block at the bottom; and
+- current database relationships also collapsed as technical details rather than occupying the primary edit flow.
+
+Run browser review from a clean Windows worktree:
 
 ```powershell
 git pull
-.\People\Acceptance\run_people_manager_disposable_acceptance.ps1
-```
-
-The wrapper follows the Server Management standard:
-
-- one bundled SCP transfer;
-- one foreground SSH session;
-- Linux line-ending normalization;
-- Production access limited to `SELECT` and `pg_dump`;
-- current Production restored into a separate disposable PostGIS container;
-- final PostGIS PostgreSQL readiness requires container PID 1 to be `postgres` plus `pg_isready`;
-- migrations `001`, `002`, and `003` apply only to the clone;
-- all test writes remain clone-only; and
-- Production `ref.person` is fingerprinted before/after and must remain unchanged.
-
-Retained report:
-
-```text
-/tmp/MSB_People_Manager_Disposable_YYYYMMDD-HHMMSS.txt
-```
-
-### Current disposable acceptance cases
-
-The runner proves at least:
-
-1. current Production clone dependencies are present;
-2. `people_app` has narrow approved function execution but no broad direct People/Setup DML;
-3. person create still reserves the standard first-initial + last-name MSB identity;
-4. the same `person_id` can be deactivated/reactivated;
-5. capability catalog + person capability relationship works;
-6. formal qualification dates/evidence are preserved separately from capabilities;
-7. all four current Setup/Takedown participation/eligibility roles work independently;
-8. existing Setup leadership is visible through People Manager while `people_app` cannot directly write `ref.setup_task_captain`;
-9. metadata writes use the existing authenticated actor/audit path; and
-10. no normal People delete function exists.
-
-A disposable PASS still does not authorize Production deployment.
-
-## Browser Review — only after the fresh disposable PASS
-
-The browser-review launcher must be pinned to the exact application/database SHA that passes the fresh disposable gate before another browser session is started.
-
-Current Server Management rules remain mandatory:
-
-- explicit preview port required;
-- `8794` is Production Setup and must never be used/cleaned as preview state;
-- selected port must be verified unused;
-- browser does not auto-open;
-- wait for `BROWSER REVIEW READY` before opening the localhost URL;
-- `msbadmin` cannot traverse protected runtime paths under `/opt/fieldwiring`/`/opt/msb-setup`;
-- runtime checks and Python execution occur as `fieldwiring` through foreground `sudo`; and
-- cleanup preserves the original failure status and verifies only invariants actually captured before failure.
-
-After the browser harness is pinned to the newly accepted SHA, the normal launch shape remains:
-
-```powershell
 .\People\Acceptance\run_people_manager_browser_preview.ps1 -PreviewPort 8795
 ```
 
-`8795` is only an example candidate port; server preflight must prove it is unused.
+`8795` is only an example operator-selected candidate port; the runner verifies it is unused. Production Setup permanently owns `8794`, which must never be used or cleaned as a preview port.
 
-### Required browser review after metadata acceptance
+Do not open the browser until the runner prints:
 
-At minimum exercise:
+```text
+BROWSER REVIEW READY
+```
 
-1. search by name/email/phone and **Include inactive**;
-2. activate an existing inactive person and save;
-3. add a clone-only person and verify **Build email** + save;
-4. edit/deactivate/reactivate that same clone-only `person_id`;
-5. duplicate and MSB-email collision review;
-6. **Capabilities** — create a controlled catalog item, assign it, deactivate/reactivate it, and inspect notes;
-7. **Qualifications** — create a controlled qualification type and a clone-only dated qualification with completion/validity/expiration and certificate/evidence fields, then edit/deactivate/reactivate it;
-8. **Setup / Takedown participation & eligibility** — exercise `SETUP_VOLUNTEER`, `TAKEDOWN_VOLUNTEER`, `CAPTAIN_CANDIDATE`, and `ADVISOR_CANDIDATE` independently;
-9. **Reusable-task leadership** — confirm existing Captain/Alternate/Advisor assignments are visible but not editable from this People metadata screen;
-10. protected Directus/MSB identity fields remain protected; and
-11. no person delete action exists.
+Then open the localhost URL printed by the runner.
 
-Operator disposition must be one of:
+Minimum browser review now includes:
+
+1. shared MSB logo/header/button treatment and Dark / Light mode;
+2. compact list/detail layout with clear card separation and no large protected-state block in the middle of editable content;
+3. search and Include inactive;
+4. person create/edit/deactivate/reactivate and reserved email;
+5. capability catalog + assignment + notes + deactivate/reactivate;
+6. qualification catalog + completed/valid/expiry dates + role + certificate + evidence + notes + active state;
+7. Setup Volunteer, Takedown Volunteer, Captain Candidate, and Advisor Candidate persistence;
+8. read-only reusable-task Captain/Alternate/Advisor visibility;
+9. protected Directus-linked identity behavior;
+10. duplicate and MSB-email collision review; and
+11. no person delete or merge action in this candidate.
+
+If the preview is interrupted, use:
+
+```powershell
+.\People\Acceptance\run_people_manager_browser_preview_cleanup.ps1 -PreviewPort 8795
+```
+
+Never pass a Production listener such as `8794` to cleanup.
+
+The browser-review disposition must be one of:
 
 ```text
 ACCEPTED FOR PRODUCTION DEPLOYMENT GATE
@@ -148,16 +132,4 @@ CHANGES REQUIRED — RETURN TO ENGINEERING
 REVIEW INCOMPLETE — NO PRODUCTION APPROVAL
 ```
 
-## Cleanup
-
-If a browser preview is interrupted after it has been started, use the same explicit preview port with:
-
-```powershell
-.\People\Acceptance\run_people_manager_browser_preview_cleanup.ps1 -PreviewPort 8795
-```
-
-Never pass a Production listener such as `8794` to preview cleanup.
-
-## Production Boundary
-
-Nothing in this folder authorizes a Production mutation. Production promotion requires a later separate explicit Production approval and the Server Management Production Database deployment runbook.
+A browser-review PASS still does not authorize Production deployment.
