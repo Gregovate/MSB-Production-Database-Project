@@ -9,7 +9,7 @@ NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 TARGET_REF="agent/people-manager-milestone1-20260908"
-TARGET_SHA="7cd4c02420f564c1fe563d0c12052480c6ce6f6b"
+TARGET_SHA="0d099437ceddb6c9019eca7353e65d84a310c633"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/people_manager_browser_preview_entry.py"
 PREVIEW_PORT="${1:?preview port argument is required}"
@@ -230,21 +230,14 @@ sudo docker run -d \
     -e POSTGRES_DB=postgres \
     "$IMAGE" >/dev/null
 
-# Server Management PostgreSQL Disposable Acceptance Standard: pg_isready can
-# succeed against the PostGIS image's temporary initialization server. Wait for
-# the final server to be container PID 1 and ready before createdb/restore.
 ready=0
 pid1=""
 for _ in $(seq 1 120); do
     if [[ "$(sudo docker inspect "$TEST_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]]; then
         break
     fi
-
     pid1="$(sudo docker exec "$TEST_CONTAINER" sh -c 'cat /proc/1/comm' 2>/dev/null | tr -d '\r\n' || true)"
-
-    if [[ "$pid1" == "postgres" ]] && \
-       sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-           pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+    if [[ "$pid1" == "postgres" ]] && sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
         ready=1
         break
     fi
@@ -258,21 +251,16 @@ if [[ "$ready" -ne 1 ]]; then
 fi
 
 echo "Disposable PostgreSQL final server ready"
-sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-    createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"
-sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-    pg_restore -U "$DB_ACTOR" -d "$TEST_DB" --no-owner --no-acl --exit-on-error \
-    < "$DUMP_FILE"
+sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"
+sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" pg_restore -U "$DB_ACTOR" -d "$TEST_DB" --no-owner --no-acl --exit-on-error < "$DUMP_FILE"
 echo "Disposable production clone restored"
 
 psql_test() {
-    sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" "$@"
+    sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" "$@"
 }
 
 psql_test_quiet() {
-    sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" "$@"
+    sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" "$@"
 }
 
 echo
@@ -305,14 +293,12 @@ BEGIN
        OR has_table_privilege('people_app', 'ref.person', 'DELETE') THEN
         RAISE EXCEPTION 'Preview people_app unexpectedly has direct ref.person privileges';
     END IF;
-
     IF has_table_privilege('people_app', 'public.directus_users', 'SELECT')
        OR has_table_privilege('people_app', 'public.directus_roles', 'SELECT')
        OR has_table_privilege('people_app', 'public.directus_access', 'SELECT')
        OR has_table_privilege('people_app', 'public.directus_policies', 'SELECT') THEN
         RAISE EXCEPTION 'Preview people_app unexpectedly has direct Directus system-table access';
     END IF;
-
     IF NOT has_function_privilege('people_app', 'ref.people_search(text,text,boolean)', 'EXECUTE')
        OR NOT has_function_privilege('people_app', 'ref.people_person_detail(text,integer)', 'EXECUTE')
        OR NOT has_function_privilege('people_app', 'ref.people_person_dependencies(text,integer)', 'EXECUTE')
@@ -348,10 +334,7 @@ echo "--- Verify documented Python runtime can load People dependencies ---"
 sudo -u fieldwiring -H "$PRODUCTION_PYTHON" -c "import flask, psycopg2; print('People preview Python dependencies: PASS')"
 
 echo
-echo "--- Start exact accepted People Manager Flask candidate ---"
-# Per the browser-review runbook, sudo remains foreground/TTY-bound while it
-# switches to the fieldwiring runtime account. Only the already-authorized child
-# shell backgrounds the Flask process with setsid.
+echo "--- Start exact People Manager browser-review candidate ---"
 PREVIEW_PGID="$(
     sudo -u fieldwiring -H env \
         PEOPLE_DATABASE_DSN="$DSN" \
@@ -406,8 +389,8 @@ echo "BROWSER REVIEW READY"
 echo "Open on the Windows workstation:"
 echo "  http://127.0.0.1:$PREVIEW_PORT/"
 echo
-echo "Exact accepted candidate: $TARGET_SHA"
-echo "Preview identity:         $PREVIEW_EMAIL"
+echo "Exact browser-review candidate: $TARGET_SHA"
+echo "Preview identity:               $PREVIEW_EMAIL"
 echo "Production checkout and ref.person remain unchanged."
 echo "Every browser write goes to the disposable current-Production clone."
 echo
@@ -417,9 +400,10 @@ echo "  2. Open existing people; inspect protected identity and relationships."
 echo "  3. Open a Directus-linked person; confirm MSB email/build controls are protected."
 echo "  4. Add a clone-only person; use Build email and Save person."
 echo "  5. Edit that clone-only person's contact data; save, deactivate, then reactivate."
-echo "  6. Trigger a duplicate-name/contact warning and review the acknowledgement behavior."
-echo "  7. Trigger an MSB-email collision and review alternate-email acknowledgement."
-echo "  8. Confirm there is no person delete action."
+echo "  6. Re-test an existing inactive person: activate and save without a false stale-record conflict."
+echo "  7. Trigger a duplicate-name/contact warning and review the acknowledgement behavior."
+echo "  8. Trigger an MSB-email collision and review alternate-email acknowledgement."
+echo "  9. Confirm there is no person delete action."
 echo
 echo "Suggested clone-only last name for easy cleanup/review: Preview$STAMP"
 echo
