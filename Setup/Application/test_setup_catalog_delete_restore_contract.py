@@ -33,7 +33,16 @@ def test_catalog_delete_sync_is_idempotent_under_mutation_observers():
     assert "attributeFilter: ['hidden']" in js
 
 
-def test_cleanup_js_assets_are_cache_busted_together():
+def test_catalog_delete_returns_through_existing_catalog_origin_control():
+    js = (ROOT / "setup_training_review_refinement.js").read_text(encoding="utf-8")
+    assert "const returnButton = document.getElementById('setup-return-library');" in js
+    assert "const returnWrap = document.getElementById('setup-return-library-wrap');" in js
+    assert "returnThroughCatalogOrigin" in js
+    assert "returnButton.click();" in js
+
+
+def test_cleanup_assets_are_cache_busted_together():
     html = (ROOT / "production.html").read_text(encoding="utf-8")
-    assert 'setup_training_review_refinement.js?v=2026-09-09.2' in html
-    assert 'setup_catalog_effort.js?v=2026-09-09.2' in html
+    assert 'setup_training_review_refinement.css?v=2026-09-09.3' in html
+    assert 'setup_training_review_refinement.js?v=2026-09-09.3' in html
+    assert 'setup_catalog_effort.js?v=2026-09-09.3' in html
