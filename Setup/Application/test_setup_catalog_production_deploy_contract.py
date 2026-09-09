@@ -3,15 +3,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "Setup" / "Acceptance" / "run_setup_catalog_reconstruction_production_deploy.ps1"
 SERVER = ROOT / "Setup" / "Acceptance" / "setup_catalog_reconstruction_production_deploy_server.sh"
-ACCEPTED = "19239e3584a66913ecaa5f0406434be54618c303"
+ACCEPTED = "5a8a317357ffa5d77c38bc4df63fe6c7b451dbaf"
+ACCEPTED_REF = "agent/setup-catalog-reconstruction-production-accepted-20260909"
 
 
 def test_catalog_production_deploy_pins_exact_accepted_target():
     launcher = LAUNCHER.read_text(encoding="utf-8")
     server = SERVER.read_text(encoding="utf-8")
     assert ACCEPTED in launcher
-    assert f'TARGET_SHA="{ACCEPTED}"' in server
-    assert "agent/setup-catalog-reconstruction-20260909" in server
+    assert ACCEPTED_REF in launcher
+    assert 'TARGET_SHA="19239e3584a66913ecaa5f0406434be54618c303"' in server
+    assert 'TARGET_REF="agent/setup-catalog-reconstruction-20260909"' in server
+    assert "$serverText.Replace($oldRef, $newRef).Replace($oldSha, $newSha)" in launcher
 
 
 def test_catalog_production_deploy_uses_runbook_runtime_and_only_023_024():
