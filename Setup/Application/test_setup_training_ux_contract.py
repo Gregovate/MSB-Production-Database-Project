@@ -18,8 +18,12 @@ def test_training_ux_assets_are_loaded_after_live_review_fixes():
     html = read("production.html")
     live_index = html.index("setup_live_review_fixes.js?v=2026-09-08.3")
     training_index = html.index("setup_training_ux.js?v=2026-09-08.1")
+    assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
+    refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-08.1")
     assert "setup_training_ux.css?v=2026-09-08.1" in html
+    assert "setup_training_review_refinement.css?v=2026-09-08.1" in html
     assert training_index > live_index
+    assert refinement_index > assigned_index > training_index
 
 
 def test_catalog_open_gets_contextual_return_navigation():
@@ -38,11 +42,17 @@ def test_verification_queue_open_clears_catalog_return_context():
     assert "clearLibraryOrigin" in js
 
 
-def test_return_control_is_sticky_and_hidden_when_not_in_catalog_flow():
-    css = read("setup_training_ux.css")
-    assert ".setup-return-library-wrap" in css
-    assert "position: sticky" in css
-    assert ".setup-return-library-wrap[hidden]" in css
+def test_return_control_moves_beside_reusable_task_actions_and_remains_contextual():
+    base_js = read("setup_training_ux.js")
+    refinement_js = read("setup_training_review_refinement.js")
+    refinement_css = read("setup_training_review_refinement.css")
+    assert ".setup-return-library-wrap[hidden]" in read("setup_training_ux.css")
+    assert "returnState.fromLibrary" in base_js
+    assert "reusable-manager-actions" in refinement_js
+    assert "insertBefore(wrap, deleteButton" in refinement_js
+    assert "#reusable-manager-actions .setup-return-library-wrap" in refinement_css
+    assert "display: contents" in refinement_css
+    assert "position: static" in refinement_css
 
 
 def test_catalog_detail_adds_database_resolved_material_logistics_section():
@@ -66,14 +76,29 @@ def test_material_context_exposes_knowledge_gaps_instead_of_hard_coding_ids():
     assert "hard-coded Procedure text" in js
 
 
+def test_material_details_are_collapsed_out_of_the_main_task_page():
+    js = read("setup_training_review_refinement.js")
+    css = read("setup_training_review_refinement.css")
+    assert "View Material Details" in js
+    assert "setup-material-details-dialog" in js
+    assert "showModal()" in js
+    assert ".setup-material-container, .setup-support-container-block" in js
+    assert "Open the Container / Display list and relationship reasons only when needed." in js
+    assert ".setup-material-details-dialog" in css
+    assert "overflow: auto" in css
+
+
 def test_material_context_has_theme_safe_responsive_styles():
     css = read("setup_training_ux.css")
+    refinement_css = read("setup_training_review_refinement.css")
     assert ".setup-material-summary" in css
     assert ".setup-material-container" in css
     assert ".setup-support-container-block" in css
     assert ".setup-controller-context-note" in css
     assert "var(--theme-subtle)" in css
     assert "var(--border)" in css
+    assert "var(--card)" in refinement_css
+    assert "var(--text)" in refinement_css
 
 
 def test_captain_ui_uses_directory_people_and_preserves_reusable_knowledge_boundary():
@@ -90,6 +115,18 @@ def test_captain_ui_uses_directory_people_and_preserves_reusable_knowledge_bound
     assert "No Captain / Alternate / Advisor assigned" in js
     assert ".setup-captain-section" in css
     assert ".setup-captain-manager[hidden]" in css
+
+
+def test_captain_picker_is_collapsed_typeahead_not_always_open_directory_list():
+    js = read("setup_training_review_refinement.js")
+    css = read("setup_training_review_refinement.css")
+    assert "select.removeAttribute('size')" in js
+    assert "selectLabel.hidden = true" in js
+    assert "Type at least 2 characters" in js
+    assert "setup-captain-typeahead-results" in js
+    assert ".slice(0, 10)" in js
+    assert "Selected:" in js
+    assert ".setup-captain-typeahead-results[hidden]" in css
 
 
 def test_captain_database_contract_uses_existing_relation_and_narrow_commands():
@@ -116,6 +153,18 @@ def test_captain_api_reads_projections_and_writes_only_security_definer_command(
     assert "ref.setup_captain_person_list" in api_source
     assert "ref.set_setup_task_captain" in api_source
     assert "require_manager()" in api_source
+
+
+def test_reusable_task_match_action_is_explicit_about_target_and_scope():
+    js = read("setup_assigned_review.js")
+    assert "Confirm Reusable Task Match" in js
+    assert "Matched to Reusable Task" in js
+    assert "Current reusable scope:" in js
+    assert "does NOT move the task or change its Stage / Scene scope" in js
+    assert "setup-reusable-match-target" in js
+    assert "2025 item → reusable task match" in js
+    assert "verification_state: 'ASSIGNED'" in js
+    assert "MATCH CONFIRMED" in js
 
 
 def test_reconstruction_delete_is_visible_only_in_historical_manager_context():
@@ -160,6 +209,8 @@ def test_training_api_is_registered_and_static_assets_are_allowlisted():
     assert "app.register_blueprint(setup_training_api)" in host
     assert '"setup_training_ux.css"' in host
     assert '"setup_training_ux.js"' in host
+    assert '"setup_training_review_refinement.css"' in host
+    assert '"setup_training_review_refinement.js"' in host
     assert '@setup_training_api.delete("/api/setup/tasks/<int:setup_task_id>/reconstruction-delete")' in api_source
     assert "ref.delete_setup_reconstruction_task" in api_source
     assert "conn.set_session(readonly=False, autocommit=False)" in api_source
