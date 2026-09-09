@@ -51,7 +51,7 @@ try {
     }
 
     $remoteScript = "$remoteRoot/people_manager_browser_preview_cleanup_server.sh"
-    & ssh -tt $Server "chmod 700 '$remoteScript' && bash -n '$remoteScript' && bash '$remoteScript' '$PreviewPort'; rm -rf '$remoteRoot'"
+    & ssh -tt $Server "chmod 700 '$remoteScript' && bash -n '$remoteScript' && bash '$remoteScript' '$PreviewPort' && rm -rf '$remoteRoot'"
     if ($LASTEXITCODE -ne 0) {
         throw "People Manager browser preview stale cleanup failed with exit code $LASTEXITCODE"
     }
