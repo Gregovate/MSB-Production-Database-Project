@@ -66,6 +66,26 @@ def test_return_control_has_distinct_theme_safe_navigation_treatment():
     assert "color: #ffffff" in css
 
 
+def test_effort_save_alignment_uses_primary_button_and_field_baseline():
+    html = read("production.html")
+    js = read("setup_catalog_effort.js")
+    css = read("setup_training_review_refinement.css")
+    assert 'id="save-task-effort" type="button">Save Effort</button>' in html
+    assert "button.classList.remove('secondary')" in js
+    assert "#setup-effort-editor-row" in css
+    assert "grid-template-columns: minmax(0, 1fr) auto" in css
+    assert "align-items: end" in css
+    assert "Effort saves separately from Save Reusable Task." not in js
+
+
+def test_catalog_delete_reuses_existing_back_control_position():
+    js = read("setup_training_review_refinement.js")
+    assert "const returnButton = document.getElementById('setup-return-library');" in js
+    assert "const returnWrap = document.getElementById('setup-return-library-wrap');" in js
+    assert "returnThroughCatalogOrigin" in js
+    assert "returnButton.click();" in js
+
+
 def test_catalog_detail_adds_database_resolved_material_logistics_section():
     js = read("setup_training_ux.js")
     assert "4. Material / Logistics Context" in js
