@@ -127,6 +127,8 @@ def test_captain_picker_is_collapsed_typeahead_not_always_open_directory_list():
     assert ".slice(0, 10)" in js
     assert "Selected:" in js
     assert ".setup-captain-typeahead-results[hidden]" in css
+    assert ".setup-captain-picker-grid > label[hidden]" in css
+    assert "display: none !important" in css
 
 
 def test_captain_database_contract_uses_existing_relation_and_narrow_commands():
