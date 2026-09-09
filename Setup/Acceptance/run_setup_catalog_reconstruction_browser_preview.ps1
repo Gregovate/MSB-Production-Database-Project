@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$AcceptedCandidateSha = 'dd1cbeafe6243089b4ee3b04ea3f67359654381f'
+$AcceptedCandidateSha = '19239e3584a66913ecaa5f0406434be54618c303'
 $repo = (git rev-parse --show-toplevel).Trim()
 if (-not $repo) {
     throw 'Run this launcher from an MSB-Production-Database-Project checkout.'
@@ -83,9 +83,32 @@ function Copy-NormalizedText {
 
 try {
     New-Item -ItemType Directory -Path $localBundle -Force | Out-Null
-    Copy-NormalizedText -Source $serverScript -Destination (Join-Path $localBundle 'setup_catalog_reconstruction_browser_preview_server.sh')
+    $localServer = Join-Path $localBundle 'setup_catalog_reconstruction_browser_preview_server.sh'
+    Copy-NormalizedText -Source $serverScript -Destination $localServer
     Copy-NormalizedText -Source $previewEntry -Destination (Join-Path $localBundle 'setup_session_browser_preview_entry.py')
     Copy-NormalizedText -Source $cleanupScript -Destination (Join-Path $localBundle 'setup_session_browser_preview_cleanup_server.sh')
+
+    # Pin the runtime server script to the exact application/database candidate
+    # that must be re-accepted after the active-catalog effort API correction.
+    $serverText = [System.IO.File]::ReadAllText($localServer)
+    $oldTarget = 'TARGET_SHA="dd1cbeafe6243089b4ee3b04ea3f67359654381f"'
+    $newTarget = "TARGET_SHA=`"$AcceptedCandidateSha`""
+    if (-not $serverText.Contains($oldTarget)) {
+        throw 'Catalog preview server no longer contains the expected accepted-candidate placeholder.'
+    }
+    $serverText = $serverText.Replace($oldTarget, $newTarget)
+
+    # The Flask process runs as fieldwiring. Cleanup therefore must signal its
+    # process group through sudo; a plain msbadmin kill cannot terminate it.
+    $oldTerm = '        kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true'
+    $newTerm = '        sudo kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true'
+    $oldKill = '        kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true'
+    $newKill = '        sudo kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true'
+    if (-not $serverText.Contains($oldTerm) -or -not $serverText.Contains($oldKill)) {
+        throw 'Catalog preview server no longer contains the expected preview-process cleanup commands.'
+    }
+    $serverText = $serverText.Replace($oldTerm, $newTerm).Replace($oldKill, $newKill)
+    [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
     Write-Host '========== SETUP CATALOG RECONSTRUCTION BROWSER PREVIEW =========='
     Write-Host "Server:             $Server"
