@@ -4,14 +4,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "Setup" / "Acceptance" / "run_setup_catalog_reconstruction_browser_preview.ps1"
 SERVER = ROOT / "Setup" / "Acceptance" / "setup_catalog_reconstruction_browser_preview_server.sh"
-ACCEPTED = "dd1cbeafe6243089b4ee3b04ea3f67359654381f"
+CLEANUP = ROOT / "Setup" / "Acceptance" / "setup_session_browser_preview_cleanup_server.sh"
+ACCEPTED = "19239e3584a66913ecaa5f0406434be54618c303"
 
 
 def test_catalog_preview_pins_exact_accepted_candidate():
     launcher = LAUNCHER.read_text(encoding="utf-8")
     server = SERVER.read_text(encoding="utf-8")
     assert ACCEPTED in launcher
-    assert f'TARGET_SHA="{ACCEPTED}"' in server
+    assert '$newTarget = "TARGET_SHA=`"$AcceptedCandidateSha`""' in launcher
+    assert 'TARGET_SHA="dd1cbeafe6243089b4ee3b04ea3f67359654381f"' in server
     assert "agent/setup-catalog-reconstruction-20260909" in server
 
 
@@ -61,7 +63,17 @@ def test_catalog_preview_uses_distinct_upload_and_remote_bundle_paths():
     assert '$remoteRoot = "/tmp/msb-setup-catalog-browser-preview-$stamp"' not in launcher
 
 
-def test_catalog_preview_privilege_mirror_filters_out_procedures():
+def test_catalog_preview_cleanup_handles_fieldwiring_and_catalog_preview_processes():
+    launcher = LAUNCHER.read_text(encoding="utf-8")
+    cleanup = CLEANUP.read_text(encoding="utf-8")
+    assert 'sudo kill -- -\"$PREVIEW_PGID\"' in launcher
+    assert 'sudo kill -KILL -- -\"$PREVIEW_PGID\"' in launcher
+    assert "msb-setup-catalog-browser-preview-run-" in cleanup
+    assert "msb-setup-catalog-preview-" in cleanup
+    assert "msb-setup-catalog-preview-candidate-" in cleanup
+
+
+def test_catalog_preview_mirrors_only_functions_not_procedures():
     server = SERVER.read_text(encoding="utf-8")
     assert "p.prokind IN ('f','w')" in server
     assert "has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE')" in server
