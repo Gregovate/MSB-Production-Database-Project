@@ -12,7 +12,7 @@ TARGET_REF="agent/people-manager-milestone1-20260908"
 TARGET_SHA="7cd4c02420f564c1fe563d0c12052480c6ce6f6b"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/people_manager_browser_preview_entry.py"
-PREVIEW_PORT="${1:-8794}"
+PREVIEW_PORT="${1:?preview port argument is required}"
 PREVIEW_EMAIL="${2:-gliebig@sheboyganlights.org}"
 STAMP="$(date +%Y%m%dT%H%M%S)"
 TEST_CONTAINER="msb-people-browser-preview-${$}"
@@ -84,9 +84,11 @@ cleanup() {
         else
             echo "PASS: production ref.person fingerprint unchanged"
         fi
-    else
+    elif [[ "$status" -eq 0 ]]; then
         echo "FAIL: production ref.person fingerprint was not captured"
         status=98
+    else
+        echo "SKIP: production ref.person fingerprint after-check; preflight exited before fingerprint capture"
     fi
 
     if [[ -n "$LIVE_HEAD" ]]; then
@@ -130,8 +132,12 @@ if [[ ! "$PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( PREVIEW_PORT < 1024 || PREVIEW_PORT
     echo "FAIL: preview port must be an integer from 1024 through 65535"
     exit 2
 fi
-if [[ "$PREVIEW_PORT" == "8055" || "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8793" ]]; then
-    echo "FAIL: preview port conflicts with a governed/reserved MSB listener"
+if [[ "$PREVIEW_PORT" == "8794" ]]; then
+    echo "FAIL: preview port 8794 is the live Production Setup listener"
+    exit 3
+fi
+if [[ "$PREVIEW_PORT" == "8055" || "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" ]]; then
+    echo "FAIL: preview port conflicts with a governed Production listener"
     exit 3
 fi
 if [[ ! "$PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
@@ -159,8 +165,11 @@ if ! sudo docker network inspect "$NETWORK" >/dev/null 2>&1; then
     echo "FAIL: Docker network $NETWORK was not found"
     exit 9
 fi
-if [[ ! -x "$PRODUCTION_PYTHON" ]]; then
-    echo "FAIL: documented production Python runtime is missing: $PRODUCTION_PYTHON"
+# Server Management runtime boundary: msbadmin cannot traverse protected
+# application paths. Validate the production Python runtime as fieldwiring,
+# which is the account that is authorized to traverse and execute it.
+if ! sudo -u fieldwiring -H test -x "$PRODUCTION_PYTHON"; then
+    echo "FAIL: fieldwiring runtime account cannot execute documented production Python: $PRODUCTION_PYTHON"
     exit 10
 fi
 if ! systemctl is-active --quiet fieldwiring.service; then
