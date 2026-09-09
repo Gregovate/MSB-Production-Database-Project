@@ -140,6 +140,13 @@ main {
   padding:14px;
   box-shadow:0 2px 8px var(--shadow);
 }
+.list-card,
+.person-heading-card,
+.contact-card,
+.metadata-panel,
+.technical-details {
+  border-left:4px solid var(--blue);
+}
 .detail-column { min-width:0; }
 #personForm {
   display:grid;
