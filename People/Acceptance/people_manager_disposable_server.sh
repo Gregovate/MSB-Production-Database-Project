@@ -22,6 +22,7 @@ echo "Report: $REPORT"
 echo "Production container: $PROD_CONTAINER"
 echo "Disposable container: $TEST_CONTAINER"
 echo "Production access: pg_dump + SELECT only"
+echo "Authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md"
 echo
 
 prod_fingerprint() {
@@ -119,25 +120,36 @@ sudo docker run -d \
     -e POSTGRES_DB=postgres \
     "$IMAGE" >/dev/null
 
+# Server Management authority: postgis/postgis:16-3.5 starts a temporary
+# PostgreSQL server while loading PostGIS, then shuts it down and starts the
+# final PostgreSQL server as container PID 1. pg_isready alone is not sufficient.
 ready=0
+pid1=""
 for _ in $(seq 1 120); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+    if [[ "$(sudo docker inspect "$TEST_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]]; then
+        break
+    fi
+
+    pid1="$(sudo docker exec "$TEST_CONTAINER" sh -c 'cat /proc/1/comm' 2>/dev/null | tr -d '\r\n' || true)"
+
+    if [[ "$pid1" == "postgres" ]] && \
+       sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+           pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
         ready=1
         break
     fi
     sleep 1
 done
 if [[ "$ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL initialization did not become ready"
+    echo "FAIL: disposable PostgreSQL did not reach final post-init ready state"
+    echo "Observed PID 1 command: ${pid1:-unknown}"
     sudo docker logs "$TEST_CONTAINER" || true
     exit 6
 fi
 
 sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"
-
-echo "Disposable PostgreSQL is ready"
+echo "Disposable PostgreSQL final server ready"
 
 echo
 echo "--- Restore current Production into disposable database ---"
