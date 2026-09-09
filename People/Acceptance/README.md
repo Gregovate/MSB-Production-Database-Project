@@ -91,6 +91,26 @@ git pull
 
 `8795` is only an operator-selected candidate in this example; the preview runner still fails closed if that port is listening on `msb-prod-db`. Do not substitute a documented Production listener.
 
+### Runtime-account boundary
+
+`msbadmin` is the SSH/system-administration account, but it cannot traverse the protected application runtime paths under `/opt/fieldwiring` and `/opt/msb-setup`. Therefore an `msbadmin` check such as:
+
+```bash
+[[ -x /opt/fieldwiring/.venv/bin/python ]]
+```
+
+is not valid evidence that the Python runtime exists or is missing.
+
+The People browser-preview runner follows the Server Management runbook and evaluates runtime-path existence, executable/import checks, and application regression as the `fieldwiring` service account through foreground `sudo`, for example:
+
+```bash
+sudo -u fieldwiring -H test -x /opt/fieldwiring/.venv/bin/python
+```
+
+Do not broaden `/opt/fieldwiring` permissions to make `msbadmin` traverse it. Root/sudo remains appropriate for the documented Git/worktree and system-administration operations; application runtime traversal/execution is evaluated as `fieldwiring`.
+
+If preflight exits before the Production `ref.person` fingerprint or checkout invariant is captured, teardown preserves the original preflight status and reports the uncaptured after-check as `SKIP`. Cleanup must not replace the actual failure with a secondary `fingerprint was not captured` status.
+
 Default review identity remains:
 
 ```text
@@ -111,6 +131,7 @@ The browser-review wrapper and server runner follow the existing runbook pattern
 - verify the selected server port is unused before preview startup;
 - verify the Production FieldWiring service/health and live checkout before preview;
 - create a detached worktree for the exact accepted People candidate without moving the Production checkout;
+- run runtime-path and regression checks as the `fieldwiring` service account rather than interpreting `msbadmin` traversal failures;
 - run the People candidate regression with the documented Production Python runtime;
 - create a new current-Production disposable PostgreSQL clone using the Server Management final-PostGIS readiness contract;
 - create clone-only `people_app` LOGIN credentials and apply only migrations `001` and `002` to that clone;
@@ -119,7 +140,7 @@ The browser-review wrapper and server runner follow the existing runbook pattern
 - print `BROWSER REVIEW READY` and the selected localhost URL only after Flask/API checks pass;
 - keep the foreground PowerShell/SSH session open while Greg reviews the real browser workflow;
 - tear down the Flask process, disposable database, dump, worktree, and temporary bundle after ENTER; and
-- re-prove Production `ref.person`, the Production checkout, FieldWiring health, and the temporary preview port are unchanged/clean.
+- re-prove every Production invariant captured before startup and confirm the temporary preview port is clean.
 
 After the runner prints `BROWSER REVIEW READY`, open the URL it prints, for example:
 
