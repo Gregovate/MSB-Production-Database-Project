@@ -1,10 +1,10 @@
 # People Manager Acceptance
 
-Milestone 1 must be proven against a disposable database restored from the current Production database before any Production mutation.
+People Manager application/database changes must be proven against a disposable database restored from the current Production database before any Production mutation.
 
 ## Governing Runtime Authority
 
-Disposable PostgreSQL orchestration is not owned by the People feature. The governing server/runtime authority is:
+Disposable PostgreSQL orchestration is owned by:
 
 ```text
 Gregovate/MSB-Server-Management
@@ -25,157 +25,122 @@ Gregovate/MSB-Server-Management
 docs/server/Production_Database_Change_Deployment_Runbook.md
 ```
 
-The files in this `People/Acceptance/` folder provide only the People-specific candidate migrations, assertions, and browser-review entry/cleanup pieces needed to consume those established runtime patterns. Do not invent alternate SSH, Docker, PostgreSQL clone, readiness, preview-process, cleanup, or Production deployment behavior here.
+Do not invent alternate SSH, Docker, PostgreSQL clone, readiness, preview-process, cleanup, or Production deployment procedures in the People feature.
+
+## Current Acceptance State — 2026-09-09
+
+The original contact/identity candidate passed disposable acceptance, but the governed browser review later returned:
+
+```text
+CHANGES REQUIRED — RETURN TO ENGINEERING
+```
+
+The operator finding was that the screen omitted capabilities, formal qualifications, Setup/Takedown participation/eligibility, and reusable-task leadership visibility already required by issue #130.
+
+Those areas are now implemented through:
+
+```text
+People/Database/001_create_people_manager_contract.sql
+People/Database/002_harden_people_search_phone_filter.sql
+People/Database/003_create_people_metadata_contract.sql
+People/Application/*
+```
+
+The new application/database candidate is **not accepted yet**. Because application/database behavior changed, the previous disposable PASS does not carry forward.
+
+Required order now:
+
+```text
+fresh current-Production disposable acceptance of 001 + 002 + 003
+    -> exact candidate browser review
+    -> operator disposition
+    -> separate Production deployment gate only if accepted
+```
 
 ## Disposable Acceptance Runner
 
-From the repository checkout on Greg's Windows workstation, run:
+From Greg's Windows repository checkout:
 
 ```powershell
+git pull
 .\People\Acceptance\run_people_manager_disposable_acceptance.ps1
 ```
 
-The wrapper follows the Server Management disposable-acceptance contract: one bundled SCP transfer, one foreground SSH session, Linux line-ending normalization, Production access limited to `SELECT` and `pg_dump`, and all candidate mutation confined to the disposable clone.
+The wrapper follows the Server Management standard:
 
-The server-side runner:
+- one bundled SCP transfer;
+- one foreground SSH session;
+- Linux line-ending normalization;
+- Production access limited to `SELECT` and `pg_dump`;
+- current Production restored into a separate disposable PostGIS container;
+- final PostGIS PostgreSQL readiness requires container PID 1 to be `postgres` plus `pg_isready`;
+- migrations `001`, `002`, and `003` apply only to the clone;
+- all test writes remain clone-only; and
+- Production `ref.person` is fingerprinted before/after and must remain unchanged.
 
-- fingerprints Production `ref.person` before testing;
-- reads Production only through `SELECT` and `pg_dump`;
-- restores the current Production database into a separate disposable PostgreSQL container;
-- consumes the documented final-PostGIS-server readiness gate before restore begins;
-- creates clone-only `people_app` as `NOLOGIN` for privilege testing;
-- applies the People candidate migrations only to the disposable database;
-- executes the People-specific acceptance cases below against the clone;
-- removes the disposable container/work directory; and
-- fingerprints Production `ref.person` again and fails if it changed.
-
-The retained server report is named:
+Retained report:
 
 ```text
 /tmp/MSB_People_Manager_Disposable_YYYYMMDD-HHMMSS.txt
 ```
 
-## 2026-09-09 Runtime Discovery Promoted to Server Management
+### Current disposable acceptance cases
 
-The first People disposable restore exposed a runtime gap: `postgis/postgis:16-3.5` can report `pg_isready` while its Docker entrypoint is still running a temporary PostgreSQL server used to install PostGIS. The image then intentionally shuts that temporary server down before starting the final PostgreSQL server as PID 1.
+The runner proves at least:
 
-The diagnostic proved that behavior and also proved the failure was not OOM, disk exhaustion, or a Production database change. Production `ref.person` remained fingerprint-identical and no People migration had run.
+1. current Production clone dependencies are present;
+2. `people_app` has narrow approved function execution but no broad direct People/Setup DML;
+3. person create still reserves the standard first-initial + last-name MSB identity;
+4. the same `person_id` can be deactivated/reactivated;
+5. capability catalog + person capability relationship works;
+6. formal qualification dates/evidence are preserved separately from capabilities;
+7. all four current Setup/Takedown participation/eligibility roles work independently;
+8. existing Setup leadership is visible through People Manager while `people_app` cannot directly write `ref.setup_task_captain`;
+9. metadata writes use the existing authenticated actor/audit path; and
+10. no normal People delete function exists.
 
-That startup/readiness rule is a reusable server/runtime fact, so its authoritative contract now belongs in the Server Management `PostgreSQL_Disposable_Acceptance_Standard.md`. This People document records only why the feature runner depends on that standard; it is not a second authority for the Docker/PostgreSQL startup sequence.
+A disposable PASS still does not authorize Production deployment.
 
-## Pre-Production Browser Review
+## Browser Review — only after the fresh disposable PASS
 
-The disposable database acceptance passed on 2026-09-09 for exact candidate:
+The browser-review launcher must be pinned to the exact application/database SHA that passes the fresh disposable gate before another browser session is started.
 
-```text
-7cd4c02420f564c1fe563d0c12052480c6ce6f6b
-```
+Current Server Management rules remain mandatory:
 
-People Manager changes what an operator sees and edits, so the next gate is the Server Management `Pre_Production_Browser_Review_Runbook.md`.
+- explicit preview port required;
+- `8794` is Production Setup and must never be used/cleaned as preview state;
+- selected port must be verified unused;
+- browser does not auto-open;
+- wait for `BROWSER REVIEW READY` before opening the localhost URL;
+- `msbadmin` cannot traverse protected runtime paths under `/opt/fieldwiring`/`/opt/msb-setup`;
+- runtime checks and Python execution occur as `fieldwiring` through foreground `sudo`; and
+- cleanup preserves the original failure status and verifies only invariants actually captured before failure.
 
-### Current preview-port rule
-
-The later Setup browser-review implementation corrected two earlier preview-launcher behaviors and those corrections are now part of the generic Server Management runbook:
-
-- the preview port is an explicit required parameter, not a silent default;
-- the browser is not auto-opened before the remote runner reaches `BROWSER REVIEW READY`.
-
-Production Setup now permanently owns `192.168.5.9:8794`. `8794` must never be used or cleaned as a browser-preview port.
-
-From the same branch and a clean Windows worktree, choose a non-Production candidate port and let the server-side preflight verify that it is actually unused. Example:
+After the browser harness is pinned to the newly accepted SHA, the normal launch shape remains:
 
 ```powershell
-git pull
 .\People\Acceptance\run_people_manager_browser_preview.ps1 -PreviewPort 8795
 ```
 
-`8795` is only an operator-selected candidate in this example; the preview runner still fails closed if that port is listening on `msb-prod-db`. Do not substitute a documented Production listener.
+`8795` is only an example candidate port; server preflight must prove it is unused.
 
-### Runtime-account boundary
+### Required browser review after metadata acceptance
 
-`msbadmin` is the SSH/system-administration account, but it cannot traverse the protected application runtime paths under `/opt/fieldwiring` and `/opt/msb-setup`. Therefore an `msbadmin` check such as:
+At minimum exercise:
 
-```bash
-[[ -x /opt/fieldwiring/.venv/bin/python ]]
-```
+1. search by name/email/phone and **Include inactive**;
+2. activate an existing inactive person and save;
+3. add a clone-only person and verify **Build email** + save;
+4. edit/deactivate/reactivate that same clone-only `person_id`;
+5. duplicate and MSB-email collision review;
+6. **Capabilities** — create a controlled catalog item, assign it, deactivate/reactivate it, and inspect notes;
+7. **Qualifications** — create a controlled qualification type and a clone-only dated qualification with completion/validity/expiration and certificate/evidence fields, then edit/deactivate/reactivate it;
+8. **Setup / Takedown participation & eligibility** — exercise `SETUP_VOLUNTEER`, `TAKEDOWN_VOLUNTEER`, `CAPTAIN_CANDIDATE`, and `ADVISOR_CANDIDATE` independently;
+9. **Reusable-task leadership** — confirm existing Captain/Alternate/Advisor assignments are visible but not editable from this People metadata screen;
+10. protected Directus/MSB identity fields remain protected; and
+11. no person delete action exists.
 
-is not valid evidence that the Python runtime exists or is missing.
-
-The People browser-preview runner follows the Server Management runbook and evaluates runtime-path existence, executable/import checks, and application regression as the `fieldwiring` service account through foreground `sudo`, for example:
-
-```bash
-sudo -u fieldwiring -H test -x /opt/fieldwiring/.venv/bin/python
-```
-
-Do not broaden `/opt/fieldwiring` permissions to make `msbadmin` traverse it. Root/sudo remains appropriate for the documented Git/worktree and system-administration operations; application runtime traversal/execution is evaluated as `fieldwiring`.
-
-If preflight exits before the Production `ref.person` fingerprint or checkout invariant is captured, teardown preserves the original preflight status and reports the uncaptured after-check as `SKIP`. Cleanup must not replace the actual failure with a secondary `fingerprint was not captured` status.
-
-Default review identity remains:
-
-```text
-preview user = gliebig@sheboyganlights.org
-```
-
-The identity is the established Administrator-context preview identity used by prior browser review. The People runner re-resolves current Directus/ref.person authorization in the fresh disposable clone and fails closed before Flask launch if the identity no longer has People Manager capability or is not mapped to a governed person.
-
-The browser-review wrapper and server runner follow the existing runbook pattern:
-
-- require the People feature branch and a clean local worktree;
-- require an explicit preview port and reject documented Production listeners, including live Setup `8794`;
-- pin the exact disposable-accepted candidate SHA above;
-- refuse to proceed if `People/Application` or `People/Database` changed after that accepted SHA;
-- use one bundled SCP transfer plus one foreground SSH session;
-- use an SSH localhost tunnel rather than publishing the preview port;
-- do not auto-open the browser during SCP/cleanup/preparation;
-- verify the selected server port is unused before preview startup;
-- verify the Production FieldWiring service/health and live checkout before preview;
-- create a detached worktree for the exact accepted People candidate without moving the Production checkout;
-- run runtime-path and regression checks as the `fieldwiring` service account rather than interpreting `msbadmin` traversal failures;
-- run the People candidate regression with the documented Production Python runtime;
-- create a new current-Production disposable PostgreSQL clone using the Server Management final-PostGIS readiness contract;
-- create clone-only `people_app` LOGIN credentials and apply only migrations `001` and `002` to that clone;
-- re-assert current People authorization and the no-broad-table-DML boundary;
-- launch the exact accepted People Flask application bound to `127.0.0.1` with a preview-only identity injector and a DSN that points only to the disposable clone;
-- print `BROWSER REVIEW READY` and the selected localhost URL only after Flask/API checks pass;
-- keep the foreground PowerShell/SSH session open while Greg reviews the real browser workflow;
-- tear down the Flask process, disposable database, dump, worktree, and temporary bundle after ENTER; and
-- re-prove every Production invariant captured before startup and confirm the temporary preview port is clean.
-
-After the runner prints `BROWSER REVIEW READY`, open the URL it prints, for example:
-
-```text
-http://127.0.0.1:8795/
-```
-
-Minimum People-specific operator review:
-
-1. search by name, email, and phone; exercise **Include inactive**;
-2. open existing people and inspect Contact Information, protected identity/current system state, and current relationships;
-3. open a Directus-linked person and confirm the MSB email/build controls are protected from ordinary editing;
-4. add a clone-only person, use **Build email**, and save;
-5. edit that clone-only person's contact data, deactivate the same `person_id`, then reactivate it;
-6. trigger the potential-duplicate warning and review the acknowledgement behavior before any intentional separate-person save;
-7. trigger an MSB-email collision and review the additional-first-name-character alternate and exception acknowledgement;
-8. confirm there is no person delete action; and
-9. refresh/reopen records and confirm the disposable-clone state is presented consistently.
-
-If the foreground preview is interrupted and stale resources remain, use the same explicit preview port with the dedicated cleanup wrapper:
-
-```powershell
-.\People\Acceptance\run_people_manager_browser_preview_cleanup.ps1 -PreviewPort 8795
-```
-
-Never pass a Production listener such as `8794` to the cleanup wrapper.
-
-The retained browser-review evidence paths are:
-
-```text
-/tmp/MSB_People_Manager_Browser_Preview_YYYYMMDDTHHMMSS.txt
-/tmp/MSB_People_Manager_Browser_Preview_Flask_YYYYMMDDTHHMMSS.log
-```
-
-The operator disposition must be one of:
+Operator disposition must be one of:
 
 ```text
 ACCEPTED FOR PRODUCTION DEPLOYMENT GATE
@@ -183,25 +148,16 @@ CHANGES REQUIRED — RETURN TO ENGINEERING
 REVIEW INCOMPLETE — NO PRODUCTION APPROVAL
 ```
 
-A browser-review PASS still does not authorize Production mutation.
+## Cleanup
 
-## Required Acceptance Cases
+If a browser preview is interrupted after it has been started, use the same explicit preview port with:
 
-1. candidate migrations apply only to the disposable clone;
-2. Production `ref.person` fingerprint remains unchanged;
-3. `people_app` has EXECUTE on the approved People functions but no direct `ref.person` SELECT/INSERT/UPDATE/DELETE and no Directus table SELECT;
-4. Manager/Administrator access succeeds and unauthorized Directus users fail closed;
-5. a new casual volunteer reserves the standard `first-initial + last-name` MSB email when available;
-6. a standard email collision cannot reuse the existing address and requires explicit alternate review;
-7. duplicate name/contact evidence blocks create until duplicate review is acknowledged;
-8. exact MSB-email collision remains a hard conflict;
-9. update cannot change `directus_user_id`, `pg_login_name`, Manager/team flags, or Work Order eligibility because no command argument exists for those fields;
-10. a Directus-linked person's MSB email cannot be changed by ordinary contact edit;
-11. inactive person records remain present and can be reactivated;
-12. optimistic concurrency rejects a stale update;
-13. non-numeric text search cannot become a phone `LIKE '%%'` match-all;
-14. current foreign-key dependencies are visible for a selected person;
-15. no person DELETE function/route exists; and
-16. actor/audit stamping resolves the authenticated Directus manager through the existing `app.directus_user_uuid` trigger path.
+```powershell
+.\People\Acceptance\run_people_manager_browser_preview_cleanup.ps1 -PreviewPort 8795
+```
 
-Passing the disposable runner and browser review is necessary but does **not** authorize Production deployment. Production still requires the separate explicit Production gate and the governing Server Management deployment runbook.
+Never pass a Production listener such as `8794` to preview cleanup.
+
+## Production Boundary
+
+Nothing in this folder authorizes a Production mutation. Production promotion requires a later separate explicit Production approval and the Server Management Production Database deployment runbook.
