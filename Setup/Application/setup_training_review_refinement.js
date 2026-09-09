@@ -53,6 +53,10 @@
     const task = typeof taskById === 'function' ? taskById(appState.selectedTaskId) : null;
     if (!task || !appState.access?.can_manage_setup) return;
 
+    const returnButton = document.getElementById('setup-return-library');
+    const returnWrap = document.getElementById('setup-return-library-wrap');
+    const returnThroughCatalogOrigin = Boolean(returnButton && returnWrap && !returnWrap.hidden);
+
     const confirmed = window.confirm(
       `Delete "${task.task_name}" completely from the Reusable Task Catalog?\n\n`
       + 'Use this for reconstruction mistakes, duplicates, and bad task definitions that must not be propagated into 2026. '
@@ -70,8 +74,14 @@
       const deleted = result.deleted_task || {};
       appState.selectedTaskId = null;
       await reloadTasks(null);
-      if (typeof renderLibrary === 'function') renderLibrary();
-      showView('library');
+
+      if (returnThroughCatalogOrigin && returnButton) {
+        returnButton.click();
+      } else {
+        if (typeof renderLibrary === 'function') renderLibrary();
+        showView('library');
+      }
+
       setAlert(
         `Deleted task ${deleted.setup_task_id || task.setup_task_id}. `
         + `${deleted.deleted_annual_rows ?? 0} annual reconstruction row(s) were also removed.`,
