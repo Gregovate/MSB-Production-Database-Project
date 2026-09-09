@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$AcceptedCandidateSha = 'a10edf8618dfb944bde5558c3a9e88e2a1502173'
+$AcceptedCandidateSha = '16f0989cbc873bf914d95a4562255a584e5cdbf3'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
 if (-not (Test-Path -LiteralPath $BaseWrapper)) {
