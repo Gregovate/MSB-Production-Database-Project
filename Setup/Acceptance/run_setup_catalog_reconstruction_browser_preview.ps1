@@ -64,7 +64,10 @@ $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $bundleName = "msb-setup-catalog-browser-preview-$stamp"
 $localBundle = Join-Path $env:TEMP $bundleName
 $uploadRoot = "/tmp/$bundleName"
-$remoteRoot = "/tmp/msb-setup-catalog-browser-preview-$stamp"
+# Keep the uploaded SCP path and executable remote path distinct. The prior
+# launcher used the same value for both, causing `mv source source` to be
+# interpreted as moving the directory into itself.
+$remoteRoot = "/tmp/msb-setup-catalog-browser-preview-run-$stamp"
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $browserUrl = "http://127.0.0.1:$PreviewPort/"
 
@@ -107,7 +110,7 @@ try {
     $remoteEntry = "$remoteRoot/setup_session_browser_preview_entry.py"
     $remoteCleanup = "$remoteRoot/setup_session_browser_preview_cleanup_server.sh"
 
-    $remoteCommand = "chmod 700 '$uploadCleanup' && bash -n '$uploadCleanup' && bash '$uploadCleanup' '$PreviewPort' && mv '$uploadRoot' '$remoteRoot' && chmod 755 '$remoteRoot' && chmod 700 '$remoteServer' '$remoteCleanup' && chmod 644 '$remoteEntry' && bash -n '$remoteServer' && timeout --signal=TERM 28800s bash '$remoteServer' '$PreviewPort' '$PreviewEmail'"
+    $remoteCommand = "chmod 700 '$uploadCleanup' && bash -n '$uploadCleanup' && bash '$uploadCleanup' '$PreviewPort' && rm -rf '$remoteRoot' && mv '$uploadRoot' '$remoteRoot' && chmod 755 '$remoteRoot' && chmod 700 '$remoteServer' '$remoteCleanup' && chmod 644 '$remoteEntry' && bash -n '$remoteServer' && timeout --signal=TERM 28800s bash '$remoteServer' '$PreviewPort' '$PreviewEmail'"
 
     & ssh -tt -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand
     $remoteExit = $LASTEXITCODE
