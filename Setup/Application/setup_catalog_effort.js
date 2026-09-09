@@ -13,6 +13,14 @@ function applySetupEffortToTasks() {
   }
 }
 
+function applySetupEffortAccess() {
+  const editable = Boolean(appState.access?.can_manage_setup);
+  const select = el('edit-effort-level');
+  if (select) select.disabled = !editable;
+  const button = el('save-task-effort');
+  if (button) button.disabled = !editable;
+}
+
 function applySetupEffortBadges() {
   document.querySelectorAll('.next-task-row[data-task-id], .library-task[data-task-id]').forEach((row) => {
     const taskId = Number(row.dataset.taskId || 0);
@@ -32,6 +40,7 @@ function syncSelectedSetupEffort() {
   if (!select) return;
   const task = taskById(appState.selectedTaskId);
   select.value = task?.effort_level || '';
+  applySetupEffortAccess();
 }
 
 async function loadSetupEfforts({ rerender = true } = {}) {
@@ -99,6 +108,7 @@ if (typeof reloadTasks === 'function') {
 el('save-task-effort')?.addEventListener('click', saveSelectedSetupEffort);
 
 window.addEventListener('load', () => {
+  applySetupEffortAccess();
   loadSetupEfforts().catch((error) => {
     console.error('Setup effort metadata could not be loaded', error);
   });
