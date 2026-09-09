@@ -53,6 +53,14 @@ def test_catalog_preview_rejects_production_ports_and_backgrounded_sudo():
     assert "sudo -u fieldwiring -H env" in server
 
 
+def test_catalog_preview_uses_distinct_upload_and_remote_bundle_paths():
+    launcher = LAUNCHER.read_text(encoding="utf-8")
+    assert '$uploadRoot = "/tmp/$bundleName"' in launcher
+    assert '$remoteRoot = "/tmp/msb-setup-catalog-browser-preview-run-$stamp"' in launcher
+    assert "mv '$uploadRoot' '$remoteRoot'" in launcher
+    assert '$remoteRoot = "/tmp/msb-setup-catalog-browser-preview-$stamp"' not in launcher
+
+
 def test_catalog_preview_validates_effort_and_waits_for_operator_cleanup():
     server = SERVER.read_text(encoding="utf-8")
     assert "/api/setup/task-efforts" in server
