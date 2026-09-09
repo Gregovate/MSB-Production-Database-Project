@@ -180,15 +180,21 @@ def test_reusable_task_match_action_is_explicit_about_target_and_scope():
     assert "MATCH CONFIRMED" in js
 
 
-def test_reconstruction_delete_is_visible_only_in_historical_manager_context():
-    js = read("setup_training_ux.js")
+def test_reconstruction_delete_is_visible_for_catalog_only_tasks_in_historical_manager_context():
+    base_js = read("setup_training_ux.js")
+    refinement_js = read("setup_training_review_refinement.js")
     css = read("setup_training_ux.css")
-    assert "Delete Reconstruction Task" in js
-    assert "HISTORICAL_VERIFICATION" in js
-    assert "setup_session_task_id != null" in js
-    assert "reconstruction-delete" in js
-    assert "commandOptions('DELETE', {})" in js
-    assert "work-day, progress, movement, planning, or actual execution history" in js
+    combined = base_js + "\n" + refinement_js
+    assert "Delete Reconstruction Task" in base_js
+    assert "button.textContent = 'Delete Task'" in refinement_js
+    assert "HISTORICAL_VERIFICATION" in combined
+    assert "appState.access?.can_manage_setup" in refinement_js
+    assert "task?.setup_task_id != null" in refinement_js
+    assert "catalogDeleteVisibilityObserver" in refinement_js
+    assert "attributeFilter: ['hidden']" in refinement_js
+    assert "reconstruction-delete" in base_js
+    assert "commandOptions('DELETE', {})" in base_js
+    assert "work-day, progress, movement, planning, or actual execution history" in base_js
     assert "#delete-reconstruction-task.danger" in css
 
 
