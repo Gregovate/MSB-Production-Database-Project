@@ -17,25 +17,17 @@
     }
   }
 
-  function selectedSeason() {
-    return (appState.seasons || []).find(
-      (season) => Number(season.season_year) === Number(appState.seasonYear)
-    ) || null;
-  }
-
   function syncReconstructionDeleteControl() {
     const button = document.getElementById('delete-reconstruction-task');
     if (!button) return;
     const task = typeof taskById === 'function' ? taskById(appState.selectedTaskId) : null;
-    const season = selectedSeason();
     const shouldHide = !(
       appState.access?.can_manage_setup
-      && season?.session_status === 'HISTORICAL_VERIFICATION'
       && task?.setup_task_id != null
     );
 
     button.textContent = 'Delete Task';
-    button.title = 'Delete a mistaken reusable task during 2025 Historical Verification. The database refuses deletion when protected planning or execution history exists.';
+    button.title = 'Delete a mistaken reusable task while cleaning the reconstructed Catalog. The database refuses deletion when protected planning or execution history exists.';
     if (button.hidden !== shouldHide) button.hidden = shouldHide;
   }
 
@@ -48,6 +40,48 @@
       { attributes: true, attributeFilter: ['hidden'] }
     );
     syncReconstructionDeleteControl();
+  }
+
+  async function deleteSelectedCatalogTask(event) {
+    const button = event.target.closest('#delete-reconstruction-task');
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const task = typeof taskById === 'function' ? taskById(appState.selectedTaskId) : null;
+    if (!task || !appState.access?.can_manage_setup) return;
+
+    const confirmed = window.confirm(
+      `Delete "${task.task_name}" completely from the Reusable Task Catalog?\n\n`
+      + 'Use this for reconstruction mistakes, duplicates, and bad task definitions that must not be propagated into 2026. '
+      + 'The database will refuse deletion if the task has protected planning or execution history.\n\n'
+      + 'This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setBusy(true);
+      const result = await api(
+        `api/setup/tasks/${task.setup_task_id}/reconstruction-delete`,
+        commandOptions('DELETE', {})
+      );
+      const deleted = result.deleted_task || {};
+      appState.selectedTaskId = null;
+      await reloadTasks(null);
+      if (typeof renderLibrary === 'function') renderLibrary();
+      showView('library');
+      setAlert(
+        `Deleted task ${deleted.setup_task_id || task.setup_task_id}. `
+        + `${deleted.deleted_annual_rows ?? 0} annual reconstruction row(s) were also removed.`,
+        'ok'
+      );
+    } catch (error) {
+      setAlert(error.message || error, 'error');
+      window.alert(error.message || error);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function ensureCaptainTypeahead() {
@@ -229,6 +263,7 @@
     { childList: true, subtree: true }
   );
 
+  document.addEventListener('click', deleteSelectedCatalogTask, true);
   document.addEventListener('click', () => requestAnimationFrame(initializeRefinements), true);
   document.addEventListener('change', () => requestAnimationFrame(initializeRefinements), true);
 })();
