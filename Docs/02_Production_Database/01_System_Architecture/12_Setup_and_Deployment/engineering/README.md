@@ -5,54 +5,53 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — Production runtime accepted; UI/workflow in live evaluation |
+| Status | CURRENT HANDOFF — 2025 reconstruction active; correction/reconciliation package accepted in Production |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-08 |
 
-This is the engineering starting point for Setup Session architecture, database behavior, application contracts, deployment state, and resume information.
+This is the engineering starting point for Setup Session architecture, database behavior, application contracts, Production state, reconstruction rules, planning behavior, and resume information.
 
 The operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
-## Current State
+## Current Production State
 
-Production deployment is operational and accepted at the runtime level.
-
-```text
-public application             = https://my.sheboyganlights.org/setup/
-application version            = V0.3.4-shared-season-guard-review
-2025 Setup Session             = HISTORICAL_VERIFICATION
-2025 annual tasks              = 57
-2025 UNVERIFIED tasks          = 57
-2026 Setup Sessions            = 0
-Setup work days                = 0
-Setup movement events          = 0
-active reusable Setup tasks    = 57
-```
-
-Accepted runtime state includes:
+The protected Setup application is operational at:
 
 ```text
-/opt/msb-setup                 = permanent detached worktree
-msb-setup.service              = active / enabled
-msb-setup-google-links.service = active / enabled
-listener                       = 192.168.5.9:8794
-UFW                            = 8794/tcp from Synology 192.168.5.4 only
-Synology /setup/ route         = active
-Cloudflare-authenticated view  = PASS; real 2025 data rendered
-post-reboot invariants         = PASS
+https://my.sheboyganlights.org/setup/
 ```
 
-The Setup/UI subsystem is **not final**. The three Setup PRs remain open drafts while managers use the 2025 session for real reconstruction/training and expose usability, workflow, data-model, and documentation problems.
+The 2025 Setup Session remains the real Production-backed Historical Review / Training environment. No 2026 Setup Session has been created.
 
-The current operator/plain-English and engineering documentation has been released separately to Production Database `main` so the Internal Web Backbone can link stable documentation without prematurely merging the Setup application/UI stack.
+The operator-approved training/reconstruction correction package is now accepted in Production.
 
-A follow-up acceptance defect is now implemented in source and pending Production deployment: Setup had no GA4 integration and no visible page freshness marker. The candidate adds the shared MSB Internal Intranet GA4 contract plus a visible `Updated 2026-09-07` marker.
+```text
+accepted application/database target = aaf7de1c1d457b3dfaafe061f084a044cdf2abb7
+migrations 019-022                = Production accepted
+Production deployment result         = PASS
+Production governed Setup fingerprint = unchanged across deployment
+```
+
+Production corrections now include:
+
+- reconstruction-safe deletion of mistaken provisional historical tasks;
+- Captain / Alternate / Advisor management using `ref.person` identity;
+- reusable-task match/reconciliation state for annual 2025 items;
+- active-person enforcement for new Captain/knowledge-owner assignments;
+- improved Catalog return navigation;
+- compact Material / Logistics summary with detailed dialog;
+- clarified reusable-task match wording; and
+- accepted Captain type-ahead behavior.
+
+The broad Setup subsystem remains open for real 2025 evaluation. Production availability and this accepted package do not mean every 2026 planning, pick-list, movement, search, Scene-classification, or historical-reconstruction need is complete.
 
 ## Start Here
 
-- [2025 Live Review Work Ledger — 2026-09-08](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) — current recovered live-evaluation work ledger: Catalog navigation, annual-to-Reusable-Task reconciliation, ASSIGNED queue behavior, Captain/knowledge-owner rules, Rick-note interpretation, candidate-versus-Production status, disposable acceptance gate, stale-test blocker, unresolved findings, and exact resume order.
-- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — current accepted Production database/application/runtime state, rollback evidence, open PR structure, and live-evaluation baseline.
-- [Setup Internal Analytics and Visible Update Contract — 2026-09-07](Setup_Internal_Analytics_and_Version_Contract_2026-09-07.md) — GA4 Measurement ID/privacy boundary, versioned analytics asset, visible updated-date marker, contract tests, and remaining Production acceptance gate.
+- [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — operator-confirmed planning model: short planning horizon, order/crew-driven scheduling, Sunday avoidance, weather constraints, grass-cutting dependency for cords, multi-day tasks, crew/hour interpretation, missing-step reconstruction rules, and Rick spreadsheet evidence window.
+- [2025 Live Review Work Ledger — 2026-09-08](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) — reconstruction/reconciliation work ledger, Rick-note interpretation rules, candidate lineage, unresolved findings, and historical acceptance context. Some candidate/deployment status inside this dated ledger predates the accepted 019-022 Production promotion; use this README and current issue/PR evidence for latest Production state.
+- [Setup Training Browser Acceptance — 2026-09-08](Setup_Training_Browser_Acceptance_2026-09-08.md) — accepted browser-review evidence for the correction/reconciliation package.
+- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — original Production foundation/runtime baseline and rollback context.
+- [Setup Internal Analytics and Visible Update Contract — 2026-09-07](Setup_Internal_Analytics_and_Version_Contract_2026-09-07.md) — GA4/privacy and visible revision contract.
 - [Internal Web Backbone Handoff](Internal_Web_Backbone_Handoff.md) — source-subsystem contract for intranet navigation/search/application entry points.
 - [Setup Session Shared Review and Season-Year Guard](../Setup_Session_Shared_Review_and_Season_Year_Guard_2026-09-07.md) — annual-vs-reusable data boundary and session-year enforcement.
 
@@ -76,88 +75,110 @@ Production acceptance/install material:
 Setup/Acceptance/
 ```
 
-The Production Database repository owns Setup application/business/database behavior. `Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, and host permission facts.
+The Production Database repository owns Setup application/business/database behavior. `Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, host permissions, and Production deployment runbooks.
 
-## Current PR Structure
+## Current PR / Issue Structure
 
-The active Setup work remains intentionally open across three draft PRs:
+Primary current work remains:
 
 ```text
-#123  reconnaissance / planning documentation lineage
-#124  browser UI / verification lineage
-#125  Production foundation / database / runtime lineage
+#122  Setup Session engineering / planning / live reconstruction umbrella
+#125  Production foundation / application / correction lineage
+#130  global People / Capability / Qualification catalog exposed by Captain review
 ```
 
-Do not merge/close this stack merely because the application is reachable. Final normalization and merge should wait until enough real 2025 review use has occurred to identify and resolve material UI/workflow findings.
+The People/Skills work belongs to **03 — People and Identity**. Setup consumes that global identity/capability model; Setup must not create a second person/skill catalog.
 
-The documentation-only release to `main` is intentionally separate from that closeout decision.
+## Current Reconstruction Source Rules
 
-## Critical Runtime Permission Boundary
+Rick Hoffmann's 2025 spreadsheets are mixed evidence, not normalized task definitions.
 
-`msbadmin` is the SSH administrator but does not have the `msb-docs-read` traversal permissions used by the `fieldwiring` runtime account on `/mnt/msb-display-folders` and `/mnt/msb-setup-google-links`.
+Current reconstruction review window:
 
-Runtime-path validation must run as `fieldwiring`. Server-side detail and recovery procedure belong in `Gregovate/MSB-Server-Management`.
+```text
+2025-09-30 through Thanksgiving 2025
+```
+
+Use evidence in three buckets:
+
+```text
+1. 2025 annual historical fact
+2. reusable Setup knowledge
+3. ambiguous/question — do not guess
+```
+
+Crew names do not automatically create Captains. Daily recorded hours do not automatically equal task duration. Multi-task work days require conservative interpretation.
+
+See the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md) for the durable interpretation and planning rules.
+
+## Current Planning Model
+
+Setup is **not** a rigid season-long calendar scheduler.
+
+The accepted operating direction is:
+
+```text
+preferred task order / prerequisites
+    + work ready now
+    + volunteers available
+    + weather / site conditions
+    + prior-day progress
+    -> plan only the next few work days
+    -> revise as conditions change
+```
+
+Important current rules:
+
+- avoid Sunday work whenever reasonably possible;
+- avoid rain and high winds whenever reasonably possible;
+- do not lay cords until grass cutting has stopped;
+- tasks may span several work days;
+- expected duration is a planning aid, not a one-day restriction;
+- preferred order and prerequisites matter more than false long-range date precision; and
+- 2025 historical notes should improve reusable crew ranges, expected effort, prerequisites, readiness rules, and missing task steps only where evidence supports them.
 
 ## Known Boundaries / Open Work
 
-Current live-review scope includes:
+Still unresolved or intentionally separate:
 
-- 2025 annual review/verification;
-- reusable task creation/copy and maintenance;
-- task scope/order/prerequisite/resource maintenance;
-- supported planning/review controls;
-- Procedure/document context; and
-- authenticated multi-user browser access.
+- controlled reassign/merge when a 2025 annual item belongs to a **different** reusable task;
+- many missing reusable task steps exposed by Rick's 2025 notes;
+- continued 2025 crew-size / expected-duration reconstruction;
+- task/Stage search;
+- true Setup Scene versus LOR display-group classification using shared Folder Alignment classification;
+- authoritative Controller context in Material / Logistics from FieldWiring / Controller Inventory;
+- Pick List generation;
+- Container/Display movement/scanning writes; and
+- future People capability/qualification integration for crew suitability.
 
-Still outside the accepted Production-ready workflow:
+Detailed KIT contents remain outside the current 2026 MVP, but an existing KIT Container can be a real physical Setup dependency.
 
-- Pick List generation; and
-- Container/Display movement/scanning write commands.
+## Critical Runtime Permission Boundary
 
-Current acceptance follow-up:
+`msbadmin` is the SSH administrator but runtime-path validation must use the `fieldwiring` service identity for paths and the shared Python environment that depend on runtime group permissions.
 
-- deploy and verify Setup GA4 page-view instrumentation using `G-X08ZTSY0VV`;
-- verify the visible `Updated 2026-09-07` marker in the live browser; and
-- preserve the analytics privacy boundary that excludes identity, query strings, and Production record identifiers.
-
-The newer 2025 live-review candidate and its exact deployment gate are tracked in the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md). Do not treat candidate-only migrations or UI controls as Production behavior until the full Setup/Application suite, disposable acceptance, controlled promotion, and browser acceptance have passed.
-
-Live evaluation should also capture questions and suggestions that are not traditional software defects. The 2025 review is the usability and operating-model test bed before 2026 is created.
+Server-side detail and recovery procedure belong in `Gregovate/MSB-Server-Management`.
 
 ## Resume Development
 
 Before changing this subsystem:
 
 1. read the Production Database Project Rules;
-2. read the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for the latest candidate status, review rules, and exact resume order;
-3. review PRs #123, #124, and #125 together rather than treating one as the whole subsystem;
-4. read the Production Engineering Handoff linked above for the accepted Production runtime baseline;
-5. read the Setup analytics/update contract before changing browser instrumentation or visible freshness behavior;
-6. review current live-use findings from managers/reviewers;
-7. preserve the accepted 2025/2026 annual-vs-reusable boundary;
-8. use `Gregovate/MSB-Server-Management` for current runtime/service/proxy facts; and
-9. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when behavior changes.
-
-Current accepted Production baseline remains:
-
-```text
-Production runtime                    = ACCEPTED
-Cloudflare-authenticated 2025 view    = ACCEPTED
-post-deployment invariants            = ACCEPTED
-UI/workflow                           = LIVE EVALUATION
-2026 Setup Session                    = NOT CREATED
-PR #123 / #124 / #125                 = OPEN DRAFTS
-operator/engineering docs on main     = RELEASED
-Backbone Production page              = PUBLISHED; documentation-link correction in progress
-Setup GA4 + visible updated date      = IMPLEMENTED IN SOURCE; DEPLOYMENT PENDING
-```
-
-For the newer candidate stop point — including migrations 019–021, ASSIGNED queue behavior, Captain management, reconstruction-safe delete, Catalog return navigation, the disposable-clone result, and the stale-test blocker — use the live-review ledger rather than inferring status from this older Production baseline.
+2. read this engineering portal;
+3. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
+4. review issue #122 and PR #125 for newest live-reconstruction findings;
+5. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
+6. preserve annual 2025 facts separately from reusable future knowledge;
+7. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
+8. use issue #130 / 03 People and Identity for global skill/qualification work;
+9. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
+10. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
 
 ## Related Systems
 
 - [Setup and Deployment operator portal](../README.md)
 - [Operator procedures](../operatorSOP/README.md)
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
+- [People and Identity](../../03_People_and_Identity/README.md)
 - [Labeling and Scanning](../../07_Labeling_and_Scanning/README.md)
 - [Wiring System](../../09_Wiring_System/README.md)
