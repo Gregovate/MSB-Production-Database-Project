@@ -84,6 +84,36 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+wait_for_final_postgres() {
+    local ready=0
+    local pid1=""
+
+    # The postgis image starts a temporary PostgreSQL server while its init
+    # scripts install extensions, then fast-shuts that server down and execs the
+    # final PostgreSQL server as PID 1. pg_isready can succeed during the
+    # temporary phase, so it is not sufficient by itself.
+    for _ in $(seq 1 120); do
+        if [[ "$(sudo docker inspect "$TEST_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]]; then
+            break
+        fi
+
+        pid1="$(sudo docker exec "$TEST_CONTAINER" sh -c 'cat /proc/1/comm' 2>/dev/null | tr -d '\r\n' || true)"
+        if [[ "$pid1" == "postgres" ]] && \
+           sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+               pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+            ready=1
+            break
+        fi
+        sleep 1
+    done
+
+    if [[ "$ready" -ne 1 ]]; then
+        echo "FAIL: disposable PostgreSQL did not reach final post-init ready state"
+        echo "Observed PID 1 command: ${pid1:-unknown}"
+        exit 6
+    fi
+}
+
 sudo -v
 
 PROD_BEFORE="$(prod_fingerprint)"
@@ -106,23 +136,11 @@ sudo docker run -d \
     -e POSTGRES_DB=postgres \
     "$IMAGE" >/dev/null
 
-ready=0
-for _ in $(seq 1 120); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
-        ready=1
-        break
-    fi
-    sleep 1
-done
-if [[ "$ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL did not become ready"
-    exit 6
-fi
+wait_for_final_postgres
 
 sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     createdb -U "$DB_ACTOR" -T template0 "$TEST_DB"
-echo "Disposable PostgreSQL ready"
+echo "Disposable PostgreSQL final server ready"
 
 echo
 echo "--- Restore Production clone ---"
