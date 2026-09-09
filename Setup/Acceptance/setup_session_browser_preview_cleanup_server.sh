@@ -14,7 +14,8 @@ mapfile -t preview_pids < <(
     ps -eo pid=,comm=,args= \
         | awk '
             $2 ~ /^python/ &&
-            $0 ~ /\/tmp\/msb-setup-browser-preview-[^ ]*\/setup_session_browser_preview_entry\.py/ {
+            ($0 ~ /\/tmp\/msb-setup-browser-preview-[^ ]*\/setup_session_browser_preview_entry\.py/ ||
+             $0 ~ /\/tmp\/msb-setup-catalog-browser-preview-run-[^ ]*\/setup_session_browser_preview_entry\.py/) {
                 print $1
             }
         '
@@ -77,7 +78,8 @@ for link_root in /tmp/msb-setup-google-links-*; do
 done
 
 mapfile -t preview_containers < <(
-    sudo docker ps -a --format '{{.Names}}' | grep '^msb-setup-browser-preview-' || true
+    sudo docker ps -a --format '{{.Names}}' \
+        | grep -E '^(msb-setup-browser-preview-|msb-setup-catalog-preview-)' || true
 )
 for name in "${preview_containers[@]}"; do
     [[ -n "$name" ]] || continue
@@ -88,7 +90,7 @@ done
 mapfile -t preview_worktrees < <(
     sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain \
         | awk '$1 == "worktree" { print $2 }' \
-        | grep '^/tmp/msb-setup-browser-preview-candidate-' || true
+        | grep -E '^/tmp/(msb-setup-browser-preview-candidate-|msb-setup-catalog-preview-candidate-)' || true
 )
 for wt in "${preview_worktrees[@]}"; do
     [[ -n "$wt" ]] || continue
