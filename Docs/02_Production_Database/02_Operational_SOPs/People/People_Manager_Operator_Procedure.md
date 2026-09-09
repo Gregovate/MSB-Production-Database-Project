@@ -5,8 +5,9 @@
 | Document Type | Operational SOP |
 | System | Production Database — People and Identity |
 | Audience | Managers and Administrators |
-| Status | ACCEPTED — PRODUCTION ENTRY POINT PENDING DEPLOYMENT |
+| Status | CURRENT — PRODUCTION LIVE |
 | Last Reviewed | 2026-09-09 |
+| Production URL | `https://my.sheboyganlights.org/people/` |
 | Engineering Authority | [People and Identity](../../01_System_Architecture/03_People_and_Identity/README.md) |
 
 [↑ People Manager Operational SOPs](README.md)
@@ -28,11 +29,15 @@ Do not edit these People relationships directly in PostgreSQL as an ordinary ope
 
 ## Open People Manager
 
-After Production deployment, open **People Manager** from the Production page on `my.sheboyganlights.org`.
+Open:
 
-The Production link is the preferred entry point. Do not bookmark or reuse a temporary `127.0.0.1` browser-review URL.
+```text
+https://my.sheboyganlights.org/people/
+```
 
-Cloudflare Access identifies the signed-in user. People Manager then checks the current Directus authorization context. If the application says the account is not authorized, do not bypass the missing access through Directus table editing or direct database commands.
+The Production intranet/index will also link to this application after Backbone integration is completed.
+
+Cloudflare Access identifies the signed-in user. People Manager then checks the current Directus authorization context. The application is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. If the application says the account is not authorized, do not bypass the missing access through Directus table editing or direct database commands.
 
 ## Important Rules Before Making Changes
 
@@ -51,7 +56,7 @@ Cloudflare Access identifies the signed-in user. People Manager then checks the 
 
 ## Find a Person
 
-1. Use the **Search people** box in the left panel.
+1. Use the search box in the left People panel.
 2. Search by any useful part of the person's name, Person ID, MSB email, personal email, or phone number.
 3. Check **Include inactive** when the person may have stopped participating in a previous season.
 4. Select the person from the list.
@@ -227,7 +232,7 @@ People Manager intentionally exposes no normal person delete action. Relationshi
 - **Save reports that the person changed after the form was loaded:** reload/reopen the person and review the current data before saving again. This protects against overwriting another change.
 - **A capability or qualification is missing from the catalog:** add a controlled catalog value only when the term is actually appropriate and reusable.
 - **A Captain/Advisor assignment looks wrong:** correct it in the Setup leadership workflow, not in People Manager.
-- **A management action is unavailable:** verify authorization. Do not work around role/policy controls through direct table edits.
+- **A management action is unavailable:** verify Manager/Administrator authorization. Do not work around role/policy controls through direct table edits.
 
 ## What Not To Do
 
