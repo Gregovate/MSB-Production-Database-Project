@@ -7,6 +7,29 @@ function setupEffortLabel(value) {
   return normalized || 'Not reviewed';
 }
 
+function placeSetupEffortSaveControl() {
+  const select = el('edit-effort-level');
+  const button = el('save-task-effort');
+  const label = select?.closest('label');
+  if (!select || !button || !label) return;
+  if (el('setup-effort-editor-row')) return;
+
+  const row = document.createElement('div');
+  row.id = 'setup-effort-editor-row';
+  row.className = 'compact-grid';
+
+  const actions = document.createElement('div');
+  actions.className = 'action-row manager-only setup-effort-save-actions';
+  const note = document.createElement('span');
+  note.className = 'muted';
+  note.textContent = 'Effort saves separately from Save Reusable Task.';
+
+  label.parentElement.insertBefore(row, label);
+  row.appendChild(label);
+  actions.append(button, note);
+  row.appendChild(actions);
+}
+
 function applySetupEffortToTasks() {
   for (const task of appState.tasks || []) {
     task.effort_level = setupEffortState.get(Number(task.setup_task_id)) ?? null;
@@ -105,9 +128,11 @@ if (typeof reloadTasks === 'function') {
   };
 }
 
+placeSetupEffortSaveControl();
 el('save-task-effort')?.addEventListener('click', saveSelectedSetupEffort);
 
 window.addEventListener('load', () => {
+  placeSetupEffortSaveControl();
   applySetupEffortAccess();
   loadSetupEfforts().catch((error) => {
     console.error('Setup effort metadata could not be loaded', error);
