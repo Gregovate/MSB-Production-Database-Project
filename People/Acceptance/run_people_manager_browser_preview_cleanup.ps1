@@ -1,6 +1,7 @@
 param(
     [string]$Server = 'msbadmin@192.168.5.9',
-    [int]$PreviewPort = 8794
+    [Parameter(Mandatory=$true)]
+    [int]$PreviewPort
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,6 +20,12 @@ if (-not (Test-Path -LiteralPath $ServerScript)) {
 
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
     throw 'PreviewPort must be between 1024 and 65535.'
+}
+if ($PreviewPort -eq 8794) {
+    throw 'PreviewPort 8794 is the live Production Setup listener and must never be passed to People preview cleanup.'
+}
+if ($PreviewPort -in @(8055, 8790, 8792)) {
+    throw "PreviewPort $PreviewPort is a governed Production listener and must never be passed to People preview cleanup."
 }
 
 # If Ctrl+C left the local SSH tunnel listening, stop only the owning ssh.exe
