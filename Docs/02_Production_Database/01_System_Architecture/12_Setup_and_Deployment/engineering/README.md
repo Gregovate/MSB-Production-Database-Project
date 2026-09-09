@@ -48,6 +48,7 @@ The broad Setup subsystem remains open for real 2025 evaluation. Production avai
 ## Start Here
 
 - [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — operator-confirmed planning model: short planning horizon, preferred-order scheduling, Needs Scheduling queue, Sunday avoidance, weather constraints, grass-cutting dependency for cords, multi-day tasks, crew/hour interpretation, mixed-stage Container mobilization, and Rick spreadsheet evidence rules.
+- [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — operator-confirmed missing planning surface between reusable Stage-organized tasks and the short-range schedule: cross-Stage Available/Blocked/In-Progress candidates, operator choice of what can/should happen next, and Arch Trailer unload/access order.
 - [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — standalone Setup Pick List direction: tablet-first workflow, scan integration, task-to-Container resolver, mixed-stage Container behavior, and explicit statement that Pick List generation is not yet implemented.
 - [2025 Live Review Work Ledger — 2026-09-08](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) — reconstruction/reconciliation work ledger, Rick-note interpretation rules, candidate lineage, unresolved findings, and historical acceptance context. Some candidate/deployment status inside this dated ledger predates the accepted 019-022 Production promotion; use this README and current issue/PR evidence for latest Production state.
 - [Setup Training Browser Acceptance — 2026-09-08](Setup_Training_Browser_Acceptance_2026-09-08.md) — accepted browser-review evidence for the correction/reconciliation package.
@@ -128,7 +129,8 @@ preferred task order / prerequisites
     + volunteers/equipment available
     + weather / site conditions
     + prior-day progress
-    -> Needs Scheduling queue
+    -> cross-Stage candidate planning view
+    -> operator chooses what can/should happen next
     -> plan only the next few work days
     -> derive Pick List demand
     -> revise as conditions change
@@ -142,10 +144,14 @@ Important current rules:
 - tasks may span several work days;
 - expected duration is a planning aid, not a one-day restriction;
 - preferred order and prerequisites matter more than false long-range date precision;
+- the reusable task catalog may be organized by Stage for visualization, but Stage completion is not a scheduling gate;
+- planning needs a separate cross-Stage candidate view showing Available / Blocked / In-Progress work before tasks receive dates;
 - generic `Staging to Park` is obsolete as a reusable task;
 - mixed-stage Containers/trailers must be detected from authoritative contents and mobilized when the first carried item is needed;
-- Container-specific post-arrival behavior may be full unload, park/mobile storage, or special transformation and must not be guessed; and
+- Container-specific post-arrival behavior may be full unload, park/mobile storage, special transformation, or ordered partial unload and must not be guessed; and
 - 2025/2022 historical evidence should improve reusable crew ranges, expected effort, prerequisites, readiness rules, and missing task steps only where evidence supports them.
+
+See [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) for the missing planning layer and the operator-confirmed Arch Trailer unload/access order.
 
 ## Pick List Current Boundary
 
@@ -165,10 +171,12 @@ Still unresolved or intentionally separate:
 - many missing reusable task steps exposed by Rick's 2025 notes and the recovered 2022 schedule;
 - continued 2025 crew-size / expected-duration reconstruction;
 - task/Stage search;
+- cross-Stage candidate planning surface and candidate-to-work-day workflow;
+- classification of historical predecessors into hard predecessor versus preferred order versus readiness condition;
 - true Setup Scene versus LOR display-group classification using shared Folder Alignment classification;
 - authoritative Controller context in Material / Logistics from FieldWiring / Controller Inventory;
 - Pick List generation and tablet workflow;
-- mixed-stage Container annual mobilization state;
+- mixed-stage Container annual mobilization/unload-group state and ordered-access rules;
 - Container/Display movement/scanning writes; and
 - future People capability/qualification integration for crew suitability.
 
@@ -187,15 +195,16 @@ Before changing this subsystem:
 1. read the Production Database Project Rules;
 2. read this engineering portal;
 3. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
-4. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing staging/logistics/pick behavior;
-5. review issue #122 and PR #125 for newest live-reconstruction findings;
-6. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
-7. preserve annual 2025 facts separately from reusable future knowledge;
-8. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
-9. use issue #130 / 03 People and Identity for global skill/qualification work;
-10. use issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
-11. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
-12. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
+4. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
+5. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing staging/logistics/pick behavior;
+6. review issue #122 and PR #125 for newest live-reconstruction findings;
+7. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
+8. preserve annual 2025 facts separately from reusable future knowledge;
+9. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
+10. use issue #130 / 03 People and Identity for global skill/qualification work;
+11. use issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
+12. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
+13. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
 
 ## Related Systems
 
