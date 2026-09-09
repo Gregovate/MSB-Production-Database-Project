@@ -138,7 +138,7 @@ try {
     $remoteScript = "$remoteRoot/people_manager_browser_preview_server.sh"
     $remoteEntry = "$remoteRoot/people_manager_browser_preview_entry.py"
     $remoteCleanup = "$remoteRoot/people_manager_browser_preview_cleanup_server.sh"
-    $remoteCommand = "chmod 700 '$uploadCleanup' && bash -n '$uploadCleanup' && bash '$uploadCleanup' '$PreviewPort' && mv '$uploadRoot' '$remoteRoot' && chmod 755 '$remoteRoot' && chmod 700 '$remoteScript' '$remoteCleanup' && chmod 644 '$remoteEntry' && bash -n '$remoteScript'; timeout --signal=TERM 7200s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
+    $remoteCommand = "chmod 700 '$uploadCleanup' && bash -n '$uploadCleanup' && bash '$uploadCleanup' '$PreviewPort' && mv '$uploadRoot' '$remoteRoot' && chmod 755 '$remoteRoot' && chmod 700 '$remoteScript' '$remoteCleanup' && chmod 644 '$remoteEntry' && bash -n '$remoteScript' && timeout --signal=TERM 7200s bash '$remoteScript' '$PreviewPort' '$PreviewEmail'"
 
     # Foreground SSH owns the console directly so SSH/sudo prompts and the final
     # operator ENTER remain usable. The tunnel exposes only the temporary
