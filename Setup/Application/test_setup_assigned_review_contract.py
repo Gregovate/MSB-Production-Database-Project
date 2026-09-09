@@ -16,7 +16,7 @@ def read_db(name: str) -> str:
 def test_assigned_browser_asset_is_loaded_after_training_ux():
     html = read("production.html")
     training_index = html.index("setup_training_ux.js?v=2026-09-08.1")
-    assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.1")
+    assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
     assert assigned_index > training_index
     host = read("production_backend.py")
     assert '"setup_assigned_review.js"' in host
@@ -25,19 +25,23 @@ def test_assigned_browser_asset_is_loaded_after_training_ux():
 def test_assigned_items_leave_default_active_queue_but_remain_filterable():
     js = read("setup_assigned_review.js")
     assert "option.value = 'ASSIGNED'" in js
-    assert "option.textContent = 'Assigned'" in js
+    assert "option.textContent = 'Matched to Reusable Task'" in js
     assert "if (filter !== '') return" in js
     assert "task?.verification_state === 'ASSIGNED'" in js
-    assert "Assigned items are available from the Assigned filter" in js
+    assert "Confirmed matches are available from the Matched to Reusable Task filter" in js
 
 
-def test_manager_can_mark_current_reconciliation_item_assigned():
+def test_manager_confirms_current_annual_item_matches_current_reusable_task():
     js = read("setup_assigned_review.js")
-    assert "Mark Assigned" in js
+    assert "Confirm Reusable Task Match" in js
+    assert "Current reusable scope:" in js
+    assert "does NOT move the task or change its Stage / Scene scope" in js
+    assert "setup-reusable-match-target" in js
+    assert "2025 item → reusable task match" in js
     assert "verification_state: 'ASSIGNED'" in js
     assert "setup_session_task_id" in js
     assert "commandOptions('PATCH', payload)" in js
-    assert "has left the active 2025 Verification Queue" in js
+    assert "Its Stage / Scene scope was not changed" in js
 
 
 def test_assigned_database_state_is_terminal_reconciliation_not_execution():
