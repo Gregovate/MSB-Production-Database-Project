@@ -47,11 +47,17 @@ def test_effort_editor_and_catalog_badge_are_present():
     assert "setup-effort-badge" in js
 
 
-def test_effort_save_control_is_moved_beside_effort_editor_and_explains_separate_save():
+def test_effort_save_control_is_primary_inline_and_has_no_extra_explanation():
+    html = text(BASE / "production.html")
     js = text(BASE / "setup_catalog_effort.js")
+    css = text(BASE / "setup_training_review_refinement.css")
+    assert 'id="save-task-effort" type="button">Save Effort</button>' in html
     assert "function placeSetupEffortSaveControl()" in js
     assert "setup-effort-editor-row" in js
-    assert "row.className = 'compact-grid'" in js
-    assert "actions.append(button, note)" in js
-    assert "Effort saves separately from Save Reusable Task." in js
+    assert "actions.appendChild(button)" in js
+    assert "button.classList.remove('secondary')" in js
+    assert "Effort saves separately from Save Reusable Task." not in js
+    assert "#setup-effort-editor-row" in css
+    assert "align-items: end" in css
+    assert "padding-top: 0" in css
     assert "placeSetupEffortSaveControl();" in js
