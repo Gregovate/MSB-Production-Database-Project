@@ -70,6 +70,15 @@ def test_backend_exposes_no_delete_route() -> None:
     assert "delete_exposed=False" in BACKEND
 
 
+def test_backend_preserves_optimistic_lock_timestamp_precision() -> None:
+    assert "from datetime import datetime" in BACKEND
+    assert "def json_row(row: Any)" in BACKEND
+    assert "isinstance(value, datetime)" in BACKEND
+    assert "item[key] = value.isoformat()" in BACKEND
+    assert "return jsonify(person=json_row(row))" in BACKEND
+    assert BACKEND.count("result = json_row(cur.fetchone())") == 2
+
+
 def test_ui_loads_versioned_analytics_and_explains_reserved_email() -> None:
     assert "static/analytics.js?v=2026-09-09.1" in HTML
     assert "Reserving it does not create the Google Workspace account" in HTML
