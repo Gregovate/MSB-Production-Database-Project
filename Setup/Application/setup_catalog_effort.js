@@ -20,13 +20,11 @@ function placeSetupEffortSaveControl() {
 
   const actions = document.createElement('div');
   actions.className = 'action-row manager-only setup-effort-save-actions';
-  const note = document.createElement('span');
-  note.className = 'muted';
-  note.textContent = 'Effort saves separately from Save Reusable Task.';
 
+  button.classList.remove('secondary');
   label.parentElement.insertBefore(row, label);
   row.appendChild(label);
-  actions.append(button, note);
+  actions.appendChild(button);
   row.appendChild(actions);
 }
 
