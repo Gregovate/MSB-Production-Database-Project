@@ -13,7 +13,7 @@ $ServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'people_manager_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/people-manager-milestone1-20260908'
-$CandidateSha = 'deaa9157282e59e8acd6a7da2a82fc9296e44f20'
+$CandidateSha = '2de2d244ec7259e52f9d312587a86ef38c7f512f'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -111,7 +111,8 @@ Write-Host "Preview user:  $PreviewEmail"
 Write-Host 'Authority: MSB-Server-Management — Pre_Production_Browser_Review_Runbook.md'
 Write-Host 'Clone authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md'
 Write-Host
-Write-Host 'This runs the exact disposable-accepted People metadata candidate against a new current-Production clone.'
+Write-Host 'This runs the disposable-accepted People metadata runtime plus the corrected regression assertion against a new current-Production clone.'
+Write-Host 'Runtime application/database files are unchanged from disposable-accepted SHA deaa9157282e59e8acd6a7da2a82fc9296e44f20.'
 Write-Host 'The clone receives People migrations 001, 002, and 003 only; Production remains read-only for preview preparation.'
 Write-Host 'Production ref.person, the Production checkout, and fieldwiring.service are not changed.'
 Write-Host 'The browser is not auto-opened; wait for BROWSER REVIEW READY before opening the URL shown above.'
