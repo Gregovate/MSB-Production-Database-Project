@@ -45,3 +45,13 @@ def test_effort_editor_and_catalog_badge_are_present():
     assert "can_manage_setup" in js
     assert "setup_effort_badge" not in js  # class stays hyphenated for CSS/DOM consistency
     assert "setup-effort-badge" in js
+
+
+def test_effort_save_control_is_moved_beside_effort_editor_and_explains_separate_save():
+    js = text(BASE / "setup_catalog_effort.js")
+    assert "function placeSetupEffortSaveControl()" in js
+    assert "setup-effort-editor-row" in js
+    assert "row.className = 'compact-grid'" in js
+    assert "actions.append(button, note)" in js
+    assert "Effort saves separately from Save Reusable Task." in js
+    assert "placeSetupEffortSaveControl();" in js
