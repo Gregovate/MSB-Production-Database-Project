@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSB People Manager</title>
+  <link rel="stylesheet" href="people.css?v=2026-09-09.1">
+  <script defer src="static/analytics.js?v=2026-09-09.1"></script>
+  <script defer src="people.js?v=2026-09-09.1"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">MSB Production Database</p>
+      <h1>People Manager</h1>
+      <p class="subtitle">Search, add, and maintain durable people records without creating duplicate identities.</p>
+    </div>
+    <div id="accessStatus" class="status-chip">Checking access…</div>
+  </header>
+
+  <main class="workspace">
+    <section class="panel search-panel" aria-labelledby="peopleSearchHeading">
+      <div class="panel-heading">
+        <div>
+          <h2 id="peopleSearchHeading">People</h2>
+          <p>Search name, person ID, MSB email, personal email, or phone.</p>
+        </div>
+        <button id="newPersonButton" class="primary" type="button">Add person</button>
+      </div>
+
+      <div class="search-row">
+        <input id="searchInput" type="search" autocomplete="off" placeholder="Search people">
+        <label class="check-label">
+          <input id="includeInactive" type="checkbox">
+          Include inactive
+        </label>
+      </div>
+
+      <div id="searchMessage" class="message muted">Loading people…</div>
+      <div id="peopleList" class="people-list" aria-live="polite"></div>
+    </section>
+
+    <section class="panel detail-panel" aria-labelledby="personHeading">
+      <div id="emptyState" class="empty-state">
+        <h2>Select a person</h2>
+        <p>Choose a person from the list or add a new casual volunteer.</p>
+      </div>
+
+      <form id="personForm" class="hidden" novalidate>
+        <div class="panel-heading">
+          <div>
+            <p id="recordMode" class="eyebrow">Person</p>
+            <h2 id="personHeading">Person details</h2>
+          </div>
+          <div id="personStateBadge" class="status-chip"></div>
+        </div>
+
+        <input id="personId" type="hidden">
+        <input id="expectedUpdatedAt" type="hidden">
+
+        <fieldset>
+          <legend>Contact Information</legend>
+          <div class="form-grid">
+            <label>First name <input id="firstName" required></label>
+            <label>Last name <input id="lastName" required></label>
+            <label>Preferred name <input id="preferredName"></label>
+            <label>Cell phone <input id="cellPhone" inputmode="tel" autocomplete="tel" placeholder="9205551212"></label>
+            <label class="wide">Personal email <input id="personalEmail" type="email" autocomplete="email"></label>
+            <label class="wide">Sheboygan Lights email
+              <div class="email-row">
+                <input id="msbEmail" type="email" autocomplete="off">
+                <button id="suggestEmailButton" class="secondary" type="button">Build email</button>
+              </div>
+              <span id="emailHelp" class="field-help">Reserved system identity. Reserving it does not create the Google Workspace account.</span>
+            </label>
+            <label class="check-label wide active-toggle">
+              <input id="activeFlag" type="checkbox" checked>
+              Active person
+            </label>
+          </div>
+        </fieldset>
+
+        <section id="identityPanel" class="subpanel">
+          <h3>Protected identity / current system state</h3>
+          <div id="identityFacts" class="fact-grid"></div>
+          <p class="field-help">Directus identity, PostgreSQL login, Manager/team flags, and Work Order eligibility are visible here but are not editable in Milestone 1.</p>
+        </section>
+
+        <section id="duplicatePanel" class="subpanel warning hidden">
+          <h3>Potential duplicate review</h3>
+          <p>These records share name/contact evidence. Review them before saving. A shared family email or phone is a warning, not proof that the people are the same.</p>
+          <div id="duplicateList"></div>
+          <label class="check-label">
+            <input id="duplicateReviewAck" type="checkbox">
+            I reviewed these possible matches and this should remain a separate person record.
+          </label>
+        </section>
+
+        <section id="emailCollisionPanel" class="subpanel warning hidden">
+          <h3>MSB email collision / exception</h3>
+          <p id="emailCollisionMessage"></p>
+          <div id="emailCandidateList" class="candidate-list"></div>
+          <label class="check-label">
+            <input id="emailExceptionAck" type="checkbox">
+            I reviewed and approve this non-standard MSB email.
+          </label>
+        </section>
+
+        <section id="dependenciesPanel" class="subpanel hidden">
+          <h3>Current relationships</h3>
+          <p class="field-help">Relationships are shown so inactive or duplicate records are not casually deleted. People Manager exposes no delete action.</p>
+          <div id="dependencyList"></div>
+        </section>
+
+        <div id="formMessage" class="message" aria-live="polite"></div>
+        <div class="actions">
+          <button id="checkDuplicatesButton" class="secondary" type="button">Check duplicates</button>
+          <button id="savePersonButton" class="primary" type="submit">Save person</button>
+        </div>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
