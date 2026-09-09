@@ -5,22 +5,37 @@
 | Document Type | Operator / User Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | MSB volunteers, reviewers, managers, and Setup operators |
-| Status | CURRENT — Production runtime operational; Setup UI/workflow in live evaluation |
+| Status | CURRENT — Production reusable catalog rebuilt; 2025 review and live task development continue |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-07 |
+| Last Reviewed | 2026-09-09 |
 | Keywords | Setup, 2025 review, training, 2026 plan, Setup procedures, deployment |
 
 Setup and Deployment covers the work of planning and carrying out the annual move from storage to the park, plus the information crews need while installing the show.
 
-The Setup application is now live at:
+The Setup application is live at:
 
 ```text
 https://my.sheboyganlights.org/setup/
 ```
 
-The current working session is **2025 — Historical Verification**. It uses real Production data so managers can reconstruct what happened in 2025, learn the workflow, improve reusable Setup knowledge, and identify UI/workflow problems before the 2026 Setup Session is created.
+The current working session is **2025 — Historical Verification**. It uses real Production data so managers can reconstruct what happened in 2025, improve reusable Setup knowledge, and identify workflow problems before the 2026 Setup Session is created.
 
-The application is operational, but the Setup/UI subsystem is still in **live evaluation**. The current review period is intended to generate questions, corrections, suggestions, and usability findings before final acceptance.
+## Current PostgreSQL Working Baseline
+
+The reusable task reconstruction was deployed to Production on 2026-09-09. The current working baseline in PostgreSQL is:
+
+```text
+active reusable tasks      = 185
+total reusable task rows   = 187
+reusable dependencies      = 0
+2026 Setup Sessions        = 0
+```
+
+The two additional reusable rows are retired identities preserved for history. The dependency set is intentionally empty pending the reviewed predecessor/readiness pass.
+
+The reviewed reconstruction workbook and historical schedules remain evidence for how this baseline was built, but they are **not the ongoing master task list**. From this point forward, continue building, correcting, organizing, and reviewing reusable Setup tasks against the **current Production PostgreSQL data**. New historical evidence may inform a task correction, but the current PostgreSQL catalog is the working source of truth.
+
+The application remains in live evaluation. Managers should continue to report missing tasks, incorrect scope/order, prerequisite/readiness needs, and UI/workflow problems rather than silently working around them.
 
 ## Start Here
 
@@ -82,14 +97,17 @@ Only an Administrator may create a new annual Setup Session or promote an annual
 
 ## Current Evaluation Boundary
 
-Production deployment is accepted, but final UI/workflow acceptance is intentionally open while managers use the 2025 session.
+The reconstructed reusable catalog is accepted in Production, but Issue #122 remains open because the broader Setup Session workflow is not finished.
 
 Current known boundaries:
 
 - no 2026 Setup Session has been created;
+- the current PostgreSQL reusable catalog is the working baseline and will continue to be corrected as real task knowledge is found;
+- the predecessor/readiness pass is still required before creating 2026; the current reusable dependency count is intentionally zero;
 - Pick List generation is not yet a live Production workflow;
-- Container/Display movement and scanning write commands remain outside this review boundary; and
-- the open Setup PRs remain the active engineering workstream until live-use findings are resolved.
+- Container/Display movement and scanning write commands remain outside the current live workflow;
+- known catalog corrections can still be found during live review, such as the missing physical Frosty setup task discovered immediately after deployment; and
+- Stage-level ↔ Scene drag/drop is tracked separately in Issue #133 and is not a blocker to continuing catalog work.
 
 ## Related Systems
 
