@@ -29,6 +29,7 @@ def test_effort_api_uses_governed_command_not_table_dml():
     assert '/api/setup/task-efforts' in api
     assert '/api/setup/tasks/<int:setup_task_id>/effort' in api
     assert "ref.set_setup_task_effort" in api
+    assert "WHERE active_flag" in api
     assert "UPDATE ref.setup_task" not in api
     assert "INSERT INTO ref.setup_task" not in api
     assert "DELETE FROM ref.setup_task" not in api
