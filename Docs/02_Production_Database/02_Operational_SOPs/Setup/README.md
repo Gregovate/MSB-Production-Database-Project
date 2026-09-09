@@ -16,7 +16,18 @@ The current shared working session is the real Production-backed:
 2025 — Historical Verification
 ```
 
-Production deployment is accepted, but the **Setup UI/workflow remains in live evaluation**. Managers are expected to use the 2025 session for real reconstruction/training work and report questions, suggestions, confusing behavior, and workflow problems before final subsystem acceptance.
+The reusable catalog reconstruction was accepted in Production on 2026-09-09. The current PostgreSQL working baseline is:
+
+```text
+active reusable tasks    = 185
+total reusable rows      = 187
+reusable prerequisites   = 0
+2026 Setup Sessions      = 0
+```
+
+Production deployment is accepted, but the **broader Setup UI/workflow remains in live evaluation**. Managers should continue real review/task-development work against current PostgreSQL data and report questions, suggestions, confusing behavior, and workflow problems before final subsystem acceptance.
+
+The reconstruction workbook and historical schedules remain evidence. They are not a parallel ongoing master task list.
 
 ## Start Here
 
@@ -39,6 +50,8 @@ Only a Setup Administrator may:
 
 - create/manage an annual Setup Session; or
 - promote an annual planned order into the reusable future baseline.
+
+There is currently no 2026 Setup Session. Do not create it until the current reusable catalog and the reviewed predecessor/readiness model are useful enough for planning.
 
 See the engineering contract:
 
@@ -65,16 +78,21 @@ Do not create a fake LOR Stage, Scene, or Preview for Park Infrastructure merely
 Live now:
 
 - Production-backed 2025 historical review/training;
+- the current 185-task reusable PostgreSQL catalog;
 - Manager/reviewer task verification and correction;
 - reusable task creation/copy and maintenance;
-- scope/order/prerequisite/resource maintenance;
+- scope/order/prerequisite/resource/effort maintenance through governed controls;
 - annual planning/review controls supported by the current application;
 - Procedure/document context; and
 - protected authenticated browser access.
 
 Still outside the current Production-ready boundary:
 
+- reviewed predecessor/readiness completion across the reconstructed catalog;
+- cross-Stage candidate planning / short-horizon scheduler workflow;
 - Pick List generation; and
-- Container/Display movement/scanning write commands.
+- Container/Display movement/scanning write commands and park-location execution evidence.
 
-Do not document those later layers as live Production behavior until their separate acceptance gates pass.
+A current known catalog correction is missing physical `Set Up Frosty`; transport-only `Bring Frosty to park` remains logistics evidence. Frosty setup must be added to the current catalog and precede the applicable Stars work.
+
+Do not document later layers as live Production behavior until their separate acceptance gates pass.
