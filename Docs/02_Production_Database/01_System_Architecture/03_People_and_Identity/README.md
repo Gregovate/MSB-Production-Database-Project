@@ -6,7 +6,24 @@ This subsystem documents the people, authentication, authorization, onboarding, 
 
 `ref.person` is the durable human/service identity record used by Production Database relationships and audit attribution. A person may exist as a casual or seasonal volunteer without a Google Workspace account, Directus identity, or PostgreSQL login.
 
-The People Manager engineering scope has now passed current-Production disposable-clone acceptance and governed browser operator review. The accepted implementation is ready for the separate Production deployment gate; it is not yet installed in Production.
+People Manager is now **live in Production**:
+
+```text
+https://my.sheboyganlights.org/people/
+```
+
+Accepted Production runtime:
+
+```text
+application SHA      54e1192309b96c9838676be51a0bfcdb3ac92e06
+version              V0.2.0
+service              msb-people.service
+listener             192.168.5.9:8796
+PostgreSQL role      people_app
+runtime account      fieldwiring
+```
+
+Production deployment, protected-route verification, Cloudflare-authenticated browser verification, and direct GA4 page-view verification all passed on 2026-09-09.
 
 The People Manager provides controlled maintenance for:
 
@@ -69,13 +86,23 @@ Capabilities, qualifications, and eligibility never automatically create Captain
 - People Manager browser/API and least-privilege command boundary
 - People-specific operator procedures and engineering documentation
 
+## Authorization
+
+Cloudflare Access authenticates the browser user. Current Directus role/policy data remains the authorization authority.
+
+People Manager maintenance is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. Cloudflare authentication alone does not grant People management access.
+
 ## Google Analytics
 
-The People application includes the required MSB internal GA4 integration using measurement ID `G-X08ZTSY0VV`.
+People Manager uses the approved MSB internal GA4 property:
+
+```text
+G-X08ZTSY0VV
+```
+
+The deployed analytics asset version is `2026-09-09.1`. A live `MSB People Manager` page view was verified in the MSB Internal Intranet GA4 property on 2026-09-09.
 
 Only aggregate page/workflow usage may be sent. Person names, emails, phone numbers, `person_id`, authenticated identity, search text, and other Production Database record identifiers are prohibited. Google Signals and advertising personalization remain disabled.
-
-Production acceptance must verify the deployed People page view and analytics asset/version before final closeout.
 
 ## Engineering
 
@@ -87,6 +114,7 @@ Key current records include:
 - [People Manager Metadata Implementation — 2026-09-09](engineering/People_Manager_Metadata_Implementation_2026-09-09.md)
 - `People/Acceptance/People_Manager_Metadata_Disposable_Acceptance_Evidence_2026-09-09.md`
 - `People/Acceptance/People_Manager_Browser_Review_Acceptance_2026-09-09.md`
+- `People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md`
 
 ## Directus / Google Ownership Boundaries
 
@@ -104,7 +132,7 @@ The accepted People Manager scope does **not** include:
 - `ref.setup_task_capability` Setup-task-to-capability integration; or
 - governed person merge/reconciliation.
 
-Those remain separate future work and do not block deployment of the accepted People Manager.
+Those remain separate future work and do not block the live People Manager.
 
 ## Related Systems
 
@@ -114,6 +142,10 @@ Those remain separate future work and do not block deployment of the accepted Pe
 - [Work Orders](../06_Work_Orders/README.md)
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 
+## Current Closeout
+
+The People application/runtime is accepted. The remaining current subsystem step is Production intranet/index integration through `Gregovate/MSB-Internal-Web-Backbone#16`, then the return-handoff update.
+
 ## Resume Development
 
-Read the current [engineering handoff](engineering/README.md), onboarding identity contract, accepted browser/disposable evidence, and the plain-English People operator procedure before changing this subsystem. Preserve Google Workspace provisioning authority, Directus authorization authority, duplicate-safe identity behavior, least privilege, and the existing People analytics privacy boundary.
+Read the current [engineering handoff](engineering/README.md), onboarding identity contract, accepted disposable/browser/Production evidence, and the plain-English People operator procedure before changing this subsystem. Preserve Google Workspace provisioning authority, Directus authorization authority, duplicate-safe identity behavior, least privilege, and the existing People analytics privacy boundary.
