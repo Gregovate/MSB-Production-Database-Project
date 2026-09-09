@@ -117,6 +117,64 @@ Use **Add Task Here** or **Copy** where appropriate.
 
 Do not create a reusable task for ordinary transport merely because an old schedule recorded it. Example: `Bring Frosty to park` remains logistics evidence; the missing reusable work is physical `Set Up Frosty`.
 
+## Keep Scope, Display Ownership, and Containers Separate
+
+This is an important Setup rule while reviewing/building reusable tasks.
+
+### Scope = where the work belongs
+
+A task may belong to a Stage or Scene even when no Display is associated with that task.
+
+Example:
+
+```text
+Grease Bearings
+    -> belongs at 01-Front Gate
+    -> no Display assignment required
+```
+
+Do not move a task to another Stage merely because its Material / Logistics panel is empty.
+
+### Display ownership = the physical work package
+
+A Display may belong to **at most one** reusable Setup task. A reusable task may own many Displays or none.
+
+```text
+one Display -> zero or one reusable Setup task
+```
+
+Do not create one Setup task per panel just to represent Display relationships. Build the task at the practical crew/work-package level.
+
+Examples:
+
+- one `Set Up Traffic Signs` task may own the complete Traffic Sign Display group;
+- one `Set Up MSB & Rotary Signs` task may own that sign group;
+- `Volunteer Path Setup` may be its own task when it is normally assigned to a parallel crew;
+- `Grease Bearings` can remain a Front Gate task with no Display ownership.
+
+A LOR Scene/display group can help identify which Displays belong together, but Stage/Scene placement alone does not mean every task in that scope owns all Displays in that scope.
+
+### Containers = storage and transport
+
+Containers normally tell us **where the Displays are stored and how they get to the park**. They do not determine task scope and do not create Display ownership.
+
+For Display-bearing work, the intended chain is:
+
+```text
+Setup task
+    -> assigned Displays
+    -> current Display-to-Container assignments
+    -> current storage/location
+```
+
+Some Containers become part of the deployed show and are marked accordingly (`display_pallet`). Those Containers may remain at the park after unloading and return during Takedown rather than automatically returning to the workshop when Setup is complete.
+
+### Current UI limitation
+
+The Material / Logistics panel is still being corrected to follow this model. It may currently show all Displays from a Scene for a task that owns none, or zero Displays for a Stage-level task whose Display work package has not yet been assigned.
+
+Do not create fake tasks, duplicate a Display into multiple tasks, or move a task to the wrong Stage/Scene to make the Material panel look populated. Report the intended Display work package and continue building the correct task definition.
+
 ## Review Resources, Effort, Prerequisites, and Readiness
 
 For reusable tasks, check whether practical requirements are represented correctly:
@@ -146,6 +204,7 @@ Report things such as:
 - awkward or repetitive steps;
 - task organization that does not match real work;
 - resources or prerequisites that are difficult to represent;
+- missing or misleading Material / Logistics relationships;
 - missing search/filter/navigation behavior; and
 - ideas that would make 2026 planning or field work easier.
 
@@ -158,7 +217,7 @@ Normal reviewers/managers cannot:
 - create the 2026 Setup Session; or
 - promote an annual order into the reusable future baseline unless they have Administrator authority.
 
-Pick List generation and Container/Display movement/scanning writes are not part of the current live workflow.
+Pick List generation, governed task-to-Display ownership editing, and Container/Display movement/scanning writes are not part of the current live workflow.
 
 ## What Successful Review Looks Like
 
@@ -169,6 +228,7 @@ A useful review leaves:
 - accepted annual-to-reusable identity mappings marked ASSIGNED where appropriate;
 - missing reusable tasks added directly to the current PostgreSQL catalog;
 - reusable task scope, resources, effort, prerequisites/readiness, order, and normal expectations improved where the change should carry forward;
+- practical Display work packages identified without creating one task per Display or assigning a Display to multiple tasks;
 - no fake records created only for testing; and
 - no 2026 Session created before the catalog/predecessor model is ready.
 
