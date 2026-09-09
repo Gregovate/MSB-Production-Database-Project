@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MSB People Manager</title>
-  <link rel="stylesheet" href="people.css?v=2026-09-09.1">
+  <link rel="stylesheet" href="people.css?v=2026-09-09.2">
   <script defer src="static/analytics.js?v=2026-09-09.1"></script>
-  <script defer src="people.js?v=2026-09-09.1"></script>
+  <script defer src="people.js?v=2026-09-09.2"></script>
 </head>
 <body>
   <header class="app-header">
     <div>
       <p class="eyebrow">MSB Production Database</p>
       <h1>People Manager</h1>
-      <p class="subtitle">Search, add, and maintain durable people records without creating duplicate identities.</p>
+      <p class="subtitle">Maintain durable people, skills, qualifications, and Setup/Takedown eligibility without creating duplicate identities.</p>
     </div>
     <div id="accessStatus" class="status-chip">Checking access…</div>
   </header>
@@ -43,7 +43,7 @@
     <section class="panel detail-panel" aria-labelledby="personHeading">
       <div id="emptyState" class="empty-state">
         <h2>Select a person</h2>
-        <p>Choose a person from the list or add a new casual volunteer.</p>
+        <p>Choose a person from the list or add a new volunteer/contact.</p>
       </div>
 
       <form id="personForm" class="hidden" novalidate>
@@ -83,7 +83,7 @@
         <section id="identityPanel" class="subpanel">
           <h3>Protected identity / current system state</h3>
           <div id="identityFacts" class="fact-grid"></div>
-          <p class="field-help">Directus identity, PostgreSQL login, Manager/team flags, and Work Order eligibility are visible here but are not editable in Milestone 1.</p>
+          <p class="field-help">Directus identity, PostgreSQL login, Manager/team flags, and Work Order eligibility are visible here but remain governed by their owning workflows.</p>
         </section>
 
         <section id="duplicatePanel" class="subpanel warning hidden">
@@ -106,17 +106,109 @@
           </label>
         </section>
 
-        <section id="dependenciesPanel" class="subpanel hidden">
-          <h3>Current relationships</h3>
-          <p class="field-help">Relationships are shown so inactive or duplicate records are not casually deleted. People Manager exposes no delete action.</p>
-          <div id="dependencyList"></div>
-        </section>
-
         <div id="formMessage" class="message" aria-live="polite"></div>
         <div class="actions">
           <button id="checkDuplicatesButton" class="secondary" type="button">Check duplicates</button>
           <button id="savePersonButton" class="primary" type="submit">Save person</button>
         </div>
+
+        <section id="metadataWaitPanel" class="subpanel hidden">
+          <h3>People metadata</h3>
+          <p class="field-help">Save the person first. Capabilities, qualifications, Setup/Takedown roles, and leadership relationships attach to the durable person record.</p>
+        </section>
+
+        <section id="capabilityPanel" class="subpanel metadata-panel hidden">
+          <div class="section-heading">
+            <div>
+              <h3>Capabilities</h3>
+              <p class="field-help">Reusable skills, experience, or MSB-specific knowledge. These are not formal certifications.</p>
+            </div>
+          </div>
+          <div id="capabilityList" class="metadata-list"></div>
+          <div class="metadata-editor">
+            <label>Capability
+              <select id="capabilitySelect"></select>
+            </label>
+            <label>Notes
+              <input id="capabilityNotes" placeholder="Optional person-specific notes">
+            </label>
+            <button id="assignCapabilityButton" class="secondary" type="button">Add / reactivate capability</button>
+          </div>
+          <details class="catalog-editor">
+            <summary>Add capability to controlled catalog</summary>
+            <div class="form-grid compact-grid">
+              <label>Capability name <input id="newCapabilityName"></label>
+              <label>Category
+                <select id="newCapabilityCategory">
+                  <option value="TRADE">Trade</option>
+                  <option value="TECHNICAL">Technical</option>
+                  <option value="DISPLAY_BUILD_KNOWLEDGE">Display / build knowledge</option>
+                  <option value="EQUIPMENT">Equipment</option>
+                  <option value="OTHER" selected>Other</option>
+                </select>
+              </label>
+              <label class="wide">Catalog notes <input id="newCapabilityCatalogNotes"></label>
+            </div>
+            <button id="createCapabilityTypeButton" class="secondary" type="button">Create capability type</button>
+          </details>
+          <div id="capabilityMessage" class="message"></div>
+        </section>
+
+        <section id="qualificationPanel" class="subpanel metadata-panel hidden">
+          <h3>Qualifications</h3>
+          <p class="field-help">Formal training, certification, authorization, or credentials. Dates and evidence are entered from authoritative documentation; no expiration is inferred.</p>
+          <div id="qualificationList" class="metadata-list"></div>
+          <input id="editingQualificationId" type="hidden">
+          <div class="form-grid compact-grid">
+            <label>Qualification
+              <select id="qualificationSelect"></select>
+            </label>
+            <label>Qualification role <input id="qualificationRole" placeholder="Optional role / level"></label>
+            <label>Completed on <input id="qualificationCompletedOn" type="date"></label>
+            <label>Valid from <input id="qualificationValidFrom" type="date"></label>
+            <label>Expires on <input id="qualificationExpiresOn" type="date"></label>
+            <label>Certificate number <input id="qualificationCertificateNumber"></label>
+            <label class="wide">Evidence reference <input id="qualificationEvidenceReference" placeholder="Document, certificate, or file reference"></label>
+            <label class="wide">Notes <input id="qualificationNotes"></label>
+            <label class="check-label wide">
+              <input id="qualificationActiveFlag" type="checkbox" checked>
+              Active qualification record
+            </label>
+          </div>
+          <div class="inline-actions">
+            <button id="saveQualificationButton" class="secondary" type="button">Add qualification</button>
+            <button id="cancelQualificationEditButton" class="secondary hidden" type="button">Cancel edit</button>
+          </div>
+          <details class="catalog-editor">
+            <summary>Add qualification to controlled catalog</summary>
+            <div class="form-grid compact-grid">
+              <label class="wide">Qualification name <input id="newQualificationName"></label>
+              <label class="wide">Catalog notes <input id="newQualificationCatalogNotes"></label>
+            </div>
+            <button id="createQualificationTypeButton" class="secondary" type="button">Create qualification type</button>
+          </details>
+          <div id="qualificationMessage" class="message"></div>
+        </section>
+
+        <section id="setupRolePanel" class="subpanel metadata-panel hidden">
+          <h3>Setup / Takedown participation & eligibility</h3>
+          <p class="field-help">These roles describe participation or leadership eligibility. They do not create Captain assignments.</p>
+          <div id="setupRoleList" class="role-list"></div>
+          <button id="saveSetupRolesButton" class="secondary" type="button">Save Setup / Takedown roles</button>
+          <div id="setupRoleMessage" class="message"></div>
+        </section>
+
+        <section id="leadershipPanel" class="subpanel metadata-panel hidden">
+          <h3>Reusable-task leadership</h3>
+          <p class="field-help">Read-only current Captain, Alternate, and Advisor assignments from Setup reusable-task authority.</p>
+          <div id="leadershipList" class="metadata-list"></div>
+        </section>
+
+        <section id="dependenciesPanel" class="subpanel hidden">
+          <h3>Current relationships</h3>
+          <p class="field-help">Relationships are shown so inactive or duplicate records are not casually deleted. People Manager exposes no person delete action.</p>
+          <div id="dependencyList"></div>
+        </section>
       </form>
     </section>
   </main>
