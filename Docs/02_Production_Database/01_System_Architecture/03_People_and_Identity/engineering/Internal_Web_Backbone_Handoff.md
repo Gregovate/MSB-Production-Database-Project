@@ -8,6 +8,7 @@
 | Status | PENDING PRODUCTION DEPLOYMENT / BACKBONE INTEGRATION |
 | Last Reviewed | 2026-09-09 |
 | Source Issue | Production Database #130 |
+| Backbone Issue | `Gregovate/MSB-Internal-Web-Backbone` #16 |
 
 ## Purpose
 
@@ -41,7 +42,7 @@ People/README.md
 
 The normal operator destination is the live **People Manager** application under the authenticated `my.sheboyganlights.org` namespace.
 
-**Do not hard-code or publish a guessed People URL before Production deployment has established and verified the live route.** The final Production deployment evidence must update this handoff with the exact live application entry point before the Backbone issue can be marked `VERIFIED`.
+**Do not hard-code or publish a guessed People URL before Production deployment has established and verified the live route.** The final Production deployment evidence must update this handoff with the exact live application entry point before Backbone issue #16 can be marked `VERIFIED`.
 
 Temporary localhost browser-review URLs such as `http://127.0.0.1:8795/` are acceptance harness artifacts and must never become Backbone dependencies.
 
@@ -125,7 +126,7 @@ Backbone integration is `VERIFIED` only when all of the following are true:
 ```text
 [ ] Production People Manager deployment is complete and live route is known
 [ ] this handoff contains the exact verified live People application entry point
-[ ] matching MSB-Internal-Web-Backbone issue exists
+[x] matching MSB-Internal-Web-Backbone issue exists — #16
 [ ] current Backbone source and currently published Production page were reconciled before editing
 [ ] Production page contains a clear task-oriented People / People Manager entry
 [ ] the entry opens the verified live People application
@@ -145,7 +146,7 @@ After Backbone deployment verification, update this document with:
 
 ```text
 Live People application URL: <verified URL>
-Backbone issue: #<number>
+Backbone issue: #16
 Backbone PR: #<number>
 Backbone merge/deployment revision: <revision>
 Production page version verified: <version>
