@@ -18,6 +18,7 @@ REPORT="$REPORT_DIR/Setup_Training_Disposable_${STAMP}.txt"
 M019="$BUNDLE_DIR/019_add_reconstruction_safe_task_delete.sql"
 M020="$BUNDLE_DIR/020_add_setup_captain_management_commands.sql"
 M021="$BUNDLE_DIR/021_add_setup_assigned_reconciliation_state.sql"
+M022="$BUNDLE_DIR/022_require_active_setup_captain_people.sql"
 VALIDATION="$BUNDLE_DIR/setup_training_disposable_validation.sql"
 PROD_BEFORE=""
 
@@ -85,7 +86,7 @@ trap cleanup EXIT INT TERM
 
 sudo -v
 
-for file in "$M019" "$M020" "$M021" "$VALIDATION"; do
+for file in "$M019" "$M020" "$M021" "$M022" "$VALIDATION"; do
     if [[ ! -s "$file" ]]; then
         echo "FAIL: required acceptance file missing: $file"
         exit 2
@@ -111,7 +112,7 @@ if sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
 fi
 
 echo "--- Candidate migration hashes ---"
-sha256sum "$M019" "$M020" "$M021" "$VALIDATION"
+sha256sum "$M019" "$M020" "$M021" "$M022" "$VALIDATION"
 
 PROD_BEFORE="$(prod_fingerprint)"
 if [[ -z "$PROD_BEFORE" ]]; then
@@ -213,6 +214,8 @@ psql_test < "$M020"
 echo "Migration 020 Captain management: PASS"
 psql_test < "$M021"
 echo "Migration 021 ASSIGNED reconciliation state: PASS"
+psql_test < "$M022"
+echo "Migration 022 active Captain people: PASS"
 
 IDEMPOTENCE_BEFORE="$(test_fingerprint)"
 if [[ -z "$IDEMPOTENCE_BEFORE" ]]; then
@@ -228,6 +231,8 @@ psql_test < "$M020"
 echo "Migration 020 idempotence replay: PASS"
 psql_test < "$M021"
 echo "Migration 021 idempotence replay: PASS"
+psql_test < "$M022"
+echo "Migration 022 idempotence replay: PASS"
 
 IDEMPOTENCE_AFTER="$(test_fingerprint)"
 echo "Disposable governed Setup fingerprint before replay: $IDEMPOTENCE_BEFORE"
@@ -236,7 +241,7 @@ if [[ -z "$IDEMPOTENCE_AFTER" || "$IDEMPOTENCE_AFTER" != "$IDEMPOTENCE_BEFORE" ]
     echo "FAIL: candidate migration replay changed governed Setup data"
     exit 10
 fi
-echo "PASS: migrations 019-021 replay cleanly with governed Setup data unchanged"
+echo "PASS: migrations 019-022 replay cleanly with governed Setup data unchanged"
 
 echo
 echo "--- Run feature-specific disposable assertions ---"
