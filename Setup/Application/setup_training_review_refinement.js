@@ -25,9 +25,10 @@
       appState.access?.can_manage_setup
       && task?.setup_task_id != null
     );
+    const deleteTitle = 'Delete a mistaken reusable task while cleaning the reconstructed Catalog. The database refuses deletion when protected planning or execution history exists.';
 
-    button.textContent = 'Delete Task';
-    button.title = 'Delete a mistaken reusable task while cleaning the reconstructed Catalog. The database refuses deletion when protected planning or execution history exists.';
+    if (button.textContent !== 'Delete Task') button.textContent = 'Delete Task';
+    if (button.title !== deleteTitle) button.title = deleteTitle;
     if (button.hidden !== shouldHide) button.hidden = shouldHide;
   }
 
