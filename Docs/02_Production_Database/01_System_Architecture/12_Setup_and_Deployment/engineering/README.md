@@ -40,15 +40,17 @@ The two non-active reusable rows are retired identities preserved for history. T
 
 The current PostgreSQL data is now the authoritative **working task baseline**. The large one-list workbook and 2022/2025 schedules remain historical/reconstruction evidence, but future task development should not maintain another spreadsheet as a parallel master. Continue adding, correcting, moving, and enriching reusable tasks against the current Production catalog, using historical evidence only to support those changes.
 
-Known immediate catalog finding after deployment:
+Known immediate catalog findings after deployment:
 
 - physical `Set Up Frosty` is missing; transport-only `Bring Frosty to park` was correctly excluded from reusable work, but the physical setup task was never created;
 - Frosty setup must precede the applicable Stars setup work;
-- this belongs in the live catalog correction + predecessor pass, not in another bulk reconstruction import.
+- confirmed duplicate/bad reusable Catalog definitions from reconstruction/merge may have **no annual historical row** and must be removed before 2026 planning rather than propagated forward;
+- the governed database reconstruction-delete command already supports Catalog-only safe deletion and fails closed on protected planning/execution history, but the Manager UI currently hides Delete without annual-session context; PR #137 restores that UI path; and
+- these findings belong in live Catalog correction + predecessor/readiness work, not in another bulk reconstruction import.
 
 Production corrections already include:
 
-- reconstruction-safe deletion of mistaken provisional historical tasks;
+- the governed reconstruction-safe database deletion command for mistaken provisional/Catalog tasks;
 - Captain / Alternate / Advisor management using `ref.person` identity;
 - reusable-task match/reconciliation state for annual 2025 items;
 - active-person enforcement for new Captain/knowledge-owner assignments;
@@ -59,11 +61,12 @@ Production corrections already include:
 - normalized `Locate Power & Network` and `Layout Panels` naming; and
 - retirement of provisional reusable tasks 40 and 58 without fabricating 2025 annual rows.
 
-The broader Setup subsystem remains open for real evaluation. Production availability and the accepted catalog do not mean 2026 planning, Pick List, movement, or predecessor/readiness work is complete.
+The broader Setup subsystem remains open for real evaluation. Production availability and the accepted catalog do not mean 2026 planning, Pick List, movement, predecessor/readiness, or Catalog cleanup is complete.
 
 ## Start Here
 
 - [Setup Catalog Reconstruction Import — 2026-09-09](Setup_Catalog_Reconstruction_Import_2026-09-09.md) — accepted historical record of migrations 023/024 and the one-time normalized catalog reconstruction. Do not treat it as the ongoing task master after Production acceptance.
+- [Setup Reconstruction Migration and Acceptance History — 2026-09-07 to 2026-09-09](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) — durable record of the PL/pgSQL ambiguity defect class, migrations 013/015/018/020, disposable-only migration exclusion, browser/preview gate failures, reconstruction omissions, and Catalog-only delete cleanup finding. Read this before changing Setup migration or acceptance patterns.
 - [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — operator-confirmed planning model: short planning horizon, preferred-order scheduling, Needs Scheduling queue, Sunday avoidance, weather constraints, grass-cutting dependency for cords, multi-day tasks, crew/hour interpretation, mixed-stage Container mobilization, and historical evidence rules.
 - [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — operator-confirmed planning surface between reusable Stage-organized tasks and the short-range schedule: cross-Stage Available/Blocked/In-Progress candidates, operator choice of what can/should happen next, and Arch Trailer unload/access order.
 - [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — standalone Setup Pick List direction: tablet-first workflow, scan integration, task-to-Container resolver, mixed-stage Container behavior, and explicit statement that Pick List generation is not yet implemented.
@@ -103,6 +106,7 @@ Primary current work remains:
 ```text
 #122  Setup Session engineering / planning / Pick List / movement umbrella
 #125  Production foundation / application lineage and eventual merge/closeout
+#137  restore Catalog-only reconstruction Delete Task UI before 2026 propagation
 #133  reusable task drag/drop between Stage-level and Scene scopes
 #130  global People / Capability / Qualification catalog consumed by Setup
 #132  Captain work-report duration / multi-day effort capture
@@ -186,7 +190,8 @@ See [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09
 
 Still unresolved or intentionally separate:
 
-- live catalog completion/correction as additional real task knowledge is found, beginning with missing `Set Up Frosty`;
+- remove confirmed duplicate/bad reusable Catalog definitions introduced during reconstruction/merge before 2026 propagation; PR #137 must restore the Catalog-only Manager Delete UI while the database remains fail-closed on protected history;
+- live catalog completion/correction as additional real task knowledge is found, including missing `Set Up Frosty`;
 - reviewed predecessor/readiness pass across the current reusable catalog; dependencies are intentionally zero until this is rebuilt;
 - classification of historical sequencing into **hard predecessor**, **preferred order**, or **readiness condition**;
 - cross-Stage candidate planning surface and candidate-to-work-day workflow;
@@ -206,7 +211,13 @@ Detailed KIT contents remain outside the current 2026 MVP, but an existing KIT C
 
 Do **not** create the 2026 Setup Session yet.
 
-Before 2026 creation, the current live catalog should be useful enough for planning and the predecessor/readiness pass should establish the dependency/readiness rules needed by the candidate planning view. Creating 2026 before that would copy an intentionally dependency-empty catalog into annual planning prematurely.
+Before 2026 creation:
+
+- remove confirmed reconstruction duplicates/bad reusable definitions so they are not propagated;
+- correct missing real work such as `Set Up Frosty`; and
+- make the predecessor/readiness pass useful enough to establish the dependency/readiness rules needed by the candidate planning view.
+
+Creating 2026 before those corrections would copy known reconstruction mistakes and an intentionally dependency-empty Catalog into annual planning prematurely.
 
 ## Critical Runtime Permission Boundary
 
@@ -222,16 +233,17 @@ Before changing this subsystem:
 2. read this engineering portal;
 3. inspect the current PostgreSQL reusable task catalog first; do not reconstruct the active task list from old spreadsheets or chat memory;
 4. use the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) as the accepted import/deployment history, not as an ongoing task master;
-5. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
-6. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
-7. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing logistics/pick behavior;
-8. review Issue #122 and PR #125 for newest live findings and merge/closeout state;
-9. preserve annual 2025 facts separately from reusable future knowledge;
-10. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
-11. use Issue #130 / 03 People and Identity for global skill/qualification work;
-12. use Issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
-13. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
-14. keep operator docs, engineering docs, PR/issue status, and Internal Web Backbone navigation synchronized when accepted behavior changes.
+5. read the [Setup Reconstruction Migration and Acceptance History](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) before changing Setup migrations, disposable acceptance, or reconstruction-cleanup behavior;
+6. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
+7. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
+8. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing logistics/pick behavior;
+9. review Issue #122, PR #125, and PR #137 for the newest live findings, Catalog cleanup gate, and merge/closeout state;
+10. preserve annual 2025 facts separately from reusable future knowledge;
+11. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
+12. use Issue #130 / 03 People and Identity for global skill/qualification work;
+13. use Issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
+14. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
+15. keep operator docs, engineering docs, PR/issue status, and Internal Web Backbone navigation synchronized when accepted behavior changes.
 
 ## Related Systems
 
