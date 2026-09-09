@@ -61,6 +61,12 @@ def test_catalog_preview_uses_distinct_upload_and_remote_bundle_paths():
     assert '$remoteRoot = "/tmp/msb-setup-catalog-browser-preview-$stamp"' not in launcher
 
 
+def test_catalog_preview_privilege_mirror_filters_out_procedures():
+    server = SERVER.read_text(encoding="utf-8")
+    assert "p.prokind IN ('f','w')" in server
+    assert "has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE')" in server
+
+
 def test_catalog_preview_validates_effort_and_waits_for_operator_cleanup():
     server = SERVER.read_text(encoding="utf-8")
     assert "/api/setup/task-efforts" in server
