@@ -35,6 +35,7 @@ def api_setup_task_efforts() -> Response:
                 """
                 SELECT setup_task_id, effort_level
                 FROM ref.setup_task
+                WHERE active_flag
                 ORDER BY setup_task_id
                 """
             )
