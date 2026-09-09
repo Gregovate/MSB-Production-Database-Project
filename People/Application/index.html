@@ -2,33 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB People Manager</title>
-  <link rel="stylesheet" href="people.css?v=2026-09-09.2">
+  <link rel="stylesheet" href="people.css?v=2026-09-09.3">
   <script defer src="static/analytics.js?v=2026-09-09.1"></script>
-  <script defer src="people.js?v=2026-09-09.2"></script>
+  <script defer src="static/people_theme.js?v=2026-09-09.1"></script>
+  <script defer src="people.js?v=2026-09-09.3"></script>
 </head>
 <body>
-  <header class="app-header">
-    <div>
-      <p class="eyebrow">MSB Production Database</p>
+<header class="site-header">
+  <div class="brand">
+    <img id="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div class="brand-copy">
       <h1>People Manager</h1>
-      <p class="subtitle">Maintain durable people, skills, qualifications, and Setup/Takedown eligibility without creating duplicate identities.</p>
+      <div class="subhead">People, capabilities, qualifications, and Setup / Takedown eligibility.</div>
     </div>
-    <div id="accessStatus" class="status-chip">Checking access…</div>
-  </header>
+    <div class="header-actions">
+      <span id="accessStatus" class="access-status">Checking access…</span>
+      <button id="theme-toggle" type="button">Dark mode</button>
+    </div>
+  </div>
+</header>
 
-  <main class="workspace">
-    <section class="panel search-panel" aria-labelledby="peopleSearchHeading">
-      <div class="panel-heading">
+<main>
+  <section class="workspace">
+    <div class="card list-card" aria-labelledby="peopleSearchHeading">
+      <div class="section-title list-heading">
         <div>
           <h2 id="peopleSearchHeading">People</h2>
-          <p>Search name, person ID, MSB email, personal email, or phone.</p>
+          <div class="muted">Search name, ID, email, or phone.</div>
         </div>
         <button id="newPersonButton" class="primary" type="button">Add person</button>
       </div>
 
-      <div class="search-row">
+      <div class="search-tools">
         <input id="searchInput" type="search" autocomplete="off" placeholder="Search people">
         <label class="check-label">
           <input id="includeInactive" type="checkbox">
@@ -38,28 +45,35 @@
 
       <div id="searchMessage" class="message muted">Loading people…</div>
       <div id="peopleList" class="people-list" aria-live="polite"></div>
-    </section>
+    </div>
 
-    <section class="panel detail-panel" aria-labelledby="personHeading">
-      <div id="emptyState" class="empty-state">
+    <div class="detail-column" aria-labelledby="personHeading">
+      <div id="emptyState" class="card empty-state">
         <h2>Select a person</h2>
         <p>Choose a person from the list or add a new volunteer/contact.</p>
       </div>
 
       <form id="personForm" class="hidden" novalidate>
-        <div class="panel-heading">
-          <div>
-            <p id="recordMode" class="eyebrow">Person</p>
-            <h2 id="personHeading">Person details</h2>
+        <section class="card person-heading-card">
+          <div class="detail-heading">
+            <div>
+              <div id="recordMode" class="eyebrow">Person</div>
+              <h2 id="personHeading">Person details</h2>
+            </div>
+            <div id="personStateBadge" class="pill"></div>
           </div>
-          <div id="personStateBadge" class="status-chip"></div>
-        </div>
+        </section>
 
         <input id="personId" type="hidden">
         <input id="expectedUpdatedAt" type="hidden">
 
-        <fieldset>
-          <legend>Contact Information</legend>
+        <fieldset class="card contact-card">
+          <div class="section-title">
+            <div>
+              <h3>Contact Information</h3>
+              <div class="muted">Durable person identity and ordinary contact details.</div>
+            </div>
+          </div>
           <div class="form-grid">
             <label>First name <input id="firstName" required></label>
             <label>Last name <input id="lastName" required></label>
@@ -69,59 +83,53 @@
             <label class="wide">Sheboygan Lights email
               <div class="email-row">
                 <input id="msbEmail" type="email" autocomplete="off">
-                <button id="suggestEmailButton" class="secondary" type="button">Build email</button>
+                <button id="suggestEmailButton" type="button">Build email</button>
               </div>
-              <span id="emailHelp" class="field-help">Reserved system identity. Reserving it does not create the Google Workspace account.</span>
+              <span id="emailHelp" class="hint">Reserved system identity. Reserving it does not create the Google Workspace account.</span>
             </label>
             <label class="check-label wide active-toggle">
               <input id="activeFlag" type="checkbox" checked>
               Active person
             </label>
           </div>
+
+          <section id="duplicatePanel" class="inline-warning hidden">
+            <h3>Potential duplicate review</h3>
+            <p>These records share name/contact evidence. A shared family email or phone is a warning, not proof that the people are the same.</p>
+            <div id="duplicateList"></div>
+            <label class="check-label">
+              <input id="duplicateReviewAck" type="checkbox">
+              I reviewed these possible matches and this should remain a separate person record.
+            </label>
+          </section>
+
+          <section id="emailCollisionPanel" class="inline-warning hidden">
+            <h3>MSB email collision / exception</h3>
+            <p id="emailCollisionMessage"></p>
+            <div id="emailCandidateList" class="candidate-list"></div>
+            <label class="check-label">
+              <input id="emailExceptionAck" type="checkbox">
+              I reviewed and approve this non-standard MSB email.
+            </label>
+          </section>
+
+          <div id="formMessage" class="message" aria-live="polite"></div>
+          <div class="action-row">
+            <button id="checkDuplicatesButton" type="button">Check duplicates</button>
+            <button id="savePersonButton" class="primary" type="submit">Save person</button>
+          </div>
         </fieldset>
 
-        <section id="identityPanel" class="subpanel">
-          <h3>Protected identity / current system state</h3>
-          <div id="identityFacts" class="fact-grid"></div>
-          <p class="field-help">Directus identity, PostgreSQL login, Manager/team flags, and Work Order eligibility are visible here but remain governed by their owning workflows.</p>
-        </section>
-
-        <section id="duplicatePanel" class="subpanel warning hidden">
-          <h3>Potential duplicate review</h3>
-          <p>These records share name/contact evidence. Review them before saving. A shared family email or phone is a warning, not proof that the people are the same.</p>
-          <div id="duplicateList"></div>
-          <label class="check-label">
-            <input id="duplicateReviewAck" type="checkbox">
-            I reviewed these possible matches and this should remain a separate person record.
-          </label>
-        </section>
-
-        <section id="emailCollisionPanel" class="subpanel warning hidden">
-          <h3>MSB email collision / exception</h3>
-          <p id="emailCollisionMessage"></p>
-          <div id="emailCandidateList" class="candidate-list"></div>
-          <label class="check-label">
-            <input id="emailExceptionAck" type="checkbox">
-            I reviewed and approve this non-standard MSB email.
-          </label>
-        </section>
-
-        <div id="formMessage" class="message" aria-live="polite"></div>
-        <div class="actions">
-          <button id="checkDuplicatesButton" class="secondary" type="button">Check duplicates</button>
-          <button id="savePersonButton" class="primary" type="submit">Save person</button>
-        </div>
-
-        <section id="metadataWaitPanel" class="subpanel hidden">
+        <section id="metadataWaitPanel" class="card hidden">
           <h3>People metadata</h3>
-          <p class="field-help">Save the person first. Capabilities, qualifications, Setup/Takedown roles, and leadership relationships attach to the durable person record.</p>
+          <p class="hint">Save the person first. Capabilities, qualifications, Setup / Takedown roles, and leadership relationships attach to the durable person record.</p>
         </section>
 
-        <section id="capabilityPanel" class="subpanel metadata-panel hidden">
-          <div class="section-heading">
+        <section id="capabilityPanel" class="card metadata-panel hidden">
+          <div class="section-title">
             <div>
               <h3>Capabilities</h3>
-              <p class="field-help">Reusable skills, experience, or MSB-specific knowledge. These are not formal certifications.</p>
+              <div class="muted">Reusable skills, experience, or MSB-specific knowledge — not formal certification.</div>
             </div>
           </div>
           <div id="capabilityList" class="metadata-list"></div>
@@ -132,7 +140,7 @@
             <label>Notes
               <input id="capabilityNotes" placeholder="Optional person-specific notes">
             </label>
-            <button id="assignCapabilityButton" class="secondary" type="button">Add / reactivate capability</button>
+            <button id="assignCapabilityButton" type="button">Add / reactivate</button>
           </div>
           <details class="catalog-editor">
             <summary>Add capability to controlled catalog</summary>
@@ -149,14 +157,19 @@
               </label>
               <label class="wide">Catalog notes <input id="newCapabilityCatalogNotes"></label>
             </div>
-            <button id="createCapabilityTypeButton" class="secondary" type="button">Create capability type</button>
+            <button id="createCapabilityTypeButton" type="button">Create capability type</button>
           </details>
           <div id="capabilityMessage" class="message"></div>
         </section>
 
-        <section id="qualificationPanel" class="subpanel metadata-panel hidden">
-          <h3>Qualifications</h3>
-          <p class="field-help">Formal training, certification, authorization, or credentials. Dates and evidence are entered from authoritative documentation; no expiration is inferred.</p>
+        <section id="qualificationPanel" class="card metadata-panel hidden">
+          <div class="section-title">
+            <div>
+              <h3>Qualifications</h3>
+              <div class="muted">Formal training, certification, authorization, or credentials.</div>
+            </div>
+          </div>
+          <div class="hint">Enter dates and evidence from authoritative documentation. Expiration is never inferred.</div>
           <div id="qualificationList" class="metadata-list"></div>
           <input id="editingQualificationId" type="hidden">
           <div class="form-grid compact-grid">
@@ -176,8 +189,8 @@
             </label>
           </div>
           <div class="inline-actions">
-            <button id="saveQualificationButton" class="secondary" type="button">Add qualification</button>
-            <button id="cancelQualificationEditButton" class="secondary hidden" type="button">Cancel edit</button>
+            <button id="saveQualificationButton" type="button">Add qualification</button>
+            <button id="cancelQualificationEditButton" class="hidden" type="button">Cancel edit</button>
           </div>
           <details class="catalog-editor">
             <summary>Add qualification to controlled catalog</summary>
@@ -185,32 +198,49 @@
               <label class="wide">Qualification name <input id="newQualificationName"></label>
               <label class="wide">Catalog notes <input id="newQualificationCatalogNotes"></label>
             </div>
-            <button id="createQualificationTypeButton" class="secondary" type="button">Create qualification type</button>
+            <button id="createQualificationTypeButton" type="button">Create qualification type</button>
           </details>
           <div id="qualificationMessage" class="message"></div>
         </section>
 
-        <section id="setupRolePanel" class="subpanel metadata-panel hidden">
-          <h3>Setup / Takedown participation & eligibility</h3>
-          <p class="field-help">These roles describe participation or leadership eligibility. They do not create Captain assignments.</p>
+        <section id="setupRolePanel" class="card metadata-panel hidden">
+          <div class="section-title">
+            <div>
+              <h3>Setup / Takedown participation &amp; eligibility</h3>
+              <div class="muted">Participation and leadership eligibility only. These do not create Captain assignments.</div>
+            </div>
+          </div>
           <div id="setupRoleList" class="role-list"></div>
-          <button id="saveSetupRolesButton" class="secondary" type="button">Save Setup / Takedown roles</button>
+          <div class="action-row">
+            <button id="saveSetupRolesButton" type="button">Save roles</button>
+          </div>
           <div id="setupRoleMessage" class="message"></div>
         </section>
 
-        <section id="leadershipPanel" class="subpanel metadata-panel hidden">
-          <h3>Reusable-task leadership</h3>
-          <p class="field-help">Read-only current Captain, Alternate, and Advisor assignments from Setup reusable-task authority.</p>
+        <section id="leadershipPanel" class="card metadata-panel hidden">
+          <div class="section-title">
+            <div>
+              <h3>Reusable-task leadership</h3>
+              <div class="muted">Read-only current Captain, Alternate, and Advisor assignments from Setup.</div>
+            </div>
+          </div>
           <div id="leadershipList" class="metadata-list"></div>
         </section>
 
-        <section id="dependenciesPanel" class="subpanel hidden">
-          <h3>Current relationships</h3>
-          <p class="field-help">Relationships are shown so inactive or duplicate records are not casually deleted. People Manager exposes no person delete action.</p>
+        <details id="identityPanel" class="card technical-details">
+          <summary>Protected system state</summary>
+          <div id="identityFacts" class="fact-grid"></div>
+          <p class="hint">Directus identity, PostgreSQL login, Manager/team flags, and Work Order eligibility remain governed by their owning workflows.</p>
+        </details>
+
+        <details id="dependenciesPanel" class="card technical-details hidden">
+          <summary>Current database relationships</summary>
+          <p class="hint">Relationship counts are shown for duplicate/merge awareness. People Manager exposes no person delete action.</p>
           <div id="dependencyList"></div>
-        </section>
+        </details>
       </form>
-    </section>
-  </main>
+    </div>
+  </section>
+</main>
 </body>
 </html>
