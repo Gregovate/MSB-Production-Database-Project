@@ -17,6 +17,39 @@
     }
   }
 
+  function selectedSeason() {
+    return (appState.seasons || []).find(
+      (season) => Number(season.season_year) === Number(appState.seasonYear)
+    ) || null;
+  }
+
+  function syncReconstructionDeleteControl() {
+    const button = document.getElementById('delete-reconstruction-task');
+    if (!button) return;
+    const task = typeof taskById === 'function' ? taskById(appState.selectedTaskId) : null;
+    const season = selectedSeason();
+    const shouldHide = !(
+      appState.access?.can_manage_setup
+      && season?.session_status === 'HISTORICAL_VERIFICATION'
+      && task?.setup_task_id != null
+    );
+
+    button.textContent = 'Delete Task';
+    button.title = 'Delete a mistaken reusable task during 2025 Historical Verification. The database refuses deletion when protected planning or execution history exists.';
+    if (button.hidden !== shouldHide) button.hidden = shouldHide;
+  }
+
+  function ensureReconstructionDeleteObserver() {
+    const button = document.getElementById('delete-reconstruction-task');
+    if (!button || button.dataset.catalogDeleteVisibilityObserver === '1') return;
+    button.dataset.catalogDeleteVisibilityObserver = '1';
+    new MutationObserver(() => syncReconstructionDeleteControl()).observe(
+      button,
+      { attributes: true, attributeFilter: ['hidden'] }
+    );
+    syncReconstructionDeleteControl();
+  }
+
   function ensureCaptainTypeahead() {
     const search = document.getElementById('setup-captain-search');
     const select = document.getElementById('setup-captain-person');
@@ -183,6 +216,8 @@
 
   function initializeRefinements() {
     relocateCatalogReturnControl();
+    ensureReconstructionDeleteObserver();
+    syncReconstructionDeleteControl();
     ensureCaptainTypeahead();
     observeMaterialContext();
   }
@@ -195,4 +230,5 @@
   );
 
   document.addEventListener('click', () => requestAnimationFrame(initializeRefinements), true);
+  document.addEventListener('change', () => requestAnimationFrame(initializeRefinements), true);
 })();
