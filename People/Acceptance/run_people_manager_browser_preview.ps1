@@ -13,7 +13,7 @@ $ServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'people_manager_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_cleanup_server.sh'
 $ExpectedBranch = 'agent/people-manager-milestone1-20260908'
-$CandidateSha = '7cd4c02420f564c1fe563d0c12052480c6ce6f6b'
+$CandidateSha = '0d099437ceddb6c9019eca7353e65d84a310c633'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -49,23 +49,22 @@ if ($dirty) {
 
 & git -C $RepoRoot cat-file -e "${CandidateSha}^{commit}"
 if ($LASTEXITCODE -ne 0) {
-    throw "Accepted People candidate commit is not available locally: $CandidateSha"
+    throw "People browser-review candidate commit is not available locally: $CandidateSha"
 }
 
 & git -C $RepoRoot merge-base --is-ancestor $CandidateSha HEAD
 if ($LASTEXITCODE -ne 0) {
-    throw "Accepted People candidate $CandidateSha is not an ancestor of the current branch head."
+    throw "People browser-review candidate $CandidateSha is not an ancestor of the current branch head."
 }
 
-# Acceptance/harness documentation may advance after the accepted candidate,
-# but application/database behavior must remain exactly what passed the
-# disposable gate. Refuse preview if either governed candidate area changed.
+# Acceptance/harness documentation may advance after the browser candidate,
+# but application/database behavior must remain exactly pinned for review.
 $changedCandidateFiles = @(& git -C $RepoRoot diff --name-only "$CandidateSha..HEAD" -- People/Application People/Database)
 if ($LASTEXITCODE -ne 0) {
-    throw 'Unable to compare current branch with the accepted People candidate.'
+    throw 'Unable to compare current branch with the People browser-review candidate.'
 }
 if ($changedCandidateFiles.Count -gt 0) {
-    throw "People Application/Database files changed after accepted candidate $CandidateSha. Re-run engineering/disposable acceptance before browser review.`n$($changedCandidateFiles -join "`n")"
+    throw "People Application/Database files changed after browser-review candidate $CandidateSha. Re-run engineering acceptance before browser review.`n$($changedCandidateFiles -join "`n")"
 }
 
 # Ctrl+C can leave the local SSH tunnel listening after the remote preview
@@ -112,7 +111,8 @@ Write-Host "Preview user:  $PreviewEmail"
 Write-Host 'Authority: MSB-Server-Management — Pre_Production_Browser_Review_Runbook.md'
 Write-Host 'Clone authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md'
 Write-Host
-Write-Host 'This runs the exact disposable-accepted People candidate against a new current-Production clone.'
+Write-Host 'This runs the corrected People browser-review candidate against a new current-Production clone.'
+Write-Host 'People/Database is unchanged from the disposable PASS; this runner re-applies those exact migrations to the clone.'
 Write-Host 'Production ref.person, the Production checkout, and fieldwiring.service are not changed.'
 Write-Host 'The browser is not auto-opened; wait for BROWSER REVIEW READY before opening the URL shown above.'
 Write-Host 'Keep this PowerShell window open during review.'
