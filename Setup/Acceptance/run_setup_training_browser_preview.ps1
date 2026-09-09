@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$AcceptedCandidateSha = '16f0989cbc873bf914d95a4562255a584e5cdbf3'
+$AcceptedCandidateSha = '7ff3aa2c851f0e8d31cffc3361dc6e41b800c3f0'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
 if (-not (Test-Path -LiteralPath $BaseWrapper)) {
@@ -30,7 +30,7 @@ function Replace-Required {
 
 # Reuse the already-hardened current-Production-clone browser preview machinery.
 # This launcher changes only the exact candidate identity and adds migrations
-# 019-021 to the disposable clone before the exact candidate application starts.
+# 019-022 to the disposable clone before the exact candidate application starts.
 $text = [System.IO.File]::ReadAllText($BaseWrapper)
 $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
 
@@ -45,10 +45,10 @@ $text = Replace-Required -Source $text -Needle '$ScriptDir = Split-Path -Parent 
 # Insert one bounded patch into the generated disposable server. The base
 # wrapper already restores a current Production dump into an isolated container,
 # creates a Production-like fieldwiring_app role, and proves Production/live
-# checkout fingerprints remain unchanged. Install only 019-021 into that clone.
+# checkout fingerprints remain unchanged. Install only 019-022 into that clone.
 $insertNeedle = '    # Any runtime use of /opt/fieldwiring/.venv must execute as the fieldwiring'
 $insertBlock = @'
-    # Current training/reconstruction candidate needs migrations 019-021 in the
+    # Current training/reconstruction candidate needs migrations 019-022 in the
     # disposable current-Production clone before the candidate Flask app starts.
     $migrationNeedle = 'TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format ''{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'')"'
     $migrationBlock = @(
@@ -57,7 +57,8 @@ $insertBlock = @'
         'M019="$CANDIDATE_WORKTREE/Setup/Database/019_add_reconstruction_safe_task_delete.sql"',
         'M020="$CANDIDATE_WORKTREE/Setup/Database/020_add_setup_captain_management_commands.sql"',
         'M021="$CANDIDATE_WORKTREE/Setup/Database/021_add_setup_assigned_reconciliation_state.sql"',
-        'for migration in "$M019" "$M020" "$M021"; do',
+        'M022="$CANDIDATE_WORKTREE/Setup/Database/022_require_active_setup_captain_people.sql"',
+        'for migration in "$M019" "$M020" "$M021" "$M022"; do',
         '    if [[ ! -s "$migration" ]]; then',
         '        echo "FAIL: required training/reconstruction migration is missing: $migration"',
         '        exit 11',
@@ -69,7 +70,9 @@ $insertBlock = @'
         'echo "Migration 020 Captain management: PASS"',
         'psql_test < "$M021"',
         'echo "Migration 021 ASSIGNED reconciliation state: PASS"',
-        'echo "Disposable Setup training/reconstruction migrations 019-021: PASS"',
+        'psql_test < "$M022"',
+        'echo "Migration 022 active Captain people: PASS"',
+        'echo "Disposable Setup training/reconstruction migrations 019-022: PASS"',
         ''
     ) -join "`n"
     if (-not $serverText.Contains($migrationNeedle)) {
