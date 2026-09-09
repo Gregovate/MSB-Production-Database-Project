@@ -260,6 +260,57 @@ Therefore:
 
 Specific physical operations that are genuinely separate field work may still be real tasks. The rule removes the **generic staging abstraction**, not every legitimate unload/delivery/setup operation.
 
+## Mixed-Stage Container Mobilization
+
+A Container or trailer that carries material for **more than one Setup Stage/scope** must be treated differently from a normal single-scope Container.
+
+The planner/Pick List should be smart enough to detect this from authoritative current Container contents and task/material relationships whenever that data is represented. A special manual `mixed-stage` flag should not be required merely to restate relationships the database can already derive.
+
+Conceptually:
+
+```text
+near-term task requires Display/material X
+    -> X is in Container C
+    -> Container C also carries material for other Setup Stages/scopes
+    -> C has not yet been mobilized for this Setup Session
+    -> surface the Container-level mobilization/logistics action
+    -> move the whole Container/trailer when the first carried item is needed
+```
+
+This rule applies generally to mixed-stage Containers/trailers, not only to one named trailer.
+
+Important distinction:
+
+- **mobilize the whole mixed-stage Container/trailer at first demand** is the common rule;
+- **what happens after arrival** may differ by Container and must come from real field practice.
+
+Examples of different post-arrival behavior can include:
+
+```text
+FULL UNLOAD
+    all carried material is unloaded and becomes park-available
+
+MOBILE / PARK STORAGE
+    Container/trailer is moved to the park and continues to hold some or all material
+
+SPECIAL TRANSFORMATION
+    Container/trailer is unloaded because the trailer/container itself becomes part of a later Setup task
+```
+
+Do not infer the post-arrival handling mode merely because a Container is mixed-stage. That behavior needs authoritative Container/logistics knowledge. The Arch Trailer is an established example where the trailer itself has a later Setup role after its cargo is unloaded; that is separate from the general mixed-stage detection rule.
+
+The Pick List / planner must therefore distinguish:
+
+```text
+normal single-scope material pick
+mixed-stage Container mobilization
+Container-specific unload / park-storage / transformation behavior
+```
+
+Once a mixed-stage Container has been mobilized for the annual Setup Session, later tasks that use other contents on the same Container should not trigger duplicate workshop staging/mobilization. Their material should be treated according to the Container's current annual position/unload state.
+
+If some important Container contents are not represented as `ref.display` or another authoritative structured relationship, that is a data gap to capture; the planner must not pretend it can derive mixed-stage behavior from data that does not exist.
+
 ## Missing Tasks / Missing Steps in Production
 
 The 2025 reconstruction is expected to expose many missing Setup steps.
@@ -364,13 +415,16 @@ Future Setup engineering must preserve these rules:
 5. return incomplete multi-day work to **Needs Scheduling Again** when no continuation is assigned;
 6. treat historical dates as strong evidence markers without making them the primary future planning structure;
 7. move generic `Staging to Park` responsibility to Pick List/logistics derived from scheduled/ordered task needs;
-8. treat Sunday as a strong avoidance preference, not an absolute ban;
-9. expose weather and site-readiness constraints;
-10. represent grass-cutting completion as a cord-laying readiness dependency rather than a guessed date;
-11. support tasks spanning multiple work days and partial progress;
-12. treat historical crew/hours as evidence, not automatic exact values;
-13. use 2022/2025 evidence to identify missing reusable tasks/steps when evidence supports them; and
-14. keep annual historical facts separate from reusable planning knowledge.
+8. derive mixed-stage Container/trailer mobilization from authoritative contents/task relationships where possible;
+9. mobilize a mixed-stage Container/trailer when the first carried item is needed, without duplicating later staging for other contents already at the park;
+10. keep Container-specific full-unload/mobile-storage/transformation behavior distinct from the general mixed-stage detection rule;
+11. treat Sunday as a strong avoidance preference, not an absolute ban;
+12. expose weather and site-readiness constraints;
+13. represent grass-cutting completion as a cord-laying readiness dependency rather than a guessed date;
+14. support tasks spanning multiple work days and partial progress;
+15. treat historical crew/hours as evidence, not automatic exact values;
+16. use 2022/2025 evidence to identify missing reusable tasks/steps when evidence supports them; and
+17. keep annual historical facts separate from reusable planning knowledge.
 
 ## Related Durable Sources
 
