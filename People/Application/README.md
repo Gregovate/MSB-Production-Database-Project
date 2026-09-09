@@ -1,43 +1,69 @@
-# People Manager Application — Milestone 1
+# People Manager Application — V0.2.0
 
-Branch-only candidate application for issue #130.
+People Manager is live in Production for issue #130.
+
+Production entry point:
+
+```text
+https://my.sheboyganlights.org/people/
+```
+
+## Production Runtime
+
+```text
+application SHA      54e1192309b96c9838676be51a0bfcdb3ac92e06
+service              msb-people.service
+version              V0.2.0
+runtime account      fieldwiring
+working directory    /opt/fieldwiring/People/Application
+listener             192.168.5.9:8796
+environment file     /etc/msb-people/people.env
+PostgreSQL role      people_app
+PGPASSFILE           /var/lib/fieldwiring/.pgpass
+```
+
+The Production Gunicorn service binds explicitly to `192.168.5.9:8796`; Setup owns `8794`. Do not infer a Production listener from the development `backend.py` fallback port.
+
+Server/runtime authority is `Gregovate/MSB-Server-Management`.
 
 ## Configuration
 
-Required:
+Required application setting:
 
 ```text
 PEOPLE_DATABASE_DSN
 ```
 
-The database login is `people_app`. Create that LOGIN separately with a secured password. The Milestone 1 database contract grants it function execution only; it does not receive direct `ref.person` table DML or Directus system-table access.
-
-Optional:
+Production value identifies the dedicated `people_app` login without embedding its password:
 
 ```text
-PORT=8794
+host=127.0.0.1 port=5432 dbname=msb user=people_app
 ```
+
+libpq obtains the password through the protected runtime `.pgpass` file.
 
 ## Authentication / Authorization
 
-The application must be deployed behind Cloudflare Access. It requires the authenticated email from:
+The application is deployed behind Cloudflare Access and requires the authenticated email from:
 
 ```text
 Cf-Access-Authenticated-User-Email
 ```
 
-PostgreSQL independently resolves current Directus role/policy authorization. Only Manager, Administrator, or equivalent current `admin_access` authority may manage People.
+PostgreSQL independently resolves current Directus role/policy authorization. Only **Manager**, **Administrator**, or equivalent current accepted `admin_access` authority may manage People.
 
-Every create/update request also requires:
+Cloudflare authentication alone does not grant People management access. Human write commands also require the authenticated Directus user to map to a durable `ref.person` actor.
+
+Every create/update request additionally requires:
 
 ```text
 Content-Type: application/json
 X-MSB-People-Command: 1
 ```
 
-## Milestone 1 Write Allowlist
+## Person Contact Write Allowlist
 
-Writable through the governed command functions:
+Writable through the governed person command functions:
 
 ```text
 first_name
@@ -49,7 +75,7 @@ cell_phone
 active_flag
 ```
 
-Explicitly not writable here:
+Protected from ordinary person/contact editing:
 
 ```text
 directus_user_id
@@ -58,10 +84,9 @@ is_manager
 is_team
 available_for_work_orders
 created_by / updated_by actor fields
-capabilities / qualifications / Setup roles
 ```
 
-There is no DELETE route.
+Capabilities, qualifications, and Setup roles are maintained only through their own governed metadata functions/API routes. There is no People Manager person DELETE or merge route.
 
 ## Email Reservation
 
@@ -71,15 +96,24 @@ Manual create uses the established standard:
 first initial + last name @ sheboyganlights.org
 ```
 
-The UI asks PostgreSQL for candidate addresses. If the standard address collides with current `ref.person` or Directus evidence, the application proposes additional first-name characters and requires explicit exception review before saving an alternate.
+If the standard address collides with current `ref.person` or Directus evidence, the application proposes additional first-name characters and requires explicit exception review before saving an alternate.
 
-This is a PostgreSQL/Directus collision check only. It does not prove that an address is free or provisioned in Google Workspace. Google remains the user-management authority.
+This does not prove that an address is provisioned in Google Workspace. Google remains the account/mailbox authority.
 
-## Run Locally
+## Google Analytics
+
+```text
+Measurement ID      G-X08ZTSY0VV
+analytics version   2026-09-09.1
+```
+
+The Production page view was verified in the MSB Internal Intranet GA4 property on 2026-09-09. Person identity, contact values, `person_id`, authenticated identity, and search text are prohibited from GA4.
+
+## Local Development
 
 ```text
 python -m pip install -r requirements.txt
 python backend.py
 ```
 
-A local run still needs a database containing the candidate SQL contract and a Cloudflare-equivalent authenticated request header. Do not add an authorization-bypass mode for Production convenience.
+A local run still needs a database containing the People SQL contract and a Cloudflare-equivalent authenticated request header. The direct `backend.py` development fallback port is not Production runtime authority. Do not add an authorization-bypass mode for convenience.
