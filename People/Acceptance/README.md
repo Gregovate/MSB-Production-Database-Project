@@ -2,6 +2,24 @@
 
 Milestone 1 must be proven against a disposable database restored from the current Production database before any Production mutation.
 
+## Governing Runtime Authority
+
+Disposable PostgreSQL orchestration is not owned by the People feature. The governing server/runtime authority is:
+
+```text
+Gregovate/MSB-Server-Management
+docs/server/PostgreSQL_Disposable_Acceptance_Standard.md
+```
+
+Production deployment, if later explicitly approved, is separately governed by:
+
+```text
+Gregovate/MSB-Server-Management
+docs/server/Production_Database_Change_Deployment_Runbook.md
+```
+
+The files in this `People/Acceptance/` folder provide only the People-specific candidate migrations and assertions needed to consume that established runtime pattern. Do not invent alternate SSH, Docker, PostgreSQL clone, readiness, cleanup, or Production deployment behavior here.
+
 ## Disposable Acceptance Runner
 
 From the repository checkout on Greg's Windows workstation, run:
@@ -10,15 +28,17 @@ From the repository checkout on Greg's Windows workstation, run:
 .\People\Acceptance\run_people_manager_disposable_acceptance.ps1
 ```
 
-The wrapper uploads only the two People candidate migrations plus the bounded server-side runner, then starts one foreground SSH session. The server-side runner:
+The wrapper follows the Server Management disposable-acceptance contract: one bundled SCP transfer, one foreground SSH session, Linux line-ending normalization, Production access limited to `SELECT` and `pg_dump`, and all candidate mutation confined to the disposable clone.
+
+The server-side runner:
 
 - fingerprints Production `ref.person` before testing;
 - reads Production only through `SELECT` and `pg_dump`;
 - restores the current Production database into a separate disposable PostgreSQL container;
-- waits for the PostGIS image to finish its temporary initialization PostgreSQL cycle and requires the final PostgreSQL server to be PID 1 before restore begins;
+- consumes the documented final-PostGIS-server readiness gate before restore begins;
 - creates clone-only `people_app` as `NOLOGIN` for privilege testing;
 - applies the People candidate migrations only to the disposable database;
-- executes the acceptance cases below against the clone;
+- executes the People-specific acceptance cases below against the clone;
 - removes the disposable container/work directory; and
 - fingerprints Production `ref.person` again and fails if it changed.
 
@@ -28,26 +48,13 @@ The retained server report is named:
 /tmp/MSB_People_Manager_Disposable_YYYYMMDD-HHMMSS.txt
 ```
 
-## PostGIS Disposable-Startup Guard
+## 2026-09-09 Runtime Discovery Promoted to Server Management
 
-The `postgis/postgis:16-3.5` image starts a temporary PostgreSQL server while initialization scripts load PostGIS extensions. `pg_isready` can succeed against that temporary server. The image then performs a fast shutdown and starts the final PostgreSQL server.
+The first People disposable restore exposed a runtime gap: `postgis/postgis:16-3.5` can report `pg_isready` while its Docker entrypoint is still running a temporary PostgreSQL server used to install PostGIS. The image then intentionally shuts that temporary server down before starting the final PostgreSQL server as PID 1.
 
-A restore that begins during the temporary-server window can fail with:
+The diagnostic proved that behavior and also proved the failure was not OOM, disk exhaustion, or a Production database change. Production `ref.person` remained fingerprint-identical and no People migration had run.
 
-```text
-FATAL: terminating connection due to administrator command
-```
-
-while the container itself remains healthy and later starts normally. The People acceptance wrapper therefore does not treat `pg_isready` alone as sufficient. It requires both:
-
-```text
-/proc/1/comm = postgres
-pg_isready = success
-```
-
-before creating the disposable `msb` database or starting `pg_restore`.
-
-This was established from the 2026-09-09 disposable restore diagnostic. Production `ref.person` remained fingerprint-identical during the failed diagnostic and no People candidate migration had run.
+That startup/readiness rule is a reusable server/runtime fact, so its authoritative contract now belongs in the Server Management `PostgreSQL_Disposable_Acceptance_Standard.md`. This People document records only why the feature runner depends on that standard; it is not a second authority for the Docker/PostgreSQL startup sequence.
 
 ## Required Acceptance Cases
 
@@ -68,4 +75,4 @@ This was established from the 2026-09-09 disposable restore diagnostic. Producti
 15. no person DELETE function/route exists; and
 16. actor/audit stamping resolves the authenticated Directus manager through the existing `app.directus_user_uuid` trigger path.
 
-Passing this disposable runner is necessary but does **not** authorize Production deployment. Production still requires the separate explicit Production gate and governing repository runbook.
+Passing this disposable runner is necessary but does **not** authorize Production deployment. Production still requires the separate explicit Production gate and the governing Server Management deployment runbook.
