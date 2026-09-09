@@ -2,7 +2,7 @@
 MSB Setup Session — reviewed reusable catalog reconstruction
 Issue: #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-09 V0.1.0
+Revision: 2026-09-09 V0.1.1
 
 Source authority:
   - reviewed MSB_Setup_ONE_LIST_Reconciliation_20260909_WITH_EFFORT workbook;
@@ -10,9 +10,9 @@ Source authority:
   - current 68-task reusable Production snapshot.
 
 Result:
-  - 191 active reusable tasks;
+  - 185 active reusable tasks;
   - 66 existing reusable identities retained/updated;
-  - 125 new reusable tasks created;
+  - 119 new reusable tasks created;
   - provisional duplicate task 40 retired in favor of task 51;
   - junk provisional task 58 retired;
   - 2025 annual history is NOT backfilled with newly reconstructed tasks.
@@ -20,6 +20,10 @@ Result:
 Normalization:
   - equivalent locate variants -> Locate Power & Network;
   - equivalent panel-position variants -> Layout Panels;
+  - OMW locating/fix continuation evidence is merged into the core OMW locate/setup tasks;
+  - multi-area evidence rows are not converted into one cross-Stage reusable task;
+  - pure transport-only rows (Horse & Sleigh delivery, Frosty transport, Santa's Station box delivery)
+    remain logistics evidence rather than reusable Setup tasks;
   - MEDIUM effort -> MODERATE;
   - no planning-role/trailer-specific column is introduced.
 
@@ -118,8 +122,8 @@ CREATE TEMP TABLE setup_catalog_reconstruction (
 
 DO $source_validation$
 BEGIN
-    IF (SELECT count(*) FROM setup_catalog_reconstruction) <> 191 THEN
-        RAISE EXCEPTION 'Catalog source row count is not 191';
+    IF (SELECT count(*) FROM setup_catalog_reconstruction) <> 185 THEN
+        RAISE EXCEPTION 'Catalog source row count is not 185';
     END IF;
 
     IF EXISTS (
@@ -271,8 +275,8 @@ BEGIN
     FROM ref.setup_task
     WHERE active_flag;
 
-    IF v_active_count <> 191 THEN
-        RAISE EXCEPTION 'STOP: reconstruction expected 191 active tasks, found %', v_active_count;
+    IF v_active_count <> 185 THEN
+        RAISE EXCEPTION 'STOP: reconstruction expected 185 active tasks, found %', v_active_count;
     END IF;
 
     IF EXISTS (
