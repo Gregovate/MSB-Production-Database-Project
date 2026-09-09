@@ -15,6 +15,7 @@ The wrapper uploads only the two People candidate migrations plus the bounded se
 - fingerprints Production `ref.person` before testing;
 - reads Production only through `SELECT` and `pg_dump`;
 - restores the current Production database into a separate disposable PostgreSQL container;
+- waits for the PostGIS image to finish its temporary initialization PostgreSQL cycle and requires the final PostgreSQL server to be PID 1 before restore begins;
 - creates clone-only `people_app` as `NOLOGIN` for privilege testing;
 - applies the People candidate migrations only to the disposable database;
 - executes the acceptance cases below against the clone;
@@ -26,6 +27,27 @@ The retained server report is named:
 ```text
 /tmp/MSB_People_Manager_Disposable_YYYYMMDD-HHMMSS.txt
 ```
+
+## PostGIS Disposable-Startup Guard
+
+The `postgis/postgis:16-3.5` image starts a temporary PostgreSQL server while initialization scripts load PostGIS extensions. `pg_isready` can succeed against that temporary server. The image then performs a fast shutdown and starts the final PostgreSQL server.
+
+A restore that begins during the temporary-server window can fail with:
+
+```text
+FATAL: terminating connection due to administrator command
+```
+
+while the container itself remains healthy and later starts normally. The People acceptance wrapper therefore does not treat `pg_isready` alone as sufficient. It requires both:
+
+```text
+/proc/1/comm = postgres
+pg_isready = success
+```
+
+before creating the disposable `msb` database or starting `pg_restore`.
+
+This was established from the 2026-09-09 disposable restore diagnostic. Production `ref.person` remained fingerprint-identical during the failed diagnostic and no People candidate migration had run.
 
 ## Required Acceptance Cases
 
