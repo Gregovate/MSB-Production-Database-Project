@@ -9,7 +9,8 @@ NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 TARGET_REF="agent/people-manager-milestone1-20260908"
-TARGET_SHA="2de2d244ec7259e52f9d312587a86ef38c7f512f"
+TARGET_SHA="de549757c8d040d34494304a08944f7f4b444b30"
+DB_ACCEPTED_SHA="deaa9157282e59e8acd6a7da2a82fc9296e44f20"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/people_manager_browser_preview_entry.py"
 PREVIEW_PORT="${1:?preview port argument is required}"
@@ -33,7 +34,8 @@ echo "========== PEOPLE MANAGER PRE-PRODUCTION BROWSER REVIEW =========="
 echo "Authority:       MSB-Server-Management — Pre_Production_Browser_Review_Runbook.md"
 echo "Clone authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md"
 echo "Report:          $REPORT"
-echo "Candidate SHA:   $TARGET_SHA"
+echo "Browser SHA:     $TARGET_SHA"
+echo "DB accepted SHA: $DB_ACCEPTED_SHA"
 echo "Preview port:    $PREVIEW_PORT"
 echo "Preview user:    $PREVIEW_EMAIL"
 echo "Production DB:   pg_dump + SELECT only"
@@ -165,8 +167,6 @@ if ! sudo docker network inspect "$NETWORK" >/dev/null 2>&1; then
     echo "FAIL: Docker network $NETWORK was not found"
     exit 9
 fi
-# Server Management runtime boundary: msbadmin cannot traverse protected
-# application paths. Validate the production Python runtime as fieldwiring.
 if ! sudo -u fieldwiring -H test -x "$PRODUCTION_PYTHON"; then
     echo "FAIL: fieldwiring runtime account cannot execute documented production Python: $PRODUCTION_PYTHON"
     exit 10
@@ -192,9 +192,19 @@ PROD_BEFORE="$(prod_fingerprint)"
 echo "Production ref.person fingerprint: $PROD_BEFORE"
 
 echo
-echo "--- Fetch exact disposable-accepted People metadata runtime plus test repair ---"
+echo "--- Fetch exact People browser candidate ---"
 sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
+sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$DB_ACCEPTED_SHA^{commit}"
+if ! sudo git -C "$FIELDWIRING_ROOT" diff --quiet "$DB_ACCEPTED_SHA..$TARGET_SHA" -- \
+    People/Database People/Application/backend.py People/Application/people.js; then
+    echo "FAIL: database/backend/people.js behavior changed after disposable acceptance"
+    sudo git -C "$FIELDWIRING_ROOT" diff --name-only "$DB_ACCEPTED_SHA..$TARGET_SHA" -- \
+        People/Database People/Application/backend.py People/Application/people.js
+    exit 14
+fi
+echo "PASS: disposable-accepted database/backend behavior unchanged in browser candidate"
+
 sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
 
 MIGRATION_001="$CANDIDATE_WORKTREE/People/Database/001_create_people_manager_contract.sql"
@@ -202,17 +212,17 @@ MIGRATION_002="$CANDIDATE_WORKTREE/People/Database/002_harden_people_search_phon
 MIGRATION_003="$CANDIDATE_WORKTREE/People/Database/003_create_people_metadata_contract.sql"
 APP_DIR="$CANDIDATE_WORKTREE/People/Application"
 TEST_FILE="$CANDIDATE_WORKTREE/People/Application/test_people_manager_contract.py"
-for f in "$MIGRATION_001" "$MIGRATION_002" "$MIGRATION_003" "$APP_DIR/backend.py" "$APP_DIR/index.html" "$TEST_FILE"; do
-    [[ -s "$f" ]] || { echo "FAIL: exact accepted candidate file missing: $f"; exit 14; }
+for f in "$MIGRATION_001" "$MIGRATION_002" "$MIGRATION_003" "$APP_DIR/backend.py" "$APP_DIR/index.html" "$APP_DIR/people.css" "$APP_DIR/static/people_theme.js" "$TEST_FILE"; do
+    [[ -s "$f" ]] || { echo "FAIL: exact browser candidate file missing: $f"; exit 15; }
 done
 
-echo "Exact browser-review candidate worktree: $CANDIDATE_WORKTREE"
+echo "Exact browser candidate worktree: $CANDIDATE_WORKTREE"
 
 echo
-echo "--- Detached candidate regression in documented production Python ---"
+echo "--- Detached browser candidate regression in documented production Python ---"
 sudo -u fieldwiring -H bash -c \
     "cd '$CANDIDATE_WORKTREE' && '$PRODUCTION_PYTHON' -m pytest -q -p no:cacheprovider People/Application/test_people_manager_contract.py"
-echo "DETACHED PEOPLE CANDIDATE REGRESSION: PASS"
+echo "DETACHED PEOPLE BROWSER CANDIDATE REGRESSION: PASS"
 
 echo
 echo "--- Capture current Production into disposable clone ---"
@@ -247,7 +257,7 @@ if [[ "$ready" -ne 1 ]]; then
     echo "FAIL: disposable PostgreSQL did not reach final post-init ready state"
     echo "Observed PID 1 command: ${pid1:-unknown}"
     sudo docker logs "$TEST_CONTAINER" || true
-    exit 15
+    exit 16
 fi
 
 echo "Disposable PostgreSQL final server ready"
@@ -264,7 +274,7 @@ psql_test_quiet() {
 }
 
 echo
-echo "--- Apply exact accepted People migrations 001-003 to disposable clone ---"
+echo "--- Apply accepted People migrations 001-003 to disposable clone ---"
 psql_test -c "CREATE ROLE people_app LOGIN PASSWORD '$APP_PASSWORD';"
 psql_test < "$MIGRATION_001"
 psql_test < "$MIGRATION_002"
@@ -276,13 +286,13 @@ echo "--- Validate preview authorization and least-privilege boundary ---"
 MANAGE_OK="$(psql_test_quiet -c "SELECT can_manage_people FROM ref.people_browser_capabilities('$PREVIEW_EMAIL');")"
 if [[ "$MANAGE_OK" != "t" ]]; then
     echo "FAIL: preview operator $PREVIEW_EMAIL does not have People Manager capability"
-    exit 16
+    exit 17
 fi
 
 ACTOR_PERSON_ID="$(psql_test_quiet -c "SELECT person_id FROM ref.people_management_actor('$PREVIEW_EMAIL');")"
 if [[ ! "$ACTOR_PERSON_ID" =~ ^[0-9]+$ ]]; then
     echo "FAIL: preview operator is not mapped to a governed ref.person actor"
-    exit 17
+    exit 18
 fi
 
 psql_test <<'SQL'
@@ -334,7 +344,7 @@ SQL
 APP_SEARCH_COUNT="$(psql_test_quiet -c "SET ROLE people_app; SELECT count(*) FROM ref.people_search('$PREVIEW_EMAIL','',false);")"
 if [[ ! "$APP_SEARCH_COUNT" =~ ^[0-9]+$ ]]; then
     echo "FAIL: preview people_app could not execute governed People search"
-    exit 18
+    exit 19
 fi
 
 echo "Preview operator: $PREVIEW_EMAIL -> person_id $ACTOR_PERSON_ID"
@@ -343,7 +353,7 @@ echo "Disposable authorization/write boundary: PASS"
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
 if [[ -z "$TEST_IP" ]]; then
     echo "FAIL: could not resolve disposable PostgreSQL container IP"
-    exit 19
+    exit 20
 fi
 
 DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=people_app password=$APP_PASSWORD"
@@ -353,7 +363,7 @@ echo "--- Verify documented Python runtime can load People dependencies ---"
 sudo -u fieldwiring -H "$PRODUCTION_PYTHON" -c "import flask, psycopg2; print('People preview Python dependencies: PASS')"
 
 echo
-echo "--- Start exact People Manager browser-review candidate ---"
+echo "--- Start exact People Manager browser candidate ---"
 PREVIEW_PGID="$(
     sudo -u fieldwiring -H env \
         PEOPLE_DATABASE_DSN="$DSN" \
@@ -372,7 +382,7 @@ PREVIEW_PGID="$(
 
 if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
     echo "FAIL: preview Flask process did not return a valid process-group ID: $PREVIEW_PGID"
-    exit 20
+    exit 21
 fi
 
 preview_ready=0
@@ -386,7 +396,7 @@ done
 if [[ "$preview_ready" -ne 1 ]]; then
     echo "FAIL: People Manager preview did not become healthy"
     tail -n 100 "$PREVIEW_LOG" || true
-    exit 21
+    exit 22
 fi
 
 HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
@@ -404,7 +414,7 @@ if [[ "$PEOPLE_CODE" != "200" || "$CAP_CODE" != "200" || "$QUAL_CODE" != "200" |
         [[ -s "$f" ]] && cat "$f" || true
     done
     rm -f /tmp/people-preview-list-$STAMP.json /tmp/people-preview-cap-$STAMP.json /tmp/people-preview-qual-$STAMP.json /tmp/people-preview-role-$STAMP.json /tmp/people-preview-lead-$STAMP.json
-    exit 22
+    exit 23
 fi
 rm -f /tmp/people-preview-list-$STAMP.json /tmp/people-preview-cap-$STAMP.json /tmp/people-preview-qual-$STAMP.json /tmp/people-preview-role-$STAMP.json /tmp/people-preview-lead-$STAMP.json
 
@@ -417,24 +427,25 @@ echo "BROWSER REVIEW READY"
 echo "Open on the Windows workstation:"
 echo "  http://127.0.0.1:$PREVIEW_PORT/"
 echo
-echo "Exact browser-review candidate: $TARGET_SHA"
-echo "Runtime application/database accepted at: deaa9157282e59e8acd6a7da2a82fc9296e44f20"
-echo "Preview identity:                   $PREVIEW_EMAIL"
+echo "Exact browser candidate:       $TARGET_SHA"
+echo "Disposable-accepted DB SHA:    $DB_ACCEPTED_SHA"
+echo "Preview identity:              $PREVIEW_EMAIL"
 echo "Production checkout and ref.person remain unchanged."
 echo "Every browser write goes to the disposable current-Production clone."
 echo
 echo "People review checklist:"
-echo "  1. Search by name/email/phone and try Include inactive."
-echo "  2. Add a clone-only person; Build email and Save person."
-echo "  3. Edit/deactivate/reactivate the same clone-only person."
-echo "  4. Add a capability catalog item, assign it to the person, edit notes, deactivate/reactivate it."
-echo "  5. Add a qualification type and person qualification; exercise completed/valid/expiry dates, role, certificate, evidence, notes, and active state."
-echo "  6. Toggle Setup Volunteer, Takedown Volunteer, Captain Candidate, and Advisor Candidate; reopen the person and confirm state persists."
-echo "  7. Open a person with existing reusable-task Captain/Alternate/Advisor assignments and confirm leadership is visible but not editable here."
-echo "  8. Open a Directus-linked person; confirm protected MSB email/identity behavior remains correct."
-echo "  9. Re-test an existing inactive person: activate and save without a false stale-record conflict."
-echo " 10. Trigger duplicate-name/contact and MSB-email collision review paths."
-echo " 11. Confirm there is no person delete action and no merge action in this candidate."
+echo "  1. Confirm shared MSB header/logo, button treatment, and Dark/Light mode match the other browser apps."
+echo "  2. Confirm list/detail cards are compact and separated; protected system state is collapsed at the bottom, not blocking editable metadata."
+echo "  3. Search by name/email/phone and try Include inactive."
+echo "  4. Add a clone-only person; Build email and Save person."
+echo "  5. Edit/deactivate/reactivate the same clone-only person."
+echo "  6. Add a capability catalog item, assign it, edit notes, deactivate/reactivate it."
+echo "  7. Add a qualification type and person qualification; exercise dates, role, certificate, evidence, notes, and active state."
+echo "  8. Toggle Setup Volunteer, Takedown Volunteer, Captain Candidate, and Advisor Candidate; reopen and confirm persistence."
+echo "  9. Open a person with current Captain/Alternate/Advisor assignments and confirm leadership is visible but not editable here."
+echo " 10. Open a Directus-linked person; confirm protected MSB email/identity behavior remains correct."
+echo " 11. Trigger duplicate-name/contact and MSB-email collision review paths."
+echo " 12. Confirm there is no person delete action and no merge action in this candidate."
 echo
 echo "Suggested clone-only last name for easy review: Preview$STAMP"
 echo
