@@ -1,58 +1,110 @@
 # People and Identity
 
-This subsystem documents the people, authentication, authorization, onboarding, and actor-attribution layer required for Production Database access and operational workflows.
+This subsystem documents the people, authentication, authorization, onboarding, actor-attribution, reusable capability, qualification, and People Manager layer used by Production Database workflows.
 
 ## Current State
 
-Operational database access depends on a person identity that can be related to authentication and application roles. Directus is currently used for user/role administration and selected onboarding automation.
+`ref.person` is the durable human/service identity record used by Production Database relationships and audit attribution. A person may exist as a casual or seasonal volunteer without a Google Workspace account, Directus identity, or PostgreSQL login.
 
-`ref.person` is the current durable human/service identity record used by Production Database relationships and audit attribution. A person may also exist as a casual or seasonal volunteer without a Google Workspace account, Directus identity, or PostgreSQL login.
+The People Manager engineering scope has now passed current-Production disposable-clone acceptance and governed browser operator review. The accepted implementation is ready for the separate Production deployment gate; it is not yet installed in Production.
 
-The current Production Directus **User Onboarding** flow has now been inspected directly from the Directus administrative UI. The observed flow matches an existing `ref.person` by MSB email when `directus_user_id` is null or already matches the triggering Directus user. If no person matches, the flow creates a new active person from the Directus user's name, email, and Directus ID. The detailed observed contract is preserved under [Engineering](engineering/README.md).
+The People Manager provides controlled maintenance for:
 
-People/Identity is not required for LOR authoring or parsing, but it is required before volunteers can perform authenticated Production Database work such as container testing, work-order activity, label requests, and other audited operations.
+- person/contact information;
+- active/inactive lifecycle;
+- duplicate-safe create/edit;
+- reserved Sheboygan Lights email identity;
+- reusable capabilities;
+- formal dated qualifications and evidence;
+- Setup/Takedown participation and Captain/Advisor eligibility; and
+- read-only reusable-task Captain/Alternate/Advisor visibility.
+
+Plain-English operator procedures are under [Operational SOPs — People](../../02_Operational_SOPs/People/README.md).
+
+## Identity and Onboarding Contract
+
+The current Production Directus **User Onboarding** flow matches an existing `ref.person` by MSB email when `directus_user_id` is null or already matches the triggering Directus user. If no person matches, the flow creates a new active person from the Directus user's name, email, and Directus ID.
+
+This establishes a critical People Manager rule: a manually added volunteer can reserve the intended `@sheboyganlights.org` identity on the existing person before first Google/Directus login so the current onboarding flow can later link the same durable `person_id` by email.
+
+A reserved MSB email does not prove that Google Workspace has provisioned a mailbox. Google Workspace remains the provisioning/deliverability authority.
 
 ## Design Intent
 
-Maintain one durable person identity that can participate in database relationships while allowing authentication and application-specific identities to change independently.
+Maintain one durable person identity while allowing authentication, authorization, and application-specific relationships to change independently.
 
-For casual/seasonal volunteers, preserve the same `person_id` over time. If a person does not return in later seasons, mark the person inactive rather than deleting the identity; reactivate the same record if the person returns.
+If a person stops participating, normally mark the person inactive rather than deleting the identity. If the same person returns later, reactivate the same `person_id` rather than creating a replacement person.
 
-The People Manager must support later conversion of a casual volunteer into a system user without creating a second person. For a manually created volunteer, the intended `@sheboyganlights.org` identity is reserved on the existing person before first Google/Directus login so the current onboarding flow can link the same `person_id` by email.
+The People metadata model deliberately separates:
 
-A richer reusable role/skill taxonomy may be considered as part of the active People Manager work tracked in issue #130; it is not part of the current implemented identity model.
+```text
+Person identity/contact
+    -> who the person is and how to contact them
+
+Capability
+    -> reusable skill, experience, or practical MSB knowledge
+
+Qualification
+    -> formal training/certification/authorization with dates/evidence
+
+Setup role
+    -> Setup/Takedown participation or leadership eligibility
+
+Setup task leadership
+    -> actual Captain / Alternate / Advisor responsibility for a reusable task
+```
+
+Capabilities, qualifications, and eligibility never automatically create Captain assignments.
 
 ## Current Responsibilities
 
-- `ref.person` and related person metadata
-- durable casual/seasonal volunteer identity
-- Google-authenticated user access
-- Directus user linkage
-- Directus roles/policies and low-level initial access
-- onboarding automation
+- `ref.person` and `ref.person_xref` durable identity
+- casual/seasonal volunteer lifecycle
+- reserved MSB identity for later onboarding linkage
+- Google-authenticated user access boundary
+- Directus user linkage and role/policy authorization context
 - actor attribution used by PostgreSQL audit behavior
-- metadata needed by operational subsystems
+- capability and qualification catalogs/relationships
+- Setup/Takedown participation and eligibility relationships
+- People Manager browser/API and least-privilege command boundary
+- People-specific operator procedures and engineering documentation
+
+## Google Analytics
+
+The People application includes the required MSB internal GA4 integration using measurement ID `G-X08ZTSY0VV`.
+
+Only aggregate page/workflow usage may be sent. Person names, emails, phone numbers, `person_id`, authenticated identity, search text, and other Production Database record identifiers are prohibited. Google Signals and advertising personalization remain disabled.
+
+Production acceptance must verify the deployed People page view and analytics asset/version before final closeout.
 
 ## Engineering
 
 Start with [People and Identity — Engineering](engineering/README.md).
 
-The current Production onboarding behavior and the accepted casual-volunteer-to-team identity lifecycle are documented in [Directus User Onboarding Identity Contract — 2026-09-09](engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md).
+Key current records include:
 
-## Directus Ownership
+- [Directus User Onboarding Identity Contract — 2026-09-09](engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md)
+- [People Manager Metadata Implementation — 2026-09-09](engineering/People_Manager_Metadata_Implementation_2026-09-09.md)
+- `People/Acceptance/People_Manager_Metadata_Disposable_Acceptance_Evidence_2026-09-09.md`
+- `People/Acceptance/People_Manager_Browser_Review_Acceptance_2026-09-09.md`
 
-The Directus User Onboarding flow belongs with this subsystem because it implements the People/Identity business process. Shared Directus platform notes may be documented elsewhere, but onboarding behavior should be documented here.
+## Directus / Google Ownership Boundaries
 
-The active Production flow involving `ref.person` was inspected operation-by-operation on 2026-09-09 and is now documented in the engineering identity contract. No Production flow or database configuration was changed during that reconnaissance.
+Directus remains the authorization authority for application role/policy behavior. Google Workspace remains the authority for account/mailbox provisioning.
 
-## Known Open Work
+People Manager does not replace either system. It maintains the durable Production Database person identity and People metadata that those and other operational systems reference.
 
-- verify the human-readable Directus role corresponding to the observed default-role UUID before documenting its role name
-- verify current role/policy assignment behavior beyond the observed onboarding branch
-- design the People Manager manual-create path that generates/reserves a collision-safe Sheboygan Lights email
-- provide an authoritative mechanism for determining whether the reserved MSB email has actually been provisioned in Google Workspace before applications treat it as deliverable
-- implement duplicate-safe person create/edit behavior and later governed merge behavior under issue #130
-- document current failure/recovery behavior for incomplete onboarding
+## Accepted Current Scope vs Future Work
+
+The accepted People Manager scope does **not** include:
+
+- Google Workspace account creation;
+- ordinary Directus role/policy administration;
+- automatic capability/qualification seeding from shorthand names;
+- `ref.setup_task_capability` Setup-task-to-capability integration; or
+- governed person merge/reconciliation.
+
+Those remain separate future work and do not block deployment of the accepted People Manager.
 
 ## Related Systems
 
@@ -60,7 +112,8 @@ The active Production flow involving `ref.person` was inspected operation-by-ope
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
 - [Testing System](../05_Testing_System/README.md)
 - [Work Orders](../06_Work_Orders/README.md)
+- [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 
 ## Resume Development
 
-Read the current [engineering handoff](engineering/README.md) and onboarding identity contract, then inspect current PostgreSQL person structures and current Directus role/policy configuration before editing this subsystem. Do not rely on older Directus MVP or legacy database-structure documents as current authority.
+Read the current [engineering handoff](engineering/README.md), onboarding identity contract, accepted browser/disposable evidence, and the plain-English People operator procedure before changing this subsystem. Preserve Google Workspace provisioning authority, Directus authorization authority, duplicate-safe identity behavior, least privilege, and the existing People analytics privacy boundary.
