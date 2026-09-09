@@ -4,7 +4,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 ANALYTICS_VERSION = "2026-09-07.1"
 MEASUREMENT_ID = "G-X08ZTSY0VV"
-VISIBLE_UPDATE = "Updated 2026-09-07"
+VISIBLE_UPDATE = "Updated 2026-09-08"
 
 
 def test_setup_page_loads_versioned_analytics_asset_and_visible_update() -> None:
