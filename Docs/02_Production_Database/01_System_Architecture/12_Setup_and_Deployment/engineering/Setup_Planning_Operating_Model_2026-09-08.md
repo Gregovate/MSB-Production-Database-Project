@@ -6,14 +6,14 @@
 | System | Production Database — Setup Session |
 | Status | CURRENT — operator-confirmed planning model |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-08 |
+| Last Reviewed | 2026-09-09 |
 | Related Work | Issue #122; PR #125; 2025 Historical Review / Training |
 
 ## Purpose
 
 Preserve the actual MSB Setup planning model so future engineering work does not incorrectly turn Setup into a rigid calendar scheduler or require the operator to restate field practice from memory.
 
-This document records current operator-confirmed rules that must shape 2026 planning, 2025 reconstruction, crew/time interpretation, task decomposition, and future scheduling behavior.
+This document records current operator-confirmed rules that must shape 2026 planning, 2025 reconstruction, crew/time interpretation, task decomposition, Pick List behavior, and future scheduling behavior.
 
 ## Core Planning Model
 
@@ -25,22 +25,28 @@ The practical model is:
 reusable task order / prerequisites
     + work that is ready
     + volunteers actually available
+    + equipment actually available
     + weather / site conditions
     + work completed or delayed on prior days
+    -> identify the outstanding work that needs scheduling
     -> plan only the next few work days
+    -> derive near-term material/container needs through the Pick List
     -> revise as field conditions change
 ```
 
-Planning is primarily **order-driven and crew-availability-driven**, not calendar-driven.
+Planning is primarily **order-driven and crew/equipment-availability-driven**, not calendar-driven.
 
 A useful application should therefore help answer:
 
 - What work is next in the preferred Setup order?
+- What work still needs to be scheduled?
 - What work is actually ready now?
+- What work is blocked and why?
 - How many volunteers are available today / next work day?
-- Which tasks fit the available crew mix and time?
+- Which tasks fit the available crew mix and equipment?
 - Which tasks are blocked by weather, site conditions, mowing, prerequisites, missing material, or unfinished prior work?
 - Which partially completed tasks need another work day?
+- What Displays, Containers, trailers, and support material must be made ready for the work selected next?
 
 Do not force every reusable task into one fixed date simply because a date field exists.
 
@@ -53,6 +59,7 @@ Reasons include:
 - volunteer turnout varies;
 - task completion can be faster or slower than expected;
 - some jobs consume more people than expected;
+- equipment availability changes which work is practical;
 - weather changes what can safely be done;
 - material/equipment issues can move work forward or backward;
 - some tasks span multiple work days;
@@ -167,12 +174,91 @@ The planner should preserve:
 - prerequisites/dependencies;
 - readiness constraints;
 - crew-size guidance;
-- expected effort; and
+- expected effort;
+- required equipment/material; and
 - partially completed work.
 
-Then short-range work-day planning can choose from that ordered/ready set using the volunteers and conditions actually available.
+Then short-range work-day planning can choose from that ordered/ready set using the volunteers, equipment, and conditions actually available.
 
 The operator must be able to depart from preferred order when real conditions justify it without destroying the reusable baseline.
+
+## Dates Versus Order
+
+Historical dates from the 2022 Project schedule and 2025 reconstruction are **firm evidence markers for when work happened or was planned**, but they must not be copied into future seasons as a rigid calendar.
+
+For future planning:
+
+- preferred order and prerequisite/readiness logic are the primary long-range planning signals;
+- date-specific work is assigned only when the short planning horizon is being built;
+- true external/fixed markers may still be shown as constraints or milestones when appropriate;
+- the planner should not invent a date merely to make every outstanding task appear scheduled.
+
+The historical date columns remain valuable because they help establish relative timing, sequence, and the point in the season where work commonly occurred.
+
+## Needs Scheduling Queue
+
+The application needs an explicit operator view of **work that still needs to be scheduled**.
+
+This should be a **derived queue**, not another independent task list and not necessarily a new stored boolean.
+
+Conceptually:
+
+```text
+annual task is included
+AND reusable task is active
+AND task is not COMPLETE / intentionally DEFERRED
+AND task has no active future work-day assignment
+    -> task needs scheduling
+```
+
+The queue should preserve separate operational states:
+
+```text
+NOT_READY + no future assignment
+    -> Outstanding / Blocked
+
+READY + no future assignment
+    -> Ready to Schedule
+
+IN_PROGRESS + no future assignment
+    -> Needs Scheduling Again
+
+READY / PLANNED / IN_PROGRESS + future assignment
+    -> Scheduled
+
+COMPLETE
+    -> do not show in Needs Scheduling
+```
+
+This is important for multi-day work. A task that received one partial work period and remains `IN_PROGRESS` must return to **Needs Scheduling Again** when no continuation is assigned.
+
+The queue should sort primarily by reusable/annual preferred order, while visibly surfacing readiness blockers, crew guidance, equipment needs, and other reasons an operator may intentionally choose a different next task.
+
+## Pick List / Staging Boundary
+
+**`Staging to Park` is not a reusable Setup task.**
+
+Historical staging existed because MSB did not have a reliable way to know which Containers/Displays/material had to leave the workshop, in what sequence, or by when.
+
+The current architecture can derive that need from the actual Setup work:
+
+```text
+preferred task order / near-term scheduled tasks
+    -> required Displays / support Containers / equipment
+    -> current Container relationships and locations
+    -> Pick List / logistics priority
+    -> items moved/prepared for the park
+```
+
+Therefore:
+
+- do not create or retain a generic `Staging to Park` reusable task merely to represent material preparation;
+- Pick List/logistics should own determining which Containers/items must be made ready and moved;
+- the strongest `needed by` signal is a real near-term scheduled work date;
+- when an item has not yet been given a date, preferred task order/readiness can still establish Pick List priority without fabricating one;
+- old 2022 staging/load/unload rows remain useful reconstruction evidence but must be reviewed for Pick List/logistics ownership rather than automatically becoming reusable Setup tasks.
+
+Specific physical operations that are genuinely separate field work may still be real tasks. The rule removes the **generic staging abstraction**, not every legitimate unload/delivery/setup operation.
 
 ## Missing Tasks / Missing Steps in Production
 
@@ -274,13 +360,17 @@ Future Setup engineering must preserve these rules:
 1. do not build a rigid season-long scheduler;
 2. plan a few days ahead and support frequent replanning;
 3. make preferred order and prerequisites first-class;
-4. treat Sunday as a strong avoidance preference, not an absolute ban;
-5. expose weather and site-readiness constraints;
-6. represent grass-cutting completion as a cord-laying readiness dependency rather than a guessed date;
-7. support tasks spanning multiple work days and partial progress;
-8. treat historical crew/hours as evidence, not automatic exact values;
-9. use 2025 notes to identify missing reusable tasks/steps when evidence supports them; and
-10. keep annual historical facts separate from reusable planning knowledge.
+4. provide a derived **Needs Scheduling** queue for outstanding unscheduled work;
+5. return incomplete multi-day work to **Needs Scheduling Again** when no continuation is assigned;
+6. treat historical dates as strong evidence markers without making them the primary future planning structure;
+7. move generic `Staging to Park` responsibility to Pick List/logistics derived from scheduled/ordered task needs;
+8. treat Sunday as a strong avoidance preference, not an absolute ban;
+9. expose weather and site-readiness constraints;
+10. represent grass-cutting completion as a cord-laying readiness dependency rather than a guessed date;
+11. support tasks spanning multiple work days and partial progress;
+12. treat historical crew/hours as evidence, not automatic exact values;
+13. use 2022/2025 evidence to identify missing reusable tasks/steps when evidence supports them; and
+14. keep annual historical facts separate from reusable planning knowledge.
 
 ## Related Durable Sources
 
