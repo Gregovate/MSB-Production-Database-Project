@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -24,7 +25,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from psycopg2 import Error as PsycopgError
 from psycopg2.extras import RealDictCursor
 
-APP_VERSION = "V0.1.0"
+APP_VERSION = "V0.1.1"
 BASE_DIR = Path(__file__).resolve().parent
 PEOPLE_COMMAND_HEADER = "X-MSB-People-Command"
 CLOUDFLARE_EMAIL_HEADER = "Cf-Access-Authenticated-User-Email"
@@ -157,8 +158,17 @@ def person_command_payload(payload: dict[str, Any], *, update: bool) -> dict[str
     return payload
 
 
+def json_row(row: Any) -> dict[str, Any]:
+    """Serialize PostgreSQL timestamps without losing optimistic-lock precision."""
+    item = dict(row)
+    for key, value in item.items():
+        if isinstance(value, datetime):
+            item[key] = value.isoformat()
+    return item
+
+
 def rows(cur: Any) -> list[dict[str, Any]]:
-    return [dict(row) for row in cur.fetchall()]
+    return [json_row(row) for row in cur.fetchall()]
 
 
 @app.get("/")
@@ -235,7 +245,7 @@ def api_person_detail(person_id: int) -> Response:
         row = cur.fetchone()
     if row is None:
         raise PeopleApiError("Person was not found.", 404)
-    return jsonify(person=dict(row))
+    return jsonify(person=json_row(row))
 
 
 @app.get("/api/people/<int:person_id>/dependencies")
@@ -330,7 +340,7 @@ def api_create_person() -> Response:
                 bool(payload.get("email_exception_ack", False)),
             ),
         )
-        result = dict(cur.fetchone())
+        result = json_row(cur.fetchone())
         conn.commit()
     return jsonify(person=result), 201
 
@@ -363,7 +373,7 @@ def api_update_person(person_id: int) -> Response:
                 bool(payload.get("email_exception_ack", False)),
             ),
         )
-        result = dict(cur.fetchone())
+        result = json_row(cur.fetchone())
         conn.commit()
     return jsonify(person=result)
 
