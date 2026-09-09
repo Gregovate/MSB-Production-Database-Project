@@ -311,6 +311,7 @@ sudo docker exec "$PROD_CONTAINER" \
         FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
         WHERE n.nspname IN ('ref','ops')
+          AND p.prokind IN ('f','w')
           AND has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE');
     " > "$GRANTS_FILE"
 
@@ -392,7 +393,6 @@ PREVIEW_PGID="$(
             echo $!
         '
 )"
-
 if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
     echo "FAIL: Setup catalog preview process did not return a valid process-group ID: $PREVIEW_PGID"
     exit 21
@@ -409,70 +409,63 @@ for _ in $(seq 1 30); do
 done
 if [[ "$preview_ready" -ne 1 ]]; then
     echo "FAIL: Setup catalog preview application did not become healthy"
-    tail -n 120 "$PREVIEW_LOG" || true
+    tail -n 100 "$PREVIEW_LOG" || true
     exit 22
 fi
 
-HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
-ACCESS="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access")"
+TASKS_FILE="/tmp/setup-catalog-preview-tasks-$STAMP.json"
+EFFORT_FILE="/tmp/setup-catalog-preview-effort-$STAMP.json"
+TASKS_CODE="$(curl -sS -o "$TASKS_FILE" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks?season_year=2025")"
+EFFORT_CODE="$(curl -sS -o "$EFFORT_FILE" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/task-efforts")"
+if [[ "$TASKS_CODE" != "200" || "$EFFORT_CODE" != "200" ]]; then
+    echo "FAIL: Setup catalog preview APIs did not return 200 (tasks=$TASKS_CODE efforts=$EFFORT_CODE)"
+    cat "$TASKS_FILE" "$EFFORT_FILE" || true
+    rm -f "$TASKS_FILE" "$EFFORT_FILE"
+    exit 23
+fi
 
-for endpoint in \
-    "/api/setup/organization" \
-    "/api/setup/task-efforts"; do
-    CODE="$(curl -sS -o /tmp/setup-catalog-preview-response-$STAMP.json -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT$endpoint")"
-    if [[ "$CODE" != "200" ]]; then
-        echo "FAIL: Setup catalog preview API $endpoint returned HTTP $CODE"
-        cat /tmp/setup-catalog-preview-response-$STAMP.json || true
-        rm -f /tmp/setup-catalog-preview-response-$STAMP.json
-        exit 23
-    fi
-done
-rm -f /tmp/setup-catalog-preview-response-$STAMP.json
-
-EFFORT_JSON="/tmp/setup-catalog-preview-efforts-$STAMP.json"
-curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/task-efforts" > "$EFFORT_JSON"
-sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$EFFORT_JSON" <<'PY'
+sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$EFFORT_FILE" <<'PY'
 import json
 import sys
-from collections import Counter
+
 with open(sys.argv[1], encoding='utf-8') as handle:
     payload = json.load(handle)
 rows = payload.get('task_efforts', [])
 if len(rows) != 185:
     raise SystemExit(f"FAIL: effort API should expose 185 reusable tasks; found {len(rows)}")
-counts = Counter(row.get('effort_level') for row in rows)
+counts = {None: 0, 'LIGHT': 0, 'MODERATE': 0, 'HEAVY': 0}
+for row in rows:
+    value = row.get('effort_level')
+    if value not in counts:
+        raise SystemExit(f"FAIL: unexpected effort value {value!r}")
+    counts[value] += 1
 expected = {None: 161, 'LIGHT': 8, 'MODERATE': 12, 'HEAVY': 4}
 if counts != expected:
-    raise SystemExit(f"FAIL: effort API counts mismatch: {dict(counts)}")
-print('Effort API 185-task distribution: PASS')
+    raise SystemExit(f"FAIL: effort API counts {counts!r} != {expected!r}")
+print('Setup catalog effort API 185-task distribution: PASS')
 PY
-rm -f "$EFFORT_JSON"
+rm -f "$TASKS_FILE" "$EFFORT_FILE"
 
-echo "Preview health: $HEALTH"
-echo "Preview access: $ACCESS"
 echo
 echo "============================================================"
 echo "SETUP CATALOG BROWSER REVIEW READY"
 echo "Open on the Windows workstation:"
 echo "  http://127.0.0.1:$PREVIEW_PORT/"
 echo
-echo "Exact accepted candidate: $TARGET_SHA"
+echo "This is accepted candidate $TARGET_SHA against a DISPOSABLE current-Production clone."
 echo "Preview identity: $PREVIEW_EMAIL"
-echo "Production checkout and Setup data remain unchanged."
+echo "Production Setup data and shared checkout remain unchanged."
 echo
-echo "Review these catalog-reconstruction points:"
-echo "  - Reusable Catalog shows the reconstructed Stage/Scene task list."
-echo "  - Locate Power & Network uses the normalized name where appropriate."
-echo "  - Layout Panels uses the normalized name where appropriate."
-echo "  - Physical Effort shows LIGHT / MODERATE / HEAVY or blank."
-echo "  - Save Effort works and persists after refresh in the disposable clone."
-echo "  - Corrected Stage/Scene placements are understandable."
-echo "  - Bad provisional tasks 40/58 are not active."
-echo "  - Prerequisites are intentionally empty pending the next reviewed pass."
-echo "  - New reconstructed reusable tasks are not fabricated as 2025 annual history."
+echo "Review the reconstructed reusable Catalog as the future Production task basis:"
+echo "  - Stage and Scene scope/moves from the reviewed workbook"
+echo "  - normalized Locate Power & Network and Layout Panels names"
+echo "  - Physical Effort LIGHT / MODERATE / HEAVY / blank"
+echo "  - provisional junk such as task 'light' is absent"
+echo "  - reconstructed new tasks are reusable definitions, not fabricated 2025 execution"
+echo "Change one Physical Effort value, save, refresh, and confirm it persists in the disposable clone."
+echo "Prerequisites are intentionally empty until the next reviewed predecessor/readiness pass."
 echo
-echo "Any edits made in this preview change only the disposable clone."
-echo "When review is finished, return here and press ENTER."
+echo "When review is finished, return to this PowerShell window and press ENTER."
 echo "============================================================"
 echo
 
