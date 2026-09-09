@@ -412,7 +412,6 @@ echo
 echo "--- Directus-linked system email protection ---"
 MANAGER_CHANGED_EMAIL="peopleaccept${STAMP}@sheboyganlights.org"
 if psql_test_quiet -c "
-    SET ROLE people_app;
     SELECT * FROM ref.update_person_from_people_manager(
         '$MANAGER_EMAIL',$MANAGER_PERSON_ID,
         (SELECT first_name FROM ref.person WHERE person_id=$MANAGER_PERSON_ID),
@@ -429,7 +428,7 @@ if psql_test_quiet -c "
     echo "FAIL: Directus-linked MSB email change unexpectedly succeeded"
     exit 21
 else
-    echo "PASS: Directus-linked MSB email change denied"
+    echo "PASS: Directus-linked MSB email change denied by governed update"
 fi
 
 echo
@@ -453,17 +452,13 @@ echo "PASS: dynamic relationship report surfaced clone-only ref.person_xref depe
 echo
 echo "--- Protected fields remain unchanged ---"
 PROTECTED_ROW="$(psql_test_quiet -F '|' -c "
-    SELECT directus_user_id::text,coalesce(pg_login_name,''),is_manager,is_team,available_for_work_orders
+    SELECT coalesce(directus_user_id::text,''),coalesce(pg_login_name,''),is_manager,is_team,available_for_work_orders
     FROM ref.person WHERE person_id=$PERSON_ONE_ID;
 ")"
-if [[ "$PROTECTED_ROW" != "| |f|f|f" && "$PROTECTED_ROW" != "||f|f|f" ]]; then
-    # The first accepted form depends on psql's rendering of an empty text field.
-    # Any non-empty identity/authorization value is a failure for this clone-only person.
-    IFS='|' read -r P_DID P_PG P_MANAGER P_TEAM P_WO <<< "$PROTECTED_ROW"
-    if [[ -n "$P_DID" || -n "$P_PG" || "$P_MANAGER" != "f" || "$P_TEAM" != "f" || "$P_WO" != "f" ]]; then
-        echo "FAIL: protected identity/authorization fields changed unexpectedly: $PROTECTED_ROW"
-        exit 23
-    fi
+IFS='|' read -r P_DID P_PG P_MANAGER P_TEAM P_WO <<< "$PROTECTED_ROW"
+if [[ -n "$P_DID" || -n "$P_PG" || "$P_MANAGER" != "f" || "$P_TEAM" != "f" || "$P_WO" != "f" ]]; then
+    echo "FAIL: protected identity/authorization fields changed unexpectedly: $PROTECTED_ROW"
+    exit 23
 fi
 echo "PASS: protected identity/authorization fields remain untouched"
 
