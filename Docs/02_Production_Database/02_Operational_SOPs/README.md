@@ -6,6 +6,7 @@ These procedures are for people performing day-to-day production database tasks.
 
 | I want to... | Go to |
 |---|---|
+| Find or maintain a volunteer/contact, capability, qualification, or Setup/Takedown eligibility | [People](People/README.md) |
 | Scan a Display, Container, or other MSB code and choose the next action | [Scanning](Scanning/README.md) |
 | Find and use current field wiring by Display, Stage, Sub-stage, or Scene | [FieldWiring](FieldWiring/README.md) |
 | Create or maintain container records and display assignments | [Containers](Containers/README.md) |
@@ -20,6 +21,7 @@ These procedures are for people performing day-to-day production database tasks.
 
 | Folder | What it contains |
 |---|---|
+| [People](People/README.md) | Plain-English People Manager procedures for person/contact maintenance, capabilities, formal qualifications, Setup/Takedown eligibility, and leadership visibility |
 | [Scanning](Scanning/README.md) | Operator guidance for manual Scan entry, QR/code meanings, phone/tablet camera setup, and choosing what to do after a scan |
 | [FieldWiring](FieldWiring/README.md) | Plain-English procedures for finding current wiring, reading Field Hookup information, using wiring images, scanning into FieldWiring, and printing/saving field copies |
 | [Containers](Containers/README.md) | Procedures for creating and maintaining containers, storage information, dimensions, labels, and display assignments |
