@@ -2,7 +2,20 @@
 set -euo pipefail
 
 FIELDWIRING_ROOT="/opt/fieldwiring"
-PREVIEW_PORT="${1:-8794}"
+PREVIEW_PORT="${1:?preview port argument is required}"
+
+if [[ ! "$PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( PREVIEW_PORT < 1024 || PREVIEW_PORT > 65535 )); then
+    echo "FAIL: preview port must be an integer from 1024 through 65535"
+    exit 2
+fi
+if [[ "$PREVIEW_PORT" == "8794" ]]; then
+    echo "FAIL: port 8794 is the live Production Setup listener and must never be cleaned as People preview state"
+    exit 3
+fi
+if [[ "$PREVIEW_PORT" == "8055" || "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" ]]; then
+    echo "FAIL: port $PREVIEW_PORT is a governed Production listener and must never be cleaned as People preview state"
+    exit 3
+fi
 
 sudo -v
 
@@ -67,9 +80,9 @@ for path in /tmp/msb-people-browser-preview-*; do
 done
 
 if ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
-    echo "FAIL: TCP port $PREVIEW_PORT is still listening after People preview cleanup"
+    echo "FAIL: TCP port $PREVIEW_PORT is occupied after People preview cleanup; refusing to touch the listener"
     ss -ltnp "sport = :$PREVIEW_PORT" || true
-    exit 2
+    exit 4
 fi
 
 echo "PASS: preview port $PREVIEW_PORT is free"
