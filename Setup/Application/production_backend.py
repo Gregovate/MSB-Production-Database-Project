@@ -49,6 +49,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_catalog_effort.js",
         "setup_material.css",
         "setup_material.js",
+        "setup_browser_validation_fixes.js",
     }
 )
 
