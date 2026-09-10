@@ -10,17 +10,17 @@
 
 ## Purpose
 
-Preserve the operator-confirmed distinction between reusable task predecessors, preferred order, and annual/site readiness so future Setup work does not reconstruct these rules from chat or historical task order.
+Preserve the operator-confirmed distinction between reusable task predecessors, preferred order, and external/site readiness so future Setup work does not reconstruct these rules from chat or historical task order.
 
 The 2025 reconstruction intentionally reset reusable dependencies to zero because the imported predecessor set was not trustworthy. The next dependency pass must rebuild only reviewed relationships.
 
 ## Three Different Concepts
 
-### 1. Hard predecessor
+### Hard predecessor
 
 A hard predecessor is another reusable Setup task that must be complete before the dependent task can proceed.
 
-Example established during Stage 00 review:
+Stage 00 example:
 
 ```text
 Lay Cords #67
@@ -28,94 +28,95 @@ Lay Cords #67
     hard predecessor -> Setup HWY42 MSB and Rotary Signs #66
 ```
 
-These are real Setup tasks. They belong in the governed reusable dependency relationship and should be evaluated by task completion state.
+These are real Setup tasks and belong in the governed reusable dependency relationship.
 
-### 2. Preferred order
+### Preferred order
 
 Preferred order means one task is normally better to do before another, but field conditions may justify changing the sequence.
 
-Do not turn a historical sequence into a hard dependency merely because the work happened in that order once.
+Do not convert historical sequence into a hard dependency unless the earlier task is truly required.
 
-Preferred order belongs in reusable planning/order behavior, not in the hard dependency table unless the prerequisite is truly required.
+### Readiness condition
 
-### 3. Readiness condition
+A readiness condition is **not a Setup task**. It represents an external/site condition MSB does not perform or does not want to treat as Setup work.
 
-A readiness condition is not another Setup task. It is an external/site/operational condition that must be satisfied before the work is practical.
+Examples:
 
-Examples include:
-
-- mowing/mulching complete in the task's work area;
-- leaves cleared in the task's work area;
+- mowing/mulching complete in the applicable work area;
+- leaves cleared in the applicable work area;
+- outside construction/road work clear;
 - access available;
-- construction/road work clear;
-- weather appropriate for the work;
-- required site condition or external dependency satisfied.
+- another site condition controlled by an external party.
 
-Do not fabricate fake Setup tasks such as a single park-wide `Grass Cutting Complete` task merely to express readiness.
+Do not fabricate `Grass Cutting Complete` or similar Setup tasks merely to create a blocker. Such a fake task would create misleading completion/reporting history for work MSB did not perform.
+
+## Structured Readiness Is Required
+
+The current free-form `readiness_note` is not sufficient as the long-term control mechanism.
+
+It can describe a condition, but free text cannot reliably answer:
+
+- which tasks share the same condition;
+- whether that condition is currently satisfied;
+- which work is blocked by it; or
+- when one readiness change should release several tasks.
+
+The required design is a **structured reusable readiness condition** that can be linked to one or more reusable tasks, with separate annual/current readiness state.
+
+Conceptually:
+
+```text
+Reusable readiness condition
+    "Mowing/mulching complete — Stage 00 HWY42 work area"
+
+linked tasks
+    -> Lay Cords
+    -> Network hookup
+    -> Testing
+
+annual/current state
+    -> NOT READY / READY
+    -> optional actor/time/note as appropriate
+```
+
+This is a condition record, not a Setup task. It should not appear as completed Setup work, consume crew time, or appear in Setup task completion reports.
+
+Exact table/function names remain implementation design work; do not invent Production schema merely from this conceptual contract.
 
 ## Area-Specific Grass / Mulch Rule
 
-Grass cutting and mulching are **area-specific**, not a single park-wide prerequisite.
+Grass cutting and mulching readiness is **area-specific**, not park-wide.
 
-Stage 00 may be ready for cord work while another part of the park is still being cut or mulched.
+Stage 00 can be ready while another part of the park is still being cut or mulched.
 
-For `Lay Cords #67`, the reusable readiness rule is conceptually:
-
-```text
-mowing/mulching complete in the Stage 00 HWY 42 cord-laying area
-```
-
-The condition applies to the task/work area, not to the entire park and not to an arbitrary calendar date.
-
-This means the future planner must be capable of representing independent readiness by task/work area.
-
-## Current Production UI Boundary
-
-The current reusable task field `readiness_note` is free-form text.
-
-It is useful now for recording the reusable rule, but it **does not currently block a task from becoming available/schedulable**.
-
-Therefore the current operating workaround is:
+For the Stage 00 HWY42 area, the condition must be satisfied before the affected work proceeds, including:
 
 ```text
-reusable task
-    -> record normal readiness rule in readiness_note
-    -> operator must still apply judgment manually
+Lay Cords
+Network hookup
+Testing
 ```
 
-That is not the finished scheduling model.
+The condition is tied to that physical work area. Other Stage/Scene/Sub-stage areas need their own readiness state as applicable.
 
-The future annual Setup Session needs structured readiness state so the reusable task can say **what condition is normally required** and the annual session can say **whether that condition is satisfied this year / right now**.
-
-Conceptual direction:
-
-```text
-Reusable task knowledge
-    readiness requirement = mowing/mulching complete in this work area
-
-Annual Setup state
-    NOT READY / READY
-    actor / time / note as appropriate
-```
-
-Exact schema and UI controls remain implementation work. Do not invent an unreviewed global readiness table or boolean merely from this document.
+Do not use one global park-wide `Grass Cutting Complete` flag if areas can become ready independently.
 
 ## Relationship to Scheduling
 
-A task may have all hard predecessors complete and still be `NOT READY` because the site condition is not satisfied.
-
-Conversely, a readiness condition becoming true does not imply that all task predecessors are complete.
+A task can have all hard predecessors complete but remain unavailable because a readiness condition is not satisfied.
 
 Conceptually:
 
 ```text
 hard predecessors complete
-    + annual readiness satisfied
+    + linked readiness conditions READY
     + crew/equipment/weather practical
-    -> candidate work can be AVAILABLE / READY TO SCHEDULE
+    -> task can be AVAILABLE / READY TO SCHEDULE
 ```
 
-Preferred order influences which available work is normally chosen next but should not falsely block other valid work.
+Readiness does not imply predecessor completion, and predecessor completion does not imply readiness.
+
+Weather can influence day-to-day planning separately; do not automatically turn every weather note into a durable readiness condition without an accepted rule.
 
 ## Efficient Predecessor Editing
 
@@ -131,18 +132,16 @@ Shift-drag the later/dependent task onto its predecessor
 
 Requirements:
 
-- ordinary unmodified drag must preserve existing reorder and Stage/Scene movement behavior;
-- Shift-drag must be explicit and visually distinct from normal drag;
-- use the existing governed `ref.set_setup_task_dependency(...)` command path;
-- circular-dependency protection remains database-governed;
-- show explicit confirmation/result so an ambiguous drop never silently creates a dependency;
-- do not use modifier-drag for readiness conditions, because readiness is not another reusable task.
-
-Alt-drag was discussed as an alternative modifier, but Shift-drag is the current preferred direction.
+- ordinary unmodified drag preserves existing reorder and Stage/Scene movement behavior;
+- Shift-drag is visually distinct from normal drag;
+- use the existing governed `ref.set_setup_task_dependency(...)` write path;
+- database circular-dependency protection remains authoritative;
+- show explicit success/failure feedback; and
+- modifier-drag applies only to task predecessors, not readiness conditions.
 
 ## Reconstruction Rule
 
-When reviewing 2022/2025 evidence, classify each sequencing relationship as exactly one of:
+Classify sequencing evidence as one of:
 
 ```text
 HARD PREDECESSOR
@@ -150,39 +149,37 @@ PREFERRED ORDER
 READINESS CONDITION
 ```
 
-Do not force all three into the same dependency mechanism.
-
 Examples:
 
 ```text
-Signs physically must be installed before cords can be laid there
+HWY42 signs must be installed before affected cord work
     -> HARD PREDECESSOR
 
-Crew normally does one small job before another for efficiency
-    -> PREFERRED ORDER
-
-Mowing/mulching must be complete in the cord-laying area
+Mowing/mulching complete in the HWY42 work area
     -> READINESS CONDITION
+
+A task is normally done earlier for convenience but can safely move
+    -> PREFERRED ORDER
 ```
 
 ## 2026 Session Gate
 
-The operator decision remains: **do not create the 2026 Setup Session until the reconstructed 2025 plan is complete.**
+**Do not create the 2026 Setup Session until the reconstructed 2025 Setup plan is complete.**
 
-Before propagation, the predecessor/readiness pass must be useful enough that known required task dependencies and area-specific readiness are not lost or converted into a misleading rigid schedule.
+Before propagation, known hard predecessors and structured area-specific readiness must be represented well enough that the future planner does not rely on a free-text note and operator memory for critical blockers.
 
 ## Implementation Gate
 
-Before Production implementation of structured readiness or modifier-drag dependency editing:
+Before Production implementation:
 
 1. preserve current normal drag/reorder/scope behavior;
-2. inventory the reusable tasks being reviewed for hard predecessors;
-3. keep readiness conditions distinct from task dependencies;
-4. use representative cases including Stage 00 cord laying and at least one weather/access readiness case;
-5. prove circular dependency rejection remains intact;
-6. prove Shift-drag creates only the intended directed dependency and does not move either task;
-7. prove unmodified drag remains unchanged;
-8. design annual readiness state separately from the reusable readiness rule; and
+2. keep readiness conditions separate from reusable task dependencies;
+3. support one readiness condition gating multiple tasks;
+4. support independent readiness by work area;
+5. prove the Stage 00 HWY42 condition blocks Lay Cords, Network hookup, and Testing until READY;
+6. ensure readiness conditions do not appear as completed Setup work or crew/reporting tasks;
+7. prove Shift-drag creates only the intended directed task dependency and does not move either task;
+8. prove unmodified drag remains unchanged; and
 9. perform protected browser validation before Production acceptance.
 
 ## Related Durable Sources
