@@ -59,6 +59,24 @@ def test_scene_previewbackground_walks_up_to_nearest_scene(tmp_path):
     assert warnings == []
 
 
+def test_stage_root_background_pointer_does_not_hide_matching_child_scene(tmp_path):
+    drive = tmp_path / "Display Folders"
+    stage = _mark(drive / "01-Front Entrance-FE")
+    scene = _mark(stage / "01-Front Gate")
+    pointer = _file(stage / "PreviewBackground" / "Gate Final Version.PNG")
+
+    root, kind, warnings = resolve_structured_scope(
+        {"stage_key": "01", "folder_path": str(stage)},
+        {"scene_name": "01-Front Gate", "scene_background_file": str(pointer)},
+        {"preview_name": "Show Background Stage 01 FE Outside Gate"},
+        drive,
+    )
+
+    assert root == scene
+    assert kind == "SCENE"
+    assert warnings == []
+
+
 def test_display_previewbackground_under_scene_climbs_to_scene(tmp_path):
     drive = tmp_path / "Display Folders"
     stage = _mark(drive / "21-Polar Bear Playground-PB")
