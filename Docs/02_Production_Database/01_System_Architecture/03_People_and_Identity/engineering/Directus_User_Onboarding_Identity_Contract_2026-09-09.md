@@ -4,20 +4,56 @@
 |---|---|
 | Document Type | Engineering Reverse-Engineering / Identity Contract |
 | System | People and Identity |
-| Status | CURRENT OBSERVED PRODUCTION BEHAVIOR — DOCUMENTED, NOT MODIFIED |
+| Status | CURRENT OBSERVED PRODUCTION BEHAVIOR — operation graph and operation permission context captured 2026-09-10; outer trigger/accountability still to confirm |
 | Owner | Production Database / People and Identity |
-| Evidence Date | 2026-09-09 |
+| Evidence Date | 2026-09-09; supplemented 2026-09-10 |
 | Related | Issue #130 |
 
 ## Purpose
 
-This document records the current Production Directus **User Onboarding** flow as observed directly in the Directus administrative UI on 2026-09-09. It also records the identity lifecycle decisions that People Manager must preserve.
+This document records the current Production Directus **User Onboarding** flow as observed directly in the Directus administrative UI on 2026-09-09 and supplemented by read-only Production database evidence on 2026-09-10. It also records the identity lifecycle decisions that People Manager must preserve.
 
-No Production flow, database row, role, or configuration was changed while gathering this evidence.
+No Production flow, database row, role, policy, permission, or configuration was changed while gathering this evidence.
 
 ## Evidence Source
 
-The flow was inspected operation-by-operation in the Production Directus UI. A normal export mechanism was not available from that interface, so the operation configuration was captured manually from the live flow screens.
+The flow was first inspected operation-by-operation in the Production Directus UI. On 2026-09-10, the Production `public.directus_operations` rows for Flow `82013c78-22b1-4e5c-a355-4c2a3a81f644` (`User Onboarding`) were captured read-only, including each operation's resolve/reject links and options.
+
+## Production Operation Graph — Confirmed 2026-09-10
+
+The current operation graph is:
+
+```text
+Read Directus Users
+    -> Check Google User
+        -> Update User Default Role
+            -> Read Person
+                -> Found Existing Person ref.person
+                    -> resolve: Update Person with Directus ID
+                    -> reject:  Add Person if not in Person
+```
+
+Confirmed operation IDs and keys:
+
+| Operation | Key | Type | Resolve | Reject |
+|---|---|---|---|---|
+| Read Directus Users | `read_directus_users` | `item-read` | Check Google User | |
+| Check Google User | `check_google_user` | `condition` | Update User Default Role | |
+| Update User Default Role | `update_user_default_role` | `item-update` | Read Person | |
+| Read Person | `read_person` | `item-read` | Found Existing Person | |
+| Found Existing Person ref.person | `found_existing_person_ref_person` | `condition` | Update Person with Directus ID | Add Person if not in Person |
+| Update Person with Directus ID | `update_person_with_directus_id` | `item-update` | | |
+| Add Person if not in Person | `add_person_if_not_in_person` | `item-create` | | |
+
+All item read/create/update operations in this Flow are explicitly configured with:
+
+```json
+{"permissions":"$full","emitEvents":false}
+```
+
+This is a critical boundary. The Flow's inner collection operations are deliberately configured for `$full` permissions rather than depending on the ordinary Manager policy's collection/action matrix. That statement is limited to the operation options observed here; the Flow-level outer `trigger` and `accountability` configuration still requires direct read-only confirmation before changing the Flow.
+
+All captured operations show `user_created = 71490451-2c6d-4a08-b8aa-05a7ab784419`, the operational Administrator Directus identity for `gliebig@sheboyganlights.org`.
 
 ## Current Production Flow
 
@@ -41,19 +77,13 @@ Target ID:
 {{$trigger.key}}
 ```
 
-Observed query:
+Current Production options include:
 
 ```json
-{
-  "filter": {
-    "status": {
-      "_eq": "active"
-    }
-  }
-}
+{"permissions":"$full","emitEvents":false,"collection":"directus_users","key":["{{$trigger.key}}"]}
 ```
 
-The flow therefore reads the active Directus user created by the triggering event.
+The operation reads the Directus user identified by the triggering event.
 
 ### 2. Check Google User
 
@@ -63,30 +93,32 @@ Operation key:
 check_google_user
 ```
 
-Observed condition:
+Confirmed condition:
 
 ```json
 {
-  "_and": [
-    {
-      "$last": {
-        "provider": {
-          "_eq": "google"
+  "filter": {
+    "_and": [
+      {
+        "$last": {
+          "provider": {
+            "_eq": "google"
+          }
+        }
+      },
+      {
+        "$last": {
+          "role": {
+            "_null": true
+          }
         }
       }
-    },
-    {
-      "$last": {
-        "role": {
-          "_null": true
-        }
-      }
-    }
-  ]
+    ]
+  }
 }
 ```
 
-The onboarding branch therefore applies to an active Directus user whose provider is Google and whose role is still null.
+The onboarding branch therefore applies only to a Google Directus user whose role is still null.
 
 ### 3. Update User Default Role
 
@@ -108,7 +140,7 @@ Target ID:
 {{read_directus_users.id}}
 ```
 
-Observed payload:
+Confirmed payload:
 
 ```json
 {
@@ -116,7 +148,9 @@ Observed payload:
 }
 ```
 
-The human-readable role name was not established by this inspection and must not be inferred from the UUID alone.
+Current Production options explicitly use `$full` permissions and `emitEvents=false`.
+
+The human-readable role name for `0ce54f42-8438-4eb6-8081-4303612c9da1` was not established by the original UI inspection and must not be inferred from the UUID alone unless separately confirmed.
 
 ### 4. Read Person
 
@@ -132,7 +166,7 @@ Collection:
 Person
 ```
 
-Observed query:
+Confirmed query intent:
 
 ```json
 {
@@ -163,6 +197,8 @@ Observed query:
 }
 ```
 
+The operation is explicitly configured with `$full` permissions and `emitEvents=false`.
+
 This is the critical identity-matching rule. The flow matches an existing person by **MSB email**, not by first name, last name, `personal_email`, or phone.
 
 The existing row is eligible when `directus_user_id` is either null or already equals the triggering Directus user ID.
@@ -175,17 +211,19 @@ Operation key:
 found_existing_person_ref_person
 ```
 
-Observed condition:
+Confirmed condition:
 
 ```json
 {
-  "$last[0].person_id": {
-    "_null": false
+  "filter": {
+    "$last[0].person_id": {
+      "_null": false
+    }
   }
 }
 ```
 
-If a matching person exists, the success branch updates that person. If not, the failure branch creates a person.
+If a matching person exists, the resolve branch updates that person. If not, the reject branch creates a person.
 
 ### 6. Existing Person Branch — Update Person with Directus ID
 
@@ -207,12 +245,18 @@ Target ID:
 {{read_person[0].person_id}}
 ```
 
-Observed payload:
+Confirmed payload:
 
 ```json
 {
   "directus_user_id": "{{read_directus_users.id}}"
 }
+```
+
+Current Production options are explicitly:
+
+```json
+{"permissions":"$full","emitEvents":false,...}
 ```
 
 The flow therefore preserves the existing `person_id` and links the Directus identity to it.
@@ -231,25 +275,26 @@ Collection:
 Person
 ```
 
-Observed payload:
+Confirmed payload begins with:
 
 ```json
 {
   "directus_user_id": "{{read_directus_users.id}}",
   "first_name": "{{read_directus_users.first_name}}",
   "last_name": "{{read_directus_users.last_name}}",
-  "email": "{{read_directus_users.email}}",
-  "active_flag": true
+  "email": "{{read_directus_users.email}}"
 }
 ```
 
-Therefore `ref.person` does **not** have to pre-exist for a new Google/Directus user. If the flow cannot find a matching person by MSB email, it creates a new active person row.
+The original UI inspection also established `active_flag = true` in this branch. Current Production options are explicitly configured with `$full` permissions and `emitEvents=false`.
+
+Therefore `ref.person` does **not** have to pre-exist for a new Google/Directus user. If the flow cannot find a matching person by MSB email, it can create a new active person row.
 
 ## Identity Consequence
 
 The current flow makes `ref.person.email` the deterministic bridge between an existing person and a future Google/Directus identity.
 
-For an existing casual volunteer to become a team member without creating a second person row, the intended Sheboygan Lights email must already be stored on the existing `ref.person` row **before the person's first Google/Directus login**.
+For an existing casual volunteer to become a team member without creating a second person row, the intended Sheboygan Lights email must already be stored on the existing `ref.person` row **before the relevant onboarding event**.
 
 Example:
 
@@ -261,15 +306,30 @@ directus_user_id = NULL
 
 Google Workspace account jsmith@sheboyganlights.org is created later
 
-first Directus login
+Directus onboarding event occurs
     -> flow searches email = jsmith@sheboyganlights.org
     -> finds person_id 123
     -> sets directus_user_id on person_id 123
 ```
 
-If the MSB email is not staged on the existing person first, the current flow has no identity evidence with which to match the Google user to that volunteer and may create a second person row.
-
 Do **not** change the flow to guess identity from name alone. Different real people may share a name.
+
+## Confirmed 2026-09-10 Lifecycle Failure
+
+Production evidence proved that established Manager accounts can exist with:
+
+```text
+active Directus user
+Manager authorization
+exact matching ref.person.email
+ref.person.directus_user_id = NULL
+```
+
+Randy Miller explicitly authenticated again at `db.sheboyganlights.org`, but the Person link remained NULL. A bounded Production repair of the Person link immediately restored governed Setup create/delete behavior without any Directus permission change.
+
+This means the existing onboarding mechanism is not a sufficient reconciliation mechanism for already-established users.
+
+The inner `provider=google AND role IS NULL` condition is one confirmed reason such an established Manager cannot traverse the Person-link branch. The exact outer trigger event must still be read directly from `public.directus_flows` before the final durable hardening design is chosen.
 
 ## People Manager Manual-Create Rule
 
@@ -313,7 +373,7 @@ For scheduling/contact behavior:
 
 - before Google provisioning is confirmed, use `personal_email`;
 - after Google provisioning is confirmed, the Sheboygan Lights address may become the business/deliverable address;
-- `directus_user_id` is a separate first-login/linkage state and is not the test for whether Google email is deliverable.
+- `directus_user_id` is a separate Directus identity/linkage state and is not the test for whether Google email is deliverable.
 
 The mechanism by which application code will obtain authoritative Google-provisioning state is still an implementation item; do not invent that state from existing PostgreSQL fields.
 
@@ -344,26 +404,50 @@ casual volunteer
     -> use personal email while Google account does not yet exist
     -> later create the Google Workspace account when the person becomes a team member
     -> MSB email becomes usable business email once Google provisioning is confirmed
-    -> first Directus login links the existing person_id through the current email-match flow
+    -> Directus identity is established
+    -> exact-email reconciliation links the existing person_id
 ```
 
-People Manager must not create Directus users or infer Directus authorization roles from the person's email address.
+People Manager must not infer Directus authorization roles from the person's email address.
 
-## Acceptance Requirements for People Manager
+The current corrective goal is to remove the operational dependency on a human remembering to visit Directus merely so unrelated governed MSB applications can obtain a usable actor mapping.
 
-Before any Production implementation is accepted, prove at least these identity cases on a current Production clone or other approved disposable environment:
+## Acceptance Requirements for Corrected Identity Lifecycle
 
-1. manually creating a casual volunteer reserves a collision-safe MSB email without granting access;
-2. an existing casual volunteer with the staged MSB email is later linked to the same `person_id` on first Directus login;
-3. no staged email causes scheduler/business mail to be sent to an unprovisioned Google address;
-4. email collision handling cannot overwrite or reuse another person's reserved/system identity;
-5. manually created and Directus-created people are both visible to duplicate detection;
-6. an inactive seasonal person is preserved and can be reactivated without creating a duplicate;
-7. `directus_user_id` remains protected from ordinary People Manager contact editing; and
-8. no Production flow or database mutation occurs without the separate Production gate.
+Before the corrected lifecycle is accepted, prove at least:
+
+1. manual casual-volunteer create reserves a collision-safe MSB email without granting access;
+2. an existing Person with the staged MSB email can be linked to the same `person_id` when the corresponding Directus identity is established;
+3. an already-established Directus user with an exact-email Person and NULL link is safely reconciled without manual database patching;
+4. conflicting Directus UUID or ambiguous/no exact-email identity fails closed;
+5. no staged email causes scheduler/business mail to be sent to an unprovisioned Google address;
+6. email collision handling cannot overwrite or reuse another person's reserved/system identity;
+7. manually created and Directus-created people are both visible to duplicate detection;
+8. inactive seasonal Person identity is preserved and may be reactivated without duplication;
+9. `directus_user_id` remains protected from ordinary People Manager contact editing;
+10. population-wide audit proves every human identity required for governed writes is either correctly mapped or explicitly documented as an intentional exception; and
+11. no Production Flow/database mutation occurs without the separate Production gate.
+
+## Remaining Evidence Before Hardening Design
+
+The exact `public.directus_operations` graph and operation permission configuration are now captured.
+
+Before changing the Flow or selecting another reconciliation mechanism, still capture the Flow row itself from `public.directus_flows`, specifically:
+
+```text
+id
+name
+status
+trigger
+accountability
+options
+operation
+```
+
+This is required to establish the outer event that causes the Flow to run and its Flow-level accountability semantics.
 
 ## Current Boundary
 
-This document records observed Production behavior and accepted People Manager identity requirements.
+This document records observed Production behavior and accepted identity requirements.
 
-It does **not** authorize changing the Production Directus flow, creating Google Workspace accounts, modifying Production person rows, or deploying People Manager.
+It does **not** authorize changing the Production Directus flow, creating Google Workspace accounts, modifying additional Production Person rows, or deploying a new reconciliation mechanism.
