@@ -75,7 +75,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.5-reconstruction-material-review"
+    assert payload["version"] == "V0.3.5-explicit-material-source-review"
 
     for asset in (
         "/setup.css",
@@ -158,7 +158,7 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/tasks/<int:setup_task_id>/procedure/current",
         "/api/setup/task-display-material",
         "/api/setup/tasks/<int:setup_task_id>/display-setup-step",
-        "/api/setup/tasks/<int:setup_task_id>/display-material",
+        "/api/setup/tasks/<int:setup_task_id>/material-source",
         "/api/setup/tasks/<int:setup_task_id>/material-context",
     ):
         assert expected in rules
