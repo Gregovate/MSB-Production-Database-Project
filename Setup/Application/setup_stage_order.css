@@ -24,3 +24,12 @@
   border-bottom: 2px solid var(--border, #d9e0e8);
   font-weight: 800;
 }
+
+.setup-stage-scope-heading {
+  margin: 0.2rem 0 0;
+  padding: 0.4rem 0.75rem;
+  border-left: 3px solid var(--border, #d9e0e8);
+  background: var(--soft, #f5f8fb);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
