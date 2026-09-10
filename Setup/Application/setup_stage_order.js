@@ -35,6 +35,14 @@ function setupStageHeadingText(task) {
   return `Stage ${task.stage_key || '—'} — ${task.stage_name || 'Unnamed Stage'}`;
 }
 
+function setupScopeHeadingText(task) {
+  return task?.scene_name ? `Scene — ${task.scene_name}` : 'Stage-level / General';
+}
+
+function setupScopeHeadingKey(task) {
+  return task?.scene_name ? `scene:${task.scene_name}` : 'stage';
+}
+
 function setupPlanningViewMode() {
   return el('next-plan-order-mode')?.value || 'STAGE';
 }
@@ -100,10 +108,33 @@ function setupRenderScheduleTaskOptions() {
   if (selected && [...select.options].some((option) => option.value === selected)) select.value = selected;
 }
 
+function setupAppendStageAndScopeHeadings(target, task, state) {
+  const stageKey = task.stage_id == null ? 'site-wide' : String(task.stage_id);
+  if (stageKey !== state.stage) {
+    const heading = document.createElement('div');
+    heading.className = 'setup-stage-order-heading';
+    heading.textContent = setupStageHeadingText(task);
+    target.appendChild(heading);
+    state.stage = stageKey;
+    state.scope = null;
+  }
+
+  if (task.stage_id != null) {
+    const scopeKey = setupScopeHeadingKey(task);
+    if (scopeKey !== state.scope) {
+      const scopeHeading = document.createElement('div');
+      scopeHeading.className = 'setup-stage-scope-heading';
+      scopeHeading.textContent = setupScopeHeadingText(task);
+      target.appendChild(scopeHeading);
+      state.scope = scopeKey;
+    }
+  }
+}
+
 function setupApplyPlanningStageView() {
   const target = el('next-planning-backlog');
   if (!target) return;
-  target.querySelectorAll('.setup-stage-order-heading, .setup-stage-order-note').forEach((node) => node.remove());
+  target.querySelectorAll('.setup-stage-order-heading, .setup-stage-scope-heading, .setup-stage-order-note').forEach((node) => node.remove());
   if (setupPlanningViewMode() !== 'STAGE') return;
 
   const rows = new Map([...target.querySelectorAll('.next-plan-row')].map((row) => [Number(row.dataset.sessionTaskId), row]));
@@ -116,16 +147,9 @@ function setupApplyPlanningStageView() {
   note.textContent = 'Stage view only — planned order is unchanged. Switch to Planned order to reorder the annual plan.';
   target.prepend(note);
 
-  let currentStage = null;
+  const state = { stage: null, scope: null };
   for (const task of visibleTasks) {
-    const stageKey = task.stage_id == null ? 'site-wide' : String(task.stage_id);
-    if (stageKey !== currentStage) {
-      const heading = document.createElement('div');
-      heading.className = 'setup-stage-order-heading';
-      heading.textContent = setupStageHeadingText(task);
-      target.appendChild(heading);
-      currentStage = stageKey;
-    }
+    setupAppendStageAndScopeHeadings(target, task, state);
     const row = rows.get(Number(task.setup_session_task_id));
     row.draggable = false;
     row.querySelector('.next-plan-actions')?.setAttribute('hidden', '');
@@ -136,7 +160,7 @@ function setupApplyPlanningStageView() {
 function setupApplyPerformStageView() {
   const target = el('next-perform-list');
   if (!target) return;
-  target.querySelectorAll('.setup-stage-order-heading').forEach((node) => node.remove());
+  target.querySelectorAll('.setup-stage-order-heading, .setup-stage-scope-heading').forEach((node) => node.remove());
   if (setupPerformViewMode() !== 'STAGE') return;
 
   const rows = new Map([...target.querySelectorAll('.next-perform-task')].map((row) => [Number(row.dataset.sessionTaskId), row]));
@@ -144,16 +168,9 @@ function setupApplyPerformStageView() {
   const tasks = setupStageOrderedTasks(setupNextState.executionTasks || [])
     .filter((task) => rows.has(Number(task.setup_session_task_id)));
 
-  let currentStage = null;
+  const state = { stage: null, scope: null };
   for (const task of tasks) {
-    const stageKey = task.stage_id == null ? 'site-wide' : String(task.stage_id);
-    if (stageKey !== currentStage) {
-      const heading = document.createElement('div');
-      heading.className = 'setup-stage-order-heading';
-      heading.textContent = setupStageHeadingText(task);
-      target.appendChild(heading);
-      currentStage = stageKey;
-    }
+    setupAppendStageAndScopeHeadings(target, task, state);
     target.appendChild(rows.get(Number(task.setup_session_task_id)));
   }
 }
