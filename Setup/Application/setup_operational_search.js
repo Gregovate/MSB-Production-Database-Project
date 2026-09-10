@@ -1,6 +1,13 @@
 /* Extend the existing global Setup task search to Plan / Schedule and Perform Work. */
 
 (() => {
+  const SEARCH_HIDDEN_CLASS = 'setup-operational-search-hidden';
+
+  function setSearchVisible(node, visible) {
+    if (!node) return;
+    node.classList.toggle(SEARCH_HIDDEN_CLASS, !visible);
+  }
+
   function searchQuery() {
     return String(document.getElementById('setup-task-search')?.value || '')
       .trim()
@@ -36,7 +43,7 @@
   function syncFlatStageScopeHeadings(target, visibleRows) {
     const query = searchQuery();
     const headings = [...target.querySelectorAll('.setup-stage-order-heading, .setup-stage-scope-heading')];
-    headings.forEach((heading) => { heading.hidden = Boolean(query); });
+    headings.forEach((heading) => setSearchVisible(heading, !query));
     if (!query) return;
 
     visibleRows.forEach((row) => {
@@ -44,11 +51,11 @@
       let scopeFound = false;
       while (cursor) {
         if (!scopeFound && cursor.classList.contains('setup-stage-scope-heading')) {
-          cursor.hidden = false;
+          setSearchVisible(cursor, true);
           scopeFound = true;
         }
         if (cursor.classList.contains('setup-stage-order-heading')) {
-          cursor.hidden = false;
+          setSearchVisible(cursor, true);
           break;
         }
         cursor = cursor.previousElementSibling;
@@ -75,7 +82,7 @@
     rows.forEach((row) => {
       const task = sessionTaskById(Number(row.dataset.sessionTaskId));
       const show = !query || taskMatchesSearch(task);
-      row.hidden = !show;
+      setSearchVisible(row, show);
       if (show) visibleRows.push(row);
     });
 
@@ -113,7 +120,7 @@
     rows.forEach((row) => {
       const task = sessionTaskById(Number(row.dataset.sessionTaskId));
       const show = !query || taskMatchesSearch(task);
-      row.hidden = !show;
+      setSearchVisible(row, show);
       if (show) visibleRows.push(row);
     });
 
