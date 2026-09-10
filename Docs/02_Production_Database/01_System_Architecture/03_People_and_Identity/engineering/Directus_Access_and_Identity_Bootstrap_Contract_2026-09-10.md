@@ -4,7 +4,7 @@
 |---|---|
 | Document Type | Engineering Authorization / Identity Bootstrap Contract |
 | System | People and Identity / Directus |
-| Status | CURRENT — bootstrap purpose and Production policy/action matrix captured; exact long field-list export still pending |
+| Status | CURRENT — bootstrap purpose and Production permission matrix captured; lifecycle hardening remains open |
 | Owner | Production Database / People and Identity |
 | Evidence Date | 2026-09-10 |
 | Related | Issue #130; Setup Issue #122 |
@@ -57,7 +57,7 @@ $t:public_label
 
 Operator clarification established its MSB purpose: it is the minimal Directus access configured so a person reaching `db.sheboyganlights.org` can obtain a Directus UID.
 
-Current Production evidence now shows:
+Current Production evidence shows:
 
 ```text
 policy_id                  abf8a154-5b1c-4a46-ac9c-7300570f4f17
@@ -90,7 +90,7 @@ Read-only Production inspection established:
 | `Administrator` | true | true | 0 | broad Directus authority derives from `admin_access=true` |
 | `Manager` | true | false | 109 | explicit collection/action permission matrix |
 
-The Manager matrix spans 43 distinct collections and currently contains:
+The Manager matrix spans 43 distinct collections:
 
 ```text
 create  26 rows
@@ -99,44 +99,53 @@ update  33 rows
 delete   6 rows
 ```
 
-The detailed current matrix is authoritative in:
+The detailed current matrix, including exact restricted field lists, permission filters, validation rules, and preset evidence, is authoritative in:
 
 - [`Directus_Production_Permission_Matrix_2026-09-10.md`](Directus_Production_Permission_Matrix_2026-09-10.md)
 
-### Manager description is not an authorization contract
-
-The Manager policy description currently reads:
+The Manager policy description currently says:
 
 ```text
 Manager Read Write and Update No Delete
 ```
 
-Production nevertheless contains six explicit Manager DELETE rows:
+Production nevertheless contains six explicit Manager DELETE rows. This does not prove the deletes are wrong; it proves the description is stale and must not be treated as the authorization contract.
 
-```text
-container
-directus_comments
-directus_presets
-display_test_session
-work_order_intake
-work_order_outbound_message
-```
+## Current Permission Evidence Status
 
-This does not prove those DELETE grants are incorrect; several may be required by their owning workflows. It proves the description is stale/incomplete and must not be used as the effective permission contract.
+The 2026-09-10 Production capture now includes:
+
+- policy IDs and `app_access` / `admin_access` state;
+- assignment evidence through `public.directus_access`;
+- all 109 Manager collection/action rows;
+- all 17 restricted-field Manager permission rows exploded to one field per row so long lists are not truncated;
+- every Manager permission row with a non-null permission filter and/or validation rule; and
+- confirmation that no non-empty Manager `presets` payload was returned in the evidence capture.
+
+This closes the earlier documentation gap around the exact Production Manager permission matrix.
+
+Security-significant current-state observations are recorded, not automatically changed:
+
+- Manager `person` create/read/update uses `fields='*'`;
+- Manager `directus_users` READ is limited to the current user but its permitted field list includes `password` and `tfa_secret` field names;
+- four MSB business collections have unfiltered Manager DELETE permission rows; and
+- the Manager policy description is not consistent with the actual DELETE matrix.
+
+Any proposed permission correction requires separate workflow validation and a Production change gate.
 
 ## What Is Still Not Established
 
-The following must not be inferred without evidence:
+The following lifecycle/configuration questions remain open and must not be guessed from the permission matrix:
 
 - whether every new Directus user receives the bootstrap policy by the same mechanism;
 - whether bootstrap policy assignment is intended to remain after later Manager/Administrator authority;
 - whether historical users may legitimately retain or lack direct-user bootstrap assignments;
-- whether duplicate Manager policy assignments through both ROLE and USER are required or historical;
-- the complete untruncated field list for every long Manager permission row.
+- whether duplicate Manager policy assignments through both ROLE and USER are required or historical; and
+- the exact trigger and execution/accountability context of the Directus User Onboarding Flow.
 
-The 2026-09-10 DBeaver capture proved the collection/action matrix and permission counts, but several long `fields` cells were visibly truncated in pasted output. Full byte-for-byte field restriction documentation therefore still requires a non-truncated export.
+These are lifecycle-hardening questions, not missing permission-row documentation.
 
-## Directus Tables That Must Be Included in Permission Documentation
+## Directus Tables That Must Remain in the Authorization Documentation
 
 ### Identity / authorization metadata
 
@@ -148,7 +157,7 @@ The 2026-09-10 DBeaver capture proved the collection/action matrix and permissio
 | `public.directus_policies` | policy identity and broad flags such as `admin_access` / `app_access` |
 | `public.directus_permissions` | collection/action/field permissions for each policy |
 
-### Directus configuration affecting usable workflows
+### Directus configuration affecting workflows
 
 | Table | Purpose |
 |---|---|
@@ -158,28 +167,7 @@ The 2026-09-10 DBeaver capture proved the collection/action matrix and permissio
 | `public.directus_flows` | Directus Flow definitions |
 | `public.directus_operations` | operations executed by Directus Flows |
 
-For a Directus-hosted workflow, role/policy membership alone is insufficient documentation. Effective behavior may depend on collection/action permissions, field restrictions, relations, Flow definition, and Flow execution context.
-
-## Directus Permission Documentation Standard
-
-For each MSB role/policy used by an application, durable engineering documentation must identify at least:
-
-```text
-policy name
-assignment source: ROLE or USER
-collection
-Directus action: read/create/update/delete/share/etc.
-field restriction
-permission filter
-validation filter
-presets
-reason the permission exists
-consumer/workflow that depends on it
-```
-
-Where the permission is bootstrap-only, document it as bootstrap rather than ordinary business authorization.
-
-Where a direct USER policy assignment exists in addition to ROLE-derived authority, document whether it is required bootstrap access, intentional exception, temporary migration state, or historical/unresolved configuration. Do not automatically remove a direct-user assignment merely because the same user also receives a role policy.
+For a Directus-hosted workflow, role/policy membership alone is insufficient documentation. Effective behavior may depend on collection/action permissions, field restrictions, relations, Flow definition, trigger, and Flow execution context.
 
 ## Relationship to the 2026-09-10 Setup Incident
 
@@ -205,7 +193,7 @@ The existing Directus User Onboarding Flow is documented separately in [`Directu
 
 The bootstrap access described here explains the minimal access needed for a person to reach Directus and establish a Directus UUID.
 
-The current lifecycle limitation remains separate:
+The current lifecycle limitation remains:
 
 ```text
 person must reach Directus to establish UID
@@ -231,14 +219,13 @@ Do not remove `$t:public_label`, duplicate Manager assignments, or other user-le
 
 ## Current Open Work
 
-The collection/action matrix is now captured. Remaining Directus documentation work is:
+The Directus permission matrix is now documented. The remaining current corrective work is lifecycle hardening:
 
-1. capture untruncated field restrictions for the long Manager permission rows;
-2. resolve whether direct USER Manager assignments are still required or historical;
-3. document bootstrap assignment/removal lifecycle; and
-4. document relevant Directus Flow execution context.
-
-The separate current corrective work is to harden Directus UID -> `ref.person.directus_user_id` reconciliation so future Managers do not require manual repair.
+1. establish the exact Directus User Onboarding Flow trigger and execution/accountability context;
+2. establish how the bootstrap policy is assigned and whether/when it is removed;
+3. resolve whether direct USER Manager assignments are intentional or historical;
+4. design a deterministic Directus UID -> existing `ref.person.directus_user_id` reconciliation mechanism that does not require manual repair; and
+5. add acceptance proving first-onboarding linkage, established-user reconciliation, conflict failure, and population-wide mapping health.
 
 ## Related Documents
 
