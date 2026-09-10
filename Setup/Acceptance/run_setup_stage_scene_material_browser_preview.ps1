@@ -45,10 +45,12 @@ if ($dirty) {
 $requiredCandidateFiles = @(
     'Setup/Application/setup_stage_order.js',
     'Setup/Application/setup_stage_order.css',
+    'Setup/Application/setup_operational_search.js',
     'Setup/Application/production.html',
     'Setup/Application/production_backend.py',
     'Setup/Application/test_setup_production_contract.py',
     'Setup/Application/test_setup_stage_order_contract.py',
+    'Setup/Application/test_setup_operational_search_contract.py',
     'Setup/Application/setup_material_resolution.py',
     'Setup/Application/setup_material_api.py',
     'Setup/Database/025_add_setup_display_material_requirement.sql'
@@ -68,6 +70,9 @@ if (-not $productionHtml.Contains('setup_stage_order.js')) {
 if (-not $productionHtml.Contains('setup_stage_order.css')) {
     throw 'STOP before server contact: production.html does not load setup_stage_order.css'
 }
+if (-not $productionHtml.Contains('setup_operational_search.js')) {
+    throw 'STOP before server contact: production.html does not load setup_operational_search.js'
+}
 
 $productionBackend = (& git -C $repo show "${CandidateSha}:Setup/Application/production_backend.py") -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'Unable to read candidate production_backend.py.' }
@@ -76,6 +81,9 @@ if (-not $productionBackend.Contains('"setup_stage_order.js"')) {
 }
 if (-not $productionBackend.Contains('"setup_stage_order.css"')) {
     throw 'STOP before server contact: production_backend.py does not serve setup_stage_order.css'
+}
+if (-not $productionBackend.Contains('"setup_operational_search.js"')) {
+    throw 'STOP before server contact: production_backend.py does not serve setup_operational_search.js'
 }
 
 $staleStageView = (& git -C $repo grep -n -F 'setup_stage_view' $CandidateSha -- Setup/Application 2>$null) -join "`n"
@@ -87,8 +95,9 @@ Write-Host 'Local candidate wiring preflight: PASS'
 Write-Host '  exact candidate checkout: PASS'
 Write-Host '  clean worktree: PASS'
 Write-Host '  Stage order JS/CSS present: PASS'
-Write-Host '  production HTML loads Stage order assets: PASS'
-Write-Host '  production backend serves Stage order assets: PASS'
+Write-Host '  operational search JS present: PASS'
+Write-Host '  production HTML loads Stage order/search assets: PASS'
+Write-Host '  production backend serves Stage order/search assets: PASS'
 Write-Host '  stale setup_stage_view references: none'
 Write-Host
 
