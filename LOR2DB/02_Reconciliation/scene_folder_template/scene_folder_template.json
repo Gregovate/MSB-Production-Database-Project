@@ -1,0 +1,43 @@
+{
+  "template_name": "scene_folder_template",
+  "template_version": "2026-09-10.1",
+  "scope_type": "SCENE",
+  "marker_filename": "_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt",
+  "directories": [
+    "PreviewBackground",
+    "PreviewBackground/archive",
+    "Photos",
+    "Photos/Current",
+    "Photos/Historical",
+    "Procedures",
+    "Procedures/Inspection",
+    "Procedures/Setup",
+    "Procedures/Setup/Archive",
+    "Procedures/Setup/images",
+    "Procedures/Setup/SourceDocs",
+    "Procedures/Takedown",
+    "Procedures/Takedown/Archive",
+    "Procedures/Takedown/images",
+    "Procedures/Takedown/SourceDocs",
+    "Wiring",
+    "Wiring/BackgroundStage",
+    "Wiring/BackgroundStage/SourceDocs",
+    "Wiring/MusicalStage",
+    "Wiring/MusicalStage/SourceDocs"
+  ],
+  "marker_targets": [
+    ".",
+    "PreviewBackground",
+    "Procedures",
+    "Wiring"
+  ],
+  "marker_identity_rule": "Generate marker content from the exact destination folder being marked. The marker must include the actual folder name and full controlled Display Folders-relative path; do not copy a static marker whose identity can become stale after a Scene rename.",
+  "safety": {
+    "browser_accepts_arbitrary_path": false,
+    "overwrite_existing_files": false,
+    "delete_existing_items": false,
+    "rename_existing_items_automatically": false,
+    "requires_operator_approval_for_create_or_repair": true,
+    "revalidate_after_apply": true
+  }
+}
