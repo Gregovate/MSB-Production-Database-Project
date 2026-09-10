@@ -4,7 +4,7 @@
 |---|---|
 | Document Type | Engineering Acceptance Correction / Production Finding |
 | System | People and Identity / People Manager |
-| Status | CURRENT FINDING — Production identity reconciliation gap confirmed; no Production mutation authorized |
+| Status | CURRENT FINDING — Production identity reconciliation gap confirmed; immediate three-Manager repair completed |
 | Owner | Production Database / People and Identity |
 | Finding Date | 2026-09-10 |
 | Related | Issue #130; PR #135; Setup Issue #122 |
@@ -13,7 +13,7 @@
 
 Record a confirmed acceptance gap discovered after the 2026-09-09 People Manager Production acceptance so future work does not treat the earlier PASS as proof that all Directus-to-`ref.person` identity-link requirements were validated.
 
-This document corrects the engineering handoff. It does not alter the historical Production acceptance record and does not authorize a Production Directus Flow, `ref.person`, role, policy, or Setup change.
+This document corrects the engineering handoff. It does not alter the historical Production acceptance record. The bounded 2026-09-10 Production repair described below corrected three proven exact-email Manager mappings only; it did not change the Directus onboarding Flow or close the systemic defect.
 
 ## Required Identity Acceptance That Was Written Before Production
 
@@ -98,13 +98,13 @@ tshircel@sheboyganlights.org
 
 Other Manager/Administrator accounts in the same audit were correctly linked, proving this is not a universal Setup authorization failure.
 
-A separate Administrator-authorized Directus identity, `greg@engrinnovations.com`, had no exact `ref.person.email` match and is therefore a different reconciliation case. It must not be auto-linked by name or guesswork.
+The audit also showed `greg@engrinnovations.com` with Administrator authorization but no exact `ref.person.email` match. Operator clarification on 2026-09-10 established that this is an intentional separate backup/business engineering identity used for system design, not the operational MSB Administrator person identity. The operational Administrator identity is `gliebig@sheboyganlights.org`, which is correctly mapped to `ref.person` person_id 17. Do not auto-link or create a Person for the backup engineering identity merely to make it look like an ordinary MSB operational identity.
 
 ## Randy Miller Repeat-Login Test
 
 On 2026-09-10 Randy Miller explicitly visited `db.sheboyganlights.org`, authenticated through Google, and the same read-only audit was rerun.
 
-Result:
+Result before repair:
 
 ```text
 rmiller@sheboyganlights.org
@@ -114,7 +114,7 @@ rmiller@sheboyganlights.org
     ref.person.directus_user_id remains NULL
 ```
 
-This proves that merely logging into Directus again does not reconcile an already-established Manager account whose person link is missing.
+This proved that merely logging into Directus again does not reconcile an already-established Manager account whose person link is missing.
 
 ## Root Cause in the Observed Directus Onboarding Flow
 
@@ -152,6 +152,36 @@ Authenticated Setup operator is not mapped to an MSB person
 
 This is not repaired by granting additional Setup table DML or by changing the Manager policy.
 
+## Immediate Production Repair — COMPLETED 2026-09-10
+
+A read-only repair preflight proved all three affected Managers were safe exact-email/null-link cases:
+
+```text
+person_id 19  Randy Miller  rmiller@sheboyganlights.org
+    -> 27b7a81c-103b-4bd4-b147-72d32fb83418
+
+person_id 29  Eric Sandvig  esandvig@sheboyganlights.org
+    -> 3875bfd3-86f6-4f7b-84fb-c06328b05005
+
+person_id 31  Tom Shircel    tshircel@sheboyganlights.org
+    -> 28640462-2cc3-40b1-8a87-50e2a3b9074f
+```
+
+For each target, Production preflight proved:
+
+- existing active `ref.person` row;
+- exact email match;
+- existing `directus_user_id IS NULL`;
+- active Directus user with the same exact email;
+- expected Directus UUID; and
+- target Directus UUID not already linked to another Person.
+
+A bounded all-three transaction then updated only `ref.person.directus_user_id`, leaving the existing `trg_person_set_actor_update` audit trigger enabled. Post-update readback confirmed all three exact mappings above.
+
+This was an immediate operational recovery so assigned Managers could continue Setup review. It is **not** the permanent lifecycle correction.
+
+The administrator performing the repair was operating under the normal mapped MSB Administrator identity `gliebig@sheboyganlights.org`, not the separate `greg@engrinnovations.com` backup/business engineering identity.
+
 ## Required Correction Direction
 
 People and Identity owns the durable correction.
@@ -176,21 +206,6 @@ already-established Directus users whose exact-email ref.person exists but direc
 
 It must not require a person to remember to visit the Directus application solely to make unrelated protected MSB applications work.
 
-## Immediate Production Repair Boundary
-
-The three exact-email/null-link Manager cases are suitable for a focused reconciliation preflight because the Directus UUID, active Directus account, exact `ref.person.email`, existing person identity, and null link are all known.
-
-Before any Production update, still verify:
-
-1. each target `ref.person.directus_user_id` is still NULL;
-2. the Directus UUID is not linked to another `ref.person` row;
-3. the exact-email person is the intended durable identity;
-4. no conflicting duplicate person exists;
-5. current actor/audit triggers and People identity write contract are understood; and
-6. rollback and post-update read-only validation are prepared.
-
-The `greg@engrinnovations.com` no-person-match case must be handled separately.
-
 ## Acceptance Correction
 
 People Manager remains deployed and its proven application/runtime behaviors remain valid. However, the People subsystem must no longer state or imply that the 2026-09-09 acceptance proved the Directus onboarding identity-link lifecycle end to end.
@@ -210,6 +225,8 @@ C. conflicting UUID or ambiguous/no exact-email identity
 D. population-wide audit
    -> every authorized human account required to perform governed writes is either mapped or intentionally documented as an exception
 ```
+
+The intentionally separate `greg@engrinnovations.com` engineering/backup Administrator identity is an example of an identity that must be documented according to its actual purpose rather than automatically forced into the ordinary operational-Person mapping model.
 
 ## Related Documents
 
