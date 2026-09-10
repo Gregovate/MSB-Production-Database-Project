@@ -9,11 +9,13 @@ APP = ROOT / "Application"
 DB = ROOT / "Database"
 
 
-def test_material_migration_defaults_false_and_does_not_infer_from_names() -> None:
+def test_material_migration_separates_display_setup_from_scope_material() -> None:
     text = (DB / "025_add_setup_display_material_requirement.sql").read_text(encoding="utf-8")
+    assert "is_display_setup_step boolean NOT NULL DEFAULT false" in text
     assert "requires_display_material boolean NOT NULL DEFAULT false" in text
+    assert "set_setup_task_display_setup_step" in text
     assert "set_setup_task_display_material_requirement" in text
-    assert "GRANT EXECUTE ON FUNCTION" in text
+    assert text.count("GRANT EXECUTE ON FUNCTION") >= 2
     assert "TO fieldwiring_app" in text
     assert "Issue #141" in text
     assert "like '%setup%'" not in text.lower()
@@ -33,6 +35,8 @@ def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounde
     assert "ref.lor_scene_display" in text
     assert "child.lor_scene_id = ANY(%s)" in text
     assert "ref.setup_task_display" in text
+    assert "is_display_setup_step" in text
+    assert "ref.set_setup_task_display_setup_step" in text
     assert "ref.set_setup_task_display_material_requirement" in text
 
 
@@ -43,15 +47,23 @@ def test_stage_remainder_fails_closed_instead_of_returning_partial_material() ->
     assert "more-specific current LOR scopes" in text
 
 
-def test_material_ui_marks_display_setup_without_claiming_pick_timing() -> None:
+def test_display_setup_color_is_separate_from_whole_scope_material_switch() -> None:
     js = (APP / "setup_material.js").read_text(encoding="utf-8")
     css = (APP / "setup_material.css").read_text(encoding="utf-8")
 
-    assert "setup-material-task" in js
+    assert "is_display_setup_step" in js
+    assert "requires_display_material" in js
+    assert "edit-is-display-setup-step" in js
+    assert "edit-requires-display-material" in js
     assert "DISPLAY SETUP" in js
-    assert "Display setup / material context" in js
+    assert "SCOPE MATERIAL" in js
+    assert "Use whole Stage/Scene Display material" in js
     assert "material-context" in js
     assert "Issue #141" in js
+    assert "if (task.is_display_setup_step)" in js
+    assert "if (task.requires_display_material)" in js
+    assert "setup-material-task" in js
+    assert "setup-scope-material-badge" in js
     assert "--ui-material" in css
     assert "--ui-material-soft" in css
     assert "--ui-material-border" in css
@@ -75,12 +87,12 @@ def test_new_catalog_task_hands_off_to_full_review_editor_after_successful_creat
     assert "edit-task-name" in js
 
 
-def test_production_host_exposes_material_api_and_assets() -> None:
+def test_production_host_exposes_material_api_and_cache_busted_assets() -> None:
     backend = (APP / "production_backend.py").read_text(encoding="utf-8")
     html = (APP / "production.html").read_text(encoding="utf-8")
     assert "from setup_material_api import setup_material_api" in backend
     assert "app.register_blueprint(setup_material_api)" in backend
     assert '"setup_material.css"' in backend
     assert '"setup_material.js"' in backend
-    assert "setup_material.css?v=2026-09-10.1" in html
-    assert "setup_material.js?v=2026-09-10.1" in html
+    assert "setup_material.css?v=2026-09-10.2" in html
+    assert "setup_material.js?v=2026-09-10.2" in html
