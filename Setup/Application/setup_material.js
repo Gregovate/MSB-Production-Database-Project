@@ -74,7 +74,7 @@ function applySetupMaterialBadges() {
     if (!meta) return;
     const badge = document.createElement('span');
     badge.className = 'setup-material-badge';
-    badge.textContent = 'MATERIAL';
+    badge.textContent = 'DISPLAY SETUP';
     badge.title = 'Physical Display Setup step; current Display material is resolved from LOR Stage/Scene scope.';
     meta.appendChild(badge);
   });
@@ -183,7 +183,13 @@ if (typeof reloadTasks === 'function') {
     );
 
     const result = await setupMaterialBaseReloadTasks(...args);
-    await loadSetupMaterial({ rerender: false });
+    try {
+      await loadSetupMaterial({ rerender: false });
+    } catch (error) {
+      // Supplemental metadata failure must never make a successfully completed
+      // task create/update look like the governed write itself failed.
+      console.error('Setup Display material metadata refresh failed', error);
+    }
 
     if (openNewTask && taskById(requestedTaskId)) {
       setupNewTaskSubmitToken = 0;
