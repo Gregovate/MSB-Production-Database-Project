@@ -20,7 +20,7 @@ from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.4-shared-season-guard-review"
+PRODUCTION_VERSION = "V0.3.5-stage-scene-material-review"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -35,6 +35,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_review_usability.js",
         "setup_next_pass.css",
         "setup_next_pass.js",
+        "setup_stage_order.css",
+        "setup_stage_order.js",
         "setup_acceptance_fixes.css",
         "setup_acceptance_fixes.js",
         "setup_session_year_guard.css",

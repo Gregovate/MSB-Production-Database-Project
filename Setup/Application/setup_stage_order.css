@@ -1,0 +1,26 @@
+/* View-only Stage grouping for planning and execution surfaces. */
+.setup-stage-order-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.setup-stage-order-control select {
+  min-width: 9rem;
+}
+
+.setup-stage-order-note {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+  color: var(--muted, #64748b);
+  font-size: 0.86rem;
+}
+
+.setup-stage-order-heading {
+  margin-top: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 2px solid var(--border, #d9e0e8);
+  font-weight: 800;
+}
