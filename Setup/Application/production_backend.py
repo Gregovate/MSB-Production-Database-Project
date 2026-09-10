@@ -19,7 +19,7 @@ from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
 
-PRODUCTION_VERSION = "V0.3.5-reconstruction-material-review"
+PRODUCTION_VERSION = "V0.3.5-explicit-material-source-review"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
