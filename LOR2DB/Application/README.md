@@ -3,12 +3,13 @@
 | Document control | Value |
 |---|---|
 | Status | CURRENT — production deployed and validated through reconciliation Run 13 |
-| Initial release / current revision | 2026-08-04 / 2026-08-17 |
+| Initial release / current revision | 2026-08-04 / 2026-09-10 |
 
 ## Revision history
 
 | Date | Change |
 |---|---|
+| 2026-09-10 | Recorded that new/renamed Scene documentation-folder integrity is a LOR2DB reconciliation responsibility. The paired Windows LOR runner is the correct `G:` filesystem boundary; Folder Alignment remains a secondary audit. A controlled `scene_folder_template` and reconciliation validation/repair utility are tracked in #143. |
 | 2026-08-25 | Recorded completed PRINT-SERVER V1.6.0 cutover, corrected the false Session-0 Google Drive conclusion, documented required Print Service autologon, and accepted parser V7.0.11, ingest 55, and reconciliation Run 13. |
 | 2026-08-25 | Added runner V1.6.0 dual deployment profiles after the initial PRINT-SERVER Password-logon Session-0 path probe; later cold-boot validation superseded its headless conclusion. |
 | 2026-08-16 | Changed the successful final production-application boundary from failure-red styling to an amber notice with standard blue confirmation controls. Cancellation and actual failures remain red. |
@@ -110,6 +111,30 @@ page starts only the fixed digest-locked ingest operation after the operator
 approves the exact displayed SQLite SHA-256. The browser cannot supply a path,
 command, database account, or executable, and ingest never starts
 reconciliation automatically.
+
+## Scene documentation-folder integrity gate
+
+A new or renamed LOR Scene can change more than PostgreSQL Scene identity. When the Scene is a controlled field/documentation scope, Setup, Procedures, FieldWiring, and other consumers depend on the corresponding Google Drive Scene root and required source-folder markers.
+
+The **mandatory integrity gate belongs inside LOR2DB reconciliation**, at the point where the Scene addition/rename is already being reviewed. It must not be implemented primarily in Setup or deferred until Folder Alignment.
+
+The Linux LOR2DB backend cannot inspect `G:`. The existing paired Windows runner is therefore the correct filesystem component:
+
+```text
+LOR2DB reconciliation candidate
+    -> backend calls fixed runner operation
+    -> PRINT-SERVER runner inspects G:\Shared drives\Display Folders
+    -> expected owning Stage/Sub-stage + Scene folder resolved
+    -> required scaffold/marker check returned to reconciliation
+```
+
+For a Scene that requires its own controlled documentation root, reconciliation must not reach successful Finish while the expected folder/marker structure is missing or ambiguous. The operator message should identify the exact missing folder/marker rather than surfacing later as a resolver/material mismatch.
+
+A controlled `scene_folder_template` is also required. The reconciler should be able to offer a governed repair/create operation using that template when the expected Scene root is absent or incomplete. The browser must never accept arbitrary filesystem paths from the operator; the runner derives the destination from frozen reconciliation evidence and the controlled template.
+
+Folder Alignment remains a useful secondary read-only audit and broad worklist. It does not replace this LOR2DB gate.
+
+Tracked in #143.
 
 ## LOR version-check workspace
 
@@ -258,280 +283,3 @@ contain display, stage, scene, or scene-display groups using the same row shape.
   }]
 }
 ```
-
-The backend reads `ops.v_lor_reconciliation_run_review`,
-`ops.v_lor_reconciliation_group_review`, and the four installed entity review
-views. It must return persisted effective decisions when the page is reopened.
-
-Safe `UUID_CHANGED_SAME_NAME` candidates do not appear in this response. After
-the uniqueness, collision, ACTIVE-status, singleton-group, and exact-name
-guards pass, migration `0028_auto_approve_safe_uuid_relinks.sql` retains the
-frozen row as `AUTO_APPROVED`; P2 updates the LOR link only when Finish runs.
-
-Each displayed row remains `Not saved` until its decision is persisted. The
-operator comment is optional; a blank comment receives a generated audit
-reason. A successful save shows green `Saved`. Changing either field after
-that immediately shows `Unsaved changes` and disables final review until the
-row is saved again. Bulk selectors remain hidden until the operator explicitly
-enables bulk decision mode.
-
-### `POST api/runs/{run_id}/groups/{group_id}/decisions`
-
-Body:
-
-```json
-{
-  "action_type": "DEFER",
-  "reason": "Investigate unexpected UUID change after Run 3.",
-  "expected_action_id": null
-}
-```
-
-The backend verifies the authenticated operator, run status, run/group
-relationship, allowed action, and optimistic `expected_action_id`; then calls
-the appropriate protected recorder. Display/scene decisions use
-`ops.f_record_lor_reconciliation_action`; evidence-gated stage decisions use
-`ops.f_record_lor_stage_authority_action`, and the existing multi-preview
-preservation choice uses its dedicated stage recorder. Migration `0034` uses
-the persisted action as the common synchronization point: it recalculates the
-effective counters and changes an open run to `READY_TO_FINISH` only when no
-unresolved or blocked group remains. The endpoint then returns the complete
-refreshed run document as `{ "run": { ... } }`.
-
-Stage candidates include the complete frozen `members` array and the browser
-renders every member. `APPROVE_STAGE_CHANGE` appears only when all members
-resolve to one permanent `stage_id` and agree on the proposed metadata.
-`ADD_NEW_STAGE` appears only when one authoritative source defines one new
-stage key/name/folder/order. Contradictory groups expose neither action.
-
-### `POST api/runs/{run_id}/decisions/bulk`
-
-Body: `group_ids`, `action_type`, and `reason`. The backend calls
-`ops.f_record_lor_reconciliation_bulk_action`. Every group must independently
-allow the selected action. Reassociation cannot use this endpoint.
-
-### `POST api/runs/{run_id}/cancel`
-
-Requires a nonblank reason and a second browser confirmation. The backend calls
-`ops.p_cancel_lor_reconciliation`, publishes the cancellation report, and never
-runs Finish. Its response includes the immutable cancellation `report_url`,
-snapshot-removal proof, and `production_changed: false`. The browser replaces
-the editable page with a terminal **Reconciliation cancelled** screen and an
-explicit **Safe to close browser: YES** result.
-
-### `POST api/runs/{run_id}/finish`
-
-Requires `READY_TO_FINISH`, zero unresolved groups, an unchanged final-review
-`decision_version`, and a second browser confirmation. The backend calls
-`ops.p_finish_lor_reconciliation` once and then invokes the existing report
-publisher. This is the only production-write endpoint.
-
-If production promotion commits but report publication fails, the run remains
-`REPORTING`. The landing page must present **Continue previous reconciliation**;
-the run page presents **Retry report publication**. Repeating Finish does not
-repeat P1-P4; it retries only publication.
-
-### `POST api/runs/{run_id}/report`
-
-Retries report publication only for a run in `REPORTING`. This endpoint never
-repeats Cancel, Finish, or P1-P4 and returns the run's actual terminal status
-plus immutable `report_url`. It is used for both completed production updates
-and cancellations whose initial report publication failed.
-
-## Deployment boundary
-
-Use `lor-preflight-api.service.example` and `lor-preflight-api.env.example` as
-deployment templates. The validated production service runs with Gunicorn on
-`192.168.5.9:8784`.
-Configure the authenticated reverse proxy so the public path
-`/lor2db/preflight/api/` maps to that restricted service with the `/api` prefix
-removed. The static files remain in the NAS `lor2db/preflight` folder.
-
-The dedicated login used by `LOR_PREFLIGHT_DATABASE_URL` needs `SELECT` on the
-approved `ops` review views and only the specific reconciliation run, group,
-and action columns read by the concurrency checks. Grant `EXECUTE` only on the
-two decision functions, Finish/Cancel procedures, report data function, and
-report publication function used by the existing publisher. It must not receive
-direct write privileges on `ref`, `lor_snap`, or the reconciliation tables.
-After creating the login separately with a secured password, apply
-`grant_lor_preflight_app.sql` to install this exact grant set.
-
-## Web ingest incremental deployment order
-
-This release changes the Windows runner, Linux API, and NAS browser files. It
-requires no PostgreSQL migration, grant change, runner-token rotation, or
-runner re-pairing. The Office PC records the existing PostgreSQL ingest
-password once in a Windows DPAPI-protected file; the password is never sent to
-the browser or Linux API.
-
-1. Back up the runner launcher/state and the deployed Linux/static application
-   files; record their hashes.
-2. Pull the reviewed commit on the Office PC and run the parser/runner and
-   application tests plus PowerShell and JavaScript syntax checks.
-3. Run `run_lor_runner.ps1 -Action Install`. Retain the existing runner token,
-   enter the PostgreSQL `msbadmin` password once at the secure prompt, and
-   verify runner V1.5.1. Do not run `PairServer` when the existing protected
-   token is retained.
-4. Deploy backend V0.6.1, restart `lor-preflight-api.service`, and verify its
-   health response plus the existing backend-to-runner connection.
-5. Publish the complete `landing/` tree, including `parser/` and
-   `version-check/`, to `/mnt/msb-web/my/lor2db/`. Preserve the existing
-   `preflight/` and `reports/` trees.
-6. Verify that parser review approval is tied to the displayed digest, the
-   ingest button is disabled until that approval is checked, and both parser
-   and ingest consoles load. Do not run a production ingest during deployment
-   acceptance.
-
-PostgreSQL ingest remains password-protected, digest-locked, and explicitly
-operator-approved. The browser starts only the fixed ingest operation and
-cannot provide a path, command, database account, or executable.
-
-## Historical V0.5.1 combined deployment order
-
-This release intentionally deploys the reconciliation corrections and the
-already-implemented Version Check / Run Parser controls as one acceptance
-unit. Do not deploy only the static page or only `backend.py`.
-
-1. Back up the current application files and record their hashes.
-2. Apply
-   `0032_add_safe_stage_authority_and_terminal_cancel.sql`, then run
-   `27_safe_stage_authority_and_cancel_terminal_validation.sql`.
-3. Apply
-   `0033_approve_stage_key_changes_with_stable_aliases.sql`, then run
-   `28_complete_stage_decision_evidence_validation.sql`.
-4. Reapply `grant_lor_preflight_app.sql` V0.3.1 so the restricted API role can
-   read the evidence-gating predicates and invoke the stage decision recorders
-   in addition to its existing entry points.
-5. On the approved Windows host, deploy the canonical parser directory,
-   including runner V1.3.0, version checker, parser V7.0.10, tests, and the root
-   runner launcher. Retain the existing `runner-state.json` whose current
-   approved LOR is 6.6.10; do not initialize over it. Run launcher `Install`
-   and `PairServer`; do not manually create or paste a token.
-5. On `msb-prod-db`, run `install_lor_runner_pairing.py`, confirm its fingerprint
-   matches Windows, deploy backend V0.5.1 and report publisher V0.5.0 together,
-   and restart `lor-preflight-api.service`.
-6. Publish `landing/` plus the `preflight` HTML/CSS/JavaScript files to the NAS
-   web path.
-7. Verify the Linux `/health` response, Windows runner health, dashboard runner
-   status, cancellation terminal flow, archive Outcome column, and a no-write
-   stage decision review before production use.
-
-PostgreSQL ingest remains password-protected, digest-locked, and manual. This
-deployment does not add a browser ingest endpoint.
-
-## Production deployment and acceptance record — 2026-08-05 through 2026-08-06
-
-The application was installed on `msb-prod-db`. The deployment uses two
-different credentials that happen to share the `lor_preflight_app` name:
-
-- PostgreSQL login role `lor_preflight_app`: used by the restricted API and
-  restricted by `grant_lor_preflight_app.sql`.
-- Synology local user `lor_preflight_app`: used only to mount the NAS `web`
-  share so the application can publish static files and reconciliation reports.
-
-Do not assume that changing one credential changes the other. Their passwords
-are managed independently and must not be stored in this repository.
-
-The Linux runtime account is a third, separate identity:
-
-- Linux system user `lor-preflight`: runs the Gunicorn API service with no
-  interactive login. Its primary group is `msbadmin`, which permits access to
-  the deployed application, protected environment file, and NAS-backed report
-  directory. It does not authenticate to PostgreSQL or Synology directly.
-
-### Confirmed production components
-
-| Component | Production value | Validation on 2026-08-05 |
-|---|---|---|
-| Application host | `msb-prod-db` (`192.168.5.9`) | Host confirmed during deployment. |
-| Application working directory | `/opt/lor-preflight` | Installation and validation commands were run from this directory. |
-| Python virtual environment | `/opt/lor-preflight/.venv` | The service account successfully executed its Python interpreter and Gunicorn. |
-| Linux runtime account | `lor-preflight`, primary group `msbadmin`, shell `/usr/sbin/nologin` | Read and execution checks passed for the environment, backend, virtual environment, and report directory. |
-| Runtime environment file | `/etc/msb/lor-preflight-api.env`, owned by `root:msbadmin`, mode `0640` | PostgreSQL URL, operator allowlist, report output directory, and report base URL configured without exposing credentials. |
-| systemd service | `lor-preflight-api.service` | Installed, verified, enabled at boot, and active with two Gunicorn workers. |
-| API listener | `192.168.5.9:8784` | Backend V0.3.0: `GET /health` returned `{"status":"ok","version":"V0.3.0"}` on 2026-08-06. Do not expose this port to the Internet. |
-| Public static path | `https://my.sheboyganlights.org/lor2db/preflight/` | Secured Run 4 browser workflow production validated. |
-| NAS SMB source | `//192.168.5.4/web` | Authentication and share access validated with `smbclient`. |
-| Linux mount point | `/mnt/msb-web` | systemd automount successfully activated and directory contents listed. |
-| SMB credentials file | `/etc/samba/credentials/lor_preflight_app` | Stored credentials successfully authenticated after correction. Do not record the password in documentation or shell history. |
-| Report output | `/mnt/msb-web/my/lor2db/reports` | Configured by `LOR_REPORT_OUTPUT_DIR`. |
-| Report publisher | `/opt/lor-preflight/publish_lor_reconciliation_report.py` | Configured explicitly by `LOR_REPORT_PUBLISHER_PATH`; the backend and publisher are deployed together. |
-| Report base URL | `https://my.sheboyganlights.org/lor2db/reports/` | Run 4 report and report archive links validated on 2026-08-06. |
-| Reconciliation operator | `gliebig@sheboyganlights.org` | Configured as the current sole member of `LOR_PREFLIGHT_OPERATORS`; future operators must be explicitly added. |
-| Synology access group | `web_maintainers` | Normal ACL and Advanced Share Permissions both set to Read/Write. |
-
-The reconciliation application and published reports have different access
-boundaries. Only explicitly named addresses in `LOR_PREFLIGHT_OPERATORS` may
-operate reconciliation. Published reports are intended for authenticated
-`sheboyganlights.org` users and do not grant access to the reconciliation
-controls. The authenticated production routes were validated during Run 4
-acceptance; Cloudflare Access policy management remains external to this
-repository.
-
-### Future Directus operator integration
-
-The current release authenticates the operator with Cloudflare Access and
-authorizes the email through `LOR_PREFLIGHT_OPERATORS`. The API retains that
-email in `acted_by_application`, and reports display it as the human operator.
-The PostgreSQL service account may still appear in the underlying `acted_by`
-column; it is not the human operator.
-
-A future enhancement should map the authenticated email to the established
-Directus person/actor identity using the label-printing pattern, and should use
-Directus roles and permissions as the reconciliation authorization source. It
-must not add manual operator entry to the API. This enhancement is intentionally
-outside the current release.
-
-The installed service uses these corrected production settings. The obsolete
-`/opt/msb-production-database` paths and `User=msbadmin` setting must not be
-restored:
-
-```ini
-User=lor-preflight
-Group=msbadmin
-WorkingDirectory=/opt/lor-preflight
-EnvironmentFile=/etc/msb/lor-preflight-api.env
-ExecStart=/opt/lor-preflight/.venv/bin/gunicorn --bind 192.168.5.9:8784 --workers 2 --timeout 240 backend:app
-```
-
-The environment file must include the deployed publisher path:
-
-```ini
-LOR_REPORT_PUBLISHER_PATH=/opt/lor-preflight/publish_lor_reconciliation_report.py
-```
-
-Deploy both Python files before restarting the service. A backend-only copy is
-incomplete and will leave a committed reconciliation run in `REPORTING`:
-
-```bash
-sudo install -o root -g msbadmin -m 0640 backend.py /opt/lor-preflight/backend.py
-sudo install -o root -g msbadmin -m 0640 publish_lor_reconciliation_report.py \
-  /opt/lor-preflight/publish_lor_reconciliation_report.py
-sudo systemctl restart lor-preflight-api.service
-sudo systemctl status lor-preflight-api.service --no-pager
-```
-
-After deployment, verify the file and backend version before retrying Finish:
-
-```bash
-sudo -u lor-preflight test -r /opt/lor-preflight/publish_lor_reconciliation_report.py
-curl -s http://192.168.5.9:8784/health
-```
-
-The V0.5.1 health response must report `V0.5.1`. Retrying Finish for a run already in
-`REPORTING` does not execute P1-P4 again; it retries report publication only.
-
-The successful final mount showed the NAS `web` share at `/mnt/msb-web`,
-including the `my` directory used by the protected `lor2db` site. No further
-changes to the Synology account, CIFS credentials, mount entry, or automount
-units were required after that validation.
-
-### Required Synology permission layers
-
-Synology applies two independent permission layers to the `web` share. Both are
-required for the service account:
-
-1. **Shared Folder ACL:** `web_maintainers` must have **Read/Write**.
-2. **Advanced Share Permissions:** `web_maintainers` must also have **Read/Write**.
-
-If either layer is read-only, the Linux mount may succeed but report publication will fail with a permission error.
