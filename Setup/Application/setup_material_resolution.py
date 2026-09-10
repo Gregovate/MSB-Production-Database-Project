@@ -25,6 +25,12 @@ from setup_next_repository import SetupNextRepository, SetupNextRepositoryError
 SCENE_PREFIX_RE = re.compile(r"^\s*(?P<num>\d{2})(?P<letter>[A-Za-z]?)-(?P<body>.+?)\s*$")
 TWO_LETTER_SUFFIX_RE = re.compile(r"-[A-Za-z]{2}$")
 
+# Keep the installed repository methods available before the focused extension
+# replaces them. Their SQL remains authoritative for schedule/execution data;
+# this module normalizes only the physical Setup scope presented to operators.
+_ORIGINAL_EXECUTION_TASKS = SetupNextRepository.execution_tasks
+_ORIGINAL_SCHEDULE = SetupNextRepository.schedule
+
 
 def classify_lor_group(scene_name: str | None) -> tuple[str, str, str]:
     """Mirror the established Folder Alignment Scene/group classification.
@@ -61,7 +67,8 @@ def _normalize_task_scope(item: dict[str, Any]) -> dict[str, Any]:
     Existing rows are not mutated. If an older reusable task happens to carry a
     ``lor_scene_id`` that names a programming/display group rather than a real
     child Scene, Setup treats that task as Stage-level for presentation,
-    Procedure resolution, and material resolution.
+    Procedure resolution, scheduling/execution presentation, and material
+    resolution.
     """
     normalized = dict(item)
     raw_scene_id = normalized.get("lor_scene_id")
@@ -154,6 +161,26 @@ def _task_scope(self: SetupNextRepository, task_id: int) -> dict[str, Any]:
     if row is None:
         raise SetupNextRepositoryError("Setup task was not found")
     return _normalize_task_scope(dict(row))
+
+
+def _execution_tasks(self: SetupNextRepository, season_year: int) -> list[dict[str, Any]]:
+    """Reuse installed execution SQL, but expose only real Setup Scene scope."""
+    return [
+        _normalize_task_scope(dict(row))
+        for row in _ORIGINAL_EXECUTION_TASKS(self, season_year)
+    ]
+
+
+def _schedule(self: SetupNextRepository, season_year: int) -> dict[str, list[dict[str, Any]]]:
+    """Reuse installed schedule SQL and normalize assignment Scene presentation."""
+    data = _ORIGINAL_SCHEDULE(self, season_year)
+    return {
+        "work_days": [dict(row) for row in data.get("work_days", [])],
+        "assignments": [
+            _normalize_task_scope(dict(row))
+            for row in data.get("assignments", [])
+        ],
+    }
 
 
 def _add_material_source(
@@ -432,4 +459,6 @@ def install_setup_material_resolution() -> None:
     """Install the focused Setup behavior on the existing V0.3 repository class."""
     SetupNextRepository.organization = _organization
     SetupNextRepository.task_scope = _task_scope
+    SetupNextRepository.execution_tasks = _execution_tasks
+    SetupNextRepository.schedule = _schedule
     SetupNextRepository.field_context = _field_context
