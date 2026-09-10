@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "Application"
 DB = ROOT / "Database"
+if str(APP) not in sys.path:
+    sys.path.insert(0, str(APP))
 
 
 def test_material_migration_separates_display_setup_from_scope_material() -> None:
@@ -38,6 +41,82 @@ def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounde
     assert "is_display_setup_step" in text
     assert "ref.set_setup_task_display_setup_step" in text
     assert "ref.set_setup_task_display_material_requirement" in text
+
+
+def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_scene(tmp_path, monkeypatch) -> None:
+    import setup_material_api as material_api
+    from FieldWiring.Application.field_context_resolver import MARKER_NAME
+
+    stage_root = tmp_path / "01-Front Entrance-FE"
+    stage_root.mkdir()
+    (stage_root / MARKER_NAME).write_text("stage", encoding="utf-8")
+
+    # Four separate background-preview groups all resolve back to the Stage.
+    fallback_rows = []
+    for scene_id, group_name in enumerate(
+        ("FE-GoalSign", "FE-MSBSign", "FE-OpenClose", "FE-OutsideGate"),
+        start=101,
+    ):
+        image = stage_root / group_name / "PreviewBackground" / f"{group_name}.jpg"
+        image.parent.mkdir(parents=True)
+        image.write_bytes(b"test")
+        fallback_rows.append(
+            {
+                "lor_scene_id": scene_id,
+                "preview_uuid": f"preview-{scene_id}",
+                "preview_name": f"Show Background Stage 01 {group_name}",
+                "preview_background_file": None,
+                "preview_revision": 1,
+                "source_filename": f"{group_name}.loredit",
+                "scene_uuid": f"scene-{scene_id}",
+                "scene_name": group_name,
+                "scene_stage_id": 1,
+                "scene_background_file": str(image),
+            }
+        )
+
+    # A real structured Scene under the same Stage must stay out of the blanket
+    # Stage remainder even though it is still Stage 01 geographically.
+    scene_root = stage_root / "01-Entrance Arch"
+    scene_root.mkdir()
+    (scene_root / MARKER_NAME).write_text("scene", encoding="utf-8")
+    scene_image = scene_root / "PreviewBackground" / "arch.jpg"
+    scene_image.parent.mkdir()
+    scene_image.write_bytes(b"test")
+    true_scene = {
+        "lor_scene_id": 201,
+        "preview_uuid": "preview-arch",
+        "preview_name": "Show Background Stage 01 FE Outside Gate",
+        "preview_background_file": None,
+        "preview_revision": 1,
+        "source_filename": "outside-gate.loredit",
+        "scene_uuid": "scene-arch",
+        "scene_name": "01-Entrance Arch",
+        "scene_stage_id": 1,
+        "scene_background_file": str(scene_image),
+    }
+
+    class FakeCursor:
+        def execute(self, _sql, _params):
+            return None
+
+        def fetchall(self):
+            return [*fallback_rows, true_scene]
+
+    monkeypatch.setattr(material_api, "drive_root", lambda: tmp_path)
+    remainder, specific, _warnings = material_api._stage_remainder_scene_ids(
+        FakeCursor(),
+        {
+            "setup_task_id": 999,
+            "stage_id": 1,
+            "stage_key": "01",
+            "stage_name": "01-Front Entrance-FE",
+            "folder_path": str(stage_root),
+        },
+    )
+
+    assert remainder == [101, 102, 103, 104]
+    assert specific == [201]
 
 
 def test_stage_remainder_fails_closed_instead_of_returning_partial_material() -> None:
