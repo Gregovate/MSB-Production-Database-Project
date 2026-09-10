@@ -33,6 +33,16 @@ Use the responsible Google Drive operator procedure
 Run Folder Alignment again when a fresh worklist is useful
 ```
 
+## LOR2DB Reconciliation Boundary
+
+Folder Alignment is a **secondary read-only audit** for Stage/Sub-stage/Scene documentation structure. It is not the primary gate for a new or renamed LOR Scene.
+
+When routine LOR reconciliation identifies a Scene addition or Scene rename, the mandatory structure check belongs in the **LOR2DB reconciliation system**. LOR2DB should use its paired Windows LOR runner to inspect the authenticated Google Drive `G:` mount and verify the expected Scene documentation root, required marker files, and current scaffold before Scene promotion/Finish is allowed.
+
+Folder Alignment may report the same missing-folder/marker condition later as drift, but an operator should not first discover a broken Scene structure through Setup, FieldWiring, Procedures, or a later Folder Alignment report.
+
+See GitHub Issue #143 for the tracked LOR2DB Scene-folder/template gate.
+
 ## Reserved Non-LOR Top-Level Folder
 
 The Google `Display Folders` root now also contains this controlled Setup/Procedure root:
