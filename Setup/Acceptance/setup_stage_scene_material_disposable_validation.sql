@@ -20,6 +20,7 @@ DO $validation$
 DECLARE
     r record;
     v_expected record;
+    v_required_relation text;
 BEGIN
     IF to_regclass('ref.setup_task') IS NULL
        OR to_regclass('ref.lor_scene') IS NULL
@@ -44,8 +45,38 @@ BEGIN
         RAISE EXCEPTION 'Governed Display-material setter is missing';
     END IF;
 
-    IF NOT has_table_privilege('fieldwiring_app', 'ref.display_status', 'SELECT') THEN
-        RAISE EXCEPTION 'fieldwiring_app cannot read ref.display_status required by automatic material resolution';
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.set_setup_task_display_material_requirement(text,bigint,boolean)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'fieldwiring_app cannot execute governed Display-material setter';
+    END IF;
+
+    FOREACH v_required_relation IN ARRAY ARRAY[
+        'ref.setup_task',
+        'ref.stage',
+        'ref.lor_scene',
+        'ref.lor_scene_display',
+        'ref.setup_task_display',
+        'ref.display',
+        'ref.display_status',
+        'ref.container',
+        'ref.setup_task_container_support',
+        'ops.setup_session',
+        'ops.setup_display_state',
+        'ops.setup_container_state'
+    ]
+    LOOP
+        IF NOT has_table_privilege('fieldwiring_app', v_required_relation, 'SELECT') THEN
+            RAISE EXCEPTION
+                'fieldwiring_app cannot read % required by automatic material resolution',
+                v_required_relation;
+        END IF;
+    END LOOP;
+
+    IF has_table_privilege('fieldwiring_app', 'ref.display_status', 'UPDATE') THEN
+        RAISE EXCEPTION 'Automatic material resolver must not grant UPDATE on ref.display_status';
     END IF;
 
     CREATE TEMP TABLE expected_material_partition (
