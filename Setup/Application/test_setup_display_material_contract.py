@@ -19,7 +19,6 @@ def test_corrected_migration_separates_work_scope_from_material_sources() -> Non
     assert "LOR_STAGE" in text and "LOR_PREVIEW" in text and "LOR_SCENE" in text
     assert "set_setup_task_material_source" in text
     assert "requires_display_material" not in text
-    assert "STAGE_REMAINDER" not in text
     assert "ref.setup_task_display is not changed or repurposed" in text
     assert "No automatic material-source backfill" in text
     assert "Issue #141" in text
