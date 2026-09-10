@@ -17,8 +17,9 @@ from setup_resource_api import setup_resource_api
 from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
+from setup_material_api import setup_material_api
 
-PRODUCTION_VERSION = "V0.3.4-shared-season-guard-review"
+PRODUCTION_VERSION = "V0.3.5-reconstruction-material-review"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -46,6 +47,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_training_review_refinement.css",
         "setup_training_review_refinement.js",
         "setup_catalog_effort.js",
+        "setup_material.css",
+        "setup_material.js",
     }
 )
 
@@ -55,6 +58,7 @@ app.register_blueprint(setup_resource_api)
 app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
+app.register_blueprint(setup_material_api)
 
 
 @app.get("/")
