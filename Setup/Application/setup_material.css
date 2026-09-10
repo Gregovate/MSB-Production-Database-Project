@@ -1,4 +1,4 @@
-/* Setup physical Display-material treatment. Shared token names follow #140. */
+/* Setup physical Display-Setup treatment. Shared token names follow #140. */
 
 :root {
   --ui-material: #6d4bb8;
@@ -12,13 +12,13 @@
   box-shadow: inset 5px 0 0 var(--ui-material-border);
 }
 
-.setup-material-badge {
+.setup-material-badge,
+.setup-scope-material-badge {
   display: inline-block;
   margin-left: .55rem;
   padding: .1rem .42rem;
   border: 1px solid var(--ui-material-border);
   border-radius: 999px;
-  background: var(--ui-material-soft);
   color: var(--ui-material-text);
   font-size: .72rem;
   font-weight: 800;
@@ -26,14 +26,35 @@
   vertical-align: middle;
 }
 
+.setup-material-badge {
+  background: var(--ui-material-soft);
+}
+
+.setup-scope-material-badge {
+  background: transparent;
+  border-style: dashed;
+}
+
 .setup-material-editor {
+  display: grid;
+  gap: .55rem;
   margin-top: .35rem;
   padding: .7rem .8rem;
   border: 1px solid var(--ui-material-border);
   border-radius: 8px;
   background: var(--ui-material-soft);
+}
+
+.setup-material-editor label {
   color: var(--ui-material-text);
   font-weight: 700;
+}
+
+.setup-material-editor-note {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
 @media (prefers-color-scheme: dark) {
