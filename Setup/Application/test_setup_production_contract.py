@@ -25,6 +25,7 @@ def test_production_html_uses_database_client_only() -> None:
     assert "setup_session_year_guard.css" in text
     assert "setup_material.js" in text
     assert "setup_material.css" in text
+    assert "setup_browser_validation_fixes.js" in text
     assert "setup.js" not in text
     assert "setup_review_extensions.js" not in text
     assert "setup_instruction_live.js" not in text
@@ -38,11 +39,13 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     next_text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
     acceptance_text = (APP_DIR / "setup_acceptance_fixes.js").read_text(encoding="utf-8")
     guard_text = (APP_DIR / "setup_session_year_guard.js").read_text(encoding="utf-8")
+    validation_text = (APP_DIR / "setup_browser_validation_fixes.js").read_text(encoding="utf-8")
     assert "localStorage." not in text
     assert "localStorage." not in resource_text
     assert "localStorage." not in next_text
     assert "localStorage." not in acceptance_text
     assert "localStorage." not in guard_text
+    assert "localStorage." not in validation_text
     assert "initialTasks" not in text
     assert "msb.setup.prototype" not in text
     assert "X-MSB-Setup-Command" in text
@@ -96,6 +99,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_session_year_guard.js",
         "/setup_material.css",
         "/setup_material.js",
+        "/setup_browser_validation_fixes.js",
     ):
         assert client.get(asset).status_code == 200
 
