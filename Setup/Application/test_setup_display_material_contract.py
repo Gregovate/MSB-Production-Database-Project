@@ -16,7 +16,7 @@ def test_material_migration_defaults_false_and_does_not_infer_from_names() -> No
     assert "GRANT EXECUTE ON FUNCTION" in text
     assert "TO fieldwiring_app" in text
     assert "Issue #141" in text
-    assert "LIKE '%setup%'" not in text.lower()
+    assert "like '%setup%'" not in text.lower()
 
 
 def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounded() -> None:
@@ -43,13 +43,12 @@ def test_stage_remainder_fails_closed_instead_of_returning_partial_material() ->
     assert "more-specific current LOR scopes" in text
 
 
-def test_material_ui_marks_tasks_without_claiming_task_specific_pick_timing() -> None:
+def test_material_ui_marks_display_setup_without_claiming_pick_timing() -> None:
     js = (APP / "setup_material.js").read_text(encoding="utf-8")
     css = (APP / "setup_material.css").read_text(encoding="utf-8")
-    ast.parse("pass")  # keep this test Python-only; JS is checked by repository JS tests/tooling.
 
     assert "setup-material-task" in js
-    assert "MATERIAL" in js
+    assert "DISPLAY SETUP" in js
     assert "Display setup / material context" in js
     assert "material-context" in js
     assert "Issue #141" in js
@@ -57,6 +56,14 @@ def test_material_ui_marks_tasks_without_claiming_task_specific_pick_timing() ->
     assert "--ui-material-soft" in css
     assert "--ui-material-border" in css
     assert "--ui-material-text" in css
+
+
+def test_material_metadata_refresh_cannot_turn_successful_write_into_false_failure() -> None:
+    js = (APP / "setup_material.js").read_text(encoding="utf-8")
+    assert "const result = await setupMaterialBaseReloadTasks(...args);" in js
+    assert "try {\n      await loadSetupMaterial({ rerender: false });" in js
+    assert "Supplemental metadata failure must never make a successfully completed" in js
+    assert "return result;" in js
 
 
 def test_new_catalog_task_hands_off_to_full_review_editor_after_successful_create() -> None:
