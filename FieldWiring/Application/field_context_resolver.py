@@ -47,6 +47,19 @@ def _canonical_scene_names(scene_name: str) -> set[str]:
     return {name.casefold() for name in names if name}
 
 
+def _scene_name_claims_structured_child(scene_name: str, stage_key: str | None) -> bool:
+    """Return true when current LOR identity names a child of this Stage/Sub-stage.
+
+    This is intentionally narrow. Unprefixed Display/group names remain eligible
+    for ordinary Stage fallback. A prefixed identity such as ``01-Front Gate``
+    may still need bounded child-folder recovery when its BackgroundFile happens
+    to live in the owning Stage's PreviewBackground folder.
+    """
+    key = str(stage_key or "").strip()
+    name = str(scene_name or "").strip()
+    return bool(key and name.casefold().startswith(key.casefold() + "-"))
+
+
 def _windows_relative_parts(path_text: str, root_text: str) -> tuple[str, ...] | None:
     try:
         path_parts = PureWindowsPath(path_text).parts
@@ -301,6 +314,8 @@ def resolve_structured_scope(
     if not scene_name or scene_name.strip().casefold() == "root":
         return stage_root, _anchor_scope_type(stage_root, stage.get("stage_key")), warnings
 
+    path_stage_fallback: tuple[Path, str] | None = None
+
     # Exact LOR path evidence is authoritative navigation evidence. Ignore
     # helper and Display/group folders while walking upward until the nearest
     # structured marked Scene/Sub-stage/Stage root is reached.
@@ -323,7 +338,23 @@ def resolve_structured_scope(
                     and _same_path(direct_owner, resolved)
                 ):
                     warnings.append(direct_owner_warning)
-                return resolved, scope_type, warnings
+
+                # A Stage-root BackgroundFile can belong to a real child Scene.
+                # Example: current LOR Scene ``01-Front Gate`` points at
+                # ``01-Front Entrance-FE/PreviewBackground/Gate Final Version.PNG``.
+                # When LOR explicitly names a structured child, retain the exact
+                # Stage result only as fallback and give one uniquely matching
+                # marked child folder the opportunity to win below.
+                if (
+                    _same_path(resolved, stage_root)
+                    and _scene_name_claims_structured_child(
+                        scene_name,
+                        stage.get("stage_key"),
+                    )
+                ):
+                    path_stage_fallback = (resolved, scope_type)
+                else:
+                    return resolved, scope_type, warnings
             if unmarked is not None:
                 warnings.append(
                     f"Structured source-folder marker is missing: {unmarked / MARKER_NAME}"
@@ -367,6 +398,9 @@ def resolve_structured_scope(
             + "; ".join(str(match) for match in matches)
         )
         return None, "UNRESOLVED", warnings
+
+    if path_stage_fallback is not None:
+        return path_stage_fallback[0], path_stage_fallback[1], warnings
 
     warnings.append(stage_fallback_warning)
     return stage_root, _anchor_scope_type(stage_root, stage.get("stage_key")), warnings
