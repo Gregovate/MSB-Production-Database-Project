@@ -43,7 +43,7 @@ def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounde
     assert "ref.set_setup_task_display_material_requirement" in text
 
 
-def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_scene(tmp_path, monkeypatch) -> None:
+def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_scenes(tmp_path, monkeypatch) -> None:
     import setup_material_api as material_api
     from FieldWiring.Application.field_context_resolver import MARKER_NAME
 
@@ -74,13 +74,13 @@ def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_sce
             }
         )
 
-    scene_root = stage_root / "01-Entrance Arch"
-    scene_root.mkdir()
-    (scene_root / MARKER_NAME).write_text("scene", encoding="utf-8")
-    scene_image = scene_root / "PreviewBackground" / "arch.jpg"
-    scene_image.parent.mkdir()
-    scene_image.write_bytes(b"test")
-    true_scene = {
+    entrance_root = stage_root / "01-Entrance Arch"
+    entrance_root.mkdir()
+    (entrance_root / MARKER_NAME).write_text("scene", encoding="utf-8")
+    entrance_image = entrance_root / "PreviewBackground" / "arch.jpg"
+    entrance_image.parent.mkdir()
+    entrance_image.write_bytes(b"test")
+    entrance_scene = {
         "lor_scene_id": 201,
         "preview_uuid": "preview-arch",
         "preview_name": "Show Background Stage 01 FE Outside Gate",
@@ -90,7 +90,30 @@ def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_sce
         "scene_uuid": "scene-arch",
         "scene_name": "01-Entrance Arch",
         "scene_stage_id": 1,
-        "scene_background_file": str(scene_image),
+        "scene_background_file": str(entrance_image),
+    }
+
+    # Production Front Gate has a real structured Scene identity/folder, but its
+    # current LOR BackgroundFile lives in the owning Stage's PreviewBackground.
+    # That Stage-root pointer must not collapse the Scene into the blanket Stage
+    # material remainder.
+    front_gate_root = stage_root / "01-Front Gate"
+    front_gate_root.mkdir()
+    (front_gate_root / MARKER_NAME).write_text("scene", encoding="utf-8")
+    front_gate_image = stage_root / "PreviewBackground" / "Gate Final Version.PNG"
+    front_gate_image.parent.mkdir(exist_ok=True)
+    front_gate_image.write_bytes(b"test")
+    front_gate_scene = {
+        "lor_scene_id": 202,
+        "preview_uuid": "preview-front-gate",
+        "preview_name": "Show Background Stage 01 FE Outside Gate",
+        "preview_background_file": None,
+        "preview_revision": 1,
+        "source_filename": "outside-gate.loredit",
+        "scene_uuid": "scene-front-gate",
+        "scene_name": "01-Front Gate",
+        "scene_stage_id": 1,
+        "scene_background_file": str(front_gate_image),
     }
 
     class FakeCursor:
@@ -98,7 +121,7 @@ def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_sce
             return None
 
         def fetchall(self):
-            return [*fallback_rows, true_scene]
+            return [*fallback_rows, entrance_scene, front_gate_scene]
 
     monkeypatch.setattr(material_api, "drive_root", lambda: tmp_path)
     remainder, specific, _warnings = material_api._stage_remainder_scene_ids(
@@ -113,7 +136,7 @@ def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_sce
     )
 
     assert remainder == [101, 102, 103, 104]
-    assert specific == [201]
+    assert specific == [201, 202]
 
 
 def test_stage_remainder_fails_closed_instead_of_returning_partial_material() -> None:
