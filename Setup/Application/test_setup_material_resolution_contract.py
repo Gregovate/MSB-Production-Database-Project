@@ -77,10 +77,11 @@ def test_production_host_installs_automatic_material_extension() -> None:
 
 def test_material_ui_is_checkbox_only_and_has_no_source_chooser() -> None:
     text = (APP_DIR / "setup_catalog_effort.js").read_text(encoding="utf-8")
+    rejected_selector = "Choose current LOR " + "material source"
     assert "Uses Display / Container Material" in text
     assert "Resolved automatically from LOR" in text
     assert "requires_display_material" in text
     assert "setup-material-task" in text
-    assert "Choose current LOR material source" not in text
+    assert rejected_selector not in text
     assert "LOR_PREVIEW" not in text
     assert "LOR_STAGE" not in text
