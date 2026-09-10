@@ -18,14 +18,14 @@ The governing principle is:
 LOR owns current Display placement/grouping.
 Setup owns reusable work/tasks.
 Folder Alignment resolves LOR Scene evidence to physical Stage/Sub-stage/Scene scope.
-Material / Logistics reports the current Displays/Containers for the task's resolved physical scope.
+Material / Logistics reports the current Displays/Containers for the task's resolved physical scope when that task actually requires Display/container material.
 ```
 
 ## Core Rule
 
 Material / Logistics is a **scope-context resolver**, not a task-owned parts list.
 
-For a reusable Setup task:
+For a reusable Setup task whose Display/container material flag is enabled:
 
 ```text
 true Scene task
@@ -41,6 +41,65 @@ Stage/Sub-stage task
 
 The resolver must use the accepted Folder Alignment/shared field-context rules for physical scope classification. Do not use a simple Scene-name regex as Production authority; regex classification used during read-only diagnostics was only a convenient inspection aid.
 
+## Display / Container Material Applicability
+
+Live review clarified that Display/container material is **not relevant to every Setup task** even when the task belongs to a Stage/Scene that has many Displays.
+
+The normal stage workflow often contains several separate reusable tasks such as:
+
+```text
+Locate
+Layout
+Setup
+Cords
+Network
+Test
+```
+
+Not every task in that sequence needs the physical Displays/Containers presented as task material. In the common pattern, Display/container material becomes relevant primarily at the **Setup** step. Other steps may still use ordinary task resources, procedures, wiring context, prerequisites, readiness, and Stage/Scene scope without needing the Display/container material panel to represent required material.
+
+Current preferred design direction is therefore a narrow boolean on the reusable task, conceptually:
+
+```text
+requires_display_material boolean NOT NULL DEFAULT false
+```
+
+Semantics:
+
+```text
+false
+    -> task remains fully scoped to its Stage/Scene
+    -> no Display/container material is considered required for this task
+    -> prerequisites, readiness, procedures, resources, wiring, effort, etc. still apply
+
+true
+    -> resolve current Display/container material from the task's Stage/Scene scope
+```
+
+This flag must not be inferred solely from task name or action type because the operator stated the Locate/Layout/Setup/Cords/Network/Test pattern is common but not universal. Default false is deliberate; material should be enabled only where the reusable task truly needs it.
+
+Canonical examples:
+
+```text
+Grease Gate Bearings
+    scope                     = applicable Gate/Stage/Scene
+    requires_display_material = false
+
+Setup Northern Lights
+    scope                     = Stage 16
+    requires_display_material = true
+
+Layout RGB Locations
+    scope                     = Stage 16
+    requires_display_material = false unless operator review says otherwise
+
+Northern Lights Plug in Power & Network
+    scope                     = Stage 16
+    requires_display_material = false unless operator review says otherwise
+```
+
+The UI label should describe the business effect clearly (for example `Uses Display / Container Material`) rather than an ambiguous term such as `Task Only`.
+
 ## Operational Separation Rule — Promote the Material Boundary in LOR
 
 When a subset of a Stage is important enough that it needs to be scheduled, crewed, and resolved as an independent material work area, the preferred design is to make that subset a **real LOR Scene** rather than creating a second task-specific Display list in Setup.
@@ -51,7 +110,7 @@ Example established during live review:
 02 Triangle Volunteer Path Setup
 ```
 
-If Volunteer Path Lights remains a Stage-fallback LOR group, a Stage-level Setup task sees the broader Stage 02 fallback material context.
+If Volunteer Path Lights remains a Stage-fallback LOR group, a Stage-level Setup task sees the broader Stage 02 fallback material context when material is enabled.
 
 If Volunteer Path Lights is promoted to a real Stage-02 Scene in LOR, then:
 
@@ -70,7 +129,7 @@ This keeps the grouping in one place:
 ```text
 LOR Scene membership = authoritative Display grouping
 Setup task scope      = where the work is planned/staffed
-Material resolver     = current Displays/Containers for that scope
+Material resolver     = current Displays/Containers for that scope, when enabled
 ```
 
 Do not create a separate Setup Display-membership list merely to obtain this separation.
@@ -103,39 +162,7 @@ Display moved in LOR
 
 The reusable Setup task itself does not automatically move merely because one Display moved. Task scope remains a deliberate reusable work decision.
 
-## Task Scope and Material Context Are Separate
-
-A task may belong to a Stage/Scene even when no Display material is needed.
-
-Canonical example:
-
-```text
-Grease Gate Bearings
-    task scope       = applicable Front Gate / Stage scope
-    Display material = none required for the work
-```
-
-The task still belongs to the Gate. Lack of Display material must never be interpreted as lack of physical task scope.
-
-A Stage-level task can legitimately see the broader Stage fallback material context. When that result is too broad for an operationally distinct crew/work area, prefer promoting that physical/material subset to a true LOR Scene rather than maintaining task-specific Display membership in Setup.
-
-## Optional Material-Applicability Review State
-
-Operator discussion identified a possible useful control so material-free tasks do not present scope material as if it were required.
-
-Do not implement this as an unreviewed two-state checkbox that makes every existing unchecked task ambiguous. Preferred design direction is an explicit review state such as:
-
-```text
-UNREVIEWED
-USES_SCOPE_DISPLAY_MATERIAL
-NO_DISPLAY_MATERIAL
-```
-
-This state, if implemented, describes whether Display/Container scope context is relevant to the task. It does not alter task Stage/Scene scope and does not maintain individual Display ownership.
-
-Exact column name/UI wording remains subject to browser review.
-
-## Read-Only Coverage Evidence — Stages 00, 01, 02, and 13
+## Read-Only Coverage Evidence — Stages 00, 01, 02, 13, and 16
 
 The 2026-09-09 read-only material review found 95 active Displays across Stages 00, 01, 02, and 13, and every reviewed Display had exactly one current `ref.lor_scene_display` membership in that evidence set.
 
@@ -147,50 +174,22 @@ Stage 13 = 38 active Displays
 Total    = 95
 ```
 
-This strongly supports using LOR membership as the current Display source rather than copying Display membership into Setup.
-
-### Scope-level results from the same review
+Stage 16 was then reviewed separately and provides the strongest Stage-level defect case:
 
 ```text
-Stage 00 fallback
-    11 Displays
-    Containers 1, 146
-
-Stage 01 fallback
-    7 Displays
-    Container 1
-
-Stage 01 true Scene 01-Entrance Arch
-    3 Displays
-    Containers 151, 152, 153
-
-Stage 01 true Scene 01-Front Gate
-    4 Displays
-    Containers 31, 59
-
-Stage 02 fallback
-    12 Displays
-    Containers 1, 2, 14, 31, 72
-
-Stage 02 true Scene 02-Fred's Stars
-    16 Displays
-    Container 63
-
-Stage 02 true Scene 02-Mega Tree
-    4 Displays
-    Containers 157, 158
-    plus uncontainerized Displays
-
-Stage 13 fallback
-    9 Displays
-    Containers 6, 7, 37, 226
-    plus uncontainerized Displays
-
-Stage 13 true Scene 13-Christmas Story
-    8 Displays
-    Containers 6, 131, 150, 171
-    plus 1 Display without Container
+Stage 16 Northern Lights
+    lor_scene_id               = 298
+    scene_name                 = 16-Northern Lights-NL
+    active Displays            = 66
+    DS Displays                = 32
+    PS Displays                = 34
+    Containers                 = 16, 17, 18, 19
+    every reviewed Display     = exactly one LOR group
 ```
+
+The current Setup Stage-level tasks still resolve 0 Displays / 0 Containers because `SetupNextRepository.field_context()` has no Stage fallback path.
+
+This proves both that LOR is the correct authority and that Stage-level material resolution is a real code defect rather than missing LOR data.
 
 ## Known-Good Reference: 13-Christmas Story
 
@@ -214,6 +213,30 @@ resolved physical scope
     -> current Display.container_id
     -> deduplicated Containers
 ```
+
+## Stage 16 Acceptance Case
+
+Stage 16 currently has three Stage-level reusable tasks:
+
+```text
+Layout RGB Locations (20' Spacing, 32P & 30D)
+Setup Northern Lights
+Northern Lights Plug in Power & Network
+```
+
+The current LOR authority says the Stage contains 66 Displays, specifically 32 DS + 34 PS, across Containers 16, 17, 18, and 19.
+
+The task name's embedded `32P & 30D` count is stale and demonstrates why task names and Procedures must not be treated as authoritative material counts. Display counts and Container resolution must come from current LOR-derived database relationships.
+
+After the Stage fallback resolver exists, a Stage-16 task with `requires_display_material = true` must resolve:
+
+```text
+66 Displays
+4 Containers
+Container IDs 16, 17, 18, 19
+```
+
+A Stage-16 task with `requires_display_material = false` remains a valid Stage-16 task but must not present those 66 Displays/4 Containers as material required for that task.
 
 ## Preview UUID Is Not the Scope Boundary
 
@@ -276,7 +299,7 @@ Stage 02
 - Narwhal
 - Signage
 - US Flag
-- Volunteer Path Lights
+- Volunteer Path Lights (until the operator's new true Scene is ingested/reconciled)
 
 Stage 13
 - Root
@@ -285,7 +308,7 @@ Stage 13
 
 Those groups provide Display membership evidence. Their physical/documentation scope still resolves according to Folder Alignment unless one is deliberately promoted to a real Scene because it represents a true independently planned material/work area.
 
-Do not delete or promote them merely to make Setup material resolution easier. Promotion to a true Scene should reflect actual operational separation, as with the proposed Volunteer Path case.
+Do not delete or promote them merely to make Setup material resolution easier. Promotion to a true Scene should reflect actual operational separation, as with the Volunteer Path change.
 
 ## Current Production Defect
 
@@ -298,7 +321,9 @@ The required correction is **not** task-specific Display ownership and **not** t
 It is:
 
 ```text
-if task is true Scene scoped:
+if requires_display_material = false:
+    no Display/container material result
+else if task is true Scene scoped:
     resolve that Scene's Displays
 else if task is Stage/Sub-stage scoped:
     resolve all current LOR Displays whose accepted physical scope falls back
@@ -343,15 +368,16 @@ Before Production behavior changes:
 
 1. use the accepted Folder Alignment/shared field-context resolver as the scope authority;
 2. preserve the known-good `13-Christmas Story` behavior;
-3. implement Stage/Sub-stage fallback aggregation across all LOR Scene groups that resolve to that scope, regardless of Preview UUID;
-4. exclude true Scene Displays from the parent Stage fallback set;
-5. derive/deduplicate Containers from resolved Displays;
-6. keep supplemental KIT/support Containers separate;
-7. when a work/material subset needs independent scheduling and crew assignment, prefer a real LOR Scene plus matching Setup task scope rather than a new Setup material-group table;
-8. decide through browser review whether `UNREVIEWED / USES_SCOPE_DISPLAY_MATERIAL / NO_DISPLAY_MATERIAL` is useful;
+3. add a default-false reusable-task Display/container material applicability flag with explicit operator control;
+4. implement Stage/Sub-stage fallback aggregation across all LOR Scene groups that resolve to that scope, regardless of Preview UUID;
+5. exclude true Scene Displays from the parent Stage fallback set;
+6. derive/deduplicate Containers from resolved Displays;
+7. keep supplemental KIT/support Containers separate;
+8. when a work/material subset needs independent scheduling and crew assignment, prefer a real LOR Scene plus matching Setup task scope rather than a new Setup material-group table;
 9. preserve legitimate no-material tasks such as `Grease Gate Bearings`;
-10. regression-test Stages 00, 01, 02, 13, Volunteer Path after any Scene promotion, and Northern Lights/Stage 16; and
-11. perform protected browser validation before Production acceptance.
+10. validate the common Locate/Layout/Setup/Cords/Network/Test pattern without assuming it is universal;
+11. regression-test Stages 00, 01, 02, 13, Volunteer Path after its next LOR ingest/reconciliation, and Northern Lights/Stage 16; and
+12. perform protected browser validation before Production acceptance.
 
 ## Related Durable Sources
 
