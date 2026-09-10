@@ -1,10 +1,11 @@
-"""Reusable Setup Display-material metadata and resolved material context.
+"""Reusable Setup Display-Setup metadata and resolved material context.
 
-LOR remains authoritative for current Display membership. Setup stores only the
-reusable-task decision that a task needs Display material context. Scene tasks
-use exact current LOR Scene membership; Stage/Sub-stage tasks use the current
-Stage/Sub-stage remainder after excluding Displays represented by more-specific
-resolved LOR scopes.
+LOR remains authoritative for current Display membership. Setup separately
+records whether a task is a physical Display Setup step (visual classification)
+and whether it uses the current whole Stage/Scene Display-material resolver.
+Scene tasks use exact current LOR Scene membership; Stage/Sub-stage tasks use the
+current remainder after excluding Displays represented by more-specific resolved
+LOR scopes.
 
 Task-specific component/KIT subdivision and staged pick timing are intentionally
 out of scope here and remain deferred to Issue #141.
@@ -48,7 +49,7 @@ def _task_context(cur: Any, setup_task_id: int) -> dict[str, Any]:
     cur.execute(
         """
         SELECT t.setup_task_id, t.stage_id, t.lor_scene_id,
-               t.requires_display_material,
+               t.is_display_setup_step, t.requires_display_material,
                s.stage_key, s.stage_name, s.folder_path
         FROM ref.setup_task AS t
         LEFT JOIN ref.stage AS s ON s.stage_id = t.stage_id
@@ -311,6 +312,7 @@ def _resolved_material_context(setup_task_id: int, season_year: int) -> dict[str
         "displays": displays,
         "support_containers": containers,
         "material_resolution": {
+            "is_display_setup_step": bool(task.get("is_display_setup_step")),
             "requires_display_material": bool(task.get("requires_display_material")),
             "mode": mode,
             "warnings": list(dict.fromkeys(warnings)),
@@ -325,7 +327,7 @@ def api_setup_task_display_material() -> Response:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT setup_task_id, requires_display_material
+                SELECT setup_task_id, is_display_setup_step, requires_display_material
                 FROM ref.setup_task
                 ORDER BY setup_task_id
                 """
@@ -334,14 +336,42 @@ def api_setup_task_display_material() -> Response:
     return jsonify(task_display_material=rows)
 
 
+def _boolean_payload(payload: dict[str, Any], name: str) -> bool:
+    value = payload.get(name)
+    if not isinstance(value, bool):
+        raise SetupCommandError(f"{name} must be true or false")
+    return value
+
+
+@setup_material_api.patch("/api/setup/tasks/<int:setup_task_id>/display-setup-step")
+def api_setup_task_display_setup_step_update(setup_task_id: int) -> Response:
+    require_setup_command()
+    _repo, email, _access = require_manager()
+    required = _boolean_payload(json_body(), "is_display_setup_step")
+
+    conn = psycopg2.connect(setup_database_dsn())
+    try:
+        conn.set_session(readonly=False, autocommit=False)
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ref.set_setup_task_display_setup_step(%s,%s,%s)",
+                (email, setup_task_id, required),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise SetupRepositoryError("Setup Display Setup command returned no result")
+        conn.commit()
+    finally:
+        conn.close()
+
+    return jsonify(setup_task_display_setup_step=dict(row))
+
+
 @setup_material_api.patch("/api/setup/tasks/<int:setup_task_id>/display-material")
 def api_setup_task_display_material_update(setup_task_id: int) -> Response:
     require_setup_command()
     _repo, email, _access = require_manager()
-    payload = json_body()
-    required = payload.get("requires_display_material")
-    if not isinstance(required, bool):
-        raise SetupCommandError("requires_display_material must be true or false")
+    required = _boolean_payload(json_body(), "requires_display_material")
 
     conn = psycopg2.connect(setup_database_dsn())
     try:
