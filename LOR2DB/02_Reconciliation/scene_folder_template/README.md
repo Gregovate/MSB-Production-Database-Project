@@ -1,8 +1,28 @@
 # Controlled `scene_folder_template`
 
-This directory is the repository-controlled definition of the folder skeleton used by the LOR2DB reconciliation system when an operator approves **Create/Repair Scene Folder Structure** for a new or renamed controlled Scene.
+This directory is the repository-controlled definition of the folder skeleton used by the LOR2DB reconciliation system when an operator approves **Create / Repair Scene Folder Structure** for a new or renamed controlled Scene.
 
 It is **not** a live Scene and must never be copied beneath `Display Folders` with the literal name `scene_folder_template`.
+
+## Operator workflow
+
+LOR2DB must validate the expected Scene structure during reconciliation. If the structure is missing or incomplete, the browser shows the exact findings and prompts the operator to approve a governed create/repair action.
+
+The system must **not** silently create Google Drive content merely because a new Scene appeared in LOR.
+
+```text
+new / renamed controlled Scene
+    -> validate expected Google Drive structure
+    -> PASS: continue
+    -> ACTION REQUIRED:
+         show exact missing/invalid items
+         [ Create / Repair Scene Folder Structure ]
+         [ Defer / Correct Source ]
+    -> operator approves Create / Repair
+    -> paired Windows runner performs the fixed template-based operation
+    -> revalidate
+    -> continue only after PASS
+```
 
 ## Runtime rule
 
@@ -35,6 +55,8 @@ G:\Shared drives\Display Folders\01-Front Entrance-FE\01-Front Gate
 ```
 
 and generates required markers whose embedded folder identity matches the actual root/helper folder in which each marker is written.
+
+See `marker_content_contract.md` for the generated marker identity fields and rename behavior.
 
 ## Authority
 
