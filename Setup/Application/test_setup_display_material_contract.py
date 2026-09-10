@@ -1,186 +1,93 @@
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "Application"
 DB = ROOT / "Database"
-if str(APP) not in sys.path:
-    sys.path.insert(0, str(APP))
 
 
-def test_material_migration_separates_display_setup_from_scope_material() -> None:
-    text = (DB / "025_add_setup_display_material_requirement.sql").read_text(encoding="utf-8")
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def test_corrected_migration_separates_work_scope_from_material_sources() -> None:
+    text = read(DB / "026_add_setup_explicit_lor_material_sources.sql")
     assert "is_display_setup_step boolean NOT NULL DEFAULT false" in text
-    assert "requires_display_material boolean NOT NULL DEFAULT false" in text
-    assert "set_setup_task_display_setup_step" in text
-    assert "set_setup_task_display_material_requirement" in text
-    assert text.count("GRANT EXECUTE ON FUNCTION") >= 2
-    assert "TO fieldwiring_app" in text
+    assert "CREATE TABLE IF NOT EXISTS ref.setup_task_material_source" in text
+    assert "LOR_STAGE" in text and "LOR_PREVIEW" in text and "LOR_SCENE" in text
+    assert "set_setup_task_material_source" in text
+    assert "requires_display_material" not in text
+    assert "STAGE_REMAINDER" not in text
+    assert "ref.setup_task_display is not changed or repurposed" in text
+    assert "No automatic material-source backfill" in text
     assert "Issue #141" in text
-    assert "like '%setup%'" not in text.lower()
 
 
-def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounded() -> None:
-    path = APP / "setup_material_api.py"
-    text = path.read_text(encoding="utf-8")
+def test_rejected_migration_025_is_not_present() -> None:
+    assert not (DB / "025_add_setup_display_material_requirement.sql").exists()
+
+
+def test_material_api_has_no_filesystem_or_scope_inference() -> None:
+    text = read(APP / "setup_material_api.py")
     ast.parse(text)
-
-    start = text.index("def _stage_remainder_scene_ids")
-    end = text.index("def _scope_relationships")
-    stage_resolver = text[start:end]
-    assert "WHERE ls.stage_id = %s" in stage_resolver
-    assert "resolve_structured_scope" in stage_resolver
-    assert "preview_uuid = %s" not in stage_resolver
-    assert "ref.lor_scene_display" in text
-    assert "child.lor_scene_id = ANY(%s)" in text
-    assert "ref.setup_task_display" in text
-    assert "is_display_setup_step" in text
-    assert "ref.set_setup_task_display_setup_step" in text
-    assert "ref.set_setup_task_display_material_requirement" in text
+    assert "drive_root" not in text
+    assert "resolve_structured_scope" not in text
+    assert "STAGE_REMAINDER" not in text
+    assert "requires_display_material" not in text
+    assert "ref.setup_task_display" not in text
+    assert "work_stage_id" in text
+    assert "work_lor_scene_id" in text
 
 
-def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_scenes(tmp_path, monkeypatch) -> None:
-    import setup_material_api as material_api
-    from FieldWiring.Application.field_context_resolver import MARKER_NAME
-
-    stage_root = tmp_path / "01-Front Entrance-FE"
-    stage_root.mkdir()
-    (stage_root / MARKER_NAME).write_text("stage", encoding="utf-8")
-
-    fallback_rows = []
-    for scene_id, group_name in enumerate(
-        ("FE-GoalSign", "FE-MSBSign", "FE-OpenClose", "FE-OutsideGate"),
-        start=101,
-    ):
-        image = stage_root / group_name / "PreviewBackground" / f"{group_name}.jpg"
-        image.parent.mkdir(parents=True)
-        image.write_bytes(b"test")
-        fallback_rows.append(
-            {
-                "lor_scene_id": scene_id,
-                "preview_uuid": f"preview-{scene_id}",
-                "preview_name": f"Show Background Stage 01 {group_name}",
-                "preview_background_file": None,
-                "preview_revision": 1,
-                "source_filename": f"{group_name}.loredit",
-                "scene_uuid": f"scene-{scene_id}",
-                "scene_name": group_name,
-                "scene_stage_id": 1,
-                "scene_background_file": str(image),
-            }
-        )
-
-    entrance_root = stage_root / "01-Entrance Arch"
-    entrance_root.mkdir()
-    (entrance_root / MARKER_NAME).write_text("scene", encoding="utf-8")
-    entrance_image = entrance_root / "PreviewBackground" / "arch.jpg"
-    entrance_image.parent.mkdir()
-    entrance_image.write_bytes(b"test")
-    entrance_scene = {
-        "lor_scene_id": 201,
-        "preview_uuid": "preview-arch",
-        "preview_name": "Show Background Stage 01 FE Outside Gate",
-        "preview_background_file": None,
-        "preview_revision": 1,
-        "source_filename": "outside-gate.loredit",
-        "scene_uuid": "scene-arch",
-        "scene_name": "01-Entrance Arch",
-        "scene_stage_id": 1,
-        "scene_background_file": str(entrance_image),
-    }
-
-    # Production Front Gate has a real structured Scene identity/folder, but its
-    # current LOR BackgroundFile lives in the owning Stage's PreviewBackground.
-    # That Stage-root pointer must not collapse the Scene into the blanket Stage
-    # material remainder.
-    front_gate_root = stage_root / "01-Front Gate"
-    front_gate_root.mkdir()
-    (front_gate_root / MARKER_NAME).write_text("scene", encoding="utf-8")
-    front_gate_image = stage_root / "PreviewBackground" / "Gate Final Version.PNG"
-    front_gate_image.parent.mkdir(exist_ok=True)
-    front_gate_image.write_bytes(b"test")
-    front_gate_scene = {
-        "lor_scene_id": 202,
-        "preview_uuid": "preview-front-gate",
-        "preview_name": "Show Background Stage 01 FE Outside Gate",
-        "preview_background_file": None,
-        "preview_revision": 1,
-        "source_filename": "outside-gate.loredit",
-        "scene_uuid": "scene-front-gate",
-        "scene_name": "01-Front Gate",
-        "scene_stage_id": 1,
-        "scene_background_file": str(front_gate_image),
-    }
-
-    class FakeCursor:
-        def execute(self, _sql, _params):
-            return None
-
-        def fetchall(self):
-            return [*fallback_rows, entrance_scene, front_gate_scene]
-
-    monkeypatch.setattr(material_api, "drive_root", lambda: tmp_path)
-    remainder, specific, _warnings = material_api._stage_remainder_scene_ids(
-        FakeCursor(),
-        {
-            "setup_task_id": 999,
-            "stage_id": 1,
-            "stage_key": "01",
-            "stage_name": "01-Front Entrance-FE",
-            "folder_path": str(stage_root),
-        },
-    )
-
-    assert remainder == [101, 102, 103, 104]
-    assert specific == [201, 202]
+def test_stage_and_preview_sources_use_current_raw_lor_membership() -> None:
+    text = read(APP / "setup_material_api.py")
+    assert "lor_snap.v_current_props AS p" in text
+    assert "d.lor_prop_id = p.raw_prop_id" in text
+    assert "d.stage_id = ANY(%s)" in text
+    assert "p.preview_id = ANY(%s)" in text
 
 
-def test_stage_remainder_fails_closed_instead_of_returning_partial_material() -> None:
-    text = (APP / "setup_material_api.py").read_text(encoding="utf-8")
-    assert "refused a partial Stage list" in text
-    assert "if unresolved:" in text
-    assert "more-specific current LOR scopes" in text
+def test_scene_source_uses_current_reconciled_scene_membership() -> None:
+    text = read(APP / "setup_material_api.py")
+    assert "FROM ref.lor_scene_display AS lsd" in text
+    assert "lsd.lor_scene_id = ANY(%s)" in text
 
 
-def test_display_setup_color_is_separate_from_whole_scope_material_switch() -> None:
-    js = (APP / "setup_material.js").read_text(encoding="utf-8")
-    css = (APP / "setup_material.css").read_text(encoding="utf-8")
-    api = (APP / "setup_material_api.py").read_text(encoding="utf-8")
-    migration = (DB / "025_add_setup_display_material_requirement.sql").read_text(encoding="utf-8")
+def test_multiple_sources_union_and_containers_derive_from_display() -> None:
+    text = read(APP / "setup_material_api.py")
+    assert "display_ids: set[int] = set()" in text
+    assert text.count("display_ids.update(") == 3
+    assert "d.container_id" in text
+    assert "container_ids = sorted(" in text
+    assert "material_containers" in text
 
-    assert "is_display_setup_step" in js
-    assert "requires_display_material" in js
-    assert "edit-is-display-setup-step" in js
-    assert "edit-requires-display-material" in js
+
+def test_zero_sources_means_none_even_when_work_scope_exists() -> None:
+    text = read(APP / "setup_material_api.py")
+    assert "if not sources:" in text
+    assert "return []" in text
+    assert '"mode": "EXPLICIT_LOR_SOURCES" if sources else "NONE"' in text
+
+
+def test_ui_has_explicit_multi_source_editor_and_no_scope_material_switch() -> None:
+    js = read(APP / "setup_material.js")
+    css = read(APP / "setup_material.css")
+    assert "Display material sources" in js
+    assert "Add material source" in js
+    assert "No Display material selected." in js
+    assert "material-source" in js
+    assert "LOR_STAGE" in js and "LOR_PREVIEW" in js and "LOR_SCENE" in js
+    assert "Use whole Stage/Scene Display material" not in js
+    assert "SCOPE MATERIAL" not in js
+    assert "requires_display_material" not in js
     assert "DISPLAY SETUP" in js
-    assert "SCOPE MATERIAL" in js
-    assert "Use whole Stage/Scene Display material" in js
-    assert "material-context" in js
-    assert "Issue #141" in api or "Issue #141" in migration
-    assert "if (task.is_display_setup_step)" in js
-    assert "if (task.requires_display_material)" in js
-    assert "setup-material-task" in js
-    assert "setup-scope-material-badge" in js
     assert "--ui-material" in css
-    assert "--ui-material-soft" in css
-    assert "--ui-material-border" in css
-    assert "--ui-material-text" in css
 
 
-def test_material_metadata_refresh_cannot_turn_successful_write_into_false_failure() -> None:
-    js = (APP / "setup_material.js").read_text(encoding="utf-8")
-    assert "const result = await setupMaterialBaseReloadTasks(...args);" in js
-    assert "try {\n      await loadSetupMaterial({ rerender: false });" in js
-    assert "Supplemental metadata failure must never make a successfully completed" in js
-    assert "return result;" in js
-
-
-def test_new_catalog_task_hands_off_to_full_review_editor_after_successful_create() -> None:
-    js = (APP / "setup_material.js").read_text(encoding="utf-8")
+def test_new_catalog_task_hands_off_to_full_editor() -> None:
+    js = read(APP / "setup_material.js")
     assert "setupAddTaskForm?.addEventListener('submit'" in js
     assert "requestedTaskId != null" in js
     assert "showView('review');" in js
@@ -188,9 +95,9 @@ def test_new_catalog_task_hands_off_to_full_review_editor_after_successful_creat
     assert "edit-task-name" in js
 
 
-def test_production_host_exposes_material_api_and_cache_busted_assets() -> None:
-    backend = (APP / "production_backend.py").read_text(encoding="utf-8")
-    html = (APP / "production.html").read_text(encoding="utf-8")
+def test_production_host_registers_material_api() -> None:
+    backend = read(APP / "production_backend.py")
+    html = read(APP / "production.html")
     assert "from setup_material_api import setup_material_api" in backend
     assert "app.register_blueprint(setup_material_api)" in backend
     assert '"setup_material.css"' in backend
