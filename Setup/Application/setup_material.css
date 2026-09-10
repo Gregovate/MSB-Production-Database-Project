@@ -1,0 +1,53 @@
+/* Setup physical Display-material treatment. Shared token names follow #140. */
+
+:root {
+  --ui-material: #6d4bb8;
+  --ui-material-soft: #f2edfb;
+  --ui-material-border: #7b5bc3;
+  --ui-material-text: #432d78;
+}
+
+.setup-material-task {
+  background: var(--ui-material-soft) !important;
+  box-shadow: inset 5px 0 0 var(--ui-material-border);
+}
+
+.setup-material-badge {
+  display: inline-block;
+  margin-left: .55rem;
+  padding: .1rem .42rem;
+  border: 1px solid var(--ui-material-border);
+  border-radius: 999px;
+  background: var(--ui-material-soft);
+  color: var(--ui-material-text);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  vertical-align: middle;
+}
+
+.setup-material-editor {
+  margin-top: .35rem;
+  padding: .7rem .8rem;
+  border: 1px solid var(--ui-material-border);
+  border-radius: 8px;
+  background: var(--ui-material-soft);
+  color: var(--ui-material-text);
+  font-weight: 700;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --ui-material: #c4a7ff;
+    --ui-material-soft: #261d3b;
+    --ui-material-border: #9f7aea;
+    --ui-material-text: #eadfff;
+  }
+}
+
+html[data-theme="dark"] {
+  --ui-material: #c4a7ff;
+  --ui-material-soft: #261d3b;
+  --ui-material-border: #9f7aea;
+  --ui-material-text: #eadfff;
+}
