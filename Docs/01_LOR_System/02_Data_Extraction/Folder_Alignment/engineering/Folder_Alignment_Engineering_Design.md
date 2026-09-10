@@ -13,6 +13,14 @@ Folder Alignment itself does not create, move, rename, or delete folders or docu
 
 A separate narrow updater may add an approved missing `PreviewBackground` folder to an already-existing deterministically resolved scope. That updater does not change Folder Alignment's read-only contract.
 
+## Relationship to LOR2DB reconciliation
+
+Folder Alignment is a **secondary audit**, not the primary gate for a newly added or renamed LOR Scene.
+
+A new/renamed Scene is discovered and promoted in the LOR2DB reconciliation workflow. Therefore the mandatory Scene documentation-structure integrity check belongs there. LOR2DB should use its paired Windows runner to inspect the authenticated `G:` mount and verify the expected controlled Scene root, source-folder markers, and standard scaffold before the Scene change is allowed to finish reconciliation.
+
+Folder Alignment may independently report the same defect as drift, but it must not be the only place that catches it. This boundary is tracked in #143.
+
 ---
 
 # System Boundary
