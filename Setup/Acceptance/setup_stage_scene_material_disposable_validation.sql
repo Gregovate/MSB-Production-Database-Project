@@ -64,8 +64,8 @@ BEGIN
             lsd.display_id,
             CASE
                 WHEN lower(btrim(ls.scene_name)) = 'root' THEN 'STAGE'
-                WHEN ls.scene_name !~ '^\\s*\\d{2}[A-Za-z]?-' THEN 'STAGE'
-                WHEN ls.scene_name ~ '-[A-Za-z]{2}\\s*$' THEN 'STAGE'
+                WHEN ls.scene_name !~ '^[[:space:]]*[0-9]{2}[A-Za-z]?-' THEN 'STAGE'
+                WHEN ls.scene_name ~ '-[A-Za-z]{2}[[:space:]]*$' THEN 'STAGE'
                 ELSE 'SCENE'
             END AS material_scope
         FROM ref.lor_scene AS ls
@@ -134,8 +134,8 @@ WITH classified_membership AS (
         lsd.display_id,
         CASE
             WHEN lower(btrim(ls.scene_name)) = 'root' THEN 'STAGE'
-            WHEN ls.scene_name !~ '^\\s*\\d{2}[A-Za-z]?-' THEN 'STAGE'
-            WHEN ls.scene_name ~ '-[A-Za-z]{2}\\s*$' THEN 'STAGE'
+            WHEN ls.scene_name !~ '^[[:space:]]*[0-9]{2}[A-Za-z]?-' THEN 'STAGE'
+            WHEN ls.scene_name ~ '-[A-Za-z]{2}[[:space:]]*$' THEN 'STAGE'
             ELSE 'SCENE'
         END AS material_scope
     FROM ref.lor_scene AS ls
