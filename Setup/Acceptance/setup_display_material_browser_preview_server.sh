@@ -30,6 +30,7 @@ PROD_BEFORE=""
 SETUP_HEAD_BEFORE=""
 PREVIEW_OWNED_PORT=0
 TEMP_FILES=()
+MASTER_MUSICAL_PREVIEW_UUID="fcf5c29c-8d51-46c5-9ad0-cc47a97c75bd"
 
 mkdir -p "$REPORT_DIR"
 exec > >(tee "$REPORT") 2>&1
@@ -252,7 +253,11 @@ TASK01="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.s
 TASK16="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='16' AND t.active_flag ORDER BY CASE WHEN t.task_name='Setup Northern Lights' THEN 0 ELSE 1 END, t.display_order, t.setup_task_id LIMIT 1;")"
 TASK13="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t WHERE t.lor_scene_id=258 AND t.active_flag ORDER BY t.display_order, t.setup_task_id LIMIT 1;")"
 STAGE00_ID="$(query_task_id "SELECT stage_id FROM ref.stage WHERE stage_key='00' ORDER BY stage_id LIMIT 1;")"
-for value in "$TASK00" "$TASK01" "$TASK16" "$TASK13" "$STAGE00_ID"; do [[ "$value" =~ ^[0-9]+$ ]] || { echo "FAIL: representative task/source lookup failed"; exit 21; }; done
+SCENE16_ID="$(query_task_id "SELECT ls.lor_scene_id FROM ref.lor_scene ls JOIN ref.stage s ON s.stage_id=ls.stage_id WHERE ls.lor_scene_id=298 AND s.stage_key='16' LIMIT 1;")"
+MASTER_PREVIEW_NAME="$(query_task_id "SELECT name FROM lor_snap.v_current_previews WHERE id='$MASTER_MUSICAL_PREVIEW_UUID' LIMIT 1;")"
+for value in "$TASK00" "$TASK01" "$TASK16" "$TASK13" "$STAGE00_ID" "$SCENE16_ID"; do [[ "$value" =~ ^[0-9]+$ ]] || { echo "FAIL: representative task/source lookup failed"; exit 21; }; done
+[[ "$MASTER_PREVIEW_NAME" == *"Master Musical Preview"* ]] || { echo "FAIL: expected shared Master Musical Preview for $MASTER_MUSICAL_PREVIEW_UUID; found '$MASTER_PREVIEW_NAME'"; exit 21; }
+echo "Stage 16 current material evidence: Scene $SCENE16_ID inside shared Preview '$MASTER_PREVIEW_NAME'"
 
 NONE_CTX="/tmp/setup-material-none-$STAMP.json"; TEMP_FILES+=("$NONE_CTX")
 code="$(curl -sS -o "$NONE_CTX" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$TASK13/material-context?season_year=2025")"
@@ -266,14 +271,14 @@ print('Work-scope/material independence: PASS (Scene-scoped task resolves 0 Disp
 PY
 
 patch_source() {
-    local task="$1" type="$2" key="$3" file code
+    local task="$1" type="$2" key="$3" active="${4:-true}" file code
     file="/tmp/setup-material-source-${task}-${type}-${RANDOM}-$STAMP.json"; TEMP_FILES+=("$file")
-    code="$(curl -sS -o "$file" -w '%{http_code}' -X PATCH -H 'Content-Type: application/json' -H 'X-MSB-Setup-Command: 1' --data "{\"source_type\":\"$type\",\"source_key\":\"$key\",\"active\":true}" "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task/material-source")"
-    [[ "$code" == "200" ]] || { echo "FAIL: material-source PATCH $task $type $key -> $code"; cat "$file"; exit 23; }
+    code="$(curl -sS -o "$file" -w '%{http_code}' -X PATCH -H 'Content-Type: application/json' -H 'X-MSB-Setup-Command: 1' --data "{\"source_type\":\"$type\",\"source_key\":\"$key\",\"active\":$active}" "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task/material-source")"
+    [[ "$code" == "200" ]] || { echo "FAIL: material-source PATCH $task $type $key active=$active -> $code"; cat "$file"; exit 23; }
 }
 patch_source "$TASK00" LOR_STAGE "$STAGE00_ID"
 for scene_id in 253 254 293 467 468; do patch_source "$TASK01" LOR_SCENE "$scene_id"; done
-patch_source "$TASK16" LOR_PREVIEW "fcf5c29c-8d51-46c5-9ad0-cc47a97c75bd"
+patch_source "$TASK16" LOR_PREVIEW "$MASTER_MUSICAL_PREVIEW_UUID"
 patch_source "$TASK13" LOR_SCENE "258"
 
 MAGIC_IDS="$(psql_test -qAt -c "SELECT string_agg(t.setup_task_id::text, ',' ORDER BY t.setup_task_id) FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='26' AND t.active_flag AND t.task_name IN ('Layout / Erect Frame / Strap Down','Install Skins and Bungees','Install Lighting, Cameras, Mats, Signs, and Finish Setup');")"
@@ -286,30 +291,88 @@ for task in "${MAGIC_ARRAY[@]}"; do
 done
 echo "Display Setup classification independent of material: PASS"
 
-CTX00="/tmp/setup-material-context-stage00-$STAMP.json"; CTX01="/tmp/setup-material-context-stage01-$STAMP.json"; CTX16="/tmp/setup-material-context-stage16-$STAMP.json"; CTX13="/tmp/setup-material-context-christmas-story-$STAMP.json"
-TEMP_FILES+=("$CTX00" "$CTX01" "$CTX16" "$CTX13")
+CTX00="/tmp/setup-material-context-stage00-$STAMP.json"
+CTX01="/tmp/setup-material-context-stage01-$STAMP.json"
+CTX16_PREVIEW="/tmp/setup-material-context-master-preview-$STAMP.json"
+CTX13="/tmp/setup-material-context-christmas-story-$STAMP.json"
+CTX16_SCENE="/tmp/setup-material-context-stage16-scene-$STAMP.json"
+TEMP_FILES+=("$CTX00" "$CTX01" "$CTX16_PREVIEW" "$CTX13" "$CTX16_SCENE")
 fetch_context() { local task="$1" file="$2" code; code="$(curl -sS -o "$file" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task/material-context?season_year=2025")"; [[ "$code" == "200" ]] || { cat "$file"; exit 26; }; }
-fetch_context "$TASK00" "$CTX00"; fetch_context "$TASK01" "$CTX01"; fetch_context "$TASK16" "$CTX16"; fetch_context "$TASK13" "$CTX13"
+fetch_context "$TASK00" "$CTX00"
+fetch_context "$TASK01" "$CTX01"
+fetch_context "$TASK16" "$CTX16_PREVIEW"
+fetch_context "$TASK13" "$CTX13"
 
-sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$CTX00" "$CTX01" "$CTX16" "$CTX13" <<'PY'
+sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$CTX00" "$CTX01" "$CTX16_PREVIEW" "$CTX13" <<'PY'
 import json, sys
+
 def load(path):
-    with open(path, encoding='utf-8') as f: return json.load(f)['context']
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)['context']
+
+def material_container_ids(ctx):
+    return sorted(int(c['container_id']) for c in ctx.get('material_containers', []))
+
+def display_container_ids(ctx):
+    return sorted({int(d['container_id']) for d in ctx.get('displays', []) if d.get('container_id') is not None})
+
 def check(label, ctx, count, containers, sources, uncontained=None):
     displays=ctx.get('displays', []); ids=[d['display_id'] for d in displays]
     if len(ids) != len(set(ids)): raise SystemExit(f'FAIL: {label} returned duplicate Displays')
-    actual={int(d['container_id']) for d in displays if d.get('container_id') is not None}
-    material=[int(c['container_id']) for c in ctx.get('material_containers', [])]
+    actual=set(display_container_ids(ctx))
+    material=material_container_ids(ctx)
     if len(displays) != count: raise SystemExit(f'FAIL: {label} expected {count} Displays; found {len(displays)}')
     if actual != set(containers): raise SystemExit(f'FAIL: {label} Display containers {sorted(actual)} != {sorted(containers)}')
     if material != sorted(set(containers)): raise SystemExit(f'FAIL: {label} derived material containers {material} != {sorted(set(containers))}')
     if ctx.get('material_resolution',{}).get('source_count') != sources: raise SystemExit(f'FAIL: {label} source_count mismatch')
     if uncontained is not None and sum(1 for d in displays if d.get('container_id') is None) != uncontained: raise SystemExit(f'FAIL: {label} uncontained count mismatch')
     print(f'{label}: PASS displays={count} containers={sorted(actual)} sources={sources}')
+
+def check_shared_preview(ctx):
+    label='Shared Master Musical Preview source'
+    displays=ctx.get('displays', []); ids=[d['display_id'] for d in displays]
+    if len(ids) != len(set(ids)): raise SystemExit(f'FAIL: {label} returned duplicate Displays')
+    if len(displays) <= 66:
+        raise SystemExit(f'FAIL: {label} was incorrectly clamped to one work Stage/Scene; found only {len(displays)} Displays')
+    material=material_container_ids(ctx)
+    actual=display_container_ids(ctx)
+    if material != actual: raise SystemExit(f'FAIL: {label} material Containers do not match derived Display Containers')
+    resolution=ctx.get('material_resolution', {})
+    if resolution.get('source_count') != 1: raise SystemExit(f'FAIL: {label} source_count mismatch')
+    sources=resolution.get('sources', [])
+    if len(sources) != 1 or sources[0].get('source_type') != 'LOR_PREVIEW': raise SystemExit(f'FAIL: {label} did not retain exact Preview source identity')
+    if 'Master Musical Preview' not in str(sources[0].get('label') or ''): raise SystemExit(f'FAIL: {label} source label is not the shared Master Musical Preview')
+    print(f'{label}: PASS displays={len(displays)} containers={len(actual)} sources=1 (whole Preview, not Stage-clamped)')
+
 check('Stage 00 explicit Stage source', load(sys.argv[1]), 11, {1,146}, 1)
 check('Stage 01 explicit five-group union', load(sys.argv[2]), 7, {1}, 5)
-check('Stage 16 explicit Preview source', load(sys.argv[3]), 66, {16,17,18,19}, 1)
+check_shared_preview(load(sys.argv[3]))
 check('13-Christmas Story explicit Scene source', load(sys.argv[4]), 8, {6,131,150,171}, 1, 1)
+PY
+
+# The shared Master Musical Preview is intentionally much larger than Northern
+# Lights. Prove that removing that source and selecting the exact current LOR
+# Scene produces the known 66-Display Northern Lights material set.
+patch_source "$TASK16" LOR_PREVIEW "$MASTER_MUSICAL_PREVIEW_UUID" false
+patch_source "$TASK16" LOR_SCENE "$SCENE16_ID" true
+fetch_context "$TASK16" "$CTX16_SCENE"
+sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$CTX16_SCENE" <<'PY'
+import json, sys
+ctx=json.load(open(sys.argv[1], encoding='utf-8'))['context']
+displays=ctx.get('displays', [])
+ids=[d['display_id'] for d in displays]
+if len(ids) != len(set(ids)): raise SystemExit('FAIL: Stage 16 Northern Lights Scene returned duplicate Displays')
+containers={int(d['container_id']) for d in displays if d.get('container_id') is not None}
+material=sorted(int(c['container_id']) for c in ctx.get('material_containers', []))
+if len(displays) != 66: raise SystemExit(f'FAIL: Stage 16 Northern Lights explicit Scene source expected 66 Displays; found {len(displays)}')
+if containers != {16,17,18,19}: raise SystemExit(f'FAIL: Stage 16 Northern Lights containers {sorted(containers)} != [16, 17, 18, 19]')
+if material != [16,17,18,19]: raise SystemExit(f'FAIL: Stage 16 Northern Lights derived material containers {material} != [16, 17, 18, 19]')
+resolution=ctx.get('material_resolution', {})
+if resolution.get('source_count') != 1: raise SystemExit('FAIL: Stage 16 Northern Lights Scene source_count mismatch')
+sources=resolution.get('sources', [])
+if len(sources) != 1 or sources[0].get('source_type') != 'LOR_SCENE' or str(sources[0].get('source_key')) != '298':
+    raise SystemExit('FAIL: Stage 16 Northern Lights did not resolve from exact LOR Scene 298')
+print('Stage 16 Northern Lights explicit Scene source: PASS displays=66 containers=[16, 17, 18, 19] sources=1')
 PY
 
 [[ "$(legacy_fingerprint)" == "$LEGACY_BEFORE" ]] || { echo "FAIL: preview probes changed pre-existing Setup data"; exit 27; }
@@ -329,7 +392,10 @@ echo "  1. Display Setup is a separate classification and color."
 echo "  2. Material editor shows explicit Stage / Preview / Scene-group sources."
 echo "  3. A task with no selected source shows no Display material."
 echo "  4. Stage 01 task shows five selected LOR groups and resolves 7 Displays."
-echo "  5. Christmas Story resolves 8 Displays and Containers 6,131,150,171."
-echo "  6. Add one preview-only task and confirm creation opens the full editor."
+echo "  5. Stage 16 task uses exact Northern Lights Scene 298 and resolves 66 Displays; the shared Master Musical Preview is intentionally a whole-Preview source."
+echo "  6. Christmas Story resolves 8 Displays and Containers 6,131,150,171."
+echo "  7. Add one preview-only task and confirm creation opens the full editor."
 echo
 read -r -p "Press ENTER to stop and clean up the Setup material preview... " _unused
+
+echo "Operator ended browser review. Cleaning up."
