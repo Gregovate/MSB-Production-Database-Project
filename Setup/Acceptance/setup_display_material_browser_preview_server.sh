@@ -28,7 +28,6 @@ PREVIEW_LOG="/tmp/Setup_Display_Material_Browser_Preview_Flask_${STAMP}.log"
 PREVIEW_PGID=""
 PROD_BEFORE=""
 SETUP_HEAD_BEFORE=""
-REPO_HEAD_BEFORE=""
 PREVIEW_OWNED_PORT=0
 TEMP_FILES=()
 
@@ -40,9 +39,9 @@ echo "Authority: Gregovate/MSB-Server-Management — docs/server/Pre_Production_
 echo "Disposable standard: docs/server/PostgreSQL_Disposable_Acceptance_Standard.md"
 echo "Candidate SHA: $TARGET_SHA"
 echo "Target ref:    $TARGET_REF"
-echo "Preview port: $PREVIEW_PORT"
-echo "Preview user: $PREVIEW_EMAIL"
-echo "Report:       $REPORT"
+echo "Preview port:  $PREVIEW_PORT"
+echo "Preview user:  $PREVIEW_EMAIL"
+echo "Report:        $REPORT"
 echo "Production DB: pg_dump + SELECT only"
 echo "Preview writes: disposable current-Production clone only"
 echo
@@ -87,7 +86,7 @@ cleanup() {
     fi
 
     rm -f "$DUMP_FILE" "$GRANTS_FILE" >/dev/null 2>&1 || true
-    if [[ "${#TEMP_FILES[@]}" -gt 0 ]]; then
+    if (( ${#TEMP_FILES[@]} > 0 )); then
         rm -f "${TEMP_FILES[@]}" >/dev/null 2>&1 || true
     fi
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
@@ -183,7 +182,6 @@ if ! sudo -u fieldwiring -H test -x /opt/fieldwiring/.venv/bin/python; then
 fi
 
 SETUP_HEAD_BEFORE="$(sudo git -C "$SETUP_LIVE_ROOT" rev-parse HEAD)"
-REPO_HEAD_BEFORE="$(sudo git -C "$REPO_ROOT" rev-parse HEAD)"
 if [[ -n "$(sudo git -C "$SETUP_LIVE_ROOT" status --porcelain)" ]]; then
     echo "FAIL: live Setup detached worktree has uncommitted changes"
     sudo git -C "$SETUP_LIVE_ROOT" status -sb
@@ -195,8 +193,7 @@ if [[ -n "$(sudo git -C "$REPO_ROOT" status --porcelain)" ]]; then
     exit 14
 fi
 
-echo "Live Setup SHA:   $SETUP_HEAD_BEFORE"
-echo "Repository HEAD:  $REPO_HEAD_BEFORE"
+echo "Live Setup SHA: $SETUP_HEAD_BEFORE"
 PROD_BEFORE="$(prod_fingerprint)"
 if [[ -z "$PROD_BEFORE" ]]; then
     echo "FAIL: Production Setup fingerprint was empty"
@@ -438,13 +435,13 @@ PY
 
 query_task_id() {
     local sql="$1"
-    psql_test -qAt -c "$sql" | head -n 1
+    psql_test -qAt -c "$sql"
 }
 
-TASK00="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='00' AND t.lor_scene_id IS NULL AND t.active_flag ORDER BY CASE WHEN t.task_name='Setup HWY42 Traffic Signs' THEN 0 ELSE 1 END, t.display_order, t.setup_task_id;")"
-TASK01="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='01' AND t.lor_scene_id IS NULL AND t.active_flag ORDER BY t.display_order, t.setup_task_id;")"
-TASK16="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='16' AND t.lor_scene_id IS NULL AND t.active_flag ORDER BY CASE WHEN t.task_name='Setup Northern Lights' THEN 0 ELSE 1 END, t.display_order, t.setup_task_id;")"
-TASK13SCENE="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.lor_scene ls ON ls.lor_scene_id=t.lor_scene_id WHERE ls.scene_name='13-Christmas Story' AND t.active_flag ORDER BY t.display_order, t.setup_task_id;")"
+TASK00="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='00' AND t.lor_scene_id IS NULL AND t.active_flag ORDER BY CASE WHEN t.task_name='Setup HWY42 Traffic Signs' THEN 0 ELSE 1 END, t.display_order, t.setup_task_id LIMIT 1;")"
+TASK01="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='01' AND t.lor_scene_id IS NULL AND t.active_flag ORDER BY t.display_order, t.setup_task_id LIMIT 1;")"
+TASK16="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='16' AND t.lor_scene_id IS NULL AND t.active_flag ORDER BY CASE WHEN t.task_name='Setup Northern Lights' THEN 0 ELSE 1 END, t.display_order, t.setup_task_id LIMIT 1;")"
+TASK13SCENE="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t JOIN ref.lor_scene ls ON ls.lor_scene_id=t.lor_scene_id WHERE ls.scene_name='13-Christmas Story' AND t.active_flag ORDER BY t.display_order, t.setup_task_id LIMIT 1;")"
 for pair in "00:$TASK00" "01:$TASK01" "16:$TASK16" "13-Christmas Story:$TASK13SCENE"; do
     label="${pair%%:*}"
     value="${pair#*:}"
@@ -480,11 +477,8 @@ for task_id in "$TASK00" "$TASK01" "$TASK16" "$TASK13SCENE"; do
     patch_flag "$task_id" "display-setup-step" '{"is_display_setup_step":true}'
     patch_flag "$task_id" "display-material" '{"requires_display_material":true}'
 done
-
 echo "Governed Display Setup + whole-scope material PATCH probes: PASS"
 
-# Magic Igloo proves Display Setup color/classification is not the same as
-# releasing the entire Stage material set for every physical step.
 MAGIC_IDS="$(psql_test -qAt -c "
     SELECT string_agg(t.setup_task_id::text, ',' ORDER BY t.setup_task_id)
     FROM ref.setup_task t
@@ -507,11 +501,16 @@ for task_id in "${MAGIC_ARRAY[@]}"; do
 done
 echo "Magic Igloo three-step Display Setup classification probe: PASS"
 
+CTX00="/tmp/setup-material-context-stage00-$STAMP.json"
+CTX01="/tmp/setup-material-context-stage01-$STAMP.json"
+CTX16="/tmp/setup-material-context-stage16-$STAMP.json"
+CTX13="/tmp/setup-material-context-christmas-story-$STAMP.json"
+TEMP_FILES+=("$CTX00" "$CTX01" "$CTX16" "$CTX13")
+
 fetch_context() {
     local task_id="$1"
     local label="$2"
-    local file="/tmp/setup-material-context-${label}-$STAMP.json"
-    TEMP_FILES+=("$file")
+    local file="$3"
     local code
     code="$(curl -sS -o "$file" -w '%{http_code}' \
         "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task_id/material-context?season_year=2025")"
@@ -520,13 +519,12 @@ fetch_context() {
         cat "$file" || true
         exit 31
     fi
-    printf '%s' "$file"
 }
 
-CTX00="$(fetch_context "$TASK00" stage00)"
-CTX01="$(fetch_context "$TASK01" stage01)"
-CTX16="$(fetch_context "$TASK16" stage16)"
-CTX13="$(fetch_context "$TASK13SCENE" christmas_story)"
+fetch_context "$TASK00" "Stage 00" "$CTX00"
+fetch_context "$TASK01" "Stage 01" "$CTX01"
+fetch_context "$TASK16" "Stage 16" "$CTX16"
+fetch_context "$TASK13SCENE" "13-Christmas Story" "$CTX13"
 
 sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - \
     "$CTX00" "$CTX01" "$CTX16" "$CTX13" <<'PY'
@@ -582,7 +580,7 @@ echo "  1. Reusable Task Catalog: representative Stage 00, Stage 01, Stage 16 an
 echo "  2. Stage 26 Magic Igloo: Frame, Skins/Bungees, and Lighting/Cameras/Finish rows all show DISPLAY SETUP; they are not falsely given whole-scope staged material timing."
 echo "  3. Open a representative material task and confirm the two separate checkboxes are understandable."
 echo "  4. Inspect Material / Logistics for Stage 00, Stage 01, Stage 16 and Christmas Story. Automated counts already passed above."
-echo "  5. Add one PREVIEW-ONLY reusable task and confirm creation immediately opens the full task editor. You may delete the preview task afterward, but it cannot affect Production."
+echo "  5. Add one PREVIEW-ONLY reusable task and confirm creation immediately opens the full task editor. You may delete the preview task afterward; it cannot affect Production."
 echo
 echo "When review is finished, return here and press ENTER."
 echo "============================================================"
