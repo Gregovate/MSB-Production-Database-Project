@@ -2,7 +2,7 @@
 MSB Setup Session — automatic Display/container material applicability
 Issue: #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-10 V0.1.0
+Revision: 2026-09-10 V0.1.1
 
 Purpose:
   Record the one reusable-task fact needed by automatic LOR material resolution:
@@ -14,6 +14,7 @@ Authority boundaries:
   - This migration does not create a task-owned LOR material-source selector.
   - This migration does not backfill guesses from task names, Stage, Scene, or type.
   - Existing Setup task Stage/Scene work scope is unchanged.
+  - Existing task audit/update state is not touched merely to establish false.
 ============================================================================ */
 
 BEGIN;
@@ -38,15 +39,29 @@ BEGIN
 END
 $preflight$;
 
+/*
+PostgreSQL applies this constant default to existing rows as part of the schema
+change. Do not run a mass UPDATE: reusable task audit timestamps/person fields
+must remain unchanged simply because this new fact defaults to false.
+*/
 ALTER TABLE ref.setup_task
-    ADD COLUMN IF NOT EXISTS requires_display_material boolean;
+    ADD COLUMN IF NOT EXISTS requires_display_material boolean NOT NULL DEFAULT false;
 
 ALTER TABLE ref.setup_task
     ALTER COLUMN requires_display_material SET DEFAULT false;
 
-UPDATE ref.setup_task
-   SET requires_display_material = false
- WHERE requires_display_material IS NULL;
+DO $column_guard$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM ref.setup_task
+        WHERE requires_display_material IS NULL
+    ) THEN
+        RAISE EXCEPTION
+            'requires_display_material contains NULL after schema add; stop rather than rewriting existing task rows';
+    END IF;
+END
+$column_guard$;
 
 ALTER TABLE ref.setup_task
     ALTER COLUMN requires_display_material SET NOT NULL;
@@ -117,5 +132,5 @@ GRANT EXECUTE ON FUNCTION ref.set_setup_task_display_material_requirement(text,b
 COMMIT;
 
 SELECT
-    '2026-09-10-setup-display-material-requirement-v0.1.0' AS applied_revision,
+    '2026-09-10-setup-display-material-requirement-v0.1.1' AS applied_revision,
     current_user AS applied_by;
