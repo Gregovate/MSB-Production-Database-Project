@@ -27,6 +27,9 @@ def test_stage_order_applies_to_plan_schedule_and_perform() -> None:
     assert "renderNextExecutionWithStageOrder" in text
     assert "loadNextScheduleWithStageOrder" in text
     assert "setup-stage-order-heading" in text
+    assert "setup-stage-scope-heading" in text
+    assert "Stage-level / General" in text
+    assert "Scene —" in text
 
 
 def test_production_loads_stage_order_assets() -> None:
