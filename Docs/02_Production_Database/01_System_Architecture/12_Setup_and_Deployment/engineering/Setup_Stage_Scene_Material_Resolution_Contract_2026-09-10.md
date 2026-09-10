@@ -67,6 +67,44 @@ true
 
 Do not infer this value from task name, Stage, Scene, action type, or the mere existence of Displays in that scope.
 
+## Operator UI Rule — Automatic Material Resolution
+
+The operator must **not** select an LOR Stage, Preview, Scene, or material-source row for ordinary Setup material.
+
+The reusable task already has its governed Stage/real-Scene work scope. The only ordinary material decision exposed to the operator is whether that task actually requires Display/container material.
+
+Expected task editor behavior:
+
+```text
+Uses Display / Container Material   [ ]
+```
+
+When unchecked:
+
+```text
+No Display material required for this task.
+```
+
+When checked, Setup resolves the material automatically from the task's existing scope and shows the result as read-only context, for example:
+
+```text
+Resolved automatically from LOR
+7 Displays
+1 Container
+```
+
+The UI may show the resolved Displays/Containers and why they were included, but it must not present a chooser such as:
+
+```text
+Choose current LOR material source...
+Stage 00 ...
+Stage 01 ...
+Preview ...
+Scene ...
+```
+
+That selector belonged to superseded PR #142 and is explicitly rejected. Normal Setup operation must not require the Manager to understand or manually reproduce LOR programming structure in order to schedule work.
+
 ## Existing Shared LOR Stage / Scene Classification Is Authority
 
 Setup must reuse the established Folder Alignment LOR Scene/group classification rather than inventing a second classification system.
@@ -343,6 +381,7 @@ Do not implement:
 
 - explicit `LOR_STAGE` / `LOR_PREVIEW` / `LOR_SCENE` material-source rows per task;
 - a user-facing Preview material selector;
+- any ordinary user-facing LOR material-source selector;
 - zero-to-many manually selected ordinary LOR material-source relationships;
 - Stage material as every active `ref.display.stage_id` row regardless of Scene ownership;
 - Stage material as Stage Displays minus every `ref.lor_scene_display` row;
@@ -365,9 +404,10 @@ Minimum candidate scope:
 5. preserve exact Scene material behavior;
 6. derive Containers only after Display resolution;
 7. preserve explicit supplemental resources/support Containers;
-8. correct Stage-oriented presentation/sorting in Plan / Schedule and Perform Work without replacing existing planning-order semantics;
-9. add deterministic tests for Stages 00, 01, 02, 13, and 16 plus no-material tasks; and
-10. use disposable current-Production-clone and protected browser acceptance before any Production consideration.
+8. expose only the material yes/no decision to the operator and render the automatically resolved LOR material set read-only;
+9. correct Stage-oriented presentation/sorting in Plan / Schedule and Perform Work without replacing existing planning-order semantics;
+10. add deterministic tests for Stages 00, 01, 02, 13, and 16 plus no-material tasks; and
+11. use disposable current-Production-clone and protected browser acceptance before any Production consideration.
 
 ## Production Gate
 
