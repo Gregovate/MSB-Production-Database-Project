@@ -8,8 +8,8 @@
 | Audience | Production documentation maintainers and Folder Alignment reviewers |
 | Status | CURRENT |
 | Owner | Production documentation owner / administrator |
-| Last Reviewed | 2026-08-23 |
-| Keywords | Stage folder, Scene folder, Sub-stage, scaffold, Google Drive, Display Folders, Wiring, Procedures, PreviewBackground |
+| Last Reviewed | 2026-09-10 |
+| Keywords | Stage folder, Scene folder, Sub-stage, scaffold, Google Drive, Display Folders, Wiring, Procedures, PreviewBackground, LOR2DB |
 
 [↑ Google Drive / Display Folder Operations](../README.md)
 
@@ -18,6 +18,36 @@
 Use this procedure when creating a new **Stage, formal Sub-stage, or Scene documentation folder** in the Google Shared Drive named **Display Folders**.
 
 New Stages are uncommon. New Scene folders are more likely as the physical/documentation organization is refined.
+
+## Normal LOR2DB Scene Workflow
+
+When a new or renamed LOR Scene is intended to be a controlled Scene documentation scope, the normal creation/repair workflow belongs inside **LOR2DB reconciliation**.
+
+LOR2DB already knows the expected Scene name and owning Stage/Sub-stage. It should validate the Google Drive structure and, when it is missing or incomplete, show the exact problem and offer:
+
+```text
+Create / Repair Scene Folder Structure
+```
+
+The system must not silently create Google Drive content. After the operator approves that action, the paired Windows LOR runner derives the destination from frozen reconciliation evidence, applies the controlled `scene_folder_template`, generates required marker files using the correct folder identity, and revalidates the result. Reconciliation may continue only after the structure passes.
+
+The operator must not be asked to type an arbitrary destination path or manually repeat the Scene name inside marker files.
+
+### Why this is required — Stage 01 incident
+
+The following 2026-09-10 Explorer view is preserved from the Stage 01 incident that exposed this requirement:
+
+![Stage 01 before Scene folder repair](../images/Stage_01_Scene_Folder_Structure_2026-09-10.jpg)
+
+At the time of the screenshot, LOR contained the structured Scene name `01-Front Gate`, while the Stage folder still contained a legacy/general folder named `Gate` and the required controlled Scene marker structure was incomplete. Setup acceptance later surfaced the mismatch indirectly as an incorrect Stage material count. After the Scene folder and markers were repaired, the mounted controlled path resolved as `01-Front Entrance-FE/01-Front Gate`.
+
+This is why a new/renamed controlled Scene should be validated and, with operator approval, created/repaired during LOR2DB reconciliation rather than being left to manual memory.
+
+The repository-controlled template definition lives under:
+
+```text
+LOR2DB/02_Reconciliation/scene_folder_template/
+```
 
 ## Before You Start
 
@@ -128,6 +158,8 @@ Photos                               NO
 
 Use [Add and Verify MSB Display Folder Marker Files](Add_Verify_Marker_Files.md) when you need the full marker checklist.
 
+For a LOR2DB-generated Scene structure, the marker bodies are generated rather than copied blindly. The marker must contain the correct current folder identity known by reconciliation. A Scene rename is not complete if a marker still identifies the prior folder name.
+
 ## Folder Use
 
 ### `PreviewBackground`
@@ -187,16 +219,16 @@ Do not put the current field wiring image inside `SourceDocs`.
 1. Confirm that the new Stage, Sub-stage, or Scene represents a real documentation scope.
 2. Confirm its owning Stage or Sub-stage.
 3. Name the folder using the current naming rule.
-4. Create the complete folder structure shown above.
-5. Add the marker to the new Stage/Sub-stage/Scene root.
-6. Add the marker to `Procedures`.
-7. Add the marker to `Wiring`.
-8. Add the marker to `PreviewBackground` when that folder is being used as a current controlled LOR/application source.
-9. Do **not** add separate markers to the fixed child branches listed above.
-10. Put new current files only in the correct published locations.
-11. Keep working/source files in `SourceDocs` and historical material in `Archive`.
-12. Verify the completed scaffold against the checklist below.
-13. Allow the normal parser/Folder Alignment workflow to pick up any related LOR changes; creating the Google Drive folder does not by itself change LOR or the Production Database.
+4. For a new/renamed controlled LOR Scene, use the LOR2DB reconciliation **Create / Repair Scene Folder Structure** action when it is offered.
+5. Review the destination and exact missing/invalid items shown by LOR2DB; do not type a replacement path.
+6. Approve the create/repair action only when the derived Stage/Sub-stage and Scene identity are correct.
+7. Allow the paired Windows runner to create only the missing approved scaffold items and generate the required markers from that exact identity.
+8. Confirm LOR2DB revalidation passes before finishing reconciliation.
+9. For manual legacy/recovery work outside that guided path, create the same complete folder structure shown above.
+10. Do **not** add separate markers to the fixed child branches listed above.
+11. Put new current files only in the correct published locations.
+12. Keep working/source files in `SourceDocs` and historical material in `Archive`.
+13. Creating or repairing the Google Drive folder does not by itself change LOR or the Production Database.
 
 ## New Folder Checklist
 
@@ -204,7 +236,7 @@ Do not put the current field wiring image inside `SourceDocs`.
 - [ ] The owning Stage or Sub-stage is known.
 - [ ] The folder uses the current `NN-Scene Name` or `NNa-Scene Name` rule when it is a Scene.
 - [ ] The complete current scaffold has been created.
-- [ ] The Stage/Sub-stage/Scene root marker is present.
+- [ ] The Stage/Sub-stage/Scene root marker is present and identifies the correct current folder.
 - [ ] `Procedures` marker is present.
 - [ ] `Wiring` marker is present.
 - [ ] `PreviewBackground` marker is present when that folder is used as a current source.
@@ -215,6 +247,7 @@ Do not put the current field wiring image inside `SourceDocs`.
 - [ ] Current Setup/Takedown PDFs will be placed directly in the task folder.
 - [ ] Current wiring images will be placed directly in the correct Wiring branch.
 - [ ] Working/source material will be kept in `SourceDocs`.
+- [ ] For a new/renamed controlled LOR Scene, LOR2DB structure revalidation is PASS before reconciliation Finish.
 
 ## Existing Legacy Folders
 
@@ -226,10 +259,12 @@ For an existing folder, use [Repair or Organize an Existing Stage / Scene](Repai
 
 ## Expected Result
 
-The new Stage/Sub-stage/Scene starts with one complete, predictable documentation structure. Current published Procedure and Wiring files have clear destinations, source/history files have separate locations, and marker files appear only where required.
+The new Stage/Sub-stage/Scene starts with one complete, predictable documentation structure. Current published Procedure and Wiring files have clear destinations, source/history files have separate locations, marker files appear only where required, marker identity agrees with the current folder, and LOR2DB can verify a new/renamed controlled Scene before reconciliation finishes.
 
 ## If Something Is Wrong
 
+- **LOR2DB reports missing/invalid Scene structure:** do not finish reconciliation. Review the exact findings and use **Create / Repair Scene Folder Structure** if the derived destination is correct.
+- **A marker exists but identifies the wrong folder name:** treat it as invalid; repair it through the governed LOR2DB workflow when applicable.
 - **Unsure whether this should be a Scene folder:** do not create it yet; review Folder Alignment and the physical field organization.
 - **Folder was created with the wrong name:** stop before adding current files; correct the naming decision through the normal alignment process.
 - **Extra markers were added to child folders:** review the marker procedure and remove/flag the extras only after confirming they are not required by another approved use.
@@ -238,3 +273,5 @@ The new Stage/Sub-stage/Scene starts with one complete, predictable documentatio
 ## Related Engineering
 
 - [Google Drive Engineering](../engineering/README.md)
+- [LOR2DB Reconciliation](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/README.md)
+- GitHub Issue #143
