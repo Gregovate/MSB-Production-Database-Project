@@ -10,209 +10,161 @@
 
 ## Purpose
 
-Record the task/material distinction established during 2025 Setup Catalog review so future engineering does not reconstruct it from chat, screenshots, or individual task examples.
+Preserve the operator-confirmed distinction between reusable Setup task scope, LOR Display grouping, physical/documentation scope, and Container derivation so future work does not reconstruct this model from screenshots or chat.
 
-This contract governs how reusable Setup work should resolve required Displays/assets and, downstream, current Containers for planning and Pick List use.
+## Four Concepts Must Remain Separate
 
-## Three Concepts Must Not Be Collapsed
+### 1. Reusable Setup task
 
-### 1. Reusable task scope
-
-A reusable Setup task is the practical unit of work and has a Stage/Sub-stage/Scene/Park Infrastructure organizational home.
-
-Task scope answers **where the work belongs**. It does not prove that the task owns any Display.
-
-Example:
-
-```text
-Grease Gate bearings
-    -> belongs at the Front Gate / applicable Stage scope
-    -> is real reusable Setup work
-    -> may legitimately own zero Displays
-```
-
-Do not move a task to another Stage/Scene merely to make Material / Logistics appear populated.
-
-### 2. Display physical/documentation location
-
-A physical Display belongs to the existing current Stage/Sub-stage/Scene hierarchy.
-
-The authoritative hierarchy already exists through:
-
-- `ref.display.stage_id -> ref.stage`;
-- current `ref.lor_scene_display -> ref.lor_scene` membership where the Display belongs to a real Scene scope; and
-- the production-accepted shared field-context / Folder Alignment resolver.
-
-A Scene is a real field/documentation scope only when it is deliberately aligned. If there is no more-specific Scene/Sub-stage scope, the Display remains at the applicable Stage/Sub-stage scope.
-
-A Display has one physical Setup location in that hierarchy. It must not be assigned to two different physical Setup locations merely to satisfy task planning.
-
-### 3. Reusable task Display work-package ownership
-
-Display assignment is optional and separate from task scope.
-
-Current operating rule established during live 2025 review:
-
-```text
-one Display
-    -> zero or one reusable Setup task
-
-one reusable Setup task
-    -> zero, one, or many Displays
-```
-
-If a Display belongs to a reusable Setup work package, one reusable task owns that Display for Setup planning/reporting. Do not duplicate the same Display across reusable tasks.
-
-The practical task boundary controls the assignment. Do not create one task per panel merely to make Display ownership easy.
+A task is a practical unit of work that can be planned/staffed independently.
 
 Examples:
 
 ```text
+02 Triangle Volunteer Path Setup
+02 Claymation Panels
+```
+
+Both may belong to Stage 02 and be assigned to different crews.
+
+A task may also legitimately require no Display group at all. `Grease Gate bearings` is the canonical example.
+
+### 2. Task physical/documentation scope
+
+Task scope answers where the work belongs for Setup organization and shared Procedures/Wiring context.
+
+The existing Folder Alignment contract controls this scope:
+
+```text
+NN-Name-XY      -> Stage
+NNa-Name-XY     -> Sub-stage
+NN-Name         -> Scene under the owning Stage
+NNa-Name        -> Scene under the owning Sub-stage
+```
+
+If an LOR programming/grouping Scene does not correspond to a real `NN-Scene` / `NNa-Scene` structured folder, the physical/documentation scope remains the owning Stage/Sub-stage.
+
+Therefore a task may be:
+
+```text
+task scope     = Stage 02
+material group = an LOR Scene/group that gathers the Displays used by that task
+```
+
+The material group must not force the task into Scene scope.
+
+### 3. LOR Display/material group
+
+LOR already maintains useful Scene/group membership in `ref.lor_scene_display`. Setup should consume that authoritative grouping when a practical task corresponds to the group instead of copying every Display into a second manually-maintained task list.
+
+This avoids the "forgotten Display" failure: if a Display is later added to the authoritative LOR group, Setup can resolve it automatically without a separate Display-to-task maintenance step.
+
+A task may use zero, one, or, if real field practice requires it, more than one LOR material group. Exact schema cardinality must be confirmed before implementation; do not assume a single nullable column without inventory.
+
+For a true Scene such as `13-Christmas Story`, the task physical scope and the LOR material group may happen to be the same Scene.
+
+For a Stage-level/background grouping, they deliberately differ:
+
+```text
+02 Claymation Panels
+    task/documentation scope -> Stage 02
+    material Display source  -> Show Background Stage 02 Triangle Claymation
+
+02 Triangle Volunteer Path Setup
+    task/documentation scope -> Stage 02
+    material Display source  -> its corresponding LOR grouping
+
 Grease Gate bearings
-    -> zero Displays is valid
-
-Set Up Traffic Signs
-    -> one reusable task
-    -> may own the full reviewed Traffic Sign Display group
-
-Set Up MSB & Rotary Signs
-    -> one reusable task
-    -> may own the reviewed MSB / Rotary sign Display group
-
-Setup Panels
-    -> one practical crew/work-package task
-    -> may own many panel Displays
+    task/documentation scope -> Stage 01 / Front Gate
+    material Display source  -> none
 ```
 
-Known review areas include Hwy 42 Traffic Signs, Rotary MSB Signs, Front Entrance, Northern Lights, and other grouped physical work.
+### 4. Container derivation
 
-LOR Scene/display-group and Stage membership are useful **selection evidence** for establishing a task's work package, but they do not automatically make every Display in that scope belong to every task located there.
-
-## Required Resolver Flow
-
-The material resolver must follow:
+Once the required Display group is known, current Containers derive from the Displays' current `ref.display.container_id` values.
 
 ```text
-selected reusable Setup task
-    -> its assigned Display work package, if any
-        -> each Display's current ref.display.container_id
-            -> deduplicate current Containers / trailers
-                -> add reviewed supplemental support / KIT Containers
-                    -> explain why each item / Container is required
+selected/scheduled task
+    -> LOR material group(s), if any
+    -> current Displays in those group(s)
+    -> current Display.container_id
+    -> deduplicate Containers/trailers
+    -> add explicit supplemental KIT/support Containers when needed
 ```
 
-A task with no assigned Displays may correctly resolve zero Displays and zero derived Containers. That is not inherently a data defect.
+Do not maintain a second task-to-Container list where current Display storage already supplies the answer.
 
-Do **not** replace task-level ownership with automatic inheritance such as:
+## Required Stage-Level Programming / Grouping Scenes
+
+The following LOR Scenes are required show-programming/grouping constructs even though they resolve physically/documentationally to their owning Stage rather than to separate `NN-Scene` folders:
 
 ```text
-task Stage -> every Stage Display -> Containers
+Stage 00
+- Show Background Stage 00 HWY42 MSB-Rotary-Trees
+- Show Background Stage 00 HWY42 Traffic Signs
+
+Stage 01
+- Show Background Stage 01 FE Goal Sign
+- Show Background Stage 01 FE MSB Sign
+- Show Background Stage 01 FE Open-Close Sign
+- Show Background Stage 01 FE Outside Gate
 ```
 
-or:
+These six are required for programming the show and for authoritative Display grouping. Do not delete or normalize them away merely because they do not create separate Google Drive Scene folders.
 
-```text
-task Scene -> every Scene Display -> Containers
-```
-
-Stage/Scene/LOR groups may be offered as bulk-selection sources when the whole group truly is the practical work package. Bulk selection is an editing convenience that writes reviewed task-to-Display ownership; it is not silent inheritance.
+Their LOR Scene membership can be used as task material grouping while Folder Alignment still resolves Procedures/Wiring to Stage 00 or Stage 01.
 
 ## Current Production Defect
 
-`Setup/Application/setup_next_repository.py` currently builds `field_context()` Display scope from:
+`Setup/Application/setup_next_repository.py::field_context()` currently uses the task's `lor_scene_id` for both concepts at once:
 
-1. explicit `ref.setup_task_display` mappings; plus
-2. automatic expansion of every Display in `ref.lor_scene_display` for the task's `lor_scene_id`.
+- task Scene organization; and
+- automatic Display material expansion through `ref.lor_scene_display`.
 
-This violates the operating model in two different ways:
+That works for a true Scene such as Christmas Story, but fails for Stage-level tasks whose material is represented by a separate background/programming LOR Scene. Those tasks currently show zero Displays/Containers unless explicit `ref.setup_task_display` rows happen to exist.
 
-- Scene-organized tasks can appear to own every Scene Display even when no reviewed task-to-Display ownership exists;
-- many real Display-bearing Stage-level work packages have no populated `ref.setup_task_display` ownership yet and therefore show zero, while zero is also a legitimate result for non-Display tasks such as bearing maintenance.
+Representative review examples include:
 
-The application cannot safely distinguish those Stage-level cases merely from Stage membership. The missing piece is reviewed task-level Display ownership plus a practical Manager editing workflow.
+- Stage 01 `Claymation Panels` / Front Entrance groupings;
+- Stage 16 `Setup Northern Lights`;
+- Stage 16 `Layout RGB Locations (20' Spacing, 32P & 30D)`;
+- Stage 16 `Northern Lights Plug in Power & Network`;
+- Hwy 42 Traffic Signs;
+- Hwy 42 MSB / Rotary Signs; and
+- Stage 02 Volunteer Path versus Claymation Panels as separate crew tasks within the same Stage.
 
-Representative Production review evidence includes:
+The fix is **not** automatic expansion of every Display on the Stage and **not** manual maintenance of every Display-to-task row.
 
-- Stage 01 `Claymation Panels` currently shows 0 resolved Displays even though this is intended as Display-bearing work;
-- Stage 16 `Setup Northern Lights`, `Layout RGB Locations (20' Spacing, 32P & 30D)`, and `Northern Lights Plug in Power & Network` currently show 0;
-- Christmas Story Scene currently shows 8 Displays / 4 Containers because of automatic Scene expansion; this result may be physically plausible but the ownership must come from reviewed task material rather than implicit Scene inheritance;
-- additional operator-noted areas include Hwy 42 Traffic Signs, Rotary MSB Signs, and Front Entrance; and
-- `Grease Gate bearings` is the counterexample proving that Stage-level zero cannot automatically be treated as missing material.
+The missing relationship is a way for a task to reference its authoritative LOR material grouping independently of its Stage/Scene physical/documentation scope.
 
-The fix is **not** to add automatic Stage expansion. The fix is to make task-level Display work-package ownership reviewable and trustworthy, then have the resolver consume it.
+## Implementation Direction
 
-## Manager Editing Requirement
+Before choosing schema, inventory representative Production tasks and their LOR grouping candidates.
 
-The Catalog needs a practical way to maintain task material without forcing one Display at a time where a real work group already exists.
+The implementation should support:
 
-Required direction:
+- task scope remaining Stage/Sub-stage/true Scene according to Folder Alignment;
+- zero material group for tasks such as bearing maintenance;
+- a Stage-level task referencing an LOR background/programming Scene solely as its Display/material source;
+- separate tasks in one Stage referencing different LOR Display groups so parallel crews get the correct material;
+- true Scene tasks using their Scene group naturally;
+- dynamic membership from current `ref.lor_scene_display`, so Displays are not forgotten in a second maintained list;
+- current Container derivation from the resolved Displays;
+- explicit supplemental KIT/support Containers separately; and
+- clear UI language distinguishing **Task Scope** from **Material Group**.
 
-- show the Displays currently owned by the selected reusable task;
-- show enough Stage/Sub-stage/Scene context to understand where those Displays physically belong;
-- allow selecting a known Stage/Sub-stage/Scene/LOR group as a **bulk source** when that group truly matches the practical task;
-- write explicit task-to-Display ownership for the reviewed selected Displays rather than relying on future implicit inheritance;
-- allow explicit add/remove/reassign corrections;
-- prevent one Display from being assigned to more than one reusable Setup task;
-- preserve zero-Display tasks as valid;
-- surface each Display's current Container after ownership is established;
-- do not create a second maintained Container list when Container demand can be derived from current Display-to-Container relationships; and
-- keep supplemental support/KIT Container relationships explicit and separate because they are not always derivable from Display storage.
-
-When reassigning a Display from one reusable task to another, the UI should show the current owner and require an explicit move/reassign rather than silently duplicating the relationship.
-
-## Container Rules
-
-`ref.display.container_id` remains the current storage/transport relationship for a Display.
-
-The resolver should derive Container demand from the selected task's owned Displays and deduplicate it. This is necessary because one Container/trailer may carry Displays for several Stages even though each Display itself has only one reusable Setup task owner.
-
-Known examples:
-
-- Container 34 / Arch Trailer carries Displays for multiple Stages;
-- Antenna Trailer carries material for several unrelated Display groups; and
-- a KIT/support Container can be required even when no task Display currently points to it.
-
-Do not assign a Display to the wrong Container or wrong Stage merely to express a Setup dependency.
-
-## Planning Boundary
-
-Reusable task Display ownership is separate from:
-
-- Stage/Scene Catalog organization;
-- physical Display Stage/Scene location;
-- task predecessor/dependency relationships;
-- preferred execution order;
-- annual schedule/date assignment;
-- readiness conditions; and
-- current Container movement state.
-
-A task such as bearing lubrication can be real Setup work with no Display material. Conversely, a grouped panel-install task can own many Displays and derive several Containers.
+Existing `ref.setup_task_display` data must be inventoried before retirement/reinterpretation. Do not delete or migrate it blindly; determine whether any rows represent exceptions not captured by an LOR group.
 
 ## 2026 Session Gate
 
 The operator decision remains: **do not create the 2026 Setup Session until the reconstructed 2025 plan is complete.**
 
-Before propagation, task material must be trustworthy enough that planning/Pick List work does not inherit known false or missing Display/Container relationships.
-
-## Implementation Gate
-
-Before changing Production behavior:
-
-1. inventory current `ref.setup_task_display` ownership and representative tasks;
-2. identify tasks that legitimately require zero Displays;
-3. identify practical group tasks whose material can be bulk-selected from existing Stage/Scene/LOR grouping evidence;
-4. identify any Display currently mapped to more than one reusable task and reconcile it before enforcing uniqueness;
-5. confirm the editing workflow against representative areas including Front Entrance, Hwy 42 Traffic Signs, Rotary MSB Signs, Northern Lights, and one known-good Scene group;
-6. implement explicit add/remove/reassign behavior and preserve zero-Display tasks;
-7. only then remove implicit Scene-wide material ownership from the resolver;
-8. verify derived Container deduplication and shared-trailer behavior; and
-9. perform protected browser validation before Production acceptance.
+Material resolution must be trustworthy before 2026 propagation so near-term planning/Pick List work does not inherit known missing or false Display/Container relationships.
 
 ## Related Durable Sources
 
+- [Google Drive Path Resolution Contract](../../../../../00_Project_Overview/Google_Drive/engineering/Google_Drive_Path_Resolution_Contract.md)
 - [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md)
-- [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md)
+- [Setup Predecessor and Readiness Contract](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md)
 - [Setup engineering portal](README.md)
-- [Google Drive Stage/Sub-stage/Scene folder SOP](../../../../../00_Project_Overview/Google_Drive/operatorSOP/Create_Stage_Substage_Scene_Folder.md)
-- [Shared Field Context Database Layer Acceptance](../../07_Labeling_and_Scanning/Shared_Field_Context_Database_Layer_Acceptance_2026-08-23.md)
 - GitHub Issue #122
