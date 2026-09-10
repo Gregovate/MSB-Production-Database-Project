@@ -32,9 +32,9 @@ The runner creates only the missing expected folders and marker files after expl
 
 The folder structure is defined by `scene_folder_template.json` in this directory. Empty folders are represented in that manifest rather than with `.gitkeep` files so repository artifacts are never copied into Google Drive.
 
-## Marker identity
+## Marker identity is generated, not copied
 
-Marker files are **generated**, not copied as static files. The generated marker must include the exact actual folder identity that owns it. This is important when a Scene is newly created or renamed: the marker text must agree with the folder name/path the reconciliation system derived.
+Marker files are **generated**, not copied as static files. LOR2DB already knows the authoritative expected Scene name and owning Stage/Sub-stage. The runner therefore knows exactly what folder name/path each marker must describe.
 
 For example, when the Scene is:
 
@@ -55,6 +55,8 @@ G:\Shared drives\Display Folders\01-Front Entrance-FE\01-Front Gate
 ```
 
 and generates required markers whose embedded folder identity matches the actual root/helper folder in which each marker is written.
+
+A Scene rename is not complete until the folder structure **and marker contents** agree with the renamed Scene identity. A marker with the right filename but the wrong embedded folder name/path is invalid.
 
 See `marker_content_contract.md` for the generated marker identity fields and rename behavior.
 
