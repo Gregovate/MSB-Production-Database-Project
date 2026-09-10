@@ -3,9 +3,18 @@
 LOR remains authoritative for current Display membership. Setup separately
 records whether a task is a physical Display Setup step (visual classification)
 and whether it uses the current whole Stage/Scene Display-material resolver.
-Scene tasks use exact current LOR Scene membership; Stage/Sub-stage tasks use the
-current remainder after excluding Displays represented by more-specific resolved
-LOR scopes.
+
+Material scope is database-owned, not filesystem-owned:
+
+* Scene-scoped tasks use exact current ``ref.lor_scene_display`` membership for
+  the task's ``lor_scene_id``.
+* Stage/Sub-stage-scoped tasks use every current LOR Display for that stage_id,
+  excluding LOR Scenes that are represented by active scene-scoped reusable
+  Setup tasks for the same stage_id.
+
+Google Drive folders and Procedure paths remain documentation-resolution facts;
+they do not define Display membership or whether a LOR Scene is a separate Setup
+material scope.
 
 Task-specific component/KIT subdivision and staged pick timing are intentionally
 out of scope here and remain deferred to Issue #141.
@@ -19,8 +28,6 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Blueprint, Response, jsonify
 
-from backend import drive_root
-from FieldWiring.Application.field_context_resolver import resolve_structured_scope
 from setup_api import (
     SetupAuthenticationError,
     SetupCommandError,
@@ -36,13 +43,7 @@ setup_material_api = Blueprint("setup_material_api", __name__)
 
 
 class SetupMaterialResolutionError(RuntimeError):
-    """Current LOR/folder evidence cannot produce a complete material scope."""
-
-
-def _same_scope_path(left: Any, right: Any) -> bool:
-    return str(left).replace("\\", "/").casefold().rstrip("/") == str(right).replace(
-        "\\", "/"
-    ).casefold().rstrip("/")
+    """Current Setup/LOR database evidence cannot produce a material scope."""
 
 
 def _task_context(cur: Any, setup_task_id: int) -> dict[str, Any]:
@@ -64,95 +65,51 @@ def _task_context(cur: Any, setup_task_id: int) -> dict[str, Any]:
 
 
 def _stage_remainder_scene_ids(cur: Any, task: dict[str, Any]) -> tuple[list[int], list[int], list[str]]:
-    """Classify all current LOR groups in one Stage by resolved structured scope.
+    """Partition one Stage/Sub-stage using current LOR + reusable Setup scope.
 
-    Returns (remainder scene ids, more-specific scene ids, warnings). A complete
-    list is required: unresolved LOR scope evidence fails closed rather than
-    silently dropping Displays from the material list.
+    ``ref.lor_scene`` contains both true operational Scene scopes and LOR groups
+    whose material belongs to the parent Stage task. Setup already records the
+    operational distinction: a reusable task with ``lor_scene_id`` is explicitly
+    Scene-scoped. Therefore Stage material is all current LOR groups for the
+    stage minus the distinct current LOR Scenes referenced by active scene-scoped
+    Setup tasks.
+
+    This intentionally does not inspect Google Drive folders or BackgroundFile
+    paths. Those resolve documentation; they are not material-membership data.
     """
-    stage = {
-        "stage_id": task.get("stage_id"),
-        "stage_key": task.get("stage_key"),
-        "stage_name": task.get("stage_name"),
-        "folder_path": task.get("folder_path"),
-    }
-    root, _root_type, root_warnings = resolve_structured_scope(
-        stage,
-        None,
-        {},
-        drive_root(),
-    )
-    if root is None:
-        raise SetupMaterialResolutionError(
-            "Setup Display material could not resolve the task Stage/Sub-stage root: "
-            + "; ".join(root_warnings)
-        )
+    stage_id = task.get("stage_id")
+    if stage_id is None:
+        return [], [], []
 
     cur.execute(
         """
-        SELECT ls.lor_scene_id,
-               ls.preview_uuid,
-               cp.name AS preview_name,
-               cp.background_file AS preview_background_file,
-               cp.revision AS preview_revision,
-               cp.source_filename,
-               ls.scene_uuid,
-               ls.scene_name,
-               ls.stage_id AS scene_stage_id,
-               ls.background_file AS scene_background_file
+        SELECT ls.lor_scene_id
         FROM ref.lor_scene AS ls
-        LEFT JOIN lor_snap.v_current_previews AS cp
-          ON cp.id = ls.preview_uuid
         WHERE ls.stage_id = %s
         ORDER BY ls.lor_scene_id
         """,
-        (task["stage_id"],),
+        (stage_id,),
     )
+    all_scene_ids = [int(row["lor_scene_id"]) for row in cur.fetchall()]
 
-    remainder_ids: list[int] = []
-    specific_ids: list[int] = []
-    warnings: list[str] = list(root_warnings)
-    unresolved: list[str] = []
-
-    for raw in cur.fetchall():
-        item = dict(raw)
-        preview = {
-            "preview_uuid": item.get("preview_uuid"),
-            "preview_name": item.get("preview_name"),
-            "preview_background_file": item.get("preview_background_file"),
-            "preview_revision": item.get("preview_revision"),
-            "source_filename": item.get("source_filename"),
-        }
-        scene = {
-            "scene_uuid": item.get("scene_uuid"),
-            "scene_name": item.get("scene_name"),
-            "scene_stage_key": item.get("scene_stage_id"),
-            "scene_background_file": item.get("scene_background_file"),
-        }
-        resolved, scope_type, item_warnings = resolve_structured_scope(
-            stage,
-            scene,
-            preview,
-            drive_root(),
-        )
-        warnings.extend(item_warnings)
-        if resolved is None or scope_type == "UNRESOLVED":
-            unresolved.append(
-                f"{item.get('lor_scene_id')}:{item.get('scene_name') or 'unnamed'}"
-            )
-            continue
-        if _same_scope_path(resolved, root):
-            remainder_ids.append(int(item["lor_scene_id"]))
-        else:
-            specific_ids.append(int(item["lor_scene_id"]))
-
-    if unresolved:
-        raise SetupMaterialResolutionError(
-            "Setup Display material refused a partial Stage list because current LOR scope "
-            "could not be resolved for: " + ", ".join(unresolved)
-        )
-
-    return remainder_ids, specific_ids, warnings
+    cur.execute(
+        """
+        SELECT DISTINCT t.lor_scene_id
+        FROM ref.setup_task AS t
+        JOIN ref.lor_scene AS ls
+          ON ls.lor_scene_id = t.lor_scene_id
+         AND ls.stage_id = t.stage_id
+        WHERE t.stage_id = %s
+          AND t.active_flag
+          AND t.lor_scene_id IS NOT NULL
+        ORDER BY t.lor_scene_id
+        """,
+        (stage_id,),
+    )
+    specific_ids = [int(row["lor_scene_id"]) for row in cur.fetchall()]
+    specific_set = set(specific_ids)
+    remainder_ids = [scene_id for scene_id in all_scene_ids if scene_id not in specific_set]
+    return remainder_ids, specific_ids, []
 
 
 def _scope_relationships(cur: Any, task: dict[str, Any]) -> tuple[dict[int, dict[str, str | None]], list[str], str]:
@@ -208,9 +165,9 @@ def _scope_relationships(cur: Any, task: dict[str, Any]) -> tuple[dict[int, dict
     if not remainder_ids:
         return relationships, warnings, "STAGE_REMAINDER"
 
-    # More-specific current LOR scopes win. If a Display occurs in both a
-    # Stage-fallback LOR group and a true child scope, exclude it from the
-    # parent Stage remainder rather than duplicate it.
+    # A Display in any active scene-scoped Setup LOR Scene is excluded from the
+    # parent Stage remainder. This remains safe even if the LOR source happens
+    # to duplicate a Display across another Stage-level group.
     cur.execute(
         """
         SELECT DISTINCT r.display_id
@@ -232,8 +189,8 @@ def _scope_relationships(cur: Any, task: dict[str, Any]) -> tuple[dict[int, dict
             {
                 "relationship_type": "STAGE_SCOPE",
                 "relationship_notes": (
-                    "Derived from current LOR Stage/Sub-stage remainder after excluding "
-                    "more-specific current LOR scopes."
+                    "Derived from current LOR Stage/Sub-stage membership after excluding "
+                    "LOR Scenes represented by active scene-scoped reusable Setup tasks."
                 ),
                 "relationship_source": "STAGE_REMAINDER",
             },
