@@ -67,6 +67,8 @@ The broader Setup subsystem remains open for real evaluation. Production availab
 
 ## Start Here
 
+- [Setup Task Material Resolver Contract — 2026-09-09](Setup_Task_Material_Resolver_Contract_2026-09-09.md) — **required before changing Material / Logistics**. Preserves the distinction between task scope, Display physical location, reusable task Display work-package ownership, and current Container storage. One Display may belong to zero or one reusable Setup task; one task may own zero, one, or many Displays. Stage/Scene membership is selection/context evidence, not automatic task material inheritance.
+- [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) — **required before changing dependencies/readiness/scheduling**. Preserves hard predecessor vs preferred order vs readiness, area-specific grass/mulch readiness, the current free-form readiness-note limitation, and the Shift-drag predecessor direction.
 - [Setup Catalog Reconstruction Import — 2026-09-09](Setup_Catalog_Reconstruction_Import_2026-09-09.md) — accepted historical record of migrations 023/024 and the one-time normalized catalog reconstruction. Do not treat it as the ongoing task master after Production acceptance.
 - [Setup Reconstruction Migration and Acceptance History — 2026-09-07 to 2026-09-09](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) — durable record of the PL/pgSQL ambiguity defect class, migrations 013/015/018/020, disposable-only migration exclusion, browser/preview gate failures, reconstruction omissions, and Catalog-only delete cleanup finding. Read this before changing Setup migration or acceptance patterns.
 - [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — operator-confirmed planning model: short planning horizon, preferred-order scheduling, Needs Scheduling queue, Sunday avoidance, weather constraints, grass-cutting dependency for cords, multi-day tasks, crew/hour interpretation, mixed-stage Container mobilization, and historical evidence rules.
@@ -146,6 +148,32 @@ Rick Hoffmann's 2025 spreadsheets, the reviewed one-list workbook, and the recov
 
 Crew names do not automatically create Captains. Daily recorded hours do not automatically equal task duration. Multi-task work days require conservative interpretation.
 
+## Task Scope vs Display Work Package vs Container
+
+Do not collapse these concepts.
+
+```text
+Task scope
+    -> where the reusable work belongs organizationally/physically
+
+Display work package
+    -> which Displays, if any, this reusable task owns for Setup planning/reporting
+
+Container
+    -> where those Displays are currently stored/transported
+```
+
+Current reusable Display ownership rule:
+
+```text
+one Display -> zero or one reusable Setup task
+one reusable Setup task -> zero, one, or many Displays
+```
+
+A real task may own **no Displays at all**. `Grease Gate bearings` is the canonical example. Conversely, a practical grouped task such as `Setup Panels`, Hwy 42 Traffic Signs, or Rotary MSB Signs may own many Displays. Do not create one task per panel and do not duplicate one Display across reusable tasks.
+
+Stage/Scene/LOR membership can help the Manager select the intended work package, but it is not automatic task ownership. The current Material / Logistics resolver violates this boundary by automatically expanding Scene membership while many Stage-level Display-bearing tasks have no explicit `ref.setup_task_display` rows yet. See the Task Material Resolver Contract before changing this behavior.
+
 ## Current Planning Model
 
 Setup is **not** a rigid season-long calendar scheduler.
@@ -169,7 +197,11 @@ Important current rules:
 
 - avoid Sunday work whenever reasonably possible;
 - avoid rain and high winds whenever reasonably possible;
-- do not lay cords until grass cutting has stopped;
+- distinguish **HARD PREDECESSOR**, **PREFERRED ORDER**, and **READINESS CONDITION** rather than recreating one rigid historical chain;
+- grass cutting/mulching completion for cord laying is **area-specific to the task/work area**, not one park-wide prerequisite and not a guessed calendar date;
+- the current `readiness_note` records reusable readiness knowledge but **does not currently gate task availability/scheduling**; structured annual readiness remains to be built;
+- Stage 00 can be ready for cord work while another park area is still being mowed/mulched;
+- for the reviewed Stage 00 `Lay Cords #67` example, Hwy 42 sign setup tasks are real hard predecessors while mowing/mulching completion in the Stage 00 cord-laying area is readiness, not another fake Setup task;
 - tasks may span several work days;
 - expected duration is a planning aid, not a one-day restriction;
 - preferred order and prerequisites matter more than false long-range date precision;
@@ -178,6 +210,7 @@ Important current rules:
 - normal Catalog drag already works for reordering within a Stage/Scene and for moving tasks between visible Stage areas; preserve that behavior;
 - predecessor entry needs a faster interaction for the large 2025 dependency pass: current operator direction is **Shift-drag the later/dependent task onto its predecessor** to create the dependency without moving either task; ordinary unmodified drag must retain its existing reorder/scope meaning;
 - modifier-drag dependency creation should use the existing governed `ref.set_setup_task_dependency(...)` write path and provide explicit success/failure feedback rather than silently creating an ambiguous relationship;
+- modifier-drag applies only to task dependencies; do not use it to encode readiness conditions;
 - generic `Staging to Park` is obsolete as a reusable task;
 - mixed-stage Containers/trailers must be detected from authoritative contents and mobilized when the first carried item is needed;
 - Container-specific post-arrival behavior may be full unload, park/mobile storage, special transformation, or ordered partial unload and must not be guessed; and
@@ -191,7 +224,17 @@ The intended direction is a standalone **Pick List** section inside Setup, usabl
 
 Setup owns the Pick List business workflow. Issue #113 / Scan owns identity capture/resolution and supported Zebra/camera/manual input behavior.
 
-See [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md).
+The material chain for Pick List work is task-level, not Stage-level:
+
+```text
+selected/scheduled reusable task
+    -> task-owned Displays, if any
+    -> current Display.container_id
+    -> deduplicated Containers
+    -> reviewed supplemental support/KIT Containers
+```
+
+See [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) and [Setup Task Material Resolver Contract](Setup_Task_Material_Resolver_Contract_2026-09-09.md).
 
 ## Known Boundaries / Open Work
 
@@ -203,7 +246,10 @@ Still unresolved or intentionally separate:
 - reviewed predecessor/readiness pass across the current reusable catalog; dependencies are intentionally zero until this is rebuilt;
 - efficient predecessor-editing interaction for that pass, preserving existing normal drag/reorder/scope behavior while adding explicit Shift-drag dependency creation;
 - classification of historical sequencing into **hard predecessor**, **preferred order**, or **readiness condition**;
-- investigate and correct the Display/material/Container resolver so Scene membership does not overstate task ownership/material requirements and the future Pick List can trust the result;
+- structured annual readiness state so reusable `readiness_note` rules can actually gate/flag availability by task/work area rather than relying only on operator memory;
+- correct Manager-facing task-to-Display work-package ownership so one Display is assigned to zero or one reusable task, group tasks can own many Displays, and zero-Display tasks remain valid;
+- remove automatic Scene-wide material inheritance once explicit reviewed task ownership is sufficient; do **not** replace it with automatic Stage-wide inheritance;
+- reconcile any duplicate `ref.setup_task_display` ownership before enforcing a uniqueness rule on `display_id`;
 - cross-Stage candidate planning surface and candidate-to-work-day workflow;
 - work-day scheduling UX for Morning / Afternoon / All Day, parallel crews, and repeat scheduling of multi-day tasks;
 - controlled reassign/merge when a 2025 annual item belongs to a different reusable task;
@@ -226,7 +272,8 @@ Before 2026 creation, at minimum:
 - remove confirmed reconstruction duplicates/bad reusable definitions so they are not propagated;
 - correct missing real work such as `Set Up Frosty` and other omissions discovered during live review;
 - complete the reviewed predecessor/readiness pass, distinguishing hard predecessors from preferred order and area-specific readiness conditions;
-- resolve material/Display ownership sufficiently that the task-to-Display-to-Container result can support planning/Pick List work without known false relationships; and
+- preserve area-specific readiness such as grass/mulch completion separately from reusable task predecessors; do not fabricate one park-wide `Grass Cutting Complete` task;
+- resolve task Display ownership sufficiently that the task-to-Display-to-Container result can support planning/Pick List work without known false relationships, while preserving legitimate zero-Display tasks; and
 - finish the 2025 reusable planning model rather than copying a knowingly incomplete reconstruction into 2026.
 
 The 2025 Production-backed review remains the proving ground until that plan is complete.
@@ -244,18 +291,20 @@ Before changing this subsystem:
 1. read the Production Database Project Rules;
 2. read this engineering portal;
 3. inspect the current PostgreSQL reusable task catalog first; do not reconstruct the active task list from old spreadsheets or chat memory;
-4. use the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) as the accepted import/deployment history, not as an ongoing task master;
-5. read the [Setup Reconstruction Migration and Acceptance History](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) before changing Setup migrations, disposable acceptance, or reconstruction-cleanup behavior;
-6. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
-7. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
-8. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing logistics/pick behavior;
-9. review Issue #122, PR #125, and PR #139 for the newest live findings, Catalog cleanup gate, and deployment/merge state; use #136/#137 as source lineage for the combined cleanup candidate;
-10. preserve annual 2025 facts separately from reusable future knowledge;
-11. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
-12. use Issue #130 / 03 People and Identity for global skill/qualification work;
-13. use Issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
-14. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
-15. keep operator docs, engineering docs, PR/issue status, and Internal Web Backbone navigation synchronized when accepted behavior changes.
+4. read the [Setup Task Material Resolver Contract](Setup_Task_Material_Resolver_Contract_2026-09-09.md) before touching Material / Logistics, task Display ownership, or Pick List material resolution;
+5. read the [Setup Predecessor and Readiness Contract](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) before touching dependencies, readiness, Shift-drag predecessor editing, or candidate availability;
+6. use the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) as the accepted import/deployment history, not as an ongoing task master;
+7. read the [Setup Reconstruction Migration and Acceptance History](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) before changing Setup migrations, disposable acceptance, or reconstruction-cleanup behavior;
+8. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
+9. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
+10. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing logistics/pick behavior;
+11. review Issue #122, PR #125, and PR #139 for the newest live findings, Catalog cleanup gate, and deployment/merge state; use #136/#137 as source lineage for the combined cleanup candidate;
+12. preserve annual 2025 facts separately from reusable future knowledge;
+13. do not infer exact duration, Captain, crew, completion, task material, or hard predecessor from shorthand evidence;
+14. use Issue #130 / 03 People and Identity for global skill/qualification work;
+15. use Issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
+16. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
+17. keep operator docs, engineering docs, PR/issue status, and Internal Web Backbone navigation synchronized when accepted behavior changes.
 
 ## Related Systems
 
