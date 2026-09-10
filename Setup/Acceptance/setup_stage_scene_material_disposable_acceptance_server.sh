@@ -157,8 +157,12 @@ for file in "$M025" "$VALIDATION"; do
     fi
 done
 
-if find "$CANDIDATE_WORKTREE/Setup" -type f -maxdepth 4 -print0 | xargs -0 grep -l "Choose current LOR material source" 2>/dev/null | grep -q .; then
-    echo "FAIL: rejected manual LOR material-source selector is present in candidate"
+# The controlled engineering contract and regression tests intentionally quote
+# the rejected selector text. Check only executable/browser application source.
+if find "$CANDIDATE_WORKTREE/Setup/Application" -maxdepth 2 -type f -print0 \
+    | xargs -0 grep -l "Choose current LOR material source" 2>/dev/null \
+    | grep -q .; then
+    echo "FAIL: rejected manual LOR material-source selector is present in application source"
     exit 12
 fi
 
