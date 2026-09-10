@@ -8,6 +8,7 @@ APP_DIR = Path(__file__).resolve().parent
 
 def test_operational_search_uses_existing_global_search_control() -> None:
     text = (APP_DIR / "setup_operational_search.js").read_text(encoding="utf-8")
+    css = (APP_DIR / "setup_stage_order.css").read_text(encoding="utf-8")
     assert "setup-task-search" in text
     assert "setup-task-search-clear" in text
     assert "renderPlanningBacklogWithOperationalSearch" in text
@@ -17,6 +18,9 @@ def test_operational_search_uses_existing_global_search_control() -> None:
     assert "next-schedule-task" in text
     assert "setup-stage-order-heading" in text
     assert "setup-stage-scope-heading" in text
+    assert "setup-operational-search-hidden" in text
+    assert ".setup-operational-search-hidden" in css
+    assert "display: none !important" in css
     assert "localStorage." not in text
     assert "/api/setup/" not in text
     assert "commandOptions" not in text
