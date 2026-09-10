@@ -149,19 +149,22 @@ Setup HWY42 MSB / Rotary Signs
 
 02 Claymation Panels
     task/documentation scope -> Stage 02
-    material LOR groups      -> several current Stage 02 LOR groups
+    material LOR groups      -> 280, 281, 282, 283, 284
 ```
 
-The operator-defined `Claymation Panels` work package includes displays commonly referred to by MSB as Claymation characters. Current reviewed Stage 02 evidence includes these LOR groups:
+The operator-defined `Claymation Panels` work package includes the character Displays commonly referred to by MSB as Claymation. Current reviewed Stage 02 evidence resolves the group as:
 
 ```text
-280 Abominable      -> TR-Abominable      -> Container 2
-281 Narwhal         -> TR-Narwhal         -> Container 2
-282 CharlieInTheBox -> TR-CharlieInTheBox -> Container 2
-284 Frosty          -> TR-FrostyComeBack  -> Container 2
+280 Abominable      -> TR-Abominable       -> Container 2
+281 Narwhal         -> TR-Narwhal          -> Container 2
+282 CharlieInTheBox -> TR-CharlieInTheBox  -> Container 2
+283 Headlights      -> FE-HeadlightsSign   -> Container 2   (Rudolph)
+284 Frosty          -> TR-FrostyComeBack   -> Container 2
 ```
 
-The operator also identifies Rudolph as part of the Claymation work package. No Rudolph-named active Display/LOR group appeared in the reviewed Stage 00/01/02/13 coverage output, so its current authoritative LOR identity must be located rather than guessed before finalizing the Claymation material mapping.
+`Rudolph` is the operator/common-name identity for the current `Headlights` LOR group / `FE-HeadlightsSign` Display in this work package. Do not create a separate Rudolph Display or Scene merely to make the Setup task name match the operator terminology.
+
+All five current Claymation groups resolve to Container 2, which makes the current transport result especially simple even though the work package spans five LOR groups.
 
 Other Stage 02 groups such as Signage, US Flag, Volunteer Path Lights, Fred's Stars, and Mega Tree remain separate material groupings unless actual task practice says otherwise.
 
