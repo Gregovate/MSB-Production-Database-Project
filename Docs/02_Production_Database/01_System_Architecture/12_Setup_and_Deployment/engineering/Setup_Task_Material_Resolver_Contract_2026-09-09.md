@@ -10,256 +10,313 @@
 
 ## Purpose
 
-Preserve the operator-confirmed distinction between reusable Setup task scope, LOR Display grouping, physical/documentation scope, and Container derivation so future work does not reconstruct this model from screenshots or chat.
+Preserve the operator-confirmed material-resolution model discovered during 2025 Setup review so future work does not create a second manually maintained Display grouping outside LOR.
 
-## Four Concepts Must Remain Separate
-
-### 1. Reusable Setup task
-
-A task is a practical unit of work that can be planned and staffed independently.
-
-Examples:
+The governing principle is:
 
 ```text
-02 Triangle Volunteer Path Setup
-02 Claymation Panels
+LOR owns current Display placement/grouping.
+Setup owns reusable work/tasks.
+Folder Alignment resolves LOR Scene evidence to physical Stage/Sub-stage/Scene scope.
+Material / Logistics reports the current Displays/Containers for the task's resolved physical scope.
 ```
 
-Both can remain Stage 02 tasks and be assigned to different crews.
+## Core Rule
 
-`Claymation Panels` is an MSB task/work-package name. It is not the name of one LOR Scene. The Claymation work package can aggregate several existing LOR Display groups.
+Material / Logistics is a **scope-context resolver**, not a task-owned parts list.
 
-A task may also legitimately require no Display material at all. `Grease Gate bearings` is the canonical example.
-
-### 2. Task physical/documentation scope
-
-Task scope answers where the work belongs for Setup organization and shared Procedures/Wiring context.
-
-The existing Folder Alignment contract controls this scope:
+For a reusable Setup task:
 
 ```text
-NN-Name-XY      -> Stage
-NNa-Name-XY     -> Sub-stage
-NN-Name         -> Scene under the owning Stage
-NNa-Name        -> Scene under the owning Sub-stage
+true Scene task
+    -> resolve Displays in that exact LOR Scene
+    -> derive current Containers from those Displays
+
+Stage/Sub-stage task
+    -> collect all LOR Scene memberships whose accepted physical/documentation
+       resolution falls back to that Stage/Sub-stage
+    -> exclude Displays whose LOR Scene resolves to a more-specific true Scene
+    -> derive current Containers from the resulting Displays
 ```
 
-If an LOR programming/grouping Scene does not correspond to a real `NN-Scene` / `NNa-Scene` structured folder, the physical/documentation scope remains the owning Stage/Sub-stage.
+The resolver must use the accepted Folder Alignment/shared field-context rules for physical scope classification. Do not use a simple Scene-name regex as Production authority; regex classification used during read-only diagnostics was only a convenient inspection aid.
 
-Therefore a task may be:
+## Why This Model
+
+The same LOR data already controls the physical show design. If a Display is moved in LOR and the accepted LOR ingest/reconciliation updates current Stage/Scene membership, Setup material context should update automatically.
+
+Setup must not require a second Display-to-task maintenance step merely to keep material location current.
+
+This avoids a predictable failure mode:
 
 ```text
-task/documentation scope = Stage 02
-material Display source  = one or more specific LOR Scenes/groups
+Display moved in LOR
+    + Setup copy not updated
+    -> stale Setup material list
 ```
 
-The material group must not force the task into Scene scope.
-
-### 3. LOR Display/material group
-
-LOR already maintains the Display grouping in `ref.lor_scene_display`. Setup should consume that authoritative grouping when a practical task corresponds to the group instead of copying every Display into a second manually maintained task list.
-
-This avoids the "forgotten Display" failure: if a Display is later added to the authoritative LOR group, Setup resolves it automatically without a separate Display-to-task maintenance step.
-
-A task may use:
-
-- no material group;
-- one LOR group; or
-- several LOR groups when one practical crew task spans several programming groups.
-
-The Stage 02 Claymation task proves that more-than-one material group is required. A single task may aggregate several LOR groups while the task itself remains Stage 02 scoped.
-
-A LOR group may also be relevant to more than one reusable task over the Setup lifecycle, for example physical setup, cord/network hookup, or testing. Therefore the task-to-LOR-material-group relationship must not be designed as one-to-one.
-
-For a true Scene, task scope and material group may be the same Scene. For a Stage-level/background grouping, they deliberately differ.
-
-### 4. Container derivation
-
-Once required Displays are resolved from the selected LOR material group(s), current Containers derive from each Display's current `ref.display.container_id`.
+Under the scope resolver:
 
 ```text
-selected/scheduled task
-    -> LOR material group(s), if any
-    -> current Displays in those groups
-    -> current Display.container_id
-    -> deduplicate Containers/trailers
-    -> add explicit supplemental KIT/support Containers when needed
+Display moved in LOR
+    -> current LOR Scene/Stage scope changes
+    -> next Setup material resolution follows the new scope automatically
 ```
 
-A Container may hold Displays from more than one Scene or Stage. That is normal. Container membership is downstream storage/transport evidence and must not be used to infer task scope or LOR material-group membership.
+The reusable Setup task itself does not automatically move merely because one Display moved. Task scope remains a deliberate reusable work decision.
+
+## Task Scope and Material Context Are Separate
+
+A task may belong to a Stage/Scene even when no Display material is needed.
+
+Canonical example:
+
+```text
+Grease Gate Bearings
+    task scope       = applicable Front Gate / Stage scope
+    Display material = none required for the work
+```
+
+The task still belongs to the Gate. Lack of Display material must never be interpreted as lack of physical task scope.
+
+Other Stage-level tasks such as `Claymation Panels` or `Triangle Volunteer Path Setup` can remain independent work items for separate crews even though their Material / Logistics panel may show the same broader Stage-level fallback context.
+
+That broader result is acceptable because Material / Logistics answers:
+
+> What Displays and Containers currently belong to the physical scope where this task lives?
+
+It does **not** claim every displayed item is exclusively owned by that one task.
+
+## Optional Material-Applicability Review State
+
+Operator discussion identified a possible useful control so material-free tasks do not present scope material as if it were required.
+
+Do not implement this as an unreviewed two-state checkbox that makes every existing unchecked task ambiguous. Preferred design direction is an explicit review state such as:
+
+```text
+UNREVIEWED
+USES_SCOPE_DISPLAY_MATERIAL
+NO_DISPLAY_MATERIAL
+```
+
+This state, if implemented, describes whether Display/Container scope context is relevant to the task. It does not alter task Stage/Scene scope and does not maintain individual Display ownership.
+
+Exact column name/UI wording remains subject to browser review.
 
 ## Read-Only Coverage Evidence — Stages 00, 01, 02, and 13
 
-The 2026-09-09 read-only material-group coverage review found:
+The 2026-09-09 read-only material review found 95 active Displays across Stages 00, 01, 02, and 13, and every reviewed Display had exactly one current `ref.lor_scene_display` membership in that evidence set.
 
 ```text
-Stage 00 active Displays reviewed = 11
-Stage 01 active Displays reviewed = 14
-Stage 02 active Displays reviewed = 32
-Stage 13 active Displays reviewed = 38
-Total                            = 95
+Stage 00 = 11 active Displays
+Stage 01 = 14 active Displays
+Stage 02 = 32 active Displays
+Stage 13 = 38 active Displays
+Total    = 95
 ```
 
-Every one of those 95 active Displays had `lor_group_count = 1` in the reviewed result. No active Display in those four Stages appeared ungrouped or multiply grouped in that evidence set.
+This strongly supports using LOR membership as the current Display source rather than copying Display membership into Setup.
 
-This strongly supports using current LOR group membership as the normal dynamic Display source rather than maintaining a second Setup Display list.
+### Scope-level results from the same review
+
+```text
+Stage 00 fallback
+    11 Displays
+    Containers 1, 146
+
+Stage 01 fallback
+    7 Displays
+    Container 1
+
+Stage 01 true Scene 01-Entrance Arch
+    3 Displays
+    Containers 151, 152, 153
+
+Stage 01 true Scene 01-Front Gate
+    4 Displays
+    Containers 31, 59
+
+Stage 02 fallback
+    12 Displays
+    Containers 1, 2, 14, 31, 72
+
+Stage 02 true Scene 02-Fred's Stars
+    16 Displays
+    Container 63
+
+Stage 02 true Scene 02-Mega Tree
+    4 Displays
+    Containers 157, 158
+    plus uncontainerized Displays
+
+Stage 13 fallback
+    9 Displays
+    Containers 6, 7, 37, 226
+    plus uncontainerized Displays
+
+Stage 13 true Scene 13-Christmas Story
+    8 Displays
+    Containers 6, 131, 150, 171
+    plus 1 Display without Container
+```
 
 ## Known-Good Reference: 13-Christmas Story
 
-`13-Christmas Story` is the reference case that currently behaves correctly in Production.
-
-Observed live Material / Logistics result:
+`13-Christmas Story` is the current known-good Production reference.
 
 ```text
-true task/physical scope   = 13-Christmas Story Scene
-LOR material group         = 13-Christmas Story Scene
-Displays resolved          = 8
-Containers resolved        = 4
-current Container IDs      = 6, 131, 150, 171
+task scope              = true Scene 13-Christmas Story
+Displays resolved       = 8
+Containers resolved     = 4
+Container IDs           = 6, 131, 150, 171
 Displays without Container = 1
 ```
 
-This behavior is correct and must be preserved. The LOR Scene gathers the intended Displays, and those Displays lead to their current Containers.
+This behavior is correct and must be preserved.
 
-The Stage-level/background correction should reproduce this same material-resolution pattern **without changing the task's physical/documentation scope to a Scene**.
-
-## Stage-Level Material-Group Examples
-
-### Stage 00 — Hwy 42
+The Stage/Sub-stage fallback fix should use the same downstream pattern:
 
 ```text
-Setup HWY42 Traffic Signs
-    task/documentation scope -> Stage 00
-    material LOR group       -> 275 HWY42 Traffic Signs
-    current result           -> 7 Displays -> Containers 1, 146
-
-Setup HWY42 MSB / Rotary Signs
-    task/documentation scope -> Stage 00
-    material LOR group       -> 289 HWY42 MSB and Rotary Signs
-    current result           -> 4 Displays -> Container 1
+resolved physical scope
+    -> current LOR Display memberships in that scope
+    -> current Display.container_id
+    -> deduplicated Containers
 ```
 
-### Stage 02 — Triangle
+## Preview UUID Is Not the Scope Boundary
 
-```text
-02 Triangle Volunteer Path Setup
-    task/documentation scope -> Stage 02
-    material LOR group       -> 279 Volunteer Path Lights
-    current result           -> 2 Displays -> Container 72
+A follow-up read-only inventory proved that `preview_uuid` cannot be used as the general Setup material boundary.
 
-02 Claymation Panels
-    task/documentation scope -> Stage 02
-    material LOR groups      -> 280, 281, 282, 283, 284
-```
-
-The operator-defined `Claymation Panels` work package includes the character Displays commonly referred to by MSB as Claymation. Current reviewed Stage 02 evidence resolves the group as:
-
-```text
-280 Abominable      -> TR-Abominable       -> Container 2
-281 Narwhal         -> TR-Narwhal          -> Container 2
-282 CharlieInTheBox -> TR-CharlieInTheBox  -> Container 2
-283 Headlights      -> FE-HeadlightsSign   -> Container 2   (Rudolph)
-284 Frosty          -> TR-FrostyComeBack   -> Container 2
-```
-
-`Rudolph` is the operator/common-name identity for the current `Headlights` LOR group / `FE-HeadlightsSign` Display in this work package. Do not create a separate Rudolph Display or Scene merely to make the Setup task name match the operator terminology.
-
-All five current Claymation groups resolve to Container 2, which makes the current transport result especially simple even though the work package spans five LOR groups.
-
-Other Stage 02 groups such as Signage, US Flag, Volunteer Path Lights, Fred's Stars, and Mega Tree remain separate material groupings unless actual task practice says otherwise.
-
-### Stage 01 — Front Entrance
-
-Stage 01 currently includes Stage-fallback programming groups plus true Scenes. Current Stage-fallback groups include Goal Sign, Making Spirits Bright, Open-Close Sign, RotaryGear-01, and TuneRadio-2CH-01; true Scenes include `01-Entrance Arch` and `01-Front Gate`.
-
-A Stage 01 task may use one or more of those programming groups while continuing to resolve Procedures/Wiring to Stage 01 unless it is truly scoped to `01-Entrance Arch` or `01-Front Gate`.
-
-### Zero-material task
-
-```text
-Grease Gate bearings
-    task/documentation scope -> Stage 01 / Front Gate area
-    material LOR group       -> none
-```
-
-Zero material is valid when the task is real work but has no Display work package.
-
-## Required Stage-Level Programming / Grouping Scenes
-
-The following LOR Scenes are required show-programming/grouping constructs even though they resolve physically/documentationally to their owning Stage rather than to separate `NN-Scene` folders:
+Observed examples:
 
 ```text
 Stage 00
-- Show Background Stage 00 HWY42 MSB-Rotary-Trees
-- Show Background Stage 00 HWY42 Traffic Signs
+    HWY42 MSB and Rotary Signs  -> one Preview UUID
+    HWY42 Traffic Signs         -> different Preview UUID
 
 Stage 01
-- Show Background Stage 01 FE Goal Sign
-- Show Background Stage 01 FE MSB Sign
-- Show Background Stage 01 FE Open-Close Sign
-- Show Background Stage 01 FE Outside Gate
+    one Preview UUID contains:
+        01-Entrance Arch        true Scene
+        01-Front Gate           true Scene
+        RotaryGear-01           Stage fallback
+        TuneRadio-2CH-01        Stage fallback
+    other Stage-fallback groups use other Preview UUIDs
+
+Stage 02
+    one Preview UUID contains the eight Stage-fallback groups
+    another Preview UUID contains 02-Fred's Stars and 02-Mega Tree
+
+Stage 13
+    one Preview UUID contains both:
+        true 13-... Scenes
+        Stage-fallback Root / Die Hard groups
 ```
 
-These six are required for programming the show and for authoritative Display grouping. Do not delete, rename away, or promote them into separate physical Scene folders merely because they do not use `NN-Scene` naming.
+Therefore:
 
-Their LOR membership can supply Setup material while Folder Alignment still resolves Procedures/Wiring to Stage 00 or Stage 01.
+- Preview identity remains valid LOR provenance/operating context;
+- Preview identity must **not** determine whether material belongs to a Setup Stage or Scene;
+- physical scope must be resolved per LOR Scene/group using the accepted Folder Alignment/shared field-context rules.
+
+## LOR Programming Groups Are Still Authoritative Inputs
+
+Stage-fallback LOR Scenes/groups remain important programming/grouping constructs even when they do not become separate physical/documentation Scene folders.
+
+Examples include:
+
+```text
+Stage 00
+- HWY42 MSB and Rotary Signs
+- HWY42 Traffic Signs
+
+Stage 01
+- Goal Sign
+- Making Spirits Bright
+- Open-Close Sign
+- RotaryGear-01
+- TuneRadio-2CH-01
+
+Stage 02
+- Abominable
+- CharlieInTheBox
+- Frosty
+- Headlights (Rudolph)
+- Narwhal
+- Signage
+- US Flag
+- Volunteer Path Lights
+
+Stage 13
+- Root
+- Die Hard
+```
+
+Those groups provide Display membership evidence. Their physical/documentation scope still resolves according to Folder Alignment.
+
+Do not delete or promote them merely to make Setup material resolution easier.
 
 ## Current Production Defect
 
-`Setup/Application/setup_next_repository.py::field_context()` currently uses the task's `lor_scene_id` for two different concepts at once:
+`Setup/Application/setup_next_repository.py::field_context()` currently expands Displays automatically only when the Setup task itself has `lor_scene_id`.
 
-- task Scene organization; and
-- automatic Display material expansion through `ref.lor_scene_display`.
+That works for true Scene tasks such as Christmas Story but leaves Stage-level tasks at zero unless explicit `ref.setup_task_display` rows exist.
 
-That works for the true Scene reference case `13-Christmas Story`, but fails for Stage-level tasks whose Display material is represented by one or more separate background/programming LOR Scenes. Those tasks currently show zero Displays/Containers unless explicit `ref.setup_task_display` rows happen to exist.
+The required correction is **not** task-specific Display ownership and **not** task-specific LOR-group ownership.
 
-Representative review areas include:
+It is:
 
-- Stage 00 Hwy 42 Traffic Signs;
-- Stage 00 Hwy 42 MSB / Rotary signs;
-- Stage 01 Front Entrance grouping scenes;
-- Stage 02 Triangle Volunteer Path and Claymation as separate crew tasks;
-- Stage 16 Northern Lights; and
-- other Stage-level tasks with distinct LOR grouping(s) but no true `NN-Scene` folder.
+```text
+if task is true Scene scoped:
+    resolve that Scene's Displays
+else if task is Stage/Sub-stage scoped:
+    resolve all current LOR Displays whose accepted physical scope falls back
+    to that same Stage/Sub-stage
+```
 
-The fix is **not** automatic expansion of every Display on the Stage and **not** manual maintenance of every Display-to-task row.
-
-The missing relationship is a way for a reusable task to reference zero, one, or several authoritative LOR material groups independently of its Stage/Scene physical/documentation scope.
+Then derive current Containers from those Displays.
 
 ## Existing `ref.setup_task_display`
 
-Existing `ref.setup_task_display` data must be inventoried before retirement, reinterpretation, or migration.
+Existing `ref.setup_task_display` data must be inventoried before retirement, reinterpretation, or deletion.
 
-Do not enforce a new one-Display/one-task uniqueness rule. A Display can legitimately be involved in more than one reusable work task over the course of Setup—for example layout, physical setup, cord/network hookup, and testing—while remaining in one physical Stage/Scene location.
+Do not make it the normal source for scope-level material context and do not add a uniqueness constraint merely to force a task-ownership model that the operator has not accepted.
 
-Use existing explicit rows only where they represent real exceptions or deliberate material detail not already captured by an authoritative LOR grouping. Do not make them the primary maintenance mechanism for ordinary grouped Displays.
+If explicit rows represent genuine exceptions or supplemental detail, preserve them only under a separately reviewed rule.
 
-## Implementation Direction
+## Container Rule
 
-Before choosing schema, inventory representative Production tasks and their LOR grouping candidates.
+Containers are downstream storage/transport evidence.
 
-The implementation should support:
+```text
+resolved Displays
+    -> each current ref.display.container_id
+    -> deduplicate Containers
+```
 
-- task scope remaining Stage/Sub-stage/true Scene according to Folder Alignment;
-- zero material group for tasks such as bearing maintenance;
-- one or several LOR material groups for a Stage-level task;
-- separate tasks in one Stage referencing different LOR Display groups so parallel crews get the correct material;
-- several LOR groups being aggregated into one practical task, as with Stage 02 Claymation;
-- a LOR group being reusable by more than one task when different phases operate on the same Displays;
-- true Scene tasks such as Christmas Story using their Scene group naturally;
-- dynamic membership from current `ref.lor_scene_display`, so Displays are not forgotten in a second maintained list;
-- current Container derivation from the resolved Displays;
-- Container deduplication even when one Container carries several Scene/Stage groups;
-- explicit supplemental KIT/support Containers separately; and
-- clear UI language distinguishing **Task Scope** from **Material Group(s)**.
+A Container may legitimately contain Displays belonging to several LOR groups, Scenes, or Stages. Container membership must not be used to infer task scope.
 
-The material-review UI should also distinguish an intentionally material-free task from a task whose material grouping has simply not yet been reviewed. Do not make an unexplained zero look the same as `NONE`.
+Supplemental KIT/support Containers that are not derivable from Display storage remain a separate explicit relationship.
 
 ## 2026 Session Gate
 
 **Do not create the 2026 Setup Session until the reconstructed 2025 Setup plan is complete.**
 
 Material resolution must be trustworthy before 2026 propagation so planning/Pick List work does not inherit known missing or false Display/Container relationships.
+
+## Implementation Gate
+
+Before Production behavior changes:
+
+1. use the accepted Folder Alignment/shared field-context resolver as the scope authority;
+2. preserve the known-good `13-Christmas Story` behavior;
+3. implement Stage/Sub-stage fallback aggregation across all LOR Scene groups that resolve to that scope, regardless of Preview UUID;
+4. exclude true Scene Displays from the parent Stage fallback set;
+5. derive/deduplicate Containers from resolved Displays;
+6. keep supplemental KIT/support Containers separate;
+7. decide through browser review whether `UNREVIEWED / USES_SCOPE_DISPLAY_MATERIAL / NO_DISPLAY_MATERIAL` is useful;
+8. preserve legitimate no-material tasks such as `Grease Gate Bearings`;
+9. regression-test Stages 00, 01, 02, 13, and Northern Lights/Stage 16; and
+10. perform protected browser validation before Production acceptance.
 
 ## Related Durable Sources
 
