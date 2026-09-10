@@ -63,6 +63,7 @@ def test_material_requirement_migration_is_one_boolean_not_source_selector() -> 
     assert "ref.set_setup_task_display_material_requirement" in sql
     assert "ref.setup_management_actor" in sql
     assert "GRANT EXECUTE ON FUNCTION ref.set_setup_task_display_material_requirement" in sql
+    assert "GRANT SELECT ON TABLE ref.display_status TO fieldwiring_app" in sql
     assert "LOR_STAGE" not in sql
     assert "LOR_PREVIEW" not in sql
     assert "LOR_SCENE" not in sql
