@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "Application"
 DB = ROOT / "Database"
+ACCEPTANCE = ROOT / "Acceptance"
 
 
 def read(path: Path) -> str:
@@ -102,6 +103,20 @@ def test_new_catalog_task_hands_off_to_full_editor() -> None:
     assert "showView('review');" in js
     assert "selectTask(Number(requestedTaskId));" in js
     assert "edit-task-name" in js
+
+
+def test_preview_probe_invariant_separates_business_data_from_expected_audit_provenance() -> None:
+    server = read(ACCEPTANCE / "setup_display_material_browser_preview_server.sh")
+    assert "legacy_exact_fingerprint()" in server
+    assert "legacy_business_fingerprint()" in server
+    assert "- 'is_display_setup_step' - 'updated_at' - 'updated_by' - 'updated_by_person_id'" in server
+    assert "LEGACY_EXACT_AFTER" in server
+    assert "LEGACY_BUSINESS_AFTER" in server
+    assert "SETUP_EXPLICIT_MATERIAL_PROBE_METADATA_PASS" in server
+    assert "Expected exactly three Display Setup classifications after probes" in server
+    assert "Expected exactly eight material-source rows after probes" in server
+    assert "Temporary shared Preview probe source was not removed" in server
+    assert "Clone-only probes changed only candidate metadata + required audit provenance: PASS" in server
 
 
 def test_production_host_registers_material_api() -> None:
