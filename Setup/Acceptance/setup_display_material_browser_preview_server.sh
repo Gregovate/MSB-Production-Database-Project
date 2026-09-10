@@ -8,6 +8,7 @@ IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
 REPO_ROOT="/opt/fieldwiring"
 SETUP_LIVE_ROOT="/opt/msb-setup"
+MASTER_MUSICAL_PREVIEW_UUID="fcf5c29c-8d51-46c5-9ad0-cc47a97c75bd"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_PORT="${1:?preview port is required}"
@@ -30,7 +31,6 @@ PROD_BEFORE=""
 SETUP_HEAD_BEFORE=""
 PREVIEW_OWNED_PORT=0
 TEMP_FILES=()
-MASTER_MUSICAL_PREVIEW_UUID="fcf5c29c-8d51-46c5-9ad0-cc47a97c75bd"
 
 mkdir -p "$REPORT_DIR"
 exec > >(tee "$REPORT") 2>&1
@@ -84,20 +84,34 @@ cleanup() {
     rm -f "$DUMP_FILE" "$GRANTS_FILE" >/dev/null 2>&1 || true
     if (( ${#TEMP_FILES[@]} > 0 )); then rm -f "${TEMP_FILES[@]}" >/dev/null 2>&1 || true; fi
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
+
     echo "--- Production Setup fingerprint after-check ---"
     if [[ -n "$PROD_BEFORE" ]]; then
         PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
         echo "Before: $PROD_BEFORE"
         echo "After:  $PROD_AFTER"
-        if [[ -z "$PROD_AFTER" || "$PROD_AFTER" != "$PROD_BEFORE" ]]; then echo "FAIL: Production Setup fingerprint changed during browser preview"; status=97; else echo "PASS: Production Setup fingerprint unchanged"; fi
+        if [[ -z "$PROD_AFTER" || "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
+            echo "FAIL: Production Setup fingerprint changed during browser preview"
+            status=97
+        else
+            echo "PASS: Production Setup fingerprint unchanged"
+        fi
     fi
     if [[ -n "$SETUP_HEAD_BEFORE" ]]; then
         SETUP_HEAD_AFTER="$(sudo git -C "$SETUP_LIVE_ROOT" rev-parse HEAD 2>/dev/null)"
         echo "Live Setup checkout before: $SETUP_HEAD_BEFORE"
         echo "Live Setup checkout after:  $SETUP_HEAD_AFTER"
-        if [[ -z "$SETUP_HEAD_AFTER" || "$SETUP_HEAD_AFTER" != "$SETUP_HEAD_BEFORE" ]]; then echo "FAIL: /opt/msb-setup changed during browser preview"; status=98; else echo "PASS: live Setup checkout unchanged"; fi
+        if [[ -z "$SETUP_HEAD_AFTER" || "$SETUP_HEAD_AFTER" != "$SETUP_HEAD_BEFORE" ]]; then
+            echo "FAIL: /opt/msb-setup changed during browser preview"
+            status=98
+        else
+            echo "PASS: live Setup checkout unchanged"
+        fi
     fi
-    if [[ "$PREVIEW_OWNED_PORT" -eq 1 ]] && ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then echo "FAIL: preview-owned TCP port $PREVIEW_PORT is still listening after cleanup"; status=99; fi
+    if [[ "$PREVIEW_OWNED_PORT" -eq 1 ]] && ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
+        echo "FAIL: preview-owned TCP port $PREVIEW_PORT is still listening after cleanup"
+        status=99
+    fi
     if [[ -s "$PREVIEW_LOG" ]]; then echo "Preview Flask log retained at: $PREVIEW_LOG"; else echo "Preview Flask log: not created"; fi
     echo "Preview report retained at:    $REPORT"
     echo "Exit status: $status"
@@ -167,7 +181,8 @@ sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" createdb -U "$
 sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" pg_restore -U "$DB_ACTOR" -d "$TEST_DB" --no-owner --no-acl --exit-on-error < "$DUMP_FILE"
 
 psql_test() { sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" "$@"; }
-legacy_fingerprint() {
+
+legacy_exact_fingerprint() {
     psql_test -qAt -c "
         SELECT md5(
             coalesce((SELECT string_agg((to_jsonb(t) - 'is_display_setup_step')::text, '' ORDER BY t.setup_task_id) FROM ref.setup_task t), '') || '|' ||
@@ -177,7 +192,21 @@ legacy_fingerprint() {
         );
     "
 }
-LEGACY_BEFORE="$(legacy_fingerprint)"
+
+legacy_business_fingerprint() {
+    psql_test -qAt -c "
+        SELECT md5(
+            coalesce((SELECT string_agg((to_jsonb(t) - 'is_display_setup_step' - 'updated_at' - 'updated_by' - 'updated_by_person_id')::text, '' ORDER BY t.setup_task_id) FROM ref.setup_task t), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(d)::text, '' ORDER BY d.setup_task_id, d.prerequisite_setup_task_id) FROM ref.setup_task_dependency d), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(td)::text, '' ORDER BY td.setup_task_id, td.display_id) FROM ref.setup_task_display td), '') || '|' ||
+            coalesce((SELECT string_agg(row_to_json(st)::text, '' ORDER BY st.setup_session_task_id) FROM ops.setup_session_task st), '')
+        );
+    "
+}
+
+LEGACY_EXACT_BEFORE="$(legacy_exact_fingerprint)"
+LEGACY_BUSINESS_BEFORE="$(legacy_business_fingerprint)"
+if [[ -z "$LEGACY_EXACT_BEFORE" || -z "$LEGACY_BUSINESS_BEFORE" ]]; then echo "FAIL: disposable pre-migration fingerprints were empty"; exit 16; fi
 
 echo
 echo "--- Recreate Production-equivalent application role boundary ---"
@@ -201,21 +230,22 @@ echo
 echo "--- Apply migration 026 to disposable clone only ---"
 psql_test < "$M026"
 psql_test < "$VALIDATION"
-LEGACY_AFTER="$(legacy_fingerprint)"
-echo "Disposable legacy fingerprint before migration: $LEGACY_BEFORE"
-echo "Disposable legacy fingerprint after migration:  $LEGACY_AFTER"
-[[ "$LEGACY_AFTER" == "$LEGACY_BEFORE" ]] || { echo "FAIL: migration 026 changed pre-existing Setup data"; exit 16; }
-echo "Migration 026 preserved pre-existing Setup data: PASS"
+LEGACY_EXACT_AFTER="$(legacy_exact_fingerprint)"
+echo "Disposable legacy exact fingerprint before migration: $LEGACY_EXACT_BEFORE"
+echo "Disposable legacy exact fingerprint after migration:  $LEGACY_EXACT_AFTER"
+if [[ "$LEGACY_EXACT_AFTER" != "$LEGACY_EXACT_BEFORE" ]]; then echo "FAIL: migration 026 changed pre-existing Setup data or audit provenance"; exit 17; fi
+echo "Migration 026 preserved pre-existing Setup data exactly: PASS"
 
 echo
 echo "--- Replay migration 026 ---"
 psql_test < "$M026"
-[[ "$(legacy_fingerprint)" == "$LEGACY_BEFORE" ]] || { echo "FAIL: migration 026 replay changed pre-existing Setup data"; exit 17; }
+if [[ "$(legacy_exact_fingerprint)" != "$LEGACY_EXACT_BEFORE" ]]; then echo "FAIL: migration 026 replay changed pre-existing Setup data or audit provenance"; exit 18; fi
 echo "Migration 026 replay: PASS"
 
 MANAGE_OK="$(psql_test -qAt -c "SELECT can_manage_setup FROM ref.setup_browser_capabilities('$PREVIEW_EMAIL');")"
-[[ "$MANAGE_OK" == "t" ]] || { echo "FAIL: preview operator lacks Setup Manager capability"; exit 18; }
+if [[ "$MANAGE_OK" != "t" ]]; then echo "FAIL: preview operator lacks Setup Manager capability"; exit 19; fi
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
+if [[ -z "$TEST_IP" ]]; then echo "FAIL: could not resolve disposable PostgreSQL container IP"; exit 20; fi
 DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
 APP_DIR="$CANDIDATE_WORKTREE/Setup/Application"
 
@@ -226,15 +256,20 @@ PREVIEW_PGID="$(sudo -u fieldwiring -H env SETUP_DATABASE_DSN="$DSN" MSB_SETUP_P
     setsid /opt/fieldwiring/.venv/bin/python "$MSB_SETUP_PREVIEW_ENTRY" > "$MSB_SETUP_PREVIEW_LOG" 2>&1 &
     echo $!
 ')"
-[[ "$PREVIEW_PGID" =~ ^[0-9]+$ ]] || { echo "FAIL: preview process did not return PID"; exit 19; }
+if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then echo "FAIL: preview process did not return PID"; exit 21; fi
 PREVIEW_OWNED_PORT=1
-for _ in $(seq 1 30); do curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health" >/dev/null 2>&1 && break; sleep 1; done
+preview_ready=0
+for _ in $(seq 1 30); do
+    if curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then preview_ready=1; break; fi
+    sleep 1
+done
+if [[ "$preview_ready" -ne 1 ]]; then echo "FAIL: preview did not become healthy"; tail -n 120 "$PREVIEW_LOG" || true; exit 22; fi
 curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health"
 echo
 
 METADATA="/tmp/setup-material-metadata-$STAMP.json"; TEMP_FILES+=("$METADATA")
 code="$(curl -sS -o "$METADATA" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/task-display-material")"
-[[ "$code" == "200" ]] || { cat "$METADATA"; exit 20; }
+if [[ "$code" != "200" ]]; then cat "$METADATA" || true; exit 23; fi
 sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$METADATA" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding='utf-8') as f: payload = json.load(f)
@@ -255,13 +290,13 @@ TASK13="$(query_task_id "SELECT t.setup_task_id FROM ref.setup_task t WHERE t.lo
 STAGE00_ID="$(query_task_id "SELECT stage_id FROM ref.stage WHERE stage_key='00' ORDER BY stage_id LIMIT 1;")"
 SCENE16_ID="$(query_task_id "SELECT ls.lor_scene_id FROM ref.lor_scene ls JOIN ref.stage s ON s.stage_id=ls.stage_id WHERE ls.lor_scene_id=298 AND s.stage_key='16' LIMIT 1;")"
 MASTER_PREVIEW_NAME="$(query_task_id "SELECT name FROM lor_snap.v_current_previews WHERE id='$MASTER_MUSICAL_PREVIEW_UUID' LIMIT 1;")"
-for value in "$TASK00" "$TASK01" "$TASK16" "$TASK13" "$STAGE00_ID" "$SCENE16_ID"; do [[ "$value" =~ ^[0-9]+$ ]] || { echo "FAIL: representative task/source lookup failed"; exit 21; }; done
-[[ "$MASTER_PREVIEW_NAME" == *"Master Musical Preview"* ]] || { echo "FAIL: expected shared Master Musical Preview for $MASTER_MUSICAL_PREVIEW_UUID; found '$MASTER_PREVIEW_NAME'"; exit 21; }
+for value in "$TASK00" "$TASK01" "$TASK16" "$TASK13" "$STAGE00_ID" "$SCENE16_ID"; do if [[ ! "$value" =~ ^[0-9]+$ ]]; then echo "FAIL: representative task/source lookup failed"; exit 24; fi; done
+if [[ "$MASTER_PREVIEW_NAME" != *"Master Musical Preview"* ]]; then echo "FAIL: expected shared Master Musical Preview for $MASTER_MUSICAL_PREVIEW_UUID; found '$MASTER_PREVIEW_NAME'"; exit 24; fi
 echo "Stage 16 current material evidence: Scene $SCENE16_ID inside shared Preview '$MASTER_PREVIEW_NAME'"
 
 NONE_CTX="/tmp/setup-material-none-$STAMP.json"; TEMP_FILES+=("$NONE_CTX")
 code="$(curl -sS -o "$NONE_CTX" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$TASK13/material-context?season_year=2025")"
-[[ "$code" == "200" ]] || { cat "$NONE_CTX"; exit 22; }
+if [[ "$code" != "200" ]]; then cat "$NONE_CTX" || true; exit 25; fi
 sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$NONE_CTX" <<'PY'
 import json, sys
 ctx=json.load(open(sys.argv[1], encoding='utf-8'))['context']
@@ -274,7 +309,7 @@ patch_source() {
     local task="$1" type="$2" key="$3" active="${4:-true}" file code
     file="/tmp/setup-material-source-${task}-${type}-${RANDOM}-$STAMP.json"; TEMP_FILES+=("$file")
     code="$(curl -sS -o "$file" -w '%{http_code}' -X PATCH -H 'Content-Type: application/json' -H 'X-MSB-Setup-Command: 1' --data "{\"source_type\":\"$type\",\"source_key\":\"$key\",\"active\":$active}" "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task/material-source")"
-    [[ "$code" == "200" ]] || { echo "FAIL: material-source PATCH $task $type $key active=$active -> $code"; cat "$file"; exit 23; }
+    if [[ "$code" != "200" ]]; then echo "FAIL: material-source PATCH $task $type $key active=$active -> $code"; cat "$file" || true; exit 26; fi
 }
 patch_source "$TASK00" LOR_STAGE "$STAGE00_ID"
 for scene_id in 253 254 293 467 468; do patch_source "$TASK01" LOR_SCENE "$scene_id"; done
@@ -283,100 +318,93 @@ patch_source "$TASK13" LOR_SCENE "258"
 
 MAGIC_IDS="$(psql_test -qAt -c "SELECT string_agg(t.setup_task_id::text, ',' ORDER BY t.setup_task_id) FROM ref.setup_task t JOIN ref.stage s ON s.stage_id=t.stage_id WHERE s.stage_key='26' AND t.active_flag AND t.task_name IN ('Layout / Erect Frame / Strap Down','Install Skins and Bungees','Install Lighting, Cameras, Mats, Signs, and Finish Setup');")"
 IFS=',' read -r -a MAGIC_ARRAY <<< "$MAGIC_IDS"
-[[ "${#MAGIC_ARRAY[@]}" -eq 3 ]] || { echo "FAIL: expected three Magic Igloo tasks"; exit 24; }
+if [[ "${#MAGIC_ARRAY[@]}" -ne 3 ]]; then echo "FAIL: expected three Magic Igloo tasks"; exit 27; fi
 for task in "${MAGIC_ARRAY[@]}"; do
     file="/tmp/setup-display-step-$task-$STAMP.json"; TEMP_FILES+=("$file")
     code="$(curl -sS -o "$file" -w '%{http_code}' -X PATCH -H 'Content-Type: application/json' -H 'X-MSB-Setup-Command: 1' --data '{"is_display_setup_step":true}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task/display-setup-step")"
-    [[ "$code" == "200" ]] || { cat "$file"; exit 25; }
+    if [[ "$code" != "200" ]]; then cat "$file" || true; exit 28; fi
 done
 echo "Display Setup classification independent of material: PASS"
 
-CTX00="/tmp/setup-material-context-stage00-$STAMP.json"
-CTX01="/tmp/setup-material-context-stage01-$STAMP.json"
-CTX16_PREVIEW="/tmp/setup-material-context-master-preview-$STAMP.json"
-CTX13="/tmp/setup-material-context-christmas-story-$STAMP.json"
-CTX16_SCENE="/tmp/setup-material-context-stage16-scene-$STAMP.json"
+CTX00="/tmp/setup-material-context-stage00-$STAMP.json"; CTX01="/tmp/setup-material-context-stage01-$STAMP.json"; CTX16_PREVIEW="/tmp/setup-material-context-master-preview-$STAMP.json"; CTX13="/tmp/setup-material-context-christmas-story-$STAMP.json"; CTX16_SCENE="/tmp/setup-material-context-stage16-scene-$STAMP.json"
 TEMP_FILES+=("$CTX00" "$CTX01" "$CTX16_PREVIEW" "$CTX13" "$CTX16_SCENE")
-fetch_context() { local task="$1" file="$2" code; code="$(curl -sS -o "$file" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task/material-context?season_year=2025")"; [[ "$code" == "200" ]] || { cat "$file"; exit 26; }; }
-fetch_context "$TASK00" "$CTX00"
-fetch_context "$TASK01" "$CTX01"
-fetch_context "$TASK16" "$CTX16_PREVIEW"
-fetch_context "$TASK13" "$CTX13"
+fetch_context() { local task="$1" file="$2" code; code="$(curl -sS -o "$file" -w '%{http_code}' "http://127.0.0.1:$PREVIEW_PORT/api/setup/tasks/$task/material-context?season_year=2025")"; if [[ "$code" != "200" ]]; then cat "$file" || true; exit 29; fi; }
+fetch_context "$TASK00" "$CTX00"; fetch_context "$TASK01" "$CTX01"; fetch_context "$TASK16" "$CTX16_PREVIEW"; fetch_context "$TASK13" "$CTX13"
 
 sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$CTX00" "$CTX01" "$CTX16_PREVIEW" "$CTX13" <<'PY'
 import json, sys
-
 def load(path):
-    with open(path, encoding='utf-8') as f:
-        return json.load(f)['context']
-
-def material_container_ids(ctx):
-    return sorted(int(c['container_id']) for c in ctx.get('material_containers', []))
-
-def display_container_ids(ctx):
-    return sorted({int(d['container_id']) for d in ctx.get('displays', []) if d.get('container_id') is not None})
-
+    with open(path, encoding='utf-8') as f: return json.load(f)['context']
+def material_container_ids(ctx): return sorted(int(c['container_id']) for c in ctx.get('material_containers', []))
+def display_container_ids(ctx): return sorted({int(d['container_id']) for d in ctx.get('displays', []) if d.get('container_id') is not None})
 def check(label, ctx, count, containers, sources, uncontained=None):
     displays=ctx.get('displays', []); ids=[d['display_id'] for d in displays]
     if len(ids) != len(set(ids)): raise SystemExit(f'FAIL: {label} returned duplicate Displays')
-    actual=set(display_container_ids(ctx))
-    material=material_container_ids(ctx)
+    actual=set(display_container_ids(ctx)); material=material_container_ids(ctx)
     if len(displays) != count: raise SystemExit(f'FAIL: {label} expected {count} Displays; found {len(displays)}')
     if actual != set(containers): raise SystemExit(f'FAIL: {label} Display containers {sorted(actual)} != {sorted(containers)}')
     if material != sorted(set(containers)): raise SystemExit(f'FAIL: {label} derived material containers {material} != {sorted(set(containers))}')
     if ctx.get('material_resolution',{}).get('source_count') != sources: raise SystemExit(f'FAIL: {label} source_count mismatch')
     if uncontained is not None and sum(1 for d in displays if d.get('container_id') is None) != uncontained: raise SystemExit(f'FAIL: {label} uncontained count mismatch')
     print(f'{label}: PASS displays={count} containers={sorted(actual)} sources={sources}')
-
 def check_shared_preview(ctx):
-    label='Shared Master Musical Preview source'
-    displays=ctx.get('displays', []); ids=[d['display_id'] for d in displays]
+    label='Shared Master Musical Preview source'; displays=ctx.get('displays', []); ids=[d['display_id'] for d in displays]
     if len(ids) != len(set(ids)): raise SystemExit(f'FAIL: {label} returned duplicate Displays')
-    if len(displays) <= 66:
-        raise SystemExit(f'FAIL: {label} was incorrectly clamped to one work Stage/Scene; found only {len(displays)} Displays')
-    material=material_container_ids(ctx)
-    actual=display_container_ids(ctx)
-    if material != actual: raise SystemExit(f'FAIL: {label} material Containers do not match derived Display Containers')
-    resolution=ctx.get('material_resolution', {})
-    if resolution.get('source_count') != 1: raise SystemExit(f'FAIL: {label} source_count mismatch')
-    sources=resolution.get('sources', [])
-    if len(sources) != 1 or sources[0].get('source_type') != 'LOR_PREVIEW': raise SystemExit(f'FAIL: {label} did not retain exact Preview source identity')
+    if len(displays) <= 66: raise SystemExit(f'FAIL: {label} was incorrectly clamped to one work Stage/Scene; found only {len(displays)} Displays')
+    if material_container_ids(ctx) != display_container_ids(ctx): raise SystemExit(f'FAIL: {label} material Containers do not match derived Display Containers')
+    resolution=ctx.get('material_resolution', {}); sources=resolution.get('sources', [])
+    if resolution.get('source_count') != 1 or len(sources) != 1 or sources[0].get('source_type') != 'LOR_PREVIEW': raise SystemExit(f'FAIL: {label} did not retain exact Preview source identity')
     if 'Master Musical Preview' not in str(sources[0].get('label') or ''): raise SystemExit(f'FAIL: {label} source label is not the shared Master Musical Preview')
-    print(f'{label}: PASS displays={len(displays)} containers={len(actual)} sources=1 (whole Preview, not Stage-clamped)')
-
+    print(f'{label}: PASS displays={len(displays)} containers={len(display_container_ids(ctx))} sources=1 (whole Preview, not Stage-clamped)')
 check('Stage 00 explicit Stage source', load(sys.argv[1]), 11, {1,146}, 1)
 check('Stage 01 explicit five-group union', load(sys.argv[2]), 7, {1}, 5)
 check_shared_preview(load(sys.argv[3]))
 check('13-Christmas Story explicit Scene source', load(sys.argv[4]), 8, {6,131,150,171}, 1, 1)
 PY
 
-# The shared Master Musical Preview is intentionally much larger than Northern
-# Lights. Prove that removing that source and selecting the exact current LOR
-# Scene produces the known 66-Display Northern Lights material set.
 patch_source "$TASK16" LOR_PREVIEW "$MASTER_MUSICAL_PREVIEW_UUID" false
 patch_source "$TASK16" LOR_SCENE "$SCENE16_ID" true
 fetch_context "$TASK16" "$CTX16_SCENE"
 sudo -u fieldwiring -H /opt/fieldwiring/.venv/bin/python - "$CTX16_SCENE" <<'PY'
 import json, sys
-ctx=json.load(open(sys.argv[1], encoding='utf-8'))['context']
-displays=ctx.get('displays', [])
-ids=[d['display_id'] for d in displays]
+ctx=json.load(open(sys.argv[1], encoding='utf-8'))['context']; displays=ctx.get('displays', []); ids=[d['display_id'] for d in displays]
 if len(ids) != len(set(ids)): raise SystemExit('FAIL: Stage 16 Northern Lights Scene returned duplicate Displays')
-containers={int(d['container_id']) for d in displays if d.get('container_id') is not None}
-material=sorted(int(c['container_id']) for c in ctx.get('material_containers', []))
+containers={int(d['container_id']) for d in displays if d.get('container_id') is not None}; material=sorted(int(c['container_id']) for c in ctx.get('material_containers', []))
 if len(displays) != 66: raise SystemExit(f'FAIL: Stage 16 Northern Lights explicit Scene source expected 66 Displays; found {len(displays)}')
 if containers != {16,17,18,19}: raise SystemExit(f'FAIL: Stage 16 Northern Lights containers {sorted(containers)} != [16, 17, 18, 19]')
 if material != [16,17,18,19]: raise SystemExit(f'FAIL: Stage 16 Northern Lights derived material containers {material} != [16, 17, 18, 19]')
-resolution=ctx.get('material_resolution', {})
+resolution=ctx.get('material_resolution', {}); sources=resolution.get('sources', [])
 if resolution.get('source_count') != 1: raise SystemExit('FAIL: Stage 16 Northern Lights Scene source_count mismatch')
-sources=resolution.get('sources', [])
-if len(sources) != 1 or sources[0].get('source_type') != 'LOR_SCENE' or str(sources[0].get('source_key')) != '298':
-    raise SystemExit('FAIL: Stage 16 Northern Lights did not resolve from exact LOR Scene 298')
+if len(sources) != 1 or sources[0].get('source_type') != 'LOR_SCENE' or str(sources[0].get('source_key')) != '298': raise SystemExit('FAIL: Stage 16 Northern Lights did not resolve from exact LOR Scene 298')
 print('Stage 16 Northern Lights explicit Scene source: PASS displays=66 containers=[16, 17, 18, 19] sources=1')
 PY
 
-[[ "$(legacy_fingerprint)" == "$LEGACY_BEFORE" ]] || { echo "FAIL: preview probes changed pre-existing Setup data"; exit 27; }
-echo "Clone-only probes changed only new candidate metadata: PASS"
+psql_test <<SQL
+DO \$candidate_metadata\$
+BEGIN
+    IF (SELECT count(*) FROM ref.setup_task WHERE is_display_setup_step) <> 3 THEN RAISE EXCEPTION 'Expected exactly three Display Setup classifications after probes'; END IF;
+    IF EXISTS (SELECT 1 FROM ref.setup_task WHERE is_display_setup_step AND setup_task_id NOT IN ($MAGIC_IDS)) THEN RAISE EXCEPTION 'Display Setup classification leaked outside the three Magic Igloo probe tasks'; END IF;
+    IF (SELECT count(*) FROM ref.setup_task_material_source) <> 8 THEN RAISE EXCEPTION 'Expected exactly eight material-source rows after probes'; END IF;
+    IF EXISTS (
+        SELECT 1 FROM ref.setup_task_material_source ms
+        WHERE NOT (
+            (ms.setup_task_id = $TASK00 AND ms.source_type = 'LOR_STAGE' AND ms.stage_id = $STAGE00_ID)
+            OR (ms.setup_task_id = $TASK01 AND ms.source_type = 'LOR_SCENE' AND ms.lor_scene_id IN (253,254,293,467,468))
+            OR (ms.setup_task_id = $TASK16 AND ms.source_type = 'LOR_SCENE' AND ms.lor_scene_id = 298)
+            OR (ms.setup_task_id = $TASK13 AND ms.source_type = 'LOR_SCENE' AND ms.lor_scene_id = 258)
+        )
+    ) THEN RAISE EXCEPTION 'Unexpected material-source row exists after probes'; END IF;
+    IF EXISTS (SELECT 1 FROM ref.setup_task_material_source WHERE setup_task_id = $TASK16 AND source_type = 'LOR_PREVIEW') THEN RAISE EXCEPTION 'Temporary shared Preview probe source was not removed from Stage 16 task'; END IF;
+    RAISE NOTICE 'SETUP_EXPLICIT_MATERIAL_PROBE_METADATA_PASS';
+END
+\$candidate_metadata\$;
+SQL
+
+LEGACY_BUSINESS_AFTER="$(legacy_business_fingerprint)"
+echo "Disposable pre-existing business fingerprint before probes: $LEGACY_BUSINESS_BEFORE"
+echo "Disposable pre-existing business fingerprint after probes:  $LEGACY_BUSINESS_AFTER"
+if [[ "$LEGACY_BUSINESS_AFTER" != "$LEGACY_BUSINESS_BEFORE" ]]; then echo "FAIL: clone-only probes changed pre-existing Setup business data"; exit 30; fi
+echo "Clone-only probes changed only candidate metadata + required audit provenance: PASS"
 
 echo
 echo "============================================================"
@@ -392,7 +420,7 @@ echo "  1. Display Setup is a separate classification and color."
 echo "  2. Material editor shows explicit Stage / Preview / Scene-group sources."
 echo "  3. A task with no selected source shows no Display material."
 echo "  4. Stage 01 task shows five selected LOR groups and resolves 7 Displays."
-echo "  5. Stage 16 task uses exact Northern Lights Scene 298 and resolves 66 Displays; the shared Master Musical Preview is intentionally a whole-Preview source."
+echo "  5. Stage 16 task uses exact Northern Lights Scene 298 and resolves 66 Displays; the shared Master Musical Preview remains a whole-Preview source."
 echo "  6. Christmas Story resolves 8 Displays and Containers 6,131,150,171."
 echo "  7. Add one preview-only task and confirm creation opens the full editor."
 echo
