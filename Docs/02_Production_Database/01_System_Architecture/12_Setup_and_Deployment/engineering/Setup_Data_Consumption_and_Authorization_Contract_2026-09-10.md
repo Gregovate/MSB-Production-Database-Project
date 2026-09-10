@@ -78,15 +78,33 @@ Authenticated Setup operator is not mapped to an MSB person
 
 This is an actor/audit identity failure, not evidence that the Directus Manager/Administrator role is missing.
 
-## 2026-09-10 Production Finding
+## 2026-09-10 Production Finding and Immediate Repair
 
-A read-only Production audit established that several current Manager accounts resolve successfully through `ref.setup_browser_capabilities(...)` with `can_manage_setup = true` but their matching `ref.person` rows have `directus_user_id IS NULL`.
+A read-only Production audit established that several current Manager accounts resolved successfully through `ref.setup_browser_capabilities(...)` with `can_manage_setup = true` while their matching `ref.person` rows had `directus_user_id IS NULL`.
 
-Other current Manager/Administrator accounts are correctly mapped and can pass the actor boundary.
+The three proven exact-email/null-link cases were:
 
-A separate Administrator-authorized account uses an authenticated email for which no matching `ref.person.email` row exists. That is a different identity-reconciliation case and must not be auto-linked by name or guesswork.
+```text
+person_id 19  Randy Miller  rmiller@sheboyganlights.org
+person_id 29  Eric Sandvig  esandvig@sheboyganlights.org
+person_id 31  Tom Shircel    tshircel@sheboyganlights.org
+```
 
-One affected established Manager explicitly authenticated again through the Directus/Google login path at `db.sheboyganlights.org`; a repeated read-only audit showed that `ref.person.directus_user_id` remained NULL. Therefore **repeat login is not a supported repair mechanism for an already-established Manager account**.
+One affected established Manager, Randy Miller, explicitly authenticated again through the Directus/Google login path at `db.sheboyganlights.org`; a repeated read-only audit showed that `ref.person.directus_user_id` remained NULL. Therefore **repeat login is not a supported repair mechanism for an already-established Manager account**.
+
+A bounded Production preflight then proved for all three rows: active Person, exact email match, active Directus user with the same exact email, null existing Person link, expected Directus UUID, and no UUID conflict with another Person.
+
+A single bounded transaction updated only `ref.person.directus_user_id` for those three existing Person rows, leaving the normal `ref.person` audit trigger enabled. Post-update readback confirmed:
+
+```text
+person_id 19 -> 27b7a81c-103b-4bd4-b147-72d32fb83418
+person_id 29 -> 3875bfd3-86f6-4f7b-84fb-c06328b05005
+person_id 31 -> 28640462-2cc3-40b1-8a87-50e2a3b9074f
+```
+
+This was an immediate operational recovery. It does **not** fix the systemic onboarding/reconciliation flaw.
+
+The administrator performing normal MSB operations uses `gliebig@sheboyganlights.org`, which is correctly mapped to `ref.person` person_id 17. The separately authorized `greg@engrinnovations.com` account is an intentional backup/business engineering identity used for system design. It must not be treated as an ordinary missing-Person defect or auto-linked/auto-created merely because it appears in an authorization audit.
 
 ## Directus Onboarding Dependency / Known Flaw
 
@@ -261,7 +279,7 @@ CONFLICT - EMAIL PERSON IS LINKED TO DIFFERENT DIRECTUS USER
 BROKEN - NO REF.PERSON WITH MATCHING MSB EMAIL
 ```
 
-Never auto-repair a `CONFLICT` or no-match case by first/last name.
+An authorized account with no Person match may also be an intentionally separate engineering/service/backup identity rather than a defect. Confirm purpose before classifying or repairing it. Never auto-repair a `CONFLICT` or no-match case by first/last name.
 
 ## Production Preflight — PostgreSQL Grants
 
@@ -311,13 +329,13 @@ The current grant authorities include:
 
 ## Current Resume Point
 
-The immediate Production write blocker is **not** unresolved Manager authorization. Current evidence proves affected Managers already resolve `can_manage_setup = true`.
+The immediate three-Manager Production write blocker was repaired on 2026-09-10 by linking the three proven exact-email Person rows to their existing active Directus UUIDs. Manager role/policy permissions were not changed.
 
 The next identity work belongs to People and Identity:
 
-1. repair only proven exact-email `ref.person` / Directus UUID linkage cases through a governed, reviewed path;
-2. handle any no-person-match Administrator identity separately rather than guessing;
-3. define a durable onboarding/reconciliation mechanism that does not require a manual visit to the Directus UI and that can reconcile already-established users safely; and
-4. rerun the read-only Setup identity audit before testing Manager writes.
+1. validate Randy Miller's real Setup write path after the repair, then allow the assigned Manager review to continue if successful;
+2. define a durable onboarding/reconciliation mechanism that does not require a manual visit to the Directus UI and that can reconcile already-established users safely;
+3. add acceptance coverage for first-onboarding linkage, established-user reconciliation, conflict/no-match failure, and population-wide authorized-user audit; and
+4. treat intentionally separate engineering/backup identities according to their documented purpose rather than forcing them into the operational Person mapping model.
 
 Do not weaken `ref.setup_management_actor(...)`, bypass person attribution, or grant broad Setup table DML as a workaround.
