@@ -7,6 +7,7 @@ This is the engineering starting point for Production Database work involving pe
 - [`../README.md`](../README.md) — subsystem overview
 - [`Directus_User_Onboarding_Identity_Contract_2026-09-09.md`](Directus_User_Onboarding_Identity_Contract_2026-09-09.md) — current Production Directus onboarding behavior and People identity lifecycle
 - [`Directus_Access_and_Identity_Bootstrap_Contract_2026-09-10.md`](Directus_Access_and_Identity_Bootstrap_Contract_2026-09-10.md) — Directus bootstrap access, `$t:public_label` purpose, policy/permission layers, and required collection/action permission evidence
+- [`Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md`](Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md) — corrected `mark@sheboyganlights.org` provenance and evidence that the current no-match branch can propagate an onboarding mistake into a new durable Person
 - [`People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md`](People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md) — **required before changing Directus/Person identity linkage**; records the missed People Manager acceptance requirement, affected Production identity state, and Randy Miller repeat-login proof
 - [`People_Manager_Metadata_Implementation_2026-09-09.md`](People_Manager_Metadata_Implementation_2026-09-09.md) — capability/qualification/Setup-role implementation
 - [`Internal_Web_Backbone_Handoff.md`](Internal_Web_Backbone_Handoff.md) — source-owned Production intranet integration handoff
@@ -51,6 +52,8 @@ A 2026-09-10 read-only Production audit found active Setup Managers whose exact-
 The documented Directus User Onboarding Flow is gated to Google users whose Directus `role IS NULL`. It is therefore a first-onboarding path, not a general reconciliation mechanism for already-established Directus users.
 
 Do not treat repeat login, additional Setup table permissions, or Manager policy changes as a repair for this identity-link condition. Read [`People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md`](People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md) before changing this boundary.
+
+The 2026-09-10 onboarding provenance review also confirmed that `mark@sheboyganlights.org` belongs to Mark Rozmarynowski and was created under the wrong MSB address during onboarding. The current Flow then propagated that upstream mistake into a new `ref.person` row because its no-match branch creates a Person automatically. This is not evidence about Mark Hayon (`mhayon@sheboyganlights.org`). See [`Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md`](Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md).
 
 ## Identity and Onboarding
 
@@ -214,11 +217,12 @@ People Manager application/runtime       DEPLOYED / PROVEN
 browser operator acceptance              PASS for reviewed UI
 Production deployment                    PASS for deployed artifacts
 Directus-Person identity-link coverage   ACCEPTANCE GAP — correction required
-Directus permission matrix               DOCUMENTATION/VALIDATION REQUIRED
+Directus permission matrix               DOCUMENTED 2026-09-10
+Onboarding no-match behavior              HARDENING REQUIRED
 Production intranet/index                separate Backbone work
 ```
 
-Do not treat the People/Identity subsystem as fully closed while authorized human accounts required by governed MSB applications remain unmapped or while critical Directus permission dependencies remain undocumented.
+Do not treat the People/Identity subsystem as fully closed while authorized human accounts required by governed MSB applications remain unmapped or while the onboarding path can silently convert an identity mismatch into a new durable Person.
 
 ## Separate Future Work
 
@@ -228,17 +232,18 @@ Do not treat the People/Identity subsystem as fully closed while authorized huma
 - Google Workspace provisioning automation/integration beyond the reserved identity contract; and
 - any future role/policy administration UI.
 
-The Directus/Person linkage correction and Directus permission documentation are **current corrective work**, not optional future enhancements.
+The Directus/Person linkage correction and onboarding fail-closed behavior are **current corrective work**, not optional future enhancements.
 
 ## Resume Development
 
 Before changing People behavior:
 
-1. read the onboarding contract, Directus Access and Identity Bootstrap Contract, the 2026-09-10 Directus-Person acceptance-gap correction, metadata implementation, accepted disposable/browser/Production evidence, and current operator procedure;
+1. read the onboarding contract, Directus Access and Identity Bootstrap Contract, Directus Production Permission Matrix, the onboarding identity-error propagation finding, the 2026-09-10 Directus-Person acceptance-gap correction, metadata implementation, accepted disposable/browser/Production evidence, and current operator procedure;
 2. inspect current Production schema/runtime and run read-only Directus access/permission plus Directus↔Person identity audits rather than relying on historical acceptance alone;
 3. preserve Google Workspace provisioning authority, Directus bootstrap access, and Directus authorization authority;
 4. preserve exact-email identity matching, least privilege, and duplicate-safe identity behavior;
-5. do not remove unusual-looking Directus USER policy assignments until their bootstrap/exception purpose and effective permission rows are understood;
-6. do not repair missing identity linkage by granting broad application table DML or by guessing identity from names;
-7. preserve the GA4 privacy boundary; and
-8. use Server Management runbooks for runtime/Production work rather than feature-local reconstruction.
+5. treat a missing exact Person match during normal human onboarding as an exception requiring Administrator review rather than silently creating durable Person identity;
+6. do not remove unusual-looking Directus USER policy assignments until their bootstrap/exception purpose and effective permission rows are understood;
+7. do not repair missing identity linkage by granting broad application table DML or by guessing identity from names;
+8. preserve the GA4 privacy boundary; and
+9. use Server Management runbooks for runtime/Production work rather than feature-local reconstruction.
