@@ -17,6 +17,8 @@ from setup_resource_api import setup_resource_api
 from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
+from setup_material_api import setup_material_api
+from setup_material_resolution import install_setup_material_resolution
 
 PRODUCTION_VERSION = "V0.3.4-shared-season-guard-review"
 PRODUCTION_ASSETS = frozenset(
@@ -49,12 +51,18 @@ PRODUCTION_ASSETS = frozenset(
     }
 )
 
+# Focused Setup extension: normalize programming-only LOR groups back to their
+# Stage work scope and replace field-context material lookup with the automatic
+# Stage/real-Scene resolver. No LOR or filesystem mutation occurs here.
+install_setup_material_resolution()
+
 app = Flask(__name__)
 app.register_blueprint(setup_api)
 app.register_blueprint(setup_resource_api)
 app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
+app.register_blueprint(setup_material_api)
 
 
 @app.get("/")
