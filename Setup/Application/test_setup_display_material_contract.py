@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "Application"
 DB = ROOT / "Database"
+ACCEPTANCE = ROOT / "Acceptance"
 if str(APP) not in sys.path:
     sys.path.insert(0, str(APP))
 
@@ -51,7 +52,6 @@ def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_sce
     stage_root.mkdir()
     (stage_root / MARKER_NAME).write_text("stage", encoding="utf-8")
 
-    # Four separate background-preview groups all resolve back to the Stage.
     fallback_rows = []
     for scene_id, group_name in enumerate(
         ("FE-GoalSign", "FE-MSBSign", "FE-OpenClose", "FE-OutsideGate"),
@@ -75,8 +75,6 @@ def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_sce
             }
         )
 
-    # A real structured Scene under the same Stage must stay out of the blanket
-    # Stage remainder even though it is still Stage 01 geographically.
     scene_root = stage_root / "01-Entrance Arch"
     scene_root.mkdir()
     (scene_root / MARKER_NAME).write_text("scene", encoding="utf-8")
@@ -175,3 +173,23 @@ def test_production_host_exposes_material_api_and_cache_busted_assets() -> None:
     assert '"setup_material.js"' in backend
     assert "setup_material.css?v=2026-09-10.2" in html
     assert "setup_material.js?v=2026-09-10.2" in html
+
+
+def test_browser_preview_runner_follows_disposable_and_interactive_ssh_contracts() -> None:
+    server = (ACCEPTANCE / "setup_display_material_browser_preview_server.sh").read_text(encoding="utf-8")
+    wrapper = (ACCEPTANCE / "run_setup_display_material_browser_preview.ps1").read_text(encoding="utf-8")
+
+    assert "pg_dump" in server
+    assert "pg_restore --list < \"$DUMP_FILE\"" in server
+    assert "psql_test < \"$M025\"" in server
+    assert "postgis/postgis:16-3.5" in server
+    assert "cat \"$DUMP_FILE\" |" not in server
+    assert "| head" not in server
+    assert "pg_isready" in server and "/proc/1/comm" in server
+    assert "sudo -u fieldwiring -H" in server
+    assert "merge-base --is-ancestor \"$SETUP_HEAD_BEFORE\" \"$TARGET_SHA\"" in server
+    assert "Production Setup fingerprint unchanged" in server
+    assert "& ssh -tt -L" in wrapper
+    assert "Start-Process ssh" not in wrapper
+    assert "Tee-Object" not in wrapper
+    assert "The browser is not auto-opened" in wrapper
