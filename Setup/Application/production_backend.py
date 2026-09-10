@@ -44,6 +44,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_analytics.js",
         "setup_live_review_fixes.css",
         "setup_live_review_fixes.js",
+        "setup_operational_search.js",
         "setup_training_ux.css",
         "setup_training_ux.js",
         "setup_assigned_review.js",
