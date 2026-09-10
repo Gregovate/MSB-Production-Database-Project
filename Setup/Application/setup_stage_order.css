@@ -33,3 +33,7 @@
   font-size: 0.88rem;
   font-weight: 700;
 }
+
+.setup-operational-search-hidden {
+  display: none !important;
+}
