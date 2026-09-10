@@ -48,6 +48,16 @@ def test_stage_and_preview_sources_use_current_raw_lor_membership() -> None:
     assert "p.preview_id = ANY(%s)" in text
 
 
+def test_preview_source_is_whole_preview_and_not_clamped_to_task_or_stage_scope() -> None:
+    text = read(APP / "setup_material_api.py")
+    start = text.index("if preview_uuids:")
+    end = text.index("if scene_ids:", start)
+    preview_block = text[start:end]
+    assert "p.preview_id = ANY(%s)" in preview_block
+    assert "work_stage_id" not in preview_block
+    assert "d.stage_id" not in preview_block
+
+
 def test_scene_source_uses_current_reconciled_scene_membership() -> None:
     text = read(APP / "setup_material_api.py")
     assert "FROM ref.lor_scene_display AS lsd" in text
