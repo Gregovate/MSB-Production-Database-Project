@@ -74,9 +74,9 @@ cleanup() {
     echo
     echo "--- Setup Display material browser preview cleanup ---"
     if [[ -n "$PREVIEW_PGID" ]]; then
-        kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+        sudo kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
         sleep 1
-        kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+        sudo kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
     fi
 
     sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
@@ -125,7 +125,11 @@ cleanup() {
         status=99
     fi
 
-    echo "Preview Flask log retained at: $PREVIEW_LOG"
+    if [[ -s "$PREVIEW_LOG" ]]; then
+        echo "Preview Flask log retained at: $PREVIEW_LOG"
+    else
+        echo "Preview Flask log: not created"
+    fi
     echo "Preview report retained at:    $REPORT"
     echo "Exit status: $status"
     exit "$status"
