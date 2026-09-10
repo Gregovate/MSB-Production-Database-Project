@@ -4,7 +4,7 @@
 |---|---|
 | Document Type | Engineering Acceptance Correction / Production Finding |
 | System | People and Identity / People Manager |
-| Status | CURRENT FINDING — Production identity reconciliation gap confirmed; immediate three-Manager repair completed |
+| Status | CURRENT FINDING — Production identity reconciliation gap confirmed; immediate three-Manager repair completed and Randy Miller Setup write path validated |
 | Owner | Production Database / People and Identity |
 | Finding Date | 2026-09-10 |
 | Related | Issue #130; PR #135; Setup Issue #122 |
@@ -13,7 +13,7 @@
 
 Record a confirmed acceptance gap discovered after the 2026-09-09 People Manager Production acceptance so future work does not treat the earlier PASS as proof that all Directus-to-`ref.person` identity-link requirements were validated.
 
-This document corrects the engineering handoff. It does not alter the historical Production acceptance record. The bounded 2026-09-10 Production repair described below corrected three proven exact-email Manager mappings only; it did not change the Directus onboarding Flow or close the systemic defect.
+This document corrects the engineering handoff. It does not alter the historical Production acceptance record. The bounded 2026-09-10 Production repair described below corrected three proven exact-email Manager mappings only; it did not change the Directus onboarding Flow, any Directus role/policy/collection permission, or close the systemic defect.
 
 ## Required Identity Acceptance That Was Written Before Production
 
@@ -150,9 +150,9 @@ Typical failure:
 Authenticated Setup operator is not mapped to an MSB person
 ```
 
-This is not repaired by granting additional Setup table DML or by changing the Manager policy.
+This is not repaired by granting additional Setup table DML, changing the Manager policy, or adding Directus collection permissions.
 
-## Immediate Production Repair — COMPLETED 2026-09-10
+## Immediate Production Repair — COMPLETED AND VALIDATED 2026-09-10
 
 A read-only repair preflight proved all three affected Managers were safe exact-email/null-link cases:
 
@@ -177,6 +177,18 @@ For each target, Production preflight proved:
 - target Directus UUID not already linked to another Person.
 
 A bounded all-three transaction then updated only `ref.person.directus_user_id`, leaving the existing `trg_person_set_actor_update` audit trigger enabled. Post-update readback confirmed all three exact mappings above.
+
+**No Directus permission change was required.** No Directus role, policy, access assignment, or collection permission was modified. The affected users already had valid Manager authorization before the repair.
+
+Randy Miller then performed live Production Setup validation after the identity-link repair. He successfully:
+
+```text
+deleted a Setup task
+and
+added a new Setup task
+```
+
+Those two successful governed Manager actions confirm that the immediate blocker was the missing Directus-to-`ref.person` identity link, not insufficient Directus permissions or missing Setup database grants.
 
 This was an immediate operational recovery so assigned Managers could continue Setup review. It is **not** the permanent lifecycle correction.
 
