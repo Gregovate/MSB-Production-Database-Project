@@ -24,7 +24,8 @@ BEGIN
     IF to_regclass('ref.setup_task') IS NULL
        OR to_regclass('ref.lor_scene') IS NULL
        OR to_regclass('ref.lor_scene_display') IS NULL
-       OR to_regclass('ref.display') IS NULL THEN
+       OR to_regclass('ref.display') IS NULL
+       OR to_regclass('ref.display_status') IS NULL THEN
         RAISE EXCEPTION 'Required Setup/LOR objects are missing';
     END IF;
 
@@ -41,6 +42,10 @@ BEGIN
 
     IF to_regprocedure('ref.set_setup_task_display_material_requirement(text,bigint,boolean)') IS NULL THEN
         RAISE EXCEPTION 'Governed Display-material setter is missing';
+    END IF;
+
+    IF NOT has_table_privilege('fieldwiring_app', 'ref.display_status', 'SELECT') THEN
+        RAISE EXCEPTION 'fieldwiring_app cannot read ref.display_status required by automatic material resolution';
     END IF;
 
     CREATE TEMP TABLE expected_material_partition (
