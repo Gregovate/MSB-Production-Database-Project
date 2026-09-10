@@ -96,6 +96,18 @@ def test_ui_has_explicit_multi_source_editor_and_no_scope_material_switch() -> N
     assert "--ui-material" in css
 
 
+def test_perform_work_search_and_material_state_are_wired_for_browser_validation() -> None:
+    js = read(APP / "setup_browser_validation_fixes.js")
+    assert "setup-task-search" in js
+    assert "renderNextExecutionWithGlobalSearch" in js
+    assert "performTaskMatchesSearch" in js
+    assert "No Perform Work tasks match this search." in js
+    assert "DISPLAY SETUP" in js
+    assert "MATERIAL NONE" in js
+    assert "setupMaterialMetadata" in js
+    assert "loadSetupMaterialWithPerformState" in js
+
+
 def test_new_catalog_task_hands_off_to_full_editor() -> None:
     js = read(APP / "setup_material.js")
     assert "setupAddTaskForm?.addEventListener('submit'" in js
@@ -126,5 +138,7 @@ def test_production_host_registers_material_api() -> None:
     assert "app.register_blueprint(setup_material_api)" in backend
     assert '"setup_material.css"' in backend
     assert '"setup_material.js"' in backend
+    assert '"setup_browser_validation_fixes.js"' in backend
     assert "setup_material.css?v=2026-09-10.2" in html
     assert "setup_material.js?v=2026-09-10.2" in html
+    assert "setup_browser_validation_fixes.js?v=2026-09-10.1" in html
