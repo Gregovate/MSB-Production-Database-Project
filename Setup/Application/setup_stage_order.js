@@ -43,6 +43,12 @@ function setupPerformViewMode() {
   return el('next-perform-order-mode')?.value || 'STAGE';
 }
 
+function setupRefreshMaterialHighlighting() {
+  if (typeof applySetupMaterialTaskHighlighting === 'function') {
+    applySetupMaterialTaskHighlighting();
+  }
+}
+
 function setupInstallStageOrderControls() {
   const planFilters = el('next-plan-filters');
   if (planFilters && !el('next-plan-order-mode')) {
@@ -54,6 +60,12 @@ function setupInstallStageOrderControls() {
       renderPlanningBacklog();
       setupRenderScheduleTaskOptions();
     });
+    planFilters.querySelectorAll('input[data-plan-filter]').forEach((input) => {
+      input.addEventListener('change', () => {
+        setupApplyPlanningStageView();
+        setupRefreshMaterialHighlighting();
+      });
+    });
   }
 
   const performFilter = el('next-perform-filter');
@@ -64,6 +76,10 @@ function setupInstallStageOrderControls() {
     label.innerHTML = 'View order <select id="next-perform-order-mode"><option value="STAGE">Stage</option><option value="PLANNED">Planned order</option></select>';
     performHeader.appendChild(label);
     el('next-perform-order-mode').addEventListener('change', renderNextExecution);
+    performFilter.addEventListener('change', () => {
+      setupApplyPerformStageView();
+      setupRefreshMaterialHighlighting();
+    });
   }
 }
 
