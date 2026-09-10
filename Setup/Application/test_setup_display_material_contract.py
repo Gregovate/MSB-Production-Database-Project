@@ -24,7 +24,7 @@ def test_material_migration_separates_display_setup_from_scope_material() -> Non
     assert "like '%setup%'" not in text.lower()
 
 
-def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounded() -> None:
+def test_material_api_is_syntax_valid_and_partition_is_database_owned() -> None:
     path = APP / "setup_material_api.py"
     text = path.read_text(encoding="utf-8")
     ast.parse(text)
@@ -32,9 +32,15 @@ def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounde
     start = text.index("def _stage_remainder_scene_ids")
     end = text.index("def _scope_relationships")
     stage_resolver = text[start:end]
-    assert "WHERE ls.stage_id = %s" in stage_resolver
-    assert "resolve_structured_scope" in stage_resolver
-    assert "preview_uuid = %s" not in stage_resolver
+
+    assert "FROM ref.lor_scene AS ls" in stage_resolver
+    assert "FROM ref.setup_task AS t" in stage_resolver
+    assert "t.active_flag" in stage_resolver
+    assert "t.lor_scene_id IS NOT NULL" in stage_resolver
+    assert "ls.stage_id = t.stage_id" in stage_resolver
+    assert "drive_root" not in text
+    assert "resolve_structured_scope" not in text
+    assert "BackgroundFile" in text
     assert "ref.lor_scene_display" in text
     assert "child.lor_scene_id = ANY(%s)" in text
     assert "ref.setup_task_display" in text
@@ -43,107 +49,63 @@ def test_material_api_is_syntax_valid_and_stage_resolution_is_not_preview_bounde
     assert "ref.set_setup_task_display_material_requirement" in text
 
 
-def test_stage_remainder_resolves_across_multiple_previews_and_excludes_true_scenes(tmp_path, monkeypatch) -> None:
+def test_stage01_remainder_uses_setup_scene_scope_not_google_drive_folder() -> None:
     import setup_material_api as material_api
-    from FieldWiring.Application.field_context_resolver import MARKER_NAME
 
-    stage_root = tmp_path / "01-Front Entrance-FE"
-    stage_root.mkdir()
-    (stage_root / MARKER_NAME).write_text("stage", encoding="utf-8")
-
-    fallback_rows = []
-    for scene_id, group_name in enumerate(
-        ("FE-GoalSign", "FE-MSBSign", "FE-OpenClose", "FE-OutsideGate"),
-        start=101,
-    ):
-        image = stage_root / group_name / "PreviewBackground" / f"{group_name}.jpg"
-        image.parent.mkdir(parents=True)
-        image.write_bytes(b"test")
-        fallback_rows.append(
-            {
-                "lor_scene_id": scene_id,
-                "preview_uuid": f"preview-{scene_id}",
-                "preview_name": f"Show Background Stage 01 {group_name}",
-                "preview_background_file": None,
-                "preview_revision": 1,
-                "source_filename": f"{group_name}.loredit",
-                "scene_uuid": f"scene-{scene_id}",
-                "scene_name": group_name,
-                "scene_stage_id": 1,
-                "scene_background_file": str(image),
-            }
-        )
-
-    entrance_root = stage_root / "01-Entrance Arch"
-    entrance_root.mkdir()
-    (entrance_root / MARKER_NAME).write_text("scene", encoding="utf-8")
-    entrance_image = entrance_root / "PreviewBackground" / "arch.jpg"
-    entrance_image.parent.mkdir()
-    entrance_image.write_bytes(b"test")
-    entrance_scene = {
-        "lor_scene_id": 201,
-        "preview_uuid": "preview-arch",
-        "preview_name": "Show Background Stage 01 FE Outside Gate",
-        "preview_background_file": None,
-        "preview_revision": 1,
-        "source_filename": "outside-gate.loredit",
-        "scene_uuid": "scene-arch",
-        "scene_name": "01-Entrance Arch",
-        "scene_stage_id": 1,
-        "scene_background_file": str(entrance_image),
-    }
-
-    # Production Front Gate has a real structured Scene identity/folder, but its
-    # current LOR BackgroundFile lives in the owning Stage's PreviewBackground.
-    # That Stage-root pointer must not collapse the Scene into the blanket Stage
-    # material remainder.
-    front_gate_root = stage_root / "01-Front Gate"
-    front_gate_root.mkdir()
-    (front_gate_root / MARKER_NAME).write_text("scene", encoding="utf-8")
-    front_gate_image = stage_root / "PreviewBackground" / "Gate Final Version.PNG"
-    front_gate_image.parent.mkdir(exist_ok=True)
-    front_gate_image.write_bytes(b"test")
-    front_gate_scene = {
-        "lor_scene_id": 202,
-        "preview_uuid": "preview-front-gate",
-        "preview_name": "Show Background Stage 01 FE Outside Gate",
-        "preview_background_file": None,
-        "preview_revision": 1,
-        "source_filename": "outside-gate.loredit",
-        "scene_uuid": "scene-front-gate",
-        "scene_name": "01-Front Gate",
-        "scene_stage_id": 1,
-        "scene_background_file": str(front_gate_image),
-    }
+    # These are the current Stage 01 LOR groups. Front Gate is deliberately
+    # included even though its documentation does not live in a matching
+    # Google Drive Scene folder. Setup scope is expressed by reusable tasks
+    # carrying lor_scene_id, not by filesystem layout.
+    all_lor_rows = [
+        {"lor_scene_id": 253},  # Open-Close Sign
+        {"lor_scene_id": 254},  # Making Spirits Bright
+        {"lor_scene_id": 263},  # 01-Front Gate
+        {"lor_scene_id": 264},  # 01-Entrance Arch
+        {"lor_scene_id": 293},  # Goal Sign
+        {"lor_scene_id": 467},  # TuneRadio
+        {"lor_scene_id": 468},  # RotaryGear
+    ]
+    scene_scoped_setup_rows = [
+        {"lor_scene_id": 263},
+        {"lor_scene_id": 264},
+    ]
 
     class FakeCursor:
+        def __init__(self):
+            self.call = 0
+
         def execute(self, _sql, _params):
-            return None
+            self.call += 1
 
         def fetchall(self):
-            return [*fallback_rows, entrance_scene, front_gate_scene]
+            if self.call == 1:
+                return all_lor_rows
+            if self.call == 2:
+                return scene_scoped_setup_rows
+            raise AssertionError(f"Unexpected fetchall call {self.call}")
 
-    monkeypatch.setattr(material_api, "drive_root", lambda: tmp_path)
-    remainder, specific, _warnings = material_api._stage_remainder_scene_ids(
+    remainder, specific, warnings = material_api._stage_remainder_scene_ids(
         FakeCursor(),
         {
             "setup_task_id": 999,
             "stage_id": 1,
             "stage_key": "01",
             "stage_name": "01-Front Entrance-FE",
-            "folder_path": str(stage_root),
+            "folder_path": r"G:\Shared drives\Display Folders\01-Front Entrance-FE",
         },
     )
 
-    assert remainder == [101, 102, 103, 104]
-    assert specific == [201, 202]
+    assert remainder == [253, 254, 293, 467, 468]
+    assert specific == [263, 264]
+    assert warnings == []
 
 
-def test_stage_remainder_fails_closed_instead_of_returning_partial_material() -> None:
+def test_stage_remainder_excludes_distinct_active_scene_scopes_only() -> None:
     text = (APP / "setup_material_api.py").read_text(encoding="utf-8")
-    assert "refused a partial Stage list" in text
-    assert "if unresolved:" in text
-    assert "more-specific current LOR scopes" in text
+    assert "excluding LOR Scenes that are represented by active scene-scoped reusable" in text
+    assert "Google Drive folders and Procedure paths" in text
+    assert "specific_set = set(specific_ids)" in text
+    assert "remainder_ids = [scene_id for scene_id in all_scene_ids if scene_id not in specific_set]" in text
 
 
 def test_display_setup_color_is_separate_from_whole_scope_material_switch() -> None:
