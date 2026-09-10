@@ -1,6 +1,0 @@
-NOTE: This file temporarily preserves the exact documentation screenshot as Base64 while the binary documentation asset is being promoted through the repository tooling.
-
-Original source: operator-supplied Windows Explorer screenshot, 2026-09-10.
-Purpose: concrete evidence of the Stage 01 Scene-folder structure during the missing-marker incident that led to LOR2DB reconciliation gate #143.
-
-The actual image is also retained in the ChatGPT work artifact as stage01_scene_folder_example_20260910_doc.jpg. Replace this transport representation with the binary JPG in this same subsystem images directory when binary repository upload is available.
