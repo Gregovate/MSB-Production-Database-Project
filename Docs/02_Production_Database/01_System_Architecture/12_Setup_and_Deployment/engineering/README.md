@@ -7,7 +7,7 @@
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
 | Status | CURRENT HANDOFF — 2025 reconstruction active; correction/reconciliation package accepted in Production |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-09 |
+| Last Reviewed | 2026-09-10 |
 
 This is the engineering starting point for Setup Session architecture, database behavior, application contracts, Production state, reconstruction rules, planning behavior, Pick List direction, and resume information.
 
@@ -47,6 +47,7 @@ The broad Setup subsystem remains open for real 2025 evaluation. Production avai
 
 ## Start Here
 
+- [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) — current implementation candidate for automatic LOR-derived Display/Container material resolution. Task scope remains Stage/real Scene; the Manager chooses only whether a task requires Display material. Setup does not expose an LOR material-source selector.
 - [Setup Catalog Reconstruction Import — 2026-09-09](Setup_Catalog_Reconstruction_Import_2026-09-09.md) — current implementation candidate for converting the reviewed one-list reconstruction into a normalized reusable catalog before 2026 creation: effort metadata, current Stage/Scene identity, Locate/Layout normalization, logistics boundary, mixed-stage Container rule, dependency reset, and disposable acceptance gate.
 - [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — operator-confirmed planning model: short planning horizon, preferred-order scheduling, Needs Scheduling queue, Sunday avoidance, weather constraints, grass-cutting dependency for cords, multi-day tasks, crew/hour interpretation, mixed-stage Container mobilization, and Rick spreadsheet evidence rules.
 - [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — operator-confirmed missing planning surface between reusable Stage-organized tasks and the short-range schedule: cross-Stage Available/Blocked/In-Progress candidates, operator choice of what can/should happen next, and Arch Trailer unload/access order.
@@ -54,7 +55,7 @@ The broad Setup subsystem remains open for real 2025 evaluation. Production avai
 - [2025 Live Review Work Ledger — 2026-09-08](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) — reconstruction/reconciliation work ledger, Rick-note interpretation rules, candidate lineage, unresolved findings, and historical acceptance context. Some candidate/deployment status inside this dated ledger predates the accepted 019-022 Production promotion; use this README and current issue/PR evidence for latest Production state.
 - [Setup Training Browser Acceptance — 2026-09-08](Setup_Training_Browser_Acceptance_2026-09-08.md) — accepted browser-review evidence for the correction/reconciliation package.
 - [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — original Production foundation/runtime baseline and rollback context.
-- [Setup Internal Analytics and Visible Update Contract — 2026-09-07](Setup_Internal_Analytics_and_Version_Contract_2026-09-07.md) — GA4/privacy and visible revision contract.
+- [Setup Internal Analytics and Visible Update Contract — 2026-09-07](Setup_Internal_Analytics_Version_Contract_2026-09-07.md) — GA4/privacy and visible revision contract.
 - [Internal Web Backbone Handoff](Internal_Web_Backbone_Handoff.md) — source-subsystem contract for intranet navigation/search/application entry points.
 - [Setup Session Shared Review and Season-Year Guard](../Setup_Session_Shared_Review_and_Season_Year_Guard_2026-09-07.md) — annual-vs-reusable data boundary and session-year enforcement.
 
@@ -174,12 +175,13 @@ Still unresolved or intentionally separate:
 - task/Stage search;
 - cross-Stage candidate planning surface and candidate-to-work-day workflow;
 - classification of historical predecessors into hard predecessor versus preferred order versus readiness condition;
-- true Setup Scene versus LOR display-group classification using shared Folder Alignment classification;
 - authoritative Controller context in Material / Logistics from FieldWiring / Controller Inventory;
 - Pick List generation and tablet workflow;
 - mixed-stage Container annual mobilization/unload-group state and ordered-access rules;
 - Container/Display movement/scanning writes; and
 - future People capability/qualification integration for crew suitability.
+
+The prior open item `true Setup Scene versus LOR display-group classification` is now governed by the 2026-09-10 Stage/Scene material-resolution contract and remains implementation/acceptance work rather than an unresolved design question.
 
 Detailed KIT contents remain outside the current 2026 MVP, but an existing KIT Container can be a real physical Setup dependency.
 
@@ -195,18 +197,19 @@ Before changing this subsystem:
 
 1. read the Production Database Project Rules;
 2. read this engineering portal;
-3. read the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) while the reusable-catalog import candidate is active;
-4. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
-5. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
-6. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing staging/logistics/pick behavior;
-7. review issue #122 and PR #125 for newest live-reconstruction findings;
-8. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
-9. preserve annual 2025 facts separately from reusable future knowledge;
-10. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
-11. use issue #130 / 03 People and Identity for global skill/qualification work;
-12. use issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
-13. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
-14. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
+3. read the [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) before changing Setup material resolution or Scene presentation;
+4. read the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) while the reusable-catalog import candidate is active;
+5. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
+6. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
+7. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing staging/logistics/pick behavior;
+8. review issue #122 and PR #125 for newest live-reconstruction findings;
+9. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
+10. preserve annual 2025 facts separately from reusable future knowledge;
+11. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
+12. use issue #130 / 03 People and Identity for global skill/qualification work;
+13. use issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
+14. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
+15. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
 
 ## Related Systems
 
