@@ -7,7 +7,7 @@
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
 | Status | CURRENT HANDOFF — reusable catalog reconstruction accepted in Production; live PostgreSQL catalog is now the working baseline |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-09 |
+| Last Reviewed | 2026-09-10 |
 
 This is the engineering starting point for Setup Session architecture, database behavior, application contracts, Production state, task development, planning behavior, Pick List direction, and resume information.
 
@@ -67,6 +67,7 @@ The broader Setup subsystem remains open for real evaluation. Production availab
 
 ## Start Here
 
+- [Setup Data Consumption and Authorization Contract — 2026-09-10](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md) — **required before changing Setup permissions, Directus authorization, PostgreSQL grants, or person/actor linkage**. Documents the complete current read/write table surface, Directus capability model, `fieldwiring_app` least-privilege boundary, `ref.person.directus_user_id` write prerequisite, and the 2026-09-10 finding that repeat Directus login does not repair established Manager mappings.
 - [Setup Task Material Resolver Contract — 2026-09-09](Setup_Task_Material_Resolver_Contract_2026-09-09.md) — **required before changing Material / Logistics**. Preserves the distinction between task scope, Display physical location, reusable task Display work-package ownership, and current Container storage. One Display may belong to zero or one reusable Setup task; one task may own zero, one, or many Displays. Stage/Scene membership is selection/context evidence, not automatic task material inheritance.
 - [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) — **required before changing dependencies/readiness/scheduling**. Preserves hard predecessor vs preferred order vs readiness, area-specific grass/mulch readiness, the current free-form readiness-note limitation, and the Shift-drag predecessor direction.
 - [Setup Catalog Reconstruction Import — 2026-09-09](Setup_Catalog_Reconstruction_Import_2026-09-09.md) — accepted historical record of migrations 023/024 and the one-time normalized catalog reconstruction. Do not treat it as the ongoing task master after Production acceptance.
@@ -240,6 +241,7 @@ See [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09
 
 Still unresolved or intentionally separate:
 
+- repair the proven current Manager `ref.person.directus_user_id` linkage gaps through a governed People/Identity path, then add a durable onboarding/reconciliation mechanism that does not depend on a manual Directus UI visit; see the Setup Data Consumption and Authorization Contract;
 - deploy/accept PR #139 so `Save Effort` placement and Catalog-only `Delete Task` are available during 2025 cleanup;
 - remove confirmed duplicate/bad reusable Catalog definitions introduced during reconstruction/merge before 2026 propagation;
 - live catalog completion/correction as additional real task knowledge is found, including missing `Set Up Frosty`;
@@ -280,6 +282,8 @@ The 2025 Production-backed review remains the proving ground until that plan is 
 
 ## Critical Runtime Permission Boundary
 
+Setup human authorization, person/actor linkage, PostgreSQL read grants, and governed write-function permissions are separate layers. Read the [Setup Data Consumption and Authorization Contract](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md) before changing any of them.
+
 `msbadmin` is the SSH administrator but runtime-path validation must use the `fieldwiring` service identity for paths and the shared Python environment that depend on runtime group permissions.
 
 Server-side detail and recovery procedure belong in `Gregovate/MSB-Server-Management`.
@@ -290,21 +294,22 @@ Before changing this subsystem:
 
 1. read the Production Database Project Rules;
 2. read this engineering portal;
-3. inspect the current PostgreSQL reusable task catalog first; do not reconstruct the active task list from old spreadsheets or chat memory;
-4. read the [Setup Task Material Resolver Contract](Setup_Task_Material_Resolver_Contract_2026-09-09.md) before touching Material / Logistics, task Display ownership, or Pick List material resolution;
-5. read the [Setup Predecessor and Readiness Contract](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) before touching dependencies, readiness, Shift-drag predecessor editing, or candidate availability;
-6. use the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) as the accepted import/deployment history, not as an ongoing task master;
-7. read the [Setup Reconstruction Migration and Acceptance History](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) before changing Setup migrations, disposable acceptance, or reconstruction-cleanup behavior;
-8. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
-9. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
-10. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing logistics/pick behavior;
-11. review Issue #122, PR #125, and PR #139 for the newest live findings, Catalog cleanup gate, and deployment/merge state; use #136/#137 as source lineage for the combined cleanup candidate;
-12. preserve annual 2025 facts separately from reusable future knowledge;
-13. do not infer exact duration, Captain, crew, completion, task material, or hard predecessor from shorthand evidence;
-14. use Issue #130 / 03 People and Identity for global skill/qualification work;
-15. use Issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
-16. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
-17. keep operator docs, engineering docs, PR/issue status, and Internal Web Backbone navigation synchronized when accepted behavior changes.
+3. read the [Setup Data Consumption and Authorization Contract](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md) before changing permissions, Directus authorization, PostgreSQL grants, or person/actor linkage;
+4. inspect the current PostgreSQL reusable task catalog first; do not reconstruct the active task list from old spreadsheets or chat memory;
+5. read the [Setup Task Material Resolver Contract](Setup_Task_Material_Resolver_Contract_2026-09-09.md) before touching Material / Logistics, task Display ownership, or Pick List material resolution;
+6. read the [Setup Predecessor and Readiness Contract](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) before touching dependencies, readiness, Shift-drag predecessor editing, or candidate availability;
+7. use the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) as the accepted import/deployment history, not as an ongoing task master;
+8. read the [Setup Reconstruction Migration and Acceptance History](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) before changing Setup migrations, disposable acceptance, or reconstruction-cleanup behavior;
+9. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
+10. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
+11. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing logistics/pick behavior;
+12. review Issue #122, PR #125, and PR #139 for the newest live findings, Catalog cleanup gate, and deployment/merge state; use #136/#137 as source lineage for the combined cleanup candidate;
+13. preserve annual 2025 facts separately from reusable future knowledge;
+14. do not infer exact duration, Captain, crew, completion, task material, or hard predecessor from shorthand evidence;
+15. use Issue #130 / 03 People and Identity for global skill/qualification and durable user/person identity work;
+16. use Issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
+17. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
+18. keep operator docs, engineering docs, PR/issue status, and Internal Web Backbone navigation synchronized when accepted behavior changes.
 
 ## Related Systems
 
