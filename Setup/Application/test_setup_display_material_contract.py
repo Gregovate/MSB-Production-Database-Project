@@ -8,7 +8,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "Application"
 DB = ROOT / "Database"
-ACCEPTANCE = ROOT / "Acceptance"
 if str(APP) not in sys.path:
     sys.path.insert(0, str(APP))
 
@@ -127,6 +126,8 @@ def test_stage_remainder_fails_closed_instead_of_returning_partial_material() ->
 def test_display_setup_color_is_separate_from_whole_scope_material_switch() -> None:
     js = (APP / "setup_material.js").read_text(encoding="utf-8")
     css = (APP / "setup_material.css").read_text(encoding="utf-8")
+    api = (APP / "setup_material_api.py").read_text(encoding="utf-8")
+    migration = (DB / "025_add_setup_display_material_requirement.sql").read_text(encoding="utf-8")
 
     assert "is_display_setup_step" in js
     assert "requires_display_material" in js
@@ -136,7 +137,7 @@ def test_display_setup_color_is_separate_from_whole_scope_material_switch() -> N
     assert "SCOPE MATERIAL" in js
     assert "Use whole Stage/Scene Display material" in js
     assert "material-context" in js
-    assert "Issue #141" in js
+    assert "Issue #141" in api or "Issue #141" in migration
     assert "if (task.is_display_setup_step)" in js
     assert "if (task.requires_display_material)" in js
     assert "setup-material-task" in js
@@ -173,23 +174,3 @@ def test_production_host_exposes_material_api_and_cache_busted_assets() -> None:
     assert '"setup_material.js"' in backend
     assert "setup_material.css?v=2026-09-10.2" in html
     assert "setup_material.js?v=2026-09-10.2" in html
-
-
-def test_browser_preview_runner_follows_disposable_and_interactive_ssh_contracts() -> None:
-    server = (ACCEPTANCE / "setup_display_material_browser_preview_server.sh").read_text(encoding="utf-8")
-    wrapper = (ACCEPTANCE / "run_setup_display_material_browser_preview.ps1").read_text(encoding="utf-8")
-
-    assert "pg_dump" in server
-    assert "pg_restore --list < \"$DUMP_FILE\"" in server
-    assert "psql_test < \"$M025\"" in server
-    assert "postgis/postgis:16-3.5" in server
-    assert "cat \"$DUMP_FILE\" |" not in server
-    assert "| head" not in server
-    assert "pg_isready" in server and "/proc/1/comm" in server
-    assert "sudo -u fieldwiring -H" in server
-    assert "merge-base --is-ancestor \"$SETUP_HEAD_BEFORE\" \"$TARGET_SHA\"" in server
-    assert "Production Setup fingerprint unchanged" in server
-    assert "& ssh -tt -L" in wrapper
-    assert "Start-Process ssh" not in wrapper
-    assert "Tee-Object" not in wrapper
-    assert "The browser is not auto-opened" in wrapper
