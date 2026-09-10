@@ -319,246 +319,110 @@ function installNextLibraryTools() {
   if (!header || document.getElementById('next-collapse-all')) return;
   const actions = document.createElement('div');
   actions.className = 'next-library-tools';
-  actions.innerHTML = `
-    <button id="next-expand-all" type="button" class="secondary">Expand All</button>
-    <button id="next-collapse-all" type="button" class="secondary">Collapse All</button>
-  `;
+  actions.innerHTML = '<button id="next-collapse-all" type="button" class="small secondary">Collapse all</button><button id="next-expand-all" type="button" class="small secondary">Expand all</button>';
   header.appendChild(actions);
-  el('next-expand-all').addEventListener('click', () => {
-    setupNextState.closedStages.clear(); setupNextState.closedScopes.clear(); renderLibrary();
-  });
-  el('next-collapse-all').addEventListener('click', () => {
-    setupNextState.closedStages.add('site-wide');
-    sortedStages().forEach((stage) => setupNextState.closedStages.add(String(stage.stage_id)));
-    renderLibrary();
-  });
+  el('next-collapse-all').addEventListener('click', () => document.querySelectorAll('#library-list details').forEach((item) => { item.open = false; }));
+  el('next-expand-all').addEventListener('click', () => document.querySelectorAll('#library-list details').forEach((item) => { item.open = true; }));
 }
 
 function installNextCopyDialog() {
   if (el('next-copy-dialog')) return;
   const dialog = document.createElement('dialog');
   dialog.id = 'next-copy-dialog';
-  dialog.className = 'next-dialog';
-  dialog.innerHTML = `
-    <form method="dialog" id="next-copy-form">
-      <h3>Copy Reusable Task</h3>
-      <p class="muted">Reusable definition and equipment/resources copy. Prerequisites and prior annual actuals do not.</p>
-      <label>Task name<input id="next-copy-name" type="text" required></label>
-      <label>Destination<select id="next-copy-stage"></select></label>
-      <label>Stage area<select id="next-copy-scene"></select></label>
-      <div class="action-row">
-        <button value="cancel" type="button" class="secondary" id="next-copy-cancel">Cancel</button>
-        <button value="default" type="submit">Copy Task</button>
-      </div>
-    </form>
-  `;
+  dialog.innerHTML = `<form method="dialog" class="next-copy-card"><h3>Copy reusable task</h3><p id="next-copy-source"></p><label>Destination Stage / Site-wide<select id="next-copy-stage"></select></label><label>Destination Scene<select id="next-copy-scene"></select></label><label>New task name<input id="next-copy-name" type="text" required></label><div class="action-row"><button id="next-copy-confirm" type="button">Create Copy</button><button type="submit" class="secondary">Cancel</button></div></form>`;
   document.body.appendChild(dialog);
-  el('next-copy-cancel').addEventListener('click', () => dialog.close());
   el('next-copy-stage').addEventListener('change', populateNextCopyScenes);
-  el('next-copy-form').addEventListener('submit', submitNextCopy);
-}
-
-function populateNextCopyStages() {
-  const select = el('next-copy-stage');
-  select.innerHTML = `<option value="__SITE_WIDE__">Site-wide / Infrastructure</option>${sortedStages().map((stage) => (
-    `<option value="${stage.stage_id}">Stage ${escapeHtml(stage.stage_key)} — ${escapeHtml(stage.stage_name || '')}</option>`
-  )).join('')}`;
-}
-
-function populateNextCopyScenes() {
-  const value = el('next-copy-stage').value;
-  const select = el('next-copy-scene');
-  if (value === '__SITE_WIDE__') {
-    select.innerHTML = '<option value="">No LOR Stage/Scene</option>';
-    select.disabled = true;
-    return;
-  }
-  select.disabled = false;
-  const stageId = Number(value);
-  select.innerHTML = `<option value="">Stage-level / General</option>${nextScenesForStage(stageId).map((scene) => (
-    `<option value="${scene.lor_scene_id}">Scene — ${escapeHtml(scene.scene_name)}</option>`
-  )).join('')}`;
+  el('next-copy-confirm').addEventListener('click', confirmNextCopy);
 }
 
 function openNextCopyDialog(taskId) {
-  const task = taskById(taskId);
-  if (!task) return;
+  const task = taskById(taskId); if (!task) return;
   setupNextState.copySourceId = taskId;
-  populateNextCopyStages();
-  el('next-copy-stage').value = nextIsSitewide(task) ? '__SITE_WIDE__' : String(task.stage_id);
-  populateNextCopyScenes();
-  if (!nextIsSitewide(task)) el('next-copy-scene').value = task.lor_scene_id == null ? '' : String(task.lor_scene_id);
-  el('next-copy-name').value = task.task_name;
+  const stageSelect = el('next-copy-stage');
+  stageSelect.innerHTML = '<option value="">Site-wide / Infrastructure</option>' + sortedStages().map((stage) => `<option value="${stage.stage_id}">Stage ${escapeHtml(stage.stage_key)} — ${escapeHtml(stage.stage_name || '')}</option>`).join('');
+  stageSelect.value = task.stage_id == null ? '' : String(task.stage_id);
+  populateNextCopyScenes(task.lor_scene_id);
+  el('next-copy-name').value = `${task.task_name} Copy`;
+  el('next-copy-source').textContent = nextTaskLabel(task);
   el('next-copy-dialog').showModal();
 }
 
-async function submitNextCopy(event) {
-  event.preventDefault();
-  const source = taskById(setupNextState.copySourceId);
-  if (!source) return;
-  const destinationValue = el('next-copy-stage').value;
-  const stageId = destinationValue === '__SITE_WIDE__' ? null : Number(destinationValue);
+function populateNextCopyScenes(selectedScene = null) {
+  const stageId = el('next-copy-stage').value ? Number(el('next-copy-stage').value) : null;
+  const sceneSelect = el('next-copy-scene');
+  sceneSelect.innerHTML = '<option value="">Stage-level / General</option>' + (stageId == null ? [] : nextScenesForStage(stageId)).map((scene) => `<option value="${scene.lor_scene_id}">${escapeHtml(scene.scene_name)}</option>`).join('');
+  sceneSelect.disabled = stageId == null;
+  sceneSelect.value = selectedScene == null ? '' : String(selectedScene);
+}
+
+async function confirmNextCopy() {
+  const source = taskById(setupNextState.copySourceId); if (!source) return;
+  const stageId = el('next-copy-stage').value ? Number(el('next-copy-stage').value) : null;
   const sceneId = stageId == null || !el('next-copy-scene').value ? null : Number(el('next-copy-scene').value);
-  const name = el('next-copy-name').value.trim();
-  if (!name) return;
+  const name = el('next-copy-name').value.trim(); if (!name) return;
   try {
     setBusy(true);
-    const resources = (await api(`api/setup/tasks/${source.setup_task_id}/resources`)).resources || [];
-    const created = await api('api/setup/tasks', commandOptions('POST', {
-      task_name: name,
-      stage_id: stageId,
-      task_action_type: source.task_action_type || 'WORK',
-      display_order: 999,
-      normal_crew_min: source.normal_crew_min,
-      normal_crew_max: source.normal_crew_max,
-      expected_duration_minutes: source.expected_duration_minutes,
-      completion_point: source.completion_point,
-      readiness_note: source.readiness_note,
-      weather_note: source.weather_note,
-      reusable_notes: [source.reusable_notes || '', `[Copied from reusable task ${source.setup_task_id}; verify destination-specific details.]`].filter(Boolean).join('\n')
-    }));
-    const newId = created.setup_task?.setup_task_id;
-    if (!newId) throw new Error('Copied task did not return a new task ID.');
-    await api(`api/setup/tasks/${newId}/scope`, commandOptions('PATCH', { stage_id: stageId, lor_scene_id: sceneId }));
-    for (const resource of resources) {
-      await api(`api/setup/tasks/${newId}/resources/${resource.setup_resource_id}`, commandOptions('PATCH', {
-        quantity_required: Number(resource.quantity_required) || 1,
-        requirement_type: resource.requirement_type || 'REQUIRED',
-        notes: resource.notes || null,
-        active_flag: true
-      }));
-    }
-    el('next-copy-dialog').close();
-    await reloadTasks(null); await loadNextOrganization(false);
-    setupNextState.closedStages.delete(stageId == null ? 'site-wide' : String(stageId));
-    setupNextState.closedScopes.delete(nextScopeKey(stageId, sceneId));
-    const destination = nextTasksForScope(stageId, sceneId);
-    await nextPersistOrder(destination);
-    await reloadTasks(null); await loadNextOrganization(false); renderLibrary();
-    setAlert(`Copied task ${source.setup_task_id} to reusable task ${newId}. Its new annual occurrence is UNVERIFIED; prior annual actuals were not copied.`, 'ok');
-    requestAnimationFrame(() => document.querySelector(`[data-task-id="${newId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
-  } catch (error) {
-    setAlert(error.message || error, 'error'); window.alert(error.message || error);
-  } finally { setBusy(false); }
+    const create = await api('api/setup/tasks', commandOptions('POST', { task_name: name, stage_id: stageId, task_action_type: source.task_action_type, display_order: source.display_order }));
+    const newId = Number(create.task?.setup_task_id); if (!newId) throw new Error('Copied task did not return an ID.');
+    if (sceneId != null) await api(`api/setup/tasks/${newId}/scope`, commandOptions('PATCH', { stage_id: stageId, lor_scene_id: sceneId }));
+    const copied = taskById(setupNextState.copySourceId);
+    await api(`api/setup/tasks/${newId}`, commandOptions('PATCH', setupTaskUpdatePayload({ ...copied, setup_task_id: newId, task_name: name, stage_id: stageId }, {})));
+    for (const dep of copied.dependencies || []) await api(`api/setup/tasks/${newId}/dependencies/${dep.prerequisite_setup_task_id}`, commandOptions('PATCH', { active: true, dependency_note: dep.dependency_note || null }));
+    el('next-copy-dialog').close(); await reloadTasks(null); await loadNextOrganization(false); renderLibrary(); setAlert(`Created copied task ${newId}.`, 'ok');
+  } catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
 }
 
 function installDependencyEditor() {
   const section = el('detail-dependencies')?.closest('.detail-section');
   if (!section || el('next-dependency-editor')) return;
-  const editor = document.createElement('div');
-  editor.id = 'next-dependency-editor';
-  editor.className = 'next-dependency-editor manager-only';
-  editor.innerHTML = `
-    <div class="eyebrow">Manager prerequisite correction</div>
-    <div class="next-dependency-add">
-      <select id="next-dependency-select"></select>
-      <input id="next-dependency-note" type="text" placeholder="Optional prerequisite note">
-      <button id="next-dependency-add-button" type="button">Add prerequisite</button>
-    </div>
-    <div id="next-dependency-current"></div>
-  `;
+  const editor = document.createElement('div'); editor.id = 'next-dependency-editor'; editor.className = 'next-dependency-editor manager-only';
+  editor.innerHTML = `<select id="next-dependency-select"></select><input id="next-dependency-note" type="text" placeholder="Optional prerequisite note"><button id="next-dependency-add" type="button">Add prerequisite</button>`;
   section.appendChild(editor);
-  el('next-dependency-add-button').addEventListener('click', addNextDependency);
+  el('next-dependency-add').addEventListener('click', addNextDependency);
+  el('detail-dependencies').addEventListener('click', (event) => { const button = event.target.closest('[data-remove-dependency]'); if (button) removeNextDependency(Number(button.dataset.removeDependency)); });
 }
 
 function renderDependencyEditor(task) {
-  installDependencyEditor();
-  const editor = el('next-dependency-editor');
-  if (!editor) return;
-  editor.hidden = !appState.access?.can_manage_setup;
-  const options = sortedTasks().filter((candidate) => Number(candidate.setup_task_id) !== Number(task.setup_task_id));
-  el('next-dependency-select').innerHTML = options.map((candidate) => (
-    `<option value="${candidate.setup_task_id}">${escapeHtml(nextTaskLabel(candidate))}</option>`
-  )).join('');
-  el('next-dependency-current').innerHTML = (task.dependencies || []).length
-    ? (task.dependencies || []).map((dep) => `
-      <div class="next-dependency-row">
-        <span>${escapeHtml(dep.task_name)}${dep.dependency_note ? ` — ${escapeHtml(dep.dependency_note)}` : ''}</span>
-        <button type="button" class="small secondary next-dependency-remove" data-prereq-id="${dep.setup_task_id}">Remove</button>
-      </div>`).join('')
-    : '<div class="muted">No prerequisite recorded.</div>';
-  el('next-dependency-current').querySelectorAll('.next-dependency-remove').forEach((button) => {
-    button.addEventListener('click', () => removeNextDependency(task, Number(button.dataset.prereqId)));
-  });
+  installDependencyEditor(); const editor = el('next-dependency-editor'); if (!editor) return; editor.hidden = !appState.access?.can_manage_setup;
+  const existing = new Set((task.dependencies || []).map((d) => Number(d.prerequisite_setup_task_id)));
+  el('next-dependency-select').innerHTML = '<option value="">Select prerequisite…</option>' + (appState.tasks || []).filter((item) => item.active_flag && Number(item.setup_task_id) !== Number(task.setup_task_id) && !existing.has(Number(item.setup_task_id))).map((item) => `<option value="${item.setup_task_id}">${escapeHtml(nextTaskLabel(item))}</option>`).join('');
+  el('detail-dependencies').innerHTML = (task.dependencies || []).length ? (task.dependencies || []).map((dep) => `<span class="chip">${escapeHtml(dep.task_name)}${dep.dependency_note ? ` · ${escapeHtml(dep.dependency_note)}` : ''}${appState.access?.can_manage_setup ? ` <button type="button" class="chip-remove" data-remove-dependency="${dep.prerequisite_setup_task_id}">×</button>` : ''}</span>`).join('') : '<span class="muted">No prerequisites.</span>';
 }
 
 async function addNextDependency() {
-  const task = taskById(appState.selectedTaskId);
-  const prereq = Number(el('next-dependency-select').value || 0);
-  if (!task || !prereq) return;
-  try {
-    await api(`api/setup/tasks/${task.setup_task_id}/dependencies/${prereq}`, commandOptions('PATCH', {
-      active: true,
-      dependency_note: el('next-dependency-note').value.trim() || null
-    }));
-    el('next-dependency-note').value = '';
-    await reloadTasks(task.setup_task_id); await loadNextOrganization(false);
-    setAlert('Prerequisite added.', 'ok');
-  } catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); }
+  const task = taskById(appState.selectedTaskId); const prerequisiteId = Number(el('next-dependency-select').value || 0); if (!task || !prerequisiteId) return;
+  try { setBusy(true); await api(`api/setup/tasks/${task.setup_task_id}/dependencies/${prerequisiteId}`, commandOptions('PATCH', { active: true, dependency_note: el('next-dependency-note').value.trim() || null })); await reloadTasks(task.setup_task_id); await loadNextOrganization(false); renderDependencyEditor(taskById(task.setup_task_id)); setAlert('Prerequisite added.', 'ok'); }
+  catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
 }
 
-async function removeNextDependency(task, prereqId) {
-  if (!window.confirm('Remove this prerequisite?')) return;
-  try {
-    await api(`api/setup/tasks/${task.setup_task_id}/dependencies/${prereqId}`, commandOptions('PATCH', { active: false }));
-    await reloadTasks(task.setup_task_id); await loadNextOrganization(false);
-    setAlert('Prerequisite removed.', 'ok');
-  } catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); }
+async function removeNextDependency(prerequisiteId) {
+  const task = taskById(appState.selectedTaskId); if (!task) return;
+  try { setBusy(true); await api(`api/setup/tasks/${task.setup_task_id}/dependencies/${prerequisiteId}`, commandOptions('PATCH', { active: false })); await reloadTasks(task.setup_task_id); await loadNextOrganization(false); renderDependencyEditor(taskById(task.setup_task_id)); setAlert('Prerequisite removed.', 'ok'); }
+  catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
+}
+
+function nextPlanningOrder(tasks = appState.tasks || []) {
+  return [...tasks].sort((a, b) => {
+    const ap = a.planned_order == null ? Number.MAX_SAFE_INTEGER : Number(a.planned_order);
+    const bp = b.planned_order == null ? Number.MAX_SAFE_INTEGER : Number(b.planned_order);
+    if (ap !== bp) return ap - bp;
+    const ab = a.baseline_plan_order == null ? Number.MAX_SAFE_INTEGER : Number(a.baseline_plan_order);
+    const bb = b.baseline_plan_order == null ? Number.MAX_SAFE_INTEGER : Number(b.baseline_plan_order);
+    if (ab !== bb) return ab - bb;
+    return Number(a.setup_task_id) - Number(b.setup_task_id);
+  });
 }
 
 function nextPlanningCategory(task) {
   if (task.execution_status === 'COMPLETE') return 'COMPLETED';
   if (task.execution_status === 'IN_PROGRESS') return 'IN_PROGRESS';
-  if (Number(task.scheduled_count || 0) > 0) return 'SCHEDULED';
+  if (Number(task.scheduled_count || 0) > 0 || task.planned_date) return 'SCHEDULED';
   return 'UNSCHEDULED';
 }
 
-function nextPlanningOrder(tasks = setupNextState.executionTasks) {
-  return [...(tasks || [])].sort((a, b) => {
-    const ao = a.planned_order == null ? 999999 : Number(a.planned_order);
-    const bo = b.planned_order == null ? 999999 : Number(b.planned_order);
-    if (ao !== bo) return ao - bo;
-    const ab = a.baseline_plan_order == null ? 999999 : Number(a.baseline_plan_order);
-    const bb = b.baseline_plan_order == null ? 999999 : Number(b.baseline_plan_order);
-    if (ab !== bb) return ab - bb;
-    return Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
-  });
-}
-
 function nextPlanningFilterEnabled(category) {
-  const checkbox = document.querySelector(`[data-plan-filter="${category}"]`);
-  return checkbox ? checkbox.checked : category !== 'COMPLETED';
-}
-
-async function persistAnnualPlanningOrder(tasks) {
-  for (let i = 0; i < tasks.length; i += 1) {
-    const desired = (i + 1) * 10;
-    const task = tasks[i];
-    if (Number(task.planned_order) === desired) continue;
-    await api(`api/setup/session-tasks/${task.setup_session_task_id}/planned-order`, commandOptions('PATCH', {
-      planned_order: desired
-    }));
-    task.planned_order = desired;
-  }
-}
-
-async function moveAnnualPlanningTask(sourceSessionTaskId, targetSessionTaskId, after = false) {
-  const tasks = nextPlanningOrder();
-  const sourceIndex = tasks.findIndex((task) => Number(task.setup_session_task_id) === Number(sourceSessionTaskId));
-  const targetIndexOriginal = tasks.findIndex((task) => Number(task.setup_session_task_id) === Number(targetSessionTaskId));
-  if (sourceIndex < 0 || targetIndexOriginal < 0 || sourceIndex === targetIndexOriginal) return;
-  const [source] = tasks.splice(sourceIndex, 1);
-  let targetIndex = tasks.findIndex((task) => Number(task.setup_session_task_id) === Number(targetSessionTaskId));
-  if (after) targetIndex += 1;
-  tasks.splice(targetIndex, 0, source);
-  try {
-    setBusy(true);
-    await persistAnnualPlanningOrder(tasks);
-    await loadNextSchedule();
-    setAlert('Annual Setup planned order updated.', 'ok');
-  } catch (error) {
-    setAlert(error.message || error, 'error'); window.alert(error.message || error);
-  } finally { setBusy(false); }
+  const box = document.querySelector(`[data-plan-filter="${category}"]`);
+  return !box || box.checked;
 }
 
 function renderPlanningBacklog() {
@@ -568,186 +432,75 @@ function renderPlanningBacklog() {
   const visible = full.filter((task) => nextPlanningFilterEnabled(nextPlanningCategory(task)));
   target.innerHTML = visible.length ? visible.map((task, index) => {
     const category = nextPlanningCategory(task);
-    const blocked = !task.prerequisites_complete || task.execution_status === 'NOT_READY';
-    return `
-      <div class="next-plan-row" draggable="${appState.access?.can_manage_setup ? 'true' : 'false'}" data-session-task-id="${task.setup_session_task_id}">
-        <div class="next-plan-order">${escapeHtml(task.planned_order ?? '—')}</div>
-        <div class="next-plan-main"><strong>${escapeHtml(task.task_name)}</strong><div class="muted">${escapeHtml(nextTaskScopeLabel(task))}</div></div>
-        <div class="next-plan-state"><span class="pill ${category === 'COMPLETED' ? 'verified' : blocked ? 'correction' : 'unverified'}">${escapeHtml(category.replace('_',' '))}</span>${blocked ? '<span class="next-blocked">Blocked / Not Ready</span>' : ''}</div>
-        <div class="next-plan-meta">Baseline ${escapeHtml(task.baseline_plan_order ?? '—')}${task.plan_change_reason ? `<br>${escapeHtml(task.plan_change_reason)}` : ''}</div>
-        ${appState.access?.can_manage_setup ? `<div class="next-plan-actions"><button type="button" class="small secondary next-plan-up" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="small secondary next-plan-down" ${index === visible.length - 1 ? 'disabled' : ''}>↓</button></div>` : ''}
-      </div>`;
-  }).join('') : '<div class="empty-state">No annual tasks match the selected planning filters.</div>';
+    return `<div class="next-planning-task" draggable="${appState.access?.can_manage_setup ? 'true' : 'false'}" data-task-id="${task.setup_task_id}"><div class="next-planning-order">${task.planned_order ?? task.baseline_plan_order ?? '—'}</div><div><strong>${escapeHtml(task.task_name)}</strong><div class="muted">${escapeHtml(nextTaskScopeLabel(task))} · ${category.replace('_', ' ')}</div></div><div class="next-planning-actions">${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-plan-up" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="small secondary next-plan-down" ${index === visible.length - 1 ? 'disabled' : ''}>↓</button>` : ''}</div></div>`;
+  }).join('') : '<div class="empty-state">No tasks match the selected planning filters.</div>';
+  wirePlanningBacklog(visible);
+}
 
-  const rows = [...target.querySelectorAll('.next-plan-row')];
-  rows.forEach((row, index) => {
-    const sourceId = Number(row.dataset.sessionTaskId);
-    row.querySelector('.next-plan-up')?.addEventListener('click', () => {
-      if (index > 0) moveAnnualPlanningTask(sourceId, Number(rows[index - 1].dataset.sessionTaskId), false);
-    });
-    row.querySelector('.next-plan-down')?.addEventListener('click', () => {
-      if (index < rows.length - 1) moveAnnualPlanningTask(sourceId, Number(rows[index + 1].dataset.sessionTaskId), true);
-    });
-    row.addEventListener('dragstart', (event) => {
-      setupNextState.draggedPlanningSessionTaskId = sourceId;
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', String(sourceId));
-      row.classList.add('dragging');
-    });
-    row.addEventListener('dragover', (event) => { event.preventDefault(); row.classList.add('drop-target'); });
-    row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
-    row.addEventListener('drop', (event) => {
-      event.preventDefault(); row.classList.remove('drop-target');
-      const dragged = Number(event.dataTransfer.getData('text/plain') || setupNextState.draggedPlanningSessionTaskId || 0);
-      if (dragged && dragged !== sourceId) moveAnnualPlanningTask(dragged, sourceId, false);
-    });
-    row.addEventListener('dragend', () => {
-      setupNextState.draggedPlanningSessionTaskId = null;
-      rows.forEach((item) => item.classList.remove('dragging', 'drop-target'));
-    });
+function wirePlanningBacklog(tasks) {
+  document.querySelectorAll('.next-planning-task').forEach((row) => {
+    const taskId = Number(row.dataset.taskId); const index = tasks.findIndex((t) => Number(t.setup_task_id) === taskId);
+    row.querySelector('.next-plan-up')?.addEventListener('click', () => movePlannedTask(tasks, index, index - 1));
+    row.querySelector('.next-plan-down')?.addEventListener('click', () => movePlannedTask(tasks, index, index + 1));
+    row.addEventListener('dragstart', (event) => { setupNextState.draggedPlanningSessionTaskId = Number(taskById(taskId)?.setup_session_task_id || 0); event.dataTransfer.setData('text/plain', String(setupNextState.draggedPlanningSessionTaskId)); row.classList.add('dragging'); });
+    row.addEventListener('dragend', () => { setupNextState.draggedPlanningSessionTaskId = null; row.classList.remove('dragging'); });
   });
 }
 
-function installNextTabs() {
-  const tabs = document.querySelector('.tabs');
-  if (!tabs || el('schedule-view')) return;
-  const movementButton = tabs.querySelector('[data-view="movement"]');
-  const scheduleButton = document.createElement('button');
-  scheduleButton.className = 'tab'; scheduleButton.dataset.view = 'schedule'; scheduleButton.type = 'button'; scheduleButton.textContent = 'Plan / Schedule';
-  const performButton = document.createElement('button');
-  performButton.className = 'tab'; performButton.dataset.view = 'perform'; performButton.type = 'button'; performButton.textContent = 'Perform Work';
-  tabs.insertBefore(scheduleButton, movementButton);
-  tabs.insertBefore(performButton, movementButton);
-  scheduleButton.addEventListener('click', async () => { showView('schedule'); await loadNextSchedule(); });
-  performButton.addEventListener('click', async () => { showView('perform'); await loadNextExecution(); });
+async function movePlannedTask(tasks, from, to) {
+  if (to < 0 || to >= tasks.length) return;
+  [tasks[from], tasks[to]] = [tasks[to], tasks[from]];
+  try { setBusy(true); for (let i = 0; i < tasks.length; i += 1) { const task = tasks[i]; if (!task.setup_session_task_id) continue; await api(`api/setup/session-tasks/${task.setup_session_task_id}/planned-order`, commandOptions('PATCH', { planned_order: (i + 1) * 10, plan_change_reason: 'Reordered in Setup planning' })); } await reloadTasks(null); renderPlanningBacklog(); setAlert('Annual planned order updated.', 'ok'); }
+  catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
+}
 
-  const main = document.querySelector('main');
-  const schedule = document.createElement('section');
-  schedule.id = 'schedule-view'; schedule.className = 'view';
-  schedule.innerHTML = `
-    <div class="card">
-      <div class="section-title"><div><div class="eyebrow">Ordered backlog first; dates only when useful</div><h2>Setup Planning Queue</h2></div>
-      <button id="next-promote-baseline" type="button" class="secondary manager-only">Use Current Order as Future Baseline</button></div>
-      <p class="muted">The whole annual backlog stays ordered even when most work is intentionally unscheduled. Reorder this list as constraints change; only schedule the next practical few days.</p>
-      <div class="next-plan-filters" id="next-plan-filters">
-        <label><input type="checkbox" data-plan-filter="UNSCHEDULED" checked> Unscheduled</label>
-        <label><input type="checkbox" data-plan-filter="SCHEDULED" checked> Scheduled</label>
-        <label><input type="checkbox" data-plan-filter="IN_PROGRESS" checked> In Progress</label>
-        <label><input type="checkbox" data-plan-filter="COMPLETED"> Completed</label>
-      </div>
-      <div id="next-planning-backlog" class="next-planning-backlog"></div>
-    </div>
-    <div class="card next-near-term-card">
-      <div class="eyebrow">Rolling-horizon dispatch</div><h2>Next Work Days</h2>
-      <p class="muted">Assign only the near-term work you actually know. Crew lanes represent parallel groups, not individual volunteer rosters.</p>
-      <form id="next-schedule-form" class="next-schedule-form manager-only">
-        <label>Date<input id="next-schedule-date" type="date" required></label>
-        <label>Shift<select id="next-schedule-shift"><option value="MORNING">Morning</option><option value="AFTERNOON">Afternoon</option><option value="ALL_DAY">All Day</option></select></label>
-        <label>Crew lane<select id="next-schedule-lane"><option value="A">Crew A</option><option value="B">Crew B</option><option value="C">Crew C</option></select></label>
-        <label>Task<select id="next-schedule-task"></select></label>
-        <label>Planned crew<input id="next-schedule-crew" type="number" min="0"></label>
-        <button type="submit">Add to Work Day</button>
-      </form>
-      <div id="next-schedule-list"></div>
-    </div>`;
-  main.appendChild(schedule);
-  el('next-schedule-form').addEventListener('submit', submitNextSchedule);
-  el('next-plan-filters').querySelectorAll('input').forEach((input) => input.addEventListener('change', renderPlanningBacklog));
-  el('next-promote-baseline').addEventListener('click', promoteNextBaseline);
+function shiftLabel(shift) {
+  return shift === 'MORNING' ? 'Morning' : shift === 'AFTERNOON' ? 'Afternoon' : 'All day';
+}
 
-  const perform = document.createElement('section');
-  perform.id = 'perform-view'; perform.className = 'view';
-  perform.innerHTML = `
-    <div class="card">
-      <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div>
-      <label>Status<select id="next-perform-filter"><option value="INCOMPLETE">Incomplete</option><option value="COMPLETE">Completed</option><option value="ALL">All</option></select></label></div>
-      <p class="muted">This screen combines the task, current published Procedure PDF, equipment, mapped material/location context, progress, and completion. Movement/scanning writes remain a separate guarded implementation step.</p>
-      <div id="next-perform-list"></div>
-    </div>`;
-  main.appendChild(perform);
-  el('next-perform-filter').addEventListener('change', renderNextExecution);
+function renderNextSchedule() {
+  const host = el('next-work-days'); if (!host) return;
+  const days = setupNextState.schedule.work_days || []; const assignments = setupNextState.schedule.assignments || [];
+  host.innerHTML = days.length ? days.map((day) => {
+    const rows = assignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
+    return `<section class="next-work-day"><div class="next-work-day-heading"><strong>${escapeHtml(formatDate(day.work_date))}</strong><span>${escapeHtml(day.day_status)}</span></div>${['ALL_DAY','MORNING','AFTERNOON'].map((shift) => `<div class="next-shift"><h4>${shiftLabel(shift)}</h4>${['A','B','C'].map((lane) => { const laneRows = rows.filter((r) => r.shift_code === shift && r.crew_lane === lane); return `<div class="next-crew-lane" data-work-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-lane="${lane}"><strong>Crew ${lane}</strong>${laneRows.map((r) => `<div class="next-scheduled-task">${escapeHtml(r.task_name)}${r.planned_crew_count ? ` · ${r.planned_crew_count} people` : ''}${appState.access?.can_manage_setup ? `<button type="button" class="chip-remove" data-unschedule-session-task="${r.setup_session_task_id}">×</button>` : ''}</div>`).join('') || '<div class="muted">Drop task here</div>'}</div>`; }).join('')}</div>`).join('')}</section>`;
+  }).join('') : '<div class="empty-state">No near-term work day is planned yet. Managers can add one when the next date is known.</div>';
+  wireNextSchedule();
+}
+
+function wireNextSchedule() {
+  document.querySelectorAll('.next-crew-lane').forEach((lane) => {
+    lane.addEventListener('dragover', (event) => { event.preventDefault(); lane.classList.add('drop-target'); });
+    lane.addEventListener('dragleave', () => lane.classList.remove('drop-target'));
+    lane.addEventListener('drop', async (event) => {
+      event.preventDefault(); lane.classList.remove('drop-target');
+      const sessionTaskId = Number(event.dataTransfer.getData('text/plain') || setupNextState.draggedPlanningSessionTaskId || 0); if (!sessionTaskId) return;
+      try { setBusy(true); await api(`api/setup/work-days/${lane.dataset.workDayId}/tasks/${sessionTaskId}`, commandOptions('PATCH', { active: true, shift_code: lane.dataset.shift, crew_lane: lane.dataset.lane, sort_order: 100 })); await loadNextSchedule(); setAlert('Task assigned to crew lane.', 'ok'); }
+      catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
+    });
+  });
+  document.querySelectorAll('[data-unschedule-session-task]').forEach((button) => button.addEventListener('click', async () => {
+    const assignment = setupNextState.schedule.assignments.find((r) => Number(r.setup_session_task_id) === Number(button.dataset.unscheduleSessionTask)); if (!assignment) return;
+    try { setBusy(true); await api(`api/setup/work-days/${assignment.setup_work_day_id}/tasks/${assignment.setup_session_task_id}`, commandOptions('PATCH', { active: false, shift_code: assignment.shift_code, crew_lane: assignment.crew_lane, sort_order: assignment.sort_order || 100 })); await loadNextSchedule(); }
+    catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
+  }));
+}
+
+async function loadNextSchedule() {
+  const payload = await api(`api/setup/schedule?season_year=${encodeURIComponent(appState.seasonYear)}`); setupNextState.schedule = payload.schedule || { work_days: [], assignments: [] }; renderNextSchedule();
+}
+
+async function createNextWorkDay(event) {
+  event.preventDefault(); const date = el('next-work-date').value; if (!date) return;
+  try { setBusy(true); await api('api/setup/work-days', commandOptions('POST', { season_year: appState.seasonYear, work_date: date, day_status: 'PLANNED', notes: null })); el('next-work-date').value = ''; await loadNextSchedule(); setAlert('Work day added.', 'ok'); }
+  catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
 }
 
 async function promoteNextBaseline() {
   if (!appState.access?.can_manage_setup) return;
-  if (!window.confirm(`Use the current ${appState.seasonYear} annual planned order as the reusable starting baseline for future Setup seasons?\n\nDo this only when the order reflects a generally useful pattern, not a one-year constraint such as road construction.`)) return;
-  try {
-    setBusy(true);
-    const payload = await api('api/setup/planning/promote-baseline', commandOptions('POST', { season_year: Number(appState.seasonYear) }));
-    await reloadTasks(null);
-    await loadNextSchedule();
-    setAlert(`${payload.baseline?.updated_task_count ?? 0} reusable task baseline orders updated.`, 'ok');
-  } catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); }
-  finally { setBusy(false); }
-}
-
-async function loadNextSchedule() {
-  const [schedulePayload, executionPayload] = await Promise.all([
-    api(`api/setup/schedule?season_year=${encodeURIComponent(appState.seasonYear)}`),
-    api(`api/setup/execution?season_year=${encodeURIComponent(appState.seasonYear)}`)
-  ]);
-  setupNextState.schedule = schedulePayload.schedule || { work_days: [], assignments: [] };
-  setupNextState.executionTasks = executionPayload.tasks || [];
-  const selectable = nextPlanningOrder().filter((task) => task.execution_status !== 'COMPLETE');
-  el('next-schedule-task').innerHTML = selectable.map((task) => (
-    `<option value="${task.setup_session_task_id}">${escapeHtml(task.planned_order ?? '—')} — ${escapeHtml(nextTaskLabel(task))}</option>`
-  )).join('');
-  renderPlanningBacklog();
-  renderNextSchedule();
-}
-
-async function submitNextSchedule(event) {
-  event.preventDefault();
-  const date = el('next-schedule-date').value;
-  const sessionTaskId = Number(el('next-schedule-task').value || 0);
-  if (!date || !sessionTaskId) return;
-  const task = setupNextState.executionTasks.find((item) => Number(item.setup_session_task_id) === sessionTaskId);
-  try {
-    setBusy(true);
-    const day = await api('api/setup/work-days', commandOptions('POST', {
-      season_year: Number(appState.seasonYear), work_date: date, day_status: 'PLANNED'
-    }));
-    const dayId = day.work_day?.setup_work_day_id;
-    await api(`api/setup/work-days/${dayId}/tasks/${sessionTaskId}`, commandOptions('PATCH', {
-      active: true,
-      shift_code: el('next-schedule-shift').value,
-      crew_lane: el('next-schedule-lane').value,
-      sort_order: Number(task?.planned_order) || 100,
-      planned_crew_count: nullableInteger(el('next-schedule-crew').value)
-    }));
-    await loadNextSchedule();
-    setAlert('Task added to the near-term Setup work day.', 'ok');
-  } catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); }
-  finally { setBusy(false); }
-}
-
-function renderCrewLanes(items) {
-  if (!items.length) return '<div class="muted">No tasks scheduled.</div>';
-  const lanes = [...new Set(items.map((item) => String(item.crew_lane || 'A').toUpperCase()))].sort();
-  return `<div class="next-crew-grid">${lanes.map((lane) => {
-    const laneItems = items.filter((item) => String(item.crew_lane || 'A').toUpperCase() === lane);
-    return `<section class="next-crew-lane"><h5>Crew ${escapeHtml(lane)}</h5>${laneItems.map((item) => `
-      <div class="next-schedule-item"><span><strong>${escapeHtml(item.task_name)}</strong><br><span class="muted">${escapeHtml(nextTaskScopeLabel(item))} · Planned crew ${item.planned_crew_count ?? 'TBD'}</span></span>
-      ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-unschedule" data-day="${item.setup_work_day_id}" data-task="${item.setup_session_task_id}">Remove</button>` : ''}</div>`).join('')}</section>`;
-  }).join('')}</div>`;
-}
-
-function renderNextSchedule() {
-  const target = el('next-schedule-list');
-  const days = setupNextState.schedule.work_days || [];
-  const assignments = setupNextState.schedule.assignments || [];
-  target.innerHTML = days.length ? days.map((day) => {
-    const dayItems = assignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
-    const shifts = ['MORNING','AFTERNOON','ALL_DAY'];
-    return `<details class="next-schedule-day" open><summary>${escapeHtml(day.work_date)} · ${escapeHtml(day.day_status)}</summary>
-      ${shifts.map((shift) => `<div class="next-shift"><h4>${shift.replace('_',' ')}</h4>${renderCrewLanes(dayItems.filter((item) => item.shift_code === shift))}</div>`).join('')}</details>`;
-  }).join('') : '<div class="empty-state">No work days have been scheduled yet. That is a normal state until you are ready to commit the next few days.</div>';
-  target.querySelectorAll('.next-unschedule').forEach((button) => button.addEventListener('click', async () => {
-    await api(`api/setup/work-days/${button.dataset.day}/tasks/${button.dataset.task}`, commandOptions('PATCH', {
-      active: false, shift_code: 'ALL_DAY', crew_lane: 'A', sort_order: 100
-    }));
-    await loadNextSchedule();
-  }));
+  if (!window.confirm(`Use the current ${appState.seasonYear} annual planned order as the reusable starting baseline for future Setup seasons?\n\nThis does not copy annual actuals or create a future season.`)) return;
+  try { setBusy(true); const result = await api('api/setup/planning/promote-baseline', commandOptions('POST', { season_year: appState.seasonYear })); setAlert(`Promoted ${result.baseline?.updated_tasks || 0} planned positions to the reusable baseline.`, 'ok'); await reloadTasks(null); renderPlanningBacklog(); }
+  catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); } finally { setBusy(false); }
 }
 
 async function loadNextExecution() {
@@ -808,7 +561,7 @@ async function loadNextTaskExecution(details) {
           <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task.expected_duration_minutes))}</p>
           <p><strong>Prerequisites:</strong> ${task.prerequisites_complete ? 'Complete / no blockers' : 'Not complete'}</p></section>
         <section><h4>Equipment / Resources</h4>${resources.length ? `<ul>${resources.map((r) => `<li>${escapeHtml(r.resource_name)} · Qty ${r.quantity_required} · ${escapeHtml(r.requirement_type)}</li>`).join('')}</ul>` : '<p class="muted">No structured resource requirement recorded.</p>'}</section>
-        <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Displays or support Containers are mapped to this reusable task yet.</p>'}</section>
+        <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Display material source or support Container is selected for this reusable task.</p>'}</section>
         <section><h4>Published Setup Procedure</h4>${docs.length ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('') : `<p class="muted">No published Setup PDF resolved for this task scope.${nextIsSitewide(task) ? ' Site-wide Procedures belong in Display Folders\\Site Infrastructure\\Procedures\\Setup.' : ''}</p>`}</section>
       </div>
       <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.completed_quantity ? ` · ${p.completed_quantity} completed` : ''}${p.completed_units ? ` · ${escapeHtml(p.completed_units)}` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}${p.marks_task_complete ? ' · COMPLETE' : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
@@ -911,6 +664,42 @@ reloadTasks = async function reloadTasksNextPass(selectTaskId = null) {
   applyNextTaskScopes();
   if (setupNextState.scenes.length) renderLibrary();
 };
+
+function installNextTabs() {
+  const tabs = document.querySelector('.tabs');
+  if (!tabs || el('schedule-view')) return;
+  const movementButton = tabs.querySelector('[data-view="movement"]');
+  const scheduleButton = document.createElement('button');
+  scheduleButton.className = 'tab'; scheduleButton.dataset.view = 'schedule'; scheduleButton.type = 'button'; scheduleButton.textContent = 'Plan / Schedule';
+  tabs.insertBefore(scheduleButton, movementButton);
+  const performButton = document.createElement('button');
+  performButton.className = 'tab'; performButton.dataset.view = 'perform'; performButton.type = 'button'; performButton.textContent = 'Perform Work';
+  tabs.insertBefore(performButton, movementButton);
+  const helpButton = document.createElement('button');
+  helpButton.className = 'tab'; helpButton.dataset.view = 'help'; helpButton.type = 'button'; helpButton.textContent = 'How Setup Works';
+  tabs.appendChild(helpButton);
+
+  const main = document.querySelector('main');
+  const schedule = document.createElement('section');
+  schedule.id = 'schedule-view'; schedule.className = 'view';
+  schedule.innerHTML = `<div class="next-plan-layout"><div class="card"><div class="section-title"><div><div class="eyebrow">Reusable baseline + annual 2025 order</div><h2>Plan / Schedule</h2></div><button id="next-promote-baseline" type="button" class="secondary manager-only">Promote Annual Order to Future Baseline</button></div><p class="muted">The reusable baseline survives seasons. The annual order can change for this Setup without rewriting the future baseline until an Administrator deliberately promotes it.</p><div class="next-plan-filters"><label><input type="checkbox" data-plan-filter="UNSCHEDULED" checked> Unscheduled</label><label><input type="checkbox" data-plan-filter="SCHEDULED" checked> Scheduled</label><label><input type="checkbox" data-plan-filter="IN_PROGRESS" checked> In Progress</label><label><input type="checkbox" data-plan-filter="COMPLETED"> Completed</label></div><div id="next-planning-backlog" class="next-planning-backlog"></div></div><div class="card next-near-term-card"><div class="eyebrow">Rolling-horizon dispatch</div><h2>Next Work Days</h2><p class="muted">Assign only the near-term work you actually know. Crew lanes represent parallel groups, not individual volunteer rosters.</p><form id="next-schedule-form" class="next-schedule-form manager-only"><label>Work date<input id="next-work-date" type="date" required></label><button type="submit">Add Work Day</button></form><div id="next-work-days"></div></div></div>`;
+  main.appendChild(schedule);
+  const perform = document.createElement('section');
+  perform.id = 'perform-view'; perform.className = 'view';
+  perform.innerHTML = `<div class="card"><div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div><label>Status<select id="next-perform-filter"><option value="INCOMPLETE">Incomplete</option><option value="COMPLETE">Completed</option><option value="ALL">All</option></select></label></div><p class="muted">This screen combines the task, current published Procedure PDF, equipment, mapped material/location context, progress, and completion. Movement/scanning writes remain a separate guarded implementation step.</p><div id="next-perform-list"></div></div>`;
+  main.appendChild(perform);
+  const help = document.createElement('section');
+  help.id = 'help-view'; help.className = 'view'; help.innerHTML = `<div class="card"><div class="eyebrow">Training reference</div><h2>How Setup Works</h2><p>This shared Setup application separates permanent reusable knowledge from annual planning and field execution.</p><div class="next-help-grid"><section><h3>Reusable Task</h3><p>Name, Stage/Scene scope, normal crew/time, prerequisites, Procedure, material relationships, and reusable resources.</p></section><section><h3>Annual Session</h3><p>Verification, annual order, planned dates, progress, completion, and the things that changed this year.</p></section><section><h3>Plan</h3><p>Maintain the full dependency-aware annual order. Promote a reviewed annual order back to the reusable future baseline only deliberately.</p></section><section><h3>Schedule</h3><p>Use rolling-horizon work days and Crew A/B/C lanes. Do not pretend the whole season is known months ahead.</p></section><section><h3>Perform</h3><p>Captains see the task, Procedure, resources, material location, progress, and completion in one place.</p></section><section><h3>Movement</h3><p>Physical scans identify Containers and Displays. A future guarded command records Setup movement without rewriting permanent storage assignments.</p></section></div></div>`;
+  main.appendChild(help);
+
+  scheduleButton.addEventListener('click', async () => { showView('schedule'); renderPlanningBacklog(); await loadNextSchedule(); });
+  performButton.addEventListener('click', async () => { showView('perform'); await loadNextExecution(); });
+  helpButton.addEventListener('click', () => showView('help'));
+  el('next-perform-filter').addEventListener('change', renderNextExecution);
+  document.querySelectorAll('[data-plan-filter]').forEach((box) => box.addEventListener('change', renderPlanningBacklog));
+  el('next-schedule-form').addEventListener('submit', createNextWorkDay);
+  el('next-promote-baseline').addEventListener('click', promoteNextBaseline);
+}
 
 async function initializeNextPass() {
   installNextCopyDialog();
