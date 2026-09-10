@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import setup_material_resolution as material_resolution
 from setup_material_resolution import (
     classify_lor_group,
     is_real_setup_scene,
@@ -54,6 +55,66 @@ def test_only_true_child_scene_names_become_setup_scene_scopes() -> None:
     ):
         assert not is_real_setup_scene(name)
         assert is_stage_level_lor_group(name)
+
+
+def test_execution_rows_preserve_real_scenes_and_hide_programming_groups(monkeypatch) -> None:
+    rows = [
+        {
+            "setup_session_task_id": 1,
+            "setup_task_id": 1,
+            "stage_id": 2,
+            "lor_scene_id": 253,
+            "scene_name": "01-Entrance Arch",
+        },
+        {
+            "setup_session_task_id": 2,
+            "setup_task_id": 108,
+            "stage_id": 2,
+            "lor_scene_id": 9001,
+            "scene_name": "Goal Sign",
+        },
+    ]
+    monkeypatch.setattr(
+        material_resolution,
+        "_ORIGINAL_EXECUTION_TASKS",
+        lambda _self, _year: rows,
+    )
+
+    normalized = material_resolution._execution_tasks(object(), 2025)
+    assert normalized[0]["lor_scene_id"] == 253
+    assert normalized[0]["scene_name"] == "01-Entrance Arch"
+    assert normalized[1]["source_lor_scene_id"] == 9001
+    assert normalized[1]["lor_scene_id"] is None
+    assert normalized[1]["scene_name"] is None
+
+
+def test_schedule_rows_use_the_same_real_scene_normalization(monkeypatch) -> None:
+    monkeypatch.setattr(
+        material_resolution,
+        "_ORIGINAL_SCHEDULE",
+        lambda _self, _year: {
+            "work_days": [{"setup_work_day_id": 1}],
+            "assignments": [
+                {
+                    "setup_session_task_id": 1,
+                    "stage_id": 2,
+                    "lor_scene_id": 254,
+                    "scene_name": "01-Front Gate",
+                },
+                {
+                    "setup_session_task_id": 2,
+                    "stage_id": 2,
+                    "lor_scene_id": 9002,
+                    "scene_name": "Making Spirits Bright",
+                },
+            ],
+        },
+    )
+
+    normalized = material_resolution._schedule(object(), 2025)
+    assert normalized["assignments"][0]["scene_name"] == "01-Front Gate"
+    assert normalized["assignments"][1]["lor_scene_id"] is None
+    assert normalized["assignments"][1]["scene_name"] is None
 
 
 def test_material_requirement_migration_is_one_boolean_not_source_selector() -> None:
