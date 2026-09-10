@@ -23,6 +23,8 @@ def test_production_html_uses_database_client_only() -> None:
     assert "setup_acceptance_fixes.css" in text
     assert "setup_session_year_guard.js" in text
     assert "setup_session_year_guard.css" in text
+    assert "setup_material.js" in text
+    assert "setup_material.css" in text
     assert "setup.js" not in text
     assert "setup_review_extensions.js" not in text
     assert "setup_instruction_live.js" not in text
@@ -73,7 +75,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.4-shared-season-guard-review"
+    assert payload["version"] == "V0.3.5-reconstruction-material-review"
 
     for asset in (
         "/setup.css",
@@ -92,6 +94,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_acceptance_fixes.js",
         "/setup_session_year_guard.css",
         "/setup_session_year_guard.js",
+        "/setup_material.css",
+        "/setup_material.js",
     ):
         assert client.get(asset).status_code == 200
 
@@ -152,5 +156,9 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/tasks/<int:setup_task_id>/field-context",
         "/api/setup/tasks/<int:setup_task_id>/procedure",
         "/api/setup/tasks/<int:setup_task_id>/procedure/current",
+        "/api/setup/task-display-material",
+        "/api/setup/tasks/<int:setup_task_id>/display-setup-step",
+        "/api/setup/tasks/<int:setup_task_id>/display-material",
+        "/api/setup/tasks/<int:setup_task_id>/material-context",
     ):
         assert expected in rules
