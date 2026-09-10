@@ -6,6 +6,7 @@ This is the engineering starting point for Production Database work involving pe
 
 - [`../README.md`](../README.md) — subsystem overview
 - [`Directus_User_Onboarding_Identity_Contract_2026-09-09.md`](Directus_User_Onboarding_Identity_Contract_2026-09-09.md) — current Production Directus onboarding behavior and People identity lifecycle
+- [`People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md`](People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md) — **required before changing Directus/Person identity linkage**; records the missed People Manager acceptance requirement, affected Production identity state, and Randy Miller repeat-login proof
 - [`People_Manager_Metadata_Implementation_2026-09-09.md`](People_Manager_Metadata_Implementation_2026-09-09.md) — capability/qualification/Setup-role implementation
 - [`Internal_Web_Backbone_Handoff.md`](Internal_Web_Backbone_Handoff.md) — source-owned Production intranet integration handoff
 - [`../../../../../People/README.md`](../../../../../People/README.md) — current People Manager implementation/runtime summary
@@ -34,11 +35,21 @@ working directory    /opt/fieldwiring/People/Application
 listener             192.168.5.9:8796
 environment          /etc/msb-people/people.env
 PostgreSQL role      people_app
-PGPASSFILE           /var/lib/fieldwiring/.pgpass
+PGPASSFILE            /var/lib/fieldwiring/.pgpass
 public route         https://my.sheboyganlights.org/people/
 ```
 
 The backend listener is exposed only from Synology `192.168.5.4` through the source-limited UFW rule for `8796/tcp`.
+
+### Current identity-link limitation — 2026-09-10
+
+The 2026-09-09 People Manager Production acceptance did **not** prove the Directus onboarding identity-link lifecycle end to end even though the onboarding contract required that proof before Production acceptance.
+
+A 2026-09-10 read-only Production audit found active Setup Managers whose exact-email `ref.person` rows exist but whose `directus_user_id` remains NULL. Randy Miller then explicitly authenticated again through Google at `db.sheboyganlights.org`; the mapping remained NULL.
+
+The documented Directus User Onboarding Flow is gated to Google users whose Directus `role IS NULL`. It is therefore a first-onboarding path, not a general reconciliation mechanism for already-established Directus users.
+
+Do not treat repeat login, additional Setup table permissions, or Manager policy changes as a repair for this identity-link condition. Read [`People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md`](People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md) before changing this boundary.
 
 ## Identity and Onboarding
 
@@ -46,7 +57,9 @@ The backend listener is exposed only from Synology `192.168.5.4` through the sou
 
 The Production Directus **User Onboarding** flow matches an existing `ref.person` by `email`, provided `directus_user_id` is null or already equals the triggering Directus user ID. If no matching person is found, it creates a new person from the Directus user's first name, last name, email, and Directus ID.
 
-A manually added volunteer can therefore reserve the intended Sheboygan Lights email on the existing person before later first Google/Directus login when preserving the same `person_id` matters.
+The Person-link branch is reached only through the currently observed Google-user onboarding condition that also requires the Directus user's role to still be null. Therefore the flow must not be described as a general login-time reconciliation mechanism for all existing Directus accounts.
+
+A manually added volunteer can reserve the intended Sheboygan Lights email on the existing person before later first Google/Directus login when preserving the same `person_id` matters.
 
 ## Accepted People Manager Behavior
 
@@ -92,7 +105,7 @@ Cloudflare Access authenticates the user. Current Directus role/policy state aut
 
 People Manager maintenance is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. Human writes also require the authenticated Directus user to map to a durable `ref.person` actor.
 
-## Acceptance State — 2026-09-09
+## Acceptance State — 2026-09-09, corrected 2026-09-10
 
 ### Disposable acceptance
 
@@ -110,6 +123,8 @@ Production `ref.person` fingerprint remained:
 Durable evidence:
 
 `People/Acceptance/People_Manager_Metadata_Disposable_Acceptance_Evidence_2026-09-09.md`
+
+The disposable harness proved People Manager database/API behavior using an already-mapped Manager actor. It did **not** execute or simulate the Directus User Onboarding Flow and therefore did not satisfy the written requirement to prove existing-person -> first-Directus-login -> same-person identity linkage.
 
 ### Browser review
 
@@ -148,6 +163,8 @@ Durable evidence:
 
 `People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md`
 
+These proven deployment/application results remain valid. However, the historical `PEOPLE MANAGER PRODUCTION ACCEPTANCE: PASS` must **not** be interpreted as proof that the Directus onboarding identity-link acceptance requirement was exercised. The 2026-09-10 acceptance correction linked above is the current authority for that gap.
+
 ## Google Analytics Contract
 
 People Manager uses:
@@ -179,7 +196,7 @@ volunteer/contact
     -> personal contact data maintained
     -> reserved @sheboyganlights.org identity stored when appropriate
     -> Google Workspace account may be created later
-    -> first Directus login can link the same person_id by exact MSB email
+    -> first Directus onboarding can link the same person_id by exact MSB email when the current Flow's onboarding gate is satisfied
 ```
 
 If a person stops participating, retain the durable identity and set `active_flag=false`; reactivate that same person if they return.
@@ -187,13 +204,14 @@ If a person stops participating, retain the durable identity and set `active_fla
 ## Current Closeout Sequence
 
 ```text
-disposable acceptance                PASS
-browser operator acceptance          PASS
-Production deployment                PASS
-live browser + GA4                    PASS
-Production intranet/index            NEXT — Backbone #16
-return handoff                        AFTER Backbone verification
+People Manager application/runtime       DEPLOYED / PROVEN
+browser operator acceptance              PASS for reviewed UI
+Production deployment                    PASS for deployed artifacts
+Directus-Person identity-link coverage   ACCEPTANCE GAP — correction required
+Production intranet/index                separate Backbone work
 ```
+
+Do not treat the People/Identity subsystem as fully closed while authorized human accounts required by governed MSB applications remain unmapped.
 
 ## Separate Future Work
 
@@ -203,15 +221,16 @@ return handoff                        AFTER Backbone verification
 - Google Workspace provisioning automation/integration beyond the reserved identity contract; and
 - any future role/policy administration UI.
 
-These do not block the current Production People Manager.
+The Directus/Person linkage correction is **current corrective work**, not an optional future enhancement.
 
 ## Resume Development
 
 Before changing People behavior:
 
-1. read the onboarding contract, metadata implementation, accepted disposable/browser/Production evidence, and current operator procedure;
-2. inspect current Production schema/runtime rather than relying on historical acceptance alone;
+1. read the onboarding contract, the 2026-09-10 Directus-Person acceptance-gap correction, metadata implementation, accepted disposable/browser/Production evidence, and current operator procedure;
+2. inspect current Production schema/runtime and run a read-only Directus↔Person identity audit rather than relying on historical acceptance alone;
 3. preserve Google Workspace provisioning authority and Directus authorization authority;
-4. preserve least privilege and duplicate-safe identity behavior;
-5. preserve the GA4 privacy boundary; and
-6. use Server Management runbooks for runtime/Production work rather than feature-local reconstruction.
+4. preserve exact-email identity matching, least privilege, and duplicate-safe identity behavior;
+5. do not repair missing identity linkage by granting broad application table DML or by guessing identity from names;
+6. preserve the GA4 privacy boundary; and
+7. use Server Management runbooks for runtime/Production work rather than feature-local reconstruction.
