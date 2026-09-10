@@ -2,7 +2,7 @@
 MSB Setup Session — automatic Display/container material applicability
 Issue: #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-10 V0.1.1
+Revision: 2026-09-10 V0.1.2
 
 Purpose:
   Record the one reusable-task fact needed by automatic LOR material resolution:
@@ -29,8 +29,9 @@ BEGIN
     IF to_regclass('ref.lor_scene') IS NULL
        OR to_regclass('ref.lor_scene_display') IS NULL
        OR to_regclass('ref.display') IS NULL
+       OR to_regclass('ref.display_status') IS NULL
        OR to_regclass('ref.container') IS NULL THEN
-        RAISE EXCEPTION 'Current LOR Scene/Display and Display/Container authority are required before migration 025';
+        RAISE EXCEPTION 'Current LOR Scene/Display, Display status, and Display/Container authority are required before migration 025';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fieldwiring_app') THEN
@@ -129,8 +130,17 @@ $function$;
 REVOKE ALL ON FUNCTION ref.set_setup_task_display_material_requirement(text,bigint,boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ref.set_setup_task_display_material_requirement(text,bigint,boolean) TO fieldwiring_app;
 
+/*
+The automatic field-context resolver filters current Display membership through
+the permanent ref.display_status lookup. Existing Setup migration 014 grants the
+other Scene/Display/Container read surfaces but did not need this lookup.
+Grant only the additional SELECT required by this resolver; no DML is added.
+*/
+GRANT SELECT ON TABLE ref.display_status TO fieldwiring_app;
+
 COMMIT;
 
 SELECT
-    '2026-09-10-setup-display-material-requirement-v0.1.1' AS applied_revision,
-    current_user AS applied_by;
+    '2026-09-10-setup-display-material-requirement-v0.1.2' AS applied_revision,
+    current_user AS applied_by,
+    has_table_privilege('fieldwiring_app', 'ref.display_status', 'SELECT') AS can_read_display_status;
