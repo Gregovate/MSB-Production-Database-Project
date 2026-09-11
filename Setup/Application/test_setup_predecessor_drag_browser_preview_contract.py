@@ -9,11 +9,12 @@ ACCEPTANCE_DIR = REPO_ROOT / "Setup" / "Acceptance"
 def test_predecessor_drag_preview_pins_exact_candidate_and_branch() -> None:
     launcher = (ACCEPTANCE_DIR / "run_setup_predecessor_drag_browser_preview.ps1").read_text(encoding="utf-8")
 
-    assert "4cada529a0cd714f5da2cb43f5dffb016e40b7ac" in launcher
+    assert "bd7457205b7f6596b9221348b6118ba9861abecc" in launcher
     assert "agent/setup-shift-drag-predecessor-151" in launcher
     assert "run_setup_source_only_browser_preview.ps1" in launcher
     assert "test_setup_predecessor_drag_contract.py" in launcher
     assert "test_setup_dirty_edit_guard_contract.py" in launcher
+    assert "Client V0.3.9" in launcher
 
 
 def test_predecessor_drag_preview_checklist_covers_direction_cycle_and_normal_drag() -> None:
