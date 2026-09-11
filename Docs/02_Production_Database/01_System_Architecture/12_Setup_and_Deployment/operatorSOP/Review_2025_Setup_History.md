@@ -139,6 +139,22 @@ The operator does **not** choose:
 
 If the task's Stage/Scene scope is wrong, correct the task scope. Do not choose a different material source to compensate.
 
+### Current staged-material limitation
+
+The current resolver answers:
+
+> What current Stage/Scene Displays and Containers are associated with this material-enabled task scope?
+
+It does **not** yet answer:
+
+> Which subset of that material should be picked or delivered for this exact work step today?
+
+If several Stage-level tasks exist under one Stage, multiple material-enabled tasks can resolve the same Stage-level material. That is expected with the current model and does not mean all of the resolved material should be transported at the first step.
+
+Magic Igloo is the key example: frame work may happen first while skins deliberately stay warm in the workshop until the later skin-install task. The current material checkbox does not yet subdivide those Stage materials by task step or release time.
+
+Treat Material / Logistics as **resolved context**, not as a complete pick/release instruction. Task-specific staged material and timing remain future engineering work tracked in Issue #141.
+
 ### Color coding
 
 Tasks with material enabled receive a colored marker/highlight in supported views. That is only a visual cue.
@@ -200,6 +216,7 @@ The application remains under real-use evaluation. Report things such as:
 - awkward or repetitive steps;
 - task organization that does not match real work;
 - unexpected Display/Container material resolution;
+- a Stage where material must be staged/released differently between separate tasks;
 - resources or prerequisites that are difficult to represent;
 - missing readiness behavior;
 - search/filter/navigation problems; and
@@ -226,6 +243,7 @@ A useful review leaves:
 - reusable task boundaries corrected at practical crew/work-package level;
 - material enabled only for tasks that actually require LOR-derived Displays/Containers;
 - non-material tasks left valid with material disabled;
+- current material context reviewed without assuming it is a complete pick/release plan;
 - correct Stage/real-Scene scope;
 - resources, effort, predecessors/readiness, order, and normal expectations improved where supported;
 - no fake records created merely for testing or UI workarounds; and
