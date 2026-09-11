@@ -5,7 +5,7 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — Stage/Scene material and presentation accepted in Production; broader Setup work remains active |
+| Status | CURRENT HANDOFF — V0.3.8 accepted in Production; broader Setup work remains active |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-11 |
 
@@ -21,23 +21,24 @@ Protected application:
 https://my.sheboyganlights.org/setup/
 ```
 
-Current accepted application/database target:
+Current exact accepted/deployed application target:
 
 ```text
-9791a6b5a9739c1107746ecbe3cf3ebb558f38bd
+2eee967b6c5359c0e2e2d876a2fe44af8359315c
 ```
 
-Repository normalization merge:
+Implementation repository lineage:
 
 ```text
-PR #144
-main merge commit = 96613aae4e5084dab2f735bc3dbcc8e13433109e
+Issue #153
+PR #160
+main merge commit = d882bb33785321de9a6a880347521adf9518502e
 ```
 
 Current Setup health:
 
 ```text
-V0.3.5-stage-scene-material-review
+V0.3.8-task-detail-compact
 ```
 
 Current annual context:
@@ -49,27 +50,46 @@ Current annual context:
 
 The current PostgreSQL reusable Catalog is the working task baseline. Do not use older fixed counts such as 57 or the earlier 185-task reconstruction snapshot as current authority; live Catalog cleanup and task development continued after those dated baselines.
 
-Production acceptance on 2026-09-11 proved:
+V0.3.8 source-only Production acceptance on 2026-09-11 proved:
 
 ```text
-exact candidate Setup/Application regression = 154 passed
-migration 025                                = applied / least-privilege PASS
-protected direct no-identity path            = HTTP 401 PASS
-Production business fingerprint              = 798e59ae47a5e313d45cd23e9fdc3c4a
-business fingerprint changed by deployment   = NO
+exact detached candidate regression          = 53 passed
+live deployed focused regression              = 53 passed
+Production fingerprint before deployment      = 9510360aa7de2da59d1ed8a9ad9d69f7
+Production fingerprint after deployment       = 9510360aa7de2da59d1ed8a9ad9d69f7
+business/source fingerprint changed by deploy = NO
+protected health                              = V0.3.8-task-detail-compact
+final protected laptop browser acceptance     = PASS
 ```
 
-Rollback archive:
+V0.3.8 did not apply a database migration or change Setup authorization. The accepted Stage/Scene material database baseline from V0.3.5 remains in force.
+
+The immediately prior accepted runtime was:
 
 ```text
-/home/msbadmin/backups/setup-stage-scene-material/msb_pre_setup_stage_scene_material_20260911T000157.dump
+9d0c31421ce7cbd1b1cbcf733b06198ace418e9d
+V0.3.7-catalog-dirty-edit-followup
 ```
 
-Deployment report:
+V0.3.7 fixed the dirty reusable-edit / `Mark Verified` data-loss path after the first V0.3.6 Production candidate failed real protected-route acceptance and was rolled back. V0.3.8 preserves those dirty-edit, client-build badge, cache, and client/server build-match protections.
+
+See the current [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) and [V0.3.8 Production Acceptance](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md).
+
+## Current Accepted Task-Detail Presentation
+
+At laptop/desktop width the accepted task-detail layout is:
 
 ```text
-/home/msbadmin/setup-acceptance-reports/Setup_Stage_Scene_Production_Deployment_20260911T000157.txt
+LEFT                               RIGHT
+Reusable Task Definition            Annual Historical Actual
+Material / Logistics                Captains / Knowledge Owners
 ```
+
+The reusable definition itself uses a compact two-column desktop grid. Material / Logistics retains all four essential counts and the existing full detail dialog. Prerequisites and Equipment / Resources remain below the rail block and are reachable with materially less scrolling.
+
+Physical mobile-device acceptance was not performed for V0.3.8; responsive stacking is contract-covered and was checked using a narrowed desktop browser proxy only.
+
+Cross-application palette and dark-mode white-logo consistency remain separate work in Issue #159.
 
 ## Current Accepted Material Model
 
@@ -136,7 +156,7 @@ See [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stag
 
 ## Current Accepted Planning / Execution Presentation
 
-**Plan / Schedule** and **Perform Work** now support Stage-oriented presentation:
+**Plan / Schedule** and **Perform Work** support Stage-oriented presentation:
 
 ```text
 Stage
@@ -148,23 +168,40 @@ Stage view is presentation only; it does not rewrite annual planned order.
 
 Switching to **Planned order** returns to the existing annual planning sequence/reorder behavior.
 
-The shared **Find task or Stage** search now applies to:
+The shared **Find task or Stage** search applies to:
 
 - Reusable Task Catalog;
 - Plan / Schedule; and
 - Perform Work.
 
+## Current Editable Procedure Source Rule
+
+Authorized Manager editable-source resolution is:
+
+```text
+Procedures\Setup\SourceDocs first
+-> Procedures\Setup\Archive only if no editable SourceDocs .gdoc exists
+```
+
+During the 2026 migration, the archived Google Doc remains the historical original. Open it in Google Docs, use **File -> Make a copy**, save the new Google-native working copy into `SourceDocs`, and edit only the SourceDocs copy going forward. Do not treat copying the Windows `.gdoc` shortcut file as document migration.
+
+The approved field PDF remains directly in `Procedures\Setup`.
+
+This workflow is controlled in the Google Drive operator SOPs and was closed through Issue #161 / PR #162.
+
 ## Start Here
 
+- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — current deployed SHA/version, recent V0.3.6/V0.3.7/V0.3.8 lineage, fingerprint evidence, current boundaries, and resume point.
+- [Setup V0.3.8 Task Detail Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md) — exact source-only deployment, regression, fingerprint, protected-route, and browser evidence.
 - [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) — current accepted material/source-classification authority.
-- [Setup Stage / Scene Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Stage_Scene_Production_Acceptance_2026-09-11.md) — exact Production deployment, browser review, rollback, regression, and fingerprint evidence.
+- [Setup Stage / Scene Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Stage_Scene_Production_Acceptance_2026-09-11.md) — V0.3.5 material/presentation database migration and acceptance history.
 - [Setup Data Consumption and Authorization Contract — 2026-09-10](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md) — Setup capability, Person mapping, application-role, governed write, and grant boundaries.
 - [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) — hard predecessor vs preferred order vs external/site readiness.
 - [Setup Reconstruction Migration and Acceptance History — 2026-09-07 to 09](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) — historical migration/disposable/browser lessons and reconstruction findings.
 - [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — rolling-horizon planning direction.
 - [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — cross-Stage candidate planning direction.
 - [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — Pick List direction; not yet Production-operational.
-- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — original foundation/runtime baseline; historical for current deployment SHA/version.
+- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — historical V0.3.4 foundation/runtime baseline; not current deployment authority.
 
 ## Authoritative Implementation Sources
 
@@ -192,14 +229,23 @@ The Production Database repository owns Setup application/business/database beha
 
 ## Current Repository / Issue Structure
 
-The accepted Stage/Scene material/presentation implementation is merged through PR #144.
+Recent completed acceptance:
 
-Primary active work now is issue-driven rather than continuing the old nested PR stack:
+```text
+#154  dirty-edit / Mark Verified safety             CLOSED / V0.3.7 accepted
+#153  compact task-detail / Material layout         CLOSED / V0.3.8 accepted
+#161  Archive -> SourceDocs Google Doc documentation CLOSED / completed
+```
+
+Primary active work remains issue-driven:
 
 ```text
 #122  Setup Session engineering / planning / Pick List / live reconstruction umbrella
-#141  task-specific staged material subdivision and Pick List release timing
 #145  reusable Catalog cleanup gate before creating the 2026 Setup Session
+#151  Shift+left-drag predecessor creation
+#152  resource catalog sort order / existing-resource editing
+#159  shared light/dark palette and dark-mode white-logo consistency
+#141  task-specific staged material subdivision and Pick List release timing
 #130  global People / Capability / Qualification work consumed by Setup
 #132  Captain work-report duration / multi-day effort capture
 #113  shared Scan application readiness / identity capture integration
@@ -327,25 +373,28 @@ Current significant remaining work includes:
 - authoritative Controller context from FieldWiring / Controller Inventory;
 - Pick List generation and tablet workflow;
 - mixed-stage Container annual mobilization/unload-group state and ordered-access rules;
-- Container/Display movement/scanning writes; and
-- park-location execution evidence.
+- Container/Display movement/scanning writes;
+- park-location execution evidence; and
+- cross-app palette/dark-mode logo normalization (Issue #159).
 
 ## Resume Development
 
 Before changing this subsystem:
 
 1. read the Production Database Project Rules;
-2. read this engineering portal;
-3. read the Stage/Scene material-resolution contract before changing material or Scene classification;
-4. review Issue #141 before designing task-specific material groups, components/KITs, or Pick List release timing;
-5. review Issue #145 before creating or simulating 2026 annual state;
-6. preserve annual 2025 facts separately from reusable future knowledge;
-7. use the predecessor/readiness contract before rebuilding dependencies;
-8. use the Pick List contract before implementing logistics/pick behavior;
-9. use issue #130 / People and Identity for global capability/qualification work;
-10. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
-11. use `Gregovate/MSB-Server-Management` for current runtime/deployment authority; and
-12. update controlled docs and this README handoff whenever accepted behavior or the next resume point changes.
+2. read the current [2026-09-11 Production engineering handoff](Setup_Session_Production_Engineering_Handoff_2026-09-11.md);
+3. read this engineering portal;
+4. read the Stage/Scene material-resolution contract before changing material or Scene classification;
+5. review Issue #141 before designing task-specific material groups, components/KITs, or Pick List release timing;
+6. review Issue #145 before creating or simulating real 2026 annual state;
+7. preserve annual 2025 facts separately from reusable future knowledge;
+8. preserve the V0.3.7 dirty-edit/client-build protections and V0.3.8 visible client version marker;
+9. use the predecessor/readiness contract before rebuilding dependencies;
+10. use the Pick List contract before implementing logistics/pick behavior;
+11. use issue #130 / People and Identity for global capability/qualification work;
+12. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
+13. use `Gregovate/MSB-Server-Management` for current runtime/deployment authority; and
+14. update controlled docs, acceptance evidence, and this README handoff whenever accepted behavior or the next resume point changes.
 
 ## Related Systems
 
