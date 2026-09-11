@@ -21,6 +21,9 @@ Boundary:
   - Existing historical duplicates are not silently merged by this migration.
     New create/update commands reject normalized exact-name duplicates so the
     catalog cannot continue accumulating case/spacing variants.
+  - Inactive resources are not available for new assignment. Existing task
+    relationships remain durable and may still be removed through the governed
+    task-resource command.
 ============================================================================ */
 
 BEGIN;
@@ -108,12 +111,12 @@ BEGIN
         RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Invalid Setup resource type';
     END IF;
 
-    v_normalized_name := lower(regexp_replace(v_name, '\s+', ' ', 'g'));
+    v_normalized_name := lower(regexp_replace(v_name, '[[:space:]]+', ' ', 'g'));
 
     IF EXISTS (
         SELECT 1
         FROM ref.setup_resource r
-        WHERE lower(regexp_replace(btrim(r.resource_name), '\s+', ' ', 'g')) = v_normalized_name
+        WHERE lower(regexp_replace(btrim(r.resource_name), '[[:space:]]+', ' ', 'g')) = v_normalized_name
     ) THEN
         RAISE EXCEPTION USING
             ERRCODE = '23505',
@@ -193,13 +196,13 @@ BEGIN
         RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Setup resource display order must be zero or greater';
     END IF;
 
-    v_normalized_name := lower(regexp_replace(v_name, '\s+', ' ', 'g'));
+    v_normalized_name := lower(regexp_replace(v_name, '[[:space:]]+', ' ', 'g'));
 
     IF EXISTS (
         SELECT 1
         FROM ref.setup_resource r
         WHERE r.setup_resource_id <> p_setup_resource_id
-          AND lower(regexp_replace(btrim(r.resource_name), '\s+', ' ', 'g')) = v_normalized_name
+          AND lower(regexp_replace(btrim(r.resource_name), '[[:space:]]+', ' ', 'g')) = v_normalized_name
     ) THEN
         RAISE EXCEPTION USING
             ERRCODE = '23505',
@@ -240,6 +243,118 @@ GRANT EXECUTE ON FUNCTION ref.update_setup_resource(
     text, integer, text, text, text, boolean, integer
 ) TO fieldwiring_app;
 
+/*
+Retain the existing task-resource signature. The only behavior change is that an
+inactive catalog resource may still be removed from a task that already refers
+to it. Inactive resources remain forbidden for new/active assignment.
+*/
+CREATE OR REPLACE FUNCTION ref.set_setup_task_resource(
+    p_email text,
+    p_setup_task_id bigint,
+    p_setup_resource_id integer,
+    p_quantity_required integer DEFAULT 1,
+    p_requirement_type text DEFAULT 'REQUIRED',
+    p_notes text DEFAULT NULL,
+    p_active_flag boolean DEFAULT true
+)
+RETURNS TABLE (
+    setup_task_id bigint,
+    setup_resource_id integer,
+    active_flag boolean,
+    operator_display_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ref
+AS $function$
+DECLARE
+    v_directus_user_id uuid;
+    v_person_id integer;
+    v_display_name text;
+    v_requirement text := upper(btrim(coalesce(p_requirement_type, 'REQUIRED')));
+    v_active boolean := coalesce(p_active_flag, true);
+    v_resource_active boolean;
+BEGIN
+    SELECT a.directus_user_id, a.person_id, a.display_name
+      INTO v_directus_user_id, v_person_id, v_display_name
+    FROM ref.setup_management_actor(p_email, false) AS a;
+
+    IF p_setup_task_id IS NULL
+       OR NOT EXISTS (SELECT 1 FROM ref.setup_task t WHERE t.setup_task_id = p_setup_task_id) THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'Setup task was not found';
+    END IF;
+
+    SELECT r.active_flag
+      INTO v_resource_active
+    FROM ref.setup_resource r
+    WHERE r.setup_resource_id = p_setup_resource_id;
+
+    IF p_setup_resource_id IS NULL OR v_resource_active IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'Setup resource was not found';
+    END IF;
+
+    IF v_active AND NOT v_resource_active THEN
+        RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Inactive Setup resource cannot be assigned to a task';
+    END IF;
+
+    IF NOT v_active
+       AND NOT EXISTS (
+            SELECT 1
+            FROM ref.setup_task_resource tr
+            WHERE tr.setup_task_id = p_setup_task_id
+              AND tr.setup_resource_id = p_setup_resource_id
+       ) THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'Setup task resource relationship was not found';
+    END IF;
+
+    IF p_quantity_required IS NULL OR p_quantity_required <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Setup resource quantity must be greater than zero';
+    END IF;
+
+    IF v_requirement NOT IN ('REQUIRED', 'PREFERRED') THEN
+        RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Setup resource requirement must be REQUIRED or PREFERRED';
+    END IF;
+
+    PERFORM pg_catalog.set_config(
+        'app.directus_user_uuid',
+        v_directus_user_id::text,
+        true
+    );
+
+    INSERT INTO ref.setup_task_resource(
+        setup_task_id,
+        setup_resource_id,
+        quantity_required,
+        requirement_type,
+        notes,
+        active_flag
+    ) VALUES (
+        p_setup_task_id,
+        p_setup_resource_id,
+        p_quantity_required,
+        v_requirement,
+        nullif(btrim(p_notes), ''),
+        v_active
+    )
+    ON CONFLICT (setup_task_id, setup_resource_id)
+    DO UPDATE SET
+        quantity_required = EXCLUDED.quantity_required,
+        requirement_type = EXCLUDED.requirement_type,
+        notes = EXCLUDED.notes,
+        active_flag = EXCLUDED.active_flag;
+
+    RETURN QUERY
+    SELECT p_setup_task_id, p_setup_resource_id, v_active, v_display_name;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION ref.set_setup_task_resource(
+    text, bigint, integer, integer, text, text, boolean
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ref.set_setup_task_resource(
+    text, bigint, integer, integer, text, text, boolean
+) TO fieldwiring_app;
+
 COMMIT;
 
 SELECT
@@ -264,14 +379,21 @@ SELECT
         'ref.create_setup_resource(text,text,text,text)',
         'EXECUTE'
     ) AS app_can_create_resource,
+    has_function_privilege(
+        'fieldwiring_app',
+        'ref.set_setup_task_resource(text,bigint,integer,integer,text,text,boolean)',
+        'EXECUTE'
+    ) AS app_can_set_task_resource,
     has_table_privilege('fieldwiring_app', 'ref.setup_resource', 'UPDATE')
         AS broad_resource_update,
     has_table_privilege('fieldwiring_app', 'ref.setup_resource', 'DELETE')
         AS broad_resource_delete,
+    has_table_privilege('fieldwiring_app', 'ref.setup_task_resource', 'UPDATE')
+        AS broad_task_resource_update,
     (
         SELECT count(*)
         FROM (
-            SELECT lower(regexp_replace(btrim(resource_name), '\s+', ' ', 'g'))
+            SELECT lower(regexp_replace(btrim(resource_name), '[[:space:]]+', ' ', 'g'))
             FROM ref.setup_resource
             GROUP BY 1
             HAVING count(*) > 1
