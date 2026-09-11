@@ -1,0 +1,51 @@
+/* Shift-drag predecessor cues for Setup Issue #151. */
+
+.next-predecessor-drag-hint {
+  margin: 0.65rem 0 0.8rem;
+}
+
+.next-predecessor-drag-hint kbd {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+}
+
+.next-task-row.dependency-dragging,
+.next-task-row.dependency-drop-target {
+  position: relative;
+}
+
+.next-task-row.dependency-dragging {
+  opacity: 0.72;
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+.next-task-row.dependency-drop-target {
+  background: var(--accent-soft);
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.next-task-row.dependency-dragging::after,
+.next-task-row.dependency-drop-target::after {
+  content: attr(data-dependency-role);
+  position: absolute;
+  top: 0.2rem;
+  right: 0.35rem;
+  z-index: 2;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  pointer-events: none;
+}
