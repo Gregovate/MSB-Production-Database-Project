@@ -8,7 +8,7 @@ def test_compact_resource_picker_is_loaded_after_task_detail_refinement() -> Non
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
     backend = (APP_DIR / "production_backend.py").read_text(encoding="utf-8")
 
-    assert "setup_resource_picker_compact.css?v=2026-09-11.1" in html
+    assert "setup_resource_picker_compact.css?v=2026-09-11.2" in html
     assert "setup_resource_picker_compact.js?v=2026-09-11.2" in html
     assert html.index("setup_task_detail_compact.js?v=2026-09-11.1") < html.index(
         "setup_resource_picker_compact.js?v=2026-09-11.2"
@@ -29,6 +29,16 @@ def test_normal_flow_is_picker_first_and_catalog_manager_opens_on_demand() -> No
     assert "createBlock.hidden = true" in js
     assert "aria-expanded" in js
     assert ".resource-catalog-secondary[hidden]" in css
+
+
+def test_manage_catalog_action_has_local_visual_emphasis() -> None:
+    css = (APP_DIR / "setup_resource_picker_compact.css").read_text(encoding="utf-8")
+
+    assert "#setup-resource-catalog-toggle" in css
+    assert "background: var(--accent-soft)" in css
+    assert "border-color: var(--accent)" in css
+    assert "color: var(--accent)" in css
+    assert "font-weight: 700" in css
 
 
 def test_catalog_close_action_is_colored_and_beside_catalog_save() -> None:
