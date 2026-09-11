@@ -1,0 +1,161 @@
+/* Compact Setup task-detail presentation for Issue #153. */
+
+#review-detail .setup-task-editor-grid {
+  align-items: start;
+}
+
+/* Reuse the otherwise-empty right side of the editor instead of forcing
+   Captains to extend the already-long reusable definition column. */
+#setup-captain-section.setup-captain-rail {
+  margin: 0;
+  padding: 10px;
+}
+
+#setup-captain-section.setup-captain-rail .setup-captain-heading h4 {
+  margin-bottom: 2px;
+}
+
+#setup-captain-section.setup-captain-rail .setup-captain-heading .muted,
+#setup-captain-section.setup-captain-rail .setup-captain-typeahead-help,
+#setup-captain-section.setup-captain-rail .setup-captain-typeahead-chosen {
+  font-size: .78rem;
+}
+
+#setup-captain-section.setup-captain-rail .setup-captain-list {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#setup-captain-section.setup-captain-rail .setup-captain-row {
+  padding: 8px 9px;
+}
+
+#setup-captain-section.setup-captain-rail .setup-captain-manager {
+  margin-top: 9px;
+  padding-top: 9px;
+}
+
+/* Material / Logistics is a quick verification summary by default. Detailed
+   Container / Display membership remains in the existing modal dialog. */
+#setup-material-context-section.setup-material-context-compact-section {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+#setup-material-context-section.setup-material-context-compact-section > h3 {
+  margin-bottom: 5px;
+}
+
+#setup-material-context-section.setup-material-context-compact-section .task-section-purpose {
+  margin-bottom: 6px;
+  font-size: .8rem;
+  line-height: 1.35;
+}
+
+#setup-material-context-section .setup-material-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 7px 0;
+}
+
+#setup-material-context-section .setup-material-summary > div {
+  display: inline-flex;
+  flex: 0 1 auto;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+}
+
+#setup-material-context-section .setup-material-summary span {
+  font-size: .76rem;
+}
+
+#setup-material-context-section .setup-material-summary strong {
+  font-size: .92rem;
+}
+
+#setup-material-context-section .setup-material-body {
+  gap: 6px;
+}
+
+#setup-material-context-section .setup-material-compact {
+  gap: 8px;
+}
+
+#setup-material-context-section .setup-controller-context-compact {
+  margin-top: 0;
+  padding: 6px 8px;
+  font-size: .78rem;
+}
+
+@media (min-width: 1051px) {
+  #review-detail .setup-task-editor-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(290px, .8fr);
+    gap: 14px;
+  }
+
+  #reusable-fieldset {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 10px;
+    align-content: start;
+  }
+
+  #annual-fieldset {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  #setup-captain-section.setup-captain-rail {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+
+  #reusable-fieldset > legend,
+  #reusable-fieldset > .compact-grid,
+  #reusable-fieldset > #setup-effort-editor-row,
+  #reusable-fieldset > #setup-material-editor,
+  #reusable-fieldset > #reusable-manager-actions {
+    grid-column: 1 / -1;
+  }
+
+  #reusable-fieldset > label {
+    margin: 0;
+  }
+
+  #reusable-fieldset textarea {
+    min-height: 4.6rem;
+  }
+
+  #reusable-fieldset #edit-reusable-notes {
+    min-height: 5.2rem;
+  }
+}
+
+@media (max-width: 1050px) {
+  #setup-captain-section.setup-captain-rail {
+    grid-column: auto;
+    grid-row: auto;
+    margin-top: 2px;
+  }
+}
+
+@media (max-width: 760px) {
+  #setup-material-context-section .setup-material-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #setup-material-context-section .setup-material-summary > div {
+    display: flex;
+    border-radius: 8px;
+  }
+}
