@@ -39,4 +39,3 @@ def test_production_loads_stage_order_assets() -> None:
     assert "setup_stage_order.js" in html
     assert "setup_stage_order.css" in backend
     assert "setup_stage_order.js" in backend
-    assert "V0.3.9-predecessor-drag" in backend

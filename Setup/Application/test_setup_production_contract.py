@@ -94,7 +94,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.9-predecessor-drag"
+    assert payload["version"] == "V0.3.10-resource-catalog"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -151,6 +151,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert client.get("/api/setup-instructions?stage_key=04").status_code == 404
     assert client.get("/api/setup/access").status_code == 401
     assert client.get("/api/setup/resources").status_code == 401
+    assert client.get("/api/setup/resource-catalog").status_code == 401
     assert client.get("/api/setup/organization").status_code == 401
     assert client.get("/api/setup/dependencies/ordered").status_code == 401
 
@@ -172,6 +173,8 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/procedure",
         "/api/setup/procedure/current",
         "/api/setup/resources",
+        "/api/setup/resource-catalog",
+        "/api/setup/resources/<int:setup_resource_id>",
         "/api/setup/tasks/<int:setup_task_id>/resources",
         "/api/setup/tasks/<int:setup_task_id>/resources/<int:setup_resource_id>",
         "/api/setup/organization",

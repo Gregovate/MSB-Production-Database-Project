@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.9-predecessor-drag';
+  const CLIENT_BUILD = 'V0.3.10-resource-catalog';
   const reusableFieldIds = new Set([
     'edit-task-name',
     'edit-stage-id',
@@ -131,7 +131,7 @@
     const badge = document.createElement('span');
     badge.id = 'setup-client-build-badge';
     badge.className = 'pill';
-    badge.textContent = 'Client V0.3.9';
+    badge.textContent = 'Client V0.3.10';
     badge.title = CLIENT_BUILD;
     access.insertAdjacentElement('afterend', badge);
   }
@@ -139,7 +139,7 @@
   function setBuildBadgeState(serverVersion, ok) {
     const badge = document.getElementById('setup-client-build-badge');
     if (!badge) return;
-    badge.textContent = ok ? 'Client V0.3.9' : 'CLIENT / SERVER MISMATCH';
+    badge.textContent = ok ? 'Client V0.3.10' : 'CLIENT / SERVER MISMATCH';
     badge.title = `Client ${CLIENT_BUILD}; server ${serverVersion || 'unknown'}`;
     badge.dataset.state = ok ? 'ok' : 'error';
   }
@@ -217,7 +217,6 @@
     const task = selectedTask();
     if (!task || task.setup_session_task_id == null || !appState.access?.can_manage_setup) return false;
     if (!await ensureServerBuild()) return false;
-
     const annual = annualFormState();
     const payload = {
       verification_state: verificationOverride || task.verification_state || 'UNVERIFIED',

@@ -31,6 +31,12 @@ def api_setup_resources() -> Response:
     return jsonify(resources=resource_repository().catalog())
 
 
+@setup_resource_api.get("/api/setup/resource-catalog")
+def api_setup_resource_catalog() -> Response:
+    _repo, _email, _access = require_manager()
+    return jsonify(resources=resource_repository().catalog(include_inactive=True))
+
+
 @setup_resource_api.get("/api/setup/tasks/<int:setup_task_id>/resources")
 def api_setup_task_resources(setup_task_id: int) -> Response:
     authenticated_email()
@@ -44,6 +50,18 @@ def api_setup_resource_create() -> tuple[Response, int]:
     _repo, email, _access = require_manager()
     result = resource_repository().create_resource(email=email, payload=json_body())
     return jsonify(setup_resource=result), 201
+
+
+@setup_resource_api.patch("/api/setup/resources/<int:setup_resource_id>")
+def api_setup_resource_update(setup_resource_id: int) -> Response:
+    require_setup_command()
+    _repo, email, _access = require_manager()
+    result = resource_repository().update_resource(
+        email=email,
+        setup_resource_id=setup_resource_id,
+        payload=json_body(),
+    )
+    return jsonify(setup_resource=result)
 
 
 @setup_resource_api.patch(
