@@ -5,7 +5,7 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — V0.3.8 accepted in Production; broader Setup work remains active |
+| Status | CURRENT HANDOFF — V0.3.9 accepted in Production; broader Setup work remains active |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-11 |
 
@@ -24,21 +24,21 @@ https://my.sheboyganlights.org/setup/
 Current exact accepted/deployed application target:
 
 ```text
-2eee967b6c5359c0e2e2d876a2fe44af8359315c
+55478f98f760473b65b5d700a84c868285022ab7
 ```
 
 Implementation repository lineage:
 
 ```text
-Issue #153
-PR #160
-main merge commit = d882bb33785321de9a6a880347521adf9518502e
+Issue #151
+PR #164
+main merge commit = ebade21e15a9ac62728dca0655476a619b47516d
 ```
 
 Current Setup health:
 
 ```text
-V0.3.8-task-detail-compact
+V0.3.9-predecessor-drag
 ```
 
 Current annual context:
@@ -50,34 +50,36 @@ Current annual context:
 
 The current PostgreSQL reusable Catalog is the working task baseline. Do not use older fixed counts such as 57 or the earlier 185-task reconstruction snapshot as current authority; live Catalog cleanup and task development continued after those dated baselines.
 
-V0.3.8 source-only Production acceptance on 2026-09-11 proved:
+V0.3.9 Production acceptance on 2026-09-11 proved:
 
 ```text
-exact detached candidate regression          = 53 passed
-live deployed focused regression              = 53 passed
-Production fingerprint before deployment      = 9510360aa7de2da59d1ed8a9ad9d69f7
-Production fingerprint after deployment       = 9510360aa7de2da59d1ed8a9ad9d69f7
-business/source fingerprint changed by deploy = NO
-protected health                              = V0.3.8-task-detail-compact
-final protected laptop browser acceptance     = PASS
+focused exact-candidate regression            = 63 passed
+live deployed focused regression              = 63 passed
+Production fingerprint before migration       = 9510360aa7de2da59d1ed8a9ad9d69f7
+Production fingerprint after migration/deploy = 9510360aa7de2da59d1ed8a9ad9d69f7
+existing dependency rows                      = 17
+legacy dependency audit fingerprint before    = 26b170fba3500ea2647967e87aa02a1c
+legacy dependency audit fingerprint after     = 26b170fba3500ea2647967e87aa02a1c
+protected health                              = V0.3.9-predecessor-drag
+protected Production browser acceptance       = PASS
 ```
 
-V0.3.8 did not apply a database migration or change Setup authorization. The accepted Stage/Scene material database baseline from V0.3.5 remains in force.
+Migration 026 added persistent prerequisite review/display order without rewriting existing dependency audit evidence and without granting broad dependency-table DML to `fieldwiring_app`.
 
 The immediately prior accepted runtime was:
 
 ```text
-9d0c31421ce7cbd1b1cbcf733b06198ace418e9d
-V0.3.7-catalog-dirty-edit-followup
+2eee967b6c5359c0e2e2d876a2fe44af8359315c
+V0.3.8-task-detail-compact
 ```
 
-V0.3.7 fixed the dirty reusable-edit / `Mark Verified` data-loss path after the first V0.3.6 Production candidate failed real protected-route acceptance and was rolled back. V0.3.8 preserves those dirty-edit, client-build badge, cache, and client/server build-match protections.
+V0.3.9 preserves the accepted V0.3.7 dirty-edit/client-build safety and V0.3.8 compact task-detail layout while adding the accepted prerequisite interaction and canonical editor.
 
-See the current [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) and [V0.3.8 Production Acceptance](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md).
+See the current [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) and [V0.3.9 Prerequisite Production Acceptance](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md).
 
 ## Current Accepted Task-Detail Presentation
 
-At laptop/desktop width the accepted task-detail layout is:
+At laptop/desktop width the accepted task-detail layout remains:
 
 ```text
 LEFT                               RIGHT
@@ -90,6 +92,40 @@ The reusable definition itself uses a compact two-column desktop grid. Material 
 Physical mobile-device acceptance was not performed for V0.3.8; responsive stacking is contract-covered and was checked using a narrowed desktop browser proxy only.
 
 Cross-application palette and dark-mode white-logo consistency remain separate work in Issue #159.
+
+## Current Accepted Prerequisite Model
+
+Keep separate:
+
+```text
+HARD PREDECESSOR
+PREFERRED ORDER
+READINESS CONDITION
+```
+
+A hard predecessor is another reusable Setup task that must complete first. A preferred order is only the normal sequence. A readiness condition is an outside/site condition and must not be fabricated as a Setup task merely to create a blocker.
+
+Accepted V0.3.9 prerequisite behavior:
+
+```text
+Shift held before left-button-down on dependent A
+    -> drag A onto prerequisite B
+    -> release
+    -> create A depends on B
+    -> neither task moves
+```
+
+Ordinary drag without Shift preserves the existing reusable-task reorder and Stage/real-Scene movement behavior. Releasing a Shift-drag over empty Stage/Scene space cancels the prerequisite gesture without moving the task.
+
+Task detail has one canonical prerequisite list with **Up**, **Down**, and **Remove**, plus a separate manual **Add prerequisite** form. Assigned prerequisites disappear from the Add choices. Add/remove/reorder refresh authoritative dependency state so task detail and the Catalog `Requires` line stay synchronized.
+
+Migration 026 adds `ref.setup_task_dependency.sort_order` and `ref.reorder_setup_task_dependencies(text,bigint,bigint[])`.
+
+Prerequisite Up/Down order is presentation/review order only. It does not create dependency relationships between the prerequisite tasks. Circular-dependency protection remains authoritative in the governed database command.
+
+Structured readiness remains pending and is still separate from task prerequisites.
+
+See [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md).
 
 ## Current Accepted Material Model
 
@@ -191,12 +227,13 @@ This workflow is controlled in the Google Drive operator SOPs and was closed thr
 
 ## Start Here
 
-- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — current deployed SHA/version, recent V0.3.6/V0.3.7/V0.3.8 lineage, fingerprint evidence, current boundaries, and resume point.
-- [Setup V0.3.8 Task Detail Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md) — exact source-only deployment, regression, fingerprint, protected-route, and browser evidence.
+- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — current deployed SHA/version, recent runtime lineage, fingerprint evidence, migration 026, current boundaries, and resume point.
+- [Setup V0.3.9 Prerequisite Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md) — exact migration, source deployment, rollback archive, regression, fingerprint, browser, and preview-lifecycle evidence.
+- [Setup V0.3.8 Task Detail Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md) — prior compact task-detail acceptance.
 - [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) — current accepted material/source-classification authority.
 - [Setup Stage / Scene Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Stage_Scene_Production_Acceptance_2026-09-11.md) — V0.3.5 material/presentation database migration and acceptance history.
 - [Setup Data Consumption and Authorization Contract — 2026-09-10](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md) — Setup capability, Person mapping, application-role, governed write, and grant boundaries.
-- [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) — hard predecessor vs preferred order vs external/site readiness.
+- [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) — accepted predecessor interaction/order plus hard predecessor vs preferred order vs external/site readiness.
 - [Setup Reconstruction Migration and Acceptance History — 2026-09-07 to 09](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) — historical migration/disposable/browser lessons and reconstruction findings.
 - [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — rolling-horizon planning direction.
 - [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — cross-Stage candidate planning direction.
@@ -225,15 +262,16 @@ Setup/Acceptance/
 
 The Production Database repository owns Setup application/business/database behavior.
 
-`Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, host permissions, and Production deployment runbooks/runtime facts.
+`Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, host permissions, browser-review runbook, and Production deployment runbooks/runtime facts.
 
 ## Current Repository / Issue Structure
 
 Recent completed acceptance:
 
 ```text
-#154  dirty-edit / Mark Verified safety             CLOSED / V0.3.7 accepted
-#153  compact task-detail / Material layout         CLOSED / V0.3.8 accepted
+#154  dirty-edit / Mark Verified safety              CLOSED / V0.3.7 accepted
+#153  compact task-detail / Material layout          CLOSED / V0.3.8 accepted
+#151  Shift+left-drag predecessor creation           V0.3.9 accepted; closeout docs in progress
 #161  Archive -> SourceDocs Google Doc documentation CLOSED / completed
 ```
 
@@ -242,7 +280,6 @@ Primary active work remains issue-driven:
 ```text
 #122  Setup Session engineering / planning / Pick List / live reconstruction umbrella
 #145  reusable Catalog cleanup gate before creating the 2026 Setup Session
-#151  Shift+left-drag predecessor creation
 #152  resource catalog sort order / existing-resource editing
 #159  shared light/dark palette and dark-mode white-logo consistency
 #141  task-specific staged material subdivision and Pick List release timing
@@ -324,7 +361,7 @@ READINESS CONDITION
 
 A readiness condition can be an external/site condition such as mowing/mulching complete in a specific work area. Do not invent fake Setup tasks for outside work.
 
-Structured readiness remains pending; the current free-text readiness note is descriptive only.
+Structured readiness remains pending; the current free-text readiness note is descriptive only. Efficient task-predecessor entry is now Production-operational in V0.3.9.
 
 ## Pick List Current Boundary
 
@@ -357,7 +394,7 @@ Authenticated Setup operator is not mapped to an MSB person
 
 is a Person/Directus identity-link problem, not justification for broad Setup table DML.
 
-Migration 025 added only the `ref.display_status` SELECT needed by automatic material resolution plus governed material setter EXECUTE; broad `ref.setup_task` DML remains forbidden for `fieldwiring_app`.
+Migration 025 added only the `ref.display_status` SELECT needed by automatic material resolution plus governed material setter EXECUTE. Migration 026 adds only prerequisite presentation order plus narrow governed reorder EXECUTE. Broad direct Setup table DML remains forbidden for `fieldwiring_app`.
 
 See [Setup Data Consumption and Authorization Contract](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md).
 
@@ -368,7 +405,8 @@ Current significant remaining work includes:
 - reusable Catalog cleanup before 2026 propagation;
 - continued correction of task boundaries exposed by live review;
 - task-specific staged material subdivision / release timing for multi-step Stage work (Issue #141);
-- structured readiness and efficient predecessor entry;
+- structured readiness;
+- resource catalog sort/existing-resource editing (Issue #152);
 - cross-Stage candidate planning surface / short-horizon scheduler workflow;
 - authoritative Controller context from FieldWiring / Controller Inventory;
 - Pick List generation and tablet workflow;
@@ -388,12 +426,12 @@ Before changing this subsystem:
 5. review Issue #141 before designing task-specific material groups, components/KITs, or Pick List release timing;
 6. review Issue #145 before creating or simulating real 2026 annual state;
 7. preserve annual 2025 facts separately from reusable future knowledge;
-8. preserve the V0.3.7 dirty-edit/client-build protections and V0.3.8 visible client version marker;
-9. use the predecessor/readiness contract before rebuilding dependencies;
+8. preserve the V0.3.7 dirty-edit/client-build protections, V0.3.8 compact layout, and V0.3.9 visible client/prerequisite behavior;
+9. use the predecessor/readiness contract before changing dependency or readiness semantics;
 10. use the Pick List contract before implementing logistics/pick behavior;
 11. use issue #130 / People and Identity for global capability/qualification work;
 12. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
-13. use `Gregovate/MSB-Server-Management` for current runtime/deployment authority; and
+13. use `Gregovate/MSB-Server-Management` for current runtime/deployment/browser-review authority; and
 14. update controlled docs, acceptance evidence, and this README handoff whenever accepted behavior or the next resume point changes.
 
 ## Related Systems
