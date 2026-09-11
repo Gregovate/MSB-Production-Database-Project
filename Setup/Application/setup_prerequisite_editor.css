@@ -1,0 +1,68 @@
+/* Canonical prerequisite editor for Setup Issue 151. */
+
+#detail-dependencies.next-prerequisite-list {
+  display: grid;
+  gap: 0;
+  width: 100%;
+}
+
+.next-prerequisite-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.next-prerequisite-row:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.next-prerequisite-main {
+  display: grid;
+  grid-template-columns: 2.1rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.next-prerequisite-position {
+  font-weight: 800;
+  color: var(--muted);
+  text-align: right;
+}
+
+.next-prerequisite-name {
+  font-weight: 700;
+}
+
+.next-prerequisite-note {
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.next-prerequisite-actions {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+#next-dependency-editor {
+  margin-top: 0.9rem;
+}
+
+#next-dependency-editor .next-prerequisite-order-hint {
+  margin-top: 0.45rem;
+}
+
+@media (max-width: 800px) {
+  .next-prerequisite-row {
+    grid-template-columns: 1fr;
+  }
+
+  .next-prerequisite-actions {
+    justify-content: flex-end;
+  }
+}
