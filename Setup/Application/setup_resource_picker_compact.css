@@ -1,0 +1,50 @@
+/* Keep routine task resource assignment compact; catalog maintenance opens on demand. */
+.resource-picker-primary {
+  padding-bottom: 0.75rem;
+}
+
+.resource-picker-primary .resource-manager-heading {
+  margin-bottom: 0.55rem;
+}
+
+.resource-picker-primary .resource-search-grid {
+  margin-bottom: 0.5rem;
+}
+
+.resource-picker-primary .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.resource-manager-launch-hint {
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.resource-catalog-secondary[hidden] {
+  display: none !important;
+}
+
+.resource-catalog-open .resource-catalog-secondary {
+  margin-top: 0.25rem;
+}
+
+.resource-order-advanced {
+  position: relative;
+}
+
+.resource-order-note {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+@media (min-width: 901px) {
+  .resource-picker-primary .resource-search-grid {
+    grid-template-columns: minmax(280px, 1fr) auto;
+  }
+}
