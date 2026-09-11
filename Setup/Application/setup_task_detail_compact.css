@@ -4,6 +4,14 @@
   align-items: start;
 }
 
+#review-detail .setup-task-editor-left,
+#review-detail .setup-task-editor-right {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  align-content: start;
+}
+
 /* Reuse the otherwise-empty right side of the editor instead of forcing
    Captains to extend the already-long reusable definition column. */
 #setup-captain-section.setup-captain-rail {
@@ -38,25 +46,24 @@
 /* Material / Logistics is a quick verification summary by default. Detailed
    Container / Display membership remains in the existing modal dialog. */
 #setup-material-context-section.setup-material-context-compact-section {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding: 10px;
 }
 
 #setup-material-context-section.setup-material-context-compact-section > h3 {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
 #setup-material-context-section.setup-material-context-compact-section .task-section-purpose {
-  margin-bottom: 6px;
-  font-size: .8rem;
-  line-height: 1.35;
+  margin-bottom: 5px;
+  font-size: .78rem;
+  line-height: 1.3;
 }
 
 #setup-material-context-section .setup-material-summary {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 7px 0;
+  margin: 6px 0;
 }
 
 #setup-material-context-section .setup-material-summary > div {
@@ -99,24 +106,10 @@
   }
 
   #reusable-fieldset {
-    grid-column: 1;
-    grid-row: 1 / span 2;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px 10px;
     align-content: start;
-  }
-
-  #annual-fieldset {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: start;
-  }
-
-  #setup-captain-section.setup-captain-rail {
-    grid-column: 2;
-    grid-row: 2;
-    align-self: start;
   }
 
   #reusable-fieldset > legend,
@@ -141,10 +134,8 @@
 }
 
 @media (max-width: 1050px) {
-  #setup-captain-section.setup-captain-rail {
-    grid-column: auto;
-    grid-row: auto;
-    margin-top: 2px;
+  #review-detail .setup-task-editor-grid {
+    grid-template-columns: 1fr;
   }
 }
 
