@@ -12,9 +12,12 @@ $ErrorActionPreference = 'Stop'
 $AcceptedCandidateSha = '55478f98f760473b65b5d700a84c868285022ab7'
 $AcceptedBranch = 'agent/setup-shift-drag-predecessor-151'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
+$CleanupScript = Join-Path $PSScriptRoot 'setup_session_browser_preview_cleanup_server.sh'
 
-if (-not (Test-Path -LiteralPath $BaseWrapper)) {
-    throw "Setup source-only preview base wrapper is missing: $BaseWrapper"
+foreach ($requiredPath in @($BaseWrapper, $CleanupScript)) {
+    if (-not (Test-Path -LiteralPath $requiredPath)) {
+        throw "Required Setup preview file is missing: $requiredPath"
+    }
 }
 
 function Replace-Required {
@@ -38,6 +41,44 @@ $text = Replace-Required -Source $text -Needle "`$ExpectedBranch = 'agent/setup-
 
 $scriptDirLiteral = $PSScriptRoot.Replace("'", "''")
 $text = Replace-Required -Source $text -Needle '$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path' -Replacement "`$ScriptDir = '$scriptDirLiteral'" -Description 'base wrapper ScriptDir initialization'
+
+# Recover a prior source-only preview only after the base wrapper has verified
+# the expected branch, clean worktree, and exact pinned candidate. The cleanup
+# script is LF-normalized before upload and refuses governed Production ports.
+$cleanupInjectionNeedle = '$stamp = Get-Date -Format ''yyyyMMdd-HHmmss'''
+$cleanupInjection = @'
+$cleanupScript = Join-Path $ScriptDir 'setup_session_browser_preview_cleanup_server.sh'
+if (-not (Test-Path -LiteralPath $cleanupScript)) {
+    throw "Setup preview stale-cleanup script is missing: $cleanupScript"
+}
+$cleanupStamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$cleanupTemp = Join-Path ([System.IO.Path]::GetTempPath()) "msb-setup-source-preview-cleanup-$cleanupStamp.sh"
+$cleanupRemote = "/tmp/msb-setup-source-preview-cleanup-$cleanupStamp.sh"
+$cleanupUtf8 = New-Object System.Text.UTF8Encoding($false)
+try {
+    $cleanupText = [System.IO.File]::ReadAllText($cleanupScript)
+    $cleanupText = $cleanupText.Replace("`r`n", "`n").Replace("`r", "`n")
+    [System.IO.File]::WriteAllText($cleanupTemp, $cleanupText, $cleanupUtf8)
+
+    & scp $cleanupTemp "${Server}:$cleanupRemote"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Setup preview stale-cleanup upload failed with exit code $LASTEXITCODE"
+    }
+
+    $cleanupCommand = "chmod 700 '$cleanupRemote'; bash -n '$cleanupRemote'; rc=`$?; if [ `$rc -eq 0 ]; then bash '$cleanupRemote' '$PreviewPort'; rc=`$?; fi; rm -f '$cleanupRemote'; exit `$rc"
+    & ssh -tt $Server $cleanupCommand
+    if ($LASTEXITCODE -ne 0) {
+        throw "Setup preview stale-cleanup failed with exit code $LASTEXITCODE"
+    }
+}
+finally {
+    Remove-Item -LiteralPath $cleanupTemp -Force -ErrorAction SilentlyContinue
+}
+
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+'@
+$cleanupInjection = $cleanupInjection.Replace("`r`n", "`n").Replace("`r", "`n")
+$text = Replace-Required -Source $text -Needle $cleanupInjectionNeedle -Replacement $cleanupInjection -Description 'source-only stale-cleanup injection point'
 
 $regressionNeedle = "        '      Setup/Application/test_setup_next_pass_contract.py'"
 $regressionReplacement = @(
@@ -94,10 +135,20 @@ $serverInjection = @'
     }
     $serverText = $serverText.Replace($migrationNeedle, $migrationReplacement)
 
+    # A disconnected browser-review SSH session must be able to trigger the same
+    # instance-scoped cleanup path when the remote shell receives SIGHUP.
+    $serverText = $serverText.Replace('trap - EXIT INT TERM', 'trap - EXIT HUP INT TERM')
+    $serverText = $serverText.Replace('trap cleanup EXIT INT TERM', 'trap cleanup EXIT HUP INT TERM')
+
     # Fail locally before SCP if any CR characters were reintroduced by a later
 '@
 $serverInjection = $serverInjection.Replace("`r`n", "`n").Replace("`r", "`n")
 $text = Replace-Required -Source $text -Needle $serverInjectionNeedle -Replacement $serverInjection -Description 'disposable migration injection point'
+
+# Bound abandoned reviews and make dead SSH transports fail promptly instead of
+# silently leaving a detached source-only Flask listener behind indefinitely.
+$text = Replace-Required -Source $text -Needle "bash '`$remoteServer' '`$CandidateSha' '`$PreviewPort' '`$PreviewEmail' '`$ApprovedRef'" -Replacement "timeout --signal=TERM 28800s bash '`$remoteServer' '`$CandidateSha' '`$PreviewPort' '`$PreviewEmail' '`$ApprovedRef'" -Description 'remote source-only preview invocation'
+$text = Replace-Required -Source $text -Needle '& ssh -t -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand' -Replacement '& ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand' -Description 'source-only SSH tunnel invocation'
 
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP SHIFT-DRAG PREDECESSOR V0.3.9 BROWSER PREVIEW')
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP SHIFT-DRAG PREDECESSOR V0.3.9 BROWSER REVIEW READY')
