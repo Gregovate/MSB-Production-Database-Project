@@ -1,18 +1,20 @@
 /* Fast governed predecessor entry for Setup Issue #151.
  *
- * Hold Shift before starting a Catalog task drag. The dragged task is the
- * dependent task; the task it is dropped onto becomes the prerequisite.
- * Ordinary drag is intentionally left to setup_next_pass.js unchanged.
+ * Hold Shift before pressing the left mouse button on a Catalog task. The
+ * dragged task is the dependent task; the task released over becomes the
+ * prerequisite. Shift mode uses pointer events instead of native HTML5 drag so
+ * Windows/browser modifier behavior cannot interfere with the gesture.
+ * Ordinary drag remains owned by setup_next_pass.js unchanged.
  */
 (() => {
   'use strict';
 
   const state = {
-    shiftArmed: false,
-    armedTaskId: null,
-    dependencyMode: false,
+    active: false,
+    pointerId: null,
     sourceTaskId: null,
-    targetTaskId: null
+    targetTaskId: null,
+    sourceRow: null
   };
 
   function taskName(taskId) {
@@ -28,16 +30,13 @@
     state.targetTaskId = null;
   }
 
-  function clearArmedState() {
-    state.shiftArmed = false;
-    state.armedTaskId = null;
-  }
-
-  function finishDependencyDrag() {
+  function resetState() {
     clearVisualState();
-    clearArmedState();
-    state.dependencyMode = false;
+    state.active = false;
+    state.pointerId = null;
     state.sourceTaskId = null;
+    state.sourceRow = null;
+    document.body.classList.remove('setup-dependency-pointer-drag');
   }
 
   function installCatalogHint() {
@@ -75,120 +74,98 @@
     }
   }
 
-  document.addEventListener('pointerdown', (event) => {
-    if (state.dependencyMode) return;
-    if (event.button !== 0) {
-      clearArmedState();
-      return;
-    }
+  function rowAtPoint(clientX, clientY) {
+    const hit = document.elementFromPoint(clientX, clientY);
+    return hit instanceof Element ? hit.closest('.next-task-row') : null;
+  }
 
-    const row = event.target instanceof Element ? event.target.closest('.next-task-row') : null;
-    if (!row || !event.shiftKey || !appState.access?.can_manage_setup) {
-      clearArmedState();
-      return;
-    }
+  function updatePointerTarget(clientX, clientY) {
+    if (!state.active) return;
 
-    const taskId = Number(row.dataset.taskId || 0);
-    if (!taskId) {
-      clearArmedState();
-      return;
-    }
-
-    state.shiftArmed = true;
-    state.armedTaskId = taskId;
-  }, true);
-
-  document.addEventListener('pointerup', () => {
-    if (!state.dependencyMode) clearArmedState();
-  }, true);
-
-  document.addEventListener('dragstart', (event) => {
-    const row = event.target instanceof Element ? event.target.closest('.next-task-row') : null;
-    if (!row || !appState.access?.can_manage_setup) return;
-
-    const taskId = Number(row.dataset.taskId || 0);
-    const armedForThisTask = state.shiftArmed && Number(state.armedTaskId) === taskId;
-    if (!taskId || (!armedForThisTask && !event.shiftKey)) return;
-
-    state.dependencyMode = true;
-    state.sourceTaskId = taskId;
     clearVisualState();
-    row.classList.add('dependency-dragging');
-    row.dataset.dependencyRole = 'Dependent';
-
-    if (event.dataTransfer) {
-      // Use a permissive native drag effect. On Windows, Shift influences the
-      // browser's requested effect; restricting effectAllowed to "link" can
-      // prevent the drag from starting. The application still consumes the
-      // drop and performs only the dependency command below.
-      event.dataTransfer.effectAllowed = 'all';
-      event.dataTransfer.setData('application/x-msb-setup-dependent-task', String(taskId));
-      event.dataTransfer.setData('text/plain', String(taskId));
+    if (state.sourceRow?.isConnected) {
+      state.sourceRow.classList.add('dependency-dragging');
+      state.sourceRow.dataset.dependencyRole = 'Dependent';
     }
 
-    // Prevent the existing ordinary move/reorder dragstart handler from running.
-    event.stopImmediatePropagation();
-    setAlert(`Dependency mode: ${taskName(taskId)} is the dependent task. Drop it onto the task that must happen first.`, 'ok');
-  }, true);
-
-  document.addEventListener('dragover', (event) => {
-    if (!state.dependencyMode) return;
-
-    // Shift-drag must never fall through to the ordinary row/scope move handlers.
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    clearVisualState();
-
-    const row = event.target instanceof Element ? event.target.closest('.next-task-row') : null;
+    const row = rowAtPoint(clientX, clientY);
     const targetTaskId = Number(row?.dataset.taskId || 0);
-    if (!row || !targetTaskId || targetTaskId === state.sourceTaskId) {
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
-      const sourceRow = document.querySelector(`.next-task-row[data-task-id="${state.sourceTaskId}"]`);
-      sourceRow?.classList.add('dependency-dragging');
-      if (sourceRow) sourceRow.dataset.dependencyRole = 'Dependent';
-      return;
-    }
-
-    const sourceRow = document.querySelector(`.next-task-row[data-task-id="${state.sourceTaskId}"]`);
-    sourceRow?.classList.add('dependency-dragging');
-    if (sourceRow) sourceRow.dataset.dependencyRole = 'Dependent';
+    if (!row || !targetTaskId || targetTaskId === state.sourceTaskId) return;
 
     state.targetTaskId = targetTaskId;
     row.classList.add('dependency-drop-target');
     row.dataset.dependencyRole = 'Prerequisite target';
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+
+  document.addEventListener('pointerdown', (event) => {
+    if (state.active || event.button !== 0 || !event.shiftKey || !appState.access?.can_manage_setup) return;
+
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target || target.closest('button, input, select, textarea, a')) return;
+
+    const row = target.closest('.next-task-row');
+    const taskId = Number(row?.dataset.taskId || 0);
+    if (!row || !taskId) return;
+
+    state.active = true;
+    state.pointerId = event.pointerId;
+    state.sourceTaskId = taskId;
+    state.sourceRow = row;
+    document.body.classList.add('setup-dependency-pointer-drag');
+
+    row.classList.add('dependency-dragging');
+    row.dataset.dependencyRole = 'Dependent';
+
+    try {
+      row.setPointerCapture(event.pointerId);
+    } catch (_error) {
+      // Capture is helpful but the document-level listeners below remain authoritative.
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    setAlert(`Dependency mode: ${taskName(taskId)} is the dependent task. Release over the task that must happen first.`, 'ok');
   }, true);
 
-  document.addEventListener('drop', (event) => {
-    if (!state.dependencyMode) return;
+  document.addEventListener('pointermove', (event) => {
+    if (!state.active || event.pointerId !== state.pointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    updatePointerTarget(event.clientX, event.clientY);
+  }, true);
+
+  document.addEventListener('pointerup', (event) => {
+    if (!state.active || event.pointerId !== state.pointerId) return;
 
     event.preventDefault();
     event.stopImmediatePropagation();
 
+    updatePointerTarget(event.clientX, event.clientY);
     const dependentTaskId = Number(state.sourceTaskId || 0);
-    const row = event.target instanceof Element ? event.target.closest('.next-task-row') : null;
-    const prerequisiteTaskId = Number(row?.dataset.taskId || 0);
-    finishDependencyDrag();
+    const prerequisiteTaskId = Number(state.targetTaskId || 0);
+    resetState();
 
     if (!dependentTaskId || !prerequisiteTaskId) {
-      setAlert('Dependency drag canceled. Drop the dependent task onto another Setup task.', 'error');
-      return;
-    }
-    if (dependentTaskId === prerequisiteTaskId) {
-      setAlert('A Setup task cannot depend on itself.', 'error');
+      setAlert('Dependency drag canceled. Release the dependent task over another Setup task.', 'error');
       return;
     }
 
     void createPredecessorDependency(dependentTaskId, prerequisiteTaskId);
   }, true);
 
-  document.addEventListener('dragend', (event) => {
-    if (!state.dependencyMode) {
-      clearArmedState();
-      return;
-    }
+  document.addEventListener('pointercancel', (event) => {
+    if (!state.active || event.pointerId !== state.pointerId) return;
     event.stopImmediatePropagation();
-    finishDependencyDrag();
+    resetState();
+    setAlert('Dependency drag canceled.', 'error');
+  }, true);
+
+  // Native drag events must never start while custom Shift-pointer mode owns
+  // the gesture. Ordinary non-Shift native drag remains untouched.
+  document.addEventListener('dragstart', (event) => {
+    if (!state.active) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
   }, true);
 
   installCatalogHint();
