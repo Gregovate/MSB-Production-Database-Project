@@ -35,10 +35,10 @@ Only an Administrator may create a new annual Setup Session or promote annual or
 
 ## Confirm the Loaded Client
 
-The Setup header displays the currently loaded client version, for example:
+The Setup header displays the currently loaded client version. Current Production is:
 
 ```text
-Client V0.3.7
+Client V0.3.9
 ```
 
 After a deployment, after leaving Setup open for a long period, or whenever the displayed client version is unexpected, refresh or reopen the application before making a governed change.
@@ -124,6 +124,16 @@ Task scope answers **where the work belongs**. Do not move a task to the wrong S
 
 Programming-only LOR groups are not separate Setup Scenes just because they exist in LOR.
 
+### Park Infrastructure is not a catch-all Stage
+
+Truly park-wide Setup work with no appropriate LOR Stage/Scene uses the controlled non-LOR root:
+
+```text
+41 Park Infrastructure-PI
+```
+
+Do not use Park Infrastructure merely because a Stage has no wired inventory. `40-CommandCenter`, for example, remains a legitimate Stage with its own Stage/Preview context; its Setup tasks and Procedures remain under Stage 40 when Command Center is the correct operational owner.
+
 ## Uses Display / Container Material
 
 Each reusable task has:
@@ -156,7 +166,7 @@ real Scene task
 
 resolved Displays
     -> current Display-to-Container assignment
-    -> deduplicated current Containers
+    -> deduplicated Containers
 ```
 
 The Manager does **not** choose a separate LOR Preview, programming group, or manual ordinary Display list as the material source.
@@ -248,6 +258,47 @@ A readiness condition may instead be an outside/site condition such as mowing/mu
 
 Structured readiness remains future work; free-text readiness notes are descriptive, not a complete scheduling control.
 
+### Fast prerequisite entry with Shift-drag
+
+When one reusable task truly must finish before another, you can create the dependency directly in the Catalog.
+
+If task A depends on task B:
+
+1. Hold **Shift before pressing the left mouse button** on task A, the later/dependent task.
+2. Drag task A onto task B, the task that must happen first.
+3. Release over task B.
+4. Confirm the success feedback and the Catalog **Requires** line show the intended direction.
+
+Example:
+
+```text
+Install Panels depends on Set Posts
+
+hold Shift
++ drag Install Panels onto Set Posts
+```
+
+Neither task moves during Shift-drag. If you release over empty Stage/Scene space, the prerequisite gesture cancels without moving the task.
+
+### Normal drag remains normal movement
+
+Drag without Shift when you intend to reorder or move a task. Ordinary drag still supports legitimate movement between Stage-level / General and real Scene locations.
+
+### Canonical prerequisite list
+
+Open task detail to review the current prerequisites. The task shows one prerequisite list only. Each prerequisite appears once with:
+
+- position;
+- **Up**;
+- **Down**; and
+- **Remove**.
+
+Use the separate **Add prerequisite** control for manual entry when that is easier than Shift-drag. After a prerequisite is assigned, the Add list no longer offers it for the same task.
+
+**Up** and **Down** are review/display order only. They do not create dependencies between prerequisite tasks. Every listed prerequisite remains independently required.
+
+Circular dependencies are rejected by the system. Correct the relationship rather than trying to bypass the warning.
+
 ## Rolling-Horizon Planning
 
 Setup is not intended to be a rigid season-long Gantt schedule.
@@ -283,6 +334,8 @@ Production-operational now includes:
 - Stage-oriented Plan / Schedule and Perform Work presentation;
 - search across Catalog, Plan / Schedule, and Perform Work;
 - resource/effort/prerequisite maintenance;
+- Shift-drag prerequisite creation with circular-dependency protection;
+- one canonical prerequisite editor with manual Add, Up/Down display order, and Remove;
 - Procedure/document context; and
 - authenticated browser access.
 
@@ -291,11 +344,11 @@ Still incomplete/separate work includes:
 - final reusable Catalog cleanup before 2026 creation;
 - task-specific staged material subdivision / release timing (#141);
 - structured readiness gating;
-- improved predecessor-entry interaction;
 - Pick List generation/tablet workflow;
 - mixed-stage Container annual mobilization/unload-state workflow;
-- Container/Display movement/scanning writes; and
-- park-location execution evidence.
+- Container/Display movement/scanning writes;
+- park-location execution evidence; and
+- resource catalog sort/existing-resource editing work tracked separately.
 
 ## 2025 to 2026 Transition
 

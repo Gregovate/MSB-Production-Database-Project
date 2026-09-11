@@ -9,7 +9,7 @@
 | Status | CURRENT — live 2025 review plus current reusable-task development |
 | Owner | MSB Setup administrator |
 | Last Reviewed | 2026-09-11 |
-| Keywords | Setup, 2025, historical review, reusable task, material, resources, verification |
+| Keywords | Setup, 2025, historical review, reusable task, material, resources, prerequisites, Shift-drag, verification |
 
 ## Purpose
 
@@ -97,7 +97,7 @@ Tasks such as locating, laying out an area, plugging power/network, greasing bea
 
 ## Use the Display / Container Material Checkbox
 
-Reusable task details now include:
+Reusable task details include:
 
 ```text
 [ ] Uses Display / Container Material
@@ -198,6 +198,51 @@ For reusable tasks, check whether practical requirements are represented correct
 Do not invent quantities or dependencies merely to fill fields.
 
 A predecessor is another Setup task that must be complete first. A readiness condition may instead be an external/site condition such as mowing/mulching being complete in the applicable work area. Do not create fake Setup tasks merely to represent outside conditions.
+
+## Add or Correct Prerequisites
+
+Use a prerequisite only when another reusable Setup task really must be completed first.
+
+### Fast entry with Shift-drag
+
+To make task A depend on task B:
+
+1. In the reusable Catalog, hold **Shift before pressing the left mouse button** on task A, the task that happens later.
+2. Drag task A onto task B, the task that must happen first.
+3. Release the mouse over task B.
+4. Confirm the success message shows the intended direction and the Catalog **Requires** line updates.
+
+Example:
+
+```text
+Install Panels depends on Set Posts
+
+hold Shift
++ drag Install Panels onto Set Posts
+```
+
+During Shift-drag, neither task moves. If you release over empty Stage/Scene space instead of another task, the prerequisite gesture cancels and the task stays where it was.
+
+### Normal drag still moves/reorders tasks
+
+Do **not** hold Shift when you intend to move or reorder a task. Ordinary drag keeps its existing behavior, including movement between valid Stage-level / General and real Scene locations.
+
+### Manual prerequisite editor
+
+Open the task detail when you want to review or maintain the prerequisite list directly.
+
+The **Prerequisites** area has one current list. Each prerequisite appears once with:
+
+- its position;
+- **Up**;
+- **Down**; and
+- **Remove**.
+
+Use the separate **Add prerequisite** control when manual entry is easier than Shift-drag. After a prerequisite is assigned, it is removed from the available Add choices for that task.
+
+**Up** and **Down** only change how the prerequisites are displayed/reviewed. They do not mean one prerequisite depends on another. Every prerequisite listed for the task remains independently required.
+
+If Setup rejects a circular dependency, leave the tasks as they are and correct the relationship rather than trying to work around the warning.
 
 ## Procedures and Instructions
 

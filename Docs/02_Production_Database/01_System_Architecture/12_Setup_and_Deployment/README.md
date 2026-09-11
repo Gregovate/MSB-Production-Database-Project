@@ -8,7 +8,7 @@
 | Status | CURRENT — Production runtime operational; Setup UI/workflow in live evaluation |
 | Owner | MSB Production Database / Setup administrator |
 | Last Reviewed | 2026-09-11 |
-| Keywords | Setup, 2025 review, training, 2026 plan, Setup procedures, deployment |
+| Keywords | Setup, 2025 review, reusable tasks, prerequisites, Shift-drag, Setup procedures, deployment |
 
 Setup and Deployment covers the work of planning and carrying out the annual move from storage to the park, plus the information crews need while installing the show.
 
@@ -19,6 +19,12 @@ https://my.sheboyganlights.org/setup/
 ```
 
 The current working session is **2025 — Historical Verification**. It uses real Production data so managers can reconstruct what happened in 2025, improve reusable Setup knowledge, and identify UI/workflow problems before the 2026 Setup Session is created.
+
+Current Production client:
+
+```text
+Client V0.3.9
+```
 
 ## Start Here
 
@@ -34,13 +40,30 @@ During this review you may, where supported by evidence:
 - add, delete, deactivate, or correct reusable Setup tasks through the supported controls;
 - correct task Stage/Scene scope and normal order;
 - mark whether a reusable task **Uses Display / Container Material**;
-- add or correct prerequisites;
+- add, remove, and reorder real task prerequisites;
+- use **Shift + drag** in the Catalog for fast prerequisite entry;
 - add or correct equipment/resources;
 - improve normal crew/time/readiness information;
 - review current Setup procedures; and
 - record questions or suggestions for the Setup workflow.
 
 Do not change information merely to make a record look complete.
+
+### Prerequisite shortcuts
+
+A hard prerequisite is another reusable Setup task that really must finish first.
+
+To make task A depend on task B:
+
+```text
+hold Shift before left-button-down on task A
+    -> drag A onto task B
+    -> release
+```
+
+Neither task moves during Shift-drag. Ordinary drag without Shift continues to move/reorder tasks and can move a task to another valid Stage/Scene.
+
+Open task detail for the canonical prerequisite list, manual **Add prerequisite**, **Up**, **Down**, and **Remove** controls. Up/Down changes display/review order only; it does not create dependency relationships between prerequisites.
 
 ### Display / Container material
 
@@ -87,7 +110,7 @@ Reusable Task information
 
 A correction that only applies to 2025 belongs in the 2025 annual history. A correction to how MSB normally performs a task belongs in the reusable task definition.
 
-The **Uses Display / Container Material** setting is reusable task knowledge. It should describe whether that task normally requires the current Display/Container material, not something that happened only in 2025.
+The **Uses Display / Container Material** setting and reusable prerequisites are reusable task knowledge. They should describe normal Setup behavior, not something that happened only in 2025.
 
 The selected Setup Session controls the allowable operational year. The 2025 session accepts 2025 operational dates only. Audit timestamps still show when the change was actually recorded.
 
@@ -95,12 +118,13 @@ Only an Administrator may create a new annual Setup Session or promote an annual
 
 ## Current Evaluation Boundary
 
-Production deployment is accepted, but final UI/workflow acceptance remains open while managers use the 2025 session and clean the reusable Catalog.
+Production deployment is accepted, but broader Setup workflow development remains active while managers use the 2025 session and clean the reusable Catalog.
 
 Current known boundaries:
 
 - no 2026 Setup Session has been created;
 - active reusable Catalog cleanup is required before 2026 creation because all active reusable tasks are seeded into a new annual Session;
+- structured outside/site readiness remains separate from task prerequisites;
 - Pick List generation is not yet a live Production workflow; and
 - Container/Display movement and scanning write commands remain outside this review boundary.
 

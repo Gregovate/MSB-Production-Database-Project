@@ -4,13 +4,13 @@
 |---|---|
 | Document Type | Engineering Handoff |
 | System | Production Database — Setup Session |
-| Status | CURRENT HANDOFF — V0.3.8 accepted in Production; broader Setup development remains active |
+| Status | CURRENT HANDOFF — V0.3.9 accepted in Production; broader Setup development remains active |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-11 |
 
 ## Purpose
 
-Preserve the current accepted Setup Session Production state, recent runtime lineage, data/authorization boundaries, exact deployed source, fingerprint evidence, procedure-source behavior, open work, and engineering resume point so future work starts from repository evidence rather than reconstructing recent acceptance from chat or issue comments.
+Preserve the current accepted Setup Session Production state, recent runtime lineage, data/authorization boundaries, exact deployed source, fingerprint evidence, prerequisite behavior, procedure-source behavior, open work, and engineering resume point so future work starts from repository evidence rather than reconstructing recent acceptance from chat or issue comments.
 
 This handoff supersedes the 2026-09-07 handoff as the **current** runtime/resume summary. The 2026-09-07 document remains historical foundation evidence for the original V0.3.4 Production promotion.
 
@@ -25,25 +25,25 @@ https://my.sheboyganlights.org/setup/
 Current accepted application version:
 
 ```text
-V0.3.8-task-detail-compact
+V0.3.9-predecessor-drag
 ```
 
 Exact deployed application source:
 
 ```text
 /opt/msb-setup
-SHA = 2eee967b6c5359c0e2e2d876a2fe44af8359315c
+SHA = 55478f98f760473b65b5d700a84c868285022ab7
 ```
 
 Implementation lineage:
 
 ```text
-Issue #153
-PR #160
-merge commit = d882bb33785321de9a6a880347521adf9518502e
+Issue #151
+PR #164
+merge commit = ebade21e15a9ac62728dca0655476a619b47516d
 ```
 
-The runtime intentionally remains pinned to the exact browser-accepted candidate rather than silently moving to the later repository merge/documentation commit.
+The runtime intentionally remains pinned to the exact browser-accepted candidate rather than silently moving to the later merge/documentation commits.
 
 Current accepted service/runtime facts remain:
 
@@ -57,6 +57,47 @@ protected route                     = https://my.sheboyganlights.org/setup/
 ```
 
 Server/runtime authority remains `Gregovate/MSB-Server-Management`.
+
+## Current Database / Migration Baseline
+
+Current accepted Setup database additions include migration 025 for Stage/Scene material resolution and migration 026 for persistent prerequisite review/display order.
+
+Migration 026:
+
+```text
+Setup/Database/026_add_setup_dependency_order.sql
+blob = 759774d80eb51b706a0e7b71c5e834636b64a451
+```
+
+Accepted Production state:
+
+```text
+ref.setup_task_dependency.sort_order = integer NOT NULL DEFAULT 100
+ref.reorder_setup_task_dependencies(text,bigint,bigint[]) = installed
+fieldwiring_app reorder EXECUTE = YES
+fieldwiring_app broad dependency INSERT/UPDATE/DELETE = NO
+```
+
+The 17 dependency rows that existed before migration retained their legacy note/audit fingerprint:
+
+```text
+26b170fba3500ea2647967e87aa02a1c
+```
+
+before and after migration. The governed Setup fingerprint also remained:
+
+```text
+9510360aa7de2da59d1ed8a9ad9d69f7
+```
+
+Migration 026 did not rewrite existing dependency audit evidence merely to introduce display order.
+
+Validated rollback archive retained on the Production host:
+
+```text
+/home/msbadmin/backups/setup-151/msb-pre-setup-151-20260911T071801.dump
+SHA256 = 21e5b9b0fbd07dd01b7c9a86027615988bc33f950767839e4d74bb4a1f407029
+```
 
 ## Current Annual / Catalog Boundary
 
@@ -73,7 +114,46 @@ The active reusable Catalog is the future-work baseline. A reusable task may leg
 
 Do not force newer reusable tasks into the 2025 historical Session merely to make the historical Plan appear complete.
 
+## Current V0.3.9 Prerequisite Behavior
+
+The accepted fast-entry interaction is:
+
+```text
+hold Shift before left-button-down on dependent task A
+    -> drag A onto prerequisite task B
+    -> release
+    -> A depends on B
+    -> neither task moves
+```
+
+Accepted behavior includes:
+
+- multiple prerequisites on one task;
+- idempotent repeated dependency entry;
+- database-authoritative circular-dependency rejection;
+- Shift-release over empty Stage/Scene space cancels without moving the task;
+- ordinary drag without Shift keeps reusable reorder and Stage/real-Scene movement behavior; and
+- explicit success/failure feedback with the intended dependency direction.
+
+Task detail now uses one canonical prerequisite list. Each prerequisite appears once with position plus **Up**, **Down**, and **Remove**. A separate manual **Add prerequisite** form remains available, and already-assigned prerequisites are excluded from its choices.
+
+Add/remove/reorder reload authoritative dependency state so task detail and the Catalog `Requires` line remain synchronized.
+
+Prerequisite Up/Down changes review/display order only. It does not create dependency relationships among prerequisite tasks.
+
+Keep the domain distinction:
+
+```text
+HARD PREDECESSOR != PREFERRED ORDER != READINESS CONDITION
+```
+
+Structured outside/site readiness remains future work.
+
+See [`Setup_Predecessor_and_Readiness_Contract_2026-09-09.md`](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md).
+
 ## Current V0.3.8 Task-Detail Presentation
+
+The V0.3.8 layout remains accepted and is preserved by V0.3.9.
 
 Accepted laptop/desktop task-detail layout:
 
@@ -85,11 +165,9 @@ Material / Logistics                Captains / Knowledge Owners
 
 The reusable definition itself uses a compact two-column desktop grid. Material / Logistics retains the four essential counts plus the existing full detail dialog. Prerequisites and Equipment / Resources remain below the rail block and are reachable with materially less scrolling.
 
-No schema, API, authorization, or Plan / Schedule behavior changed solely for V0.3.8.
-
 Physical mobile-device acceptance was not performed. Responsive stacking is contract-covered and was checked using a narrowed desktop browser only.
 
-Issue #159 separately owns cross-application palette and dark-mode white-logo consistency. The blue Setup logo in dark mode is a known current presentation inconsistency and is not an accepted V0.3.8 theme standard.
+Issue #159 separately owns cross-application palette and dark-mode white-logo consistency.
 
 ## Recent Runtime / Safety Lineage
 
@@ -131,22 +209,12 @@ Accepted protections include:
 - live-form vs selected-task dirty comparison;
 - reusable save before annual verification, with verification blocked if save fails;
 - Save / Discard / Stay protection for dirty navigation;
-- visible `Client V0.3.7` client-build badge;
+- visible client-build badge;
 - governed-write client/server build-match validation;
 - `no-store` protection for Setup page/assets/health so a stale client bundle cannot quietly continue writing; and
 - independent Effort / Material / Resource / Captain save surfaces remain separately governed.
 
-V0.3.7 Production deployment evidence:
-
-```text
-focused live regression = 45 passed
-pre/post source-deployment fingerprint = 0298e2b1c3531e13b1a0a86d4e55509d
-protected health = V0.3.7-catalog-dirty-edit-followup
-```
-
-Real operator validation on reusable task 200 / annual task 81 confirmed crew min/max 4/6 and completion point survived `Mark Verified` without a separate manual reusable save, and annual state became VERIFIED.
-
-### V0.3.8 — current accepted runtime
+### V0.3.8 — accepted compact task-detail layout
 
 Accepted exact candidate:
 
@@ -154,8 +222,6 @@ Accepted exact candidate:
 SHA     = 2eee967b6c5359c0e2e2d876a2fe44af8359315c
 version = V0.3.8-task-detail-compact
 ```
-
-V0.3.8 preserves the V0.3.7 dirty-edit/build-match protections and changes the task-detail presentation only.
 
 Production source-only deployment evidence:
 
@@ -168,9 +234,51 @@ protected health                     = V0.3.8-task-detail-compact
 final protected browser acceptance   = PASS
 ```
 
-Final browser acceptance required no special Production data write.
+### V0.3.9 — current accepted prerequisite workflow
 
-See [`Setup_Task_Detail_Production_Acceptance_2026-09-11.md`](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md).
+Accepted exact candidate:
+
+```text
+SHA     = 55478f98f760473b65b5d700a84c868285022ab7
+version = V0.3.9-predecessor-drag
+```
+
+Production evidence:
+
+```text
+migration 026                         = PASS
+focused exact-candidate regression    = 63 passed
+live focused regression               = 63 passed
+pre/post governed fingerprint         = 9510360aa7de2da59d1ed8a9ad9d69f7
+pre/post legacy dependency fingerprint= 26b170fba3500ea2647967e87aa02a1c
+protected direct negative path        = HTTP 401 PASS
+protected health                      = V0.3.9-predecessor-drag
+final protected browser acceptance    = PASS
+```
+
+The broad `Setup/Application` suite reported 191 passed / 2 failed on the exact V0.3.9 candidate. The same two failing literal-string contracts were reproduced on the already accepted V0.3.8 checkout, proving they were inherited stale test debt rather than V0.3.9 regressions. Closeout updates those literals rather than falsely claiming the pre-deployment full suite was green.
+
+See [`Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md`](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md).
+
+## Browser Preview Lifecycle Finding
+
+The #151 disposable review exposed a browser-preview lifecycle failure that is now durable operational knowledge.
+
+A lost workstation SSH tunnel can leave the remote source-only preview wrapper blocked on its browser-review prompt while the Flask child survives in its own session/process group. In that state the browser reports `Failed to fetch`, but the application may still be healthy on the server.
+
+Diagnosis must distinguish:
+
+```text
+application crash
+vs.
+SSH/tunnel loss with surviving preview
+```
+
+The final #151 evidence showed the last dependency mutation and following refreshes returned HTTP 200, and a direct server health request still returned V0.3.9. The application had not crashed.
+
+Acceptance tooling was hardened to clean only recognized preview-owned resources, reject Production ports, preserve reports/logs, use SSH keepalives, include HUP handling, and use `timeout --foreground` for an interactive bounded remote review. A non-foreground `timeout` attempt stopped at `sudo -v` and was rejected before final acceptance.
+
+Server-side browser-review operational authority is `Gregovate/MSB-Server-Management/docs/server/Pre_Production_Browser_Review_Runbook.md`.
 
 ## Data / Authorization Boundary
 
@@ -192,6 +300,8 @@ Authenticated Setup operator is not mapped to an MSB person
 ```
 
 is an identity-link / Person mapping problem, not evidence that the browser needs broader database permissions.
+
+Migration 026 preserves the same boundary: `fieldwiring_app` receives narrow EXECUTE on prerequisite commands and no broad dependency-table DML.
 
 ## Procedure / Editable Source Boundary
 
@@ -263,6 +373,7 @@ Completed and accepted in this recent line:
 ```text
 #154 dirty-edit / Mark Verified safety  = CLOSED / ACCEPTED V0.3.7
 #153 compact task-detail layout         = CLOSED / ACCEPTED V0.3.8
+#151 Shift+left-drag predecessor entry  = ACCEPTED V0.3.9 / close after documentation merge
 #161 SourceDocs migration documentation = CLOSED / COMPLETED
 ```
 
@@ -270,13 +381,14 @@ Real independent work remains, including:
 
 ```text
 #145 reusable Catalog cleanup before 2026 Session creation
-#151 Shift+left-drag predecessor creation
 #152 resource catalog sort order / existing-resource editing
 #159 cross-app light/dark palette and dark-mode white-logo standardization
 #141 task-specific staged material / Pick List release timing
 #132 Captain work-report duration / multi-day effort capture
 #113 shared Scan readiness / identity capture integration
 ```
+
+Structured readiness remains open design/implementation work under the broader Setup planning stream and must remain separate from hard task prerequisites.
 
 Do not create the 2026 Setup Session until #145 is complete and the cleaned active Catalog has passed the disposable 2026 seeding check.
 
@@ -287,18 +399,20 @@ Before the next Setup change:
 1. refresh current remote `main` and read the Project Rules;
 2. read this handoff and [`README.md`](README.md);
 3. read the responsible contract for the work item being changed;
-4. preserve the V0.3.7 dirty-edit/client-server build protections;
-5. preserve the V0.3.8 visible client version marker;
-6. preserve current 2025 historical state and do not create 2026 without #145 acceptance;
-7. use `Gregovate/MSB-Server-Management` for runtime/deployment authority;
-8. perform disposable/current-Production-clone browser acceptance before Production deployment when browser behavior changes;
-9. perform real protected-route operator validation for behavior that depends on actual client/runtime interaction; and
-10. complete controlled engineering/operator documentation and issue closeout before leaving the work item.
+4. preserve V0.3.7 dirty-edit/client-server build protections;
+5. preserve V0.3.8 compact task-detail layout;
+6. preserve V0.3.9 client marker, Shift-drag prerequisite direction, canonical prerequisite editor, and display-order-only semantics;
+7. preserve current 2025 historical state and do not create 2026 without #145 acceptance;
+8. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority;
+9. perform disposable/current-Production-clone browser acceptance before Production deployment when browser behavior changes;
+10. perform real protected-route operator validation for behavior that depends on actual client/runtime interaction; and
+11. complete controlled engineering/operator documentation and issue closeout before leaving the work item.
 
 ## Related Documents
 
 - [Setup engineering portal](README.md)
-- [V0.3.8 Production acceptance](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md)
+- [V0.3.9 prerequisite Production acceptance](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md)
+- [V0.3.8 task-detail Production acceptance](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md)
 - [Stage / Scene material resolution contract](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md)
 - [Data consumption and authorization contract](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md)
 - [Predecessor and readiness contract](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md)
