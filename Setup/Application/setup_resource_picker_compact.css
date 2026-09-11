@@ -18,6 +18,13 @@
   align-items: center;
 }
 
+#setup-resource-catalog-toggle {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .resource-manager-launch-hint {
   margin-top: 0.45rem;
   font-size: 0.82rem;
