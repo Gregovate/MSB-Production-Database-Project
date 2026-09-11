@@ -53,6 +53,16 @@ A colored task marker/highlight is only a visual cue that the material checkbox 
 
 It is normal for tasks such as locating, layout, network/power preparation, greasing, or other non-Display work to leave this box unchecked.
 
+### Important current limitation
+
+The current material result is **Stage/Scene material context**, not yet a task-specific pick/release list inside one Stage.
+
+If one Stage has several separate physical Setup tasks, more than one material-enabled Stage-level task can resolve the same Stage-level Displays/Containers even when only part of that material should be brought to the park for the current step.
+
+Example: Magic Igloo may need frame material first while skins should remain warm in the workshop until a later task. The current checkbox does not yet subdivide that Stage material by step or decide when each subset should leave storage.
+
+Do **not** treat every resolved item as "pick this now" merely because it appears in the Material / Logistics context. Task-specific staged material and pick-list timing remain separate future work tracked in Issue #141.
+
 ## Important Boundaries
 
 - The 2025 review area uses real Production data.
@@ -72,6 +82,7 @@ Managers and reviewers are encouraged to:
 - add genuinely missing reusable tasks;
 - mark **Uses Display / Container Material** only when that task really needs the current Display/Container material for its Stage/Scene work;
 - leave the material checkbox off for valid non-material tasks;
+- treat resolved material as context, not an automatic instruction to pick every item immediately;
 - add/correct resources and prerequisites;
 - correct task scope, order, crew/time expectations, and notes where supported;
 - verify records only when they have actually been reviewed;

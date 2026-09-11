@@ -109,6 +109,29 @@ There is no operator-facing LOR Preview/programming-group/material-source select
 
 The UI color marker is presentation only. `requires_display_material` is authoritative.
 
+### Important boundary — not yet task-specific staged material
+
+The accepted resolver is intentionally a **Stage/real-Scene material-context resolver**, not a complete task-specific pick/release model.
+
+When one Stage has several separate physical Setup tasks, multiple material-enabled Stage-level tasks can resolve the same Stage-level Displays/Containers even if only part of that material should leave storage for the current step.
+
+Magic Igloo is the representative case:
+
+```text
+frame work
+    -> may need frame material first
+
+skin installation
+    -> skins/bungees may need to remain warm in the workshop until later
+
+lighting/camera/finish work
+    -> later material may not be needed at the first step
+```
+
+The current checkbox answers whether the task uses Stage/Scene Display material and exposes that current context. It does not subdivide the Stage material by physical task step or release time.
+
+Do not claim that resolved material means `pick this now`. Task-specific material subdivision, component/KIT representation, and staged Pick List timing remain open engineering work in Issue #141.
+
 See [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md).
 
 ## Current Accepted Planning / Execution Presentation
@@ -175,13 +198,14 @@ Primary active work now is issue-driven rather than continuing the old nested PR
 
 ```text
 #122  Setup Session engineering / planning / Pick List / live reconstruction umbrella
+#141  task-specific staged material subdivision and Pick List release timing
 #145  reusable Catalog cleanup gate before creating the 2026 Setup Session
 #130  global People / Capability / Qualification work consumed by Setup
 #132  Captain work-report duration / multi-day effort capture
 #113  shared Scan application readiness / identity capture integration
 ```
 
-Earlier Setup PRs #123/#124/#125/#134/#136/#137/#138/#139 are historical/superseded lineages and should not be treated as the current development authority once their unique accepted content is preserved in `main` and their closeout comments are recorded.
+Earlier Setup PRs #123/#124/#125/#134/#136/#137/#138/#139 are historical/superseded lineages and are not the current development authority.
 
 ## Reusable Catalog / Annual Session Boundary
 
@@ -264,11 +288,14 @@ The intended direction remains:
 
 ```text
 selected Setup work
-    -> resolved Displays
-    -> current Containers
+    -> required material at the correct task/release step
+    -> resolved Displays / other governed material units
+    -> current Containers/storage
     -> deduplicate
-    -> explain why each Container is required
+    -> explain why each item/Container is required
 ```
+
+The existing Stage/Scene material resolver provides useful context but does not yet provide the task-specific release step in the first arrow above. Issue #141 owns that unresolved material-subdivision/timing problem.
 
 Do not infer task scope from Container storage. Shared/mixed-stage Containers are normal.
 
@@ -294,6 +321,7 @@ Current significant remaining work includes:
 
 - reusable Catalog cleanup before 2026 propagation;
 - continued correction of task boundaries exposed by live review;
+- task-specific staged material subdivision / release timing for multi-step Stage work (Issue #141);
 - structured readiness and efficient predecessor entry;
 - cross-Stage candidate planning surface / short-horizon scheduler workflow;
 - authoritative Controller context from FieldWiring / Controller Inventory;
@@ -309,14 +337,15 @@ Before changing this subsystem:
 1. read the Production Database Project Rules;
 2. read this engineering portal;
 3. read the Stage/Scene material-resolution contract before changing material or Scene classification;
-4. review Issue #145 before creating or simulating 2026 annual state;
-5. preserve annual 2025 facts separately from reusable future knowledge;
-6. use the predecessor/readiness contract before rebuilding dependencies;
-7. use the Pick List contract before implementing logistics/pick behavior;
-8. use issue #130 / People and Identity for global capability/qualification work;
-9. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
-10. use `Gregovate/MSB-Server-Management` for current runtime/deployment authority; and
-11. update controlled docs and this README handoff whenever accepted behavior or the next resume point changes.
+4. review Issue #141 before designing task-specific material groups, components/KITs, or Pick List release timing;
+5. review Issue #145 before creating or simulating 2026 annual state;
+6. preserve annual 2025 facts separately from reusable future knowledge;
+7. use the predecessor/readiness contract before rebuilding dependencies;
+8. use the Pick List contract before implementing logistics/pick behavior;
+9. use issue #130 / People and Identity for global capability/qualification work;
+10. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
+11. use `Gregovate/MSB-Server-Management` for current runtime/deployment authority; and
+12. update controlled docs and this README handoff whenever accepted behavior or the next resume point changes.
 
 ## Related Systems
 
