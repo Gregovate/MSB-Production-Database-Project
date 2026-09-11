@@ -40,15 +40,21 @@
       explanation.textContent = 'Resource not listed or named poorly? Open the catalog manager to rename, reactivate, or create it.';
       actionRow.insertAdjacentElement('afterend', explanation);
 
-      toggle.addEventListener('click', async () => {
-        const opening = catalogEditor.hidden && createBlock.hidden;
-        catalogEditor.hidden = !opening;
-        createBlock.hidden = !opening;
-        toggle.textContent = opening ? 'Close Resource Catalog' : 'Manage Resource Catalog';
-        toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
-        manager.classList.toggle('resource-catalog-open', opening);
+      const closeCatalog = () => {
+        catalogEditor.hidden = true;
+        createBlock.hidden = true;
+        toggle.hidden = false;
+        toggle.setAttribute('aria-expanded', 'false');
+        manager.classList.remove('resource-catalog-open');
+        toggle.focus();
+      };
 
-        if (!opening) return;
+      toggle.addEventListener('click', async () => {
+        catalogEditor.hidden = false;
+        createBlock.hidden = false;
+        toggle.hidden = true;
+        toggle.setAttribute('aria-expanded', 'true');
+        manager.classList.add('resource-catalog-open');
 
         const sort = document.getElementById('setup-resource-catalog-sort');
         if (sort && sort.value === 'ORDER') sort.value = 'NAME';
@@ -60,6 +66,17 @@
         }
         document.getElementById('setup-resource-catalog-search')?.focus();
       });
+
+      const catalogActionRow = catalogEditor.querySelector('.action-row');
+      if (catalogActionRow && !document.getElementById('setup-resource-catalog-close')) {
+        const closeButton = document.createElement('button');
+        closeButton.id = 'setup-resource-catalog-close';
+        closeButton.type = 'button';
+        closeButton.className = 'success resource-catalog-close';
+        closeButton.textContent = 'Close Resource Catalog';
+        closeButton.addEventListener('click', closeCatalog);
+        catalogActionRow.appendChild(closeButton);
+      }
     }
 
     const sort = document.getElementById('setup-resource-catalog-sort');
