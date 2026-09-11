@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  let orderSyncInFlight = false;
+  let orderSyncPromise = null;
 
   function dependencyRowsForTask(taskId) {
     return (taskById(taskId)?.dependencies || []).map((dep) => ({
@@ -13,10 +13,9 @@
     }));
   }
 
-  async function loadOrderedDependencies({ rerender = true } = {}) {
-    if (orderSyncInFlight) return;
-    orderSyncInFlight = true;
-    try {
+  function loadOrderedDependencies({ rerender = true } = {}) {
+    if (orderSyncPromise) return orderSyncPromise;
+    orderSyncPromise = (async () => {
       const payload = await api('api/setup/dependencies/ordered');
       const grouped = new Map();
       for (const row of payload.dependencies || []) {
@@ -39,9 +38,10 @@
         const selected = taskById(appState.selectedTaskId);
         if (selected) renderCanonicalPrerequisites(selected);
       }
-    } finally {
-      orderSyncInFlight = false;
-    }
+    })().finally(() => {
+      orderSyncPromise = null;
+    });
+    return orderSyncPromise;
   }
 
   function installCanonicalDependencyEditor() {
