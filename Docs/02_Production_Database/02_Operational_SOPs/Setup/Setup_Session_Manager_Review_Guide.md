@@ -33,6 +33,41 @@ The selected Setup Session controls operational dates. The 2025 session accepts 
 
 Only an Administrator may create a new annual Setup Session or promote annual order into the reusable future baseline.
 
+## Confirm the Loaded Client
+
+The Setup header displays the currently loaded client version, for example:
+
+```text
+Client V0.3.7
+```
+
+After a deployment, after leaving Setup open for a long period, or whenever the displayed client version is unexpected, refresh or reopen the application before making a governed change.
+
+Do not continue with a Production write if the expected client-version marker is missing or stale. The current client also verifies the server build before governed Setup writes and fails closed if the client and server builds do not match.
+
+## Safe Saving and Annual Verification
+
+Reusable task edits and annual review state remain separate governed data surfaces.
+
+If reusable fields have pending edits and a Manager clicks **Mark Verified**, Setup first saves the changed reusable-task definition using the existing governed reusable-task command. Only after that save succeeds does Setup write the annual verification state.
+
+If the reusable save fails, annual verification does not proceed as if the task were successfully verified.
+
+The normal operator flow may therefore be:
+
+```text
+edit reusable task fields
+    -> click Mark Verified
+    -> reusable edits save first
+    -> annual item becomes VERIFIED
+```
+
+**Save Reusable Task** remains available when the Manager wants to save reusable changes without changing annual verification state.
+
+When leaving a task, changing seasons, changing prerequisites, returning to the Catalog, or otherwise navigating away with pending tracked edits, Setup requires an explicit Save / Discard / Stay decision rather than silently losing the draft.
+
+Physical Effort, Uses Display / Container Material, resources, and Captains remain independent governed save surfaces. Their values are not silently folded into Save Reusable Task or Mark Verified.
+
 ## Annual 2025 Information vs Reusable Setup Knowledge
 
 Keep these separate.
@@ -241,6 +276,8 @@ Production-operational now includes:
 
 - Production-backed 2025 review/training;
 - reusable task create/copy/update/delete where governed safeguards allow it;
+- dirty-edit protection that saves changed reusable fields before annual verification and blocks verification when that save fails;
+- visible client-version identification and client/server build-match protection for governed writes;
 - Stage/real-Scene scope organization;
 - automatic Display/Container material applicability and Stage/Scene context resolution;
 - Stage-oriented Plan / Schedule and Perform Work presentation;
