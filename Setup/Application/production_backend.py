@@ -18,6 +18,7 @@ from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
+from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
 
 PRODUCTION_VERSION = "V0.3.9-predecessor-drag"
@@ -37,6 +38,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_next_pass.js",
         "setup_predecessor_drag.css",
         "setup_predecessor_drag.js",
+        "setup_prerequisite_editor.css",
+        "setup_prerequisite_editor.js",
         "setup_stage_order.css",
         "setup_stage_order.js",
         "setup_acceptance_fixes.css",
@@ -71,6 +74,7 @@ app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
 app.register_blueprint(setup_material_api)
+app.register_blueprint(setup_prerequisite_order_api)
 
 
 def _no_store(response):
