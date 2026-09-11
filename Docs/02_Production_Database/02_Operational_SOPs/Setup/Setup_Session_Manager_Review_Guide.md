@@ -136,6 +136,27 @@ A colored marker/highlight identifies material-enabled tasks in supported views.
 
 The task detail may show the resolved Displays/Containers as Material / Logistics context. This is for verification and downstream planning. Ordinary material membership comes from current LOR membership and current Display-to-Container assignment rather than a second manually maintained Setup list.
 
+### Current limitation: material context is not yet task-specific release timing
+
+The current resolver can still be too broad when one Stage has several separate physical Setup steps.
+
+Example:
+
+```text
+Magic Igloo
+    -> frame work
+    -> skin installation
+    -> later lighting/camera/finish work
+```
+
+The skins may need to stay warm in the workshop until the skin-install task. If more than one of those Stage-level tasks has the material checkbox enabled, the current resolver can show the same Stage-level Displays/Containers for each task because all of them share the same Stage scope.
+
+That does **not** mean every resolved item should be picked, loaded, or delivered for the first task.
+
+The current checkbox answers whether the task uses Stage/Scene Display material and shows that current context. It does not yet subdivide a Stage's material into task-specific release groups or determine when each subset should leave storage.
+
+Task-specific staged material and pick-list timing are tracked in Issue #141 and remain future engineering work.
+
 ## Stage View and Planned Order
 
 **Plan / Schedule** and **Perform Work** support Stage-oriented presentation.
@@ -221,7 +242,7 @@ Production-operational now includes:
 - Production-backed 2025 review/training;
 - reusable task create/copy/update/delete where governed safeguards allow it;
 - Stage/real-Scene scope organization;
-- automatic Display/Container material applicability and resolution;
+- automatic Display/Container material applicability and Stage/Scene context resolution;
 - Stage-oriented Plan / Schedule and Perform Work presentation;
 - search across Catalog, Plan / Schedule, and Perform Work;
 - resource/effort/prerequisite maintenance;
@@ -231,6 +252,7 @@ Production-operational now includes:
 Still incomplete/separate work includes:
 
 - final reusable Catalog cleanup before 2026 creation;
+- task-specific staged material subdivision / release timing (#141);
 - structured readiness gating;
 - improved predecessor-entry interaction;
 - Pick List generation/tablet workflow;
