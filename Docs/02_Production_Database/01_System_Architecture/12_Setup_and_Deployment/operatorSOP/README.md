@@ -63,6 +63,14 @@ Example: Magic Igloo may need frame material first while skins should remain war
 
 Do **not** treat every resolved item as "pick this now" merely because it appears in the Material / Logistics context. Task-specific staged material and pick-list timing remain separate future work tracked in Issue #141.
 
+## Moving Tasks Between Stage-level and Scene
+
+Managers can drag a reusable task between **Stage-level / General** and a real **Scene** within the Stage. A task can also be dragged to another valid Stage/Scene destination.
+
+This is a real reusable-scope change, not only a visual reorder. The application saves the new Stage/Scene scope through the governed Setup command and keeps the existing Stage/Scene validity checks.
+
+Use this when the task was organized under the wrong Stage-level/Scene location. Do not create a fake Scene or use a programming-only LOR group as a Setup Scene merely to obtain a different material result.
+
 ## Important Boundaries
 
 - The 2025 review area uses real Production data.
