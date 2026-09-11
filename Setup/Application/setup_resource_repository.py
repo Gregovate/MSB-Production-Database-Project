@@ -51,9 +51,8 @@ class SetupResourceRepository:
                 FROM ref.setup_resource
                 {active_clause}
                 ORDER BY
-                    display_order,
-                    resource_type,
                     resource_name,
+                    resource_type,
                     setup_resource_id
                 """
             )
@@ -81,9 +80,8 @@ class SetupResourceRepository:
                   AND tr.active_flag
                 ORDER BY
                     CASE tr.requirement_type WHEN 'REQUIRED' THEN 0 ELSE 1 END,
-                    r.display_order,
-                    r.resource_type,
                     r.resource_name,
+                    r.resource_type,
                     tr.setup_resource_id
                 """,
                 (setup_task_id,),
