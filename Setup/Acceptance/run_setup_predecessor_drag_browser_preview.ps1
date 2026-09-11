@@ -61,10 +61,10 @@ $serverInjection = @'
         'SQL',
         '',
         'echo',
-        'echo "--- Apply Issue #151 prerequisite-order migration to disposable clone only ---"',
-        'M026="$CANDIDATE_WORKTREE/Setup/Database/026_add_setup_dependency_order.sql"',
-        'if [[ ! -s "$M026" ]]; then echo "FAIL: Issue #151 migration missing: $M026"; exit 13; fi',
-        'psql_test < "$M026"',
+        'echo "--- Apply Issue #151 prerequisite-order migration to disposable clone only ---"'.Replace('\"','"'),
+        'M026="$CANDIDATE_WORKTREE/Setup/Database/026_add_setup_dependency_order.sql"'.Replace('\"','"'),
+        'if [[ ! -s "$M026" ]]; then echo "FAIL: Issue #151 migration missing: $M026"; exit 13; fi'.Replace('\"','"'),
+        'psql_test < "$M026"'.Replace('\"','"'),
         "psql_test <<'SQL151'",
         'DO $block$',
         'BEGIN',
@@ -85,7 +85,7 @@ $serverInjection = @'
         'END',
         '$block$;',
         'SQL151',
-        'echo "Issue #151 prerequisite-order migration on disposable clone: PASS"',
+        'echo "Issue #151 prerequisite-order migration on disposable clone: PASS"'.Replace('\"','"'),
         '',
         'TEST_IP='
     ) -join "`n"
