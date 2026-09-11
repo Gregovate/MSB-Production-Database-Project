@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 
 # Exact V0.3.9 application/test candidate for Issue #151. Later commits may
 # harden acceptance tooling only; browser/deployment approval remains pinned here.
-$AcceptedCandidateSha = 'f23e305a25959297fbe83b68753a5be471871652'
+$AcceptedCandidateSha = 'bfff954618f12a591af4900b71c4938ca5790382'
 $AcceptedBranch = 'agent/setup-shift-drag-predecessor-151'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
