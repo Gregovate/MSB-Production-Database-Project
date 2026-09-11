@@ -364,4 +364,4 @@ Issue #145 tracks the Catalog-cleanup gate before 2026 creation.
 
 - [Setup operator portal](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
 - [2025 review procedure](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
-- [Setup engineering handoff](../../01_System_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md)
+- [Setup engineering handoff](../../01_System_Architecture/12_Setup_and_Deployment/engineering/README.md)
