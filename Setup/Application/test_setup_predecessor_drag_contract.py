@@ -22,28 +22,34 @@ def test_predecessor_drag_assets_are_production_loaded_after_normal_drag_engine(
     assert html.index("setup_next_pass.js") < html.index("setup_predecessor_drag.js")
 
 
-def test_shift_drag_arms_before_native_dragstart_and_uses_existing_dependency_command_only() -> None:
+def test_shift_drag_uses_custom_pointer_gesture_and_existing_dependency_command_only() -> None:
     js = read("setup_predecessor_drag.js")
 
     assert "document.addEventListener('pointerdown'" in js
+    assert "document.addEventListener('pointermove'" in js
+    assert "document.addEventListener('pointerup'" in js
+    assert "document.addEventListener('pointercancel'" in js
     assert "event.button !== 0" in js
     assert "event.shiftKey" in js
-    assert "state.shiftArmed = true" in js
-    assert "state.armedTaskId = taskId" in js
-    assert "armedForThisTask" in js
+    assert "state.active = true" in js
+    assert "row.setPointerCapture(event.pointerId)" in js
+    assert "document.elementFromPoint(clientX, clientY)" in js
+    assert "event.preventDefault()" in js
     assert "event.stopImmediatePropagation()" in js
-    assert "effectAllowed = 'all'" in js
-    assert "dropEffect = 'move'" in js
     assert "api/setup/tasks/${dependentTaskId}/dependencies/${prerequisiteTaskId}" in js
     assert "active: true" in js
     assert "dependency_note: null" in js
 
-    # The modifier interaction has exactly one governed API write: dependency upsert.
+    # Shift mode owns the pointer gesture and never calls the normal scope/reorder path.
     assert js.count("await api(") == 1
     assert "api/setup/tasks/${dependentTaskId}/scope" not in js
     assert "api/setup/tasks/${prerequisiteTaskId}/scope" not in js
     assert "nextMoveTask(" not in js
     assert "nextPersistOrder(" not in js
+
+    # Native drag is suppressed only after custom Shift-pointer mode is active.
+    assert "document.addEventListener('dragstart'" in js
+    assert "if (!state.active) return;" in js
 
 
 def test_normal_drag_and_manual_prerequisite_editor_remain_available() -> None:
@@ -56,9 +62,9 @@ def test_normal_drag_and_manual_prerequisite_editor_remain_available() -> None:
     assert "Add prerequisite" in normal
     assert "dependencies/${prereq}" in normal
 
-    # Capture listeners only take ownership after the Shift gesture is armed.
-    assert "if (!state.dependencyMode) return;" in shift
-    assert "if (!taskId || (!armedForThisTask && !event.shiftKey)) return;" in shift
+    # Shift extension does not patch or replace the normal drag functions.
+    assert "nextMoveTask =" not in shift
+    assert "nextPersistOrder =" not in shift
 
 
 def test_dependency_direction_and_failure_feedback_are_explicit() -> None:
@@ -68,6 +74,7 @@ def test_dependency_direction_and_failure_feedback_are_explicit() -> None:
     assert "Prerequisite target" in js
     assert "depends on" in js
     assert "Neither task moved" in js
+    assert "Release the dependent task over another Setup task" in js
     assert "setAlert(message, 'error')" in js
     assert "window.alert(message)" in js
 
