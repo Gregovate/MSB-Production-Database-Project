@@ -4,18 +4,18 @@
 |---|---|
 | Document Type | Operator Procedure |
 | System | Production Database — Setup and Deployment |
-| Task | Review and correct the 2025 Setup history |
+| Task | Review and correct the 2025 Setup history and reusable Setup knowledge |
 | Audience | Authorized Setup reviewers and managers |
-| Status | CURRENT — live 2025 review/training workflow; UI/workflow evaluation remains open |
+| Status | CURRENT — live 2025 review plus current reusable-task development |
 | Owner | MSB Setup administrator |
-| Last Reviewed | 2026-09-07 |
-| Keywords | Setup, 2025, historical review, training, reusable task, resources, verification |
+| Last Reviewed | 2026-09-11 |
+| Keywords | Setup, 2025, historical review, reusable task, material, resources, verification |
 
 ## Purpose
 
-Use the real 2025 Setup Session to reconstruct what happened during the 2025 Setup season, improve reusable Setup knowledge, and learn the Setup application before the 2026 Setup Session is created.
+Use the real 2025 Setup Session to preserve/correct 2025 history while improving reusable Setup knowledge before the 2026 Setup Session is created.
 
-This is both a historical review area and a training area. Changes are real Production changes. The application itself is also still under live evaluation, so questions, suggestions, confusing screens, missing controls, and workflow problems should be reported rather than silently worked around.
+Changes are real Production changes. The current PostgreSQL reusable Catalog is the working task baseline. Historical spreadsheets/schedules remain evidence; they are not a parallel ongoing task master.
 
 ## Open the Setup Application
 
@@ -27,21 +27,13 @@ https://my.sheboyganlights.org/setup/
 
 Sign in through the normal MSB Google/Cloudflare Access login when prompted.
 
-## Confirm You Are Working in 2025
-
-At the top of the Setup application, confirm the selected session is:
+Confirm the selected session is:
 
 ```text
 2025 — Historical Verification
 ```
 
-For this session:
-
-```text
-allowed operational dates = 2025 only
-```
-
-The browser limits operational dates to 2025 and the database independently enforces the same rule. A correction recorded during 2026 may still have a 2025 operational date; its audit/update timestamp remains the real 2026 recording time.
+Operational dates entered for this session must be in 2025. Audit/update timestamps remain the real current recording time.
 
 ## Understand the Two Kinds of Changes
 
@@ -49,14 +41,12 @@ The browser limits operational dates to 2025 and the database independently enfo
 
 These changes describe what happened or was planned in 2025. Examples include:
 
-- verification state;
+- verification/reconciliation state;
 - actual crew count or duration when known;
 - actual start/completion information when known;
 - annual notes;
 - 2025-specific planned order; and
 - 2025 work-day/scheduling information when useful for reconstruction.
-
-These changes belong to 2025 and do not become 2026 history.
 
 ### Reusable Task knowledge
 
@@ -66,71 +56,132 @@ These changes describe how MSB normally performs Setup work. Examples include:
 - Park Infrastructure / Stage / Scene scope;
 - normal local sequence/order;
 - normal crew size and expected duration;
-- prerequisites;
+- Physical Effort;
+- whether the task **Uses Display / Container Material**;
+- prerequisites/readiness;
 - equipment/resources and quantities;
-- completion point;
-- readiness/weather notes; and
+- completion point; and
 - other reusable instructions that should carry forward.
 
-Reusable Task changes are permanent Setup knowledge and may become part of the starting point for future seasons.
-
-Before changing reusable information, ask:
-
-> Is this a general Setup rule we want to carry forward, or is this only something that happened in 2025?
-
-If it happened only in 2025, record it in the annual history instead.
+Reusable Task changes are permanent Setup knowledge and may become part of future seasons.
 
 ## Review a Task
 
-1. Open the 2025 Historical Verification session.
-2. Select a task from the review list.
-3. Read the reusable task information and the 2025 annual information separately.
-4. Compare the record with what you know, current procedures, and other reliable 2025 evidence.
-5. Correct only fields you can support.
-6. Add useful annual notes when the information is specific to 2025.
-7. Set the verification state only after the record has actually been reviewed.
+1. Open the task in the 2025 Historical Verification session.
+2. Read reusable task information and annual 2025 information separately.
+3. Compare them with what you know and with reliable procedures/evidence.
+4. Correct only information you can support.
+5. Review whether the task normally requires Display/Container material.
+6. Add annual notes when useful 2025-specific detail should be preserved.
+7. Set the annual verification/reconciliation state only after the record has actually been reviewed.
 
-Normal verification states are:
+Do not mark a task accepted merely because it exists.
 
-```text
-UNVERIFIED
-VERIFIED
-NEEDS CORRECTION
-```
+## Add or Correct Reusable Tasks
 
-Do not mark a task VERIFIED merely because it exists.
+If real Setup work is missing, Managers may add a reusable task when that work should normally exist beyond one historical occurrence.
 
-## Add Missing Tasks
-
-If a real Setup activity is missing, Managers may add a reusable task when the work should exist as a normal Setup task beyond just one historical occurrence.
-
-Before adding it, decide the appropriate scope:
+Use the correct practical scope:
 
 ```text
 Park Infrastructure / no LOR Stage
 Stage-level / General
-Scene
+real Scene
 ```
 
-Use **Add Task Here** in the appropriate scope. Use **Copy** when a new reusable task is substantially similar to an existing one, then review the copied definition carefully.
+Use **Add Task Here** or **Copy** where appropriate.
 
-Do not create a task for every ordinary action. A task is useful when it can realistically be missed, affects planning/readiness/resources, needs progress/completion tracking, or preserves historical learning worth carrying forward.
+Do not create one task per panel or one task per Display merely to make material easier to represent. Build tasks at the practical work-package level used by crews.
 
-## Review Resources and Prerequisites
+Tasks such as locating, laying out an area, plugging power/network, greasing bearings, or similar work can be valid reusable tasks without Display material.
 
-For reusable tasks, check whether the practical requirements are represented correctly.
+## Use the Display / Container Material Checkbox
 
-Examples include:
+Reusable task details now include:
 
-- lifts;
-- vehicles;
-- trailers;
-- tools;
-- powered stake pounders;
-- other recurring equipment/resources; and
-- predecessor tasks that must complete first.
+```text
+[ ] Uses Display / Container Material
+```
 
-Use structured resources and prerequisites where they represent repeatable Setup knowledge. Do not invent quantities or dependencies just to fill fields.
+### Leave it unchecked when the task does not require Display material
+
+Examples can include:
+
+- Locate Power & Network;
+- layout/site preparation;
+- plug-in/network preparation;
+- Grease Bearings; or
+- another valid task whose work does not depend on moving/installing the current Displays for that Stage/Scene.
+
+An unchecked box is not a missing-data error.
+
+### Check it when the task requires the current Display/Container material
+
+When checked, Setup automatically uses the task's existing scope:
+
+```text
+Stage-level task
+    -> current Stage-level LOR Display groups
+    -> excludes true child-Scene material
+
+real Scene task
+    -> exact current Display membership of that Scene
+```
+
+Then Setup follows the resolved Displays to their current Containers.
+
+The operator does **not** choose:
+
+- an LOR Preview;
+- a programming/display group;
+- a separate LOR Scene merely as a material source; or
+- a manual Display list for ordinary material resolution.
+
+If the task's Stage/Scene scope is wrong, correct the task scope. Do not choose a different material source to compensate.
+
+### Color coding
+
+Tasks with material enabled receive a colored marker/highlight in supported views. That is only a visual cue.
+
+```text
+checkbox = stored reusable-task fact
+color    = visual reminder
+```
+
+The material summary shown with the task is read-only resolved context. Use it to confirm that Setup is resolving the expected Displays/Containers.
+
+## Stage and Scene Organization
+
+The reusable Catalog, Plan / Schedule, and Perform Work can present tasks by Stage with separate:
+
+```text
+Stage-level / General
+Scene — <real Scene>
+```
+
+Programming-only LOR groups are not separate Setup Scenes merely because they exist in LOR.
+
+Use **Planned order** when you need to see or change the annual planning sequence. Stage view is a presentation/grouping view and does not rewrite planned order by itself.
+
+## Search
+
+The **Find task or Stage** search applies across the reusable Catalog, Plan / Schedule, and Perform Work.
+
+You can search by task, Stage, Scene, and related visible context. Clear the search to restore the complete view.
+
+## Review Resources, Prerequisites, and Readiness
+
+For reusable tasks, check whether practical requirements are represented correctly:
+
+- lifts/vehicles/trailers/tools;
+- other recurring resources;
+- Physical Effort where known;
+- real predecessor tasks that must complete first; and
+- readiness conditions that may block work.
+
+Do not invent quantities or dependencies merely to fill fields.
+
+A predecessor is another Setup task that must be complete first. A readiness condition may instead be an external/site condition such as mowing/mulching being complete in the applicable work area. Do not create fake Setup tasks merely to represent outside conditions.
 
 ## Procedures and Instructions
 
@@ -138,46 +189,47 @@ Where a Setup task has a current published Setup procedure, the application may 
 
 If an editable procedure is corrected, the current published PDF must also be updated before the instruction is treated as current.
 
-Detailed document-publishing instructions are owned by the Google Drive / Display Folder workflow. Do not reorganize folders merely to make the Setup review screen look cleaner.
+Detailed document-publishing instructions are owned by the Google Drive / Display Folder workflow.
 
 ## Ask Questions and Make Suggestions
 
-The application is intentionally being evaluated through real use. During the review period, report things such as:
+The application remains under real-use evaluation. Report things such as:
 
 - information that is hard to understand;
-- fields that appear unnecessary;
-- missing information you need to make a Setup decision;
+- missing information needed to make a Setup decision;
 - awkward or repetitive steps;
-- task organization that does not match how crews actually work;
+- task organization that does not match real work;
+- unexpected Display/Container material resolution;
 - resources or prerequisites that are difficult to represent;
-- confusing wording;
-- missing search/filter/navigation behavior; and
-- ideas that would make the 2026 Setup process easier.
+- missing readiness behavior;
+- search/filter/navigation problems; and
+- ideas that would make 2026 planning or field work easier.
 
-A useful finding does not have to be a software bug. Workflow and data-model suggestions are part of this review.
+Do not silently work around a system problem by creating fake tasks, moving work to the wrong Stage/Scene, or duplicating material relationships.
 
-## What Reviewers Cannot Do
+## 2026 Creation Gate
 
-Normal reviewers/managers cannot:
+There is currently no 2026 Setup Session.
 
-- create the 2026 Setup Session; or
-- use **Use Current Order as Future Baseline** unless they have Administrator authority.
+A newly created Setup Session seeds **every active reusable task** into that annual Session. Therefore the active reusable Catalog must be cleaned before 2026 is created.
 
-Those controls are intentionally restricted so training/review work in the 2025 session cannot accidentally create or promote future-season state.
+Do not force newer reusable tasks into the 2025 annual history just to make 2025 Plan / Schedule look complete. A valid reusable task can exist without a 2025 annual row.
 
-Pick List generation and Container/Display movement/scanning writes are not part of the current live-review workflow.
+Issue #145 tracks the Catalog-cleanup gate before 2026 creation.
 
 ## What Successful Review Looks Like
 
-A useful 2025 review leaves:
+A useful review leaves:
 
 - 2025 annual facts corrected where evidence exists;
-- uncertain information left UNVERIFIED or marked NEEDS CORRECTION;
-- missing reusable tasks added where appropriate;
-- reusable task scope, resources, prerequisites, order, and normal expectations improved where the change should carry forward;
-- no 2026 operational dates in the 2025 session;
-- no fake records created only for testing; and
-- questions, suggestions, and UI/workflow issues captured for follow-up before final subsystem acceptance.
+- uncertain information left for follow-up rather than guessed;
+- reusable task boundaries corrected at practical crew/work-package level;
+- material enabled only for tasks that actually require LOR-derived Displays/Containers;
+- non-material tasks left valid with material disabled;
+- correct Stage/real-Scene scope;
+- resources, effort, predecessors/readiness, order, and normal expectations improved where supported;
+- no fake records created merely for testing or UI workarounds; and
+- no 2026 Session created until the active Catalog is ready to propagate.
 
 ## Related Documents
 

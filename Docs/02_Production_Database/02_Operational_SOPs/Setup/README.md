@@ -16,13 +16,28 @@ The current shared working session is the real Production-backed:
 2025 — Historical Verification
 ```
 
-Production deployment is accepted, but the **Setup UI/workflow remains in live evaluation**. Managers are expected to use the 2025 session for real reconstruction/training work and report questions, suggestions, confusing behavior, and workflow problems before final subsystem acceptance.
+The Setup application now includes Stage/real-Scene organization, automatic Display/Container material applicability, Stage-oriented Plan / Schedule and Perform Work views, and shared search across the main work surfaces.
+
+The broader Setup workflow remains in live evaluation while the reusable Catalog is cleaned and the remaining 2026 planning/Pick List/movement work is completed.
 
 ## Start Here
 
-- [Setup Session Manager Review Guide](Setup_Session_Manager_Review_Guide.md) — plain-English guide for reviewing 2025 history, adding/correcting reusable tasks, resources and prerequisites, verification, planning/order concepts, procedures, and the annual-vs-reusable distinction.
+- [Setup Session Manager Review Guide](Setup_Session_Manager_Review_Guide.md) — plain-English guide for reviewing 2025 history, building/correcting reusable tasks, using **Uses Display / Container Material**, resources/prerequisites/readiness, Stage/Scene planning views, search, and the annual-vs-reusable distinction.
 
 The 2025 shared review is **not disposable**. Authorized saves are real 2025 or reusable Production Database changes.
+
+## Material Applicability
+
+Reusable tasks have:
+
+```text
+[ ] Uses Display / Container Material
+```
+
+- Leave it unchecked for valid tasks that do not require LOR-derived Display material.
+- Check it when the task needs the current Displays/Containers for its existing Stage or real Scene.
+- Setup resolves that material automatically. Operators do not choose an LOR Preview/programming group/material source.
+- The colored task marker is only a visual cue; the checkbox is the stored reusable-task setting.
 
 ## Session-Year Safety
 
@@ -40,9 +55,7 @@ Only a Setup Administrator may:
 - create/manage an annual Setup Session; or
 - promote an annual planned order into the reusable future baseline.
 
-See the engineering contract:
-
-- [Setup Session Shared Review and Season-Year Guard — 2026-09-07](../../01_System_Architecture/12_Setup_and_Deployment/Setup_Session_Shared_Review_and_Season_Year_Guard_2026-09-07.md)
+There is currently no 2026 Setup Session. Do not create it until the active reusable Catalog cleanup gate is complete; every active reusable task is seeded into a newly created annual Session.
 
 ## Related Google Drive Procedure
 
@@ -58,23 +71,29 @@ Build and maintain it from:
 
 Do not create a fake LOR Stage, Scene, or Preview for Park Infrastructure merely to hold these Procedures.
 
-`40-CommandCenter` is different: it has a real LOR Preview and remains legitimate Stage 40 even though its Preview currently has no wired inventory items. Command Center trailer/WiFi/gateway/hotspot Setup work belongs to Stage 40, not Park Infrastructure.
-
 ## Current Implementation Boundary
 
-Live now:
+Production-operational now includes:
 
 - Production-backed 2025 historical review/training;
 - Manager/reviewer task verification and correction;
-- reusable task creation/copy and maintenance;
-- scope/order/prerequisite/resource maintenance;
-- annual planning/review controls supported by the current application;
+- reusable task create/copy/update/delete where governed safeguards allow it;
+- Stage/real-Scene organization;
+- **Uses Display / Container Material** with automatic current material resolution;
+- Stage-oriented Plan / Schedule and Perform Work presentation;
+- shared task/Stage/Scene search;
+- resource/effort/prerequisite maintenance;
 - Procedure/document context; and
 - protected authenticated browser access.
 
-Still outside the current Production-ready boundary:
+Still incomplete/separate work includes:
 
-- Pick List generation; and
-- Container/Display movement/scanning write commands.
+- final reusable Catalog cleanup before 2026 creation;
+- structured readiness gating;
+- improved predecessor-entry interaction;
+- Pick List generation/tablet workflow;
+- mixed-stage Container annual mobilization/unload-state behavior;
+- Container/Display movement/scanning writes; and
+- park-location execution evidence.
 
 Do not document those later layers as live Production behavior until their separate acceptance gates pass.
