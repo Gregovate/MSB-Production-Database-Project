@@ -35,6 +35,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_review_usability.js",
         "setup_next_pass.css",
         "setup_next_pass.js",
+        "setup_predecessor_drag.css",
+        "setup_predecessor_drag.js",
         "setup_stage_order.css",
         "setup_stage_order.js",
         "setup_acceptance_fixes.css",
