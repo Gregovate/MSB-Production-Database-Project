@@ -62,15 +62,17 @@ mapfile -t source_listener_pids < <(
 for pid in "${source_listener_pids[@]}"; do
     [[ -n "$pid" ]] || continue
 
-    cmdline="$(sudo tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
-    owner="$(ps -o user= -p "$pid" 2>/dev/null | xargs || true)"
-    if [[ "$cmdline" != *"/tmp/setup_session_browser_preview_entry.py"* || "$owner" != "fieldwiring" ]]; then
+    cmdline="$(sudo cat "/proc/$pid/cmdline" 2>/dev/null | tr '\0' ' ' || true)"
+    owner_uid="$(ps -o uid= -p "$pid" 2>/dev/null | xargs || true)"
+    fieldwiring_uid="$(id -u fieldwiring)"
+    if [[ "$cmdline" != *"/tmp/setup_session_browser_preview_entry.py"* || "$owner_uid" != "$fieldwiring_uid" ]]; then
         echo "FAIL: preview port $PREVIEW_PORT is owned by an unexpected process; refusing to kill it"
         ps -o pid,ppid,pgid,user,args -p "$pid" || true
         exit 4
     fi
 
-    app_dir="$(sudo tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null \
+    app_dir="$(sudo cat "/proc/$pid/environ" 2>/dev/null \
+        | tr '\0' '\n' \
         | sed -n 's/^MSB_SETUP_PREVIEW_APP_DIR=//p' \
         | head -1)"
     if [[ "$app_dir" == /tmp/msb-setup-source-preview-candidate-*/Setup/Application ]]; then
@@ -80,7 +82,8 @@ for pid in "${source_listener_pids[@]}"; do
         source_stamps+=("$stamp")
     fi
 
-    dsn="$(sudo tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null \
+    dsn="$(sudo cat "/proc/$pid/environ" 2>/dev/null \
+        | tr '\0' '\n' \
         | sed -n 's/^SETUP_DATABASE_DSN=//p' \
         | head -1)"
     db_host="$(sed -n 's/.*\(^\|[[:space:]]\)host=\([^[:space:]]*\).*/\2/p' <<<"$dsn")"
