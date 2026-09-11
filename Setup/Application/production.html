@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup Session</title>
+  <link rel="stylesheet" href="setup.css?v=2026-09-07.1">
+  <link rel="stylesheet" href="setup_review_clarity.css?v=2026-09-07.1">
+  <link rel="stylesheet" href="setup_theme.css?v=2026-09-07.1">
+  <link rel="stylesheet" href="setup_production.css?v=2026-09-07.1">
+  <link rel="stylesheet" href="setup_resource_review.css?v=2026-09-08.1">
+  <link rel="stylesheet" href="setup_review_usability.css?v=2026-09-07.2">
+  <link rel="stylesheet" href="setup_next_pass.css?v=2026-09-07.4">
+  <link rel="stylesheet" href="setup_stage_order.css?v=2026-09-10.1">
+  <link rel="stylesheet" href="setup_acceptance_fixes.css?v=2026-09-07.1">
+  <link rel="stylesheet" href="setup_session_year_guard.css?v=2026-09-07.1">
+  <link rel="stylesheet" href="setup_live_review_fixes.css?v=2026-09-08.3">
+  <link rel="stylesheet" href="setup_training_ux.css?v=2026-09-08.1">
+  <link rel="stylesheet" href="setup_training_review_refinement.css?v=2026-09-09.3">
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div class="brand-copy">
+      <h1>Setup Session</h1>
+      <div id="app-subhead" class="subhead">Shared Setup planning and verification</div>
+    </div>
+    <div class="header-actions">
+      <label class="season-label">Season
+        <select id="season-select" aria-label="Setup season"></select>
+      </label>
+      <span id="access-badge" class="access-badge">Checking access…</span>
+      <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="app-alert" class="notice production-notice" aria-live="polite">
+    Loading shared Production Setup data…
+  </section>
+
+  <nav class="tabs" aria-label="Setup Session views">
+    <button class="tab active" data-view="review" type="button">2025 Verification</button>
+    <button class="tab" data-view="library" type="button">Reusable Task Catalog</button>
+    <button class="tab" data-view="movement" type="button">Movement / Scanning</button>
+  </nav>
+
+  <section id="summary-grid" class="summary-grid" aria-live="polite"></section>
+
+  <section id="review-view" class="view active-view">
+    <div class="workspace">
+      <div class="card list-card">
+        <div class="section-title">
+          <div>
+            <div id="review-season-label" class="eyebrow">Annual verification</div>
+            <h2>Verification Queue</h2>
+          </div>
+          <div class="filters">
+            <label>Status
+              <select id="review-status-filter">
+                <option value="">All</option>
+                <option value="UNVERIFIED">Unverified</option>
+                <option value="NEEDS_CORRECTION">Needs correction</option>
+                <option value="VERIFIED">Verified</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="hint">Annual verification is separate from the reusable task definition. Managers can correct either without changing task identity.</div>
+        <div id="review-list" class="task-list"></div>
+      </div>
+
+      <div class="card detail-card">
+        <div id="review-empty" class="empty-state">Select a task to review it.</div>
+        <div id="review-detail" hidden>
+          <div class="detail-heading">
+            <div>
+              <div id="detail-stage" class="eyebrow"></div>
+              <h2 id="detail-task-name"></h2>
+              <div id="detail-task-id" class="muted"></div>
+            </div>
+            <span id="detail-verification" class="pill"></span>
+          </div>
+
+          <section class="detail-section split-section">
+            <fieldset id="reusable-fieldset" class="production-fieldset">
+              <legend>Reusable Task Definition</legend>
+              <label>Task name<input id="edit-task-name" type="text"></label>
+              <label>Stage / Site-wide scope<select id="edit-stage-id"></select></label>
+              <label>Task type
+                <select id="edit-action-type">
+                  <option value="WORK">Work</option>
+                  <option value="UNLOAD_CONTAINER">Unload Container</option>
+                  <option value="SUPPORT">Support</option>
+                </select>
+              </label>
+              <div class="compact-grid">
+                <label>Display order<input id="edit-display-order" type="number" min="0"></label>
+                <label class="checkbox-label"><input id="edit-active-flag" type="checkbox"> Active reusable task</label>
+              </div>
+              <div class="compact-grid three">
+                <label>Crew min<input id="edit-crew-min" type="number" min="0"></label>
+                <label>Crew max<input id="edit-crew-max" type="number" min="0"></label>
+                <label>Expected minutes<input id="edit-duration-minutes" type="number" min="1"></label>
+              </div>
+              <label>Physical effort
+                <select id="edit-effort-level">
+                  <option value="">Not reviewed</option>
+                  <option value="LIGHT">Light</option>
+                  <option value="MODERATE">Moderate</option>
+                  <option value="HEAVY">Heavy</option>
+                </select>
+              </label>
+              <label>Completion point<textarea id="edit-completion" rows="3"></textarea></label>
+              <label>Readiness note<textarea id="edit-readiness" rows="2"></textarea></label>
+              <label>Weather note<textarea id="edit-weather" rows="2"></textarea></label>
+              <label>Reusable notes<textarea id="edit-reusable-notes" rows="4"></textarea></label>
+              <div id="reusable-manager-actions" class="action-row manager-only">
+                <button id="save-reusable-task" type="button">Save Reusable Task</button>
+                <button id="save-task-effort" type="button">Save Effort</button>
+              </div>
+            </fieldset>
+
+            <fieldset id="annual-fieldset" class="production-fieldset">
+              <legend id="annual-legend">Annual Historical Actual</legend>
+              <label>Execution status<input id="annual-execution-status" type="text" readonly></label>
+              <div class="compact-grid">
+                <label>Actual crew<input id="edit-actual-crew" type="number" min="0"></label>
+                <label>Actual minutes<input id="edit-actual-duration" type="number" min="0"></label>
+              </div>
+              <label>Recorded start<input id="annual-started-at" type="text" readonly></label>
+              <label>Recorded completion<input id="annual-completed-at" type="text" readonly></label>
+              <label>Annual notes<textarea id="edit-annual-notes" rows="6" placeholder="Historical evidence, corrections, dates, and season-specific notes"></textarea></label>
+              <div id="annual-manager-actions" class="action-row manager-only">
+                <button id="save-annual-review" type="button">Save Annual Review</button>
+                <button id="mark-verified" type="button" class="success">Mark Verified</button>
+                <button id="mark-correction" type="button" class="warning">Needs Correction</button>
+                <button id="mark-unverified" type="button" class="secondary">Back to Unverified</button>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="detail-section">
+            <h3>Prerequisites</h3>
+            <div id="detail-dependencies" class="chip-row"></div>
+            <div class="hint">Managers can maintain reusable prerequisites in this review candidate. Circular dependencies are blocked by the database command layer.</div>
+          </section>
+
+          <section class="detail-section">
+            <h3>Setup Procedure</h3>
+            <div class="procedure-production-grid">
+              <div class="manager-procedure-card published-procedure-card">
+                <div class="eyebrow">Published field PDF</div>
+                <div id="production-current-pdf"><span class="muted">Select a task to resolve the current Setup Procedure.</span></div>
+              </div>
+              <div id="production-editable-card" class="manager-procedure-card editable-procedure-card manager-only">
+                <div class="eyebrow">Editable procedure</div>
+                <div id="production-editable-procedure"><span class="muted">Manager source is resolved only for authorized Managers.</span></div>
+              </div>
+            </div>
+            <div id="production-procedure-warnings" class="instruction-live-warnings"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="library-view" class="view">
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Permanent reusable Setup knowledge</div>
+          <h2>Reusable Task Catalog</h2>
+        </div>
+        <button id="show-add-task" type="button" class="manager-only">Add Task</button>
+      </div>
+      <div class="hint">Annual verification state is intentionally not shown as a property of the reusable task.</div>
+
+      <form id="add-task-form" class="add-task-form manager-only" hidden>
+        <div class="compact-grid three">
+          <label>Stage / Site-wide scope<select id="add-stage-id"></select></label>
+          <label>Task type
+            <select id="add-action-type">
+              <option value="WORK">Work</option>
+              <option value="UNLOAD_CONTAINER">Unload Container</option>
+              <option value="SUPPORT">Support</option>
+            </select>
+          </label>
+          <label>Stage sequence<input id="add-display-order" type="number" min="0" value="100"></label>
+        </div>
+        <label>Task name<input id="add-task-name" type="text" required></label>
+        <div class="action-row">
+          <button type="submit">Create Reusable Task</button>
+          <button id="cancel-add-task" type="button" class="secondary">Cancel</button>
+        </div>
+      </form>
+
+      <div id="stage-gap-list" class="stage-gap-list"></div>
+      <div id="library-list" class="library-list"></div>
+    </div>
+  </section>
+
+  <section id="movement-view" class="view">
+    <div class="card">
+      <div class="eyebrow">Movement integration boundary</div>
+      <h2>Container / Display Movement and Scanning</h2>
+      <p>Setup can now show annual/current task material locations on the Captain screen. Production Crew and Managers remain authorized for governed movement/scanning, but the narrow movement write commands are not installed yet.</p>
+      <p class="muted">No simulation is exposed. Scanning identifies the physical object; Setup owns the operational meaning of a future confirmed movement.</p>
+      <div class="fact-grid">
+        <div><span>Annual Display state rows</span><strong id="movement-display-state">—</strong></div>
+        <div><span>Annual Container state rows</span><strong id="movement-container-state">—</strong></div>
+        <div><span>Recorded Setup movement events</span><strong id="movement-event-count">—</strong></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="muted" style="max-width:1600px; margin:18px auto 28px; padding:0 18px; text-align:center; font-size:.85rem;">
+  Updated 2026-09-10
+</footer>
+
+<script src="setup_analytics.js?v=2026-09-07.1"></script>
+<script src="setup_theme.js?v=2026-09-07.1"></script>
+<script src="setup_production.js?v=2026-09-07.1"></script>
+<script src="setup_resource_review.js?v=2026-09-08.1"></script>
+<script src="setup_review_usability.js?v=2026-09-07.2"></script>
+<script src="setup_next_pass.js?v=2026-09-07.4"></script>
+<script src="setup_stage_order.js?v=2026-09-10.1"></script>
+<script src="setup_acceptance_fixes.js?v=2026-09-07.1"></script>
+<script src="setup_session_year_guard.js?v=2026-09-07.1"></script>
+<script src="setup_live_review_fixes.js?v=2026-09-08.3"></script>
+<script src="setup_operational_search.js?v=2026-09-10.1"></script>
+<script src="setup_training_ux.js?v=2026-09-08.1"></script>
+<script src="setup_assigned_review.js?v=2026-09-08.2"></script>
+<script src="setup_training_review_refinement.js?v=2026-09-09.3"></script>
+<script src="setup_catalog_effort.js?v=2026-09-09.3"></script>
+</body>
+</html>

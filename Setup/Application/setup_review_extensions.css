@@ -1,0 +1,251 @@
+.instruction-review-section {
+  background: #fbfcfd;
+}
+
+.instruction-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.instruction-role {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  padding: 11px 12px;
+  display: grid;
+  gap: 5px;
+}
+
+.instruction-role strong {
+  font-size: .9rem;
+}
+
+.instruction-role span {
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.instruction-role.current {
+  border-left: 4px solid var(--success);
+}
+
+.instruction-role.working {
+  border-left: 4px solid var(--accent);
+}
+
+.instruction-role.archive {
+  border-left: 4px solid var(--warning);
+}
+
+.publication-flow {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #f7f9fb;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: .86rem;
+  line-height: 1.5;
+}
+
+.instruction-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, .7fr) minmax(360px, 1.7fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.instruction-boundary {
+  margin: 10px 0 0;
+}
+
+.instruction-file-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.instruction-file-link,
+.instruction-file-name {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f8fafb;
+  padding: 7px 8px;
+  font-size: .82rem;
+  word-break: break-word;
+}
+
+.instruction-file-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.instruction-file-link:hover {
+  text-decoration: underline;
+}
+
+/* Manager Procedure workflow: make the actions primary and keep folder-role
+   details out of the normal review path. */
+.manager-procedure-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 12px;
+  margin: 2px 0 16px;
+}
+
+.manager-procedure-card {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: white;
+  padding: 14px;
+  min-width: 0;
+}
+
+.editable-procedure-card {
+  border-left: 5px solid var(--accent);
+}
+
+.published-procedure-card {
+  border-left: 5px solid var(--success);
+}
+
+.manager-procedure-content {
+  margin-top: 7px;
+}
+
+.procedure-source-item,
+.procedure-pdf-item {
+  display: grid;
+  gap: 6px;
+}
+
+.procedure-source-item + .procedure-source-item,
+.procedure-pdf-item + .procedure-pdf-item {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.procedure-file-name {
+  font-size: 1rem;
+}
+
+.procedure-source-role,
+.procedure-help,
+.procedure-mode-note {
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.4;
+}
+
+.procedure-full-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .78rem;
+  line-height: 1.45;
+  word-break: break-all;
+  background: #f7f9fb;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 8px;
+}
+
+.procedure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.procedure-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  background: var(--accent);
+  color: white;
+  padding: 8px 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.procedure-action.secondary {
+  background: white;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.procedure-action:hover {
+  filter: brightness(.96);
+}
+
+.procedure-action-disabled {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #f4f5f6;
+  color: var(--muted);
+  padding: 8px 12px;
+  font-size: .82rem;
+}
+
+.manager-procedure-reminder {
+  grid-column: 1 / -1;
+  border: 1px solid #e4b44f;
+  border-left: 5px solid var(--warning);
+  border-radius: 8px;
+  background: var(--warning-soft);
+  padding: 11px 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.instruction-live-warnings {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+  color: var(--warning);
+  font-size: .82rem;
+}
+
+/* Desktop task-detail workspace: the detail card is sticky, so it must own a
+   viewport-bounded scroll area. */
+@media (min-width: 1051px) {
+  .detail-card {
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .9em;
+}
+
+@media (max-width: 1050px) {
+  .detail-card {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 900px) {
+  .instruction-role-grid,
+  .instruction-edit-grid,
+  .manager-procedure-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-procedure-reminder,
+  .instruction-live-warnings {
+    grid-column: 1;
+  }
+}

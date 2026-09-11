@@ -1,0 +1,147 @@
+/* Equipment/resource review and desktop workspace corrections. */
+
+@media (min-width: 1051px) {
+  .workspace {
+    grid-template-columns: minmax(290px, 340px) minmax(0, 1fr);
+  }
+
+  .list-card {
+    position: sticky;
+    top: 96px;
+    max-height: calc(100vh - 114px);
+    overflow: auto;
+    min-height: 0;
+  }
+
+  .detail-card {
+    position: static;
+    min-width: 0;
+  }
+}
+
+.resource-section-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.resource-section-header h3,
+.resource-manager-heading h4 {
+  margin: 0;
+}
+
+.resource-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.resource-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--card, #fff);
+}
+
+.resource-name {
+  font-weight: 700;
+}
+
+.resource-meta,
+.resource-notes {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  color: var(--muted, #66717d);
+}
+
+.resource-quantity {
+  min-width: 4.5rem;
+  text-align: right;
+  font-weight: 700;
+}
+
+.resource-requirement {
+  min-width: 6.5rem;
+  text-align: right;
+}
+
+.resource-manager-panel {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 0.9rem;
+}
+
+.resource-manager-block {
+  padding: 0.9rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.6rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.resource-existing-block {
+  background: var(--soft, #f5f8fb);
+}
+
+.resource-create-block {
+  background: var(--card, #fff);
+  border-style: dashed;
+}
+
+.resource-manager-heading {
+  margin-bottom: 0.75rem;
+}
+
+.resource-manager-heading .hint {
+  margin-top: 0.25rem;
+}
+
+.resource-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) 100px 140px;
+  gap: 0.65rem;
+}
+
+.resource-selection-state {
+  min-height: 1.2rem;
+  margin-top: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.resource-new-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 150px minmax(180px, 1fr) auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.resource-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.resource-remove {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .resource-row,
+  .resource-edit-grid,
+  .resource-new-form {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-quantity,
+  .resource-requirement {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .resource-inline-actions {
+    justify-content: flex-start;
+  }
+}

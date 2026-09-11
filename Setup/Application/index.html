@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup Session</title>
+  <link rel="stylesheet" href="setup.css">
+  <link rel="stylesheet" href="setup_review_extensions.css?v=2026-09-06.3">
+  <link rel="stylesheet" href="setup_review_clarity.css?v=2026-09-06.1">
+  <link rel="stylesheet" href="setup_theme.css?v=2026-09-06.1">
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">
+    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div class="brand-copy">
+      <h1>Setup Session</h1>
+      <div class="subhead">2025 historical verification prototype</div>
+    </div>
+    <div class="header-actions">
+      <label class="season-label">Season
+        <select id="season-select">
+          <option value="2025" selected>2025 — Historical Verification</option>
+        </select>
+      </label>
+      <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+      <button id="reset-prototype" type="button" class="secondary">Reset Prototype</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="notice">
+    <strong>Prototype only.</strong>
+    Data shown here is provisional unless explicitly marked as confirmed. Use this screen to validate the model and correct the reconstruction before a 2026 Setup Session is created.
+  </section>
+
+  <nav class="tabs" aria-label="Setup Session views">
+    <button class="tab active" data-view="review" type="button">2025 Review</button>
+    <button class="tab" data-view="library" type="button">Reusable Task Library</button>
+    <button class="tab" data-view="movement" type="button">Movement / Unload</button>
+  </nav>
+
+  <section id="summary-grid" class="summary-grid" aria-live="polite"></section>
+
+  <section id="review-view" class="view active-view">
+    <div class="workspace">
+      <div class="card list-card">
+        <div class="section-title">
+          <div>
+            <div class="eyebrow">2025 season</div>
+            <h2>Task Verification</h2>
+          </div>
+          <div class="filters">
+            <label>Status
+              <select id="review-status-filter">
+                <option value="">All</option>
+                <option value="UNVERIFIED">Unverified</option>
+                <option value="NEEDS_CORRECTION">Needs correction</option>
+                <option value="VERIFIED">Verified</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="hint">Select a task to review the reusable definition separately from the 2025 historical actual.</div>
+        <div id="review-list" class="task-list"></div>
+      </div>
+
+      <div class="card detail-card">
+        <div id="review-empty" class="empty-state">Select a task to review it.</div>
+        <div id="review-detail" hidden>
+          <div class="detail-heading">
+            <div>
+              <div id="detail-stage" class="eyebrow"></div>
+              <h2 id="detail-task-name"></h2>
+              <div id="detail-task-id" class="muted"></div>
+            </div>
+            <span id="detail-verification" class="pill"></span>
+          </div>
+
+          <section class="detail-section split-section">
+            <div>
+              <h3>Reusable Task Definition</h3>
+              <label>Task name<input id="edit-task-name" type="text"></label>
+              <label>Normal crew<input id="edit-crew" type="text"></label>
+              <label>Expected elapsed time<input id="edit-duration" type="text"></label>
+              <label>Captain / leader<input id="edit-captain" type="text"></label>
+              <label>Equipment<input id="edit-equipment" type="text"></label>
+              <label>Completion point<textarea id="edit-completion" rows="3"></textarea></label>
+              <label>Reusable notes<textarea id="edit-notes" rows="3"></textarea></label>
+            </div>
+            <div>
+              <h3>2025 Historical Actual</h3>
+              <label>2025 date(s)<input id="edit-actual-dates" type="text" placeholder="Unknown / to verify"></label>
+              <label>2025 actual crew<input id="edit-actual-crew" type="text" placeholder="Unknown / to verify"></label>
+              <label>2025 actual duration<input id="edit-actual-duration" type="text" placeholder="Unknown / to verify"></label>
+              <label>2025 notes<textarea id="edit-actual-notes" rows="4" placeholder="Historical evidence / corrections"></textarea></label>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <h3>Prerequisites</h3>
+            <div id="detail-dependencies" class="chip-row"></div>
+          </section>
+
+          <section class="detail-section">
+            <h3>Physical material</h3>
+            <div id="detail-material" class="material-box"></div>
+          </section>
+
+          <div class="action-row">
+            <button id="save-task" type="button">Save Prototype Edit</button>
+            <button id="mark-verified" type="button" class="success">Mark Verified</button>
+            <button id="mark-correction" type="button" class="warning">Needs Correction</button>
+            <button id="mark-unverified" type="button" class="secondary">Back to Unverified</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="library-view" class="view">
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Reusable knowledge</div>
+          <h2>Task Library</h2>
+        </div>
+        <button id="add-task" type="button">Add Provisional Task</button>
+      </div>
+      <div class="hint">Task order is presentation order only. Dependencies remain separate and are shown by task name, not by reconstruction key.</div>
+      <div id="library-list" class="library-list"></div>
+    </div>
+  </section>
+
+  <section id="movement-view" class="view">
+    <div class="movement-grid">
+      <div class="card">
+        <div class="eyebrow">Shared Container acceptance case</div>
+        <h2>Container 34 — Arch Trailer</h2>
+        <div class="fact-grid">
+          <div><span>Current Setup location</span><strong id="container-location"></strong></div>
+          <div><span>Still onboard</span><strong id="container-onboard"></strong></div>
+          <div><span>Unloaded / detached</span><strong id="container-unloaded"></strong></div>
+        </div>
+        <div class="hint">Moving the trailer updates only Displays still traveling with the Container. Already-unloaded groups do not follow later scans.</div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Selected reusable task</div>
+        <h2>Execute Unload Task</h2>
+        <label>Unload task
+          <select id="movement-task-select"></select>
+        </label>
+        <div id="movement-task-detail" class="movement-task-detail"></div>
+        <div class="action-row">
+          <button id="move-container" type="button">Simulate Container Scan at Destination</button>
+          <button id="confirm-unload" type="button" class="success">Confirm Task Unloaded</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <h2>Arch Trailer Load State</h2>
+        <span class="muted">121 confirmed Displays across six Stage groups</span>
+      </div>
+      <div id="arch-groups" class="arch-groups"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <h2>Movement Event Log</h2>
+        <span class="muted">Prototype-local only</span>
+      </div>
+      <div id="movement-log" class="event-log"></div>
+    </div>
+  </section>
+</main>
+
+<script src="setup_theme.js?v=2026-09-06.1"></script>
+<script src="setup.js?v=2026-09-06.1"></script>
+<script src="setup_review_extensions.js?v=2026-09-06.2"></script>
+<script src="setup_instruction_live.js?v=2026-09-06.5"></script>
+<script src="setup_review_clarity.js?v=2026-09-06.1"></script>
+</body>
+</html>
