@@ -50,7 +50,11 @@ class SetupResourceRepository:
                     notes
                 FROM ref.setup_resource
                 {active_clause}
-                ORDER BY display_order, resource_name, setup_resource_id
+                ORDER BY
+                    display_order,
+                    resource_type,
+                    resource_name,
+                    setup_resource_id
                 """
             )
             return [dict(row) for row in cur.fetchall()]
@@ -78,6 +82,7 @@ class SetupResourceRepository:
                 ORDER BY
                     CASE tr.requirement_type WHEN 'REQUIRED' THEN 0 ELSE 1 END,
                     r.display_order,
+                    r.resource_type,
                     r.resource_name,
                     tr.setup_resource_id
                 """,
