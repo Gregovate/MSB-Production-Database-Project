@@ -20,6 +20,8 @@ def test_production_html_uses_database_client_only() -> None:
         "setup_review_usability.js",
         "setup_next_pass.js",
         "setup_next_pass.css",
+        "setup_predecessor_drag.js",
+        "setup_predecessor_drag.css",
         "setup_stage_order.js",
         "setup_stage_order.css",
         "setup_acceptance_fixes.js",
@@ -45,6 +47,7 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
             "setup_production.js",
             "setup_resource_review.js",
             "setup_next_pass.js",
+            "setup_predecessor_drag.js",
             "setup_stage_order.js",
             "setup_acceptance_fixes.js",
             "setup_session_year_guard.js",
@@ -62,6 +65,7 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     assert "api/setup/organization" in texts[2]
     assert "api/setup/schedule" in texts[2]
     assert "api/setup/execution" in texts[2]
+    assert "dependencies/${prerequisiteTaskId}" in texts[3]
 
 
 def test_production_runtime_declares_gunicorn() -> None:
@@ -101,6 +105,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_review_usability.js",
         "/setup_next_pass.css",
         "/setup_next_pass.js",
+        "/setup_predecessor_drag.css",
+        "/setup_predecessor_drag.js",
         "/setup_stage_order.css",
         "/setup_stage_order.js",
         "/setup_acceptance_fixes.css",
