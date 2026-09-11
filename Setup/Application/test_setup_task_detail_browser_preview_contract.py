@@ -3,7 +3,7 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 ACCEPTANCE = APP_DIR.parent / "Acceptance"
-CANDIDATE_SHA = "e236210d5c223259b7a2eac8cb27cd549620da50"
+CANDIDATE_SHA = "2eee967b6c5359c0e2e2d876a2fe44af8359315c"
 CANDIDATE_REF = "agent/setup-task-detail-layout-153"
 
 
@@ -30,11 +30,13 @@ def test_task_detail_preview_runs_layout_and_existing_safety_contracts() -> None
     ):
         assert contract in launcher
     assert "Client V0.3.8" in launcher
-    assert "Reusable Task Definition should be materially shorter" in launcher
-    assert "Captains / Knowledge Owners appear beneath it" in launcher
-    assert "Material / Logistics shows the four essential counts" in launcher
+    assert "LEFT rail" in launcher
+    assert "Reusable Task Definition followed immediately by compact Material / Logistics" in launcher
+    assert "RIGHT rail" in launcher
+    assert "Annual Historical Actual followed by Captains / Knowledge Owners" in launcher
     assert "View Material Details" in launcher
-    assert "stacks cleanly" in launcher
+    assert "responsive-layout proxy" in launcher
+    assert "Physical mobile-device acceptance is not claimed" in launcher
     assert "#159" in launcher
 
 
