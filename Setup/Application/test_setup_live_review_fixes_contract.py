@@ -52,17 +52,18 @@ def test_live_review_restores_task_and_stage_search() -> None:
 def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
 
-    # Resource assets remain at the accepted 2026-09-08.1 revision. The live
-    # review pair advances together for the task-detail hierarchy pass so both
-    # the teaching markup behavior and the final dark/light-safe styles refresh.
+    # Issue #152 changes the resource catalog assets, so that pair advances
+    # together. The live-review pair remains at its accepted revision.
     for asset in (
-        "setup_resource_review.css?v=2026-09-08.1",
-        "setup_resource_review.js?v=2026-09-08.1",
+        "setup_resource_review.css?v=2026-09-11.2",
+        "setup_resource_review.js?v=2026-09-11.2",
         "setup_live_review_fixes.css?v=2026-09-08.3",
         "setup_live_review_fixes.js?v=2026-09-08.3",
     ):
         assert asset in html
 
+    assert "setup_resource_review.css?v=2026-09-08.1" not in html
+    assert "setup_resource_review.js?v=2026-09-08.1" not in html
     assert "setup_live_review_fixes.js?v=2026-09-08.2" not in html
     assert "setup_live_review_fixes.css?v=2026-09-08.1" not in html
     assert "setup_live_review_fixes.js?v=2026-09-07.1" not in html
