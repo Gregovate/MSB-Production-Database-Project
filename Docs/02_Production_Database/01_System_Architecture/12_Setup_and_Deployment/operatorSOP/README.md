@@ -8,7 +8,7 @@
 | Status | CURRENT — Production runtime operational; UI/workflow in live evaluation |
 | Owner | MSB Production Database / Setup administrator |
 | Last Reviewed | 2026-09-11 |
-| Keywords | Setup, 2025, historical review, training, reusable tasks, resources, material, 2026 baseline |
+| Keywords | Setup, 2025, historical review, training, reusable tasks, resources, material, prerequisites, Shift-drag, 2026 baseline |
 
 Use this area for plain-English instructions for working in the Setup application. Engineering, database, service, permission, and deployment details belong in [`../engineering/`](../engineering/README.md).
 
@@ -28,15 +28,21 @@ The current shared working session is:
 
 The application uses real Production data. It is available for manager/reviewer use now, but the UI/workflow is still being evaluated through real 2025 review work.
 
+Current Production client:
+
+```text
+Client V0.3.9
+```
+
 ## What Do You Need To Do?
 
-- [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — verify 2025 information, improve reusable Setup knowledge, add missing tasks/resources where appropriate, mark which tasks use Display/Container material, and record questions or suggestions.
+- [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — verify 2025 information, improve reusable Setup knowledge, add missing tasks/resources where appropriate, mark which tasks use Display/Container material, add/correct prerequisites, and record questions or suggestions.
 
 Additional task procedures will be added only when the corresponding workflow is actually production-operational.
 
 ## Material Checkbox
 
-Reusable tasks now have:
+Reusable tasks have:
 
 ```text
 [ ] Uses Display / Container Material
@@ -71,6 +77,37 @@ This is a real reusable-scope change, not only a visual reorder. The application
 
 Use this when the task was organized under the wrong Stage-level/Scene location. Do not create a fake Scene or use a programming-only LOR group as a Setup Scene merely to obtain a different material result.
 
+## Adding and Reviewing Prerequisites
+
+A prerequisite is another reusable Setup task that truly must be complete before the dependent task can proceed.
+
+### Fast prerequisite entry
+
+To make task A depend on task B:
+
+```text
+hold Shift before left-button-down on task A
+    -> drag task A onto task B
+    -> release
+    -> task A depends on task B
+```
+
+Neither task moves during Shift-drag. Releasing over empty Stage/Scene space cancels the prerequisite gesture.
+
+### Normal movement
+
+Drag without Shift when you intend to reorder a task or move it to another valid Stage/Scene. Ordinary drag remains the normal movement interaction.
+
+### Task-detail prerequisite controls
+
+Open task detail to use the canonical prerequisite list. Each prerequisite appears once with **Up**, **Down**, and **Remove** controls. A separate **Add prerequisite** control remains available for manual entry.
+
+After a prerequisite is assigned, it is no longer offered in that task's Add list.
+
+**Up** and **Down** change review/display order only. They do not make one prerequisite depend on another. Every listed prerequisite remains independently required.
+
+Circular prerequisite relationships are rejected. Do not work around that warning by creating fake tasks or reversing the intended dependency.
+
 ## Important Boundaries
 
 - The 2025 review area uses real Production data.
@@ -79,6 +116,7 @@ Use this when the task was organized under the wrong Stage-level/Scene location.
 - The material checkbox is reusable task knowledge, not a one-year 2025 fact.
 - Operational dates entered for the selected Setup Session must be in that session's year.
 - Only an Administrator may create a new annual Setup Session or carry annual order forward as the future reusable baseline.
+- Hard predecessors are not the same as preferred order or outside/site readiness conditions.
 - Pick Lists and Container/Display movement/scanning writes are not part of the current live-review workflow.
 - Do not create fake records merely to test the UI. Use real review work and report workflow/UI findings instead.
 
@@ -91,7 +129,7 @@ Managers and reviewers are encouraged to:
 - mark **Uses Display / Container Material** only when that task really needs the current Display/Container material for its Stage/Scene work;
 - leave the material checkbox off for valid non-material tasks;
 - treat resolved material as context, not an automatic instruction to pick every item immediately;
-- add/correct resources and prerequisites;
+- add/correct resources and real prerequisites;
 - correct task scope, order, crew/time expectations, and notes where supported;
 - verify records only when they have actually been reviewed;
 - leave uncertain information UNVERIFIED or mark it NEEDS CORRECTION;
@@ -101,5 +139,6 @@ Managers and reviewers are encouraged to:
 ## Related Documents
 
 - [Setup and Deployment](../README.md)
+- [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md)
 - [Engineering handoff](../engineering/README.md)
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
