@@ -29,7 +29,12 @@ def test_dirty_guard_compares_live_form_directly_to_selected_task():
     assert "function annualTaskState(task)" in js
     assert "!sameState(reusableFormState(), reusableTaskState(task))" in js
     assert "!sameState(annualFormState(), annualTaskState(task))" in js
-    assert "baseline" not in js
+
+    # Reject the old implementation mechanism, not an explanatory use of the
+    # English word "baseline" in comments.
+    assert "let baseline" not in js
+    assert "captureBaseline" not in js
+    assert "baselineMatchesSelection" not in js
 
 
 def test_dirty_guard_tracks_only_main_reusable_and_annual_save_surfaces():
