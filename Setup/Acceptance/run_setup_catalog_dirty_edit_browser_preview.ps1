@@ -7,9 +7,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Exact V0.3.7 application candidate for the Issue #154 follow-up. Later
-# acceptance-only commits may follow, but browser approval remains pinned here.
-$AcceptedCandidateSha = '7480fdae852ca7de70a8cdb65f1f26c7c6aaa40b'
+# Exact V0.3.7 candidate for the Issue #154 follow-up. This SHA includes the
+# hardened application plus the corrected regression contract. Later
+# acceptance-only commits may follow, but browser/deployment approval remains
+# pinned here so the exact candidate does not move recursively.
+$AcceptedCandidateSha = '9d0c31421ce7cbd1b1cbcf733b06198ace418e9d'
 $AcceptedBranch = 'agent/setup-dirty-edit-followup-154'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
