@@ -3,7 +3,7 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 ACCEPTANCE = APP_DIR.parent / "Acceptance"
-CANDIDATE_SHA = "08758645b8c2226e732254ddc88faed4eda3f4b3"
+CANDIDATE_SHA = "44755b8d25225767b7392aa556faf92b695c7184"
 CANDIDATE_REF = "agent/setup-task-detail-layout-153"
 
 
