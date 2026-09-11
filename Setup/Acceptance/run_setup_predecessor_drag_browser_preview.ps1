@@ -7,9 +7,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Exact application/test candidate for Issue #151. Later commits may harden
-# acceptance tooling only; browser/deployment approval remains pinned here.
-$AcceptedCandidateSha = '4cada529a0cd714f5da2cb43f5dffb016e40b7ac'
+# Exact V0.3.9 application/test candidate for Issue #151. Later commits may
+# harden acceptance tooling only; browser/deployment approval remains pinned here.
+$AcceptedCandidateSha = 'bd7457205b7f6596b9221348b6118ba9861abecc'
 $AcceptedBranch = 'agent/setup-shift-drag-predecessor-151'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
@@ -48,11 +48,11 @@ $regressionReplacement = @(
 ) -join "`n"
 $text = Replace-Required -Source $text -Needle $regressionNeedle -Replacement $regressionReplacement -Description 'focused regression tail'
 
-$text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP SHIFT-DRAG PREDECESSOR BROWSER PREVIEW')
-$text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP SHIFT-DRAG PREDECESSOR BROWSER REVIEW READY')
+$text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP SHIFT-DRAG PREDECESSOR V0.3.9 BROWSER PREVIEW')
+$text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP SHIFT-DRAG PREDECESSOR V0.3.9 BROWSER REVIEW READY')
 
-Write-Host 'Issue #151 Shift-drag predecessor browser acceptance checklist:'
-Write-Host '  0. Confirm the header still visibly shows Client V0.3.8 and the Catalog shows the Fast prerequisite entry hint.'
+Write-Host 'Issue #151 Shift-drag predecessor V0.3.9 browser acceptance checklist:'
+Write-Host '  0. Confirm the header visibly shows Client V0.3.9 and the Catalog shows the Fast prerequisite entry hint.'
 Write-Host '  1. Choose two disposable-clone reusable tasks A and B and note both tasks'' current scope/order before testing.'
 Write-Host '  2. Hold Shift BEFORE starting the drag on dependent task A. A must visibly show Dependent.'
 Write-Host '  3. Drag A over prerequisite task B. B must visibly show Prerequisite target; release on B.'
