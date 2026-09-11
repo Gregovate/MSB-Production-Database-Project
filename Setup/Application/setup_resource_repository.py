@@ -36,19 +36,21 @@ class SetupResourceRepository:
         finally:
             conn.close()
 
-    def catalog(self) -> list[dict[str, Any]]:
+    def catalog(self, *, include_inactive: bool = False) -> list[dict[str, Any]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            active_clause = "" if include_inactive else "WHERE active_flag"
             cur.execute(
-                """
+                f"""
                 SELECT
                     setup_resource_id,
                     resource_name,
                     resource_type,
                     active_flag,
+                    display_order,
                     notes
                 FROM ref.setup_resource
-                WHERE active_flag
-                ORDER BY resource_type, resource_name, setup_resource_id
+                {active_clause}
+                ORDER BY display_order, resource_name, setup_resource_id
                 """
             )
             return [dict(row) for row in cur.fetchall()]
@@ -62,6 +64,7 @@ class SetupResourceRepository:
                     tr.setup_resource_id,
                     r.resource_name,
                     r.resource_type,
+                    r.display_order,
                     tr.quantity_required,
                     tr.requirement_type,
                     tr.notes,
@@ -74,7 +77,7 @@ class SetupResourceRepository:
                   AND r.active_flag
                 ORDER BY
                     CASE tr.requirement_type WHEN 'REQUIRED' THEN 0 ELSE 1 END,
-                    r.resource_type,
+                    r.display_order,
                     r.resource_name,
                     tr.setup_resource_id
                 """,
@@ -100,6 +103,35 @@ class SetupResourceRepository:
             conn.commit()
             if row is None:
                 raise SetupResourceRepositoryError("Setup resource creation returned no result")
+            return dict(row)
+
+    def update_resource(
+        self,
+        *,
+        email: str,
+        setup_resource_id: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT *
+                FROM ref.update_setup_resource(%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    email,
+                    setup_resource_id,
+                    payload.get("resource_name"),
+                    payload.get("resource_type"),
+                    payload.get("notes"),
+                    payload.get("active_flag", True),
+                    payload.get("display_order", 100),
+                ),
+            )
+            row = cur.fetchone()
+            conn.commit()
+            if row is None:
+                raise SetupResourceRepositoryError("Setup resource update returned no result")
             return dict(row)
 
     def set_task_resource(
