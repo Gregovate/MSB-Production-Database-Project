@@ -7,9 +7,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Exact V0.3.8 application/test candidate for Issue #153. Later commits may
-# harden only acceptance tooling; browser/deployment approval remains pinned.
-$AcceptedCandidateSha = '08758645b8c2226e732254ddc88faed4eda3f4b3'
+# Exact V0.3.8 application/test candidate for Issue #153. This SHA contains
+# the compact-layout implementation and corrected layout-only palette contract.
+# Later commits may harden only acceptance tooling; browser/deployment approval
+# remains pinned here.
+$AcceptedCandidateSha = '44755b8d25225767b7392aa556faf92b695c7184'
 $AcceptedBranch = 'agent/setup-task-detail-layout-153'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
