@@ -20,7 +20,7 @@ from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.8-task-detail-compact"
+PRODUCTION_VERSION = "V0.3.9-predecessor-drag"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
