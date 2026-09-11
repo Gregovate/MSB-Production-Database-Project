@@ -9,7 +9,7 @@ LAUNCHER = REPO_ROOT / "Setup" / "Acceptance" / "run_setup_resource_catalog_brow
 
 def test_resource_catalog_preview_pins_exact_candidate_and_branch() -> None:
     text = LAUNCHER.read_text(encoding="utf-8")
-    assert "d74202002e6845b291dc937697f4589d3f4be6c3" in text
+    assert "c2a1820627f1a036d634241cc6aecd1a926a1479" in text
     assert "agent/setup-152-resource-catalog" in text
     assert "run_setup_source_only_browser_preview.ps1" in text
     assert "setup_session_browser_preview_cleanup_server.sh" in text
