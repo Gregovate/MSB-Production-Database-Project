@@ -8,7 +8,7 @@
 | Status | CURRENT — Production runtime operational; Setup UI/workflow in live evaluation |
 | Owner | MSB Production Database / Setup administrator |
 | Last Reviewed | 2026-09-11 |
-| Keywords | Setup, 2025 review, reusable tasks, prerequisites, Shift-drag, Setup procedures, deployment |
+| Keywords | Setup, 2025 review, reusable tasks, resources, prerequisites, Shift-drag, Setup procedures, deployment |
 
 Setup and Deployment covers the work of planning and carrying out the annual move from storage to the park, plus the information crews need while installing the show.
 
@@ -23,7 +23,7 @@ The current working session is **2025 — Historical Verification**. It uses rea
 Current Production client:
 
 ```text
-Client V0.3.9
+Client V0.3.10
 ```
 
 ## Start Here
@@ -42,12 +42,21 @@ During this review you may, where supported by evidence:
 - mark whether a reusable task **Uses Display / Container Material**;
 - add, remove, and reorder real task prerequisites;
 - use **Shift + drag** in the Catalog for fast prerequisite entry;
-- add or correct equipment/resources;
+- search and assign existing equipment/resources;
+- use **Manage Resource Catalog** to rename/correct resource entries in place, review inactive entries, and maintain catalog notes/type/active state/optional display order;
 - improve normal crew/time/readiness information;
 - review current Setup procedures; and
 - record questions or suggestions for the Setup workflow.
 
 Do not change information merely to make a record look complete.
+
+### Resource catalog maintenance
+
+The normal task-resource picker is intentionally name-oriented. Search for the existing resource first, then set task-specific quantity, Required-vs-Preferred, and task notes.
+
+Use **Manage Resource Catalog** only when the reusable catalog entry itself needs correction. Renaming an existing catalog row preserves its `setup_resource_id` and existing task assignments. Exact normalized duplicate names are blocked, and likely matches are shown while entering a new resource name.
+
+The optional numeric catalog display order remains available for review/maintenance, but operators do not need to maintain numeric order merely to make the normal picker usable.
 
 ### Prerequisite shortcuts
 
@@ -110,7 +119,7 @@ Reusable Task information
 
 A correction that only applies to 2025 belongs in the 2025 annual history. A correction to how MSB normally performs a task belongs in the reusable task definition.
 
-The **Uses Display / Container Material** setting and reusable prerequisites are reusable task knowledge. They should describe normal Setup behavior, not something that happened only in 2025.
+The **Uses Display / Container Material** setting, reusable resource requirements, and reusable prerequisites are reusable task knowledge. They should describe normal Setup behavior, not something that happened only in 2025.
 
 The selected Setup Session controls the allowable operational year. The 2025 session accepts 2025 operational dates only. Audit timestamps still show when the change was actually recorded.
 
@@ -124,7 +133,10 @@ Current known boundaries:
 
 - no 2026 Setup Session has been created;
 - active reusable Catalog cleanup is required before 2026 creation because all active reusable tasks are seeded into a new annual Session;
+- Extra Materials / KIT assignments / material-source tracking remain separate work in Issue #167;
 - structured outside/site readiness remains separate from task prerequisites;
+- task-specific staged material/Pick List timing remains separate work in Issue #141;
+- keeping the active task name visible while scrolling long detail remains separate usability work in Issue #169;
 - Pick List generation is not yet a live Production workflow; and
 - Container/Display movement and scanning write commands remain outside this review boundary.
 
