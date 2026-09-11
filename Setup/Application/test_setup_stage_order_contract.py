@@ -39,4 +39,4 @@ def test_production_loads_stage_order_assets() -> None:
     assert "setup_stage_order.js" in html
     assert "setup_stage_order.css" in backend
     assert "setup_stage_order.js" in backend
-    assert "V0.3.6-catalog-dirty-edit-safety" in backend
+    assert "V0.3.7-catalog-dirty-edit-followup" in backend
