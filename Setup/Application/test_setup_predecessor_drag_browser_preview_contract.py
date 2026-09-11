@@ -41,3 +41,30 @@ def test_predecessor_drag_preview_checklist_covers_full_prerequisite_workflow() 
         "review/display order only",
     ):
         assert required in launcher
+
+
+def test_predecessor_drag_preview_recovers_stale_source_preview_safely() -> None:
+    launcher = (ACCEPTANCE_DIR / "run_setup_predecessor_drag_browser_preview.ps1").read_text(encoding="utf-8")
+    cleanup = (ACCEPTANCE_DIR / "setup_session_browser_preview_cleanup_server.sh").read_text(encoding="utf-8")
+
+    for required in (
+        "setup_session_browser_preview_cleanup_server.sh",
+        "source-only stale-cleanup injection point",
+        "ServerAliveInterval=15",
+        "ServerAliveCountMax=3",
+        "timeout --signal=TERM 28800s",
+        "trap cleanup EXIT HUP INT TERM",
+    ):
+        assert required in launcher
+
+    for required in (
+        "governed Production listener and must never be cleaned as preview state",
+        "/tmp/setup_session_browser_preview_entry.py",
+        "fieldwiring",
+        "msb-setup-source-preview-candidate-",
+        "msb-setup-source-preview-",
+        "unexpected process; refusing to kill it",
+        "Reports and Flask logs are retained as acceptance evidence",
+        "PASS: preview port $PREVIEW_PORT is free",
+    ):
+        assert required in cleanup
