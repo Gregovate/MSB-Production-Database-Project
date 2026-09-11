@@ -3,8 +3,8 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 ACCEPTANCE = APP_DIR.parent / "Acceptance"
-CANDIDATE_SHA = "89012d5e40a26323db78dce50d9e58dd27580169"
-CANDIDATE_REF = "agent/setup-catalog-dirty-edit-safety-154"
+CANDIDATE_SHA = "7480fdae852ca7de70a8cdb65f1f26c7c6aaa40b"
+CANDIDATE_REF = "agent/setup-dirty-edit-followup-154"
 
 
 def read_acceptance(name: str) -> str:
@@ -46,6 +46,8 @@ def test_dirty_edit_preview_runs_focused_contract_and_prints_manual_matrix() -> 
 
     assert "test_setup_dirty_edit_guard_contract.py" in launcher
     assert "test_setup_stage_order_contract.py" in launcher
+    assert "confirm the header visibly shows Client V0.3.7" in launcher
+    assert "do not write" in launcher
     assert "Mark Verified" in launcher
     assert "verification does NOT change" in launcher
     assert "Save + continue, Discard + continue, and Stay" in launcher
