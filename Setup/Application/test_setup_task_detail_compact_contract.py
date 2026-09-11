@@ -63,10 +63,11 @@ def test_material_summary_is_compact_but_existing_detail_dialog_remains() -> Non
 def test_compact_layout_does_not_introduce_a_new_base_palette() -> None:
     css = read("setup_task_detail_compact.css")
 
-    # Issue #153 is layout-only. It should inherit the established Setup theme
-    # surfaces rather than defining another palette while Issue #159 owns the
-    # cross-application light/dark theme standardization.
-    assert re.search(r"#[0-9a-fA-F]{3,8}\b", css) is None
+    # Issue #153 is layout-only. Ignore comments (including issue references such
+    # as #153) and inspect only actual CSS syntax for palette declarations.
+    css_without_comments = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    assert re.search(r"#[0-9a-fA-F]{3,8}\b", css_without_comments) is None
+
     for forbidden_property in (
         "background:",
         "background-color:",
@@ -74,4 +75,4 @@ def test_compact_layout_does_not_introduce_a_new_base_palette() -> None:
         "border-color:",
         "box-shadow:",
     ):
-        assert forbidden_property not in css
+        assert forbidden_property not in css_without_comments
