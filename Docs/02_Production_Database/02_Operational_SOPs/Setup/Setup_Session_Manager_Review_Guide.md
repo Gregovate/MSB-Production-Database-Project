@@ -124,6 +124,16 @@ Task scope answers **where the work belongs**. Do not move a task to the wrong S
 
 Programming-only LOR groups are not separate Setup Scenes just because they exist in LOR.
 
+### Park Infrastructure is not a catch-all Stage
+
+Truly park-wide Setup work with no appropriate LOR Stage/Scene uses the controlled non-LOR root:
+
+```text
+41 Park Infrastructure-PI
+```
+
+Do not use Park Infrastructure merely because a Stage has no wired inventory. `40-CommandCenter`, for example, remains a legitimate Stage with its own Stage/Preview context; its Setup tasks and Procedures remain under Stage 40 when Command Center is the correct operational owner.
+
 ## Uses Display / Container Material
 
 Each reusable task has:
@@ -354,4 +364,4 @@ Issue #145 tracks the Catalog-cleanup gate before 2026 creation.
 
 - [Setup operator portal](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
 - [2025 review procedure](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
-- [Setup engineering handoff](../../01_System_Architecture/12_Setup_and_Deployment/engineering/README.md)
+- [Setup engineering handoff](../../01_System_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md)
