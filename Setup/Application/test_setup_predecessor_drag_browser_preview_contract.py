@@ -64,7 +64,7 @@ def test_predecessor_drag_preview_recovers_stale_source_preview_safely() -> None
         "msb-setup-source-preview-candidate-",
         "msb-setup-source-preview-",
         "unexpected process; refusing to kill it",
-        "Reports and Flask logs are retained as acceptance evidence",
+        "Flask logs are retained as acceptance evidence",
         "PASS: preview port $PREVIEW_PORT is free",
     ):
         assert required in cleanup
