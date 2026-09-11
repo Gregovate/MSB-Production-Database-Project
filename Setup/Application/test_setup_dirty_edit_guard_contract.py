@@ -12,12 +12,14 @@ def guard_source() -> str:
     return read("setup_catalog_dirty_guard.js")
 
 
-def test_dirty_guard_asset_is_loaded_last_and_protected():
+def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
     html = read("production.html")
     host = read("production_backend.py")
-    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-10.1")
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-11.1")
+    compact_index = html.index("setup_task_detail_compact.js?v=2026-09-11.1")
     effort_index = html.index("setup_catalog_effort.js?v=2026-09-09.3")
     assert guard_index > effort_index
+    assert compact_index > guard_index
     assert '"setup_catalog_dirty_guard.js"' in host
 
 
@@ -29,9 +31,6 @@ def test_dirty_guard_compares_live_form_directly_to_selected_task():
     assert "function annualTaskState(task)" in js
     assert "!sameState(reusableFormState(), reusableTaskState(task))" in js
     assert "!sameState(annualFormState(), annualTaskState(task))" in js
-
-    # Reject the old implementation mechanism, not an explanatory use of the
-    # English word "baseline" in comments.
     assert "let baseline" not in js
     assert "captureBaseline" not in js
     assert "baselineMatchesSelection" not in js
@@ -84,7 +83,8 @@ def test_reusable_save_preserves_pending_annual_fields_across_reload():
 
 def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     js = guard_source()
-    assert "V0.3.7-catalog-dirty-edit-followup" in js
+    assert "V0.3.8-task-detail-compact" in js
+    assert "Client V0.3.8" in js
     assert "setup-client-build-badge" in js
     assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
     assert "async function ensureServerBuild()" in js

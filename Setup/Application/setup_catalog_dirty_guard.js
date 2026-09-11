@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.7-catalog-dirty-edit-followup';
+  const CLIENT_BUILD = 'V0.3.8-task-detail-compact';
   const reusableFieldIds = new Set([
     'edit-task-name',
     'edit-stage-id',
@@ -132,7 +132,7 @@
     const badge = document.createElement('span');
     badge.id = 'setup-client-build-badge';
     badge.className = 'pill';
-    badge.textContent = 'Client V0.3.7';
+    badge.textContent = 'Client V0.3.8';
     badge.title = CLIENT_BUILD;
     access.insertAdjacentElement('afterend', badge);
   }
@@ -140,7 +140,7 @@
   function setBuildBadgeState(serverVersion, ok) {
     const badge = document.getElementById('setup-client-build-badge');
     if (!badge) return;
-    badge.textContent = ok ? 'Client V0.3.7' : 'CLIENT / SERVER MISMATCH';
+    badge.textContent = ok ? 'Client V0.3.8' : 'CLIENT / SERVER MISMATCH';
     badge.title = `Client ${CLIENT_BUILD}; server ${serverVersion || 'unknown'}`;
     badge.dataset.state = ok ? 'ok' : 'error';
   }

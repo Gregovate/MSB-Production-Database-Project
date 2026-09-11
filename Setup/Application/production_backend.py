@@ -20,7 +20,7 @@ from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.7-catalog-dirty-edit-followup"
+PRODUCTION_VERSION = "V0.3.8-task-detail-compact"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -52,6 +52,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_training_review_refinement.js",
         "setup_catalog_effort.js",
         "setup_catalog_dirty_guard.js",
+        "setup_task_detail_compact.css",
+        "setup_task_detail_compact.js",
     }
 )
 
