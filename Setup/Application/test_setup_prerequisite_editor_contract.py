@@ -82,11 +82,12 @@ def test_canonical_editor_replaces_duplicate_presentations_and_refreshes_from_db
 def test_prerequisite_order_is_explicitly_review_order_not_dependency_semantics() -> None:
     js = read_app("setup_prerequisite_editor.js")
     sql = (DB_DIR / "026_add_setup_dependency_order.sql").read_text(encoding="utf-8")
+    semantic_sql = " ".join(sql.split())
 
     assert "Use ↑ / ↓ to change review order only" in js
     assert "Every listed prerequisite is still required" in js
-    assert "presentation order only" in sql
-    assert "does not create precedence between prerequisite tasks" in sql
+    assert "sort_order is presentation order only" in semantic_sql
+    assert "does not create precedence between prerequisite tasks" in semantic_sql
 
 
 def test_prerequisite_editor_preserves_dirty_edit_guard_selector() -> None:
