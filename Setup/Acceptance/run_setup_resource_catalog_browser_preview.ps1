@@ -79,13 +79,14 @@ $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $cleanupInjection = $cleanupInjection.Replace("`r`n", "`n").Replace("`r", "`n")
 $text = Replace-Required -Source $text -Needle $cleanupInjectionNeedle -Replacement $cleanupInjection -Description 'source-only stale-cleanup injection point'
 
-# Add #152-focused contracts to the existing current source-only gate. The
-# compact-picker revision is the accepted browser/runtime candidate.
+# Add #152-focused contracts that are present inside the frozen runtime
+# candidate itself. Later acceptance-tooling tests are intentionally NOT added
+# to this detached-candidate regression because they do not exist at the pinned
+# runtime SHA; those tests are run from the live review branch before launch.
 $regressionNeedle = "        '      Setup/Application/test_setup_next_pass_contract.py'"
 $regressionReplacement = @(
     "        '      Setup/Application/test_setup_next_pass_contract.py \',",
     "        '      Setup/Application/test_setup_resource_management_contract.py \',",
-    "        '      Setup/Application/test_setup_resource_picker_compact_contract.py \',",
     "        '      Setup/Application/test_setup_dirty_edit_guard_contract.py'"
 ) -join "`n"
 $text = Replace-Required -Source $text -Needle $regressionNeedle -Replacement $regressionReplacement -Description 'focused regression tail'
