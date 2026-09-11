@@ -8,6 +8,43 @@ const setupResourceState = {
   adminCatalogLoaded: false
 };
 
+function normalizeResourceSearchText(value) {
+  return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function resourceSearchText(resource) {
+  return normalizeResourceSearchText([
+    resource?.resource_name,
+    resource?.resource_type,
+    resource?.notes,
+    resource?.active_flag ? 'active' : 'inactive'
+  ].filter(Boolean).join(' '));
+}
+
+function resourceMatchesQuery(resource, query) {
+  const normalized = normalizeResourceSearchText(query);
+  return !normalized || resourceSearchText(resource).includes(normalized);
+}
+
+function compareResourceName(left, right) {
+  return String(left?.resource_name || '').localeCompare(String(right?.resource_name || ''), undefined, {
+    sensitivity: 'base',
+    numeric: true
+  });
+}
+
+function compareResourceTypeThenName(left, right) {
+  const typeCompare = String(left?.resource_type || '').localeCompare(String(right?.resource_type || ''), undefined, {
+    sensitivity: 'base'
+  });
+  return typeCompare || compareResourceName(left, right) || Number(left.setup_resource_id) - Number(right.setup_resource_id);
+}
+
+function compareResourceCatalogOrder(left, right) {
+  return Number(left?.display_order ?? 100) - Number(right?.display_order ?? 100)
+    || compareResourceTypeThenName(left, right);
+}
+
 function ensureSetupResourceSection() {
   let section = document.getElementById('setup-resource-section');
   if (section) return section;
@@ -34,7 +71,13 @@ function ensureSetupResourceSection() {
       <section class="resource-manager-block resource-existing-block">
         <div class="resource-manager-heading">
           <h4>Add existing equipment/resource to this task</h4>
-          <div class="hint">Choose an item from the reusable resource catalog. If it is already assigned, this form updates that requirement.</div>
+          <div class="hint">Search the reusable catalog before creating something new. If the selected item is already assigned, this form updates only this task's requirement.</div>
+        </div>
+        <div class="resource-search-grid">
+          <label>Find existing resource
+            <input id="setup-resource-search" type="search" placeholder="Search name, type, or catalog notes">
+          </label>
+          <div id="setup-resource-search-count" class="resource-selection-state muted"></div>
         </div>
         <div class="resource-edit-grid">
           <label>Existing resource
@@ -62,8 +105,22 @@ function ensureSetupResourceSection() {
       <section class="resource-manager-block resource-catalog-edit-block">
         <div class="resource-manager-heading">
           <h4>Manage reusable resource catalog</h4>
-          <div class="hint">Edit the reusable resource itself here. Existing task assignments stay attached to the same resource ID after a rename.</div>
+          <div class="hint">Search active and inactive catalog entries before creating a replacement. Edit poor names in place so every task keeps the same resource ID.</div>
         </div>
+        <div class="resource-catalog-search-grid">
+          <label>Search catalog
+            <input id="setup-resource-catalog-search" type="search" placeholder="Search name, type, notes, active/inactive">
+          </label>
+          <label>Browse sort
+            <select id="setup-resource-catalog-sort">
+              <option value="ORDER">Catalog display order</option>
+              <option value="NAME">Name</option>
+              <option value="TYPE">Type, then name</option>
+              <option value="ACTIVE">Active first</option>
+            </select>
+          </label>
+        </div>
+        <div id="setup-resource-catalog-results" class="resource-selection-state muted"></div>
         <label>Catalog resource
           <select id="setup-resource-catalog-select"></select>
         </label>
@@ -99,7 +156,7 @@ function ensureSetupResourceSection() {
       <section class="resource-manager-block resource-create-block">
         <div class="resource-manager-heading">
           <h4>Need something that is not in the catalog?</h4>
-          <div class="hint">Create it once as reusable equipment/resource, then add it to this task above. New resources start at display order 100 and can be reordered in the catalog editor.</div>
+          <div class="hint">Type the name first. Setup will show possible existing matches before you create another reusable resource.</div>
         </div>
         <form id="setup-new-resource-form" class="resource-new-form">
           <label>New resource name
@@ -121,6 +178,7 @@ function ensureSetupResourceSection() {
             <button type="submit" class="secondary">Create New Catalog Resource</button>
           </div>
         </form>
+        <div id="setup-new-resource-matches" class="resource-match-list muted"></div>
       </section>
     </div>
   `;
@@ -128,8 +186,12 @@ function ensureSetupResourceSection() {
 
   document.getElementById('setup-resource-save')?.addEventListener('click', saveSetupTaskResource);
   document.getElementById('setup-resource-select')?.addEventListener('change', syncSetupResourceSelection);
+  document.getElementById('setup-resource-search')?.addEventListener('input', renderSetupResourceCatalog);
   document.getElementById('setup-resource-catalog-select')?.addEventListener('change', syncSetupResourceCatalogEditor);
+  document.getElementById('setup-resource-catalog-search')?.addEventListener('input', renderSetupResourceAdminCatalog);
+  document.getElementById('setup-resource-catalog-sort')?.addEventListener('change', renderSetupResourceAdminCatalog);
   document.getElementById('setup-resource-catalog-save')?.addEventListener('click', saveSetupResourceCatalogEntry);
+  document.getElementById('setup-new-resource-name')?.addEventListener('input', renderSetupNewResourceMatches);
   document.getElementById('setup-new-resource-form')?.addEventListener('submit', createSetupResource);
   return section;
 }
@@ -155,6 +217,7 @@ async function loadSetupResourceAdminCatalog(force = false) {
   setupResourceState.adminCatalog = payload.resources || [];
   setupResourceState.adminCatalogLoaded = true;
   renderSetupResourceAdminCatalog();
+  renderSetupNewResourceMatches();
   return setupResourceState.adminCatalog;
 }
 
@@ -178,6 +241,7 @@ function syncSetupResourceSelection() {
     (item) => Number(item.setup_resource_id) === resourceId
   );
   const assignment = resourceAssignmentById(resourceId);
+  save.disabled = !selected;
 
   if (assignment) {
     quantity.value = assignment.quantity_required ?? 1;
@@ -192,22 +256,30 @@ function syncSetupResourceSelection() {
     save.textContent = 'Add Resource to Task';
     if (state) state.textContent = selected
       ? `${selected.resource_name} is not currently assigned to this task.`
-      : 'Choose a reusable resource to add to this task.';
+      : 'No matching active resource is selected.';
   }
 }
 
 function renderSetupResourceCatalog() {
   const select = document.getElementById('setup-resource-select');
   if (!select) return;
+  const search = document.getElementById('setup-resource-search')?.value || '';
+  const count = document.getElementById('setup-resource-search-count');
   const previous = select.value;
-  select.innerHTML = setupResourceState.catalog.map((resource) => {
-    const assigned = Boolean(resourceAssignmentById(resource.setup_resource_id));
-    const suffix = assigned ? ' · already on task' : '';
-    return `<option value="${resource.setup_resource_id}">${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)}${suffix}</option>`;
-  }).join('');
-  if (previous && setupResourceState.catalog.some((item) => String(item.setup_resource_id) === previous)) {
+  const filtered = setupResourceState.catalog.filter((resource) => resourceMatchesQuery(resource, search));
+
+  select.innerHTML = filtered.length
+    ? filtered.map((resource) => {
+        const assigned = Boolean(resourceAssignmentById(resource.setup_resource_id));
+        const suffix = assigned ? ' · already on task' : '';
+        return `<option value="${resource.setup_resource_id}">${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)}${suffix}</option>`;
+      }).join('')
+    : '<option value="">No matching active resources</option>';
+
+  if (previous && filtered.some((item) => String(item.setup_resource_id) === previous)) {
     select.value = previous;
   }
+  if (count) count.textContent = `${filtered.length} of ${setupResourceState.catalog.length} active catalog resources shown.`;
   syncSetupResourceSelection();
 }
 
@@ -217,17 +289,41 @@ function adminResourceById(resourceId) {
   ) || null;
 }
 
+function filteredSortedAdminResources() {
+  const search = document.getElementById('setup-resource-catalog-search')?.value || '';
+  const sortMode = document.getElementById('setup-resource-catalog-sort')?.value || 'ORDER';
+  const rows = setupResourceState.adminCatalog.filter((resource) => resourceMatchesQuery(resource, search));
+
+  rows.sort((left, right) => {
+    if (sortMode === 'NAME') return compareResourceName(left, right) || Number(left.setup_resource_id) - Number(right.setup_resource_id);
+    if (sortMode === 'TYPE') return compareResourceTypeThenName(left, right);
+    if (sortMode === 'ACTIVE') {
+      return Number(Boolean(right.active_flag)) - Number(Boolean(left.active_flag))
+        || compareResourceCatalogOrder(left, right);
+    }
+    return compareResourceCatalogOrder(left, right);
+  });
+  return rows;
+}
+
 function renderSetupResourceAdminCatalog() {
   const select = document.getElementById('setup-resource-catalog-select');
   if (!select) return;
+  const results = document.getElementById('setup-resource-catalog-results');
   const previous = select.value;
-  select.innerHTML = setupResourceState.adminCatalog.map((resource) => {
-    const inactive = resource.active_flag ? '' : ' · INACTIVE';
-    return `<option value="${resource.setup_resource_id}">${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)} · order ${escapeHtml(resource.display_order)}${inactive}</option>`;
-  }).join('');
-  if (previous && setupResourceState.adminCatalog.some((item) => String(item.setup_resource_id) === previous)) {
+  const filtered = filteredSortedAdminResources();
+
+  select.innerHTML = filtered.length
+    ? filtered.map((resource) => {
+        const inactive = resource.active_flag ? '' : ' · INACTIVE';
+        return `<option value="${resource.setup_resource_id}">${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)} · order ${escapeHtml(resource.display_order)}${inactive}</option>`;
+      }).join('')
+    : '<option value="">No matching catalog resources</option>';
+
+  if (previous && filtered.some((item) => String(item.setup_resource_id) === previous)) {
     select.value = previous;
   }
+  if (results) results.textContent = `${filtered.length} of ${setupResourceState.adminCatalog.length} total catalog resources shown, including inactive entries.`;
   syncSetupResourceCatalogEditor();
 }
 
@@ -260,8 +356,56 @@ function syncSetupResourceCatalogEditor() {
   active.checked = Boolean(resource.active_flag);
   notes.value = resource.notes || '';
   if (state) {
-    state.textContent = `Resource #${resource.setup_resource_id}. Catalog edits preserve this stable ID and its existing task relationships.`;
+    state.textContent = `Resource #${resource.setup_resource_id}. Catalog edits preserve this stable ID and its existing task relationships.${resource.active_flag ? '' : ' This entry is currently inactive.'}`;
   }
+}
+
+function possibleExistingResourceMatches(name) {
+  const query = normalizeResourceSearchText(name);
+  if (query.length < 2) return [];
+  const queryTokens = query.split(' ').filter((token) => token.length >= 2);
+
+  return setupResourceState.adminCatalog
+    .map((resource) => {
+      const normalizedName = normalizeResourceSearchText(resource.resource_name);
+      let score = 0;
+      if (normalizedName === query) score = 100;
+      else if (normalizedName.includes(query) || query.includes(normalizedName)) score = 80;
+      else if (queryTokens.length && queryTokens.every((token) => normalizedName.includes(token))) score = 60;
+      else if (queryTokens.some((token) => normalizedName.includes(token))) score = 20;
+      return { resource, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score
+      || Number(Boolean(right.resource.active_flag)) - Number(Boolean(left.resource.active_flag))
+      || compareResourceName(left.resource, right.resource))
+    .slice(0, 6)
+    .map((item) => ({ ...item.resource, match_score: item.score }));
+}
+
+function renderSetupNewResourceMatches() {
+  const target = document.getElementById('setup-new-resource-matches');
+  const input = document.getElementById('setup-new-resource-name');
+  if (!target || !input) return;
+  const typed = input.value.trim();
+  if (typed.length < 2) {
+    target.textContent = 'Start typing a name to check the full active/inactive catalog for possible duplicates.';
+    return;
+  }
+
+  const matches = possibleExistingResourceMatches(typed);
+  if (!matches.length) {
+    target.innerHTML = '<strong>No likely existing catalog matches found.</strong> Review the catalog search above before creating.';
+    return;
+  }
+
+  const exact = matches.find((resource) => normalizeResourceSearchText(resource.resource_name) === normalizeResourceSearchText(typed));
+  const intro = exact
+    ? '<strong>An existing resource has the same normalized name. Do not create another one.</strong>'
+    : '<strong>Possible existing catalog matches:</strong>';
+  target.innerHTML = `${intro}<ul>${matches.map((resource) => `
+    <li>${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)} · #${escapeHtml(resource.setup_resource_id)}${resource.active_flag ? '' : ' · INACTIVE'}</li>
+  `).join('')}</ul>`;
 }
 
 function resourceAssignmentPayload(resource, activeFlag = true) {
@@ -292,7 +436,7 @@ function renderSetupTaskResources(task) {
     <div class="resource-row">
       <div>
         <div class="resource-name">${escapeHtml(resource.resource_name)}</div>
-        <div class="resource-meta">${escapeHtml(resource.resource_type)} · catalog order ${escapeHtml(resource.display_order)}</div>
+        <div class="resource-meta">${escapeHtml(resource.resource_type)}</div>
         ${resource.notes ? `<div class="resource-notes">${escapeHtml(resource.notes)}</div>` : ''}
       </div>
       <div class="resource-quantity">Qty ${escapeHtml(resource.quantity_required)}</div>
@@ -424,6 +568,15 @@ async function saveSetupResourceCatalogEntry() {
     return;
   }
 
+  const duplicate = setupResourceState.adminCatalog.find((resource) =>
+    Number(resource.setup_resource_id) !== resourceId
+    && normalizeResourceSearchText(resource.resource_name) === normalizeResourceSearchText(name)
+  );
+  if (duplicate) {
+    window.alert(`Cannot rename this resource to ${name}. Resource #${duplicate.setup_resource_id} already uses the same normalized name: ${duplicate.resource_name}.`);
+    return;
+  }
+
   try {
     setBusy(true);
     await api(
@@ -472,6 +625,23 @@ async function createSetupResource(event) {
   if (!name) return;
 
   try {
+    await loadSetupResourceAdminCatalog();
+    const exactExisting = setupResourceState.adminCatalog.find((resource) =>
+      normalizeResourceSearchText(resource.resource_name) === normalizeResourceSearchText(name)
+    );
+    if (exactExisting) {
+      const search = document.getElementById('setup-resource-catalog-search');
+      if (search) search.value = exactExisting.resource_name;
+      renderSetupResourceAdminCatalog();
+      const adminSelect = document.getElementById('setup-resource-catalog-select');
+      if (adminSelect) {
+        adminSelect.value = String(exactExisting.setup_resource_id);
+        syncSetupResourceCatalogEditor();
+      }
+      window.alert(`${exactExisting.resource_name} already exists as resource #${exactExisting.setup_resource_id}${exactExisting.active_flag ? '' : ' and is currently inactive'}. Use or correct that catalog entry instead of creating a duplicate.`);
+      return;
+    }
+
     setBusy(true);
     const payload = await api(
       'api/setup/resources',
@@ -501,6 +671,7 @@ async function createSetupResource(event) {
       }
     }
     document.getElementById('setup-new-resource-form')?.reset();
+    renderSetupNewResourceMatches();
     setAlert(`Reusable resource ${name} created in the catalog. It is selected above; click Add Resource to Task to assign it.`, 'ok');
   } catch (error) {
     setAlert(error.message || error, 'error');
