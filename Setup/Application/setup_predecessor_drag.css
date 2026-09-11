@@ -15,6 +15,10 @@
   font-weight: 700;
 }
 
+.next-task-row[draggable="true"] {
+  user-select: none;
+}
+
 .next-task-row.dependency-dragging,
 .next-task-row.dependency-drop-target {
   position: relative;
