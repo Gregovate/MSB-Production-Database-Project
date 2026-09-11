@@ -87,6 +87,10 @@
   background: var(--soft, #f5f8fb);
 }
 
+.resource-catalog-edit-block {
+  background: var(--card, #fff);
+}
+
 .resource-create-block {
   background: var(--card, #fff);
   border-style: dashed;
@@ -104,6 +108,19 @@
   display: grid;
   grid-template-columns: minmax(180px, 1.4fr) 100px 140px;
   gap: 0.65rem;
+}
+
+.resource-catalog-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) 150px 120px minmax(180px, auto);
+  gap: 0.65rem;
+  align-items: end;
+  margin-top: 0.65rem;
+}
+
+.resource-active-label {
+  min-height: 2.35rem;
+  align-items: center;
 }
 
 .resource-selection-state {
@@ -131,6 +148,7 @@
 @media (max-width: 900px) {
   .resource-row,
   .resource-edit-grid,
+  .resource-catalog-grid,
   .resource-new-form {
     grid-template-columns: 1fr;
   }
