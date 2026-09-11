@@ -53,6 +53,9 @@ def test_resource_catalog_preview_checklist_covers_compact_picker_acceptance() -
         assert marker in text
 
 
-def test_resource_catalog_preview_runs_compact_picker_contract() -> None:
+def test_resource_catalog_preview_detached_regression_uses_candidate_contained_tests_only() -> None:
     text = LAUNCHER.read_text(encoding="utf-8")
-    assert "test_setup_resource_picker_compact_contract.py" in text
+    assert "test_setup_resource_management_contract.py" in text
+    assert "test_setup_dirty_edit_guard_contract.py" in text
+    assert "test_setup_resource_picker_compact_contract.py" not in text
+    assert "do not exist at the pinned" in text
