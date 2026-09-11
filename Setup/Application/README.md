@@ -1,8 +1,8 @@
 # Setup Session Application
 
-Status: **PRODUCTION RUNTIME OPERATIONAL — 2025 HISTORICAL REVIEW / TRAINING; UI/WORKFLOW IN LIVE EVALUATION**
+Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.8 ACCEPTED; 2025 HISTORICAL REVIEW / TRAINING CONTINUES**
 
-This folder contains the browser-native Setup Session application used for the Production-backed 2025 Historical Verification workflow.
+This folder contains the browser-native Setup Session application used for the Production-backed 2025 Historical Verification workflow and ongoing reusable Setup development.
 
 The application is live at:
 
@@ -19,7 +19,13 @@ Setup/Application/production_backend.py
 Current reported version:
 
 ```text
-V0.3.4-shared-season-guard-review
+V0.3.8-task-detail-compact
+```
+
+Current exact deployed source:
+
+```text
+2eee967b6c5359c0e2e2d876a2fe44af8359315c
 ```
 
 ## Current Production Meaning
@@ -31,12 +37,15 @@ Managers/reviewers use it to:
 - reconstruct and correct 2025 annual Setup information;
 - verify records where evidence exists;
 - add/correct reusable Setup tasks;
+- delete reconstruction-safe Catalog mistakes where the governed command permits it;
 - add/correct reusable resources and prerequisites;
 - improve task scope, order, crew/time/readiness information;
 - review current Setup Procedure context; and
 - identify UI/workflow/data-model problems before the 2026 Setup Session is created.
 
-Production deployment is accepted, but the Setup/UI subsystem is intentionally **not final**. PRs #123, #124, and #125 remain open while real-use findings are collected and resolved.
+The reusable Catalog and the 2025 annual Session are intentionally separate. A valid reusable task may exist without a 2025 annual row. Do not force newer reusable definitions into 2025 merely to make the historical Plan appear complete.
+
+The 2026 Setup Session must not be created until the active reusable Catalog cleanup gate in Issue #145 is complete and the intended seeded task set has been proven in disposable validation.
 
 ## Application Architecture
 
@@ -61,8 +70,9 @@ Key boundaries:
 - Setup capabilities are resolved server-side;
 - writes use narrow governed PostgreSQL command functions;
 - the browser does not receive broad table DML authority;
-- Stage/Sub-stage/Scene path resolution reuses the accepted shared resolver; and
-- Google Drive Procedure publishing remains separately controlled.
+- Stage/Sub-stage/Scene path resolution reuses the accepted shared resolver;
+- Google Drive Procedure publishing remains separately controlled; and
+- server/runtime deployment authority lives in `Gregovate/MSB-Server-Management`.
 
 ## Annual vs Reusable Data
 
@@ -90,6 +100,40 @@ The selected Setup Session owns the allowed operational year.
 
 The browser constrains date controls and the database independently enforces the same rule. Audit timestamps remain real current timestamps.
 
+## Dirty-Edit / Client Build Safety
+
+The accepted V0.3.7 safety behavior remains part of V0.3.8.
+
+The Setup header visibly shows the loaded client build, currently:
+
+```text
+Client V0.3.8
+```
+
+Governed writes verify that the client build matches `/api/health`. A stale/mismatched client fails closed instead of quietly writing against a different server build.
+
+Reusable edits are compared against the current selected server-backed task. State-changing actions such as `Mark Verified` cannot silently discard pending reusable edits. The application either safely saves the reusable changes before the annual action or stops the action when the reusable save cannot complete.
+
+Dirty navigation uses explicit save/discard/stay behavior. Independent save surfaces such as Physical Effort, Display/Container Material, Resources, and Captains remain separately governed.
+
+The first V0.3.6 dirty-edit candidate failed real Production protected-route acceptance and was rolled back. V0.3.7 corrected that failure and V0.3.8 preserves the accepted protection.
+
+## Current Task-Detail Layout
+
+At normal laptop/desktop width the accepted V0.3.8 layout is:
+
+```text
+LEFT                               RIGHT
+Reusable Task Definition            Annual Historical Actual
+Material / Logistics                Captains / Knowledge Owners
+```
+
+The reusable editor itself uses a compact two-column desktop grid. Material / Logistics keeps its four resolved counts and full `View Material Details` dialog. Prerequisites and Equipment / Resources remain below the rail block.
+
+Physical mobile-device acceptance was not performed for V0.3.8. Responsive stacking is contract-covered and was checked with a narrowed desktop browser only.
+
+Cross-application theme and dark-mode white-logo consistency are tracked separately in Issue #159.
+
 ## Current Manager / Reviewer Capabilities
 
 The live review workflow supports the current governed application behavior for:
@@ -98,9 +142,11 @@ The live review workflow supports the current governed application behavior for:
 - reviewing verification state;
 - correcting supported annual information;
 - creating/copying reusable tasks;
+- reconstruction-safe deletion/deactivation where governed rules allow;
 - maintaining task scope and order;
 - maintaining prerequisites;
 - maintaining structured equipment/resources;
+- maintaining supported reusable material applicability;
 - reviewing supported planning information; and
 - opening current Setup Procedure/document context.
 
@@ -124,7 +170,16 @@ Park-wide work with no appropriate LOR Stage/Scene uses:
 G:\Shared drives\Display Folders\41 Park Infrastructure-PI\Procedures\Setup
 ```
 
-The application may expose both the current published PDF and an editable Google-native source to authorized Managers. If the editable procedure is corrected, the current published PDF must also be updated before the instruction is treated as current.
+For authorized Managers, editable Google-native source resolution is:
+
+```text
+SourceDocs first
+-> Archive only when no editable SourceDocs .gdoc exists
+```
+
+During the 2026 migration, the archived `.gdoc` remains the historical original. To establish the current editable source, open the archived document in Google Docs, use **File -> Make a copy**, and save the new Google-native document in `Procedures\Setup\SourceDocs`. All later edits occur in the SourceDocs copy. Copying the Windows `.gdoc` shortcut file is not the migration method.
+
+The current published field PDF remains directly in `Procedures\Setup` and must be updated when the approved editable procedure changes.
 
 The runtime uses `/mnt/msb-setup-google-links` to expose link-form representations of native Google documents without converting normal Word documents.
 
@@ -139,7 +194,13 @@ Permanent source checkout:
 Current deployed source SHA:
 
 ```text
-c0639c5b04de667176a8d8eef14fce0409f03ec6
+2eee967b6c5359c0e2e2d876a2fe44af8359315c
+```
+
+Current health:
+
+```json
+{"data_mode":"postgres","status":"ok","version":"V0.3.8-task-detail-compact"}
 ```
 
 Service/runtime facts are owned by `Gregovate/MSB-Server-Management`.
@@ -153,36 +214,45 @@ listener                       = 192.168.5.9:8794
 public route                   = https://my.sheboyganlights.org/setup/
 ```
 
-## Prototype Lineage
+V0.3.8 was deployed source-only. Exact detached preflight regression and live focused regression both passed 53 tests. The Production source-deployment fingerprint remained unchanged:
+
+```text
+9510360aa7de2da59d1ed8a9ad9d69f7
+```
+
+before and after deployment.
+
+See `Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md` for the full Production evidence.
+
+## Prototype / Historical Lineage
 
 Earlier files in this folder include prototype-era UI and local validation support. They remain useful lineage and test evidence, but they are not the Production entry point.
 
-Do not infer current Production behavior from old prototype comments or local-storage-only code paths. Current authority is the Production entry point, current tests, current database migrations, and the Setup engineering handoff.
+Do not infer current Production behavior from old prototype comments or local-storage-only code paths. Current authority is the Production entry point, current tests, current database migrations, current acceptance records, and the current Setup engineering handoff.
+
+Historical runtime milestones include:
+
+```text
+V0.3.5  Stage/Scene material + presentation baseline
+V0.3.6  dirty-edit candidate; failed real Production acceptance and rolled back
+V0.3.7  accepted dirty-edit / client-build safety
+V0.3.8  current accepted compact task-detail layout
+```
 
 ## Current Boundaries
 
 Still outside the accepted Production-ready workflow:
 
-- Pick List generation; and
-- Container/Display movement/scanning write commands.
-
-Do not infer movement history merely because identifiers are scanned or because a review action occurs.
+- Pick List generation;
+- task-specific staged material release timing;
+- Container/Display movement/scanning write commands; and
+- park-location execution evidence.
 
 The application also does not automatically publish revised PDFs back into Google Drive.
 
 ## Testing / Live Evaluation
 
-Automated contract tests remain useful for application changes, but final UI/workflow acceptance depends on real 2025 review use by Managers.
-
-During live evaluation, collect:
-
-- bugs;
-- confusing labels or fields;
-- missing information;
-- difficult task/resource/prerequisite workflows;
-- navigation/search/filter issues;
-- operational suggestions; and
-- places where the UI does not match how Setup work is actually planned or performed.
+Automated contract tests remain useful for application changes, but browser behavior that depends on real client/runtime interaction must also pass protected-route operator validation before being treated as accepted Production behavior.
 
 Do not create fake Production work days, movement events, or throwaway records merely to exercise controls.
 
@@ -192,14 +262,18 @@ Before changing the application:
 
 1. read `System_Documentation/Project_Rules/README.md`;
 2. read `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`;
-3. read the current Production engineering handoff;
-4. review PRs #123, #124, and #125 together;
-5. review current manager/reviewer findings; and
-6. use `Gregovate/MSB-Server-Management` for live runtime facts and deployment runbooks.
+3. read the current `Setup_Session_Production_Engineering_Handoff_2026-09-11.md`;
+4. preserve V0.3.7 dirty-edit/client-server build protection and the visible client build marker;
+5. preserve the 2025 annual vs reusable Catalog boundary;
+6. review Issue #145 before any 2026 Session creation;
+7. review the active issue/contract for the feature being changed; and
+8. use `Gregovate/MSB-Server-Management` for live runtime facts and deployment runbooks.
 
 ## Related Documentation
 
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md`
+- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`
+- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-11.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md`
 - `Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md`
-- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-07.md`
+- `Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md`
