@@ -21,6 +21,22 @@ def test_dirty_guard_asset_is_loaded_last_and_protected():
     assert '"setup_catalog_dirty_guard.js"' in host
 
 
+def test_dirty_guard_compares_live_form_directly_to_selected_task():
+    js = guard_source()
+    assert "function reusableFormState()" in js
+    assert "function reusableTaskState(task)" in js
+    assert "function annualFormState()" in js
+    assert "function annualTaskState(task)" in js
+    assert "!sameState(reusableFormState(), reusableTaskState(task))" in js
+    assert "!sameState(annualFormState(), annualTaskState(task))" in js
+
+    # Reject the old implementation mechanism, not an explanatory use of the
+    # English word "baseline" in comments.
+    assert "let baseline" not in js
+    assert "captureBaseline" not in js
+    assert "baselineMatchesSelection" not in js
+
+
 def test_dirty_guard_tracks_only_main_reusable_and_annual_save_surfaces():
     js = guard_source()
     for field_id in (
@@ -42,15 +58,13 @@ def test_dirty_guard_tracks_only_main_reusable_and_annual_save_surfaces():
     ):
         assert field_id in js
 
-    # These have their own governed commands and must not be silently folded
-    # into Save Reusable Task merely to implement Issue #154.
     assert "edit-effort-level" not in js
     assert "edit-requires-display-material" not in js
     assert "setup-resource-select" not in js
     assert "setup-captain-person" not in js
 
 
-def test_mark_verified_saves_dirty_reusable_definition_before_annual_review():
+def test_mark_verified_saves_reusable_definition_before_annual_review():
     js = guard_source()
     assert "'mark-verified': 'VERIFIED'" in js
     assert "if (reusableDirty())" in js
@@ -61,11 +75,22 @@ def test_mark_verified_saves_dirty_reusable_definition_before_annual_review():
     assert "api/setup/session-tasks/${task.setup_session_task_id}/review" in js
 
 
-def test_reusable_save_preserves_pending_annual_fields_across_task_reload():
+def test_reusable_save_preserves_pending_annual_fields_across_reload():
     js = guard_source()
     assert "const preservedAnnual = preserveAnnualDraft ? annualDraft() : null;" in js
     assert "await reloadTasks(task.setup_task_id);" in js
-    assert "restoreSnapshot(preservedAnnual);" in js
+    assert "restoreAnnualDraft(preservedAnnual);" in js
+
+
+def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
+    js = guard_source()
+    assert "V0.3.7-catalog-dirty-edit-followup" in js
+    assert "setup-client-build-badge" in js
+    assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
+    assert "async function ensureServerBuild()" in js
+    assert "serverVersion === CLIENT_BUILD" in js
+    assert "Refresh the page before making changes" in js
+    assert "if (!await ensureServerBuild()) return false;" in js
 
 
 def test_navigation_uses_explicit_save_discard_cancel_decision():
@@ -91,4 +116,4 @@ def test_existing_save_handlers_are_preempted_at_window_capture_boundary():
     assert "window.addEventListener('change'" in js
     assert "event.stopImmediatePropagation();" in js
     assert "replayDepth" in js
-    assert "installSelectionBaselineWrapper" in js
+    assert "installSelectionRefreshWrapper" in js

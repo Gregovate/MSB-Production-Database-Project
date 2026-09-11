@@ -7,10 +7,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Exact application candidate for Issue #154. Later commits on this branch may
-# harden acceptance tooling, but browser approval remains pinned to this app SHA.
-$AcceptedCandidateSha = '89012d5e40a26323db78dce50d9e58dd27580169'
-$AcceptedBranch = 'agent/setup-catalog-dirty-edit-safety-154'
+# Exact V0.3.7 candidate for the Issue #154 follow-up. This SHA includes the
+# hardened application plus the corrected regression contract. Later
+# acceptance-only commits may follow, but browser/deployment approval remains
+# pinned here so the exact candidate does not move recursively.
+$AcceptedCandidateSha = '9d0c31421ce7cbd1b1cbcf733b06198ace418e9d'
+$AcceptedBranch = 'agent/setup-dirty-edit-followup-154'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
 if (-not (Test-Path -LiteralPath $BaseWrapper)) {
@@ -44,9 +46,8 @@ $text = Replace-Required -Source $text -Needle "`$ExpectedBranch = 'agent/setup-
 $scriptDirLiteral = $PSScriptRoot.Replace("'", "''")
 $text = Replace-Required -Source $text -Needle '$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path' -Replacement "`$ScriptDir = '$scriptDirLiteral'" -Description 'base wrapper ScriptDir initialization'
 
-# Add the new #154 contract to the focused detached regression. Keep the
-# existing accepted regression files and add the version-bearing Stage-order
-# contract because the candidate health version changed from V0.3.5 to V0.3.6.
+# Add the #154 contracts to the focused detached regression. The Stage-order
+# contract carries the current V0.3.7 health-version assertion.
 $regressionNeedle = "        '      Setup/Application/test_setup_next_pass_contract.py'"
 $regressionReplacement = @(
     "        '      Setup/Application/test_setup_next_pass_contract.py \',",
@@ -55,12 +56,13 @@ $regressionReplacement = @(
 ) -join "`n"
 $text = Replace-Required -Source $text -Needle $regressionNeedle -Replacement $regressionReplacement -Description 'focused regression tail'
 
-$text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP CATALOG DIRTY-EDIT BROWSER PREVIEW')
-$text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP CATALOG DIRTY-EDIT BROWSER REVIEW READY')
+$text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP CATALOG DIRTY-EDIT V0.3.7 BROWSER PREVIEW')
+$text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP CATALOG DIRTY-EDIT V0.3.7 BROWSER REVIEW READY')
 
-Write-Host 'Issue #154 browser acceptance checklist:'
-Write-Host '  1. Open an annual 2025 task and change a reusable field without saving.'
-Write-Host '  2. Click Mark Verified; prove the reusable edit persists and annual state becomes VERIFIED.'
+Write-Host 'Issue #154 V0.3.7 browser acceptance checklist:'
+Write-Host '  0. Before any edit, confirm the header visibly shows Client V0.3.7. If not, stop and refresh; do not write.'
+Write-Host '  1. Open an annual 2025 task and change reusable fields without saving.'
+Write-Host '  2. Click Mark Verified; prove every reusable edit persists and annual state becomes VERIFIED.'
 Write-Host '  3. Force a reusable save failure (for example a duplicate/invalid task name) and click Mark Verified; prove verification does NOT change.'
 Write-Host '  4. With dirty edits, switch tasks and exercise Save + continue, Discard + continue, and Stay.'
 Write-Host '  5. Make an annual-note draft, click Save Reusable Task, and prove the annual draft remains present.'

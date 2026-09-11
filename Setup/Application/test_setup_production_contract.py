@@ -75,12 +75,15 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     root = client.get("/")
     assert root.status_code == 200
     assert b"Shared Setup planning and verification" in root.data
+    assert root.headers["Cache-Control"] == "no-store, max-age=0"
+    assert root.headers["Pragma"] == "no-cache"
 
     health = client.get("/api/health")
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.6-catalog-dirty-edit-safety"
+    assert payload["version"] == "V0.3.7-catalog-dirty-edit-followup"
+    assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
         "/setup.css",
@@ -103,7 +106,9 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_session_year_guard.js",
         "/setup_catalog_dirty_guard.js",
     ):
-        assert client.get(asset).status_code == 200
+        response = client.get(asset)
+        assert response.status_code == 200
+        assert response.headers["Cache-Control"] == "no-store, max-age=0"
 
     for forbidden in (
         "/production.html",
