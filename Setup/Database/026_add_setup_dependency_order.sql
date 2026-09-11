@@ -11,8 +11,10 @@ Purpose:
   order only and does not create precedence between prerequisite tasks.
 
 Behavior:
-  - existing dependencies are backfilled deterministically using the current
-    prerequisite task Catalog display order;
+  - existing dependencies receive the constant schema default without a mass
+    UPDATE, preserving their existing audit actor/timestamp evidence;
+  - while existing rows share that initial value, current prerequisite task
+    Catalog order remains the deterministic tie-break until a Manager reorders;
   - new dependencies append to the dependent task's current prerequisite list;
   - the existing governed dependency command keeps its signature and cycle
     protection;
@@ -40,30 +42,30 @@ BEGIN
 END
 $preflight$;
 
+/*
+Use a constant schema default so PostgreSQL establishes the initial value for
+existing rows without firing the standard Setup dependency actor/update trigger.
+Existing audit actor/timestamps must not be rewritten merely to introduce a
+presentation-order column.
+*/
 ALTER TABLE ref.setup_task_dependency
-    ADD COLUMN IF NOT EXISTS sort_order integer;
-
-WITH ranked AS (
-    SELECT d.setup_task_id,
-           d.prerequisite_setup_task_id,
-           row_number() OVER (
-               PARTITION BY d.setup_task_id
-               ORDER BY pt.display_order, pt.setup_task_id
-           ) * 10 AS desired_order
-    FROM ref.setup_task_dependency d
-    JOIN ref.setup_task pt
-      ON pt.setup_task_id = d.prerequisite_setup_task_id
-)
-UPDATE ref.setup_task_dependency d
-SET sort_order = ranked.desired_order
-FROM ranked
-WHERE d.setup_task_id = ranked.setup_task_id
-  AND d.prerequisite_setup_task_id = ranked.prerequisite_setup_task_id
-  AND d.sort_order IS NULL;
+    ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 100;
 
 ALTER TABLE ref.setup_task_dependency
     ALTER COLUMN sort_order SET DEFAULT 100,
     ALTER COLUMN sort_order SET NOT NULL;
+
+DO $column_guard$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM ref.setup_task_dependency d
+        WHERE d.sort_order IS NULL
+    ) THEN
+        RAISE EXCEPTION 'setup_task_dependency.sort_order contains NULL after schema add';
+    END IF;
+END
+$column_guard$;
 
 DO $constraint$
 BEGIN
@@ -273,8 +275,10 @@ BEGIN
            d.sort_order,
            v_display_name
     FROM ref.setup_task_dependency d
+    JOIN ref.setup_task pt
+      ON pt.setup_task_id = d.prerequisite_setup_task_id
     WHERE d.setup_task_id = p_setup_task_id
-    ORDER BY d.sort_order, d.prerequisite_setup_task_id;
+    ORDER BY d.sort_order, pt.display_order, d.prerequisite_setup_task_id;
 END;
 $function$;
 
