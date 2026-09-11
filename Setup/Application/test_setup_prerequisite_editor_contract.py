@@ -11,12 +11,13 @@ def read_app(name: str) -> str:
     return (APP_DIR / name).read_text(encoding="utf-8")
 
 
-def test_dependency_order_migration_adds_persistent_governed_order() -> None:
+def test_dependency_order_migration_adds_persistent_governed_order_without_audit_backfill() -> None:
     sql = (DB_DIR / "026_add_setup_dependency_order.sql").read_text(encoding="utf-8")
 
-    assert "ADD COLUMN IF NOT EXISTS sort_order integer" in sql
-    assert "row_number() OVER" in sql
-    assert "ORDER BY pt.display_order, pt.setup_task_id" in sql
+    assert "ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 100" in sql
+    assert "Existing audit actor/timestamps must not be rewritten" in sql
+    assert "row_number() OVER" not in sql
+    assert "UPDATE ref.setup_task_dependency d\nSET sort_order" not in sql
     assert "ck_setup_task_dependency_sort_order" in sql
     assert "ix_setup_task_dependency_order" in sql
     assert "CREATE OR REPLACE FUNCTION ref.set_setup_task_dependency(" in sql
@@ -28,6 +29,7 @@ def test_dependency_order_migration_adds_persistent_governed_order() -> None:
     assert "Prerequisite order contains duplicate task IDs" in sql
     assert "Prerequisite order must contain the complete current prerequisite set" in sql
     assert "ordered.ordinality::integer * 10" in sql
+    assert "ORDER BY d.sort_order, pt.display_order, d.prerequisite_setup_task_id" in sql
     assert "GRANT EXECUTE ON FUNCTION ref.reorder_setup_task_dependencies" in sql
     assert "GRANT UPDATE ON ref.setup_task_dependency" not in sql
     assert "GRANT INSERT ON ref.setup_task_dependency" not in sql
@@ -47,6 +49,7 @@ def test_ordered_prerequisite_api_and_repository_use_governed_boundaries() -> No
     assert "FROM ref.setup_task_dependency d" in repo
     assert "ORDER BY d.setup_task_id" in repo
     assert "d.sort_order" in repo
+    assert "pt.display_order" in repo
     assert "INSERT INTO ref.setup_task_dependency" not in repo
     assert "UPDATE ref.setup_task_dependency" not in repo
     assert "DELETE FROM ref.setup_task_dependency" not in repo
