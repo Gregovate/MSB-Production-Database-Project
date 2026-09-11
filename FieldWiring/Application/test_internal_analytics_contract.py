@@ -13,6 +13,18 @@ def test_fieldwiring_pages_load_versioned_analytics_asset() -> None:
         assert expected in source
 
 
+def test_fieldwiring_pages_use_canonical_ga4_titles() -> None:
+    index_source = (BASE_DIR / "index.html").read_text(encoding="utf-8")
+    wiring_source = (BASE_DIR / "wiring.html").read_text(encoding="utf-8")
+    controller_source = (BASE_DIR / "controllers.html").read_text(encoding="utf-8")
+
+    assert "<title>MSB Field Wiring</title>" in index_source
+    assert "<title>MSB Field Wiring</title>" in wiring_source
+    assert "<title>MSB FieldWiring</title>" not in index_source
+    assert "<title>MSB FieldWiring</title>" not in wiring_source
+    assert "<title>MSB Controller Inventory</title>" in controller_source
+
+
 def test_analytics_uses_approved_internal_ga4_property() -> None:
     source = (BASE_DIR / "static" / "analytics.js").read_text(encoding="utf-8")
     assert MEASUREMENT_ID in source
