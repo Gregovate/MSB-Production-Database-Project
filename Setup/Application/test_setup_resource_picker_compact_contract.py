@@ -9,9 +9,9 @@ def test_compact_resource_picker_is_loaded_after_task_detail_refinement() -> Non
     backend = (APP_DIR / "production_backend.py").read_text(encoding="utf-8")
 
     assert "setup_resource_picker_compact.css?v=2026-09-11.1" in html
-    assert "setup_resource_picker_compact.js?v=2026-09-11.1" in html
+    assert "setup_resource_picker_compact.js?v=2026-09-11.2" in html
     assert html.index("setup_task_detail_compact.js?v=2026-09-11.1") < html.index(
-        "setup_resource_picker_compact.js?v=2026-09-11.1"
+        "setup_resource_picker_compact.js?v=2026-09-11.2"
     )
     assert '"setup_resource_picker_compact.css"' in backend
     assert '"setup_resource_picker_compact.js"' in backend
@@ -29,6 +29,18 @@ def test_normal_flow_is_picker_first_and_catalog_manager_opens_on_demand() -> No
     assert "createBlock.hidden = true" in js
     assert "aria-expanded" in js
     assert ".resource-catalog-secondary[hidden]" in css
+
+
+def test_catalog_close_action_is_colored_and_beside_catalog_save() -> None:
+    js = (APP_DIR / "setup_resource_picker_compact.js").read_text(encoding="utf-8")
+
+    assert "catalogEditor.querySelector('.action-row')" in js
+    assert "setup-resource-catalog-close" in js
+    assert "success resource-catalog-close" in js
+    assert "catalogActionRow.appendChild(closeButton)" in js
+    assert "toggle.hidden = true" in js
+    assert "toggle.hidden = false" in js
+    assert "closeButton.addEventListener('click', closeCatalog)" in js
 
 
 def test_name_is_normal_picker_order_and_numeric_order_is_advanced() -> None:
