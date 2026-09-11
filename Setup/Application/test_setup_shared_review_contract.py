@@ -17,7 +17,7 @@ def test_shared_2025_review_is_explicitly_permanent_and_year_bounded() -> None:
     ).read_text(encoding="utf-8")
     assert "not disposable test data" in guide.lower()
     assert "2025 Historical Verification" in guide
-    assert "must be in 2025" in guide
+    assert "accepts 2025 operational dates only" in guide
     assert "Administrator" in guide
     assert "41 Park Infrastructure-PI" in guide
     assert "40-CommandCenter" in guide
