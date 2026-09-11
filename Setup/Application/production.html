@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="setup_review_usability.css?v=2026-09-07.2">
   <link rel="stylesheet" href="setup_next_pass.css?v=2026-09-07.4">
   <link rel="stylesheet" href="setup_predecessor_drag.css?v=2026-09-11.1">
+  <link rel="stylesheet" href="setup_prerequisite_editor.css?v=2026-09-11.1">
   <link rel="stylesheet" href="setup_stage_order.css?v=2026-09-10.1">
   <link rel="stylesheet" href="setup_acceptance_fixes.css?v=2026-09-07.1">
   <link rel="stylesheet" href="setup_session_year_guard.css?v=2026-09-07.1">
@@ -146,8 +147,8 @@
 
           <section class="detail-section">
             <h3>Prerequisites</h3>
+            <div class="hint">All listed prerequisites must be complete before this task can start. Circular dependencies are blocked by the database command layer.</div>
             <div id="detail-dependencies" class="chip-row"></div>
-            <div class="hint">Managers can maintain reusable prerequisites in this review candidate. Circular dependencies are blocked by the database command layer.</div>
           </section>
 
           <section class="detail-section">
@@ -240,6 +241,7 @@
 <script src="setup_training_review_refinement.js?v=2026-09-09.3"></script>
 <script src="setup_catalog_effort.js?v=2026-09-09.3"></script>
 <script src="setup_catalog_dirty_guard.js?v=2026-09-11.1"></script>
+<script src="setup_prerequisite_editor.js?v=2026-09-11.1"></script>
 <script src="setup_task_detail_compact.js?v=2026-09-11.1"></script>
 </body>
 </html>
