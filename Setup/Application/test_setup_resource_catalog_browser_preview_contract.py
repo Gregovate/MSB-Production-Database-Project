@@ -9,7 +9,7 @@ LAUNCHER = REPO_ROOT / "Setup" / "Acceptance" / "run_setup_resource_catalog_brow
 
 def test_resource_catalog_preview_pins_exact_candidate_and_branch() -> None:
     text = LAUNCHER.read_text(encoding="utf-8")
-    assert "f8518f469cc62f76aa33e666c2664a2042c23f7f" in text
+    assert "17590dc3a3e81dd67e38fcb42ba38e69beeea089" in text
     assert "agent/setup-152-resource-catalog" in text
     assert "run_setup_source_only_browser_preview.ps1" in text
     assert "setup_session_browser_preview_cleanup_server.sh" in text
@@ -33,20 +33,26 @@ def test_resource_catalog_preview_keeps_hardened_interactive_cleanup() -> None:
     assert "EXIT HUP INT TERM" in text
 
 
-def test_resource_catalog_preview_checklist_covers_issue_152_acceptance() -> None:
+def test_resource_catalog_preview_checklist_covers_compact_picker_acceptance() -> None:
     text = LAUNCHER.read_text(encoding="utf-8")
     for marker in (
         "Client V0.3.10",
-        "search for part of a known name",
-        "inactive entries are included",
-        "Catalog display order",
-        "Name, Type then name, and Active first",
-        "Rename it and save",
-        "resource ID stays the same",
-        "Mark that same resource inactive",
+        "compact Resource picker",
+        "does NOT show the full catalog editor/create forms by default",
+        "name-oriented",
+        "Manage Resource Catalog",
+        "Close Resource Catalog",
+        "Name is the practical default browse sort",
+        "setup_resource_id stays the same",
+        "Optional display order",
         "different case or repeated/outer spaces",
-        "Possible existing catalog matches",
+        "possible existing catalog matches",
         "disposable unique resource",
         "Production remains unchanged",
     ):
         assert marker in text
+
+
+def test_resource_catalog_preview_runs_compact_picker_contract() -> None:
+    text = LAUNCHER.read_text(encoding="utf-8")
+    assert "test_setup_resource_picker_compact_contract.py" in text
