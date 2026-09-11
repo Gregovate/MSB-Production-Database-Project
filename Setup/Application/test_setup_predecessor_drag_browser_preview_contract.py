@@ -9,7 +9,7 @@ ACCEPTANCE_DIR = REPO_ROOT / "Setup" / "Acceptance"
 def test_predecessor_drag_preview_pins_exact_candidate_and_branch() -> None:
     launcher = (ACCEPTANCE_DIR / "run_setup_predecessor_drag_browser_preview.ps1").read_text(encoding="utf-8")
 
-    assert "9a27e91e3251019bf2920bc9410f0bdd7fc426c1" in launcher
+    assert "bfff954618f12a591af4900b71c4938ca5790382" in launcher
     assert "agent/setup-shift-drag-predecessor-151" in launcher
     assert "run_setup_source_only_browser_preview.ps1" in launcher
     assert "test_setup_predecessor_drag_contract.py" in launcher
@@ -21,7 +21,7 @@ def test_predecessor_drag_preview_checklist_covers_direction_cycle_and_normal_dr
     launcher = (ACCEPTANCE_DIR / "run_setup_predecessor_drag_browser_preview.ps1").read_text(encoding="utf-8")
 
     for required in (
-        "Hold Shift BEFORE starting the drag",
+        "Hold Shift BEFORE pressing the left mouse button",
         "Dependent",
         "Prerequisite target",
         "A depends on B",
