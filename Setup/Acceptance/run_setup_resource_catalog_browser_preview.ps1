@@ -7,10 +7,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Exact V0.3.10 compact resource-picker application/schema candidate for Issue
-# #152. Later commits may repair tests or harden acceptance tooling only;
-# browser/deployment approval remains pinned to this SHA.
-$AcceptedCandidateSha = '17590dc3a3e81dd67e38fcb42ba38e69beeea089'
+# Exact V0.3.10 final application/schema candidate for Issue #152. Later commits
+# may repair tests or harden acceptance tooling only; browser/deployment approval
+# remains pinned to this SHA.
+$AcceptedCandidateSha = 'd74202002e6845b291dc937697f4589d3f4be6c3'
 $AcceptedBranch = 'agent/setup-152-resource-catalog'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 $CleanupScript = Join-Path $PSScriptRoot 'setup_session_browser_preview_cleanup_server.sh'
@@ -164,13 +164,13 @@ $text = Replace-Required -Source $text -Needle '& ssh -t -L "${PreviewPort}:127.
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP RESOURCE CATALOG V0.3.10 BROWSER PREVIEW')
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP RESOURCE CATALOG V0.3.10 BROWSER REVIEW READY')
 
-Write-Host 'Issue #152 Resource Catalog V0.3.10 compact-picker browser acceptance checklist:'
+Write-Host 'Issue #152 Resource Catalog V0.3.10 FINAL browser acceptance checklist:'
 Write-Host '  0. Confirm the header shows Client V0.3.10 and the terminal reports Issue #152 migration PASS on the disposable clone.'
 Write-Host '  1. Open a reusable task with existing Equipment / Resources. Confirm current assignments still show quantity and REQUIRED/PREFERRED state.'
 Write-Host '  2. Confirm the normal task-detail flow shows the compact Resource picker and does NOT show the full catalog editor/create forms by default.'
 Write-Host '  3. In the Resource picker, search for part of a known name such as ladder or stake. Confirm the active-resource list filters immediately and is name-oriented so deliberately renamed related items group naturally.'
 Write-Host '  4. Select an existing resource, change quantity/requirement if desired, and add/update it. Confirm task-specific values save without opening catalog maintenance.'
-Write-Host '  5. Click Manage Resource Catalog. Confirm the full catalog maintenance area opens on demand; click Close Resource Catalog and confirm it collapses again.'
+Write-Host '  5. Click Manage Resource Catalog. Confirm catalog maintenance opens on demand, the top Manage button is hidden while open, and a colored Close Resource Catalog button sits directly beside Save Catalog Resource. Save an edit, then close the catalog and confirm it collapses.'
 Write-Host '  6. With the catalog manager open, search active and inactive resources. Confirm Name is the practical default browse sort and inactive rows remain discoverable.'
 Write-Host '  7. Rename one disposable-clone resource that already has a task assignment. Confirm its setup_resource_id stays the same and the task immediately shows the new name.'
 Write-Host '  8. Confirm Optional display order is clearly secondary/advanced guidance and normal picker ordering is driven by meaningful names.'
