@@ -5,9 +5,9 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — 2025 reconstruction active; correction/reconciliation package accepted in Production |
+| Status | CURRENT HANDOFF — Stage/Scene material and presentation accepted in Production; broader Setup work remains active |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-10 |
+| Last Reviewed | 2026-09-11 |
 
 This is the engineering starting point for Setup Session architecture, database behavior, application contracts, Production state, reconstruction rules, planning behavior, Pick List direction, and resume information.
 
@@ -15,49 +15,133 @@ The operator-facing instructions are separate under [`../operatorSOP/`](../opera
 
 ## Current Production State
 
-The protected Setup application is operational at:
+Protected application:
 
 ```text
 https://my.sheboyganlights.org/setup/
 ```
 
-The 2025 Setup Session remains the real Production-backed Historical Review / Training environment. No 2026 Setup Session has been created.
-
-The operator-approved training/reconstruction correction package is now accepted in Production.
+Current accepted application/database target:
 
 ```text
-accepted application/database target = aaf7de1c1d457b3dfaafe061f084a044cdf2abb7
-migrations 019-022                = Production accepted
-Production deployment result         = PASS
-Production governed Setup fingerprint = unchanged across deployment
+9791a6b5a9739c1107746ecbe3cf3ebb558f38bd
 ```
 
-Production corrections now include:
+Repository normalization merge:
 
-- reconstruction-safe deletion of mistaken provisional historical tasks;
-- Captain / Alternate / Advisor management using `ref.person` identity;
-- reusable-task match/reconciliation state for annual 2025 items;
-- active-person enforcement for new Captain/knowledge-owner assignments;
-- improved Catalog return navigation;
-- compact Material / Logistics summary with detailed dialog;
-- clarified reusable-task match wording; and
-- accepted Captain type-ahead behavior.
+```text
+PR #144
+main merge commit = 96613aae4e5084dab2f735bc3dbcc8e13433109e
+```
 
-The broad Setup subsystem remains open for real 2025 evaluation. Production availability and this accepted package do not mean every 2026 planning, Pick List, movement, search, Scene-classification, or historical-reconstruction need is complete.
+Current Setup health:
+
+```text
+V0.3.5-stage-scene-material-review
+```
+
+Current annual context:
+
+```text
+2025 Setup Session  = HISTORICAL_VERIFICATION
+2026 Setup Sessions = 0
+```
+
+The current PostgreSQL reusable Catalog is the working task baseline. Do not use older fixed counts such as 57 or the earlier 185-task reconstruction snapshot as current authority; live Catalog cleanup and task development continued after those dated baselines.
+
+Production acceptance on 2026-09-11 proved:
+
+```text
+exact candidate Setup/Application regression = 154 passed
+migration 025                                = applied / least-privilege PASS
+protected direct no-identity path            = HTTP 401 PASS
+Production business fingerprint              = 798e59ae47a5e313d45cd23e9fdc3c4a
+business fingerprint changed by deployment   = NO
+```
+
+Rollback archive:
+
+```text
+/home/msbadmin/backups/setup-stage-scene-material/msb_pre_setup_stage_scene_material_20260911T000157.dump
+```
+
+Deployment report:
+
+```text
+/home/msbadmin/setup-acceptance-reports/Setup_Stage_Scene_Production_Deployment_20260911T000157.txt
+```
+
+## Current Accepted Material Model
+
+Reusable task scope remains:
+
+```text
+Park Infrastructure / no LOR Stage
+Stage-level / General
+real Scene
+```
+
+Material applicability is a separate reusable-task fact:
+
+```text
+[ ] Uses Display / Container Material
+```
+
+Accepted behavior:
+
+```text
+material disabled
+    -> no LOR-derived Display/Container material
+
+material enabled + real Scene
+    -> exact current ref.lor_scene_display membership
+
+material enabled + Stage
+    -> current LOR groups classified as Stage-level
+    -> true child Scenes excluded
+
+resolved Displays
+    -> current ref.display.container_id
+    -> deduplicated Containers
+```
+
+There is no operator-facing LOR Preview/programming-group/material-source selector. Programming-only LOR groups remain valid LOR objects but do not automatically become Setup Scenes.
+
+The UI color marker is presentation only. `requires_display_material` is authoritative.
+
+See [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md).
+
+## Current Accepted Planning / Execution Presentation
+
+**Plan / Schedule** and **Perform Work** now support Stage-oriented presentation:
+
+```text
+Stage
+    Stage-level / General
+    Scene — <real Scene>
+```
+
+Stage view is presentation only; it does not rewrite annual planned order.
+
+Switching to **Planned order** returns to the existing annual planning sequence/reorder behavior.
+
+The shared **Find task or Stage** search now applies to:
+
+- Reusable Task Catalog;
+- Plan / Schedule; and
+- Perform Work.
 
 ## Start Here
 
-- [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) — current implementation candidate for automatic LOR-derived Display/Container material resolution. Task scope remains Stage/real Scene; the Manager chooses only whether a task requires Display material. Setup does not expose an LOR material-source selector.
-- [Setup Catalog Reconstruction Import — 2026-09-09](Setup_Catalog_Reconstruction_Import_2026-09-09.md) — current implementation candidate for converting the reviewed one-list reconstruction into a normalized reusable catalog before 2026 creation: effort metadata, current Stage/Scene identity, Locate/Layout normalization, logistics boundary, mixed-stage Container rule, dependency reset, and disposable acceptance gate.
-- [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — operator-confirmed planning model: short planning horizon, preferred-order scheduling, Needs Scheduling queue, Sunday avoidance, weather constraints, grass-cutting dependency for cords, multi-day tasks, crew/hour interpretation, mixed-stage Container mobilization, and Rick spreadsheet evidence rules.
-- [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — operator-confirmed missing planning surface between reusable Stage-organized tasks and the short-range schedule: cross-Stage Available/Blocked/In-Progress candidates, operator choice of what can/should happen next, and Arch Trailer unload/access order.
-- [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — standalone Setup Pick List direction: tablet-first workflow, scan integration, task-to-Container resolver, mixed-stage Container behavior, and explicit statement that Pick List generation is not yet implemented.
-- [2025 Live Review Work Ledger — 2026-09-08](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) — reconstruction/reconciliation work ledger, Rick-note interpretation rules, candidate lineage, unresolved findings, and historical acceptance context. Some candidate/deployment status inside this dated ledger predates the accepted 019-022 Production promotion; use this README and current issue/PR evidence for latest Production state.
-- [Setup Training Browser Acceptance — 2026-09-08](Setup_Training_Browser_Acceptance_2026-09-08.md) — accepted browser-review evidence for the correction/reconciliation package.
-- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — original Production foundation/runtime baseline and rollback context.
-- [Setup Internal Analytics and Visible Update Contract — 2026-09-07](Setup_Internal_Analytics_and_Version_Contract_2026-09-07.md) — GA4/privacy and visible revision contract.
-- [Internal Web Backbone Handoff](Internal_Web_Backbone_Handoff.md) — source-subsystem contract for intranet navigation/search/application entry points.
-- [Setup Session Shared Review and Season-Year Guard](../Setup_Session_Shared_Review_and_Season_Year_Guard_2026-09-07.md) — annual-vs-reusable data boundary and session-year enforcement.
+- [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) — current accepted material/source-classification authority.
+- [Setup Stage / Scene Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Stage_Scene_Production_Acceptance_2026-09-11.md) — exact Production deployment, browser review, rollback, regression, and fingerprint evidence.
+- [Setup Data Consumption and Authorization Contract — 2026-09-10](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md) — Setup capability, Person mapping, application-role, governed write, and grant boundaries.
+- [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) — hard predecessor vs preferred order vs external/site readiness.
+- [Setup Reconstruction Migration and Acceptance History — 2026-09-07 to 09](Setup_Reconstruction_Migration_and_Acceptance_History_2026-09-07_to_09.md) — historical migration/disposable/browser lessons and reconstruction findings.
+- [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — rolling-horizon planning direction.
+- [Setup Planning Candidate Work View — 2026-09-09](Setup_Planning_Candidate_Work_View_2026-09-09.md) — cross-Stage candidate planning direction.
+- [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — Pick List direction; not yet Production-operational.
+- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — original foundation/runtime baseline; historical for current deployment SHA/version.
 
 ## Authoritative Implementation Sources
 
@@ -79,117 +163,144 @@ Production acceptance/install material:
 Setup/Acceptance/
 ```
 
-The Production Database repository owns Setup application/business/database behavior. `Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, host permissions, and Production deployment runbooks.
+The Production Database repository owns Setup application/business/database behavior.
 
-## Current PR / Issue Structure
+`Gregovate/MSB-Server-Management` owns deployed service, listener, firewall, reverse-proxy, restart/recovery, host permissions, and Production deployment runbooks/runtime facts.
 
-Primary current work remains:
+## Current Repository / Issue Structure
+
+The accepted Stage/Scene material/presentation implementation is merged through PR #144.
+
+Primary active work now is issue-driven rather than continuing the old nested PR stack:
 
 ```text
 #122  Setup Session engineering / planning / Pick List / live reconstruction umbrella
-#125  Production foundation / application / correction lineage
-#130  global People / Capability / Qualification catalog exposed by Captain review
+#145  reusable Catalog cleanup gate before creating the 2026 Setup Session
+#130  global People / Capability / Qualification work consumed by Setup
 #132  Captain work-report duration / multi-day effort capture
 #113  shared Scan application readiness / identity capture integration
 ```
 
-The People/Skills work belongs to **03 — People and Identity**. Setup consumes that global identity/capability model; Setup must not create a second person/skill catalog.
+Earlier Setup PRs #123/#124/#125/#134/#136/#137/#138/#139 are historical/superseded lineages and should not be treated as the current development authority once their unique accepted content is preserved in `main` and their closeout comments are recorded.
 
-## Current Reconstruction Source Rules
+## Reusable Catalog / Annual Session Boundary
 
-Rick Hoffmann's 2025 spreadsheets are mixed evidence, not normalized task definitions.
+The reusable Catalog and the selected annual Session are different things.
 
-Current reconstruction review window:
+A valid reusable task can exist without a 2025 `ops.setup_session_task` row. That task will not appear in the 2025 Plan / Schedule view merely because it exists in the reusable Catalog.
 
-```text
-2025-09-30 through Thanksgiving 2025
-```
+Annual Session creation seeds **every active reusable task** into the new annual Session.
 
-Use evidence in three buckets:
+Therefore:
 
 ```text
-1. 2025 annual historical fact
-2. reusable Setup knowledge
-3. ambiguous/question — do not guess
+active reusable Catalog cleanup
+    -> prove intended task set
+    -> disposable 2026 creation check
+    -> only then authorize real 2026 Session creation
 ```
 
-Crew names do not automatically create Captains. Daily recorded hours do not automatically equal task duration. Multi-task work days require conservative interpretation.
+Do not force newer reusable tasks into 2025 merely to make the historical Plan look complete.
 
-The 2022 Project schedule is also historical planning evidence for task decomposition, relative order, predecessors, rough duration, named crews, and equipment. It is not a rigid future schedule.
+Issue #145 owns this gate.
 
-See the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md) for the durable interpretation and planning rules.
+## Reconstruction Source Rules
+
+Historical spreadsheets, 2025 notes, and recovered schedules are evidence, not a parallel ongoing task master.
+
+Use current PostgreSQL first:
+
+```text
+current reusable Catalog
+    -> identify gap/correction
+    -> verify practical task boundary and scope
+    -> correct through governed Setup controls
+```
+
+Do not restart a bulk spreadsheet import merely because a task is missing or wrong.
+
+Reconstruction mistakes may legitimately have no annual row. The governed reconstruction-safe delete path supports Catalog-only mistakes while failing closed when protected history exists.
 
 ## Current Planning Model
 
 Setup is **not** a rigid season-long calendar scheduler.
 
-The accepted operating direction is:
+Accepted operating direction:
 
 ```text
-preferred task order / prerequisites
-    + work ready now
-    + volunteers/equipment available
-    + weather / site conditions
-    + prior-day progress
-    -> cross-Stage candidate planning view
-    -> operator chooses what can/should happen next
-    -> plan only the next few work days
-    -> derive Pick List demand
-    -> revise as conditions change
+preferred order / hard predecessors
+    + readiness
+    + volunteers/equipment
+    + weather/site conditions
+    + prior progress
+    -> candidate work
+    -> operator chooses next practical work
+    -> short-horizon schedule
+    -> Pick List demand
+    -> perform / record / replan
 ```
 
-Important current rules:
+Tasks can span multiple work periods. Stage organization is useful for presentation but is not a requirement to finish an entire Stage before another Stage can begin.
 
-- avoid Sunday work whenever reasonably possible;
-- avoid rain and high winds whenever reasonably possible;
-- do not lay cords until grass cutting has stopped;
-- tasks may span several work days;
-- expected duration is a planning aid, not a one-day restriction;
-- preferred order and prerequisites matter more than false long-range date precision;
-- the reusable task catalog may be organized by Stage for visualization, but Stage completion is not a scheduling gate;
-- planning needs a separate cross-Stage candidate view showing Available / Blocked / In-Progress work before tasks receive dates;
-- generic `Staging to Park` is obsolete as a reusable task;
-- mixed-stage Containers/trailers must be detected from authoritative contents and mobilized when the first carried item is needed;
-- Container-specific post-arrival behavior may be full unload, park/mobile storage, special transformation, or ordered partial unload and must not be guessed; and
-- 2025/2022 historical evidence should improve reusable crew ranges, expected effort, prerequisites, readiness rules, and missing task steps only where evidence supports them.
+## Predecessor / Readiness Boundary
 
-See [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) for the missing planning layer and the operator-confirmed Arch Trailer unload/access order.
+Keep separate:
+
+```text
+HARD PREDECESSOR
+PREFERRED ORDER
+READINESS CONDITION
+```
+
+A readiness condition can be an external/site condition such as mowing/mulching complete in a specific work area. Do not invent fake Setup tasks for outside work.
+
+Structured readiness remains pending; the current free-text readiness note is descriptive only.
 
 ## Pick List Current Boundary
 
 There is currently **no Production Pick List generator/report** and no accepted Setup tablet Pick List workflow.
 
-The intended direction is a standalone **Pick List** section inside Setup, usable on a tablet and integrated with the shared scanning identity layer for `CONT`, `DISP`, and accepted `LOC` workflows.
+The intended direction remains:
 
-Setup owns the Pick List business workflow. Issue #113 / Scan owns identity capture/resolution and supported Zebra/camera/manual input behavior.
+```text
+selected Setup work
+    -> resolved Displays
+    -> current Containers
+    -> deduplicate
+    -> explain why each Container is required
+```
 
-See [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md).
+Do not infer task scope from Container storage. Shared/mixed-stage Containers are normal.
 
-## Known Boundaries / Open Work
+## Data / Authorization Boundary
 
-Still unresolved or intentionally separate:
+Cloudflare authentication, Setup capability, Person identity mapping, and PostgreSQL grants are separate layers.
 
-- controlled reassign/merge when a 2025 annual item belongs to a **different** reusable task;
-- many missing reusable task steps exposed by Rick's 2025 notes and the recovered 2022 schedule;
-- continued 2025 crew-size / expected-duration reconstruction;
-- task/Stage search;
-- cross-Stage candidate planning surface and candidate-to-work-day workflow;
-- classification of historical predecessors into hard predecessor versus preferred order versus readiness condition;
-- authoritative Controller context in Material / Logistics from FieldWiring / Controller Inventory;
+Characteristic write failure:
+
+```text
+Authenticated Setup operator is not mapped to an MSB person
+```
+
+is a Person/Directus identity-link problem, not justification for broad Setup table DML.
+
+Migration 025 added only the `ref.display_status` SELECT needed by automatic material resolution plus governed material setter EXECUTE; broad `ref.setup_task` DML remains forbidden for `fieldwiring_app`.
+
+See [Setup Data Consumption and Authorization Contract](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md).
+
+## Known Limitations / Open Work
+
+Current significant remaining work includes:
+
+- reusable Catalog cleanup before 2026 propagation;
+- continued correction of task boundaries exposed by live review;
+- structured readiness and efficient predecessor entry;
+- cross-Stage candidate planning surface / short-horizon scheduler workflow;
+- authoritative Controller context from FieldWiring / Controller Inventory;
 - Pick List generation and tablet workflow;
 - mixed-stage Container annual mobilization/unload-group state and ordered-access rules;
 - Container/Display movement/scanning writes; and
-- future People capability/qualification integration for crew suitability.
-
-The prior open item `true Setup Scene versus LOR display-group classification` is now governed by the 2026-09-10 Stage/Scene material-resolution contract and remains implementation/acceptance work rather than an unresolved design question.
-
-Detailed KIT contents remain outside the current 2026 MVP, but an existing KIT Container can be a real physical Setup dependency.
-
-## Critical Runtime Permission Boundary
-
-`msbadmin` is the SSH administrator but runtime-path validation must use the `fieldwiring` service identity for paths and the shared Python environment that depend on runtime group permissions.
-
-Server-side detail and recovery procedure belong in `Gregovate/MSB-Server-Management`.
+- park-location execution evidence.
 
 ## Resume Development
 
@@ -197,19 +308,15 @@ Before changing this subsystem:
 
 1. read the Production Database Project Rules;
 2. read this engineering portal;
-3. read the [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) before changing Setup material resolution or Scene presentation;
-4. read the [Setup Catalog Reconstruction Import](Setup_Catalog_Reconstruction_Import_2026-09-09.md) while the reusable-catalog import candidate is active;
-5. read the [Setup Planning Operating Model](Setup_Planning_Operating_Model_2026-09-08.md);
-6. read the [Setup Planning Candidate Work View](Setup_Planning_Candidate_Work_View_2026-09-09.md) before implementing scheduling/planning UI;
-7. read the [Setup Pick List Tablet Workflow](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) before implementing staging/logistics/pick behavior;
-8. review issue #122 and PR #125 for newest live-reconstruction findings;
-9. use the [2025 Live Review Work Ledger](Setup_2025_Live_Review_Work_Ledger_2026-09-08.md) for historical reconstruction rules and lineage, but do not treat its older candidate status as current Production state;
-10. preserve annual 2025 facts separately from reusable future knowledge;
-11. do not infer exact duration, Captain, crew, or completion from shorthand evidence;
-12. use issue #130 / 03 People and Identity for global skill/qualification work;
-13. use issue #113 / Labeling and Scanning for shared scan capture/resolution contracts rather than duplicating scanner-specific logic in Setup;
-14. use `Gregovate/MSB-Server-Management` for runtime/deployment authority; and
-15. keep operator docs, engineering docs, and Internal Web Backbone navigation synchronized when accepted behavior changes.
+3. read the Stage/Scene material-resolution contract before changing material or Scene classification;
+4. review Issue #145 before creating or simulating 2026 annual state;
+5. preserve annual 2025 facts separately from reusable future knowledge;
+6. use the predecessor/readiness contract before rebuilding dependencies;
+7. use the Pick List contract before implementing logistics/pick behavior;
+8. use issue #130 / People and Identity for global capability/qualification work;
+9. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
+10. use `Gregovate/MSB-Server-Management` for current runtime/deployment authority; and
+11. update controlled docs and this README handoff whenever accepted behavior or the next resume point changes.
 
 ## Related Systems
 
