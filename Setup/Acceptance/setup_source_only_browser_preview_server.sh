@@ -4,6 +4,7 @@ set -euo pipefail
 CANDIDATE_SHA="${1:?candidate SHA required}"
 PREVIEW_PORT="${2:?preview port required}"
 PREVIEW_EMAIL="${3:?preview email required}"
+APPROVED_REF="${4:?approved Git ref required}"
 
 PROD_CONTAINER="msb-postgres"
 PROD_DB="msb"
@@ -31,6 +32,7 @@ exec > >(tee "$REPORT") 2>&1
 
 echo "========== SETUP SOURCE-ONLY BROWSER PREVIEW =========="
 echo "Candidate SHA: $CANDIDATE_SHA"
+echo "Approved ref:  $APPROVED_REF"
 echo "Preview port:  $PREVIEW_PORT"
 echo "Preview user:  $PREVIEW_EMAIL"
 echo "Production DB: pg_dump + SELECT only"
@@ -113,6 +115,10 @@ if [[ ! "$PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
     echo "FAIL: preview email is invalid"
     exit 4
 fi
+if [[ -z "$APPROVED_REF" ]]; then
+    echo "FAIL: approved Git ref is required"
+    exit 5
+fi
 if [[ ! -s "$ENTRY_SCRIPT" ]]; then
     echo "FAIL: preview entry script is missing: $ENTRY_SCRIPT"
     exit 5
@@ -142,7 +148,7 @@ echo "Production Setup fingerprint: $PROD_BEFORE"
 
 echo
 echo "--- Fetch exact candidate and run detached regression ---"
-sudo git -C "$REPO_ROOT" fetch origin agent/setup-session-production-foundation
+sudo git -C "$REPO_ROOT" fetch origin "$APPROVED_REF"
 sudo git -C "$REPO_ROOT" cat-file -e "$CANDIDATE_SHA^{commit}"
 if ! sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$CANDIDATE_SHA"; then
     echo "FAIL: candidate is not a forward descendant of live Setup"
@@ -218,6 +224,12 @@ REVOKE ALL ON FUNCTION ops.set_setup_work_day_task(text,bigint,bigint,text,text,
 REVOKE ALL ON FUNCTION ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ops.set_setup_session_task_planned_order(text,bigint,integer,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ops.promote_setup_session_order_to_baseline(text,integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.delete_setup_reconstruction_task(text,bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.setup_task_captain_list(bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.setup_captain_person_list() FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.set_setup_task_captain(text,bigint,integer,text,integer,text,boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.set_setup_task_effort(text,bigint,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.set_setup_task_display_material_requirement(text,bigint,boolean) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION ref.setup_browser_capabilities(text) TO fieldwiring_app;
 GRANT EXECUTE ON FUNCTION ops.create_setup_session(text,integer,text) TO fieldwiring_app;
@@ -233,6 +245,12 @@ GRANT EXECUTE ON FUNCTION ops.set_setup_work_day_task(text,bigint,bigint,text,te
 GRANT EXECUTE ON FUNCTION ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean) TO fieldwiring_app;
 GRANT EXECUTE ON FUNCTION ops.set_setup_session_task_planned_order(text,bigint,integer,text) TO fieldwiring_app;
 GRANT EXECUTE ON FUNCTION ops.promote_setup_session_order_to_baseline(text,integer) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.delete_setup_reconstruction_task(text,bigint) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.setup_task_captain_list(bigint) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.setup_captain_person_list() TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.set_setup_task_captain(text,bigint,integer,text,integer,text,boolean) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.set_setup_task_effort(text,bigint,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.set_setup_task_display_material_requirement(text,bigint,boolean) TO fieldwiring_app;
 SQL
 
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
@@ -333,6 +351,7 @@ echo
 echo "SETUP SOURCE-ONLY BROWSER REVIEW READY"
 echo "Open in your browser through the SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
 echo "Candidate SHA: $CANDIDATE_SHA"
+echo "Approved ref: $APPROVED_REF"
 echo "Preview identity: $PREVIEW_EMAIL"
 echo "The row named '[PREVIEW ONLY] Setup write transaction probe' exists only in the disposable clone."
 echo "Exercise real Manager workflows here. Production remains unchanged."
