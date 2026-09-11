@@ -9,7 +9,7 @@ LAUNCHER = REPO_ROOT / "Setup" / "Acceptance" / "run_setup_resource_catalog_brow
 
 def test_resource_catalog_preview_pins_exact_candidate_and_branch() -> None:
     text = LAUNCHER.read_text(encoding="utf-8")
-    assert "17590dc3a3e81dd67e38fcb42ba38e69beeea089" in text
+    assert "d74202002e6845b291dc937697f4589d3f4be6c3" in text
     assert "agent/setup-152-resource-catalog" in text
     assert "run_setup_source_only_browser_preview.ps1" in text
     assert "setup_session_browser_preview_cleanup_server.sh" in text
@@ -41,7 +41,8 @@ def test_resource_catalog_preview_checklist_covers_compact_picker_acceptance() -
         "does NOT show the full catalog editor/create forms by default",
         "name-oriented",
         "Manage Resource Catalog",
-        "Close Resource Catalog",
+        "top Manage button is hidden while open",
+        "colored Close Resource Catalog button sits directly beside Save Catalog Resource",
         "Name is the practical default browse sort",
         "setup_resource_id stays the same",
         "Optional display order",
