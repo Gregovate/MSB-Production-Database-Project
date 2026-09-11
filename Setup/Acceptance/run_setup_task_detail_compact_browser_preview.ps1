@@ -8,10 +8,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Exact V0.3.8 application/test candidate for Issue #153. This SHA contains
-# the compact-layout implementation and corrected layout-only palette contract.
-# Later commits may harden only acceptance tooling; browser/deployment approval
-# remains pinned here.
-$AcceptedCandidateSha = 'e236210d5c223259b7a2eac8cb27cd549620da50'
+# the independent left/right rail layout, compact Material context, and focused
+# regression contracts. Later commits may harden only acceptance tooling;
+# browser/deployment approval remains pinned here.
+$AcceptedCandidateSha = '2eee967b6c5359c0e2e2d876a2fe44af8359315c'
 $AcceptedBranch = 'agent/setup-task-detail-layout-153'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
@@ -55,14 +55,14 @@ $text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP TASK-DETA
 
 Write-Host 'Issue #153 V0.3.8 browser acceptance checklist:'
 Write-Host '  0. Confirm the header visibly shows Client V0.3.8 before any write.'
-Write-Host '  1. Open a typical task at desktop width. Reusable Task Definition should be materially shorter and use two columns.'
-Write-Host '  2. Annual Historical Actual stays in the right rail; Captains / Knowledge Owners appear beneath it instead of inside the reusable column.'
-Write-Host '  3. Prerequisites and Equipment / Resources are reachable with substantially less scrolling than Production V0.3.7.'
-Write-Host '  4. Material / Logistics shows the four essential counts as a compact inline summary, not four large cards.'
-Write-Host '  5. View Material Details still opens the full Container / Display dialog and warnings remain visible.'
-Write-Host '  6. Verify one reusable edit + Save, one annual edit, Captain controls, and resource controls remain functional.'
-Write-Host '  7. Narrow the browser/mobile width and confirm the editor stacks cleanly with no clipped controls.'
-Write-Host '  8. Check both light and dark modes for readable contrast. Cross-app palette/logo standardization is tracked separately in #159.'
+Write-Host '  1. At desktop width, Reusable Task Definition is materially shorter and uses two columns.'
+Write-Host '  2. LEFT rail: Reusable Task Definition followed immediately by compact Material / Logistics; no large dead area beneath the reusable editor.'
+Write-Host '  3. RIGHT rail: Annual Historical Actual followed by Captains / Knowledge Owners.'
+Write-Host '  4. Material / Logistics keeps all four counts, short wording, and View Material Details for the full list/reasons.'
+Write-Host '  5. Prerequisites and Equipment / Resources are reachable with substantially less scrolling than Production V0.3.7.'
+Write-Host '  6. Verify one reusable edit + Save, one annual edit, Captain controls, resource controls, and Material Details remain functional.'
+Write-Host '  7. Narrow the desktop browser window as a responsive-layout proxy and confirm the rails stack with no clipped controls. Physical mobile-device acceptance is not claimed unless actually tested.'
+Write-Host '  8. Check light and dark modes for readable contrast. Dark-mode white-logo consistency remains separately tracked in #159.'
 Write-Host
 
 $script = [scriptblock]::Create($text)
