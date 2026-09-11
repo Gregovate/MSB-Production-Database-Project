@@ -20,7 +20,7 @@ from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.6-catalog-dirty-edit-safety"
+PRODUCTION_VERSION = "V0.3.7-catalog-dirty-edit-followup"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -69,9 +69,17 @@ app.register_blueprint(setup_effort_api)
 app.register_blueprint(setup_material_api)
 
 
+def _no_store(response):
+    """Never let an old Setup page/asset survive an application deployment."""
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 @app.get("/")
 def production_index():
-    return send_from_directory(BASE_DIR, "production.html")
+    return _no_store(send_from_directory(BASE_DIR, "production.html"))
 
 
 @app.get("/api/health")
@@ -80,7 +88,7 @@ def production_health():
         os.environ.get(name, "").strip()
         for name in ("SETUP_DATABASE_DSN", "FIELDWIRING_DATABASE_DSN", "PROCEDURE_DATABASE_DSN")
     ) else "unconfigured"
-    return jsonify(status="ok", version=PRODUCTION_VERSION, data_mode=mode)
+    return _no_store(jsonify(status="ok", version=PRODUCTION_VERSION, data_mode=mode))
 
 
 @app.get("/<path:name>")
@@ -88,7 +96,7 @@ def production_asset(name: str):
     if name not in PRODUCTION_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
-    return send_from_directory(BASE_DIR, name, mimetype=mimetype)
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
 
 if __name__ == "__main__":
