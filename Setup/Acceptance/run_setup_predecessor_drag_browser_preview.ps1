@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 
 # Exact V0.3.9 application/test candidate for Issue #151. Later commits may
 # harden acceptance tooling only; browser/deployment approval remains pinned here.
-$AcceptedCandidateSha = '9a27e91e3251019bf2920bc9410f0bdd7fc426c1'
+$AcceptedCandidateSha = 'f23e305a25959297fbe83b68753a5be471871652'
 $AcceptedBranch = 'agent/setup-shift-drag-predecessor-151'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 
@@ -54,7 +54,7 @@ $text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP SHIFT-DRA
 Write-Host 'Issue #151 Shift-drag predecessor V0.3.9 browser acceptance checklist:'
 Write-Host '  0. Confirm the header visibly shows Client V0.3.9 and the Catalog shows the Fast prerequisite entry hint.'
 Write-Host '  1. Choose two disposable-clone reusable tasks A and B and note both tasks'' current scope/order before testing.'
-Write-Host '  2. Hold Shift BEFORE starting the drag on dependent task A. A must visibly show Dependent.'
+Write-Host '  2. Hold Shift BEFORE pressing the left mouse button on dependent task A, then drag. A must visibly show Dependent.'
 Write-Host '  3. Drag A over prerequisite task B. B must visibly show Prerequisite target; release on B.'
 Write-Host '  4. Confirm explicit success feedback says A depends on B and neither task moved. A''s Requires line must show B.'
 Write-Host '  5. Repeat the same Shift-drag A -> B. Confirm it remains one dependency, not a duplicate.'
