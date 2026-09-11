@@ -49,6 +49,7 @@ class SetupPrerequisiteOrderRepository:
                   ON pt.setup_task_id = d.prerequisite_setup_task_id
                 ORDER BY d.setup_task_id,
                          d.sort_order,
+                         pt.display_order,
                          d.prerequisite_setup_task_id
                 """
             )
