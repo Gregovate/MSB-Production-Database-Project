@@ -3,7 +3,9 @@
 const setupResourceState = {
   catalog: [],
   catalogLoaded: false,
-  taskResources: []
+  taskResources: [],
+  adminCatalog: [],
+  adminCatalogLoaded: false
 };
 
 function ensureSetupResourceSection() {
@@ -57,10 +59,47 @@ function ensureSetupResourceSection() {
         </div>
       </section>
 
+      <section class="resource-manager-block resource-catalog-edit-block">
+        <div class="resource-manager-heading">
+          <h4>Manage reusable resource catalog</h4>
+          <div class="hint">Edit the reusable resource itself here. Existing task assignments stay attached to the same resource ID after a rename.</div>
+        </div>
+        <label>Catalog resource
+          <select id="setup-resource-catalog-select"></select>
+        </label>
+        <div class="resource-catalog-grid">
+          <label>Resource name
+            <input id="setup-resource-catalog-name" type="text">
+          </label>
+          <label>Type
+            <select id="setup-resource-catalog-type">
+              <option value="EQUIPMENT">Equipment</option>
+              <option value="VEHICLE">Vehicle</option>
+              <option value="TRAILER">Trailer</option>
+              <option value="TOOL">Tool</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label>Display order
+            <input id="setup-resource-catalog-order" type="number" min="0" value="100">
+          </label>
+          <label class="checkbox-label resource-active-label">
+            <input id="setup-resource-catalog-active" type="checkbox"> Active catalog resource
+          </label>
+        </div>
+        <label>Catalog notes
+          <input id="setup-resource-catalog-notes" type="text" placeholder="Reusable description / catalog note">
+        </label>
+        <div id="setup-resource-catalog-state" class="resource-selection-state muted"></div>
+        <div class="action-row">
+          <button id="setup-resource-catalog-save" type="button">Save Catalog Resource</button>
+        </div>
+      </section>
+
       <section class="resource-manager-block resource-create-block">
         <div class="resource-manager-heading">
           <h4>Need something that is not in the catalog?</h4>
-          <div class="hint">Create it once as reusable equipment/resource, then add it to this task above.</div>
+          <div class="hint">Create it once as reusable equipment/resource, then add it to this task above. New resources start at display order 100 and can be reordered in the catalog editor.</div>
         </div>
         <form id="setup-new-resource-form" class="resource-new-form">
           <label>New resource name
@@ -89,6 +128,8 @@ function ensureSetupResourceSection() {
 
   document.getElementById('setup-resource-save')?.addEventListener('click', saveSetupTaskResource);
   document.getElementById('setup-resource-select')?.addEventListener('change', syncSetupResourceSelection);
+  document.getElementById('setup-resource-catalog-select')?.addEventListener('change', syncSetupResourceCatalogEditor);
+  document.getElementById('setup-resource-catalog-save')?.addEventListener('click', saveSetupResourceCatalogEntry);
   document.getElementById('setup-new-resource-form')?.addEventListener('submit', createSetupResource);
   return section;
 }
@@ -105,6 +146,16 @@ async function loadSetupResourceCatalog(force = false) {
   setupResourceState.catalogLoaded = true;
   renderSetupResourceCatalog();
   return setupResourceState.catalog;
+}
+
+async function loadSetupResourceAdminCatalog(force = false) {
+  if (!appState.access?.can_manage_setup) return [];
+  if (setupResourceState.adminCatalogLoaded && !force) return setupResourceState.adminCatalog;
+  const payload = await api('api/setup/resource-catalog');
+  setupResourceState.adminCatalog = payload.resources || [];
+  setupResourceState.adminCatalogLoaded = true;
+  renderSetupResourceAdminCatalog();
+  return setupResourceState.adminCatalog;
 }
 
 function resourceAssignmentById(resourceId) {
@@ -160,6 +211,59 @@ function renderSetupResourceCatalog() {
   syncSetupResourceSelection();
 }
 
+function adminResourceById(resourceId) {
+  return setupResourceState.adminCatalog.find(
+    (item) => Number(item.setup_resource_id) === Number(resourceId)
+  ) || null;
+}
+
+function renderSetupResourceAdminCatalog() {
+  const select = document.getElementById('setup-resource-catalog-select');
+  if (!select) return;
+  const previous = select.value;
+  select.innerHTML = setupResourceState.adminCatalog.map((resource) => {
+    const inactive = resource.active_flag ? '' : ' · INACTIVE';
+    return `<option value="${resource.setup_resource_id}">${escapeHtml(resource.resource_name)} · ${escapeHtml(resource.resource_type)} · order ${escapeHtml(resource.display_order)}${inactive}</option>`;
+  }).join('');
+  if (previous && setupResourceState.adminCatalog.some((item) => String(item.setup_resource_id) === previous)) {
+    select.value = previous;
+  }
+  syncSetupResourceCatalogEditor();
+}
+
+function syncSetupResourceCatalogEditor() {
+  const select = document.getElementById('setup-resource-catalog-select');
+  const name = document.getElementById('setup-resource-catalog-name');
+  const type = document.getElementById('setup-resource-catalog-type');
+  const order = document.getElementById('setup-resource-catalog-order');
+  const active = document.getElementById('setup-resource-catalog-active');
+  const notes = document.getElementById('setup-resource-catalog-notes');
+  const state = document.getElementById('setup-resource-catalog-state');
+  const save = document.getElementById('setup-resource-catalog-save');
+  if (!select || !name || !type || !order || !active || !notes || !save) return;
+
+  const resource = adminResourceById(Number(select.value || 0));
+  save.disabled = !resource;
+  if (!resource) {
+    name.value = '';
+    type.value = 'EQUIPMENT';
+    order.value = '100';
+    active.checked = false;
+    notes.value = '';
+    if (state) state.textContent = 'No reusable resource is selected.';
+    return;
+  }
+
+  name.value = resource.resource_name || '';
+  type.value = resource.resource_type || 'EQUIPMENT';
+  order.value = String(resource.display_order ?? 100);
+  active.checked = Boolean(resource.active_flag);
+  notes.value = resource.notes || '';
+  if (state) {
+    state.textContent = `Resource #${resource.setup_resource_id}. Catalog edits preserve this stable ID and its existing task relationships.`;
+  }
+}
+
 function resourceAssignmentPayload(resource, activeFlag = true) {
   return {
     quantity_required: Number(resource.quantity_required) || 1,
@@ -188,7 +292,7 @@ function renderSetupTaskResources(task) {
     <div class="resource-row">
       <div>
         <div class="resource-name">${escapeHtml(resource.resource_name)}</div>
-        <div class="resource-meta">${escapeHtml(resource.resource_type)}</div>
+        <div class="resource-meta">${escapeHtml(resource.resource_type)} · catalog order ${escapeHtml(resource.display_order)}</div>
         ${resource.notes ? `<div class="resource-notes">${escapeHtml(resource.notes)}</div>` : ''}
       </div>
       <div class="resource-quantity">Qty ${escapeHtml(resource.quantity_required)}</div>
@@ -228,6 +332,9 @@ async function loadSetupTaskResources(task) {
     void catalogPayload;
     setupResourceState.taskResources = taskPayload.resources || [];
     renderSetupTaskResources(task);
+    if (appState.access?.can_manage_setup) {
+      await loadSetupResourceAdminCatalog();
+    }
   } catch (error) {
     setupResourceState.taskResources = [];
     if (target) {
@@ -303,6 +410,58 @@ async function removeSetupTaskResource(task, resourceId) {
   }
 }
 
+async function saveSetupResourceCatalogEntry() {
+  if (!appState.access?.can_manage_setup) return;
+  const resourceId = Number(document.getElementById('setup-resource-catalog-select')?.value || 0);
+  const name = document.getElementById('setup-resource-catalog-name')?.value.trim() || '';
+  const type = document.getElementById('setup-resource-catalog-type')?.value || 'EQUIPMENT';
+  const displayOrder = Number(document.getElementById('setup-resource-catalog-order')?.value ?? -1);
+  const activeFlag = Boolean(document.getElementById('setup-resource-catalog-active')?.checked);
+  const notes = document.getElementById('setup-resource-catalog-notes')?.value.trim() || null;
+
+  if (!resourceId || !name || !Number.isInteger(displayOrder) || displayOrder < 0) {
+    window.alert('Choose a resource, enter a name, and use a display order of zero or greater.');
+    return;
+  }
+
+  try {
+    setBusy(true);
+    await api(
+      `api/setup/resources/${resourceId}`,
+      commandOptions('PATCH', {
+        resource_name: name,
+        resource_type: type,
+        notes,
+        active_flag: activeFlag,
+        display_order: displayOrder
+      })
+    );
+
+    setupResourceState.catalogLoaded = false;
+    setupResourceState.adminCatalogLoaded = false;
+    await Promise.all([
+      loadSetupResourceCatalog(true),
+      loadSetupResourceAdminCatalog(true)
+    ]);
+
+    const adminSelect = document.getElementById('setup-resource-catalog-select');
+    if (adminSelect && setupResourceState.adminCatalog.some((item) => Number(item.setup_resource_id) === resourceId)) {
+      adminSelect.value = String(resourceId);
+      syncSetupResourceCatalogEditor();
+    }
+
+    const task = taskById(appState.selectedTaskId);
+    if (task) await loadSetupTaskResources(task);
+
+    setAlert(`${name} catalog entry updated. Existing task relationships remain attached to resource #${resourceId}.`, 'ok');
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function createSetupResource(event) {
   event.preventDefault();
   if (!appState.access?.can_manage_setup) return;
@@ -323,11 +482,23 @@ async function createSetupResource(event) {
       })
     );
     setupResourceState.catalogLoaded = false;
-    await loadSetupResourceCatalog(true);
+    setupResourceState.adminCatalogLoaded = false;
+    await Promise.all([
+      loadSetupResourceCatalog(true),
+      loadSetupResourceAdminCatalog(true)
+    ]);
     const newId = payload.setup_resource?.setup_resource_id;
     if (newId) {
-      document.getElementById('setup-resource-select').value = String(newId);
-      syncSetupResourceSelection();
+      const taskSelect = document.getElementById('setup-resource-select');
+      if (taskSelect) {
+        taskSelect.value = String(newId);
+        syncSetupResourceSelection();
+      }
+      const adminSelect = document.getElementById('setup-resource-catalog-select');
+      if (adminSelect) {
+        adminSelect.value = String(newId);
+        syncSetupResourceCatalogEditor();
+      }
     }
     document.getElementById('setup-new-resource-form')?.reset();
     setAlert(`Reusable resource ${name} created in the catalog. It is selected above; click Add Resource to Task to assign it.`, 'ok');
