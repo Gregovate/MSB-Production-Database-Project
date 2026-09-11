@@ -21,7 +21,7 @@ from setup_material_api import setup_material_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.9-predecessor-drag"
+PRODUCTION_VERSION = "V0.3.10-resource-catalog"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
