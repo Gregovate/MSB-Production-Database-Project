@@ -38,7 +38,7 @@ Only an Administrator may create a new annual Setup Session or promote annual or
 The Setup header displays the currently loaded client version. Current Production is:
 
 ```text
-Client V0.3.9
+Client V0.3.10
 ```
 
 After a deployment, after leaving Setup open for a long period, or whenever the displayed client version is unexpected, refresh or reopen the application before making a governed change.
@@ -242,6 +242,47 @@ Review:
 
 Do not invent quantities or effort values merely to fill fields.
 
+### Assign an existing resource
+
+The normal resource workflow is compact and task-focused:
+
+1. Use the resource search field.
+2. Select the existing resource by its meaningful name.
+3. Enter task-specific quantity, Required vs Preferred, and task notes.
+4. Add or update the task requirement.
+
+The ordinary picker is intentionally name-oriented. Meaningful resource names are the primary way operators find related items. The optional numeric catalog display order is not required for ordinary selection.
+
+### Maintain the reusable resource catalog
+
+Use **Manage Resource Catalog** when the reusable catalog itself needs correction.
+
+The Manager catalog includes active and inactive rows and can be searched by name, type, or catalog notes. Name sort is the normal default; alternate review sorts, including optional display order, remain available.
+
+Use catalog maintenance to:
+
+- rename a poorly named resource in place;
+- correct resource type;
+- correct reusable catalog notes;
+- activate or deactivate a resource where appropriate; and
+- adjust optional catalog display order when there is a real reason to do so.
+
+Prefer correcting the existing catalog entry over creating a replacement. Renaming/editing preserves the same `setup_resource_id`, so existing task relationships stay attached.
+
+The application blocks normalized exact duplicates after ignoring case, outer whitespace, and repeated internal whitespace. While entering a new resource name, review the suggested likely matches before creating a new entry.
+
+Inactive resources remain visible in the Manager catalog. Existing task relationships to an inactive resource remain reviewable/removable, but a new inactive resource cannot be assigned to a task.
+
+Keep these facts separate:
+
+```text
+catalog-level resource identity/type/notes/active/order
+vs.
+task-specific quantity / Required-vs-Preferred / task notes
+```
+
+Do not put task-specific quantity or requirement notes into the reusable catalog entry merely because the same resource is used by several tasks.
+
 ## Review Prerequisites and Readiness
 
 Do not treat these as the same thing:
@@ -334,6 +375,9 @@ Production-operational now includes:
 - Stage-oriented Plan / Schedule and Perform Work presentation;
 - search across Catalog, Plan / Schedule, and Perform Work;
 - resource/effort/prerequisite maintenance;
+- searchable existing-resource assignment;
+- full reusable resource-catalog search/edit/activate/deactivate maintenance;
+- normalized duplicate resource blocking and stable in-place resource rename/correction;
 - Shift-drag prerequisite creation with circular-dependency protection;
 - one canonical prerequisite editor with manual Add, Up/Down display order, and Remove;
 - Procedure/document context; and
@@ -342,13 +386,15 @@ Production-operational now includes:
 Still incomplete/separate work includes:
 
 - final reusable Catalog cleanup before 2026 creation;
+- Extra Materials / KIT assignments / material-source tracking (#167);
 - task-specific staged material subdivision / release timing (#141);
 - structured readiness gating;
 - Pick List generation/tablet workflow;
 - mixed-stage Container annual mobilization/unload-state workflow;
 - Container/Display movement/scanning writes;
-- park-location execution evidence; and
-- resource catalog sort/existing-resource editing work tracked separately.
+- park-location execution evidence;
+- one-session browser-preview sudo hardening (#166); and
+- persistent active-task context while scrolling long task detail (#169).
 
 ## 2025 to 2026 Transition
 
@@ -365,3 +411,4 @@ Issue #145 tracks the Catalog-cleanup gate before 2026 creation.
 - [Setup operator portal](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
 - [2025 review procedure](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
 - [Setup engineering handoff](../../01_System_Architecture/12_Setup_and_Deployment/engineering/README.md)
+- `Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md`

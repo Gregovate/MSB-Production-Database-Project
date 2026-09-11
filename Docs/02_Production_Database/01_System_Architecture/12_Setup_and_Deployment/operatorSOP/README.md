@@ -31,7 +31,7 @@ The application uses real Production data. It is available for manager/reviewer 
 Current Production client:
 
 ```text
-Client V0.3.9
+Client V0.3.10
 ```
 
 ## What Do You Need To Do?
@@ -39,6 +39,25 @@ Client V0.3.9
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — verify 2025 information, improve reusable Setup knowledge, add missing tasks/resources where appropriate, mark which tasks use Display/Container material, add/correct prerequisites, and record questions or suggestions.
 
 Additional task procedures will be added only when the corresponding workflow is actually production-operational.
+
+## Equipment / Resource Workflow
+
+Use the compact resource picker for ordinary task work:
+
+```text
+search existing resource
+    -> select resource
+    -> enter task quantity / Required-vs-Preferred / task notes
+    -> add or update requirement
+```
+
+The normal picker is intentionally name-oriented. Search for an existing entry before creating anything new.
+
+Use **Manage Resource Catalog** when the reusable catalog itself needs maintenance. Managers can search active and inactive entries and correct an existing resource in place, including name, type, catalog notes, active state, and optional display order.
+
+Renaming an existing resource preserves its `setup_resource_id` and current task assignments. Exact normalized duplicate names are blocked, and likely matches are shown while entering a new resource name.
+
+Task-specific quantity / Required-vs-Preferred / task notes remain separate from catalog-level identity and catalog notes.
 
 ## Material Checkbox
 
@@ -114,9 +133,11 @@ Circular prerequisite relationships are rejected. Do not work around that warnin
 - Annual 2025 corrections stay with the 2025 Setup Session.
 - Reusable Task changes are permanent Setup knowledge and may affect future seasons.
 - The material checkbox is reusable task knowledge, not a one-year 2025 fact.
+- Resource-catalog identity/type/notes/active/order are reusable catalog facts; task quantity/requirement/notes remain task-specific.
 - Operational dates entered for the selected Setup Session must be in that session's year.
 - Only an Administrator may create a new annual Setup Session or carry annual order forward as the future reusable baseline.
 - Hard predecessors are not the same as preferred order or outside/site readiness conditions.
+- Extra Materials / KIT assignments / material-source tracking remain separate work in Issue #167.
 - Pick Lists and Container/Display movement/scanning writes are not part of the current live-review workflow.
 - Do not create fake records merely to test the UI. Use real review work and report workflow/UI findings instead.
 
@@ -126,6 +147,8 @@ Managers and reviewers are encouraged to:
 
 - open tasks and compare annual 2025 information with reusable task information;
 - add genuinely missing reusable tasks;
+- search for existing resource catalog entries before creating new ones;
+- correct poor resource names in place through **Manage Resource Catalog** instead of creating replacements;
 - mark **Uses Display / Container Material** only when that task really needs the current Display/Container material for its Stage/Scene work;
 - leave the material checkbox off for valid non-material tasks;
 - treat resolved material as context, not an automatic instruction to pick every item immediately;
@@ -135,6 +158,8 @@ Managers and reviewers are encouraged to:
 - leave uncertain information UNVERIFIED or mark it NEEDS CORRECTION;
 - ask questions and make suggestions about confusing, missing, or inefficient workflow; and
 - report UI problems instead of working around them silently.
+
+The known long-page task-context usability improvement identified during V0.3.10 acceptance is tracked separately in Issue #169.
 
 ## Related Documents
 
