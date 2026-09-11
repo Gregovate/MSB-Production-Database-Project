@@ -7,10 +7,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Exact V0.3.10 application/schema candidate for Issue #152. Later commits may
-# repair tests or harden acceptance tooling only; browser/deployment approval
-# remains pinned to this SHA.
-$AcceptedCandidateSha = 'f8518f469cc62f76aa33e666c2664a2042c23f7f'
+# Exact V0.3.10 compact resource-picker application/schema candidate for Issue
+# #152. Later commits may repair tests or harden acceptance tooling only;
+# browser/deployment approval remains pinned to this SHA.
+$AcceptedCandidateSha = '17590dc3a3e81dd67e38fcb42ba38e69beeea089'
 $AcceptedBranch = 'agent/setup-152-resource-catalog'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 $CleanupScript = Join-Path $PSScriptRoot 'setup_session_browser_preview_cleanup_server.sh'
@@ -80,12 +80,12 @@ $cleanupInjection = $cleanupInjection.Replace("`r`n", "`n").Replace("`r", "`n")
 $text = Replace-Required -Source $text -Needle $cleanupInjectionNeedle -Replacement $cleanupInjection -Description 'source-only stale-cleanup injection point'
 
 # Add #152-focused contracts to the existing current source-only gate. The
-# stage-order version-literal repair is intentionally tooling-only and does not
-# alter the pinned runtime/schema candidate.
+# compact-picker revision is the accepted browser/runtime candidate.
 $regressionNeedle = "        '      Setup/Application/test_setup_next_pass_contract.py'"
 $regressionReplacement = @(
     "        '      Setup/Application/test_setup_next_pass_contract.py \',",
     "        '      Setup/Application/test_setup_resource_management_contract.py \',",
+    "        '      Setup/Application/test_setup_resource_picker_compact_contract.py \',",
     "        '      Setup/Application/test_setup_dirty_edit_guard_contract.py'"
 ) -join "`n"
 $text = Replace-Required -Source $text -Needle $regressionNeedle -Replacement $regressionReplacement -Description 'focused regression tail'
@@ -163,21 +163,22 @@ $text = Replace-Required -Source $text -Needle '& ssh -t -L "${PreviewPort}:127.
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP RESOURCE CATALOG V0.3.10 BROWSER PREVIEW')
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER REVIEW READY', 'SETUP RESOURCE CATALOG V0.3.10 BROWSER REVIEW READY')
 
-Write-Host 'Issue #152 Resource Catalog V0.3.10 browser acceptance checklist:'
+Write-Host 'Issue #152 Resource Catalog V0.3.10 compact-picker browser acceptance checklist:'
 Write-Host '  0. Confirm the header shows Client V0.3.10 and the terminal reports Issue #152 migration PASS on the disposable clone.'
-Write-Host '  1. Open a reusable task that already has Equipment / Resources. Confirm its current assignments still appear with quantity and REQUIRED/PREFERRED state.'
-Write-Host '  2. In Add existing equipment/resource, search for part of a known name such as ladder, boom, sling, or stake. Confirm the active-resource list filters immediately and reports the result count.'
-Write-Host '  3. Clear that search. Confirm the active catalog list returns and an already-assigned resource is still marked as already on task.'
-Write-Host '  4. In Manage reusable resource catalog, search by name and by type. Confirm inactive entries are included in this Manager catalog and the result count is clear.'
-Write-Host '  5. Exercise Browse sort: Catalog display order, Name, Type then name, and Active first. Confirm each produces a predictable ordering.'
-Write-Host '  6. Pick one disposable-clone resource with an existing task assignment. Rename it and save. Confirm the resource ID stays the same and the task assignment immediately shows the new name.'
-Write-Host '  7. Change that resource display order and save. Confirm Catalog display order sort reflects the change without altering task quantity/REQUIRED/PREFERRED values.'
-Write-Host '  8. Mark that same resource inactive. Confirm it disappears from Add existing resource for new assignment, remains discoverable in Manager catalog, and its existing task relationship remains visible/removable.'
-Write-Host '  9. Reactivate the resource in the disposable clone and confirm it returns to the active assignment picker.'
-Write-Host ' 10. In Create New Catalog Resource, type an existing name with different case or repeated/outer spaces. Confirm Setup directs you to the existing resource instead of creating a duplicate.'
-Write-Host ' 11. Type a partial/near-duplicate new name. Confirm Possible existing catalog matches are shown before creation.'
-Write-Host ' 12. Create one clearly disposable unique resource, search for it, then edit its type/notes/order. Confirm catalog editing works independently from task-specific assignment fields.'
-Write-Host ' 13. Confirm normal reusable task editing, prerequisites, and resource assignment/removal still operate without unexpected layout or authorization changes.'
+Write-Host '  1. Open a reusable task with existing Equipment / Resources. Confirm current assignments still show quantity and REQUIRED/PREFERRED state.'
+Write-Host '  2. Confirm the normal task-detail flow shows the compact Resource picker and does NOT show the full catalog editor/create forms by default.'
+Write-Host '  3. In the Resource picker, search for part of a known name such as ladder or stake. Confirm the active-resource list filters immediately and is name-oriented so deliberately renamed related items group naturally.'
+Write-Host '  4. Select an existing resource, change quantity/requirement if desired, and add/update it. Confirm task-specific values save without opening catalog maintenance.'
+Write-Host '  5. Click Manage Resource Catalog. Confirm the full catalog maintenance area opens on demand; click Close Resource Catalog and confirm it collapses again.'
+Write-Host '  6. With the catalog manager open, search active and inactive resources. Confirm Name is the practical default browse sort and inactive rows remain discoverable.'
+Write-Host '  7. Rename one disposable-clone resource that already has a task assignment. Confirm its setup_resource_id stays the same and the task immediately shows the new name.'
+Write-Host '  8. Confirm Optional display order is clearly secondary/advanced guidance and normal picker ordering is driven by meaningful names.'
+Write-Host '  9. Mark that resource inactive. Confirm it disappears from the normal active picker but remains visible in catalog maintenance and on any existing task relationship.'
+Write-Host ' 10. Reactivate it and confirm it returns to the normal picker.'
+Write-Host ' 11. Try creating an existing name with different case or repeated/outer spaces. Confirm Setup blocks the duplicate and points back to the existing resource.'
+Write-Host ' 12. Type a partial/near-duplicate new name. Confirm possible existing catalog matches appear before creation.'
+Write-Host ' 13. Create one clearly disposable unique resource, then rename/edit it through catalog maintenance. Confirm catalog maintenance remains independent from task quantity/REQUIRED/PREFERRED fields.'
+Write-Host ' 14. Confirm normal reusable task editing, prerequisites, and resource removal still operate without unexpected layout or authorization changes.'
 Write-Host
 Write-Host 'All writes in this checklist are against the disposable Production clone only. Production remains unchanged.'
 Write-Host
