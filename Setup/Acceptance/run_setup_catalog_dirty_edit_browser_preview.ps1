@@ -49,8 +49,8 @@ $text = Replace-Required -Source $text -Needle '$ScriptDir = Split-Path -Parent 
 # contract because the candidate health version changed from V0.3.5 to V0.3.6.
 $regressionNeedle = "        '      Setup/Application/test_setup_next_pass_contract.py'"
 $regressionReplacement = @(
-    "        '      Setup/Application/test_setup_next_pass_contract.py \\',",
-    "        '      Setup/Application/test_setup_stage_order_contract.py \\',",
+    "        '      Setup/Application/test_setup_next_pass_contract.py \',",
+    "        '      Setup/Application/test_setup_stage_order_contract.py \',",
     "        '      Setup/Application/test_setup_dirty_edit_guard_contract.py'"
 ) -join "`n"
 $text = Replace-Required -Source $text -Needle $regressionNeedle -Replacement $regressionReplacement -Description 'focused regression tail'
