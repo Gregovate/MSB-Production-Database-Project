@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -59,18 +60,18 @@ def test_material_summary_is_compact_but_existing_detail_dialog_remains() -> Non
     assert "dialog.showModal()" in refinement
 
 
-def test_compact_layout_uses_existing_theme_tokens_not_a_new_base_palette() -> None:
+def test_compact_layout_does_not_introduce_a_new_base_palette() -> None:
     css = read("setup_task_detail_compact.css")
-    for token in ("var(--border)", "var(--muted)"):
-        assert token in css
-    for forbidden in (
-        "#f4f6f8",
-        "#ffffff",
-        "#1f2937",
-        "#c8cdd4",
-        "#1f6feb",
-        "#0b1220",
-        "#111a2b",
-        "#2f81f7",
+
+    # Issue #153 is layout-only. It should inherit the established Setup theme
+    # surfaces rather than defining another palette while Issue #159 owns the
+    # cross-application light/dark theme standardization.
+    assert re.search(r"#[0-9a-fA-F]{3,8}\b", css) is None
+    for forbidden_property in (
+        "background:",
+        "background-color:",
+        "color:",
+        "border-color:",
+        "box-shadow:",
     ):
-        assert forbidden not in css
+        assert forbidden_property not in css
