@@ -68,6 +68,7 @@ class SetupResourceRepository:
                     tr.setup_resource_id,
                     r.resource_name,
                     r.resource_type,
+                    r.active_flag AS resource_active_flag,
                     r.display_order,
                     tr.quantity_required,
                     tr.requirement_type,
@@ -78,7 +79,6 @@ class SetupResourceRepository:
                   ON r.setup_resource_id = tr.setup_resource_id
                 WHERE tr.setup_task_id = %s
                   AND tr.active_flag
-                  AND r.active_flag
                 ORDER BY
                     CASE tr.requirement_type WHEN 'REQUIRED' THEN 0 ELSE 1 END,
                     r.display_order,
