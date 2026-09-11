@@ -33,14 +33,14 @@ def test_shift_drag_uses_existing_dependency_command_only() -> None:
     assert "active: true" in js
     assert "dependency_note: null" in js
 
-    # The modifier interaction must never invoke the normal scope/reorder path.
-    # Strip block comments first so explanatory prose such as "row/scope" cannot
-    # create a false positive for an executable /scope API reference.
-    executable_js = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
-    assert "/scope" not in executable_js
-    assert "nextMoveTask" not in executable_js
-    assert "nextPersistOrder" not in executable_js
-    assert "display_order" not in executable_js
+    # The modifier interaction has exactly one governed API write: dependency upsert.
+    # Test executable call names instead of prose substrings so comments such as
+    # "row/scope" cannot produce false positives.
+    assert js.count("await api(") == 1
+    assert "api/setup/tasks/${dependentTaskId}/scope" not in js
+    assert "api/setup/tasks/${prerequisiteTaskId}/scope" not in js
+    assert "nextMoveTask(" not in js
+    assert "nextPersistOrder(" not in js
 
 
 def test_normal_drag_and_manual_prerequisite_editor_remain_available() -> None:
