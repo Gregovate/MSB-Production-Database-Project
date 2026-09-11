@@ -1,6 +1,6 @@
 # Setup Session Application
 
-Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.9 ACCEPTED; 2025 HISTORICAL REVIEW / REUSABLE CATALOG WORK CONTINUES**
+Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.10 ACCEPTED; 2025 HISTORICAL REVIEW / REUSABLE CATALOG WORK CONTINUES**
 
 This folder contains the browser-native Setup Session application used for the Production-backed 2025 Historical Verification workflow and ongoing reusable Setup development.
 
@@ -19,13 +19,13 @@ Setup/Application/production_backend.py
 Current reported version:
 
 ```text
-V0.3.9-predecessor-drag
+V0.3.10-resource-catalog
 ```
 
 Current exact deployed source:
 
 ```text
-55478f98f760473b65b5d700a84c868285022ab7
+c2a1820627f1a036d634241cc6aecd1a926a1479
 ```
 
 ## Current Production Meaning
@@ -38,7 +38,9 @@ Managers/reviewers use it to:
 - verify records where evidence exists;
 - add/correct reusable Setup tasks;
 - delete reconstruction-safe Catalog mistakes where the governed command permits it;
-- add/correct reusable resources and prerequisites;
+- search, assign, rename, correct, activate/deactivate, and review reusable resource catalog entries;
+- maintain task-specific resource quantity / Required-vs-Preferred / notes separately from catalog identity;
+- add/correct prerequisites;
 - use Shift-drag for fast hard-predecessor entry;
 - maintain prerequisite review/display order in the canonical task-detail list;
 - improve task scope, order, crew/time/readiness information;
@@ -104,12 +106,12 @@ The browser constrains date controls and the database independently enforces the
 
 ## Dirty-Edit / Client Build Safety
 
-The accepted V0.3.7 safety behavior remains part of V0.3.9.
+The accepted V0.3.7 safety behavior remains part of V0.3.10.
 
 The Setup header visibly shows the loaded client build, currently:
 
 ```text
-Client V0.3.9
+Client V0.3.10
 ```
 
 Governed writes verify that the client build matches `/api/health`. A stale/mismatched client fails closed instead of quietly writing against a different server build.
@@ -120,7 +122,7 @@ Dirty navigation uses explicit save/discard/stay behavior. Independent save surf
 
 ## Current Task-Detail Layout
 
-V0.3.9 preserves the accepted V0.3.8 laptop/desktop layout:
+V0.3.10 preserves the accepted V0.3.8 laptop/desktop layout:
 
 ```text
 LEFT                               RIGHT
@@ -132,7 +134,7 @@ The reusable editor itself uses a compact two-column desktop grid. Material / Lo
 
 Physical mobile-device acceptance was not performed for V0.3.8. Responsive stacking is contract-covered and was checked with a narrowed desktop browser only.
 
-Cross-application theme and dark-mode white-logo consistency are tracked separately in Issue #159.
+Cross-application theme and dark-mode white-logo consistency are tracked separately in Issue #159. Keeping the active task name visible while scrolling long task detail is tracked separately in Issue #169.
 
 ## Current Prerequisite Interaction
 
@@ -170,6 +172,36 @@ Circular-dependency protection remains database-authoritative.
 
 Structured external/site readiness remains separate future work. Do not represent mowing, access, outside construction, or similar conditions as fake Setup tasks merely to create blockers.
 
+## Current Resource Catalog Interaction
+
+Issue #152 established the Production reusable resource-catalog workflow.
+
+Normal task assignment is intentionally compact and name-oriented:
+
+```text
+search existing resource
+    -> choose resource
+    -> set task quantity / Required-vs-Preferred / task notes
+    -> add or update the task requirement
+```
+
+The ordinary picker sorts primarily by meaningful `resource_name`, then type/ID. `display_order` remains a governed optional catalog field, but operators do not need to maintain numeric order merely to make the normal picker usable.
+
+Use **Manage Resource Catalog** only when catalog maintenance is needed. The Manager catalog:
+
+- searches active and inactive entries;
+- defaults to Name sort;
+- supports alternate sort/review choices, including optional display order;
+- edits poor names in place rather than requiring replacement rows;
+- edits type, catalog notes, active state, and display order; and
+- preserves the same `setup_resource_id` so existing task assignments remain attached after rename/correction.
+
+Normalized exact duplicate names are blocked after trim/case/repeated-whitespace normalization. While entering a new name, likely existing matches are shown so near-duplicates can be reviewed before creation.
+
+Task-specific quantity, Required-vs-Preferred, and task notes remain separate from catalog-level identity and catalog notes.
+
+Inactive catalog rows remain visible to Managers and remain visible on existing relationships. New inactive assignments are blocked, but an existing inactive relationship can still be removed.
+
 ## Current Manager / Reviewer Capabilities
 
 The live review workflow supports current governed behavior for:
@@ -181,7 +213,8 @@ The live review workflow supports current governed behavior for:
 - reconstruction-safe deletion/deactivation where governed rules allow;
 - maintaining task scope and order;
 - maintaining prerequisites through Shift-drag or the canonical prerequisite editor;
-- maintaining structured equipment/resources;
+- searchable structured equipment/resource assignment;
+- full reusable resource-catalog search/edit/activate/deactivate maintenance;
 - maintaining supported reusable material applicability;
 - reviewing supported planning information; and
 - opening current Setup Procedure/document context.
@@ -230,13 +263,13 @@ Permanent source checkout:
 Current deployed source SHA:
 
 ```text
-55478f98f760473b65b5d700a84c868285022ab7
+c2a1820627f1a036d634241cc6aecd1a926a1479
 ```
 
 Current health:
 
 ```json
-{"data_mode":"postgres","status":"ok","version":"V0.3.9-predecessor-drag"}
+{"data_mode":"postgres","status":"ok","version":"V0.3.10-resource-catalog"}
 ```
 
 Service/runtime facts are owned by `Gregovate/MSB-Server-Management`.
@@ -250,19 +283,30 @@ listener                       = 192.168.5.9:8794
 public route                   = https://my.sheboyganlights.org/setup/
 ```
 
-V0.3.9 applied database migration 026 and then advanced only the dedicated Setup application checkout. Live focused regression passed 63 tests. The Production governed fingerprint remained unchanged across migration/deployment:
+V0.3.10 applied database migration 027 and then advanced only the dedicated Setup application checkout. Migration validation preserved the stable governed Setup fingerprint:
 
 ```text
-9510360aa7de2da59d1ed8a9ad9d69f7
+7c21041caecac6eb77660238ba3c8cf9
 ```
 
-Existing dependency note/audit evidence also remained unchanged across migration:
+Production regression evidence includes:
 
 ```text
-26b170fba3500ea2647967e87aa02a1c
+exact runtime candidate         = 207 passed / 1 proven stale literal assertion
+corrected test-only derivative  = 209 passed
+live focused regression         = 29 passed / 1 deselected stale assertion
+protected negative path         = HTTP 401 PASS
+protected Production browser    = PASS
 ```
 
-See `Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md` for the full Production evidence and rollback archive.
+Validated rollback archive:
+
+```text
+/home/msbadmin/backups/setup-152/msb-pre-setup-152-20260911T170411.dump
+SHA256 = b60857bf12eae68922cc309b795e920b3b2aaccd5a928b775527057450a7aa15
+```
+
+See `Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md` for the full Production evidence.
 
 ## Prototype / Historical Lineage
 
@@ -277,7 +321,8 @@ V0.3.5  Stage/Scene material + presentation baseline
 V0.3.6  dirty-edit candidate; failed real Production acceptance and rolled back
 V0.3.7  accepted dirty-edit / client-build safety
 V0.3.8  accepted compact task-detail layout
-V0.3.9  current accepted Shift-drag prerequisite + canonical prerequisite editor
+V0.3.9  accepted Shift-drag prerequisite + canonical prerequisite editor
+V0.3.10 current accepted reusable resource-catalog management
 ```
 
 ## Current Boundaries
@@ -287,7 +332,8 @@ Still outside the accepted Production-ready workflow:
 - structured external/site readiness;
 - Pick List generation;
 - task-specific staged material release timing;
-- resource catalog sort/existing-resource editing;
+- Extra Materials / KIT assignments / material-source tracking (#167);
+- persistent active-task context while scrolling long detail (#169);
 - Container/Display movement/scanning write commands; and
 - park-location execution evidence.
 
@@ -297,9 +343,9 @@ The application also does not automatically publish revised PDFs back into Googl
 
 Automated contract tests remain useful for application changes, but browser behavior that depends on real client/runtime interaction must also pass protected-route operator validation before being treated as accepted Production behavior.
 
-Do not create fake Production work days, movement events, dependencies, or throwaway records merely to exercise controls.
+Do not create fake Production work days, movement events, dependencies, resources, or throwaway records merely to exercise controls.
 
-During the V0.3.9 deployment gate, the broad Setup suite exposed two inherited stale literal-string tests that also failed on the already accepted V0.3.8 checkout. The V0.3.9 focused current deployment suite passed 63 tests. Closeout corrects those stale assertions; do not describe the pre-deployment broad suite as fully green.
+For V0.3.10, the exact deployed runtime contained one stale CSS cache-token test literal. The immediately following test-only commit corrected that assertion without changing runtime/application files and passed 209 tests in the Production Python environment. Closeout records both facts rather than falsely claiming the exact runtime commit's broad suite was fully green.
 
 ## Engineering Resume
 
@@ -311,10 +357,11 @@ Before changing the application:
 4. preserve V0.3.7 dirty-edit/client-server build protection;
 5. preserve the V0.3.8 compact task-detail layout;
 6. preserve the V0.3.9 Shift-drag direction, canonical prerequisite editor, and presentation-order semantics;
-7. preserve the 2025 annual vs reusable Catalog boundary;
-8. review Issue #145 before any 2026 Session creation;
-9. review the active issue/contract for the feature being changed; and
-10. use `Gregovate/MSB-Server-Management` for live runtime facts, browser-review procedure, and deployment runbooks.
+7. preserve the V0.3.10 name-oriented compact resource picker, stable in-place catalog editing, duplicate protection, and narrow authorization boundary;
+8. preserve the 2025 annual vs reusable Catalog boundary;
+9. review Issue #145 before any 2026 Session creation;
+10. review the active issue/contract for the feature being changed; and
+11. use `Gregovate/MSB-Server-Management` for live runtime facts, browser-review procedure, and deployment runbooks.
 
 ## Related Documentation
 
@@ -325,3 +372,4 @@ Before changing the application:
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md`
 - `Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md`
 - `Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md`
+- `Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md`
