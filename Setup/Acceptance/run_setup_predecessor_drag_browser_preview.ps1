@@ -145,9 +145,10 @@ $serverInjection = @'
 $serverInjection = $serverInjection.Replace("`r`n", "`n").Replace("`r", "`n")
 $text = Replace-Required -Source $text -Needle $serverInjectionNeedle -Replacement $serverInjection -Description 'disposable migration injection point'
 
-# Bound abandoned reviews and make dead SSH transports fail promptly instead of
-# silently leaving a detached source-only Flask listener behind indefinitely.
-$text = Replace-Required -Source $text -Needle "bash '`$remoteServer' '`$CandidateSha' '`$PreviewPort' '`$PreviewEmail' '`$ApprovedRef'" -Replacement "timeout --signal=TERM 28800s bash '`$remoteServer' '`$CandidateSha' '`$PreviewPort' '`$PreviewEmail' '`$ApprovedRef'" -Description 'remote source-only preview invocation'
+# Bound abandoned reviews without moving the interactive server script into a
+# background terminal process group. --foreground preserves sudo/read access to
+# the SSH PTY while still enforcing the eight-hour fail-safe.
+$text = Replace-Required -Source $text -Needle "bash '`$remoteServer' '`$CandidateSha' '`$PreviewPort' '`$PreviewEmail' '`$ApprovedRef'" -Replacement "timeout --foreground --signal=TERM 28800s bash '`$remoteServer' '`$CandidateSha' '`$PreviewPort' '`$PreviewEmail' '`$ApprovedRef'" -Description 'interactive remote source-only preview invocation'
 $text = Replace-Required -Source $text -Needle '& ssh -t -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand' -Replacement '& ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand' -Description 'source-only SSH tunnel invocation'
 
 $text = $text.Replace('SETUP SOURCE-ONLY BROWSER PREVIEW', 'SETUP SHIFT-DRAG PREDECESSOR V0.3.9 BROWSER PREVIEW')
