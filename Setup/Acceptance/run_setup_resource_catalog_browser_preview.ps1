@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 # Exact V0.3.10 final application/schema candidate for Issue #152. Later commits
 # may repair tests or harden acceptance tooling only; browser/deployment approval
 # remains pinned to this SHA.
-$AcceptedCandidateSha = 'd74202002e6845b291dc937697f4589d3f4be6c3'
+$AcceptedCandidateSha = 'c2a1820627f1a036d634241cc6aecd1a926a1479'
 $AcceptedBranch = 'agent/setup-152-resource-catalog'
 $BaseWrapper = Join-Path $PSScriptRoot 'run_setup_source_only_browser_preview.ps1'
 $CleanupScript = Join-Path $PSScriptRoot 'setup_session_browser_preview_cleanup_server.sh'
