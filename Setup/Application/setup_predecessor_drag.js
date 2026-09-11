@@ -8,6 +8,8 @@
   'use strict';
 
   const state = {
+    shiftArmed: false,
+    armedTaskId: null,
     dependencyMode: false,
     sourceTaskId: null,
     targetTaskId: null
@@ -26,8 +28,14 @@
     state.targetTaskId = null;
   }
 
+  function clearArmedState() {
+    state.shiftArmed = false;
+    state.armedTaskId = null;
+  }
+
   function finishDependencyDrag() {
     clearVisualState();
+    clearArmedState();
     state.dependencyMode = false;
     state.sourceTaskId = null;
   }
@@ -38,7 +46,7 @@
     const hint = document.createElement('div');
     hint.id = 'next-predecessor-drag-hint';
     hint.className = 'hint next-predecessor-drag-hint manager-only';
-    hint.innerHTML = '<strong>Fast prerequisite entry:</strong> Hold <kbd>Shift</kbd> before dragging the later/dependent task onto the task that must happen first. Normal drag still moves/reorders tasks.';
+    hint.innerHTML = '<strong>Fast prerequisite entry:</strong> Hold <kbd>Shift</kbd> before pressing the left mouse button, then drag the later/dependent task onto the task that must happen first. Normal drag still moves/reorders tasks.';
     list.insertAdjacentElement('beforebegin', hint);
   }
 
@@ -67,12 +75,40 @@
     }
   }
 
-  document.addEventListener('dragstart', (event) => {
+  document.addEventListener('pointerdown', (event) => {
+    if (state.dependencyMode) return;
+    if (event.button !== 0) {
+      clearArmedState();
+      return;
+    }
+
     const row = event.target instanceof Element ? event.target.closest('.next-task-row') : null;
-    if (!row || !event.shiftKey || !appState.access?.can_manage_setup) return;
+    if (!row || !event.shiftKey || !appState.access?.can_manage_setup) {
+      clearArmedState();
+      return;
+    }
 
     const taskId = Number(row.dataset.taskId || 0);
-    if (!taskId) return;
+    if (!taskId) {
+      clearArmedState();
+      return;
+    }
+
+    state.shiftArmed = true;
+    state.armedTaskId = taskId;
+  }, true);
+
+  document.addEventListener('pointerup', () => {
+    if (!state.dependencyMode) clearArmedState();
+  }, true);
+
+  document.addEventListener('dragstart', (event) => {
+    const row = event.target instanceof Element ? event.target.closest('.next-task-row') : null;
+    if (!row || !appState.access?.can_manage_setup) return;
+
+    const taskId = Number(row.dataset.taskId || 0);
+    const armedForThisTask = state.shiftArmed && Number(state.armedTaskId) === taskId;
+    if (!taskId || (!armedForThisTask && !event.shiftKey)) return;
 
     state.dependencyMode = true;
     state.sourceTaskId = taskId;
@@ -81,7 +117,11 @@
     row.dataset.dependencyRole = 'Dependent';
 
     if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'link';
+      // Use a permissive native drag effect. On Windows, Shift influences the
+      // browser's requested effect; restricting effectAllowed to "link" can
+      // prevent the drag from starting. The application still consumes the
+      // drop and performs only the dependency command below.
+      event.dataTransfer.effectAllowed = 'all';
       event.dataTransfer.setData('application/x-msb-setup-dependent-task', String(taskId));
       event.dataTransfer.setData('text/plain', String(taskId));
     }
@@ -116,7 +156,7 @@
     state.targetTaskId = targetTaskId;
     row.classList.add('dependency-drop-target');
     row.dataset.dependencyRole = 'Prerequisite target';
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'link';
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   }, true);
 
   document.addEventListener('drop', (event) => {
@@ -143,7 +183,10 @@
   }, true);
 
   document.addEventListener('dragend', (event) => {
-    if (!state.dependencyMode) return;
+    if (!state.dependencyMode) {
+      clearArmedState();
+      return;
+    }
     event.stopImmediatePropagation();
     finishDependencyDrag();
   }, true);
