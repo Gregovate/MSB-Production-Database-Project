@@ -8,15 +8,21 @@ def read(name: str) -> str:
     return (ROOT / name).read_text(encoding="utf-8")
 
 
-def test_dirty_guard_asset_is_already_part_of_protected_setup_surface():
+def guard_source() -> str:
+    return read("setup_catalog_dirty_guard.js")
+
+
+def test_dirty_guard_asset_is_loaded_last_and_protected():
     html = read("production.html")
     host = read("production_backend.py")
-    assert 'setup_review_usability.js?v=2026-09-07.2' in html
-    assert '"setup_review_usability.js"' in host
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-10.1")
+    effort_index = html.index("setup_catalog_effort.js?v=2026-09-09.3")
+    assert guard_index > effort_index
+    assert '"setup_catalog_dirty_guard.js"' in host
 
 
 def test_dirty_guard_tracks_only_main_reusable_and_annual_save_surfaces():
-    js = read("setup_review_usability.js")
+    js = guard_source()
     for field_id in (
         "edit-task-name",
         "edit-stage-id",
@@ -45,7 +51,7 @@ def test_dirty_guard_tracks_only_main_reusable_and_annual_save_surfaces():
 
 
 def test_mark_verified_saves_dirty_reusable_definition_before_annual_review():
-    js = read("setup_review_usability.js")
+    js = guard_source()
     assert "'mark-verified': 'VERIFIED'" in js
     assert "if (reusableDirty())" in js
     assert "persistReusableEdits({ announce: false, preserveAnnualDraft: true })" in js
@@ -56,14 +62,14 @@ def test_mark_verified_saves_dirty_reusable_definition_before_annual_review():
 
 
 def test_reusable_save_preserves_pending_annual_fields_across_task_reload():
-    js = read("setup_review_usability.js")
+    js = guard_source()
     assert "const preservedAnnual = preserveAnnualDraft ? annualDraft() : null;" in js
     assert "await reloadTasks(task.setup_task_id);" in js
     assert "restoreSnapshot(preservedAnnual);" in js
 
 
 def test_navigation_uses_explicit_save_discard_cancel_decision():
-    js = read("setup_review_usability.js")
+    js = guard_source()
     assert "Save and continue" in js
     assert "Discard and continue" in js
     assert "Stay on this task" in js
@@ -74,13 +80,13 @@ def test_navigation_uses_explicit_save_discard_cancel_decision():
 
 
 def test_prerequisite_reload_path_is_guarded_too():
-    js = read("setup_review_usability.js")
+    js = guard_source()
     assert "#next-dependency-add-button, .next-dependency-remove" in js
     assert "resolveDirtyBeforeNavigation('changing task prerequisites')" in js
 
 
 def test_existing_save_handlers_are_preempted_at_window_capture_boundary():
-    js = read("setup_review_usability.js")
+    js = guard_source()
     assert "window.addEventListener('click'" in js
     assert "window.addEventListener('change'" in js
     assert "event.stopImmediatePropagation();" in js
