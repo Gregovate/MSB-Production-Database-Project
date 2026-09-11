@@ -22,6 +22,8 @@ def test_production_html_uses_database_client_only() -> None:
         "setup_next_pass.css",
         "setup_predecessor_drag.js",
         "setup_predecessor_drag.css",
+        "setup_prerequisite_editor.js",
+        "setup_prerequisite_editor.css",
         "setup_stage_order.js",
         "setup_stage_order.css",
         "setup_acceptance_fixes.js",
@@ -48,6 +50,7 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
             "setup_resource_review.js",
             "setup_next_pass.js",
             "setup_predecessor_drag.js",
+            "setup_prerequisite_editor.js",
             "setup_stage_order.js",
             "setup_acceptance_fixes.js",
             "setup_session_year_guard.js",
@@ -66,6 +69,8 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     assert "api/setup/schedule" in texts[2]
     assert "api/setup/execution" in texts[2]
     assert "dependencies/${prerequisiteTaskId}" in texts[3]
+    assert "api/setup/dependencies/ordered" in texts[4]
+    assert "dependencies/order" in texts[4]
 
 
 def test_production_runtime_declares_gunicorn() -> None:
@@ -107,6 +112,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_next_pass.js",
         "/setup_predecessor_drag.css",
         "/setup_predecessor_drag.js",
+        "/setup_prerequisite_editor.css",
+        "/setup_prerequisite_editor.js",
         "/setup_stage_order.css",
         "/setup_stage_order.js",
         "/setup_acceptance_fixes.css",
@@ -134,6 +141,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_resource_repository.py",
         "/setup_next_api.py",
         "/setup_next_repository.py",
+        "/setup_prerequisite_order_api.py",
+        "/setup_prerequisite_order_repository.py",
         "/setup_operations_repository.py",
         "/requirements.txt",
     ):
@@ -143,6 +152,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert client.get("/api/setup/access").status_code == 401
     assert client.get("/api/setup/resources").status_code == 401
     assert client.get("/api/setup/organization").status_code == 401
+    assert client.get("/api/setup/dependencies/ordered").status_code == 401
 
 
 def test_production_entry_point_uses_distinct_flask_app() -> None:
@@ -167,6 +177,8 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/organization",
         "/api/setup/tasks/<int:setup_task_id>/scope",
         "/api/setup/tasks/<int:setup_task_id>/dependencies/<int:prerequisite_setup_task_id>",
+        "/api/setup/dependencies/ordered",
+        "/api/setup/tasks/<int:setup_task_id>/dependencies/order",
         "/api/setup/session-tasks/<int:setup_session_task_id>/planned-order",
         "/api/setup/planning/promote-baseline",
         "/api/setup/schedule",
