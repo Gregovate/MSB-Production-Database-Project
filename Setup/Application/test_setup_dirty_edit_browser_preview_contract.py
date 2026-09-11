@@ -3,7 +3,7 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 ACCEPTANCE = APP_DIR.parent / "Acceptance"
-CANDIDATE_SHA = "7480fdae852ca7de70a8cdb65f1f26c7c6aaa40b"
+CANDIDATE_SHA = "9d0c31421ce7cbd1b1cbcf733b06198ace418e9d"
 CANDIDATE_REF = "agent/setup-dirty-edit-followup-154"
 
 
