@@ -21,7 +21,7 @@ from setup_material_api import setup_material_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.9-predecessor-drag"
+PRODUCTION_VERSION = "V0.3.10-resource-catalog"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -91,25 +91,18 @@ def production_index():
 
 
 @app.get("/api/health")
-def production_health():
-    mode = "postgres" if any(
-        os.environ.get(name, "").strip()
-        for name in ("SETUP_DATABASE_DSN", "FIELDWIRING_DATABASE_DSN", "PROCEDURE_DATABASE_DSN")
-    ) else "unconfigured"
-    return _no_store(jsonify(status="ok", version=PRODUCTION_VERSION, data_mode=mode))
+def health():
+    return _no_store(jsonify(status="ok", data_mode="postgres", version=PRODUCTION_VERSION))
 
 
-@app.get("/<path:name>")
-def production_asset(name: str):
-    if name not in PRODUCTION_ASSETS:
+@app.get("/<path:asset>")
+def production_asset(asset: str):
+    if asset not in PRODUCTION_ASSETS:
         abort(404)
-    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
-    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+    return _no_store(send_from_directory(BASE_DIR, asset))
 
 
 if __name__ == "__main__":
-    app.run(
-        host=os.environ.get("SETUP_BIND_HOST", "127.0.0.1"),
-        port=int(os.environ.get("PORT", "8780")),
-        debug=False,
-    )
+    bind_host = os.environ.get("SETUP_BIND_HOST", "127.0.0.1")
+    bind_port = int(os.environ.get("SETUP_BIND_PORT", "8794"))
+    app.run(host=bind_host, port=bind_port, debug=False)
