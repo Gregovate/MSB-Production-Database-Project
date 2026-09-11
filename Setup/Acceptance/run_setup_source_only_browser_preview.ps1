@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $CandidateSha = '51c739bd85115c9f5d2853763e8e1450ac381407'
 $ExpectedBranch = 'agent/setup-session-production-foundation'
+$ApprovedRef = $ExpectedBranch
 
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
     throw 'PreviewPort must be between 1024 and 65535.'
@@ -195,6 +196,7 @@ echo "Disposable PostgreSQL final server ready: PASS"
 
     Write-Host '========== SETUP SOURCE-ONLY BROWSER PREVIEW =========='
     Write-Host "Candidate SHA: $CandidateSha"
+    Write-Host "Approved ref:  $ApprovedRef"
     Write-Host "Preview URL:   http://127.0.0.1:$PreviewPort/"
     Write-Host "Preview user:  $PreviewEmail"
     Write-Host
@@ -210,7 +212,7 @@ echo "Disposable PostgreSQL final server ready: PASS"
 
     $remoteServer = "/tmp/$remoteServerName"
     $remoteEntry = "/tmp/$remoteEntryName"
-    $remoteCommand = "chmod 700 '$remoteServer'; cd /tmp; cp '$remoteEntry' ./setup_session_browser_preview_entry.py; bash -n '$remoteServer'; rc=`$?; if [ `$rc -eq 0 ]; then bash '$remoteServer' '$CandidateSha' '$PreviewPort' '$PreviewEmail'; rc=`$?; fi; rm -f '$remoteServer' '$remoteEntry' ./setup_session_browser_preview_entry.py; exit `$rc"
+    $remoteCommand = "chmod 700 '$remoteServer'; cd /tmp; cp '$remoteEntry' ./setup_session_browser_preview_entry.py; bash -n '$remoteServer'; rc=`$?; if [ `$rc -eq 0 ]; then bash '$remoteServer' '$CandidateSha' '$PreviewPort' '$PreviewEmail' '$ApprovedRef'; rc=`$?; fi; rm -f '$remoteServer' '$remoteEntry' ./setup_session_browser_preview_entry.py; exit `$rc"
 
     Write-Host 'Keep this PowerShell window open during browser review.'
     Write-Host 'When the server reports SETUP SOURCE-ONLY BROWSER REVIEW READY, open the Preview URL.'

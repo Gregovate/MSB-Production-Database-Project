@@ -20,7 +20,7 @@ from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.5-stage-scene-material-review"
+PRODUCTION_VERSION = "V0.3.6-catalog-dirty-edit-safety"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -51,6 +51,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_training_review_refinement.css",
         "setup_training_review_refinement.js",
         "setup_catalog_effort.js",
+        "setup_catalog_dirty_guard.js",
     }
 )
 
