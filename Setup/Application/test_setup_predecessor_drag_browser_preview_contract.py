@@ -52,7 +52,7 @@ def test_predecessor_drag_preview_recovers_stale_source_preview_safely() -> None
         "source-only stale-cleanup injection point",
         "ServerAliveInterval=15",
         "ServerAliveCountMax=3",
-        "timeout --signal=TERM 28800s",
+        "timeout --foreground --signal=TERM 28800s",
         "trap cleanup EXIT HUP INT TERM",
     ):
         assert required in launcher
