@@ -69,7 +69,7 @@ def test_mark_verified_saves_reusable_definition_before_annual_review():
     assert "if (reusableDirty())" in js
     assert "persistReusableEdits({ announce: false, preserveAnnualDraft: true })" in js
     assert "if (!reusableSaved) return;" in js
-    assert "await persistAnnualReview(annualOverrides[buttonId]);" in js
+    assert "await persistAnnualReview(overrides[buttonId]);" in js
     assert "api/setup/tasks/${task.setup_task_id}" in js
     assert "api/setup/session-tasks/${task.setup_session_task_id}/review" in js
 
@@ -95,9 +95,9 @@ def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
 
 def test_navigation_uses_explicit_save_discard_cancel_decision():
     js = guard_source()
-    assert "SAVE to save and continue" in js
-    assert "DISCARD to discard and continue" in js
-    assert "STAY to remain on this task" in js
+    assert "Save and continue" in js
+    assert "Discard and continue" in js
+    assert "Stay on this task" in js
     assert "resolveDirtyBeforeNavigation('opening another task')" in js
     assert "resolveDirtyBeforeNavigation('returning to the Reusable Task Catalog')" in js
     assert "changing Setup seasons" in js
