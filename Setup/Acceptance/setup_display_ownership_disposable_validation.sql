@@ -57,6 +57,14 @@ BEGIN
         RAISE EXCEPTION 'fieldwiring_app cannot execute governed Display-owner command';
     END IF;
 
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.set_setup_task_display_material_requirement(text,bigint,boolean)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'fieldwiring_app cannot execute governed Display-material command';
+    END IF;
+
     IF NOT EXISTS (
         SELECT 1
         FROM pg_indexes
@@ -224,6 +232,29 @@ BEGIN
         HAVING count(*) <> 1
     ) THEN
         RAISE EXCEPTION 'A Stage 26 resolved Display does not have exactly one explicit owner after initialization';
+    END IF;
+
+    /* Browser finding: an owned task must not be allowed to clear its material flag. */
+    BEGIN
+        PERFORM *
+        FROM ref.set_setup_task_display_material_requirement(
+            v_manager_email,
+            v_frame_task_id,
+            false
+        );
+        RAISE EXCEPTION 'Expected owned-task material-disable protection did not fire';
+    EXCEPTION
+        WHEN check_violation THEN
+            NULL;
+    END;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ref.setup_task AS t
+        WHERE t.setup_task_id = v_frame_task_id
+          AND t.requires_display_material
+    ) THEN
+        RAISE EXCEPTION 'Owned task lost requires_display_material after rejected disable';
     END IF;
 
     SELECT min(src.display_id)
