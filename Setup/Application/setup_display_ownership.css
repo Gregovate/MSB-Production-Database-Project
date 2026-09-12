@@ -1,5 +1,63 @@
 /* Issue #141 — task-specific Display ownership board. */
 
+:root {
+  --setup-material-action-bg: #f6f2ff;
+  --setup-material-action-border: #9b83d4;
+  --setup-material-action-text: #321a78;
+  --setup-material-action-hover: #7657c7;
+  --setup-material-action-hover-text: #ffffff;
+  --setup-material-action-focus: rgba(118, 87, 199, .28);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --setup-material-action-bg: #251f35;
+    --setup-material-action-border: #8a73c5;
+    --setup-material-action-text: #ddd1ff;
+    --setup-material-action-hover: #7657c7;
+    --setup-material-action-hover-text: #ffffff;
+    --setup-material-action-focus: rgba(174, 149, 235, .32);
+  }
+}
+
+html[data-theme="dark"] {
+  --setup-material-action-bg: #251f35;
+  --setup-material-action-border: #8a73c5;
+  --setup-material-action-text: #ddd1ff;
+  --setup-material-action-hover: #7657c7;
+  --setup-material-action-hover-text: #ffffff;
+  --setup-material-action-focus: rgba(174, 149, 235, .32);
+}
+
+/* Material / Logistics actions share one lavender visual language so important
+   drill-down/ownership controls do not disappear among generic secondary buttons. */
+#setup-material-context-section #setup-material-details-open,
+#setup-material-context-section #setup-display-ownership-open,
+.setup-display-ownership-actions #setup-display-ownership-initialize {
+  background: var(--setup-material-action-bg);
+  border-color: var(--setup-material-action-border);
+  color: var(--setup-material-action-text);
+  font-weight: 700;
+}
+
+#setup-material-context-section #setup-material-details-open:hover,
+#setup-material-context-section #setup-display-ownership-open:hover,
+.setup-display-ownership-actions #setup-display-ownership-initialize:hover {
+  background: var(--setup-material-action-hover);
+  border-color: var(--setup-material-action-hover);
+  color: var(--setup-material-action-hover-text);
+}
+
+#setup-material-context-section #setup-material-details-open:focus-visible,
+#setup-material-context-section #setup-display-ownership-open:focus-visible,
+.setup-display-ownership-actions #setup-display-ownership-initialize:focus-visible {
+  background: var(--setup-material-action-hover);
+  border-color: var(--setup-material-action-hover);
+  color: var(--setup-material-action-hover-text);
+  outline: 3px solid var(--setup-material-action-focus);
+  outline-offset: 2px;
+}
+
 .setup-display-ownership-control {
   margin: 10px 0 4px;
   display: flex;
