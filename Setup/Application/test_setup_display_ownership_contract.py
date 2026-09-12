@@ -107,18 +107,22 @@ def test_display_write_api_stays_manager_only_and_uses_governed_command() -> Non
     assert "UPDATE ref.setup_task_display" not in assignment
 
 
-def test_manager_board_supports_initialization_drag_and_multi_select_reassignment() -> None:
+def test_manager_board_supports_first_use_initialization_drag_multi_select_and_flag_sync() -> None:
     js = read_app("setup_display_ownership.js")
     css = read_app("setup_display_ownership.css")
     html = read_app("production.html")
     backend = read_app("production_backend.py")
 
-    assert "Initialize all resolved Displays to this task" in js
+    assert "Assign all resolved Displays to this task" in js
+    assert "assignment automatically enables Display / Container Material" in js
+    assert "refreshMaterialFlags" in js
+    assert "loadSetupMaterialFlags({ rerender: false })" in js
+    assert "row.ownership_state === 'ASSIGNED' || row.ownership_state === 'IMPLICIT'" in js
     assert "dragstart" in js
     assert "dragover" in js
     assert "drop" in js
     assert "target_setup_task_id" in js
-    assert "Dragging a Display changes Setup task ownership only" in js
+    assert "LOR defines the current Display source set" in js
     assert "selectedDisplayIds" in js
     assert "event.ctrlKey || event.metaKey" in js
     assert "event.shiftKey" in js
