@@ -5,7 +5,10 @@
     requestToken: 0,
     taskId: null,
     context: null,
-    draggedDisplayId: null
+    draggedDisplayIds: [],
+    selectedDisplayIds: new Set(),
+    lastSelectedDisplayId: null,
+    sortMode: 'name'
   };
 
   function ownership(context = state.context) {
@@ -92,7 +95,103 @@
     return match?.task_name || `Task ${taskId}`;
   }
 
+  function normalizeDisplayIds(values) {
+    return [...new Set((values || []).map((value) => Number(value)).filter((value) => value > 0))];
+  }
+
+  function compareDisplayRows(left, right) {
+    if (state.sortMode === 'id') {
+      return Number(left.display_id || 0) - Number(right.display_id || 0);
+    }
+    if (state.sortMode === 'container') {
+      const leftContainer = left.container_id == null ? Number.MAX_SAFE_INTEGER : Number(left.container_id);
+      const rightContainer = right.container_id == null ? Number.MAX_SAFE_INTEGER : Number(right.container_id);
+      return leftContainer - rightContainer
+        || String(left.display_name || '').localeCompare(String(right.display_name || ''), undefined, { numeric: true, sensitivity: 'base' })
+        || Number(left.display_id || 0) - Number(right.display_id || 0);
+    }
+    return String(left.display_name || '').localeCompare(String(right.display_name || ''), undefined, { numeric: true, sensitivity: 'base' })
+      || Number(left.display_id || 0) - Number(right.display_id || 0);
+  }
+
+  function pruneSelection(assignments) {
+    const validIds = new Set((assignments || []).map((row) => Number(row.display_id)));
+    state.selectedDisplayIds.forEach((displayId) => {
+      if (!validIds.has(Number(displayId))) state.selectedDisplayIds.delete(Number(displayId));
+    });
+    if (state.lastSelectedDisplayId != null && !validIds.has(Number(state.lastSelectedDisplayId))) {
+      state.lastSelectedDisplayId = null;
+    }
+  }
+
+  function clearSelection() {
+    state.selectedDisplayIds.clear();
+    state.lastSelectedDisplayId = null;
+    updateSelectionUi();
+  }
+
+  function updateSelectionUi() {
+    const dialog = ensureDialog();
+    dialog.querySelectorAll('.setup-display-owner-card').forEach((card) => {
+      const displayId = Number(card.dataset.displayId || 0);
+      const selected = state.selectedDisplayIds.has(displayId);
+      card.classList.toggle('selected', selected);
+      card.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
+    const count = dialog.querySelector('#setup-display-ownership-selection-count');
+    if (count) {
+      const selectedCount = state.selectedDisplayIds.size;
+      count.textContent = selectedCount
+        ? `${selectedCount} Display${selectedCount === 1 ? '' : 's'} selected`
+        : 'No Displays selected';
+    }
+  }
+
+  function selectDisplayCard(card, event) {
+    if (!card || !appState.access?.can_manage_setup) return;
+    const displayId = Number(card.dataset.displayId || 0);
+    if (!displayId) return;
+    const toggle = Boolean(event.ctrlKey || event.metaKey);
+
+    if (event.shiftKey && state.lastSelectedDisplayId != null) {
+      const cardsHost = card.closest('.setup-display-owner-cards');
+      const cards = cardsHost
+        ? [...cardsHost.querySelectorAll('.setup-display-owner-card[draggable="true"]')]
+        : [];
+      const anchorIndex = cards.findIndex(
+        (candidate) => Number(candidate.dataset.displayId || 0) === Number(state.lastSelectedDisplayId)
+      );
+      const currentIndex = cards.indexOf(card);
+      if (anchorIndex >= 0 && currentIndex >= 0) {
+        if (!toggle) state.selectedDisplayIds.clear();
+        const start = Math.min(anchorIndex, currentIndex);
+        const end = Math.max(anchorIndex, currentIndex);
+        cards.slice(start, end + 1).forEach((candidate) => {
+          const candidateId = Number(candidate.dataset.displayId || 0);
+          if (candidateId) state.selectedDisplayIds.add(candidateId);
+        });
+      } else {
+        if (!toggle) state.selectedDisplayIds.clear();
+        state.selectedDisplayIds.add(displayId);
+      }
+    } else if (toggle) {
+      if (state.selectedDisplayIds.has(displayId)) {
+        state.selectedDisplayIds.delete(displayId);
+      } else {
+        state.selectedDisplayIds.add(displayId);
+      }
+    } else {
+      state.selectedDisplayIds.clear();
+      state.selectedDisplayIds.add(displayId);
+    }
+
+    state.lastSelectedDisplayId = displayId;
+    updateSelectionUi();
+  }
+
   function displayCard(row, canManage) {
+    const displayId = Number(row.display_id || 0);
+    const selected = state.selectedDisplayIds.has(displayId);
     const stateLabel = String(row.ownership_state || '').replaceAll('_', ' ');
     const ownerText = row.owner_setup_task_id
       ? `Owner: ${row.owner_task_name || `Task ${row.owner_setup_task_id}`}`
@@ -101,11 +200,14 @@
       ? 'No current Container'
       : `Container ${row.container_id}${row.container_description ? ` — ${row.container_description}` : ''}`;
     const reviewClass = row.ownership_state === 'ASSIGNED' ? '' : ' review';
+    const selectedClass = selected ? ' selected' : '';
     return `
-      <div class="setup-display-owner-card${reviewClass}"
+      <div class="setup-display-owner-card${reviewClass}${selectedClass}"
            data-display-id="${row.display_id}"
            data-owner-task-id="${row.owner_setup_task_id ?? ''}"
-           draggable="${canManage ? 'true' : 'false'}">
+           draggable="${canManage ? 'true' : 'false'}"
+           ${canManage ? 'tabindex="0" role="option"' : ''}
+           aria-selected="${selected ? 'true' : 'false'}">
         <strong>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.display_name || '')}</strong>
         <span>${escapeHtml(containerText)}</span>
         <span>${escapeHtml(ownerText)} · ${escapeHtml(stateLabel || 'ASSIGNED')}</span>
@@ -123,6 +225,7 @@
     if (!content) return;
 
     if (!data || !multiScope(context)) {
+      clearSelection();
       content.innerHTML = '<div class="empty-state">This scope does not require explicit multi-task Display ownership.</div>';
       return;
     }
@@ -130,6 +233,7 @@
     const canManage = Boolean(appState.access?.can_manage_setup);
     const assignments = Array.isArray(data.assignments) ? data.assignments : [];
     const eligibleTasks = Array.isArray(data.eligible_tasks) ? data.eligible_tasks : [];
+    pruneSelection(assignments);
     const assignedByTask = new Map(
       eligibleTasks.map((task) => [Number(task.setup_task_id), []])
     );
@@ -146,7 +250,7 @@
 
     const columns = eligibleTasks.map((task) => {
       const taskId = Number(task.setup_task_id);
-      const rows = assignedByTask.get(taskId) || [];
+      const rows = [...(assignedByTask.get(taskId) || [])].sort(compareDisplayRows);
       return `
         <section class="setup-display-owner-column" data-target-task-id="${taskId}">
           <div class="setup-display-owner-column-heading">
@@ -160,6 +264,7 @@
       `;
     }).join('');
 
+    reviewRows.sort(compareDisplayRows);
     const reviewColumn = reviewRows.length ? `
       <section class="setup-display-owner-column setup-display-owner-review-column">
         <div class="setup-display-owner-column-heading">
@@ -196,6 +301,22 @@
       </div>
     ` : '';
 
+    const toolbar = `
+      <div class="setup-display-ownership-toolbar">
+        <label>Sort Displays
+          <select id="setup-display-ownership-sort">
+            <option value="name"${state.sortMode === 'name' ? ' selected' : ''}>Name A–Z</option>
+            <option value="id"${state.sortMode === 'id' ? ' selected' : ''}>Display ID</option>
+            <option value="container"${state.sortMode === 'container' ? ' selected' : ''}>Container</option>
+          </select>
+        </label>
+        ${canManage ? `
+          <strong id="setup-display-ownership-selection-count">${state.selectedDisplayIds.size ? `${state.selectedDisplayIds.size} Display${state.selectedDisplayIds.size === 1 ? '' : 's'} selected` : 'No Displays selected'}</strong>
+          <span class="muted">Click selects one. Ctrl/Cmd-click toggles. Shift-click selects a range within a task column. Drag any selected Display to move the whole selection.</span>
+        ` : ''}
+      </div>
+    `;
+
     content.innerHTML = `
       <div class="setup-display-ownership-facts">
         <div><span>Resolved source Displays</span><strong>${data.resolved_display_count ?? 0}</strong></div>
@@ -206,6 +327,7 @@
       </div>
       ${warning}
       ${init}
+      ${toolbar}
       <div class="muted" style="margin-bottom:10px;">
         The LOR resolver defines this source set. Dragging a Display changes Setup task ownership only; it does not change LOR membership or the Display's current Container.
       </div>
@@ -217,6 +339,11 @@
     `;
 
     content.querySelector('#setup-display-ownership-initialize')?.addEventListener('click', initializeOwnership);
+    content.querySelector('#setup-display-ownership-sort')?.addEventListener('change', (event) => {
+      state.sortMode = String(event.target.value || 'name');
+      renderOwnershipBoard(state.context);
+    });
+    updateSelectionUi();
   }
 
   function updateMaterialCounts(context) {
@@ -302,6 +429,7 @@
         commandOptions('POST', { season_year: Number(appState.seasonYear) })
       );
       state.context = payload.context || {};
+      clearSelection();
       updateControl(state.context);
       updateMaterialCounts(state.context);
       renderOwnershipBoard(state.context);
@@ -314,55 +442,105 @@
     }
   }
 
-  async function moveDisplay(displayId, targetTaskId) {
+  async function moveDisplays(displayIds, targetTaskId) {
     const taskId = Number(appState.selectedTaskId || 0);
-    if (!taskId || !displayId || !targetTaskId || !appState.access?.can_manage_setup) return;
-    const data = ownership();
-    const row = (data?.assignments || []).find((item) => Number(item.display_id) === Number(displayId));
-    if (Number(row?.owner_setup_task_id || 0) === Number(targetTaskId)) return;
+    const ids = normalizeDisplayIds(displayIds);
+    if (!taskId || !ids.length || !targetTaskId || !appState.access?.can_manage_setup) return;
 
+    const data = ownership();
+    const assignments = Array.isArray(data?.assignments) ? data.assignments : [];
+    const movableIds = ids.filter((displayId) => {
+      const row = assignments.find((item) => Number(item.display_id) === Number(displayId));
+      return row && Number(row.owner_setup_task_id || 0) !== Number(targetTaskId);
+    });
+    if (!movableIds.length) return;
+
+    let movedCount = 0;
     try {
       setBusy(true);
-      const payload = await api(
-        `api/setup/tasks/${taskId}/display-ownership/${Number(displayId)}`,
-        commandOptions('PATCH', {
-          season_year: Number(appState.seasonYear),
-          target_setup_task_id: Number(targetTaskId)
-        })
-      );
-      state.context = payload.context || {};
+      let latestContext = state.context;
+      for (const displayId of movableIds) {
+        const payload = await api(
+          `api/setup/tasks/${taskId}/display-ownership/${Number(displayId)}`,
+          commandOptions('PATCH', {
+            season_year: Number(appState.seasonYear),
+            target_setup_task_id: Number(targetTaskId)
+          })
+        );
+        latestContext = payload.context || latestContext;
+        movedCount += 1;
+      }
+      state.context = latestContext;
+      clearSelection();
       updateControl(state.context);
       updateMaterialCounts(state.context);
       renderOwnershipBoard(state.context);
-      setAlert(`Display ${displayId} moved to ${taskName(targetTaskId, ownership())}.`, 'ok');
+      setAlert(
+        `${movedCount} Display${movedCount === 1 ? '' : 's'} moved to ${taskName(targetTaskId, ownership())}.`,
+        'ok'
+      );
     } catch (error) {
-      setAlert(error.message || error, 'error');
-      window.alert(error.message || error);
+      clearSelection();
+      await loadOwnership(taskId);
+      const prefix = movedCount
+        ? `${movedCount} of ${movableIds.length} Displays moved before the operation stopped. `
+        : '';
+      setAlert(`${prefix}${error.message || error}`, 'error');
+      window.alert(`${prefix}${error.message || error}`);
     } finally {
       setBusy(false);
     }
   }
 
+  function moveDisplay(displayId, targetTaskId) {
+    return moveDisplays([displayId], targetTaskId);
+  }
+
+  document.addEventListener('click', (event) => {
+    const card = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-card[draggable="true"]');
+    if (!card || !appState.access?.can_manage_setup) return;
+    selectDisplayCard(card, event);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== ' ' && event.key !== 'Enter') return;
+    const card = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-card[draggable="true"]');
+    if (!card || !appState.access?.can_manage_setup) return;
+    event.preventDefault();
+    selectDisplayCard(card, event);
+  });
+
   document.addEventListener('dragstart', (event) => {
     const card = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-card[draggable="true"]');
     if (!card || !appState.access?.can_manage_setup) return;
-    state.draggedDisplayId = Number(card.dataset.displayId || 0);
-    card.classList.add('dragging');
+    const displayId = Number(card.dataset.displayId || 0);
+    if (!state.selectedDisplayIds.has(displayId)) {
+      state.selectedDisplayIds.clear();
+      state.selectedDisplayIds.add(displayId);
+      state.lastSelectedDisplayId = displayId;
+      updateSelectionUi();
+    }
+    state.draggedDisplayIds = normalizeDisplayIds([...state.selectedDisplayIds]);
+    document.querySelectorAll('#setup-display-ownership-dialog .setup-display-owner-card.selected').forEach((node) => {
+      node.classList.add('dragging');
+    });
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', String(state.draggedDisplayId));
+      event.dataTransfer.setData('text/plain', state.draggedDisplayIds.join(','));
     }
   });
 
-  document.addEventListener('dragend', (event) => {
-    event.target.closest('.setup-display-owner-card')?.classList.remove('dragging');
+  document.addEventListener('dragend', () => {
+    document.querySelectorAll('#setup-display-ownership-dialog .setup-display-owner-card.dragging').forEach((node) => {
+      node.classList.remove('dragging');
+    });
     document.querySelectorAll('.setup-display-owner-column.drop-target').forEach((node) => node.classList.remove('drop-target'));
-    state.draggedDisplayId = null;
+    state.draggedDisplayIds = [];
   });
 
   document.addEventListener('dragover', (event) => {
     const column = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-column[data-target-task-id]');
-    if (!column || !appState.access?.can_manage_setup || !state.draggedDisplayId) return;
+    if (!column || !appState.access?.can_manage_setup || !state.draggedDisplayIds.length) return;
     event.preventDefault();
     column.classList.add('drop-target');
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
@@ -379,10 +557,15 @@
     if (!column || !appState.access?.can_manage_setup) return;
     event.preventDefault();
     column.classList.remove('drop-target');
-    const displayId = Number(state.draggedDisplayId || event.dataTransfer?.getData('text/plain') || 0);
+    const transferIds = String(event.dataTransfer?.getData('text/plain') || '')
+      .split(',')
+      .map((value) => Number(value));
+    const displayIds = state.draggedDisplayIds.length
+      ? [...state.draggedDisplayIds]
+      : normalizeDisplayIds(transferIds);
     const targetTaskId = Number(column.dataset.targetTaskId || 0);
-    state.draggedDisplayId = null;
-    moveDisplay(displayId, targetTaskId);
+    state.draggedDisplayIds = [];
+    moveDisplays(displayIds, targetTaskId);
   });
 
   if (typeof selectTask === 'function') {
@@ -391,6 +574,9 @@
       const result = priorSelectTask(taskId);
       state.context = null;
       state.taskId = Number(taskId || 0);
+      state.draggedDisplayIds = [];
+      state.selectedDisplayIds.clear();
+      state.lastSelectedDisplayId = null;
       requestAnimationFrame(() => loadOwnership(taskId));
       return result;
     };
