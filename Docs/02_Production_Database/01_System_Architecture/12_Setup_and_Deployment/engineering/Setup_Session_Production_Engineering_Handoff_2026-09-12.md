@@ -114,15 +114,16 @@ Also preserve:
 
 ## Remaining Pre-September-30 Launch Path
 
-Issue #169 is no longer a blocker. Remaining sequence:
+Issue #169 is no longer a blocker. The controlling sequence is:
 
 ```text
-#145  reusable Catalog cleanup / correct schedulable work packages
-  -> #141 task-specific Display ownership/material subdivision
+#141  task-specific Display ownership/material subdivision
   -> #167 Extra Materials / KIT / material-source foundation
-  -> disposable 2026 creation/scheduling proof
+  -> #145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
   -> #122 real 2026 Setup Session + scheduling / Pick List launch gate
 ```
+
+#145 is not unfinished Catalog-management software and does not block #141 or #167. Those workstreams may legitimately refine reusable tasks while 2025 remains the sandbox; #145 is the final content/seed acceptance gate immediately before the real 2026 Session is created.
 
 Do not create the real 2026 Setup Session merely to exercise future workflow before these gates are satisfied.
 
@@ -170,7 +171,7 @@ Migration 027 remains accepted database state beneath V0.3.11. Its separate vali
 
 ## Engineering Resume
 
-Next Setup work should begin with Issue #145 unless another explicit Production defect takes priority.
+Next Setup work should begin with Issue #141 unless another explicit Production defect takes priority.
 
 Before changing Setup:
 
@@ -180,7 +181,7 @@ Before changing Setup:
 4. read the Setup Task Supporting Information Contract;
 5. preserve V0.3.7 through V0.3.11 accepted behavior;
 6. use 2025 as the proving ground until remaining launch gates pass;
-7. follow the remaining sequence `#145 -> #141 -> #167 -> #122`;
+7. follow the remaining sequence `#141 -> #167 -> #145 final acceptance/disposable 2026 seed proof -> #122`;
 8. use Server Management for runtime/browser-review/deployment authority; and
 9. promote accepted discoveries and Production evidence into controlled documentation before closeout.
 
