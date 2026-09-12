@@ -51,7 +51,7 @@
     dialog.innerHTML = `
       <div class="setup-display-ownership-heading">
         <div>
-          <div class="eyebrow">Issue #141 · reusable task material subdivision</div>
+          <div class="eyebrow">Issue #141 · reusable task material assignment</div>
           <h3 id="setup-display-ownership-title">Display Ownership</h3>
         </div>
         <button id="setup-display-ownership-close" type="button" class="secondary">Close</button>
@@ -68,8 +68,12 @@
 
   function ownershipStatusText(data) {
     if (!data) return '';
+    if (data.mode === 'UNINITIALIZED_MULTI') {
+      return data.coverage_status === 'COMPLETE'
+        ? 'Implicit coverage · ready to subdivide'
+        : 'Assignments not started';
+    }
     if (data.coverage_status === 'COMPLETE') return 'Coverage complete';
-    if (data.mode === 'UNINITIALIZED_MULTI') return 'Ownership not initialized';
     return 'Coverage review required';
   }
 
@@ -199,7 +203,8 @@
     const containerText = row.container_id == null
       ? 'No current Container'
       : `Container ${row.container_id}${row.container_description ? ` — ${row.container_description}` : ''}`;
-    const reviewClass = row.ownership_state === 'ASSIGNED' ? '' : ' review';
+    const effective = row.ownership_state === 'ASSIGNED' || row.ownership_state === 'IMPLICIT';
+    const reviewClass = effective ? '' : ' review';
     const selectedClass = selected ? ' selected' : '';
     return `
       <div class="setup-display-owner-card${reviewClass}${selectedClass}"
@@ -241,7 +246,8 @@
 
     assignments.forEach((row) => {
       const ownerId = Number(row.owner_setup_task_id || 0);
-      if (row.ownership_state === 'ASSIGNED' && assignedByTask.has(ownerId)) {
+      const effective = row.ownership_state === 'ASSIGNED' || row.ownership_state === 'IMPLICIT';
+      if (effective && assignedByTask.has(ownerId)) {
         assignedByTask.get(ownerId).push(row);
       } else {
         reviewRows.push(row);
@@ -251,11 +257,14 @@
     const columns = eligibleTasks.map((task) => {
       const taskId = Number(task.setup_task_id);
       const rows = [...(assignedByTask.get(taskId) || [])].sort(compareDisplayRows);
+      const materialStatus = task.requires_display_material
+        ? ' · material active'
+        : ' · assignment will enable material';
       return `
         <section class="setup-display-owner-column" data-target-task-id="${taskId}">
           <div class="setup-display-owner-column-heading">
             <strong>${escapeHtml(task.task_name || `Task ${taskId}`)}</strong>
-            <span>Reusable task ${taskId} · ${rows.length} Display${rows.length === 1 ? '' : 's'}</span>
+            <span>Reusable task ${taskId}${escapeHtml(materialStatus)} · ${rows.length} Display${rows.length === 1 ? '' : 's'}</span>
           </div>
           <div class="setup-display-owner-cards">
             ${rows.length ? rows.map((row) => displayCard(row, canManage)).join('') : '<div class="setup-display-owner-empty">No Displays currently owned by this task.</div>'}
@@ -279,8 +288,8 @@
 
     const init = data.can_initialize && canManage ? `
       <div class="setup-display-ownership-actions">
-        <button id="setup-display-ownership-initialize" type="button">Initialize all resolved Displays to this task</button>
-        <span class="muted">Use the current/default material-bearing task as the starting owner, then move Displays to the other real work packages.</span>
+        <button id="setup-display-ownership-initialize" type="button">Assign all resolved Displays to this task</button>
+        <span class="muted">Use the selected task as the starting owner in one step. Assignment automatically enables Display / Container Material for that task; then move Displays to the other real work packages as needed.</span>
       </div>
     ` : '';
 
@@ -329,7 +338,7 @@
       ${init}
       ${toolbar}
       <div class="muted" style="margin-bottom:10px;">
-        The LOR resolver defines this source set. Dragging a Display changes Setup task ownership only; it does not change LOR membership or the Display's current Container.
+        LOR defines the current Display source set. Setup assignment changes only which reusable task owns each Display. It never changes LOR membership or the Display's current Container.
       </div>
       <div class="setup-display-ownership-board">
         ${columns}
@@ -361,7 +370,7 @@
       summary.innerHTML = `
         <div><span>Displays resolved</span><strong>${displays.length}</strong></div>
         <div><span>Containers resolved</span><strong>${containers.size}</strong></div>
-        <div><span>Support / KIT Containers</span><strong>${support.length}</strong></div>
+        <div><span>Explicit Support / Kit Containers</span><strong>${support.length}</strong></div>
         <div><span>Displays without Container</span><strong>${displays.filter((row) => row.container_id == null).length}</strong></div>
       `;
     }
@@ -375,6 +384,12 @@
         ? 'ownership complete'
         : 'ownership review required';
       resolutionTarget.innerHTML = `<strong>Resolved automatically from LOR</strong><br>${ownedCount} task-owned Display${ownedCount === 1 ? '' : 's'} · ${sourceCount} source Display${sourceCount === 1 ? '' : 's'} · ${escapeHtml(ownerState)}`;
+    }
+  }
+
+  async function refreshMaterialFlags() {
+    if (typeof loadSetupMaterialFlags === 'function') {
+      await loadSetupMaterialFlags({ rerender: false });
     }
   }
 
@@ -420,7 +435,7 @@
   async function initializeOwnership() {
     const taskId = Number(appState.selectedTaskId || 0);
     if (!taskId || !appState.access?.can_manage_setup) return;
-    if (!window.confirm('Initialize every currently resolved Display in this scope to the selected reusable task, then use the ownership board to move Displays to the other work packages?')) return;
+    if (!window.confirm('Assign every currently resolved Display in this scope to the selected reusable task as the starting owner? You can then move Displays to the other work packages.')) return;
 
     try {
       setBusy(true);
@@ -429,11 +444,12 @@
         commandOptions('POST', { season_year: Number(appState.seasonYear) })
       );
       state.context = payload.context || {};
+      await refreshMaterialFlags();
       clearSelection();
       updateControl(state.context);
       updateMaterialCounts(state.context);
       renderOwnershipBoard(state.context);
-      setAlert('Display ownership initialized. Move Displays to the reusable task that actually owns each work package.', 'ok');
+      setAlert('Display ownership initialized. The target task was made material-bearing automatically. Move Displays to the reusable task that actually owns each work package.', 'ok');
     } catch (error) {
       setAlert(error.message || error, 'error');
       window.alert(error.message || error);
@@ -471,12 +487,13 @@
         movedCount += 1;
       }
       state.context = latestContext;
+      await refreshMaterialFlags();
       clearSelection();
       updateControl(state.context);
       updateMaterialCounts(state.context);
       renderOwnershipBoard(state.context);
       setAlert(
-        `${movedCount} Display${movedCount === 1 ? '' : 's'} moved to ${taskName(targetTaskId, ownership())}.`,
+        `${movedCount} Display${movedCount === 1 ? '' : 's'} moved to ${taskName(targetTaskId, ownership())}. Display / Container Material was enabled automatically if needed.`,
         'ok'
       );
     } catch (error) {
