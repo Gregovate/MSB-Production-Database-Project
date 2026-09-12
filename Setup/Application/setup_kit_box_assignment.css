@@ -1,0 +1,81 @@
+.setup-kit-box-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.setup-kit-box-status {
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.setup-kit-box-dialog {
+  width: min(860px, 92vw);
+  max-height: 86vh;
+  border: 1px solid var(--border-color, #c9c9c9);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.setup-kit-box-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.setup-kit-box-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 8px;
+}
+
+.setup-kit-box-heading h3 {
+  margin: 2px 0 0;
+}
+
+.setup-kit-box-rule {
+  margin-bottom: 14px;
+}
+
+.setup-kit-box-content {
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+  max-height: 65vh;
+}
+
+.setup-kit-box-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--border-color, #d4d4d4);
+  border-radius: 9px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.setup-kit-box-row.assigned {
+  border-width: 2px;
+}
+
+.setup-kit-box-row input {
+  margin-top: 3px;
+}
+
+.setup-kit-box-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.setup-kit-box-shared {
+  margin-top: 3px;
+  font-size: .9rem;
+}
+
+html[data-theme='dark'] .setup-kit-box-dialog,
+html[data-theme='dark'] .setup-kit-box-row {
+  background: var(--panel-bg, #1f1f1f);
+  color: var(--text-color, #f2f2f2);
+}
