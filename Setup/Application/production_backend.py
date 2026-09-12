@@ -18,10 +18,12 @@ from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
+from setup_display_ownership_api import setup_display_ownership_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
+from setup_display_ownership import install_setup_display_ownership
 
-PRODUCTION_VERSION = "V0.3.11-active-task-context"
+PRODUCTION_VERSION = "V0.3.12-display-ownership"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -63,13 +65,16 @@ PRODUCTION_ASSETS = frozenset(
         "setup_task_detail_compact.js",
         "setup_active_task_context.css",
         "setup_active_task_context.js",
+        "setup_display_ownership.css",
+        "setup_display_ownership.js",
     }
 )
 
-# Focused Setup extension: normalize programming-only LOR groups back to their
-# Stage work scope and replace field-context material lookup with the automatic
-# Stage/real-Scene resolver. No LOR or filesystem mutation occurs here.
+# Accepted Setup material source resolution remains authoritative. #141 installs
+# only the task-ownership layer after that resolver so LOR Stage/Scene membership
+# and ref.display.container_id remain unchanged.
 install_setup_material_resolution()
+install_setup_display_ownership()
 
 app = Flask(__name__)
 app.register_blueprint(setup_api)
@@ -78,6 +83,7 @@ app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
 app.register_blueprint(setup_material_api)
+app.register_blueprint(setup_display_ownership_api)
 app.register_blueprint(setup_prerequisite_order_api)
 
 
