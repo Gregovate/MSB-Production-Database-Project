@@ -5,9 +5,9 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — V0.3.10 accepted in Production; broader Setup work remains active |
+| Status | CURRENT HANDOFF — V0.3.10 accepted in Production; 2026 launch preparation active |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-11 |
+| Last Reviewed | 2026-09-12 |
 
 This is the engineering starting point for Setup Session architecture, database behavior, application contracts, Production state, reconstruction rules, planning behavior, Pick List direction, and resume information.
 
@@ -33,50 +33,73 @@ Current Setup health:
 V0.3.10-resource-catalog
 ```
 
-Implementation lineage:
-
-```text
-Issue #152
-PR #168
-main merge commit = cc4b5767605373504fd993698ce735514bec0d37
-```
-
 Current annual context:
 
 ```text
-2025 Setup Session  = HISTORICAL_VERIFICATION
+2025 Setup Session  = HISTORICAL_VERIFICATION / SANDBOX
 2026 Setup Sessions = 0
 ```
 
-The current PostgreSQL reusable Catalog is the working task baseline. Do not use older fixed task counts as current authority; live Catalog cleanup and task development continue.
+The 2025 season is intentionally being used as the proving ground while reusable tasks, task material ownership, Extra Materials/KITs, and field execution behavior are corrected. Preserve historical 2025 evidence. Do not create the real 2026 Setup Session before the launch gates below pass.
 
-V0.3.10 Production acceptance on 2026-09-11 proved:
+V0.3.10 Resource Catalog is accepted in Production. Preserve its behavior.
 
-```text
-migration 027                               = PASS
-stable Production fingerprint               = 7c21041caecac6eb77660238ba3c8cf9
-resource rows at deployment                 = 12
-task-resource relationships at deployment  = 32
-normalized duplicate resource groups        = 0
-corrected test-only derivative              = 209 passed
-live focused regression                     = 29 passed / 1 known stale assertion deselected
-protected negative path                     = HTTP 401 PASS
-protected health                            = V0.3.10-resource-catalog
-protected Production browser acceptance     = PASS
-legitimate catalog correction               = PASS
-existing task-resource relationship intact  = PASS
-```
+## 2026 Launch Sequence
 
-Migration 027 added governed reusable resource-catalog management without granting broad resource/task-resource DML to `fieldwiring_app`.
+The launch target is **real 2026 Setup Session creation and scheduling by September 30, 2026 under Issue #122**.
 
-Validated rollback archive:
+The accepted pre-launch dependency order is:
 
 ```text
-/home/msbadmin/backups/setup-152/msb-pre-setup-152-20260911T170411.dump
-SHA256 = b60857bf12eae68922cc309b795e920b3b2aaccd5a928b775527057450a7aa15
+#169  Persistent active-task identity while editing
+   -> selected reusable task name remains visible while long detail scrolls
+   -> error-prevention control during Catalog cleanup
+
+#145  Reusable Catalog cleanup / correct schedulable work packages
+   -> remove reconstruction mistakes and bad task boundaries
+   -> hard gate before real 2026 Session creation
+
+#141  Task-specific Display ownership/material subdivision
+   -> preserve the accepted Stage/Scene resolver
+   -> each resolved Display has exactly one effective Setup-task owner
+   -> Manager can move/drag Displays between real schedulable tasks
+   -> Containers remain non-exclusive and may support several tasks
+
+#167  Extra Materials / KITs / material sources
+   -> normalized Extra Material catalog and task requirements
+   -> existing ref.container KIT/support relationships
+   -> expected sources/contents without requiring full 2027 KIT inventory
+
+#122  SEPTEMBER 30 SCHEDULING LAUNCH GATE
+   -> disposable proof first
+   -> then create real 2026 Setup Session
+   -> schedule 2026 work
+   -> explain what Displays, Containers/KITs, Extra Materials, and constrained Resources need to be brought to the park and when
 ```
 
-See the current [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) and [V0.3.10 Resource Catalog Production Acceptance](../../../../../Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md).
+Before physical Setup work begins, the field-execution gate also requires the necessary portions of:
+
+```text
+#132       Production Crew governed work/progress/completion reporting
+#113/#88   Scan + Location/movement execution needed by Setup
+#171       GIS/layout + targeted underground-locate workflow
+#175       offline/print Setup field packet + Work Order correction fallback
+```
+
+These are not all necessarily blockers to creating/scheduling the 2026 Session on September 30, but required field behavior must be accepted before crews depend on the system in the park.
+
+### Preservation rule
+
+Current accepted Production behavior wins over stale issue prose or earlier design discussion. Preserve:
+
+- V0.3.7 dirty-edit/client-build protections;
+- V0.3.8 compact task-detail behavior;
+- V0.3.9 prerequisite behavior;
+- V0.3.10 Resource Catalog behavior;
+- the working Stage/Scene Display resolver;
+- 2025 historical/sandbox boundaries;
+- current Display/Container authority; and
+- no real 2026 Session until the accepted gates pass.
 
 ## Current Accepted Task-Detail Presentation
 
@@ -88,9 +111,11 @@ Reusable Task Definition            Annual Historical Actual
 Material / Logistics                Captains / Knowledge Owners
 ```
 
-The reusable definition itself uses a compact two-column desktop grid. Material / Logistics retains all four essential counts and the existing full detail dialog. Prerequisites and Equipment / Resources remain below the rail block.
+The reusable definition uses a compact two-column desktop grid. Material / Logistics retains the accepted counts and detail dialog. Prerequisites and Equipment / Resources remain below the rail block.
 
-Cross-application palette/dark-mode consistency remains separate work in Issue #159. Keeping the active task name visible while scrolling long task detail is tracked separately in Issue #169.
+Issue #169 is now launch-preparation work rather than cosmetic polish: while Managers are reviewing/creating reusable tasks, the active task name must remain visible so long-page scrolling cannot cause accidental edits to the wrong task.
+
+Cross-application palette/dark-mode consistency remains separate work in Issue #159.
 
 ## Current Accepted Prerequisite Model
 
@@ -112,15 +137,15 @@ Shift held before left-button-down on dependent A
     -> neither task moves
 ```
 
-Ordinary drag without Shift preserves normal reusable-task reorder and Stage/real-Scene movement. Task detail has one canonical prerequisite list with **Up**, **Down**, and **Remove**, plus manual **Add prerequisite**. Up/Down is presentation order only.
-
-Circular-dependency protection remains database-authoritative. Structured outside/site readiness remains separate from hard task prerequisites.
+Ordinary drag without Shift preserves normal reusable-task reorder and Stage/real-Scene movement. Task detail has one canonical prerequisite list with Up, Down, Remove, and Add prerequisite. Circular-dependency protection remains database-authoritative.
 
 See [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md).
 
 ## Current Accepted Resource Catalog Model
 
-The normal task-resource workflow is intentionally compact and name-oriented:
+V0.3.10 provides the governed reusable Resource Catalog and must remain intact.
+
+The normal task-resource workflow is:
 
 ```text
 search existing resource
@@ -129,20 +154,9 @@ search existing resource
     -> add or update task relationship
 ```
 
-The normal picker sorts primarily by meaningful `resource_name`, then type/ID. This is the accepted refinement from the original #152 wording. `display_order` remains a governed optional catalog field but is not required for ordinary picker usability.
+The Resource Catalog owns reusable tools/equipment/vehicles/trailers such as the Locator, sledgehammers, post pounders, post pullers, ladders, Boom Lifts, SkyTrak, Tool Cat, trailers, trucks/vehicles, and similar reusable resources.
 
-**Manage Resource Catalog** is the reusable catalog-maintenance surface. It supports:
-
-- search across active and inactive entries;
-- in-place rename/correction while preserving `setup_resource_id`;
-- type, catalog notes, active state, and optional display-order editing;
-- default Name sort plus alternate review sorts;
-- normalized exact duplicate blocking; and
-- likely-match suggestions before new-resource creation.
-
-Task-specific quantity, Required-vs-Preferred, and task notes remain separate from catalog identity/type/notes/order.
-
-Inactive resources remain discoverable for review. New inactive assignments are blocked, while existing inactive relationships remain visible/removable.
+Do not duplicate an existing Resource as an Extra Material merely because it is mentioned in a procedure or physically stored in a KIT. A KIT may record an expected Resource such as a scaffold wrench while the Resource identity remains in the Resource Catalog.
 
 ## Current Accepted Material Model
 
@@ -154,13 +168,13 @@ Stage-level / General
 real Scene
 ```
 
-Material applicability is a separate reusable-task fact:
+Material applicability remains a separate reusable-task fact:
 
 ```text
 [ ] Uses Display / Container Material
 ```
 
-Accepted behavior:
+Accepted resolver behavior remains:
 
 ```text
 material disabled
@@ -178,11 +192,32 @@ resolved Displays
     -> deduplicated Containers
 ```
 
-The accepted resolver provides Stage/Scene material context, not task-specific staged release timing. Issue #141 remains responsible for task-specific material subdivision/Pick List timing.
+**Do not redesign or replace this resolver.**
 
-Issue #167 separately owns Extra Materials, KIT assignments, and material-source tracking. Do not collapse those facts into LOR Display membership or assume every Extra Material lives in a KIT.
+Issue #141 owns the assignment layer after resolution for complex multi-step scopes: each resolved Display must have exactly one effective Setup-task owner, while Containers remain non-exclusive and may support several tasks.
+
+Issue #167 owns Extra Materials, KIT assignments, expected contents, and material-source relationships. Do not collapse those facts into LOR Display membership.
+
+The current detailed operating model is preserved in [Setup Task Supporting Information Contract — 2026-09-11](Setup_Task_Supporting_Information_Contract_2026-09-11.md). Future work must start there rather than reconstructing the decisions from chat or issue comments.
 
 See [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md).
+
+## Current Procedure-Reconciliation Evidence
+
+The September 12 procedure workbook currently represents:
+
+```text
+36 legacy Setup PDFs
+95 machine-normalized material candidates
+507 raw material evidence rows
+19 reconciliation issues after crew review
+3 remaining stage gaps: 12, 21, 25
+crew extraction complete for all 36 procedures
+```
+
+The `95` material candidates are not accepted catalog identities. Free-text extraction has produced duplicate/spelling/unit/specification fragmentation and has mixed Resources with Extra Materials. The raw evidence remains provenance; normalization/review produces reusable truth.
+
+Task-split and duration review are not complete across all procedures. Do not convert `PENDING` evidence into accepted task definitions.
 
 ## Current Planning / Execution Direction
 
@@ -203,26 +238,77 @@ preferred order / hard predecessors
     -> perform / record / replan
 ```
 
-**Plan / Schedule** and **Perform Work** support Stage-oriented presentation, but Plan / Schedule has not yet had the same cleanup/review pass as the reusable Catalog.
+Every reusable/annual task creates human completion/reporting burden. The reusable Catalog should therefore track meaningful operational control points, not every instruction step.
 
-There is currently no accepted Production Pick List generator/tablet workflow.
+There is currently no accepted Production Pick List generator/tablet workflow. That is part of the #122 September 30 launch gate after #145/#141/#167 establish trustworthy demand.
 
-## Current Editable Procedure Source Rule
+## Extra Materials / KIT / Source Direction
 
-Authorized Manager editable-source resolution remains:
+Issue #167 owns **what** non-LOR material is required and **where** it is expected to come from.
+
+The Production catalog must normalize free-text procedure evidence rather than accept every extracted phrase as a material identity. Current accepted direction includes:
+
+- 21-inch and 22-inch standard panel spacers are one normal spacer class;
+- custom/fitted spacers remain distinct and may be expected in the applicable KIT;
+- Ball Bungee spelling/name variants normalize to one family unless evidence proves real variants;
+- D-Rings use verified 1/4-inch and 5/16-inch size families;
+- Y-Post is a T-Post naming error;
+- extension cords require gauge (AWG) plus length where known; color is not reliable identity;
+- carabiners have two operational sizes and need verified specification;
+- 3-way taps are one common type unless real variant evidence appears;
+- unidentified `hardware` remains unresolved evidence until identified;
+- zip ties are consumables; length and minimum quantity matter;
+- marking paint is consumable, inverted/wand-compatible, with operational color meaning: red underground high voltage, blue underground network, white Display locations/layout datum points.
+
+The model must distinguish:
 
 ```text
-Procedures\Setup\SourceDocs first
--> Procedures\Setup\Archive only if no editable SourceDocs .gdoc exists
+WHAT IS REQUIRED
+vs.
+WHERE IT IS EXPECTED TO COME FROM
+vs.
+WHAT IS PHYSICALLY PRESENT NOW
 ```
 
-During migration of legacy Google Docs, the archived document remains historical evidence. Use Google Docs **File -> Make a copy** to create the current editable copy in `SourceDocs`; do not copy the Windows `.gdoc` shortcut file.
+KITs remain existing `ref.container` identities. Reuse/harden `ref.setup_task_container_support` for reusable task -> KIT/support relationships unless Production evidence proves it insufficient.
 
-The approved field PDF remains directly in `Procedures\Setup`.
+A KIT may support several tasks and several scopes. Presence of the Container is more important than declaring one task to be its exclusive consumer.
+
+Full heterogeneous item-by-item KIT inventory remains a 2027 goal. 2026 must support useful expected contents/sources without requiring that inventory to be complete.
+
+## Staged Release — #141 Boundary
+
+Issue #141 owns **when** Display/material demand becomes actionable for multi-step work.
+
+The Pick List must not interpret Stage membership as `pick everything now`.
+
+Desired flow:
+
+```text
+scheduled / selected work
+    -> Display owner task + Extra Material requirements + KIT/support requirements
+    -> release/pick timing
+    -> current source / Container state
+    -> logistics action
+```
+
+Magic Igloo remains the representative case: temperature-sensitive skins may deliberately remain warm until the frame is ready.
+
+## GIS / Locate Readiness Gap
+
+Issue #171 owns the 2026 integration of existing park GIS/GPS reference data for layout and targeted underground locate decisions.
+
+The accepted rule is not `locate every Stage`:
+
+> Locate/clear underground infrastructure only where planned ground penetration has a plausible chance of intersecting buried network/power infrastructure or where risk remains unresolved.
+
+`No locate required` is a derived/reviewed readiness fact, not another annual task somebody must complete.
+
+Site Infrastructure / GIS owns spatial reference/evidence; Setup owns whether work is ready to proceed.
 
 ## Data / Authorization Boundary
 
-Cloudflare authentication, Setup capability, Person identity mapping, and PostgreSQL grants are separate layers:
+Cloudflare authentication, Setup capability, Person identity mapping, and PostgreSQL grants remain separate layers:
 
 ```text
 Cloudflare Access authenticated email
@@ -233,65 +319,113 @@ Cloudflare Access authenticated email
 
 Do not grant broad Setup table DML to solve identity/capability problems.
 
-Migration 027 preserves this boundary with narrow EXECUTE on governed resource commands and no broad `ref.setup_resource` UPDATE/DELETE or broad `ref.setup_task_resource` UPDATE.
+Current role direction:
+
+```text
+Production Crew
+    -> perform legitimate operational work
+    -> report progress/completion
+    -> validate physical state
+    -> report concrete problems/corrections
+
+Manager
+    -> all operational capability as applicable
+    -> maintain reusable definitions / catalogs / defaults / durable assignments
+
+Administrator
+    -> Manager capability plus limited system/annual-structure authority
+```
+
+There is no Captain/Supervisor Directus role. Setup CAPTAIN/ALTERNATE assignments are leadership/context, not authorization classes. Issue #132 owns correcting the current progress/completion authorization boundary and adding per-work-period duration reporting.
 
 See [Setup Data Consumption and Authorization Contract](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md).
 
+## Field Correction / Work Order Boundary
+
+Concrete wrong/missing conditions that need somebody to act later may go directly into the existing Work Order system from the current Setup context. Work Orders already provide a useful Manager-visible action list for real field discoveries, including data/LOR discrepancies as well as physical repair needs.
+
+A connected Production Crew action should be low-friction, conceptually:
+
+```text
+Report Problem / Create Work Order
+```
+
+The application should pre-populate known task/session/Stage/Scene/Container/Display/material/resource/controller/procedure/requester/time context. Creating the Work Order must not itself mutate canonical data.
+
+Issue #172 remains for broader observations/improvement ideas or cases where owner/action is genuinely unclear. Do not build a second competing correction queue for ordinary concrete corrections.
+
+Issue #175 owns the offline/unregistered-worker fallback: a self-contained printable Setup PDF with embedded images, visible Generated/Expires timestamps, exact task/scope/source identity, and an obvious handwritten correction area. Returned paper can later be entered into the same Work Order correction path.
+
 ## Reusable Catalog / Annual Session Boundary
 
-A valid reusable task can exist without a 2025 annual row. Annual Session creation seeds **every active reusable task** into the new Session.
+A valid reusable task can exist without a 2025 annual row. Annual Session creation seeds every active reusable task into the new Session.
 
 Therefore:
 
 ```text
-active reusable Catalog cleanup
-    -> prove intended task set
-    -> disposable 2026 creation check
-    -> only then authorize real 2026 Session creation
+#169 task-context safety
+    -> #145 active reusable Catalog cleanup
+    -> #141 Display-to-task ownership
+    -> #167 Extra Materials / KIT / source foundation
+    -> disposable 2026 creation/scheduling proof
+    -> #122 real 2026 Session creation by September 30
 ```
 
-Issue #145 owns this gate. Do not create the real 2026 Setup Session before #145 acceptance.
+Do not force new reusable tasks into 2025 merely to make the 2025 Plan appear complete.
 
 ## Current Repository / Issue Structure
 
-Recent completed acceptance:
+Recent accepted Production work:
 
 ```text
 #154  dirty-edit / Mark Verified safety              CLOSED / V0.3.7 accepted
 #153  compact task-detail / Material layout          CLOSED / V0.3.8 accepted
 #151  Shift+left-drag predecessor creation           CLOSED / V0.3.9 accepted
-#152  reusable resource catalog management           V0.3.10 accepted / close after docs merge
+#152  reusable resource catalog management           CLOSED / V0.3.10 accepted
 #161  Archive -> SourceDocs Google Doc documentation CLOSED / completed
 ```
 
-Primary remaining work includes:
+### Pre-September-30 launch path
 
 ```text
-#122  Setup Session planning / Pick List / live reconstruction umbrella
-#145  reusable Catalog cleanup gate before real 2026 Session creation
-#167  Extra Materials / KIT assignments / material-source tracking
-#169  keep active task name visible while reviewing long task detail
-#166  one-sudo browser-preview harness hardening
-#141  task-specific staged material subdivision / Pick List release timing
-#159  shared light/dark palette and dark-mode white-logo consistency
-#132  Captain work-report duration / multi-day effort capture
-#113  shared Scan application readiness / identity capture integration
+#169  persistent active-task identity / edit-safety
+#145  reusable Catalog cleanup
+#141  one-Display-to-one-Setup-task ownership / staged subdivision
+#167  Extra Materials / KIT / material-source foundation
+#122  real 2026 Session + scheduling / Pick List launch gate
 ```
 
-Issue #130 global People/Capability/Qualification foundation is completed; subsystem-specific consumption remains separate integration work.
+### Before physical Setup starts
+
+```text
+#132       Production Crew work reporting / duration / authorization
+#113/#88   Scan + Location/movement execution
+#171       GIS/layout + targeted locate
+#175       offline/print field packet + Work Order correction fallback
+```
+
+### Important but not current launch-path blockers unless they expose a specific defect
+
+```text
+#172  broader field observation / continuous-improvement intake
+#166  one-sudo browser-preview harness hardening
+#159  shared light/dark palette
+#140  shared semantic CSS token system
+#174  project-wide chat-only knowledge recovery audit
+```
 
 ## Start Here
 
-- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — current deployed SHA/version, migration 027, runtime evidence, boundaries, and resume point.
-- [Setup V0.3.10 Resource Catalog Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md) — exact migration/source deployment, rollback archive, regression, fingerprint, authorization, and browser acceptance evidence.
-- [Setup V0.3.9 Prerequisite Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md) — predecessor workflow acceptance history.
-- [Setup V0.3.8 Task Detail Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md) — compact task-detail acceptance history.
-- [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md) — accepted material/source-classification authority.
-- [Setup Data Consumption and Authorization Contract — 2026-09-10](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md) — capability, Person mapping, application-role, governed write, and grant boundaries.
-- [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md) — predecessor interaction/order and hard predecessor vs preferred order vs external/site readiness.
-- [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md) — rolling-horizon planning direction.
-- [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — Pick List direction; not yet Production-operational.
-- [Setup Session Production Engineering Handoff — 2026-09-07](Setup_Session_Production_Engineering_Handoff_2026-09-07.md) — historical V0.3.4 foundation/runtime baseline; not current deployment authority.
+- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — current deployed SHA/version/runtime evidence and Production boundary.
+- [Setup Task Supporting Information Contract — 2026-09-11](Setup_Task_Supporting_Information_Contract_2026-09-11.md) — current launch sequence, task ownership, Extra Materials/KIT/source rules, Production Crew boundary, Work Order correction path, and field-start gates.
+- [Setup V0.3.10 Resource Catalog Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md) — accepted resource-catalog deployment and rollback evidence.
+- [Setup V0.3.9 Prerequisite Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md).
+- [Setup V0.3.8 Task Detail Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md).
+- [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md).
+- [Setup Data Consumption and Authorization Contract — 2026-09-10](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md).
+- [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_and_Readiness_Contract_2026-09-09.md).
+- [Setup Planning Operating Model — 2026-09-08](Setup_Planning_Operating_Model_2026-09-08.md).
+- [Setup Pick List Tablet Workflow — 2026-09-09](Setup_Pick_List_Tablet_Workflow_2026-09-09.md) — direction only; not yet Production-operational.
 
 ## Authoritative Implementation Sources
 
@@ -322,16 +456,15 @@ The Production Database repository owns Setup application/business/database beha
 Before the next Setup change:
 
 1. read the Production Database Project Rules;
-2. read the current [2026-09-11 Production engineering handoff](Setup_Session_Production_Engineering_Handoff_2026-09-11.md);
-3. read this engineering portal;
-4. preserve V0.3.7 dirty-edit/client-build protections, V0.3.8 compact layout, V0.3.9 prerequisite behavior, and V0.3.10 resource-catalog behavior;
-5. review Issue #141 before designing task-specific staged material/Pick List release timing;
-6. review Issue #167 before designing Extra Materials/KIT/source relationships;
-7. review Issue #145 before creating or simulating real 2026 annual state;
-8. preserve annual 2025 facts separately from reusable future knowledge;
-9. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
-10. use `Gregovate/MSB-Server-Management` for current runtime/deployment/browser-review authority; and
-11. update controlled docs, acceptance evidence, and this README whenever accepted behavior or the resume point changes.
+2. refresh current remote `main` and record exact head;
+3. read the current Production engineering handoff and this engineering portal;
+4. read the [Setup Task Supporting Information Contract](Setup_Task_Supporting_Information_Contract_2026-09-11.md);
+5. preserve accepted V0.3.7 through V0.3.10 behavior;
+6. use 2025 as the sandbox/historical proving ground until the pre-launch gates pass;
+7. work the pre-launch sequence #169 -> #145 -> #141 -> #167 -> #122 rather than creating the real 2026 Session early;
+8. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
+9. use `Gregovate/MSB-Server-Management` for current runtime/deployment/browser-review authority; and
+10. update controlled docs, acceptance evidence, and this README whenever accepted behavior or the resume point changes.
 
 ## Related Systems
 
@@ -340,4 +473,5 @@ Before the next Setup change:
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [People and Identity](../../03_People_and_Identity/README.md)
 - [Labeling and Scanning](../../07_Labeling_and_Scanning/README.md)
+- [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md)
 - [Wiring System](../../09_Wiring_System/README.md)

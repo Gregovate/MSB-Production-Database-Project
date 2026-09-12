@@ -107,6 +107,54 @@ The exact write event is not yet defined. Being physically near the expected coo
 
 Setup/Deployment owns the movement/status business event. GIS owns spatial identity/evidence and spatial calculations.
 
+For the 2026 launch, GIS/location integration is a **field-start gate**, not a reason to create the real 2026 Setup Session early. The reusable Catalog/task/material foundation and #122 scheduling launch remain separate from the later field-execution acceptance.
+
+## Setup Layout and Ground-Penetration Locate Direction
+
+2026 Setup reconnaissance established a second operational use for the existing GIS source set: **layout guidance and targeted underground locate decisions**.
+
+MSB already has relative placement tracks plus buried network/power reference information outside the new Production Database. That information should be made useful to Setup rather than requiring crews to rely on memory.
+
+The locate rule is not `locate every Stage`.
+
+The operator-confirmed rule is:
+
+> Locate/clear underground infrastructure only where planned ground penetration has a plausible chance of intersecting buried network/power infrastructure or where the risk remains unresolved.
+
+Conceptually:
+
+```text
+planned Display / stake / anchor / rebar footprint
+    + known buried power/network reference tracks
+    -> plausible intersection / proximity risk?
+
+NO
+    -> no locate requirement for that work scope
+
+YES / UNCERTAIN
+    -> locate/clear the affected area before ground penetration
+```
+
+Do not spend field time locating areas where there is nothing underground to damage.
+
+This may be a partial-area determination. One corner or one Display line may require locate/clearance while unrelated work in the same Stage can proceed.
+
+`No locate required` is a derived or reviewed readiness fact. It is not another annual task someone must manually mark complete.
+
+Issue #171 owns the independently actionable 2026 engineering work to inventory the existing GPX/ExpertGPS source set, reconcile useful tracks/features, verify current PostGIS state, and design the smallest useful Setup integration.
+
+Site Infrastructure / GIS owns the spatial reference/evidence and spatial calculation. Setup owns whether the resulting readiness condition permits planned work to proceed.
+
+## Field Correction / Continuous-Improvement Boundary
+
+Spatial reference data will not always be perfect. If Production Crew discover a missing/wrong buried route, layout track, waypoint, or risk area while doing real work, the finding must be preserved rather than becoming verbal/chat-only knowledge.
+
+For a **concrete wrong/missing condition that needs somebody to act later**, the connected field workflow may create a contextual Work Order directly, consistent with the Setup correction contract. Creating the Work Order must not silently overwrite controlled reference GIS data.
+
+Issue #172 remains the broader cross-system observation/continuous-improvement path for findings where the correct owner/action is genuinely unclear or where the finding is an improvement observation rather than a concrete correction.
+
+GIS should consume those common mechanisms rather than inventing an isolated correction queue.
+
 ## PostgreSQL / PostGIS Engineering Gate
 
 Before implementing the park workflow:
@@ -140,21 +188,28 @@ Do not start by adding generic latitude/longitude columns throughout the Product
 - verify production PostGIS configuration and current spatial objects;
 - define durable park Setup destination identities;
 - reconcile park destinations with Stage/Scene/Display/Container relationships;
+- integrate placement tracks and buried network/power reference data for targeted Setup layout/ground-penetration decisions under Issue #171;
+- define meaningful proximity/risk uncertainty for `locate required` / `review required` decisions rather than applying locates everywhere;
 - define mobile GPS accuracy and proximity-validation requirements;
 - determine whether park network coverage requires offline map/location behavior;
-- preserve the existing NAD83 HARN WISCRS Sheboygan County Feet contract during integration.
+- preserve the existing NAD83 HARN WISCRS Sheboygan County Feet contract during integration;
+- use direct contextual Work Orders for concrete correction needs and #172 for broader/unclear observations rather than inventing a GIS-specific queue.
 
 ## Resume Development
 
-For Setup/Deployment GIS work, begin only after the actual Setup movement/placement workflow is documented.
+For Setup/Deployment GIS work, begin only after the actual Setup movement/placement workflow and current launch priority are understood.
 
 Then review:
 
 1. [Setup and Deployment](../12_Setup_and_Deployment/README.md);
-2. [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md);
-3. [Containers and Storage](../04_Containers_and_Storage/README.md);
-4. existing GPX/ExpertGPS datasets and waypoint conventions;
-5. the live PostgreSQL/PostGIS configuration.
+2. [Setup Task Supporting Information Contract](../12_Setup_and_Deployment/engineering/Setup_Task_Supporting_Information_Contract_2026-09-11.md);
+3. GitHub Issue #171;
+4. GitHub Issue #172;
+5. GitHub Issue #175 where offline/field-document behavior is relevant;
+6. [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md);
+7. [Containers and Storage](../04_Containers_and_Storage/README.md);
+8. existing GPX/ExpertGPS datasets and waypoint conventions;
+9. the live PostgreSQL/PostGIS configuration.
 
 Do not design the GIS database schema from assumptions.
 
