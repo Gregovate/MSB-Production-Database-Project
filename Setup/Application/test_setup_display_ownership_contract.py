@@ -26,73 +26,85 @@ def test_migration_reuses_existing_relationship_and_enforces_one_owner() -> None
     assert "INSERT INTO ref.lor_" not in sql
 
 
-def test_owner_command_requires_active_material_task_and_active_display() -> None:
-    sql = (DB_DIR / "028_harden_setup_task_display_ownership.sql").read_text(encoding="utf-8")
+def test_correction_allows_active_scope_target_without_prechecked_material_flag() -> None:
+    sql = (DB_DIR / "029_correct_setup_assignment_layer.sql").read_text(encoding="utf-8")
+    assert "CREATE OR REPLACE FUNCTION ref.set_setup_task_display_owner" in sql
     assert "t.active_flag" in sql
-    assert "t.requires_display_material" in sql
-    assert "upper(ds.display_status_name) = 'ACTIVE'" in sql
-    assert "Display already has an explicit Setup-task owner" in sql
-    assert "Display owner changed since it was loaded" in sql
+    assert "t.stage_id IS NOT NULL" in sql
+    assert "Target Setup task must be active and have a Stage or Scene scope" in sql
+    assert "Assignment establishes Display-material applicability automatically" in sql
+    assert "SET requires_display_material = true" in sql
+    assert "Target Setup task must be active and use Display / Container Material" not in sql
 
 
-def test_explicit_owner_forces_material_flag_to_remain_true() -> None:
+def test_explicit_owner_still_prevents_disabling_material_flag() -> None:
     sql = (DB_DIR / "028_harden_setup_task_display_ownership.sql").read_text(encoding="utf-8")
     assert "CREATE OR REPLACE FUNCTION ref.set_setup_task_display_material_requirement" in sql
     assert "NOT v_requires AND EXISTS" in sql
     assert "WHERE td.setup_task_id = p_setup_task_id" in sql
     assert "Cannot disable Display / Container Material while this task owns Displays" in sql
-    assert "SET requires_display_material = true" in sql
-    assert "AND NOT t.requires_display_material" in sql
 
 
-def test_application_layers_ownership_after_existing_material_resolver() -> None:
+def test_corrected_assignment_layer_installs_after_existing_resolver_and_ownership() -> None:
     backend = read_app("production_backend.py")
     resolver_index = backend.index("install_setup_material_resolution()")
     ownership_index = backend.index("install_setup_display_ownership()")
-    assert resolver_index < ownership_index
-    assert "V0.3.12-display-ownership" in backend
+    correction_index = backend.index("install_setup_assignment_layer()")
+    assert resolver_index < ownership_index < correction_index
+    assert "V0.3.13-assignment-layer" in backend
     assert "app.register_blueprint(setup_display_ownership_api)" in backend
+    assert "app.register_blueprint(setup_assignment_api)" in backend
 
-    ownership = read_app("setup_display_ownership.py")
-    assert "_BASE_FIELD_CONTEXT" in ownership
-    assert "LOR_SCENE" in ownership
-    assert "LOR_STAGE_LEVEL" in ownership
-    assert "IMPLICIT_SINGLE" in ownership
-    assert "UNINITIALIZED_MULTI" in ownership
-    assert "EXPLICIT_MULTI" in ownership
-    assert "REVIEW_REQUIRED" in ownership
+    assignment = read_app("setup_assignment_layer.py")
+    assert "is_stage_level_lor_group" in assignment
+    assert 'ownership_mode = "IMPLICIT_SINGLE"' in assignment
+    assert 'ownership_mode = "UNINITIALIZED_MULTI"' in assignment
+    assert 'ownership_mode = "EXPLICIT_MULTI"' in assignment
+    assert 'coverage_status = "REVIEW_REQUIRED"' in assignment
 
 
-def test_simple_scope_preserves_implicit_current_behavior() -> None:
-    ownership = read_app("setup_display_ownership.py")
-    assert "len(eligible_tasks) <= 1" in ownership
-    assert "effective_displays = source_displays" in ownership
-    assert 'ownership_mode = "IMPLICIT_SINGLE"' in ownership
-    assert 'coverage_status = "COMPLETE"' in ownership
+def test_untouched_scope_can_begin_assignment_without_material_seed() -> None:
+    assignment = read_app("setup_assignment_layer.py")
+    assert "candidate_tasks = _scope_tasks(self, task)" in assignment
+    assert "WHERE t.stage_id = %s" in assignment
+    assert "AND t.active_flag" in assignment
+    assert "AND t.requires_display_material" not in assignment.split("def _scope_tasks", 1)[1].split("def _source_displays", 1)[0]
+    assert "len(candidate_tasks) > 1" in assignment
+    assert "and source_displays" in assignment
+    assert "and not explicit_source_rows" in assignment
+    assert "sole_implicit_owner_setup_task_id" in assignment
+
+
+def test_simple_single_material_behavior_remains_effective_until_subdivision() -> None:
+    assignment = read_app("setup_assignment_layer.py")
+    assert "sole_implicit_owner =" in assignment
+    assert "effective_displays = source_displays if sole_implicit_owner == int(task_id) else []" in assignment
+    assert 'coverage_status = "COMPLETE" if sole_implicit_owner is not None else "REVIEW_REQUIRED"' in assignment
+    assert "Convert the accepted simple implicit state into complete explicit" in assignment
 
 
 def test_complex_scope_filters_effective_material_to_explicit_owner() -> None:
-    ownership = read_app("setup_display_ownership.py")
-    assert "owner_setup_task_id" in ownership
-    assert 'item.get("ownership_state") == "ASSIGNED"' in ownership
-    assert "int(item.get(\"owner_setup_task_id\") or 0) == int(task_id)" in ownership
-    assert "missing_owner_count" in ownership
-    assert "invalid_owner_count" in ownership
-    assert "duplicate_owner_count" in ownership
-    assert "stale_owner_count" in ownership
+    assignment = read_app("setup_assignment_layer.py")
+    assert "owner_setup_task_id" in assignment
+    assert 'item.get("ownership_state") == "ASSIGNED"' in assignment
+    assert "int(item.get(\"owner_setup_task_id\") or 0) == int(task_id)" in assignment
+    assert "missing_owner_count" in assignment
+    assert "invalid_owner_count" in assignment
+    assert "duplicate_owner_count" in assignment
+    assert "stale_owner_count" in assignment
 
 
-def test_write_api_is_manager_only_and_uses_governed_command() -> None:
+def test_display_write_api_stays_manager_only_and_uses_governed_command() -> None:
     api = read_app("setup_display_ownership_api.py")
     assert "require_setup_command()" in api
     assert "require_manager()" in api
     assert "/display-ownership/initialize" in api
     assert "/display-ownership/<int:display_id>" in api
 
-    ownership = read_app("setup_display_ownership.py")
-    assert "FROM ref.set_setup_task_display_owner" in ownership
-    assert "INSERT INTO ref.setup_task_display" not in ownership
-    assert "UPDATE ref.setup_task_display" not in ownership
+    assignment = read_app("setup_assignment_layer.py")
+    assert "FROM ref.set_setup_task_display_owner" in assignment
+    assert "INSERT INTO ref.setup_task_display" not in assignment
+    assert "UPDATE ref.setup_task_display" not in assignment
 
 
 def test_manager_board_supports_initialization_drag_and_multi_select_reassignment() -> None:
@@ -121,25 +133,31 @@ def test_manager_board_supports_initialization_drag_and_multi_select_reassignmen
     assert '"setup_display_ownership.css"' in backend
 
 
-def test_material_actions_share_lavender_emphasis() -> None:
-    css = read_app("setup_display_ownership.css")
-    html = read_app("production.html")
-    assert "--setup-material-action-bg" in css
-    assert "#setup-material-details-open" in css
-    assert "#setup-display-ownership-open" in css
-    assert "#setup-display-ownership-initialize" in css
-    assert "#7657c7" in css
-    assert 'html[data-theme="dark"]' in css
-    assert "setup_display_ownership.css?v=2026-09-12.3" in html
-    assert "setup_display_ownership.js?v=2026-09-12.3" in html
+def test_kit_box_assignment_is_specific_many_to_many_and_outside_lor() -> None:
+    migration = (DB_DIR / "029_correct_setup_assignment_layer.sql").read_text(encoding="utf-8")
+    assignment = read_app("setup_assignment_layer.py")
+    api = read_app("setup_assignment_api.py")
+    ui = read_app("setup_kit_box_assignment.js")
+
+    assert "relationship_type IN ('SUPPORT', 'REQUIRED_CONTAINER', 'KIT')" in migration
+    assert "container_type_id=2" in migration
+    assert "ref.set_setup_task_kit_box_assignment" in migration
+    assert "This task/container pair already has a non-KIT support relationship" in migration
+    assert "WHERE c.container_type_id = 2" in assignment
+    assert "other_task_count" in assignment
+    assert "other_task_assignments" in assignment
+    assert "relationship_type = 'KIT'" in assignment
+    assert "require_manager()" in api
+    assert "/kit-boxes/<int:container_id>" in api
+    assert "Kit Boxes are outside LOR" in ui
+    assert "may be assigned to more than one reusable Setup task" in ui
 
 
-def test_container_support_remains_separate_and_nonexclusive() -> None:
-    ownership = read_app("setup_display_ownership.py")
-    migration = (DB_DIR / "028_harden_setup_task_display_ownership.sql").read_text(encoding="utf-8")
-    assert "support_containers" in ownership
-    assert "ref.setup_task_container_support" in migration
-    assert "UNIQUE INDEX" not in "\n".join(
+def test_existing_nonkit_support_relationships_remain_separate() -> None:
+    migration = (DB_DIR / "029_correct_setup_assignment_layer.sql").read_text(encoding="utf-8")
+    assert "SUPPORT / REQUIRED_CONTAINER retain existing logistics meaning" in migration
+    assert "Existing SUPPORT / REQUIRED_CONTAINER rows are never" in migration
+    assert "CREATE UNIQUE INDEX" not in "\n".join(
         line for line in migration.splitlines() if "setup_task_container_support" in line
     )
 
@@ -149,7 +167,10 @@ def test_no_2026_session_creation_is_added_by_issue_141() -> None:
         [
             read_app("setup_display_ownership.py"),
             read_app("setup_display_ownership_api.py"),
+            read_app("setup_assignment_layer.py"),
+            read_app("setup_assignment_api.py"),
             (DB_DIR / "028_harden_setup_task_display_ownership.sql").read_text(encoding="utf-8"),
+            (DB_DIR / "029_correct_setup_assignment_layer.sql").read_text(encoding="utf-8"),
         ]
     )
     assert "create_setup_session(" not in combined
