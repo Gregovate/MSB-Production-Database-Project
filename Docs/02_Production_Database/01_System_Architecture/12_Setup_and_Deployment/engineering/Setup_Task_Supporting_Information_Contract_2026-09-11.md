@@ -21,18 +21,11 @@ The 2025 Setup Session is intentionally the **sandbox / proving ground** while r
 
 The operational launch point is **Issue #122 / creation and scheduling of the real 2026 Setup Session by September 30, 2026**.
 
-The accepted pre-launch dependency order is:
+Issue #169 is complete in Production as V0.3.11 and is now part of the accepted edit-safety baseline rather than a remaining launch gate.
+
+The remaining pre-launch dependency order is:
 
 ```text
-#169  Persistent active-task identity while editing
-   -> error-prevention control while Catalog work is underway
-   -> selected task name must remain visible while long task detail scrolls
-
-#145  Reusable Catalog cleanup / correct schedulable work packages
-   -> remove reconstruction mistakes and incorrect task boundaries
-   -> preserve meaningful reusable work packages
-   -> hard gate before real 2026 Session creation
-
 #141  Task-specific Display ownership/material subdivision
    -> preserve the accepted Stage/Scene resolver as the source set
    -> each resolved Display has exactly one effective Setup-task owner
@@ -44,12 +37,22 @@ The accepted pre-launch dependency order is:
    -> normalized Extra Material identities and task requirements
    -> existing ref.container KIT/support relationships
    -> expected sources/contents without requiring full 2027 KIT inventory
+   -> may legitimately cause reusable-task additions/splits/corrections
+
+#145  FINAL REUSABLE-CATALOG ACCEPTANCE
+   -> review the resulting active reusable task set after #141/#167
+   -> remove any remaining reconstruction mistakes / low-value annual tasks
+   -> confirm intended schedulable work packages
+   -> run disposable 2026 Session creation
+   -> prove the seeded annual task set matches the accepted active Catalog
 
 #122  SEPTEMBER 30 SCHEDULING LAUNCH GATE
-   -> create the real 2026 Setup Session only after the reusable/task/material foundation is accepted
+   -> create the real 2026 Setup Session only after #145 final acceptance
    -> support 2026 scheduling
    -> explain what Displays, Containers/KITs, Extra Materials, and constrained Resources need to be brought to the park and when
 ```
+
+**#145 is not unfinished Catalog-management software and does not block #141/#167.** Current Production already supports creating, deleting, moving/reordering reusable tasks, resolving Stage/Scene Display material, assigning task resources, and managing the Resource Catalog. #145 remains open only as the final reusable-Catalog content/seed acceptance gate immediately before real 2026 Session creation.
 
 After the September 30 scheduling launch, a second **field-start gate** applies before crews rely on the system for physical Setup:
 
@@ -70,6 +73,7 @@ Current accepted Production behavior wins over stale issue prose or older design
 - V0.3.8 compact task-detail behavior;
 - V0.3.9 prerequisite behavior;
 - V0.3.10 Resource Catalog behavior;
+- V0.3.11 persistent active-task context;
 - the working Stage/Scene Display resolver;
 - 2025 historical/sandbox boundaries;
 - current Display/Container authority; and
@@ -111,7 +115,7 @@ PROCEDURE
     -> detailed how-to steps that do not need separate annual completion
 ```
 
-Issue #169 is part of this cleanup safety boundary. While Managers are reviewing/creating reusable tasks, the active task identity must remain visible so scrolling a long detail screen does not cause an edit to be made against the wrong task.
+Issue #169 established the accepted V0.3.11 cleanup safety boundary. While Managers are reviewing/creating reusable tasks, the active task identity remains visible so scrolling a long detail screen does not cause an edit to be made against the wrong task.
 
 ## Authority Hierarchy
 
@@ -571,7 +575,7 @@ Use the best available procedures, Production data, derived rules, KIT/source in
 
 Do not block useful 2026 operation on the future 2027 detailed KIT inventory.
 
-Do not create the real 2026 Setup Session until the #169/#145/#141/#167 pre-launch foundation is accepted and the #122 disposable creation/scheduling proof passes.
+Do not create the real 2026 Setup Session until #141/#167 establish the task/material foundation, #145 final reusable-Catalog acceptance and disposable 2026 seed proof pass, and #122 is ready for the real scheduling launch.
 
 ## Resume Development
 
@@ -579,9 +583,9 @@ Before implementing this contract:
 
 1. read the Production Database Project Rules;
 2. refresh current `main` and read the current Setup engineering handoff/README;
-3. preserve accepted V0.3.7 through V0.3.10 behavior;
+3. preserve accepted V0.3.7 through V0.3.11 behavior;
 4. treat 2025 as the sandbox/historical proving ground until the pre-launch gates pass;
-5. read Issues #169, #145, #141, #167, and #122 before changing the reusable Catalog/task/material/scheduling path;
+5. work the current pre-launch sequence **#141 -> #167 -> #145 final acceptance/disposable seed proof -> #122**; #169 is already accepted Production baseline;
 6. read Issues #132, #113/#88, #171, and #175 before field-start execution work;
 7. read the current Production schema/migrations before asking the operator to rediscover schema facts;
 8. use governed `SECURITY DEFINER` application commands and actor attribution rather than broad table DML; and
@@ -599,9 +603,9 @@ Before implementing this contract:
 - GitHub #122 — Setup Session umbrella / September 30 scheduling launch gate
 - GitHub #132 — Production Crew work reporting / duration / execution authorization
 - GitHub #141 — Display-to-task ownership / staged material release
-- GitHub #145 — Catalog cleanup gate before 2026 Session creation
+- GitHub #145 — final Catalog content/seed acceptance gate before 2026 Session creation
 - GitHub #167 — Extra Materials / KIT / material source foundation
-- GitHub #169 — persistent active-task identity while editing
+- GitHub #169 — persistent active-task identity while editing — completed V0.3.11
 - GitHub #171 — GIS/layout/targeted locate integration
 - GitHub #172 — broader field observation / continuous-improvement triage
 - GitHub #175 — offline/print Setup field packet + Work Order correction handoff
