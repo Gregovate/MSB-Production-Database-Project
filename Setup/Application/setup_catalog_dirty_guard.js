@@ -218,20 +218,23 @@
     if (!task || task.setup_session_task_id == null || !appState.access?.can_manage_setup) return false;
     if (!await ensureServerBuild()) return false;
     const annual = annualFormState();
-    const verification = verificationOverride || task.verification_state || 'UNVERIFIED';
+    const payload = {
+      verification_state: verificationOverride || task.verification_state || 'UNVERIFIED',
+      actual_started_at: task.actual_started_at || null,
+      actual_completed_at: task.actual_completed_at || null,
+      actual_crew_count: annual.actual_crew_count,
+      actual_duration_minutes: annual.actual_duration_minutes,
+      annual_notes: annual.annual_notes
+    };
+
     try {
       setBusy(true);
       await api(
         `api/setup/session-tasks/${task.setup_session_task_id}/review`,
-        commandOptions('PATCH', {
-          verification_state: verification,
-          actual_crew_count: annual.actual_crew_count,
-          actual_duration_minutes: annual.actual_duration_minutes,
-          annual_notes: annual.annual_notes || null
-        })
+        commandOptions('PATCH', payload)
       );
       await reloadTasks(task.setup_task_id);
-      if (announce) setAlert(`Annual ${appState.seasonYear} review saved.`, 'ok');
+      if (announce) setAlert(`${appState.seasonYear} annual review saved to Production.`, 'ok');
       return true;
     } catch (error) {
       setAlert(error.message || error, 'error');
@@ -243,28 +246,77 @@
     }
   }
 
+  async function handleAnnualAction(buttonId) {
+    const overrides = {
+      'save-annual-review': null,
+      'mark-verified': 'VERIFIED',
+      'mark-correction': 'NEEDS_CORRECTION',
+      'mark-unverified': 'UNVERIFIED'
+    };
+
+    if (reusableDirty()) {
+      const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
+      if (!reusableSaved) return;
+    }
+    await persistAnnualReview(overrides[buttonId]);
+  }
+
+  async function saveDirtySurfaces() {
+    if (reusableDirty()) {
+      const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
+      if (!reusableSaved) return false;
+    }
+    if (annualDirty()) {
+      const annualSaved = await persistAnnualReview(null, { announce: false });
+      if (!annualSaved) return false;
+    }
+    setAlert('Unsaved Setup task edits saved before continuing.', 'ok');
+    return true;
+  }
+
+  function discardCurrentDrafts() {
+    const task = selectedTask();
+    if (task) selectTask(task.setup_task_id);
+  }
+
   async function resolveDirtyBeforeNavigation(actionLabel) {
     if (!anyDirty()) return true;
-    if (!appState.access?.can_manage_setup) return false;
-
-    const choice = window.prompt(
-      `Unsaved ${dirtyDescription()} edits before ${actionLabel}.\n\nType SAVE to save and continue, DISCARD to discard and continue, or STAY to remain on this task.`,
-      'STAY'
+    const saveFirst = window.confirm(
+      `You have unsaved ${dirtyDescription()} edits.\n\nSave them before ${actionLabel}?\n\nOK = Save and continue\nCancel = choose whether to discard or stay here`
     );
-    const normalized = String(choice || 'STAY').trim().toUpperCase();
-    if (normalized === 'SAVE') {
-      if (reusableDirty()) {
-        const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
-        if (!reusableSaved) return false;
-      }
-      if (annualDirty()) {
-        const annualSaved = await persistAnnualReview(null, { announce: false });
-        if (!annualSaved) return false;
-      }
-      return true;
+    if (saveFirst) return saveDirtySurfaces();
+
+    const discard = window.confirm(
+      `Discard the unsaved ${dirtyDescription()} edits and ${actionLabel}?\n\nOK = Discard and continue\nCancel = Stay on this task`
+    );
+    if (!discard) return false;
+    discardCurrentDrafts();
+    return true;
+  }
+
+  async function resolveDirtyBeforeDelete() {
+    if (!anyDirty()) return true;
+    const discard = window.confirm(
+      `This task has unsaved ${dirtyDescription()} edits.\n\nDeleting the task cannot preserve those drafts. Discard them and continue to the delete confirmation?`
+    );
+    if (!discard) return false;
+    discardCurrentDrafts();
+    return true;
+  }
+
+  function replayClick(target) {
+    replayDepth += 1;
+    try {
+      target.click();
+    } finally {
+      replayDepth -= 1;
     }
-    if (normalized === 'DISCARD') return true;
-    return false;
+  }
+
+  function taskIdFromClickTarget(target) {
+    const row = target.closest('#review-list .task-row, #library-view .open-task');
+    if (!row) return null;
+    return Number(row.dataset.taskId || 0) || null;
   }
 
   function installSelectionRefreshWrapper() {
@@ -279,111 +331,124 @@
     selectTask = wrapped;
   }
 
-  function interceptNavigation(event) {
-    if (replayDepth > 0) return;
+  function installInputTracking() {
+    window.addEventListener('input', (event) => {
+      const id = event.target?.id;
+      if (reusableFieldIds.has(id) || annualFieldIds.has(id)) syncDirtyIndicators();
+    }, true);
+    window.addEventListener('change', (event) => {
+      const id = event.target?.id;
+      if (reusableFieldIds.has(id) || annualFieldIds.has(id)) syncDirtyIndicators();
+    }, true);
+  }
 
-    const target = event.target.closest?.(
-      '.task-row[data-task-id], .open-task[data-task-id], #setup-return-library, .tabs .tab, #season-select'
-    );
-    if (!target || !anyDirty()) return;
-
-    let actionLabel = 'continuing';
-    if (target.matches('.task-row[data-task-id], .open-task[data-task-id]')) actionLabel = 'opening another task';
-    else if (target.matches('#setup-return-library')) actionLabel = 'returning to the Reusable Task Catalog';
-    else if (target.matches('.tabs .tab')) actionLabel = 'changing Setup views';
-    else if (target.matches('#season-select')) actionLabel = 'changing Setup seasons';
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    const replayTarget = target;
-    resolveDirtyBeforeNavigation(actionLabel).then((allow) => {
-      if (!allow) {
+  function installSeasonGuard() {
+    window.addEventListener('change', (event) => {
+      if (replayDepth || event.target?.id !== 'season-select' || !anyDirty()) return;
+      const select = event.target;
+      const requestedYear = select.value;
+      const currentYear = String(appState.seasonYear ?? '');
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      select.value = currentYear;
+      void (async () => {
+        if (!await resolveDirtyBeforeNavigation('changing Setup seasons')) return;
+        select.value = requestedYear;
+        await loadSeason(requestedYear);
         syncDirtyIndicators();
+      })();
+    }, true);
+  }
+
+  function installClickGuard() {
+    window.addEventListener('click', (event) => {
+      if (replayDepth) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const saveReusable = target.closest('#save-reusable-task');
+      if (saveReusable) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void persistReusableEdits();
         return;
       }
-      replayDepth += 1;
-      try {
-        if (replayTarget.matches('#season-select')) {
-          const selected = replayTarget.value;
-          replayTarget.dispatchEvent(new Event('change', { bubbles: true }));
-          replayTarget.value = selected;
-        } else {
-          replayTarget.click();
-        }
-      } finally {
-        window.setTimeout(() => { replayDepth -= 1; }, 0);
+
+      const annualButton = target.closest('#save-annual-review, #mark-verified, #mark-correction, #mark-unverified');
+      if (annualButton) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void handleAnnualAction(annualButton.id);
+        return;
       }
+
+      const deleteButton = target.closest('#delete-reconstruction-task');
+      if (deleteButton && anyDirty()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void (async () => {
+          if (await resolveDirtyBeforeDelete()) replayClick(deleteButton);
+        })();
+        return;
+      }
+
+      const dependencyAction = target.closest('#next-dependency-add-button, .next-dependency-remove');
+      if (dependencyAction && anyDirty()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void (async () => {
+          if (await resolveDirtyBeforeNavigation('changing task prerequisites')) replayClick(dependencyAction);
+        })();
+        return;
+      }
+
+      const requestedTaskId = taskIdFromClickTarget(target);
+      if (requestedTaskId != null && requestedTaskId !== Number(appState.selectedTaskId) && anyDirty()) {
+        const replayTarget = target.closest('#library-view .open-task') || target.closest('#review-list .task-row');
+        if (!replayTarget) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void (async () => {
+          if (await resolveDirtyBeforeNavigation('opening another task')) replayClick(replayTarget);
+        })();
+        return;
+      }
+
+      const returnToCatalog = target.closest('#setup-return-library');
+      if (returnToCatalog && anyDirty()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void (async () => {
+          if (await resolveDirtyBeforeNavigation('returning to the Reusable Task Catalog')) replayClick(returnToCatalog);
+        })();
+        return;
+      }
+
+      const tab = target.closest('.tabs .tab');
+      if (tab && !tab.classList.contains('active') && anyDirty()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        void (async () => {
+          if (await resolveDirtyBeforeNavigation(`opening ${tab.textContent.trim()}`)) replayClick(tab);
+        })();
+      }
+    }, true);
+  }
+
+  function installUnloadGuard() {
+    window.addEventListener('beforeunload', (event) => {
+      if (!anyDirty()) return;
+      event.preventDefault();
+      event.returnValue = '';
     });
   }
 
-  function interceptAction(event) {
-    if (replayDepth > 0) return;
-    const target = event.target.closest?.(
-      '#save-reusable-task, #save-annual-review, #mark-verified, #mark-correction, #mark-unverified, ' +
-      '#next-dependency-add-button, .next-dependency-remove'
-    );
-    if (!target) return;
-
-    const buttonId = target.id;
-    if (buttonId === 'save-reusable-task') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      persistReusableEdits();
-      return;
-    }
-    if (buttonId === 'save-annual-review') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      persistAnnualReview();
-      return;
-    }
-
-    const annualOverrides = {
-      'mark-verified': 'VERIFIED',
-      'mark-correction': 'NEEDS_CORRECTION',
-      'mark-unverified': 'UNVERIFIED'
-    };
-    if (Object.prototype.hasOwnProperty.call(annualOverrides, buttonId)) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      (async () => {
-        if (reusableDirty()) {
-          const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
-          if (!reusableSaved) return;
-        }
-        await persistAnnualReview(annualOverrides[buttonId]);
-      })();
-      return;
-    }
-
-    if (target.matches('#next-dependency-add-button, .next-dependency-remove') && anyDirty()) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      resolveDirtyBeforeNavigation('changing task prerequisites').then((allow) => {
-        if (!allow) return;
-        replayDepth += 1;
-        try {
-          target.click();
-        } finally {
-          window.setTimeout(() => { replayDepth -= 1; }, 0);
-        }
-      });
-    }
-  }
-
-  document.addEventListener('input', syncDirtyIndicators, true);
-  window.addEventListener('change', syncDirtyIndicators, true);
-  window.addEventListener('click', interceptAction, true);
-  window.addEventListener('click', interceptNavigation, true);
-  window.addEventListener('change', interceptNavigation, true);
-  window.addEventListener('beforeunload', (event) => {
-    if (!anyDirty()) return;
-    event.preventDefault();
-    event.returnValue = '';
-  });
-
   installBuildBadge();
   installSelectionRefreshWrapper();
+  installInputTracking();
+  installSeasonGuard();
+  installClickGuard();
+  installUnloadGuard();
   syncDirtyIndicators();
-  ensureServerBuild();
+  void ensureServerBuild();
 })();
