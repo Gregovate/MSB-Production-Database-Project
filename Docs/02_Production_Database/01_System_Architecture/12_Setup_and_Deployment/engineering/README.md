@@ -48,15 +48,11 @@ V0.3.11 persistent active-task context is accepted in Production. V0.3.10 Resour
 
 The launch target is **real 2026 Setup Session creation and scheduling by September 30, 2026 under Issue #122**.
 
-Issue #169 is complete and no longer a remaining launch gate. Its accepted V0.3.11 header context is now part of the Production safety baseline used during Catalog cleanup.
+Issue #169 is complete and no longer a remaining launch gate. Its accepted V0.3.11 header context is now part of the Production safety baseline used during Catalog work.
 
 The remaining pre-launch dependency order is:
 
 ```text
-#145  Reusable Catalog cleanup / correct schedulable work packages
-   -> remove reconstruction mistakes and bad task boundaries
-   -> hard gate before real 2026 Session creation
-
 #141  Task-specific Display ownership/material subdivision
    -> preserve the accepted Stage/Scene resolver
    -> each resolved Display has exactly one effective Setup-task owner
@@ -67,13 +63,23 @@ The remaining pre-launch dependency order is:
    -> normalized Extra Material catalog and task requirements
    -> existing ref.container KIT/support relationships
    -> expected sources/contents without requiring full 2027 KIT inventory
+   -> may legitimately cause reusable-task additions/splits/corrections
+
+#145  FINAL REUSABLE-CATALOG ACCEPTANCE
+   -> review the resulting active reusable task set after #141/#167
+   -> remove any remaining reconstruction mistakes / low-value annual tasks
+   -> confirm intended schedulable work packages
+   -> run disposable 2026 Session creation
+   -> prove the seeded annual task set matches the accepted active Catalog
 
 #122  SEPTEMBER 30 SCHEDULING LAUNCH GATE
-   -> disposable proof first
-   -> then create real 2026 Setup Session
+   -> only after #145 final acceptance
+   -> create real 2026 Setup Session
    -> schedule 2026 work
    -> explain what Displays, Containers/KITs, Extra Materials, and constrained Resources need to be brought to the park and when
 ```
+
+**#145 is not unfinished Catalog-management software and does not block #141/#167.** Production already supports creating, deleting, moving/reordering reusable tasks, resolving Stage/Scene Display material, assigning task resources, and managing the reusable Resource Catalog. #145 remains open only as the final reusable-Catalog content/seed acceptance checkpoint immediately before the real 2026 Session is created.
 
 Before physical Setup work begins, the field-execution gate also requires the necessary portions of:
 
@@ -239,7 +245,7 @@ preferred order / hard predecessors
 
 Every reusable/annual task creates human completion/reporting burden. The reusable Catalog should therefore track meaningful operational control points, not every instruction step.
 
-There is currently no accepted Production Pick List generator/tablet workflow. That is part of the #122 September 30 launch gate after #145/#141/#167 establish trustworthy demand.
+There is currently no accepted Production Pick List generator/tablet workflow. That is part of the #122 September 30 launch gate after #141/#167 establish the task/material structure and #145 performs the final Catalog/disposable-seed acceptance.
 
 ## Extra Materials / KIT / Source Direction
 
@@ -359,15 +365,16 @@ Issue #175 owns the offline/unregistered-worker fallback: a self-contained print
 
 A valid reusable task can exist without a 2025 annual row. Annual Session creation seeds every active reusable task into the new Session.
 
-Therefore, after accepted #169 task-context safety:
+After accepted #169 task-context safety, continue engineering first and accept the final Catalog last:
 
 ```text
-#145 active reusable Catalog cleanup
-    -> #141 Display-to-task ownership
+#141 Display-to-task ownership
     -> #167 Extra Materials / KIT / source foundation
-    -> disposable 2026 creation/scheduling proof
+    -> #145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
     -> #122 real 2026 Session creation by September 30
 ```
+
+#141/#167 may legitimately add, split, merge, or otherwise correct reusable tasks. Do not freeze the final 2026 Catalog before that work is established. #145 remains open only to review the resulting active task set and prove that disposable annual-session seeding matches the accepted Catalog.
 
 Do not force new reusable tasks into 2025 merely to make the 2025 Plan appear complete.
 
@@ -387,9 +394,9 @@ Recent accepted Production work:
 ### Remaining pre-September-30 launch path
 
 ```text
-#145  reusable Catalog cleanup
 #141  one-Display-to-one-Setup-task ownership / staged subdivision
 #167  Extra Materials / KIT / material-source foundation
+#145  final reusable-Catalog acceptance + disposable 2026 seed proof
 #122  real 2026 Session + scheduling / Pick List launch gate
 ```
 
@@ -414,7 +421,7 @@ Recent accepted Production work:
 
 ## Start Here
 
-- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — broader runtime/data boundary; use the V0.3.11 acceptance record below for the current deployed SHA/version.
+- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — broader runtime/data boundary; where its older sequencing language conflicts with this README or the Supporting Information Contract, the current launch sequence here controls.
 - [Setup Active Task Context V0.3.11 Production Acceptance — 2026-09-12](../../../../../Setup/Acceptance/Setup_Active_Task_Context_V0311_Production_Acceptance_2026-09-12.md) — current exact deployed source, source-only deployment evidence, fingerprint, live regression, and protected browser acceptance.
 - [Setup Task Supporting Information Contract — 2026-09-11](Setup_Task_Supporting_Information_Contract_2026-09-11.md) — current launch sequence, task ownership, Extra Materials/KIT/source rules, Production Crew boundary, Work Order correction path, and field-start gates.
 - [Setup V0.3.10 Resource Catalog Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md) — accepted resource-catalog deployment and rollback evidence.
@@ -460,7 +467,7 @@ Before the next Setup change:
 4. read the [Setup Task Supporting Information Contract](Setup_Task_Supporting_Information_Contract_2026-09-11.md);
 5. preserve accepted V0.3.7 through V0.3.11 behavior;
 6. use 2025 as the sandbox/historical proving ground until the remaining pre-launch gates pass;
-7. work the remaining pre-launch sequence #145 -> #141 -> #167 -> #122 rather than creating the real 2026 Session early;
+7. work the remaining pre-launch sequence #141 -> #167 -> #145 final acceptance/disposable seed proof -> #122 rather than creating the real 2026 Session early;
 8. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
 9. use `Gregovate/MSB-Server-Management` for current runtime/deployment/browser-review authority; and
 10. update controlled docs, acceptance evidence, and this README whenever accepted behavior or the resume point changes.
