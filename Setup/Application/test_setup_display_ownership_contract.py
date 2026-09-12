@@ -95,8 +95,9 @@ def test_write_api_is_manager_only_and_uses_governed_command() -> None:
     assert "UPDATE ref.setup_task_display" not in ownership
 
 
-def test_manager_board_supports_initialization_and_drag_reassignment() -> None:
+def test_manager_board_supports_initialization_drag_and_multi_select_reassignment() -> None:
     js = read_app("setup_display_ownership.js")
+    css = read_app("setup_display_ownership.css")
     html = read_app("production.html")
     backend = read_app("production_backend.py")
 
@@ -106,6 +107,14 @@ def test_manager_board_supports_initialization_and_drag_reassignment() -> None:
     assert "drop" in js
     assert "target_setup_task_id" in js
     assert "Dragging a Display changes Setup task ownership only" in js
+    assert "selectedDisplayIds" in js
+    assert "event.ctrlKey || event.metaKey" in js
+    assert "event.shiftKey" in js
+    assert "moveDisplays" in js
+    assert "setup-display-ownership-sort" in js
+    assert "Shift-click selects a range within a task column" in js
+    assert "Drag any selected Display to move the whole selection" in js
+    assert ".setup-display-owner-card.selected" in css
     assert "setup_display_ownership.js" in html
     assert "setup_display_ownership.css" in html
     assert '"setup_display_ownership.js"' in backend
@@ -121,7 +130,8 @@ def test_material_actions_share_lavender_emphasis() -> None:
     assert "#setup-display-ownership-initialize" in css
     assert "#7657c7" in css
     assert 'html[data-theme="dark"]' in css
-    assert "setup_display_ownership.css?v=2026-09-12.2" in html
+    assert "setup_display_ownership.css?v=2026-09-12.3" in html
+    assert "setup_display_ownership.js?v=2026-09-12.3" in html
 
 
 def test_container_support_remains_separate_and_nonexclusive() -> None:
