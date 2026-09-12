@@ -166,12 +166,49 @@ function installSetupMaterialStyles() {
     .setup-material-task {
       border-left: 5px solid #7657c7 !important;
     }
+    .setup-catalog-material-hint {
+      margin: 8px 0 12px;
+      padding: 9px 11px;
+      border: 1px solid #d9d1ee;
+      border-radius: 8px;
+      background: #faf8ff;
+    }
+    .setup-catalog-material-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 210px;
+      font-size: .88rem;
+      font-weight: 700;
+      color: #321a78;
+      cursor: pointer;
+    }
+    .setup-catalog-material-toggle input {
+      margin: 0;
+    }
+    .setup-catalog-material-toggle.disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    .setup-display-owner-catalog-hint {
+      margin: 0 0 10px;
+      padding: 8px 10px;
+      border: 1px solid #d9d1ee;
+      border-radius: 8px;
+      background: #faf8ff;
+    }
     html[data-theme='dark'] .setup-material-editor {
       border-color: #6954a5;
       background: #251f35;
     }
-    html[data-theme='dark'] .setup-material-editor .checkbox-label {
+    html[data-theme='dark'] .setup-material-editor .checkbox-label,
+    html[data-theme='dark'] .setup-catalog-material-toggle {
       color: #ddd1ff;
+    }
+    html[data-theme='dark'] .setup-catalog-material-hint,
+    html[data-theme='dark'] .setup-display-owner-catalog-hint {
+      border-color: #51456f;
+      background: #211c2d;
     }
   `;
   document.head.appendChild(style);
@@ -214,6 +251,7 @@ function applySetupMaterialToTasks() {
 function applySetupMaterialAccess() {
   const checkbox = el('edit-requires-display-material');
   if (checkbox) checkbox.disabled = !Boolean(appState.access?.can_manage_setup);
+  applySetupCatalogMaterialControls();
 }
 
 function taskForMaterialNode(node) {
@@ -243,6 +281,191 @@ function applySetupMaterialTaskHighlighting() {
     if (enabled) node.title = 'Display / Container material required';
     else if (node.title === 'Display / Container material required') node.removeAttribute('title');
   });
+}
+
+function libraryMaterialTaskId(row) {
+  const direct = Number(row?.dataset?.taskId || 0);
+  if (direct) return direct;
+  const open = row?.querySelector('.open-task[data-task-id]');
+  const fromButton = Number(open?.dataset?.taskId || 0);
+  return fromButton || null;
+}
+
+function isRealSetupSceneName(sceneName) {
+  const name = String(sceneName || '').trim();
+  if (!/^\d{2}[A-Za-z]?-.+/.test(name)) return false;
+  return !/-[A-Za-z]{2}$/.test(name);
+}
+
+function setupMaterialScopeKey(task) {
+  const stageId = Number(task?.stage_id || 0);
+  if (!stageId) return null;
+  const sceneId = Number(task?.lor_scene_id || 0);
+  if (sceneId && isRealSetupSceneName(task?.scene_name)) return `SCENE:${sceneId}`;
+  return `STAGE:${stageId}`;
+}
+
+function materialScopeTasks(task) {
+  const key = setupMaterialScopeKey(task);
+  if (!key) return [];
+  return (appState.tasks || []).filter((candidate) => (
+    Boolean(candidate?.active_flag)
+    && Boolean(candidate?.requires_display_material)
+    && setupMaterialScopeKey(candidate) === key
+  ));
+}
+
+function ensureSetupCatalogMaterialHint() {
+  const list = el('library-list');
+  if (!list || el('setup-catalog-material-hint')) return;
+  const hint = document.createElement('div');
+  hint.id = 'setup-catalog-material-hint';
+  hint.className = 'setup-catalog-material-hint muted';
+  hint.innerHTML = '<strong>Display material:</strong> check Uses Display / Container Material on the reusable tasks that actually need Display material. When more than one task is checked in the same Stage/Scene, open one of those tasks to assign the resolved Displays between only those checked tasks.';
+  list.insertAdjacentElement('beforebegin', hint);
+}
+
+function applySetupCatalogMaterialControls() {
+  const list = el('library-list');
+  if (!list) return;
+  ensureSetupCatalogMaterialHint();
+
+  list.querySelectorAll('.library-task').forEach((row) => {
+    const taskId = libraryMaterialTaskId(row);
+    const task = taskId == null ? null : taskById(taskId);
+    if (!task) return;
+
+    let label = row.querySelector('.setup-catalog-material-toggle');
+    if (!label) {
+      label = document.createElement('label');
+      label.className = 'setup-catalog-material-toggle';
+      label.innerHTML = '<input type="checkbox" class="setup-catalog-material-checkbox"> Uses Display / Container Material';
+      const actions = row.querySelector('.library-actions');
+      if (actions) actions.insertAdjacentElement('beforebegin', label);
+      else row.appendChild(label);
+
+      const input = label.querySelector('.setup-catalog-material-checkbox');
+      input?.addEventListener('pointerdown', (event) => event.stopPropagation());
+      input?.addEventListener('click', (event) => event.stopPropagation());
+      input?.addEventListener('change', (event) => {
+        event.stopPropagation();
+        void saveCatalogSetupMaterialRequirement(event.currentTarget);
+      });
+    }
+
+    const input = label.querySelector('.setup-catalog-material-checkbox');
+    if (!input) return;
+    input.dataset.taskId = String(task.setup_task_id);
+    input.checked = Boolean(task.requires_display_material);
+    const disabled = !Boolean(appState.access?.can_manage_setup) || !Boolean(task.active_flag) || task.stage_id == null;
+    input.disabled = disabled;
+    label.classList.toggle('disabled', disabled);
+    label.title = task.stage_id == null
+      ? 'Display / Container Material requires a Stage or real Scene scope.'
+      : task.active_flag
+        ? 'Select this task as a Display-material task for its Stage/Scene.'
+        : 'Inactive reusable tasks cannot be selected for Display ownership.';
+  });
+}
+
+async function saveCatalogSetupMaterialRequirement(input) {
+  const taskId = Number(input?.dataset?.taskId || 0);
+  const task = taskById(taskId);
+  if (!task || !appState.access?.can_manage_setup) return;
+
+  const previous = setupMaterialState.has(taskId)
+    ? Boolean(setupMaterialState.get(taskId))
+    : Boolean(task.requires_display_material);
+  const requires = Boolean(input.checked);
+
+  try {
+    setBusy(true);
+    await api(
+      `api/setup/tasks/${task.setup_task_id}/display-material`,
+      commandOptions('PATCH', { requires_display_material: requires })
+    );
+    setupMaterialState.set(taskId, requires);
+    task.requires_display_material = requires;
+
+    if (Number(appState.selectedTaskId || 0) === taskId) {
+      const detail = el('edit-requires-display-material');
+      if (detail) detail.checked = requires;
+      await loadSelectedSetupMaterialContext();
+    }
+
+    applySetupMaterialTaskHighlighting();
+    applySetupCatalogMaterialControls();
+    syncDisplayOwnershipCatalogScope();
+    setAlert(
+      requires
+        ? `${task.task_name}: Display / Container Material selected in the reusable Catalog.`
+        : `${task.task_name}: Display / Container Material cleared in the reusable Catalog.`,
+      'ok'
+    );
+  } catch (error) {
+    input.checked = previous;
+    task.requires_display_material = previous;
+    setupMaterialState.set(taskId, previous);
+    applySetupCatalogMaterialControls();
+    syncDisplayOwnershipCatalogScope();
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function syncDisplayOwnershipCatalogScope() {
+  const selected = taskById(appState.selectedTaskId);
+  const checkedTasks = selected ? materialScopeTasks(selected) : [];
+  const selectedChecked = Boolean(selected?.requires_display_material);
+  const multiCheckedScope = selectedChecked && checkedTasks.length > 1;
+
+  const control = el('setup-display-ownership-control');
+  if (control) control.hidden = !multiCheckedScope;
+
+  const dialog = el('setup-display-ownership-dialog');
+  const content = el('setup-display-ownership-content');
+  if (!content) return;
+
+  content.querySelectorAll('.setup-display-owner-column[data-target-task-id]').forEach((column) => {
+    const targetId = Number(column.dataset.targetTaskId || 0);
+    const targetTask = taskById(targetId);
+    column.hidden = !Boolean(targetTask?.requires_display_material);
+  });
+
+  let note = content.querySelector('.setup-display-owner-catalog-hint');
+  if (!note && content.children.length) {
+    note = document.createElement('div');
+    note.className = 'setup-display-owner-catalog-hint muted';
+    content.insertBefore(note, content.firstChild);
+  }
+  if (note) {
+    note.innerHTML = '<strong>Assignment targets:</strong> only reusable tasks checked Uses Display / Container Material in the Catalog are shown. Return to the Catalog to add or remove a task from this assignment set.';
+    note.hidden = !multiCheckedScope;
+  }
+
+  if (dialog?.open && !multiCheckedScope) dialog.close();
+}
+
+function installDisplayOwnershipCatalogScopeObserver() {
+  const control = el('setup-display-ownership-control');
+  const content = el('setup-display-ownership-content');
+  if (control && control.dataset.materialScopeObserver !== '1') {
+    control.dataset.materialScopeObserver = '1';
+    new MutationObserver(() => syncDisplayOwnershipCatalogScope()).observe(
+      control,
+      { attributes: true, attributeFilter: ['hidden'] }
+    );
+  }
+  if (content && content.dataset.materialScopeObserver !== '1') {
+    content.dataset.materialScopeObserver = '1';
+    new MutationObserver(() => syncDisplayOwnershipCatalogScope()).observe(
+      content,
+      { childList: true, subtree: true }
+    );
+  }
+  syncDisplayOwnershipCatalogScope();
 }
 
 function setupMaterialSummaryText(resolution) {
@@ -294,6 +517,7 @@ function syncSelectedSetupMaterial() {
   task.requires_display_material = checkbox.checked;
   applySetupMaterialAccess();
   loadSelectedSetupMaterialContext();
+  syncDisplayOwnershipCatalogScope();
 }
 
 async function loadSetupMaterialFlags({ rerender = true } = {}) {
@@ -314,6 +538,8 @@ async function loadSetupMaterialFlags({ rerender = true } = {}) {
     if (typeof renderNextExecution === 'function') renderNextExecution();
   }
   applySetupMaterialTaskHighlighting();
+  applySetupCatalogMaterialControls();
+  syncDisplayOwnershipCatalogScope();
 }
 
 async function saveSelectedSetupMaterialRequirement() {
@@ -332,6 +558,8 @@ async function saveSelectedSetupMaterialRequirement() {
     setupMaterialState.set(Number(task.setup_task_id), requires);
     task.requires_display_material = requires;
     applySetupMaterialTaskHighlighting();
+    applySetupCatalogMaterialControls();
+    syncDisplayOwnershipCatalogScope();
     await loadSelectedSetupMaterialContext();
     setAlert(
       requires
@@ -363,6 +591,8 @@ if (typeof renderLibrary === 'function') {
   renderLibrary = function renderLibraryWithMaterial(...args) {
     const result = setupMaterialBaseRenderLibrary(...args);
     applySetupMaterialTaskHighlighting();
+    applySetupCatalogMaterialControls();
+    syncDisplayOwnershipCatalogScope();
     return result;
   };
 }
@@ -390,6 +620,7 @@ if (typeof selectTask === 'function') {
   selectTask = function selectTaskWithMaterial(taskId) {
     const result = setupMaterialBaseSelectTask(taskId);
     syncSelectedSetupMaterial();
+    requestAnimationFrame(syncDisplayOwnershipCatalogScope);
     return result;
   };
 }
@@ -412,5 +643,10 @@ window.addEventListener('load', () => {
   applySetupMaterialAccess();
   loadSetupMaterialFlags().catch((error) => {
     console.error('Setup Display-material metadata could not be loaded', error);
+  });
+  requestAnimationFrame(() => {
+    installDisplayOwnershipCatalogScopeObserver();
+    applySetupCatalogMaterialControls();
+    syncDisplayOwnershipCatalogScope();
   });
 });
