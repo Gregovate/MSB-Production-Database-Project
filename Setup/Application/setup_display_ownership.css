@@ -1,0 +1,193 @@
+/* Issue #141 — task-specific Display ownership board. */
+
+.setup-display-ownership-control {
+  margin: 10px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setup-display-ownership-status {
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.setup-display-ownership-status.complete {
+  color: var(--success, #176b3a);
+}
+
+.setup-display-ownership-status.review {
+  color: var(--warning, #8a5300);
+}
+
+.setup-display-ownership-dialog {
+  width: min(1500px, 96vw);
+  max-height: 92vh;
+  border: 0;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+  background: var(--surface, #fff);
+  color: var(--text, #1f2430);
+}
+
+.setup-display-ownership-dialog::backdrop {
+  background: rgba(0, 0, 0, .55);
+}
+
+.setup-display-ownership-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border, #d8dce3);
+  background: var(--surface, #fff);
+}
+
+.setup-display-ownership-heading h3 {
+  margin: 2px 0 0;
+}
+
+.setup-display-ownership-content {
+  padding: 16px 18px 22px;
+  overflow: auto;
+}
+
+.setup-display-ownership-facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.setup-display-ownership-facts > div {
+  border: 1px solid var(--border, #d8dce3);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.setup-display-ownership-facts span,
+.setup-display-ownership-facts strong {
+  display: block;
+}
+
+.setup-display-ownership-facts span {
+  font-size: .78rem;
+  opacity: .72;
+}
+
+.setup-display-ownership-facts strong {
+  margin-top: 2px;
+  font-size: 1.05rem;
+}
+
+.setup-display-ownership-warning {
+  border: 1px solid #d29a36;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  background: rgba(210, 154, 54, .12);
+}
+
+.setup-display-ownership-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 10px 0 14px;
+}
+
+.setup-display-ownership-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.setup-display-owner-column {
+  min-height: 180px;
+  border: 1px solid var(--border, #d8dce3);
+  border-radius: 10px;
+  background: var(--surface-alt, rgba(120, 130, 150, .06));
+}
+
+.setup-display-owner-column.drop-target {
+  outline: 3px solid rgba(76, 112, 201, .35);
+  outline-offset: 1px;
+}
+
+.setup-display-owner-column-heading {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #d8dce3);
+}
+
+.setup-display-owner-column-heading strong,
+.setup-display-owner-column-heading span {
+  display: block;
+}
+
+.setup-display-owner-column-heading span {
+  margin-top: 2px;
+  font-size: .78rem;
+  opacity: .72;
+}
+
+.setup-display-owner-cards {
+  min-height: 130px;
+  padding: 9px;
+}
+
+.setup-display-owner-card {
+  border: 1px solid var(--border, #cfd4dc);
+  border-radius: 8px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+  background: var(--surface, #fff);
+  cursor: default;
+}
+
+.setup-display-owner-card[draggable='true'] {
+  cursor: grab;
+}
+
+.setup-display-owner-card.dragging {
+  opacity: .45;
+}
+
+.setup-display-owner-card strong,
+.setup-display-owner-card span {
+  display: block;
+}
+
+.setup-display-owner-card span {
+  margin-top: 3px;
+  font-size: .8rem;
+  opacity: .74;
+}
+
+.setup-display-owner-card.review {
+  border-color: #d29a36;
+}
+
+.setup-display-owner-empty {
+  padding: 10px;
+  font-size: .84rem;
+  opacity: .68;
+}
+
+.setup-display-owner-stale {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #d8dce3);
+}
+
+@media (max-width: 900px) {
+  .setup-display-ownership-facts {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
