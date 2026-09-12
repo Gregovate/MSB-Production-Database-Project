@@ -112,6 +112,18 @@ def test_manager_board_supports_initialization_and_drag_reassignment() -> None:
     assert '"setup_display_ownership.css"' in backend
 
 
+def test_material_actions_share_lavender_emphasis() -> None:
+    css = read_app("setup_display_ownership.css")
+    html = read_app("production.html")
+    assert "--setup-material-action-bg" in css
+    assert "#setup-material-details-open" in css
+    assert "#setup-display-ownership-open" in css
+    assert "#setup-display-ownership-initialize" in css
+    assert "#7657c7" in css
+    assert 'html[data-theme="dark"]' in css
+    assert "setup_display_ownership.css?v=2026-09-12.2" in html
+
+
 def test_container_support_remains_separate_and_nonexclusive() -> None:
     ownership = read_app("setup_display_ownership.py")
     migration = (DB_DIR / "028_harden_setup_task_display_ownership.sql").read_text(encoding="utf-8")
