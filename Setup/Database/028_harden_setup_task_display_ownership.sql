@@ -2,7 +2,7 @@
 MSB Setup Session — task-specific Display ownership foundation
 Issue: #141
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-12 V0.1.0
+Revision: 2026-09-12 V0.1.1
 
 Purpose:
   Reuse ref.setup_task_display as the explicit ownership layer applied AFTER the
@@ -15,6 +15,8 @@ Authority boundaries:
   - LOR/LOR2DB membership is not changed here.
   - ref.display.container_id is not changed here.
   - One current Display may have at most one explicit reusable Setup-task owner.
+  - A task with explicit Display ownership must remain material-bearing until
+    those Display ownership rows are moved away.
   - Simple scopes may continue to use the existing implicit single-task resolver
     without materializing rows in ref.setup_task_display.
   - Container/KIT support remains many-to-many in
@@ -38,6 +40,10 @@ BEGIN
 
     IF to_regprocedure('ref.setup_management_actor(text,boolean)') IS NULL THEN
         RAISE EXCEPTION 'Setup Manager command boundary is required first';
+    END IF;
+
+    IF to_regprocedure('ref.set_setup_task_display_material_requirement(text,bigint,boolean)') IS NULL THEN
+        RAISE EXCEPTION 'Governed Display-material requirement command is required before Display ownership hardening';
     END IF;
 
     IF NOT EXISTS (
@@ -83,6 +89,81 @@ COMMENT ON TABLE ref.setup_task_display IS
 
 COMMENT ON INDEX ref.ux_setup_task_display_one_owner IS
 '#141 invariant: one Display may have at most one explicit reusable Setup-task owner.';
+
+/*
+Issue #141 makes explicit Display ownership and the reusable material flag a
+single coherent state. A task that owns any Displays cannot be changed to
+requires_display_material=false until those ownership rows are moved away.
+*/
+CREATE OR REPLACE FUNCTION ref.set_setup_task_display_material_requirement(
+    p_email text,
+    p_setup_task_id bigint,
+    p_requires_display_material boolean
+)
+RETURNS TABLE (
+    setup_task_id bigint,
+    requires_display_material boolean,
+    operator_display_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ref
+AS $function$
+DECLARE
+    v_directus_user_id uuid;
+    v_person_id integer;
+    v_display_name text;
+    v_requires boolean := coalesce(p_requires_display_material, false);
+    v_stage_id integer;
+BEGIN
+    SELECT a.directus_user_id, a.person_id, a.display_name
+      INTO v_directus_user_id, v_person_id, v_display_name
+    FROM ref.setup_management_actor(p_email, false) AS a;
+
+    SELECT t.stage_id
+      INTO v_stage_id
+    FROM ref.setup_task AS t
+    WHERE t.setup_task_id = p_setup_task_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING
+            ERRCODE = 'P0002',
+            MESSAGE = 'Setup task was not found';
+    END IF;
+
+    IF v_requires AND v_stage_id IS NULL THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '22023',
+            MESSAGE = 'Display/container material requires a Stage or Scene-scoped Setup task';
+    END IF;
+
+    IF NOT v_requires AND EXISTS (
+        SELECT 1
+        FROM ref.setup_task_display AS td
+        WHERE td.setup_task_id = p_setup_task_id
+    ) THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '23514',
+            MESSAGE = 'Cannot disable Display / Container Material while this task owns Displays. Move those Displays to another Setup task first.';
+    END IF;
+
+    PERFORM pg_catalog.set_config(
+        'app.directus_user_uuid',
+        v_directus_user_id::text,
+        true
+    );
+
+    UPDATE ref.setup_task AS t
+       SET requires_display_material = v_requires
+     WHERE t.setup_task_id = p_setup_task_id;
+
+    RETURN QUERY
+    SELECT p_setup_task_id, v_requires, v_display_name;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION ref.set_setup_task_display_material_requirement(text,bigint,boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ref.set_setup_task_display_material_requirement(text,bigint,boolean) TO fieldwiring_app;
 
 CREATE OR REPLACE FUNCTION ref.set_setup_task_display_owner(
     p_email text,
@@ -175,6 +256,12 @@ BEGIN
         true
     );
 
+    /* Defensive retention: explicit ownership can never leave the target false. */
+    UPDATE ref.setup_task AS t
+       SET requires_display_material = true
+     WHERE t.setup_task_id = p_target_setup_task_id
+       AND NOT t.requires_display_material;
+
     IF v_current_setup_task_id IS NULL THEN
         INSERT INTO ref.setup_task_display(
             setup_task_id,
@@ -211,10 +298,15 @@ GRANT EXECUTE ON FUNCTION ref.set_setup_task_display_owner(text,bigint,bigint,bi
 COMMIT;
 
 SELECT
-    '2026-09-12-setup-display-ownership-v0.1.0' AS applied_revision,
+    '2026-09-12-setup-display-ownership-v0.1.1' AS applied_revision,
     current_user AS applied_by,
     has_function_privilege(
         'fieldwiring_app',
         'ref.set_setup_task_display_owner(text,bigint,bigint,bigint)',
         'EXECUTE'
-    ) AS app_can_set_display_owner;
+    ) AS app_can_set_display_owner,
+    has_function_privilege(
+        'fieldwiring_app',
+        'ref.set_setup_task_display_material_requirement(text,bigint,boolean)',
+        'EXECUTE'
+    ) AS app_can_set_material_requirement;
