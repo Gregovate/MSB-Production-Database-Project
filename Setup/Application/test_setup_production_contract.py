@@ -35,6 +35,8 @@ def test_production_html_uses_database_client_only() -> None:
         "setup_task_detail_compact.js",
         "setup_active_task_context.css",
         "setup_active_task_context.js",
+        "setup_display_ownership.css",
+        "setup_display_ownership.js",
     ):
         assert asset in text
     assert "setup.js" not in text
@@ -59,6 +61,7 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
             "setup_catalog_dirty_guard.js",
             "setup_task_detail_compact.js",
             "setup_active_task_context.js",
+            "setup_display_ownership.js",
         )
     ]
     for text in texts:
@@ -74,6 +77,7 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     assert "dependencies/${prerequisiteTaskId}" in texts[3]
     assert "api/setup/dependencies/ordered" in texts[4]
     assert "dependencies/order" in texts[4]
+    assert "display-ownership" in texts[-1]
 
 
 def test_production_runtime_declares_gunicorn() -> None:
@@ -97,7 +101,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.11-active-task-context"
+    assert payload["version"] == "V0.3.12-display-ownership"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -128,6 +132,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_task_detail_compact.js",
         "/setup_active_task_context.css",
         "/setup_active_task_context.js",
+        "/setup_display_ownership.css",
+        "/setup_display_ownership.js",
     ):
         response = client.get(asset)
         assert response.status_code == 200
@@ -146,6 +152,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_resource_repository.py",
         "/setup_next_api.py",
         "/setup_next_repository.py",
+        "/setup_display_ownership.py",
+        "/setup_display_ownership_api.py",
         "/setup_prerequisite_order_api.py",
         "/setup_prerequisite_order_repository.py",
         "/setup_operations_repository.py",
@@ -197,5 +205,7 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/tasks/<int:setup_task_id>/field-context",
         "/api/setup/tasks/<int:setup_task_id>/procedure",
         "/api/setup/tasks/<int:setup_task_id>/procedure/current",
+        "/api/setup/tasks/<int:setup_task_id>/display-ownership/initialize",
+        "/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>",
     ):
         assert expected in rules
