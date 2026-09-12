@@ -287,6 +287,44 @@ html[data-theme="dark"] {
   border-top: 1px solid var(--border, #d8dce3);
 }
 
+/* Keep the reusable Catalog as compact as the accepted Production layout.
+   The material selector is the fourth/right-side cell immediately before the
+   existing action buttons, not an extra row or a wide fifth-column label. */
+.next-task-row {
+  grid-template-columns: 4rem minmax(14rem, 1fr) minmax(12rem, .9fr) max-content auto;
+}
+
+.next-task-row > .setup-catalog-material-toggle {
+  min-width: 0;
+  width: max-content;
+  justify-self: end;
+  white-space: nowrap;
+  gap: .3rem;
+  font-size: 0;
+  line-height: 1;
+}
+
+.next-task-row > .setup-catalog-material-toggle::after {
+  content: 'Material';
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.next-task-row > .setup-catalog-material-toggle input {
+  width: 1rem;
+  height: 1rem;
+  min-width: 1rem;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.next-task-row > .library-actions {
+  justify-self: end;
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .setup-display-ownership-facts {
     grid-template-columns: repeat(2, minmax(120px, 1fr));
@@ -294,5 +332,17 @@ html[data-theme="dark"] {
 
   .setup-display-ownership-toolbar {
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 650px) {
+  .next-task-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .next-task-row > .setup-catalog-material-toggle,
+  .next-task-row > .library-actions {
+    grid-column: 2;
+    justify-self: start;
   }
 }
