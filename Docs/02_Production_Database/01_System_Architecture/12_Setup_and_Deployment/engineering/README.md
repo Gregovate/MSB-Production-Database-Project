@@ -182,6 +182,8 @@ The accepted resolver provides Stage/Scene material context, not task-specific s
 
 Issue #167 separately owns Extra Materials, KIT assignments, and material-source tracking. Do not collapse those facts into LOR Display membership or assume every Extra Material lives in a KIT.
 
+The operator-confirmed working model for those relationships, default/verified authority, KIT lifecycle, staged release, Production Crew execution boundary, targeted locates, and field exceptions is now preserved in the [Setup Task Supporting Information Contract — 2026-09-11](Setup_Task_Supporting_Information_Contract_2026-09-11.md). Future work must start there rather than reconstructing those decisions from chat or issue comments.
+
 See [Setup Stage / Scene Material Resolution Contract — 2026-09-10](Setup_Stage_Scene_Material_Resolution_Contract_2026-09-10.md).
 
 ## Current Planning / Execution Direction
@@ -203,9 +205,39 @@ preferred order / hard predecessors
     -> perform / record / replan
 ```
 
+Every reusable/annual task creates human completion/reporting burden. The reusable Catalog should therefore track meaningful operational control points, not every instruction step. Detailed procedure steps remain in the procedure unless independent planning/completion has operational value.
+
 **Plan / Schedule** and **Perform Work** support Stage-oriented presentation, but Plan / Schedule has not yet had the same cleanup/review pass as the reusable Catalog.
 
 There is currently no accepted Production Pick List generator/tablet workflow.
+
+## GIS / Locate Readiness Gap
+
+The current external park GIS/GPS source set contains useful placement tracks plus power/network spatial information, but that information is not yet integrated into the new Setup system.
+
+The accepted field rule is **not** `locate every Stage`. Locate/clearance is required only where planned ground penetration has a plausible chance of intersecting buried infrastructure or where the risk remains unresolved.
+
+Issue #171 owns the independently actionable 2026 work to integrate enough of that spatial knowledge to support layout and targeted locate/readiness decisions. Site Infrastructure / GIS owns spatial reference/evidence; Setup owns whether planned work is ready to proceed.
+
+`No locate required` is a derived/reviewed readiness fact, not another annual task that someone must manually complete.
+
+## Continuous-Improvement / Field-Observation Gap
+
+The new Production data is intended to be trusted during field work rather than re-verified through redundant Setup tasks. When reality disagrees with the system, Production Crew need a durable way to report the exception immediately.
+
+Issue #172 owns the missing cross-system **field observation -> triage -> actionable item** bridge. It must support Setup, Testing, Work Orders, inventory/KIT validation, GIS, scanning/movement, and other trusted Production Crew workflows without turning every observation into a Work Order or requiring the reporter to know which subsystem owns the final correction.
+
+The target seasonal loop is:
+
+```text
+perform real work
+    -> validate authoritative state through use
+    -> report exceptions / improvement opportunities
+    -> triage to the responsible system/owner
+    -> correct data/process/system
+    -> preserve verified result
+    -> next season starts smarter
+```
 
 ## Current Editable Procedure Source Rule
 
@@ -234,6 +266,25 @@ Cloudflare Access authenticated email
 Do not grant broad Setup table DML to solve identity/capability problems.
 
 Migration 027 preserves this boundary with narrow EXECUTE on governed resource commands and no broad `ref.setup_resource` UPDATE/DELETE or broad `ref.setup_task_resource` UPDATE.
+
+Current operator direction also distinguishes **execution authority** from **business-definition authority**:
+
+```text
+Production Crew
+    -> perform work
+    -> report progress/completion
+    -> validate physical state
+    -> report issues/exceptions
+
+Manager
+    -> all operational capability as applicable
+    -> maintain reusable definitions / catalogs / defaults / durable assignments
+
+Administrator
+    -> Manager capability plus limited system/annual-structure authority
+```
+
+There is currently no Captain/Supervisor Directus role. Setup `CAPTAIN` / `ALTERNATE` relationships are task-leadership assignments, not authorization classes. Do not invent a new Directus role merely to preserve the current Manager-or-Captain progress restriction. The current progress/completion authorization boundary requires correction under #132 / #172.
 
 See [Setup Data Consumption and Authorization Contract](Setup_Data_Consumption_and_Authorization_Contract_2026-09-10.md).
 
@@ -270,11 +321,13 @@ Primary remaining work includes:
 #122  Setup Session planning / Pick List / live reconstruction umbrella
 #145  reusable Catalog cleanup gate before real 2026 Session creation
 #167  Extra Materials / KIT assignments / material-source tracking
+#141  task-specific staged material subdivision / Pick List release timing
+#171  park GIS/layout + targeted underground-locate integration
+#172  Production Crew field-observation / continuous-improvement intake + triage
 #169  keep active task name visible while reviewing long task detail
 #166  one-sudo browser-preview harness hardening
-#141  task-specific staged material subdivision / Pick List release timing
 #159  shared light/dark palette and dark-mode white-logo consistency
-#132  Captain work-report duration / multi-day effort capture
+#132  work-report duration / multi-day effort + execution authorization correction
 #113  shared Scan application readiness / identity capture integration
 ```
 
@@ -283,6 +336,7 @@ Issue #130 global People/Capability/Qualification foundation is completed; subsy
 ## Start Here
 
 - [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — current deployed SHA/version, migration 027, runtime evidence, boundaries, and resume point.
+- [Setup Task Supporting Information Contract — 2026-09-11](Setup_Task_Supporting_Information_Contract_2026-09-11.md) — operator-confirmed task/support-package model, Extra Materials/KIT/source relationships, staged-release boundary, task granularity, Production Crew execution boundary, targeted locate rule, and continuous-improvement handoff.
 - [Setup V0.3.10 Resource Catalog Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md) — exact migration/source deployment, rollback archive, regression, fingerprint, authorization, and browser acceptance evidence.
 - [Setup V0.3.9 Prerequisite Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md) — predecessor workflow acceptance history.
 - [Setup V0.3.8 Task Detail Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Task_Detail_Production_Acceptance_2026-09-11.md) — compact task-detail acceptance history.
@@ -323,15 +377,17 @@ Before the next Setup change:
 
 1. read the Production Database Project Rules;
 2. read the current [2026-09-11 Production engineering handoff](Setup_Session_Production_Engineering_Handoff_2026-09-11.md);
-3. read this engineering portal;
+3. read this engineering portal and the [Setup Task Supporting Information Contract](Setup_Task_Supporting_Information_Contract_2026-09-11.md);
 4. preserve V0.3.7 dirty-edit/client-build protections, V0.3.8 compact layout, V0.3.9 prerequisite behavior, and V0.3.10 resource-catalog behavior;
 5. review Issue #141 before designing task-specific staged material/Pick List release timing;
 6. review Issue #167 before designing Extra Materials/KIT/source relationships;
-7. review Issue #145 before creating or simulating real 2026 annual state;
-8. preserve annual 2025 facts separately from reusable future knowledge;
-9. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
-10. use `Gregovate/MSB-Server-Management` for current runtime/deployment/browser-review authority; and
-11. update controlled docs, acceptance evidence, and this README whenever accepted behavior or the resume point changes.
+7. review Issue #171 before designing Setup layout/ground-penetration locate behavior;
+8. review Issue #172 before inventing any subsystem-specific field correction/improvement queue;
+9. review Issue #145 before creating or simulating real 2026 annual state;
+10. preserve annual 2025 facts separately from reusable future knowledge;
+11. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
+12. use `Gregovate/MSB-Server-Management` for current runtime/deployment/browser-review authority; and
+13. update controlled docs, acceptance evidence, and this README whenever accepted behavior or the resume point changes.
 
 ## Related Systems
 
@@ -340,4 +396,5 @@ Before the next Setup change:
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [People and Identity](../../03_People_and_Identity/README.md)
 - [Labeling and Scanning](../../07_Labeling_and_Scanning/README.md)
+- [Site Infrastructure / GIS](../../11_Site_Infrastructure_GIS/README.md)
 - [Wiring System](../../09_Wiring_System/README.md)
