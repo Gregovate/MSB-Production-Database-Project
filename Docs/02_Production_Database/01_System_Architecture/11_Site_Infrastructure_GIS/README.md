@@ -107,6 +107,8 @@ The exact write event is not yet defined. Being physically near the expected coo
 
 Setup/Deployment owns the movement/status business event. GIS owns spatial identity/evidence and spatial calculations.
 
+For the 2026 launch, GIS/location integration is a **field-start gate**, not a reason to create the real 2026 Setup Session early. The reusable Catalog/task/material foundation and #122 scheduling launch remain separate from the later field-execution acceptance.
+
 ## Setup Layout and Ground-Penetration Locate Direction
 
 2026 Setup reconnaissance established a second operational use for the existing GIS source set: **layout guidance and targeted underground locate decisions**.
@@ -145,11 +147,13 @@ Site Infrastructure / GIS owns the spatial reference/evidence and spatial calcul
 
 ## Field Correction / Continuous-Improvement Boundary
 
-Spatial reference data will not always be perfect. If Production Crew discover a missing/wrong buried route, layout track, waypoint, or risk area while doing real work, the finding must be preservable and triageable rather than becoming verbal/chat-only knowledge.
+Spatial reference data will not always be perfect. If Production Crew discover a missing/wrong buried route, layout track, waypoint, or risk area while doing real work, the finding must be preserved rather than becoming verbal/chat-only knowledge.
 
-Issue #172 owns the cross-system field-observation / continuous-improvement intake and triage problem. GIS should consume that common mechanism rather than inventing an isolated correction queue.
+For a **concrete wrong/missing condition that needs somebody to act later**, the connected field workflow may create a contextual Work Order directly, consistent with the Setup correction contract. Creating the Work Order must not silently overwrite controlled reference GIS data.
 
-A field observation is evidence. It must not silently overwrite controlled reference GIS data without the appropriate review/validation process.
+Issue #172 remains the broader cross-system observation/continuous-improvement path for findings where the correct owner/action is genuinely unclear or where the finding is an improvement observation rather than a concrete correction.
+
+GIS should consume those common mechanisms rather than inventing an isolated correction queue.
 
 ## PostgreSQL / PostGIS Engineering Gate
 
@@ -189,11 +193,11 @@ Do not start by adding generic latitude/longitude columns throughout the Product
 - define mobile GPS accuracy and proximity-validation requirements;
 - determine whether park network coverage requires offline map/location behavior;
 - preserve the existing NAD83 HARN WISCRS Sheboygan County Feet contract during integration;
-- integrate field-discovered GIS corrections with the common Issue #172 observation/triage workflow.
+- use direct contextual Work Orders for concrete correction needs and #172 for broader/unclear observations rather than inventing a GIS-specific queue.
 
 ## Resume Development
 
-For Setup/Deployment GIS work, begin only after the actual Setup movement/placement workflow is documented.
+For Setup/Deployment GIS work, begin only after the actual Setup movement/placement workflow and current launch priority are understood.
 
 Then review:
 
@@ -201,10 +205,11 @@ Then review:
 2. [Setup Task Supporting Information Contract](../12_Setup_and_Deployment/engineering/Setup_Task_Supporting_Information_Contract_2026-09-11.md);
 3. GitHub Issue #171;
 4. GitHub Issue #172;
-5. [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md);
-6. [Containers and Storage](../04_Containers_and_Storage/README.md);
-7. existing GPX/ExpertGPS datasets and waypoint conventions;
-8. the live PostgreSQL/PostGIS configuration.
+5. GitHub Issue #175 where offline/field-document behavior is relevant;
+6. [Scan Workflows and Forklift Operations](../07_Labeling_and_Scanning/Scan_Workflows_and_Forklift_Operations.md);
+7. [Containers and Storage](../04_Containers_and_Storage/README.md);
+8. existing GPX/ExpertGPS datasets and waypoint conventions;
+9. the live PostgreSQL/PostGIS configuration.
 
 Do not design the GIS database schema from assumptions.
 
