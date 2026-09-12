@@ -23,7 +23,7 @@ from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 
-PRODUCTION_VERSION = "V0.3.12-display-ownership"
+PRODUCTION_VERSION = "V0.3.11-active-task-context"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
