@@ -5,7 +5,7 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — V0.3.10 accepted in Production; 2026 launch preparation active |
+| Status | CURRENT HANDOFF — V0.3.11 accepted in Production; 2026 launch preparation active |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-12 |
 
@@ -24,13 +24,13 @@ https://my.sheboyganlights.org/setup/
 Current exact accepted/deployed application target:
 
 ```text
-c2a1820627f1a036d634241cc6aecd1a926a1479
+28ad2d28addd47f8f086ed3b2e53468b453dbe13
 ```
 
 Current Setup health:
 
 ```text
-V0.3.10-resource-catalog
+V0.3.11-active-task-context
 ```
 
 Current annual context:
@@ -42,19 +42,17 @@ Current annual context:
 
 The 2025 season is intentionally being used as the proving ground while reusable tasks, task material ownership, Extra Materials/KITs, and field execution behavior are corrected. Preserve historical 2025 evidence. Do not create the real 2026 Setup Session before the launch gates below pass.
 
-V0.3.10 Resource Catalog is accepted in Production. Preserve its behavior.
+V0.3.11 persistent active-task context is accepted in Production. V0.3.10 Resource Catalog behavior remains accepted beneath it and must be preserved.
 
 ## 2026 Launch Sequence
 
 The launch target is **real 2026 Setup Session creation and scheduling by September 30, 2026 under Issue #122**.
 
-The accepted pre-launch dependency order is:
+Issue #169 is complete and no longer a remaining launch gate. Its accepted V0.3.11 header context is now part of the Production safety baseline used during Catalog cleanup.
+
+The remaining pre-launch dependency order is:
 
 ```text
-#169  Persistent active-task identity while editing
-   -> selected reusable task name remains visible while long detail scrolls
-   -> error-prevention control during Catalog cleanup
-
 #145  Reusable Catalog cleanup / correct schedulable work packages
    -> remove reconstruction mistakes and bad task boundaries
    -> hard gate before real 2026 Session creation
@@ -96,6 +94,7 @@ Current accepted Production behavior wins over stale issue prose or earlier desi
 - V0.3.8 compact task-detail behavior;
 - V0.3.9 prerequisite behavior;
 - V0.3.10 Resource Catalog behavior;
+- V0.3.11 persistent active-task context;
 - the working Stage/Scene Display resolver;
 - 2025 historical/sandbox boundaries;
 - current Display/Container authority; and
@@ -113,7 +112,7 @@ Material / Logistics                Captains / Knowledge Owners
 
 The reusable definition uses a compact two-column desktop grid. Material / Logistics retains the accepted counts and detail dialog. Prerequisites and Equipment / Resources remain below the rail block.
 
-Issue #169 is now launch-preparation work rather than cosmetic polish: while Managers are reviewing/creating reusable tasks, the active task name must remain visible so long-page scrolling cannot cause accidental edits to the wrong task.
+V0.3.11 adds the accepted Issue #169 edit-safety control: when the review view has a selected task, the current Stage/task identity is mirrored into the already-sticky global Setup header under **ACTIVE TASK**. The identity remains visible while long detail is scrolled and updates immediately when another task is selected. Catalog/Movement views do not retain stale task context. The feature is presentation-only and does not own API writes, navigation, authorization, or dirty-edit behavior.
 
 Cross-application palette/dark-mode consistency remains separate work in Issue #159.
 
@@ -143,7 +142,7 @@ See [Setup Predecessor and Readiness Contract — 2026-09-09](Setup_Predecessor_
 
 ## Current Accepted Resource Catalog Model
 
-V0.3.10 provides the governed reusable Resource Catalog and must remain intact.
+V0.3.10 provides the governed reusable Resource Catalog and remains part of the V0.3.11 baseline.
 
 The normal task-resource workflow is:
 
@@ -360,11 +359,10 @@ Issue #175 owns the offline/unregistered-worker fallback: a self-contained print
 
 A valid reusable task can exist without a 2025 annual row. Annual Session creation seeds every active reusable task into the new Session.
 
-Therefore:
+Therefore, after accepted #169 task-context safety:
 
 ```text
-#169 task-context safety
-    -> #145 active reusable Catalog cleanup
+#145 active reusable Catalog cleanup
     -> #141 Display-to-task ownership
     -> #167 Extra Materials / KIT / source foundation
     -> disposable 2026 creation/scheduling proof
@@ -382,13 +380,13 @@ Recent accepted Production work:
 #153  compact task-detail / Material layout          CLOSED / V0.3.8 accepted
 #151  Shift+left-drag predecessor creation           CLOSED / V0.3.9 accepted
 #152  reusable resource catalog management           CLOSED / V0.3.10 accepted
+#169  persistent active-task identity / edit-safety  CLOSED / V0.3.11 accepted
 #161  Archive -> SourceDocs Google Doc documentation CLOSED / completed
 ```
 
-### Pre-September-30 launch path
+### Remaining pre-September-30 launch path
 
 ```text
-#169  persistent active-task identity / edit-safety
 #145  reusable Catalog cleanup
 #141  one-Display-to-one-Setup-task ownership / staged subdivision
 #167  Extra Materials / KIT / material-source foundation
@@ -416,7 +414,8 @@ Recent accepted Production work:
 
 ## Start Here
 
-- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — current deployed SHA/version/runtime evidence and Production boundary.
+- [Setup Session Production Engineering Handoff — 2026-09-11](Setup_Session_Production_Engineering_Handoff_2026-09-11.md) — broader runtime/data boundary; use the V0.3.11 acceptance record below for the current deployed SHA/version.
+- [Setup Active Task Context V0.3.11 Production Acceptance — 2026-09-12](../../../../../Setup/Acceptance/Setup_Active_Task_Context_V0311_Production_Acceptance_2026-09-12.md) — current exact deployed source, source-only deployment evidence, fingerprint, live regression, and protected browser acceptance.
 - [Setup Task Supporting Information Contract — 2026-09-11](Setup_Task_Supporting_Information_Contract_2026-09-11.md) — current launch sequence, task ownership, Extra Materials/KIT/source rules, Production Crew boundary, Work Order correction path, and field-start gates.
 - [Setup V0.3.10 Resource Catalog Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md) — accepted resource-catalog deployment and rollback evidence.
 - [Setup V0.3.9 Prerequisite Production Acceptance — 2026-09-11](../../../../../Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md).
@@ -459,9 +458,9 @@ Before the next Setup change:
 2. refresh current remote `main` and record exact head;
 3. read the current Production engineering handoff and this engineering portal;
 4. read the [Setup Task Supporting Information Contract](Setup_Task_Supporting_Information_Contract_2026-09-11.md);
-5. preserve accepted V0.3.7 through V0.3.10 behavior;
-6. use 2025 as the sandbox/historical proving ground until the pre-launch gates pass;
-7. work the pre-launch sequence #169 -> #145 -> #141 -> #167 -> #122 rather than creating the real 2026 Session early;
+5. preserve accepted V0.3.7 through V0.3.11 behavior;
+6. use 2025 as the sandbox/historical proving ground until the remaining pre-launch gates pass;
+7. work the remaining pre-launch sequence #145 -> #141 -> #167 -> #122 rather than creating the real 2026 Session early;
 8. use issue #113 / Labeling and Scanning for shared scan capture/resolution behavior;
 9. use `Gregovate/MSB-Server-Management` for current runtime/deployment/browser-review authority; and
 10. update controlled docs, acceptance evidence, and this README whenever accepted behavior or the resume point changes.
