@@ -33,6 +33,8 @@ def test_production_html_uses_database_client_only() -> None:
         "setup_catalog_dirty_guard.js",
         "setup_task_detail_compact.css",
         "setup_task_detail_compact.js",
+        "setup_active_task_context.css",
+        "setup_active_task_context.js",
     ):
         assert asset in text
     assert "setup.js" not in text
@@ -56,6 +58,7 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
             "setup_session_year_guard.js",
             "setup_catalog_dirty_guard.js",
             "setup_task_detail_compact.js",
+            "setup_active_task_context.js",
         )
     ]
     for text in texts:
@@ -94,7 +97,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.10-resource-catalog"
+    assert payload["version"] == "V0.3.11-active-task-context"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -123,6 +126,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_catalog_dirty_guard.js",
         "/setup_task_detail_compact.css",
         "/setup_task_detail_compact.js",
+        "/setup_active_task_context.css",
+        "/setup_active_task_context.js",
     ):
         response = client.get(asset)
         assert response.status_code == 200
