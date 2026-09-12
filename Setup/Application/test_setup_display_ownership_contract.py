@@ -35,6 +35,16 @@ def test_owner_command_requires_active_material_task_and_active_display() -> Non
     assert "Display owner changed since it was loaded" in sql
 
 
+def test_explicit_owner_forces_material_flag_to_remain_true() -> None:
+    sql = (DB_DIR / "028_harden_setup_task_display_ownership.sql").read_text(encoding="utf-8")
+    assert "CREATE OR REPLACE FUNCTION ref.set_setup_task_display_material_requirement" in sql
+    assert "NOT v_requires AND EXISTS" in sql
+    assert "WHERE td.setup_task_id = p_setup_task_id" in sql
+    assert "Cannot disable Display / Container Material while this task owns Displays" in sql
+    assert "SET requires_display_material = true" in sql
+    assert "AND NOT t.requires_display_material" in sql
+
+
 def test_application_layers_ownership_after_existing_material_resolver() -> None:
     backend = read_app("production_backend.py")
     resolver_index = backend.index("install_setup_material_resolution()")
