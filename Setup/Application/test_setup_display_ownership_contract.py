@@ -60,7 +60,8 @@ def test_corrected_assignment_layer_installs_after_existing_resolver_and_ownersh
     assert 'ownership_mode = "IMPLICIT_SINGLE"' in assignment
     assert 'ownership_mode = "UNINITIALIZED_MULTI"' in assignment
     assert 'ownership_mode = "EXPLICIT_MULTI"' in assignment
-    assert 'coverage_status = "REVIEW_REQUIRED"' in assignment
+    assert '"COMPLETE" if sole_implicit_owner is not None else "REVIEW_REQUIRED"' in assignment
+    assert 'coverage_status = (' in assignment
 
 
 def test_untouched_scope_can_begin_assignment_without_material_seed() -> None:
@@ -114,7 +115,7 @@ def test_manager_board_supports_first_use_initialization_drag_multi_select_and_f
     backend = read_app("production_backend.py")
 
     assert "Assign all resolved Displays to this task" in js
-    assert "assignment automatically enables Display / Container Material" in js
+    assert "Assignment automatically enables Display / Container Material" in js
     assert "refreshMaterialFlags" in js
     assert "loadSetupMaterialFlags({ rerender: false })" in js
     assert "row.ownership_state === 'ASSIGNED' || row.ownership_state === 'IMPLICIT'" in js
