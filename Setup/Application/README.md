@@ -1,6 +1,6 @@
 # Setup Session Application
 
-Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.10 ACCEPTED; 2025 HISTORICAL REVIEW / REUSABLE CATALOG WORK CONTINUES**
+Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.11 ACCEPTED; 2025 HISTORICAL REVIEW / REUSABLE CATALOG WORK CONTINUES**
 
 This folder contains the browser-native Setup Session application used for the Production-backed 2025 Historical Verification workflow and ongoing reusable Setup development.
 
@@ -19,13 +19,13 @@ Setup/Application/production_backend.py
 Current reported version:
 
 ```text
-V0.3.10-resource-catalog
+V0.3.11-active-task-context
 ```
 
 Current exact deployed source:
 
 ```text
-c2a1820627f1a036d634241cc6aecd1a926a1479
+28ad2d28addd47f8f086ed3b2e53468b453dbe13
 ```
 
 ## Current Production Meaning
@@ -106,12 +106,12 @@ The browser constrains date controls and the database independently enforces the
 
 ## Dirty-Edit / Client Build Safety
 
-The accepted V0.3.7 safety behavior remains part of V0.3.10.
+The accepted V0.3.7 safety behavior remains part of V0.3.11.
 
 The Setup header visibly shows the loaded client build, currently:
 
 ```text
-Client V0.3.10
+Client V0.3.11
 ```
 
 Governed writes verify that the client build matches `/api/health`. A stale/mismatched client fails closed instead of quietly writing against a different server build.
@@ -120,9 +120,9 @@ Reusable edits are compared against the current selected server-backed task. Sta
 
 Dirty navigation uses explicit save/discard/stay behavior. Independent save surfaces such as Physical Effort, Display/Container Material, Resources, Captains, and prerequisite maintenance remain separately governed.
 
-## Current Task-Detail Layout
+## Current Task-Detail Layout and Active Task Context
 
-V0.3.10 preserves the accepted V0.3.8 laptop/desktop layout:
+V0.3.11 preserves the accepted V0.3.8 laptop/desktop layout:
 
 ```text
 LEFT                               RIGHT
@@ -132,9 +132,13 @@ Material / Logistics                Captains / Knowledge Owners
 
 The reusable editor itself uses a compact two-column desktop grid. Material / Logistics keeps its four resolved counts and full `View Material Details` dialog. Prerequisites and Equipment / Resources remain below the rail block.
 
-Physical mobile-device acceptance was not performed for V0.3.8. Responsive stacking is contract-covered and was checked with a narrowed desktop browser only.
+V0.3.11 adds the Issue #169 edit-safety treatment: while the review view has a selected task, the existing Stage/task identity is mirrored into the already-sticky global Setup header under **ACTIVE TASK**. The identity remains visible during the full long-detail scroll and updates immediately when the selected task changes. Catalog/Movement views do not retain stale task context.
 
-Cross-application theme and dark-mode white-logo consistency are tracked separately in Issue #159. Keeping the active task name visible while scrolling long task detail is tracked separately in Issue #169.
+The active-task treatment is presentation-only. It does not call Setup APIs and does not own save, navigation, authorization, or dirty-edit behavior.
+
+Physical mobile-device acceptance was not performed for V0.3.8. Responsive stacking was contract-covered and narrowed-desktop checked there. V0.3.11 browser acceptance also confirmed the added header context remains usable at narrowed widths and in light/dark mode.
+
+Cross-application theme and dark-mode white-logo consistency remain tracked separately in Issue #159.
 
 ## Current Prerequisite Interaction
 
@@ -144,7 +148,7 @@ Fast entry:
 
 ```text
 hold Shift before left-button-down on dependent task A
-    -> drag A onto prerequisite task B
+    -> drag A onto prerequisite B
     -> release
     -> A depends on B
     -> neither task moves
@@ -263,13 +267,13 @@ Permanent source checkout:
 Current deployed source SHA:
 
 ```text
-c2a1820627f1a036d634241cc6aecd1a926a1479
+28ad2d28addd47f8f086ed3b2e53468b453dbe13
 ```
 
 Current health:
 
 ```json
-{"data_mode":"postgres","status":"ok","version":"V0.3.10-resource-catalog"}
+{"data_mode":"postgres","status":"ok","version":"V0.3.11-active-task-context"}
 ```
 
 Service/runtime facts are owned by `Gregovate/MSB-Server-Management`.
@@ -283,30 +287,36 @@ listener                       = 192.168.5.9:8794
 public route                   = https://my.sheboyganlights.org/setup/
 ```
 
-V0.3.10 applied database migration 027 and then advanced only the dedicated Setup application checkout. Migration validation preserved the stable governed Setup fingerprint:
+V0.3.11 is a source-only application release. It introduced no database migration, environment-file, service-unit, UFW/proxy/Cloudflare, or mount change. Only the detached `/opt/msb-setup` checkout was advanced and `msb-setup.service` restarted.
+
+The Production Setup fingerprint immediately before/after deployment remained:
 
 ```text
-7c21041caecac6eb77660238ba3c8cf9
+86d6fcf3a2505ee9a1448167677a1264
 ```
 
-Production regression evidence includes:
+Post-deployment focused live regression:
 
 ```text
-exact runtime candidate         = 207 passed / 1 proven stale literal assertion
-corrected test-only derivative  = 209 passed
-live focused regression         = 29 passed / 1 deselected stale assertion
-protected negative path         = HTTP 401 PASS
-protected Production browser    = PASS
+52 passed in 0.26s
 ```
 
-Validated rollback archive:
+Protected Production browser acceptance:
+
+```text
+PASS
+```
+
+See `Setup/Acceptance/Setup_Active_Task_Context_V0311_Production_Acceptance_2026-09-12.md` for the complete #169 evidence.
+
+The validated pre-V0.3.10 database archive remains historical rollback evidence for migration 027:
 
 ```text
 /home/msbadmin/backups/setup-152/msb-pre-setup-152-20260911T170411.dump
 SHA256 = b60857bf12eae68922cc309b795e920b3b2aaccd5a928b775527057450a7aa15
 ```
 
-See `Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md` for the full Production evidence.
+Because V0.3.11 is source-only, its rollback unit is the prior exact application SHA `c2a1820627f1a036d634241cc6aecd1a926a1479` plus restart of only `msb-setup.service`; no database restore belongs to that rollback.
 
 ## Prototype / Historical Lineage
 
@@ -322,7 +332,8 @@ V0.3.6  dirty-edit candidate; failed real Production acceptance and rolled back
 V0.3.7  accepted dirty-edit / client-build safety
 V0.3.8  accepted compact task-detail layout
 V0.3.9  accepted Shift-drag prerequisite + canonical prerequisite editor
-V0.3.10 current accepted reusable resource-catalog management
+V0.3.10 accepted reusable resource-catalog management
+V0.3.11 current accepted persistent active-task context
 ```
 
 ## Current Boundaries
@@ -333,7 +344,6 @@ Still outside the accepted Production-ready workflow:
 - Pick List generation;
 - task-specific staged material release timing;
 - Extra Materials / KIT assignments / material-source tracking (#167);
-- persistent active-task context while scrolling long detail (#169);
 - Container/Display movement/scanning write commands; and
 - park-location execution evidence.
 
@@ -345,7 +355,7 @@ Automated contract tests remain useful for application changes, but browser beha
 
 Do not create fake Production work days, movement events, dependencies, resources, or throwaway records merely to exercise controls.
 
-For V0.3.10, the exact deployed runtime contained one stale CSS cache-token test literal. The immediately following test-only commit corrected that assertion without changing runtime/application files and passed 209 tests in the Production Python environment. Closeout records both facts rather than falsely claiming the exact runtime commit's broad suite was fully green.
+V0.3.11 passed exact-candidate disposable browser review, source-only Production deployment, unchanged governed-data fingerprint validation, 52 focused live tests, and real protected-route browser acceptance.
 
 ## Engineering Resume
 
@@ -358,10 +368,11 @@ Before changing the application:
 5. preserve the V0.3.8 compact task-detail layout;
 6. preserve the V0.3.9 Shift-drag direction, canonical prerequisite editor, and presentation-order semantics;
 7. preserve the V0.3.10 name-oriented compact resource picker, stable in-place catalog editing, duplicate protection, and narrow authorization boundary;
-8. preserve the 2025 annual vs reusable Catalog boundary;
-9. review Issue #145 before any 2026 Session creation;
-10. review the active issue/contract for the feature being changed; and
-11. use `Gregovate/MSB-Server-Management` for live runtime facts, browser-review procedure, and deployment runbooks.
+8. preserve the V0.3.11 persistent active-task header context;
+9. preserve the 2025 annual vs reusable Catalog boundary;
+10. review Issue #145 before any 2026 Session creation;
+11. review the active issue/contract for the feature being changed; and
+12. use `Gregovate/MSB-Server-Management` for live runtime facts, browser-review procedure, and deployment runbooks.
 
 ## Related Documentation
 
@@ -371,5 +382,6 @@ Before changing the application:
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Predecessor_and_Readiness_Contract_2026-09-09.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md`
 - `Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md`
+- `Setup/Acceptance/Setup_Active_Task_Context_V0311_Production_Acceptance_2026-09-12.md`
 - `Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md`
 - `Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md`

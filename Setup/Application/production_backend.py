@@ -21,7 +21,7 @@ from setup_material_api import setup_material_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
 
-PRODUCTION_VERSION = "V0.3.10-resource-catalog"
+PRODUCTION_VERSION = "V0.3.11-active-task-context"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -61,6 +61,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_catalog_dirty_guard.js",
         "setup_task_detail_compact.css",
         "setup_task_detail_compact.js",
+        "setup_active_task_context.css",
+        "setup_active_task_context.js",
     }
 )
 
