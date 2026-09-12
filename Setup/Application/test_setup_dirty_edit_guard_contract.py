@@ -69,7 +69,7 @@ def test_mark_verified_saves_reusable_definition_before_annual_review():
     assert "if (reusableDirty())" in js
     assert "persistReusableEdits({ announce: false, preserveAnnualDraft: true })" in js
     assert "if (!reusableSaved) return;" in js
-    assert "await persistAnnualReview(overrides[buttonId]);" in js
+    assert "await persistAnnualReview(annualOverrides[buttonId]);" in js
     assert "api/setup/tasks/${task.setup_task_id}" in js
     assert "api/setup/session-tasks/${task.setup_session_task_id}/review" in js
 
@@ -83,8 +83,8 @@ def test_reusable_save_preserves_pending_annual_fields_across_reload():
 
 def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     js = guard_source()
-    assert "V0.3.11-active-task-context" in js
-    assert "Client V0.3.11" in js
+    assert "V0.3.12-display-ownership" in js
+    assert "Client V0.3.12" in js
     assert "setup-client-build-badge" in js
     assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
     assert "async function ensureServerBuild()" in js
@@ -95,9 +95,9 @@ def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
 
 def test_navigation_uses_explicit_save_discard_cancel_decision():
     js = guard_source()
-    assert "Save and continue" in js
-    assert "Discard and continue" in js
-    assert "Stay on this task" in js
+    assert "SAVE to save and continue" in js
+    assert "DISCARD to discard and continue" in js
+    assert "STAY to remain on this task" in js
     assert "resolveDirtyBeforeNavigation('opening another task')" in js
     assert "resolveDirtyBeforeNavigation('returning to the Reusable Task Catalog')" in js
     assert "changing Setup seasons" in js
