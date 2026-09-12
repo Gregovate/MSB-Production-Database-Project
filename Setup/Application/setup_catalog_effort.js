@@ -422,7 +422,8 @@ function syncDisplayOwnershipCatalogScope() {
   const multiCheckedScope = selectedChecked && checkedTasks.length > 1;
 
   const control = el('setup-display-ownership-control');
-  if (control) control.hidden = !multiCheckedScope;
+  const shouldHideControl = !multiCheckedScope;
+  if (control && control.hidden !== shouldHideControl) control.hidden = shouldHideControl;
 
   const dialog = el('setup-display-ownership-dialog');
   const content = el('setup-display-ownership-content');
@@ -431,7 +432,8 @@ function syncDisplayOwnershipCatalogScope() {
   content.querySelectorAll('.setup-display-owner-column[data-target-task-id]').forEach((column) => {
     const targetId = Number(column.dataset.targetTaskId || 0);
     const targetTask = taskById(targetId);
-    column.hidden = !Boolean(targetTask?.requires_display_material);
+    const shouldHideColumn = !Boolean(targetTask?.requires_display_material);
+    if (column.hidden !== shouldHideColumn) column.hidden = shouldHideColumn;
   });
 
   let note = content.querySelector('.setup-display-owner-catalog-hint');
@@ -441,8 +443,10 @@ function syncDisplayOwnershipCatalogScope() {
     content.insertBefore(note, content.firstChild);
   }
   if (note) {
-    note.innerHTML = '<strong>Assignment targets:</strong> only reusable tasks checked Uses Display / Container Material in the Catalog are shown. Return to the Catalog to add or remove a task from this assignment set.';
-    note.hidden = !multiCheckedScope;
+    const noteHtml = '<strong>Assignment targets:</strong> only reusable tasks checked Uses Display / Container Material in the Catalog are shown. Return to the Catalog to add or remove a task from this assignment set.';
+    if (note.innerHTML !== noteHtml) note.innerHTML = noteHtml;
+    const shouldHideNote = !multiCheckedScope;
+    if (note.hidden !== shouldHideNote) note.hidden = shouldHideNote;
   }
 
   if (dialog?.open && !multiCheckedScope) dialog.close();
