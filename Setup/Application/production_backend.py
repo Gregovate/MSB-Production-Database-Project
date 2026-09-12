@@ -19,11 +19,13 @@ from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
 from setup_material_api import setup_material_api
 from setup_display_ownership_api import setup_display_ownership_api
+from setup_assignment_api import setup_assignment_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
+from setup_assignment_layer import install_setup_assignment_layer
 
-PRODUCTION_VERSION = "V0.3.12-display-ownership"
+PRODUCTION_VERSION = "V0.3.13-assignment-layer"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -67,14 +69,17 @@ PRODUCTION_ASSETS = frozenset(
         "setup_active_task_context.js",
         "setup_display_ownership.css",
         "setup_display_ownership.js",
+        "setup_kit_box_assignment.css",
+        "setup_kit_box_assignment.js",
     }
 )
 
-# Accepted Setup material source resolution remains authoritative. #141 installs
-# only the task-ownership layer after that resolver so LOR Stage/Scene membership
-# and ref.display.container_id remain unchanged.
+# Accepted Setup material source resolution remains authoritative. The original
+# #141 ownership layer is installed first, then the corrected assignment layer
+# supersedes its first-use target logic and adds explicit Kit Box assignment.
 install_setup_material_resolution()
 install_setup_display_ownership()
+install_setup_assignment_layer()
 
 app = Flask(__name__)
 app.register_blueprint(setup_api)
@@ -84,6 +89,7 @@ app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
 app.register_blueprint(setup_material_api)
 app.register_blueprint(setup_display_ownership_api)
+app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 
 
