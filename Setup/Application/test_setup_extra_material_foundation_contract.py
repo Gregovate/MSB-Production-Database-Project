@@ -22,6 +22,7 @@ def test_extra_material_migration_chain_exists_and_is_bounded() -> None:
     container = _executable_sql(DB_DIR / "034_add_setup_extra_material_container_commands.sql")
     inventory = _executable_sql(DB_DIR / "035_add_setup_extra_material_inventory_commands.sql")
     seed = _executable_sql(DB_DIR / "036_seed_setup_extra_material_catalog.sql")
+    hardening = _executable_sql(DB_DIR / "037_harden_setup_extra_material_duplicate_rows.sql")
 
     assert "CREATE TABLE IF NOT EXISTS ref.setup_extra_material" in schema
     assert "CREATE TABLE IF NOT EXISTS ref.setup_task_extra_material" in schema
@@ -32,7 +33,7 @@ def test_extra_material_migration_chain_exists_and_is_bounded() -> None:
     assert "CREATE OR REPLACE VIEW ops.setup_extra_material_inventory_balance" in schema
 
     # #141 already owns task -> KIT assignment; #167 must not create another one.
-    for sql in (schema, manager, container, inventory, seed):
+    for sql in (schema, manager, container, inventory, seed, hardening):
         assert "CREATE TABLE IF NOT EXISTS ref.setup_task_container_support" not in sql
         assert "INSERT INTO ref.setup_task_container_support" not in sql
         assert "CREATE TABLE IF NOT EXISTS ops.setup_session" not in sql
@@ -74,6 +75,16 @@ def test_catalog_is_normalized_and_excludes_bad_legacy_names() -> None:
     assert "size_text text" in _text(DB_DIR / "032_add_setup_extra_material_schema.sql")
     assert "length_value numeric" in _text(DB_DIR / "032_add_setup_extra_material_schema.sql")
     assert "color text" in _text(DB_DIR / "032_add_setup_extra_material_schema.sql")
+
+
+def test_exact_duplicate_active_relationships_fail_closed() -> None:
+    hardening = _executable_sql(DB_DIR / "037_harden_setup_extra_material_duplicate_rows.sql")
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_setup_task_extra_material_active_spec" in hardening
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_setup_task_extra_material_source_active" in hardening
+    assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_setup_container_extra_material_active_spec" in hardening
+    assert hardening.count("WHERE active_flag") >= 3
+    assert "coalesce(lower(btrim(size_text)), '')" in hardening
+    assert "coalesce(lower(btrim(color)), '')" in hardening
 
 
 def test_expected_contents_and_inventory_are_distinct_facts() -> None:
@@ -123,7 +134,7 @@ def test_tpost_requirement_is_task_scoped_not_display_derived() -> None:
     repo = _text(BASE_DIR / "setup_extra_material_repository.py")
 
     assert "task/installation scope" in schema
-    assert "not 2 posts per Display" in schema
+    assert "not as 2 posts per Display" in schema
     assert "not 2 posts per Display" in seed
     assert "tm.setup_task_id" in repo
     assert "sum(tm.quantity_required)" in repo
