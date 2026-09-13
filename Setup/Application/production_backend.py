@@ -70,6 +70,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_active_task_context.js",
         "setup_display_ownership.css",
         "setup_display_ownership.js",
+        "setup_display_ownership_large_scope_fix.js",
         "setup_kit_box_assignment.css",
         "setup_kit_box_assignment.js",
     }
