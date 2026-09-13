@@ -1,13 +1,102 @@
 .setup-kit-box-control {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.setup-kit-box-control-line {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+#setup-kit-box-open {
+  background: var(--setup-material-action-bg, #f6f2ff);
+  border-color: var(--setup-material-action-border, #9b83d4);
+  color: var(--setup-material-action-text, #321a78);
+  font-weight: 700;
+}
+
+#setup-kit-box-open:hover,
+#setup-kit-box-open:focus-visible {
+  background: var(--setup-material-action-hover, #7657c7);
+  border-color: var(--setup-material-action-hover, #7657c7);
+  color: var(--setup-material-action-hover-text, #fff);
+}
+
+#setup-kit-box-open:focus-visible {
+  outline: 3px solid var(--setup-material-action-focus, rgba(118, 87, 199, .28));
+  outline-offset: 2px;
 }
 
 .setup-kit-box-status {
   font-size: .9rem;
   font-weight: 700;
+}
+
+.setup-kit-box-assigned {
+  display: flex;
+  align-items: center;
+  gap: 6px 8px;
+  flex-wrap: wrap;
+}
+
+.setup-kit-box-assigned[hidden] {
+  display: none;
+}
+
+.setup-kit-box-assigned-label {
+  font-size: .84rem;
+  font-weight: 700;
+  color: var(--muted, #66717d);
+}
+
+.setup-kit-box-assigned-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.setup-kit-box-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  border: 1px solid var(--setup-material-action-border, #9b83d4);
+  border-radius: 999px;
+  padding: 4px 5px 4px 9px;
+  background: var(--setup-material-action-bg, #f6f2ff);
+  color: var(--setup-material-action-text, #321a78);
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.setup-kit-box-chip-id {
+  opacity: .72;
+  font-weight: 600;
+}
+
+.setup-kit-box-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.setup-kit-box-chip-remove:hover,
+.setup-kit-box-chip-remove:focus-visible {
+  background: var(--setup-material-action-hover, #7657c7);
+  color: var(--setup-material-action-hover-text, #fff);
 }
 
 .setup-kit-box-dialog {
