@@ -4,7 +4,8 @@
   const state = {
     taskId: null,
     kitBoxes: [],
-    requestToken: 0
+    requestToken: 0,
+    searchQuery: ''
   };
 
   function ensureControl() {
@@ -49,10 +50,21 @@
         Only physical Containers whose Production type is <strong>Kit Box</strong> are listed here.
         Kit Boxes are outside LOR and may be assigned to more than one reusable Setup task.
       </div>
+      <div class="setup-kit-box-toolbar">
+        <label class="setup-kit-box-search-label" for="setup-kit-box-search">
+          Find Kit Box
+          <input id="setup-kit-box-search" type="search" placeholder="Search name, Container ID, home location, or other task" autocomplete="off">
+        </label>
+        <span id="setup-kit-box-search-status" class="muted"></span>
+      </div>
       <div id="setup-kit-box-content" class="setup-kit-box-content"></div>
     `;
     document.body.appendChild(dialog);
     dialog.querySelector('#setup-kit-box-close')?.addEventListener('click', () => dialog.close());
+    dialog.querySelector('#setup-kit-box-search')?.addEventListener('input', (event) => {
+      state.searchQuery = String(event.target.value || '');
+      renderDialog();
+    });
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) dialog.close();
     });
@@ -67,20 +79,53 @@
     if (status) status.textContent = `${assigned} assigned`;
   }
 
+  function kitBoxMatchesSearch(row, query) {
+    if (!query) return true;
+    const haystack = [
+      row.container_id,
+      row.container_description,
+      row.home_location_code,
+      row.other_task_assignments,
+      row.assigned ? 'assigned' : '',
+      'kit box'
+    ]
+      .filter((value) => value != null)
+      .join(' ')
+      .toLocaleLowerCase();
+    return haystack.includes(query);
+  }
+
   function renderDialog() {
     const dialog = ensureDialog();
     const content = dialog.querySelector('#setup-kit-box-content');
     const title = dialog.querySelector('#setup-kit-box-title');
+    const search = dialog.querySelector('#setup-kit-box-search');
+    const searchStatus = dialog.querySelector('#setup-kit-box-search-status');
     const task = typeof taskById === 'function' ? taskById(appState.selectedTaskId) : null;
     if (title) title.textContent = `${task?.task_name || 'Reusable Task'} — Kit Boxes`;
+    if (search && search.value !== state.searchQuery) search.value = state.searchQuery;
     if (!content) return;
 
     if (!state.kitBoxes.length) {
+      if (searchStatus) searchStatus.textContent = '';
       content.innerHTML = '<div class="empty-state">No Production Kit Box containers were found.</div>';
       return;
     }
 
-    content.innerHTML = state.kitBoxes.map((row) => {
+    const query = state.searchQuery.trim().toLocaleLowerCase();
+    const visibleKitBoxes = state.kitBoxes.filter((row) => kitBoxMatchesSearch(row, query));
+    if (searchStatus) {
+      searchStatus.textContent = query
+        ? `${visibleKitBoxes.length} of ${state.kitBoxes.length} Kit Boxes`
+        : `${state.kitBoxes.length} Kit Boxes`;
+    }
+
+    if (!visibleKitBoxes.length) {
+      content.innerHTML = `<div class="empty-state">No Kit Boxes match “${escapeHtml(state.searchQuery.trim())}”.</div>`;
+      return;
+    }
+
+    content.innerHTML = visibleKitBoxes.map((row) => {
       const shared = Number(row.other_task_count || 0);
       const sharedText = shared
         ? `<div class="setup-kit-box-shared"><strong>Shared:</strong> ${escapeHtml(row.other_task_assignments || `${shared} other task${shared === 1 ? '' : 's'}`)}</div>`
@@ -171,8 +216,11 @@
   async function openDialog() {
     const taskId = Number(appState.selectedTaskId || 0);
     if (!taskId || !appState.access?.can_manage_setup) return;
+    state.searchQuery = '';
     await loadKitBoxes(taskId, { render: true });
-    ensureDialog().showModal();
+    const dialog = ensureDialog();
+    dialog.showModal();
+    requestAnimationFrame(() => dialog.querySelector('#setup-kit-box-search')?.focus());
   }
 
   if (typeof selectTask === 'function') {
@@ -181,6 +229,7 @@
       const result = priorSelectTask(taskId);
       state.taskId = Number(taskId || 0);
       state.kitBoxes = [];
+      state.searchQuery = '';
       requestAnimationFrame(() => {
         ensureControl();
         loadKitBoxes(taskId).catch((error) => console.error(error));
