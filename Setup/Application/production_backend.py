@@ -24,6 +24,7 @@ from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
+from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
 PRODUCTION_VERSION = "V0.3.13-assignment-layer"
 PRODUCTION_ASSETS = frozenset(
@@ -77,9 +78,12 @@ PRODUCTION_ASSETS = frozenset(
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
 # supersedes its first-use target logic and adds explicit Kit Box assignment.
+# The final catalog fix keeps Kit Box reads on the already-used Setup/container
+# tables and avoids an unnecessary runtime lookup join.
 install_setup_material_resolution()
 install_setup_display_ownership()
 install_setup_assignment_layer()
+install_setup_kit_box_catalog_fix()
 
 app = Flask(__name__)
 app.register_blueprint(setup_api)
