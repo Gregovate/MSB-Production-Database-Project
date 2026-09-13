@@ -123,6 +123,8 @@ DECLARE
     v_display_name text;
     v_event_id bigint;
     v_event_type text := upper(btrim(coalesce(p_event_type,'OTHER')));
+    v_event_count integer;
+    v_current_balance numeric;
     v_on_hand numeric;
 BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
@@ -150,6 +152,27 @@ BEGIN
     END IF;
     IF v_event_type IN ('DAMAGE_LOSS','CONSUMPTION','TRANSFER_OUT') AND p_quantity_delta>=0 THEN
         RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='This inventory event type requires a negative quantity';
+    END IF;
+
+    SELECT count(*), coalesce(sum(e.quantity_delta),0)
+      INTO v_event_count, v_current_balance
+    FROM ops.setup_extra_material_inventory_event e
+    WHERE e.setup_container_extra_material_id=p_setup_container_extra_material_id;
+
+    IF v_event_count=0 AND v_event_type <> 'INITIAL_COUNT' THEN
+        RAISE EXCEPTION USING
+            ERRCODE='22023',
+            MESSAGE='Initial physical count must be recorded before inventory adjustments';
+    END IF;
+    IF v_event_count>0 AND v_event_type='INITIAL_COUNT' THEN
+        RAISE EXCEPTION USING
+            ERRCODE='22023',
+            MESSAGE='Initial physical count already exists; use Count Correction for later recounts';
+    END IF;
+    IF v_event_count>0 AND v_current_balance + p_quantity_delta < 0 THEN
+        RAISE EXCEPTION USING
+            ERRCODE='22023',
+            MESSAGE='Inventory adjustment would make physical on-hand quantity negative';
     END IF;
 
     PERFORM pg_catalog.set_config('app.directus_user_uuid',v_directus_user_id::text,true);
