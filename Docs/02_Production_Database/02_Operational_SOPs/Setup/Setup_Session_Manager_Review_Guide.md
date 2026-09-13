@@ -5,98 +5,31 @@
 | Document Type | Operator / Manager Procedure |
 | System | Production Database — Setup Session |
 | Audience | Setup Managers, reviewers, and administrators |
-| Status | CURRENT — live 2025 review plus current reusable-task development |
+| Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-11 |
+| Last Reviewed | 2026-09-12 |
 
 ## Purpose
 
-Use this guide for the live Setup application and the Production-backed **2025 Historical Verification** session.
-
-The 2025 session preserves/corrects annual history while the reusable Catalog is the working baseline for future Setup planning. This is real Production data, not disposable test data.
+Use this guide for the live Setup application and the Production-backed **2025 Historical Verification** session. This is real Production data.
 
 ## Open the Application
 
-Use:
-
 ```text
 https://my.sheboyganlights.org/setup/
-```
-
-Confirm the selected annual session is:
-
-```text
 2025 — Historical Verification
+Client V0.3.13
 ```
 
-The selected Setup Session controls operational dates. The 2025 session accepts 2025 operational dates only. Audit timestamps remain truthful current timestamps.
+Refresh or reopen Setup if the client marker is stale or unexpected before making a governed change.
 
-Only an Administrator may create a new annual Setup Session or promote annual order into the reusable future baseline.
+## Safe Saving
 
-## Confirm the Loaded Client
+Reusable task edits and annual review state are separate governed data surfaces. Pending reusable edits are protected by explicit Save / Discard / Stay behavior. Independent surfaces such as Physical Effort, Display/Container Material, Display Ownership, Kit Boxes, Resources, Captains, and prerequisite maintenance save through their own governed commands.
 
-The Setup header displays the currently loaded client version. Current Production is:
+## Annual vs Reusable Knowledge
 
-```text
-Client V0.3.10
-```
-
-After a deployment, after leaving Setup open for a long period, or whenever the displayed client version is unexpected, refresh or reopen the application before making a governed change.
-
-Do not continue with a Production write if the expected client-version marker is missing or stale. The current client also verifies the server build before governed Setup writes and fails closed if the client and server builds do not match.
-
-## Safe Saving and Annual Verification
-
-Reusable task edits and annual review state remain separate governed data surfaces.
-
-If reusable fields have pending edits and a Manager clicks **Mark Verified**, Setup first saves the changed reusable-task definition using the existing governed reusable-task command. Only after that save succeeds does Setup write the annual verification state.
-
-If the reusable save fails, annual verification does not proceed as if the task were successfully verified.
-
-The normal operator flow may therefore be:
-
-```text
-edit reusable task fields
-    -> click Mark Verified
-    -> reusable edits save first
-    -> annual item becomes VERIFIED
-```
-
-**Save Reusable Task** remains available when the Manager wants to save reusable changes without changing annual verification state.
-
-When leaving a task, changing seasons, changing prerequisites, returning to the Catalog, or otherwise navigating away with pending tracked edits, Setup requires an explicit Save / Discard / Stay decision rather than silently losing the draft.
-
-Physical Effort, Uses Display / Container Material, resources, and Captains remain independent governed save surfaces. Their values are not silently folded into Save Reusable Task or Mark Verified.
-
-## Annual 2025 Information vs Reusable Setup Knowledge
-
-Keep these separate.
-
-### Annual 2025 information
-
-Annual information describes what happened or was planned in 2025, such as:
-
-- annual review/reconciliation state;
-- annual planned order;
-- 2025 crew/time evidence;
-- annual notes;
-- progress/completion evidence; and
-- 2025 work-day/date/shift assignments where used.
-
-### Reusable Setup knowledge
-
-Reusable information describes how the work normally exists across seasons, including:
-
-- task name and active state;
-- Park Infrastructure / Stage / real Scene scope;
-- normal local sequence/order;
-- normal crew range and expected duration;
-- Physical Effort;
-- **Uses Display / Container Material**;
-- equipment/resources;
-- prerequisites/readiness;
-- completion point; and
-- reusable whole-Setup baseline order.
+Annual 2025 information describes what happened or was planned in 2025. Reusable information describes normal Setup knowledge that should carry forward.
 
 Before changing reusable information, ask:
 
@@ -104,57 +37,15 @@ Before changing reusable information, ask:
 
 ## Add or Correct Reusable Tasks
 
-Build reusable tasks at the practical work-package level used by crews.
+Build reusable tasks at the practical work-package level used by crews. Do not create one task per Display merely to make inventory relationships easier.
 
-Do not create one task per Display or panel merely to make inventory relationships easier.
+Reusable tasks can belong to Park Infrastructure / no LOR Stage, Stage-level / General, or a real Scene. Programming-only LOR groups are not separate Setup Scenes.
 
-A valid task may have no Display material at all. Examples include locating, some layout work, power/network preparation, greasing bearings, and other non-Display work.
+## Display / Container Material
 
-## Choose the Correct Scope
+Use **Uses Display / Container Material** when the task needs current LOR-derived Displays for its Stage or real Scene.
 
-Reusable tasks can belong to:
-
-```text
-Park Infrastructure / no LOR Stage
-Stage-level / General
-real Scene
-```
-
-Task scope answers **where the work belongs**. Do not move a task to the wrong Stage/Scene merely to make material appear.
-
-Programming-only LOR groups are not separate Setup Scenes just because they exist in LOR.
-
-### Park Infrastructure is not a catch-all Stage
-
-Truly park-wide Setup work with no appropriate LOR Stage/Scene uses the controlled non-LOR root:
-
-```text
-41 Park Infrastructure-PI
-```
-
-Do not use Park Infrastructure merely because a Stage has no wired inventory. `40-CommandCenter`, for example, remains a legitimate Stage with its own Stage/Preview context; its Setup tasks and Procedures remain under Stage 40 when Command Center is the correct operational owner.
-
-## Uses Display / Container Material
-
-Each reusable task has:
-
-```text
-[ ] Uses Display / Container Material
-```
-
-This is the operator control for normal Display/Container material resolution.
-
-### Leave it unchecked
-
-Leave it off when the task does not require LOR-derived Display material.
-
-An unchecked task can still be a complete, valid, schedulable Setup task.
-
-### Check it
-
-Check it when crews performing that task need the current Displays/Containers associated with that task's Stage or real Scene.
-
-Setup resolves material automatically:
+The accepted resolver remains:
 
 ```text
 Stage-level task
@@ -166,197 +57,45 @@ real Scene task
 
 resolved Displays
     -> current Display-to-Container assignment
-    -> deduplicated Containers
 ```
 
-The Manager does **not** choose a separate LOR Preview, programming group, or manual ordinary Display list as the material source.
+The Manager does not choose a separate Preview/programming group or maintain a competing ordinary Display list.
 
-If the result is wrong, first check whether the reusable task's Stage/Scene scope and material checkbox are correct. Do not create duplicate tasks or move work to an incorrect scope just to change the material result.
+### Display Ownership for subdivided work
 
-### Color marker
+When only one reusable task is material-bearing in the scope, material resolution stays automatic.
 
-A colored marker/highlight identifies material-enabled tasks in supported views. It is only a visual cue. The checkbox is the stored reusable-task setting.
+When several material-bearing reusable tasks share the same applicable scope, open **Display Ownership**. Each current resolved Display must have exactly one effective reusable task owner.
 
-### Read-only material context
+You can click, Ctrl/Cmd-click, or Shift-click to select Displays. Drag selected Displays between task columns for normal scopes. For very large scopes, use **Move selected to** and **Move selected** instead of dragging across the full board.
 
-The task detail may show the resolved Displays/Containers as Material / Logistics context. This is for verification and downstream planning. Ordinary material membership comes from current LOR membership and current Display-to-Container assignment rather than a second manually maintained Setup list.
+The ownership screen shows **Coverage complete** when all resolved Displays have an effective owner.
 
-### Current limitation: material context is not yet task-specific release timing
+Display Ownership does not change LOR membership and does not rewrite the Display's current Container.
 
-The current resolver can still be too broad when one Stage has several separate physical Setup steps.
+### Kit Boxes
 
-Example:
+Use **Kit Boxes** to assign existing physical Kit Box Containers to the reusable task.
 
-```text
-Magic Igloo
-    -> frame work
-    -> skin installation
-    -> later lighting/camera/finish work
-```
+The picker is searchable. Assignments save immediately, assigned Kit names/IDs remain visible, and a wrong assignment can be removed directly.
 
-The skins may need to stay warm in the workshop until the skin-install task. If more than one of those Stage-level tasks has the material checkbox enabled, the current resolver can show the same Stage-level Displays/Containers for each task because all of them share the same Stage scope.
+The same physical Kit Box may support multiple reusable tasks. Do not infer a Kit assignment from name alone.
 
-That does **not** mean every resolved item should be picked, loaded, or delivered for the first task.
+Detailed expected Kit contents, Extra Materials, quantities/specifications, and source relationships are not yet part of the live operator workflow.
 
-The current checkbox answers whether the task uses Stage/Scene Display material and shows that current context. It does not yet subdivide a Stage's material into task-specific release groups or determine when each subset should leave storage.
+## Resources and Effort
 
-Task-specific staged material and pick-list timing are tracked in Issue #141 and remain future engineering work.
+Search for an existing resource first. Keep catalog identity/type/notes/active state separate from task-specific quantity, Required-vs-Preferred, and task notes.
 
-## Stage View and Planned Order
+Use **Manage Resource Catalog** when the reusable catalog entry itself needs correction.
 
-**Plan / Schedule** and **Perform Work** support Stage-oriented presentation.
+## Prerequisites and Readiness
 
-Stage view groups work as:
+Keep hard predecessor, preferred order, and readiness condition separate.
 
-```text
-Stage
-    Stage-level / General
-    Scene — <real Scene>
-```
+For fast prerequisite entry, hold **Shift** before left-button-down on the dependent task, drag it onto the prerequisite, and release. Normal drag without Shift remains task movement/reorder.
 
-Stage view is presentation. It does not rewrite annual planned order.
-
-Switch to **Planned order** when you need to review or modify the annual planning sequence.
-
-## Search
-
-The shared **Find task or Stage** search works across:
-
-- Reusable Task Catalog;
-- Plan / Schedule; and
-- Perform Work.
-
-Search can use task, Stage, Scene, and related visible context. Clear the search to restore the full view.
-
-## Review Resources and Effort
-
-Use structured resources for recurring requirements such as lifts, vehicles, trailers, tools, stake pounders, and other real equipment.
-
-Review:
-
-- correct resource;
-- quantity;
-- Required vs Preferred status;
-- Physical Effort where known; and
-- whether the requirement belongs as reusable knowledge.
-
-Do not invent quantities or effort values merely to fill fields.
-
-### Assign an existing resource
-
-The normal resource workflow is compact and task-focused:
-
-1. Use the resource search field.
-2. Select the existing resource by its meaningful name.
-3. Enter task-specific quantity, Required vs Preferred, and task notes.
-4. Add or update the task requirement.
-
-The ordinary picker is intentionally name-oriented. Meaningful resource names are the primary way operators find related items. The optional numeric catalog display order is not required for ordinary selection.
-
-### Maintain the reusable resource catalog
-
-Use **Manage Resource Catalog** when the reusable catalog itself needs correction.
-
-The Manager catalog includes active and inactive rows and can be searched by name, type, or catalog notes. Name sort is the normal default; alternate review sorts, including optional display order, remain available.
-
-Use catalog maintenance to:
-
-- rename a poorly named resource in place;
-- correct resource type;
-- correct reusable catalog notes;
-- activate or deactivate a resource where appropriate; and
-- adjust optional catalog display order when there is a real reason to do so.
-
-Prefer correcting the existing catalog entry over creating a replacement. Renaming/editing preserves the same `setup_resource_id`, so existing task relationships stay attached.
-
-The application blocks normalized exact duplicates after ignoring case, outer whitespace, and repeated internal whitespace. While entering a new resource name, review the suggested likely matches before creating a new entry.
-
-Inactive resources remain visible in the Manager catalog. Existing task relationships to an inactive resource remain reviewable/removable, but a new inactive resource cannot be assigned to a task.
-
-Keep these facts separate:
-
-```text
-catalog-level resource identity/type/notes/active/order
-vs.
-task-specific quantity / Required-vs-Preferred / task notes
-```
-
-Do not put task-specific quantity or requirement notes into the reusable catalog entry merely because the same resource is used by several tasks.
-
-## Review Prerequisites and Readiness
-
-Do not treat these as the same thing:
-
-```text
-HARD PREDECESSOR
-PREFERRED ORDER
-READINESS CONDITION
-```
-
-A hard predecessor is another Setup task that must finish first.
-
-A readiness condition may instead be an outside/site condition such as mowing/mulching being complete in the specific work area. Do not invent fake Setup tasks merely to represent external conditions.
-
-Structured readiness remains future work; free-text readiness notes are descriptive, not a complete scheduling control.
-
-### Fast prerequisite entry with Shift-drag
-
-When one reusable task truly must finish before another, you can create the dependency directly in the Catalog.
-
-If task A depends on task B:
-
-1. Hold **Shift before pressing the left mouse button** on task A, the later/dependent task.
-2. Drag task A onto task B, the task that must happen first.
-3. Release over task B.
-4. Confirm the success feedback and the Catalog **Requires** line show the intended direction.
-
-Example:
-
-```text
-Install Panels depends on Set Posts
-
-hold Shift
-+ drag Install Panels onto Set Posts
-```
-
-Neither task moves during Shift-drag. If you release over empty Stage/Scene space, the prerequisite gesture cancels without moving the task.
-
-### Normal drag remains normal movement
-
-Drag without Shift when you intend to reorder or move a task. Ordinary drag still supports legitimate movement between Stage-level / General and real Scene locations.
-
-### Canonical prerequisite list
-
-Open task detail to review the current prerequisites. The task shows one prerequisite list only. Each prerequisite appears once with:
-
-- position;
-- **Up**;
-- **Down**; and
-- **Remove**.
-
-Use the separate **Add prerequisite** control for manual entry when that is easier than Shift-drag. After a prerequisite is assigned, the Add list no longer offers it for the same task.
-
-**Up** and **Down** are review/display order only. They do not create dependencies between prerequisite tasks. Every listed prerequisite remains independently required.
-
-Circular dependencies are rejected by the system. Correct the relationship rather than trying to bypass the warning.
-
-## Rolling-Horizon Planning
-
-Setup is not intended to be a rigid season-long Gantt schedule.
-
-The normal operating direction is:
-
-```text
-remaining work
-    -> prerequisites/readiness/resources
-    -> Stage/candidate review
-    -> schedule the next practical few days
-    -> perform work
-    -> record progress/completion
-    -> replan
-```
-
-Tasks may span multiple work periods. Complete a task only when its practical completion point is reached.
+Task detail contains one canonical prerequisite list with Add / Up / Down / Remove controls. Circular dependencies are rejected.
 
 ## Procedures
 
@@ -366,49 +105,37 @@ Where the application shows a current published Setup PDF, review whether it sti
 
 Production-operational now includes:
 
-- Production-backed 2025 review/training;
-- reusable task create/copy/update/delete where governed safeguards allow it;
-- dirty-edit protection that saves changed reusable fields before annual verification and blocks verification when that save fails;
-- visible client-version identification and client/server build-match protection for governed writes;
+- Production-backed 2025 review;
+- reusable task create/copy/update/delete where governed safeguards allow;
+- active-task identity and dirty-edit protection;
 - Stage/real-Scene scope organization;
-- automatic Display/Container material applicability and Stage/Scene context resolution;
-- Stage-oriented Plan / Schedule and Perform Work presentation;
-- search across Catalog, Plan / Schedule, and Perform Work;
+- automatic LOR-derived Display/Container resolution;
+- explicit Display Ownership for multi-task scopes;
+- many-to-many physical Kit Box assignment;
+- large-scope non-drag Display movement through **Move selected to**;
 - resource/effort/prerequisite maintenance;
-- searchable existing-resource assignment;
-- full reusable resource-catalog search/edit/activate/deactivate maintenance;
-- normalized duplicate resource blocking and stable in-place resource rename/correction;
-- Shift-drag prerequisite creation with circular-dependency protection;
-- one canonical prerequisite editor with manual Add, Up/Down display order, and Remove;
+- reusable Resource Catalog maintenance;
 - Procedure/document context; and
-- authenticated browser access.
+- protected authenticated browser access.
 
-Still incomplete/separate work includes:
+Still incomplete/separate:
 
-- final reusable Catalog cleanup before 2026 creation;
-- Extra Materials / KIT assignments / material-source tracking (#167);
-- task-specific staged material subdivision / release timing (#141);
+- structured Extra Materials / expected Kit contents / source tracking;
+- final reusable Catalog acceptance and disposable 2026 seed proof;
 - structured readiness gating;
-- Pick List generation/tablet workflow;
-- mixed-stage Container annual mobilization/unload-state workflow;
-- Container/Display movement/scanning writes;
-- park-location execution evidence;
-- one-session browser-preview sudo hardening (#166); and
-- persistent active-task context while scrolling long task detail (#169).
+- Pick List generation and staged release scheduling;
+- Container/Display movement/scanning writes; and
+- park-location execution evidence.
 
 ## 2025 to 2026 Transition
 
-There is currently no 2026 Setup Session.
+There is currently no 2026 Setup Session. Every active reusable task is seeded into a new annual Session, so final Catalog acceptance remains required immediately before real 2026 creation.
 
-The annual Session creation command seeds **every active reusable task** into the new Session. Therefore active Catalog cleanup is mandatory before 2026 creation.
-
-A valid reusable task may have no 2025 annual row because it was reconstructed or created after the historical annual rows were established. Do not force that task into 2025 merely to make the 2025 Plan look complete.
-
-Issue #145 tracks the Catalog-cleanup gate before 2026 creation.
+Do not force a reusable task into 2025 merely to make the historical Plan look complete.
 
 ## Related Documents
 
 - [Setup operator portal](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
 - [2025 review procedure](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
 - [Setup engineering handoff](../../01_System_Architecture/12_Setup_and_Deployment/engineering/README.md)
-- `Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md`
+- `Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`

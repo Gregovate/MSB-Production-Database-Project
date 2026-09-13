@@ -1,0 +1,348 @@
+/* Issue #141 — task-specific Display ownership board. */
+
+:root {
+  --setup-material-action-bg: #f6f2ff;
+  --setup-material-action-border: #9b83d4;
+  --setup-material-action-text: #321a78;
+  --setup-material-action-hover: #7657c7;
+  --setup-material-action-hover-text: #ffffff;
+  --setup-material-action-focus: rgba(118, 87, 199, .28);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --setup-material-action-bg: #251f35;
+    --setup-material-action-border: #8a73c5;
+    --setup-material-action-text: #ddd1ff;
+    --setup-material-action-hover: #7657c7;
+    --setup-material-action-hover-text: #ffffff;
+    --setup-material-action-focus: rgba(174, 149, 235, .32);
+  }
+}
+
+html[data-theme="dark"] {
+  --setup-material-action-bg: #251f35;
+  --setup-material-action-border: #8a73c5;
+  --setup-material-action-text: #ddd1ff;
+  --setup-material-action-hover: #7657c7;
+  --setup-material-action-hover-text: #ffffff;
+  --setup-material-action-focus: rgba(174, 149, 235, .32);
+}
+
+/* Material / Logistics actions share one lavender visual language so important
+   drill-down/ownership controls do not disappear among generic secondary buttons. */
+#setup-material-context-section #setup-material-details-open,
+#setup-material-context-section #setup-display-ownership-open,
+.setup-display-ownership-actions #setup-display-ownership-initialize {
+  background: var(--setup-material-action-bg);
+  border-color: var(--setup-material-action-border);
+  color: var(--setup-material-action-text);
+  font-weight: 700;
+}
+
+#setup-material-context-section #setup-material-details-open:hover,
+#setup-material-context-section #setup-display-ownership-open:hover,
+.setup-display-ownership-actions #setup-display-ownership-initialize:hover {
+  background: var(--setup-material-action-hover);
+  border-color: var(--setup-material-action-hover);
+  color: var(--setup-material-action-hover-text);
+}
+
+#setup-material-context-section #setup-material-details-open:focus-visible,
+#setup-material-context-section #setup-display-ownership-open:focus-visible,
+.setup-display-ownership-actions #setup-display-ownership-initialize:focus-visible {
+  background: var(--setup-material-action-hover);
+  border-color: var(--setup-material-action-hover);
+  color: var(--setup-material-action-hover-text);
+  outline: 3px solid var(--setup-material-action-focus);
+  outline-offset: 2px;
+}
+
+.setup-display-ownership-control {
+  margin: 10px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setup-display-ownership-status {
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.setup-display-ownership-status.complete {
+  color: var(--success, #176b3a);
+}
+
+.setup-display-ownership-status.review {
+  color: var(--warning, #8a5300);
+}
+
+.setup-display-ownership-dialog {
+  width: min(1500px, 96vw);
+  max-height: 92vh;
+  border: 0;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+  background: var(--surface, #fff);
+  color: var(--text, #1f2430);
+}
+
+.setup-display-ownership-dialog::backdrop {
+  background: rgba(0, 0, 0, .55);
+}
+
+.setup-display-ownership-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border, #d8dce3);
+  background: var(--surface, #fff);
+}
+
+.setup-display-ownership-heading h3 {
+  margin: 2px 0 0;
+}
+
+.setup-display-ownership-content {
+  padding: 16px 18px 22px;
+  overflow: auto;
+}
+
+.setup-display-ownership-facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.setup-display-ownership-facts > div {
+  border: 1px solid var(--border, #d8dce3);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.setup-display-ownership-facts span,
+.setup-display-ownership-facts strong {
+  display: block;
+}
+
+.setup-display-ownership-facts span {
+  font-size: .78rem;
+  opacity: .72;
+}
+
+.setup-display-ownership-facts strong {
+  margin-top: 2px;
+  font-size: 1.05rem;
+}
+
+.setup-display-ownership-warning {
+  border: 1px solid #d29a36;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  background: rgba(210, 154, 54, .12);
+}
+
+.setup-display-ownership-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 10px 0 14px;
+}
+
+.setup-display-ownership-toolbar {
+  display: flex;
+  gap: 10px 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--border, #d8dce3);
+  border-radius: 8px;
+  background: var(--surface-alt, rgba(120, 130, 150, .06));
+}
+
+.setup-display-ownership-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+}
+
+.setup-display-ownership-toolbar select {
+  min-width: 130px;
+}
+
+#setup-display-ownership-selection-count {
+  white-space: nowrap;
+}
+
+.setup-display-ownership-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.setup-display-owner-column {
+  min-height: 180px;
+  border: 1px solid var(--border, #d8dce3);
+  border-radius: 10px;
+  background: var(--surface-alt, rgba(120, 130, 150, .06));
+}
+
+.setup-display-owner-column.drop-target {
+  outline: 3px solid rgba(76, 112, 201, .35);
+  outline-offset: 1px;
+}
+
+.setup-display-owner-column-heading {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #d8dce3);
+}
+
+.setup-display-owner-column-heading strong,
+.setup-display-owner-column-heading span {
+  display: block;
+}
+
+.setup-display-owner-column-heading span {
+  margin-top: 2px;
+  font-size: .78rem;
+  opacity: .72;
+}
+
+.setup-display-owner-cards {
+  min-height: 130px;
+  padding: 9px;
+}
+
+.setup-display-owner-card {
+  border: 1px solid var(--border, #cfd4dc);
+  border-radius: 8px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+  background: var(--surface, #fff);
+  cursor: default;
+  user-select: none;
+}
+
+.setup-display-owner-card[draggable='true'] {
+  cursor: grab;
+}
+
+.setup-display-owner-card[draggable='true']:focus-visible {
+  outline: 3px solid var(--setup-material-action-focus);
+  outline-offset: 2px;
+}
+
+.setup-display-owner-card.selected {
+  border-color: var(--setup-material-action-border);
+  background: var(--setup-material-action-bg);
+  box-shadow: 0 0 0 2px var(--setup-material-action-focus);
+}
+
+.setup-display-owner-card.dragging {
+  opacity: .45;
+}
+
+.setup-display-owner-card strong,
+.setup-display-owner-card span {
+  display: block;
+}
+
+.setup-display-owner-card span {
+  margin-top: 3px;
+  font-size: .8rem;
+  opacity: .74;
+}
+
+.setup-display-owner-card.review {
+  border-color: #d29a36;
+}
+
+.setup-display-owner-card.review.selected {
+  border-color: var(--setup-material-action-border);
+}
+
+.setup-display-owner-empty {
+  padding: 10px;
+  font-size: .84rem;
+  opacity: .68;
+}
+
+.setup-display-owner-stale {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #d8dce3);
+}
+
+/* Keep the reusable Catalog as compact as the accepted Production layout.
+   The material selector is the fourth/right-side cell immediately before the
+   existing action buttons, not an extra row or a wide fifth-column label. */
+.next-task-row {
+  grid-template-columns: 4rem minmax(14rem, 1fr) minmax(12rem, .9fr) max-content auto;
+}
+
+.next-task-row > .setup-catalog-material-toggle {
+  min-width: 0;
+  width: max-content;
+  justify-self: end;
+  white-space: nowrap;
+  gap: .3rem;
+  font-size: 0;
+  line-height: 1;
+}
+
+.next-task-row > .setup-catalog-material-toggle::after {
+  content: 'Material';
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.next-task-row > .setup-catalog-material-toggle input {
+  width: 1rem;
+  height: 1rem;
+  min-width: 1rem;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.next-task-row > .library-actions {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .setup-display-ownership-facts {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .setup-display-ownership-toolbar {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 650px) {
+  .next-task-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .next-task-row > .setup-catalog-material-toggle,
+  .next-task-row > .library-actions {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

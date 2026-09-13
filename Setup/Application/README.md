@@ -1,262 +1,90 @@
 # Setup Session Application
 
-Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.11 ACCEPTED; 2025 HISTORICAL REVIEW / REUSABLE CATALOG WORK CONTINUES**
+Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.13 ASSIGNMENT LAYER ACCEPTED**
 
-This folder contains the browser-native Setup Session application used for the Production-backed 2025 Historical Verification workflow and ongoing reusable Setup development.
-
-The application is live at:
+The protected application is live at:
 
 ```text
 https://my.sheboyganlights.org/setup/
 ```
 
-The current Production entry point is:
+Production entry point:
 
 ```text
 Setup/Application/production_backend.py
 ```
 
-Current reported version:
+Current reported version and deployed source:
 
 ```text
-V0.3.11-active-task-context
-```
-
-Current exact deployed source:
-
-```text
-28ad2d28addd47f8f086ed3b2e53468b453dbe13
+V0.3.13-assignment-layer
+3fb975ca355711cece564cfd874cf8d7514310bf
 ```
 
 ## Current Production Meaning
 
-The 2025 Setup Session is real Production data, not disposable test data.
+The 2025 Setup Session is real Production data and remains the historical/sandbox proving ground. There is no 2026 Setup Session yet.
 
-Managers/reviewers use it to:
+Managers/reviewers can maintain reusable tasks, resources, prerequisites, Display/Container material participation, explicit Display ownership for subdivided scopes, and physical Kit Box assignments.
 
-- reconstruct and correct 2025 annual Setup information;
-- verify records where evidence exists;
-- add/correct reusable Setup tasks;
-- delete reconstruction-safe Catalog mistakes where the governed command permits it;
-- search, assign, rename, correct, activate/deactivate, and review reusable resource catalog entries;
-- maintain task-specific resource quantity / Required-vs-Preferred / notes separately from catalog identity;
-- add/correct prerequisites;
-- use Shift-drag for fast hard-predecessor entry;
-- maintain prerequisite review/display order in the canonical task-detail list;
-- improve task scope, order, crew/time/readiness information;
-- review current Setup Procedure context; and
-- identify UI/workflow/data-model problems before the 2026 Setup Session is created.
+## Accepted Assignment Layer
 
-The reusable Catalog and the 2025 annual Session are intentionally separate. A valid reusable task may exist without a 2025 annual row. Do not force newer reusable definitions into 2025 merely to make the historical Plan appear complete.
-
-The 2026 Setup Session must not be created until the active reusable Catalog cleanup gate in Issue #145 is complete and the intended seeded task set has been proven in disposable validation.
-
-## Application Architecture
-
-The Production application follows the MSB browser-native pattern:
+The established LOR Stage/real-Scene resolver remains authoritative for current Display membership.
 
 ```text
-browser
-  -> Cloudflare Access
-  -> Synology /setup/ reverse proxy
-  -> msb-setup.service on 192.168.5.9:8794
-  -> production_backend.py
-  -> Setup APIs/repositories
-  -> PostgreSQL msb through fieldwiring_app
-  -> shared Field Context / Procedure resolver
-  -> read-only Display Folders / Google-native link view
+LOR resolver
+    -> resolved Displays
+    -> Setup assignment
+        -> one material task = implicit ownership
+        -> multiple material tasks = explicit one-owner-per-Display assignment
 ```
 
-Key boundaries:
+Display Ownership does not rewrite LOR membership or `ref.display.container_id`.
 
-- PostgreSQL remains authoritative;
-- Cloudflare Access provides authenticated identity at the perimeter;
-- Setup capabilities are resolved server-side;
-- writes use narrow governed PostgreSQL command functions;
-- the browser does not receive broad table DML authority;
-- Stage/Sub-stage/Scene path resolution reuses the accepted shared resolver;
-- Google Drive Procedure publishing remains separately controlled; and
-- server/runtime deployment authority lives in `Gregovate/MSB-Server-Management`.
+The browser supports multi-select with Ctrl/Cmd-click and Shift-click. Drag remains available, and **Move selected to** provides a reliable path for unusually large ownership boards.
 
-## Annual vs Reusable Data
+Physical Kit Boxes are existing `ref.container` rows with `container_type_id = 2` and use explicit `relationship_type='KIT'` task assignments. The same Kit Box may support several tasks. Existing SUPPORT / REQUIRED_CONTAINER semantics remain separate.
 
-The application deliberately separates:
+Expected Kit contents, Extra Materials, quantities/specifications, and material-source meaning remain downstream #167 work.
+
+## Migration Chain
+
+Accepted database migrations:
 
 ```text
-Annual 2025 information
-    = what happened or was planned in 2025
-
-Reusable Setup knowledge
-    = normal task/resource/prerequisite/scope/order information
-      that may carry forward to later seasons
+028_harden_setup_task_display_ownership.sql
+029_correct_setup_assignment_layer.sql
+030_fix_setup_kit_box_assignment_upsert.sql
 ```
 
-A one-off 2025 condition must not be written into reusable knowledge merely to make the historical record fit.
-
-## Session-Year Guard
-
-The selected Setup Session owns the allowed operational year.
+Initial migration-bearing Production candidate:
 
 ```text
-2025 session -> 2025 operational dates/timestamps only
-2026 session -> 2026 operational dates/timestamps only
+48f0a44ca20296f7d211df240f0af7c324ad44e1
 ```
 
-The browser constrains date controls and the database independently enforces the same rule. Audit timestamps remain real current timestamps.
-
-## Dirty-Edit / Client Build Safety
-
-The accepted V0.3.7 safety behavior remains part of V0.3.11.
-
-The Setup header visibly shows the loaded client build, currently:
+Current source includes a source-only large-scope UI correction:
 
 ```text
-Client V0.3.11
+3fb975ca355711cece564cfd874cf8d7514310bf
 ```
 
-Governed writes verify that the client build matches `/api/health`. A stale/mismatched client fails closed instead of quietly writing against a different server build.
+No database migration belongs to that follow-up.
 
-Reusable edits are compared against the current selected server-backed task. State-changing actions such as `Mark Verified` cannot silently discard pending reusable edits. The application either safely saves the reusable changes before the annual action or stops the action when the reusable save cannot complete.
+## Preservation Baseline
 
-Dirty navigation uses explicit save/discard/stay behavior. Independent save surfaces such as Physical Effort, Display/Container Material, Resources, Captains, and prerequisite maintenance remain separately governed.
+Preserve:
 
-## Current Task-Detail Layout and Active Task Context
+- V0.3.7 dirty-edit/client-build protection;
+- V0.3.8 compact task-detail layout;
+- V0.3.9 prerequisite behavior;
+- V0.3.10 Resource Catalog behavior;
+- V0.3.11 persistent active-task identity;
+- V0.3.13 assignment/Kit behavior;
+- Stage/Scene resolver authority; and
+- current analytics/privacy integration.
 
-V0.3.11 preserves the accepted V0.3.8 laptop/desktop layout:
-
-```text
-LEFT                               RIGHT
-Reusable Task Definition            Annual Historical Actual
-Material / Logistics                Captains / Knowledge Owners
-```
-
-The reusable editor itself uses a compact two-column desktop grid. Material / Logistics keeps its four resolved counts and full `View Material Details` dialog. Prerequisites and Equipment / Resources remain below the rail block.
-
-V0.3.11 adds the Issue #169 edit-safety treatment: while the review view has a selected task, the existing Stage/task identity is mirrored into the already-sticky global Setup header under **ACTIVE TASK**. The identity remains visible during the full long-detail scroll and updates immediately when the selected task changes. Catalog/Movement views do not retain stale task context.
-
-The active-task treatment is presentation-only. It does not call Setup APIs and does not own save, navigation, authorization, or dirty-edit behavior.
-
-Physical mobile-device acceptance was not performed for V0.3.8. Responsive stacking was contract-covered and narrowed-desktop checked there. V0.3.11 browser acceptance also confirmed the added header context remains usable at narrowed widths and in light/dark mode.
-
-Cross-application theme and dark-mode white-logo consistency remain tracked separately in Issue #159.
-
-## Current Prerequisite Interaction
-
-Issue #151 established the Production hard-predecessor workflow.
-
-Fast entry:
-
-```text
-hold Shift before left-button-down on dependent task A
-    -> drag A onto prerequisite B
-    -> release
-    -> A depends on B
-    -> neither task moves
-```
-
-Ordinary drag without Shift keeps normal reusable task reorder/scope movement behavior. Shift-release over empty Stage/Scene space cancels the prerequisite gesture without moving the task.
-
-Task detail shows one canonical prerequisite list with position, **Up**, **Down**, and **Remove**, plus a separate manual **Add prerequisite** control. Already-assigned prerequisites are excluded from the Add choices.
-
-Prerequisite Up/Down is presentation/review order only. It does not create dependency relationships among prerequisite tasks.
-
-Creation/removal remains governed by:
-
-```text
-ref.set_setup_task_dependency(text,bigint,bigint,text,boolean)
-```
-
-Reordering uses:
-
-```text
-ref.reorder_setup_task_dependencies(text,bigint,bigint[])
-```
-
-Circular-dependency protection remains database-authoritative.
-
-Structured external/site readiness remains separate future work. Do not represent mowing, access, outside construction, or similar conditions as fake Setup tasks merely to create blockers.
-
-## Current Resource Catalog Interaction
-
-Issue #152 established the Production reusable resource-catalog workflow.
-
-Normal task assignment is intentionally compact and name-oriented:
-
-```text
-search existing resource
-    -> choose resource
-    -> set task quantity / Required-vs-Preferred / task notes
-    -> add or update the task requirement
-```
-
-The ordinary picker sorts primarily by meaningful `resource_name`, then type/ID. `display_order` remains a governed optional catalog field, but operators do not need to maintain numeric order merely to make the normal picker usable.
-
-Use **Manage Resource Catalog** only when catalog maintenance is needed. The Manager catalog:
-
-- searches active and inactive entries;
-- defaults to Name sort;
-- supports alternate sort/review choices, including optional display order;
-- edits poor names in place rather than requiring replacement rows;
-- edits type, catalog notes, active state, and display order; and
-- preserves the same `setup_resource_id` so existing task assignments remain attached after rename/correction.
-
-Normalized exact duplicate names are blocked after trim/case/repeated-whitespace normalization. While entering a new name, likely existing matches are shown so near-duplicates can be reviewed before creation.
-
-Task-specific quantity, Required-vs-Preferred, and task notes remain separate from catalog-level identity and catalog notes.
-
-Inactive catalog rows remain visible to Managers and remain visible on existing relationships. New inactive assignments are blocked, but an existing inactive relationship can still be removed.
-
-## Current Manager / Reviewer Capabilities
-
-The live review workflow supports current governed behavior for:
-
-- reading the 2025 annual task list;
-- reviewing verification state;
-- correcting supported annual information;
-- creating/copying reusable tasks;
-- reconstruction-safe deletion/deactivation where governed rules allow;
-- maintaining task scope and order;
-- maintaining prerequisites through Shift-drag or the canonical prerequisite editor;
-- searchable structured equipment/resource assignment;
-- full reusable resource-catalog search/edit/activate/deactivate maintenance;
-- maintaining supported reusable material applicability;
-- reviewing supported planning information; and
-- opening current Setup Procedure/document context.
-
-Only Administrators may create annual Setup Sessions or promote an annual planned order into the reusable future baseline.
-
-## Procedure / Google Drive Contract
-
-Stage- and Scene-scoped tasks use the established Procedure layout:
-
-```text
-<Stage / Sub-stage / Scene>\Procedures\Setup\
-    <current field PDF>.pdf
-    Archive\
-    images\
-    SourceDocs\
-```
-
-Park-wide work with no appropriate LOR Stage/Scene uses:
-
-```text
-G:\Shared drives\Display Folders\41 Park Infrastructure-PI\Procedures\Setup
-```
-
-For authorized Managers, editable Google-native source resolution is:
-
-```text
-SourceDocs first
--> Archive only when no editable SourceDocs .gdoc exists
-```
-
-During the 2026 migration, the archived `.gdoc` remains the historical original. To establish the current editable source, open the archived document in Google Docs, use **File -> Make a copy**, and save the new Google-native document in `Procedures\Setup\SourceDocs`. All later edits occur in the SourceDocs copy. Copying the Windows `.gdoc` shortcut file is not the migration method.
-
-The current published field PDF remains directly in `Procedures\Setup` and must be updated when the approved editable procedure changes.
-
-The runtime uses `/mnt/msb-setup-google-links` to expose link-form representations of native Google documents without converting normal Word documents.
-
-## Production Runtime
+## Runtime / Rollback
 
 Permanent source checkout:
 
@@ -264,124 +92,44 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-Current deployed source SHA:
+Current source-only rollback for the large-scope UI correction:
 
 ```text
-28ad2d28addd47f8f086ed3b2e53468b453dbe13
+48f0a44ca20296f7d211df240f0af7c324ad44e1
+restart only msb-setup.service
 ```
 
-Current health:
+No PostgreSQL restore belongs to that UI rollback.
 
-```json
-{"data_mode":"postgres","status":"ok","version":"V0.3.11-active-task-context"}
-```
+The migration-bearing #141 deployment has separate governed database rollback evidence recorded in:
 
-Service/runtime facts are owned by `Gregovate/MSB-Server-Management`.
-
-Current accepted service state:
-
-```text
-msb-setup.service              = active / enabled
-msb-setup-google-links.service = active / enabled
-listener                       = 192.168.5.9:8794
-public route                   = https://my.sheboyganlights.org/setup/
-```
-
-V0.3.11 is a source-only application release. It introduced no database migration, environment-file, service-unit, UFW/proxy/Cloudflare, or mount change. Only the detached `/opt/msb-setup` checkout was advanced and `msb-setup.service` restarted.
-
-The Production Setup fingerprint immediately before/after deployment remained:
-
-```text
-86d6fcf3a2505ee9a1448167677a1264
-```
-
-Post-deployment focused live regression:
-
-```text
-52 passed in 0.26s
-```
-
-Protected Production browser acceptance:
-
-```text
-PASS
-```
-
-See `Setup/Acceptance/Setup_Active_Task_Context_V0311_Production_Acceptance_2026-09-12.md` for the complete #169 evidence.
-
-The validated pre-V0.3.10 database archive remains historical rollback evidence for migration 027:
-
-```text
-/home/msbadmin/backups/setup-152/msb-pre-setup-152-20260911T170411.dump
-SHA256 = b60857bf12eae68922cc309b795e920b3b2aaccd5a928b775527057450a7aa15
-```
-
-Because V0.3.11 is source-only, its rollback unit is the prior exact application SHA `c2a1820627f1a036d634241cc6aecd1a926a1479` plus restart of only `msb-setup.service`; no database restore belongs to that rollback.
-
-## Prototype / Historical Lineage
-
-Earlier files in this folder include prototype-era UI and local validation support. They remain useful lineage and test evidence, but they are not the Production entry point.
-
-Do not infer current Production behavior from old prototype comments or local-storage-only code paths. Current authority is the Production entry point, current tests, current database migrations, current acceptance records, and the current Setup engineering handoff.
-
-Historical runtime milestones include:
-
-```text
-V0.3.5  Stage/Scene material + presentation baseline
-V0.3.6  dirty-edit candidate; failed real Production acceptance and rolled back
-V0.3.7  accepted dirty-edit / client-build safety
-V0.3.8  accepted compact task-detail layout
-V0.3.9  accepted Shift-drag prerequisite + canonical prerequisite editor
-V0.3.10 accepted reusable resource-catalog management
-V0.3.11 current accepted persistent active-task context
-```
+`Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
 
 ## Current Boundaries
 
-Still outside the accepted Production-ready workflow:
+Still outside the accepted live workflow:
 
+- structured Extra Materials / expected Kit contents / material-source tracking;
+- final reusable Catalog acceptance / disposable 2026 seed proof;
 - structured external/site readiness;
-- Pick List generation;
-- task-specific staged material release timing;
-- Extra Materials / KIT assignments / material-source tracking (#167);
-- Container/Display movement/scanning write commands; and
+- Pick List generation and staged release scheduling;
+- Container/Display movement/scanning writes; and
 - park-location execution evidence.
-
-The application also does not automatically publish revised PDFs back into Google Drive.
-
-## Testing / Live Evaluation
-
-Automated contract tests remain useful for application changes, but browser behavior that depends on real client/runtime interaction must also pass protected-route operator validation before being treated as accepted Production behavior.
-
-Do not create fake Production work days, movement events, dependencies, resources, or throwaway records merely to exercise controls.
-
-V0.3.11 passed exact-candidate disposable browser review, source-only Production deployment, unchanged governed-data fingerprint validation, 52 focused live tests, and real protected-route browser acceptance.
 
 ## Engineering Resume
 
 Before changing the application:
 
-1. read `System_Documentation/Project_Rules/README.md`;
-2. read `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`;
-3. read the current `Setup_Session_Production_Engineering_Handoff_2026-09-11.md`;
-4. preserve V0.3.7 dirty-edit/client-server build protection;
-5. preserve the V0.3.8 compact task-detail layout;
-6. preserve the V0.3.9 Shift-drag direction, canonical prerequisite editor, and presentation-order semantics;
-7. preserve the V0.3.10 name-oriented compact resource picker, stable in-place catalog editing, duplicate protection, and narrow authorization boundary;
-8. preserve the V0.3.11 persistent active-task header context;
-9. preserve the 2025 annual vs reusable Catalog boundary;
-10. review Issue #145 before any 2026 Session creation;
-11. review the active issue/contract for the feature being changed; and
-12. use `Gregovate/MSB-Server-Management` for live runtime facts, browser-review procedure, and deployment runbooks.
+1. read Project Rules;
+2. read the Setup engineering README and current handoff;
+3. preserve V0.3.7 through V0.3.13;
+4. keep 2025 as the proving ground until the remaining gates pass;
+5. continue `#167 -> #145 FINAL -> #122`;
+6. use Server Management for live runtime and deployment authority.
 
 ## Related Documentation
 
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`
-- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-11.md`
-- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Predecessor_and_Readiness_Contract_2026-09-09.md`
-- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md`
-- `Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md`
-- `Setup/Acceptance/Setup_Active_Task_Context_V0311_Production_Acceptance_2026-09-12.md`
-- `Setup/Acceptance/Setup_Predecessor_V039_Production_Acceptance_2026-09-11.md`
-- `Setup/Acceptance/Setup_Resource_Catalog_V0310_Production_Acceptance_2026-09-11.md`
+- `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-12.md`
+- `Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
