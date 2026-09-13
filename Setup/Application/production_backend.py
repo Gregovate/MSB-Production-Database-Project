@@ -74,6 +74,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_display_ownership_large_scope_fix.js",
         "setup_kit_box_assignment.css",
         "setup_kit_box_assignment.js",
+        "setup_extra_materials.css",
+        "setup_extra_materials.js",
     }
 )
 
