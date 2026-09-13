@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | ACCEPTED PRODUCTION |
+| Status | ACCEPTED PRODUCTION — see 2026-09-13 corrective note below |
 | Application | Setup Session |
 | Issue | #152 — Add Setup resource catalog sort order and existing-resource editing |
 | Implementation PR | #168 |
@@ -242,8 +242,36 @@ Issue #152 does not absorb unrelated remaining work:
 - #141 — task-specific staged material / Pick List release timing; and
 - #159 — cross-application palette/theme consistency.
 
+## 2026-09-13 Corrective Acceptance Note
+
+Later real Production use exposed a defect specifically in the task-resource write command installed by migration 027. Assigning the existing `SkyTrak` resource failed with:
+
+```text
+column reference "setup_task_id" is ambiguous
+```
+
+Migration 027 had recreated `ref.set_setup_task_resource(...)` with a bare-column `ON CONFLICT` target, unintentionally regressing the named-primary-key hardening previously established by migration 015.
+
+The original V0.3.10 acceptance remains valid for Resource Catalog management, stable resource identity, catalog search/editing, authorization, and deployment facts. It did not sufficiently exercise a fresh task-resource upsert through the regressed conflict target to expose the PL/pgSQL ambiguity.
+
+The accepted forward correction is:
+
+```text
+Setup/Database/031_fix_setup_task_resource_upsert.sql
+```
+
+Migration 031 restores `ON CONFLICT ON CONSTRAINT pk_setup_task_resource` while preserving current Resource Catalog semantics and least privilege. Full regression, disposable Add/Update/Remove/Re-add proof, disposable browser acceptance, Production deployment validation, and protected Production `SkyTrak` persistence all passed.
+
+Current corrective evidence is authoritative for the task-resource write path:
+
+```text
+Setup/Acceptance/Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md
+```
+
+Independent follow-up search usability is tracked in #181. Server Management maintenance/write-freeze follow-up is tracked in Server Management #37.
+
 ## Current Accepted Boundary
 
-Issue #152 is complete when this acceptance record and current Setup engineering/operator documentation are merged.
+Issue #152 is complete when migration 031 and the corrective acceptance/current Setup documentation are merged.
 
-The Production runtime remains intentionally pinned to the exact accepted application SHA `c2a182...`; documentation-only closeout commits do not require moving the live application checkout.
+The Production application remains intentionally pinned to the accepted V0.3.13 SHA `3fb975ca355711cece564cfd874cf8d7514310bf`; this corrective database migration does not require moving the live application checkout.
