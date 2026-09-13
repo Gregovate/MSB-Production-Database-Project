@@ -98,13 +98,13 @@ class SetupExtraMaterialRepository:
                 """,
                 (setup_task_id,),
             )
-            rows: list[dict[str, Any]] = []
+            result: list[dict[str, Any]] = []
             for row in cur.fetchall():
                 item = dict(row)
                 sources = item.get("sources")
                 item["sources"] = sources if isinstance(sources, list) else list(sources or [])
-                rows.append(item)
-            return rows
+                result.append(item)
+            return result
 
     def container_contents(self, container_id: int) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -165,11 +165,21 @@ class SetupExtraMaterialRepository:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT e.setup_extra_material_inventory_event_id,
-                       e.setup_container_extra_material_id,
-                       e.event_type, e.quantity_delta, e.event_note,
-                       e.occurred_at, e.created_at, e.created_by_person_id,
-                       p.display_name AS actor_display_name
+                SELECT
+                    e.setup_extra_material_inventory_event_id,
+                    e.setup_container_extra_material_id,
+                    e.event_type,
+                    e.quantity_delta,
+                    e.event_note,
+                    e.occurred_at,
+                    e.created_at,
+                    e.created_by_person_id,
+                    coalesce(
+                        nullif(btrim(concat_ws(' ', p.first_name, p.last_name)), ''),
+                        nullif(btrim(p.email), ''),
+                        CASE WHEN p.person_id IS NULL THEN NULL
+                             ELSE 'Person ' || p.person_id::text END
+                    ) AS actor_display_name
                 FROM ops.setup_extra_material_inventory_event e
                 LEFT JOIN ref.person p ON p.person_id = e.created_by_person_id
                 WHERE e.setup_container_extra_material_id = %s
@@ -181,10 +191,11 @@ class SetupExtraMaterialRepository:
             return [dict(row) for row in cur.fetchall()]
 
     def balance_summary(self, *, material_name: str | None = None) -> list[dict[str, Any]]:
-        """Compare reusable task requirement totals to durable physical inventory.
+        """Compare reusable requirements to physical stock by material/spec.
 
-        NULL on_hand means some or all applicable physical stock has not yet been
-        counted; it must never be presented as zero inventory.
+        A missing physical count remains NULL, never zero. If any stock row for a
+        specification is still uncounted, the aggregate on-hand/available result
+        remains NULL so operators cannot mistake partial inventory for truth.
         """
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -205,8 +216,7 @@ class SetupExtraMaterialRepository:
                     JOIN ref.setup_extra_material m
                       ON m.setup_extra_material_id = tm.setup_extra_material_id
                     JOIN ref.setup_task t ON t.setup_task_id = tm.setup_task_id
-                    WHERE tm.active_flag
-                      AND t.active_flag
+                    WHERE tm.active_flag AND t.active_flag
                       AND tm.quantity_required IS NOT NULL
                       AND (%s IS NULL OR lower(m.material_name) = lower(%s))
                     GROUP BY tm.setup_extra_material_id, m.material_name,
@@ -268,91 +278,75 @@ class SetupExtraMaterialRepository:
             )
             return [dict(row) for row in cur.fetchall()]
 
-    def create_material(self, *, email: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _command(self, sql: str, values: tuple[Any, ...], empty_error: str) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT * FROM ref.create_setup_extra_material(%s,%s,%s,%s,%s)",
-                (email, payload.get("material_name"), payload.get("lifecycle_class", "REUSABLE"),
-                 payload.get("default_uom", "EA"), payload.get("notes")),
-            )
-            row = cur.fetchone(); conn.commit()
+            cur.execute(sql, values)
+            row = cur.fetchone()
+            conn.commit()
             if row is None:
-                raise SetupExtraMaterialRepositoryError("Extra Material creation returned no result")
+                raise SetupExtraMaterialRepositoryError(empty_error)
             return dict(row)
+
+    def create_material(self, *, email: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._command(
+            "SELECT * FROM ref.create_setup_extra_material(%s,%s,%s,%s,%s)",
+            (email, payload.get("material_name"), payload.get("lifecycle_class", "REUSABLE"),
+             payload.get("default_uom", "EA"), payload.get("notes")),
+            "Extra Material creation returned no result",
+        )
 
     def update_material(self, *, email: str, material_id: int, payload: dict[str, Any]) -> dict[str, Any]:
-        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT * FROM ref.update_setup_extra_material(%s,%s,%s,%s,%s,%s,%s,%s)",
-                (email, material_id, payload.get("material_name"), payload.get("lifecycle_class"),
-                 payload.get("default_uom"), payload.get("notes"), payload.get("active_flag", True),
-                 payload.get("display_order", 100)),
-            )
-            row = cur.fetchone(); conn.commit()
-            if row is None:
-                raise SetupExtraMaterialRepositoryError("Extra Material update returned no result")
-            return dict(row)
+        return self._command(
+            "SELECT * FROM ref.update_setup_extra_material(%s,%s,%s,%s,%s,%s,%s,%s)",
+            (email, material_id, payload.get("material_name"), payload.get("lifecycle_class"),
+             payload.get("default_uom"), payload.get("notes"), payload.get("active_flag", True),
+             payload.get("display_order", 100)),
+            "Extra Material update returned no result",
+        )
 
     def set_task_material(self, *, email: str, setup_task_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
-        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT * FROM ref.set_setup_task_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (email, row_id, setup_task_id, payload.get("setup_extra_material_id"),
-                 payload.get("quantity_required"), payload.get("quantity_uom", "EA"),
-                 payload.get("size_text"), payload.get("length_value"), payload.get("length_unit"),
-                 payload.get("color"), payload.get("quantity_qualifier", "EXACT"),
-                 payload.get("verification_state", "UNVERIFIED"), payload.get("notes"),
-                 payload.get("active_flag", True)),
-            )
-            row = cur.fetchone(); conn.commit()
-            if row is None:
-                raise SetupExtraMaterialRepositoryError("Task Extra Material update returned no result")
-            return dict(row)
+        return self._command(
+            "SELECT * FROM ref.set_setup_task_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (email, row_id, setup_task_id, payload.get("setup_extra_material_id"),
+             payload.get("quantity_required"), payload.get("quantity_uom", "EA"),
+             payload.get("size_text"), payload.get("length_value"), payload.get("length_unit"),
+             payload.get("color"), payload.get("quantity_qualifier", "EXACT"),
+             payload.get("verification_state", "UNVERIFIED"), payload.get("notes"),
+             payload.get("active_flag", True)),
+            "Task Extra Material update returned no result",
+        )
 
     def set_task_source(self, *, email: str, requirement_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
-        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
-                (email, row_id, requirement_id, payload.get("container_id"),
-                 payload.get("expected_quantity"), payload.get("verification_state", "UNVERIFIED"),
-                 payload.get("notes"), payload.get("active_flag", True)),
-            )
-            row = cur.fetchone(); conn.commit()
-            if row is None:
-                raise SetupExtraMaterialRepositoryError("Task Extra Material source update returned no result")
-            return dict(row)
+        return self._command(
+            "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
+            (email, row_id, requirement_id, payload.get("container_id"),
+             payload.get("expected_quantity"), payload.get("verification_state", "UNVERIFIED"),
+             payload.get("notes"), payload.get("active_flag", True)),
+            "Task Extra Material source update returned no result",
+        )
 
     def set_container_content(self, *, email: str, container_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
-        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT * FROM ref.set_setup_container_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (email, row_id, container_id, payload.get("setup_extra_material_id"),
-                 payload.get("expected_quantity"), payload.get("quantity_uom", "EA"),
-                 payload.get("size_text"), payload.get("length_value"), payload.get("length_unit"),
-                 payload.get("color"), payload.get("verification_state", "UNVERIFIED"),
-                 payload.get("notes"), payload.get("active_flag", True)),
-            )
-            row = cur.fetchone(); conn.commit()
-            if row is None:
-                raise SetupExtraMaterialRepositoryError("Container Extra Material update returned no result")
-            return dict(row)
+        return self._command(
+            "SELECT * FROM ref.set_setup_container_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (email, row_id, container_id, payload.get("setup_extra_material_id"),
+             payload.get("expected_quantity"), payload.get("quantity_uom", "EA"),
+             payload.get("size_text"), payload.get("length_value"), payload.get("length_unit"),
+             payload.get("color"), payload.get("verification_state", "UNVERIFIED"),
+             payload.get("notes"), payload.get("active_flag", True)),
+            "Container Extra Material update returned no result",
+        )
 
     def set_unverified_items(self, *, email: str, container_id: int, text: str | None) -> dict[str, Any]:
-        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM ref.set_setup_container_unverified_items(%s,%s,%s)", (email, container_id, text))
-            row = cur.fetchone(); conn.commit()
-            if row is None:
-                raise SetupExtraMaterialRepositoryError("Container unverified-items update returned no result")
-            return dict(row)
+        return self._command(
+            "SELECT * FROM ref.set_setup_container_unverified_items(%s,%s,%s)",
+            (email, container_id, text),
+            "Container unverified-items update returned no result",
+        )
 
     def record_inventory_event(self, *, email: str, content_id: int, payload: dict[str, Any]) -> dict[str, Any]:
-        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT * FROM ops.record_setup_extra_material_inventory_event(%s,%s,%s,%s,%s,%s)",
-                (email, content_id, payload.get("event_type"), payload.get("quantity_delta"),
-                 payload.get("event_note"), payload.get("occurred_at")),
-            )
-            row = cur.fetchone(); conn.commit()
-            if row is None:
-                raise SetupExtraMaterialRepositoryError("Inventory event returned no result")
-            return dict(row)
+        return self._command(
+            "SELECT * FROM ops.record_setup_extra_material_inventory_event(%s,%s,%s,%s,%s,%s)",
+            (email, content_id, payload.get("event_type"), payload.get("quantity_delta"),
+             payload.get("event_note"), payload.get("occurred_at")),
+            "Inventory event returned no result",
+        )
