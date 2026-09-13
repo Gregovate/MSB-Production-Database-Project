@@ -8,7 +8,6 @@ from setup_api import (
     SetupAuthenticationError,
     SetupCommandError,
     json_body,
-    require_inventory_operator,
     require_manager,
     require_reader,
     require_setup_command,
@@ -25,6 +24,22 @@ setup_extra_material_api = Blueprint("setup_extra_material_api", __name__)
 
 def repo() -> SetupExtraMaterialRepository:
     return SetupExtraMaterialRepository(setup_database_dsn())
+
+
+def require_inventory_operator():
+    """Allow durable stock adjustments only to Production Crew or Managers.
+
+    The existing movement capability also includes Volunteers, so it is
+    intentionally not reused for durable Extra Material inventory changes.
+    The SECURITY DEFINER command independently rechecks the same boundary.
+    """
+    base_repo, email, access = require_reader()
+    role_name = str(access.get("role_name") or "")
+    policy_names = {str(name) for name in access.get("policy_names") or []}
+    can_adjust = bool(access.get("can_manage_setup")) or role_name == "Production Crew" or "Production Crew" in policy_names
+    if not can_adjust:
+        raise SetupCommandError("Setup Extra Material inventory adjustment is not authorized for this account")
+    return base_repo, email, access
 
 
 @setup_extra_material_api.get("/api/setup/extra-materials")
