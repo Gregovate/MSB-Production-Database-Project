@@ -14,6 +14,7 @@ from flask import Flask, abort, jsonify, send_from_directory
 from backend import BASE_DIR
 from setup_api import setup_api
 from setup_resource_api import setup_resource_api
+from setup_extra_material_api import setup_extra_material_api
 from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
@@ -89,6 +90,7 @@ install_setup_kit_box_catalog_fix()
 app = Flask(__name__)
 app.register_blueprint(setup_api)
 app.register_blueprint(setup_resource_api)
+app.register_blueprint(setup_extra_material_api)
 app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
