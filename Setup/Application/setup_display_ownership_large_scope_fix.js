@@ -18,9 +18,9 @@
     const content = dialog.querySelector('#setup-display-ownership-content');
     if (content) content.scrollTop = 0;
 
-    const taskId = Number(window.appState?.selectedTaskId || 0);
-    if (taskId && typeof window.selectTask === 'function') {
-      requestAnimationFrame(() => window.selectTask(taskId));
+    const taskId = Number(appState?.selectedTaskId || 0);
+    if (taskId && typeof selectTask === 'function') {
+      requestAnimationFrame(() => selectTask(taskId));
     }
   }
 
@@ -72,7 +72,7 @@
     if (!toolbar || toolbar.querySelector('#setup-display-ownership-move-target')) return;
 
     const options = taskOptions(dialog);
-    if (!options.length || !window.appState?.access?.can_manage_setup) return;
+    if (!options.length || !appState?.access?.can_manage_setup) return;
 
     const label = document.createElement('label');
     label.className = 'setup-display-ownership-move-control';
