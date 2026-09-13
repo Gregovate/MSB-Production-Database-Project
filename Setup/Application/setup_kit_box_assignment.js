@@ -19,8 +19,11 @@
       control.className = 'setup-kit-box-control manager-only';
       control.hidden = true;
       control.innerHTML = `
-        <button id="setup-kit-box-open" type="button" class="secondary">Kit Boxes</button>
-        <span id="setup-kit-box-status" class="setup-kit-box-status"></span>
+        <div class="setup-kit-box-control-line">
+          <button id="setup-kit-box-open" type="button" class="secondary">Kit Boxes</button>
+          <span id="setup-kit-box-status" class="setup-kit-box-status"></span>
+        </div>
+        <div id="setup-kit-box-assigned" class="setup-kit-box-assigned" hidden></div>
       `;
       const ownershipControl = document.getElementById('setup-display-ownership-control');
       if (ownershipControl) ownershipControl.insertAdjacentElement('afterend', control);
@@ -49,6 +52,7 @@
       <div class="muted setup-kit-box-rule">
         Only physical Containers whose Production type is <strong>Kit Box</strong> are listed here.
         Kit Boxes are outside LOR and may be assigned to more than one reusable Setup task.
+        Changes save immediately.
       </div>
       <div class="setup-kit-box-toolbar">
         <label class="setup-kit-box-search-label" for="setup-kit-box-search">
@@ -71,12 +75,50 @@
     return dialog;
   }
 
+  function assignedKitBoxes() {
+    return state.kitBoxes.filter((row) => Boolean(row.assigned));
+  }
+
+  function renderAssignedSummary(control) {
+    const target = control?.querySelector('#setup-kit-box-assigned');
+    if (!target) return;
+    const assigned = assignedKitBoxes();
+    target.hidden = assigned.length === 0;
+    if (!assigned.length) {
+      target.innerHTML = '';
+      return;
+    }
+
+    target.innerHTML = `
+      <span class="setup-kit-box-assigned-label">Assigned Kit Boxes:</span>
+      <span class="setup-kit-box-assigned-items">
+        ${assigned.map((row) => `
+          <span class="setup-kit-box-chip" data-container-id="${row.container_id}">
+            <span>${escapeHtml(row.container_description || 'Kit Box')} <span class="setup-kit-box-chip-id">#${escapeHtml(row.container_id)}</span></span>
+            <button type="button" class="setup-kit-box-chip-remove" data-container-id="${row.container_id}" title="Remove this Kit Box assignment" aria-label="Remove ${escapeHtml(row.container_description || `Kit Box ${row.container_id}`)}">×</button>
+          </span>
+        `).join('')}
+      </span>
+    `;
+
+    target.querySelectorAll('.setup-kit-box-chip-remove').forEach((button) => {
+      button.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const containerId = Number(event.currentTarget.dataset.containerId || 0);
+        if (!containerId) return;
+        await setAssignment(containerId, false, null);
+      });
+    });
+  }
+
   function updateStatus() {
     const control = ensureControl();
     if (!control || control.hidden) return;
-    const assigned = state.kitBoxes.filter((row) => Boolean(row.assigned)).length;
+    const assigned = assignedKitBoxes().length;
     const status = control.querySelector('#setup-kit-box-status');
     if (status) status.textContent = `${assigned} assigned`;
+    renderAssignedSummary(control);
   }
 
   function kitBoxMatchesSearch(row, query) {
@@ -185,23 +227,27 @@
     if (!taskId || !appState.access?.can_manage_setup) return;
     try {
       setBusy(true);
-      const payload = await api(
+      await api(
         `api/setup/tasks/${taskId}/kit-boxes/${Number(containerId)}`,
         commandOptions('PATCH', {
           assigned: Boolean(assigned),
           notes: 'Reusable Setup Kit Box assignment.'
         })
       );
-      state.kitBoxes = Array.isArray(payload.kit_boxes) ? payload.kit_boxes : [];
-      updateStatus();
-      renderDialog();
+
+      /*
+      Read the assignment back immediately from the database instead of waiting
+      for Save Reusable Task/reload. This keeps the Kit assignment independent
+      of unrelated reusable-task form edits and makes persistence visible now.
+      */
+      await loadKitBoxes(taskId, { render: true });
       if (typeof loadSelectedSetupMaterialContext === 'function') {
         await loadSelectedSetupMaterialContext();
       }
       setAlert(
         assigned
-          ? `Kit Box ${containerId} assigned to this reusable task.`
-          : `Kit Box ${containerId} removed from this reusable task.`,
+          ? `Kit Box ${containerId} assigned and saved immediately.`
+          : `Kit Box ${containerId} assignment removed immediately.`,
         'ok'
       );
     } catch (error) {
