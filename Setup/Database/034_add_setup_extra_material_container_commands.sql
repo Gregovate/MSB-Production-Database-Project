@@ -42,7 +42,9 @@ DECLARE
     v_display_name text;
     v_row_id bigint := p_setup_container_extra_material_id;
     v_uom text := upper(btrim(coalesce(p_quantity_uom, 'EA')));
+    v_size text := nullif(btrim(p_size_text), '');
     v_length_unit text := nullif(upper(btrim(p_length_unit)), '');
+    v_color text := nullif(btrim(p_color), '');
     v_verification text := upper(btrim(coalesce(p_verification_state, 'UNVERIFIED')));
 BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
@@ -83,27 +85,68 @@ BEGIN
             notes, active_flag
         ) VALUES (
             p_container_id, p_setup_extra_material_id, p_expected_quantity, v_uom,
-            nullif(btrim(p_size_text), ''), p_length_value, v_length_unit,
-            nullif(btrim(p_color), ''), v_verification,
+            v_size, p_length_value, v_length_unit, v_color, v_verification,
             nullif(btrim(p_notes), ''), coalesce(p_active_flag, true)
         ) RETURNING ref.setup_container_extra_material.setup_container_extra_material_id INTO v_row_id;
     ELSE
+        IF NOT EXISTS (
+            SELECT 1 FROM ref.setup_container_extra_material cem
+            WHERE cem.setup_container_extra_material_id=v_row_id
+        ) THEN
+            RAISE EXCEPTION USING ERRCODE='P0002', MESSAGE='Container Extra Material row was not found';
+        END IF;
+
+        /* Inventory history is attached to this exact material/spec/Container
+           identity. Never reinterpret prior events by editing identity fields. */
+        IF EXISTS (
+            SELECT 1
+            FROM ops.setup_extra_material_inventory_event e
+            WHERE e.setup_container_extra_material_id=v_row_id
+        ) AND EXISTS (
+            SELECT 1
+            FROM ref.setup_container_extra_material cem
+            WHERE cem.setup_container_extra_material_id=v_row_id
+              AND (
+                  cem.container_id IS DISTINCT FROM p_container_id
+                  OR cem.setup_extra_material_id IS DISTINCT FROM p_setup_extra_material_id
+                  OR cem.quantity_uom IS DISTINCT FROM v_uom
+                  OR cem.size_text IS DISTINCT FROM v_size
+                  OR cem.length_value IS DISTINCT FROM p_length_value
+                  OR cem.length_unit IS DISTINCT FROM v_length_unit
+                  OR cem.color IS DISTINCT FROM v_color
+              )
+        ) THEN
+            RAISE EXCEPTION USING
+                ERRCODE='22023',
+                MESSAGE='Inventoried Container material identity cannot be changed; create a new material/spec row instead';
+        END IF;
+
+        /* Do not hide real stock by deactivating an expected-content row while
+           its durable physical balance is still nonzero. */
+        IF NOT coalesce(p_active_flag, true) AND EXISTS (
+            SELECT 1
+            FROM ops.setup_extra_material_inventory_balance b
+            WHERE b.setup_container_extra_material_id=v_row_id
+              AND coalesce(b.on_hand_quantity, 0) <> 0
+        ) THEN
+            RAISE EXCEPTION USING
+                ERRCODE='22023',
+                MESSAGE='Container material cannot be removed while physical on-hand inventory is nonzero';
+        END IF;
+
         UPDATE ref.setup_container_extra_material cem
            SET container_id=p_container_id,
                setup_extra_material_id=p_setup_extra_material_id,
                expected_quantity=p_expected_quantity,
                quantity_uom=v_uom,
-               size_text=nullif(btrim(p_size_text), ''),
+               size_text=v_size,
                length_value=p_length_value,
                length_unit=v_length_unit,
-               color=nullif(btrim(p_color), ''),
+               color=v_color,
                verification_state=v_verification,
                notes=nullif(btrim(p_notes), ''),
                active_flag=coalesce(p_active_flag, true)
          WHERE cem.setup_container_extra_material_id=v_row_id;
-        IF NOT FOUND THEN
-            RAISE EXCEPTION USING ERRCODE='P0002', MESSAGE='Container Extra Material row was not found';
-        END IF;
     END IF;
 
     RETURN QUERY SELECT v_row_id, p_container_id, p_setup_extra_material_id, v_display_name;
