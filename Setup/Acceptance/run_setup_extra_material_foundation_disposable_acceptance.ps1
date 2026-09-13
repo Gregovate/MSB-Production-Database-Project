@@ -40,6 +40,7 @@ $files = @(
     'Setup\Database\034_add_setup_extra_material_container_commands.sql',
     'Setup\Database\035_add_setup_extra_material_inventory_commands.sql',
     'Setup\Database\036_seed_setup_extra_material_catalog.sql',
+    'Setup\Database\037_harden_setup_extra_material_duplicate_rows.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_validation.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_acceptance_server.sh'
 )
@@ -57,7 +58,6 @@ try {
         Copy-Item -LiteralPath $source -Destination $destination
     }
 
-    # Server runner must be LF/UTF-8 without BOM.
     $runner = Join-Path $localBundle 'Setup\Acceptance\setup_extra_material_foundation_disposable_acceptance_server.sh'
     $runnerText = [System.IO.File]::ReadAllText($runner).Replace("`r`n", "`n")
     [System.IO.File]::WriteAllText(
