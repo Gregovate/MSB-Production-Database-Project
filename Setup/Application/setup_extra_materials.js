@@ -90,7 +90,7 @@
     ].filter(Boolean).join(' · ');
 
     const access = appState.access || {};
-    xel('extra-material-manager-editor').hidden = !access.can_manage_setup;
+    xel('extra-material-content-form').hidden = !access.can_manage_setup;
     xel('extra-material-unverified-manager-actions').hidden = !access.can_manage_setup;
     xel('extra-material-inventory-editor').hidden = !canAdjustInventory();
     xel('extra-material-unverified-items').value = state.container.unverified_items_text || '';
@@ -309,7 +309,7 @@
     if (!state.catalog.length) await loadCatalog();
     const access = appState.access || {};
     xel('extra-material-inventory-editor').hidden = !canAdjustInventory();
-    xel('extra-material-manager-editor').hidden = !access.can_manage_setup;
+    xel('extra-material-content-form').hidden = !access.can_manage_setup;
   }
 
   function bind() {
