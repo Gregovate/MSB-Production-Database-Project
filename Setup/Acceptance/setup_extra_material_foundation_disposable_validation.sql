@@ -2,7 +2,7 @@
 Issue #167 — Extra Material / Container expected-content / inventory foundation
 DISPOSABLE DATABASE VALIDATION ONLY
 
-Run only after migrations 032 -> 036 have been applied to a disposable clone of
+Run only after migrations 032 -> 037 have been applied to a disposable clone of
 current Production. All test data below is rolled back.
 */
 \set ON_ERROR_STOP on
@@ -129,23 +129,29 @@ BEGIN
     SELECT r.setup_container_extra_material_id
       INTO v_content_id
     FROM ref.set_setup_container_extra_material(
-        v_manager_email,
-        NULL,
-        v_container_id,
-        v_material_id,
-        10,
-        'EA',
-        NULL,
-        6,
-        'FT',
-        NULL,
-        'UNVERIFIED',
-        'Disposable #167 validation row',
-        true
+        v_manager_email, NULL, v_container_id, v_material_id,
+        10, 'EA', NULL, 6, 'FT', NULL, 'UNVERIFIED',
+        'Disposable #167 validation row', true
     ) r;
 
     IF v_content_id IS NULL THEN
         RAISE EXCEPTION 'Manager could not create disposable Container expected-content row';
+    END IF;
+
+    /* Exact duplicate active Container/material/spec rows must fail closed so a
+       double-click or repeated import cannot double-count expected stock. */
+    v_error_seen := false;
+    BEGIN
+        PERFORM * FROM ref.set_setup_container_extra_material(
+            v_manager_email, NULL, v_container_id, v_material_id,
+            10, 'EA', NULL, 6, 'FT', NULL, 'UNVERIFIED',
+            'Duplicate should fail', true
+        );
+    EXCEPTION WHEN SQLSTATE '23505' THEN
+        v_error_seen := true;
+    END;
+    IF NOT v_error_seen THEN
+        RAISE EXCEPTION 'Duplicate active Container material/spec unexpectedly succeeded';
     END IF;
 
     /* Durable balance is unknown until a physical count exists. */
