@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Kit Inventory</title>
-  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-14.1">
+  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-14.2">
 </head>
 <body>
 <header class="inventory-header">
@@ -13,12 +13,12 @@
     <div>
       <div class="eyebrow">Setup · durable Container inventory</div>
       <h1>Kit Inventory</h1>
-      <div class="muted">Normalized Extra Materials, Remainders, task assignments, and physical counts remain separate durable facts.</div>
+      <div class="muted">Review what belongs in each Kit, then open editing or counting only when you need it.</div>
     </div>
   </div>
   <div class="inventory-header-actions">
     <span id="inventory-access" class="access-badge">Checking access…</span>
-    <a class="button secondary" href="../t-post-inventory/">T-Post Stock</a>
+    <a class="button secondary" href="../t-post-inventory/">T-Post Inventory</a>
     <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
     <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
   </div>
@@ -31,12 +31,12 @@
     <aside class="card inventory-list-card">
       <div class="section-title">
         <div>
-          <div class="eyebrow">Existing ref.container Kit Boxes</div>
-          <h2>Kit Boxes</h2>
+          <div class="eyebrow">Physical Kit Boxes</div>
+          <h2>Find a Kit</h2>
         </div>
       </div>
-      <label class="inventory-search">Find Kit Box
-        <input id="kit-search" type="search" placeholder="Name, Container ID, location, or Setup task" autocomplete="off">
+      <label class="inventory-search">Search
+        <input id="kit-search" type="search" placeholder="Kit, Container ID, location, or Setup task" autocomplete="off">
       </label>
       <div class="kit-filter-row" role="group" aria-label="Kit assignment filter">
         <button id="kit-filter-all" type="button" class="small secondary active-filter">All</button>
@@ -49,66 +49,45 @@
     </aside>
 
     <section class="card inventory-detail-card">
-      <div id="kit-empty" class="empty-state">Select a Kit Box to view or inventory it.</div>
+      <div id="kit-empty" class="empty-state">Select a Kit Box to review it.</div>
       <div id="kit-detail" hidden>
         <div class="detail-heading">
           <div>
-            <div class="eyebrow">Physical Kit Box</div>
+            <div class="eyebrow">Selected Physical Kit Box</div>
             <h2 id="kit-title"></h2>
             <div id="kit-meta" class="muted"></div>
             <div id="kit-assignments" class="muted"></div>
           </div>
         </div>
 
-        <section class="detail-section">
-          <div class="section-title compact">
-            <div>
-              <h3>Setup Task Assignments</h3>
-              <div class="hint">Existing reusable <code>task → KIT</code> relationships. This is the permanent logistics assignment and is separate from Kit contents.</div>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Stage</th><th>Task ID</th><th>Reusable Setup Task</th><th>Relationship note</th></tr></thead>
-              <tbody id="kit-task-assignment-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
-            </table>
-          </div>
-        </section>
+        <div id="kit-overview" class="kit-overview-strip" aria-label="Kit summary">
+          <div><span id="overview-task-count" class="overview-value">—</span><span class="overview-label">Setup tasks</span></div>
+          <div><span id="overview-display-count" class="overview-value">—</span><span class="overview-label">Displays</span></div>
+          <div><span id="overview-expected-count" class="overview-value">—</span><span class="overview-label">Expected items</span></div>
+          <div><span id="overview-counted-count" class="overview-value">—</span><span class="overview-label">Counted</span></div>
+          <div><span id="overview-review-state" class="overview-value">—</span><span class="overview-label">Remainders</span></div>
+        </div>
 
-        <section class="detail-section">
+        <section class="detail-section primary-content-section">
           <div class="section-title compact">
             <div>
-              <h3>Displays Stored in This Kit</h3>
-              <div class="hint">Current physical <code>ref.display.container_id</code> relationships. Read-only here; these are not Extra Materials.</div>
+              <h3>Expected Kit Contents</h3>
+              <div class="hint">What should be in this Kit. Physical on-hand is shown separately from expected quantity.</div>
             </div>
+            <button id="expected-add" type="button" class="small secondary manager-only" hidden>Add expected item</button>
           </div>
           <div class="table-wrap">
-            <table>
-              <thead><tr><th>Display</th><th>Inventory Type</th><th>Stage</th><th>Status</th></tr></thead>
-              <tbody id="kit-display-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="detail-section">
-          <div class="section-title compact">
-            <div>
-              <h3>Expected Extra Material Contents</h3>
-              <div class="hint">Expected quantity means what the Kit should contain based on reviewed/reconstructed evidence. Physical on-hand is the separately counted quantity actually present.</div>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Item</th><th>Expected in Kit</th><th>Size / Length / Color</th><th>Verification</th><th>Physical On Hand</th><th>Notes</th><th></th></tr></thead>
+            <table class="kit-contents-table">
+              <thead><tr><th>Item</th><th>Expected</th><th>Spec</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
               <tbody id="kit-content-body"></tbody>
             </table>
           </div>
         </section>
 
-        <section id="expected-editor" class="detail-section manager-only editor-panel" hidden>
+        <section id="expected-editor" class="detail-section editor-panel action-panel" hidden>
           <div id="expected-editor-status" class="editor-banner" hidden></div>
           <h3 id="expected-editor-title">Manager — Add Expected Extra Material</h3>
-          <div class="hint">This form changes expected Kit contents only. It does not change the physical on-hand count.</div>
+          <div class="hint">Changes expected Kit contents only. It does not change physical on-hand.</div>
           <form id="expected-form">
             <div class="form-grid">
               <label>Item<select id="expected-item" required></select></label>
@@ -123,24 +102,15 @@
             </div>
             <div class="action-row">
               <button id="expected-save" type="submit">Add Expected Item</button>
-              <button id="expected-clear" type="button" class="secondary">Clear</button>
+              <button id="expected-clear" type="button" class="secondary">Cancel</button>
               <button id="expected-remove" type="button" class="warning" hidden>Remove Expected Item</button>
             </div>
           </form>
         </section>
 
-        <section class="detail-section unverified-section">
-          <h3>Unverified Items / Remainders</h3>
-          <div class="hint">Durable cleanup notes left by the one-time inventory migration. These do not become Extra Material identities until a Manager resolves them. The written procedures remain the fall-back source.</div>
-          <textarea id="unverified-items" rows="8" readonly></textarea>
-          <div id="unverified-actions" class="action-row manager-only" hidden>
-            <button id="save-unverified" type="button">Save Remainders</button>
-          </div>
-        </section>
-
-        <section id="inventory-editor" class="detail-section inventory-operator-only" hidden>
-          <h3>Physical Extra Material Inventory</h3>
-          <div class="hint">This ledger changes physical on-hand only. Initial count establishes the first balance; later events add or subtract from the current balance. Expected Kit contents are never rewritten by these events.</div>
+        <section id="inventory-editor" class="detail-section action-panel" hidden>
+          <h3>Count / Adjust Physical Inventory</h3>
+          <div class="hint">Changes physical on-hand only. Expected Kit contents are never rewritten by inventory events.</div>
           <div id="inventory-selected" class="selected-item">Select an expected item above.</div>
           <form id="inventory-form">
             <div class="form-grid inventory-form-grid">
@@ -149,10 +119,50 @@
               <label class="wide">Reason / note<input id="inventory-note" type="text"></label>
             </div>
             <div id="inventory-math" class="inventory-math">Select an expected item to see the physical inventory calculation.</div>
-            <div class="action-row"><button type="submit">Record Inventory Change</button></div>
+            <div class="action-row">
+              <button type="submit">Record Inventory Change</button>
+              <button id="inventory-close" type="button" class="secondary">Close</button>
+            </div>
           </form>
           <div id="inventory-history" class="history"></div>
         </section>
+
+        <details class="compact-details context-details">
+          <summary>Setup task assignment</summary>
+          <div class="details-body">
+            <div class="hint">Existing reusable <code>task → KIT</code> relationships. This logistics assignment is separate from Kit contents.</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Stage</th><th>Task ID</th><th>Reusable Setup Task</th><th>Relationship note</th></tr></thead>
+                <tbody id="kit-task-assignment-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="compact-details context-details">
+          <summary>Displays stored in this Kit</summary>
+          <div class="details-body">
+            <div class="hint">Current physical <code>ref.display.container_id</code> relationships. Read-only here; these are not Extra Materials.</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Display</th><th>Inventory Type</th><th>Stage</th><th>Status</th></tr></thead>
+                <tbody id="kit-display-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="compact-details remainder-details">
+          <summary>Unverified Items / Remainders</summary>
+          <div class="details-body">
+            <div class="hint">Cleanup notes that have not yet been normalized or verified. The written procedures remain the fallback source.</div>
+            <textarea id="unverified-items" rows="6" readonly></textarea>
+            <div id="unverified-actions" class="action-row manager-only" hidden>
+              <button id="save-unverified" type="button">Save Remainders</button>
+            </div>
+          </div>
+        </details>
       </div>
     </section>
   </div>
@@ -160,6 +170,6 @@
 
 <script src="assets/setup_kit_inventory.js?v=2026-09-13.2"></script>
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
-<script src="assets/setup_kit_inventory_review.js?v=2026-09-14.1"></script>
+<script src="assets/setup_kit_inventory_review.js?v=2026-09-14.2"></script>
 </body>
 </html>
