@@ -31,6 +31,7 @@ M039="$BUNDLE_DIR/Setup/Database/039_add_setup_extra_material_evidence_staging.s
 M040="$BUNDLE_DIR/Setup/Database/040_seed_setup_extra_material_evidence_source_1.sql"
 M041="$BUNDLE_DIR/Setup/Database/041_seed_setup_extra_material_evidence_source_2.sql"
 M042="$BUNDLE_DIR/Setup/Database/042_resolve_setup_extra_material_evidence_stage.sql"
+M043="$BUNDLE_DIR/Setup/Database/043_preload_setup_kit_inventory_and_tpost_stock.sql"
 PRELOAD_VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_extra_material_preload_disposable_validation.sql"
 VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_extra_material_foundation_disposable_validation.sql"
 PROD_BEFORE=""
@@ -92,7 +93,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 sudo -v
-required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$M039" "$M040" "$M041" "$M042" "$PRELOAD_VALIDATION" "$VALIDATION")
+required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$M039" "$M040" "$M041" "$M042" "$M043" "$PRELOAD_VALIDATION" "$VALIDATION")
 for file in "${required_files[@]}"; do
     [[ -s "$file" ]] || { echo "FAIL: required acceptance file missing: $file"; exit 2; }
 done
@@ -160,14 +161,14 @@ psql_test -c "DO \$role\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE roln
 
 echo
 echo "--- Apply exact #167 candidate migrations to disposable clone only ---"
-for migration in "$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$M039" "$M040" "$M041" "$M042"; do
+for migration in "$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$M039" "$M040" "$M041" "$M042" "$M043"; do
     echo "Applying $(basename "$migration")"
     sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
         psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$migration"
 done
 
 echo
-echo "--- Validate normalized known-evidence preload + queryable evidence index ---"
+echo "--- Validate normalized preload, Kit remainders, T-Post stock, and evidence index ---"
 sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$PRELOAD_VALIDATION"
 
@@ -183,6 +184,8 @@ psql_test -c "
         (SELECT count(*) FROM ref.setup_extra_material WHERE active_flag) AS active_catalog_rows,
         (SELECT count(*) FROM ref.setup_task_extra_material WHERE active_flag) AS active_task_material_rows,
         (SELECT count(*) FROM ref.setup_container_extra_material WHERE active_flag) AS active_container_material_rows,
+        (SELECT count(*) FROM ref.setup_container_extra_material WHERE active_flag AND notes LIKE 'Procedure-derived Kit preload v6.%') AS procedure_loaded_kit_rows,
+        (SELECT count(*) FROM ref.setup_container_extra_material_review WHERE unverified_items_text LIKE '%[#167 PROCEDURE REMAINDERS v6]%') AS kits_with_remainders,
         (SELECT count(*) FROM ref.setup_extra_material_evidence_source) AS evidence_source_rows,
         (SELECT count(*) FROM ref.setup_extra_material_evidence_source WHERE stage_id IS NOT NULL) AS evidence_stage_resolved_rows,
         (SELECT count(*) FROM ops.setup_session WHERE season_year=2026) AS setup_2026_sessions,
