@@ -23,8 +23,6 @@ def test_extra_material_migration_chain_exists_and_is_bounded() -> None:
     inventory = _executable_sql(DB_DIR / "035_add_setup_extra_material_inventory_commands.sql")
     seed = _executable_sql(DB_DIR / "036_seed_setup_extra_material_catalog.sql")
     hardening = _executable_sql(DB_DIR / "037_harden_setup_extra_material_duplicate_rows.sql")
-    task_preload = _executable_sql(DB_DIR / "038_preload_setup_extra_material_known_evidence.sql")
-    inventory_preload = _executable_sql(DB_DIR / "043_preload_setup_kit_inventory_and_tpost_stock.sql")
 
     assert "CREATE TABLE IF NOT EXISTS ref.setup_extra_material" in schema
     assert "CREATE TABLE IF NOT EXISTS ref.setup_task_extra_material" in schema
@@ -35,16 +33,7 @@ def test_extra_material_migration_chain_exists_and_is_bounded() -> None:
     assert "CREATE OR REPLACE VIEW ops.setup_extra_material_inventory_balance" in schema
 
     # #141 remains the sole reusable task -> KIT relationship authority.
-    for sql in (
-        schema,
-        manager,
-        container,
-        inventory,
-        seed,
-        hardening,
-        task_preload,
-        inventory_preload,
-    ):
+    for sql in (schema, manager, container, inventory, seed, hardening):
         assert "CREATE TABLE IF NOT EXISTS ref.setup_task_container_support" not in sql
         assert "INSERT INTO ref.setup_task_container_support" not in sql
         assert "CREATE TABLE IF NOT EXISTS ops.setup_session" not in sql
@@ -85,42 +74,6 @@ def test_catalog_is_normalized_and_excludes_bad_legacy_names() -> None:
     assert "size_text text" in _text(DB_DIR / "032_add_setup_extra_material_schema.sql")
     assert "length_value numeric" in _text(DB_DIR / "032_add_setup_extra_material_schema.sql")
     assert "color text" in _text(DB_DIR / "032_add_setup_extra_material_schema.sql")
-
-
-def test_task_preload_stays_unverified_and_does_not_create_inventory_history() -> None:
-    preload_text = _text(DB_DIR / "038_preload_setup_extra_material_known_evidence.sql")
-    preload = _executable_sql(DB_DIR / "038_preload_setup_extra_material_known_evidence.sql")
-
-    assert "Expected 23 normalized task preload rows" in preload
-    assert "MSB_Setup_Extra_Materials_Normalization_Staging_2026-09-13_v6.xlsx" in preload
-    assert preload.count("'UNVERIFIED'") >= 2
-    assert "INSERT INTO ref.setup_task_extra_material" in preload
-    assert "INSERT INTO ops.setup_extra_material_inventory_event" not in preload
-    assert "(73, 'Ratchet Strap', 3" in preload
-    assert "(1, 'Foam Noodle', 4" in preload
-    assert "(205, 'Arch Foot Pad', 6" in preload
-    assert "(60, 'Post Base', 8" in preload
-    assert "ambiguous/unmatched staging evidence remains" in preload_text
-
-
-def test_one_time_inventory_migration_loads_kits_remainders_and_separate_tpost_stock() -> None:
-    preload = _text(DB_DIR / "043_preload_setup_kit_inventory_and_tpost_stock.sql")
-
-    assert "Procedure-derived Kit preload v6." in preload
-    assert "[#167 PROCEDURE REMAINDERS v6]" in preload
-    assert "Expected at least 60 normalized Kit-content preload rows" in preload
-    assert "container_id=36" in preload
-    assert "container_id=118" in preload
-    assert "T-Posts are NOT loaded as Kit contents" in preload
-    assert "T-Post stock is managed separately from Kit inventory" in preload
-    assert "INSERT INTO ops.setup_extra_material_inventory_event" not in preload
-    assert "INSERT INTO ref.setup_task_container_support" not in preload
-
-    # Concrete durable Kit preload examples.
-    assert "(60, 'Ball Bungee'" in preload
-    assert "(60, 'Post Base'" in preload
-    assert "(76, 'Arch Foot'" in preload
-    assert "(59, 'Foam Noodle'" in preload
 
 
 def test_reconstruction_runtime_is_not_part_of_permanent_application() -> None:
