@@ -1,6 +1,13 @@
-/* Issue #167 — assignment visibility + assigned/unassigned Kit reconciliation filters. */
+/* Issue #184 — assignment visibility + safe Kit reconciliation/edit/inventory UX. */
 (() => {
-  const state = { kitBoxes: [], byId: new Map(), filter: 'all' };
+  const state = {
+    kitBoxes: [],
+    byId: new Map(),
+    filter: 'all',
+    inventoryContentId: null,
+    inventoryCurrentOnHand: null,
+    inventoryUom: 'EA',
+  };
   const el = (id) => document.getElementById(id);
 
   function appBasePath() {
@@ -18,6 +25,18 @@
   function selectedContainerId() {
     const match = window.location.pathname.match(/\/kit-inventory\/(\d+)\/?$/);
     return match ? Number(match[1]) : null;
+  }
+  function formatNumber(value) {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return String(value);
+    return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
+  }
+  function numberOrNull(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return null;
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
   async function loadKitBoxes() {
@@ -61,7 +80,14 @@
     });
   }
 
+  function normalizeRemainderDisplay() {
+    const textarea = el('unverified-items');
+    if (!textarea || !textarea.value.includes('\\n')) return;
+    textarea.value = textarea.value.replace(/\\n/g, '\n');
+  }
+
   function renderAssignments() {
+    normalizeRemainderDisplay();
     const body = el('kit-task-assignment-body');
     if (!body) return;
     const containerId = selectedContainerId();
@@ -98,21 +124,126 @@
     });
   }
 
+  function clearEditDecoration() {
+    document.querySelectorAll('#kit-content-body tr.editing-source-row').forEach((row) => row.classList.remove('editing-source-row'));
+    const editor = el('expected-editor');
+    editor?.classList.remove('editing');
+    const banner = el('expected-editor-status');
+    if (banner) {
+      banner.hidden = true;
+      banner.textContent = '';
+    }
+    if (el('expected-editor-title')) el('expected-editor-title').textContent = 'Manager — Add Expected Extra Material';
+    if (el('expected-clear')) el('expected-clear').textContent = 'Clear';
+  }
+
+  function markExpectedEdit(button) {
+    clearEditDecoration();
+    const row = button.closest('tr');
+    if (!row) return;
+    row.classList.add('editing-source-row');
+    const itemName = row.cells?.[0]?.textContent?.trim() || 'expected item';
+    const editor = el('expected-editor');
+    editor?.classList.add('editing');
+    const banner = el('expected-editor-status');
+    if (banner) {
+      banner.hidden = false;
+      banner.textContent = `EDITING EXISTING ROW — ${itemName}. Save changes or Cancel edit.`;
+    }
+    if (el('expected-editor-title')) el('expected-editor-title').textContent = 'Manager — Edit Expected Extra Material';
+    if (el('expected-clear')) el('expected-clear').textContent = 'Cancel edit';
+  }
+
+  function physicalFromRow(row) {
+    const text = row?.cells?.[4]?.textContent?.trim() || '';
+    if (!text || /not counted/i.test(text)) return { current: null, uom: 'EA' };
+    const match = text.match(/(-?\d+(?:\.\d+)?)\s*([A-Za-z]+)?/);
+    return match
+      ? { current: Number(match[1]), uom: match[2] || 'EA' }
+      : { current: null, uom: 'EA' };
+  }
+
+  function selectedPhysicalFromLabel() {
+    const text = el('inventory-selected')?.textContent || '';
+    const match = text.match(/On hand:\s*(not counted|-?\d+(?:\.\d+)?)/i);
+    if (!match) return;
+    state.inventoryCurrentOnHand = /not counted/i.test(match[1]) ? null : Number(match[1]);
+  }
+
+  function syncInventoryMath() {
+    const target = el('inventory-math');
+    const label = el('inventory-quantity-label');
+    if (!target || !label) return;
+    selectedPhysicalFromLabel();
+    if (!state.inventoryContentId) {
+      label.textContent = 'Quantity change (+/-)';
+      target.textContent = 'Select an expected item to see the physical inventory calculation.';
+      target.dataset.state = '';
+      return;
+    }
+
+    const eventType = el('inventory-type')?.value || 'OTHER';
+    const entered = numberOrNull(el('inventory-delta')?.value);
+    const current = state.inventoryCurrentOnHand;
+    const uom = state.inventoryUom || 'EA';
+    label.textContent = eventType === 'INITIAL_COUNT' ? 'Observed initial count' : 'Change to on-hand (+/-)';
+    target.dataset.state = '';
+
+    if (eventType === 'INITIAL_COUNT') {
+      target.textContent = entered == null
+        ? 'No prior physical count. Enter the observed count; that becomes the on-hand balance.'
+        : `No prior physical count → ${formatNumber(entered)} ${uom} on hand.`;
+      return;
+    }
+    if (current == null) {
+      target.textContent = 'No baseline physical count exists. Record Initial count before an adjustment.';
+      target.dataset.state = 'error';
+      return;
+    }
+    if (entered == null) {
+      target.textContent = `Current on hand: ${formatNumber(current)} ${uom}. Enter a +/− change to preview the new balance.`;
+      return;
+    }
+    const next = current + entered;
+    target.textContent = `${formatNumber(current)} ${uom} + (${formatNumber(entered)} ${uom}) = ${formatNumber(next)} ${uom} on hand.`;
+    if (next < 0) target.dataset.state = 'error';
+  }
+
   function bindRowActionFocus() {
     document.addEventListener('click', (event) => {
-      if (event.target.closest('.expected-edit')) {
+      const editButton = event.target.closest('.expected-edit');
+      if (editButton) {
+        markExpectedEdit(editButton);
         focusEditor('expected-editor', 'expected-qty');
         return;
       }
-      if (event.target.closest('.inventory-select')) {
+      if (event.target.closest('#expected-clear')) {
+        clearEditDecoration();
+        return;
+      }
+      const inventoryButton = event.target.closest('.inventory-select');
+      if (inventoryButton) {
+        state.inventoryContentId = Number(inventoryButton.dataset.contentId);
+        const physical = physicalFromRow(inventoryButton.closest('tr'));
+        state.inventoryCurrentOnHand = physical.current;
+        state.inventoryUom = physical.uom;
+        queueMicrotask(syncInventoryMath);
         focusEditor('inventory-editor', 'inventory-delta');
       }
     });
   }
 
+  function bindInventoryMath() {
+    el('inventory-type')?.addEventListener('change', syncInventoryMath);
+    el('inventory-delta')?.addEventListener('input', syncInventoryMath);
+    const selected = el('inventory-selected');
+    if (selected) new MutationObserver(syncInventoryMath).observe(selected, { childList: true, subtree: true, characterData: true });
+  }
+
   function bind() {
     configurePermanentNavigation();
     bindRowActionFocus();
+    bindInventoryMath();
     el('kit-filter-all')?.addEventListener('click', () => setFilter('all'));
     el('kit-filter-assigned')?.addEventListener('click', () => setFilter('assigned'));
     el('kit-filter-unassigned')?.addEventListener('click', () => setFilter('unassigned'));
@@ -124,6 +255,11 @@
     if (list) new MutationObserver(applyFilter).observe(list, { childList: true, subtree: true });
     const title = el('kit-title');
     if (title) new MutationObserver(renderAssignments).observe(title, { childList: true, subtree: true, characterData: true });
+    const contentBody = el('kit-content-body');
+    if (contentBody) new MutationObserver(() => {
+      if (!contentBody.querySelector('.editing-source-row')) clearEditDecoration();
+      queueMicrotask(syncInventoryMath);
+    }).observe(contentBody, { childList: true, subtree: true });
 
     loadKitBoxes().catch((error) => {
       const summary = el('kit-filter-status');
