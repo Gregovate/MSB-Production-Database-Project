@@ -44,37 +44,54 @@ def test_inventory_history_uses_real_person_columns() -> None:
     assert "p.email" in repo
 
 
-def test_extra_material_ui_is_mounted_as_setup_tab() -> None:
+def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> None:
     html = text(BASE_DIR / "production.html")
     host = text(BASE_DIR / "production_backend.py")
-    js = text(BASE_DIR / "setup_extra_materials.js")
-    css = text(BASE_DIR / "setup_extra_materials.css")
+    bridge = text(BASE_DIR / "setup_extra_materials.js")
+    page = text(BASE_DIR / "kit_inventory.html")
+    js = text(BASE_DIR / "setup_kit_inventory.js")
+    css = text(BASE_DIR / "setup_kit_inventory.css")
 
+    # Setup retains an entry point, but the first embedded #167 workspace is
+    # removed at runtime and the tab routes to durable Kit Inventory instead.
     assert 'data-view="extra-materials"' in html
-    assert 'id="extra-materials-view"' in html
-    assert 'id="extra-material-container-id"' in html
-    assert 'id="extra-material-unverified-items"' in html
-    assert 'id="extra-material-inventory-form"' in html
-    assert 'id="extra-material-summary-body"' in html
-    assert 'setup_extra_materials.js?v=' in html
-    assert 'setup_extra_materials.css?v=' in html
+    assert "tab.textContent = 'Kit Inventory'" in bridge
+    assert "document.getElementById('extra-materials-view')?.remove()" in bridge
+    assert "window.location.assign(inventoryUrl(containerId))" in bridge
 
-    assert '"setup_extra_materials.js"' in host
-    assert '"setup_extra_materials.css"' in host
-    assert "app.register_blueprint(setup_extra_material_api)" in host
+    assert '@app.get("/kit-inventory")' in host
+    assert '@app.get("/kit-inventory/")' in host
+    assert '@app.get("/kit-inventory/<int:container_id>")' in host
+    assert 'send_from_directory(BASE_DIR, "kit_inventory.html")' in host
+    assert 'app.register_blueprint(setup_kit_inventory_api)' in host
 
-    assert "api/setup/containers/${state.containerId}/extra-materials" in js
-    assert "api/setup/container-extra-materials/${state.selectedInventoryContentId}/inventory-events" in js
-    assert "api/setup/extra-materials/balance-summary" in js
+    assert '<h1>Kit Inventory</h1>' in page
+    assert 'id="kit-list"' in page
+    assert 'id="kit-content-body"' in page
+    assert 'id="unverified-items"' in page
+    assert 'id="inventory-form"' in page
+    assert 'Back to Setup Session' in page
+
+    assert "api/setup/kit-inventory/kit-boxes" in js
+    assert "api/setup/containers/${state.selectedContainerId}/extra-materials" in js
+    assert "api/setup/container-extra-materials/${state.inventoryContentId}/inventory-events" in js
     assert "Production Crew" in js
-    assert "extra-material-table" in css
+    assert ".inventory-layout" in css
 
 
-def test_extra_material_js_has_expected_manager_and_crew_split() -> None:
-    js = text(BASE_DIR / "setup_extra_materials.js")
+def test_setup_assignments_link_directly_to_kit_inventory() -> None:
+    bridge = text(BASE_DIR / "setup_extra_materials.js")
+    assert "setup-kit-box-chip[data-container-id]" in bridge
+    assert "setup-kit-box-row[data-container-id]" in bridge
+    assert "View Inventory" in bridge
+    assert "openInventory(containerId)" in bridge
+
+
+def test_manager_and_production_crew_split_is_preserved() -> None:
+    js = text(BASE_DIR / "setup_kit_inventory.js")
     api = text(BASE_DIR / "setup_extra_material_api.py")
 
-    assert "access.can_manage_setup" in js
+    assert "state.access?.can_manage_setup" in js
     assert "canAdjustInventory()" in js
     assert "role === 'Production Crew'" in js
     assert "policies.has('Production Crew')" in js
@@ -86,6 +103,19 @@ def test_extra_material_js_has_expected_manager_and_crew_split() -> None:
     assert "role_name == \"Volunteer\"" not in api
 
 
+def test_kit_inventory_list_reads_existing_141_assignments() -> None:
+    api = text(BASE_DIR / "setup_kit_inventory_api.py")
+    assert "ref.setup_task_container_support" in api
+    assert "tc.relationship_type = 'KIT'" in api
+    assert "WHERE c.container_type_id = 2" in api
+    assert "INSERT INTO ref.setup_task_container_support" not in api
+
+
 def test_new_python_modules_parse() -> None:
-    for name in ("setup_extra_material_repository.py", "setup_extra_material_api.py", "production_backend.py"):
+    for name in (
+        "setup_extra_material_repository.py",
+        "setup_extra_material_api.py",
+        "setup_kit_inventory_api.py",
+        "production_backend.py",
+    ):
         ast.parse(text(BASE_DIR / name), filename=name)
