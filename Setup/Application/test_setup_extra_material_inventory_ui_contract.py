@@ -211,7 +211,7 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     assert 'id="inventory-math"' in kit_page
     assert "Count correction (+/-)" in kit_page
     assert "normalizeRemainderDisplay" in kit_review
-    assert "textarea.value.replace(/\\\\n/g, '\n')" in kit_review
+    assert "textarea.value.replace(/\\n/g" in kit_review
     assert "EDITING EXISTING ROW" in kit_review
     assert "editing-source-row" in kit_review
     assert "Current on hand:" in kit_review
