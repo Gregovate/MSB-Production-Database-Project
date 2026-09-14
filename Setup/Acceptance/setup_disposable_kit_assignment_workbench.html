@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Disposable Kit Assignment Workbench</title>
+  <link rel="stylesheet" href="assets/setup_disposable_kit_assignment_workbench.css">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <div class="eyebrow">DISPOSABLE RECONSTRUCTION WORKBENCH</div>
+    <h1>Kit → Reusable Setup Task Assignment</h1>
+    <p>Drag physical Kit Boxes onto reusable Setup tasks. Existing Production assignments are preserved. New drops write only to this disposable database clone.</p>
+  </div>
+  <div class="top-actions">
+    <span id="access-badge" class="badge">Checking access…</span>
+    <a class="button secondary" href="../kit-inventory/">Kit Inventory</a>
+    <a class="button secondary" href="../">Setup</a>
+  </div>
+</header>
+
+<main>
+  <section id="notice" class="notice">Loading current Kit assignments and reusable tasks…</section>
+
+  <section class="summary-grid" aria-label="Assignment summary">
+    <div class="summary"><span>Kit Boxes</span><strong id="sum-kits">—</strong></div>
+    <div class="summary"><span>Assigned Kits</span><strong id="sum-assigned">—</strong></div>
+    <div class="summary"><span>Unassigned Kits</span><strong id="sum-unassigned">—</strong></div>
+    <div class="summary"><span>New pairs this pass</span><strong id="sum-new">0</strong></div>
+  </section>
+
+  <section class="capture-card">
+    <div>
+      <h2>Disposable Capture</h2>
+      <p>Only assignments created by this workbench are included. Existing assignments are never exported as new work.</p>
+    </div>
+    <div class="capture-actions">
+      <button id="capture-copy" type="button">Copy reviewed VALUES</button>
+      <button id="capture-download" type="button" class="secondary">Download capture SQL</button>
+    </div>
+    <textarea id="capture-output" rows="7" readonly placeholder="New reviewed Kit assignments will appear here."></textarea>
+  </section>
+
+  <section class="workbench">
+    <aside class="pane kit-pane">
+      <div class="pane-heading">
+        <div>
+          <div class="eyebrow">PHYSICAL REF.CONTAINER KIT BOXES</div>
+          <h2>Kit Boxes</h2>
+        </div>
+      </div>
+      <label>Find Kit
+        <input id="kit-search" type="search" placeholder="Container, name, location, task" autocomplete="off">
+      </label>
+      <label class="checkbox"><input id="kits-unassigned-only" type="checkbox"> Show only currently unassigned Kits</label>
+      <div id="selected-kit" class="selected-kit">Drag a Kit, or click one to select it for click-to-assign.</div>
+      <div id="kit-list" class="kit-list"></div>
+    </aside>
+
+    <section class="pane task-pane">
+      <div class="pane-heading">
+        <div>
+          <div class="eyebrow">ACTIVE REUSABLE SETUP TASKS</div>
+          <h2>Drop a Kit on a Task</h2>
+        </div>
+      </div>
+      <label>Find Task / Stage
+        <input id="task-search" type="search" placeholder="Stage, task name, task ID" autocomplete="off">
+      </label>
+      <p class="hint">Drop a Kit onto a task, or select a Kit on the left and click a task. The existing governed #141 Kit-assignment command is used.</p>
+      <div id="task-list" class="task-list"></div>
+    </section>
+  </section>
+</main>
+
+<script src="assets/setup_disposable_kit_assignment_workbench.js"></script>
+</body>
+</html>
