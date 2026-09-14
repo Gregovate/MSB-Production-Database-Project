@@ -50,6 +50,7 @@ def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> Non
     bridge = text(BASE_DIR / "setup_extra_materials.js")
     page = text(BASE_DIR / "kit_inventory.html")
     js = text(BASE_DIR / "setup_kit_inventory.js")
+    display_js = text(BASE_DIR / "setup_kit_inventory_displays.js")
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
     # Setup retains an entry point, but the first embedded #167 workspace is
@@ -64,19 +65,28 @@ def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> Non
     assert '@app.get("/kit-inventory/<int:container_id>")' in host
     assert 'send_from_directory(BASE_DIR, "kit_inventory.html")' in host
     assert 'app.register_blueprint(setup_kit_inventory_api)' in host
+    assert '"setup_kit_inventory_displays.js"' in host
 
     assert '<h1>Kit Inventory</h1>' in page
     assert 'id="kit-list"' in page
+    assert 'id="kit-display-body"' in page
+    assert 'Displays Stored in This Kit' in page
+    assert 'Expected Extra Material Contents' in page
     assert 'id="kit-content-body"' in page
     assert 'id="unverified-items"' in page
     assert 'id="inventory-form"' in page
     assert 'Back to Setup Session' in page
+    assert 'setup_kit_inventory_displays.js?v=' in page
 
     assert "api/setup/kit-inventory/kit-boxes" in js
     assert "api/setup/containers/${state.selectedContainerId}/extra-materials" in js
     assert "api/setup/container-extra-materials/${state.inventoryContentId}/inventory-events" in js
     assert "Production Crew" in js
     assert ".inventory-layout" in css
+
+    assert "kit-inventory/kit-boxes/${containerId}/displays" in display_js
+    assert "No current Display identities are assigned to this Kit Box." in display_js
+    assert "row.inventory_type" in display_js
 
 
 def test_setup_assignments_link_directly_to_kit_inventory() -> None:
@@ -103,12 +113,24 @@ def test_manager_and_production_crew_split_is_preserved() -> None:
     assert "role_name == \"Volunteer\"" not in api
 
 
-def test_kit_inventory_list_reads_existing_141_assignments() -> None:
+def test_kit_inventory_list_reads_existing_141_assignments_and_display_contents() -> None:
     api = text(BASE_DIR / "setup_kit_inventory_api.py")
     assert "ref.setup_task_container_support" in api
     assert "tc.relationship_type = 'KIT'" in api
     assert "WHERE c.container_type_id = 2" in api
     assert "INSERT INTO ref.setup_task_container_support" not in api
+
+    # A Kit may contain normal Production Displays. Those rows remain their own
+    # authoritative physical identities and are presented read-only, separately
+    # from #167 Extra Material expected contents.
+    assert '"/api/setup/kit-inventory/kit-boxes/<int:container_id>/displays"' in api
+    assert "FROM ref.display AS d" in api
+    assert "d.container_id = %s" in api
+    assert "c.container_type_id = 2" in api
+    assert "d.inventory_type" in api
+    assert "d.lor_prop_id" in api
+    assert "INSERT INTO ref.display" not in api
+    assert "UPDATE ref.display" not in api
 
 
 def test_new_python_modules_parse() -> None:
