@@ -1,10 +1,10 @@
 /*
-Issue #167 — normalized procedure preload + Kit reconciliation + T-Post stock validation
+Issue #167 — one-time normalized inventory preload validation
 DISPOSABLE DATABASE VALIDATION ONLY
 
-Run after migrations 032 -> 043 on a disposable current-Production clone.
-Known normalized facts may enter as UNVERIFIED. Procedure remainder/evidence rows
-remain reviewable. T-Post stock is deliberately separate from Kit Box contents.
+Run after migrations 032 -> 038 and 043 on a disposable current-Production clone.
+Known normalized facts may enter as UNVERIFIED. Remainders remain reviewable.
+T-Post stock is deliberately separate from Kit Box contents.
 */
 \set ON_ERROR_STOP on
 
@@ -14,8 +14,6 @@ DECLARE
     v_original_container_rows integer;
     v_procedure_kit_rows integer;
     v_remainder_kits integer;
-    v_evidence_rows integer;
-    v_stage_resolved_rows integer;
 BEGIN
     SELECT count(*) INTO v_task_rows
     FROM ref.setup_task_extra_material
@@ -36,15 +34,6 @@ BEGIN
     FROM ref.setup_container_extra_material_review
     WHERE unverified_items_text LIKE '%[#167 PROCEDURE REMAINDERS v6]%';
 
-    SELECT count(*) INTO v_evidence_rows
-    FROM ref.setup_extra_material_evidence_source
-    WHERE source_batch='MSB_Setup_Extra_Materials_Normalization_Staging_2026-09-13_v6.xlsx';
-
-    SELECT count(*) INTO v_stage_resolved_rows
-    FROM ref.setup_extra_material_evidence_source
-    WHERE source_batch='MSB_Setup_Extra_Materials_Normalization_Staging_2026-09-13_v6.xlsx'
-      AND stage_id IS NOT NULL;
-
     IF v_task_rows <> 23 THEN
         RAISE EXCEPTION 'Expected 23 normalized task preload rows, got %', v_task_rows;
     END IF;
@@ -61,10 +50,6 @@ BEGIN
     IF v_remainder_kits < 18 THEN
         RAISE EXCEPTION 'Expected at least 18 Kits with procedure remainders, got %', v_remainder_kits;
     END IF;
-    IF v_evidence_rows <> 35 OR v_stage_resolved_rows <> 35 THEN
-        RAISE EXCEPTION 'Expected all 35 procedure evidence sources resolved to Stage; rows=% resolved=%',
-            v_evidence_rows, v_stage_resolved_rows;
-    END IF;
 
     IF EXISTS (
         SELECT 1 FROM ref.setup_task_extra_material
@@ -80,10 +65,9 @@ BEGIN
           )
           AND verification_state <> 'UNVERIFIED'
     ) THEN
-        RAISE EXCEPTION 'Procedure/source preload unexpectedly marked evidence as accepted';
+        RAISE EXCEPTION 'One-time inventory preload unexpectedly marked evidence as accepted';
     END IF;
 
-    /* Concrete task-requirement proofs. */
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_task_extra_material tm
@@ -96,6 +80,7 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Church RGB Tree Ratchet Strap preload proof is missing';
     END IF;
+
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_task_extra_material tm
@@ -109,7 +94,6 @@ BEGIN
         RAISE EXCEPTION 'Front Arch Foam Noodle preload proof is missing';
     END IF;
 
-    /* Concrete Kit-content proofs. */
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_container_extra_material cem
@@ -122,6 +106,7 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Elf Choir Kit Post Base preload proof is missing';
     END IF;
+
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_container_extra_material cem
@@ -133,6 +118,7 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Elf Choir Kit Ball Bungee preload proof is missing';
     END IF;
+
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_container_extra_material cem
@@ -145,6 +131,7 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Racing Arches Kit Arch Foot preload proof is missing';
     END IF;
+
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_container_extra_material cem
@@ -154,7 +141,7 @@ BEGIN
           AND cem.verification_state='UNVERIFIED'
           AND cem.active_flag
     ) THEN
-        RAISE EXCEPTION 'Front Entrance Kit normalized procedure preload proof is missing';
+        RAISE EXCEPTION 'Front Entrance Kit normalized preload proof is missing';
     END IF;
 
     /* T-Post current stock is separate from Kit Boxes. Historical procedure
@@ -170,6 +157,7 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Historical C072 T-Post procedure row incorrectly remains active Kit inventory';
     END IF;
+
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_container_extra_material cem
@@ -187,40 +175,13 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Separate T-Post stock Containers 36/118 are not both configured';
     END IF;
+
     IF NOT EXISTS (
         SELECT 1 FROM ref.setup_container_extra_material_review
         WHERE container_id=72
           AND unverified_items_text LIKE '%C072 carried extra T-Posts%'
     ) THEN
         RAISE EXCEPTION 'C072 historical T-Post procedure claim was not preserved as a remainder';
-    END IF;
-
-    /* Broader procedure evidence is available even before task/step mapping. */
-    IF NOT EXISTS (
-        SELECT 1 FROM ref.setup_extra_material_evidence_source e
-        WHERE e.source_file='08-Elf Choir-EC(1).pdf'
-          AND e.stage_id IS NOT NULL
-          AND 60=ANY(e.current_stage_kit_candidate_ids)
-          AND 'Post Base'=ANY(e.material_families)
-          AND 'Rebar Stake'=ANY(e.material_families)
-    ) THEN
-        RAISE EXCEPTION 'Elf Choir Stage/Kit evidence proof is missing';
-    END IF;
-    IF NOT EXISTS (
-        SELECT 1 FROM ref.setup_extra_material_evidence_source e
-        WHERE e.source_file='26-Santa''s Station-QV Setup Procedure.pdf'
-          AND e.stage_id IS NOT NULL
-          AND 80=ANY(e.current_stage_kit_candidate_ids)
-          AND 'Concrete Block'=ANY(e.material_families)
-          AND e.verification_needed
-    ) THEN
-        RAISE EXCEPTION 'Santa Station candidate-Container evidence proof is missing';
-    END IF;
-
-    IF has_table_privilege('fieldwiring_app','ref.setup_extra_material_evidence_source','INSERT')
-       OR has_table_privilege('fieldwiring_app','ref.setup_extra_material_evidence_source','UPDATE')
-       OR has_table_privilege('fieldwiring_app','ref.setup_extra_material_evidence_source','DELETE') THEN
-        RAISE EXCEPTION 'fieldwiring_app unexpectedly has evidence-index write authority';
     END IF;
 
     IF EXISTS (
@@ -232,7 +193,7 @@ BEGIN
            OR cem.notes LIKE 'Procedure-derived Kit preload v6.%'
            OR cem.notes LIKE 'Preloaded from #167 physical-source reconciliation.%'
     ) THEN
-        RAISE EXCEPTION 'Preload unexpectedly created physical inventory history';
+        RAISE EXCEPTION 'One-time preload unexpectedly created physical inventory history';
     END IF;
 
     IF EXISTS (SELECT 1 FROM ops.setup_session WHERE season_year=2026) THEN
@@ -242,7 +203,7 @@ END
 $validation$;
 
 SELECT
-    'SETUP_167_KIT_PRELOAD_REMAINDERS_TPOST_EVIDENCE_DISPOSABLE_PASS' AS validation_result,
+    'SETUP_167_ONE_TIME_INVENTORY_PRELOAD_DISPOSABLE_PASS' AS validation_result,
     (SELECT count(*) FROM ref.setup_task_extra_material
      WHERE active_flag
        AND notes LIKE 'Preloaded from MSB_Setup_Extra_Materials_Normalization_Staging_2026-09-13_v6.xlsx.%') AS task_preload_rows,
@@ -250,8 +211,6 @@ SELECT
      WHERE active_flag AND notes LIKE 'Procedure-derived Kit preload v6.%') AS procedure_loaded_kit_rows,
     (SELECT count(*) FROM ref.setup_container_extra_material_review
      WHERE unverified_items_text LIKE '%[#167 PROCEDURE REMAINDERS v6]%') AS kits_with_remainders,
-    (SELECT count(*) FROM ref.setup_extra_material_evidence_source
-     WHERE source_batch='MSB_Setup_Extra_Materials_Normalization_Staging_2026-09-13_v6.xlsx') AS evidence_source_rows,
     (SELECT count(*)
      FROM ref.setup_container_extra_material cem
      JOIN ref.setup_extra_material m USING (setup_extra_material_id)
