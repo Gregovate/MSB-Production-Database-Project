@@ -18,7 +18,8 @@ def test_kit_inventory_keeps_permanent_task_assignment_visibility_and_unassigned
     assert 'id="kit-filter-assigned"' in page
     assert 'id="kit-filter-unassigned"' in page
     assert 'id="kit-task-assignment-body"' in page
-    assert "Setup Task Assignments" in page
+    assert "Setup task assignment" in page
+    assert '<details class="compact-details context-details">' in page
     assert "Unverified Items / Remainders" in page
     assert "setup_kit_inventory_review.js?v=" in page
 
