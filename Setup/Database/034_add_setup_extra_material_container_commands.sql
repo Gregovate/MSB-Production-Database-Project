@@ -1,4 +1,4 @@
-/* MSB Setup #167 — governed Container expected-content commands. REVIEW BEFORE PRODUCTION. */
+/* MSB Setup #184 — governed Container expected-content commands. REVIEW BEFORE PRODUCTION. */
 BEGIN;
 
 DO $preflight$
@@ -7,6 +7,19 @@ BEGIN
        OR to_regclass('ref.setup_container_extra_material_review') IS NULL
        OR to_regprocedure('ref.setup_management_actor(text,boolean)') IS NULL THEN
         RAISE EXCEPTION 'Migration 032 and current Setup Manager boundary are required first';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint AS c
+        JOIN pg_class AS r ON r.oid = c.conrelid
+        JOIN pg_namespace AS n ON n.oid = r.relnamespace
+        WHERE n.nspname = 'ref'
+          AND r.relname = 'setup_container_extra_material_review'
+          AND c.conname = 'setup_container_extra_material_review_pkey'
+          AND c.contype = 'p'
+    ) THEN
+        RAISE EXCEPTION 'Expected primary key setup_container_extra_material_review_pkey is missing';
     END IF;
 END
 $preflight$;
@@ -189,7 +202,7 @@ BEGIN
     ELSE
         INSERT INTO ref.setup_container_extra_material_review(container_id, unverified_items_text)
         VALUES (p_container_id, v_text)
-        ON CONFLICT (container_id)
+        ON CONFLICT ON CONSTRAINT setup_container_extra_material_review_pkey
         DO UPDATE SET unverified_items_text=EXCLUDED.unverified_items_text;
     END IF;
 
@@ -206,4 +219,10 @@ COMMIT;
 
 SELECT
     has_function_privilege('fieldwiring_app','ref.set_setup_container_extra_material(text,bigint,integer,integer,numeric,text,text,numeric,text,text,text,text,boolean)','EXECUTE') AS can_set_container_content,
-    has_function_privilege('fieldwiring_app','ref.set_setup_container_unverified_items(text,integer,text)','EXECUTE') AS can_set_unverified_text;
+    has_function_privilege('fieldwiring_app','ref.set_setup_container_unverified_items(text,integer,text)','EXECUTE') AS can_set_unverified_text,
+    pg_get_functiondef('ref.set_setup_container_unverified_items(text,integer,text)'::regprocedure)
+        LIKE '%ON CONFLICT ON CONSTRAINT setup_container_extra_material_review_pkey%'
+        AS named_remainder_constraint_fix_present,
+    pg_get_functiondef('ref.set_setup_container_unverified_items(text,integer,text)'::regprocedure)
+        LIKE '%ON CONFLICT (container_id)%'
+        AS ambiguous_remainder_bare_column_present;
