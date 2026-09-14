@@ -110,11 +110,13 @@ class SetupExtraMaterialRepository:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT c.container_id, c.description, c.container_type_id,
-                       ct.container_type_name, c.location_code,
+                SELECT c.container_id,
+                       c.description,
+                       c.container_type_id,
+                       CASE WHEN c.container_type_id = 2 THEN 'Kit Box' END AS container_type_name,
+                       c.location_code,
                        r.unverified_items_text
                 FROM ref.container c
-                LEFT JOIN ref.container_type ct ON ct.container_type_id = c.container_type_id
                 LEFT JOIN ref.setup_container_extra_material_review r
                   ON r.container_id = c.container_id
                 WHERE c.container_id = %s
