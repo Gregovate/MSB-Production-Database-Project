@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Kit Inventory</title>
+  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-13.1">
+</head>
+<body>
+<header class="inventory-header">
+  <div class="inventory-brand">
+    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div>
+      <div class="eyebrow">Setup · durable Container inventory</div>
+      <h1>Kit Inventory</h1>
+      <div class="muted">Expected Kit contents and physical inventory are separate records.</div>
+    </div>
+  </div>
+  <div class="inventory-header-actions">
+    <span id="inventory-access" class="access-badge">Checking access…</span>
+    <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
+    <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+  </div>
+</header>
+
+<main class="inventory-main">
+  <section id="inventory-alert" class="notice" aria-live="polite">Loading Kit Inventory…</section>
+
+  <div class="inventory-layout">
+    <aside class="card inventory-list-card">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Existing ref.container Kit Boxes</div>
+          <h2>Kit Boxes</h2>
+        </div>
+      </div>
+      <label class="inventory-search">Find Kit Box
+        <input id="kit-search" type="search" placeholder="Name, Container ID, location, or Setup task" autocomplete="off">
+      </label>
+      <div id="kit-list-status" class="muted"></div>
+      <div id="kit-list" class="kit-list"></div>
+    </aside>
+
+    <section class="card inventory-detail-card">
+      <div id="kit-empty" class="empty-state">Select a Kit Box to view or inventory it.</div>
+      <div id="kit-detail" hidden>
+        <div class="detail-heading">
+          <div>
+            <div class="eyebrow">Physical Kit Box</div>
+            <h2 id="kit-title"></h2>
+            <div id="kit-meta" class="muted"></div>
+            <div id="kit-assignments" class="muted"></div>
+          </div>
+        </div>
+
+        <section class="detail-section">
+          <div class="section-title compact">
+            <div>
+              <h3>Expected Contents</h3>
+              <div class="hint">What should normally be in this Kit. This is not the physical count.</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Item</th><th>Expected</th><th>Size / Length / Color</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
+              <tbody id="kit-content-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="expected-editor" class="detail-section manager-only" hidden>
+          <h3>Manager — Expected Item</h3>
+          <form id="expected-form">
+            <div class="form-grid">
+              <label>Item<select id="expected-item" required></select></label>
+              <label>Qty<input id="expected-qty" type="number" min="0.001" step="0.001"></label>
+              <label>UOM<input id="expected-uom" type="text" value="EA"></label>
+              <label>Size<input id="expected-size" type="text"></label>
+              <label>Length<input id="expected-length" type="number" min="0.001" step="0.001"></label>
+              <label>Length unit<select id="expected-length-unit"><option value="">—</option><option value="IN">in</option><option value="FT">ft</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
+              <label>Color<input id="expected-color" type="text"></label>
+              <label>Verification<select id="expected-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
+              <label class="wide">Notes<input id="expected-notes" type="text"></label>
+            </div>
+            <div class="action-row">
+              <button id="expected-save" type="submit">Add Expected Item</button>
+              <button id="expected-clear" type="button" class="secondary">Clear</button>
+              <button id="expected-remove" type="button" class="warning" hidden>Remove Expected Item</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="detail-section unverified-section">
+          <h3>Unverified Items</h3>
+          <div class="hint">Temporary unresolved legacy/KIT information. These are not Extra Material catalog identities.</div>
+          <textarea id="unverified-items" rows="5" readonly></textarea>
+          <div id="unverified-actions" class="action-row manager-only" hidden>
+            <button id="save-unverified" type="button">Save Unverified Items</button>
+          </div>
+        </section>
+
+        <section id="inventory-editor" class="detail-section inventory-operator-only" hidden>
+          <h3>Physical Inventory</h3>
+          <div class="hint">Production Crew and Managers record what is physically present. Inventory changes never rewrite expected contents or reusable Setup requirements.</div>
+          <div id="inventory-selected" class="selected-item">Select an expected item above.</div>
+          <form id="inventory-form">
+            <div class="form-grid inventory-form-grid">
+              <label>Event<select id="inventory-type"><option value="INITIAL_COUNT">Initial count</option><option value="RECEIPT">Receipt</option><option value="RETURN">Return</option><option value="COUNT_CORRECTION">Count correction</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
+              <label>Qty change<input id="inventory-delta" type="number" step="0.001" required></label>
+              <label class="wide">Reason / note<input id="inventory-note" type="text"></label>
+            </div>
+            <div class="action-row"><button type="submit">Record Inventory Change</button></div>
+          </form>
+          <div id="inventory-history" class="history"></div>
+        </section>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="assets/setup_kit_inventory.js?v=2026-09-13.1"></script>
+</body>
+</html>
