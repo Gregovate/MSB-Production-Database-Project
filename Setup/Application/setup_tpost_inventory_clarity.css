@@ -1,4 +1,4 @@
-/* Issue #184 browser-review refinement: make shared T-Post stock workflow explicit. */
+/* Issue #184 browser-review refinement: make T-Post storage/count workflow explicit. */
 .tpost-scope-explainer {
   display: grid;
   gap: 4px;
@@ -18,6 +18,26 @@
   text-transform: uppercase;
   letter-spacing: .05em;
 }
+.tpost-container-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.tpost-container-group + .tpost-container-group {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 2px solid var(--line);
+}
+.tpost-container-group-heading {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: var(--soft);
+}
+.tpost-container-group-heading strong { color: var(--accent-strong); }
+.tpost-container-group-heading span { color: var(--muted); font-size: .82rem; line-height: 1.25; }
+.tpost-context-pill { font-weight: 700; }
 .tpost-config-panel.collapsed { display: none !important; }
 .tpost-config-panel:not(.collapsed) {
   margin: 12px 0;
