@@ -199,6 +199,9 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     kit_review = text(BASE_DIR / "setup_kit_inventory_review.js")
     tpost_page = text(BASE_DIR / "t_post_inventory.html")
     tpost_js = text(BASE_DIR / "setup_tpost_inventory.js")
+    tpost_clarity_js = text(BASE_DIR / "setup_tpost_inventory_clarity.js")
+    tpost_clarity_css = text(BASE_DIR / "setup_tpost_inventory_clarity.css")
+    host = text(BASE_DIR / "production_backend.py")
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
     assert "Expected in Kit" in kit_page
@@ -212,11 +215,30 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     assert "editing-source-row" in kit_review
     assert "Current on hand:" in kit_review
 
-    assert "Expected / Target" in tpost_page
+    # T-Post stock must be unmistakably separate from Display/task requirements.
+    assert "T-Post Stock Inventory" in tpost_page
+    assert "does <strong>not</strong> assign T-Posts to Displays" in tpost_page
+    assert "Shared Stock Variants and Current Counts" in tpost_page
+    assert "Planning / Known Qty" in tpost_page
     assert "Physical On Hand" in tpost_page
+    assert 'id="tpost-add-variant"' in tpost_page
+    assert 'id="tpost-count-fields" class="tpost-count-fieldset" disabled' in tpost_page
+    assert "Count physical stock" in tpost_page
+    assert "Save Physical Inventory Event" in tpost_page
+    assert "setup_tpost_inventory_clarity.css?v=" in tpost_page
+    assert "setup_tpost_inventory_clarity.js?v=" in tpost_page
+
+    assert '"setup_tpost_inventory_clarity.css"' in host
+    assert '"setup_tpost_inventory_clarity.js"' in host
+    assert "tpost-config-panel.collapsed" in tpost_clarity_css
+    assert "Count physical stock" in tpost_clarity_js
+    assert "Edit stock definition" in tpost_clarity_js
+    assert "ADDING NEW STOCK VARIANT" in tpost_clarity_js
+    assert "setCountEnabled(false)" in tpost_clarity_js
+    assert "state.selectedCountId" in tpost_clarity_js
+
     assert 'id="tpost-editor-status"' in tpost_page
     assert 'id="tpost-inventory-math"' in tpost_page
-    assert "Expected / target qty (not count)" in tpost_page
     assert "Current physical on hand:" in tpost_js
     assert "await selectInventoryRow(contentId)" in tpost_js
     assert "balanceAfter" in tpost_js
