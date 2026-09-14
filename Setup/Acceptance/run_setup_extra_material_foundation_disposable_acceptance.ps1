@@ -46,6 +46,7 @@ $files = @(
     'Setup\Database\040_seed_setup_extra_material_evidence_source_1.sql',
     'Setup\Database\041_seed_setup_extra_material_evidence_source_2.sql',
     'Setup\Database\042_resolve_setup_extra_material_evidence_stage.sql',
+    'Setup\Database\043_preload_setup_kit_inventory_and_tpost_stock.sql',
     'Setup\Acceptance\setup_extra_material_preload_disposable_validation.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_validation.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_acceptance_server.sh'
