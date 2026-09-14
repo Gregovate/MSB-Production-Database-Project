@@ -237,6 +237,8 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     assert "ADDING NEW STOCK VARIANT" in tpost_clarity_js
     assert "setCountEnabled(false)" in tpost_clarity_js
     assert "state.selectedCountId" in tpost_clarity_js
+    assert ".observe(body, { childList: true });" in tpost_clarity_js
+    assert ".observe(body, { childList: true, subtree: true });" not in tpost_clarity_js
 
     assert 'id="tpost-editor-status"' in tpost_page
     assert 'id="tpost-inventory-math"' in tpost_page
