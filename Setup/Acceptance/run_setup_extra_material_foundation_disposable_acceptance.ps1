@@ -41,6 +41,7 @@ $files = @(
     'Setup\Database\035_add_setup_extra_material_inventory_commands.sql',
     'Setup\Database\036_seed_setup_extra_material_catalog.sql',
     'Setup\Database\037_harden_setup_extra_material_duplicate_rows.sql',
+    'Setup\Database\038_preload_setup_extra_material_known_evidence.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_validation.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_acceptance_server.sh'
 )
@@ -70,7 +71,7 @@ try {
     Write-Host "Local bundle:  $localBundle"
     Write-Host "Remote bundle: $remoteBundle"
     Write-Host 'Production database contract: pg_dump + SELECT only'
-    Write-Host 'All #167 schema/catalog/inventory writes: disposable PostgreSQL clone only'
+    Write-Host 'All #167 schema/catalog/inventory/preload writes: disposable PostgreSQL clone only'
     Write-Host ''
 
     & scp -r $localBundle "${Server}:/tmp/"
