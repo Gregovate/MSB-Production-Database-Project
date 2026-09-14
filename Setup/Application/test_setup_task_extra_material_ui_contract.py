@@ -40,7 +40,8 @@ def test_manager_can_maintain_task_extra_material_requirements() -> None:
 def test_kit_row_actions_move_operator_to_the_selected_editor() -> None:
     review = text("setup_kit_inventory_review.js")
 
-    assert "focusEditor('expected-editor', 'expected-qty')" in review
+    assert "openExpectedPanel('expected-qty')" in review
+    assert "openInventoryPanel()" in review
     assert "focusEditor('inventory-editor', 'inventory-delta')" in review
     assert "scrollIntoView({ behavior: 'smooth', block: 'start' })" in review
     assert "focus({ preventScroll: true })" in review
