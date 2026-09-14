@@ -5,9 +5,9 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — V0.3.13 accepted; #152 resource write repair accepted in Production |
+| Status | CURRENT HANDOFF — V0.3.13 accepted; #184 durable Kit/Extra Material foundation in acceptance |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-13 |
+| Last Reviewed | 2026-09-14 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
@@ -41,7 +41,43 @@ Display Ownership never rewrites LOR membership or `ref.display.container_id`.
 
 Physical Kit Boxes are existing `ref.container` rows with `container_type_id = 2`. Reusable task -> Kit assignment is explicit many-to-many using `ref.setup_task_container_support` with `relationship_type='KIT'`. Existing SUPPORT and REQUIRED_CONTAINER meanings remain separate.
 
-The same Kit Box may support several reusable tasks. #141 assigns the physical Kit Box; #167 owns expected contents, Extra Materials, quantities/specifications, and source meaning.
+The same Kit Box may support several reusable tasks. #141 owns the existing task -> Kit assignment relationship. #184 owns the durable normalized Extra Material schema/catalog, task requirements, expected Container/Kit contents, source allocation, physical inventory history, Remainders, Kit Inventory application, and separate T-Post stock workflow. #167 is now only the one-time reconstruction/migration that will load the accepted #184 structures.
+
+## Durable Kit / Extra Material Split — #184 and #167
+
+Issue #184 is the permanent Production subsystem. PR #185 is the current draft implementation branch and must pass exact-candidate regression, disposable-current-Production database acceptance, and operator-visible browser review before any Production approval gate.
+
+Permanent #184 ownership includes:
+
+```text
+normalized Extra Material catalog
+reusable Setup task Extra Material requirements
+expected Container / Kit Extra Material contents
+source allocation
+Remainders / Unverified Items
+append-only physical inventory events and balances
+Kit Inventory covering all physical Kit Boxes
+Kit -> reusable Setup task visibility via relationship_type='KIT'
+Assigned / Unassigned Kit review
+separate T-Post stock inventory
+Manager / Production Crew maintenance authority
+```
+
+Issue #167 is no longer the durable subsystem. It owns only the one-time legacy-procedure / normalization reconstruction and migration into accepted #184 structures. PR #187 is intentionally stacked on #184 until #184 is accepted/deployed.
+
+The frozen stacked #167 reconstruction candidate has already proved that the planned #184 model can receive the one-time load:
+
+```text
+PR #187 candidate = 3c80d421c27223cefadf19280559dd0ff0bf18e8
+result = DISPOSABLE_SETUP_167_EXTRA_MATERIAL_ACCEPTANCE_PASS
+Production Setup fingerprint before = 7024080ae1982ae3fa3d1ebf44bd3d71
+Production Setup fingerprint after  = 7024080ae1982ae3fa3d1ebf44bd3d71
+report = /home/msbadmin/setup-acceptance-reports/Setup_167_Extra_Material_Disposable_20260914T043106.txt
+```
+
+That proof establishes compatibility with normalized task requirements, normalized Kit expected contents, UNVERIFIED migrated inventory state, Kit Remainders, and separate T-Post source rows for Containers 36 and 118 without creating physical inventory-count events, another task -> Kit relationship, a real 2026 Setup Session, or a reconstruction runtime dependency.
+
+Do not add procedure-evidence staging, an Evidence Explorer, a procedure resolver, or other reconstruction-only runtime to #184. Do not change #167's frozen reconstruction payload unless an actual #184 schema incompatibility is discovered.
 
 ## Resource Catalog Write Repair — #152
 
@@ -102,15 +138,16 @@ Also preserve the Stage/Scene resolver, 2025 historical/sandbox boundary, curren
 
 ## Remaining Launch Sequence
 
-#141 and the corrective #152 repair are complete. The controlling sequence returns to:
+#141 and the corrective #152 repair are complete. #167 reconstruction has been separated from #184 and its frozen stacked migration payload has passed disposable acceptance. The controlling sequence is now:
 
 ```text
-#167  Extra Materials / KIT contents / material-source foundation
+#184  durable Extra Material / Kit Inventory / T-Post Production foundation
+  -> #167 one-time reconstruction migration retargeted to accepted #184/main
   -> #145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
   -> #122 real 2026 Setup Session + scheduling / Pick List launch gate
 ```
 
-#167 may legitimately add/split/correct reusable tasks. #145 is the final content/seed acceptance gate after that work, not unfinished Catalog-management software.
+#184 must be accepted and deployed before #167 is retargeted to `main` and rerun against the actually installed durable schema. #167 then performs one governed one-time Production load and closes. #145 remains the final reusable-Catalog content/seed acceptance gate before #122 creates the real 2026 Session.
 
 ## Runtime / Rollback
 
@@ -125,6 +162,8 @@ No PostgreSQL restore belongs to that UI rollback.
 
 The migration-bearing #141 deployment and migration-031 #152 repair each have separate governed database rollback evidence recorded in their Production acceptance records. Do not use those database archives to undo a UI problem or without reconciling legitimate post-deployment Production work.
 
+#184 is migration-bearing and user-facing. Its Production deployment must therefore use the Server Management Production Database change authority together with the documented permanent Setup runtime boundary. Exact-candidate browser review must occur before requesting Production mutation approval.
+
 ## Resume Checklist
 
 Before the next Setup change:
@@ -135,9 +174,10 @@ Before the next Setup change:
 4. read `Setup_Task_Supporting_Information_Contract_2026-09-11.md`;
 5. preserve accepted V0.3.7 through V0.3.13 behavior plus migration 031;
 6. keep 2025 as the proving ground until the remaining launch gates pass;
-7. continue with `#167 -> #145 FINAL -> #122`;
-8. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority; and
-9. update controlled docs and acceptance evidence whenever accepted behavior or the resume point changes.
+7. continue with `#184 -> #167 one-time migration -> #145 FINAL -> #122`;
+8. keep #167 reconstruction frozen unless #184 exposes a concrete incompatibility;
+9. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority; and
+10. update controlled docs and acceptance evidence whenever accepted behavior or the resume point changes.
 
 ## Related Systems
 
