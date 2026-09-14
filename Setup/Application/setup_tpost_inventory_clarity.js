@@ -19,19 +19,21 @@
     const fields = countFields();
     if (fields) fields.disabled = !enabled;
     const instruction = el('tpost-count-instruction');
-    if (instruction && !enabled) {
+    if (instruction && !enabled && instruction.textContent !== 'No stock row selected. Click “Count physical stock” on one row above.') {
       instruction.textContent = 'No stock row selected. Click “Count physical stock” on one row above.';
     }
   }
 
   function labelRowActions() {
     document.querySelectorAll('.tpost-edit').forEach((button) => {
-      button.textContent = 'Edit stock definition';
-      button.setAttribute('title', 'Manager only: edit the definition of this shared-stock variant. This does not change physical on-hand.');
+      if (button.textContent !== 'Edit stock definition') button.textContent = 'Edit stock definition';
+      const title = 'Manager only: edit the definition of this shared-stock variant. This does not change physical on-hand.';
+      if (button.getAttribute('title') !== title) button.setAttribute('title', title);
     });
     document.querySelectorAll('.tpost-count').forEach((button) => {
-      button.textContent = 'Count physical stock';
-      button.setAttribute('title', 'Select this stock variant for physical counting or an inventory adjustment.');
+      if (button.textContent !== 'Count physical stock') button.textContent = 'Count physical stock';
+      const title = 'Select this stock variant for physical counting or an inventory adjustment.';
+      if (button.getAttribute('title') !== title) button.setAttribute('title', title);
     });
   }
 
@@ -127,7 +129,9 @@
           state.managerSubmitPending = false;
           closeConfig();
         }
-      }).observe(body, { childList: true, subtree: true });
+      }).observe(body, { childList: true });
+      // Deliberately do not observe descendants here. labelRowActions() changes
+      // descendant button text, and subtree observation would self-trigger forever.
     }
 
     const selected = el('tpost-inventory-selected');
