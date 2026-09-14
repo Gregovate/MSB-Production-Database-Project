@@ -140,10 +140,11 @@ def test_tpost_requirement_is_task_scoped_not_display_derived() -> None:
     assert "sum(tm.quantity_required)" in repo
 
 
-def test_extra_material_python_modules_parse_and_blueprint_is_registered() -> None:
+def test_extra_material_python_modules_parse_and_blueprints_are_registered() -> None:
     for name in (
         "setup_extra_material_repository.py",
         "setup_extra_material_api.py",
+        "setup_kit_inventory_api.py",
         "production_backend.py",
     ):
         ast.parse(_text(BASE_DIR / name), filename=name)
@@ -151,6 +152,9 @@ def test_extra_material_python_modules_parse_and_blueprint_is_registered() -> No
     host = _text(BASE_DIR / "production_backend.py")
     assert "from setup_extra_material_api import setup_extra_material_api" in host
     assert "app.register_blueprint(setup_extra_material_api)" in host
+    assert "from setup_kit_inventory_api import setup_kit_inventory_api" in host
+    assert "app.register_blueprint(setup_kit_inventory_api)" in host
+    assert '@app.get("/kit-inventory/<int:container_id>")' in host
 
 
 def test_container_unverified_items_is_not_a_catalog_identity() -> None:
