@@ -89,8 +89,30 @@
     if (tpost) tpost.href = appUrl('t-post-inventory/');
   }
 
+  function focusEditor(sectionId, focusId) {
+    const section = el(sectionId);
+    if (!section || section.hidden) return;
+    window.requestAnimationFrame(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.setTimeout(() => el(focusId)?.focus({ preventScroll: true }), 180);
+    });
+  }
+
+  function bindRowActionFocus() {
+    document.addEventListener('click', (event) => {
+      if (event.target.closest('.expected-edit')) {
+        focusEditor('expected-editor', 'expected-qty');
+        return;
+      }
+      if (event.target.closest('.inventory-select')) {
+        focusEditor('inventory-editor', 'inventory-delta');
+      }
+    });
+  }
+
   function bind() {
     configurePermanentNavigation();
+    bindRowActionFocus();
     el('kit-filter-all')?.addEventListener('click', () => setFilter('all'));
     el('kit-filter-assigned')?.addEventListener('click', () => setFilter('assigned'));
     el('kit-filter-unassigned')?.addEventListener('click', () => setFilter('unassigned'));
