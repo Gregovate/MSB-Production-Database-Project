@@ -143,11 +143,11 @@ def api_setup_kit_inventory_displays(container_id: int) -> Response:
 
 @setup_kit_inventory_api.get("/api/setup/t-post-inventory/containers")
 def api_setup_tpost_inventory_containers() -> Response:
-    """List physical Containers that currently carry the normalized T-Post family.
+    """List Containers that physically carry normalized T-Posts.
 
-    This is intentionally separate from Kit Box inventory. The relationship is
-    derived from active ref.setup_container_extra_material rows rather than from
-    Container type, so the physical stock can remain on Steel/Wood pallets.
+    Shared/bulk stock and T-Posts intentionally stored with Kits/Displays use the
+    same physical inventory ledger, but the API classifies them separately so the
+    browser does not present every T-Post-bearing Container as shared stock.
     """
     require_reader()
     with closing(psycopg2.connect(setup_database_dsn())) as conn:
@@ -158,6 +158,13 @@ def api_setup_tpost_inventory_containers() -> Response:
                     c.container_id,
                     c.description AS container_description,
                     c.location_code AS home_location_code,
+                    c.container_type_id,
+                    coalesce(displays.display_rows, 0) AS active_display_rows,
+                    CASE
+                        WHEN c.container_type_id = 2 OR coalesce(displays.display_rows, 0) > 0
+                            THEN 'WITH_KIT_OR_DISPLAY'
+                        ELSE 'SHARED_STOCK'
+                    END AS storage_context,
                     count(*) AS tpost_stock_rows,
                     count(*) FILTER (WHERE coalesce(b.inventory_event_count, 0) > 0)
                         AS counted_stock_rows,
@@ -173,8 +180,22 @@ def api_setup_tpost_inventory_containers() -> Response:
                  AND m.material_name = 'T-Post'
                 LEFT JOIN ops.setup_extra_material_inventory_balance b
                   ON b.setup_container_extra_material_id = cem.setup_container_extra_material_id
-                GROUP BY c.container_id, c.description, c.location_code
-                ORDER BY c.container_id
+                LEFT JOIN LATERAL (
+                    SELECT count(*) AS display_rows
+                    FROM ref.display d
+                    LEFT JOIN ref.display_status ds
+                      ON ds.display_status_id = d.display_status_id
+                    WHERE d.container_id = c.container_id
+                      AND upper(coalesce(ds.display_status_name, '')) <> 'RECYCLED'
+                ) displays ON true
+                GROUP BY c.container_id, c.description, c.location_code,
+                         c.container_type_id, displays.display_rows
+                ORDER BY
+                    CASE
+                        WHEN c.container_type_id = 2 OR coalesce(displays.display_rows, 0) > 0 THEN 1
+                        ELSE 0
+                    END,
+                    c.container_id
                 """
             )
             rows = [dict(row) for row in cur.fetchall()]
@@ -198,8 +219,7 @@ def command_error(exc: SetupCommandError) -> tuple[Response, int]:
 def repository_error(exc: SetupRepositoryError) -> tuple[Response, int]:
     return jsonify(
         error="Setup inventory is temporarily unavailable.",
-        engineering_error=str(exc),
-    ), 503
+        engineering_error=str(exc)), 503
 
 
 @setup_kit_inventory_api.errorhandler(psycopg2.Error)
