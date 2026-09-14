@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB T-Post Stock</title>
-  <link rel="stylesheet" href="../kit-inventory/assets/setup_kit_inventory.css?v=2026-09-13.2">
+  <link rel="stylesheet" href="../kit-inventory/assets/setup_kit_inventory.css?v=2026-09-14.1">
 </head>
 <body>
 <header class="inventory-header">
@@ -47,20 +47,22 @@
 
         <section class="detail-section">
           <h3>T-Post Stock Rows</h3>
-          <div class="hint">A generic source row establishes the physical stock location. Add verified length-specific rows before detailed counts when stock is separated by length.</div>
+          <div class="hint">Expected / target is planning or known stock evidence; it is not a physical count. Physical on-hand is derived only from inventory events.</div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Variant / Size</th><th>Expected</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
+              <thead><tr><th>Variant / Size</th><th>Expected / Target</th><th>Verification</th><th>Physical On Hand</th><th>Notes</th><th></th></tr></thead>
               <tbody id="tpost-content-body"></tbody>
             </table>
           </div>
         </section>
 
-        <section id="tpost-manager-editor" class="detail-section manager-only" hidden>
-          <h3>Manager — T-Post Variant</h3>
+        <section id="tpost-manager-editor" class="detail-section manager-only editor-panel" hidden>
+          <div id="tpost-editor-status" class="editor-banner" hidden></div>
+          <h3 id="tpost-editor-title">Manager — Add T-Post Variant</h3>
+          <div class="hint">Expected / target quantity describes the stock row definition. It does not change the physical on-hand balance.</div>
           <form id="tpost-form">
             <div class="form-grid">
-              <label>Expected Qty<input id="tpost-expected-qty" type="number" min="0.001" step="0.001"></label>
+              <label>Expected / target qty (not count)<input id="tpost-expected-qty" type="number" min="0.001" step="0.001"></label>
               <label>Length<input id="tpost-length" type="number" min="0.001" step="0.001"></label>
               <label>Length unit<select id="tpost-length-unit"><option value="">—</option><option value="FT">ft</option><option value="IN">in</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
               <label>Size / stock note<input id="tpost-size" type="text" placeholder="e.g. special short stock"></label>
@@ -76,14 +78,15 @@
 
         <section id="tpost-inventory-editor" class="detail-section inventory-operator-only" hidden>
           <h3>Physical Count / Adjustment</h3>
-          <div class="hint">A first physical count uses Initial count. Later recounts use Count correction. Inventory events never change the reusable T-Post requirement.</div>
+          <div class="hint">Initial count establishes the first physical balance. Every later event is a signed change to that balance. The calculation below shows the resulting on-hand quantity before you save.</div>
           <div id="tpost-inventory-selected" class="selected-item">Select a stock row above.</div>
           <form id="tpost-inventory-form">
             <div class="form-grid inventory-form-grid">
-              <label>Event<select id="tpost-inventory-type"><option value="INITIAL_COUNT">Initial count</option><option value="RECEIPT">Receipt</option><option value="RETURN">Return</option><option value="COUNT_CORRECTION">Count correction</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
-              <label>Qty change<input id="tpost-inventory-delta" type="number" step="0.001" required></label>
+              <label>Event<select id="tpost-inventory-type"><option value="INITIAL_COUNT">Initial count</option><option value="RECEIPT">Receipt</option><option value="RETURN">Return</option><option value="COUNT_CORRECTION">Count correction (+/-)</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
+              <label><span id="tpost-inventory-quantity-label">Quantity change (+/-)</span><input id="tpost-inventory-delta" type="number" step="0.001" required></label>
               <label class="wide">Reason / note<input id="tpost-inventory-note" type="text"></label>
             </div>
+            <div id="tpost-inventory-math" class="inventory-math">Select a stock row to see the physical inventory calculation.</div>
             <div class="action-row"><button type="submit">Record Inventory Change</button></div>
           </form>
           <div id="tpost-inventory-history" class="history"></div>
@@ -92,6 +95,6 @@
     </section>
   </div>
 </main>
-<script src="assets/setup_tpost_inventory.js?v=2026-09-13.1"></script>
+<script src="assets/setup_tpost_inventory.js?v=2026-09-14.1"></script>
 </body>
 </html>
