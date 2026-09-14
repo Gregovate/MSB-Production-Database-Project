@@ -5,6 +5,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_DIR = BASE_DIR.parent / "Database"
+ACCEPTANCE_DIR = BASE_DIR.parent / "Acceptance"
 
 
 def text(path: Path) -> str:
@@ -111,6 +112,18 @@ def test_manager_and_production_crew_split_is_preserved() -> None:
     assert "require_inventory_operator()" in api
     assert "role_name == \"Production Crew\"" in api
     assert "role_name == \"Volunteer\"" not in api
+
+
+def test_disposable_volunteer_negative_proof_excludes_elevated_accounts() -> None:
+    sql = text(ACCEPTANCE_DIR / "setup_extra_material_foundation_disposable_validation.sql")
+
+    # The denial actor must be Volunteer-only. A user who also has Production
+    # Crew/Manager/Administrator authority is legitimately allowed inventory and
+    # would make the negative proof a false failure.
+    assert "Volunteer-only account" in sql
+    assert "coalesce(r.name,'') NOT IN ('Production Crew','Manager','Administrator')" in sql
+    assert "p.name IN ('Production Crew','Manager','Administrator')" in sql
+    assert "Volunteer-only denial actor" in sql
 
 
 def test_kit_inventory_list_reads_existing_141_assignments_and_display_contents() -> None:
