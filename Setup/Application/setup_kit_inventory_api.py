@@ -219,7 +219,8 @@ def command_error(exc: SetupCommandError) -> tuple[Response, int]:
 def repository_error(exc: SetupRepositoryError) -> tuple[Response, int]:
     return jsonify(
         error="Setup inventory is temporarily unavailable.",
-        engineering_error=str(exc)), 503
+        engineering_error=str(exc),
+    ), 503
 
 
 @setup_kit_inventory_api.errorhandler(psycopg2.Error)
