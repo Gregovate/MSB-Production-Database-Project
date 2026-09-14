@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Extra Material Evidence</title>
+  <link rel="stylesheet" href="assets/setup_extra_material_evidence.css?v=2026-09-13.1">
+</head>
+<body>
+<header class="evidence-header">
+  <div class="evidence-brand">
+    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div>
+      <div class="eyebrow">Setup · procedure / spreadsheet findings</div>
+      <h1>Extra Material Evidence Explorer</h1>
+      <div class="muted">Query normalized findings before final task or Container assignment.</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span id="evidence-access" class="access-badge">Checking access…</span>
+    <a class="button secondary" href="../kit-inventory/">Kit Inventory</a>
+    <a class="button secondary" href="../">Back to Setup</a>
+    <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+  </div>
+</header>
+
+<main class="evidence-main">
+  <section id="evidence-alert" class="notice" aria-live="polite">Loading normalized evidence…</section>
+
+  <section class="card evidence-boundary">
+    <strong>Evidence, not accepted operational truth.</strong>
+    <span>Rows may identify several candidate Containers or reusable tasks. Use this view to decide what should become a requirement, expected Kit content, source relationship, or additional verification item.</span>
+  </section>
+
+  <section class="summary-grid">
+    <div class="summary-card"><span>Source procedures</span><strong id="summary-sources">—</strong></div>
+    <div class="summary-card"><span>With Container candidates</span><strong id="summary-containers">—</strong></div>
+    <div class="summary-card"><span>Need verification</span><strong id="summary-verify">—</strong></div>
+    <div class="summary-card"><span>Visible after filters</span><strong id="summary-visible">—</strong></div>
+  </section>
+
+  <section class="card filter-card">
+    <div class="filter-grid">
+      <label>Search
+        <input id="filter-search" type="search" placeholder="Procedure, material, mapping status, legacy ref…" autocomplete="off">
+      </label>
+      <label>Stage
+        <select id="filter-stage"><option value="">All stages</option></select>
+      </label>
+      <label>Material family
+        <select id="filter-material"><option value="">All materials</option></select>
+      </label>
+      <label>Container ID
+        <input id="filter-container" type="number" min="1" placeholder="e.g. 60">
+      </label>
+      <label>Verification
+        <select id="filter-verification"><option value="">All</option><option value="yes">Needs verification</option><option value="no">No 2027 verification flag</option></select>
+      </label>
+      <div class="filter-actions"><button id="clear-filters" type="button" class="secondary">Clear</button></div>
+    </div>
+  </section>
+
+  <section class="card results-card">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">Normalized source evidence</div>
+        <h2>Procedure Findings</h2>
+      </div>
+      <div id="result-count" class="muted"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Stage</th><th>Procedure / pages</th><th>Material families</th><th>Container evidence</th><th>Task candidates</th><th>Mapping / review</th></tr>
+        </thead>
+        <tbody id="evidence-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="assets/setup_extra_material_evidence.js?v=2026-09-13.1"></script>
+</body>
+</html>
