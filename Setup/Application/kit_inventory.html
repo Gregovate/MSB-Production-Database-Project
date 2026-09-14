@@ -13,7 +13,7 @@
     <div>
       <div class="eyebrow">Setup · durable Container inventory</div>
       <h1>Kit Inventory</h1>
-      <div class="muted">Expected Kit contents and physical inventory are separate records.</div>
+      <div class="muted">Displays, expected Extra Materials, and physical inventory are separate records.</div>
     </div>
   </div>
   <div class="inventory-header-actions">
@@ -56,8 +56,23 @@
         <section class="detail-section">
           <div class="section-title compact">
             <div>
-              <h3>Expected Contents</h3>
-              <div class="hint">What should normally be in this Kit. This is not the physical count.</div>
+              <h3>Displays Stored in This Kit</h3>
+              <div class="hint">Current physical `ref.display.container_id` relationships. Read-only here; these are not Extra Materials.</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Display</th><th>Inventory Type</th><th>Stage</th><th>Status</th></tr></thead>
+              <tbody id="kit-display-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="detail-section">
+          <div class="section-title compact">
+            <div>
+              <h3>Expected Extra Material Contents</h3>
+              <div class="hint">What reusable/consumable Extra Material should normally be in this Kit. This is separate from Displays and from the physical count.</div>
             </div>
           </div>
           <div class="table-wrap">
@@ -69,7 +84,7 @@
         </section>
 
         <section id="expected-editor" class="detail-section manager-only" hidden>
-          <h3>Manager — Expected Item</h3>
+          <h3>Manager — Expected Extra Material</h3>
           <form id="expected-form">
             <div class="form-grid">
               <label>Item<select id="expected-item" required></select></label>
@@ -100,8 +115,8 @@
         </section>
 
         <section id="inventory-editor" class="detail-section inventory-operator-only" hidden>
-          <h3>Physical Inventory</h3>
-          <div class="hint">Production Crew and Managers record what is physically present. Inventory changes never rewrite expected contents or reusable Setup requirements.</div>
+          <h3>Physical Extra Material Inventory</h3>
+          <div class="hint">Production Crew and Managers record what is physically present for recognized Extra Material rows. Inventory changes never rewrite Display identity, expected contents, or reusable Setup requirements.</div>
           <div id="inventory-selected" class="selected-item">Select an expected item above.</div>
           <form id="inventory-form">
             <div class="form-grid inventory-form-grid">
@@ -119,5 +134,6 @@
 </main>
 
 <script src="assets/setup_kit_inventory.js?v=2026-09-13.1"></script>
+<script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
 </body>
 </html>
