@@ -21,14 +21,20 @@ if ($status) {
     throw "STOP: checkout is not clean.`n$status"
 }
 
-Write-Host '--- Local #184 durable Kit Inventory contract tests ---'
-& python -m pytest -q -p no:cacheprovider `
-    (Join-Path $repo 'Setup\Application\test_setup_extra_material_foundation_contract.py') `
-    (Join-Path $repo 'Setup\Application\test_setup_extra_material_inventory_ui_contract.py') `
-    (Join-Path $repo 'Setup\Application\test_setup_kit_assignment_tpost_contract.py')
+Write-Host '--- Exact-candidate full Setup/Application regression ---'
+& python -m pytest -q -p no:cacheprovider (Join-Path $repo 'Setup\Application')
 if ($LASTEXITCODE -ne 0) {
-    throw "Local #184 contract tests failed with exit code $LASTEXITCODE"
+    throw "Full Setup/Application regression failed with exit code $LASTEXITCODE"
 }
+
+$statusAfterRegression = git -C $repo status --porcelain
+if ($statusAfterRegression) {
+    throw "STOP: regression left the exact-candidate checkout dirty.`n$statusAfterRegression"
+}
+
+Write-Host 'PASS: full Setup/Application regression'
+Write-Host 'PASS: exact-candidate checkout remains clean'
+Write-Host
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $bundleName = "msb-setup-184-durable-kit-inventory-$stamp"
