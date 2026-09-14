@@ -45,6 +45,18 @@ def test_unverified_items_upsert_uses_named_primary_key_constraint() -> None:
     assert "ambiguous_remainder_bare_column_present" in sql
 
 
+def test_remainder_upsert_is_exercised_by_disposable_acceptance() -> None:
+    validation = text(ACCEPTANCE_DIR / "setup_184_remainder_upsert_disposable_validation.sql")
+    launcher = text(ACCEPTANCE_DIR / "run_setup_extra_material_foundation_disposable_acceptance.ps1")
+    runner = text(ACCEPTANCE_DIR / "setup_extra_material_foundation_disposable_acceptance_server.sh")
+
+    assert "set_setup_container_unverified_items" in validation
+    assert "SETUP_184_REMAINDER_UPSERT_DISPOSABLE_PASS" in validation
+    assert "setup_184_remainder_upsert_disposable_validation.sql" in launcher
+    assert "REMAINDER_VALIDATION" in runner
+    assert 'psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$REMAINDER_VALIDATION"' in runner
+
+
 def test_inventory_history_uses_real_person_columns() -> None:
     repo = text(BASE_DIR / "setup_extra_material_repository.py")
     assert "p.display_name" not in repo
