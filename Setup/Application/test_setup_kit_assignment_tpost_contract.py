@@ -38,16 +38,23 @@ def test_tpost_stock_is_permanent_separate_inventory_surface() -> None:
     host = text(BASE_DIR / "production_backend.py")
     page = text(BASE_DIR / "t_post_inventory.html")
     js = text(BASE_DIR / "setup_tpost_inventory.js")
+    clarity_js = text(BASE_DIR / "setup_tpost_inventory_clarity.js")
     api = text(BASE_DIR / "setup_kit_inventory_api.py")
 
     assert '@app.get("/t-post-inventory")' in host
     assert 'send_from_directory(BASE_DIR, "t_post_inventory.html")' in host
     assert '"setup_tpost_inventory.js"' in host
-    assert "T-Post Stock" in page
-    assert "outside Kit Boxes" in page
+    assert '"setup_tpost_inventory_clarity.js"' in host
+    assert "T-Post Stock Inventory" in page
+    assert "Shared warehouse/field stock only" in page
+    assert "does <strong>not</strong> assign T-Posts to Displays" in page
+    assert "Shared Stock Variants and Current Counts" in page
+    assert "Count physical stock" in page
     assert "api/setup/t-post-inventory/containers" in js
     assert "INITIAL_COUNT" in js
     assert "COUNT_CORRECTION" in js
+    assert "Edit stock definition" in clarity_js
+    assert "Count physical stock" in clarity_js
 
     assert '"/api/setup/t-post-inventory/containers"' in api
     assert "m.material_name = 'T-Post'" in api
