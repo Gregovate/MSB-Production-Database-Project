@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Kit Inventory</title>
-  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-13.2">
+  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-14.1">
 </head>
 <body>
 <header class="inventory-header">
@@ -94,23 +94,25 @@
           <div class="section-title compact">
             <div>
               <h3>Expected Extra Material Contents</h3>
-              <div class="hint">Normalized Kit contents plus later Manager corrections. One-time migrated rows remain Unverified until reviewed. Expected contents are separate from physical count.</div>
+              <div class="hint">Expected quantity means what the Kit should contain based on reviewed/reconstructed evidence. Physical on-hand is the separately counted quantity actually present.</div>
             </div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Item</th><th>Expected</th><th>Size / Length / Color</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
+              <thead><tr><th>Item</th><th>Expected in Kit</th><th>Size / Length / Color</th><th>Verification</th><th>Physical On Hand</th><th>Notes</th><th></th></tr></thead>
               <tbody id="kit-content-body"></tbody>
             </table>
           </div>
         </section>
 
-        <section id="expected-editor" class="detail-section manager-only" hidden>
-          <h3>Manager — Expected Extra Material</h3>
+        <section id="expected-editor" class="detail-section manager-only editor-panel" hidden>
+          <div id="expected-editor-status" class="editor-banner" hidden></div>
+          <h3 id="expected-editor-title">Manager — Add Expected Extra Material</h3>
+          <div class="hint">This form changes expected Kit contents only. It does not change the physical on-hand count.</div>
           <form id="expected-form">
             <div class="form-grid">
               <label>Item<select id="expected-item" required></select></label>
-              <label>Qty<input id="expected-qty" type="number" min="0.001" step="0.001"></label>
+              <label>Expected Qty<input id="expected-qty" type="number" min="0.001" step="0.001"></label>
               <label>UOM<input id="expected-uom" type="text" value="EA"></label>
               <label>Size<input id="expected-size" type="text"></label>
               <label>Length<input id="expected-length" type="number" min="0.001" step="0.001"></label>
@@ -138,14 +140,15 @@
 
         <section id="inventory-editor" class="detail-section inventory-operator-only" hidden>
           <h3>Physical Extra Material Inventory</h3>
-          <div class="hint">Production Crew and Managers record what is physically present for recognized Extra Material rows. Inventory changes never rewrite Display identity, expected contents, reusable Setup requirements, or task/KIT assignments.</div>
+          <div class="hint">This ledger changes physical on-hand only. Initial count establishes the first balance; later events add or subtract from the current balance. Expected Kit contents are never rewritten by these events.</div>
           <div id="inventory-selected" class="selected-item">Select an expected item above.</div>
           <form id="inventory-form">
             <div class="form-grid inventory-form-grid">
-              <label>Event<select id="inventory-type"><option value="INITIAL_COUNT">Initial count</option><option value="RECEIPT">Receipt</option><option value="RETURN">Return</option><option value="COUNT_CORRECTION">Count correction</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
-              <label>Qty change<input id="inventory-delta" type="number" step="0.001" required></label>
+              <label>Event<select id="inventory-type"><option value="INITIAL_COUNT">Initial count</option><option value="RECEIPT">Receipt</option><option value="RETURN">Return</option><option value="COUNT_CORRECTION">Count correction (+/-)</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
+              <label><span id="inventory-quantity-label">Quantity change (+/-)</span><input id="inventory-delta" type="number" step="0.001" required></label>
               <label class="wide">Reason / note<input id="inventory-note" type="text"></label>
             </div>
+            <div id="inventory-math" class="inventory-math">Select an expected item to see the physical inventory calculation.</div>
             <div class="action-row"><button type="submit">Record Inventory Change</button></div>
           </form>
           <div id="inventory-history" class="history"></div>
@@ -157,6 +160,6 @@
 
 <script src="assets/setup_kit_inventory.js?v=2026-09-13.2"></script>
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
-<script src="assets/setup_kit_inventory_review.js?v=2026-09-13.1"></script>
+<script src="assets/setup_kit_inventory_review.js?v=2026-09-14.1"></script>
 </body>
 </html>
