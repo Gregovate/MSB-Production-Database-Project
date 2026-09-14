@@ -24,7 +24,8 @@ if ($status) {
 Write-Host '--- Local #167 contract tests ---'
 & python -m pytest -q -p no:cacheprovider `
     (Join-Path $repo 'Setup\Application\test_setup_extra_material_foundation_contract.py') `
-    (Join-Path $repo 'Setup\Application\test_setup_extra_material_inventory_ui_contract.py')
+    (Join-Path $repo 'Setup\Application\test_setup_extra_material_inventory_ui_contract.py') `
+    (Join-Path $repo 'Setup\Application\test_setup_kit_assignment_tpost_contract.py')
 if ($LASTEXITCODE -ne 0) {
     throw "Local #167 contract tests failed with exit code $LASTEXITCODE"
 }
