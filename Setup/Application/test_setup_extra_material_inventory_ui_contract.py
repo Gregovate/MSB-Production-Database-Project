@@ -43,9 +43,6 @@ def test_unverified_items_upsert_uses_named_primary_key_constraint() -> None:
         "REVOKE ALL ON FUNCTION ref.set_setup_container_extra_material", 1
     )[0]
 
-    # Inspect only executable function definitions. The migration's final
-    # pg_get_functiondef diagnostic intentionally contains the legacy text
-    # inside a LIKE pattern so acceptance can prove it is absent at runtime.
     assert "ON CONFLICT ON CONSTRAINT setup_container_extra_material_review_pkey" in function_sql
     assert "ON CONFLICT (container_id)" not in function_sql
     assert "named_remainder_constraint_fix_present" in sql
@@ -75,9 +72,6 @@ def test_inventory_history_uses_real_person_columns() -> None:
 def test_kit_detail_does_not_require_protected_container_type_lookup() -> None:
     repo = text(BASE_DIR / "setup_extra_material_repository.py")
 
-    # fieldwiring_app intentionally lacks broad SELECT on ref.container_type.
-    # Kit detail needs only the durable ref.container.container_type_id; the
-    # known Kit Box label can be presented without broadening DB privileges.
     assert "ref.container_type" not in repo
     assert "c.container_type_id" in repo
     assert "CASE WHEN c.container_type_id = 2 THEN 'Kit Box' END AS container_type_name" in repo
@@ -92,8 +86,6 @@ def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> Non
     display_js = text(BASE_DIR / "setup_kit_inventory_displays.js")
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
-    # Setup retains an entry point, but the early embedded workspace is removed
-    # at runtime and the tab routes to durable Kit Inventory instead.
     assert 'data-view="extra-materials"' in html
     assert "tab.textContent = 'Kit Inventory'" in bridge
     assert "document.getElementById('extra-materials-view')?.remove()" in bridge
@@ -109,8 +101,8 @@ def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> Non
     assert '<h1>Kit Inventory</h1>' in page
     assert 'id="kit-list"' in page
     assert 'id="kit-display-body"' in page
-    assert 'Displays Stored in This Kit' in page
-    assert 'Expected Extra Material Contents' in page
+    assert 'Displays stored in this Kit' in page
+    assert 'Expected Kit Contents' in page
     assert 'id="kit-content-body"' in page
     assert 'id="unverified-items"' in page
     assert 'id="inventory-form"' in page
@@ -126,6 +118,39 @@ def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> Non
     assert "kit-inventory/kit-boxes/${containerId}/displays" in display_js
     assert "No current Display identities are assigned to this Kit Box." in display_js
     assert "row.inventory_type" in display_js
+
+
+def test_kit_inventory_default_view_is_compact_and_action_driven() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+    review = text(BASE_DIR / "setup_kit_inventory_review.js")
+    css = text(BASE_DIR / "setup_kit_inventory.css")
+
+    assert 'id="kit-overview"' in page
+    assert 'id="expected-add"' in page
+    assert 'id="expected-editor" class="detail-section editor-panel action-panel" hidden' in page
+    assert 'id="inventory-editor" class="detail-section action-panel" hidden' in page
+    assert 'class="compact-details context-details"' in page
+    assert 'class="compact-details remainder-details"' in page
+    assert "Setup task assignment" in page
+    assert "Displays stored in this Kit" in page
+    assert "Unverified Items / Remainders" in page
+    assert "manager-only editor-panel" not in page
+    assert "inventory-operator-only\" hidden" not in page
+
+    assert "openExpectedPanel" in review
+    assert "closeExpectedPanel" in review
+    assert "openInventoryPanel" in review
+    assert "closeInventoryPanel" in review
+    assert "compactContentRows" in review
+    assert "expectedSubmitPending" in review
+    assert "updateOverview" in review
+
+    assert ".kit-overview-strip" in css
+    assert ".compact-details" in css
+    assert ".content-notes" in css
+    assert ".kit-row-task { display: none; }" in css
+    assert ".action-panel" in css
+    assert "[hidden] { display: none !important; }" in css
 
 
 def test_permanent_inventory_ui_uses_durable_184_wording() -> None:
@@ -166,9 +191,6 @@ def test_manager_and_production_crew_split_is_preserved() -> None:
 def test_disposable_volunteer_negative_proof_excludes_elevated_accounts() -> None:
     sql = text(ACCEPTANCE_DIR / "setup_extra_material_foundation_disposable_validation.sql")
 
-    # The denial actor must be Volunteer-only. A user who also has Production
-    # Crew/Manager/Administrator authority is legitimately allowed inventory and
-    # would make the negative proof a false failure.
     assert "Volunteer-only account" in sql
     assert "coalesce(r.name,'') NOT IN ('Production Crew','Manager','Administrator')" in sql
     assert "p.name IN ('Production Crew','Manager','Administrator')" in sql
@@ -182,9 +204,6 @@ def test_kit_inventory_list_reads_existing_141_assignments_and_display_contents(
     assert "WHERE c.container_type_id = 2" in api
     assert "INSERT INTO ref.setup_task_container_support" not in api
 
-    # A Kit may contain normal Production Displays. Those rows remain their own
-    # authoritative physical identities and are presented read-only, separately
-    # from durable Extra Material expected contents.
     assert '"/api/setup/kit-inventory/kit-boxes/<int:container_id>/displays"' in api
     assert "FROM ref.display AS d" in api
     assert "d.container_id = %s" in api
@@ -206,8 +225,8 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     host = text(BASE_DIR / "production_backend.py")
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
-    assert "Expected in Kit" in kit_page
-    assert "Physical On Hand" in kit_page
+    assert "Expected Kit Contents" in kit_page
+    assert "Physical on-hand" in kit_page
     assert 'id="expected-editor-status"' in kit_page
     assert 'id="inventory-math"' in kit_page
     assert "Count correction (+/-)" in kit_page
@@ -217,7 +236,6 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     assert "editing-source-row" in kit_review
     assert "Current on hand:" in kit_review
 
-    # T-Post inventory must distinguish physical storage context from task requirements.
     assert "T-Post Inventory" in tpost_page
     assert "Shared/bulk stock is shown separately" in tpost_page
     assert "Storage location does <strong>not</strong> assign T-Posts to Displays" in tpost_page

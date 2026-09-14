@@ -1,4 +1,4 @@
-/* Issue #184 — assignment visibility + safe Kit reconciliation/edit/inventory UX. */
+/* Issue #184 — compact Kit review + safe reconciliation/edit/inventory UX. */
 (() => {
   const state = {
     kitBoxes: [],
@@ -7,6 +7,7 @@
     inventoryContentId: null,
     inventoryCurrentOnHand: null,
     inventoryUom: 'EA',
+    expectedSubmitPending: false,
   };
   const el = (id) => document.getElementById(id);
 
@@ -49,6 +50,7 @@
     state.byId = new Map(state.kitBoxes.map((row) => [Number(row.container_id), row]));
     applyFilter();
     renderAssignments();
+    updateOverview();
   }
 
   function setFilter(next) {
@@ -86,6 +88,26 @@
     textarea.value = textarea.value.replace(/\\n/g, '\n');
   }
 
+  function selectedKit() {
+    const containerId = selectedContainerId();
+    return containerId ? state.byId.get(containerId) : null;
+  }
+
+  function updateOverview() {
+    const kit = selectedKit();
+    const set = (id, value) => { if (el(id)) el(id).textContent = String(value); };
+    if (!kit) {
+      ['overview-task-count','overview-display-count','overview-expected-count','overview-counted-count','overview-review-state']
+        .forEach((id) => set(id, '—'));
+      return;
+    }
+    set('overview-task-count', Number(kit.assigned_task_count || 0));
+    set('overview-display-count', Number(kit.display_rows || 0));
+    set('overview-expected-count', Number(kit.expected_item_rows || 0));
+    set('overview-counted-count', Number(kit.counted_item_rows || 0));
+    set('overview-review-state', kit.has_unverified_items ? 'Review' : 'None');
+  }
+
   function renderAssignments() {
     normalizeRemainderDisplay();
     const body = el('kit-task-assignment-body');
@@ -106,6 +128,7 @@
         <td>${esc(task.relationship_notes || '')}</td>
       </tr>`;
     }).join('') || '<tr><td colspan="4" class="empty-state"><strong>Unassigned Kit.</strong> No reusable Setup task → KIT relationship exists yet.</td></tr>';
+    updateOverview();
   }
 
   function configurePermanentNavigation() {
@@ -124,6 +147,34 @@
     });
   }
 
+  function closeExpectedPanel() {
+    if (el('expected-editor')) el('expected-editor').hidden = true;
+    clearEditDecoration();
+  }
+
+  function openExpectedPanel(focusId = 'expected-item') {
+    const panel = el('expected-editor');
+    if (!panel) return;
+    panel.hidden = false;
+    if (el('inventory-editor')) el('inventory-editor').hidden = true;
+    focusEditor('expected-editor', focusId);
+  }
+
+  function closeInventoryPanel() {
+    if (el('inventory-editor')) el('inventory-editor').hidden = true;
+    state.inventoryContentId = null;
+    state.inventoryCurrentOnHand = null;
+    syncInventoryMath();
+  }
+
+  function openInventoryPanel() {
+    const panel = el('inventory-editor');
+    if (!panel) return;
+    panel.hidden = false;
+    if (el('expected-editor')) el('expected-editor').hidden = true;
+    focusEditor('inventory-editor', 'inventory-delta');
+  }
+
   function clearEditDecoration() {
     document.querySelectorAll('#kit-content-body tr.editing-source-row').forEach((row) => row.classList.remove('editing-source-row'));
     const editor = el('expected-editor');
@@ -134,7 +185,7 @@
       banner.textContent = '';
     }
     if (el('expected-editor-title')) el('expected-editor-title').textContent = 'Manager — Add Expected Extra Material';
-    if (el('expected-clear')) el('expected-clear').textContent = 'Clear';
+    if (el('expected-clear')) el('expected-clear').textContent = 'Cancel';
   }
 
   function markExpectedEdit(button) {
@@ -152,6 +203,16 @@
     }
     if (el('expected-editor-title')) el('expected-editor-title').textContent = 'Manager — Edit Expected Extra Material';
     if (el('expected-clear')) el('expected-clear').textContent = 'Cancel edit';
+  }
+
+  function compactContentRows() {
+    document.querySelectorAll('#kit-content-body tr').forEach((row) => {
+      const notes = row.cells?.[5];
+      if (notes) {
+        notes.classList.add('content-notes');
+        notes.title = notes.textContent?.trim() || '';
+      }
+    });
   }
 
   function physicalFromRow(row) {
@@ -211,14 +272,19 @@
 
   function bindRowActionFocus() {
     document.addEventListener('click', (event) => {
+      if (event.target.closest('#expected-add')) {
+        el('expected-clear')?.click();
+        queueMicrotask(() => openExpectedPanel('expected-item'));
+        return;
+      }
       const editButton = event.target.closest('.expected-edit');
       if (editButton) {
         markExpectedEdit(editButton);
-        focusEditor('expected-editor', 'expected-qty');
+        openExpectedPanel('expected-qty');
         return;
       }
       if (event.target.closest('#expected-clear')) {
-        clearEditDecoration();
+        queueMicrotask(closeExpectedPanel);
         return;
       }
       const inventoryButton = event.target.closest('.inventory-select');
@@ -228,7 +294,16 @@
         state.inventoryCurrentOnHand = physical.current;
         state.inventoryUom = physical.uom;
         queueMicrotask(syncInventoryMath);
-        focusEditor('inventory-editor', 'inventory-delta');
+        openInventoryPanel();
+        return;
+      }
+      if (event.target.closest('#inventory-close')) {
+        closeInventoryPanel();
+        return;
+      }
+      if (event.target.closest('#kit-list .kit-row')) {
+        closeExpectedPanel();
+        closeInventoryPanel();
       }
     });
   }
@@ -244,20 +319,27 @@
     configurePermanentNavigation();
     bindRowActionFocus();
     bindInventoryMath();
+    el('expected-form')?.addEventListener('submit', () => { state.expectedSubmitPending = true; });
     el('kit-filter-all')?.addEventListener('click', () => setFilter('all'));
     el('kit-filter-assigned')?.addEventListener('click', () => setFilter('assigned'));
     el('kit-filter-unassigned')?.addEventListener('click', () => setFilter('unassigned'));
     el('kit-search')?.addEventListener('input', () => queueMicrotask(applyFilter));
     el('kit-list')?.addEventListener('click', () => queueMicrotask(renderAssignments));
-    window.addEventListener('popstate', () => queueMicrotask(renderAssignments));
+    window.addEventListener('popstate', () => queueMicrotask(() => { renderAssignments(); updateOverview(); }));
 
     const list = el('kit-list');
     if (list) new MutationObserver(applyFilter).observe(list, { childList: true, subtree: true });
     const title = el('kit-title');
-    if (title) new MutationObserver(renderAssignments).observe(title, { childList: true, subtree: true, characterData: true });
+    if (title) new MutationObserver(() => { renderAssignments(); updateOverview(); }).observe(title, { childList: true, subtree: true, characterData: true });
     const contentBody = el('kit-content-body');
     if (contentBody) new MutationObserver(() => {
-      if (!contentBody.querySelector('.editing-source-row')) clearEditDecoration();
+      compactContentRows();
+      if (state.expectedSubmitPending) {
+        state.expectedSubmitPending = false;
+        closeExpectedPanel();
+      } else if (!contentBody.querySelector('.editing-source-row')) {
+        clearEditDecoration();
+      }
       queueMicrotask(syncInventoryMath);
     }).observe(contentBody, { childList: true, subtree: true });
 
