@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB T-Post Stock</title>
   <link rel="stylesheet" href="../kit-inventory/assets/setup_kit_inventory.css?v=2026-09-14.1">
+  <link rel="stylesheet" href="assets/setup_tpost_inventory_clarity.css?v=2026-09-14.2">
 </head>
 <body>
 <header class="inventory-header">
   <div class="inventory-brand">
     <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
     <div>
-      <div class="eyebrow">Setup · shared material stock</div>
-      <h1>T-Post Stock</h1>
-      <div class="muted">T-Posts are reusable shared stock and are intentionally inventoried outside Kit Boxes.</div>
+      <div class="eyebrow">Setup · shared physical stock</div>
+      <h1>T-Post Stock Inventory</h1>
+      <div class="muted">Shared warehouse/field stock only. Display and reusable Setup-task T-Post requirements are managed elsewhere.</div>
     </div>
   </div>
   <div class="inventory-header-actions">
@@ -26,11 +27,17 @@
 
 <main class="inventory-main">
   <section id="inventory-alert" class="notice" aria-live="polite">Loading T-Post stock…</section>
+
+  <section class="tpost-scope-explainer">
+    <strong>This page records the physical T-Posts available in shared stock Containers.</strong>
+    <div class="scope-warning">It does <strong>not</strong> assign T-Posts to Displays, panels, Stages, Scenes, or Setup tasks. Those reusable requirements remain task/installation facts. Use this page only to define stock variants and count the physical stock actually present.</div>
+  </section>
+
   <div class="inventory-layout">
     <aside class="card inventory-list-card">
-      <div class="eyebrow">Physical ref.container sources</div>
+      <div class="eyebrow">Shared-stock sources</div>
       <h2>T-Post Containers</h2>
-      <div class="hint" style="margin:8px 0 12px">Shared stock Containers are not Kit Boxes. Length-specific rows can be added as physical verification progresses.</div>
+      <div class="hint" style="margin:8px 0 12px">Choose the physical Container you are inventorying. Container 36 is normal panel stock; Container 118 is separate special-short stock.</div>
       <div id="tpost-list" class="kit-list"></div>
     </aside>
 
@@ -39,30 +46,37 @@
       <div id="tpost-detail" hidden>
         <div class="detail-heading">
           <div>
-            <div class="eyebrow">Shared T-Post stock</div>
+            <div class="eyebrow">Selected shared-stock Container</div>
             <h2 id="tpost-title"></h2>
             <div id="tpost-meta" class="muted"></div>
           </div>
         </div>
 
         <section class="detail-section">
-          <h3>T-Post Stock Rows</h3>
-          <div class="hint">Expected / target is planning or known stock evidence; it is not a physical count. Physical on-hand is derived only from inventory events.</div>
+          <div class="section-title compact">
+            <div>
+              <div class="tpost-step-kicker">Step 1 — choose what kind of T-Post you are working with</div>
+              <h3>Shared Stock Variants and Current Counts</h3>
+              <div class="hint">Each row is one stock definition, such as 5-ft or 6-ft posts. “Planning / known qty” is optional reference evidence and is <strong>not</strong> the physical count. “Physical on hand” comes only from inventory events.</div>
+            </div>
+            <button id="tpost-add-variant" type="button" class="secondary manager-only" hidden>Add new stock variant</button>
+          </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Variant / Size</th><th>Expected / Target</th><th>Verification</th><th>Physical On Hand</th><th>Notes</th><th></th></tr></thead>
+              <thead><tr><th>Stock Variant</th><th>Planning / Known Qty<br>(not count)</th><th>Verification</th><th>Physical On Hand</th><th>Notes</th><th></th></tr></thead>
               <tbody id="tpost-content-body"></tbody>
             </table>
           </div>
+          <div class="tpost-definition-note">Managers use <strong>Edit stock definition</strong> only when the length/variant definition itself is wrong. To count what is physically present, use <strong>Count physical stock</strong>.</div>
         </section>
 
-        <section id="tpost-manager-editor" class="detail-section manager-only editor-panel" hidden>
+        <section id="tpost-manager-editor" class="detail-section manager-only editor-panel tpost-config-panel collapsed" hidden>
           <div id="tpost-editor-status" class="editor-banner" hidden></div>
-          <h3 id="tpost-editor-title">Manager — Add T-Post Variant</h3>
-          <div class="hint">Expected / target quantity describes the stock row definition. It does not change the physical on-hand balance.</div>
+          <h3 id="tpost-editor-title">Manager — Add New Shared-Stock Variant</h3>
+          <div class="hint">This form changes the definition of a shared-stock row. It does <strong>not</strong> record physical inventory and does not change Display/task requirements.</div>
           <form id="tpost-form">
             <div class="form-grid">
-              <label>Expected / target qty (not count)<input id="tpost-expected-qty" type="number" min="0.001" step="0.001"></label>
+              <label>Planning / known qty (optional, not count)<input id="tpost-expected-qty" type="number" min="0.001" step="0.001"></label>
               <label>Length<input id="tpost-length" type="number" min="0.001" step="0.001"></label>
               <label>Length unit<select id="tpost-length-unit"><option value="">—</option><option value="FT">ft</option><option value="IN">in</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
               <label>Size / stock note<input id="tpost-size" type="text" placeholder="e.g. special short stock"></label>
@@ -70,24 +84,28 @@
               <label class="wide">Notes<input id="tpost-notes" type="text"></label>
             </div>
             <div class="action-row">
-              <button type="submit" id="tpost-save">Add T-Post Row</button>
-              <button type="button" id="tpost-clear" class="secondary">Clear</button>
+              <button type="submit" id="tpost-save">Add Stock Variant</button>
+              <button type="button" id="tpost-clear" class="secondary">Cancel</button>
             </div>
           </form>
         </section>
 
         <section id="tpost-inventory-editor" class="detail-section inventory-operator-only" hidden>
-          <h3>Physical Count / Adjustment</h3>
-          <div class="hint">Initial count establishes the first physical balance. Every later event is a signed change to that balance. The calculation below shows the resulting on-hand quantity before you save.</div>
-          <div id="tpost-inventory-selected" class="selected-item">Select a stock row above.</div>
+          <div class="tpost-step-kicker">Step 2 — count or adjust the selected physical stock</div>
+          <h3>Physical Inventory Count</h3>
+          <div class="hint">Click <strong>Count physical stock</strong> on exactly one row above. Initial count establishes the first physical balance. Later events are signed changes to that balance. These events affect only shared physical stock.</div>
+          <div id="tpost-count-instruction" class="tpost-count-instruction">No stock row selected. Click “Count physical stock” on one row above.</div>
+          <div id="tpost-inventory-selected" class="selected-item">No stock row selected.</div>
           <form id="tpost-inventory-form">
-            <div class="form-grid inventory-form-grid">
-              <label>Event<select id="tpost-inventory-type"><option value="INITIAL_COUNT">Initial count</option><option value="RECEIPT">Receipt</option><option value="RETURN">Return</option><option value="COUNT_CORRECTION">Count correction (+/-)</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
-              <label><span id="tpost-inventory-quantity-label">Quantity change (+/-)</span><input id="tpost-inventory-delta" type="number" step="0.001" required></label>
-              <label class="wide">Reason / note<input id="tpost-inventory-note" type="text"></label>
-            </div>
-            <div id="tpost-inventory-math" class="inventory-math">Select a stock row to see the physical inventory calculation.</div>
-            <div class="action-row"><button type="submit">Record Inventory Change</button></div>
+            <fieldset id="tpost-count-fields" class="tpost-count-fieldset" disabled>
+              <div class="form-grid inventory-form-grid">
+                <label>Inventory event<select id="tpost-inventory-type"><option value="INITIAL_COUNT">Initial physical count</option><option value="RECEIPT">Receipt / added stock</option><option value="RETURN">Return to stock</option><option value="COUNT_CORRECTION">Count correction (+/-)</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
+                <label><span id="tpost-inventory-quantity-label">Quantity change (+/-)</span><input id="tpost-inventory-delta" type="number" step="0.001" required></label>
+                <label class="wide">Reason / note<input id="tpost-inventory-note" type="text"></label>
+              </div>
+              <div id="tpost-inventory-math" class="inventory-math">Select a stock row to see the physical inventory calculation.</div>
+              <div class="action-row"><button type="submit">Save Physical Inventory Event</button></div>
+            </fieldset>
           </form>
           <div id="tpost-inventory-history" class="history"></div>
         </section>
@@ -96,5 +114,6 @@
   </div>
 </main>
 <script src="assets/setup_tpost_inventory.js?v=2026-09-14.1"></script>
+<script src="assets/setup_tpost_inventory_clarity.js?v=2026-09-14.2"></script>
 </body>
 </html>

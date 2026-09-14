@@ -88,7 +88,13 @@ KIT_INVENTORY_ASSETS = frozenset(
         "setup_kit_inventory_review.js",
     }
 )
-TPOST_INVENTORY_ASSETS = frozenset({"setup_tpost_inventory.js"})
+TPOST_INVENTORY_ASSETS = frozenset(
+    {
+        "setup_tpost_inventory.js",
+        "setup_tpost_inventory_clarity.css",
+        "setup_tpost_inventory_clarity.js",
+    }
+)
 
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
