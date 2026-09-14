@@ -13,11 +13,12 @@
     <div>
       <div class="eyebrow">Setup · durable Container inventory</div>
       <h1>Kit Inventory</h1>
-      <div class="muted">Displays, expected Extra Materials, and physical inventory are separate records.</div>
+      <div class="muted">Displays, expected Extra Materials, physical inventory, and unresolved procedure evidence are separate records.</div>
     </div>
   </div>
   <div class="inventory-header-actions">
     <span id="inventory-access" class="access-badge">Checking access…</span>
+    <a id="inventory-evidence-explorer" class="button secondary" href="../extra-material-evidence/">Evidence Explorer</a>
     <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
     <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
   </div>
@@ -71,8 +72,24 @@
         <section class="detail-section">
           <div class="section-title compact">
             <div>
+              <h3>Procedure / Spreadsheet Evidence</h3>
+              <div class="hint">Read-only reconciliation evidence that points at this Container as a proposed source or current Stage Kit candidate. It may be useful even before a final task/KIT/source assignment exists.</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Stage / Procedure</th><th>Material findings</th><th>Why this Kit appears</th><th>Mapping / review</th></tr></thead>
+              <tbody id="kit-evidence-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
+            </table>
+          </div>
+          <div id="kit-evidence-summary" class="hint"></div>
+        </section>
+
+        <section class="detail-section">
+          <div class="section-title compact">
+            <div>
               <h3>Expected Extra Material Contents</h3>
-              <div class="hint">What reusable/consumable Extra Material should normally be in this Kit. This is separate from Displays and from the physical count.</div>
+              <div class="hint">What reusable/consumable Extra Material should normally be in this Kit. This is accepted/reviewable structured content and is separate from broader procedure evidence and from the physical count.</div>
             </div>
           </div>
           <div class="table-wrap">
@@ -135,5 +152,6 @@
 
 <script src="assets/setup_kit_inventory.js?v=2026-09-13.1"></script>
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
+<script src="assets/setup_kit_inventory_evidence.js?v=2026-09-13.1"></script>
 </body>
 </html>
