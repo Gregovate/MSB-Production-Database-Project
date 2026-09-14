@@ -82,7 +82,15 @@
     }).join('') || '<tr><td colspan="4" class="empty-state"><strong>Unassigned Kit.</strong> No reusable Setup task → KIT relationship exists yet.</td></tr>';
   }
 
+  function configurePermanentNavigation() {
+    const back = el('inventory-back-setup');
+    if (back) back.href = APP_BASE;
+    const tpost = document.querySelector('a[href*="t-post-inventory"]');
+    if (tpost) tpost.href = appUrl('t-post-inventory/');
+  }
+
   function bind() {
+    configurePermanentNavigation();
     el('kit-filter-all')?.addEventListener('click', () => setFilter('all'));
     el('kit-filter-assigned')?.addEventListener('click', () => setFilter('assigned'));
     el('kit-filter-unassigned')?.addEventListener('click', () => setFilter('unassigned'));
