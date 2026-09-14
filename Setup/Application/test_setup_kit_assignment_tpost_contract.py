@@ -4,7 +4,6 @@ import ast
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_DIR = BASE_DIR.parent / "Database"
 
 
 def text(path: Path) -> str:
@@ -40,7 +39,6 @@ def test_tpost_stock_is_permanent_separate_inventory_surface() -> None:
     page = text(BASE_DIR / "t_post_inventory.html")
     js = text(BASE_DIR / "setup_tpost_inventory.js")
     api = text(BASE_DIR / "setup_kit_inventory_api.py")
-    preload = text(DB_DIR / "043_preload_setup_kit_inventory_and_tpost_stock.sql")
 
     assert '@app.get("/t-post-inventory")' in host
     assert 'send_from_directory(BASE_DIR, "t_post_inventory.html")' in host
@@ -55,10 +53,10 @@ def test_tpost_stock_is_permanent_separate_inventory_surface() -> None:
     assert "m.material_name = 'T-Post'" in api
     assert "ref.setup_container_extra_material" in api
 
-    assert "container_id=36" in preload
-    assert "container_id=118" in preload
-    assert "T-Posts are NOT loaded as Kit contents" in preload
-    assert "T-Post stock is managed separately from Kit inventory" in preload
+    # #184 supplies the durable T-Post workflow only. Specific current stock
+    # Containers and initial rows are supplied later by #167's one-time load.
+    assert "container_id = 36" not in api
+    assert "container_id = 118" not in api
 
 
 def test_one_time_reconstruction_does_not_become_production_runtime() -> None:
