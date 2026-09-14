@@ -85,6 +85,8 @@ KIT_INVENTORY_ASSETS = frozenset(
         "setup_kit_inventory.css",
         "setup_kit_inventory.js",
         "setup_kit_inventory_displays.js",
+        "setup_kit_inventory_evidence.js",
+        "setup_kit_inventory_review.js",
     }
 )
 EVIDENCE_ASSETS = frozenset(
@@ -93,6 +95,7 @@ EVIDENCE_ASSETS = frozenset(
         "setup_extra_material_evidence.js",
     }
 )
+TPOST_INVENTORY_ASSETS = frozenset({"setup_tpost_inventory.js"})
 
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
@@ -144,6 +147,21 @@ def kit_inventory(container_id: int | None = None):
 @app.get("/kit-inventory/assets/<path:name>")
 def kit_inventory_asset(name: str):
     if name not in KIT_INVENTORY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/t-post-inventory")
+@app.get("/t-post-inventory/")
+def tpost_inventory():
+    """Standalone shared T-Post stock inventory outside Kit Boxes."""
+    return _no_store(send_from_directory(BASE_DIR, "t_post_inventory.html"))
+
+
+@app.get("/t-post-inventory/assets/<path:name>")
+def tpost_inventory_asset(name: str):
+    if name not in TPOST_INVENTORY_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
