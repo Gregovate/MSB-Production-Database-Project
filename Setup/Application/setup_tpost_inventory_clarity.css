@@ -1,0 +1,62 @@
+/* Issue #184 browser-review refinement: make shared T-Post stock workflow explicit. */
+.tpost-scope-explainer {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: var(--soft);
+}
+.tpost-scope-explainer strong { font-size: 1.05rem; }
+.tpost-scope-explainer .scope-warning { color: var(--muted); }
+.tpost-step-kicker {
+  margin-bottom: 3px;
+  color: var(--accent-strong);
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.tpost-config-panel.collapsed { display: none !important; }
+.tpost-config-panel:not(.collapsed) {
+  margin: 12px 0;
+  padding: 16px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft);
+}
+.tpost-config-panel.editing:not(.collapsed) {
+  border: 3px solid var(--edit-border);
+  background: var(--edit-bg);
+}
+.tpost-count-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.tpost-count-fieldset:disabled {
+  opacity: .55;
+}
+.tpost-count-fieldset:disabled button { cursor: not-allowed; }
+tr.counting-source-row td {
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  border-top: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+tr.counting-source-row td:first-child { border-left: 2px solid var(--accent); }
+tr.counting-source-row td:last-child { border-right: 2px solid var(--accent); }
+.tpost-count-instruction {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  font-weight: 700;
+}
+.tpost-definition-note {
+  margin-top: 5px;
+  font-size: .88rem;
+  color: var(--muted);
+}
