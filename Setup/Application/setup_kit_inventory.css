@@ -28,6 +28,7 @@ html { color-scheme: light dark; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); }
 a { color: inherit; }
+code { font-family: Consolas, "Courier New", monospace; }
 button, input, select, textarea { font: inherit; }
 button, .button {
   border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
@@ -36,6 +37,7 @@ button, .button {
 button.secondary, .button.secondary { background: var(--card); color: var(--text); }
 button.warning { background: var(--warn); }
 button.small, .button.small { padding: 5px 8px; border-radius: 7px; font-size: .88rem; }
+button.active-filter { border-color: var(--accent); background: var(--accent); color: #fff; }
 input, select, textarea {
   width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px;
   background: var(--card); color: var(--text);
@@ -66,6 +68,8 @@ h3 { font-size: 1.05rem; }
 .section-title, .detail-heading { display: flex; justify-content: space-between; gap: 14px; align-items: center; }
 .section-title.compact { margin-bottom: 10px; }
 .inventory-search { margin: 14px 0 8px; }
+.kit-filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 6px; }
+#kit-filter-status { margin-bottom: 4px; }
 .kit-list { display: grid; gap: 8px; margin-top: 10px; }
 .kit-row { border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 11px; cursor: pointer; text-align: left; }
 .kit-row:hover, .kit-row.selected { border-color: var(--accent); background: var(--soft); }
@@ -85,7 +89,7 @@ th { color: var(--muted); font-size: .82rem; text-transform: uppercase; letter-s
 .form-grid .wide { grid-column: span 2; }
 .inventory-form-grid { grid-template-columns: 180px 160px minmax(220px, 1fr); }
 .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.unverified-section textarea { margin-top: 10px; }
+.unverified-section textarea { margin-top: 10px; min-height: 170px; font-family: Consolas, "Courier New", monospace; font-size: .88rem; line-height: 1.35; }
 .selected-item { margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; background: var(--soft); }
 .history { margin-top: 14px; display: grid; gap: 7px; }
 .history-row { display: grid; grid-template-columns: 150px 100px minmax(0,1fr); gap: 10px; border-top: 1px solid var(--line); padding-top: 7px; font-size: .9rem; }
