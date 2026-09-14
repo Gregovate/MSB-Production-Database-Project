@@ -101,6 +101,22 @@
     return String(value || '').trim().toLocaleLowerCase();
   }
 
+  async function selectKit(containerId) {
+    state.selectedKitId = Number(containerId);
+    const kit = kitById(state.selectedKitId);
+    if (!kit) return;
+    el('selected-kit').textContent = `Selected: #${kit.container_id} · ${kit.container_description || 'Unnamed Kit Box'}. Loading stored Displays…`;
+    renderKits();
+    try {
+      const payload = await api(`api/setup/kit-inventory/kit-boxes/${kit.container_id}/displays`);
+      const names = (payload.displays || []).map((row) => row.display_name).filter(Boolean);
+      const displayText = names.length ? ` Stored Displays: ${names.join('; ')}.` : ' No current Displays are stored in this Kit.';
+      el('selected-kit').textContent = `Selected: #${kit.container_id} · ${kit.container_description || 'Unnamed Kit Box'}.${displayText} Click a task on the right to assign it.`;
+    } catch (error) {
+      el('selected-kit').textContent = `Selected: #${kit.container_id} · ${kit.container_description || 'Unnamed Kit Box'}. Display lookup failed: ${error.message}`;
+    }
+  }
+
   function renderKits() {
     const query = normalized(el('kit-search').value);
     const unassignedOnly = el('kits-unassigned-only').checked;
@@ -135,15 +151,14 @@
     el('kit-list').querySelectorAll('.kit-card').forEach((card) => {
       card.addEventListener('click', (event) => {
         if (event.target.closest('.remove-new')) return;
-        state.selectedKitId = Number(card.dataset.containerId);
-        const kit = kitById(state.selectedKitId);
-        el('selected-kit').textContent = `Selected: #${kit.container_id} · ${kit.container_description || 'Unnamed Kit Box'}. Click a task on the right to assign it.`;
-        renderKits();
+        selectKit(Number(card.dataset.containerId));
       });
       card.addEventListener('dragstart', (event) => {
-        state.selectedKitId = Number(card.dataset.containerId);
+        const containerId = Number(card.dataset.containerId);
+        state.selectedKitId = containerId;
+        selectKit(containerId);
         event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData('text/plain', String(card.dataset.containerId));
+        event.dataTransfer.setData('text/plain', String(containerId));
         card.classList.add('dragging');
       });
       card.addEventListener('dragend', () => card.classList.remove('dragging'));
@@ -217,10 +232,9 @@
     const rows = newAssignments();
     if (!rows.length) return '-- No new disposable Kit assignments have been made yet.\n';
     const values = rows.map((row) => {
-      const task = taskById(row.setup_task_id);
       const comment = `${String(row.stage_key || '—')} ${row.task_name} <- Kit #${row.container_id} ${row.container_description}`
-        .replaceAll('\n', ' ').replaceAll('\r', ' ');
-      return `    (${row.setup_task_id}, ${row.container_id}, 'KIT', 'Initial Kit assignment reviewed in disposable reconstruction workbench.') -- ${comment}`;
+        .replaceAll('\n', ' ').replaceAll('\r', ' ').replaceAll('*/', '* /');
+      return `    (${row.setup_task_id}, ${row.container_id}, 'KIT', 'Initial Kit assignment reviewed in disposable reconstruction workbench.') /* ${comment} */`;
     }).join(',\n');
     return `-- DISPOSABLE CAPTURE ARTIFACT ONLY. Review before any Production migration.\n-- Marker: ${MARKER}\n-- Candidate rows: ${rows.length}\nBEGIN;\nINSERT INTO ref.setup_task_container_support(\n    setup_task_id, container_id, relationship_type, notes\n) VALUES\n${values}\nON CONFLICT (setup_task_id, container_id) DO NOTHING;\nCOMMIT;\n`;
   }
