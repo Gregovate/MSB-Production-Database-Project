@@ -39,8 +39,15 @@ def test_inventoried_container_identity_is_immutable() -> None:
 
 def test_unverified_items_upsert_uses_named_primary_key_constraint() -> None:
     sql = text(DB_DIR / "034_add_setup_extra_material_container_commands.sql")
-    assert "ON CONFLICT ON CONSTRAINT setup_container_extra_material_review_pkey" in sql
-    assert "ON CONFLICT (container_id)" not in sql
+    function_sql = sql.split(
+        "REVOKE ALL ON FUNCTION ref.set_setup_container_extra_material", 1
+    )[0]
+
+    # Inspect only executable function definitions. The migration's final
+    # pg_get_functiondef diagnostic intentionally contains the legacy text
+    # inside a LIKE pattern so acceptance can prove it is absent at runtime.
+    assert "ON CONFLICT ON CONSTRAINT setup_container_extra_material_review_pkey" in function_sql
+    assert "ON CONFLICT (container_id)" not in function_sql
     assert "named_remainder_constraint_fix_present" in sql
     assert "ambiguous_remainder_bare_column_present" in sql
 
