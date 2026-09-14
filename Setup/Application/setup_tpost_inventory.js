@@ -1,4 +1,4 @@
-/* Issue #167 — separate T-Post stock inventory outside Kit Boxes. */
+/* Issue #184 — separate T-Post stock inventory outside Kit Boxes. */
 (() => {
   const state = {
     access: null,
@@ -141,6 +141,7 @@
     state.inventoryContentId = null;
     renderContainerList();
     clearManagerForm();
+    clearInventoryForm();
     setBusy(true);
     try {
       const payload = await api(`api/setup/containers/${containerId}/extra-materials`);
@@ -165,6 +166,10 @@
     return parts.length ? parts.join(' · ') : 'Generic / mixed T-Post stock';
   }
 
+  function selectedInventoryRow() {
+    return state.contents.find((item) => Number(item.setup_container_extra_material_id) === Number(state.inventoryContentId)) || null;
+  }
+
   function renderDetail() {
     const empty = el('tpost-empty');
     const detail = el('tpost-detail');
@@ -183,7 +188,8 @@
     el('tpost-content-body').innerHTML = state.contents.map((row) => {
       const onHand = row.on_hand_quantity == null ? '<span class="unknown">Not counted</span>' : esc(formatNumber(row.on_hand_quantity));
       const expected = row.expected_quantity == null ? '<span class="unknown">Unverified</span>' : esc(formatNumber(row.expected_quantity));
-      return `<tr>
+      const editing = Number(row.setup_container_extra_material_id) === Number(state.editingContentId);
+      return `<tr data-content-id="${row.setup_container_extra_material_id}"${editing ? ' class="editing-source-row"' : ''}>
         <td><strong>${esc(rowLabel(row))}</strong></td>
         <td>${expected} ${esc(row.quantity_uom || 'EA')}</td>
         <td>${esc(row.verification_state || 'UNVERIFIED')}</td>
@@ -211,12 +217,22 @@
     if (el('tpost-length-unit')) el('tpost-length-unit').value = '';
     if (el('tpost-verification')) el('tpost-verification').value = 'UNVERIFIED';
     if (el('tpost-save')) el('tpost-save').textContent = 'Add T-Post Row';
+    if (el('tpost-clear')) el('tpost-clear').textContent = 'Clear';
     ['tpost-length','tpost-length-unit','tpost-size'].forEach((id) => { if (el(id)) el(id).disabled = false; });
+    el('tpost-manager-editor')?.classList.remove('editing');
+    const banner = el('tpost-editor-status');
+    if (banner) {
+      banner.hidden = true;
+      banner.textContent = '';
+    }
+    if (el('tpost-editor-title')) el('tpost-editor-title').textContent = 'Manager — Add T-Post Variant';
+    document.querySelectorAll('#tpost-content-body tr.editing-source-row').forEach((row) => row.classList.remove('editing-source-row'));
   }
 
   function beginEdit(contentId) {
     const row = state.contents.find((item) => Number(item.setup_container_extra_material_id) === Number(contentId));
     if (!row || !canManage()) return;
+    clearManagerForm();
     state.editingContentId = contentId;
     el('tpost-expected-qty').value = row.expected_quantity ?? '';
     el('tpost-length').value = row.length_value ?? '';
@@ -225,8 +241,21 @@
     el('tpost-verification').value = row.verification_state || 'UNVERIFIED';
     el('tpost-notes').value = row.notes || '';
     el('tpost-save').textContent = 'Save T-Post Row';
+    el('tpost-clear').textContent = 'Cancel edit';
     const immutable = Number(row.inventory_event_count || 0) > 0;
     ['tpost-length','tpost-length-unit','tpost-size'].forEach((id) => { el(id).disabled = immutable; });
+    el('tpost-manager-editor')?.classList.add('editing');
+    const banner = el('tpost-editor-status');
+    if (banner) {
+      banner.hidden = false;
+      banner.textContent = `EDITING EXISTING ROW — ${rowLabel(row)}. Save changes or Cancel edit.`;
+    }
+    if (el('tpost-editor-title')) el('tpost-editor-title').textContent = 'Manager — Edit T-Post Variant';
+    document.querySelector(`#tpost-content-body tr[data-content-id="${contentId}"]`)?.classList.add('editing-source-row');
+    window.requestAnimationFrame(() => {
+      el('tpost-manager-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.setTimeout(() => el('tpost-expected-qty')?.focus({ preventScroll: true }), 180);
+    });
   }
 
   function rowPayload() {
@@ -263,26 +292,92 @@
     }
   }
 
+  function clearInventoryForm() {
+    state.inventoryContentId = null;
+    if (el('tpost-inventory-selected')) el('tpost-inventory-selected').textContent = 'Select a stock row above.';
+    if (el('tpost-inventory-type')) el('tpost-inventory-type').value = 'INITIAL_COUNT';
+    if (el('tpost-inventory-delta')) el('tpost-inventory-delta').value = '';
+    if (el('tpost-inventory-note')) el('tpost-inventory-note').value = '';
+    if (el('tpost-inventory-quantity-label')) el('tpost-inventory-quantity-label').textContent = 'Quantity change (+/-)';
+    if (el('tpost-inventory-math')) {
+      el('tpost-inventory-math').textContent = 'Select a stock row to see the physical inventory calculation.';
+      el('tpost-inventory-math').dataset.state = '';
+    }
+    if (el('tpost-inventory-history')) el('tpost-inventory-history').innerHTML = '';
+  }
+
+  function updateInventoryMath() {
+    const row = selectedInventoryRow();
+    const target = el('tpost-inventory-math');
+    const label = el('tpost-inventory-quantity-label');
+    if (!row || !target || !label) return;
+    const eventType = el('tpost-inventory-type').value;
+    const entered = numberOrNull(el('tpost-inventory-delta').value);
+    const current = row.on_hand_quantity == null ? null : Number(row.on_hand_quantity);
+    const uom = row.quantity_uom || 'EA';
+    target.dataset.state = '';
+    label.textContent = eventType === 'INITIAL_COUNT' ? 'Observed initial count' : 'Change to on-hand (+/-)';
+
+    if (eventType === 'INITIAL_COUNT') {
+      target.textContent = entered == null
+        ? 'No prior physical count. Enter the observed count; that becomes the on-hand balance.'
+        : `No prior physical count → ${formatNumber(entered)} ${uom} on hand.`;
+      return;
+    }
+    if (current == null) {
+      target.textContent = 'No baseline physical count exists. Record Initial count before an adjustment.';
+      target.dataset.state = 'error';
+      return;
+    }
+    if (entered == null) {
+      target.textContent = `Current on hand: ${formatNumber(current)} ${uom}. Enter a +/− change to preview the new balance.`;
+      return;
+    }
+    const next = current + entered;
+    target.textContent = `${formatNumber(current)} ${uom} + (${formatNumber(entered)} ${uom}) = ${formatNumber(next)} ${uom} on hand.`;
+    if (next < 0) target.dataset.state = 'error';
+  }
+
   async function selectInventoryRow(contentId) {
     const row = state.contents.find((item) => Number(item.setup_container_extra_material_id) === Number(contentId));
     if (!row || !canAdjustInventory()) return;
     state.inventoryContentId = contentId;
-    el('tpost-inventory-selected').textContent = rowLabel(row);
+    const expected = row.expected_quantity == null ? 'unverified' : `${formatNumber(row.expected_quantity)} ${row.quantity_uom || 'EA'}`;
+    const current = row.on_hand_quantity == null ? 'not counted' : `${formatNumber(row.on_hand_quantity)} ${row.quantity_uom || 'EA'}`;
+    el('tpost-inventory-selected').textContent = `${rowLabel(row)} · Expected / target: ${expected} · Current physical on hand: ${current}`;
     el('tpost-inventory-type').value = Number(row.inventory_event_count || 0) > 0 ? 'COUNT_CORRECTION' : 'INITIAL_COUNT';
     el('tpost-inventory-delta').value = '';
     el('tpost-inventory-note').value = '';
+    updateInventoryMath();
     await loadHistory(contentId);
+    window.requestAnimationFrame(() => {
+      el('tpost-inventory-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.setTimeout(() => el('tpost-inventory-delta')?.focus({ preventScroll: true }), 180);
+    });
   }
 
   async function loadHistory(contentId) {
     try {
       const payload = await api(`api/setup/container-extra-materials/${contentId}/inventory-events`);
       const rows = payload.events || [];
-      el('tpost-inventory-history').innerHTML = rows.map((row) => `<div class="history-row">
-        <div>${esc(formatDate(row.occurred_at))}</div>
-        <div><strong>${esc(row.event_type)}</strong><br>${esc(formatNumber(row.quantity_delta))}</div>
-        <div>${esc(row.event_note || '')}${row.actor_display_name ? `<br><span class="muted">${esc(row.actor_display_name)}</span>` : ''}</div>
-      </div>`).join('') || '<div class="muted">No physical inventory history yet.</div>';
+      const balanceAfter = new Map();
+      let running = 0;
+      [...rows].reverse().forEach((row) => {
+        running += Number(row.quantity_delta || 0);
+        balanceAfter.set(Number(row.setup_extra_material_inventory_event_id), running);
+      });
+      el('tpost-inventory-history').innerHTML = rows.length
+        ? `<h3>Inventory History</h3>${rows.map((row) => {
+            const after = balanceAfter.get(Number(row.setup_extra_material_inventory_event_id));
+            const delta = Number(row.quantity_delta || 0);
+            const signed = delta > 0 ? `+${formatNumber(delta)}` : formatNumber(delta);
+            return `<div class="history-row">
+              <div>${esc(formatDate(row.occurred_at))}</div>
+              <div><strong>${esc(row.event_type)}</strong><br>Δ ${esc(signed)} → ${esc(formatNumber(after))} on hand</div>
+              <div>${esc(row.event_note || '')}${row.actor_display_name ? `<br><span class="muted">${esc(row.actor_display_name)}</span>` : ''}</div>
+            </div>`;
+          }).join('')}`
+        : '<div class="muted">No physical inventory history yet.</div>';
     } catch (error) {
       el('tpost-inventory-history').textContent = error.message;
     }
@@ -299,10 +394,11 @@
       setAlert('Enter a non-zero inventory quantity change.', 'error');
       return;
     }
+    const contentId = state.inventoryContentId;
     setBusy(true);
     try {
       await api(
-        `api/setup/container-extra-materials/${state.inventoryContentId}/inventory-events`,
+        `api/setup/container-extra-materials/${contentId}/inventory-events`,
         commandOptions('POST', {
           event_type: el('tpost-inventory-type').value,
           quantity_delta: delta,
@@ -311,7 +407,8 @@
         }),
       );
       await selectContainer(state.selectedContainerId);
-      setAlert('T-Post inventory event recorded.');
+      await selectInventoryRow(contentId);
+      setAlert('T-Post inventory event recorded; physical on-hand balance refreshed.');
     } catch (error) {
       setAlert(error.message, 'error');
     } finally {
@@ -324,6 +421,8 @@
     el('tpost-form')?.addEventListener('submit', saveRow);
     el('tpost-clear')?.addEventListener('click', clearManagerForm);
     el('tpost-inventory-form')?.addEventListener('submit', recordInventory);
+    el('tpost-inventory-type')?.addEventListener('change', updateInventoryMath);
+    el('tpost-inventory-delta')?.addEventListener('input', updateInventoryMath);
     try {
       await loadAccessAndCatalog();
       await loadContainers();
