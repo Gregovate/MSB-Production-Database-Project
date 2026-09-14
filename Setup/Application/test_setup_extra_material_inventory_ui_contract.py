@@ -135,8 +135,8 @@ def test_permanent_inventory_ui_uses_durable_184_wording() -> None:
     assert "Issue #167 bolt-on" not in html
     assert "Durable Setup inventory" in html
     assert "generic preload row" not in tpost
-    assert "Shared warehouse/field stock only" in tpost
-    assert "does <strong>not</strong> assign T-Posts to Displays" in tpost
+    assert "Count physical T-Posts wherever they are intentionally stored" in tpost
+    assert "Storage location does <strong>not</strong> assign T-Posts to Displays" in tpost
 
 
 def test_setup_assignments_link_directly_to_kit_inventory() -> None:
@@ -202,6 +202,7 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     tpost_js = text(BASE_DIR / "setup_tpost_inventory.js")
     tpost_clarity_js = text(BASE_DIR / "setup_tpost_inventory_clarity.js")
     tpost_clarity_css = text(BASE_DIR / "setup_tpost_inventory_clarity.css")
+    tpost_api = text(BASE_DIR / "setup_kit_inventory_api.py")
     host = text(BASE_DIR / "production_backend.py")
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
@@ -216,10 +217,11 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     assert "editing-source-row" in kit_review
     assert "Current on hand:" in kit_review
 
-    # T-Post stock must be unmistakably separate from Display/task requirements.
-    assert "T-Post Stock Inventory" in tpost_page
-    assert "does <strong>not</strong> assign T-Posts to Displays" in tpost_page
-    assert "Shared Stock Variants and Current Counts" in tpost_page
+    # T-Post inventory must distinguish physical storage context from task requirements.
+    assert "T-Post Inventory" in tpost_page
+    assert "Shared/bulk stock is shown separately" in tpost_page
+    assert "Storage location does <strong>not</strong> assign T-Posts to Displays" in tpost_page
+    assert "T-Post Rows and Current Counts" in tpost_page
     assert "Planning / Known Qty" in tpost_page
     assert "Physical On Hand" in tpost_page
     assert 'id="tpost-add-variant"' in tpost_page
@@ -232,13 +234,21 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     assert '"setup_tpost_inventory_clarity.css"' in host
     assert '"setup_tpost_inventory_clarity.js"' in host
     assert "tpost-config-panel.collapsed" in tpost_clarity_css
+    assert "Shared / Bulk T-Post Stock" in tpost_clarity_js
+    assert "T-Posts Stored With Kits / Displays" in tpost_clarity_js
+    assert "storageContextByContainer" in tpost_clarity_js
     assert "Count physical stock" in tpost_clarity_js
     assert "Edit stock definition" in tpost_clarity_js
-    assert "ADDING NEW STOCK VARIANT" in tpost_clarity_js
+    assert "ADDING NEW T-POST ROW" in tpost_clarity_js
     assert "setCountEnabled(false)" in tpost_clarity_js
     assert "state.selectedCountId" in tpost_clarity_js
     assert ".observe(body, { childList: true });" in tpost_clarity_js
     assert ".observe(body, { childList: true, subtree: true });" not in tpost_clarity_js
+
+    assert "AS storage_context" in tpost_api
+    assert "'SHARED_STOCK'" in tpost_api
+    assert "'WITH_KIT_OR_DISPLAY'" in tpost_api
+    assert "c.container_type_id = 2 OR coalesce(displays.display_rows, 0) > 0" in tpost_api
 
     assert 'id="tpost-editor-status"' in tpost_page
     assert 'id="tpost-inventory-math"' in tpost_page
