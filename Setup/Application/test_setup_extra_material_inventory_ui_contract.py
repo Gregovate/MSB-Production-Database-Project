@@ -37,6 +37,14 @@ def test_inventoried_container_identity_is_immutable() -> None:
         assert field in sql
 
 
+def test_unverified_items_upsert_uses_named_primary_key_constraint() -> None:
+    sql = text(DB_DIR / "034_add_setup_extra_material_container_commands.sql")
+    assert "ON CONFLICT ON CONSTRAINT setup_container_extra_material_review_pkey" in sql
+    assert "ON CONFLICT (container_id)" not in sql
+    assert "named_remainder_constraint_fix_present" in sql
+    assert "ambiguous_remainder_bare_column_present" in sql
+
+
 def test_inventory_history_uses_real_person_columns() -> None:
     repo = text(BASE_DIR / "setup_extra_material_repository.py")
     assert "p.display_name" not in repo
