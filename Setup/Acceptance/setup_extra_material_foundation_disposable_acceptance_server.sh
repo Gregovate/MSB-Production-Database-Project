@@ -27,6 +27,7 @@ M035="$BUNDLE_DIR/Setup/Database/035_add_setup_extra_material_inventory_commands
 M036="$BUNDLE_DIR/Setup/Database/036_seed_setup_extra_material_catalog.sql"
 M037="$BUNDLE_DIR/Setup/Database/037_harden_setup_extra_material_duplicate_rows.sql"
 M038="$BUNDLE_DIR/Setup/Database/038_preload_setup_extra_material_known_evidence.sql"
+PRELOAD_VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_extra_material_preload_disposable_validation.sql"
 VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_extra_material_foundation_disposable_validation.sql"
 PROD_BEFORE=""
 
@@ -87,7 +88,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 sudo -v
-required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$VALIDATION")
+required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$PRELOAD_VALIDATION" "$VALIDATION")
 for file in "${required_files[@]}"; do
     [[ -s "$file" ]] || { echo "FAIL: required acceptance file missing: $file"; exit 2; }
 done
@@ -163,7 +164,12 @@ for migration in "$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038"; do
 done
 
 echo
-echo "--- Run transactional #167 assertions ---"
+echo "--- Validate normalized known-evidence preload ---"
+sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+    psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$PRELOAD_VALIDATION"
+
+echo
+echo "--- Run transactional #167 behavior assertions ---"
 sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$VALIDATION"
 
