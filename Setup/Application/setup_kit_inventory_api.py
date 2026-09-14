@@ -38,6 +38,7 @@ def api_setup_kit_inventory_kit_boxes() -> Response:
                     coalesce(contents.expected_item_rows, 0) AS expected_item_rows,
                     coalesce(contents.counted_item_rows, 0) AS counted_item_rows,
                     coalesce(contents.uncounted_item_rows, 0) AS uncounted_item_rows,
+                    coalesce(displays.display_rows, 0) AS display_rows,
                     (review.container_id IS NOT NULL) AS has_unverified_items,
                     coalesce(assignments.assigned_task_count, 0) AS assigned_task_count,
                     assignments.assigned_task_names
@@ -57,6 +58,14 @@ def api_setup_kit_inventory_kit_boxes() -> Response:
                     WHERE cem.container_id = c.container_id
                       AND cem.active_flag
                 ) AS contents ON true
+                LEFT JOIN LATERAL (
+                    SELECT count(*) AS display_rows
+                    FROM ref.display AS d
+                    LEFT JOIN ref.display_status AS ds
+                      ON ds.display_status_id = d.display_status_id
+                    WHERE d.container_id = c.container_id
+                      AND upper(coalesce(ds.display_status_name, '')) <> 'RECYCLED'
+                ) AS displays ON true
                 LEFT JOIN ref.setup_container_extra_material_review AS review
                   ON review.container_id = c.container_id
                 LEFT JOIN LATERAL (
@@ -80,6 +89,46 @@ def api_setup_kit_inventory_kit_boxes() -> Response:
             )
             rows = [dict(row) for row in cur.fetchall()]
     return jsonify(kit_boxes=rows)
+
+
+@setup_kit_inventory_api.get("/api/setup/kit-inventory/kit-boxes/<int:container_id>/displays")
+def api_setup_kit_inventory_displays(container_id: int) -> Response:
+    """Return current physical Display identities stored in one Kit Box.
+
+    Display identity and Container assignment remain read-only on this route.
+    The result is presented separately from #167 Extra Material expected contents
+    so a Kit may contain LOR/Production Displays, Extra Materials, both, or neither.
+    """
+    require_reader()
+    with closing(psycopg2.connect(setup_database_dsn())) as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    d.display_id,
+                    d.display_name,
+                    d.inventory_type,
+                    d.lor_prop_id,
+                    d.stage_id,
+                    s.stage_key,
+                    s.stage_name,
+                    ds.display_status_name
+                FROM ref.display AS d
+                LEFT JOIN ref.display_status AS ds
+                  ON ds.display_status_id = d.display_status_id
+                LEFT JOIN ref.stage AS s
+                  ON s.stage_id = d.stage_id
+                JOIN ref.container AS c
+                  ON c.container_id = d.container_id
+                WHERE d.container_id = %s
+                  AND c.container_type_id = 2
+                  AND upper(coalesce(ds.display_status_name, '')) <> 'RECYCLED'
+                ORDER BY d.display_name, d.display_id
+                """,
+                (container_id,),
+            )
+            rows = [dict(row) for row in cur.fetchall()]
+    return jsonify(displays=rows)
 
 
 @setup_kit_inventory_api.errorhandler(SetupAuthenticationError)
