@@ -15,7 +15,6 @@ from backend import BASE_DIR
 from setup_api import setup_api
 from setup_resource_api import setup_resource_api
 from setup_extra_material_api import setup_extra_material_api
-from setup_extra_material_evidence_api import setup_extra_material_evidence_api
 from setup_kit_inventory_api import setup_kit_inventory_api
 from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
@@ -85,14 +84,7 @@ KIT_INVENTORY_ASSETS = frozenset(
         "setup_kit_inventory.css",
         "setup_kit_inventory.js",
         "setup_kit_inventory_displays.js",
-        "setup_kit_inventory_evidence.js",
         "setup_kit_inventory_review.js",
-    }
-)
-EVIDENCE_ASSETS = frozenset(
-    {
-        "setup_extra_material_evidence.css",
-        "setup_extra_material_evidence.js",
     }
 )
 TPOST_INVENTORY_ASSETS = frozenset({"setup_tpost_inventory.js"})
@@ -111,7 +103,6 @@ app = Flask(__name__)
 app.register_blueprint(setup_api)
 app.register_blueprint(setup_resource_api)
 app.register_blueprint(setup_extra_material_api)
-app.register_blueprint(setup_extra_material_evidence_api)
 app.register_blueprint(setup_kit_inventory_api)
 app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
@@ -162,21 +153,6 @@ def tpost_inventory():
 @app.get("/t-post-inventory/assets/<path:name>")
 def tpost_inventory_asset(name: str):
     if name not in TPOST_INVENTORY_ASSETS:
-        abort(404)
-    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
-    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
-
-
-@app.get("/extra-material-evidence")
-@app.get("/extra-material-evidence/")
-def extra_material_evidence():
-    """Read-only normalized procedure/spreadsheet evidence explorer."""
-    return _no_store(send_from_directory(BASE_DIR, "extra_material_evidence.html"))
-
-
-@app.get("/extra-material-evidence/assets/<path:name>")
-def extra_material_evidence_asset(name: str):
-    if name not in EVIDENCE_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
