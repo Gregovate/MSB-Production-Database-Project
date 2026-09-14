@@ -15,10 +15,11 @@ setup_extra_material_evidence_api = Blueprint("setup_extra_material_evidence_api
 
 @setup_extra_material_evidence_api.get("/api/setup/extra-material-evidence/sources")
 def api_setup_extra_material_evidence_sources() -> Response:
-    """Return normalized procedure/spreadsheet findings before final assignment.
+    """Return normalized procedure findings before final task/step assignment.
 
-    These rows are evidence/reconciliation context, not accepted Setup truth. One
-    source document may point at several candidate Containers and reusable tasks.
+    Procedure/folder context already supplies authoritative Stage identity. These
+    rows remain evidence/reconciliation context until a Manager accepts specific
+    task, Kit, source, or expected-content relationships.
     """
     require_reader()
     with closing(psycopg2.connect(setup_database_dsn())) as conn:
@@ -26,32 +27,32 @@ def api_setup_extra_material_evidence_sources() -> Response:
             cur.execute(
                 """
                 SELECT
-                    setup_extra_material_evidence_source_id,
-                    source_batch,
-                    stage_key,
-                    source_file,
-                    source_pages,
-                    material_families,
-                    material_keys,
-                    family_page_index,
-                    legacy_container_refs,
-                    current_id_refs,
-                    noncurrent_or_legacy_refs,
-                    proposed_current_source_container_ids,
-                    current_stage_kit_candidate_ids,
-                    suggested_setup_task_ids,
-                    source_mapping_statuses,
-                    task_mapping_statuses,
-                    requirement_preload_states,
-                    catalog_dispositions,
-                    catalog_statuses,
-                    verification_needed,
-                    usage_restrictions
-                FROM ref.setup_extra_material_evidence_source
-                ORDER BY
-                    CASE WHEN stage_key ~ '^[0-9]+$' THEN stage_key::integer ELSE 999 END,
-                    stage_key,
-                    source_file
+                    e.setup_extra_material_evidence_source_id,
+                    e.source_batch,
+                    e.stage_id,
+                    e.stage_key,
+                    s.stage_name,
+                    e.source_file,
+                    e.source_pages,
+                    e.material_families,
+                    e.material_keys,
+                    e.family_page_index,
+                    e.legacy_container_refs,
+                    e.current_id_refs,
+                    e.noncurrent_or_legacy_refs,
+                    e.proposed_current_source_container_ids,
+                    e.current_stage_kit_candidate_ids,
+                    e.suggested_setup_task_ids,
+                    e.source_mapping_statuses,
+                    e.task_mapping_statuses,
+                    e.requirement_preload_states,
+                    e.catalog_dispositions,
+                    e.catalog_statuses,
+                    e.verification_needed,
+                    e.usage_restrictions
+                FROM ref.setup_extra_material_evidence_source e
+                JOIN ref.stage s ON s.stage_id = e.stage_id
+                ORDER BY s.park_order, s.sub_order, e.source_file
                 """
             )
             rows = [dict(row) for row in cur.fetchall()]
