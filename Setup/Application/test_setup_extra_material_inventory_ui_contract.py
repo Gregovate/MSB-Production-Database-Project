@@ -65,8 +65,8 @@ def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> Non
     display_js = text(BASE_DIR / "setup_kit_inventory_displays.js")
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
-    # Setup retains an entry point, but the first embedded #167 workspace is
-    # removed at runtime and the tab routes to durable Kit Inventory instead.
+    # Setup retains an entry point, but the early embedded workspace is removed
+    # at runtime and the tab routes to durable Kit Inventory instead.
     assert 'data-view="extra-materials"' in html
     assert "tab.textContent = 'Kit Inventory'" in bridge
     assert "document.getElementById('extra-materials-view')?.remove()" in bridge
@@ -99,6 +99,16 @@ def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> Non
     assert "kit-inventory/kit-boxes/${containerId}/displays" in display_js
     assert "No current Display identities are assigned to this Kit Box." in display_js
     assert "row.inventory_type" in display_js
+
+
+def test_permanent_inventory_ui_uses_durable_184_wording() -> None:
+    html = text(BASE_DIR / "production.html")
+    tpost = text(BASE_DIR / "t_post_inventory.html")
+
+    assert "Issue #167 bolt-on" not in html
+    assert "Durable Setup inventory" in html
+    assert "generic preload row" not in tpost
+    assert "A generic source row establishes the physical stock location" in tpost
 
 
 def test_setup_assignments_link_directly_to_kit_inventory() -> None:
@@ -146,7 +156,7 @@ def test_kit_inventory_list_reads_existing_141_assignments_and_display_contents(
 
     # A Kit may contain normal Production Displays. Those rows remain their own
     # authoritative physical identities and are presented read-only, separately
-    # from #167 Extra Material expected contents.
+    # from durable Extra Material expected contents.
     assert '"/api/setup/kit-inventory/kit-boxes/<int:container_id>/displays"' in api
     assert "FROM ref.display AS d" in api
     assert "d.container_id = %s" in api
