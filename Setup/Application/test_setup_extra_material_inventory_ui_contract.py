@@ -45,6 +45,17 @@ def test_inventory_history_uses_real_person_columns() -> None:
     assert "p.email" in repo
 
 
+def test_kit_detail_does_not_require_protected_container_type_lookup() -> None:
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+
+    # fieldwiring_app intentionally lacks broad SELECT on ref.container_type.
+    # Kit detail needs only the durable ref.container.container_type_id; the
+    # known Kit Box label can be presented without broadening DB privileges.
+    assert "ref.container_type" not in repo
+    assert "c.container_type_id" in repo
+    assert "CASE WHEN c.container_type_id = 2 THEN 'Kit Box' END AS container_type_name" in repo
+
+
 def test_kit_inventory_is_standalone_route_not_annual_session_workspace() -> None:
     html = text(BASE_DIR / "production.html")
     host = text(BASE_DIR / "production_backend.py")
