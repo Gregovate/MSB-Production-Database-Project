@@ -27,6 +27,7 @@ M035="$BUNDLE_DIR/Setup/Database/035_add_setup_extra_material_inventory_commands
 M036="$BUNDLE_DIR/Setup/Database/036_seed_setup_extra_material_catalog.sql"
 M037="$BUNDLE_DIR/Setup/Database/037_harden_setup_extra_material_duplicate_rows.sql"
 VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_extra_material_foundation_disposable_validation.sql"
+REMAINDER_VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_184_remainder_upsert_disposable_validation.sql"
 PROD_BEFORE=""
 
 mkdir -p "$REPORT_DIR"
@@ -86,7 +87,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 sudo -v
-required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$VALIDATION")
+required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$VALIDATION" "$REMAINDER_VALIDATION")
 for file in "${required_files[@]}"; do
     [[ -s "$file" ]] || { echo "FAIL: required acceptance file missing: $file"; exit 2; }
 done
@@ -164,6 +165,11 @@ echo
 echo "--- Run transactional #184 behavior assertions ---"
 sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$VALIDATION"
+
+echo
+echo "--- Run focused #184 Remainder upsert assertions ---"
+sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+    psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$REMAINDER_VALIDATION"
 
 echo
 echo "--- Post-validation state ---"
