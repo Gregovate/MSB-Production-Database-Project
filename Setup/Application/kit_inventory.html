@@ -13,13 +13,12 @@
     <div>
       <div class="eyebrow">Setup · durable Container inventory</div>
       <h1>Kit Inventory</h1>
-      <div class="muted">Loaded procedure knowledge, normalized Extra Materials, Remainders, and physical counts remain separate facts.</div>
+      <div class="muted">Normalized Extra Materials, Remainders, task assignments, and physical counts remain separate durable facts.</div>
     </div>
   </div>
   <div class="inventory-header-actions">
     <span id="inventory-access" class="access-badge">Checking access…</span>
     <a class="button secondary" href="../t-post-inventory/">T-Post Stock</a>
-    <a id="inventory-evidence-explorer" class="button secondary" href="../extra-material-evidence/">Evidence Explorer</a>
     <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
     <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
   </div>
@@ -65,7 +64,7 @@
           <div class="section-title compact">
             <div>
               <h3>Setup Task Assignments</h3>
-              <div class="hint">Existing reusable <code>task → KIT</code> relationships. This is the logistics assignment; it is separate from Kit contents.</div>
+              <div class="hint">Existing reusable <code>task → KIT</code> relationships. This is the permanent logistics assignment and is separate from Kit contents.</div>
             </div>
           </div>
           <div class="table-wrap">
@@ -95,29 +94,13 @@
           <div class="section-title compact">
             <div>
               <h3>Expected Extra Material Contents</h3>
-              <div class="hint">Normalized procedure findings and later Manager corrections. All preload rows remain Unverified until reviewed. Expected contents are separate from physical count.</div>
+              <div class="hint">Normalized Kit contents plus later Manager corrections. One-time migrated rows remain Unverified until reviewed. Expected contents are separate from physical count.</div>
             </div>
           </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Item</th><th>Expected</th><th>Size / Length / Color</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
               <tbody id="kit-content-body"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="detail-section">
-          <div class="section-title compact">
-            <div>
-              <h3>Procedure Findings / Remainders</h3>
-              <div class="hint">Read-only procedure/spreadsheet evidence that points at this Kit, even when the exact Extra Material variant or Setup task/step still needs cleanup.</div>
-            </div>
-          </div>
-          <div id="kit-evidence-summary" class="muted"></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Stage / Procedure</th><th>Material findings</th><th>Why this Kit</th><th>Remaining review</th></tr></thead>
-              <tbody id="kit-evidence-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
             </table>
           </div>
         </section>
@@ -146,7 +129,7 @@
 
         <section class="detail-section unverified-section">
           <h3>Unverified Items / Remainders</h3>
-          <div class="hint">Temporary procedure/KIT information that does not yet belong in the normalized Extra Material table. The written procedures remain the fall-back source during cleanup.</div>
+          <div class="hint">Durable cleanup notes left by the one-time inventory migration. These do not become Extra Material identities until a Manager resolves them. The written procedures remain the fall-back source.</div>
           <textarea id="unverified-items" rows="8" readonly></textarea>
           <div id="unverified-actions" class="action-row manager-only" hidden>
             <button id="save-unverified" type="button">Save Remainders</button>
@@ -155,7 +138,7 @@
 
         <section id="inventory-editor" class="detail-section inventory-operator-only" hidden>
           <h3>Physical Extra Material Inventory</h3>
-          <div class="hint">Production Crew and Managers record what is physically present for recognized Extra Material rows. Inventory changes never rewrite Display identity, expected contents, reusable Setup requirements, or procedure evidence.</div>
+          <div class="hint">Production Crew and Managers record what is physically present for recognized Extra Material rows. Inventory changes never rewrite Display identity, expected contents, reusable Setup requirements, or task/KIT assignments.</div>
           <div id="inventory-selected" class="selected-item">Select an expected item above.</div>
           <form id="inventory-form">
             <div class="form-grid inventory-form-grid">
@@ -174,7 +157,6 @@
 
 <script src="assets/setup_kit_inventory.js?v=2026-09-13.2"></script>
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
-<script src="assets/setup_kit_inventory_evidence.js?v=2026-09-13.1"></script>
 <script src="assets/setup_kit_inventory_review.js?v=2026-09-13.1"></script>
 </body>
 </html>
