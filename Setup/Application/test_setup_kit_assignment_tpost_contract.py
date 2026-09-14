@@ -45,20 +45,25 @@ def test_tpost_stock_is_permanent_separate_inventory_surface() -> None:
     assert 'send_from_directory(BASE_DIR, "t_post_inventory.html")' in host
     assert '"setup_tpost_inventory.js"' in host
     assert '"setup_tpost_inventory_clarity.js"' in host
-    assert "T-Post Stock Inventory" in page
-    assert "Shared warehouse/field stock only" in page
-    assert "does <strong>not</strong> assign T-Posts to Displays" in page
-    assert "Shared Stock Variants and Current Counts" in page
+    assert "T-Post Inventory" in page
+    assert "Count physical T-Posts wherever they are intentionally stored" in page
+    assert "Storage location does <strong>not</strong> assign T-Posts to Displays" in page
+    assert "T-Post Rows and Current Counts" in page
     assert "Count physical stock" in page
     assert "api/setup/t-post-inventory/containers" in js
     assert "INITIAL_COUNT" in js
     assert "COUNT_CORRECTION" in js
     assert "Edit stock definition" in clarity_js
     assert "Count physical stock" in clarity_js
+    assert "Shared / Bulk T-Post Stock" in clarity_js
+    assert "T-Posts Stored With Kits / Displays" in clarity_js
 
     assert '"/api/setup/t-post-inventory/containers"' in api
     assert "m.material_name = 'T-Post'" in api
     assert "ref.setup_container_extra_material" in api
+    assert "AS storage_context" in api
+    assert "'SHARED_STOCK'" in api
+    assert "'WITH_KIT_OR_DISPLAY'" in api
 
     # #184 supplies the durable T-Post workflow only. Specific current stock
     # Containers and initial rows are supplied later by #167's one-time load.
