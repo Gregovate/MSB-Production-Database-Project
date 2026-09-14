@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Issue #167 — current-Production disposable Extra Material acceptance.
+# Issue #184 — current-Production disposable durable Kit Inventory acceptance.
 # Authority: MSB-Server-Management PostgreSQL_Disposable_Acceptance_Standard.md.
 # Production PostgreSQL is pg_dump + SELECT only; candidate writes are disposable only.
 
@@ -10,15 +10,15 @@ PROD_DB="msb"
 DB_ACTOR="msbadmin"
 IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
-TEST_DB="msb_setup_167_acceptance"
+TEST_DB="msb_setup_184_acceptance"
 BUNDLE_DIR="${1:?bundle directory is required}"
 CANDIDATE_SHA="${2:?candidate SHA is required}"
 STAMP="$(date +%Y%m%dT%H%M%S)"
-TEST_CONTAINER="msb-setup-167-acceptance-${$}"
-TEST_PASSWORD="setup-167-${$}-$(date +%s)"
-DUMP_FILE="/tmp/msb-setup-167-production-${STAMP}-${$}.dump"
+TEST_CONTAINER="msb-setup-184-acceptance-${$}"
+TEST_PASSWORD="setup-184-${$}-$(date +%s)"
+DUMP_FILE="/tmp/msb-setup-184-production-${STAMP}-${$}.dump"
 REPORT_DIR="$HOME/setup-acceptance-reports"
-REPORT="$REPORT_DIR/Setup_167_Extra_Material_Disposable_${STAMP}.txt"
+REPORT="$REPORT_DIR/Setup_184_Durable_Kit_Inventory_Disposable_${STAMP}.txt"
 
 M032="$BUNDLE_DIR/Setup/Database/032_add_setup_extra_material_schema.sql"
 M033="$BUNDLE_DIR/Setup/Database/033_add_setup_extra_material_manager_commands.sql"
@@ -26,16 +26,13 @@ M034="$BUNDLE_DIR/Setup/Database/034_add_setup_extra_material_container_commands
 M035="$BUNDLE_DIR/Setup/Database/035_add_setup_extra_material_inventory_commands.sql"
 M036="$BUNDLE_DIR/Setup/Database/036_seed_setup_extra_material_catalog.sql"
 M037="$BUNDLE_DIR/Setup/Database/037_harden_setup_extra_material_duplicate_rows.sql"
-M038="$BUNDLE_DIR/Setup/Database/038_preload_setup_extra_material_known_evidence.sql"
-M043="$BUNDLE_DIR/Setup/Database/043_preload_setup_kit_inventory_and_tpost_stock.sql"
-PRELOAD_VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_extra_material_preload_disposable_validation.sql"
 VALIDATION="$BUNDLE_DIR/Setup/Acceptance/setup_extra_material_foundation_disposable_validation.sql"
 PROD_BEFORE=""
 
 mkdir -p "$REPORT_DIR"
 exec > >(tee "$REPORT") 2>&1
 
-echo "========== SETUP #167 EXTRA MATERIAL DISPOSABLE ACCEPTANCE =========="
+echo "========== SETUP #184 DURABLE KIT INVENTORY DISPOSABLE ACCEPTANCE =========="
 echo "Candidate SHA: $CANDIDATE_SHA"
 echo "Report:        $REPORT"
 echo "Production DB: pg_dump + SELECT only"
@@ -89,7 +86,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 sudo -v
-required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$M043" "$PRELOAD_VALIDATION" "$VALIDATION")
+required_files=("$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$VALIDATION")
 for file in "${required_files[@]}"; do
     [[ -s "$file" ]] || { echo "FAIL: required acceptance file missing: $file"; exit 2; }
 done
@@ -156,20 +153,15 @@ psql_test() {
 psql_test -c "DO \$role\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fieldwiring_app') THEN CREATE ROLE fieldwiring_app LOGIN; END IF; END \$role\$;"
 
 echo
-echo "--- Apply exact #167 candidate migrations to disposable clone only ---"
-for migration in "$M032" "$M033" "$M034" "$M035" "$M036" "$M037" "$M038" "$M043"; do
+echo "--- Apply exact #184 durable foundation migrations to disposable clone only ---"
+for migration in "$M032" "$M033" "$M034" "$M035" "$M036" "$M037"; do
     echo "Applying $(basename "$migration")"
     sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
         psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$migration"
 done
 
 echo
-echo "--- Validate one-time inventory preload + durable runtime state ---"
-sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-    psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$PRELOAD_VALIDATION"
-
-echo
-echo "--- Run transactional #167 behavior assertions ---"
+echo "--- Run transactional #184 behavior assertions ---"
 sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$TEST_DB" < "$VALIDATION"
 
@@ -180,12 +172,10 @@ psql_test -c "
         (SELECT count(*) FROM ref.setup_extra_material WHERE active_flag) AS active_catalog_rows,
         (SELECT count(*) FROM ref.setup_task_extra_material WHERE active_flag) AS active_task_material_rows,
         (SELECT count(*) FROM ref.setup_container_extra_material WHERE active_flag) AS active_container_material_rows,
-        (SELECT count(*) FROM ref.setup_container_extra_material WHERE active_flag AND notes LIKE 'Procedure-derived Kit preload v6.%') AS procedure_loaded_kit_rows,
-        (SELECT count(*) FROM ref.setup_container_extra_material_review WHERE unverified_items_text LIKE '%[#167 PROCEDURE REMAINDERS v6]%') AS kits_with_remainders,
         (SELECT count(*) FROM ops.setup_session WHERE season_year=2026) AS setup_2026_sessions,
         has_table_privilege('fieldwiring_app','ref.setup_extra_material','INSERT') AS broad_catalog_insert,
         has_table_privilege('fieldwiring_app','ops.setup_extra_material_inventory_event','UPDATE') AS broad_inventory_update;
 "
 
 echo
-echo "DISPOSABLE_SETUP_167_EXTRA_MATERIAL_ACCEPTANCE_PASS"
+echo "DISPOSABLE_SETUP_184_DURABLE_KIT_INVENTORY_ACCEPTANCE_PASS"
