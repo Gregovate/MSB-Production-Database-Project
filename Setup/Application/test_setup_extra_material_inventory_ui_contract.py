@@ -135,7 +135,8 @@ def test_permanent_inventory_ui_uses_durable_184_wording() -> None:
     assert "Issue #167 bolt-on" not in html
     assert "Durable Setup inventory" in html
     assert "generic preload row" not in tpost
-    assert "Shared stock Containers are not Kit Boxes" in tpost
+    assert "Shared warehouse/field stock only" in tpost
+    assert "does <strong>not</strong> assign T-Posts to Displays" in tpost
 
 
 def test_setup_assignments_link_directly_to_kit_inventory() -> None:
@@ -210,7 +211,7 @@ def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -
     assert 'id="inventory-math"' in kit_page
     assert "Count correction (+/-)" in kit_page
     assert "normalizeRemainderDisplay" in kit_review
-    assert "textarea.value.replace(/\\\\n/g, '\\n')" in kit_review
+    assert "textarea.value.replace(/\\\\n/g, '\n')" in kit_review
     assert "EDITING EXISTING ROW" in kit_review
     assert "editing-source-row" in kit_review
     assert "Current on hand:" in kit_review
