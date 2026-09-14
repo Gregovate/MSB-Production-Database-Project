@@ -49,6 +49,7 @@ $files = @(
     'Setup\Database\036_seed_setup_extra_material_catalog.sql',
     'Setup\Database\037_harden_setup_extra_material_duplicate_rows.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_validation.sql',
+    'Setup\Acceptance\setup_184_remainder_upsert_disposable_validation.sql',
     'Setup\Acceptance\setup_extra_material_foundation_disposable_acceptance_server.sh'
 )
 
