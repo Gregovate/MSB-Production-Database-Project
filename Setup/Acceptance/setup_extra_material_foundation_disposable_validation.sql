@@ -95,6 +95,10 @@ BEGIN
         RAISE EXCEPTION 'No mapped active Production Crew user exists for disposable #167 inventory validation';
     END IF;
 
+    /* Negative authorization proof must use a Volunteer-only account. A person
+       may legitimately carry a Volunteer role/policy plus Production Crew or
+       Manager authority; such a dual-authorized account is expected to pass the
+       inventory command and must not be used as the denial test actor. */
     SELECT lower(u.email)
       INTO v_volunteer_email
     FROM public.directus_users u
@@ -111,8 +115,23 @@ BEGIN
                 AND p.name='Volunteer'
           )
       )
+      AND coalesce(r.name,'') NOT IN ('Production Crew','Manager','Administrator')
+      AND NOT EXISTS (
+          SELECT 1 FROM public.directus_access a
+          JOIN public.directus_policies p ON p.id=a.policy
+          WHERE (a."user"=u.id OR (u.role IS NOT NULL AND a.role=u.role))
+            AND p.name IN ('Production Crew','Manager','Administrator')
+      )
     ORDER BY u.email
     LIMIT 1;
+
+    RAISE NOTICE 'Disposable #167 Manager actor: %', v_manager_email;
+    RAISE NOTICE 'Disposable #167 Production Crew actor: %', v_crew_email;
+    IF v_volunteer_email IS NULL THEN
+        RAISE NOTICE 'Disposable #167 Volunteer-only denial actor: none available; negative Volunteer proof skipped';
+    ELSE
+        RAISE NOTICE 'Disposable #167 Volunteer-only denial actor: %', v_volunteer_email;
+    END IF;
 
     /* Shared T-post stock exists in current Production as Container 36. Use it
        when available; otherwise use the first current physical Container in the
@@ -257,7 +276,9 @@ BEGIN
         RAISE EXCEPTION 'Nonzero physical stock was unexpectedly hidden by deactivation';
     END IF;
 
-    /* Volunteer must not receive durable inventory-adjustment authority. */
+    /* A Volunteer-only account must not receive durable inventory authority.
+       Dual-authorized Volunteer + Production Crew/Manager accounts are correctly
+       excluded from this negative test because their elevated authority wins. */
     IF v_volunteer_email IS NOT NULL THEN
         v_error_seen := false;
         BEGIN
@@ -268,7 +289,7 @@ BEGIN
             v_error_seen := true;
         END;
         IF NOT v_error_seen THEN
-            RAISE EXCEPTION 'Volunteer unexpectedly received Extra Material inventory authority';
+            RAISE EXCEPTION 'Volunteer-only account unexpectedly received Extra Material inventory authority';
         END IF;
     END IF;
 
