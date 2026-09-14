@@ -135,7 +135,7 @@ def test_permanent_inventory_ui_uses_durable_184_wording() -> None:
     assert "Issue #167 bolt-on" not in html
     assert "Durable Setup inventory" in html
     assert "generic preload row" not in tpost
-    assert "A generic source row establishes the physical stock location" in tpost
+    assert "Shared stock Containers are not Kit Boxes" in tpost
 
 
 def test_setup_assignments_link_directly_to_kit_inventory() -> None:
@@ -192,6 +192,40 @@ def test_kit_inventory_list_reads_existing_141_assignments_and_display_contents(
     assert "d.lor_prop_id" in api
     assert "INSERT INTO ref.display" not in api
     assert "UPDATE ref.display" not in api
+
+
+def test_inventory_browser_review_makes_edit_state_and_balance_math_explicit() -> None:
+    kit_page = text(BASE_DIR / "kit_inventory.html")
+    kit_review = text(BASE_DIR / "setup_kit_inventory_review.js")
+    tpost_page = text(BASE_DIR / "t_post_inventory.html")
+    tpost_js = text(BASE_DIR / "setup_tpost_inventory.js")
+    css = text(BASE_DIR / "setup_kit_inventory.css")
+
+    assert "Expected in Kit" in kit_page
+    assert "Physical On Hand" in kit_page
+    assert 'id="expected-editor-status"' in kit_page
+    assert 'id="inventory-math"' in kit_page
+    assert "Count correction (+/-)" in kit_page
+    assert "normalizeRemainderDisplay" in kit_review
+    assert "textarea.value.replace(/\\\\n/g, '\\n')" in kit_review
+    assert "EDITING EXISTING ROW" in kit_review
+    assert "editing-source-row" in kit_review
+    assert "Current on hand:" in kit_review
+
+    assert "Expected / Target" in tpost_page
+    assert "Physical On Hand" in tpost_page
+    assert 'id="tpost-editor-status"' in tpost_page
+    assert 'id="tpost-inventory-math"' in tpost_page
+    assert "Expected / target qty (not count)" in tpost_page
+    assert "Current physical on hand:" in tpost_js
+    assert "await selectInventoryRow(contentId)" in tpost_js
+    assert "balanceAfter" in tpost_js
+    assert "editing-source-row" in tpost_js
+    assert "EDITING EXISTING ROW" in tpost_js
+
+    assert ".editor-panel.editing" in css
+    assert ".editor-banner" in css
+    assert ".inventory-math" in css
 
 
 def test_new_python_modules_parse() -> None:
