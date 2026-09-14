@@ -83,6 +83,7 @@ KIT_INVENTORY_ASSETS = frozenset(
     {
         "setup_kit_inventory.css",
         "setup_kit_inventory.js",
+        "setup_kit_inventory_displays.js",
     }
 )
 
