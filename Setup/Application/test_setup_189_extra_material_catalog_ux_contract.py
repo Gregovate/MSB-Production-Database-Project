@@ -33,7 +33,7 @@ def test_kit_inventory_exposes_resource_consistent_extra_material_catalog_manage
 
     assert "search before creating" in page
     assert "deactivate/reactivate rather than duplicating it" in page
-    assert "stable identity" in page
+    assert "stable catalog identity" in page
     assert "Kit-specific quantity, specification, verification, and notes remain on the Kit-content row" in page
 
     assert "loadAdminExtraMaterialCatalog" in review
@@ -83,7 +83,7 @@ def test_catalog_management_uses_existing_update_boundary_for_edit_and_active_st
     assert "catalogCommandOptions('PATCH'" in review
     assert "active_flag: activeFlag" in review
     assert "display_order: displayOrder" in review
-    assert "existing Kit/task relationships remain attached" in review
+    assert "Existing Kit/task relationships remain attached" in review
 
     assert '@setup_extra_material_api.patch("/api/setup/extra-materials/<int:material_id>")' in api
     assert "repo().update_material" in api
