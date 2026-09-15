@@ -79,6 +79,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_extra_materials.css",
         "setup_extra_materials.js",
         "setup_task_extra_materials.js",
+        "setup_planning_summary.js",
     }
 )
 KIT_INVENTORY_ASSETS = frozenset(
