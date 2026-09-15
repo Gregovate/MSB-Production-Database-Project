@@ -108,6 +108,7 @@ button, select { font: inherit; }
   page-break-inside: avoid;
   min-width: 0;
 }
+.material-task { border-width: 2px; }
 .task-header {
   display: flex;
   align-items: flex-start;
@@ -117,12 +118,51 @@ button, select { font: inherit; }
   padding-bottom: 4px;
   margin-bottom: 4px;
 }
+.task-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
 .task-title { margin: 0; font-size: .91rem; line-height: 1.15; }
-.task-order { white-space: nowrap; font-size: .7rem; font-weight: 700; }
-.task-meta {
-  margin: 0 0 4px;
+.task-order { white-space: nowrap; font-size: .78rem; font-weight: 800; }
+.material-badge {
+  border: 1px solid #111;
+  padding: 1px 4px;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.scheduler-strip {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 2px 0 4px;
+  padding: 3px 5px;
+  border: 1px solid #aaa;
+  background: #f6f6f6;
   font-size: .7rem;
-  color: #333;
+}
+.scheduler-strip strong { font-weight: 800; }
+.missing-value,
+.review-value {
+  font-weight: 800;
+  text-decoration: underline;
+}
+.scheduler-review {
+  margin: 4px 0;
+  padding: 4px 5px;
+  border: 2px solid #111;
+  font-size: .69rem;
+  line-height: 1.2;
+}
+.scheduler-ready {
+  margin: 3px 0;
+  font-size: .66rem;
+  color: #555;
+  font-style: italic;
 }
 .compact-line {
   margin: 2px 0;
@@ -197,8 +237,11 @@ button, select { font: inherit; }
   .task-card { padding: 4px 5px; }
   .task-header { padding-bottom: 2px; margin-bottom: 2px; }
   .task-title { font-size: 8.2pt; }
-  .task-order { font-size: 6.2pt; }
-  .task-meta { font-size: 6.3pt; margin-bottom: 2px; }
+  .task-order { font-size: 7pt; }
+  .material-badge { font-size: 5.1pt; padding: 1px 3px; }
+  .scheduler-strip { font-size: 6.2pt; gap: 6px; margin: 1px 0 2px; padding: 2px 3px; }
+  .scheduler-review { font-size: 5.9pt; margin: 2px 0; padding: 2px 3px; border-width: 1.5px; }
+  .scheduler-ready { font-size: 5.7pt; margin: 1px 0; }
   .compact-line { font-size: 6.35pt; margin: 1px 0; line-height: 1.18; }
   .review-box { font-size: 6.1pt; margin: 2px 0; padding: 2px 3px; }
   .correction-space { min-height: 25px; margin-top: 3px; padding-top: 10px; }
