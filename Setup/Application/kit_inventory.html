@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Kit Inventory</title>
-  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-15.1">
+  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-15.2">
 </head>
 <body>
 <header class="inventory-header">
@@ -276,5 +276,73 @@
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
 <script src="assets/setup_kit_inventory_review.js?v=2026-09-15.2"></script>
 <script src="assets/setup_uom_catalog.js?v=2026-09-15.1"></script>
+<script>
+/* Issue #189 browser-acceptance clarity: existing catalog editing is opt-in. */
+(() => {
+  const select = document.getElementById('extra-material-catalog-select');
+  if (!select) return;
+
+  const existingBlock = select.closest('.catalog-manager-block');
+  const createBlock = document.querySelector('.catalog-create-block');
+  const editGrid = document.getElementById('extra-material-catalog-name')?.closest('.catalog-edit-grid');
+  const notesLabel = document.getElementById('extra-material-catalog-notes')?.closest('label');
+  const state = document.getElementById('extra-material-catalog-state');
+  const saveRow = document.getElementById('extra-material-catalog-save')?.closest('.action-row');
+  const existingHeading = existingBlock?.querySelector('.catalog-manager-heading h3');
+  const existingHint = existingBlock?.querySelector('.catalog-manager-heading .hint');
+  const createHeading = createBlock?.querySelector('.catalog-manager-heading h3');
+  const save = document.getElementById('extra-material-catalog-save');
+
+  if (existingBlock) existingBlock.classList.add('catalog-existing-block');
+  if (existingHeading) existingHeading.textContent = 'Find or edit an existing catalog material';
+  if (existingHint) existingHint.textContent = 'Search first. Nothing is edited until you explicitly choose a catalog material below.';
+  if (createHeading) createHeading.textContent = 'Create a new catalog material';
+  if (save) save.textContent = 'Save Changes to Existing Material';
+
+  const editNodes = [editGrid, notesLabel, state, saveRow].filter(Boolean);
+  let explicitValue = '';
+  let applying = false;
+
+  function optionExists(value) {
+    return Boolean(value) && Array.from(select.options).some((option) => option.value === value);
+  }
+
+  function ensurePlaceholder() {
+    if (!select.querySelector('option[data-edit-placeholder="1"]')) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.dataset.editPlaceholder = '1';
+      option.textContent = 'Select a catalog material to edit…';
+      select.insertBefore(option, select.firstChild);
+    }
+  }
+
+  function applyDisclosure() {
+    if (applying) return;
+    applying = true;
+    ensurePlaceholder();
+    if (explicitValue && optionExists(explicitValue)) {
+      select.value = explicitValue;
+    } else {
+      explicitValue = '';
+      select.value = '';
+    }
+    const editing = Boolean(select.value);
+    existingBlock?.classList.toggle('catalog-edit-active', editing);
+    editNodes.forEach((node) => { node.hidden = !editing; });
+    applying = false;
+  }
+
+  select.addEventListener('change', () => {
+    explicitValue = select.value;
+    applyDisclosure();
+  });
+
+  new MutationObserver(() => queueMicrotask(applyDisclosure))
+    .observe(select, { childList: true });
+
+  queueMicrotask(applyDisclosure);
+})();
+</script>
 </body>
 </html>
