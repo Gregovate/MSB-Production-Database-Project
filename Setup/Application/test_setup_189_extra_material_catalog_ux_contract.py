@@ -61,7 +61,7 @@ def test_inline_create_reuses_governed_extra_material_boundary_and_reselects_new
     assert "catalogCommandOptions('POST'" in review
     assert "X-MSB-Setup-Command" in review
     assert "payload.extra_material?.setup_extra_material_id" in review
-    assert "await refreshExpectedItemCatalog(newId || null)" in review
+    assert "if (returnToExpectedDraft) await refreshExpectedItemCatalog(newId || null)" in review
     assert "openExpectedPanel('expected-qty')" in review
     assert "el('expected-uom').value = created.default_uom || 'EA'" in review
 
@@ -90,6 +90,32 @@ def test_catalog_management_uses_existing_update_boundary_for_edit_and_active_st
     assert "ref.update_setup_extra_material" in repo
 
 
+def test_existing_expected_row_identity_cannot_be_reinterpreted_by_catalog_creation() -> None:
+    review = text(BASE_DIR / "setup_kit_inventory_review.js")
+
+    assert "function isEditingExpectedRow()" in review
+    assert "Material identity is locked" in review
+    assert "if (el('expected-item')) el('expected-item').disabled = true" in review
+    assert "button.hidden = !catalogState.canManage || editing" in review
+    assert "mode === 'new' && isEditingExpectedRow()" in review
+    assert "if (mode === 'manage') cancelExpectedWorkflowForCatalog()" in review
+    assert "else if (el('expected-editor')) el('expected-editor').hidden = true" in review
+    assert "catalogState.returnToExpectedDraft = mode === 'new'" in review
+    assert "Expected Kit rows were left unchanged" in review
+    assert "if (isEditingExpectedRow()) return" in review
+
+
+def test_page_level_catalog_create_stays_in_catalog_and_inline_create_returns_to_new_row() -> None:
+    review = text(BASE_DIR / "setup_kit_inventory_review.js")
+
+    assert "const returnToExpectedDraft = catalogState.returnToExpectedDraft" in review
+    assert "if (returnToExpectedDraft && exactExisting.active_flag)" in review
+    assert "already exists and is now selected for this new Expected Kit row" in review
+    assert "if (returnToExpectedDraft) await refreshExpectedItemCatalog(newId || null)" in review
+    assert "else await refreshExpectedItemCatalog()" in review
+    assert "Reusable Extra Material ${name} created in the catalog as a new identity. Expected Kit rows were left unchanged." in review
+
+
 def test_remainders_are_temporary_evidence_with_a_normalization_path() -> None:
     page = text(BASE_DIR / "kit_inventory.html")
     review = text(BASE_DIR / "setup_kit_inventory_review.js")
@@ -99,7 +125,7 @@ def test_remainders_are_temporary_evidence_with_a_normalization_path() -> None:
     assert 'id="normalize-remainder-item"' in page
     assert "Normalize as Extra Material…" in page
     assert "el('expected-add')?.click()" in review
-    assert "queueMicrotask(() => openExtraMaterialCatalog('new', 'expected-qty'))" in review
+    assert "queueMicrotask(() => openExtraMaterialCatalog('new', 'expected-new-catalog-item'))" in review
 
 
 def test_issue_189_stays_out_of_wiring_topology_and_new_schema() -> None:
