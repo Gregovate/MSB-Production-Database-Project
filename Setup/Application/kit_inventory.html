@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Kit Inventory</title>
+  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-14.2">
+</head>
+<body>
+<header class="inventory-header">
+  <div class="inventory-brand">
+    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div>
+      <div class="eyebrow">Setup · durable Container inventory</div>
+      <h1>Kit Inventory</h1>
+      <div class="muted">Review what belongs in each Kit, then open editing or counting only when you need it.</div>
+    </div>
+  </div>
+  <div class="inventory-header-actions">
+    <span id="inventory-access" class="access-badge">Checking access…</span>
+    <a class="button secondary" href="../t-post-inventory/">T-Post Inventory</a>
+    <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
+    <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+  </div>
+</header>
+
+<main class="inventory-main">
+  <section id="inventory-alert" class="notice" aria-live="polite">Loading Kit Inventory…</section>
+
+  <div class="inventory-layout">
+    <aside class="card inventory-list-card">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Physical Kit Boxes</div>
+          <h2>Find a Kit</h2>
+        </div>
+      </div>
+      <label class="inventory-search">Search
+        <input id="kit-search" type="search" placeholder="Kit, Container ID, location, or Setup task" autocomplete="off">
+      </label>
+      <div class="kit-filter-row" role="group" aria-label="Kit assignment filter">
+        <button id="kit-filter-all" type="button" class="small secondary active-filter">All</button>
+        <button id="kit-filter-assigned" type="button" class="small secondary">Assigned</button>
+        <button id="kit-filter-unassigned" type="button" class="small secondary">Unassigned</button>
+      </div>
+      <div id="kit-filter-status" class="muted"></div>
+      <div id="kit-list-status" class="muted"></div>
+      <div id="kit-list" class="kit-list"></div>
+    </aside>
+
+    <section class="card inventory-detail-card">
+      <div id="kit-empty" class="empty-state">Select a Kit Box to review it.</div>
+      <div id="kit-detail" hidden>
+        <div class="detail-heading">
+          <div>
+            <div class="eyebrow">Selected Physical Kit Box</div>
+            <h2 id="kit-title"></h2>
+            <div id="kit-meta" class="muted"></div>
+            <div id="kit-assignments" class="muted"></div>
+          </div>
+        </div>
+
+        <div id="kit-overview" class="kit-overview-strip" aria-label="Kit summary">
+          <div><span id="overview-task-count" class="overview-value">—</span><span class="overview-label">Setup tasks</span></div>
+          <div><span id="overview-display-count" class="overview-value">—</span><span class="overview-label">Displays</span></div>
+          <div><span id="overview-expected-count" class="overview-value">—</span><span class="overview-label">Expected items</span></div>
+          <div><span id="overview-counted-count" class="overview-value">—</span><span class="overview-label">Counted</span></div>
+          <div><span id="overview-review-state" class="overview-value">—</span><span class="overview-label">Remainders</span></div>
+        </div>
+
+        <section class="detail-section primary-content-section">
+          <div class="section-title compact">
+            <div>
+              <h3>Expected Kit Contents</h3>
+              <div class="hint">What should be in this Kit. Physical on-hand is shown separately from expected quantity.</div>
+            </div>
+            <button id="expected-add" type="button" class="small secondary manager-only" hidden>Add expected item</button>
+          </div>
+          <div class="table-wrap">
+            <table class="kit-contents-table">
+              <thead><tr><th>Item</th><th>Expected</th><th>Spec</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
+              <tbody id="kit-content-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="expected-editor" class="detail-section editor-panel action-panel" hidden>
+          <div id="expected-editor-status" class="editor-banner" hidden></div>
+          <h3 id="expected-editor-title">Manager — Add Expected Extra Material</h3>
+          <div class="hint">Changes expected Kit contents only. It does not change physical on-hand.</div>
+          <form id="expected-form">
+            <div class="form-grid">
+              <label>Item<select id="expected-item" required></select></label>
+              <label>Expected Qty<input id="expected-qty" type="number" min="0.001" step="0.001"></label>
+              <label>UOM<input id="expected-uom" type="text" value="EA"></label>
+              <label>Size<input id="expected-size" type="text"></label>
+              <label>Length<input id="expected-length" type="number" min="0.001" step="0.001"></label>
+              <label>Length unit<select id="expected-length-unit"><option value="">—</option><option value="IN">in</option><option value="FT">ft</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
+              <label>Color<input id="expected-color" type="text"></label>
+              <label>Verification<select id="expected-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
+              <label class="wide">Notes<input id="expected-notes" type="text"></label>
+            </div>
+            <div class="action-row">
+              <button id="expected-save" type="submit">Add Expected Item</button>
+              <button id="expected-clear" type="button" class="secondary">Cancel</button>
+              <button id="expected-remove" type="button" class="warning" hidden>Remove Expected Item</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="inventory-editor" class="detail-section action-panel" hidden>
+          <h3>Count / Adjust Physical Inventory</h3>
+          <div class="hint">Changes physical on-hand only. Expected Kit contents are never rewritten by inventory events.</div>
+          <div id="inventory-selected" class="selected-item">Select an expected item above.</div>
+          <form id="inventory-form">
+            <div class="form-grid inventory-form-grid">
+              <label>Event<select id="inventory-type"><option value="INITIAL_COUNT">Initial count</option><option value="RECEIPT">Receipt</option><option value="RETURN">Return</option><option value="COUNT_CORRECTION">Count correction (+/-)</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
+              <label><span id="inventory-quantity-label">Quantity change (+/-)</span><input id="inventory-delta" type="number" step="0.001" required></label>
+              <label class="wide">Reason / note<input id="inventory-note" type="text"></label>
+            </div>
+            <div id="inventory-math" class="inventory-math">Select an expected item to see the physical inventory calculation.</div>
+            <div class="action-row">
+              <button type="submit">Record Inventory Change</button>
+              <button id="inventory-close" type="button" class="secondary">Close</button>
+            </div>
+          </form>
+          <div id="inventory-history" class="history"></div>
+        </section>
+
+        <details class="compact-details context-details">
+          <summary>Setup task assignment</summary>
+          <div class="details-body">
+            <div class="hint">Existing reusable <code>task → KIT</code> relationships. This logistics assignment is separate from Kit contents.</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Stage</th><th>Task ID</th><th>Reusable Setup Task</th><th>Relationship note</th></tr></thead>
+                <tbody id="kit-task-assignment-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="compact-details context-details">
+          <summary>Displays stored in this Kit</summary>
+          <div class="details-body">
+            <div class="hint">Current physical <code>ref.display.container_id</code> relationships. Read-only here; these are not Extra Materials.</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Display</th><th>Inventory Type</th><th>Stage</th><th>Status</th></tr></thead>
+                <tbody id="kit-display-body"><tr><td colspan="4" class="empty-state">Select a Kit Box.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="compact-details remainder-details">
+          <summary>Unverified Items / Remainders</summary>
+          <div class="details-body">
+            <div class="hint">Cleanup notes that have not yet been normalized or verified. The written procedures remain the fallback source.</div>
+            <textarea id="unverified-items" rows="6" readonly></textarea>
+            <div id="unverified-actions" class="action-row manager-only" hidden>
+              <button id="save-unverified" type="button">Save Remainders</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="assets/setup_kit_inventory.js?v=2026-09-13.2"></script>
+<script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
+<script src="assets/setup_kit_inventory_review.js?v=2026-09-14.2"></script>
+</body>
+</html>

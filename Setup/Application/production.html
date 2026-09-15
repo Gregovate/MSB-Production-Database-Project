@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="setup_active_task_context.css?v=2026-09-12.1">
   <link rel="stylesheet" href="setup_display_ownership.css?v=2026-09-12.3">
   <link rel="stylesheet" href="setup_kit_box_assignment.css?v=2026-09-12.1">
+  <link rel="stylesheet" href="setup_extra_materials.css?v=2026-09-13.1">
 </head>
 <body>
 <header class="site-header">
@@ -51,6 +52,7 @@
   <nav class="tabs" aria-label="Setup Session views">
     <button class="tab active" data-view="review" type="button">2025 Verification</button>
     <button class="tab" data-view="library" type="button">Reusable Task Catalog</button>
+    <button class="tab" data-view="extra-materials" type="button">Extra Materials / Inventory</button>
     <button class="tab" data-view="movement" type="button">Movement / Scanning</button>
   </nav>
 
@@ -209,6 +211,112 @@
     </div>
   </section>
 
+  <section id="extra-materials-view" class="view">
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">Durable Setup inventory</div>
+          <h2>Extra Materials / Container Inventory</h2>
+        </div>
+      </div>
+      <p class="hint">Task → KIT assignment already exists elsewhere in Setup. This view maintains what an existing Container should contain and what has actually been counted. Expected contents do not equal physical inventory.</p>
+
+      <div class="extra-material-toolbar">
+        <label>Container ID
+          <input id="extra-material-container-id" type="number" min="1" placeholder="e.g. 60">
+        </label>
+        <button id="extra-material-load-container" type="button">Load Container</button>
+        <div class="muted">Works with Kit Boxes and shared-stock Containers such as the T-Post pallet.</div>
+      </div>
+
+      <div id="extra-material-container-card" hidden>
+        <div class="extra-material-container-heading">
+          <div>
+            <div class="eyebrow">Existing physical Container</div>
+            <h3 id="extra-material-container-title"></h3>
+            <div id="extra-material-container-meta" class="muted"></div>
+          </div>
+        </div>
+
+        <div class="extra-material-table-wrap">
+          <table class="extra-material-table">
+            <thead><tr><th>Item</th><th>Expected Qty</th><th>Size / Length / Color</th><th>Verification</th><th>On Hand</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody id="extra-material-content-body"></tbody>
+          </table>
+        </div>
+
+        <div class="extra-material-unverified-box">
+          <label><strong>Unverified Items</strong>
+            <textarea id="extra-material-unverified-items" placeholder="Temporary unresolved legacy/KIT items. Delete this text as 2027 verification resolves it."></textarea>
+          </label>
+          <div id="extra-material-unverified-manager-actions" class="action-row">
+            <button id="extra-material-save-unverified" type="button">Save Unverified Items</button>
+          </div>
+        </div>
+
+        <form id="extra-material-content-form" class="extra-material-editor" hidden>
+          <h3>Expected Container Item</h3>
+          <div class="extra-material-form-grid">
+            <label>Item<select id="extra-material-item"></select></label>
+            <label>Qty<input id="extra-material-qty" type="number" min="0.001" step="0.001"></label>
+            <label>UOM<input id="extra-material-uom" type="text" value="EA"></label>
+            <label>Size<input id="extra-material-size" type="text"></label>
+            <label>Length<input id="extra-material-length" type="number" min="0.001" step="0.001"></label>
+            <label>Length unit<select id="extra-material-length-unit"><option value="">—</option><option value="IN">in</option><option value="FT">ft</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
+            <label>Color<input id="extra-material-color" type="text"></label>
+            <label>Verification<select id="extra-material-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
+            <label style="grid-column:span 2">Notes<input id="extra-material-notes" type="text"></label>
+          </div>
+          <div class="action-row">
+            <button id="extra-material-save" type="submit">Add Expected Item</button>
+            <button id="extra-material-clear" type="button" class="secondary">Clear</button>
+            <button id="extra-material-remove" type="button" class="warning" hidden>Remove Expected Item</button>
+          </div>
+        </form>
+
+        <form id="extra-material-inventory-form" class="extra-material-inventory-editor" hidden>
+          <h3>Record Physical Inventory Change</h3>
+          <div class="hint">Production Crew and Managers may record physical counts/changes. This does not alter the reusable requirement or expected contents.</div>
+          <div id="extra-material-inventory-selected" class="chip"></div>
+          <div class="extra-material-form-grid">
+            <label>Event type
+              <select id="extra-material-inventory-type">
+                <option value="INITIAL_COUNT">Initial count</option>
+                <option value="RECEIPT">Receipt / added stock</option>
+                <option value="RETURN">Return</option>
+                <option value="COUNT_CORRECTION">Count correction</option>
+                <option value="DAMAGE_LOSS">Damage / loss</option>
+                <option value="CONSUMPTION">Consumed</option>
+                <option value="TRANSFER_IN">Transfer in</option>
+                <option value="TRANSFER_OUT">Transfer out</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
+            <label>Quantity change<input id="extra-material-inventory-delta" type="number" step="0.001" placeholder="Use negative for loss"></label>
+            <label style="grid-column:span 3">Note<input id="extra-material-inventory-note" type="text" placeholder="e.g. frozen T-Posts destroyed during takedown"></label>
+          </div>
+          <div class="action-row"><button type="submit">Record Inventory Event</button></div>
+        </form>
+      </div>
+
+      <div class="extra-material-summary-card">
+        <h3>Required vs. On Hand</h3>
+        <div class="hint">Requirements are summed from reusable Setup tasks by material/spec. If any applicable stock row has never been counted, On Hand remains unknown rather than showing a misleading zero or partial total.</div>
+        <div class="extra-material-summary-toolbar">
+          <label>Material<select id="extra-material-summary-item"></select></label>
+          <button id="extra-material-load-summary" type="button">Load Summary</button>
+          <div class="muted">Choose T-Post to sum required and counted stock by length.</div>
+        </div>
+        <div class="extra-material-table-wrap">
+          <table class="extra-material-table">
+            <thead><tr><th>Item</th><th>Spec</th><th>Required</th><th>On Hand</th><th>Available After Requirement</th><th>Uncounted Stock Rows</th></tr></thead>
+            <tbody id="extra-material-summary-body"><tr><td colspan="6" class="empty-state">Load a summary when needed.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="movement-view" class="view">
     <div class="card">
       <div class="eyebrow">Movement integration boundary</div>
@@ -225,7 +333,7 @@
 </main>
 
 <footer class="muted" style="max-width:1600px; margin:18px auto 28px; padding:0 18px; text-align:center; font-size:.85rem;">
-  Updated 2026-09-12
+  Updated 2026-09-13
 </footer>
 
 <script src="setup_analytics.js?v=2026-09-07.1"></script>
@@ -252,5 +360,6 @@
 <script src="setup_display_ownership.js?v=2026-09-12.3"></script>
 <script src="setup_display_ownership_large_scope_fix.js?v=2026-09-12.1"></script>
 <script src="setup_kit_box_assignment.js?v=2026-09-12.1"></script>
+<script src="setup_extra_materials.js?v=2026-09-13.1"></script>
 </body>
 </html>

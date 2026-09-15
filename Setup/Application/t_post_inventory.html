@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB T-Post Inventory</title>
+  <link rel="stylesheet" href="../kit-inventory/assets/setup_kit_inventory.css?v=2026-09-14.1">
+  <link rel="stylesheet" href="assets/setup_tpost_inventory_clarity.css?v=2026-09-14.3">
+</head>
+<body>
+<header class="inventory-header">
+  <div class="inventory-brand">
+    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div>
+      <div class="eyebrow">Setup · physical T-Post inventory</div>
+      <h1>T-Post Inventory</h1>
+      <div class="muted">Count physical T-Posts wherever they are intentionally stored: shared stock racks or Containers that travel with Kits/Displays.</div>
+    </div>
+  </div>
+  <div class="inventory-header-actions">
+    <span id="inventory-access" class="access-badge">Checking access…</span>
+    <a class="button secondary" href="../kit-inventory/">Kit Inventory</a>
+    <a class="button secondary" href="../">Back to Setup Session</a>
+    <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+  </div>
+</header>
+
+<main class="inventory-main">
+  <section id="inventory-alert" class="notice" aria-live="polite">Loading T-Post inventory…</section>
+
+  <section class="tpost-scope-explainer">
+    <strong>This page records physical T-Posts by the Container where they are actually stored.</strong>
+    <div class="scope-warning">Shared/bulk stock is shown separately from T-Posts intentionally stored with Kits or Displays. Storage location does <strong>not</strong> assign T-Posts to Displays, panels, Stages, Scenes, or Setup tasks; reusable requirements remain separate task/installation facts.</div>
+  </section>
+
+  <div class="inventory-layout">
+    <aside class="card inventory-list-card">
+      <div class="eyebrow">Physical T-Post locations</div>
+      <h2>T-Post Containers</h2>
+      <div class="hint" style="margin:8px 0 12px">Choose the physical Container you are inventorying. Bulk/shared stock and T-Posts carried with Kits/Displays are grouped separately below.</div>
+      <div id="tpost-list" class="kit-list"></div>
+    </aside>
+
+    <section class="card inventory-detail-card">
+      <div id="tpost-empty" class="empty-state">Select a T-Post Container.</div>
+      <div id="tpost-detail" hidden>
+        <div class="detail-heading">
+          <div>
+            <div class="eyebrow">Selected physical T-Post Container</div>
+            <h2 id="tpost-title"></h2>
+            <div id="tpost-meta" class="muted"></div>
+          </div>
+        </div>
+
+        <section class="detail-section">
+          <div class="section-title compact">
+            <div>
+              <div class="tpost-step-kicker">Step 1 — choose what kind of T-Post you are working with</div>
+              <h3>T-Post Rows and Current Counts</h3>
+              <div class="hint">Each row is one physical T-Post variant in this Container. “Planning / known qty” is optional reference evidence and is <strong>not</strong> the physical count. “Physical on hand” comes only from inventory events.</div>
+            </div>
+            <button id="tpost-add-variant" type="button" class="secondary manager-only" hidden>Add new T-Post row</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>T-Post Variant</th><th>Planning / Known Qty<br>(not count)</th><th>Verification</th><th>Physical On Hand</th><th>Notes</th><th></th></tr></thead>
+              <tbody id="tpost-content-body"></tbody>
+            </table>
+          </div>
+          <div class="tpost-definition-note">Managers use <strong>Edit stock definition</strong> only when the stored T-Post row itself is wrong. To count what is physically present, use <strong>Count physical stock</strong>.</div>
+        </section>
+
+        <section id="tpost-manager-editor" class="detail-section manager-only editor-panel tpost-config-panel collapsed" hidden>
+          <div id="tpost-editor-status" class="editor-banner" hidden></div>
+          <h3 id="tpost-editor-title">Manager — Add New T-Post Row</h3>
+          <div class="hint">This form changes the definition of a physical T-Post row in the selected Container. It does <strong>not</strong> record physical inventory and does not change Display/task requirements.</div>
+          <form id="tpost-form">
+            <div class="form-grid">
+              <label>Planning / known qty (optional, not count)<input id="tpost-expected-qty" type="number" min="0.001" step="0.001"></label>
+              <label>Length<input id="tpost-length" type="number" min="0.001" step="0.001"></label>
+              <label>Length unit<select id="tpost-length-unit"><option value="">—</option><option value="FT">ft</option><option value="IN">in</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
+              <label>Size / stock note<input id="tpost-size" type="text" placeholder="e.g. special short stock"></label>
+              <label>Verification<select id="tpost-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
+              <label class="wide">Notes<input id="tpost-notes" type="text"></label>
+            </div>
+            <div class="action-row">
+              <button type="submit" id="tpost-save">Add T-Post Row</button>
+              <button type="button" id="tpost-clear" class="secondary">Cancel</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="tpost-inventory-editor" class="detail-section inventory-operator-only" hidden>
+          <div class="tpost-step-kicker">Step 2 — count or adjust the selected physical stock</div>
+          <h3>Physical Inventory Count</h3>
+          <div class="hint">Click <strong>Count physical stock</strong> on exactly one row above. Initial count establishes the first physical balance. Later events are signed changes to that balance. These events affect only the selected physical T-Post row in this Container.</div>
+          <div id="tpost-count-instruction" class="tpost-count-instruction">No stock row selected. Click “Count physical stock” on one row above.</div>
+          <div id="tpost-inventory-selected" class="selected-item">No stock row selected.</div>
+          <form id="tpost-inventory-form">
+            <fieldset id="tpost-count-fields" class="tpost-count-fieldset" disabled>
+              <div class="form-grid inventory-form-grid">
+                <label>Inventory event<select id="tpost-inventory-type"><option value="INITIAL_COUNT">Initial physical count</option><option value="RECEIPT">Receipt / added stock</option><option value="RETURN">Return to stock</option><option value="COUNT_CORRECTION">Count correction (+/-)</option><option value="DAMAGE_LOSS">Damage / loss</option><option value="CONSUMPTION">Consumption</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="OTHER">Other</option></select></label>
+                <label><span id="tpost-inventory-quantity-label">Quantity change (+/-)</span><input id="tpost-inventory-delta" type="number" step="0.001" required></label>
+                <label class="wide">Reason / note<input id="tpost-inventory-note" type="text"></label>
+              </div>
+              <div id="tpost-inventory-math" class="inventory-math">Select a stock row to see the physical inventory calculation.</div>
+              <div class="action-row"><button type="submit">Save Physical Inventory Event</button></div>
+            </fieldset>
+          </form>
+          <div id="tpost-inventory-history" class="history"></div>
+        </section>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="assets/setup_tpost_inventory.js?v=2026-09-14.1"></script>
+<script src="assets/setup_tpost_inventory_clarity.js?v=2026-09-14.3"></script>
+</body>
+</html>

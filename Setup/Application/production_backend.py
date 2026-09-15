@@ -14,6 +14,8 @@ from flask import Flask, abort, jsonify, send_from_directory
 from backend import BASE_DIR
 from setup_api import setup_api
 from setup_resource_api import setup_resource_api
+from setup_extra_material_api import setup_extra_material_api
+from setup_kit_inventory_api import setup_kit_inventory_api
 from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
@@ -73,6 +75,24 @@ PRODUCTION_ASSETS = frozenset(
         "setup_display_ownership_large_scope_fix.js",
         "setup_kit_box_assignment.css",
         "setup_kit_box_assignment.js",
+        "setup_extra_materials.css",
+        "setup_extra_materials.js",
+        "setup_task_extra_materials.js",
+    }
+)
+KIT_INVENTORY_ASSETS = frozenset(
+    {
+        "setup_kit_inventory.css",
+        "setup_kit_inventory.js",
+        "setup_kit_inventory_displays.js",
+        "setup_kit_inventory_review.js",
+    }
+)
+TPOST_INVENTORY_ASSETS = frozenset(
+    {
+        "setup_tpost_inventory.js",
+        "setup_tpost_inventory_clarity.css",
+        "setup_tpost_inventory_clarity.js",
     }
 )
 
@@ -89,6 +109,8 @@ install_setup_kit_box_catalog_fix()
 app = Flask(__name__)
 app.register_blueprint(setup_api)
 app.register_blueprint(setup_resource_api)
+app.register_blueprint(setup_extra_material_api)
+app.register_blueprint(setup_kit_inventory_api)
 app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
@@ -109,6 +131,38 @@ def _no_store(response):
 @app.get("/")
 def production_index():
     return _no_store(send_from_directory(BASE_DIR, "production.html"))
+
+
+@app.get("/kit-inventory")
+@app.get("/kit-inventory/")
+@app.get("/kit-inventory/<int:container_id>")
+def kit_inventory(container_id: int | None = None):
+    """Standalone durable Kit Box inventory route."""
+    _ = container_id
+    return _no_store(send_from_directory(BASE_DIR, "kit_inventory.html"))
+
+
+@app.get("/kit-inventory/assets/<path:name>")
+def kit_inventory_asset(name: str):
+    if name not in KIT_INVENTORY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/t-post-inventory")
+@app.get("/t-post-inventory/")
+def tpost_inventory():
+    """Standalone shared T-Post stock inventory outside Kit Boxes."""
+    return _no_store(send_from_directory(BASE_DIR, "t_post_inventory.html"))
+
+
+@app.get("/t-post-inventory/assets/<path:name>")
+def tpost_inventory_asset(name: str):
+    if name not in TPOST_INVENTORY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
 
 @app.get("/api/health")
