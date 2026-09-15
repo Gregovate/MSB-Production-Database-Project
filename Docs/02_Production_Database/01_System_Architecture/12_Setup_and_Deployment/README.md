@@ -70,5 +70,5 @@ Pick List generation, staged release scheduling, Container/Display movement/scan
 - [Setup operator procedures](operatorSOP/README.md)
 - [Detailed Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Engineering handoff](engineering/README.md)
-- [Kit Inventory / T-Post Production Acceptance](../../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
-- [Setup Assignment Layer V0.3.13 Production Acceptance](../../../../../Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md)
+- [Kit Inventory / T-Post Production Acceptance](../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
+- [Setup Assignment Layer V0.3.13 Production Acceptance](../../../../Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md)
