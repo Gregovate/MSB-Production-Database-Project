@@ -41,6 +41,10 @@ def test_uom_migration_enforces_active_stable_codes_and_narrow_writes() -> None:
     sql = text(DB_DIR / "049_add_setup_uom_catalog.sql")
 
     assert "CREATE OR REPLACE FUNCTION ref.enforce_active_setup_uom()" in sql
+    assert "IF NEW.active_flag AND NOT EXISTS" in sql
+    assert "Inactive historical rows may retain an inactive UOM code" in sql
+    assert "UPDATE OF default_uom, active_flag" in sql
+    assert "UPDATE OF quantity_uom, active_flag" in sql
     assert "Unknown or inactive Setup UOM" in sql
     assert "CREATE OR REPLACE FUNCTION ref.guard_setup_uom_identity_and_deactivation()" in sql
     assert "Setup UOM code is a stable identity and cannot be renamed" in sql
@@ -101,6 +105,10 @@ def test_kit_uom_fields_are_governed_selectors_not_free_text() -> None:
     assert "Save UOM" in js
     assert "Save New UOM" in js
     assert "choose it explicitly where needed" in js
+    assert "const pathname = window.location.pathname" in js
+    assert "return pathname.endsWith('/') ? pathname : `${pathname}/`" in js
+    assert "rowsSignature" in js
+    assert "dataset.uomSignature" in js
 
     assert '"setup_uom_catalog.js"' in backend
     assert "setup_uom_catalog.js" in text(APP_DIR / "setup_extra_materials.js")
@@ -130,6 +138,13 @@ def test_quantity_can_remain_unknown_but_supplied_values_are_positive() -> None:
     assert 'id="expected-qty" type="number" min="0.001" step="0.001" required' not in html
 
 
+def test_tpost_stock_has_no_free_text_quantity_uom_side_door() -> None:
+    js = text(APP_DIR / "setup_tpost_inventory.js")
+
+    assert "quantity_uom: 'EA'" in js
+    assert "tpost-uom" not in js
+
+
 def test_disposable_validation_covers_fk_privilege_and_behavioral_guards() -> None:
     validation = text(ACCEPTANCE_DIR / "setup_191_uom_catalog_disposable_validation.sql")
 
@@ -140,5 +155,7 @@ def test_disposable_validation_covers_fk_privilege_and_behavioral_guards() -> No
     assert "ZZNOTREAL" in validation
     assert "unknown UOM was accepted" in validation
     assert "allowed deactivation of UOM still referenced" in validation
+    assert "Inactive-history maintenance remains allowed" in validation
+    assert "inactive row could not retain/maintain its inactive UOM history" in validation
     assert "ROLLBACK;" in validation
     assert "season_year=2026" in validation
