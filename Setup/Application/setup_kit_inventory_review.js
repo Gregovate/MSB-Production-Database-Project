@@ -15,6 +15,7 @@
     adminCatalog: [],
     adminLoaded: false,
     returnFocusId: 'extra-material-catalog-toggle',
+    returnToExpectedDraft: false,
   };
   const el = (id) => document.getElementById(id);
 
@@ -164,6 +165,8 @@
     if (!panel) return;
     panel.hidden = false;
     if (el('inventory-editor')) el('inventory-editor').hidden = true;
+    if (el('extra-material-catalog-manager')) el('extra-material-catalog-manager').hidden = true;
+    syncExpectedCatalogAction();
     focusEditor('expected-editor', focusId);
   }
 
@@ -194,6 +197,8 @@
     }
     if (el('expected-editor-title')) el('expected-editor-title').textContent = 'Manager — Add Expected Extra Material';
     if (el('expected-clear')) el('expected-clear').textContent = 'Cancel';
+    if (el('expected-item') && el('expected-remove')?.hidden) el('expected-item').disabled = false;
+    syncExpectedCatalogAction();
   }
 
   function markExpectedEdit(button) {
@@ -207,10 +212,12 @@
     const banner = el('expected-editor-status');
     if (banner) {
       banner.hidden = false;
-      banner.textContent = `EDITING EXISTING ROW — ${itemName}. Save changes or Cancel edit.`;
+      banner.textContent = `EDITING EXISTING ROW — ${itemName}. Material identity is locked; save field changes or Cancel edit.`;
     }
     if (el('expected-editor-title')) el('expected-editor-title').textContent = 'Manager — Edit Expected Extra Material';
     if (el('expected-clear')) el('expected-clear').textContent = 'Cancel edit';
+    if (el('expected-item')) el('expected-item').disabled = true;
+    syncExpectedCatalogAction();
   }
 
   function compactContentRows() {
@@ -348,6 +355,27 @@
     ) || null;
   }
 
+  function isEditingExpectedRow() {
+    const remove = el('expected-remove');
+    return Boolean(remove && !remove.hidden);
+  }
+
+  function syncExpectedCatalogAction() {
+    const button = el('expected-new-catalog-item');
+    if (!button) return;
+    const editing = isEditingExpectedRow();
+    button.hidden = !catalogState.canManage || editing;
+    button.disabled = editing;
+  }
+
+  function cancelExpectedWorkflowForCatalog() {
+    const panel = el('expected-editor');
+    if (panel && !panel.hidden) el('expected-clear')?.click();
+    if (panel) panel.hidden = true;
+    clearEditDecoration();
+    syncExpectedCatalogAction();
+  }
+
   async function loadCatalogAccess() {
     try {
       const payload = await catalogApi('api/setup/access');
@@ -359,10 +387,11 @@
   }
 
   function syncCatalogAccess() {
-    ['extra-material-catalog-toggle', 'expected-new-catalog-item', 'normalize-remainder-item'].forEach((id) => {
+    ['extra-material-catalog-toggle', 'normalize-remainder-item'].forEach((id) => {
       const node = el(id);
       if (node) node.hidden = !catalogState.canManage;
     });
+    syncExpectedCatalogAction();
     if (!catalogState.canManage) closeExtraMaterialCatalog(false);
   }
 
@@ -376,7 +405,7 @@
       (row) => Number(row.setup_extra_material_id) === previousId
     );
     let preservedInactive = null;
-    if (previousId && !activeHasPrevious && !el('expected-remove')?.hidden) {
+    if (previousId && !activeHasPrevious && isEditingExpectedRow()) {
       preservedInactive = adminMaterialById(previousId);
     }
 
@@ -389,7 +418,7 @@
         : '');
 
     if (previousId && (activeHasPrevious || preservedInactive)) select.value = String(previousId);
-    if (preferredId && activeHasPrevious) {
+    if (preferredId && activeHasPrevious && !isEditingExpectedRow()) {
       const created = catalogState.activeCatalog.find(
         (row) => Number(row.setup_extra_material_id) === Number(preferredId)
       );
@@ -544,9 +573,17 @@
 
   async function openExtraMaterialCatalog(mode = 'manage', returnFocusId = 'extra-material-catalog-toggle') {
     if (!catalogState.canManage) return;
+    if (mode === 'new' && isEditingExpectedRow()) {
+      setInventoryAlert('Material identity on an existing Expected Kit row is locked. Cancel the edit or add a new expected item before creating/selecting another catalog material.', 'error');
+      syncExpectedCatalogAction();
+      return;
+    }
     const panel = el('extra-material-catalog-manager');
     if (!panel) return;
     catalogState.returnFocusId = returnFocusId;
+    catalogState.returnToExpectedDraft = mode === 'new';
+    if (mode === 'manage') cancelExpectedWorkflowForCatalog();
+    else if (el('expected-editor')) el('expected-editor').hidden = true;
     panel.hidden = false;
     closeInventoryPanel();
     try {
@@ -565,6 +602,12 @@
   function closeExtraMaterialCatalog(restoreFocus = true) {
     const panel = el('extra-material-catalog-manager');
     if (panel) panel.hidden = true;
+    const returnToExpectedDraft = catalogState.returnToExpectedDraft;
+    catalogState.returnToExpectedDraft = false;
+    if (restoreFocus && returnToExpectedDraft) {
+      openExpectedPanel('expected-item');
+      return;
+    }
     if (restoreFocus && catalogState.returnFocusId) {
       window.setTimeout(() => el(catalogState.returnFocusId)?.focus({ preventScroll: true }), 0);
     }
@@ -634,12 +677,22 @@
       return;
     }
 
+    const returnToExpectedDraft = catalogState.returnToExpectedDraft;
     try {
       await loadAdminExtraMaterialCatalog();
       const exactExisting = catalogState.adminCatalog.find((row) =>
         normalizeCatalogText(row.material_name) === normalizeCatalogText(name)
       );
       if (exactExisting) {
+        if (returnToExpectedDraft && exactExisting.active_flag) {
+          await refreshExpectedItemCatalog(exactExisting.setup_extra_material_id);
+          resetNewExtraMaterialForm();
+          catalogState.returnToExpectedDraft = false;
+          closeExtraMaterialCatalog(false);
+          openExpectedPanel('expected-qty');
+          setInventoryAlert(`${exactExisting.material_name} already exists and is now selected for this new Expected Kit row. Complete quantity/specification/verification/notes, then save.`);
+          return;
+        }
         const search = el('extra-material-catalog-search');
         if (search) search.value = exactExisting.material_name;
         renderExtraMaterialAdminCatalog();
@@ -666,7 +719,8 @@
       const newId = Number(payload.extra_material?.setup_extra_material_id || 0);
       catalogState.adminLoaded = false;
       await loadAdminExtraMaterialCatalog(true);
-      await refreshExpectedItemCatalog(newId || null);
+      if (returnToExpectedDraft) await refreshExpectedItemCatalog(newId || null);
+      else await refreshExpectedItemCatalog();
       resetNewExtraMaterialForm();
       if (newId) {
         const adminSelect = el('extra-material-catalog-select');
@@ -675,9 +729,15 @@
           syncExtraMaterialCatalogEditor();
         }
       }
-      closeExtraMaterialCatalog(false);
-      openExpectedPanel('expected-qty');
-      setInventoryAlert(`Reusable Extra Material ${name} created and selected. Complete this Kit's quantity/specification/verification/notes, then save the expected-content row.`);
+      if (returnToExpectedDraft) {
+        catalogState.returnToExpectedDraft = false;
+        closeExtraMaterialCatalog(false);
+        openExpectedPanel('expected-qty');
+        setInventoryAlert(`Reusable Extra Material ${name} created and selected for this new Expected Kit row. Complete quantity/specification/verification/notes, then save.`);
+      } else {
+        setInventoryAlert(`Reusable Extra Material ${name} created in the catalog as a new identity. Expected Kit rows were left unchanged.`);
+        el('extra-material-catalog-search')?.focus({ preventScroll: true });
+      }
     } catch (error) {
       setInventoryAlert(error.message || error, 'error');
     } finally {
@@ -690,7 +750,11 @@
       openExtraMaterialCatalog('manage', 'extra-material-catalog-toggle');
     });
     el('expected-new-catalog-item')?.addEventListener('click', () => {
-      openExtraMaterialCatalog('new', 'expected-item');
+      if (isEditingExpectedRow()) {
+        setInventoryAlert('Material identity on an existing Expected Kit row is locked. Add a new expected item instead.', 'error');
+        return;
+      }
+      openExtraMaterialCatalog('new', 'expected-new-catalog-item');
     });
     el('extra-material-catalog-close')?.addEventListener('click', () => closeExtraMaterialCatalog(true));
     el('extra-material-catalog-search')?.addEventListener('input', renderExtraMaterialAdminCatalog);
@@ -701,9 +765,10 @@
     el('extra-material-new-form')?.addEventListener('submit', createExtraMaterialCatalogEntry);
     el('normalize-remainder-item')?.addEventListener('click', () => {
       el('expected-add')?.click();
-      queueMicrotask(() => openExtraMaterialCatalog('new', 'expected-qty'));
+      queueMicrotask(() => openExtraMaterialCatalog('new', 'expected-new-catalog-item'));
     });
     el('expected-item')?.addEventListener('change', () => {
+      if (isEditingExpectedRow()) return;
       const materialId = Number(el('expected-item')?.value || 0);
       const row = catalogState.activeCatalog.find(
         (item) => Number(item.setup_extra_material_id) === materialId
@@ -721,7 +786,10 @@
       if (event.target.closest('#expected-add')) {
         el('expected-clear')?.click();
         closeExtraMaterialCatalog(false);
-        queueMicrotask(() => openExpectedPanel('expected-item'));
+        queueMicrotask(() => {
+          openExpectedPanel('expected-item');
+          syncExpectedCatalogAction();
+        });
         return;
       }
       const editButton = event.target.closest('.expected-edit');
@@ -732,7 +800,10 @@
         return;
       }
       if (event.target.closest('#expected-clear')) {
-        queueMicrotask(closeExpectedPanel);
+        queueMicrotask(() => {
+          closeExpectedPanel();
+          syncExpectedCatalogAction();
+        });
         return;
       }
       const inventoryButton = event.target.closest('.inventory-select');
@@ -790,6 +861,7 @@
       } else if (!contentBody.querySelector('.editing-source-row')) {
         clearEditDecoration();
       }
+      syncExpectedCatalogAction();
       queueMicrotask(syncInventoryMath);
     }).observe(contentBody, { childList: true, subtree: true });
 
