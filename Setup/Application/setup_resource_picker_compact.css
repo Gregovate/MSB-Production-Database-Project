@@ -25,6 +25,15 @@
   font-weight: 700;
 }
 
+/* Catalog creation commits data just like Save Catalog Resource. Keep it on
+   the same primary-blue action hierarchy even though the legacy markup still
+   carries the secondary class. */
+.resource-create-block button[type="submit"].secondary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .resource-manager-launch-hint {
   margin-top: 0.45rem;
   font-size: 0.82rem;
