@@ -1,6 +1,6 @@
 # Setup Session Application
 
-Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.13 ASSIGNMENT LAYER ACCEPTED**
+Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.13 + DURABLE KIT / EXTRA MATERIAL / T-POST INVENTORY ACCEPTED**
 
 The protected application is live at:
 
@@ -18,58 +18,74 @@ Current reported version and deployed source:
 
 ```text
 V0.3.13-assignment-layer
-3fb975ca355711cece564cfd874cf8d7514310bf
+1e0e2d2c3ffbcafc2ffef2bb4a98c81d600e8b1b
 ```
+
+The health/version string intentionally remains V0.3.13; #184/#167 extended the durable material/inventory subsystem without starting a new annual Session version line.
 
 ## Current Production Meaning
 
 The 2025 Setup Session is real Production data and remains the historical/sandbox proving ground. There is no 2026 Setup Session yet.
 
-Managers/reviewers can maintain reusable tasks, resources, prerequisites, Display/Container material participation, explicit Display ownership for subdivided scopes, and physical Kit Box assignments.
+Managers/reviewers can maintain reusable tasks, resources, prerequisites, Display/Container material participation, explicit Display ownership, physical Kit Box assignments, and structured reusable-task Extra Material requirements.
 
-## Accepted Assignment Layer
-
-The established LOR Stage/real-Scene resolver remains authoritative for current Display membership.
+Durable inventory routes are live:
 
 ```text
-LOR resolver
-    -> resolved Displays
-    -> Setup assignment
-        -> one material task = implicit ownership
-        -> multiple material tasks = explicit one-owner-per-Display assignment
+/setup/kit-inventory/
+/setup/t-post-inventory/
 ```
 
-Display Ownership does not rewrite LOR membership or `ref.display.container_id`.
+## Durable Material / Inventory Contract
 
-The browser supports multi-select with Ctrl/Cmd-click and Shift-click. Drag remains available, and **Move selected to** provides a reliable path for unusually large ownership boards.
+Keep four facts separate:
 
-Physical Kit Boxes are existing `ref.container` rows with `container_type_id = 2` and use explicit `relationship_type='KIT'` task assignments. The same Kit Box may support several tasks. Existing SUPPORT / REQUIRED_CONTAINER semantics remain separate.
+```text
+reusable task requirement
+expected Container / Kit content or source
+physical inventory balance/history
+current Display -> Container membership
+```
 
-Expected Kit contents, Extra Materials, quantities/specifications, and material-source meaning remain downstream #167 work.
+The normalized catalog is `ref.setup_extra_material`. Reusable task requirements live in `ref.setup_task_extra_material`; expected source allocations in `ref.setup_task_extra_material_source`; expected Container contents in `ref.setup_container_extra_material`; durable Remainders in `ref.setup_container_extra_material_review`; physical changes in append-only `ops.setup_extra_material_inventory_event`; and current balance through `ops.setup_extra_material_inventory_balance`.
+
+Task-to-Kit authority remains `ref.setup_task_container_support` with `relationship_type='KIT'`. Current physical Display contents remain `ref.display.container_id` truth.
+
+Kit Inventory covers all physical Kit Boxes and exposes task assignment, current Displays, expected Extra Materials, Remainders, physical balances, and inventory history without collapsing those concepts.
+
+T-Post Inventory uses the same physical inventory ledger while grouping shared/bulk stock separately from T-Posts intentionally stored with Kits/Displays. Physical storage does not create or alter reusable task requirements.
+
+## Accepted Reconstruction
+
+The one-time #167 reconstruction is complete in Production. It loaded procedure-derived task requirements, expected Kit contents, Remainders, T-Post requirements, and stock variants as `UNVERIFIED` / `NEEDS_REVIEW` where appropriate.
+
+The reconstruction created no 2026 Setup Session and no fabricated physical inventory events. Existing Production task-to-Kit assignments remained authoritative and unchanged.
 
 ## Migration Chain
 
-Accepted database migrations:
+Accepted durable foundation / reconstruction migrations now include:
 
 ```text
 028_harden_setup_task_display_ownership.sql
 029_correct_setup_assignment_layer.sql
 030_fix_setup_kit_box_assignment_upsert.sql
+031_fix_setup_task_resource_upsert.sql
+032_add_setup_extra_material_schema.sql
+033_add_setup_extra_material_manager_commands.sql
+034_add_setup_extra_material_container_commands.sql
+035_add_setup_extra_material_inventory_commands.sql
+036_seed_setup_extra_material_catalog.sql
+037_harden_setup_extra_material_duplicate_rows.sql
+038_preload_setup_extra_material_known_evidence.sql
+043_preload_setup_kit_inventory_and_tpost_stock.sql
+044_preload_elf_choir_tpost_requirement.sql
+045_preload_reviewed_kit_assignments.sql
+046_preload_explicit_tpost_requirements.sql
+047_finalize_assigned_kit_inventory_coverage.sql
+048_complete_tpost_requirements_and_stock_variants.sql
 ```
 
-Initial migration-bearing Production candidate:
-
-```text
-48f0a44ca20296f7d211df240f0af7c324ad44e1
-```
-
-Current source includes a source-only large-scope UI correction:
-
-```text
-3fb975ca355711cece564cfd874cf8d7514310bf
-```
-
-No database migration belongs to that follow-up.
+#184 is the durable model/runtime; #167 is the completed one-time data reconstruction only.
 
 ## Preservation Baseline
 
@@ -78,9 +94,10 @@ Preserve:
 - V0.3.7 dirty-edit/client-build protection;
 - V0.3.8 compact task-detail layout;
 - V0.3.9 prerequisite behavior;
-- V0.3.10 Resource Catalog behavior;
+- V0.3.10 Resource Catalog behavior plus migration 031 repair;
 - V0.3.11 persistent active-task identity;
-- V0.3.13 assignment/Kit behavior;
+- V0.3.13 Display ownership / physical Kit assignment;
+- durable task Extra Materials, Kit expected contents/Remainders, append-only inventory, Kit Inventory, and T-Post Inventory;
 - Stage/Scene resolver authority; and
 - current analytics/privacy integration.
 
@@ -92,24 +109,14 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-Current source-only rollback for the large-scope UI correction:
+Current live source is the accepted #167 data candidate `1e0e2d2...`. Later branch commits contain deployment harness fixes and closeout documentation only and are not a new live application target.
 
-```text
-48f0a44ca20296f7d211df240f0af7c324ad44e1
-restart only msb-setup.service
-```
-
-No PostgreSQL restore belongs to that UI rollback.
-
-The migration-bearing #141 deployment has separate governed database rollback evidence recorded in:
-
-`Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
+Validated rollback archives from #184 and #167 Production deployments are retained under `/home/msbadmin/backups/setup-184/` and `/home/msbadmin/backups/setup-167/`. Do not restore them merely to undo a UI/documentation problem or without reconciling legitimate post-deployment Production work.
 
 ## Current Boundaries
 
 Still outside the accepted live workflow:
 
-- structured Extra Materials / expected Kit contents / material-source tracking;
 - final reusable Catalog acceptance / disposable 2026 seed proof;
 - structured external/site readiness;
 - Pick List generation and staged release scheduling;
@@ -122,9 +129,9 @@ Before changing the application:
 
 1. read Project Rules;
 2. read the Setup engineering README and current handoff;
-3. preserve V0.3.7 through V0.3.13;
+3. preserve the accepted V0.3.7 through V0.3.13 behavior plus durable #184/#167 inventory state;
 4. keep 2025 as the proving ground until the remaining gates pass;
-5. continue `#167 -> #145 FINAL -> #122`;
+5. continue `#145 FINAL -> #122`;
 6. use Server Management for live runtime and deployment authority.
 
 ## Related Documentation
@@ -132,4 +139,4 @@ Before changing the application:
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-12.md`
-- `Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
+- `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`

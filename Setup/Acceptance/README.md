@@ -93,3 +93,9 @@ If the reusable launchers cannot safely express a future requirement, treat that
 A green disposable acceptance and accepted browser review do **not** authorize Production mutation by themselves.
 
 Only after explicit operator acceptance switch to the Server Management `Production_Database_Change_Deployment_Runbook.md`, including its live-checkout verification, validated rollback point, reviewed migration/deployment, post-deployment health/security/invariant checks, and rollback path.
+
+## Current Production Acceptance Records
+
+- `Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
+- `Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md`
+- `Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md` — #184 durable Extra Material / Kit Inventory / T-Post subsystem plus completed #167 one-time reconstruction.
