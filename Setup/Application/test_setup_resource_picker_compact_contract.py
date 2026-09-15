@@ -9,9 +9,9 @@ def test_compact_resource_picker_is_loaded_after_task_detail_refinement() -> Non
     backend = (APP_DIR / "production_backend.py").read_text(encoding="utf-8")
 
     assert "setup_resource_picker_compact.css?v=2026-09-11.2" in html
-    assert "setup_resource_picker_compact.js?v=2026-09-11.2" in html
+    assert "setup_resource_picker_compact.js?v=2026-09-15.1" in html
     assert html.index("setup_task_detail_compact.js?v=2026-09-11.1") < html.index(
-        "setup_resource_picker_compact.js?v=2026-09-11.2"
+        "setup_resource_picker_compact.js?v=2026-09-15.1"
     )
     assert '"setup_resource_picker_compact.css"' in backend
     assert '"setup_resource_picker_compact.js"' in backend
