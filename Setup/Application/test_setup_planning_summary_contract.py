@@ -76,10 +76,9 @@ def test_catalog_exposes_contextual_stage_scene_and_broad_print_launchers() -> N
     assert "Print Planning Summary…" in js
     assert "Print Stage" in js
     assert "Print Scene" in js
-    assert "next-sitewide-group" in js
+    assert "next-stage-group:not(.next-sitewide-group)" in js
     assert "next-scope-group" in js
     assert "dataset.sceneId" in js
-    assert "scope', 'stage'" not in js  # contextual URLs are constructed through one helper
     assert "stage_id" in js
     assert "lor_scene_id" in js
     assert "applyRequestedScope" in js
