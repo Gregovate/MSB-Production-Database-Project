@@ -39,9 +39,20 @@ Use:
   -ValidationPaths @(<candidate-relative Setup/Acceptance SQL files>)
 ```
 
-The launcher and server runner require exact clean candidate identity, rerun the full `Setup/Application` regression in a detached worktree, clone current Production through `pg_dump`, apply only supplied candidate migrations/validations to the disposable database, clean all disposable artifacts, and prove Production fingerprint/live Setup SHA are unchanged before success.
+The launcher and server runner:
 
-Feature-specific behavior belongs in supplied migration/validation files, not in a new disposable runner.
+- require the local checkout to be clean and exactly match the requested candidate SHA/ref;
+- rerun the full `Setup/Application` regression on a detached exact-candidate worktree;
+- capture current Production with `pg_dump` only;
+- restore a disposable `postgis/postgis:16-3.5` clone;
+- require final PostgreSQL PID 1 plus `pg_isready` before restore/use;
+- mirror the current Production `fieldwiring_app` Setup read/execute privilege surface using read-only Production queries;
+- apply only the migration files explicitly supplied by the feature;
+- run only the validation SQL explicitly supplied by the feature;
+- clean the disposable container/worktree/dump/pycache on success, failure, interruption, or HUP; and
+- prove the Production Setup fingerprint and live `/opt/msb-setup` SHA are unchanged before returning success.
+
+Feature-specific behavior belongs in the supplied migration/validation files, not in a new acceptance runner.
 
 ## Reusable disposable browser review
 
@@ -56,21 +67,32 @@ After disposable acceptance passes, use:
   -MigrationPaths @(<same candidate migrations>)
 ```
 
-`-ValidationPaths` is optional for browser review. Use it only when a validation/preparation SQL is intentionally safe to leave in the disposable browser state.
+`-ValidationPaths` is optional for browser review. Use it only when a validation/preparation SQL is intentionally safe to leave in the disposable browser state. Do not preload a feature validation that would hide the operator behavior being reviewed.
 
-The browser launcher refuses governed Production listener ports, owns the foreground SSH tunnel, uses the documented runtime, checks the expected health version/Manager capability, and cleans the preview process/listener/database artifacts before returning Production-after proof.
+The browser launcher preserves the same disposable-clone/Production-after safety gates and additionally:
+
+- refuses governed Production listener ports;
+- owns the foreground SSH tunnel directly;
+- starts the exact candidate with the documented `fieldwiring` Python runtime;
+- pins `/api/health` to the expected candidate version when supplied;
+- verifies the preview operator has Setup Manager capability;
+- cleans the preview process as the `fieldwiring` runtime owner;
+- verifies the preview-owned TCP listener is gone after cleanup; and
+- remains bounded by an eight-hour foreground timeout so an abandoned session cannot become a permanent preview.
+
+When the terminal prints `SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY`, perform the feature-specific operator checklist. Press ENTER only after the review is complete so the same bounded process performs cleanup and Production-after proof.
 
 ## Legacy feature-specific wrappers
 
-Older feature-specific wrappers remain historical evidence and may contain pinned SHAs/migration sets. Do not copy or patch them for new work when the reusable launchers can express the candidate.
+Older Setup acceptance files remain historical evidence for the feature that created them. They contain hard-coded candidate SHAs, migration sets, or feature checks and must not be copied or patched for new work when the reusable launchers above can express the candidate.
 
-If reusable tooling cannot safely express a future requirement, improve the reusable tooling first and contract-test the improvement rather than substituting ad-hoc interactive SSH.
+If the reusable launchers cannot safely express a future requirement, treat that as an acceptance-tooling gap: improve the reusable tooling first, contract-test the improvement, then rerun the exact candidate. Do not substitute an ad-hoc interactive SSH procedure.
 
 ## Production gate
 
 A green disposable acceptance and accepted browser review do **not** authorize Production mutation by themselves.
 
-After explicit operator approval, consume `Gregovate/MSB-Server-Management` `Production_Database_Change_Deployment_Runbook.md`: verify exact live checkout/services, run detached exact-candidate regression, create/validate rollback archive before mutation, apply only reviewed migrations, validate least privilege/invariants, deploy exact target, verify health/live regression/security boundaries, and retain recovery/report evidence.
+Only after explicit operator acceptance switch to the Server Management `Production_Database_Change_Deployment_Runbook.md`, including its live-checkout verification, validated rollback point, reviewed migration/deployment, post-deployment health/security/invariant checks, and rollback path.
 
 ## Current Production Acceptance Records
 
