@@ -37,6 +37,14 @@ if ($LASTEXITCODE -ne 0) {
     throw "Current branch does not contain the accepted Setup #167 target $AcceptedTargetSha"
 }
 
+Write-Host '--- Local #167 Production-harness contract ---'
+& python -m pytest -q -p no:cacheprovider (Join-Path $RepoRoot 'Setup\Application\test_setup_167_reconstruction_contract.py')
+if ($LASTEXITCODE -ne 0) {
+    throw "STOP: #167 Production-harness contract failed with exit code $LASTEXITCODE"
+}
+Write-Host 'PASS: #167 Production-harness contract'
+Write-Host
+
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $bundleName = "msb-setup-167-production-$stamp"
 $localBundle = Join-Path ([System.IO.Path]::GetTempPath()) $bundleName
