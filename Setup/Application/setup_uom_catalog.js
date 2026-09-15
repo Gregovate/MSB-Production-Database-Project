@@ -84,16 +84,24 @@
       : String(row?.uom_code || '');
   }
 
+  function rowsSignature(rows) {
+    return rows.map((row) => `${row.uom_code}|${row.display_name || ''}|${row.active_flag ? 1 : 0}`).join(';;');
+  }
+
   function renderSelect(id, rows, preferredValue = null) {
     const select = replaceInputWithSelect(id);
     if (!select) return;
     const previous = preferredValue ?? select.value ?? select.dataset.previousValue ?? '';
     const normalizedPrevious = String(previous || '').trim().toUpperCase();
+    const signature = rowsSignature(rows);
 
-    select.innerHTML = rows.map((row) => {
-      const inactive = row.active_flag ? '' : ' · INACTIVE';
-      return `<option value="${esc(row.uom_code)}">${esc(optionLabel(row))}${inactive}</option>`;
-    }).join('');
+    if (select.dataset.uomSignature !== signature) {
+      select.innerHTML = rows.map((row) => {
+        const inactive = row.active_flag ? '' : ' · INACTIVE';
+        return `<option value="${esc(row.uom_code)}">${esc(optionLabel(row))}${inactive}</option>`;
+      }).join('');
+      select.dataset.uomSignature = signature;
+    }
 
     if (normalizedPrevious && rows.some((row) => row.uom_code === normalizedPrevious)) {
       select.value = normalizedPrevious;
@@ -225,10 +233,14 @@
     const select = el('setup-uom-catalog-select');
     if (!select || !state.adminLoaded) return;
     const previous = preferredCode || select.value;
-    select.innerHTML = state.admin.map((row) => {
-      const inactive = row.active_flag ? '' : ' · INACTIVE';
-      return `<option value="${esc(row.uom_code)}">${esc(optionLabel(row))}${inactive}</option>`;
-    }).join('');
+    const signature = rowsSignature(state.admin);
+    if (select.dataset.uomSignature !== signature) {
+      select.innerHTML = state.admin.map((row) => {
+        const inactive = row.active_flag ? '' : ' · INACTIVE';
+        return `<option value="${esc(row.uom_code)}">${esc(optionLabel(row))}${inactive}</option>`;
+      }).join('');
+      select.dataset.uomSignature = signature;
+    }
     if (previous && state.admin.some((row) => row.uom_code === previous)) select.value = previous;
     syncUomEditor();
   }
