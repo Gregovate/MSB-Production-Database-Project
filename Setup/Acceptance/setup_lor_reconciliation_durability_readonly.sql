@@ -55,6 +55,11 @@ WHERE d.display_name IN (
     '67-WW-VW',
     '70-WW-RRCrossing-02'
 )
+GROUP BY
+    d.display_id,
+    d.display_name,
+    ls.lor_scene_id,
+    ls.scene_name
 ORDER BY d.display_name, ls.scene_name;
 
 \echo ''
