@@ -29,6 +29,8 @@ Reusable task edits and annual review state are separate governed data surfaces.
 
 ## Annual vs Reusable vs Physical Knowledge
 
+Annual 2025 information describes what happened or was planned in 2025.
+
 Keep these facts separate:
 
 ```text
