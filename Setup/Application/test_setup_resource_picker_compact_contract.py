@@ -41,6 +41,15 @@ def test_manage_catalog_action_has_local_visual_emphasis() -> None:
     assert "font-weight: 700" in css
 
 
+def test_catalog_create_commit_action_uses_primary_blue_hierarchy() -> None:
+    css = (APP_DIR / "setup_resource_picker_compact.css").read_text(encoding="utf-8")
+
+    assert '.resource-create-block button[type="submit"].secondary' in css
+    assert "background: var(--accent)" in css
+    assert "border-color: var(--accent)" in css
+    assert "color: #fff" in css
+
+
 def test_catalog_close_action_is_colored_and_beside_catalog_save() -> None:
     js = (APP_DIR / "setup_resource_picker_compact.js").read_text(encoding="utf-8")
 
