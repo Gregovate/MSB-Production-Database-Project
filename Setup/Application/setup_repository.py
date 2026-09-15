@@ -149,6 +149,7 @@ class SetupRepository:
                     t.display_order,
                     t.baseline_plan_order,
                     t.active_flag,
+                    t.requires_display_material,
                     t.normal_crew_min,
                     t.normal_crew_max,
                     t.expected_duration_minutes,
