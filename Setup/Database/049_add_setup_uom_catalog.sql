@@ -125,7 +125,10 @@ BEGIN
         v_uom := NEW.quantity_uom;
     END IF;
 
-    IF NOT EXISTS (
+    /* Inactive historical rows may retain an inactive UOM code. Referential
+       integrity still requires the code to exist; active operational rows must
+       reference an active UOM. */
+    IF NEW.active_flag AND NOT EXISTS (
         SELECT 1
         FROM ref.setup_uom u
         WHERE u.uom_code = v_uom
@@ -141,17 +144,17 @@ $function$;
 
 DROP TRIGGER IF EXISTS trg_setup_extra_material_active_uom ON ref.setup_extra_material;
 CREATE TRIGGER trg_setup_extra_material_active_uom
-BEFORE INSERT OR UPDATE OF default_uom ON ref.setup_extra_material
+BEFORE INSERT OR UPDATE OF default_uom, active_flag ON ref.setup_extra_material
 FOR EACH ROW EXECUTE FUNCTION ref.enforce_active_setup_uom();
 
 DROP TRIGGER IF EXISTS trg_setup_task_extra_material_active_uom ON ref.setup_task_extra_material;
 CREATE TRIGGER trg_setup_task_extra_material_active_uom
-BEFORE INSERT OR UPDATE OF quantity_uom ON ref.setup_task_extra_material
+BEFORE INSERT OR UPDATE OF quantity_uom, active_flag ON ref.setup_task_extra_material
 FOR EACH ROW EXECUTE FUNCTION ref.enforce_active_setup_uom();
 
 DROP TRIGGER IF EXISTS trg_setup_container_extra_material_active_uom ON ref.setup_container_extra_material;
 CREATE TRIGGER trg_setup_container_extra_material_active_uom
-BEFORE INSERT OR UPDATE OF quantity_uom ON ref.setup_container_extra_material
+BEFORE INSERT OR UPDATE OF quantity_uom, active_flag ON ref.setup_container_extra_material
 FOR EACH ROW EXECUTE FUNCTION ref.enforce_active_setup_uom();
 
 CREATE OR REPLACE FUNCTION ref.guard_setup_uom_identity_and_deactivation()
