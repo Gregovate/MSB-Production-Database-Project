@@ -90,6 +90,20 @@ def test_resource_catalog_is_searchable_sortable_and_duplicate_aware() -> None:
     assert "resource-match-list" in css
 
 
+def test_resource_catalog_create_does_not_silently_switch_task_assignment_identity() -> None:
+    compact = (APP_DIR / "setup_resource_picker_compact.js").read_text(encoding="utf-8")
+
+    assert "installSafeResourceCreation" in compact
+    assert "form.removeEventListener('submit', createSetupResource)" in compact
+    assert "const previousResourceId = picker?.value || ''" in compact
+    assert "picker.value = previousStillAvailable ? previousResourceId : ''" in compact
+    assert "quantity.value = previousQuantity" in compact
+    assert "requirement.value = previousRequirement" in compact
+    assert "notes.value = previousNotes" in compact
+    assert "The task Resource picker was left unchanged" in compact
+    assert "select the new resource explicitly" in compact
+
+
 def test_resource_api_is_role_governed() -> None:
     text = (APP_DIR / "setup_resource_api.py").read_text(encoding="utf-8")
     assert "require_reader()" in text
