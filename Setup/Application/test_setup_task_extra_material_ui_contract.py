@@ -21,7 +21,7 @@ def test_reusable_task_extra_materials_are_visible_in_task_detail() -> None:
     assert "Task requirements are separate from Kit contents and physical stock" in ui
     assert "selectTaskWithExtraMaterials" in ui
 
-    assert "setup_task_extra_materials.js" in bridge
+    assert "setup_task_extra_materials.js?v=2026-09-15.2" in bridge
     assert '"setup_task_extra_materials.js"' in host
 
 
@@ -35,6 +35,16 @@ def test_manager_can_maintain_task_extra_material_requirements() -> None:
     assert "Remove Requirement" in ui
     assert "quantity_qualifier" in ui
     assert "verification_state" in ui
+
+
+def test_existing_task_extra_material_requirement_keeps_stable_material_identity() -> None:
+    ui = text("setup_task_extra_materials.js")
+
+    assert "material identity is locked" in ui
+    assert "Remove the old requirement and add a new one if the material itself was wrong" in ui
+    assert "el('task-extra-material-item').disabled = true" in ui
+    assert "el('task-extra-material-item').disabled = false" in ui
+    assert "if (option?.dataset.uom && !state.editingRowId)" in ui
 
 
 def test_kit_row_actions_move_operator_to_the_selected_editor() -> None:
