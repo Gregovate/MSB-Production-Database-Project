@@ -10,6 +10,99 @@
 
   const qs = (id) => document.getElementById(id);
 
+  function planningSummaryUrl(scope = null, stageId = null, sceneId = null) {
+    const url = new URL('planning-summary/', window.location.href);
+    if (scope) url.searchParams.set('scope', scope);
+    if (stageId != null) url.searchParams.set('stage_id', String(stageId));
+    if (sceneId != null) url.searchParams.set('lor_scene_id', String(sceneId));
+    return url;
+  }
+
+  function openPlanningSummary(scope = null, stageId = null, sceneId = null) {
+    window.open(planningSummaryUrl(scope, stageId, sceneId).toString(), '_blank', 'noopener');
+  }
+
+  function catalogPrintButton(label, scope, stageId = null, sceneId = null) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'small secondary planning-summary-catalog-print';
+    button.textContent = label;
+    button.style.marginLeft = 'auto';
+    button.style.whiteSpace = 'nowrap';
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openPlanningSummary(scope, stageId, sceneId);
+    });
+    return button;
+  }
+
+  function decorateCatalogPrintLaunchers() {
+    const library = document.getElementById('library-view');
+    if (!library) return;
+
+    if (!document.getElementById('planning-summary-launch')) {
+      const tools = library.querySelector('.next-library-tools');
+      const header = library.querySelector('.section-title');
+      if (tools || header) {
+        const button = document.createElement('button');
+        button.id = 'planning-summary-launch';
+        button.type = 'button';
+        button.className = 'secondary';
+        button.textContent = 'Print Planning Summary…';
+        button.addEventListener('click', () => openPlanningSummary());
+        (tools || header).append(button);
+      }
+    }
+
+    library.querySelectorAll('.next-stage-group:not(.next-sitewide-group)').forEach((group) => {
+      const stageId = String(group.dataset.stageId || '').trim();
+      const summary = group.firstElementChild;
+      if (!stageId || !summary || summary.querySelector('.planning-summary-stage-print')) return;
+      const button = catalogPrintButton('Print Stage', 'stage', stageId);
+      button.classList.add('planning-summary-stage-print');
+      const count = summary.querySelector('.next-count');
+      if (count) {
+        count.style.marginLeft = '0';
+        count.before(button);
+      } else {
+        summary.append(button);
+      }
+    });
+
+    library.querySelectorAll('.next-scope-group').forEach((group) => {
+      const stageId = String(group.dataset.stageId || '').trim();
+      const sceneId = String(group.dataset.sceneId || '').trim();
+      const summary = group.firstElementChild;
+      if (!stageId || !sceneId || !summary || summary.querySelector('.planning-summary-scene-print')) return;
+      summary.style.display = 'flex';
+      summary.style.alignItems = 'center';
+      summary.style.gap = '0.5rem';
+      const button = catalogPrintButton('Print Scene', 'scene', stageId, sceneId);
+      button.classList.add('planning-summary-scene-print');
+      const count = summary.querySelector('.next-count');
+      if (count) {
+        count.style.marginLeft = '0';
+        count.before(button);
+      } else {
+        summary.append(button);
+      }
+    });
+  }
+
+  function installCatalogPrintLaunchers() {
+    const list = document.getElementById('library-list');
+    if (!list) return;
+    decorateCatalogPrintLaunchers();
+    const observer = new MutationObserver(() => decorateCatalogPrintLaunchers());
+    observer.observe(list, { childList: true, subtree: true });
+  }
+
+  if (!qs('scope-select') || !qs('summary-root')) {
+    installCatalogPrintLaunchers();
+    return;
+  }
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replaceAll('&', '&amp;')
@@ -291,6 +384,27 @@
     }
   }
 
+  function applyRequestedScope() {
+    const params = new URLSearchParams(window.location.search);
+    const scope = params.get('scope');
+    if (!['stage', 'scene', 'all'].includes(scope)) return false;
+
+    qs('scope-select').value = scope;
+    if (scope !== 'all') {
+      const stageId = params.get('stage_id');
+      if (!stageId || ![...qs('stage-select').options].some((item) => item.value === stageId)) return false;
+      qs('stage-select').value = stageId;
+    }
+    refreshScopeControls();
+
+    if (scope === 'scene') {
+      const sceneId = params.get('lor_scene_id');
+      if (!sceneId || ![...qs('scene-select').options].some((item) => item.value === sceneId)) return false;
+      qs('scene-select').value = sceneId;
+    }
+    return true;
+  }
+
   async function initialize() {
     try {
       setStatus('Loading Setup planning scopes…');
@@ -307,7 +421,11 @@
         : 'Setup reader';
       refreshStageOptions();
       refreshScopeControls();
-      setStatus('Choose a planning scope and load the current reusable Catalog summary.');
+      if (applyRequestedScope()) {
+        await loadSummary();
+      } else {
+        setStatus('Choose a planning scope and load the current reusable Catalog summary.');
+      }
     } catch (error) {
       setStatus(error.message || String(error), true);
     }
