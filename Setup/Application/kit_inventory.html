@@ -101,7 +101,7 @@
                 <div class="hint">Select an existing normalized Extra Material family. Create a new family only when the physical item is genuinely missing from the catalog.</div>
               </div>
               <label>Expected Qty<input id="expected-qty" type="number" min="0.001" step="0.001"></label>
-              <label>UOM<input id="expected-uom" type="text" value="EA"></label>
+              <label>UOM<select id="expected-uom" required></select></label>
               <label>Size<input id="expected-size" type="text"></label>
               <label>Length<input id="expected-length" type="number" min="0.001" step="0.001"></label>
               <label>Length unit<select id="expected-length-unit"><option value="">—</option><option value="IN">in</option><option value="FT">ft</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
@@ -162,9 +162,7 @@
                     <option value="SPARE_REPLACEMENT">Spare / replacement</option>
                   </select>
                 </label>
-                <label>Default UOM
-                  <input id="extra-material-catalog-uom" type="text" value="EA">
-                </label>
+                <label>Default UOM<select id="extra-material-catalog-uom" required></select></label>
                 <label>Optional display order
                   <input id="extra-material-catalog-order" type="number" min="0" value="100">
                 </label>
@@ -199,9 +197,7 @@
                       <option value="SPARE_REPLACEMENT">Spare / replacement</option>
                     </select>
                   </label>
-                  <label>Default UOM
-                    <input id="extra-material-new-uom" type="text" value="EA" required>
-                  </label>
+                  <label>Default UOM<select id="extra-material-new-uom" required></select></label>
                 </div>
                 <label>Catalog notes
                   <input id="extra-material-new-notes" type="text" placeholder="Optional reusable catalog note">
@@ -279,5 +275,6 @@
 <script src="assets/setup_kit_inventory.js?v=2026-09-13.2"></script>
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
 <script src="assets/setup_kit_inventory_review.js?v=2026-09-15.2"></script>
+<script src="assets/setup_uom_catalog.js?v=2026-09-15.1"></script>
 </body>
 </html>
