@@ -68,6 +68,28 @@ def test_print_surface_is_dated_disposable_and_compact() -> None:
     assert "@media print" in css
 
 
+def test_print_surface_is_scheduler_and_pick_list_review_first() -> None:
+    html = read("planning_summary.html")
+    js = read("setup_planning_summary.js")
+    css = read("setup_planning_summary.css")
+
+    assert "Scheduling / Pick List review copy" in html
+    assert "current Catalog Step order" in html
+    assert "taskStepSort" in js
+    assert "Step ${escapeHtml(step)}" in js
+    assert "Display ${escapeHtml" not in js
+    assert "Crew size is missing or incomplete" in js
+    assert "Estimated setup time is missing" in js
+    assert "Hard predecessor review is incomplete" in js
+    assert "Hard predecessor(s) — REQUIRED" in js
+    assert "MATERIAL STEP" in js
+    assert "SCHEDULER / PICK-LIST REVIEW" in js
+    assert "Extra Material / T-Post quantity or source data still needs verification" in js
+    assert "scheduler-review" in css
+    assert "material-badge" in css
+    assert "missing-value" in css
+
+
 def test_catalog_exposes_contextual_stage_scene_and_broad_print_launchers() -> None:
     production = read("production.html")
     js = read("setup_planning_summary.js")
