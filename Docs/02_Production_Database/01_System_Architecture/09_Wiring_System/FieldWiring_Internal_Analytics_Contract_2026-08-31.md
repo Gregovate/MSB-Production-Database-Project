@@ -33,6 +33,24 @@ Each page loads the asset with an explicit cache/version parameter:
 static/analytics.js?v=2026-08-31.1
 ```
 
+## Canonical GA4 Page Titles
+
+GA4 receives `document.title` as `page_title`, so spelling/spacing differences fragment the Pages and Screens report even when URLs belong to the same subsystem.
+
+Canonical current titles are:
+
+```text
+/fieldwiring/         -> MSB Field Wiring
+/fieldwiring/wiring   -> MSB Field Wiring
+/fieldwiring/controllers -> MSB Controller Inventory
+```
+
+The landing page previously used `MSB FieldWiring` while the wiring-detail page used `MSB Field Wiring`. That caused GA4 to show separate `FieldWiring` and `Field Wiring` rows. The source title is now normalized and the analytics contract test guards against reintroducing the mismatch.
+
+Historical GA4 data collected under the old title remains historical and will not be rewritten. New traffic should use the canonical title.
+
+Use `page_path` when analysis needs to distinguish the Field Wiring landing page from the wiring-detail page; do not create inconsistent page titles merely to distinguish routes.
+
 ## Privacy Boundary
 
 FieldWiring URLs can contain Production Database identifiers such as:
@@ -86,6 +104,8 @@ FieldWiring/Application/test_internal_analytics_contract.py
 The automated gate verifies:
 
 - all three FieldWiring pages load the versioned analytics asset;
+- Field Wiring landing/detail pages use the canonical `MSB Field Wiring` title;
+- Controller Inventory retains its separate canonical title;
 - the approved Measurement ID is used;
 - Google Signals and advertising personalization are disabled;
 - page measurement is pathname-only and does not use query strings/raw URLs;
