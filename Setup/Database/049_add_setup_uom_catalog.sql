@@ -11,6 +11,82 @@ BEGIN
        OR to_regprocedure('ref.set_actor_on_update()') IS NULL THEN
         RAISE EXCEPTION 'Current Extra Material and Setup Manager foundation is required first';
     END IF;
+
+    /* Refuse to normalize malformed legacy codes silently. Current values must
+       fit the same stable-code grammar used for all future Manager-created UOMs. */
+    IF EXISTS (
+        SELECT 1
+        FROM (
+            SELECT upper(btrim(default_uom)) AS uom_code FROM ref.setup_extra_material
+            UNION
+            SELECT upper(btrim(quantity_uom)) FROM ref.setup_task_extra_material
+            UNION
+            SELECT upper(btrim(quantity_uom)) FROM ref.setup_container_extra_material
+        ) existing
+        WHERE nullif(existing.uom_code, '') IS NULL
+           OR existing.uom_code !~ '^[A-Z0-9][A-Z0-9._/-]{0,15}$'
+    ) THEN
+        RAISE EXCEPTION 'Current Setup Extra Material data contains a malformed UOM code; review it before migration 049';
+    END IF;
+
+    /* The active relationship uniqueness rules include UOM. If legacy rows
+       differ only by UOM case/outer whitespace, canonicalization could collapse
+       them onto one active key. Fail before any UPDATE rather than guess. */
+    IF EXISTS (
+        SELECT 1
+        FROM (
+            SELECT
+                setup_task_id,
+                setup_extra_material_id,
+                upper(btrim(quantity_uom)) AS normalized_uom,
+                coalesce(lower(btrim(size_text)), '') AS size_key,
+                coalesce(length_value, -1::numeric) AS length_key,
+                coalesce(length_unit, '') AS length_unit_key,
+                coalesce(lower(btrim(color)), '') AS color_key,
+                count(*) AS row_count
+            FROM ref.setup_task_extra_material
+            WHERE active_flag
+            GROUP BY
+                setup_task_id,
+                setup_extra_material_id,
+                upper(btrim(quantity_uom)),
+                coalesce(lower(btrim(size_text)), ''),
+                coalesce(length_value, -1::numeric),
+                coalesce(length_unit, ''),
+                coalesce(lower(btrim(color)), '')
+            HAVING count(*) > 1
+        ) collisions
+    ) THEN
+        RAISE EXCEPTION 'UOM normalization would collide active Setup task Extra Material rows; review before migration 049';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM (
+            SELECT
+                container_id,
+                setup_extra_material_id,
+                upper(btrim(quantity_uom)) AS normalized_uom,
+                coalesce(lower(btrim(size_text)), '') AS size_key,
+                coalesce(length_value, -1::numeric) AS length_key,
+                coalesce(length_unit, '') AS length_unit_key,
+                coalesce(lower(btrim(color)), '') AS color_key,
+                count(*) AS row_count
+            FROM ref.setup_container_extra_material
+            WHERE active_flag
+            GROUP BY
+                container_id,
+                setup_extra_material_id,
+                upper(btrim(quantity_uom)),
+                coalesce(lower(btrim(size_text)), ''),
+                coalesce(length_value, -1::numeric),
+                coalesce(length_unit, ''),
+                coalesce(lower(btrim(color)), '')
+            HAVING count(*) > 1
+        ) collisions
+    ) THEN
+        RAISE EXCEPTION 'UOM normalization would collide active Container Extra Material rows; review before migration 049';
+    END IF;
 END
 $preflight$;
 
@@ -28,6 +104,7 @@ CREATE TABLE IF NOT EXISTS ref.setup_uom (
     updated_by_person_id integer REFERENCES ref.person(person_id),
     CONSTRAINT ck_setup_uom_code_nonblank CHECK (btrim(uom_code) <> ''),
     CONSTRAINT ck_setup_uom_code_canonical CHECK (uom_code = upper(btrim(uom_code))),
+    CONSTRAINT ck_setup_uom_code_format CHECK (uom_code ~ '^[A-Z0-9][A-Z0-9._/-]{0,15}$'),
     CONSTRAINT ck_setup_uom_display_name CHECK (btrim(display_name) <> ''),
     CONSTRAINT ck_setup_uom_order CHECK (display_order >= 0)
 );
@@ -71,7 +148,10 @@ VALUES
     ('EA', 'Each', true, 10, 'Counted individual item.'),
     ('FT', 'Foot / feet', true, 20, 'Linear feet.'),
     ('IN', 'Inch / inches', true, 30, 'Linear inches.'),
-    ('SHEET', 'Sheet', true, 40, 'Sheet count.')
+    ('SHEET', 'Sheet', true, 40, 'Sheet count.'),
+    ('SET', 'Set', true, 50, 'Counted set.'),
+    ('ROLL', 'Roll', true, 60, 'Roll count.'),
+    ('CAN', 'Can', true, 70, 'Can count.')
 ON CONFLICT (uom_code) DO UPDATE
 SET display_name = EXCLUDED.display_name,
     display_order = LEAST(ref.setup_uom.display_order, EXCLUDED.display_order),
@@ -309,7 +389,7 @@ COMMIT;
 
 SELECT
     to_regclass('ref.setup_uom') IS NOT NULL AS uom_catalog_exists,
-    (SELECT count(*) FROM ref.setup_uom WHERE uom_code IN ('EA','FT','IN','SHEET')) = 4 AS starter_uoms_present,
+    (SELECT count(*) FROM ref.setup_uom WHERE uom_code IN ('EA','FT','IN','SHEET','SET','ROLL','CAN')) = 7 AS starter_uoms_present,
     NOT EXISTS (
         SELECT 1 FROM ref.setup_extra_material m
         LEFT JOIN ref.setup_uom u ON u.uom_code=m.default_uom
