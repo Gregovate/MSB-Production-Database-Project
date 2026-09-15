@@ -100,3 +100,4 @@ Only after explicit operator acceptance switch to the Server Management `Product
 - `Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md`
 - `Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md` — #184 durable Extra Material / Kit Inventory / T-Post subsystem plus completed #167 one-time reconstruction.
 - `Setup_Planning_Summary_Production_Acceptance_2026-09-15.md` — #122 Planning Summary / hand-markup scheduler and Pick-List readiness review surface.
+- `Setup_Extra_Material_Catalog_UOM_Production_Acceptance_2026-09-15.md` — #189 inline Extra Material catalog workflow plus #191 governed UOM catalog/migration 049.
