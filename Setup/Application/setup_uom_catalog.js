@@ -19,9 +19,11 @@
   const el = (id) => document.getElementById(id);
 
   function appBasePath() {
+    const pathname = window.location.pathname;
     const marker = '/kit-inventory';
-    const index = window.location.pathname.indexOf(marker);
-    return index >= 0 ? window.location.pathname.slice(0, index + 1) : '/';
+    const index = pathname.indexOf(marker);
+    if (index >= 0) return pathname.slice(0, index + 1);
+    return pathname.endsWith('/') ? pathname : `${pathname}/`;
   }
 
   const APP_BASE = appBasePath();
