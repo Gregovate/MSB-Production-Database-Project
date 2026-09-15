@@ -4,6 +4,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_DIR = BASE_DIR.parent / "Database"
+ACCEPTANCE_DIR = BASE_DIR.parent / "Acceptance"
 
 
 def text(path: Path) -> str:
@@ -193,3 +194,11 @@ def test_167_final_tpost_completion_supports_shared_stock_and_explicit_kit_excep
     assert "INSERT INTO ops.setup_extra_material_inventory_event" not in sql
     assert "INSERT INTO ops.setup_session" not in sql
     assert "INSERT INTO ref.setup_task_container_support" not in sql
+
+
+def test_167_production_runner_verifies_real_inventory_routes() -> None:
+    runner = text(ACCEPTANCE_DIR / "setup_167_production_migrate_server.sh")
+
+    assert "http://192.168.5.9:8794/kit-inventory/" in runner
+    assert "http://192.168.5.9:8794/t-post-inventory/" in runner
+    assert "http://192.168.5.9:8794/tpost-inventory/" not in runner
