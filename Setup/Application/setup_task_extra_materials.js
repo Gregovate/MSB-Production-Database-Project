@@ -69,6 +69,7 @@
       </div>
       <form id="task-extra-material-form" class="extra-material-editor manager-only" hidden>
         <h3>Manager — Task Extra Material Requirement</h3>
+        <div class="hint">When editing an existing requirement, the material identity is locked. Remove the old requirement and add a new one if the material itself was wrong.</div>
         <div class="extra-material-form-grid">
           <label>Item<select id="task-extra-material-item" required></select></label>
           <label>Required Qty<input id="task-extra-material-qty" type="number" min="0.001" step="0.001"></label>
@@ -118,6 +119,7 @@
       'task-extra-material-notes': '',
     };
     Object.entries(values).forEach(([id, value]) => { if (el(id)) el(id).value = value; });
+    if (el('task-extra-material-item')) el('task-extra-material-item').disabled = false;
     if (el('task-extra-material-save')) el('task-extra-material-save').textContent = 'Add Requirement';
     if (el('task-extra-material-remove')) el('task-extra-material-remove').hidden = true;
   }
@@ -127,6 +129,7 @@
     if (!row || !appState.access?.can_manage_setup) return;
     state.editingRowId = Number(rowId);
     el('task-extra-material-item').value = String(row.setup_extra_material_id);
+    el('task-extra-material-item').disabled = true;
     el('task-extra-material-qty').value = row.quantity_required ?? '';
     el('task-extra-material-uom').value = row.quantity_uom || 'EA';
     el('task-extra-material-size').value = row.size_text || '';

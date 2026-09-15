@@ -9,9 +9,9 @@ def test_compact_resource_picker_is_loaded_after_task_detail_refinement() -> Non
     backend = (APP_DIR / "production_backend.py").read_text(encoding="utf-8")
 
     assert "setup_resource_picker_compact.css?v=2026-09-11.2" in html
-    assert "setup_resource_picker_compact.js?v=2026-09-11.2" in html
+    assert "setup_resource_picker_compact.js?v=2026-09-15.1" in html
     assert html.index("setup_task_detail_compact.js?v=2026-09-11.1") < html.index(
-        "setup_resource_picker_compact.js?v=2026-09-11.2"
+        "setup_resource_picker_compact.js?v=2026-09-15.1"
     )
     assert '"setup_resource_picker_compact.css"' in backend
     assert '"setup_resource_picker_compact.js"' in backend
@@ -39,6 +39,15 @@ def test_manage_catalog_action_has_local_visual_emphasis() -> None:
     assert "border-color: var(--accent)" in css
     assert "color: var(--accent)" in css
     assert "font-weight: 700" in css
+
+
+def test_catalog_create_commit_action_uses_primary_blue_hierarchy() -> None:
+    css = (APP_DIR / "setup_resource_picker_compact.css").read_text(encoding="utf-8")
+
+    assert '.resource-create-block button[type="submit"].secondary' in css
+    assert "background: var(--accent)" in css
+    assert "border-color: var(--accent)" in css
+    assert "color: #fff" in css
 
 
 def test_catalog_close_action_is_colored_and_beside_catalog_save() -> None:

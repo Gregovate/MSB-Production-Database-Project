@@ -1,4 +1,4 @@
-/* Issue #167 — route Kit Inventory outside the annual Setup Session workspace. */
+/* Issue #167/#191 — route Kit Inventory and load durable Extra Material support. */
 (() => {
   function inventoryUrl(containerId = null) {
     return containerId ? `kit-inventory/${Number(containerId)}` : 'kit-inventory/';
@@ -67,8 +67,16 @@
   function loadTaskExtraMaterialUi() {
     if (document.querySelector('script[data-setup-task-extra-materials]')) return;
     const script = document.createElement('script');
-    script.src = 'setup_task_extra_materials.js?v=2026-09-14.1';
+    script.src = 'setup_task_extra_materials.js?v=2026-09-15.2';
     script.dataset.setupTaskExtraMaterials = '1';
+    document.body.appendChild(script);
+  }
+
+  function loadUomCatalogUi() {
+    if (document.querySelector('script[data-setup-uom-catalog]')) return;
+    const script = document.createElement('script');
+    script.src = 'setup_uom_catalog.js?v=2026-09-15.1';
+    script.dataset.setupUomCatalog = '1';
     document.body.appendChild(script);
   }
 
@@ -88,6 +96,7 @@
     configureSetupEntryPoint();
     decorateKitAssignments();
     loadTaskExtraMaterialUi();
+    loadUomCatalogUi();
     const observer = new MutationObserver(decorateKitAssignments);
     observer.observe(document.body, { childList: true, subtree: true });
   }

@@ -18,12 +18,17 @@ from setup_extra_material_repository import (
     SetupExtraMaterialRepositoryError,
 )
 from setup_repository import SetupRepositoryError
+from setup_uom_repository import SetupUomRepository, SetupUomRepositoryError
 
 setup_extra_material_api = Blueprint("setup_extra_material_api", __name__)
 
 
 def repo() -> SetupExtraMaterialRepository:
     return SetupExtraMaterialRepository(setup_database_dsn())
+
+
+def uom_repo() -> SetupUomRepository:
+    return SetupUomRepository(setup_database_dsn())
 
 
 def require_inventory_operator():
@@ -52,6 +57,37 @@ def api_extra_materials() -> Response:
 def api_extra_material_catalog() -> Response:
     require_manager()
     return jsonify(extra_materials=repo().catalog(include_inactive=True))
+
+
+@setup_extra_material_api.get("/api/setup/uoms")
+def api_setup_uoms() -> Response:
+    require_reader()
+    return jsonify(uoms=uom_repo().catalog())
+
+
+@setup_extra_material_api.get("/api/setup/uom-catalog")
+def api_setup_uom_catalog() -> Response:
+    require_manager()
+    return jsonify(uoms=uom_repo().catalog(include_inactive=True))
+
+
+@setup_extra_material_api.post("/api/setup/uoms")
+def api_setup_uom_create() -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = uom_repo().create(email=email, payload=json_body())
+    return jsonify(uom=result), 201
+
+
+@setup_extra_material_api.patch("/api/setup/uoms/<path:uom_code>")
+def api_setup_uom_update(uom_code: str) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    return jsonify(uom=uom_repo().update(
+        email=email,
+        uom_code=uom_code,
+        payload=json_body(),
+    ))
 
 
 @setup_extra_material_api.get("/api/setup/tasks/<int:setup_task_id>/extra-materials")
@@ -219,7 +255,8 @@ def command_error(exc: SetupCommandError) -> tuple[Response, int]:
 
 @setup_extra_material_api.errorhandler(SetupRepositoryError)
 @setup_extra_material_api.errorhandler(SetupExtraMaterialRepositoryError)
-def repository_error(exc: SetupRepositoryError | SetupExtraMaterialRepositoryError) -> tuple[Response, int]:
+@setup_extra_material_api.errorhandler(SetupUomRepositoryError)
+def repository_error(exc: SetupRepositoryError | SetupExtraMaterialRepositoryError | SetupUomRepositoryError) -> tuple[Response, int]:
     return jsonify(error="Setup Extra Materials are temporarily unavailable.", engineering_error=str(exc)), 503
 
 

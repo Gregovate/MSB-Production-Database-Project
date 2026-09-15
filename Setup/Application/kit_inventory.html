@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Kit Inventory</title>
-  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-14.2">
+  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-15.2">
 </head>
 <body>
 <header class="inventory-header">
@@ -74,7 +74,10 @@
               <h3>Expected Kit Contents</h3>
               <div class="hint">What should be in this Kit. Physical on-hand is shown separately from expected quantity.</div>
             </div>
-            <button id="expected-add" type="button" class="small secondary manager-only" hidden>Add expected item</button>
+            <div class="section-actions">
+              <button id="expected-add" type="button" class="small secondary manager-only" hidden>Add expected item</button>
+              <button id="extra-material-catalog-toggle" type="button" class="small secondary manager-only" hidden>Manage Extra Material Catalog</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table class="kit-contents-table">
@@ -90,9 +93,15 @@
           <div class="hint">Changes expected Kit contents only. It does not change physical on-hand.</div>
           <form id="expected-form">
             <div class="form-grid">
-              <label>Item<select id="expected-item" required></select></label>
+              <div class="catalog-picker-field wide">
+                <label>Item<select id="expected-item" required></select></label>
+                <div class="catalog-picker-actions manager-only" hidden>
+                  <button id="expected-new-catalog-item" type="button" class="small secondary">New catalog item…</button>
+                </div>
+                <div class="hint">Select an existing normalized Extra Material family. Create a new family only when the physical item is genuinely missing from the catalog.</div>
+              </div>
               <label>Expected Qty<input id="expected-qty" type="number" min="0.001" step="0.001"></label>
-              <label>UOM<input id="expected-uom" type="text" value="EA"></label>
+              <label>UOM<select id="expected-uom" required></select></label>
               <label>Size<input id="expected-size" type="text"></label>
               <label>Length<input id="expected-length" type="number" min="0.001" step="0.001"></label>
               <label>Length unit<select id="expected-length-unit"><option value="">—</option><option value="IN">in</option><option value="FT">ft</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
@@ -106,6 +115,100 @@
               <button id="expected-remove" type="button" class="warning" hidden>Remove Expected Item</button>
             </div>
           </form>
+        </section>
+
+        <section id="extra-material-catalog-manager" class="detail-section action-panel catalog-manager-panel" hidden>
+          <div class="section-title compact">
+            <div>
+              <div class="eyebrow">Manager catalog maintenance</div>
+              <h3>Manage Extra Material Catalog</h3>
+              <div class="hint">Same pattern as Resource Catalog: search before creating, edit the stable catalog identity in place, and deactivate/reactivate rather than duplicating it.</div>
+            </div>
+            <button id="extra-material-catalog-close" type="button" class="secondary">Close Catalog</button>
+          </div>
+
+          <div class="catalog-manager-grid">
+            <section class="catalog-manager-block">
+              <div class="catalog-manager-heading">
+                <h3>Existing catalog items</h3>
+                <div class="hint">Search active and inactive normalized material families. Kit-specific quantity, specification, verification, and notes remain on the Kit-content row.</div>
+              </div>
+              <div class="catalog-search-grid">
+                <label>Search catalog
+                  <input id="extra-material-catalog-search" type="search" placeholder="Search name, lifecycle, UOM, notes, active/inactive">
+                </label>
+                <label>Browse sort
+                  <select id="extra-material-catalog-sort">
+                    <option value="NAME">Name</option>
+                    <option value="LIFECYCLE">Lifecycle, then name</option>
+                    <option value="ACTIVE">Active first</option>
+                    <option value="ORDER">Catalog display order</option>
+                  </select>
+                </label>
+              </div>
+              <div id="extra-material-catalog-results" class="muted"></div>
+              <label>Catalog material
+                <select id="extra-material-catalog-select"></select>
+              </label>
+              <div class="catalog-edit-grid">
+                <label>Material name
+                  <input id="extra-material-catalog-name" type="text">
+                </label>
+                <label>Lifecycle
+                  <select id="extra-material-catalog-lifecycle">
+                    <option value="REUSABLE">Reusable</option>
+                    <option value="CONSUMABLE">Consumable</option>
+                    <option value="TEMP_REUSABLE">Temporary reusable</option>
+                    <option value="SPARE_REPLACEMENT">Spare / replacement</option>
+                  </select>
+                </label>
+                <label>Default UOM<select id="extra-material-catalog-uom" required></select></label>
+                <label>Optional display order
+                  <input id="extra-material-catalog-order" type="number" min="0" value="100">
+                </label>
+                <label class="checkbox-label">
+                  <input id="extra-material-catalog-active" type="checkbox"> Active catalog material
+                </label>
+              </div>
+              <label>Catalog notes
+                <input id="extra-material-catalog-notes" type="text" placeholder="Reusable catalog note, not Kit-specific detail">
+              </label>
+              <div id="extra-material-catalog-state" class="muted"></div>
+              <div class="action-row">
+                <button id="extra-material-catalog-save" type="button">Save Catalog Material</button>
+              </div>
+            </section>
+
+            <section class="catalog-manager-block catalog-create-block">
+              <div class="catalog-manager-heading">
+                <h3>Need a material family that is not in the catalog?</h3>
+                <div class="hint">Type the normalized family name first. Setup checks active and inactive entries before allowing a new identity.</div>
+              </div>
+              <form id="extra-material-new-form">
+                <div class="catalog-edit-grid">
+                  <label>Material name
+                    <input id="extra-material-new-name" type="text" placeholder="Example: Custom Wiring Harness" required>
+                  </label>
+                  <label>Lifecycle
+                    <select id="extra-material-new-lifecycle">
+                      <option value="REUSABLE">Reusable</option>
+                      <option value="CONSUMABLE">Consumable</option>
+                      <option value="TEMP_REUSABLE">Temporary reusable</option>
+                      <option value="SPARE_REPLACEMENT">Spare / replacement</option>
+                    </select>
+                  </label>
+                  <label>Default UOM<select id="extra-material-new-uom" required></select></label>
+                </div>
+                <label>Catalog notes
+                  <input id="extra-material-new-notes" type="text" placeholder="Optional reusable catalog note">
+                </label>
+                <div id="extra-material-new-matches" class="catalog-match-list muted">Start typing a name to check the full active/inactive catalog for possible duplicates.</div>
+                <div class="action-row">
+                  <button type="submit">Save New Catalog Material</button>
+                </div>
+              </form>
+            </section>
+          </div>
         </section>
 
         <section id="inventory-editor" class="detail-section action-panel" hidden>
@@ -156,10 +259,11 @@
         <details class="compact-details remainder-details">
           <summary>Unverified Items / Remainders</summary>
           <div class="details-body">
-            <div class="hint">Cleanup notes that have not yet been normalized or verified. The written procedures remain the fallback source.</div>
+            <div class="hint">Temporary evidence that has not yet been normalized or verified. When a remainder is confirmed as a real physical Extra Material, normalize it into the Extra Material catalog and Expected Kit Contents instead of leaving it only as free text.</div>
             <textarea id="unverified-items" rows="6" readonly></textarea>
             <div id="unverified-actions" class="action-row manager-only" hidden>
               <button id="save-unverified" type="button">Save Remainders</button>
+              <button id="normalize-remainder-item" type="button" class="secondary">Normalize as Extra Material…</button>
             </div>
           </div>
         </details>
@@ -170,6 +274,75 @@
 
 <script src="assets/setup_kit_inventory.js?v=2026-09-13.2"></script>
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
-<script src="assets/setup_kit_inventory_review.js?v=2026-09-14.2"></script>
+<script src="assets/setup_kit_inventory_review.js?v=2026-09-15.2"></script>
+<script src="assets/setup_uom_catalog.js?v=2026-09-15.1"></script>
+<script>
+/* Issue #189 browser-acceptance clarity: existing catalog editing is opt-in. */
+(() => {
+  const select = document.getElementById('extra-material-catalog-select');
+  if (!select) return;
+
+  const existingBlock = select.closest('.catalog-manager-block');
+  const createBlock = document.querySelector('.catalog-create-block');
+  const editGrid = document.getElementById('extra-material-catalog-name')?.closest('.catalog-edit-grid');
+  const notesLabel = document.getElementById('extra-material-catalog-notes')?.closest('label');
+  const state = document.getElementById('extra-material-catalog-state');
+  const saveRow = document.getElementById('extra-material-catalog-save')?.closest('.action-row');
+  const existingHeading = existingBlock?.querySelector('.catalog-manager-heading h3');
+  const existingHint = existingBlock?.querySelector('.catalog-manager-heading .hint');
+  const createHeading = createBlock?.querySelector('.catalog-manager-heading h3');
+  const save = document.getElementById('extra-material-catalog-save');
+
+  if (existingBlock) existingBlock.classList.add('catalog-existing-block');
+  if (existingHeading) existingHeading.textContent = 'Find or edit an existing catalog material';
+  if (existingHint) existingHint.textContent = 'Search first. Nothing is edited until you explicitly choose a catalog material below.';
+  if (createHeading) createHeading.textContent = 'Create a new catalog material';
+  if (save) save.textContent = 'Save Changes to Existing Material';
+
+  const editNodes = [editGrid, notesLabel, state, saveRow].filter(Boolean);
+  let explicitValue = '';
+  let applying = false;
+
+  function optionExists(value) {
+    return Boolean(value) && Array.from(select.options).some((option) => option.value === value);
+  }
+
+  function ensurePlaceholder() {
+    if (!select.querySelector('option[data-edit-placeholder="1"]')) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.dataset.editPlaceholder = '1';
+      option.textContent = 'Select a catalog material to edit…';
+      select.insertBefore(option, select.firstChild);
+    }
+  }
+
+  function applyDisclosure() {
+    if (applying) return;
+    applying = true;
+    ensurePlaceholder();
+    if (explicitValue && optionExists(explicitValue)) {
+      select.value = explicitValue;
+    } else {
+      explicitValue = '';
+      select.value = '';
+    }
+    const editing = Boolean(select.value);
+    existingBlock?.classList.toggle('catalog-edit-active', editing);
+    editNodes.forEach((node) => { node.hidden = !editing; });
+    applying = false;
+  }
+
+  select.addEventListener('change', () => {
+    explicitValue = select.value;
+    applyDisclosure();
+  });
+
+  new MutationObserver(() => queueMicrotask(applyDisclosure))
+    .observe(select, { childList: true });
+
+  queueMicrotask(applyDisclosure);
+})();
+</script>
 </body>
 </html>

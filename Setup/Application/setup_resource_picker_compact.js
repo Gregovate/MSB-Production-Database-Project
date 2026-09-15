@@ -2,6 +2,49 @@
 (() => {
   'use strict';
 
+  function installSafeResourceCreation() {
+    const form = document.getElementById('setup-new-resource-form');
+    if (!form || form.dataset.identitySafeCreateInstalled === '1') return;
+    if (typeof createSetupResource !== 'function') return;
+
+    form.dataset.identitySafeCreateInstalled = '1';
+    form.removeEventListener('submit', createSetupResource);
+    form.addEventListener('submit', async (event) => {
+      const picker = document.getElementById('setup-resource-select');
+      const quantity = document.getElementById('setup-resource-quantity');
+      const requirement = document.getElementById('setup-resource-requirement');
+      const notes = document.getElementById('setup-resource-notes');
+      const nameInput = document.getElementById('setup-new-resource-name');
+      const requestedName = nameInput?.value.trim() || '';
+      const previousResourceId = picker?.value || '';
+      const previousQuantity = quantity?.value || '';
+      const previousRequirement = requirement?.value || 'REQUIRED';
+      const previousNotes = notes?.value || '';
+
+      await createSetupResource(event);
+
+      const created = Boolean(requestedName && nameInput && !nameInput.value.trim());
+      if (!created) return;
+
+      if (picker) {
+        const previousStillAvailable = Array.from(picker.options)
+          .some((option) => option.value === previousResourceId);
+        picker.value = previousStillAvailable ? previousResourceId : '';
+        if (typeof syncSetupResourceSelection === 'function') syncSetupResourceSelection();
+      }
+      if (quantity) quantity.value = previousQuantity;
+      if (requirement) requirement.value = previousRequirement;
+      if (notes) notes.value = previousNotes;
+
+      if (typeof setAlert === 'function') {
+        setAlert(
+          `Reusable resource ${requestedName} created as a new catalog identity. The task Resource picker was left unchanged; select the new resource explicitly when you want to add it to this task.`,
+          'ok'
+        );
+      }
+    });
+  }
+
   function installCompactResourcePicker() {
     const manager = document.getElementById('setup-resource-manager');
     if (!manager || manager.dataset.compactResourcePickerInstalled === '1') return;
@@ -97,10 +140,15 @@
       note.textContent = 'Usually leave 100; meaningful names drive the normal picker order.';
       orderLabel.appendChild(note);
     }
+
+    installSafeResourceCreation();
   }
 
   installCompactResourcePicker();
 
-  const observer = new MutationObserver(() => installCompactResourcePicker());
+  const observer = new MutationObserver(() => {
+    installCompactResourcePicker();
+    installSafeResourceCreation();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
 })();
