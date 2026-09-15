@@ -1,0 +1,23 @@
+Issue #167 assignment-driven inventory boundary
+
+Current Production operator review confirms all task-assignable Kit Boxes now have explicit reusable task -> KIT assignments.
+
+Remaining unassigned Kit-typed rows are shared/non-task stock:
+- 69 Network Cable
+- 123 Display Spacers 21
+- 124 Display Spacers 21
+- 125 Display Spacers 21 (large kit)
+- 128 Display Spacers 21
+- 129 Misc Size Spacers
+
+Reconciliation rule:
+- explicit Container evidence wins;
+- otherwise current reusable task -> KIT assignment is the matching anchor;
+- one task + one Kit may receive procedure-derived expected contents unless material is shared stock / Resource / explicitly sourced elsewhere;
+- one task + multiple Kits requires container-level evidence or remains unresolved;
+- one Kit + multiple tasks is valid; contents remain Container-level;
+- T-Posts and common spacer stock remain shared source allocations, not Kit contents;
+- current Display contents remain ref.display.container_id truth.
+
+Read-only coverage query:
+Setup/Acceptance/setup_167_assigned_kit_inventory_coverage.sql
