@@ -1,4 +1,4 @@
-/* Issue #167 — route Kit Inventory outside the annual Setup Session workspace. */
+/* Issue #167/#191 — route Kit Inventory and load durable Extra Material support. */
 (() => {
   function inventoryUrl(containerId = null) {
     return containerId ? `kit-inventory/${Number(containerId)}` : 'kit-inventory/';
@@ -72,6 +72,14 @@
     document.body.appendChild(script);
   }
 
+  function loadUomCatalogUi() {
+    if (document.querySelector('script[data-setup-uom-catalog]')) return;
+    const script = document.createElement('script');
+    script.src = 'setup_uom_catalog.js?v=2026-09-15.1';
+    script.dataset.setupUomCatalog = '1';
+    document.body.appendChild(script);
+  }
+
   /* Capture the old tab click before the generic Setup view-switch handler.
      This keeps a visible Setup entry point while making Kit Inventory a true
      route rather than another annual-session view. */
@@ -88,6 +96,7 @@
     configureSetupEntryPoint();
     decorateKitAssignments();
     loadTaskExtraMaterialUi();
+    loadUomCatalogUi();
     const observer = new MutationObserver(decorateKitAssignments);
     observer.observe(document.body, { childList: true, subtree: true });
   }
