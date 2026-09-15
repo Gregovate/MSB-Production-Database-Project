@@ -23,6 +23,7 @@ from setup_material_api import setup_material_api
 from setup_display_ownership_api import setup_display_ownership_api
 from setup_assignment_api import setup_assignment_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
+from setup_planning_summary_api import setup_planning_summary_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
@@ -95,6 +96,12 @@ TPOST_INVENTORY_ASSETS = frozenset(
         "setup_tpost_inventory_clarity.js",
     }
 )
+PLANNING_SUMMARY_ASSETS = frozenset(
+    {
+        "setup_planning_summary.css",
+        "setup_planning_summary.js",
+    }
+)
 
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
@@ -118,6 +125,7 @@ app.register_blueprint(setup_material_api)
 app.register_blueprint(setup_display_ownership_api)
 app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
+app.register_blueprint(setup_planning_summary_api)
 
 
 def _no_store(response):
@@ -131,6 +139,21 @@ def _no_store(response):
 @app.get("/")
 def production_index():
     return _no_store(send_from_directory(BASE_DIR, "production.html"))
+
+
+@app.get("/planning-summary")
+@app.get("/planning-summary/")
+def planning_summary():
+    """Read-only reusable-Catalog Planning Summary print surface."""
+    return _no_store(send_from_directory(BASE_DIR, "planning_summary.html"))
+
+
+@app.get("/planning-summary/assets/<path:name>")
+def planning_summary_asset(name: str):
+    if name not in PLANNING_SUMMARY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
 
 @app.get("/kit-inventory")
