@@ -68,6 +68,24 @@ def test_print_surface_is_dated_disposable_and_compact() -> None:
     assert "@media print" in css
 
 
+def test_catalog_exposes_contextual_stage_scene_and_broad_print_launchers() -> None:
+    production = read("production.html")
+    js = read("setup_planning_summary.js")
+
+    assert 'setup_planning_summary.js?v=2026-09-15.2' in production
+    assert "Print Planning Summary…" in js
+    assert "Print Stage" in js
+    assert "Print Scene" in js
+    assert "next-sitewide-group" in js
+    assert "next-scope-group" in js
+    assert "dataset.sceneId" in js
+    assert "scope', 'stage'" not in js  # contextual URLs are constructed through one helper
+    assert "stage_id" in js
+    assert "lor_scene_id" in js
+    assert "applyRequestedScope" in js
+    assert "await loadSummary()" in js
+
+
 def test_production_host_exposes_planning_summary_without_replacing_main_app() -> None:
     backend = read("production_backend.py")
     assert "setup_planning_summary_api" in backend
