@@ -448,7 +448,7 @@ if [[ "$SETUP_POST" != *"$EXPECTED_SETUP_VERSION"* ]]; then
 fi
 
 curl -fsS -o /dev/null http://192.168.5.9:8794/kit-inventory/
-curl -fsS -o /dev/null http://192.168.5.9:8794/tpost-inventory/
+curl -fsS -o /dev/null http://192.168.5.9:8794/t-post-inventory/
 echo "Kit Inventory and T-Post Inventory routes: PASS"
 
 echo
