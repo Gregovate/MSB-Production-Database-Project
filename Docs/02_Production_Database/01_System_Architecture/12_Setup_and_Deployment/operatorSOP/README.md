@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-12 |
+| Last Reviewed | 2026-09-15 |
 
 Use this area for plain-English instructions for working in the Setup application. Engineering, database, service, permission, and deployment details belong in [`../engineering/`](../engineering/README.md).
 
@@ -24,6 +24,7 @@ The 2025 review uses real Production data.
 ## Start Here
 
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md)
+- [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 
 ## Display / Container Material
 
@@ -35,11 +36,49 @@ For normal-sized scopes, click, Ctrl/Cmd-click, or Shift-click to select Display
 
 Display Ownership does not change LOR membership or the Display's normal Container.
 
-## Kit Boxes
+## Task Extra Materials
 
-Use **Kit Boxes** to assign existing physical Kit Box Containers to reusable tasks. The same Kit Box may support multiple tasks. Assigned Kit names/IDs are shown in Material / Logistics and can be removed directly.
+Selected reusable tasks now show **Extra Materials Required by This Task**. Managers may add/edit/remove a requirement and retain required quantity, UOM, size, length, color, quantity qualifier, verification state, and notes.
 
-Expected Kit contents, Extra Materials, quantities/specifications, and material-source tracking are not yet live operator workflows.
+A task requirement answers **what the work requires**. It is separate from the Kit/Container where something is normally stored and separate from the physical count currently on hand.
+
+If a migrated value says `UNVERIFIED` or `NEEDS_REVIEW`, treat it as reconstruction evidence that still needs human review. Unknown quantity/specification stays unknown; do not guess.
+
+## Kit Boxes and Kit Inventory
+
+Use **Kit Boxes** in task detail to assign existing physical Kit Box Containers to reusable tasks. The same Kit Box may support multiple tasks. Assigned Kit names/IDs are shown in Material / Logistics and can be removed directly.
+
+Open **Kit Inventory** from Setup or at:
+
+```text
+https://my.sheboyganlights.org/setup/kit-inventory/
+```
+
+The default Kit Inventory view is for review: find a Kit, then read its Setup-task count, Display count, expected-item count, counted-item count, and Remainder state.
+
+- **Expected Kit Contents** = what should normally be in the Kit.
+- **On Hand** = physical balance created only by inventory events.
+- **Setup task assignment** = why the physical Kit is needed; it is not a content list.
+- **Displays stored in this Kit** = current `Display -> Container` truth; it is read-only here.
+- **Unverified Items / Remainders** = unresolved procedure/reconstruction notes; they are not automatically confirmed inventory.
+
+Managers may open **Add expected item** or **Edit** only when the expected-content definition needs work. **Count / Adjust** opens the physical-inventory panel for the selected expected row. Do not use expected quantity as a physical count unless the item was actually counted.
+
+## T-Post Inventory
+
+Open **T-Post Inventory** from Kit Inventory or at:
+
+```text
+https://my.sheboyganlights.org/setup/t-post-inventory/
+```
+
+Choose the physical Container being inventoried. The list separates **Shared / Bulk T-Post Stock** from **T-Posts Stored With Kits / Displays**.
+
+Each row describes one physical T-Post variant in that Container. **Planning / Known Qty** is reference evidence, not the count. **Physical On Hand** comes only from recorded inventory events.
+
+Managers use **Add new T-Post row** / **Edit stock definition** only when the stored-stock definition itself is wrong or missing. Use **Count physical stock** for an actual count or later adjustment. Initial Count establishes the first physical balance; later events are signed changes such as receipt, return, correction, loss, consumption, transfer in/out, or other documented change.
+
+T-Post storage location does not create a task requirement. Task/installation requirements remain in reusable task Extra Materials.
 
 ## Resources
 
@@ -57,9 +96,10 @@ Open task detail for the canonical prerequisite list and manual Add / Up / Down 
 
 - 2025 review uses real Production data.
 - Reusable Task changes may affect future seasons.
-- The material checkbox, Display Ownership, Kit Box assignment, resources, and prerequisites are reusable knowledge.
+- Display Ownership, Kit assignment, task Extra Materials, expected Kit contents, resources, and prerequisites are reusable knowledge.
+- Physical inventory events are separate append-only operational facts.
 - There is no 2026 Setup Session yet.
-- Pick List generation, staged release scheduling, Extra Material details, and movement/scanning writes are not yet live.
+- Pick List generation, staged release scheduling, Container/Display movement/scanning writes, and park-location execution evidence are not yet live.
 - Do not create fake records merely to test the UI.
 
 ## Related Documents
@@ -67,4 +107,5 @@ Open task detail for the canonical prerequisite list and manual Add / Up / Down 
 - [Setup and Deployment](../README.md)
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md)
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
+- [Kit Inventory / T-Post Production Acceptance](../../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
 - [Engineering handoff](../engineering/README.md)
