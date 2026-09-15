@@ -171,6 +171,29 @@ BEGIN
         RAISE EXCEPTION '#191 UOM remained active after all active references were removed';
     END IF;
 
+    /* Historical inactive rows remain maintainable even after their UOM is
+       inactive. Reactivating such a row would require reactivating the UOM. */
+    PERFORM * FROM ref.update_setup_extra_material(
+        v_manager_email,
+        v_material_id,
+        'Disposable Governed UOM Material',
+        'REUSABLE',
+        'ZZUOMTEST',
+        'Inactive-history maintenance remains allowed',
+        false,
+        101
+    );
+
+    IF NOT EXISTS (
+        SELECT 1 FROM ref.setup_extra_material
+        WHERE setup_extra_material_id=v_material_id
+          AND NOT active_flag
+          AND default_uom='ZZUOMTEST'
+          AND notes='Inactive-history maintenance remains allowed'
+    ) THEN
+        RAISE EXCEPTION '#191 inactive row could not retain/maintain its inactive UOM history';
+    END IF;
+
     IF EXISTS (SELECT 1 FROM ops.setup_session WHERE season_year=2026) THEN
         RAISE EXCEPTION '#191 validation unexpectedly created a 2026 Setup Session';
     END IF;
