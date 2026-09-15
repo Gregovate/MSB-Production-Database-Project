@@ -83,6 +83,8 @@ def test_catalog_exposes_contextual_stage_scene_and_broad_print_launchers() -> N
     assert "lor_scene_id" in js
     assert "applyRequestedScope" in js
     assert "await loadSummary()" in js
+    assert "window.open" in js
+    assert "window.print()" not in js.split("if (!qs('scope-select') || !qs('summary-root'))")[0]
 
 
 def test_production_host_exposes_planning_summary_without_replacing_main_app() -> None:
