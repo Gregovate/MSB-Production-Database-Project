@@ -30,6 +30,8 @@ def test_kit_inventory_exposes_resource_consistent_extra_material_catalog_manage
     assert 'id="extra-material-new-name"' in page
     assert 'id="extra-material-new-lifecycle"' in page
     assert 'id="extra-material-new-uom"' in page
+    assert '<button type="submit">Save New Catalog Material</button>' in page
+    assert '<button type="submit" class="secondary">Create New Catalog Material</button>' not in page
 
     assert "search before creating" in page
     assert "deactivate/reactivate rather than duplicating it" in page
