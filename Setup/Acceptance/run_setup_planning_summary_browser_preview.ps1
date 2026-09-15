@@ -14,7 +14,6 @@ $CandidateSha = 'c874e04790916cfc580c17b6150525eb7a23f84c'
 $ExpectedBranch = 'agent/setup-122-planning-summary-print'
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = (Resolve-Path (Join-Path $scriptDir '..\..')).Path
 $sourceLauncher = Join-Path $scriptDir 'run_setup_source_only_browser_preview.ps1'
 
 if (-not (Test-Path -LiteralPath $sourceLauncher -PathType Leaf)) {
@@ -29,7 +28,7 @@ $launcherText = [System.IO.File]::ReadAllText($sourceLauncher)
 $replacements = @(
     @("`$CandidateSha = '51c739bd85115c9f5d2853763e8e1450ac381407'", "`$CandidateSha = '$CandidateSha'"),
     @("`$ExpectedBranch = 'agent/setup-session-production-foundation'", "`$ExpectedBranch = '$ExpectedBranch'"),
-    @('`$ScriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path', "`$ScriptDir = '$($scriptDir.Replace("'", "''"))'")
+    @("`$ScriptDir = Split-Path -Parent `$MyInvocation.MyCommand.Path", "`$ScriptDir = '$($scriptDir.Replace("'", "''"))'")
 )
 
 foreach ($pair in $replacements) {
