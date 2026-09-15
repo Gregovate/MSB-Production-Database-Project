@@ -1,4 +1,4 @@
-/* Issue #184 — compact Kit review + safe reconciliation/edit/inventory UX. */
+/* Issues #184/#189 — compact Kit review + safe reconciliation/edit/inventory/catalog UX. */
 (() => {
   const state = {
     kitBoxes: [],
@@ -8,6 +8,13 @@
     inventoryCurrentOnHand: null,
     inventoryUom: 'EA',
     expectedSubmitPending: false,
+  };
+  const catalogState = {
+    canManage: false,
+    activeCatalog: [],
+    adminCatalog: [],
+    adminLoaded: false,
+    returnFocusId: 'extra-material-catalog-toggle',
   };
   const el = (id) => document.getElementById(id);
 
@@ -172,6 +179,7 @@
     if (!panel) return;
     panel.hidden = false;
     if (el('expected-editor')) el('expected-editor').hidden = true;
+    closeExtraMaterialCatalog(false);
     focusEditor('inventory-editor', 'inventory-delta');
   }
 
@@ -270,15 +278,455 @@
     if (next < 0) target.dataset.state = 'error';
   }
 
+  async function catalogApi(path, options = {}) {
+    const response = await fetch(appUrl(path), {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', ...(options.headers || {}) },
+      ...options,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.error || `Setup API returned HTTP ${response.status}`);
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+    return payload;
+  }
+
+  function catalogCommandOptions(method, body) {
+    return {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-MSB-Setup-Command': '1',
+      },
+      body: JSON.stringify(body),
+    };
+  }
+
+  function setInventoryAlert(message, stateName = 'ok') {
+    const target = el('inventory-alert');
+    if (!target) return;
+    target.textContent = message;
+    target.dataset.state = stateName;
+  }
+
+  function setCatalogBusy(flag) {
+    document.body.classList.toggle('busy', Boolean(flag));
+  }
+
+  function normalizeCatalogText(value) {
+    return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  function extraMaterialSearchText(row) {
+    return normalizeCatalogText([
+      row?.material_name,
+      row?.lifecycle_class,
+      row?.default_uom,
+      row?.notes,
+      row?.active_flag ? 'active' : 'inactive',
+    ].filter(Boolean).join(' '));
+  }
+
+  function compareExtraMaterialName(left, right) {
+    return String(left?.material_name || '').localeCompare(String(right?.material_name || ''), undefined, {
+      sensitivity: 'base', numeric: true,
+    });
+  }
+
+  function compareExtraMaterialOrder(left, right) {
+    return Number(left?.display_order ?? 100) - Number(right?.display_order ?? 100)
+      || compareExtraMaterialName(left, right)
+      || Number(left?.setup_extra_material_id || 0) - Number(right?.setup_extra_material_id || 0);
+  }
+
+  function adminMaterialById(materialId) {
+    return catalogState.adminCatalog.find(
+      (row) => Number(row.setup_extra_material_id) === Number(materialId)
+    ) || null;
+  }
+
+  async function loadCatalogAccess() {
+    try {
+      const payload = await catalogApi('api/setup/access');
+      catalogState.canManage = Boolean(payload.access?.can_manage_setup);
+    } catch (_error) {
+      catalogState.canManage = false;
+    }
+    syncCatalogAccess();
+  }
+
+  function syncCatalogAccess() {
+    ['extra-material-catalog-toggle', 'expected-new-catalog-item', 'normalize-remainder-item'].forEach((id) => {
+      const node = el(id);
+      if (node) node.hidden = !catalogState.canManage;
+    });
+    if (!catalogState.canManage) closeExtraMaterialCatalog(false);
+  }
+
+  async function refreshExpectedItemCatalog(preferredId = null) {
+    const select = el('expected-item');
+    if (!select) return [];
+    const previousId = preferredId == null ? Number(select.value || 0) : Number(preferredId || 0);
+    const payload = await catalogApi('api/setup/extra-materials');
+    catalogState.activeCatalog = payload.extra_materials || [];
+    const activeHasPrevious = catalogState.activeCatalog.some(
+      (row) => Number(row.setup_extra_material_id) === previousId
+    );
+    let preservedInactive = null;
+    if (previousId && !activeHasPrevious && !el('expected-remove')?.hidden) {
+      preservedInactive = adminMaterialById(previousId);
+    }
+
+    select.innerHTML = '<option value="">Select material</option>'
+      + catalogState.activeCatalog.map((row) => (
+        `<option value="${row.setup_extra_material_id}" data-uom="${esc(row.default_uom || 'EA')}">${esc(row.material_name)}</option>`
+      )).join('')
+      + (preservedInactive
+        ? `<option value="${preservedInactive.setup_extra_material_id}" data-uom="${esc(preservedInactive.default_uom || 'EA')}">${esc(preservedInactive.material_name)} · INACTIVE</option>`
+        : '');
+
+    if (previousId && (activeHasPrevious || preservedInactive)) select.value = String(previousId);
+    if (preferredId && activeHasPrevious) {
+      const created = catalogState.activeCatalog.find(
+        (row) => Number(row.setup_extra_material_id) === Number(preferredId)
+      );
+      if (created && el('expected-uom') && !el('expected-uom').disabled) {
+        el('expected-uom').value = created.default_uom || 'EA';
+      }
+    }
+    return catalogState.activeCatalog;
+  }
+
+  async function loadAdminExtraMaterialCatalog(force = false) {
+    if (!catalogState.canManage) return [];
+    if (catalogState.adminLoaded && !force) return catalogState.adminCatalog;
+    const payload = await catalogApi('api/setup/extra-material-catalog');
+    catalogState.adminCatalog = payload.extra_materials || [];
+    catalogState.adminLoaded = true;
+    renderExtraMaterialAdminCatalog();
+    renderNewExtraMaterialMatches();
+    return catalogState.adminCatalog;
+  }
+
+  function filteredSortedAdminMaterials() {
+    const query = normalizeCatalogText(el('extra-material-catalog-search')?.value || '');
+    const sortMode = el('extra-material-catalog-sort')?.value || 'NAME';
+    const rows = catalogState.adminCatalog.filter((row) => (
+      !query || extraMaterialSearchText(row).includes(query)
+    ));
+    rows.sort((left, right) => {
+      if (sortMode === 'LIFECYCLE') {
+        return String(left.lifecycle_class || '').localeCompare(String(right.lifecycle_class || ''), undefined, { sensitivity: 'base' })
+          || compareExtraMaterialName(left, right);
+      }
+      if (sortMode === 'ACTIVE') {
+        return Number(Boolean(right.active_flag)) - Number(Boolean(left.active_flag))
+          || compareExtraMaterialName(left, right);
+      }
+      if (sortMode === 'ORDER') return compareExtraMaterialOrder(left, right);
+      return compareExtraMaterialName(left, right)
+        || Number(left.setup_extra_material_id) - Number(right.setup_extra_material_id);
+    });
+    return rows;
+  }
+
+  function renderExtraMaterialAdminCatalog() {
+    const select = el('extra-material-catalog-select');
+    if (!select) return;
+    const previous = Number(select.value || 0);
+    const rows = filteredSortedAdminMaterials();
+    select.innerHTML = rows.length
+      ? rows.map((row) => {
+          const inactive = row.active_flag ? '' : ' · INACTIVE';
+          return `<option value="${row.setup_extra_material_id}">${esc(row.material_name)} · ${esc(row.lifecycle_class)} · ${esc(row.default_uom)}${inactive}</option>`;
+        }).join('')
+      : '<option value="">No matching catalog materials</option>';
+    if (previous && rows.some((row) => Number(row.setup_extra_material_id) === previous)) {
+      select.value = String(previous);
+    }
+    const results = el('extra-material-catalog-results');
+    if (results) {
+      results.textContent = `${rows.length} of ${catalogState.adminCatalog.length} total catalog materials shown, including inactive entries.`;
+    }
+    syncExtraMaterialCatalogEditor();
+  }
+
+  function syncExtraMaterialCatalogEditor() {
+    const select = el('extra-material-catalog-select');
+    const name = el('extra-material-catalog-name');
+    const lifecycle = el('extra-material-catalog-lifecycle');
+    const uom = el('extra-material-catalog-uom');
+    const order = el('extra-material-catalog-order');
+    const active = el('extra-material-catalog-active');
+    const notes = el('extra-material-catalog-notes');
+    const save = el('extra-material-catalog-save');
+    const status = el('extra-material-catalog-state');
+    if (!select || !name || !lifecycle || !uom || !order || !active || !notes || !save) return;
+
+    const row = adminMaterialById(Number(select.value || 0));
+    save.disabled = !row;
+    if (!row) {
+      name.value = '';
+      lifecycle.value = 'REUSABLE';
+      uom.value = 'EA';
+      order.value = '100';
+      active.checked = false;
+      notes.value = '';
+      if (status) status.textContent = 'No Extra Material catalog entry is selected.';
+      return;
+    }
+
+    name.value = row.material_name || '';
+    lifecycle.value = row.lifecycle_class || 'REUSABLE';
+    uom.value = row.default_uom || 'EA';
+    order.value = String(row.display_order ?? 100);
+    active.checked = Boolean(row.active_flag);
+    notes.value = row.notes || '';
+    if (status) {
+      status.textContent = `Extra Material #${row.setup_extra_material_id}. Catalog edits preserve this stable identity.${row.active_flag ? '' : ' This entry is currently inactive.'}`;
+    }
+  }
+
+  function possibleExistingExtraMaterialMatches(name) {
+    const query = normalizeCatalogText(name);
+    if (query.length < 2) return [];
+    const tokens = query.split(' ').filter((token) => token.length >= 2);
+    return catalogState.adminCatalog
+      .map((row) => {
+        const normalizedName = normalizeCatalogText(row.material_name);
+        let score = 0;
+        if (normalizedName === query) score = 100;
+        else if (normalizedName.includes(query) || query.includes(normalizedName)) score = 80;
+        else if (tokens.length && tokens.every((token) => normalizedName.includes(token))) score = 60;
+        else if (tokens.some((token) => normalizedName.includes(token))) score = 20;
+        return { row, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((left, right) => right.score - left.score
+        || Number(Boolean(right.row.active_flag)) - Number(Boolean(left.row.active_flag))
+        || compareExtraMaterialName(left.row, right.row))
+      .slice(0, 6)
+      .map((item) => item.row);
+  }
+
+  function renderNewExtraMaterialMatches() {
+    const target = el('extra-material-new-matches');
+    const input = el('extra-material-new-name');
+    if (!target || !input) return;
+    const typed = input.value.trim();
+    if (typed.length < 2) {
+      target.textContent = 'Start typing a name to check the full active/inactive catalog for possible duplicates.';
+      return;
+    }
+    const matches = possibleExistingExtraMaterialMatches(typed);
+    if (!matches.length) {
+      target.innerHTML = '<strong>No likely existing catalog matches found.</strong> Review the catalog search before creating.';
+      return;
+    }
+    const exact = matches.find((row) => normalizeCatalogText(row.material_name) === normalizeCatalogText(typed));
+    const intro = exact
+      ? '<strong>An existing material has the same normalized name. Do not create another identity.</strong>'
+      : '<strong>Possible existing catalog matches:</strong>';
+    target.innerHTML = `${intro}<ul>${matches.map((row) => `
+      <li>${esc(row.material_name)} · ${esc(row.lifecycle_class)} · ${esc(row.default_uom)} · #${esc(row.setup_extra_material_id)}${row.active_flag ? '' : ' · INACTIVE'}</li>
+    `).join('')}</ul>`;
+  }
+
+  function resetNewExtraMaterialForm() {
+    el('extra-material-new-form')?.reset();
+    if (el('extra-material-new-lifecycle')) el('extra-material-new-lifecycle').value = 'REUSABLE';
+    if (el('extra-material-new-uom')) el('extra-material-new-uom').value = 'EA';
+    renderNewExtraMaterialMatches();
+  }
+
+  async function openExtraMaterialCatalog(mode = 'manage', returnFocusId = 'extra-material-catalog-toggle') {
+    if (!catalogState.canManage) return;
+    const panel = el('extra-material-catalog-manager');
+    if (!panel) return;
+    catalogState.returnFocusId = returnFocusId;
+    panel.hidden = false;
+    closeInventoryPanel();
+    try {
+      await loadAdminExtraMaterialCatalog();
+      if (mode === 'new') {
+        resetNewExtraMaterialForm();
+        focusEditor('extra-material-catalog-manager', 'extra-material-new-name');
+      } else {
+        focusEditor('extra-material-catalog-manager', 'extra-material-catalog-search');
+      }
+    } catch (error) {
+      setInventoryAlert(error.message || error, 'error');
+    }
+  }
+
+  function closeExtraMaterialCatalog(restoreFocus = true) {
+    const panel = el('extra-material-catalog-manager');
+    if (panel) panel.hidden = true;
+    if (restoreFocus && catalogState.returnFocusId) {
+      window.setTimeout(() => el(catalogState.returnFocusId)?.focus({ preventScroll: true }), 0);
+    }
+  }
+
+  async function saveExtraMaterialCatalogEntry() {
+    if (!catalogState.canManage) return;
+    const materialId = Number(el('extra-material-catalog-select')?.value || 0);
+    const name = el('extra-material-catalog-name')?.value.trim() || '';
+    const lifecycle = el('extra-material-catalog-lifecycle')?.value || 'REUSABLE';
+    const defaultUom = el('extra-material-catalog-uom')?.value.trim() || '';
+    const displayOrder = Number(el('extra-material-catalog-order')?.value ?? -1);
+    const activeFlag = Boolean(el('extra-material-catalog-active')?.checked);
+    const notes = el('extra-material-catalog-notes')?.value.trim() || null;
+    if (!materialId || !name || !defaultUom || !Number.isInteger(displayOrder) || displayOrder < 0) {
+      setInventoryAlert('Choose a material, enter its name/default UOM, and use a display order of zero or greater.', 'error');
+      return;
+    }
+    const duplicate = catalogState.adminCatalog.find((row) =>
+      Number(row.setup_extra_material_id) !== materialId
+      && normalizeCatalogText(row.material_name) === normalizeCatalogText(name)
+    );
+    if (duplicate) {
+      setInventoryAlert(`Cannot rename this material to ${name}. Extra Material #${duplicate.setup_extra_material_id} already uses the same normalized name: ${duplicate.material_name}.`, 'error');
+      return;
+    }
+
+    const expectedSelection = Number(el('expected-item')?.value || 0);
+    try {
+      setCatalogBusy(true);
+      await catalogApi(
+        `api/setup/extra-materials/${materialId}`,
+        catalogCommandOptions('PATCH', {
+          material_name: name,
+          lifecycle_class: lifecycle,
+          default_uom: defaultUom,
+          notes,
+          active_flag: activeFlag,
+          display_order: displayOrder,
+        }),
+      );
+      catalogState.adminLoaded = false;
+      await loadAdminExtraMaterialCatalog(true);
+      const adminSelect = el('extra-material-catalog-select');
+      if (adminSelect && catalogState.adminCatalog.some((row) => Number(row.setup_extra_material_id) === materialId)) {
+        adminSelect.value = String(materialId);
+        syncExtraMaterialCatalogEditor();
+      }
+      await refreshExpectedItemCatalog(expectedSelection || null);
+      setInventoryAlert(`${name} catalog entry updated. Existing Kit/task relationships remain attached to Extra Material #${materialId}.`);
+    } catch (error) {
+      setInventoryAlert(error.message || error, 'error');
+    } finally {
+      setCatalogBusy(false);
+    }
+  }
+
+  async function createExtraMaterialCatalogEntry(event) {
+    event.preventDefault();
+    if (!catalogState.canManage) return;
+    const name = el('extra-material-new-name')?.value.trim() || '';
+    const lifecycle = el('extra-material-new-lifecycle')?.value || 'REUSABLE';
+    const defaultUom = el('extra-material-new-uom')?.value.trim() || '';
+    const notes = el('extra-material-new-notes')?.value.trim() || null;
+    if (!name || !defaultUom) {
+      setInventoryAlert('Material name and default UOM are required.', 'error');
+      return;
+    }
+
+    try {
+      await loadAdminExtraMaterialCatalog();
+      const exactExisting = catalogState.adminCatalog.find((row) =>
+        normalizeCatalogText(row.material_name) === normalizeCatalogText(name)
+      );
+      if (exactExisting) {
+        const search = el('extra-material-catalog-search');
+        if (search) search.value = exactExisting.material_name;
+        renderExtraMaterialAdminCatalog();
+        const adminSelect = el('extra-material-catalog-select');
+        if (adminSelect) {
+          adminSelect.value = String(exactExisting.setup_extra_material_id);
+          syncExtraMaterialCatalogEditor();
+        }
+        setInventoryAlert(`${exactExisting.material_name} already exists as Extra Material #${exactExisting.setup_extra_material_id}${exactExisting.active_flag ? '' : ' and is currently inactive'}. Use or correct that catalog identity instead of creating a duplicate.`, 'error');
+        el('extra-material-catalog-search')?.focus({ preventScroll: true });
+        return;
+      }
+
+      setCatalogBusy(true);
+      const payload = await catalogApi(
+        'api/setup/extra-materials',
+        catalogCommandOptions('POST', {
+          material_name: name,
+          lifecycle_class: lifecycle,
+          default_uom: defaultUom,
+          notes,
+        }),
+      );
+      const newId = Number(payload.extra_material?.setup_extra_material_id || 0);
+      catalogState.adminLoaded = false;
+      await loadAdminExtraMaterialCatalog(true);
+      await refreshExpectedItemCatalog(newId || null);
+      resetNewExtraMaterialForm();
+      if (newId) {
+        const adminSelect = el('extra-material-catalog-select');
+        if (adminSelect) {
+          adminSelect.value = String(newId);
+          syncExtraMaterialCatalogEditor();
+        }
+      }
+      closeExtraMaterialCatalog(false);
+      openExpectedPanel('expected-qty');
+      setInventoryAlert(`Reusable Extra Material ${name} created and selected. Complete this Kit's quantity/specification/verification/notes, then save the expected-content row.`);
+    } catch (error) {
+      setInventoryAlert(error.message || error, 'error');
+    } finally {
+      setCatalogBusy(false);
+    }
+  }
+
+  function bindExtraMaterialCatalogManagement() {
+    el('extra-material-catalog-toggle')?.addEventListener('click', () => {
+      openExtraMaterialCatalog('manage', 'extra-material-catalog-toggle');
+    });
+    el('expected-new-catalog-item')?.addEventListener('click', () => {
+      openExtraMaterialCatalog('new', 'expected-item');
+    });
+    el('extra-material-catalog-close')?.addEventListener('click', () => closeExtraMaterialCatalog(true));
+    el('extra-material-catalog-search')?.addEventListener('input', renderExtraMaterialAdminCatalog);
+    el('extra-material-catalog-sort')?.addEventListener('change', renderExtraMaterialAdminCatalog);
+    el('extra-material-catalog-select')?.addEventListener('change', syncExtraMaterialCatalogEditor);
+    el('extra-material-catalog-save')?.addEventListener('click', saveExtraMaterialCatalogEntry);
+    el('extra-material-new-name')?.addEventListener('input', renderNewExtraMaterialMatches);
+    el('extra-material-new-form')?.addEventListener('submit', createExtraMaterialCatalogEntry);
+    el('normalize-remainder-item')?.addEventListener('click', () => {
+      el('expected-add')?.click();
+      queueMicrotask(() => openExtraMaterialCatalog('new', 'expected-qty'));
+    });
+    el('expected-item')?.addEventListener('change', () => {
+      const materialId = Number(el('expected-item')?.value || 0);
+      const row = catalogState.activeCatalog.find(
+        (item) => Number(item.setup_extra_material_id) === materialId
+      );
+      if (row && el('expected-uom') && !el('expected-uom').disabled) {
+        el('expected-uom').value = row.default_uom || 'EA';
+      }
+    });
+    loadCatalogAccess();
+    refreshExpectedItemCatalog().catch(() => {});
+  }
+
   function bindRowActionFocus() {
     document.addEventListener('click', (event) => {
       if (event.target.closest('#expected-add')) {
         el('expected-clear')?.click();
+        closeExtraMaterialCatalog(false);
         queueMicrotask(() => openExpectedPanel('expected-item'));
         return;
       }
       const editButton = event.target.closest('.expected-edit');
       if (editButton) {
+        closeExtraMaterialCatalog(false);
         markExpectedEdit(editButton);
         openExpectedPanel('expected-qty');
         return;
@@ -304,6 +752,7 @@
       if (event.target.closest('#kit-list .kit-row')) {
         closeExpectedPanel();
         closeInventoryPanel();
+        closeExtraMaterialCatalog(false);
       }
     });
   }
@@ -319,6 +768,7 @@
     configurePermanentNavigation();
     bindRowActionFocus();
     bindInventoryMath();
+    bindExtraMaterialCatalogManagement();
     el('expected-form')?.addEventListener('submit', () => { state.expectedSubmitPending = true; });
     el('kit-filter-all')?.addEventListener('click', () => setFilter('all'));
     el('kit-filter-assigned')?.addEventListener('click', () => setFilter('assigned'));
