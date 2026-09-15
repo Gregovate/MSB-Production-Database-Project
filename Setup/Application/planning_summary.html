@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup Planning Summary</title>
+  <link rel="stylesheet" href="assets/setup_planning_summary.css?v=2026-09-15.3">
+</head>
+<body>
+<header class="page-header no-print">
+  <div>
+    <div class="eyebrow">Reusable Setup Catalog review</div>
+    <h1>Planning Summary / Hand Markup</h1>
+    <p>Review current Step order, scheduler inputs, predecessors, and material/pick-list readiness before annual scheduling.</p>
+  </div>
+  <div class="header-actions">
+    <a href="../">Back to Setup</a>
+    <button id="print-summary" type="button" disabled>Print / Save PDF</button>
+  </div>
+</header>
+
+<section class="controls no-print" aria-label="Planning Summary controls">
+  <label>Scope
+    <select id="scope-select">
+      <option value="stage">Stage</option>
+      <option value="scene">Stage + real Scene</option>
+      <option value="all">All reusable Setup planning</option>
+    </select>
+  </label>
+  <label id="stage-control">Stage
+    <select id="stage-select"></select>
+  </label>
+  <label id="scene-control">Real Scene
+    <select id="scene-select"></select>
+  </label>
+  <button id="load-summary" type="button">Load Summary</button>
+  <span id="access-label" class="muted">Checking access…</span>
+</section>
+
+<div id="status" class="status no-print" role="status" aria-live="polite">Loading Setup scope…</div>
+
+<main id="summary-root" class="summary-root" hidden>
+  <section class="print-title">
+    <div class="eyebrow">Making Spirits Bright — Setup</div>
+    <h1>Reusable Setup Catalog Planning Summary</h1>
+    <div class="print-meta">
+      <span><strong>Scope:</strong> <span id="summary-scope"></span></span>
+      <span><strong>Tasks:</strong> <span id="summary-count"></span></span>
+      <span><strong>Printed:</strong> <span id="summary-printed-at"></span></span>
+    </div>
+    <p class="purpose">
+      Scheduling / Pick List review copy. Tasks are printed in current Catalog Step order.
+      Correct missing crew/time/order/predecessor/material facts in Setup before using this Catalog for annual scheduling or Pick List generation.
+      This packet is not a second Catalog and contains no annual 2026 Setup Session data.
+    </p>
+    <div id="disposable-warning" class="disposable-warning">
+      DISPOSABLE PLANNING MARKUP — FOR CATALOG VERIFICATION / REVIEW ONLY — NOT AUTHORITATIVE
+    </div>
+    <p id="verification-boundary" class="verification-boundary"></p>
+  </section>
+  <div id="summary-groups"></div>
+</main>
+
+<script src="assets/setup_planning_summary.js?v=2026-09-15.3"></script>
+</body>
+</html>

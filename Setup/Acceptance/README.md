@@ -99,3 +99,4 @@ Only after explicit operator acceptance switch to the Server Management `Product
 - `Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
 - `Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md`
 - `Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md` — #184 durable Extra Material / Kit Inventory / T-Post subsystem plus completed #167 one-time reconstruction.
+- `Setup_Planning_Summary_Production_Acceptance_2026-09-15.md` — #122 Planning Summary / hand-markup scheduler and Pick-List readiness review surface.
