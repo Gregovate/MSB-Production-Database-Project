@@ -79,6 +79,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_extra_materials.css",
         "setup_extra_materials.js",
         "setup_task_extra_materials.js",
+        "setup_uom_catalog.js",
         "setup_planning_summary.js",
     }
 )
@@ -88,6 +89,7 @@ KIT_INVENTORY_ASSETS = frozenset(
         "setup_kit_inventory.js",
         "setup_kit_inventory_displays.js",
         "setup_kit_inventory_review.js",
+        "setup_uom_catalog.js",
     }
 )
 TPOST_INVENTORY_ASSETS = frozenset(
