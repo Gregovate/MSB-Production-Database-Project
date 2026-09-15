@@ -175,27 +175,6 @@
     if (scope === 'scene') refreshSceneOptions();
   }
 
-  function compactMeta(task) {
-    const bits = [];
-    bits.push(`Type ${task.task_action_type || 'WORK'}`);
-    const crewMin = task.normal_crew_min;
-    const crewMax = task.normal_crew_max;
-    if (crewMin != null || crewMax != null) {
-      if (crewMin != null && crewMax != null) bits.push(`Crew ${crewMin}–${crewMax}`);
-      else bits.push(`Crew ${crewMin ?? crewMax}`);
-    }
-    if (task.expected_duration_minutes != null) bits.push(`${task.expected_duration_minutes} min`);
-    if (task.effort_level) bits.push(`Effort ${task.effort_level}`);
-    return bits.join(' · ');
-  }
-
-  function dependencyText(rows) {
-    return (rows || []).map((row) => {
-      const note = row.dependency_note ? ` — ${row.dependency_note}` : '';
-      return `${row.task_name}${note}`;
-    }).join('; ');
-  }
-
   function resourceText(rows) {
     return (rows || []).map((row) => {
       const bits = [row.resource_name];
@@ -237,8 +216,8 @@
   }
 
   function displayMaterialText(material) {
-    if (!material?.requires_display_material) return 'No';
-    const bits = [`Yes — ${material.display_count || 0} Display(s)`];
+    if (!material?.requires_display_material) return 'Not a Display-material step';
+    const bits = [`${material.display_count || 0} Display(s)`];
     if (material.container_count != null) bits.push(`${material.container_count} Container(s)`);
     if (material.containers?.length) {
       bits.push(material.containers.map((row) => row.container_description || `Container ${row.container_id}`).join(', '));
@@ -276,30 +255,133 @@
     return `<div class="compact-line"><strong>${escapeHtml(label)}:</strong> ${html ? value : escapeHtml(value)}</div>`;
   }
 
+  function taskById(taskId) {
+    return (state.summary?.tasks || []).find((task) => Number(task.setup_task_id) === Number(taskId)) || null;
+  }
+
+  function sameScope(left, right) {
+    if (!left || !right) return false;
+    const leftStage = left.stage_id == null ? null : Number(left.stage_id);
+    const rightStage = right.stage_id == null ? null : Number(right.stage_id);
+    const leftScene = left.lor_scene_id == null ? null : Number(left.lor_scene_id);
+    const rightScene = right.lor_scene_id == null ? null : Number(right.lor_scene_id);
+    return leftStage === rightStage && leftScene === rightScene;
+  }
+
+  function shortScopeLabel(task) {
+    if (!task || task.stage_id == null) return 'Site-wide';
+    if (task.lor_scene_id == null) return 'Stage / General';
+    return `Scene — ${task.scene_name || task.lor_scene_id}`;
+  }
+
+  function crewText(task) {
+    const min = task.normal_crew_min;
+    const max = task.normal_crew_max;
+    if (min == null || max == null) return null;
+    return Number(min) === Number(max) ? String(min) : `${min}–${max}`;
+  }
+
+  function durationText(task) {
+    return task.expected_duration_minutes == null ? null : `${task.expected_duration_minutes} min`;
+  }
+
+  function predecessorHtml(task) {
+    const rows = task.dependencies || [];
+    if (!rows.length) {
+      return '<span class="review-value">REVIEW — none recorded; confirm none required</span>';
+    }
+    return rows.map((row) => {
+      const predecessor = taskById(row.prerequisite_setup_task_id);
+      const scope = predecessor && !sameScope(task, predecessor) ? `${shortScopeLabel(predecessor)} · ` : '';
+      const step = predecessor?.display_order != null ? `Step ${predecessor.display_order} — ` : '';
+      const note = row.dependency_note ? ` — ${row.dependency_note}` : '';
+      return escapeHtml(`${scope}${step}${row.task_name}${note}`);
+    }).join('; ');
+  }
+
+  function hasUnverifiedPickListFacts(task) {
+    const rows = [...(task.extra_materials || []), ...(task.tpost_requirements || [])];
+    return rows.some((row) => {
+      if (row.verification_state && row.verification_state !== 'VERIFIED') return true;
+      return (row.sources || []).some((source) => source.verification_state && source.verification_state !== 'VERIFIED');
+    });
+  }
+
+  function schedulerReviewItems(task) {
+    const items = [];
+    if (task.display_order == null) items.push('Step order is missing.');
+    if (!crewText(task)) items.push('Crew size is missing or incomplete.');
+    if (!durationText(task)) items.push('Estimated setup time is missing.');
+    if (!(task.dependencies || []).length) {
+      items.push('Hard predecessor review is incomplete: none recorded; confirm that none is required.');
+    }
+
+    const currentStep = task.display_order == null ? null : Number(task.display_order);
+    if (currentStep != null) {
+      for (const dependency of task.dependencies || []) {
+        const predecessor = taskById(dependency.prerequisite_setup_task_id);
+        if (!predecessor || !sameScope(task, predecessor) || predecessor.display_order == null) continue;
+        if (Number(predecessor.display_order) >= currentStep) {
+          items.push(`Step order review: required predecessor Step ${predecessor.display_order} is not before Step ${currentStep}.`);
+        }
+      }
+    }
+
+    const material = task.display_material || {};
+    if (material.requires_display_material) {
+      if (!material.display_count) items.push('Material step has no resolved Displays.');
+      if (material.ownership_status && material.ownership_status !== 'COMPLETE') {
+        items.push(`Material ownership/resolution needs review (${material.ownership_status}).`);
+      }
+    }
+    if (hasUnverifiedPickListFacts(task)) {
+      items.push('Extra Material / T-Post quantity or source data still needs verification for Pick List use.');
+    }
+    return items;
+  }
+
+  function schedulerStrip(task) {
+    const crew = crewText(task);
+    const duration = durationText(task);
+    const effort = task.effort_level || 'Not reviewed';
+    return `
+      <div class="scheduler-strip">
+        <span><strong>Crew:</strong> <span class="${crew ? '' : 'missing-value'}">${escapeHtml(crew || 'MISSING')}</span></span>
+        <span><strong>Estimated setup:</strong> <span class="${duration ? '' : 'missing-value'}">${escapeHtml(duration || 'MISSING')}</span></span>
+        <span><strong>Effort:</strong> ${escapeHtml(effort)}</span>
+      </div>
+    `;
+  }
+
   function taskCard(task) {
     const extra = (task.extra_materials || []).filter((row) => row.material_name !== 'T-Post');
     const tposts = task.tpost_requirements || [];
     const review = indicatorText(task.review_indicators || []);
-    const baseline = task.baseline_plan_order ?? '—';
-    const displayOrder = task.display_order ?? '—';
+    const schedulerReview = schedulerReviewItems(task);
+    const step = task.display_order ?? 'MISSING';
+    const isMaterialStep = Boolean(task.display_material?.requires_display_material);
 
     return `
-      <article class="task-card">
+      <article class="task-card${isMaterialStep ? ' material-task' : ''}">
         <div class="task-header">
-          <h3 class="task-title">${escapeHtml(task.task_name)}</h3>
-          <div class="task-order">Plan ${escapeHtml(baseline)} · Display ${escapeHtml(displayOrder)}</div>
+          <div class="task-title-wrap">
+            <h3 class="task-title">${escapeHtml(task.task_name)}</h3>
+            ${isMaterialStep ? '<span class="material-badge">MATERIAL STEP</span>' : ''}
+          </div>
+          <div class="task-order">Step ${escapeHtml(step)}</div>
         </div>
-        <p class="task-meta">${escapeHtml(compactMeta(task))}</p>
-        ${review ? `<div class="review-box">${escapeHtml(review)}</div>` : ''}
-        ${optionalLine('Prereq', dependencyText(task.dependencies))}
+        ${schedulerStrip(task)}
+        ${schedulerReview.length ? `<div class="scheduler-review"><strong>SCHEDULER / PICK-LIST REVIEW:</strong> ${escapeHtml(schedulerReview.join(' '))}</div>` : '<div class="scheduler-ready">Scheduler basics recorded — review sequence and field practicality.</div>'}
+        <div class="compact-line"><strong>Hard predecessor(s) — REQUIRED:</strong> ${predecessorHtml(task)}</div>
+        ${task.readiness_note ? optionalLine('Readiness condition / note', task.readiness_note) : '<div class="compact-line"><strong>Readiness condition / note:</strong> <span class="review-value">No readiness note recorded</span></div>'}
         ${optionalLine('Complete when', task.completion_point)}
-        ${optionalLine('Ready when', task.readiness_note)}
         ${optionalLine('Weather', task.weather_note)}
-        ${optionalLine('Resources', resourceText(task.resources))}
-        ${optionalLine('Display / Container', displayMaterialText(task.display_material))}
-        ${optionalLine('Kit / Support', supportContainerText(task.support_containers))}
-        ${optionalLine('Extra', extraMaterialText(extra))}
+        ${optionalLine('Equipment / Resources', resourceText(task.resources))}
+        ${isMaterialStep ? optionalLine('Display material / current Containers', displayMaterialText(task.display_material)) : ''}
+        ${optionalLine('Kit / Support Containers', supportContainerText(task.support_containers))}
+        ${optionalLine('Extra Materials', extraMaterialText(extra))}
         ${optionalLine('T-Post', extraMaterialText(tposts))}
+        ${review ? `<div class="review-box"><strong>DATA / PICK-LIST REVIEW:</strong> ${escapeHtml(review)}</div>` : ''}
         ${optionalLine('Procedure', procedureHtml(task), { html: true })}
         ${optionalLine('Reusable notes', task.reusable_notes)}
         <div class="correction-space" aria-label="Hand correction space"></div>
@@ -319,6 +401,13 @@
     const stage = `${task.stage_key || ''} — ${task.stage_name || ''}`.replace(/\s+—\s+$/, '');
     if (task.lor_scene_id == null) return `${stage} — Stage / General`;
     return `${stage} — ${task.scene_name}`;
+  }
+
+  function taskStepSort(left, right) {
+    const leftStep = left.display_order == null ? Number.MAX_SAFE_INTEGER : Number(left.display_order);
+    const rightStep = right.display_order == null ? Number.MAX_SAFE_INTEGER : Number(right.display_order);
+    if (leftStep !== rightStep) return leftStep - rightStep;
+    return Number(left.setup_task_id || 0) - Number(right.setup_task_id || 0);
   }
 
   function renderSummary(summary) {
@@ -344,12 +433,13 @@
       if (!grouped.has(key)) grouped.set(key, { label: groupLabel(task), tasks: [] });
       grouped.get(key).tasks.push(task);
     }
+    for (const group of grouped.values()) group.tasks.sort(taskStepSort);
 
     const html = [...grouped.values()].map((group) => `
       <section class="scope-group">
         <div class="scope-heading">
           <h2>${escapeHtml(group.label)}</h2>
-          <span>${group.tasks.length} task${group.tasks.length === 1 ? '' : 's'}</span>
+          <span>${group.tasks.length} task${group.tasks.length === 1 ? '' : 's'} · printed in Catalog Step order</span>
         </div>
         <div class="task-grid">${group.tasks.map(taskCard).join('')}</div>
       </section>
@@ -357,7 +447,7 @@
 
     qs('summary-groups').innerHTML = html || '<p class="empty">No active reusable Setup tasks matched this scope.</p>';
     qs('print-summary').disabled = !(summary.tasks || []).length;
-    setStatus(`Loaded ${summary.task_count || 0} active reusable task(s).`);
+    setStatus(`Loaded ${summary.task_count || 0} active reusable task(s) in Catalog Step order.`);
   }
 
   async function loadSummary() {
