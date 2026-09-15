@@ -93,4 +93,5 @@ def test_production_host_exposes_planning_summary_without_replacing_main_app() -
     assert '"/planning-summary/"' in backend
     assert '"setup_planning_summary.css"' in backend
     assert '"setup_planning_summary.js"' in backend
+    assert backend.count('"setup_planning_summary.js"') >= 2
     assert 'send_from_directory(BASE_DIR, "planning_summary.html")' in backend
