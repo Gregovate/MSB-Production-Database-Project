@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 # Exact application candidate approved for Planning Summary browser/print review.
 # This wrapper deliberately reuses the established source-only disposable-clone
 # preview harness instead of creating another server-side preview implementation.
-$CandidateSha = 'c874e04790916cfc580c17b6150525eb7a23f84c'
+$CandidateSha = 'a61f0b64d842b30ec164e80a174350da215b6309'
 $ExpectedBranch = 'agent/setup-122-planning-summary-print'
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
