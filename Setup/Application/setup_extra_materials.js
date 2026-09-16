@@ -14,6 +14,10 @@
       tab.textContent = 'Kit Inventory';
       tab.title = 'Open durable Kit Box inventory';
     }
+
+    /* The first #167 browser candidate embedded inventory inside the annual
+       Setup tabs. Inventory is durable Container work, so remove that embedded
+       workspace and use the standalone protected route instead. */
     document.getElementById('extra-materials-view')?.remove();
   }
 
@@ -24,6 +28,8 @@
     link.textContent = label;
     link.title = `Open Kit Inventory for Container ${containerId}`;
     link.addEventListener('click', (event) => {
+      /* Kit assignment rows are labels containing checkboxes. Prevent the link
+         click from toggling the assignment while still navigating explicitly. */
       event.preventDefault();
       event.stopPropagation();
       openInventory(containerId);
@@ -87,6 +93,9 @@
     document.body.appendChild(script);
   }
 
+  /* Capture the old tab click before the generic Setup view-switch handler.
+     This keeps a visible Setup entry point while making Kit Inventory a true
+     route rather than another annual-session view. */
   document.addEventListener('click', (event) => {
     const tab = event.target.closest?.('[data-view="extra-materials"]');
     if (!tab) return;
