@@ -86,7 +86,7 @@ html[data-theme="dark"] {
   border-radius: 12px;
   padding: 0;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
-  background: var(--surface, #fff);
+  background: var(--card, #fff);
   color: var(--text, #1f2430);
 }
 
@@ -104,7 +104,7 @@ html[data-theme="dark"] {
   align-items: flex-start;
   padding: 16px 18px;
   border-bottom: 1px solid var(--border, #d8dce3);
-  background: var(--surface, #fff);
+  background: var(--card, #fff);
 }
 
 .setup-display-ownership-heading h3 {
@@ -169,7 +169,7 @@ html[data-theme="dark"] {
   padding: 9px 10px;
   border: 1px solid var(--border, #d8dce3);
   border-radius: 8px;
-  background: var(--surface-alt, rgba(120, 130, 150, .06));
+  background: var(--theme-subtle, #f8fafb);
 }
 
 .setup-display-ownership-toolbar label {
@@ -198,7 +198,7 @@ html[data-theme="dark"] {
   min-height: 180px;
   border: 1px solid var(--border, #d8dce3);
   border-radius: 10px;
-  background: var(--surface-alt, rgba(120, 130, 150, .06));
+  background: var(--theme-subtle, #f8fafb);
 }
 
 .setup-display-owner-column.drop-target {
@@ -232,7 +232,7 @@ html[data-theme="dark"] {
   border-radius: 8px;
   padding: 9px 10px;
   margin-bottom: 8px;
-  background: var(--surface, #fff);
+  background: var(--card, #fff);
   cursor: default;
   user-select: none;
 }
