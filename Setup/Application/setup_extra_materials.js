@@ -1,4 +1,4 @@
-/* Issue #167/#191 — route Kit Inventory and load durable Extra Material support. */
+/* Issue #167/#191/#198 — route Kit Inventory and load durable Extra Material support. */
 (() => {
   function inventoryUrl(containerId = null) {
     return containerId ? `kit-inventory/${Number(containerId)}` : 'kit-inventory/';
@@ -64,11 +64,24 @@
     decorateKitDialogRows();
   }
 
+  function loadTaskExtraMaterialSourceUi() {
+    if (document.querySelector('script[data-setup-task-extra-material-sources]')) return;
+    const script = document.createElement('script');
+    script.src = 'setup_task_extra_material_sources.js?v=2026-09-15.1';
+    script.dataset.setupTaskExtraMaterialSources = '1';
+    document.body.appendChild(script);
+  }
+
   function loadTaskExtraMaterialUi() {
-    if (document.querySelector('script[data-setup-task-extra-materials]')) return;
+    const existing = document.querySelector('script[data-setup-task-extra-materials]');
+    if (existing) {
+      loadTaskExtraMaterialSourceUi();
+      return;
+    }
     const script = document.createElement('script');
     script.src = 'setup_task_extra_materials.js?v=2026-09-15.2';
     script.dataset.setupTaskExtraMaterials = '1';
+    script.addEventListener('load', loadTaskExtraMaterialSourceUi, { once: true });
     document.body.appendChild(script);
   }
 
