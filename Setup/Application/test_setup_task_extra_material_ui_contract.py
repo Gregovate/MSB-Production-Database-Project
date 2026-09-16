@@ -26,6 +26,7 @@ def test_reusable_task_extra_materials_are_visible_in_task_detail() -> None:
 
 def test_manager_requirement_editor_is_explicit_and_collapsed_by_default() -> None:
     ui = text("setup_task_extra_materials.js")
+    refinement = text("setup_extra_material_source_usability.js")
 
     assert 'id="task-extra-material-add"' in ui
     assert 'id="task-extra-material-form" class="extra-material-editor manager-only" hidden' in ui
@@ -36,6 +37,8 @@ def test_manager_requirement_editor_is_explicit_and_collapsed_by_default() -> No
     assert "commandOptions(method, payload(true))" in ui
     assert "Remove Requirement" in ui
     assert "window.editTaskExtraMaterialRequirement = editRequirement" in ui
+    assert "['task-extra-material-form', 'task-extra-material-source-form']" in refinement
+    assert "form.classList.remove('manager-only')" in refinement
 
 
 def test_existing_task_extra_material_requirement_keeps_stable_material_identity() -> None:
