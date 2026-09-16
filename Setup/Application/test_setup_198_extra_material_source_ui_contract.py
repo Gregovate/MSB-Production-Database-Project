@@ -46,8 +46,10 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
     assert "Remove</button>" in ui
 
     assert "setup_task_extra_material_sources.js?v=2026-09-16.3" in bridge
-    assert "script.addEventListener('load', loadTaskExtraMaterialSourceUi" in bridge
+    assert "setup_extra_material_source_usability.js?v=2026-09-16.1" in bridge
+    assert "script.addEventListener('load', loadSourceUsabilityRefinement" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
+    assert '"setup_extra_material_source_usability.js"' in host
 
 
 def test_replacement_source_does_not_inherit_old_container_facts() -> None:
@@ -98,6 +100,21 @@ def test_verified_mismatch_can_open_the_requirement_editor() -> None:
     assert "Review Requirement" in ui
     assert "window.editTaskExtraMaterialRequirement(requirementId)" in ui
     assert "window.editTaskExtraMaterialRequirement = editRequirement" in requirement_ui
+
+
+def test_source_editor_usability_distinguishes_open_from_save_and_refreshes_requirement_audit() -> None:
+    refinement = text("setup_extra_material_source_usability.js")
+
+    assert "Add Source…" in refinement
+    assert "Save Source" in refinement
+    assert "button.disabled = !changed" in refinement
+    assert "newSourceNeedsExplicitContainerChoice" in refinement
+    assert "verifiedNeedsQuantity" in refinement
+    assert "form.classList.remove('manager-only')" in refinement
+    assert "task-extra-material-form" in refinement
+    assert "MutationObserver" in refinement
+    assert "window.selectTask(taskId)" in refinement
+    assert "source-allocation" in refinement or "source-allocation" in refinement.replace(" ", "-")
 
 
 def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
