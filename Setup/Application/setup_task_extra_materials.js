@@ -261,7 +261,6 @@
       return result;
     };
 
-    window.refreshTaskExtraMaterials = loadTaskMaterials;
     el('task-extra-material-add')?.addEventListener('click', addRequirement);
     el('task-extra-material-form')?.addEventListener('submit', saveRequirement);
     el('task-extra-material-clear')?.addEventListener('click', () => clearEditor());
@@ -275,6 +274,8 @@
       if (button) editRequirement(Number(button.dataset.rowId));
     });
 
+    window.refreshTaskExtraMaterials = loadTaskMaterials;
+    window.editTaskExtraMaterialRequirement = editRequirement;
     if (appState.selectedTaskId) loadTaskMaterials(appState.selectedTaskId);
   }
 
