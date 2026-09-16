@@ -91,21 +91,23 @@
       return {
         className: 'review',
         text: sources.length ? `Source total ${displayNumber(knownTotal)} ${uom} · task requirement quantity missing` : 'Task requirement quantity missing',
+        reviewRequirement: true,
       };
     }
     if (!sources.length) {
-      return { className: 'review', text: `Required ${displayNumber(required)} ${uom} · no source allocation` };
+      return { className: 'review', text: `Required ${displayNumber(required)} ${uom} · no source allocation`, reviewRequirement: false };
     }
     if (missingCount > 0) {
       return {
         className: 'review',
         text: `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)} ${uom} · ${missingCount} source ${missingCount === 1 ? 'quantity' : 'quantities'} missing`,
+        reviewRequirement: false,
       };
     }
 
     const delta = knownTotal - required;
     if (Math.abs(delta) < 1e-9) {
-      return { className: 'ok', text: `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)} ${uom} · BALANCED` };
+      return { className: 'ok', text: `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)} ${uom} · BALANCED`, reviewRequirement: false };
     }
 
     const direction = delta > 0 ? '+' : '-';
@@ -115,6 +117,7 @@
       text: allVerified
         ? `Verified sources total ${displayNumber(knownTotal)}; task requires ${displayNumber(required)} ${uom} · REVIEW TASK REQUIREMENT (${direction}${magnitude})`
         : `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)} ${uom} · MISMATCH ${direction}${magnitude}`,
+      reviewRequirement: allVerified,
     };
   }
 
@@ -269,6 +272,9 @@
     body.innerHTML = state.requirements.map((requirement) => {
       const sources = Array.isArray(requirement.sources) ? requirement.sources : [];
       const audit = allocationAudit(requirement);
+      const reviewButton = appState.access?.can_manage_setup && audit.reviewRequirement
+        ? `<button type="button" class="small secondary task-extra-material-requirement-review" data-requirement-id="${requirement.setup_task_extra_material_id}">Review Requirement</button>`
+        : '';
       return `
         <div class="setup-extra-material-source-group" data-source-requirement-id="${requirement.setup_task_extra_material_id}">
           <div class="section-title compact">
@@ -276,7 +282,7 @@
               <strong>${escapeHtml(requirementLabel(requirement))}</strong>
               <div class="setup-extra-material-source-audit ${audit.className}">${escapeHtml(audit.text)}</div>
             </div>
-            ${appState.access?.can_manage_setup ? `<button type="button" class="small task-extra-material-source-add" data-requirement-id="${requirement.setup_task_extra_material_id}">Add Source</button>` : ''}
+            ${appState.access?.can_manage_setup ? `<div class="action-row">${reviewButton}<button type="button" class="small task-extra-material-source-add" data-requirement-id="${requirement.setup_task_extra_material_id}">Add Source</button></div>` : ''}
           </div>
           <div class="setup-extra-material-source-list">
             ${sources.length ? sources.map((source) => {
@@ -443,6 +449,14 @@
   }
 
   function handleSectionClick(event) {
+    const reviewRequirement = event.target.closest('.task-extra-material-requirement-review');
+    if (reviewRequirement) {
+      const requirementId = Number(reviewRequirement.dataset.requirementId);
+      if (typeof window.editTaskExtraMaterialRequirement === 'function') {
+        window.editTaskExtraMaterialRequirement(requirementId);
+      }
+      return;
+    }
     const add = event.target.closest('.task-extra-material-source-add');
     if (add) {
       beginSource(Number(add.dataset.requirementId));
