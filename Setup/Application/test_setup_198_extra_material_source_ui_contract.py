@@ -125,7 +125,7 @@ def test_source_usability_observer_cannot_loop_on_its_own_button_label() -> None
     assert "function addedNodeContainsSourceUi(node)" in refinement
     assert "[...mutation.addedNodes]" in refinement
     assert "if (!relevant) return" in refinement
-    assert "Text-node mutations created by our own labels are ignored" in refinement
+    assert "observer.observe(document.body, { childList: true, subtree: true });" in refinement
 
 
 def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
