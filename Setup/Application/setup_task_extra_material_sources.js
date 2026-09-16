@@ -9,6 +9,7 @@
     resolvedContainerIds: new Set(),
     selectedRequirementId: null,
     editingSourceId: null,
+    originalSourceContainerId: null,
     requestToken: 0,
   };
 
@@ -19,6 +20,18 @@
     if (!text) return null;
     const parsed = Number(text);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function displayNumber(value) {
+    if (value == null || String(value).trim() === '') return '';
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? String(parsed) : String(value);
+  }
+
+  function sameQuantity(left, right) {
+    if (left == null && right == null) return true;
+    if (left == null || right == null) return false;
+    return Number(left) === Number(right);
   }
 
   function requirementById(requirementId) {
@@ -40,10 +53,10 @@
 
   function requirementLabel(row) {
     const parts = [row.material_name || 'Extra Material'];
-    if (row.quantity_required != null) parts.push(`${row.quantity_required} ${row.quantity_uom || ''}`.trim());
+    if (row.quantity_required != null) parts.push(`${displayNumber(row.quantity_required)} ${row.quantity_uom || ''}`.trim());
     const spec = [];
     if (row.size_text) spec.push(row.size_text);
-    if (row.length_value != null) spec.push(`${row.length_value} ${row.length_unit || ''}`.trim());
+    if (row.length_value != null) spec.push(`${displayNumber(row.length_value)} ${row.length_unit || ''}`.trim());
     if (row.color) spec.push(row.color);
     if (spec.length) parts.push(spec.join(' · '));
     return parts.join(' — ');
@@ -53,13 +66,13 @@
     if (!row) return 'Container';
     if (row.display_pallet) return 'Display Pallet';
     if (Number(row.container_type_id) === 2) return 'Kit Box';
-    return row.container_type_id != null ? `Container Type ${row.container_type_id}` : 'Container';
+    return 'Container';
   }
 
   function containerLabel(row) {
     const type = containerTypeLabel(row);
-    const home = row.home_location_code ? ` · Home ${row.home_location_code}` : '';
-    const resolved = state.resolvedContainerIds.has(Number(row.container_id)) ? ' · TASK CONTAINER' : '';
+    const home = row.home_location_code ? ` · ${row.home_location_code}` : '';
+    const resolved = state.resolvedContainerIds.has(Number(row.container_id)) ? ' · TASK' : '';
     return `C${row.container_id} — ${row.container_description || 'No description'} · ${type}${home}${resolved}`;
   }
 
@@ -72,33 +85,34 @@
     section.id = 'task-extra-material-source-section';
     section.className = 'detail-section';
     section.innerHTML = `
-      <div class="section-title">
+      <div class="section-title compact">
         <div>
           <h3>Expected Source Containers</h3>
-          <div class="hint">Where this task normally gets each Extra Material. Sources may be Display Pallets, shared stock, Kit Boxes, or any other real Container. This does not change the task requirement or physical inventory count.</div>
+          <div class="hint">Assign where this requirement normally comes from.</div>
         </div>
       </div>
       <div id="task-extra-material-source-status" class="muted">Select a reusable task.</div>
       <div id="task-extra-material-source-body"></div>
       <form id="task-extra-material-source-form" class="extra-material-editor manager-only" hidden>
-        <h3 id="task-extra-material-source-editor-title">Manager — Add Expected Source Container</h3>
-        <div id="task-extra-material-source-selected" class="selected-item">Choose a requirement above.</div>
-        <div id="task-extra-material-source-editor-help" class="hint">1. Select a Container below. 2. Leave Expected Qty blank when the split is unknown. 3. Click Add Source Container. Repeat Add Source for each additional Container.</div>
+        <h3 id="task-extra-material-source-editor-title">Manager — Add Source</h3>
+        <div id="task-extra-material-source-selected" class="selected-item"></div>
+        <div id="task-extra-material-source-editor-help" class="hint">Select a Container. Quantity is optional.</div>
         <div class="extra-material-form-grid">
-          <label class="wide">Find Container<input id="task-extra-material-source-search" type="search" placeholder="Container ID, description, type, or home location" autocomplete="off"></label>
-          <label class="wide">Source Container<select id="task-extra-material-source-container" size="7" required></select></label>
-          <label>Expected Qty (optional)<input id="task-extra-material-source-qty" type="number" min="0.001" step="0.001"></label>
+          <label class="wide">Find Container<input id="task-extra-material-source-search" type="search" placeholder="ID, description, type, or location" autocomplete="off"></label>
+          <label class="wide">Source Container<select id="task-extra-material-source-container" size="6" required></select></label>
+          <label>Expected Qty (optional)<input id="task-extra-material-source-qty" type="number" min="0.001" step="any"></label>
           <label>Verification<select id="task-extra-material-source-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
           <label class="wide">Source notes<input id="task-extra-material-source-notes" type="text"></label>
         </div>
         <div class="action-row">
-          <button id="task-extra-material-source-save" type="submit">Add Source Container</button>
+          <button id="task-extra-material-source-save" type="submit">Add Source</button>
           <button id="task-extra-material-source-clear" type="button" class="secondary">Cancel</button>
         </div>
       </form>`;
     requirements.insertAdjacentElement('afterend', section);
 
     el('task-extra-material-source-search')?.addEventListener('input', renderContainerOptions);
+    el('task-extra-material-source-container')?.addEventListener('change', handleSourceContainerChange);
     el('task-extra-material-source-form')?.addEventListener('submit', saveSource);
     el('task-extra-material-source-clear')?.addEventListener('click', clearEditor);
     section.addEventListener('click', handleSectionClick);
@@ -133,52 +147,73 @@
   function clearEditor() {
     state.selectedRequirementId = null;
     state.editingSourceId = null;
-    if (el('task-extra-material-source-editor-title')) el('task-extra-material-source-editor-title').textContent = 'Manager — Add Expected Source Container';
-    if (el('task-extra-material-source-selected')) el('task-extra-material-source-selected').textContent = 'Choose a requirement above.';
-    if (el('task-extra-material-source-editor-help')) el('task-extra-material-source-editor-help').textContent = '1. Select a Container below. 2. Leave Expected Qty blank when the split is unknown. 3. Click Add Source Container. Repeat Add Source for each additional Container.';
+    state.originalSourceContainerId = null;
     if (el('task-extra-material-source-search')) el('task-extra-material-source-search').value = '';
     if (el('task-extra-material-source-container')) el('task-extra-material-source-container').selectedIndex = -1;
     if (el('task-extra-material-source-qty')) el('task-extra-material-source-qty').value = '';
     if (el('task-extra-material-source-verification')) el('task-extra-material-source-verification').value = 'UNVERIFIED';
     if (el('task-extra-material-source-notes')) el('task-extra-material-source-notes').value = '';
-    if (el('task-extra-material-source-save')) el('task-extra-material-source-save').textContent = 'Add Source Container';
+    if (el('task-extra-material-source-form')) el('task-extra-material-source-form').hidden = true;
+  }
+
+  function loadSourceFacts(source) {
+    el('task-extra-material-source-qty').value = displayNumber(source?.expected_quantity);
+    el('task-extra-material-source-verification').value = source?.verification_state || 'UNVERIFIED';
+    el('task-extra-material-source-notes').value = source?.notes || '';
+  }
+
+  function handleSourceContainerChange() {
+    if (!state.editingSourceId) return;
+    const source = sourceById(state.selectedRequirementId, state.editingSourceId);
+    if (!source) return;
+    const selectedId = Number(el('task-extra-material-source-container').value || 0);
+    if (selectedId === Number(state.originalSourceContainerId)) {
+      loadSourceFacts(source);
+      el('task-extra-material-source-editor-help').textContent = 'Current Container selected. You may edit its quantity, verification, or notes.';
+      return;
+    }
+
+    /* Source quantity/notes belong to the physical source Container. A replacement
+       must not silently inherit evidence that described the old Container. */
+    el('task-extra-material-source-qty').value = '';
+    el('task-extra-material-source-verification').value = 'UNVERIFIED';
+    el('task-extra-material-source-notes').value = '';
+    el('task-extra-material-source-editor-help').textContent = 'Replacement selected. Enter only quantity/verification/notes known for the new Container.';
   }
 
   function beginSource(requirementId, sourceId = null) {
     if (!appState.access?.can_manage_setup) return;
     const requirement = requirementById(requirementId);
     if (!requirement) return;
+
     state.selectedRequirementId = Number(requirementId);
     state.editingSourceId = sourceId == null ? null : Number(sourceId);
     if (el('task-extra-material-source-search')) el('task-extra-material-source-search').value = '';
     renderContainerOptions();
+
     const source = sourceId == null ? null : sourceById(requirementId, sourceId);
     if (source) {
-      const physical = containerById(source.container_id);
-      const description = source.container_description || physical?.container_description || 'No description';
-      if (el('task-extra-material-source-editor-title')) el('task-extra-material-source-editor-title').textContent = 'Manager — Change Source Container';
-      if (el('task-extra-material-source-selected')) {
-        el('task-extra-material-source-selected').textContent = `${requirementLabel(requirement)} · Current source: C${source.container_id} — ${description}`;
-      }
-      if (el('task-extra-material-source-editor-help')) {
-        el('task-extra-material-source-editor-help').textContent = `Choose the replacement Container below. Saving changes only this source row; it does not change the task requirement or any other source. Use Remove Source only when this source should disappear without a replacement.`;
-      }
+      state.originalSourceContainerId = Number(source.container_id);
+      el('task-extra-material-source-editor-title').textContent = 'Manager — Change Source';
+      el('task-extra-material-source-selected').textContent = `${requirementLabel(requirement)} · Current C${source.container_id}`;
+      el('task-extra-material-source-editor-help').textContent = 'Choose a replacement Container, or keep this Container to edit its source facts.';
       el('task-extra-material-source-container').value = String(source.container_id);
-      el('task-extra-material-source-qty').value = source.expected_quantity ?? '';
-      el('task-extra-material-source-verification').value = source.verification_state || 'UNVERIFIED';
-      el('task-extra-material-source-notes').value = source.notes || '';
-      el('task-extra-material-source-save').textContent = 'Change Source Container';
+      loadSourceFacts(source);
+      el('task-extra-material-source-save').textContent = 'Save Source';
     } else {
-      if (el('task-extra-material-source-editor-title')) el('task-extra-material-source-editor-title').textContent = 'Manager — Add Expected Source Container';
-      if (el('task-extra-material-source-selected')) el('task-extra-material-source-selected').textContent = requirementLabel(requirement);
-      if (el('task-extra-material-source-editor-help')) el('task-extra-material-source-editor-help').textContent = '1. Select a Container below. 2. Leave Expected Qty blank when the split is unknown. 3. Click Add Source Container. Repeat Add Source for each additional Container.';
+      state.originalSourceContainerId = null;
+      el('task-extra-material-source-editor-title').textContent = 'Manager — Add Source';
+      el('task-extra-material-source-selected').textContent = requirementLabel(requirement);
+      el('task-extra-material-source-editor-help').textContent = 'Select a Container. Leave quantity blank if the split is unknown.';
       el('task-extra-material-source-container').selectedIndex = -1;
       el('task-extra-material-source-qty').value = '';
       el('task-extra-material-source-verification').value = 'UNVERIFIED';
       el('task-extra-material-source-notes').value = '';
-      el('task-extra-material-source-save').textContent = 'Add Source Container';
+      el('task-extra-material-source-save').textContent = 'Add Source';
     }
-    el('task-extra-material-source-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    el('task-extra-material-source-form').hidden = false;
+    el('task-extra-material-source-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function renderRequirements() {
@@ -186,44 +221,40 @@
     const body = el('task-extra-material-source-body');
     if (!body) return;
     if (!state.requirements.length) {
-      body.innerHTML = '<div class="empty-state">No active Extra Material requirements are recorded for this reusable task.</div>';
-      el('task-extra-material-source-status').textContent = 'No source allocation is needed until an Extra Material requirement exists.';
+      body.innerHTML = '<div class="empty-state">No active Extra Material requirements.</div>';
+      el('task-extra-material-source-status').textContent = '';
       return;
     }
+
     body.innerHTML = state.requirements.map((requirement) => {
       const sources = Array.isArray(requirement.sources) ? requirement.sources : [];
-      const addLabel = sources.length ? 'Add Another Source' : 'Add Source';
+      const addLabel = sources.length ? 'Add Source' : 'Add Source';
       return `
-        <div class="detail-section" data-source-requirement-id="${requirement.setup_task_extra_material_id}">
+        <div class="setup-extra-material-source-group" data-source-requirement-id="${requirement.setup_task_extra_material_id}">
           <div class="section-title compact">
-            <div>
-              <strong>${escapeHtml(requirementLabel(requirement))}</strong>
-              <div class="muted">${sources.length ? `${sources.length} active source Container${sources.length === 1 ? '' : 's'}` : 'No source Container assigned'}</div>
-            </div>
+            <div><strong>${escapeHtml(requirementLabel(requirement))}</strong></div>
             ${appState.access?.can_manage_setup ? `<button type="button" class="small task-extra-material-source-add" data-requirement-id="${requirement.setup_task_extra_material_id}">${addLabel}</button>` : ''}
           </div>
-          <div>
+          <div class="setup-extra-material-source-list">
             ${sources.length ? sources.map((source) => {
               const physical = containerById(source.container_id);
               const type = containerTypeLabel(physical);
-              const home = physical?.home_location_code ? ` · Home ${physical.home_location_code}` : '';
-              const quantity = source.expected_quantity == null ? 'Per-source quantity not recorded' : `Expected ${source.expected_quantity}`;
-              const verification = source.verification_state ? ` · ${source.verification_state}` : '';
-              const notes = source.notes ? ` · ${source.notes}` : '';
+              const quantity = source.expected_quantity == null ? 'Qty —' : `Qty ${displayNumber(source.expected_quantity)}`;
+              const verification = String(source.verification_state || 'UNVERIFIED').replaceAll('_', ' ');
+              const title = source.notes ? ` title="${escapeHtml(source.notes)}"` : '';
               return `
-                <div class="setup-support-container-row">
-                  <div>
-                    <strong>Container ${escapeHtml(source.container_id)}</strong>${source.container_description ? ` — ${escapeHtml(source.container_description)}` : ''}
-                    <div class="muted">${escapeHtml(type)}${escapeHtml(home)} · ${escapeHtml(quantity)}${escapeHtml(verification)}${escapeHtml(notes)}</div>
+                <div class="setup-extra-material-source-row"${title}>
+                  <div class="setup-extra-material-source-copy">
+                    <strong>C${escapeHtml(source.container_id)} — ${escapeHtml(source.container_description || 'No description')}</strong>
+                    <span class="muted">${escapeHtml(type)} · ${escapeHtml(quantity)} · ${escapeHtml(verification)}</span>
                   </div>
-                  ${appState.access?.can_manage_setup ? `<div class="action-row"><button type="button" class="small secondary task-extra-material-source-edit" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Change Source</button><button type="button" class="small danger task-extra-material-source-remove" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Remove Source</button></div>` : ''}
+                  ${appState.access?.can_manage_setup ? `<div class="action-row"><button type="button" class="small secondary task-extra-material-source-edit" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Change</button><button type="button" class="small danger task-extra-material-source-remove" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Remove</button></div>` : ''}
                 </div>`;
-            }).join('') : '<div class="empty-state"><strong>No source Container is currently assigned.</strong><div class="muted">Click Add Source above, choose one Container, leave Expected Qty blank if the split is unknown, and click Add Source Container. Repeat Add Source for each additional Container.</div></div>'}
+            }).join('') : '<div class="muted">No source assigned.</div>'}
           </div>
         </div>`;
     }).join('');
-    el('task-extra-material-source-status').textContent = `${state.requirements.length} Extra Material requirement${state.requirements.length === 1 ? '' : 's'} available for source allocation. Source Containers are maintained separately from the task requirement.`;
-    if (el('task-extra-material-source-form')) el('task-extra-material-source-form').hidden = !appState.access?.can_manage_setup;
+    el('task-extra-material-source-status').textContent = '';
     applyAccess();
   }
 
@@ -232,7 +263,7 @@
     state.taskId = Number(taskId);
     clearEditor();
     const token = ++state.requestToken;
-    if (el('task-extra-material-source-status')) el('task-extra-material-source-status').textContent = 'Loading expected source Containers…';
+    if (el('task-extra-material-source-status')) el('task-extra-material-source-status').textContent = 'Loading sources…';
     try {
       const requests = [
         api(`api/setup/tasks/${taskId}/extra-materials`),
@@ -255,7 +286,7 @@
       state.containers = [];
       state.resolvedContainerIds = new Set();
       if (el('task-extra-material-source-body')) el('task-extra-material-source-body').innerHTML = `<div class="empty-state">${escapeHtml(error.message || error)}</div>`;
-      if (el('task-extra-material-source-status')) el('task-extra-material-source-status').textContent = 'Expected source Containers could not be loaded.';
+      if (el('task-extra-material-source-status')) el('task-extra-material-source-status').textContent = 'Sources could not be loaded.';
     }
   }
 
@@ -269,6 +300,24 @@
     };
   }
 
+  async function verifySourceRoundTrip(requirementId, sourceId, requested) {
+    const payload = await api(`api/setup/tasks/${state.taskId}/extra-materials`);
+    const requirement = (payload.extra_materials || []).find(
+      (row) => Number(row.setup_task_extra_material_id) === Number(requirementId),
+    );
+    const source = (requirement?.sources || []).find(
+      (row) => Number(row.setup_task_extra_material_source_id) === Number(sourceId),
+    );
+    if (!source) throw new Error('Saved source could not be reloaded.');
+    if (Number(source.container_id) !== Number(requested.container_id)) {
+      throw new Error(`Saved source Container mismatch: expected C${requested.container_id}, reloaded C${source.container_id}.`);
+    }
+    if (!sameQuantity(source.expected_quantity, requested.expected_quantity)) {
+      throw new Error(`Saved source quantity mismatch: entered ${displayNumber(requested.expected_quantity) || 'blank'}, reloaded ${displayNumber(source.expected_quantity) || 'blank'}.`);
+    }
+    return payload;
+  }
+
   async function saveSource(event) {
     event.preventDefault();
     if (!appState.access?.can_manage_setup || !state.selectedRequirementId) return;
@@ -277,6 +326,7 @@
       setAlert('Choose a source Container first.', 'error');
       return;
     }
+
     const requirement = requirementById(state.selectedRequirementId);
     const duplicate = (requirement?.sources || []).some((source) => (
       Number(source.container_id) === containerId
@@ -286,18 +336,31 @@
       setAlert(`Container ${containerId} is already an active source for this requirement.`, 'error');
       return;
     }
-    const path = state.editingSourceId
-      ? `api/setup/task-extra-materials/${state.selectedRequirementId}/sources/${state.editingSourceId}`
-      : `api/setup/task-extra-materials/${state.selectedRequirementId}/sources`;
-    const method = state.editingSourceId ? 'PATCH' : 'POST';
+
+    const requested = sourcePayload(true);
+    const requirementId = state.selectedRequirementId;
+    const existingSourceId = state.editingSourceId;
+    const path = existingSourceId
+      ? `api/setup/task-extra-materials/${requirementId}/sources/${existingSourceId}`
+      : `api/setup/task-extra-materials/${requirementId}/sources`;
+    const method = existingSourceId ? 'PATCH' : 'POST';
+
     try {
-      await api(path, commandOptions(method, sourcePayload(true)));
+      const result = await api(path, commandOptions(method, requested));
+      const sourceId = existingSourceId
+        || result.setup_task_extra_material_source?.setup_task_extra_material_source_id;
+      if (!sourceId) throw new Error('Saved source did not return its source ID.');
+
+      const verifiedPayload = await verifySourceRoundTrip(requirementId, sourceId, requested);
+      state.requirements = verifiedPayload.extra_materials || [];
       const taskId = state.taskId;
-      const changedExisting = state.editingSourceId != null;
       clearEditor();
-      if (typeof selectTask === 'function') selectTask(taskId);
-      else await loadTaskSources(taskId);
-      setAlert(changedExisting ? 'Expected source Container changed.' : 'Expected source Container added.');
+      renderRequirements();
+      if (typeof window.refreshTaskExtraMaterials === 'function') {
+        await window.refreshTaskExtraMaterials(taskId);
+      }
+      const qty = requested.expected_quantity == null ? '' : ` · Qty ${displayNumber(requested.expected_quantity)}`;
+      setAlert(`C${requested.container_id}${qty} saved.`);
     } catch (error) {
       setAlert(error.message || error, 'error');
     }
@@ -307,7 +370,7 @@
     if (!appState.access?.can_manage_setup) return;
     const source = sourceById(requirementId, sourceId);
     if (!source) return;
-    if (!window.confirm(`Remove Container ${source.container_id} as an expected source for this requirement? This removes the source without choosing a replacement.`)) return;
+    if (!window.confirm(`Remove C${source.container_id} as an expected source?`)) return;
     try {
       await api(
         `api/setup/task-extra-materials/${requirementId}/sources/${sourceId}`,
@@ -321,9 +384,11 @@
       );
       const taskId = state.taskId;
       clearEditor();
-      if (typeof selectTask === 'function') selectTask(taskId);
-      else await loadTaskSources(taskId);
-      setAlert('Expected source Container removed.');
+      await loadTaskSources(taskId);
+      if (typeof window.refreshTaskExtraMaterials === 'function') {
+        await window.refreshTaskExtraMaterials(taskId);
+      }
+      setAlert('Expected source removed.');
     } catch (error) {
       setAlert(error.message || error, 'error');
     }
