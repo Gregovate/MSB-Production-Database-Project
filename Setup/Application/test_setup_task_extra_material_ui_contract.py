@@ -16,35 +16,42 @@ def test_reusable_task_extra_materials_are_visible_in_task_detail() -> None:
 
     assert "Extra Materials Required by This Task" in ui
     assert "api/setup/tasks/${taskId}/extra-materials" in ui
-    assert "Expected Source" in ui
-    assert "row.sources" in ui
-    assert "Task requirements are separate from Kit contents and physical stock" in ui
+    assert "Reusable requirement only. Source Containers are maintained separately below." in ui
     assert "selectTaskWithExtraMaterials" in ui
+    assert "source${sources.length === 1 ? '' : 's'}" in ui
 
-    assert "setup_task_extra_materials.js?v=2026-09-15.2" in bridge
+    assert "setup_task_extra_materials.js?v=2026-09-16.1" in bridge
     assert '"setup_task_extra_materials.js"' in host
 
 
-def test_manager_can_maintain_task_extra_material_requirements() -> None:
+def test_manager_requirement_editor_is_explicit_and_collapsed_by_default() -> None:
     ui = text("setup_task_extra_materials.js")
 
-    assert "Manager — Task Extra Material Requirement" in ui
+    assert 'id="task-extra-material-add"' in ui
+    assert 'id="task-extra-material-form" class="extra-material-editor manager-only" hidden' in ui
+    assert "el('task-extra-material-form').hidden = false" in ui
+    assert "Edit Requirement" in ui
+    assert "Manager — Edit Task Requirement" in ui
+    assert "This changes the reusable requirement itself, not its source Containers." in ui
     assert "commandOptions(method, payload(true))" in ui
-    assert "Add Requirement" in ui
-    assert "Save Requirement" in ui
     assert "Remove Requirement" in ui
-    assert "quantity_qualifier" in ui
-    assert "verification_state" in ui
 
 
 def test_existing_task_extra_material_requirement_keeps_stable_material_identity() -> None:
     ui = text("setup_task_extra_materials.js")
 
-    assert "material identity is locked" in ui
-    assert "Remove the old requirement and add a new one if the material itself was wrong" in ui
     assert "el('task-extra-material-item').disabled = true" in ui
     assert "el('task-extra-material-item').disabled = false" in ui
     assert "if (option?.dataset.uom && !state.editingRowId)" in ui
+
+
+def test_operator_quantity_formatting_strips_database_scale_zeroes() -> None:
+    ui = text("setup_task_extra_materials.js")
+
+    assert "function displayNumber(value)" in ui
+    assert "Number.isFinite(parsed) ? String(parsed)" in ui
+    assert "displayNumber(row.quantity_required)" in ui
+    assert "displayNumber(row.length_value)" in ui
 
 
 def test_kit_row_actions_move_operator_to_the_selected_editor() -> None:
