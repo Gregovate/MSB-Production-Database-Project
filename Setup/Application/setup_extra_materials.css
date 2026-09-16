@@ -123,6 +123,25 @@
   border-bottom: 0;
 }
 
+.setup-extra-material-source-audit {
+  margin-top: 3px;
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.setup-extra-material-source-audit.ok {
+  color: var(--success, #147a3d);
+}
+
+.setup-extra-material-source-audit.review,
+.setup-extra-material-source-audit.mismatch {
+  color: var(--warning, #c47a00);
+}
+
+.setup-extra-material-source-audit.neutral {
+  color: var(--muted, #6b7280);
+}
+
 .setup-extra-material-source-list {
   margin-top: 4px;
 }
