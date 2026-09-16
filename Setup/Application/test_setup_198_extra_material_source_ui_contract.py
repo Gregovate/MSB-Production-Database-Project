@@ -113,8 +113,8 @@ def test_source_editor_usability_distinguishes_open_from_save_and_refreshes_requ
     assert "form.classList.remove('manager-only')" in refinement
     assert "task-extra-material-form" in refinement
     assert "MutationObserver" in refinement
-    assert "window.selectTask(taskId)" in refinement
-    assert "source-allocation" in refinement or "source-allocation" in refinement.replace(" ", "-")
+    assert "selectTask(taskId)" in refinement
+    assert "source-allocation" in refinement
 
 
 def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
