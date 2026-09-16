@@ -26,8 +26,11 @@
 
   function decorateSourceOpeners() {
     document.querySelectorAll('.task-extra-material-source-add').forEach((button) => {
-      button.textContent = 'Add Source…';
-      button.title = 'Open the source editor';
+      /* Idempotent decoration is important: this page also uses a MutationObserver.
+         Never rewrite text that is already correct or the observer can observe its
+         own text-node replacement and spin the browser indefinitely. */
+      if (button.textContent !== 'Add Source…') button.textContent = 'Add Source…';
+      if (button.title !== 'Open the source editor') button.title = 'Open the source editor';
     });
   }
 
@@ -53,7 +56,7 @@
     const button = el('task-extra-material-source-save');
     if (!form || !button) return;
 
-    button.textContent = 'Save Source';
+    if (button.textContent !== 'Save Source') button.textContent = 'Save Source';
     if (form.hidden || !sourceBaseline) {
       button.disabled = true;
       return;
@@ -86,7 +89,7 @@
     sourceContainerTouched = false;
     const button = el('task-extra-material-source-save');
     if (button) {
-      button.textContent = 'Save Source';
+      if (button.textContent !== 'Save Source') button.textContent = 'Save Source';
       button.disabled = true;
     }
   }
@@ -125,6 +128,12 @@
     }, 10000);
   }
 
+  function addedNodeContainsSourceUi(node) {
+    if (!(node instanceof Element)) return false;
+    const selector = '.task-extra-material-source-add, #task-extra-material-source-form, #task-extra-material-form';
+    return node.matches(selector) || Boolean(node.querySelector(selector));
+  }
+
   function bind() {
     claimEditorVisibility();
     decorateSourceOpeners();
@@ -159,7 +168,13 @@
       if (event.target?.id === 'task-extra-material-form') watchRequirementSave();
     }, true);
 
-    const observer = new MutationObserver(() => {
+    /* Only react when source/task editor UI is actually inserted. Text-node
+       mutations created by our own labels are ignored, preventing observer loops. */
+    const observer = new MutationObserver((mutations) => {
+      const relevant = mutations.some((mutation) => (
+        [...mutation.addedNodes].some((node) => addedNodeContainsSourceUi(node))
+      ));
+      if (!relevant) return;
       claimEditorVisibility();
       decorateSourceOpeners();
     });
