@@ -1,6 +1,6 @@
 # LOR2DB Reconciliation
 
-This directory contains the documentation for reviewing completed LOR snapshots, promoting approved changes into the MSB production database, validating the results, and publishing reconciliation reports.
+This directory contains the documentation for reviewing completed LOR snapshots, promoting approved changes into the MSB production database, validating the results, publishing reconciliation reports, and administering bounded raw-snapshot retention.
 
 It is part of the **LOR2DB technical workflow**. Operational Directus SOPs are maintained separately under `docs/02_Production_Database/02_Operational_SOPs/`.
 
@@ -11,20 +11,22 @@ It is part of the **LOR2DB technical workflow**. Operational Directus SOPs are m
 | Run the normal production update | [Operator SOP](../../Docs/02_Production_Database/02_Operational_SOPs/LOR2DB/Run_an_LOR_Production_Update.md) |
 | Administer the full production workflow | [00_LOR_Production_Import_and_Reconciliation_Procedure.md](00_LOR_Production_Import_and_Reconciliation_Procedure.md) |
 | Understand how the production workflow is organized | [01_LOR_Production_Promotion_Pipeline_Design.md](01_LOR_Production_Promotion_Pipeline_Design.md) |
+| Prune old disposable `lor_snap` snapshots | [03_LOR_Snapshot_Retention_Runbook.md](03_LOR_Snapshot_Retention_Runbook.md) |
 | Understand current Stage/Sub-stage root naming and `folder_path` authority | [Stage Root Authority and Path Synchronization](reconciliation/Stage_Root_Authority_and_Path_Synchronization.md) |
 | Recover when the normal application cannot be used | [02_LOR_Manual_Reconciliation_Runbook.md](02_LOR_Manual_Reconciliation_Runbook.md) |
 | View the reconciliation engineering documentation | [reconciliation/README.md](reconciliation/README.md) |
 
 For normal operation, begin with the Operator SOP. The secured LOR2DB
 application is the normal operator interface. The controlled production
-procedure supplies administrative detail, and the manual reconciliation
-procedure is intended only for controlled recovery situations.
+procedure supplies administrative detail, the snapshot-retention runbook owns
+raw snapshot maintenance, and the manual reconciliation procedure is intended
+only for controlled recovery situations.
 
 ## Folder Guide
 
 | Folder | What it contains |
 |---|---|
-| [reconciliation/README.md](reconciliation/README.md) | Reconciliation engineering documentation, SQL procedures, migrations, validation, operator queries, and historical implementation records. |
+| [reconciliation/README.md](reconciliation/README.md) | Reconciliation engineering documentation, SQL procedures, migrations, validation, disposable acceptance, operator queries, and historical implementation records. |
 | [archive/](archive/) | Historical material retained for reference. Not part of the current production workflow. |
 
 ## Current Production Workflow
@@ -32,6 +34,8 @@ procedure is intended only for controlled recovery situations.
 Normal production work should always follow the controlled reconciliation procedure.
 
 The current reconciliation engine, production procedures, migrations, validation scripts, and supporting engineering documentation are maintained under [reconciliation/README.md](reconciliation/README.md).
+
+Bounded `lor_snap` maintenance is separately governed by [03_LOR_Snapshot_Retention_Runbook.md](03_LOR_Snapshot_Retention_Runbook.md). Installation of the retention contract and the later destructive prune are separate inspected Production mutations; the runbook requires current-Production disposable-clone acceptance before any live prune.
 
 Current Stage/Sub-stage root-name and path synchronization behavior is documented separately in [Stage Root Authority and Path Synchronization](reconciliation/Stage_Root_Authority_and_Path_Synchronization.md). That contract records the production-deployed migration 0039 naming authority and migration 0040 existing-path synchronization rules.
 
