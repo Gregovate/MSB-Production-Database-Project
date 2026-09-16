@@ -92,9 +92,9 @@
   }
 
   function refreshWholeSelectedTask() {
-    const taskId = Number(window.appState?.selectedTaskId || 0);
-    if (!taskId || typeof window.selectTask !== 'function') return;
-    window.selectTask(taskId);
+    const taskId = Number(appState?.selectedTaskId || 0);
+    if (!taskId || typeof selectTask !== 'function') return;
+    selectTask(taskId);
   }
 
   function watchRequirementSave() {
