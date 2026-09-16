@@ -25,36 +25,52 @@ def test_source_container_catalog_is_read_only_and_not_kit_restricted() -> None:
     assert "container_type_id = 2" not in section
 
 
-def test_task_source_editor_preserves_requirement_and_uses_governed_source_commands() -> None:
+def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> None:
     ui = text("setup_task_extra_material_sources.js")
     bridge = text("setup_extra_materials.js")
     host = text("production_backend.py")
 
     assert "Expected Source Containers" in ui
+    assert 'id="task-extra-material-source-form" class="extra-material-editor manager-only" hidden' in ui
+    assert "Assign where this requirement normally comes from." in ui
     assert "expected_quantity: numberOrNull" in ui
     assert "active_flag: false" in ui
-    assert "api/setup/task-extra-materials/${state.selectedRequirementId}/sources" in ui
-    assert "api/setup/task-extra-materials/${requirementId}/sources/${sourceId}" in ui
+    assert "api/setup/task-extra-materials/${requirementId}/sources/${existingSourceId}" in ui
+    assert "api/setup/task-extra-materials/${requirementId}/sources" in ui
     assert "material_resolution?.container_ids" in ui
     assert "already an active source" in ui
-    assert "TASK CONTAINER" in ui
     assert "if (row.display_pallet) return 'Display Pallet'" in ui
     assert "if (Number(row.container_type_id) === 2) return 'Kit Box'" in ui
-    assert "Home ${physical.home_location_code}" in ui
+    assert "setup-extra-material-source-row" in ui
+    assert "Change</button>" in ui
+    assert "Remove</button>" in ui
 
-    assert "Manager — Change Source Container" in ui
-    assert "Change Source</button>" in ui
-    assert "Remove Source</button>" in ui
-    assert "Current source: C${source.container_id}" in ui
-    assert "Choose the replacement Container below" in ui
-    assert "This removes the source without choosing a replacement" in ui
-    assert "Repeat Add Source for each additional Container" in ui
-    assert "No source Container is currently assigned" in ui
-    assert "Add Another Source" in ui
-
-    assert "setup_task_extra_material_sources.js?v=2026-09-15.1" in bridge
+    assert "setup_task_extra_material_sources.js?v=2026-09-16.1" in bridge
     assert "script.addEventListener('load', loadTaskExtraMaterialSourceUi" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
+
+
+def test_replacement_source_does_not_inherit_old_container_facts() -> None:
+    ui = text("setup_task_extra_material_sources.js")
+
+    assert "originalSourceContainerId" in ui
+    assert "handleSourceContainerChange" in ui
+    assert "Replacement selected. Enter only quantity/verification/notes known for the new Container." in ui
+    assert "el('task-extra-material-source-qty').value = ''" in ui
+    assert "el('task-extra-material-source-verification').value = 'UNVERIFIED'" in ui
+    assert "el('task-extra-material-source-notes').value = ''" in ui
+
+
+def test_source_quantity_is_verified_after_save_and_rendered_without_scale_zeroes() -> None:
+    ui = text("setup_task_extra_material_sources.js")
+
+    assert "function displayNumber(value)" in ui
+    assert "Number.isFinite(parsed) ? String(parsed)" in ui
+    assert "async function verifySourceRoundTrip" in ui
+    assert "Saved source quantity mismatch" in ui
+    assert "sameQuantity(source.expected_quantity, requested.expected_quantity)" in ui
+    assert "Qty ${displayNumber(source.expected_quantity)}" in ui
+    assert "await window.refreshTaskExtraMaterials(taskId)" in ui
 
 
 def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
