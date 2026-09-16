@@ -123,27 +123,26 @@
   border-bottom: 0;
 }
 
+.setup-extra-material-source-list {
+  margin-top: 4px;
+}
+
 .setup-extra-material-source-audit {
   margin-top: 3px;
-  font-size: .86rem;
+  font-size: .88rem;
   font-weight: 700;
 }
 
 .setup-extra-material-source-audit.ok {
-  color: var(--success, #147a3d);
+  color: var(--success, #1f8a4c);
 }
 
-.setup-extra-material-source-audit.review,
+.setup-extra-material-source-audit.review {
+  color: var(--warning, #b26b00);
+}
+
 .setup-extra-material-source-audit.mismatch {
-  color: var(--warning, #c47a00);
-}
-
-.setup-extra-material-source-audit.neutral {
-  color: var(--muted, #6b7280);
-}
-
-.setup-extra-material-source-list {
-  margin-top: 4px;
+  color: var(--danger, #c94b4b);
 }
 
 .setup-extra-material-source-row {
