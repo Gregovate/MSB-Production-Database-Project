@@ -77,46 +77,44 @@
   }
 
   function allocationAudit(requirement) {
-    const sources = Array.isArray(requirement?.sources) ? requirement.sources : [];
-    const required = numberOrNull(requirement?.quantity_required);
-    const uom = String(requirement?.quantity_uom || '').trim();
-    const known = sources.filter((source) => numberOrNull(source.expected_quantity) != null);
-    const knownTotal = known.reduce((sum, source) => sum + Number(source.expected_quantity), 0);
+    const sources = Array.isArray(requirement.sources) ? requirement.sources : [];
+    const required = requirement.quantity_required == null ? null : Number(requirement.quantity_required);
+    const known = sources.filter((source) => source.expected_quantity != null);
     const missingCount = sources.length - known.length;
-    const qualifier = String(requirement?.quantity_qualifier || 'EXACT').toUpperCase();
+    const knownTotal = known.reduce((sum, source) => sum + Number(source.expected_quantity), 0);
+    const allVerified = sources.length > 0 && sources.every(
+      (source) => String(source.verification_state || '').toUpperCase() === 'VERIFIED' && source.expected_quantity != null,
+    );
+    const uom = requirement.quantity_uom || '';
 
     if (required == null) {
-      if (!sources.length) return { text: 'No source allocation recorded.', state: 'review' };
-      const missing = missingCount ? ` · ${missingCount} source ${missingCount === 1 ? 'quantity' : 'quantities'} missing` : '';
-      return { text: `Source total ${displayNumber(knownTotal)}${uom ? ` ${uom}` : ''}${missing}`, state: missingCount ? 'review' : 'neutral' };
-    }
-
-    if (!sources.length) {
-      return { text: `Allocated 0 of ${displayNumber(required)}${uom ? ` ${uom}` : ''} · NO SOURCES`, state: 'review' };
-    }
-
-    const base = `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)}${uom ? ` ${uom}` : ''}`;
-    if (missingCount) {
       return {
-        text: `${base} · ${missingCount} source ${missingCount === 1 ? 'quantity' : 'quantities'} missing · NEEDS REVIEW`,
-        state: 'review',
+        className: 'review',
+        text: sources.length ? `Source total ${displayNumber(knownTotal)} ${uom} · task requirement quantity missing` : 'Task requirement quantity missing',
+      };
+    }
+    if (!sources.length) {
+      return { className: 'review', text: `Required ${displayNumber(required)} ${uom} · no source allocation` };
+    }
+    if (missingCount > 0) {
+      return {
+        className: 'review',
+        text: `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)} ${uom} · ${missingCount} source ${missingCount === 1 ? 'quantity' : 'quantities'} missing`,
       };
     }
 
     const delta = knownTotal - required;
-    const balanced = Math.abs(delta) < 1e-9;
-    if (qualifier === 'MINIMUM') {
-      return delta >= 0
-        ? { text: `${base} · MEETS MINIMUM`, state: 'ok' }
-        : { text: `${base} · SHORT ${displayNumber(Math.abs(delta))}`, state: 'mismatch' };
+    if (Math.abs(delta) < 1e-9) {
+      return { className: 'ok', text: `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)} ${uom} · BALANCED` };
     }
-    if (qualifier !== 'EXACT') {
-      return { text: `${base} · ${qualifier.replaceAll('_', ' ')}`, state: 'neutral' };
-    }
-    if (balanced) return { text: `${base} · BALANCED`, state: 'ok' };
+
+    const direction = delta > 0 ? '+' : '-';
+    const magnitude = displayNumber(Math.abs(delta));
     return {
-      text: `${base} · MISMATCH ${delta > 0 ? '+' : '-'}${displayNumber(Math.abs(delta))}`,
-      state: 'mismatch',
+      className: 'mismatch',
+      text: allVerified
+        ? `Verified sources total ${displayNumber(knownTotal)}; task requires ${displayNumber(required)} ${uom} · REVIEW TASK REQUIREMENT (${direction}${magnitude})`
+        : `Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)} ${uom} · MISMATCH ${direction}${magnitude}`,
     };
   }
 
@@ -140,7 +138,7 @@
       <form id="task-extra-material-source-form" class="extra-material-editor manager-only" hidden>
         <h3 id="task-extra-material-source-editor-title">Manager — Add Source</h3>
         <div id="task-extra-material-source-selected" class="selected-item"></div>
-        <div id="task-extra-material-source-editor-help" class="hint">Select a Container and enter the quantity supplied by that Container. A VERIFIED source requires a quantity.</div>
+        <div id="task-extra-material-source-editor-help" class="hint">Select a Container and enter the quantity from that Container.</div>
         <div class="extra-material-form-grid">
           <label class="wide">Find Container<input id="task-extra-material-source-search" type="search" placeholder="ID, description, type, or location" autocomplete="off"></label>
           <label class="wide">Source Container<select id="task-extra-material-source-container" size="6" required></select></label>
@@ -238,7 +236,7 @@
       state.originalSourceContainerId = Number(source.container_id);
       el('task-extra-material-source-editor-title').textContent = 'Manager — Change Source';
       el('task-extra-material-source-selected').textContent = `${requirementLabel(requirement)} · Current C${source.container_id}`;
-      el('task-extra-material-source-editor-help').textContent = 'Keep this Container to edit its source facts, or choose a replacement and enter the replacement quantity.';
+      el('task-extra-material-source-editor-help').textContent = 'Choose a replacement Container, or keep this Container to edit its source facts.';
       el('task-extra-material-source-container').value = String(source.container_id);
       loadSourceFacts(source);
       el('task-extra-material-source-save').textContent = 'Save Source';
@@ -246,7 +244,7 @@
       state.originalSourceContainerId = null;
       el('task-extra-material-source-editor-title').textContent = 'Manager — Add Source';
       el('task-extra-material-source-selected').textContent = requirementLabel(requirement);
-      el('task-extra-material-source-editor-help').textContent = 'Select a Container and enter its quantity. Leave quantity blank only when the source is still Unverified or Needs review.';
+      el('task-extra-material-source-editor-help').textContent = 'Select a Container and enter the quantity from that Container.';
       el('task-extra-material-source-container').selectedIndex = -1;
       el('task-extra-material-source-qty').value = '';
       el('task-extra-material-source-verification').value = 'UNVERIFIED';
@@ -276,7 +274,7 @@
           <div class="section-title compact">
             <div>
               <strong>${escapeHtml(requirementLabel(requirement))}</strong>
-              <div class="setup-extra-material-source-audit ${escapeHtml(audit.state)}">${escapeHtml(audit.text)}</div>
+              <div class="setup-extra-material-source-audit ${audit.className}">${escapeHtml(audit.text)}</div>
             </div>
             ${appState.access?.can_manage_setup ? `<button type="button" class="small task-extra-material-source-add" data-requirement-id="${requirement.setup_task_extra_material_id}">Add Source</button>` : ''}
           </div>
@@ -375,7 +373,6 @@
     const requested = sourcePayload(true);
     if (requested.verification_state === 'VERIFIED' && requested.expected_quantity == null) {
       setAlert('A VERIFIED source requires Qty from this Container.', 'error');
-      el('task-extra-material-source-qty')?.focus();
       return;
     }
 
@@ -410,10 +407,8 @@
       if (typeof window.refreshTaskExtraMaterials === 'function') {
         await window.refreshTaskExtraMaterials(taskId);
       }
-      const savedRequirement = requirementById(requirementId);
-      const audit = allocationAudit(savedRequirement);
       const qty = requested.expected_quantity == null ? '' : ` · Qty ${displayNumber(requested.expected_quantity)}`;
-      setAlert(`C${requested.container_id}${qty} saved. ${audit.text}`);
+      setAlert(`C${requested.container_id}${qty} saved.`);
     } catch (error) {
       setAlert(error.message || error, 'error');
     }
