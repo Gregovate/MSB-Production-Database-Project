@@ -34,6 +34,10 @@
     ) || null;
   }
 
+  function containerById(containerId) {
+    return state.containers.find((row) => Number(row.container_id) === Number(containerId)) || null;
+  }
+
   function requirementLabel(row) {
     const parts = [row.material_name || 'Extra Material'];
     if (row.quantity_required != null) parts.push(`${row.quantity_required} ${row.quantity_uom || ''}`.trim());
@@ -45,8 +49,15 @@
     return parts.join(' — ');
   }
 
+  function containerTypeLabel(row) {
+    if (!row) return 'Container';
+    if (row.display_pallet) return 'Display Pallet';
+    if (Number(row.container_type_id) === 2) return 'Kit Box';
+    return row.container_type_id != null ? `Container Type ${row.container_type_id}` : 'Container';
+  }
+
   function containerLabel(row) {
-    const type = row.container_type_name || (row.container_type_id != null ? `Type ${row.container_type_id}` : 'Container');
+    const type = containerTypeLabel(row);
     const home = row.home_location_code ? ` · Home ${row.home_location_code}` : '';
     const resolved = state.resolvedContainerIds.has(Number(row.container_id)) ? ' · TASK CONTAINER' : '';
     return `C${row.container_id} — ${row.container_description || 'No description'} · ${type}${home}${resolved}`;
@@ -101,7 +112,7 @@
     const rows = state.containers
       .filter((row) => {
         if (!query) return true;
-        return [row.container_id, row.container_description, row.container_type_name, row.home_location_code]
+        return [row.container_id, row.container_description, containerTypeLabel(row), row.home_location_code]
           .filter((value) => value != null)
           .join(' ')
           .toLocaleLowerCase()
@@ -180,15 +191,22 @@
             ${appState.access?.can_manage_setup ? `<button type="button" class="small task-extra-material-source-add" data-requirement-id="${requirement.setup_task_extra_material_id}">Add Source</button>` : ''}
           </div>
           <div>
-            ${sources.length ? sources.map((source) => `
-              <div class="setup-support-container-row">
-                <div>
-                  <strong>Container ${escapeHtml(source.container_id)}</strong>${source.container_description ? ` — ${escapeHtml(source.container_description)}` : ''}
-                  <div class="muted">${source.expected_quantity == null ? 'Per-source quantity not recorded' : `Expected ${escapeHtml(source.expected_quantity)}`}${source.verification_state ? ` · ${escapeHtml(source.verification_state)}` : ''}${source.notes ? ` · ${escapeHtml(source.notes)}` : ''}</div>
-                </div>
-                ${appState.access?.can_manage_setup ? `<div class="action-row"><button type="button" class="small secondary task-extra-material-source-edit" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Edit</button><button type="button" class="small danger task-extra-material-source-remove" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Remove</button></div>` : ''}
-              </div>
-            `).join('') : '<div class="muted">No expected source Container is currently allocated.</div>'}
+            ${sources.length ? sources.map((source) => {
+              const physical = containerById(source.container_id);
+              const type = containerTypeLabel(physical);
+              const home = physical?.home_location_code ? ` · Home ${physical.home_location_code}` : '';
+              const quantity = source.expected_quantity == null ? 'Per-source quantity not recorded' : `Expected ${source.expected_quantity}`;
+              const verification = source.verification_state ? ` · ${source.verification_state}` : '';
+              const notes = source.notes ? ` · ${source.notes}` : '';
+              return `
+                <div class="setup-support-container-row">
+                  <div>
+                    <strong>Container ${escapeHtml(source.container_id)}</strong>${source.container_description ? ` — ${escapeHtml(source.container_description)}` : ''}
+                    <div class="muted">${escapeHtml(type)}${escapeHtml(home)} · ${escapeHtml(quantity)}${escapeHtml(verification)}${escapeHtml(notes)}</div>
+                  </div>
+                  ${appState.access?.can_manage_setup ? `<div class="action-row"><button type="button" class="small secondary task-extra-material-source-edit" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Edit</button><button type="button" class="small danger task-extra-material-source-remove" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Remove</button></div>` : ''}
+                </div>`;
+            }).join('') : '<div class="muted">No expected source Container is currently allocated.</div>'}
           </div>
         </div>`;
     }).join('');
