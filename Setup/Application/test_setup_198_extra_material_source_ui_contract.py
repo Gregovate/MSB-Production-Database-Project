@@ -32,7 +32,7 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
 
     assert "Expected Source Containers" in ui
     assert 'id="task-extra-material-source-form" class="extra-material-editor manager-only" hidden' in ui
-    assert "Assign where this requirement normally comes from." in ui
+    assert "Assign and reconcile where this requirement comes from." in ui
     assert "expected_quantity: numberOrNull" in ui
     assert "active_flag: false" in ui
     assert "api/setup/task-extra-materials/${requirementId}/sources/${existingSourceId}" in ui
@@ -55,7 +55,7 @@ def test_replacement_source_does_not_inherit_old_container_facts() -> None:
 
     assert "originalSourceContainerId" in ui
     assert "handleSourceContainerChange" in ui
-    assert "Replacement selected. Enter only quantity/verification/notes known for the new Container." in ui
+    assert "Replacement selected. Enter the quantity and verification known for the new Container." in ui
     assert "el('task-extra-material-source-qty').value = ''" in ui
     assert "el('task-extra-material-source-verification').value = 'UNVERIFIED'" in ui
     assert "el('task-extra-material-source-notes').value = ''" in ui
@@ -71,6 +71,22 @@ def test_source_quantity_is_verified_after_save_and_rendered_without_scale_zeroe
     assert "sameQuantity(source.expected_quantity, requested.expected_quantity)" in ui
     assert "Qty ${displayNumber(source.expected_quantity)}" in ui
     assert "await window.refreshTaskExtraMaterials(taskId)" in ui
+
+
+def test_verified_source_requires_quantity_and_allocation_is_audited() -> None:
+    ui = text("setup_task_extra_material_sources.js")
+    css = text("setup_extra_materials.css")
+
+    assert "Qty from this Container" in ui
+    assert "A VERIFIED source requires Qty from this Container." in ui
+    assert "function allocationAudit(requirement)" in ui
+    assert "Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)}" in ui
+    assert "MISMATCH ${delta > 0 ? '+' : '-'}" in ui
+    assert "BALANCED" in ui
+    assert "source quantities missing" in ui or "source ${missingCount === 1 ? 'quantity' : 'quantities'} missing" in ui
+    assert "setup-extra-material-source-audit" in ui
+    assert ".setup-extra-material-source-audit.ok" in css
+    assert ".setup-extra-material-source-audit.mismatch" in css
 
 
 def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
