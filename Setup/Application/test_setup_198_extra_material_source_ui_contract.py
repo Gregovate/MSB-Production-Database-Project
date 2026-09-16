@@ -18,8 +18,9 @@ def test_source_container_catalog_is_read_only_and_not_kit_restricted() -> None:
     section = api.split('def api_setup_extra_material_source_containers', 1)[1].split('@setup_extra_material_api.get("/api/setup/uoms")', 1)[0]
     assert "require_reader()" in section
     assert "FROM ref.container AS c" in section
-    assert "LEFT JOIN ref.container_type AS ct" in section
-    assert "container_type_name" in section
+    assert "ref.container_type" not in section
+    assert "c.container_type_id" in section
+    assert "c.display_pallet" in section
     assert "home_location_code" in section
     assert "container_type_id = 2" not in section
 
