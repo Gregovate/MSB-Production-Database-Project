@@ -46,8 +46,15 @@
     };
   }
 
+  function containerTypeLabel(row) {
+    if (!row) return 'Container';
+    if (row.display_pallet) return 'Display Pallet';
+    if (Number(row.container_type_id) === 2) return 'Kit Box';
+    return row.container_type_id != null ? `Container Type ${row.container_type_id}` : 'Container';
+  }
+
   function containerLabel(row) {
-    const type = row.container_type_name || (row.container_type_id != null ? `Type ${row.container_type_id}` : 'Container');
+    const type = containerTypeLabel(row);
     const home = row.home_location_code ? ` · Home ${row.home_location_code}` : '';
     return `C${row.container_id} — ${row.container_description || 'No description'} · ${type}${home}`;
   }
@@ -59,7 +66,7 @@
     const rows = state.containers.filter((row) => {
       if (state.existingTpostContainerIds.has(Number(row.container_id))) return false;
       if (!query) return true;
-      return [row.container_id, row.container_description, row.container_type_name, row.home_location_code]
+      return [row.container_id, row.container_description, containerTypeLabel(row), row.home_location_code]
         .filter((value) => value != null)
         .join(' ')
         .toLocaleLowerCase()
