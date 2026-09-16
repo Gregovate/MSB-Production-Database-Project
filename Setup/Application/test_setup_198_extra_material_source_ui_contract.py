@@ -39,6 +39,9 @@ def test_task_source_editor_preserves_requirement_and_uses_governed_source_comma
     assert "material_resolution?.container_ids" in ui
     assert "already an active source" in ui
     assert "TASK CONTAINER" in ui
+    assert "if (row.display_pallet) return 'Display Pallet'" in ui
+    assert "if (Number(row.container_type_id) === 2) return 'Kit Box'" in ui
+    assert "Home ${physical.home_location_code}" in ui
 
     assert "setup_task_extra_material_sources.js?v=2026-09-15.1" in bridge
     assert "script.addEventListener('load', loadTaskExtraMaterialSourceUi" in bridge
@@ -60,6 +63,8 @@ def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
     assert "setup_extra_material_id: Number(state.tpostMaterialId)" in ui
     assert "quantity_uom: 'EA'" in ui
     assert "expected_quantity: null" in ui
+    assert "if (row.display_pallet) return 'Display Pallet'" in ui
+    assert "if (Number(row.container_type_id) === 2) return 'Kit Box'" in ui
     assert "container_type_id === 2" not in ui
     assert "container_type_id == 2" not in ui
     assert '"setup_tpost_inventory_bootstrap.js"' in host
