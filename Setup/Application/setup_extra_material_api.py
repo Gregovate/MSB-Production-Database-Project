@@ -67,6 +67,11 @@ def api_setup_extra_material_source_containers() -> Response:
     Source allocation is intentionally not limited to Kit Boxes. Display
     Pallets, shared-stock Containers, Kit Boxes, and other real Containers may
     all be valid depending on the physical Setup workflow.
+
+    Keep this read on ref.container, which is already part of the Setup runtime
+    read surface. The browser can label Kit Box by the governed type ID and
+    Display Pallet by the existing display_pallet flag without adding a new
+    lookup-table privilege dependency.
     """
     require_reader()
     with psycopg2.connect(setup_database_dsn()) as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -76,11 +81,9 @@ def api_setup_extra_material_source_containers() -> Response:
                 c.container_id,
                 c.description AS container_description,
                 c.container_type_id,
-                ct.container_type_name,
+                c.display_pallet,
                 c.location_code AS home_location_code
             FROM ref.container AS c
-            LEFT JOIN ref.container_type AS ct
-              ON ct.container_type_id = c.container_type_id
             ORDER BY c.container_id
             """
         )
