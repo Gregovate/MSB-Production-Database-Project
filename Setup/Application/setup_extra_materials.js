@@ -61,7 +61,7 @@
   function loadSourceUsabilityRefinement() {
     if (document.querySelector('script[data-setup-extra-material-source-usability]')) return;
     const script = document.createElement('script');
-    script.src = 'setup_extra_material_source_usability.js?v=2026-09-16.1';
+    script.src = 'setup_extra_material_source_usability.js?v=2026-09-16.2';
     script.dataset.setupExtraMaterialSourceUsability = '1';
     document.body.appendChild(script);
   }
