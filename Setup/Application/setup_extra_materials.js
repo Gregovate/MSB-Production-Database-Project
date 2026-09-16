@@ -58,11 +58,24 @@
     decorateKitDialogRows();
   }
 
+  function loadSourceUsabilityRefinement() {
+    if (document.querySelector('script[data-setup-extra-material-source-usability]')) return;
+    const script = document.createElement('script');
+    script.src = 'setup_extra_material_source_usability.js?v=2026-09-16.1';
+    script.dataset.setupExtraMaterialSourceUsability = '1';
+    document.body.appendChild(script);
+  }
+
   function loadTaskExtraMaterialSourceUi() {
-    if (document.querySelector('script[data-setup-task-extra-material-sources]')) return;
+    const existing = document.querySelector('script[data-setup-task-extra-material-sources]');
+    if (existing) {
+      loadSourceUsabilityRefinement();
+      return;
+    }
     const script = document.createElement('script');
     script.src = 'setup_task_extra_material_sources.js?v=2026-09-16.3';
     script.dataset.setupTaskExtraMaterialSources = '1';
+    script.addEventListener('load', loadSourceUsabilityRefinement, { once: true });
     document.body.appendChild(script);
   }
 
