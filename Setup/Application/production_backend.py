@@ -98,6 +98,7 @@ TPOST_INVENTORY_ASSETS = frozenset(
         "setup_tpost_inventory.js",
         "setup_tpost_inventory_clarity.css",
         "setup_tpost_inventory_clarity.js",
+        "setup_tpost_inventory_bootstrap.js",
     }
 )
 PLANNING_SUMMARY_ASSETS = frozenset(
