@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import psycopg2
 from flask import Blueprint, Response, jsonify, request
+from psycopg2.extras import RealDictCursor
 
 from setup_api import (
     SetupAuthenticationError,
@@ -57,6 +58,34 @@ def api_extra_materials() -> Response:
 def api_extra_material_catalog() -> Response:
     require_manager()
     return jsonify(extra_materials=repo().catalog(include_inactive=True))
+
+
+@setup_extra_material_api.get("/api/setup/containers/source-options")
+def api_setup_extra_material_source_containers() -> Response:
+    """Return current Containers eligible to be an Extra Material source.
+
+    Source allocation is intentionally not limited to Kit Boxes. Display
+    Pallets, shared-stock Containers, Kit Boxes, and other real Containers may
+    all be valid depending on the physical Setup workflow.
+    """
+    require_reader()
+    with psycopg2.connect(setup_database_dsn()) as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT
+                c.container_id,
+                c.description AS container_description,
+                c.container_type_id,
+                ct.container_type_name,
+                c.location_code AS home_location_code
+            FROM ref.container AS c
+            LEFT JOIN ref.container_type AS ct
+              ON ct.container_type_id = c.container_type_id
+            ORDER BY c.container_id
+            """
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+    return jsonify(containers=rows)
 
 
 @setup_extra_material_api.get("/api/setup/uoms")
