@@ -20,7 +20,7 @@ def test_reusable_task_extra_materials_are_visible_in_task_detail() -> None:
     assert "selectTaskWithExtraMaterials" in ui
     assert "source${sources.length === 1 ? '' : 's'}" in ui
 
-    assert "setup_task_extra_materials.js?v=2026-09-16.1" in bridge
+    assert "setup_task_extra_materials.js?v=2026-09-16.2" in bridge
     assert '"setup_task_extra_materials.js"' in host
 
 
@@ -35,6 +35,7 @@ def test_manager_requirement_editor_is_explicit_and_collapsed_by_default() -> No
     assert "This changes the reusable requirement itself, not its source Containers." in ui
     assert "commandOptions(method, payload(true))" in ui
     assert "Remove Requirement" in ui
+    assert "window.editTaskExtraMaterialRequirement = editRequirement" in ui
 
 
 def test_existing_task_extra_material_requirement_keeps_stable_material_identity() -> None:
