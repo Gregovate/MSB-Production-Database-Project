@@ -31,7 +31,6 @@ def test_task_source_editor_preserves_requirement_and_uses_governed_source_comma
     host = text("production_backend.py")
 
     assert "Expected Source Containers" in ui
-    assert "Task-resolved Display Containers are shown first" in ui
     assert "expected_quantity: numberOrNull" in ui
     assert "active_flag: false" in ui
     assert "api/setup/task-extra-materials/${state.selectedRequirementId}/sources" in ui
@@ -42,6 +41,16 @@ def test_task_source_editor_preserves_requirement_and_uses_governed_source_comma
     assert "if (row.display_pallet) return 'Display Pallet'" in ui
     assert "if (Number(row.container_type_id) === 2) return 'Kit Box'" in ui
     assert "Home ${physical.home_location_code}" in ui
+
+    assert "Manager — Change Source Container" in ui
+    assert "Change Source</button>" in ui
+    assert "Remove Source</button>" in ui
+    assert "Current source: C${source.container_id}" in ui
+    assert "Choose the replacement Container below" in ui
+    assert "This removes the source without choosing a replacement" in ui
+    assert "Repeat Add Source for each additional Container" in ui
+    assert "No source Container is currently assigned" in ui
+    assert "Add Another Source" in ui
 
     assert "setup_task_extra_material_sources.js?v=2026-09-15.1" in bridge
     assert "script.addEventListener('load', loadTaskExtraMaterialSourceUi" in bridge
