@@ -90,6 +90,16 @@ def test_verified_source_requires_quantity_and_allocation_is_audited() -> None:
     assert ".setup-extra-material-source-audit.mismatch" in css
 
 
+def test_verified_mismatch_can_open_the_requirement_editor() -> None:
+    ui = text("setup_task_extra_material_sources.js")
+    requirement_ui = text("setup_task_extra_materials.js")
+
+    assert "task-extra-material-requirement-review" in ui
+    assert "Review Requirement" in ui
+    assert "window.editTaskExtraMaterialRequirement(requirementId)" in ui
+    assert "window.editTaskExtraMaterialRequirement = editRequirement" in requirement_ui
+
+
 def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
     page = text("t_post_inventory.html")
     ui = text("setup_tpost_inventory_bootstrap.js")
