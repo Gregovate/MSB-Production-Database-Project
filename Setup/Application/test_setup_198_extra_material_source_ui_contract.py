@@ -45,7 +45,7 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
     assert "Change</button>" in ui
     assert "Remove</button>" in ui
 
-    assert "setup_task_extra_material_sources.js?v=2026-09-16.1" in bridge
+    assert "setup_task_extra_material_sources.js?v=2026-09-16.2" in bridge
     assert "script.addEventListener('load', loadTaskExtraMaterialSourceUi" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
 
