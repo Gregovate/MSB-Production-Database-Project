@@ -46,7 +46,7 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
     assert "Remove</button>" in ui
 
     assert "setup_task_extra_material_sources.js?v=2026-09-16.3" in bridge
-    assert "setup_extra_material_source_usability.js?v=2026-09-16.1" in bridge
+    assert "setup_extra_material_source_usability.js?v=2026-09-16.2" in bridge
     assert "script.addEventListener('load', loadSourceUsabilityRefinement" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
     assert '"setup_extra_material_source_usability.js"' in host
@@ -115,6 +115,17 @@ def test_source_editor_usability_distinguishes_open_from_save_and_refreshes_requ
     assert "MutationObserver" in refinement
     assert "selectTask(taskId)" in refinement
     assert "source-allocation" in refinement
+
+
+def test_source_usability_observer_cannot_loop_on_its_own_button_label() -> None:
+    refinement = text("setup_extra_material_source_usability.js")
+
+    assert "if (button.textContent !== 'Add Source…')" in refinement
+    assert "if (button.textContent !== 'Save Source')" in refinement
+    assert "function addedNodeContainsSourceUi(node)" in refinement
+    assert "[...mutation.addedNodes]" in refinement
+    assert "if (!relevant) return" in refinement
+    assert "Text-node mutations created by our own labels are ignored" in refinement
 
 
 def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
