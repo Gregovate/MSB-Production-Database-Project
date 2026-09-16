@@ -79,6 +79,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_extra_materials.css",
         "setup_extra_materials.js",
         "setup_task_extra_materials.js",
+        "setup_task_extra_material_sources.js",
         "setup_uom_catalog.js",
         "setup_planning_summary.js",
     }
