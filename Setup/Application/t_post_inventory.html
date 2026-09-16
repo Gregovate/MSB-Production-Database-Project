@@ -38,6 +38,24 @@
       <div class="eyebrow">Physical T-Post locations</div>
       <h2>T-Post Containers</h2>
       <div class="hint" style="margin:8px 0 12px">Choose the physical Container you are inventorying. Bulk/shared stock and T-Posts carried with Kits/Displays are grouped separately below.</div>
+
+      <details id="tpost-bootstrap-panel" class="manager-only" hidden>
+        <summary>Add another T-Post stock Container</summary>
+        <div class="hint" style="margin:8px 0">Use an existing Container that does not yet have a T-Post stock row. Add the first variant here; after saving, the Container becomes part of this T-Post Inventory list.</div>
+        <form id="tpost-bootstrap-form">
+          <label>Find existing Container<input id="tpost-bootstrap-search" type="search" placeholder="ID, description, type, or home location" autocomplete="off"></label>
+          <label>Container<select id="tpost-bootstrap-container" size="6" required></select></label>
+          <div class="form-grid">
+            <label>Length<input id="tpost-bootstrap-length" type="number" min="0.001" step="0.001"></label>
+            <label>Length unit<select id="tpost-bootstrap-length-unit"><option value="">—</option><option value="FT">ft</option><option value="IN">in</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
+            <label>Size / stock note<input id="tpost-bootstrap-size" type="text" placeholder="e.g. shared short stock"></label>
+            <label>Verification<select id="tpost-bootstrap-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
+            <label class="wide">Notes<input id="tpost-bootstrap-notes" type="text"></label>
+          </div>
+          <div class="action-row"><button type="submit">Add Container to T-Post Inventory</button></div>
+        </form>
+      </details>
+
       <div id="tpost-list" class="kit-list"></div>
     </aside>
 
@@ -115,5 +133,6 @@
 </main>
 <script src="assets/setup_tpost_inventory.js?v=2026-09-14.1"></script>
 <script src="assets/setup_tpost_inventory_clarity.js?v=2026-09-14.3"></script>
+<script src="assets/setup_tpost_inventory_bootstrap.js?v=2026-09-15.1"></script>
 </body>
 </html>
