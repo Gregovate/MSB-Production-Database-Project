@@ -14,10 +14,6 @@
       tab.textContent = 'Kit Inventory';
       tab.title = 'Open durable Kit Box inventory';
     }
-
-    /* The first #167 browser candidate embedded inventory inside the annual
-       Setup tabs. Inventory is durable Container work, so remove that embedded
-       workspace and use the standalone protected route instead. */
     document.getElementById('extra-materials-view')?.remove();
   }
 
