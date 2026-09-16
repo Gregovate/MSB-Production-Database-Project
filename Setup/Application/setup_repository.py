@@ -358,3 +358,4 @@ class SetupRepository:
             conn.commit()
             if row is None:
                 raise SetupRepositoryError("Setup annual review update returned no result")
+            return dict(row)
