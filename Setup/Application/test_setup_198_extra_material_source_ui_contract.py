@@ -45,7 +45,7 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
     assert "Change</button>" in ui
     assert "Remove</button>" in ui
 
-    assert "setup_task_extra_material_sources.js?v=2026-09-16.1" in bridge
+    assert "setup_task_extra_material_sources.js?v=2026-09-16.2" in bridge
     assert "script.addEventListener('load', loadTaskExtraMaterialSourceUi" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
 
@@ -83,7 +83,7 @@ def test_verified_source_requires_quantity_and_allocation_is_audited() -> None:
     assert "Allocated ${displayNumber(knownTotal)} of ${displayNumber(required)}" in ui
     assert "MISMATCH ${delta > 0 ? '+' : '-'}" in ui
     assert "BALANCED" in ui
-    assert "source quantities missing" in ui or "source ${missingCount === 1 ? 'quantity' : 'quantities'} missing" in ui
+    assert "source ${missingCount === 1 ? 'quantity' : 'quantities'} missing" in ui
     assert "setup-extra-material-source-audit" in ui
     assert ".setup-extra-material-source-audit.ok" in css
     assert ".setup-extra-material-source-audit.mismatch" in css
