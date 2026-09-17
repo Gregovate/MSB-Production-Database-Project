@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +18,8 @@ VALIDATION = (
     / "37_lor_snapshot_retention_validation.sql"
 )
 REPORT_PUBLISHER = ROOT / "03_Reporting" / "publish_lor_reconciliation_report.py"
-
+BACKEND = ROOT / "Application" / "backend.py"
+APP_GRANTS = ROOT / "Application" / "grant_lor_preflight_app.sql"
 
 def text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -37,9 +39,19 @@ def test_installation_decouples_only_known_provenance_foreign_keys():
     assert "lor_snap.scenes" in sql
 
 
-def test_installation_never_runs_the_prune_procedure():
-    sql = text(MIGRATION).upper()
-    assert "CALL OPS.P_PRUNE_LOR_SNAPSHOTS" not in sql
+def test_installation_never_executes_retention_procedures():
+    sql = text(MIGRATION)
+
+    # CALL inside a CREATE PROCEDURE body is expected. Installation itself
+    # must never execute either retention procedure as a top-level statement.
+    assert not re.search(
+        r"(?m)^CALL\s+ops\.p_prune_lor_snapshots\(",
+        sql,
+    )
+    assert not re.search(
+        r"(?m)^CALL\s+ops\.p_run_lor_snapshot_retention\(",
+        sql,
+    )
 
 
 def test_retention_plan_keeps_recent_and_nonterminal_snapshots():
@@ -48,6 +60,19 @@ def test_retention_plan_keeps_recent_and_nonterminal_snapshots():
     assert "NEWEST_COMPLETED_WORKING_SET" in sql
     assert "NON_TERMINAL_RECONCILIATION" in sql
     assert "INCOMPLETE_INGEST_REQUIRES_REVIEW" in sql
+    assert "LEGACY_PRE_COMPLETION_TRACKING_SNAPSHOT" in sql
+    for marker in (
+        "ir.parser_version IS NULL",
+        "ir.ingest_script_version IS NULL",
+        "ir.ingest_started_at IS NULL",
+        "ir.preview_count IS NULL",
+        "ir.scene_count IS NULL",
+        "ir.prop_count IS NULL",
+        "ir.sub_prop_count IS NULL",
+        "ir.dmx_channel_count IS NULL",
+        "ir.scene_lor_prop_count IS NULL",
+    ):
+        assert marker in sql
     for status in (
         "STARTING",
         "PREFLIGHT",
@@ -70,6 +95,48 @@ def test_prune_requires_exact_reviewed_candidate_set_and_rechecks_dependencies()
     assert "DELETE FROM lor_snap.import_run" in sql
     assert "Latest completed import changed" in sql
 
+def test_automatic_retention_is_fixed_policy_and_fail_closed():
+    sql = text(MIGRATION)
+
+    assert "CREATE OR REPLACE PROCEDURE ops.p_run_lor_snapshot_retention()" in sql
+    assert "ops.f_lor_snapshot_retention_plan(5)" in sql
+    assert "CALL ops.p_prune_lor_snapshots(v_expected_prune_ids, 5)" in sql
+
+    assert (
+        "Automatic LOR snapshot retention found BLOCKed snapshot(s). "
+        "No automatic pruning was performed"
+    ) in sql
+
+    assert (
+        "REVOKE ALL ON PROCEDURE "
+        "ops.p_run_lor_snapshot_retention() FROM PUBLIC"
+    ) in sql
+
+def test_application_gets_only_fixed_policy_retention_entry_point():
+    grants = text(APP_GRANTS)
+
+    assert "ops.p_run_lor_snapshot_retention()" in grants
+
+    assert (
+        "ops.p_prune_lor_snapshots(bigint[], integer)"
+        not in grants
+    )
+    assert (
+        "ops.p_prune_lor_snapshots(bigint[],integer)"
+        not in grants
+    )
+
+def test_backend_runs_retention_only_after_successful_report_publication():
+    source = text(BACKEND)
+
+    sequence = (
+        "publish_report(run_id)\n"
+        "    retention_warning = run_automatic_snapshot_retention()"
+    )
+
+    assert source.count(sequence) == 3
+    assert 'cur.execute("CALL ops.p_run_lor_snapshot_retention()")' in source
+    assert "snapshot_retention_warning=retention_warning" in source
 
 def test_retention_admin_objects_are_not_public():
     sql = text(MIGRATION)

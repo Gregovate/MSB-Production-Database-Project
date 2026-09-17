@@ -570,7 +570,8 @@ with psycopg2.connect(os.environ["TEST_DSN"]) as conn:
 
 assert data["run"]["lor_reconciliation_run_id"] == run_id
 assert data["previews"]
-assert "LOR Reconciliation" in rendered
+assert rendered.startswith("<!doctype html>")
+assert f'Captured ingest {data["run"]["import_run_id"]}' in rendered
 print(f"PASS: historical reconciliation run {run_id} rendered from frozen evidence after raw snapshot prune")
 PY
 
