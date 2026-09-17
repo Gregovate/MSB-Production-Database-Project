@@ -282,7 +282,13 @@
   }
 
   function durationText(task) {
-    return task.expected_duration_minutes == null ? null : `${task.expected_duration_minutes} min`;
+    if (task.expected_duration_minutes == null) return null;
+    const totalMinutes = Number(task.expected_duration_minutes);
+    if (!Number.isInteger(totalMinutes) || totalMinutes < 1) return `${task.expected_duration_minutes} min`;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (!hours) return `${minutes} min`;
+    return minutes ? `${hours} hr ${minutes} min` : `${hours} hr`;
   }
 
   function predecessorHtml(task) {
