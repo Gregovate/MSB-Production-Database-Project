@@ -58,8 +58,8 @@ class BackendSafetyTests(unittest.TestCase):
 
     def test_preflight_page_loads_current_navigation_script(self) -> None:
         source = Path(__file__).with_name("index.html").read_text(encoding="utf-8")
-        self.assertIn('src="preflight.js?v=0.5.3"', source)
-        self.assertNotIn('src="preflight.js?v=0.5.2"', source)
+        self.assertIn('src="preflight.js?v=0.5.4"', source)
+        self.assertNotIn('src="preflight.js?v=0.5.3"', source)
 
     def test_browser_renders_terminal_cancellation_proof(self) -> None:
         source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
