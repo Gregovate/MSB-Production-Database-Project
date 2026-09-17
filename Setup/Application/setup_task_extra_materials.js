@@ -19,10 +19,16 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
+  function displayNumber(value) {
+    if (value == null || String(value).trim() === '') return '';
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? String(parsed) : String(value);
+  }
+
   function specText(row) {
     const parts = [];
     if (row.size_text) parts.push(row.size_text);
-    if (row.length_value != null) parts.push(`${row.length_value} ${row.length_unit || ''}`.trim());
+    if (row.length_value != null) parts.push(`${displayNumber(row.length_value)} ${row.length_unit || ''}`.trim());
     if (row.color) parts.push(row.color);
     return parts.join(' · ') || '—';
   }
@@ -32,17 +38,13 @@
       ? `${row.quantity_qualifier.toLowerCase()} `
       : '';
     if (row.quantity_required == null) return `Unverified ${row.quantity_uom || ''}`.trim();
-    return `${qualifier}${row.quantity_required} ${row.quantity_uom || ''}`.trim();
+    return `${qualifier}${displayNumber(row.quantity_required)} ${row.quantity_uom || ''}`.trim();
   }
 
   function sourceText(row) {
     const sources = Array.isArray(row.sources) ? row.sources : [];
-    if (!sources.length) return '<span class="extra-material-unknown">No source allocated</span>';
-    return sources.map((source) => {
-      const qty = source.expected_quantity == null ? '' : ` · ${escapeHtml(source.expected_quantity)}`;
-      const verification = source.verification_state ? ` · ${escapeHtml(source.verification_state)}` : '';
-      return `<div><strong>Container ${escapeHtml(source.container_id)}</strong>${source.container_description ? ` — ${escapeHtml(source.container_description)}` : ''}${qty}${verification}</div>`;
-    }).join('');
+    if (!sources.length) return '<span class="extra-material-unknown">None</span>';
+    return `${sources.length} source${sources.length === 1 ? '' : 's'}`;
   }
 
   function installSection() {
@@ -54,28 +56,29 @@
     section.id = 'task-extra-material-section';
     section.className = 'detail-section';
     section.innerHTML = `
-      <div class="section-title">
+      <div class="section-title compact">
         <div>
           <h3>Extra Materials Required by This Task</h3>
-          <div class="hint">Task requirements are separate from Kit contents and physical stock. For example, a task may require T-Posts supplied from shared T-Post stock rather than from its Kit Box.</div>
+          <div class="hint">Reusable requirement only. Source Containers are maintained separately below.</div>
         </div>
+        <button id="task-extra-material-add" type="button" class="small manager-only" hidden>Add Requirement</button>
       </div>
       <div id="task-extra-material-status" class="muted">Select a reusable task.</div>
       <div class="extra-material-table-wrap task-extra-material-table-wrap">
         <table class="extra-material-table task-extra-material-table">
-          <thead><tr><th>Item</th><th>Required</th><th>Size / Length / Color</th><th>Verification</th><th>Expected Source</th><th>Notes</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th>Required</th><th>Size / Length / Color</th><th>Verification</th><th>Sources</th><th>Notes</th><th></th></tr></thead>
           <tbody id="task-extra-material-body"><tr><td colspan="7" class="empty-state">Select a reusable task.</td></tr></tbody>
         </table>
       </div>
       <form id="task-extra-material-form" class="extra-material-editor manager-only" hidden>
-        <h3>Manager — Task Extra Material Requirement</h3>
-        <div class="hint">When editing an existing requirement, the material identity is locked. Remove the old requirement and add a new one if the material itself was wrong.</div>
+        <h3 id="task-extra-material-editor-title">Manager — Add Task Requirement</h3>
+        <div class="hint">This changes the reusable requirement itself, not its source Containers.</div>
         <div class="extra-material-form-grid">
           <label>Item<select id="task-extra-material-item" required></select></label>
-          <label>Required Qty<input id="task-extra-material-qty" type="number" min="0.001" step="0.001"></label>
+          <label>Required Qty<input id="task-extra-material-qty" type="number" min="0.001" step="any"></label>
           <label>UOM<input id="task-extra-material-uom" type="text" value="EA"></label>
           <label>Size<input id="task-extra-material-size" type="text"></label>
-          <label>Length<input id="task-extra-material-length" type="number" min="0.001" step="0.001"></label>
+          <label>Length<input id="task-extra-material-length" type="number" min="0.001" step="any"></label>
           <label>Length unit<select id="task-extra-material-length-unit"><option value="">—</option><option value="IN">in</option><option value="FT">ft</option><option value="MM">mm</option><option value="CM">cm</option><option value="M">m</option></select></label>
           <label>Color<input id="task-extra-material-color" type="text"></label>
           <label>Quantity qualifier<select id="task-extra-material-qualifier"><option value="EXACT">Exact</option><option value="MINIMUM">Minimum</option><option value="CONDITIONAL">Conditional</option><option value="SPARE">Spare</option></select></label>
@@ -84,10 +87,9 @@
         </div>
         <div class="action-row">
           <button id="task-extra-material-save" type="submit">Add Requirement</button>
-          <button id="task-extra-material-clear" type="button" class="secondary">Clear</button>
+          <button id="task-extra-material-clear" type="button" class="secondary">Cancel</button>
           <button id="task-extra-material-remove" type="button" class="warning" hidden>Remove Requirement</button>
         </div>
-        <div class="hint">Expected source Containers are displayed above and remain independent of the reusable task requirement.</div>
       </form>`;
     dependencies.insertAdjacentElement('afterend', section);
   }
@@ -104,7 +106,7 @@
     }
   }
 
-  function clearEditor() {
+  function clearEditor({ hide = true } = {}) {
     state.editingRowId = null;
     const values = {
       'task-extra-material-item': '',
@@ -120,8 +122,18 @@
     };
     Object.entries(values).forEach(([id, value]) => { if (el(id)) el(id).value = value; });
     if (el('task-extra-material-item')) el('task-extra-material-item').disabled = false;
+    if (el('task-extra-material-editor-title')) el('task-extra-material-editor-title').textContent = 'Manager — Add Task Requirement';
     if (el('task-extra-material-save')) el('task-extra-material-save').textContent = 'Add Requirement';
     if (el('task-extra-material-remove')) el('task-extra-material-remove').hidden = true;
+    if (hide && el('task-extra-material-form')) el('task-extra-material-form').hidden = true;
+  }
+
+  function addRequirement() {
+    if (!appState.access?.can_manage_setup) return;
+    clearEditor({ hide: false });
+    el('task-extra-material-form').hidden = false;
+    el('task-extra-material-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => el('task-extra-material-item')?.focus({ preventScroll: true }), 180);
   }
 
   function editRequirement(rowId) {
@@ -130,17 +142,19 @@
     state.editingRowId = Number(rowId);
     el('task-extra-material-item').value = String(row.setup_extra_material_id);
     el('task-extra-material-item').disabled = true;
-    el('task-extra-material-qty').value = row.quantity_required ?? '';
+    el('task-extra-material-qty').value = displayNumber(row.quantity_required);
     el('task-extra-material-uom').value = row.quantity_uom || 'EA';
     el('task-extra-material-size').value = row.size_text || '';
-    el('task-extra-material-length').value = row.length_value ?? '';
+    el('task-extra-material-length').value = displayNumber(row.length_value);
     el('task-extra-material-length-unit').value = row.length_unit || '';
     el('task-extra-material-color').value = row.color || '';
     el('task-extra-material-qualifier').value = row.quantity_qualifier || 'EXACT';
     el('task-extra-material-verification').value = row.verification_state || 'UNVERIFIED';
     el('task-extra-material-notes').value = row.notes || '';
+    el('task-extra-material-editor-title').textContent = 'Manager — Edit Task Requirement';
     el('task-extra-material-save').textContent = 'Save Requirement';
     el('task-extra-material-remove').hidden = false;
+    el('task-extra-material-form').hidden = false;
     el('task-extra-material-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
     window.setTimeout(() => el('task-extra-material-qty')?.focus({ preventScroll: true }), 180);
   }
@@ -156,17 +170,16 @@
         <td>${escapeHtml(row.verification_state || 'UNVERIFIED')}</td>
         <td>${sourceText(row)}</td>
         <td>${escapeHtml(row.notes || '')}</td>
-        <td>${appState.access?.can_manage_setup ? `<button type="button" class="small secondary task-extra-material-edit" data-row-id="${row.setup_task_extra_material_id}">Edit</button>` : ''}</td>
+        <td>${appState.access?.can_manage_setup ? `<button type="button" class="small secondary task-extra-material-edit" data-row-id="${row.setup_task_extra_material_id}">Edit Requirement</button>` : ''}</td>
       </tr>`).join('') || '<tr><td colspan="7" class="empty-state">No Extra Material requirements recorded for this reusable task.</td></tr>';
     el('task-extra-material-status').textContent = `${state.rows.length} active requirement${state.rows.length === 1 ? '' : 's'}`;
-    el('task-extra-material-form').hidden = !appState.access?.can_manage_setup;
+    if (el('task-extra-material-add')) el('task-extra-material-add').hidden = !appState.access?.can_manage_setup;
     applyAccess();
   }
 
   async function loadTaskMaterials(taskId) {
     installSection();
     state.taskId = Number(taskId);
-    state.editingRowId = null;
     clearEditor();
     const token = ++state.requestToken;
     el('task-extra-material-status').textContent = 'Loading Extra Material requirements…';
@@ -213,8 +226,9 @@
     const method = state.editingRowId ? 'PATCH' : 'POST';
     try {
       await api(path, commandOptions(method, payload(true)));
+      const taskId = state.taskId;
       clearEditor();
-      await loadTaskMaterials(state.taskId);
+      await loadTaskMaterials(taskId);
       setAlert('Task Extra Material requirement saved.');
     } catch (error) {
       setAlert(error.message, 'error');
@@ -229,8 +243,9 @@
         `api/setup/tasks/${state.taskId}/extra-materials/${state.editingRowId}`,
         commandOptions('PATCH', payload(false)),
       );
+      const taskId = state.taskId;
       clearEditor();
-      await loadTaskMaterials(state.taskId);
+      await loadTaskMaterials(taskId);
       setAlert('Task Extra Material requirement removed.');
     } catch (error) {
       setAlert(error.message, 'error');
@@ -246,8 +261,9 @@
       return result;
     };
 
+    el('task-extra-material-add')?.addEventListener('click', addRequirement);
     el('task-extra-material-form')?.addEventListener('submit', saveRequirement);
-    el('task-extra-material-clear')?.addEventListener('click', clearEditor);
+    el('task-extra-material-clear')?.addEventListener('click', () => clearEditor());
     el('task-extra-material-remove')?.addEventListener('click', removeRequirement);
     el('task-extra-material-item')?.addEventListener('change', () => {
       const option = el('task-extra-material-item').selectedOptions[0];
@@ -258,6 +274,8 @@
       if (button) editRequirement(Number(button.dataset.rowId));
     });
 
+    window.refreshTaskExtraMaterials = loadTaskMaterials;
+    window.editTaskExtraMaterialRequirement = editRequirement;
     if (appState.selectedTaskId) loadTaskMaterials(appState.selectedTaskId);
   }
 

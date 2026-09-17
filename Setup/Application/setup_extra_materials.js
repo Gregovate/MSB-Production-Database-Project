@@ -1,4 +1,4 @@
-/* Issue #167/#191 — route Kit Inventory and load durable Extra Material support. */
+/* Issue #167/#191/#198 — route Kit Inventory and load durable Extra Material support. */
 (() => {
   function inventoryUrl(containerId = null) {
     return containerId ? `kit-inventory/${Number(containerId)}` : 'kit-inventory/';
@@ -14,10 +14,6 @@
       tab.textContent = 'Kit Inventory';
       tab.title = 'Open durable Kit Box inventory';
     }
-
-    /* The first #167 browser candidate embedded inventory inside the annual
-       Setup tabs. Inventory is durable Container work, so remove that embedded
-       workspace and use the standalone protected route instead. */
     document.getElementById('extra-materials-view')?.remove();
   }
 
@@ -28,8 +24,6 @@
     link.textContent = label;
     link.title = `Open Kit Inventory for Container ${containerId}`;
     link.addEventListener('click', (event) => {
-      /* Kit assignment rows are labels containing checkboxes. Prevent the link
-         click from toggling the assignment while still navigating explicitly. */
       event.preventDefault();
       event.stopPropagation();
       openInventory(containerId);
@@ -64,11 +58,37 @@
     decorateKitDialogRows();
   }
 
-  function loadTaskExtraMaterialUi() {
-    if (document.querySelector('script[data-setup-task-extra-materials]')) return;
+  function loadSourceUsabilityRefinement() {
+    if (document.querySelector('script[data-setup-extra-material-source-usability]')) return;
     const script = document.createElement('script');
-    script.src = 'setup_task_extra_materials.js?v=2026-09-15.2';
+    script.src = 'setup_extra_material_source_usability.js?v=2026-09-16.2';
+    script.dataset.setupExtraMaterialSourceUsability = '1';
+    document.body.appendChild(script);
+  }
+
+  function loadTaskExtraMaterialSourceUi() {
+    const existing = document.querySelector('script[data-setup-task-extra-material-sources]');
+    if (existing) {
+      loadSourceUsabilityRefinement();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'setup_task_extra_material_sources.js?v=2026-09-16.3';
+    script.dataset.setupTaskExtraMaterialSources = '1';
+    script.addEventListener('load', loadSourceUsabilityRefinement, { once: true });
+    document.body.appendChild(script);
+  }
+
+  function loadTaskExtraMaterialUi() {
+    const existing = document.querySelector('script[data-setup-task-extra-materials]');
+    if (existing) {
+      loadTaskExtraMaterialSourceUi();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'setup_task_extra_materials.js?v=2026-09-16.2';
     script.dataset.setupTaskExtraMaterials = '1';
+    script.addEventListener('load', loadTaskExtraMaterialSourceUi, { once: true });
     document.body.appendChild(script);
   }
 
@@ -80,9 +100,6 @@
     document.body.appendChild(script);
   }
 
-  /* Capture the old tab click before the generic Setup view-switch handler.
-     This keeps a visible Setup entry point while making Kit Inventory a true
-     route rather than another annual-session view. */
   document.addEventListener('click', (event) => {
     const tab = event.target.closest?.('[data-view="extra-materials"]');
     if (!tab) return;
