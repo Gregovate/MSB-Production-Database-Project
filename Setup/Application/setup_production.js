@@ -69,13 +69,62 @@ function nullableInteger(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const INVALID_EXPECTED_DURATION = '__INVALID_EXPECTED_DURATION__';
+
+function readExpectedDurationMinutes({ strict = false } = {}) {
+  const hoursText = String(el('edit-duration-hours')?.value ?? '').trim();
+  const minutesText = String(el('edit-duration-minute-remainder')?.value ?? '').trim();
+  if (!hoursText && !minutesText) return null;
+
+  const hours = hoursText ? Number(hoursText) : 0;
+  const minutes = minutesText ? Number(minutesText) : 0;
+  const validParts = (
+    Number.isInteger(hours)
+    && hours >= 0
+    && Number.isInteger(minutes)
+    && minutes >= 0
+    && minutes <= 59
+  );
+  const totalMinutes = validParts ? (hours * 60) + minutes : 0;
+  if (!validParts || totalMinutes < 1) {
+    if (strict) {
+      throw new Error('Expected duration must be blank or use whole nonnegative hours plus 0–59 minutes, totaling at least 1 minute.');
+    }
+    return INVALID_EXPECTED_DURATION;
+  }
+  return totalMinutes;
+}
+
+function setExpectedDurationInputs(value) {
+  const hoursInput = el('edit-duration-hours');
+  const minutesInput = el('edit-duration-minute-remainder');
+  if (!hoursInput || !minutesInput) return;
+
+  if (value == null || value === '') {
+    hoursInput.value = '';
+    minutesInput.value = '';
+    return;
+  }
+
+  const totalMinutes = Number(value);
+  if (!Number.isInteger(totalMinutes) || totalMinutes < 1) {
+    hoursInput.value = '';
+    minutesInput.value = '';
+    return;
+  }
+
+  hoursInput.value = Math.floor(totalMinutes / 60);
+  minutesInput.value = totalMinutes % 60;
+}
+
 function formatMinutes(value) {
   if (value == null || value === '') return 'To verify';
-  const minutes = Number(value);
-  if (!Number.isFinite(minutes)) return String(value);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = minutes / 60;
-  return Number.isInteger(hours) ? `${hours} hr` : `${hours.toFixed(1)} hr`;
+  const totalMinutes = Number(value);
+  if (!Number.isFinite(totalMinutes)) return String(value);
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes ? `${hours} hr ${minutes} min` : `${hours} hr`;
 }
 
 function formatCrew(task) {
@@ -142,7 +191,8 @@ function applyAccess() {
   const editable = Boolean(access.can_manage_setup);
   [
     'edit-task-name', 'edit-stage-id', 'edit-action-type', 'edit-display-order',
-    'edit-active-flag', 'edit-crew-min', 'edit-crew-max', 'edit-duration-minutes',
+    'edit-active-flag', 'edit-crew-min', 'edit-crew-max',
+    'edit-duration-hours', 'edit-duration-minute-remainder',
     'edit-completion', 'edit-readiness', 'edit-weather', 'edit-reusable-notes',
     'edit-actual-crew', 'edit-actual-duration', 'edit-annual-notes'
   ].forEach((id) => {
@@ -317,7 +367,7 @@ function selectTask(taskId) {
   el('edit-active-flag').checked = Boolean(task.active_flag);
   el('edit-crew-min').value = task.normal_crew_min ?? '';
   el('edit-crew-max').value = task.normal_crew_max ?? '';
-  el('edit-duration-minutes').value = task.expected_duration_minutes ?? '';
+  setExpectedDurationInputs(task.expected_duration_minutes);
   el('edit-completion').value = task.completion_point || '';
   el('edit-readiness').value = task.readiness_note || '';
   el('edit-weather').value = task.weather_note || '';
@@ -350,7 +400,7 @@ async function saveReusableTask() {
     active_flag: el('edit-active-flag').checked,
     normal_crew_min: nullableInteger(el('edit-crew-min').value),
     normal_crew_max: nullableInteger(el('edit-crew-max').value),
-    expected_duration_minutes: nullableInteger(el('edit-duration-minutes').value),
+    expected_duration_minutes: readExpectedDurationMinutes({ strict: true }),
     completion_point: el('edit-completion').value.trim(),
     readiness_note: el('edit-readiness').value.trim(),
     weather_note: el('edit-weather').value.trim(),
