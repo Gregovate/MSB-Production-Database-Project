@@ -58,8 +58,8 @@ class BackendSafetyTests(unittest.TestCase):
 
     def test_preflight_page_loads_current_navigation_script(self) -> None:
         source = Path(__file__).with_name("index.html").read_text(encoding="utf-8")
-        self.assertIn('src="preflight.js?v=0.5.2"', source)
-        self.assertNotIn('src="preflight.js?v=0.5.1"', source)
+        self.assertIn('src="preflight.js?v=0.5.3"', source)
+        self.assertNotIn('src="preflight.js?v=0.5.2"', source)
 
     def test_browser_renders_terminal_cancellation_proof(self) -> None:
         source = Path(__file__).with_name("preflight.js").read_text(encoding="utf-8")
@@ -129,6 +129,11 @@ class BackendSafetyTests(unittest.TestCase):
         }
         with patch.object(backend, "database", fake_database), \
              patch.object(backend, "publish_report") as publish, \
+             patch.object(
+                 backend,
+                 "run_automatic_snapshot_retention",
+                 return_value=None,
+             ) as retention, \
              patch.object(backend, "load_run", return_value=cancelled):
             response = backend.app.test_client().post(
                 "/runs/6/cancel",
@@ -147,6 +152,7 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertEqual(response.json["report_url"], cancelled["report_url"])
         self.assertEqual(response.json["completed_at"], cancelled["completed_at"])
         publish.assert_called_once_with(6)
+        retention.assert_called_once_with()
 
     def test_dashboard_marks_completed_snapshot_consumed(self) -> None:
         state = backend.dashboard_state(
@@ -576,6 +582,89 @@ class BackendSafetyTests(unittest.TestCase):
         self.assertIn('<a class="primary" href="parser/">Run parser</a>', source)
         self.assertIn('id="run-parser"', parser_source)
         self.assertIn('href="#parser-console">Review parser output</a>', parser_source)
+
+
+def test_browser_surfaces_retention_warning_before_report_redirect() -> None:
+    source = Path(__file__).with_name("preflight.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "window.alert(result.snapshot_retention_warning);" in source
+    warning_call = source.index(
+        "showRetentionWarning(result);",
+        source.index("function openPublishedReport(result)"),
+    )
+    redirect = source.index(
+        'location.replace(result.report_url || "../reports/");',
+        warning_call,
+    )
+    assert warning_call < redirect
+    assert source.count("showRetentionWarning(result);") >= 2
+
+
+def test_automatic_retention_success_commits() -> None:
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, query):
+            self.query = query
+
+    class Connection:
+        def __init__(self):
+            self.cursor_object = Cursor()
+            self.committed = False
+
+        def cursor(self):
+            return self.cursor_object
+
+        def commit(self):
+            self.committed = True
+
+    connection = Connection()
+
+    @contextmanager
+    def fake_database():
+        yield connection
+
+    with patch.object(backend, "database", fake_database):
+        warning = backend.run_automatic_snapshot_retention()
+
+    assert warning is None
+    assert connection.cursor_object.query == "CALL ops.p_run_lor_snapshot_retention()"
+    assert connection.committed is True
+
+
+def test_automatic_retention_failure_is_nonfatal_warning() -> None:
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, _query):
+            raise RuntimeError("retention blocked")
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def commit(self):
+            raise AssertionError("commit must not occur after failed cleanup")
+
+    @contextmanager
+    def fake_database():
+        yield Connection()
+
+    with patch.object(backend, "database", fake_database):
+        warning = backend.run_automatic_snapshot_retention()
+
+    assert "reconciliation and report are complete" in warning
+    assert "cleanup will retry" in warning
 
 
 if __name__ == "__main__":

@@ -102,17 +102,27 @@ DO $validation$
 DECLARE
     v_function_oid oid;
     v_procedure_oid oid;
+    v_automatic_procedure_oid oid;
 BEGIN
     SELECT to_regprocedure('ops.f_lor_snapshot_retention_plan(integer)')::oid
       INTO v_function_oid;
+
     SELECT to_regprocedure('ops.p_prune_lor_snapshots(bigint[],integer)')::oid
       INTO v_procedure_oid;
+
+    SELECT to_regprocedure('ops.p_run_lor_snapshot_retention()')::oid
+      INTO v_automatic_procedure_oid;
 
     IF v_function_oid IS NULL THEN
         RAISE EXCEPTION '37: retention-plan function is missing';
     END IF;
+
     IF v_procedure_oid IS NULL THEN
         RAISE EXCEPTION '37: prune procedure is missing';
+    END IF;
+
+    IF v_automatic_procedure_oid IS NULL THEN
+        RAISE EXCEPTION '37: automatic retention procedure is missing';
     END IF;
 
     IF EXISTS (
@@ -121,12 +131,28 @@ BEGIN
         CROSS JOIN LATERAL aclexplode(
             coalesce(p.proacl, acldefault('f', p.proowner))
         ) AS a
-        WHERE p.oid IN (v_function_oid, v_procedure_oid)
+        WHERE p.oid IN (
+            v_function_oid,
+            v_procedure_oid,
+            v_automatic_procedure_oid
+        )
           AND a.grantee = 0
           AND a.privilege_type = 'EXECUTE'
     ) THEN
         RAISE EXCEPTION
             '37: PUBLIC still has EXECUTE on retention administration objects';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_proc AS p
+        JOIN pg_roles AS r
+          ON r.oid = p.proowner
+        WHERE p.oid = v_automatic_procedure_oid
+          AND r.rolname = 'msbadmin'
+    ) THEN
+        RAISE EXCEPTION
+            '37: automatic retention procedure is not owned by msbadmin';
     END IF;
 END;
 $validation$;
@@ -181,11 +207,65 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM ops.f_lor_snapshot_retention_plan(5) AS p
-        WHERE p.ingest_completed_at IS NULL
-          AND p.retention_disposition <> 'BLOCK'
+        JOIN lor_snap.import_run AS ir
+          ON ir.import_run_id = p.import_run_id
+        WHERE ir.ingest_completed_at IS NULL
+          AND ir.parser_version IS NULL
+          AND ir.ingest_script_version IS NULL
+          AND ir.ingest_started_at IS NULL
+          AND ir.preview_count IS NULL
+          AND ir.scene_count IS NULL
+          AND ir.prop_count IS NULL
+          AND ir.sub_prop_count IS NULL
+          AND ir.dmx_channel_count IS NULL
+          AND ir.scene_lor_prop_count IS NULL
+          AND (
+              p.reconciliation_status IS NULL
+              OR p.reconciliation_status NOT IN (
+                  'STARTING', 'PREFLIGHT', 'AWAITING_DECISIONS',
+                  'READY_TO_FINISH', 'PROMOTING', 'VALIDATING', 'REPORTING'
+              )
+          )
+          AND (
+              p.retention_disposition <> 'PRUNE'
+              OR p.retention_reason <> 'LEGACY_PRE_COMPLETION_TRACKING_SNAPSHOT'
+          )
     ) THEN
         RAISE EXCEPTION
-            '37: incomplete ingest is not BLOCKed from automatic pruning';
+            '37: recognized pre-completion-tracking legacy snapshot is not PRUNE';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM ops.f_lor_snapshot_retention_plan(5) AS p
+        JOIN lor_snap.import_run AS ir
+          ON ir.import_run_id = p.import_run_id
+        WHERE ir.ingest_completed_at IS NULL
+          AND NOT (
+              ir.parser_version IS NULL
+              AND ir.ingest_script_version IS NULL
+              AND ir.ingest_started_at IS NULL
+              AND ir.preview_count IS NULL
+              AND ir.scene_count IS NULL
+              AND ir.prop_count IS NULL
+              AND ir.sub_prop_count IS NULL
+              AND ir.dmx_channel_count IS NULL
+              AND ir.scene_lor_prop_count IS NULL
+          )
+          AND (
+              p.reconciliation_status IS NULL
+              OR p.reconciliation_status NOT IN (
+                  'STARTING', 'PREFLIGHT', 'AWAITING_DECISIONS',
+                  'READY_TO_FINISH', 'PROMOTING', 'VALIDATING', 'REPORTING'
+              )
+          )
+          AND (
+              p.retention_disposition <> 'BLOCK'
+              OR p.retention_reason <> 'INCOMPLETE_INGEST_REQUIRES_REVIEW'
+          )
+    ) THEN
+        RAISE EXCEPTION
+            '37: modern incomplete ingest is not BLOCKed from automatic pruning';
     END IF;
 
     IF EXISTS (

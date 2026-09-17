@@ -27,8 +27,9 @@ Safety boundary:
 Retention default:
   - keep the newest 5 completed ingests;
   - keep any ingest captured by a non-terminal reconciliation;
-  - block incomplete ingest rows from automatic pruning;
-  - prune other completed snapshots only through the governed procedure.
+  - prune recognized legacy snapshots created before completion tracking;
+  - block any other incomplete ingest row from automatic pruning;
+  - prune other eligible snapshots only through the governed procedure.
 ============================================================================ */
 
 BEGIN;
@@ -202,23 +203,46 @@ BEGIN
         rr.lor_reconciliation_run_id,
         rr.status,
         CASE
-            WHEN ir.ingest_completed_at IS NULL THEN 'BLOCK'
             WHEN rr.status IN (
                 'STARTING', 'PREFLIGHT', 'AWAITING_DECISIONS',
                 'READY_TO_FINISH', 'PROMOTING', 'VALIDATING', 'REPORTING'
             ) THEN 'KEEP'
-            WHEN rc.recency_rank <= p_keep_completed THEN 'KEEP'
+            WHEN ir.ingest_completed_at IS NOT NULL
+             AND rc.recency_rank <= p_keep_completed THEN 'KEEP'
+            WHEN ir.ingest_completed_at IS NULL
+             AND ir.parser_version IS NULL
+             AND ir.ingest_script_version IS NULL
+             AND ir.ingest_started_at IS NULL
+             AND ir.preview_count IS NULL
+             AND ir.scene_count IS NULL
+             AND ir.prop_count IS NULL
+             AND ir.sub_prop_count IS NULL
+             AND ir.dmx_channel_count IS NULL
+             AND ir.scene_lor_prop_count IS NULL THEN 'PRUNE'
+            WHEN ir.ingest_completed_at IS NULL THEN 'BLOCK'
             ELSE 'PRUNE'
         END AS retention_disposition,
         CASE
-            WHEN ir.ingest_completed_at IS NULL
-                THEN 'INCOMPLETE_INGEST_REQUIRES_REVIEW'
             WHEN rr.status IN (
                 'STARTING', 'PREFLIGHT', 'AWAITING_DECISIONS',
                 'READY_TO_FINISH', 'PROMOTING', 'VALIDATING', 'REPORTING'
             ) THEN 'NON_TERMINAL_RECONCILIATION'
-            WHEN rc.recency_rank <= p_keep_completed
+            WHEN ir.ingest_completed_at IS NOT NULL
+             AND rc.recency_rank <= p_keep_completed
                 THEN 'NEWEST_COMPLETED_WORKING_SET'
+            WHEN ir.ingest_completed_at IS NULL
+             AND ir.parser_version IS NULL
+             AND ir.ingest_script_version IS NULL
+             AND ir.ingest_started_at IS NULL
+             AND ir.preview_count IS NULL
+             AND ir.scene_count IS NULL
+             AND ir.prop_count IS NULL
+             AND ir.sub_prop_count IS NULL
+             AND ir.dmx_channel_count IS NULL
+             AND ir.scene_lor_prop_count IS NULL
+                THEN 'LEGACY_PRE_COMPLETION_TRACKING_SNAPSHOT'
+            WHEN ir.ingest_completed_at IS NULL
+                THEN 'INCOMPLETE_INGEST_REQUIRES_REVIEW'
             ELSE 'OLDER_COMPLETED_SNAPSHOT'
         END AS retention_reason,
         coalesce(pc.row_count, 0)::bigint,
@@ -257,7 +281,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION ops.f_lor_snapshot_retention_plan(integer) IS
-'Read-only bounded-retention plan for lor_snap. Default keeps newest 5 completed snapshots plus any snapshot captured by a non-terminal reconciliation; incomplete ingests are BLOCKed.';
+'Read-only bounded-retention plan for lor_snap. Default keeps newest 5 completed snapshots plus any snapshot captured by a non-terminal reconciliation; recognized pre-completion-tracking legacy snapshots are pruneable while other incomplete ingests are BLOCKed.';
 
 /* --------------------------------------------------------------------------
    4. Governed pruning procedure.
@@ -424,11 +448,57 @@ $procedure$;
 COMMENT ON PROCEDURE ops.p_prune_lor_snapshots(bigint[], integer) IS
 'Administrative fail-closed lor_snap pruning. Requires exact reviewed PRUNE ID set from ops.f_lor_snapshot_retention_plan; installation of migration 0042 never calls this procedure.';
 
+/* --------------------------------------------------------------------------
+   5. Automatic steady-state retention entry point.
+
+      This entry point is intentionally parameterless:
+      - normal application cleanup always keeps exactly 5 completed snapshots;
+      - callers cannot supply IDs or lower the retention count;
+      - the governed administrative procedure remains the manual recovery path;
+      - any failure rolls back this cleanup transaction without affecting the
+        already-completed reconciliation/report transaction.
+   -------------------------------------------------------------------------- */
+CREATE OR REPLACE PROCEDURE ops.p_run_lor_snapshot_retention()
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ops, lor_snap
+AS $procedure$
+DECLARE
+    v_expected_prune_ids bigint[];
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext('ops.lor_snap.retention'));
+
+    IF EXISTS (
+        SELECT 1
+        FROM ops.f_lor_snapshot_retention_plan(5) AS p
+        WHERE p.retention_disposition = 'BLOCK'
+    ) THEN
+        RAISE EXCEPTION
+            'Automatic LOR snapshot retention found BLOCKed snapshot(s). No automatic pruning was performed; review the retention plan.';
+    END IF;
+
+    SELECT coalesce(
+               array_agg(p.import_run_id ORDER BY p.import_run_id),
+               ARRAY[]::bigint[]
+           )
+      INTO v_expected_prune_ids
+    FROM ops.f_lor_snapshot_retention_plan(5) AS p
+    WHERE p.retention_disposition = 'PRUNE';
+
+    CALL ops.p_prune_lor_snapshots(v_expected_prune_ids, 5);
+END;
+$procedure$;
+
+COMMENT ON PROCEDURE ops.p_run_lor_snapshot_retention() IS
+'Automatic fail-closed steady-state lor_snap retention. Uses the fixed newest-5 policy and the same guarded administrative prune procedure; intended only after successful reconciliation report publication.';
+
 ALTER FUNCTION ops.f_lor_snapshot_retention_plan(integer) OWNER TO msbadmin;
 ALTER PROCEDURE ops.p_prune_lor_snapshots(bigint[], integer) OWNER TO msbadmin;
+ALTER PROCEDURE ops.p_run_lor_snapshot_retention() OWNER TO msbadmin;
 
 REVOKE ALL ON FUNCTION ops.f_lor_snapshot_retention_plan(integer) FROM PUBLIC;
 REVOKE ALL ON PROCEDURE ops.p_prune_lor_snapshots(bigint[], integer) FROM PUBLIC;
+REVOKE ALL ON PROCEDURE ops.p_run_lor_snapshot_retention() FROM PUBLIC;
 
 COMMIT;
 
@@ -436,4 +506,6 @@ SELECT
     to_regprocedure('ops.f_lor_snapshot_retention_plan(integer)') IS NOT NULL
         AS has_retention_plan,
     to_regprocedure('ops.p_prune_lor_snapshots(bigint[],integer)') IS NOT NULL
-        AS has_prune_procedure;
+        AS has_prune_procedure,
+    to_regprocedure('ops.p_run_lor_snapshot_retention()') IS NOT NULL
+        AS has_automatic_retention_procedure;

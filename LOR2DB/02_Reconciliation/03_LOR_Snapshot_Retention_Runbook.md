@@ -56,11 +56,13 @@ KEEP
   newest 5 completed lor_snap imports
   + any import captured by a non-terminal reconciliation
 
-BLOCK
-  incomplete ingest rows requiring review
-
 PRUNE
-  older completed snapshots not otherwise protected
+  recognized legacy pre-completion-tracking snapshots not otherwise protected
+  + older completed snapshots not otherwise protected
+
+BLOCK
+  NULL-completion snapshots that do not match the recognized legacy profile
+  and therefore require operator review
 ```
 
 Non-terminal reconciliation states are:
@@ -73,6 +75,22 @@ READY_TO_FINISH
 PROMOTING
 VALIDATING
 REPORTING
+```
+
+A recognized legacy pre-completion-tracking snapshot has
+`ingest_completed_at IS NULL` and also lacks every modern ingest marker used by
+the retention classifier:
+
+```text
+parser_version
+ingest_script_version
+ingest_started_at
+preview_count
+scene_count
+prop_count
+sub_prop_count
+dmx_channel_count
+scene_lor_prop_count
 ```
 
 Terminal reconciliation/audit/report rows remain in `ops`; pruning removes the
@@ -141,6 +159,9 @@ The disposable gate must prove at minimum:
 - validation `37` passes;
 - newest-five protection works;
 - non-terminal reconciliation protection works;
+- recognized legacy pre-completion-tracking snapshots are classified `PRUNE`;
+- any NULL-completion row with modern ingest markers remains fail-closed as
+  `BLOCK`;
 - intentionally wrong/stale expected prune IDs are rejected before deletion;
 - an unexpected future FK to `lor_snap.import_run` is rejected before deletion;
 - a real destructive prune succeeds on the disposable clone;
@@ -233,6 +254,10 @@ Do not proceed unless all are true:
 - newest five completed snapshots are `KEEP`;
 - every non-terminal reconciliation capture is `KEEP`;
 - no expected current/open run is marked `PRUNE`;
+- legacy NULL-completion rows are `PRUNE` only with reason
+  `LEGACY_PRE_COMPLETION_TRACKING_SNAPSHOT`;
+- any other NULL-completion row is `BLOCK` with reason
+  `INCOMPLETE_INGEST_REQUIRES_REVIEW`;
 - every `BLOCK` row has been understood;
 - proposed PRUNE IDs are reasonable for the current Production date/state;
 - latest completed ingest matches the LOR2DB dashboard/current snapshot;

@@ -1,7 +1,7 @@
 /*
  * MSB Database - reusable LOR reconciliation preflight interface
  * Initial release: 2026-08-04 V0.1.0
- * Current version: 2026-08-17 V0.5.2
+ * Current version: 2026-09-17 V0.5.3
  *
  * The browser never writes PostgreSQL directly. All durable decisions and
  * lifecycle changes go through the same-origin secured API described in
@@ -56,15 +56,15 @@
       RENAME_DISPLAY: `Approve name change from ${current} to ${next}`,
       SET_RECYCLED: `Mark ${current} as RECYCLED`,
       SET_RETIRED: `Mark ${current} as RETIRED`,
-      RESTORE_TO_LOR_REQUIRED: "LOR source needs correction — leave production unchanged",
-      CORRECT_SOURCE_REQUIRED: "Source information is incorrect — leave production unchanged",
+      RESTORE_TO_LOR_REQUIRED: "LOR source needs correction â€” leave production unchanged",
+      CORRECT_SOURCE_REQUIRED: "Source information is incorrect â€” leave production unchanged",
       APPROVE_STAGE_CHANGE: "Approve this source StageID change and preserve its permanent Stage ID",
       ADD_NEW_STAGE: "Add this source stage as a new permanent stage",
       PRESERVE_EXISTING_STAGE_METADATA: "Approve all bindings and preserve the existing permanent stage metadata",
-      DEFER: "Defer — leave production unchanged for this run"
+      DEFER: "Defer â€” leave production unchanged for this run"
     };
     if (labels[action]) return labels[action];
-    return `${action === proposed ? "Accept" : "Choose"} — ${actionLabel(action)}`;
+    return `${action === proposed ? "Accept" : "Choose"} â€” ${actionLabel(action)}`;
   }
 
   function displayName(candidate) {
@@ -76,10 +76,10 @@
     const rows = candidate.members.map((member) => `<tr>
       <td>${esc(member.binding_type)}</td>
       <td>${esc(member.source_name || "Unnamed")}</td>
-      <td>${esc(member.source_stage_key || "—")}</td>
-      <td>${esc(member.current_stage_key || "—")}</td>
-      <td>${esc(member.proposed_stage_name || "—")}</td>
-      <td>${esc(member.classification_code || "—")}</td>
+      <td>${esc(member.source_stage_key || "â€”")}</td>
+      <td>${esc(member.current_stage_key || "â€”")}</td>
+      <td>${esc(member.proposed_stage_name || "â€”")}</td>
+      <td>${esc(member.classification_code || "â€”")}</td>
     </tr>`).join("");
     return `<details class="member-evidence" open>
       <summary>Complete stage evidence (${candidate.members.length} member${candidate.members.length === 1 ? "" : "s"})</summary>
@@ -87,7 +87,17 @@
     </details>`;
   }
 
+  function showRetentionWarning(result) {
+    if (result?.snapshot_retention_warning) {
+      window.alert(result.snapshot_retention_warning);
+    }
+  }
+
   function openPublishedReport(result) {
+    // A retention failure is non-fatal because report publication already
+    // succeeded, but surface it before leaving the reconciliation page.
+    showRetentionWarning(result);
+
     // The API returns the immutable URL written to the completed run. Keep the
     // report archive only as a defensive fallback for older API responses.
     // Replace the approval workflow in browser history. After Finish, Back
@@ -117,7 +127,7 @@
       <div class="decision-panel">
         <label>Decision
           <select class="decision">
-            <option value="">Choose a decision…</option>
+            <option value="">Choose a decisionâ€¦</option>
             ${orderedActions.map((action) => `<option value="${esc(action)}" ${action === candidate.effective_action_type ? "selected" : ""}>${esc(decisionLabel(action, proposed, candidate))}</option>`).join("")}
           </select>
         </label>
@@ -140,9 +150,9 @@
       <section class="group-tools">
         <div><strong>Bulk decisions</strong><div class="muted">Use only when the same decision and reason apply to several related checks.</div></div>
         <button id="toggle-bulk" type="button" aria-expanded="false">Enable bulk decision mode</button>
-        <div class="group-controls" hidden><label>Group action<select id="bulk-action"><option value="">Choose…</option>${bulkActions.map((action) => `<option value="${esc(action)}">${esc(actionLabel(action))}</option>`).join("")}</select></label><button id="apply-bulk">Apply and save</button></div>
+        <div class="group-controls" hidden><label>Group action<select id="bulk-action"><option value="">Chooseâ€¦</option>${bulkActions.map((action) => `<option value="${esc(action)}">${esc(actionLabel(action))}</option>`).join("")}</select></label><button id="apply-bulk">Apply and save</button></div>
       </section>
-      <div class="column-head"><span>Preflight check and evidence</span><span>Operator decision — choose, optionally comment, then save</span></div>
+      <div class="column-head"><span>Preflight check and evidence</span><span>Operator decision â€” choose, optionally comment, then save</span></div>
       <div id="candidates">${model.candidates.map(renderCandidate).join("")}</div>
       <p id="error" class="error" role="alert"></p>
       <footer class="footer"><button id="cancel-run">Cancel reconciliation</button><div class="footer-actions"><span class="muted">${remaining ? `${remaining} decision${remaining === 1 ? "" : "s"} remain.` : "All decisions are recorded."}</span><button id="continue" class="primary" ${remaining || model.status !== "READY_TO_FINISH" ? "disabled" : ""}>Continue to final review</button></div></footer>
@@ -221,6 +231,7 @@
         });
         dialog.close();
         model = result;
+        showRetentionWarning(result);
         renderTerminal();
       }
       catch (failure) {
@@ -275,7 +286,7 @@
     const lifecycle = model.cancellation_report_pending || model.cancelled_at
       ? "Cancellation is committed: the captured snapshot was removed and production was unchanged."
       : "Production changes are already committed.";
-    app.innerHTML = `<div class="card"><h1>Report publication required</h1><p>Reconciliation run ${model.run_id} is in <strong>REPORTING</strong>. ${esc(lifecycle)} Cancel, Finish, and P1–P4 will not run again.</p><p class="error">${esc(detail)}</p><div class="footer-actions"><button id="retry-report" class="primary">Retry report publication</button></div></div>`;
+    app.innerHTML = `<div class="card"><h1>Report publication required</h1><p>Reconciliation run ${model.run_id} is in <strong>REPORTING</strong>. ${esc(lifecycle)} Cancel, Finish, and P1â€“P4 will not run again.</p><p class="error">${esc(detail)}</p><div class="footer-actions"><button id="retry-report" class="primary">Retry report publication</button></div></div>`;
     document.querySelector("#retry-report").addEventListener("click", async (event) => {
       event.currentTarget.disabled = true;
       try {
