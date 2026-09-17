@@ -15,7 +15,7 @@ def guard_source() -> str:
 def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
     html = read("production.html")
     host = read("production_backend.py")
-    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-12.2")
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-17.1")
     compact_index = html.index("setup_task_detail_compact.js?v=2026-09-11.1")
     effort_index = html.index("setup_catalog_effort.js?v=2026-09-09.3")
     assert guard_index > effort_index
@@ -46,7 +46,8 @@ def test_dirty_guard_tracks_only_main_reusable_and_annual_save_surfaces():
         "edit-active-flag",
         "edit-crew-min",
         "edit-crew-max",
-        "edit-duration-minutes",
+        "edit-duration-hours",
+        "edit-duration-minute-remainder",
         "edit-completion",
         "edit-readiness",
         "edit-weather",
