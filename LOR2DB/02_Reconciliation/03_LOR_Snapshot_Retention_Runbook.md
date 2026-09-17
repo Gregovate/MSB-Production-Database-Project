@@ -33,9 +33,11 @@ Retention has two operating modes:
 1. **initial deployment / historical cleanup** — install the retention database
    contract, run a reviewed dry run, create a validated rollback archive, and
    perform the first bulk prune as a separately approved Production mutation;
-2. **steady-state automatic retention** — after a reconciliation report is
-   successfully published and the run is terminal, the LOR2DB backend invokes
-   the fixed-policy automatic retention procedure.
+2. **steady-state automatic retention** — the immutable reconciliation report
+   first records the complete bounded-retention plan that exists before report
+   publication finishes; after that report is successfully published and the
+   run is terminal, the LOR2DB backend invokes the fixed-policy automatic
+   retention procedure.
 
 Do not let the initial historical cleanup occur implicitly through the
 application. Complete the reviewed first cleanup before activating backend
@@ -44,6 +46,12 @@ V0.6.3 automatic retention.
 Migration `0042` itself does **not** delete snapshots. The automatic entry point
 is parameterless, always keeps the newest five completed snapshots, and aborts
 without deleting anything if the retention plan contains any `BLOCK` row.
+
+The immutable report is the durable historical record of the retention state at
+report time. Report framework V0.7.0 records both the detailed `KEEP` set and the
+complete pre-cleanup `KEEP` / `PRUNE` / `BLOCK` inventory before automatic
+retention runs. Those report rows remain after eligible raw snapshots are later
+removed.
 
 Never use an ad-hoc command such as:
 
@@ -127,8 +135,18 @@ normal LOR2DB application role.
 `ops.p_run_lor_snapshot_retention()` is the fixed-policy application entry point.
 It uses the default keep count of five, refuses to proceed when any `BLOCK` row
 exists, derives the current PRUNE set itself, and delegates deletion through the
-guarded prune procedure. `PUBLIC` cannot execute it. The LOR2DB application role
-receives execute permission only through the reviewed application grant script.
+guarded prune procedure. `PUBLIC` cannot execute it.
+
+The LOR2DB application role receives only the two #186 permissions required by
+the application/report workflow through the reviewed grant script:
+
+```text
+EXECUTE ops.f_lor_snapshot_retention_plan(integer)   read-only report evidence
+EXECUTE ops.p_run_lor_snapshot_retention()           fixed-policy cleanup
+```
+
+It still cannot execute the arbitrary-ID administrative
+`ops.p_prune_lor_snapshots(...)` procedure.
 
 Migration `0042` also removes only the retention-locking foreign keys from:
 
@@ -192,6 +210,8 @@ The disposable gate must prove at minimum:
 - `ref.lor_scene` / `ref.lor_scene_display` content is unchanged;
 - durable reconciliation/frozen evidence is unchanged;
 - legacy reconciliation action evidence is unchanged;
+- the report framework can read the governed retention-plan function and render
+  a complete pre-cleanup snapshot inventory without direct raw-table access;
 - at least one historical report can still be rendered from frozen evidence
   after its raw snapshot is pruned;
 - a second automatic retention call is a no-op;
@@ -217,15 +237,15 @@ Follow that runbook exactly for the accepted candidate SHA. In particular:
 8. apply migration `0042`;
 9. run validation `37`;
 10. apply the reviewed `LOR2DB/Application/grant_lor_preflight_app.sql` grant
-    update so `lor_preflight_app` can execute only the fixed-policy automatic
-    retention entry point and still cannot execute the arbitrary-ID manual prune
-    procedure;
+    update so `lor_preflight_app` can execute the read-only retention plan for
+    report evidence and the fixed-policy automatic retention entry point, while
+    still being unable to execute the arbitrary-ID manual prune procedure;
 11. validate least privilege and Production invariants;
 12. retain the rollback archive and deployment report.
 
-**Do not deploy/restart backend V0.6.3 or preflight.js V0.5.3 yet.** The first
-historical cleanup is intentionally performed under the reviewed manual gates
-below before automatic retention is activated.
+**Do not deploy/restart backend V0.6.3, report publisher V0.7.0, or preflight.js
+V0.5.3 yet.** The first historical cleanup is intentionally performed under the
+reviewed manual gates below before automatic retention is activated.
 
 ### Mandatory stop after installation
 
@@ -413,17 +433,18 @@ Then verify:
 Activate automatic retention only after Gates 2 through 6 have completed and the
 historical backlog has been reduced to the intended bounded working set.
 
-Because #186 changes the deployed backend and operator-visible failure handling,
-the exact accepted candidate must also complete the applicable pre-production
-browser review before live application activation.
+Because #186 changes the deployed backend, report contents, and operator-visible
+failure handling, the exact accepted candidate must also complete the applicable
+pre-production browser review before live application activation.
 
-Deploy the accepted candidate's LOR2DB application unit together:
+Deploy the accepted candidate's LOR2DB application/report unit together:
 
 ```text
-backend.py                      V0.6.3
-preflight.js                    V0.5.3
-index.html                      references preflight.js?v=0.5.3
-grant_lor_preflight_app.sql     V0.3.2
+backend.py                               V0.6.3
+publish_lor_reconciliation_report.py     V0.7.0
+preflight.js                             V0.5.3
+index.html                               references preflight.js?v=0.5.3
+grant_lor_preflight_app.sql              V0.3.3
 ```
 
 Restart/validate the LOR preflight service using the normal Production
@@ -434,11 +455,15 @@ Steady-state sequence:
 
 ```text
 Finish / report retry / cancellation report
--> immutable report publication succeeds
+-> report publisher captures ops.f_lor_snapshot_retention_plan(5)
+-> immutable report contains retained snapshots + full pre-cleanup inventory
 -> publisher commits REPORTING -> terminal status
 -> backend calls ops.p_run_lor_snapshot_retention()
 -> newest five completed snapshots + all non-terminal captures remain
 ```
+
+The report therefore preserves the exact snapshot state that existed before the
+post-report cleanup, including snapshots that are deleted immediately afterward.
 
 `ops.p_run_lor_snapshot_retention()` is intentionally parameterless. The
 application cannot supply snapshot IDs or lower the keep count.
@@ -496,6 +521,7 @@ does not need to remember a periodic cleanup task.
 
 ```text
 successful report publication
+-> immutable report records the pre-cleanup retention state
 -> reconciliation becomes terminal
 -> backend invokes fixed-policy automatic retention
 -> no warning: cleanup is complete or there was nothing eligible
