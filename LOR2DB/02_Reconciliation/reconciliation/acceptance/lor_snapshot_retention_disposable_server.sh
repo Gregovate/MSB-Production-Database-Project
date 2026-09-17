@@ -12,6 +12,7 @@ KEEP_COMPLETED=5
 MIGRATION_REL="LOR2DB/02_Reconciliation/reconciliation/migrations/0042_decouple_snapshot_provenance_and_add_retention.sql"
 VALIDATION_REL="LOR2DB/02_Reconciliation/reconciliation/validation/37_lor_snapshot_retention_validation.sql"
 REPORT_PUBLISHER_REL="LOR2DB/03_Reporting/publish_lor_reconciliation_report.py"
+REPORT_TEST_REL="LOR2DB/03_Reporting/test_publish_lor_reconciliation_report.py"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST="${1:?manifest path is required}"
@@ -202,7 +203,8 @@ if ! sudo git -C "$REPO_ROOT" diff --quiet origin/main "$TARGET_SHA" -- \
 fi
 echo "PASS: Issue #200 P1/test files are unchanged from current main"
 
-for rel in "$MIGRATION_REL" "$VALIDATION_REL" "$REPORT_PUBLISHER_REL" "LOR2DB/Application/test_snapshot_retention_migration.py"; do
+for rel in "$MIGRATION_REL" "$VALIDATION_REL" "$REPORT_PUBLISHER_REL" \
+           "$REPORT_TEST_REL" "LOR2DB/Application/test_snapshot_retention_migration.py"; do
     [[ -s "$CANDIDATE_WORKTREE/$rel" ]] || {
         echo "FAIL: exact candidate is missing required file: $rel"
         exit 12
@@ -216,8 +218,8 @@ sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" \
 echo "PASS: exact candidate LOR2DB/Application regression excluding the two exact current-main Issue #200 assertions"
 
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" \
-    bash -c "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider LOR2DB/Application/test_snapshot_retention_migration.py"
-echo "PASS: #186 snapshot-retention regression"
+    bash -c "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider LOR2DB/Application/test_snapshot_retention_migration.py '$REPORT_TEST_REL'"
+echo "PASS: #186 snapshot-retention and reconciliation-report regression"
 
 echo
 echo "--- Capture current Production into disposable clone ---"
@@ -570,9 +572,12 @@ with psycopg2.connect(os.environ["TEST_DSN"]) as conn:
 
 assert data["run"]["lor_reconciliation_run_id"] == run_id
 assert data["previews"]
+assert data["snapshot_retention_plan"]
 assert rendered.startswith("<!doctype html>")
 assert f'Captured ingest {data["run"]["import_run_id"]}' in rendered
-print(f"PASS: historical reconciliation run {run_id} rendered from frozen evidence after raw snapshot prune")
+assert "7. Snapshot Retention State Before Cleanup" in rendered
+assert "Complete pre-cleanup snapshot inventory" in rendered
+print(f"PASS: historical reconciliation run {run_id} rendered from frozen evidence after raw snapshot prune with retention-history section")
 PY
 
 echo
