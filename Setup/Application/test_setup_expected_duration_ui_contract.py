@@ -13,6 +13,10 @@ def test_reusable_expected_duration_editor_uses_hours_and_minute_remainder() -> 
 
     assert 'id="edit-duration-hours" type="number" min="0" step="1"' in html
     assert 'id="edit-duration-minute-remainder" type="number" min="0" max="59" step="1"' in html
+    assert 'class="compact-grid four"' in html
+    assert "Crew min" in html
+    assert "Crew max" in html
+    assert "Expected hours" in html
     assert "Expected minutes (0–59)" in html
     assert "edit-duration-minutes" not in html
 
