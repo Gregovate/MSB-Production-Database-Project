@@ -21,6 +21,7 @@ REPORT_PUBLISHER = ROOT / "03_Reporting" / "publish_lor_reconciliation_report.py
 BACKEND = ROOT / "Application" / "backend.py"
 APP_GRANTS = ROOT / "Application" / "grant_lor_preflight_app.sql"
 
+
 def text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -95,6 +96,7 @@ def test_prune_requires_exact_reviewed_candidate_set_and_rechecks_dependencies()
     assert "DELETE FROM lor_snap.import_run" in sql
     assert "Latest completed import changed" in sql
 
+
 def test_automatic_retention_is_fixed_policy_and_fail_closed():
     sql = text(MIGRATION)
 
@@ -112,10 +114,12 @@ def test_automatic_retention_is_fixed_policy_and_fail_closed():
         "ops.p_run_lor_snapshot_retention() FROM PUBLIC"
     ) in sql
 
-def test_application_gets_only_fixed_policy_retention_entry_point():
+
+def test_application_gets_only_fixed_policy_retention_entry_point_plus_read_only_plan():
     grants = text(APP_GRANTS)
 
     assert "ops.p_run_lor_snapshot_retention()" in grants
+    assert "ops.f_lor_snapshot_retention_plan(integer)" in grants
 
     assert (
         "ops.p_prune_lor_snapshots(bigint[], integer)"
@@ -125,6 +129,7 @@ def test_application_gets_only_fixed_policy_retention_entry_point():
         "ops.p_prune_lor_snapshots(bigint[],integer)"
         not in grants
     )
+
 
 def test_backend_runs_retention_only_after_successful_report_publication():
     source = text(BACKEND)
@@ -137,6 +142,7 @@ def test_backend_runs_retention_only_after_successful_report_publication():
     assert source.count(sequence) == 3
     assert 'cur.execute("CALL ops.p_run_lor_snapshot_retention()")' in source
     assert "snapshot_retention_warning=retention_warning" in source
+
 
 def test_retention_admin_objects_are_not_public():
     sql = text(MIGRATION)
@@ -153,10 +159,12 @@ def test_production_validation_is_read_only_and_never_prunes():
     assert "LOR_SNAPSHOT_RETENTION_VALIDATION_PASS" in sql
 
 
-def test_report_publisher_uses_frozen_reconciliation_evidence_not_raw_snapshot():
+def test_report_publisher_uses_frozen_evidence_and_governed_retention_plan_only():
     source = text(REPORT_PUBLISHER)
     assert "ops.lor_reconciliation_source_run" in source
     assert "ops.lor_reconciliation_source_preview" in source
     assert "ops.lor_reconciliation_source_scene" in source
+    assert "ops.f_lor_snapshot_retention_plan(5)" in source
+    assert "Snapshot Retention State Before Cleanup" in source
     assert "FROM lor_snap." not in source
     assert "JOIN lor_snap." not in source
