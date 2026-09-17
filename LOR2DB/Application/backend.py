@@ -3,7 +3,7 @@ MSB Database - LOR reconciliation preflight API
 backend.py
 
 Initial Release : 2026-08-05  V0.1.0
-Current Version : 2026-08-27  V0.6.2
+Current Version : 2026-09-17  V0.6.3
 Author          : GAL / OpenAI
 
 Purpose:
@@ -12,6 +12,10 @@ Purpose:
     append-only decisions, Finish, Cancel, and report completion.
 
 Revision History:
+    2026-09-17  GAL / OpenAI  V0.6.3
+        Run fixed-policy snapshot retention only after successful report
+        publication. Cleanup failures are logged and returned as a non-fatal
+        warning; they never undo a completed reconciliation or published report.
     2026-08-15  GAL / OpenAI  V0.6.1
         Added authenticated fixed endpoints for the Windows runner's
         digest-locked PostgreSQL ingest and its read-only console output.
@@ -80,7 +84,7 @@ from flask import Flask, Response, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 
-APP_VERSION = "V0.6.2"
+APP_VERSION = "V0.6.3"
 FALLBACK_ACTIONS = {"DEFER", "CORRECT_SOURCE_REQUIRED", "RESTORE_TO_LOR_REQUIRED"}
 STAGE_AUTHORITY_ACTIONS = {
     "APPROVE_STAGE_CHANGE", "ADD_NEW_STAGE",
@@ -488,6 +492,30 @@ def publish_report(run_id: int) -> None:
         raise ApiError(f"Database lifecycle completed, but report publication failed: {detail}", 500)
 
 
+def run_automatic_snapshot_retention() -> str | None:
+    """Run fixed-policy retention after successful report publication."""
+    try:
+        with database() as conn:
+            with conn.cursor() as cur:
+                cur.execute("CALL ops.p_run_lor_snapshot_retention()")
+            conn.commit()
+    except Exception:
+        app.logger.exception(
+            "Automatic LOR snapshot retention failed after successful "
+            "report publication"
+        )
+        return (
+            "Automatic snapshot cleanup did not complete. "
+            "The reconciliation and report are complete; cleanup will retry "
+            "after the next successful report publication."
+        )
+
+    app.logger.info(
+        "Automatic LOR snapshot retention completed after report publication"
+    )
+    return None
+
+
 @app.errorhandler(ApiError)
 def api_error(error: ApiError) -> tuple[Response, int]:
     return jsonify(error=str(error)), error.status
@@ -803,6 +831,7 @@ def cancel_run(run_id: int) -> Response:
                         (run_id, reason, f"lor-preflight-api:{operator}"))
         conn.commit()
     publish_report(run_id)
+    retention_warning = run_automatic_snapshot_retention()
     with database() as conn:
         cancelled = load_run(conn, run_id)
     return jsonify(
@@ -815,6 +844,7 @@ def cancel_run(run_id: int) -> Response:
         snapshot_removed=True,
         production_changed=False,
         safe_to_close=True,
+        snapshot_retention_warning=retention_warning,
     )
 
 
@@ -838,12 +868,14 @@ def finish_run(run_id: int) -> Response:
                             (run_id, f"lor-preflight-api:{operator}"))
             conn.commit()
     publish_report(run_id)
+    retention_warning = run_automatic_snapshot_retention()
     with database() as conn:
         completed = load_run(conn, run_id)
     return jsonify(
         run_id=run_id,
         status=completed["status"],
         report_url=completed["report_url"],
+        snapshot_retention_warning=retention_warning,
     )
 
 
@@ -856,12 +888,14 @@ def retry_run_report(run_id: int) -> Response:
     if document["status"] != "REPORTING":
         raise ApiError("The run is not waiting for report publication", 409)
     publish_report(run_id)
+    retention_warning = run_automatic_snapshot_retention()
     with database() as conn:
         completed = load_run(conn, run_id)
     return jsonify(
         run_id=run_id,
         status=completed["status"],
         report_url=completed["report_url"],
+        snapshot_retention_warning=retention_warning,
     )
 
 

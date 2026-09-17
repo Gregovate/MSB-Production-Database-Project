@@ -81,14 +81,36 @@ class ReportRenderingTests(unittest.TestCase):
                 "detail": "All checks passed.",
                 "recorded_at": datetime(2026, 8, 3, 20, 6, tzinfo=timezone.utc),
             }],
+            "snapshot_retention_plan": [{
+                "import_run_id": 202,
+                "run_ts": datetime(2026, 8, 3, 20, 4, tzinfo=timezone.utc),
+                "ingest_completed_at": datetime(2026, 8, 3, 20, 5, tzinfo=timezone.utc),
+                "completed_recency_rank": 1,
+                "lor_reconciliation_run_id": 101,
+                "reconciliation_status": "REPORTING",
+                "retention_disposition": "KEEP",
+                "retention_reason": "NON_TERMINAL_RECONCILIATION",
+                "total_snapshot_rows": 18,
+            }, {
+                "import_run_id": 201,
+                "run_ts": datetime(2026, 8, 2, 20, 4, tzinfo=timezone.utc),
+                "ingest_completed_at": datetime(2026, 8, 2, 20, 5, tzinfo=timezone.utc),
+                "completed_recency_rank": 6,
+                "lor_reconciliation_run_id": 100,
+                "reconciliation_status": "COMPLETED",
+                "retention_disposition": "PRUNE",
+                "retention_reason": "OLDER_COMPLETED_SNAPSHOT",
+                "total_snapshot_rows": 17,
+            }],
         }
 
-    def test_all_six_sections_are_always_present(self):
+    def test_all_seven_sections_are_always_present(self):
         output = REPORT.render_report(self.base_data(), datetime.now(timezone.utc))
         headings = [
             "1. Parser Run", "2. PostgreSQL Ingest", "3. Source Preview Files",
             "4. Changes Made and Required Actions",
             "5. Problems and Operator Decisions", "6. Final Validation",
+            "7. Snapshot Retention State Before Cleanup",
         ]
         positions = [output.index(heading) for heading in headings]
         self.assertEqual(positions, sorted(positions))
@@ -101,6 +123,19 @@ class ReportRenderingTests(unittest.TestCase):
         output = REPORT.render_report(self.base_data(), datetime.now(timezone.utc))
 
         self.assertIn('href="../">Return to LOR2DB dashboard</a>', output)
+
+    def test_snapshot_retention_section_records_full_pre_cleanup_inventory(self):
+        output = REPORT.render_report(self.base_data(), datetime.now(timezone.utc))
+
+        self.assertIn("before report publication completes and before automatic snapshot cleanup runs", output)
+        self.assertIn("2 snapshot(s) present; 1 retained; 1 eligible to prune; 0 blocked", output)
+        self.assertIn("Retained snapshots", output)
+        self.assertIn("Complete pre-cleanup snapshot inventory", output)
+        self.assertIn("NON_TERMINAL_RECONCILIATION", output)
+        self.assertIn("OLDER_COMPLETED_SNAPSHOT", output)
+        self.assertIn(">KEEP<", output)
+        self.assertIn(">PRUNE<", output)
+        self.assertLess(output.index(">202<"), output.index(">201<"))
 
     def test_name_change_produces_label_action(self):
         data = self.base_data()
@@ -198,6 +233,15 @@ class ReportRenderingTests(unittest.TestCase):
         )
         self.assertNotIn("ops.lor_reconciliation_display_candidate", evidence_query)
 
+    def test_report_collects_retention_plan_through_governed_function(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        retention_query = source.split("snapshot_retention_plan = rows(cur,", 1)[1].split(
+            "display_rows = rows(cur,", 1
+        )[0]
+
+        self.assertIn("ops.f_lor_snapshot_retention_plan(5)", retention_query)
+        self.assertNotIn("lor_snap.import_run", retention_query)
+
     def test_evaluation_copy_renders_completed_run_without_database_write(self):
         data = self.base_data()
         data["run"]["status"] = "COMPLETED"
@@ -228,8 +272,8 @@ class ReportRenderingTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "not COMPLETED"):
                 REPORT.render_evaluation_copy(object(), 101, output_dir)
 
-    def test_report_framework_version_identifies_evaluation_copy_release(self):
-        self.assertEqual(REPORT.REPORT_VERSION, "V0.6.1")
+    def test_report_framework_version_identifies_retention_inventory_release(self):
+        self.assertEqual(REPORT.REPORT_VERSION, "V0.7.0")
 
     def test_changes_are_sorted_in_natural_stage_order_and_show_exact_fields(self):
         data = self.base_data()

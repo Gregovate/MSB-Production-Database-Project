@@ -3,7 +3,7 @@ MSB Database - LOR Reconciliation Report Publisher
 publish_lor_reconciliation_report.py
 
 Initial Release : 2026-08-03  V0.1.0
-Current Version : 2026-08-17  V0.6.1
+Current Version : 2026-09-17  V0.7.0
 Author          : GAL / OpenAI
 
 Purpose:
@@ -19,8 +19,15 @@ Operation:
     - Registers finalized reports in the production audit record.
     - Supports unregistered evaluation copies so report presentation can be
       revised without changing the production audit row.
+    - Records the bounded-retention snapshot inventory before report
+      publication completes and before automatic cleanup runs.
 
 Revision History:
+    2026-09-17  GAL / OpenAI  V0.7.0
+        Added immutable pre-cleanup snapshot-retention evidence: the retained
+        snapshots plus the complete KEEP/PRUNE/BLOCK inventory that existed
+        when the report was generated.
+
     2026-08-17  GAL / OpenAI  V0.6.1
         Read display-change evidence through the approved restricted review
         view instead of requiring direct candidate-table access.
@@ -64,7 +71,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
-REPORT_VERSION = "V0.6.1"
+REPORT_VERSION = "V0.7.0"
 DEFAULT_OUTPUT_DIR = r"\\192.168.5.4\web\my\lor2db\reports"
 REPORT_FILENAME = re.compile(
     r"^lor-reconciliation-(?P<stamp>\d{8}-\d{6})-run-(?P<run>\d+)"
@@ -404,6 +411,14 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
               AND result_class IN ('VALIDATION','FAILED')
             ORDER BY recorded_at, lor_reconciliation_result_id
         """, (run_id,))
+        snapshot_retention_plan = rows(cur, """
+            SELECT import_run_id, run_ts, ingest_completed_at,
+                   completed_recency_rank, lor_reconciliation_run_id,
+                   reconciliation_status, retention_disposition,
+                   retention_reason, total_snapshot_rows
+            FROM ops.f_lor_snapshot_retention_plan(5)
+            ORDER BY import_run_id DESC
+        """, ())
         display_rows = rows(cur, "SELECT display_id, display_name FROM ref.display", ())
         stage_rows = rows(cur, "SELECT stage_id, stage_key, stage_name FROM ref.stage", ())
         scene_rows = rows(cur, """
@@ -431,6 +446,7 @@ def collect_report_data(conn: Any, run_id: int) -> dict[str, Any]:
             "changes": changes,
             "names": names, "problems": problems, "decisions": decisions,
             "validations": validations,
+            "snapshot_retention_plan": snapshot_retention_plan,
             "display_names": {str(x["display_id"]): x["display_name"] for x in display_rows},
             "stage_names": {str(x["stage_id"]): x["stage_name"] for x in stage_rows},
             "stage_keys": {str(x["stage_id"]): x["stage_key"] for x in stage_rows},
@@ -553,6 +569,49 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
             ("validation_check", "Validation check"), ("result", "Result"),
             ("detail", "Detail"), ("recorded_at", "Date/time"),
         ], data["validations"], "No validation result was recorded.")
+
+    retention_rows = [dict(row) for row in data.get("snapshot_retention_plan", [])]
+    retained_rows = [
+        row for row in retention_rows
+        if row.get("retention_disposition") == "KEEP"
+    ]
+    prune_count = sum(
+        1 for row in retention_rows
+        if row.get("retention_disposition") == "PRUNE"
+    )
+    block_count = sum(
+        1 for row in retention_rows
+        if row.get("retention_disposition") == "BLOCK"
+    )
+    retained_table = table([
+        ("import_run_id", "Ingest"),
+        ("run_ts", "Snapshot timestamp"),
+        ("ingest_completed_at", "Ingest completed"),
+        ("lor_reconciliation_run_id", "Reconciliation run"),
+        ("reconciliation_status", "Reconciliation status"),
+        ("retention_reason", "Retention reason"),
+        ("total_snapshot_rows", "Raw rows"),
+    ], retained_rows, "No snapshots were classified KEEP.")
+    retention_inventory = table([
+        ("import_run_id", "Ingest"),
+        ("run_ts", "Snapshot timestamp"),
+        ("lor_reconciliation_run_id", "Reconciliation run"),
+        ("reconciliation_status", "Reconciliation status"),
+        ("retention_disposition", "Disposition"),
+        ("retention_reason", "Reason"),
+        ("total_snapshot_rows", "Raw rows"),
+    ], retention_rows, "No raw snapshots were present when the report was generated.")
+    retention_body = (
+        '<p>This is the immutable bounded-retention plan captured '
+        '<strong>before report publication completes and before automatic snapshot cleanup runs</strong>. '
+        'It records what raw snapshots existed at report time even if eligible snapshots are deleted immediately afterward.</p>'
+        f'<p><strong>{len(retention_rows)} snapshot(s) present; '
+        f'{len(retained_rows)} retained; {prune_count} eligible to prune; '
+        f'{block_count} blocked from cleanup.</strong></p>'
+        '<h3>Retained snapshots</h3>' + retained_table
+        + '<h3>Complete pre-cleanup snapshot inventory</h3>' + retention_inventory
+    )
+
     change_action = "NONE" if cancelled else ("Print replacement labels" if data["names"] else "NONE")
     problem_action = "NONE" if cancelled else ("Review listed items" if data["problems"] else "NONE")
     validation_action = "NONE" if cancelled else (
@@ -567,6 +626,7 @@ def render_report(data: dict[str, Any], generated_at: datetime) -> str:
         section(4, "Changes Made and Required Actions", changes_body, change_action),
         section(5, "Problems and Operator Decisions", '<h3>Problems</h3>' + issues + '<h3>Operator Decisions</h3>' + decisions, problem_action),
         section(6, "Final Validation", validation, validation_action),
+        section(7, "Snapshot Retention State Before Cleanup", retention_body, "NONE"),
     ])
     title = (
         f'LOR Reconciliation Cancellation Record — Run {r["lor_reconciliation_run_id"]}'

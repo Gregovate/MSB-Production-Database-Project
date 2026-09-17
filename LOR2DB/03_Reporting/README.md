@@ -13,12 +13,15 @@ The LOR2DB Reporting subsystem provides permanent reconciliation reports for eac
 
 Cloudflare authentication is required to access the LOR2DB application and published reconciliation report archive.
 
-Report framework V0.6.1 lists every captured Scene-level background path,
+Report framework V0.7.0 lists every captured Scene-level background path,
 sorts manifests and committed changes by natural Stage order (`05`, `05a`,
-`06`, ...), and shows the exact frozen fields changed by automatic display
-promotion. Evaluated no-op rows do not appear as production changes. The
-publisher reads that evidence through the restricted operator-review view and
-does not require direct access to internal candidate tables.
+`06`, ...), shows the exact frozen fields changed by automatic display
+promotion, and records the bounded `lor_snap` retention plan that existed before
+report publication completed and before automatic cleanup ran. Evaluated no-op
+rows do not appear as production changes. The publisher reads reconciliation
+evidence through the restricted operator-review views and reads snapshot
+retention only through the governed read-only retention-plan function; it does
+not require direct access to internal candidate or raw snapshot tables.
 
 ---
 
@@ -148,6 +151,7 @@ The reconciliation report records the complete production reconciliation, includ
 - Production changes
 - Validation results
 - Final reconciliation status
+- Snapshot retention state immediately before post-report automatic cleanup
 
 ### Report Header
 
@@ -174,6 +178,18 @@ Displays the approved production changes resulting from the reconciliation.
 ![Validation Results](../../Docs/images/LOR-recon-05.jpg)
 
 Documents the validation checks completed before reconciliation was finalized.
+
+### Snapshot Retention State Before Cleanup
+
+Section 7 records the exact bounded-retention plan at report-generation time,
+before the report publication transaction completes and before the backend calls
+automatic snapshot cleanup. It includes a detailed list of every snapshot
+classified `KEEP` and a complete pre-cleanup inventory of all snapshots with
+`KEEP`, `PRUNE`, or `BLOCK` disposition and reason.
+
+That immutable section remains available after eligible raw `lor_snap` rows are
+removed, so the report archive preserves what snapshots existed and why each was
+retained, eligible for cleanup, or blocked at that point in history.
 
 ### Completed Report
 

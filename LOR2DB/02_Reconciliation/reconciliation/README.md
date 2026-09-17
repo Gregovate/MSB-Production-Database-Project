@@ -2,21 +2,24 @@
 
 This directory contains the scene-aware LOR reconciliation design, current
 production procedure definitions, immutable installation history, validation,
-operator queries, and incident evidence. SQL files are separated by purpose so
-an operator does not have to guess whether a file installs objects, validates a
-change, or merely reports evidence.
+operator queries, disposable acceptance, and incident evidence. SQL files are
+separated by purpose so an operator does not have to guess whether a file
+installs objects, validates a change, or merely reports evidence.
 
 ## Directory map
 
 | Path | Contents | Execution rule |
 |---|---|---|
 | `current_procedures/` | Canonical standalone P1, P2, P3, and P4 definitions matching the latest accepted migration chain | Inspection or explicitly authorized repair only; these files do not call promotion |
-| `migrations/` | Immutable installation history `0011` through `0041` | Run only the specifically authorized next migration; never rerun the folder as a batch |
-| `validation/` | Validation `10` through `36` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `migrations/` | Immutable installation history `0011` through production `0041`; #186 adds candidate `0042` | Run only the specifically authorized next migration; never rerun the folder as a batch |
+| `validation/` | Production validation `10` through `36`; #186 adds candidate validation `37` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `acceptance/` | Feature-specific current-Production disposable-clone gates | Production database is `pg_dump + SELECT` only; all candidate writes occur in the disposable clone |
 | `operator_queries/preflight/` | Read-only latest-ingest reports `01` through `09` | Run individually; no operator-supplied `import_run_id` |
 | `incidents/` | Production incident report and its incident-specific forensic SQL | Historical evidence; not part of routine reconciliation |
 
 The root Markdown files are this index and the current design specification.
+Administrative bounded snapshot maintenance is governed by
+[`../03_LOR_Snapshot_Retention_Runbook.md`](../03_LOR_Snapshot_Retention_Runbook.md).
 
 ## Current Stage Root Authority
 
@@ -89,7 +92,7 @@ is retained only as incident evidence. It is not step 8A of the normal workflow.
 
 ## Migration and validation status
 
-The current installed migration chain is `0011` through `0041`.
+The **current Production-installed migration chain remains `0011` through `0041`**.
 
 Migration `0029` must be revision
 `2026-08-05-true-noop-reconciliation-writes-v4`; its corresponding validation
@@ -144,6 +147,33 @@ Migrations 0039 through 0041 were production deployed and validated on 2026-08-3
 [Stage Root Authority and Path Synchronization](Stage_Root_Authority_and_Path_Synchronization.md)
 for the acceptance record, Run 18 recovery, and rollback artifacts.
 
+### Issue #186 candidate — not yet Production installed
+
+Candidate migration
+`migrations/0042_decouple_snapshot_provenance_and_add_retention.sql` separates
+logical ingest provenance from raw-snapshot lifetime and installs bounded
+retention planning/pruning objects. Installation does **not** prune data. It is
+paired with read-only
+`validation/37_lor_snapshot_retention_validation.sql`.
+
+Pre-Production destructive proof is owned by:
+
+```text
+acceptance/run_lor_snapshot_retention_disposable_acceptance.ps1
+acceptance/lor_snapshot_retention_disposable_server.sh
+```
+
+Those runners consume the `MSB-Server-Management` PostgreSQL Disposable
+Acceptance Standard: Production is `pg_dump + SELECT` only, and the migration,
+FK changes, destructive prune, stale-plan rejection, future-FK rejection,
+historical-report proof, idempotency, and dump-size comparison all execute only
+inside the isolated current-Production clone.
+
+The eventual Production procedure is
+[`../03_LOR_Snapshot_Retention_Runbook.md`](../03_LOR_Snapshot_Retention_Runbook.md).
+Do not call the Production prune procedure until #186 acceptance and the
+explicit Production deployment/rollback gate are complete.
+
 Do not infer that a numbered validation is harmless from its filename alone.
 Read its header. In particular,
 `validation/10_persistent_operator_decision_rollback_validation.sql` is the historical
@@ -168,5 +198,11 @@ not an installation script.
   gated `ADD_NEW_STAGE` decision.
 - P1-P4 are internal and execute only through authorized Finish processing.
 - A new ingest ID alone is not a production-data change.
+- Bounded snapshot retention must never advance provenance merely to make an old
+  raw snapshot deletable.
+- Current-state and legacy-audit provenance values may intentionally outlive the
+  raw snapshot after #186 is accepted.
+- Snapshot pruning must use the reviewed retention plan + exact candidate array;
+  an ad-hoc range delete is not an accepted retention procedure.
 - Numbered migrations are retained as audit history even when later migrations
   supersede specific object definitions.
