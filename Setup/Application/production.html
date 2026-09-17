@@ -109,10 +109,13 @@
                 <label>Display order<input id="edit-display-order" type="number" min="0"></label>
                 <label class="checkbox-label"><input id="edit-active-flag" type="checkbox"> Active reusable task</label>
               </div>
-              <div class="compact-grid three">
+              <div class="compact-grid">
                 <label>Crew min<input id="edit-crew-min" type="number" min="0"></label>
                 <label>Crew max<input id="edit-crew-max" type="number" min="0"></label>
-                <label>Expected minutes<input id="edit-duration-minutes" type="number" min="1"></label>
+              </div>
+              <div class="compact-grid">
+                <label>Expected hours<input id="edit-duration-hours" type="number" min="0" step="1"></label>
+                <label>Expected minutes (0–59)<input id="edit-duration-minute-remainder" type="number" min="0" max="59" step="1"></label>
               </div>
               <label>Physical effort
                 <select id="edit-effort-level">
@@ -338,7 +341,7 @@
 
 <script src="setup_analytics.js?v=2026-09-07.1"></script>
 <script src="setup_theme.js?v=2026-09-07.1"></script>
-<script src="setup_production.js?v=2026-09-07.1"></script>
+<script src="setup_production.js?v=2026-09-17.1"></script>
 <script src="setup_resource_review.js?v=2026-09-11.2"></script>
 <script src="setup_review_usability.js?v=2026-09-07.2"></script>
 <script src="setup_next_pass.js?v=2026-09-07.4"></script>
@@ -352,7 +355,7 @@
 <script src="setup_assigned_review.js?v=2026-09-08.2"></script>
 <script src="setup_training_review_refinement.js?v=2026-09-09.3"></script>
 <script src="setup_catalog_effort.js?v=2026-09-09.3"></script>
-<script src="setup_catalog_dirty_guard.js?v=2026-09-12.2"></script>
+<script src="setup_catalog_dirty_guard.js?v=2026-09-17.1"></script>
 <script src="setup_prerequisite_editor.js?v=2026-09-11.1"></script>
 <script src="setup_task_detail_compact.js?v=2026-09-11.1"></script>
 <script src="setup_resource_picker_compact.js?v=2026-09-15.1"></script>
@@ -361,6 +364,6 @@
 <script src="setup_display_ownership_large_scope_fix.js?v=2026-09-12.1"></script>
 <script src="setup_kit_box_assignment.js?v=2026-09-12.1"></script>
 <script src="setup_extra_materials.js?v=2026-09-15.2"></script>
-<script src="setup_planning_summary.js?v=2026-09-15.2"></script>
+<script src="setup_planning_summary.js?v=2026-09-17.1"></script>
 </body>
 </html>
