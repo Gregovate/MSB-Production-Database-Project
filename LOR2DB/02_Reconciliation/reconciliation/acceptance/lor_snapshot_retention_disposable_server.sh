@@ -179,13 +179,28 @@ echo "Production fingerprint before: $PROD_BEFORE"
 
 echo
 echo "--- Fetch exact candidate and prove forward ancestry ---"
-sudo git -C "$REPO_ROOT" fetch origin "$TARGET_REF"
+sudo git -C "$REPO_ROOT" fetch origin \
+    "+refs/heads/main:refs/remotes/origin/main" \
+    "+refs/heads/$TARGET_REF:refs/remotes/origin/$TARGET_REF"
 sudo git -C "$REPO_ROOT" cat-file -e "$TARGET_SHA^{commit}"
+if ! sudo git -C "$REPO_ROOT" merge-base --is-ancestor origin/main "$TARGET_SHA"; then
+    echo "FAIL: candidate is not a forward descendant of current origin/main"
+    exit 41
+fi
 if ! sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$LIVE_HEAD_BEFORE" "$TARGET_SHA"; then
     echo "FAIL: candidate is not a forward descendant of the live shared checkout"
     exit 11
 fi
 sudo git -C "$REPO_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
+
+if ! sudo git -C "$REPO_ROOT" diff --quiet origin/main "$TARGET_SHA" -- \
+    "LOR2DB/02_Reconciliation/reconciliation/current_procedures/P1_stage_promotion.sql" \
+    "LOR2DB/Application/test_distinct_substage_repair.py" \
+    "LOR2DB/Application/test_stage_folder_authority_migration.py"; then
+    echo "FAIL: #186 modified files owned by the pre-existing Issue #200 regression defect"
+    exit 42
+fi
+echo "PASS: Issue #200 P1/test files are unchanged from current main"
 
 for rel in "$MIGRATION_REL" "$VALIDATION_REL" "$REPORT_PUBLISHER_REL" "LOR2DB/Application/test_snapshot_retention_migration.py"; do
     [[ -s "$CANDIDATE_WORKTREE/$rel" ]] || {
@@ -197,8 +212,12 @@ done
 echo
 echo "--- Exact candidate LOR2DB regression ---"
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" \
-    bash -c "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider LOR2DB/Application"
-echo "PASS: exact candidate LOR2DB/Application regression"
+    bash -c "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider --deselect LOR2DB/Application/test_distinct_substage_repair.py::DistinctSubstageRepairTests::test_p1_moves_only_the_target_source_key --deselect LOR2DB/Application/test_stage_folder_authority_migration.py::test_add_new_stage_has_no_preview_name_fallback LOR2DB/Application"
+echo "PASS: exact candidate LOR2DB/Application regression excluding the two exact current-main Issue #200 assertions"
+
+sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" \
+    bash -c "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider LOR2DB/Application/test_snapshot_retention_migration.py"
+echo "PASS: #186 snapshot-retention regression"
 
 echo
 echo "--- Capture current Production into disposable clone ---"
