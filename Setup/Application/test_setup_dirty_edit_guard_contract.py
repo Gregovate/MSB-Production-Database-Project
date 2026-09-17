@@ -25,7 +25,7 @@ def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
 
 def test_dirty_guard_compares_live_form_directly_to_selected_task():
     js = guard_source()
-    assert "function reusableFormState()" in js
+    assert "function reusableFormState({ strictDuration = false } = {})" in js
     assert "function reusableTaskState(task)" in js
     assert "function annualFormState()" in js
     assert "function annualTaskState(task)" in js
