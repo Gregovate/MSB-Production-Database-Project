@@ -1,7 +1,7 @@
 /* ============================================================================
 Object:       LOR preflight application least-privilege grants
 Filename:     grant_lor_preflight_app.sql
-Revision:     2026-09-17 V0.3.2
+Revision:     2026-09-17 V0.3.3
 
 Purpose:
   Grant the existing login role lor_preflight_app only the reads and secured
@@ -9,7 +9,12 @@ Purpose:
   publisher. This script does not create the login or store its password.
 
 Revision history:
-  2026-09-17  GAL / OpenAI  Granted only the fixed-policy automatic snapshot
+  2026-09-17  GAL / OpenAI  V0.3.3
+                           Granted read-only EXECUTE on the bounded-retention
+                           plan so the immutable report can record the exact
+                           pre-cleanup snapshot inventory.
+  2026-09-17  GAL / OpenAI  V0.3.2
+                           Granted only the fixed-policy automatic snapshot
                            retention entry point used after successful report
                            publication.
   2026-08-16  GAL / OpenAI  Granted the restricted API role the read-only
@@ -67,6 +72,7 @@ GRANT EXECUTE ON FUNCTION
     ops.f_record_lor_stage_preserve_metadata_action(bigint,bigint,text,text),
     ops.f_record_lor_reconciliation_bulk_action(bigint,bigint[],text,text,text),
     ops.f_lor_reconciliation_display_name_changes_report(bigint),
+    ops.f_lor_snapshot_retention_plan(integer),
     ops.f_start_lor_reconciliation(text)
 TO lor_preflight_app;
 
@@ -80,5 +86,5 @@ TO lor_preflight_app;
 COMMIT;
 
 SELECT
-    '2026-09-17-lor-preflight-app-grants-v3.2' AS applied_revision,
+    '2026-09-17-lor-preflight-app-grants-v3.3' AS applied_revision,
     current_user AS applied_by;
