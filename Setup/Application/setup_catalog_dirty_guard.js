@@ -21,7 +21,8 @@
     'edit-active-flag',
     'edit-crew-min',
     'edit-crew-max',
-    'edit-duration-minutes',
+    'edit-duration-hours',
+    'edit-duration-minute-remainder',
     'edit-completion',
     'edit-readiness',
     'edit-weather',
@@ -46,7 +47,7 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  function reusableFormState() {
+  function reusableFormState({ strictDuration = false } = {}) {
     return {
       task_name: normalizeText(el('edit-task-name').value),
       stage_id: normalizeNullableInteger(el('edit-stage-id').value),
@@ -55,7 +56,7 @@
       active_flag: Boolean(el('edit-active-flag').checked),
       normal_crew_min: normalizeNullableInteger(el('edit-crew-min').value),
       normal_crew_max: normalizeNullableInteger(el('edit-crew-max').value),
-      expected_duration_minutes: normalizeNullableInteger(el('edit-duration-minutes').value),
+      expected_duration_minutes: readExpectedDurationMinutes({ strict: strictDuration }),
       completion_point: normalizeText(el('edit-completion').value),
       readiness_note: normalizeText(el('edit-readiness').value),
       weather_note: normalizeText(el('edit-weather').value),
@@ -196,7 +197,7 @@
     const preservedAnnual = preserveAnnualDraft ? annualDraft() : null;
     try {
       setBusy(true);
-      await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', reusableFormState()));
+      await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', reusableFormState({ strictDuration: true })));
       await reloadTasks(task.setup_task_id);
       if (preservedAnnual && Number(appState.selectedTaskId) === Number(task.setup_task_id)) {
         restoreAnnualDraft(preservedAnnual);
