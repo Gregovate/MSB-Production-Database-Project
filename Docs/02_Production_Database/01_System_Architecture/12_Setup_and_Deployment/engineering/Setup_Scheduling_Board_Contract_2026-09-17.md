@@ -119,6 +119,8 @@ Existing historical `ALL_DAY` rows may remain as compatibility/history evidence;
 
 Drag/drop is the preferred fast interaction, but non-drag Schedule / Move / Up / Down / Remove controls must remain available.
 
+On desktop, the **Needs Scheduling** finder pane and the **Rolling Work Days** pane are independent working surfaces and must scroll vertically independently. Dragging near the top/bottom edge of either pane should auto-scroll that pane so a task can be moved across a tall board without losing the other pane's position. Responsive narrow-screen layouts may return to normal document flow.
+
 ## Annual Work Finder / Selector
 
 The original operator sketch defines the primary planning dimensions for selecting work:
@@ -138,6 +140,18 @@ The annual work finder must therefore support planning by:
 This is not merely a free-text task-name search. The scheduler must be able to sort/filter/select work using the available time, **minimum crew size**, and physical-effort characteristics of the task. The full normal crew range may still be displayed as context, but the Crew selector itself is keyed to the minimum crew requirement.
 
 Stage/Scene and annual Work Order context may be exposed as supplemental search/filter context, but they do not replace the original Task / Time / Crew / Effort selector.
+
+For **Time** and **minimum Crew**, the operator can choose either `≤` or `≥` against one value. This supports both practical questions:
+
+```text
+Crew ≤ 3  -> what can this small crew handle?
+Crew ≥ 6  -> what work needs a larger group?
+
+Time ≤ 2h -> what can fit in a short window?
+Time ≥ 4h -> what are the longer jobs?
+```
+
+Blank remains Any. A two-sided numeric range is intentionally deferred unless 2026 use demonstrates a need.
 
 ## Scheduler Planning-Info Correction
 
@@ -192,18 +206,18 @@ MODERATE
 HEAVY
 ```
 
-The scheduler should avoid assigning **HEAVY work back-to-back to the same work-day crew**.
+When a Crew Captain is known, the advisory fatigue signal follows that named working person across the rolling schedule, including across work days.
 
-The rule is sequence- and crew-specific:
+Rules:
 
-- HEAVY -> HEAVY on the same crew should produce a visible planning warning;
-- HEAVY work on different crews does not conflict merely because it occurs on the same day or period;
-- consecutive HEAVY tasks stacked within one crew/period should also warn;
-- a HEAVY Morning assignment followed by HEAVY Afternoon work for the same crew should warn.
+- HEAVY -> HEAVY for the same Captain should produce a visible planning warning;
+- HEAVY work under different Captains does not conflict merely because it occurs on the same day or nearby days;
+- consecutive HEAVY tasks stacked under one Captain/crew should warn;
+- a HEAVY assignment at the end of one work day followed by HEAVY work for the same Captain on the next work day should warn when those are consecutive assignments in that Captain's schedule;
+- when Captain is TBD, fall back only to conservative same-work-day crew sequence warning rather than inventing person continuity;
+- the same long HEAVY task carrying across lunch remains one assignment and must not warn against itself.
 
-This rule depends on explicit work-day crew identity. It is not enough to know that two HEAVY tasks occur on the same date.
-
-The warning should help the Manager choose LIGHT or MODERATE work after HEAVY work when practical. It is a scheduling avoidance/warning rule, not a database hard prohibition unless a later policy explicitly makes it one.
+The warning should help the Manager choose LIGHT or MODERATE work after HEAVY work when practical. It is advisory, not a scheduling prohibition.
 
 ## Pick List Downstream Contract
 
@@ -284,6 +298,8 @@ If confirmed:
 
 This is explicit additive institutional learning, not automatic overwrite.
 
+The prompt must make the two decisions clear. If the assignment is already being scheduled, declining reusable learning means **keep the schedule only**; it does not remove the Crew Captain from the scheduled crew context. Generic OK/Cancel controls should therefore be accompanied by explicit wording such as “OK = Add/promote reusable Captain; Cancel = Keep schedule only.”
+
 ## Shift-Level Crew Availability — Baby-Step Model
 
 A work-day crew is a temporary scheduling lane, not a roster.
@@ -300,7 +316,11 @@ The scheduler may capture these as **optional numeric planning estimates** at wo
 
 Do not schedule named volunteers in this release. Do not require person-to-crew membership, individual availability calendars, or automatic volunteer assignment.
 
-The original **Crew** finder dimension means task minimum crew size. When a shift-level planned headcount is known, the board compares it to the task minimum and shows a prominent **SHORT CREW** warning if the task appears understaffed. This remains advisory and never becomes a hard scheduling prohibition. Missing planned headcount never blocks scheduling.
+The original **Crew** finder dimension means task minimum crew size. When a shift-level planned headcount is known, the board compares it to the task minimum and shows a prominent **SHORT CREW** warning if the task appears understaffed.
+
+A known shortage requires an explicit **OK / Cancel** confirmation before the assignment is created or moved. The prompt states planned crew, task minimum, and shortage. OK proceeds and preserves the visible SHORT CREW warning; Cancel leaves the assignment unchanged. This is still advisory rather than a hard prohibition. Missing planned headcount or missing task minimum does not fabricate a warning.
+
+If the same placement also violates readiness or hard-predecessor guidance, combine the known warnings into one deliberate confirmation where practical rather than presenting a chain of unrelated popups.
 
 Actual crew count is execution evidence and remains owned by Report Work.
 
@@ -356,7 +376,7 @@ The scheduler must:
 - never substitute a guessed date for the condition;
 - preserve hard-predecessor state independently.
 
-Blocked work may still be deliberately placed by a Manager under the existing warning-based planning rule when operational judgment requires it.
+Blocked work may still be deliberately placed by a Manager under the existing warning-based planning rule when operational judgment requires it. Once deliberately scheduled, its **planning bucket is SCHEDULED** even though readiness/predecessor warnings remain visible on the assignment. It must not remain simultaneously in the unscheduled/blocked finder pool.
 
 ## Annual Candidate States
 
@@ -373,10 +393,10 @@ COMPLETE
 
 Meaning:
 
-- **Ready to Schedule** — incomplete annual work whose hard predecessors are satisfied, annual readiness is READY, and which has no future assignment.
-- **Blocked** — a hard predecessor is incomplete or the annual readiness condition is NOT_READY.
+- **Ready to Schedule** — incomplete annual work whose hard predecessors are satisfied, annual readiness is READY, and which has no unworked assignment.
+- **Blocked** — an unscheduled task whose hard predecessor is incomplete or whose annual readiness condition is NOT_READY.
 - **Needs Scheduling Again** — actual progress exists / task is IN_PROGRESS but no future continuation is scheduled.
-- **Scheduled** — one or more future unworked assignments exist.
+- **Scheduled** — one or more unworked schedule assignments exist. This includes a missed prior assignment with no actual work, because it remains movable planning intent rather than execution history.
 - **Waiting on Work Order** — a Work-Order gate is waiting for the authoritative Work Order to complete.
 - **Complete** — Setup completion is recorded or an accepted Work-Order gate is satisfied.
 
@@ -415,6 +435,36 @@ actual execution
 
 Future reconciliation may use that evidence to propose reusable guidance changes, but actual execution never automatically overwrites reusable Catalog knowledge.
 
+## Rolling Historical-Day Visibility and Continuations
+
+The default board is action-oriented.
+
+By default, show:
+
+- current/future work days; and
+- prior work days that still have unresolved scheduling/execution consequences.
+
+A prior work day whose assigned work is fully resolved is hidden from the default board but remains available under a control such as **Show prior / completed work days**. Hiding is presentation only; historical rows are never deleted.
+
+Prior-day rules:
+
+```text
+past assignment + no actual work
+    -> still movable planning intent
+    -> may be moved to current/future day
+
+past assignment + actual work + complete
+    -> immutable history
+    -> prior day may leave default board
+
+past assignment + actual work + incomplete
+    -> immutable historical occurrence
+    -> annual task becomes Needs Continuation
+    -> create a distinct current/future continuation assignment
+```
+
+If started/incomplete work has no continuation scheduled yet, the prior day remains visible by default (or equivalently must remain strongly surfaced as unresolved). Once a future continuation exists, the old historical day may leave the default board and remain available through the history toggle.
+
 ## Historical Assignment Identity and Stickiness
 
 A scheduled work occurrence needs stable identity independent of the annual task.
@@ -433,7 +483,7 @@ annual task
        actual evidence
 ```
 
-Before actual work exists, a future assignment may be:
+Before actual work exists, an unworked assignment remains planning intent even if its planned date has already passed. It may be:
 
 - moved to another day;
 - moved to another shift or crew lane;
@@ -638,22 +688,26 @@ Disposable acceptance must prove at minimum:
 6. a Manager can add/remove empty crews and reuse the first available crew identity, including Crew E and beyond without a fixed four-crew ceiling;
 7. optional planned crew availability can differ between AM and PM for the same crew;
 8. a work-day crew may have one optional Captain, and Captain identity becomes historical once actual work exists;
-9. confirmed Crew Captain learning adds/promotes reusable Captain knowledge without deleting existing Captains;
+9. confirmed Crew Captain learning adds/promotes reusable Captain knowledge without deleting existing Captains, while declining learning clearly keeps schedule/crew context only;
 10. multiple ordered tasks can occupy one crew/shift;
 11. the same annual task is planned only once on a work day; long work may continue across lunch/into PM without fabricating a duplicate schedule assignment;
 12. the operator-facing board uses AM/PM rather than a dedicated All Day column while preserving legacy All Day history;
-13. the work finder supports Task / Time / minimum Crew / Effort and searches human Stage/Scene/readiness/resource/WO context;
-14. reusable readiness conditions seed annual READY / NOT_READY state correctly and a Manager can toggle annual readiness without changing the reusable condition text;
-15. browser fixtures preserve real readiness state rather than fabricating readiness;
-16. pre-execution **Edit Planning Info** can correct reusable + annual planning knowledge, but becomes locked once actual work exists;
-17. short crew is a prominent warning only, not a scheduling block;
-18. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
-19. future unworked assignments can move/reorder/remove;
-20. actual/progress evidence locks historical assignment identity;
-21. unfinished work can receive a later continuation assignment;
-22. the Magic Igloo Work Order gate pattern can be represented;
-23. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
-24. a disposable next-season seed omits season-only work;
-25. the reusable Planning Summary remains reusable-only;
-26. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
-27. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
+13. left finder and right scheduling board scroll independently on desktop and drag-edge auto-scroll supports tall boards;
+14. the work finder supports Task / Time / minimum Crew / Effort, human Stage/Scene/readiness/resource/WO context, and ≤/≥ comparators for Time and minimum Crew;
+15. reusable readiness conditions seed annual READY / NOT_READY state correctly and a Manager can toggle annual readiness without changing the reusable condition text;
+16. deliberately scheduled blocked/NOT_READY work moves to the SCHEDULED planning bucket while retaining its visible warnings;
+17. browser fixtures preserve real readiness state rather than fabricating readiness;
+18. pre-execution **Edit Planning Info** can correct reusable + annual planning knowledge, but becomes locked once actual work exists;
+19. known SHORT CREW placement requires an explicit combined warning/confirmation but remains schedulable after OK;
+20. same-Captain HEAVY -> HEAVY is surfaced as an advisory warning across the Captain's ordered assignments; different Captains do not warn merely for proximity;
+21. future/current unworked assignments can move/reorder/remove;
+22. a missed prior unworked assignment remains movable planning intent rather than becoming fake history;
+23. prior resolved days are hidden from the default rolling board and recoverable through a history toggle;
+24. actual/progress evidence locks historical assignment identity;
+25. unfinished historical work becomes Needs Continuation and can receive a distinct later continuation assignment;
+26. the Magic Igloo Work Order gate pattern can be represented;
+27. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
+28. a disposable next-season seed omits season-only work;
+29. the reusable Planning Summary remains reusable-only;
+30. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
+31. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
