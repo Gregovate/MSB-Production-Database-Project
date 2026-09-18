@@ -69,7 +69,7 @@ def test_205_assignment_identity_and_stickiness_are_database_authoritative() -> 
         "remove_setup_work_day_assignment",
         "Actual work exists for this assignment",
         "historical work cannot be removed",
-        "setup_task_progress.setup_work_day_task_id",
+        "ADD COLUMN IF NOT EXISTS setup_work_day_task_id bigint",\n        "FOREIGN KEY (setup_work_day_task_id)",
     ):
         assert token in sql
 
@@ -166,6 +166,6 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-17.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-17.1" in html
+    assert "setup_scheduling_board.css?v=2026-09-17.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-17.2" in html
     assert "setup_next_pass.js" in html
