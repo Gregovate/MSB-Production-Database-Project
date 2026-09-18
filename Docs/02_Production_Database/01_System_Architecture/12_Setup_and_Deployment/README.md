@@ -6,7 +6,7 @@
 | System | Production Database — Setup and Deployment |
 | Audience | MSB volunteers, reviewers, managers, and Setup operators |
 | Status | CURRENT |
-| Last Reviewed | 2026-09-15 |
+| Last Reviewed | 2026-09-17 |
 
 Open the protected Setup application at:
 
@@ -51,6 +51,12 @@ https://my.sheboyganlights.org/setup/t-post-inventory/
 **T-Post Inventory** records physical T-Posts by the Container where they are intentionally stored. Shared/bulk stock is grouped separately from T-Posts stored with Kits or Displays. Storage location does not assign T-Posts to Displays, panels, Stages, Scenes, or Setup tasks; reusable task requirements remain separate.
 
 Reconstructed procedure-derived values are intentionally `UNVERIFIED` or `NEEDS_REVIEW` until reviewed. Do not copy an expected/planning quantity into physical on-hand unless the stock was actually counted.
+
+## Reusable Crew / Expected Duration
+
+Managers enter reusable expected duration as separate **Expected hrs** and **Expected mins (0–59)** fields. Existing total-minute values are converted automatically for review. Saving converts the two fields back to the existing total-minute value; leaving both blank keeps the duration missing.
+
+This is reusable planning knowledge. It is separate from annual/actual elapsed work reporting.
 
 ## Other Current Work
 
