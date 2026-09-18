@@ -70,6 +70,14 @@ def project_physical_demand(rows: Iterable[dict[str, Any]]) -> list[dict[str, An
             "extra_material_name": row.get("extra_material_name"),
             "quantity_required": row.get("quantity_required"),
             "quantity_uom": row.get("quantity_uom"),
+            "quantity_qualifier": row.get("quantity_qualifier"),
+            "size_text": row.get("size_text"),
+            "length_value": row.get("length_value"),
+            "length_unit": row.get("length_unit"),
+            "color": row.get("color"),
+            "requirement_notes": row.get("requirement_notes"),
+            "source_expected_quantity": row.get("source_expected_quantity"),
+            "source_verification_state": row.get("source_verification_state"),
         }
         item["reasons"].append(reason)
 
