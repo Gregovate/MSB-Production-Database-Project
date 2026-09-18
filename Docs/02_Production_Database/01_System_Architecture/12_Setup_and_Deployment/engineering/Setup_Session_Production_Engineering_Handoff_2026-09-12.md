@@ -4,9 +4,9 @@
 |---|---|
 | Document Type | Engineering Handoff |
 | System | Production Database — Setup Session |
-| Status | CURRENT HANDOFF — #184 durable inventory and #167 one-time reconstruction accepted in Production |
+| Status | CURRENT HANDOFF — #204 expected-duration UI accepted in Production |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-15 |
+| Last Reviewed | 2026-09-17 |
 
 ## Purpose
 
@@ -16,14 +16,14 @@ Preserve the current accepted Setup Session Production state and the remaining l
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 1e0e2d2c3ffbcafc2ffef2bb4a98c81d600e8b1b
+live /opt/msb-setup SHA = 052d31dd4e68e13f2997f723778b88eddf9c53cf
 version = V0.3.13-assignment-layer
 service = msb-setup.service
 listener = 192.168.5.9:8794
 2025 Setup Session = HISTORICAL_VERIFICATION / SANDBOX
 2026 Setup Sessions = 0
 physical inventory events = 0
-protected Setup core fingerprint = adc431f96b5622e125bf44d96e3d7807
+governed Setup fingerprint = 7dd32f21ca9a455329de54e8799f01b5
 ```
 
 Server/runtime authority remains `Gregovate/MSB-Server-Management`.
@@ -108,6 +108,22 @@ Retained rollback evidence:
 
 The prior failed Production attempt was a harness-only wrong-route check (`/tpost-inventory/` instead of `/t-post-inventory/`). Fail-closed rollback restored the checkout and targeted tables exactly before the corrected run. That typo is now covered by a harness contract test.
 
+## Accepted Expected Duration UI — #204
+
+Reusable task expected duration is still durably stored as `expected_duration_minutes`. Managers now review/edit it as **Expected hrs** plus **Expected mins (0–59)**. Stored values are split on load and recombined on save through the existing governed reusable-task path. Blank remains NULL/missing. Annual actual-duration reporting remains separate under #132.
+
+Production acceptance:
+
+```text
+candidate = 052d31dd4e68e13f2997f723778b88eddf9c53cf
+prior live / rollback SHA = 5040fa282410b729d93e58a8299e48e4ee214809
+preflight exact-target regression = 345 passed
+focused live #204 regression = 21 passed
+health = V0.3.13-assignment-layer PASS
+governed fingerprint before/after = 7dd32f21ca9a455329de54e8799f01b5 unchanged
+database migration = none
+```
+
 ## Current Operator Meaning
 
 Managers can now maintain reusable-task Extra Material requirements and expected Kit/T-Post stock definitions. Kit Inventory separates expected contents, physical on-hand, task assignment context, current Displays, and Remainders. T-Post Inventory separates shared/bulk storage from T-Posts carried with Kits/Displays and records physical counts through the append-only ledger.
@@ -133,7 +149,7 @@ The controlling sequence is now:
 
 The accepted rollback archives above are governed database recovery points. Do not restore them merely to undo a UI/documentation problem or without reconciling legitimate post-deployment Production work.
 
-The live Setup checkout is intentionally pinned to `1e0e2d2...`. Later #167 branch commits are Production harness corrections and controlled closeout documentation only; they are not a new runtime deployment target.
+The live Setup checkout is pinned to `052d31dd4e68e13f2997f723778b88eddf9c53cf`. For this source-only change, rollback is the prior exact SHA `5040fa282410b729d93e58a8299e48e4ee214809` plus restart of only `msb-setup.service` under the Server Management runbook.
 
 ## Engineering Resume
 
