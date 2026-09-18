@@ -3,9 +3,10 @@
    Reusable Task Catalog or the #132 Report Work implementation. */
 
 const setupBoard205State = {
-  board: { session: null, work_days: [], crews: [], tasks: [], assignments: [], dependencies: [] },
+  board: { session: null, work_days: [], crews: [], captain_candidates: [], tasks: [], assignments: [], dependencies: [] },
   dragged: null,
   editSeasonTaskId: null,
+  editPlanningTaskId: null,
   scheduleTarget: null
 };
 
@@ -94,7 +95,9 @@ function board205HeavyWarning(item) {
 function board205Scope(task) {
   if (!task) return 'Unknown scope';
   if (task.stage_id == null) return 'Site-wide / Infrastructure';
-  return `Stage ${task.stage_key || '—'}${task.scene_name ? ` / ${task.scene_name}` : ' / Stage-level'}`;
+  const stageName = task.stage_name ? ` — ${task.stage_name}` : '';
+  const detail = task.scene_name ? ` / ${task.scene_name}` : ' / Stage-level';
+  return `Stage ${task.stage_key || '—'}${stageName}${detail}`;
 }
 
 function board205Duration(minutes) {
@@ -483,7 +486,7 @@ function board205Render() {
 async function board205Load() {
   try {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
-    setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], tasks: [], assignments: [], dependencies: [] };
+    setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], captain_candidates: [], tasks: [], assignments: [], dependencies: [] };
     board205Render();
   } catch (error) {
     setAlert(error.message || error, 'error');
@@ -938,7 +941,7 @@ function board205InstallView() {
         </div>
         <form id="setup-board205-day-form" class="setup-board205-day-form manager-only">
           <label>Date<input id="setup-board205-work-date" type="date" required></label>
-          <label>Setup Day # <input id="setup-board205-day-number" type="number" min="1" placeholder="Auto"></label>
+          <div class="setup-board205-auto-day-note">Setup Day # is assigned automatically in chronological order.</div>
           <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional, e.g. strong Saturday turnout expected"></label>
           <button type="submit">Add Work Day</button>
         </form>
