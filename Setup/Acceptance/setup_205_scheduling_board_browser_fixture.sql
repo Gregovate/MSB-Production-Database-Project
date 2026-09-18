@@ -25,6 +25,7 @@ DECLARE
     v_gate372 bigint;
     v_gate156 bigint;
     v_task bigint;
+    v_stage_id integer;
     v_sort integer := 10;
 BEGIN
     SELECT lower(u.email)
@@ -61,28 +62,30 @@ BEGIN
      WHERE st.setup_session_id = v_session_id
        AND st.execution_status = 'NOT_READY';
 
-    SELECT st.setup_session_task_id
-      INTO v_frame
+    SELECT st.setup_session_task_id, st.annual_stage_id
+      INTO v_frame, v_stage_id
     FROM ops.setup_session_task st
     WHERE st.setup_session_id = v_session_id
-      AND st.annual_task_name ILIKE '%Erect%Frame%'
-    ORDER BY st.planned_order NULLS LAST, st.setup_session_task_id
+      AND st.annual_task_name = 'Layout / Erect Frame / Strap Down'
+    ORDER BY st.setup_session_task_id
     LIMIT 1;
 
     SELECT st.setup_session_task_id
       INTO v_skins
     FROM ops.setup_session_task st
     WHERE st.setup_session_id = v_session_id
-      AND st.annual_task_name ILIKE '%Install%Skin%'
-    ORDER BY st.planned_order NULLS LAST, st.setup_session_task_id
+      AND st.annual_stage_id = v_stage_id
+      AND st.annual_task_name = 'Install Skins and Bungees'
+    ORDER BY st.setup_session_task_id
     LIMIT 1;
 
     SELECT st.setup_session_task_id
       INTO v_lights
     FROM ops.setup_session_task st
     WHERE st.setup_session_id = v_session_id
-      AND st.annual_task_name ILIKE '%Install%Light%'
-    ORDER BY st.planned_order NULLS LAST, st.setup_session_task_id
+      AND st.annual_stage_id = v_stage_id
+      AND st.annual_task_name = 'Install Lighting, Cameras, Mats, Signs, and Finish Setup'
+    ORDER BY st.setup_session_task_id
     LIMIT 1;
 
     SELECT wo.work_order_id INTO v_wo372
