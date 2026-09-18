@@ -69,3 +69,33 @@ def test_detached_display_remains_independent_physical_item():
     ])
     assert items[0]["physical_type"] == "DISPLAY"
     assert items[0]["identity"] == "DISP:456"
+
+
+def test_extra_material_source_allocation_and_spec_are_preserved():
+    items = project_physical_demand([
+        row(
+            reason_type="EXTRA_MATERIAL_SOURCE",
+            reason_label="T-Post",
+            reason_detail="VERIFIED",
+            display_ids=[],
+            display_names=[],
+            extra_material_id=7,
+            extra_material_name="T-Post",
+            quantity_required="9.000",
+            quantity_uom="EA",
+            quantity_qualifier="EXACT",
+            size_text="heavy duty",
+            length_value="6.000",
+            length_unit="FT",
+            color=None,
+            requirement_notes="Elf Choir requirement",
+            source_expected_quantity="5.000",
+            source_verification_state="VERIFIED",
+        )
+    ])
+    reason = items[0]["reasons"][0]
+    assert reason["quantity_required"] == "9.000"
+    assert reason["source_expected_quantity"] == "5.000"
+    assert reason["length_value"] == "6.000"
+    assert reason["length_unit"] == "FT"
+    assert reason["source_verification_state"] == "VERIFIED"
