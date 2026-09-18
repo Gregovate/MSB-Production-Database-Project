@@ -37,6 +37,13 @@
   flex: 1 1 18rem;
 }
 
+.setup-board205-auto-day-note {
+  align-self: center;
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+  max-width: 16rem;
+}
+
 .setup-board205-main {
   display: grid;
   grid-template-columns: minmax(18rem, 0.72fr) minmax(36rem, 2fr);
@@ -223,6 +230,19 @@
   background: var(--soft, #f5f8fb);
 }
 
+.setup-board205-crew-captain {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.setup-board205-crew-captain select {
+  min-width: 0;
+  width: 100%;
+}
+
 .setup-board205-crew-counts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -303,6 +323,22 @@
 
 .setup-board205-assignment.locked {
   border-style: double;
+}
+
+.setup-board205-assignment.short-crew {
+  border-width: 2px;
+  border-style: solid;
+}
+
+.setup-board205-badge.short-crew-badge {
+  border-width: 2px;
+  font-weight: 900;
+}
+
+.setup-board205-short-crew-warning {
+  border-width: 2px;
+  font-size: 0.84rem;
+  font-weight: 900;
 }
 
 .setup-board205-lock {
