@@ -511,19 +511,24 @@ The real 2026 Session remains gated by #145 FINAL and the accepted disposable 20
 
 Disposable acceptance must prove at minimum:
 
-1. active reusable tasks seed as reusable-origin annual snapshots;
+1. active reusable tasks seed as reusable-origin annual snapshots, including reviewed physical effort;
 2. a season-only task can be created without creating a reusable Catalog row;
 3. annual dependencies can include a season-only task and reject cycles;
 4. Setup Day Number persists while DOW derives from the date;
-5. Crew D is valid and an unsupported lane is rejected;
-6. multiple ordered tasks can occupy one crew/shift;
-7. one annual task can have distinct Morning and Afternoon assignments on the same work day when needed;
-8. future unworked assignments can move/reorder/remove;
-9. actual/progress evidence locks historical assignment identity;
-10. unfinished work can receive a later continuation assignment;
-11. the Magic Igloo Work Order gate pattern can be represented;
-12. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
-13. a disposable next-season seed omits season-only work;
-14. the reusable Planning Summary remains reusable-only;
-15. #132/#172/#175 can identify the exact annual assignment/context needed for reporting and correction proposals; and
-16. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
+5. each new work day begins with exactly one default Crew A;
+6. a Manager can add additional crews for that work day, including Crew E and beyond without a fixed four-crew ceiling;
+7. optional planned crew availability can differ between AM and PM for the same crew;
+8. multiple ordered tasks can occupy one crew/shift;
+9. the same annual task is planned only once on a work day; long work may continue across lunch/into PM without fabricating a duplicate schedule assignment;
+10. the operator-facing board uses AM/PM rather than a dedicated All Day column while preserving legacy All Day history;
+11. the work finder supports Task / Time / minimum Crew / Effort and separates available work from blocked/outstanding work;
+12. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
+13. future unworked assignments can move/reorder/remove;
+14. actual/progress evidence locks historical assignment identity;
+15. unfinished work can receive a later continuation assignment;
+16. the Magic Igloo Work Order gate pattern can be represented;
+17. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
+18. a disposable next-season seed omits season-only work;
+19. the reusable Planning Summary remains reusable-only;
+20. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
+21. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
