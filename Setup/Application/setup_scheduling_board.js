@@ -162,6 +162,49 @@ function board205CrewSequence(crewId) {
     ));
 }
 
+function board205TodayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function board205PastDayNeedsAttention(day) {
+  if (!day || String(day.work_date) >= board205TodayKey()) return true;
+  const assignments = (setupBoard205State.board.assignments || []).filter(
+    (item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id)
+  );
+  return assignments.some((item) => {
+    if (!item.historical_locked) return true;
+    const task = board205Task(item.setup_session_task_id);
+    if (!task || task.effective_complete) return false;
+    return Number(task.future_assignment_count || 0) === 0;
+  });
+}
+
+function board205VisibleDays() {
+  const showHistory = Boolean(document.getElementById('setup-board205-show-history')?.checked);
+  const today = board205TodayKey();
+  return (setupBoard205State.board.work_days || []).filter((day) => (
+    showHistory
+    || String(day.work_date) >= today
+    || board205PastDayNeedsAttention(day)
+  ));
+}
+
+function board205AutoScrollPane(pane, event) {
+  if (!pane || !setupBoard205State.dragged) return;
+  const rect = pane.getBoundingClientRect();
+  const edge = Math.min(110, Math.max(70, rect.height * 0.14));
+  const step = 34;
+  if (event.clientY <= rect.top + edge) {
+    pane.scrollTop = Math.max(0, pane.scrollTop - step);
+  } else if (event.clientY >= rect.bottom - edge) {
+    pane.scrollTop += step;
+  }
+}
+
 function board205AmCarryoverMinutes(crewId) {
   const items = board205CrewSequence(crewId).filter((item) => item.shift_code === 'MORNING');
   if (!items.length) return 0;
@@ -531,10 +574,10 @@ function board205Day(day) {
 function board205RenderBoard() {
   const target = document.getElementById('setup-board205-days');
   if (!target) return;
-  const days = setupBoard205State.board.work_days || [];
+  const days = board205VisibleDays();
   target.innerHTML = days.length
     ? days.map(board205Day).join('')
-    : '<div class="setup-board205-empty">No Setup work days yet. Add the first actual planned work day; early-access locating/layout work may legitimately be Day 1.</div>';
+    : '<div class="setup-board205-empty">No current/future or unresolved prior Setup work days are visible. Use Show prior / completed work days to review history.</div>';
 
   target.querySelectorAll('.setup-board205-cell').forEach((cell) => {
     cell.addEventListener('dragover', (event) => {
@@ -1219,8 +1262,13 @@ function board205InstallView() {
 
         <section class="card setup-board205-board">
           <div class="eyebrow">Setup Day Number · DOW · Date</div>
-          <h3>Rolling Work Days</h3>
-          <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+          <div class="setup-board205-board-heading">
+            <div>
+              <h3>Rolling Work Days</h3>
+              <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+            </div>
+            <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
+          </div>
           <div id="setup-board205-days" class="setup-board205-days"></div>
         </section>
       </div>
@@ -1291,6 +1339,10 @@ function board205InstallView() {
     if (control.type === 'number') control.addEventListener('input', board205RenderQueue);
   });
   document.getElementById('setup-board205-day-form').addEventListener('submit', board205AddWorkDay);
+  document.getElementById('setup-board205-show-history').addEventListener('change', board205RenderBoard);
+  document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
+    pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
+  });
   document.getElementById('setup-board205-add-season-task').addEventListener('click', () => board205OpenSeasonTaskDialog());
   document.getElementById('setup-board205-schedule-dialog-form').addEventListener('submit', board205SubmitScheduleDialog);
   document.getElementById('setup-board205-schedule-day').addEventListener('change', (event) => {
