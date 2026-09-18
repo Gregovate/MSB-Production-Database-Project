@@ -11,6 +11,7 @@ DECLARE
     v_task_b bigint;
     v_gate bigint;
     v_work_order_id bigint;
+    v_day0 bigint;
     v_day1 bigint;
     v_day2 bigint;
     v_day1_crew_a bigint;
@@ -19,6 +20,7 @@ DECLARE
     v_day2_crew_c bigint;
     v_day2_crew_d bigint;
     v_day2_crew_e bigint;
+    v_day0_number integer;
     v_day1_number integer;
     v_day2_number integer;
     v_a_morning bigint;
@@ -32,7 +34,10 @@ DECLARE
     v_remove_locked boolean := false;
     v_day_number_conflict_blocked boolean := false;
     v_am_plan_locked boolean := false;
+    v_captain_locked boolean := false;
+    v_planning_info_locked boolean := false;
     v_readiness_state text;
+    v_captain_person_id integer;
     v_season_name text := '[DISPOSABLE #205] Annual Work Order Gate';
     v_count integer;
 BEGIN
@@ -89,7 +94,7 @@ BEGIN
         'EXECUTE'
     ) OR NOT has_function_privilege(
         'fieldwiring_app',
-        'ops.update_setup_work_day_crew(text,bigint,integer,integer)',
+        'ops.update_setup_work_day_crew(text,bigint,integer,integer,integer)',
         'EXECUTE'
     ) OR NOT has_function_privilege(
         'fieldwiring_app',
@@ -98,6 +103,14 @@ BEGIN
     ) OR NOT has_function_privilege(
         'fieldwiring_app',
         'ops.set_setup_annual_task_readiness(text,bigint,boolean)',
+        'EXECUTE'
+    ) OR NOT has_function_privilege(
+        'fieldwiring_app',
+        'ops.update_setup_scheduling_task_planning_info(text,bigint,integer,integer,integer,text,text,text,text)',
+        'EXECUTE'
+    ) OR NOT has_function_privilege(
+        'fieldwiring_app',
+        'ops.add_setup_crew_captain_to_reusable_task(text,bigint,bigint)',
         'EXECUTE'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app lacks one or more governed #205 commands';
@@ -177,6 +190,49 @@ BEGIN
           )
     ) THEN
         RAISE EXCEPTION 'Reusable annual snapshot fields were not populated';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM ops.setup_session_task st
+        JOIN ref.setup_task rt
+          ON rt.setup_task_id = st.setup_task_id
+        WHERE st.setup_session_id = v_session_id
+          AND nullif(btrim(rt.readiness_note), '') IS NOT NULL
+          AND st.annual_readiness_state <> 'NOT_READY'
+    ) THEN
+        RAISE EXCEPTION 'Reusable readiness condition did not seed annual NOT_READY state';
+    END IF;
+
+    PERFORM *
+    FROM ops.update_setup_scheduling_task_planning_info(
+        v_admin_email,
+        v_task_b,
+        2,
+        4,
+        120,
+        'MODERATE',
+        'Disposable readiness condition',
+        'Disposable weather note',
+        'Disposable completion point'
+    );
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_session_task st
+        JOIN ref.setup_task rt ON rt.setup_task_id = st.setup_task_id
+        WHERE st.setup_session_task_id = v_task_b
+          AND st.annual_normal_crew_min = 2
+          AND st.annual_normal_crew_max = 4
+          AND st.annual_expected_duration_minutes = 120
+          AND st.annual_effort_level = 'MODERATE'
+          AND st.annual_readiness_state = 'NOT_READY'
+          AND rt.normal_crew_min = 2
+          AND rt.normal_crew_max = 4
+          AND rt.expected_duration_minutes = 120
+          AND rt.effort_level = 'MODERATE'
+    ) THEN
+        RAISE EXCEPTION 'Scheduling planning-info correction did not update reusable and annual knowledge together';
     END IF;
 
     SELECT annual_readiness_state
@@ -299,7 +355,7 @@ BEGIN
         v_admin_email,
         v_year,
         make_date(v_year, 10, 5),
-        1,
+        NULL,
         'PLANNED',
         NULL,
         'Disposable day 1',
@@ -312,15 +368,36 @@ BEGIN
         v_admin_email,
         v_year,
         make_date(v_year, 10, 6),
-        2,
+        NULL,
         'PLANNED',
         NULL,
         'Disposable day 2',
         'Disposable #205 validation'
     );
 
-    IF v_day1_number <> 1 OR v_day2_number <> 2 THEN
-        RAISE EXCEPTION 'Setup Day Number did not persist';
+    /* Insert an earlier future day last; auto numbering must resequence by date. */
+    SELECT setup_work_day_id, setup_day_number
+      INTO v_day0, v_day0_number
+    FROM ops.upsert_setup_work_day(
+        v_admin_email,
+        v_year,
+        make_date(v_year, 10, 4),
+        NULL,
+        'PLANNED',
+        NULL,
+        'Disposable earlier day inserted last',
+        'Chronological auto-number proof'
+    );
+
+    SELECT setup_day_number INTO v_day0_number
+    FROM ops.setup_work_day WHERE setup_work_day_id = v_day0;
+    SELECT setup_day_number INTO v_day1_number
+    FROM ops.setup_work_day WHERE setup_work_day_id = v_day1;
+    SELECT setup_day_number INTO v_day2_number
+    FROM ops.setup_work_day WHERE setup_work_day_id = v_day2;
+
+    IF v_day0_number <> 1 OR v_day1_number <> 2 OR v_day2_number <> 3 THEN
+        RAISE EXCEPTION 'Future Setup Day Numbers did not resequence chronologically';
     END IF;
 
     BEGIN
@@ -390,14 +467,43 @@ BEGIN
         RAISE EXCEPTION 'Dynamic work-day crews did not support Crew E';
     END IF;
 
+    SELECT person_id
+      INTO v_captain_person_id
+    FROM ref.setup_captain_person_list()
+    ORDER BY person_id
+    LIMIT 1;
+
+    IF v_captain_person_id IS NULL THEN
+        RAISE EXCEPTION 'No active Crew Captain candidate exists for disposable validation';
+    END IF;
+
     PERFORM *
-    FROM ops.update_setup_work_day_crew(v_admin_email, v_day1_crew_a, 6, 4);
+    FROM ops.update_setup_work_day_crew(
+        v_admin_email, v_day1_crew_a, 6, 4, v_captain_person_id
+    );
+
+    PERFORM *
+    FROM ops.add_setup_crew_captain_to_reusable_task(
+        v_admin_email, v_task_a, v_day1_crew_a
+    );
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ref.setup_task_captain c
+        JOIN ops.setup_session_task st ON st.setup_task_id = c.setup_task_id
+        WHERE st.setup_session_task_id = v_task_a
+          AND c.person_id = v_captain_person_id
+          AND c.captain_role = 'CAPTAIN'
+    ) THEN
+        RAISE EXCEPTION 'Crew Captain was not additively learned as reusable task Captain';
+    END IF;
 
     IF NOT EXISTS (
         SELECT 1 FROM ops.setup_work_day_crew
         WHERE setup_work_day_crew_id = v_day1_crew_a
           AND am_planned_crew_count = 6
           AND pm_planned_crew_count = 4
+          AND captain_person_id = v_captain_person_id
     ) THEN
         RAISE EXCEPTION 'Shift-specific planned crew availability did not persist';
     END IF;
@@ -521,7 +627,8 @@ BEGIN
         v_admin_email,
         v_day1_crew_a,
         6,
-        5
+        5,
+        v_captain_person_id
     );
 
     IF NOT EXISTS (
@@ -548,6 +655,46 @@ BEGIN
 
     IF NOT v_am_plan_locked THEN
         RAISE EXCEPTION 'AM planned crew count did not become historical after AM actual work';
+    END IF;
+
+    BEGIN
+        PERFORM *
+        FROM ops.update_setup_work_day_crew(
+            v_admin_email,
+            v_day1_crew_a,
+            6,
+            5,
+            NULL
+        );
+    EXCEPTION
+        WHEN check_violation THEN
+            v_captain_locked := true;
+    END;
+
+    IF NOT v_captain_locked THEN
+        RAISE EXCEPTION 'Crew Captain did not become historical after actual crew work';
+    END IF;
+
+    BEGIN
+        PERFORM *
+        FROM ops.update_setup_scheduling_task_planning_info(
+            v_admin_email,
+            v_task_a,
+            9,
+            9,
+            60,
+            'LIGHT',
+            NULL,
+            NULL,
+            NULL
+        );
+    EXCEPTION
+        WHEN check_violation THEN
+            v_planning_info_locked := true;
+    END;
+
+    IF NOT v_planning_info_locked THEN
+        RAISE EXCEPTION 'Scheduler planning info remained editable after actual work';
     END IF;
 
     BEGIN
@@ -653,6 +800,16 @@ SELECT
         'ops.add_setup_work_day_crew(text,bigint)',
         'EXECUTE'
     ) AS add_crew_execute,
+    has_function_privilege(
+        'fieldwiring_app',
+        'ops.update_setup_scheduling_task_planning_info(text,bigint,integer,integer,integer,text,text,text,text)',
+        'EXECUTE'
+    ) AS planning_info_execute,
+    has_function_privilege(
+        'fieldwiring_app',
+        'ops.add_setup_crew_captain_to_reusable_task(text,bigint,bigint)',
+        'EXECUTE'
+    ) AS captain_learning_execute,
     has_table_privilege('fieldwiring_app', 'ops.setup_work_day_crew', 'SELECT') AS crew_read,
     NOT has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'INSERT') AS no_broad_assignment_insert,
     NOT has_table_privilege('fieldwiring_app', 'ops.work_order', 'SELECT') AS no_broad_work_order_read,
