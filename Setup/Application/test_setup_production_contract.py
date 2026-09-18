@@ -48,6 +48,12 @@ def test_production_html_uses_database_client_only() -> None:
     assert "Simulate Container Scan" not in text
 
 
+def test_verification_queue_defaults_to_unverified() -> None:
+    text = (APP_DIR / "production.html").read_text(encoding="utf-8")
+    assert '<option value="UNVERIFIED" selected>Unverified</option>' in text
+    assert '<option value="" selected>All</option>' not in text
+
+
 def test_production_client_has_no_browser_local_prototype_state() -> None:
     texts = [
         (APP_DIR / name).read_text(encoding="utf-8")
