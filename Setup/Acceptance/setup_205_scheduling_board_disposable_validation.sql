@@ -31,6 +31,7 @@ DECLARE
     v_move_locked boolean := false;
     v_remove_locked boolean := false;
     v_day_number_conflict_blocked boolean := false;
+    v_readiness_state text;
     v_season_name text := '[DISPOSABLE #205] Annual Work Order Gate';
     v_count integer;
 BEGIN
@@ -92,6 +93,10 @@ BEGIN
     ) OR NOT has_function_privilege(
         'fieldwiring_app',
         'ops.remove_setup_work_day_crew(text,bigint)',
+        'EXECUTE'
+    ) OR NOT has_function_privilege(
+        'fieldwiring_app',
+        'ops.set_setup_annual_task_readiness(text,bigint,boolean)',
         'EXECUTE'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app lacks one or more governed #205 commands';
@@ -159,6 +164,7 @@ BEGIN
               st.setup_task_id IS NULL
               OR nullif(btrim(st.annual_task_name), '') IS NULL
               OR st.annual_task_action_type IS NULL
+              OR st.annual_readiness_state IS NULL
               OR (
                   EXISTS (
                       SELECT 1 FROM ref.setup_task rt
@@ -170,6 +176,34 @@ BEGIN
           )
     ) THEN
         RAISE EXCEPTION 'Reusable annual snapshot fields were not populated';
+    END IF;
+
+    SELECT annual_readiness_state
+      INTO v_readiness_state
+    FROM ops.set_setup_annual_task_readiness(v_admin_email, v_task_a, false);
+
+    IF v_readiness_state <> 'NOT_READY'
+       OR NOT EXISTS (
+           SELECT 1
+           FROM ops.setup_session_task st
+           WHERE st.setup_session_task_id = v_task_a
+             AND st.annual_readiness_state = 'NOT_READY'
+       ) THEN
+        RAISE EXCEPTION 'Annual readiness did not persist NOT_READY';
+    END IF;
+
+    SELECT annual_readiness_state
+      INTO v_readiness_state
+    FROM ops.set_setup_annual_task_readiness(v_admin_email, v_task_a, true);
+
+    IF v_readiness_state <> 'READY'
+       OR NOT EXISTS (
+           SELECT 1
+           FROM ops.setup_session_task st
+           WHERE st.setup_session_task_id = v_task_a
+             AND st.annual_readiness_state = 'READY'
+       ) THEN
+        RAISE EXCEPTION 'Annual readiness did not persist READY';
     END IF;
 
     SELECT min(wo.work_order_id)
