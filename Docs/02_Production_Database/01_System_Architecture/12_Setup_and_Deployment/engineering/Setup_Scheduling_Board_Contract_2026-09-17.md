@@ -197,6 +197,30 @@ The system should not require operators to maintain a second independent physica
 
 Planning is expected to occur in advance, so the current Pick List should normally already represent the upcoming scheduled work.
 
+## Shift-Level Crew Availability — Baby-Step Model
+
+A work-day crew is a temporary scheduling lane, not a roster.
+
+The number of people available to that crew may change across the lunch boundary. For example:
+
+```text
+Crew A
+  AM planned availability = 6
+  PM planned availability = 4
+```
+
+The scheduler may capture these as **optional numeric planning estimates** at work-day crew + shift scope.
+
+Do not schedule named volunteers in this release. Do not require person-to-crew membership, individual availability calendars, or automatic volunteer assignment.
+
+The original **Crew** finder dimension means task minimum crew size. When a shift-level planned headcount is known, the board may compare it to the task minimum and show a warning if the task appears understaffed. Missing planned headcount never blocks scheduling.
+
+Actual crew count is execution evidence and remains owned by Report Work.
+
+The existing assignment-level `planned_crew_count` is not the preferred operator model for new #205 scheduling because it would require repeating the same shift availability on every task. Preserve compatibility where necessary, but model new planning around work-day crew + shift availability.
+
+2026 should remain a learning season. More detailed volunteer/crew planning should be considered only after actual institutional evidence demonstrates a need.
+
 ## Shift Capacity / Spillover
 
 Expected duration is working time used for planning capacity.
