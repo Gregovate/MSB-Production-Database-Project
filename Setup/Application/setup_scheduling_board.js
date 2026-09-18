@@ -621,7 +621,6 @@ async function board205AddCrew(dayId) {
   }
 }
 
-async 
 async function board205SaveCrew(crewId, crewNode) {
   const captainPersonId = nullableInteger(
     crewNode.querySelector('.setup-board205-crew-captain-select')?.value
@@ -665,7 +664,6 @@ function board205EndSort(dayId, shift, crewId) {
   return items.length ? Math.max(...items.map((item) => Number(item.sort_order) || 0)) + 10 : 10;
 }
 
-async 
 async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) {
   if (!dragged || !appState.access?.can_manage_setup) return;
   const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
@@ -832,7 +830,6 @@ function board205OpenScheduleDialog(target) {
   dialog.showModal();
 }
 
-async 
 async function board205SubmitScheduleDialog(event) {
   event.preventDefault();
   const target = setupBoard205State.scheduleTarget;
@@ -877,7 +874,6 @@ async function board205SubmitScheduleDialog(event) {
   }
 }
 
-async 
 async function board205AddWorkDay(event) {
   event.preventDefault();
   const form = event.currentTarget;
