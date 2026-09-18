@@ -1157,6 +1157,24 @@ function board205InstallView() {
       </form>
     </dialog>
 
+    <dialog id="setup-board205-planning-dialog" class="setup-board205-dialog">
+      <form id="setup-board205-planning-form">
+        <h3 id="setup-board205-planning-heading">Edit Planning Info</h3>
+        <p id="setup-board205-planning-origin" class="muted"></p>
+        <div class="setup-board205-form-grid">
+          <label>Crew min<input id="setup-board205-planning-crew-min" type="number" min="0"></label>
+          <label>Crew max<input id="setup-board205-planning-crew-max" type="number" min="0"></label>
+          <label>Expected hours<input id="setup-board205-planning-hours" type="number" min="0" step="1"></label>
+          <label>Expected minutes<input id="setup-board205-planning-minutes" type="number" min="0" max="59" step="1"></label>
+          <label>Effort<select id="setup-board205-planning-effort"><option value="">Not reviewed</option><option value="LIGHT">Light</option><option value="MODERATE">Moderate</option><option value="HEAVY">Heavy</option></select></label>
+        </div>
+        <label>Readiness condition<textarea id="setup-board205-planning-readiness" rows="2"></textarea></label>
+        <label>Weather note<textarea id="setup-board205-planning-weather" rows="2"></textarea></label>
+        <label>Complete when<textarea id="setup-board205-planning-completion" rows="2"></textarea></label>
+        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Planning Info</button></menu>
+      </form>
+    </dialog>
+
     <dialog id="setup-board205-season-dialog" class="setup-board205-dialog">
       <form id="setup-board205-season-form">
         <h3 id="setup-board205-season-heading">Add Season Task</h3>
@@ -1197,6 +1215,7 @@ function board205InstallView() {
   document.getElementById('setup-board205-schedule-day').addEventListener('change', (event) => {
     board205PopulateCrewSelect(Number(event.currentTarget.value || 0));
   });
+  document.getElementById('setup-board205-planning-form').addEventListener('submit', board205SubmitPlanningInfo);
   document.getElementById('setup-board205-season-form').addEventListener('submit', board205SubmitSeasonTask);
   document.getElementById('setup-board205-season-stage').addEventListener('change', board205PopulateScenes);
   view.querySelectorAll('.setup-board205-dialog-cancel').forEach((button) => {
