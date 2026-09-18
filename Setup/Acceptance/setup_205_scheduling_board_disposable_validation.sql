@@ -646,7 +646,8 @@ BEGIN
             v_admin_email,
             v_day1_crew_a,
             7,
-            5
+            5,
+            v_captain_person_id
         );
     EXCEPTION
         WHEN check_violation THEN
