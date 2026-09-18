@@ -677,6 +677,127 @@ GRANT EXECUTE ON FUNCTION ops.update_setup_annual_task_definition(
     text,text,text,bigint,boolean,text
 ) TO fieldwiring_app;
 
+CREATE OR REPLACE FUNCTION ops.update_setup_scheduling_task_planning_info(
+    p_email text,
+    p_setup_session_task_id bigint,
+    p_normal_crew_min integer,
+    p_normal_crew_max integer,
+    p_expected_duration_minutes integer,
+    p_effort_level text,
+    p_readiness_note text,
+    p_weather_note text,
+    p_completion_point text
+)
+RETURNS TABLE (
+    setup_session_task_id bigint,
+    task_origin text,
+    setup_task_id bigint,
+    annual_readiness_state text,
+    operator_display_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ops, ref
+AS $function$
+DECLARE
+    v_directus_user_id uuid;
+    v_actor_person_id integer;
+    v_display_name text;
+    v_setup_task_id bigint;
+    v_origin text;
+    v_old_readiness text;
+    v_new_readiness text := nullif(btrim(p_readiness_note), '');
+    v_effort text := upper(nullif(btrim(p_effort_level), ''));
+    v_state text;
+BEGIN
+    SELECT a.directus_user_id, a.person_id, a.display_name
+      INTO v_directus_user_id, v_actor_person_id, v_display_name
+    FROM ref.setup_management_actor(p_email, false) a;
+
+    IF p_normal_crew_min IS NOT NULL AND p_normal_crew_min < 0
+       OR p_normal_crew_max IS NOT NULL AND p_normal_crew_max < 0
+       OR (
+           p_normal_crew_min IS NOT NULL
+           AND p_normal_crew_max IS NOT NULL
+           AND p_normal_crew_min > p_normal_crew_max
+       ) THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Setup crew guidance is invalid';
+    END IF;
+
+    IF p_expected_duration_minutes IS NOT NULL AND p_expected_duration_minutes <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Expected duration must be greater than zero or blank';
+    END IF;
+
+    IF v_effort IS NOT NULL AND v_effort NOT IN ('LIGHT','MODERATE','HEAVY') THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Setup effort must be LIGHT, MODERATE, HEAVY, or blank';
+    END IF;
+
+    SELECT st.setup_task_id,
+           st.task_origin,
+           st.annual_readiness_note,
+           st.annual_readiness_state
+      INTO v_setup_task_id, v_origin, v_old_readiness, v_state
+    FROM ops.setup_session_task st
+    WHERE st.setup_session_task_id = p_setup_session_task_id;
+
+    IF v_origin IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'Annual Setup task was not found';
+    END IF;
+
+    IF v_old_readiness IS DISTINCT FROM v_new_readiness THEN
+        v_state := CASE WHEN v_new_readiness IS NULL THEN 'READY' ELSE 'NOT_READY' END;
+    END IF;
+
+    PERFORM pg_catalog.set_config('app.directus_user_uuid', v_directus_user_id::text, true);
+
+    IF v_origin = 'REUSABLE' THEN
+        UPDATE ref.setup_task t
+           SET normal_crew_min = p_normal_crew_min,
+               normal_crew_max = p_normal_crew_max,
+               expected_duration_minutes = p_expected_duration_minutes,
+               effort_level = v_effort,
+               readiness_note = v_new_readiness,
+               weather_note = nullif(btrim(p_weather_note), ''),
+               completion_point = nullif(btrim(p_completion_point), '')
+         WHERE t.setup_task_id = v_setup_task_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION USING ERRCODE = 'P0002',
+                MESSAGE = 'Reusable Setup task was not found';
+        END IF;
+    END IF;
+
+    UPDATE ops.setup_session_task st
+       SET annual_normal_crew_min = p_normal_crew_min,
+           annual_normal_crew_max = p_normal_crew_max,
+           annual_expected_duration_minutes = p_expected_duration_minutes,
+           annual_effort_level = v_effort,
+           annual_readiness_note = v_new_readiness,
+           annual_readiness_state = v_state,
+           annual_weather_note = nullif(btrim(p_weather_note), ''),
+           annual_completion_point = nullif(btrim(p_completion_point), '')
+     WHERE st.setup_session_task_id = p_setup_session_task_id;
+
+    RETURN QUERY
+    SELECT p_setup_session_task_id,
+           v_origin,
+           v_setup_task_id,
+           v_state,
+           v_display_name;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION ops.update_setup_scheduling_task_planning_info(
+    text,bigint,integer,integer,integer,text,text,text,text
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.update_setup_scheduling_task_planning_info(
+    text,bigint,integer,integer,integer,text,text,text,text
+) TO fieldwiring_app;
+
 CREATE OR REPLACE FUNCTION ops.set_setup_annual_task_readiness(
     p_email text,
     p_setup_session_task_id bigint,
@@ -853,6 +974,7 @@ CREATE TABLE IF NOT EXISTS ops.setup_work_day_crew (
     crew_code text NOT NULL,
     am_planned_crew_count integer,
     pm_planned_crew_count integer,
+    captain_person_id integer,
     created_at timestamptz NOT NULL DEFAULT now(),
     created_by text NOT NULL DEFAULT current_user,
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -868,6 +990,8 @@ CREATE TABLE IF NOT EXISTS ops.setup_work_day_crew (
         FOREIGN KEY (created_by_person_id) REFERENCES ref.person(person_id),
     CONSTRAINT fk_setup_work_day_crew_updated_by_person
         FOREIGN KEY (updated_by_person_id) REFERENCES ref.person(person_id),
+    CONSTRAINT fk_setup_work_day_crew_captain
+        FOREIGN KEY (captain_person_id) REFERENCES ref.person(person_id),
     CONSTRAINT uq_setup_work_day_crew_number
         UNIQUE (setup_work_day_id, crew_number),
     CONSTRAINT uq_setup_work_day_crew_code
@@ -1017,12 +1141,14 @@ CREATE OR REPLACE FUNCTION ops.update_setup_work_day_crew(
     p_email text,
     p_setup_work_day_crew_id bigint,
     p_am_planned_crew_count integer,
-    p_pm_planned_crew_count integer
+    p_pm_planned_crew_count integer,
+    p_captain_person_id integer
 )
 RETURNS TABLE (
     setup_work_day_crew_id bigint,
     am_planned_crew_count integer,
     pm_planned_crew_count integer,
+    captain_person_id integer,
     operator_display_name text
 )
 LANGUAGE plpgsql
@@ -1035,6 +1161,7 @@ DECLARE
     v_display_name text;
     v_current_am integer;
     v_current_pm integer;
+    v_current_captain integer;
 BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
       INTO v_directus_user_id, v_person_id, v_display_name
@@ -1046,8 +1173,21 @@ BEGIN
             MESSAGE = 'Planned shift crew count cannot be negative';
     END IF;
 
-    SELECT c.am_planned_crew_count, c.pm_planned_crew_count
-      INTO v_current_am, v_current_pm
+    IF p_captain_person_id IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1
+           FROM ref.person p
+           WHERE p.person_id = p_captain_person_id
+             AND p.active_flag
+       ) THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Selected Crew Captain must be an active person';
+    END IF;
+
+    SELECT c.am_planned_crew_count,
+           c.pm_planned_crew_count,
+           c.captain_person_id
+      INTO v_current_am, v_current_pm, v_current_captain
     FROM ops.setup_work_day_crew c
     WHERE c.setup_work_day_crew_id = p_setup_work_day_crew_id;
 
@@ -1098,25 +1238,129 @@ BEGIN
             MESSAGE = 'Afternoon actual work exists for this crew; preserve the planned PM crew count as history';
     END IF;
 
+    IF p_captain_person_id IS DISTINCT FROM v_current_captain
+       AND EXISTS (
+           SELECT 1
+           FROM ops.setup_work_day_task wdt
+           WHERE wdt.setup_work_day_crew_id = p_setup_work_day_crew_id
+             AND (
+                 wdt.actual_crew_count IS NOT NULL
+                 OR wdt.started_at IS NOT NULL
+                 OR wdt.completed_at IS NOT NULL
+                 OR EXISTS (
+                     SELECT 1
+                     FROM ops.setup_task_progress p
+                     WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                 )
+             )
+       ) THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = 'Actual work exists for this crew; preserve the Crew Captain as history';
+    END IF;
+
     PERFORM pg_catalog.set_config('app.directus_user_uuid', v_directus_user_id::text, true);
 
     UPDATE ops.setup_work_day_crew c
        SET am_planned_crew_count = p_am_planned_crew_count,
-           pm_planned_crew_count = p_pm_planned_crew_count
+           pm_planned_crew_count = p_pm_planned_crew_count,
+           captain_person_id = p_captain_person_id
      WHERE c.setup_work_day_crew_id = p_setup_work_day_crew_id;
 
     RETURN QUERY
     SELECT c.setup_work_day_crew_id,
            c.am_planned_crew_count,
            c.pm_planned_crew_count,
+           c.captain_person_id,
            v_display_name
     FROM ops.setup_work_day_crew c
     WHERE c.setup_work_day_crew_id = p_setup_work_day_crew_id;
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION ops.update_setup_work_day_crew(text,bigint,integer,integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ops.update_setup_work_day_crew(text,bigint,integer,integer) TO fieldwiring_app;
+REVOKE ALL ON FUNCTION ops.update_setup_work_day_crew(text,bigint,integer,integer,integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.update_setup_work_day_crew(text,bigint,integer,integer,integer) TO fieldwiring_app;
+
+CREATE OR REPLACE FUNCTION ops.add_setup_crew_captain_to_reusable_task(
+    p_email text,
+    p_setup_session_task_id bigint,
+    p_setup_work_day_crew_id bigint
+)
+RETURNS TABLE (
+    setup_session_task_id bigint,
+    setup_task_id bigint,
+    person_id integer,
+    operator_display_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ops, ref
+AS $function$
+DECLARE
+    v_directus_user_id uuid;
+    v_actor_person_id integer;
+    v_display_name text;
+    v_setup_task_id bigint;
+    v_session_id bigint;
+    v_crew_session_id bigint;
+    v_captain_person_id integer;
+BEGIN
+    SELECT a.directus_user_id, a.person_id, a.display_name
+      INTO v_directus_user_id, v_actor_person_id, v_display_name
+    FROM ref.setup_management_actor(p_email, false) a;
+
+    SELECT st.setup_task_id, st.setup_session_id
+      INTO v_setup_task_id, v_session_id
+    FROM ops.setup_session_task st
+    WHERE st.setup_session_task_id = p_setup_session_task_id;
+
+    IF v_setup_task_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Only reusable-origin annual tasks can learn reusable Captain knowledge';
+    END IF;
+
+    SELECT wd.setup_session_id, c.captain_person_id
+      INTO v_crew_session_id, v_captain_person_id
+    FROM ops.setup_work_day_crew c
+    JOIN ops.setup_work_day wd
+      ON wd.setup_work_day_id = c.setup_work_day_id
+    WHERE c.setup_work_day_crew_id = p_setup_work_day_crew_id;
+
+    IF v_crew_session_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'Setup work-day crew was not found';
+    END IF;
+
+    IF v_crew_session_id <> v_session_id THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Crew and annual task must belong to the same Setup Session';
+    END IF;
+
+    IF v_captain_person_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Assign a Crew Captain before adding reusable Captain knowledge';
+    END IF;
+
+    PERFORM *
+    FROM ref.set_setup_task_captain(
+        p_email,
+        v_setup_task_id,
+        v_captain_person_id,
+        'CAPTAIN',
+        100,
+        NULL,
+        true
+    );
+
+    RETURN QUERY
+    SELECT p_setup_session_task_id,
+           v_setup_task_id,
+           v_captain_person_id,
+           v_display_name;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION ops.add_setup_crew_captain_to_reusable_task(text,bigint,bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.add_setup_crew_captain_to_reusable_task(text,bigint,bigint) TO fieldwiring_app;
 
 CREATE OR REPLACE FUNCTION ops.remove_setup_work_day_crew(
     p_email text,
@@ -1823,6 +2067,86 @@ GRANT EXECUTE ON FUNCTION ops.set_setup_work_day_task(
    WORK-DAY UPSERT WITH DAY NUMBER + EXISTING WEATHER/VOLUNTEER NOTES
    -------------------------------------------------------------------------- */
 
+CREATE OR REPLACE FUNCTION ops.resequence_setup_future_work_days(
+    p_setup_session_id bigint
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ops
+AS $function$
+DECLARE
+    v_last_historical_date date;
+    v_base_number integer := 0;
+BEGIN
+    SELECT max(wd.work_date)
+      INTO v_last_historical_date
+    FROM ops.setup_work_day wd
+    WHERE wd.setup_session_id = p_setup_session_id
+      AND (
+          wd.day_status IN ('ACTIVE','COMPLETE')
+          OR EXISTS (
+              SELECT 1
+              FROM ops.setup_work_day_task wdt
+              WHERE wdt.setup_work_day_id = wd.setup_work_day_id
+                AND (
+                    wdt.actual_crew_count IS NOT NULL
+                    OR wdt.started_at IS NOT NULL
+                    OR wdt.completed_at IS NOT NULL
+                    OR EXISTS (
+                        SELECT 1
+                        FROM ops.setup_task_progress p
+                        WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                    )
+                )
+          )
+      );
+
+    IF v_last_historical_date IS NOT NULL THEN
+        SELECT coalesce(max(wd.setup_day_number), 0)
+          INTO v_base_number
+        FROM ops.setup_work_day wd
+        WHERE wd.setup_session_id = p_setup_session_id
+          AND wd.work_date <= v_last_historical_date;
+    END IF;
+
+    /* Move the mutable range out of the way first so the unique day-number
+       constraint cannot collide while chronological numbers are reassigned. */
+    WITH mutable AS (
+        SELECT wd.setup_work_day_id,
+               row_number() OVER (ORDER BY wd.work_date, wd.setup_work_day_id)::integer AS rn
+        FROM ops.setup_work_day wd
+        WHERE wd.setup_session_id = p_setup_session_id
+          AND (
+              v_last_historical_date IS NULL
+              OR wd.work_date > v_last_historical_date
+          )
+    )
+    UPDATE ops.setup_work_day wd
+       SET setup_day_number = 1000000 + m.rn
+    FROM mutable m
+    WHERE wd.setup_work_day_id = m.setup_work_day_id;
+
+    WITH ranked AS (
+        SELECT wd.setup_work_day_id,
+               row_number() OVER (ORDER BY wd.work_date, wd.setup_work_day_id)::integer AS rn
+        FROM ops.setup_work_day wd
+        WHERE wd.setup_session_id = p_setup_session_id
+          AND (
+              v_last_historical_date IS NULL
+              OR wd.work_date > v_last_historical_date
+          )
+    )
+    UPDATE ops.setup_work_day wd
+       SET setup_day_number = v_base_number + r.rn
+    FROM ranked r
+    WHERE wd.setup_work_day_id = r.setup_work_day_id;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION ops.resequence_setup_future_work_days(bigint) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ops.resequence_setup_future_work_days(bigint) FROM fieldwiring_app;
+
 CREATE OR REPLACE FUNCTION ops.upsert_setup_work_day(
     p_email text,
     p_season_year integer,
@@ -1946,6 +2270,14 @@ BEGIN
     INSERT INTO ops.setup_work_day_crew(setup_work_day_id, crew_number, crew_code)
     VALUES (v_day_id, 1, 'A')
     ON CONFLICT ON CONSTRAINT uq_setup_work_day_crew_number DO NOTHING;
+
+    IF p_setup_day_number IS NULL THEN
+        PERFORM ops.resequence_setup_future_work_days(v_session_id);
+        SELECT wd.setup_day_number
+          INTO v_day_number
+        FROM ops.setup_work_day wd
+        WHERE wd.setup_work_day_id = v_day_id;
+    END IF;
 
     RETURN QUERY SELECT v_day_id, v_day_number, v_display_name;
 END;
@@ -2151,4 +2483,8 @@ SELECT
     to_regprocedure('ops.create_setup_season_task(text,integer,text,integer,bigint,text,integer,integer,integer,integer,text,text,text,text,bigint,boolean,text)') IS NOT NULL
         AS season_task_command_ready,
     to_regprocedure('ops.set_setup_annual_task_readiness(text,bigint,boolean)') IS NOT NULL
-        AS readiness_command_ready;
+        AS readiness_command_ready,
+    to_regprocedure('ops.update_setup_scheduling_task_planning_info(text,bigint,integer,integer,integer,text,text,text,text)') IS NOT NULL
+        AS planning_info_command_ready,
+    to_regprocedure('ops.add_setup_crew_captain_to_reusable_task(text,bigint,bigint)') IS NOT NULL
+        AS crew_captain_learning_ready;
