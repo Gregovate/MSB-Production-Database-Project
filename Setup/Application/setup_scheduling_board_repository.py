@@ -184,6 +184,7 @@ class SetupSchedulingBoardRepository:
                     coalesce(dep.prerequisite_count, 0) AS prerequisite_count,
                     coalesce(dep.prerequisites_complete, true) AS prerequisites_complete,
                     coalesce(sched.future_assignment_count, 0) AS future_assignment_count,
+                    coalesce(sched.unworked_assignment_count, 0) AS unworked_assignment_count,
                     coalesce(sched.historical_assignment_count, 0) AS historical_assignment_count,
                     coalesce(progress.progress_entries, 0) AS progress_entries,
                     coalesce(progress.completed_quantity, 0) AS completed_quantity,
@@ -201,7 +202,7 @@ class SetupSchedulingBoardRepository:
                              AND st.linked_work_order_id IS NOT NULL
                              AND wo.date_completed IS NULL
                             THEN 'WAITING_ON_WORK_ORDER'
-                        WHEN coalesce(sched.future_assignment_count, 0) > 0
+                        WHEN coalesce(sched.unworked_assignment_count, 0) > 0
                             THEN 'SCHEDULED'
                         WHEN st.execution_status = 'IN_PROGRESS'
                              AND coalesce(sched.future_assignment_count, 0) = 0
@@ -338,6 +339,25 @@ class SetupSchedulingBoardRepository:
                                   )
                               )
                         ) AS future_assignment_count,
+                        count(*) FILTER (
+                            WHERE wd.day_status <> 'CANCELLED'
+                              AND NOT (
+                                  wdt.actual_crew_count IS NOT NULL
+                                  OR wdt.started_at IS NOT NULL
+                                  OR wdt.completed_at IS NOT NULL
+                                  OR EXISTS (
+                                      SELECT 1
+                                      FROM ops.setup_task_progress p4
+                                      WHERE p4.setup_work_day_task_id = wdt.setup_work_day_task_id
+                                         OR (
+                                             p4.setup_work_day_task_id IS NULL
+                                             AND p4.setup_work_day_id = wdt.setup_work_day_id
+                                             AND p4.setup_session_task_id = wdt.setup_session_task_id
+                                             AND p4.shift_code = wdt.shift_code
+                                         )
+                                  )
+                              )
+                        ) AS unworked_assignment_count,
                         count(*) FILTER (
                             WHERE wdt.actual_crew_count IS NOT NULL
                                OR wdt.started_at IS NOT NULL
