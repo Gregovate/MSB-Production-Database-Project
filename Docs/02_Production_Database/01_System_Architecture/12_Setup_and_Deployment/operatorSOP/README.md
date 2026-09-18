@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-18 |
 
 Use this area for plain-English instructions for working in the Setup application. Engineering, database, service, permission, and deployment details belong in [`../engineering/`](../engineering/README.md).
 
@@ -16,7 +16,7 @@ Use this area for plain-English instructions for working in the Setup applicatio
 ```text
 https://my.sheboyganlights.org/setup/
 2025 — Historical Verification
-Client V0.3.13
+Client V0.3.14
 ```
 
 The 2025 review uses real Production data.
@@ -94,11 +94,17 @@ Search for an existing resource before creating anything new. Task-specific quan
 
 Use **Manage Resource Catalog** to correct the reusable resource entry itself.
 
-## Prerequisites
+## Prerequisites and Readiness
 
 Hold **Shift** before left-button-down on the later/dependent task, drag it onto the task that must happen first, and release. Normal drag without Shift still moves/reorders tasks.
 
 Open task detail for the canonical prerequisite list and manual Add / Up / Down / Remove controls.
+
+Use a **hard prerequisite** only when another Setup task must actually be completed first.
+
+Use **Readiness** for conditions that must be true before the task should be scheduled or started but are not themselves separate MSB Setup work. For example, “Ensure grass cutting is complete before laying cords” is a readiness condition, not a separate “City Approval” task.
+
+V0.3.14 lets Managers correct Crew, expected Time, Effort, Readiness, Weather, and Completion Point from the Scheduling Board before actual work exists. Do not invent values merely to finish the 2025 Catalog review.
 
 ## Important Boundaries
 
@@ -107,7 +113,7 @@ Open task detail for the canonical prerequisite list and manual Add / Up / Down 
 - Display Ownership, Kit assignment, task Extra Materials, expected Kit contents, resources, and prerequisites are reusable knowledge.
 - Physical inventory events are separate append-only operational facts.
 - There is no 2026 Setup Session yet.
-- Pick List generation, staged release scheduling, Container/Display movement/scanning writes, and park-location execution evidence are not yet live.
+- The V0.3.14 Scheduling Board/readiness model is live, but there is still **no real 2026 Setup Session**. Pick List generation, Container/Display movement/scanning writes, and park-location execution evidence remain separate launch work.
 - Do not create fake records merely to test the UI.
 
 ## Related Documents
