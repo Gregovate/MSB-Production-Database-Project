@@ -731,7 +731,7 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
     if (dragged.kind === 'task') {
       task = board205Task(dragged.id);
       if (!task || task.effective_complete || task.task_action_type === 'GATE') return;
-      if (task.board_status === 'BLOCKED' && !window.confirm(board205BlockedPrompt(task))) return;
+      if (!board205ConfirmPlacement(task, crewId, shift)) return;
       await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
         setup_work_day_id: dayId,
         setup_session_task_id: task.setup_session_task_id,
@@ -743,7 +743,12 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
       const item = board205Assignment(dragged.id);
       if (!item || item.historical_locked) return;
       task = board205Task(item.setup_session_task_id);
-      if (task?.board_status === 'BLOCKED' && !window.confirm(board205BlockedPrompt(task))) return;
+      const changedPlacement = (
+        Number(item.setup_work_day_id) !== Number(dayId)
+        || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(shift)
+        || Number(item.setup_work_day_crew_id) !== Number(crewId)
+      );
+      if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift)) return;
       await api(`api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`, commandOptions('PATCH', {
         setup_work_day_id: dayId,
         shift_code: shift,
@@ -897,10 +902,19 @@ async function board205SubmitScheduleDialog(event) {
   const crewId = Number(document.getElementById('setup-board205-schedule-crew').value || 0);
   if (!dayId || !crewId) return;
 
+  const item = target.kind === 'assignment' ? board205Assignment(target.id) : null;
   const task = target.kind === 'task'
     ? board205Task(target.id)
-    : board205Task(board205Assignment(target.id)?.setup_session_task_id);
-  if (task?.board_status === 'BLOCKED' && !window.confirm(board205BlockedPrompt(task))) return;
+    : board205Task(item?.setup_session_task_id);
+  const changedPlacement = target.kind === 'task' || (
+    item
+    && (
+      Number(item.setup_work_day_id) !== Number(dayId)
+      || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(shift)
+      || Number(item.setup_work_day_crew_id) !== Number(crewId)
+    )
+  );
+  if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift)) return;
 
   try {
     setBusy(true);
