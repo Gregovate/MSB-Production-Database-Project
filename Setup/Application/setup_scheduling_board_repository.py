@@ -62,6 +62,7 @@ class SetupSchedulingBoardRepository:
                 return {
                     "session": None,
                     "work_days": [],
+                    "crews": [],
                     "tasks": [],
                     "assignments": [],
                     "dependencies": [],
@@ -87,6 +88,25 @@ class SetupSchedulingBoardRepository:
                 (session["setup_session_id"],),
             )
             work_days = [dict(row) for row in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT
+                    c.setup_work_day_crew_id,
+                    c.setup_work_day_id,
+                    c.crew_number,
+                    c.crew_code,
+                    c.am_planned_crew_count,
+                    c.pm_planned_crew_count
+                FROM ops.setup_work_day_crew c
+                JOIN ops.setup_work_day wd
+                  ON wd.setup_work_day_id = c.setup_work_day_id
+                WHERE wd.setup_session_id = %s
+                ORDER BY wd.setup_day_number, c.crew_number
+                """,
+                (session["setup_session_id"],),
+            )
+            crews = [dict(row) for row in cur.fetchall()]
 
             cur.execute(
                 """
@@ -117,6 +137,7 @@ class SetupSchedulingBoardRepository:
                     st.annual_normal_crew_min AS normal_crew_min,
                     st.annual_normal_crew_max AS normal_crew_max,
                     st.annual_expected_duration_minutes AS expected_duration_minutes,
+                    st.annual_effort_level AS effort_level,
                     st.annual_completion_point AS completion_point,
                     st.annual_readiness_note AS readiness_note,
                     st.annual_weather_note AS weather_note,
@@ -343,7 +364,11 @@ class SetupSchedulingBoardRepository:
                     wd.day_status,
                     wdt.setup_session_task_id,
                     wdt.shift_code,
-                    wdt.crew_lane,
+                    wdt.setup_work_day_crew_id,
+                    coalesce(c.crew_code, wdt.crew_lane) AS crew_lane,
+                    c.crew_number,
+                    c.am_planned_crew_count,
+                    c.pm_planned_crew_count,
                     wdt.sort_order,
                     wdt.planned_crew_count,
                     wdt.actual_crew_count,
@@ -359,6 +384,10 @@ class SetupSchedulingBoardRepository:
                     s.stage_name,
                     st.annual_lor_scene_id AS lor_scene_id,
                     ls.scene_name,
+                    st.annual_normal_crew_min AS normal_crew_min,
+                    st.annual_normal_crew_max AS normal_crew_max,
+                    st.annual_expected_duration_minutes AS expected_duration_minutes,
+                    st.annual_effort_level AS effort_level,
                     st.linked_work_order_id,
                     st.linked_work_order_gate,
                     wo.date_completed AS linked_work_order_completed_at,
@@ -385,6 +414,8 @@ class SetupSchedulingBoardRepository:
                   ON wd.setup_work_day_id = wdt.setup_work_day_id
                 JOIN ops.setup_session_task st
                   ON st.setup_session_task_id = wdt.setup_session_task_id
+                LEFT JOIN ops.setup_work_day_crew c
+                  ON c.setup_work_day_crew_id = wdt.setup_work_day_crew_id
                 LEFT JOIN ref.stage s
                   ON s.stage_id = st.annual_stage_id
                 LEFT JOIN ref.lor_scene ls
@@ -399,7 +430,7 @@ class SetupSchedulingBoardRepository:
                         WHEN 'AFTERNOON' THEN 2
                         ELSE 3
                     END,
-                    wdt.crew_lane,
+                    coalesce(c.crew_number, 999999),
                     wdt.sort_order,
                     wdt.setup_work_day_task_id
                 """,
@@ -445,6 +476,7 @@ class SetupSchedulingBoardRepository:
         return {
             "session": dict(session),
             "work_days": work_days,
+            "crews": crews,
             "tasks": tasks,
             "assignments": assignments,
             "dependencies": dependencies,
@@ -484,6 +516,43 @@ class SetupSchedulingBoardRepository:
             conn.commit()
             return result
 
+    def add_crew(self, *, email: str, work_day_id: int) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.add_setup_work_day_crew(%s,%s)",
+                (email, work_day_id),
+            )
+            result = self._one(cur, "Add Setup work-day crew returned no result")
+            conn.commit()
+            return result
+
+    def update_crew(
+        self,
+        *,
+        email: str,
+        crew_id: int,
+        am_planned_crew_count: int | None,
+        pm_planned_crew_count: int | None,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s)",
+                (email, crew_id, am_planned_crew_count, pm_planned_crew_count),
+            )
+            result = self._one(cur, "Update Setup work-day crew returned no result")
+            conn.commit()
+            return result
+
+    def remove_crew(self, *, email: str, crew_id: int) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.remove_setup_work_day_crew(%s,%s)",
+                (email, crew_id),
+            )
+            result = self._one(cur, "Remove Setup work-day crew returned no result")
+            conn.commit()
+            return result
+
     def create_assignment(
         self,
         *,
@@ -491,15 +560,14 @@ class SetupSchedulingBoardRepository:
         work_day_id: int,
         session_task_id: int,
         shift: str,
-        crew_lane: str,
+        crew_id: int,
         sort_order: int,
-        planned_crew_count: int | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT * FROM ops.create_setup_work_day_assignment(
-                    %s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s,%s,%s,%s
                 )
                 """,
                 (
@@ -507,9 +575,8 @@ class SetupSchedulingBoardRepository:
                     work_day_id,
                     session_task_id,
                     shift,
-                    crew_lane,
+                    crew_id,
                     sort_order,
-                    planned_crew_count,
                 ),
             )
             result = self._one(cur, "Setup assignment command returned no result")
@@ -523,15 +590,14 @@ class SetupSchedulingBoardRepository:
         assignment_id: int,
         work_day_id: int,
         shift: str,
-        crew_lane: str,
+        crew_id: int,
         sort_order: int,
-        planned_crew_count: int | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT * FROM ops.update_setup_work_day_assignment(
-                    %s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s,%s,%s,%s
                 )
                 """,
                 (
@@ -539,9 +605,8 @@ class SetupSchedulingBoardRepository:
                     assignment_id,
                     work_day_id,
                     shift,
-                    crew_lane,
+                    crew_id,
                     sort_order,
-                    planned_crew_count,
                 ),
             )
             result = self._one(cur, "Setup assignment update returned no result")
@@ -571,6 +636,7 @@ class SetupSchedulingBoardRepository:
         crew_min: int | None,
         crew_max: int | None,
         expected_duration_minutes: int | None,
+        effort_level: str | None,
         completion_point: str | None,
         readiness_note: str | None,
         weather_note: str | None,
@@ -582,7 +648,7 @@ class SetupSchedulingBoardRepository:
             cur.execute(
                 """
                 SELECT * FROM ops.create_setup_season_task(
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 )
                 """,
                 (
@@ -596,6 +662,7 @@ class SetupSchedulingBoardRepository:
                     crew_min,
                     crew_max,
                     expected_duration_minutes,
+                    effort_level,
                     completion_point,
                     readiness_note,
                     weather_note,
@@ -620,6 +687,7 @@ class SetupSchedulingBoardRepository:
         crew_min: int | None,
         crew_max: int | None,
         expected_duration_minutes: int | None,
+        effort_level: str | None,
         completion_point: str | None,
         readiness_note: str | None,
         weather_note: str | None,
@@ -631,7 +699,7 @@ class SetupSchedulingBoardRepository:
             cur.execute(
                 """
                 SELECT * FROM ops.update_setup_annual_task_definition(
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 )
                 """,
                 (
@@ -644,6 +712,7 @@ class SetupSchedulingBoardRepository:
                     crew_min,
                     crew_max,
                     expected_duration_minutes,
+                    effort_level,
                     completion_point,
                     readiness_note,
                     weather_note,
