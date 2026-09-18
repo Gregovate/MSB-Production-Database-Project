@@ -618,13 +618,19 @@ async function board205AddCrew(dayId) {
   }
 }
 
+async 
 async function board205SaveCrew(crewId, crewNode) {
+  const captainPersonId = nullableInteger(
+    crewNode.querySelector('.setup-board205-crew-captain-select')?.value
+  );
   try {
     setBusy(true);
     await api(`api/setup/scheduling-board/crews/${crewId}`, commandOptions('PATCH', {
       am_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value),
-      pm_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value)
+      pm_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value),
+      captain_person_id: captainPersonId
     }));
+    await board205MaybeLearnCaptainForCrewAssignments(crewId, captainPersonId);
     await board205Load();
   } catch (error) {
     setAlert(error.message || error, 'error');
