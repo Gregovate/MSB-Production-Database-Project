@@ -52,6 +52,11 @@ def test_resume_fingerprints_current_post_050_state_only_across_source_change() 
     assert "legacy_setup_fingerprint" not in SH
 
 
+def test_resume_wrapper_uses_proven_crlf_normalization() -> None:
+    assert '$serverText.Replace("`r`n", "`n").Replace("`r", "`n")' in PS1
+    assert "Replace([char]13" not in PS1
+
+
 def test_resume_wrapper_uses_one_foreground_ssh_session() -> None:
     assert "timeout --foreground --signal=TERM 3600s" in PS1
     assert "ssh -tt" in PS1
