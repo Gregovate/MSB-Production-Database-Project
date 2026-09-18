@@ -543,6 +543,7 @@ async function board205SubmitScheduleDialog(event) {
 
 async function board205AddWorkDay(event) {
   event.preventDefault();
+  const form = event.currentTarget;
   const date = document.getElementById('setup-board205-work-date').value;
   const dayNumber = nullableInteger(document.getElementById('setup-board205-day-number').value);
   const volunteerNote = document.getElementById('setup-board205-volunteer-note').value.trim() || null;
@@ -561,7 +562,7 @@ async function board205AddWorkDay(event) {
       day_status: 'PLANNED',
       volunteer_note: volunteerNote
     }));
-    event.currentTarget.reset();
+    form.reset();
     await board205Load();
   } catch (error) {
     setAlert(error.message || error, 'error');
