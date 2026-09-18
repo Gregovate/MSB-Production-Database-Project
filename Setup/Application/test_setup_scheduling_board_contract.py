@@ -55,7 +55,10 @@ def test_205_work_order_gate_is_a_real_relationship() -> None:
     assert "linked_work_order_id" in sql
     assert "REFERENCES ops.work_order(work_order_id)" in sql
     assert "linked_work_order_gate" in sql
-    assert "LEFT JOIN ops.work_order wo" in repo
+    assert "CREATE OR REPLACE VIEW ops.setup_scheduling_work_order_gate" in sql
+    assert "GRANT SELECT ON ops.setup_scheduling_work_order_gate TO fieldwiring_app" in sql
+    assert "LEFT JOIN ops.setup_scheduling_work_order_gate wo" in repo
+    assert "LEFT JOIN ops.work_order wo" not in repo
     assert "wo.date_completed" in repo
     assert "WAITING_ON_WORK_ORDER" in repo
 
@@ -92,6 +95,7 @@ def test_205_work_day_number_is_persisted_and_dow_is_derived() -> None:
     assert "Day " in ui and "setup_day_number" in ui
     assert "Saturday · typically stronger volunteer turnout" in ui
     assert "Sunday · avoid scheduling unless deliberately needed" in ui
+    assert "Setup Day %s is already assigned to %s" in sql
 
 
 def test_205_board_has_four_fixed_crews_stacking_and_accessible_move_controls() -> None:
@@ -160,6 +164,16 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
     assert "INSERT INTO ops.setup_work_day" not in repository
     assert "UPDATE ops.setup_work_day_task" not in repository
     assert "DELETE FROM ops.setup_work_day_task" not in repository
+
+
+def test_205_work_day_form_survives_async_submit() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    block = ui.split("async function board205AddWorkDay(event)", 1)[1].split(
+        "function board205OpenSeasonTaskDialog", 1
+    )[0]
+    assert "const form = event.currentTarget;" in block
+    assert "form.reset();" in block
+    assert "event.currentTarget.reset();" not in block
 
 
 def test_205_production_host_registers_board_without_replacing_report_work() -> None:
