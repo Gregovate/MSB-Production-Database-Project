@@ -274,6 +274,8 @@ def test_205_work_day_crews_are_dynamic_and_shift_specific() -> None:
     assert "+ Add Crew" in ui
     assert "am_planned_crew_count" in ui
     assert "pm_planned_crew_count" in ui
+    assert "preserve the planned AM crew count as history" in sql
+    assert "preserve the planned PM crew count as history" in sql
 
 
 def test_205_work_day_number_is_persisted_and_dow_is_derived() -> None:
