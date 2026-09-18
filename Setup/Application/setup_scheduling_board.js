@@ -566,7 +566,6 @@ function board205EndSort(dayId, shift, crewId) {
   return items.length ? Math.max(...items.map((item) => Number(item.sort_order) || 0)) + 10 : 10;
 }
 
-async 
 async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) {
   if (!dragged || !appState.access?.can_manage_setup) return;
   const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
@@ -603,7 +602,6 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
   }
 }
 
-async 
 async function board205NudgeAssignment(item, direction) {
   if (!item || item.historical_locked) return;
   const peers = board205AssignmentsFor(item.setup_work_day_id, item.shift_code, item.setup_work_day_crew_id);
@@ -730,7 +728,6 @@ function board205OpenScheduleDialog(target) {
   dialog.showModal();
 }
 
-async 
 async function board205SubmitScheduleDialog(event) {
   event.preventDefault();
   const target = setupBoard205State.scheduleTarget;
