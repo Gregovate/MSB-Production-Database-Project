@@ -209,6 +209,14 @@
   background: var(--soft, #f5f8fb);
 }
 
+.setup-board205-shift-hint {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+}
+
 .setup-board205-crew-label {
   padding: 0.7rem 0.55rem;
   font-weight: 800;
@@ -273,6 +281,15 @@
   color: var(--muted, #64748b);
   font-size: 0.78rem;
   padding: 0.35rem;
+}
+
+.setup-board205-carryover {
+  margin-bottom: 0.42rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px dashed var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 750;
 }
 
 .setup-board205-assignment {
