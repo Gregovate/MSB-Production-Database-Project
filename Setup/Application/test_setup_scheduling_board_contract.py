@@ -187,6 +187,11 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "setup-board205-crew-op" in ui
     assert 'option value="LTE"' in ui
     assert 'option value="GTE"' in ui
+    css = read_app("setup_scheduling_board.css")
+    assert "grid-template-columns: 4.5rem minmax(5.5rem, 1fr)" in css
+    assert "padding-left: 0.5rem" in css
+    assert "padding-right: 1.5rem" in css
+    assert "text-align: center" in css
     assert "task.normal_crew_min" in ui
     assert "task.expected_duration_minutes" in ui
     assert "task.effort_level" in ui
@@ -389,8 +394,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-18.3" in html
-    assert "setup_scheduling_board.js?v=2026-09-18.3" in html
+    assert "setup_scheduling_board.css?v=2026-09-18.4" in html
+    assert "setup_scheduling_board.js?v=2026-09-18.4" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
