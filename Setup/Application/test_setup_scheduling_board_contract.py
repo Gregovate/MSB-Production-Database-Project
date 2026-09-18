@@ -148,6 +148,15 @@ def test_205_heavy_work_is_warning_not_prohibition() -> None:
     assert "window.confirm('HEAVY" not in ui
 
 
+def test_205_am_to_pm_spillover_is_advisory_not_a_third_shift() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    assert "SETUP_BOARD205_TYPICAL_AM_MINUTES = 180" in ui
+    assert "of AM work carries past lunch into PM" in ui
+    assert "≈ 9–12" in ui
+    assert "after lunch ≈ 1 PM" in ui
+    assert '<option value="ALL_DAY">All Day</option>' not in ui
+
+
 def test_205_readiness_is_annual_state_separate_from_hard_predecessors() -> None:
     sql = read_db("050_add_setup_scheduling_board_foundation.sql")
     repo = read_app("setup_scheduling_board_repository.py")
