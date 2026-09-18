@@ -7,7 +7,7 @@
 | Task | Review and correct the 2025 Setup history and reusable Setup knowledge |
 | Audience | Authorized Setup reviewers and managers |
 | Status | CURRENT |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-18 |
 
 Use the real 2025 Setup Session to preserve/correct 2025 history while improving reusable Setup knowledge before the 2026 Setup Session is created.
 
@@ -16,7 +16,7 @@ Open:
 ```text
 https://my.sheboyganlights.org/setup/
 2025 — Historical Verification
-Client V0.3.13
+Client V0.3.14
 ```
 
 Keep annual 2025 facts separate from reusable Setup knowledge.
@@ -37,23 +37,60 @@ Use **Kit Boxes** when a reusable task requires a physical Kit Box. Search the e
 
 Expected Kit contents, Extra Materials, quantities/specifications, and expected source Containers are now live review workflows. Keep task requirement, expected source, expected Kit contents, and physical on-hand as separate facts.
 
-## Reusable Expected Duration
+## What Must Be Validated Before 2026
 
-When normal reusable duration is supported by the evidence, enter it with **Expected hrs** and **Expected mins (0–59)**. Existing stored durations are displayed in Hours / Minutes automatically. Leave both fields blank when the normal reusable duration is still unknown.
+The final Catalog pass is now primarily a **work-step and prerequisite review**.
 
-This field is the reusable planning estimate. Do not copy a one-off 2025 elapsed time into it unless the evidence supports that as the normal reusable expectation.
+For each reusable task, confirm:
+
+- the task represents real Setup work that MSB actually performs;
+- the task is at the correct Park Infrastructure / Stage / real-Scene scope;
+- duplicate, obsolete, reconstruction-only, or unnecessarily granular tasks are removed/deactivated as appropriate; and
+- hard prerequisites are correct.
+
+Do **not** create a separate task merely to represent a condition that must be true before work can begin.
+
+Example:
+
+~~~text
+Not a separate Setup task:
+City Approval to Lay Cords/Network
+
+Reusable task:
+Lay Cords/Network
+
+Readiness:
+Ensure grass cutting is complete before laying cords.
+~~~
+
+A readiness condition is scheduling context, not an independent work step, unless MSB itself must perform and complete distinct work to satisfy it.
+
+## Planning Information Can Be Corrected Later
+
+V0.3.14 allows Managers to correct planning information from the Scheduling Board before actual work exists. Therefore final Catalog verification does **not** need to wait for perfect values for:
+
+- normal crew guidance;
+- expected duration;
+- physical effort;
+- readiness condition;
+- weather note; or
+- completion point.
+
+Enter those values now when they are known and supported. If they are still uncertain, leave them for planning/scheduling rather than inventing values or delaying verification of the task itself.
+
+Expected duration remains reusable planning knowledge. Do not copy a one-off 2025 elapsed time into it unless the evidence supports that as the normal reusable expectation.
 
 ## Other Review Work
 
-Correct only information supported by reliable evidence. Review resources, prerequisites, effort, crew/time expectations, readiness, task scope/order, notes, and current published procedures where applicable.
+Correct only information supported by reliable evidence. Material/Kit/Resource relationships and published procedures remain reusable knowledge, but the launch-critical Catalog pass is task identity/scope plus prerequisite correctness.
 
 Fast prerequisite entry remains Shift-drag; normal drag without Shift remains task movement/reorder.
 
-Do not create fake records or fake Scenes to work around missing information.
+Do not create fake records, fake Scenes, or fake tasks to work around missing planning information or readiness conditions.
 
 ## 2026 Gate
 
-There is currently no 2026 Setup Session. Continue correcting the reusable task/material foundation, then perform final Catalog acceptance and disposable 2026 seed proof before real 2026 Session creation.
+There is currently no 2026 Setup Session. Complete the reusable work-step/prerequisite review, then perform final Catalog acceptance and disposable 2026 seed proof before real 2026 Session creation. Crew/time/readiness planning details may continue to improve during scheduling before actual work exists.
 
 ## Related Documents
 
