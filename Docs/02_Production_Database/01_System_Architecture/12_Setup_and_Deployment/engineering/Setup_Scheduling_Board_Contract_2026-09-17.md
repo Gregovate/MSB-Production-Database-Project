@@ -239,6 +239,40 @@ If actual work remains incomplete after its planned duration or planned day, exe
 
 The exact normal AM/PM work-minute capacities still require operator confirmation; the system must not invent work-day start/end times.
 
+## Annual Readiness Conditions
+
+Readiness is separate from hard predecessors.
+
+A hard predecessor means another annual Setup task must be complete first.
+
+A readiness condition means an outside/site condition must be true before the task is normally schedulable, for example:
+
+- Festive Trees wait for leaf fall;
+- Post Office animatronics wait for Area 4 bathroom winterization;
+- Santa's Workshop animatronics wait for Area 1 / Office winterization;
+- cord-laying work waits for grass cutting to be complete in the applicable park section;
+- city access / asphalt work may delay when park work can begin.
+
+Reusable `readiness_note` preserves the durable condition text. Each annual occurrence has its own readiness state:
+
+```text
+READY
+NOT_READY
+```
+
+A reusable task with no readiness condition begins the annual Session READY. A reusable task with a nonblank readiness condition begins NOT_READY until a Manager confirms the outside condition is satisfied.
+
+The scheduler must:
+
+- show the readiness condition and annual state prominently;
+- keep NOT_READY work out of the normal Available Now list;
+- keep it visible/searchable in Outstanding / Blocked;
+- let a Manager mark the annual condition Ready or Not Ready;
+- never substitute a guessed date for the condition;
+- preserve hard-predecessor state independently.
+
+Blocked work may still be deliberately placed by a Manager under the existing warning-based planning rule when operational judgment requires it.
+
 ## Annual Candidate States
 
 The board distinguishes at least:
@@ -254,8 +288,8 @@ COMPLETE
 
 Meaning:
 
-- **Ready to Schedule** — incomplete annual work whose annual prerequisites are satisfied and which has no future assignment.
-- **Blocked** — annual prerequisite is incomplete.
+- **Ready to Schedule** — incomplete annual work whose hard predecessors are satisfied, annual readiness is READY, and which has no future assignment.
+- **Blocked** — a hard predecessor is incomplete or the annual readiness condition is NOT_READY.
 - **Needs Scheduling Again** — actual progress exists / task is IN_PROGRESS but no future continuation is scheduled.
 - **Scheduled** — one or more future unworked assignments exist.
 - **Waiting on Work Order** — a Work-Order gate is waiting for the authoritative Work Order to complete.
@@ -522,13 +556,14 @@ Disposable acceptance must prove at minimum:
 9. the same annual task is planned only once on a work day; long work may continue across lunch/into PM without fabricating a duplicate schedule assignment;
 10. the operator-facing board uses AM/PM rather than a dedicated All Day column while preserving legacy All Day history;
 11. the work finder supports Task / Time / minimum Crew / Effort and separates available work from blocked/outstanding work;
-12. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
-13. future unworked assignments can move/reorder/remove;
-14. actual/progress evidence locks historical assignment identity;
-15. unfinished work can receive a later continuation assignment;
-16. the Magic Igloo Work Order gate pattern can be represented;
-17. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
-18. a disposable next-season seed omits season-only work;
-19. the reusable Planning Summary remains reusable-only;
-20. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
-21. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
+12. reusable readiness conditions seed annual READY / NOT_READY state correctly and a Manager can toggle annual readiness without changing the reusable condition text;
+14. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
+14. future unworked assignments can move/reorder/remove;
+15. actual/progress evidence locks historical assignment identity;
+16. unfinished work can receive a later continuation assignment;
+17. the Magic Igloo Work Order gate pattern can be represented;
+18. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
+19. a disposable next-season seed omits season-only work;
+20. the reusable Planning Summary remains reusable-only;
+21. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
+22. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
