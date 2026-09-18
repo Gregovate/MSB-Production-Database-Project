@@ -411,6 +411,7 @@ function board205Cell(day, shift, crew) {
 }
 
 
+
 function board205Day(day) {
   const dayClass = Number(day.iso_day_of_week) === 6 ? 'saturday' : Number(day.iso_day_of_week) === 7 ? 'sunday' : '';
   const dayNote = [day.volunteer_note, day.weather_note, day.notes].filter(Boolean).join(' · ');
@@ -421,6 +422,9 @@ function board205Day(day) {
     return `
       <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
         <strong>Crew ${board205Esc(crew.crew_code)}</strong>
+        <label class="setup-board205-crew-captain">Captain
+          <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
+        </label>
         <div class="setup-board205-crew-counts">
           <label>AM <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
           <label>PM <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
@@ -451,7 +455,7 @@ function board205Day(day) {
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
-          <div class="setup-board205-grid-head">Crew / planned availability</div>
+          <div class="setup-board205-grid-head">Crew / Captain / planned availability</div>
           <div class="setup-board205-grid-head">AM <span class="setup-board205-shift-hint">≈ 9–12</span></div>
           <div class="setup-board205-grid-head">PM <span class="setup-board205-shift-hint">after lunch ≈ 1 PM</span></div>
           ${crewRows}
@@ -459,7 +463,6 @@ function board205Day(day) {
       </div>
     </section>`;
 }
-
 
 function board205RenderBoard() {
   const target = document.getElementById('setup-board205-days');
