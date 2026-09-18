@@ -259,6 +259,39 @@ Meaning:
 
 Blocked work may be deliberately scheduled by a Manager when policy permits, but the warning must remain visible.
 
+## Schedule -> Work Packet -> Actual Report Work
+
+The annual schedule is **planning intent**, not actual execution truth.
+
+The Setup execution flow has three distinct layers:
+
+```text
+Scheduling Board
+    -> publish/release selected work as a Work Packet
+    -> Production Crew performs field work
+    -> Report Work records what actually happened
+```
+
+The published Work Packet is an execution artifact derived from the current annual/scheduled context. Printable/offline/currentness behavior is owned by #175.
+
+Report Work is authoritative for actual execution evidence and is owned by #132.
+
+Plan and actual may legitimately differ because of volunteer turnout, weather, equipment, readiness, early/late completion, or field decisions. The system must not require operators to rewrite schedule history merely to make the plan match actual execution.
+
+When actual work matches a scheduled assignment, retain the stable assignment link/context.
+
+When legitimate annual work is performed that was not on the planned/published packet, Report Work must still be able to preserve the actual work occurrence and its annual-task/work-day/shift/crew context without fabricating a prior schedule assignment.
+
+This separation is intentional institutional evidence:
+
+```text
+planned / published
+    versus
+actual execution
+```
+
+Future reconciliation may use that evidence to propose reusable guidance changes, but actual execution never automatically overwrites reusable Catalog knowledge.
+
 ## Historical Assignment Identity and Stickiness
 
 A scheduled work occurrence needs stable identity independent of the annual task.
