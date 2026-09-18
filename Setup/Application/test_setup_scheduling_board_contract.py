@@ -268,6 +268,13 @@ def test_205_work_day_form_survives_async_submit() -> None:
     assert "event.currentTarget.reset();" not in block
 
 
+def test_205_scheduling_board_javascript_has_no_stray_async_prefixes() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    assert "\nasync \nasync function " not in ui
+    assert "board205InstallView();" in ui
+    assert "Setup Scheduling Board" in ui
+
+
 def test_205_production_host_registers_board_without_replacing_report_work() -> None:
     host = read_app("production_backend.py")
     html = read_app("production.html")
@@ -275,6 +282,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-17.3" in html
-    assert "setup_scheduling_board.js?v=2026-09-17.3" in html
+    assert "setup_scheduling_board.css?v=2026-09-18.1" in html
+    assert "setup_scheduling_board.js?v=2026-09-18.1" in html
+    assert "\\n<script src=\"setup_scheduling_board.js" not in html
+    assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
