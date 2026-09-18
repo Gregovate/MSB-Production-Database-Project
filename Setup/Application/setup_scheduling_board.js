@@ -34,6 +34,82 @@ function board205CrewRow(crewId) {
   );
 }
 
+function board205CaptainCandidate(personId) {
+  return (setupBoard205State.board.captain_candidates || []).find(
+    (person) => Number(person.person_id) === Number(personId)
+  );
+}
+
+function board205CaptainOptions(selectedPersonId = null) {
+  const selected = selectedPersonId == null ? '' : String(selectedPersonId);
+  return '<option value="">TBD</option>' + (setupBoard205State.board.captain_candidates || []).map((person) => (
+    `<option value="${person.person_id}" ${String(person.person_id) === selected ? 'selected' : ''}>${board205Esc(person.display_name)}</option>`
+  )).join('');
+}
+
+function board205TaskHasReusableCaptain(task, personId) {
+  return (task?.reusable_captain_person_ids || []).some(
+    (value) => Number(value) === Number(personId)
+  );
+}
+
+function board205BlockedPrompt(task) {
+  if (task?.readiness_state === 'NOT_READY') {
+    return `Readiness is NOT READY${task.readiness_note ? `: ${task.readiness_note}` : ''}. Schedule it anyway?`;
+  }
+  return 'This task has an incomplete hard predecessor. Schedule it anyway?';
+}
+
+async function board205MaybeLearnCaptainForTask(task, crewId, captainPersonId = null) {
+  if (!task || task.task_origin !== 'REUSABLE') return;
+  const crew = board205CrewRow(crewId);
+  const personId = captainPersonId ?? crew?.captain_person_id;
+  if (personId == null || board205TaskHasReusableCaptain(task, personId)) return;
+
+  const person = board205CaptainCandidate(personId);
+  const name = person?.display_name || crew?.captain_display_name || `Person ${personId}`;
+  const crewCode = crew?.crew_code || '';
+  const confirmed = window.confirm(
+    `${name} is Captain of Crew ${crewCode || 'this crew'} but is not currently a reusable Captain for "${task.task_name}". Add/promote ${name} as a reusable task Captain? Existing Captains will remain.`
+  );
+  if (!confirmed) return;
+
+  await api(
+    `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/crew-captain/${crewId}/promote`,
+    commandOptions('POST', {})
+  );
+}
+
+async function board205MaybeLearnCaptainForCrewAssignments(crewId, captainPersonId) {
+  if (captainPersonId == null) return;
+  const crew = board205CrewRow(crewId);
+  const person = board205CaptainCandidate(captainPersonId);
+  const name = person?.display_name || `Person ${captainPersonId}`;
+  const taskMap = new Map();
+
+  for (const item of board205CrewSequence(crewId)) {
+    const task = board205Task(item.setup_session_task_id);
+    if (!task || task.task_origin !== 'REUSABLE' || board205TaskHasReusableCaptain(task, captainPersonId)) continue;
+    taskMap.set(Number(task.setup_session_task_id), task);
+  }
+
+  const tasks = [...taskMap.values()];
+  if (!tasks.length) return;
+
+  const confirmed = window.confirm(
+    `${name} is now Captain of Crew ${crew?.crew_code || ''}. Add/promote ${name} as a reusable Captain for ${tasks.length} reusable task${tasks.length === 1 ? '' : 's'} already assigned to this crew? Existing Captains will remain.`
+  );
+  if (!confirmed) return;
+
+  for (const task of tasks) {
+    await api(
+      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/crew-captain/${crewId}/promote`,
+      commandOptions('POST', {})
+    );
+  }
+}
+
+
 function board205CrewsForDay(dayId) {
   return (setupBoard205State.board.crews || [])
     .filter((crew) => Number(crew.setup_work_day_id) === Number(dayId))
