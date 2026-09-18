@@ -115,6 +115,10 @@ def api_setup_scheduling_board_crew_update(
             payload.get("pm_planned_crew_count"),
             "pm_planned_crew_count",
         ),
+        captain_person_id=nullable_int(
+            payload.get("captain_person_id"),
+            "captain_person_id",
+        ),
     )
     return jsonify(crew=result)
 
@@ -251,6 +255,51 @@ def api_setup_scheduling_board_season_task_update(
         annual_notes=optional_text(payload.get("annual_notes")),
     )
     return jsonify(season_task=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/planning-info"
+)
+def api_setup_scheduling_board_planning_info(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().update_planning_info(
+        email=email,
+        session_task_id=setup_session_task_id,
+        crew_min=nullable_int(payload.get("normal_crew_min"), "normal_crew_min"),
+        crew_max=nullable_int(payload.get("normal_crew_max"), "normal_crew_max"),
+        expected_duration_minutes=nullable_int(
+            payload.get("expected_duration_minutes"),
+            "expected_duration_minutes",
+        ),
+        effort_level=optional_text(payload.get("effort_level")),
+        readiness_note=optional_text(payload.get("readiness_note")),
+        weather_note=optional_text(payload.get("weather_note")),
+        completion_point=optional_text(payload.get("completion_point")),
+    )
+    return jsonify(planning_info=result)
+
+
+@setup_scheduling_board_api.post(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/crew-captain/"
+    "<int:setup_work_day_crew_id>/promote"
+)
+def api_setup_scheduling_board_promote_crew_captain(
+    setup_session_task_id: int,
+    setup_work_day_crew_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().promote_crew_captain_to_task(
+        email=email,
+        session_task_id=setup_session_task_id,
+        crew_id=setup_work_day_crew_id,
+    )
+    return jsonify(captain_knowledge=result)
 
 
 @setup_scheduling_board_api.patch(
