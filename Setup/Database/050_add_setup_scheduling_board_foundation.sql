@@ -748,6 +748,23 @@ BEGIN
             MESSAGE = 'Annual Setup task was not found';
     END IF;
 
+    IF EXISTS (
+        SELECT 1
+        FROM ops.setup_task_progress p
+        WHERE p.setup_session_task_id = p_setup_session_task_id
+    ) OR EXISTS (
+        SELECT 1
+        FROM ops.setup_session_task st
+        WHERE st.setup_session_task_id = p_setup_session_task_id
+          AND (
+              st.actual_started_at IS NOT NULL
+              OR st.actual_completed_at IS NOT NULL
+          )
+    ) THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = 'Actual work exists for this annual task; planning information is historical. Correct reusable knowledge separately.';
+    END IF;
+
     IF v_old_readiness IS DISTINCT FROM v_new_readiness THEN
         v_state := CASE WHEN v_new_readiness IS NULL THEN 'READY' ELSE 'NOT_READY' END;
     END IF;
