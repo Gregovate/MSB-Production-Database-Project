@@ -139,6 +139,49 @@ This is not merely a free-text task-name search. The scheduler must be able to s
 
 Stage/Scene and annual Work Order context may be exposed as supplemental search/filter context, but they do not replace the original Task / Time / Crew / Effort selector.
 
+## Scheduler Planning-Info Correction
+
+The Scheduling Board is often where missing/TBD planning knowledge becomes obvious.
+
+Before actual work exists, a Manager may use **Edit Planning Info** directly from the scheduler to correct:
+
+- minimum/normal crew guidance;
+- expected duration;
+- physical effort;
+- readiness condition;
+- weather note;
+- completion point.
+
+For reusable-origin work, this is an explicit reusable-knowledge correction and the current annual snapshot is refreshed at the same time.
+
+For season-only work, the correction remains annual-only.
+
+Once actual work exists, the annual planned context is historical and the scheduler must no longer rewrite it. Later reusable lessons belong through governed post-season/reconciliation workflows.
+
+## Chronological Setup Day Number
+
+Normal operator use does not manually assign Setup Day Number.
+
+For future unworked days, the scheduler automatically assigns/resequences Setup Day Number by `work_date`, regardless of insertion order.
+
+Example:
+
+```text
+added first:  Oct 5
+added second: Oct 8
+added later:  Oct 1
+```
+
+must display/number chronologically:
+
+```text
+Day 1 — Oct 1
+Day 2 — Oct 5
+Day 3 — Oct 8
+```
+
+Once actual work exists, historical day identity is preserved. Only the mutable future range is resequenced.
+
 ## Crew Fatigue / Consecutive HEAVY Work
 
 Physical effort is reusable task knowledge:
@@ -201,6 +244,46 @@ The preferred physical-readiness target is **the day before the scheduled work d
 
 This is an operational preference rather than a rigid calendar prohibition. Earlier staging is valid, later exceptions may be necessary, and schedule changes must never erase physical movement/staging facts that already occurred.
 
+## Work-Day Crew Captain
+
+A work-day crew may have one optional Captain for that Setup day.
+
+The Captain is a working person and is intentionally lighter-weight than a roster:
+
+```text
+Crew A
+  Captain = Tom
+  AM planned availability = 6
+  PM planned availability = 4
+```
+
+The system does **not** need the other five names.
+
+If planned crew size is 1, the Captain effectively identifies the one planned person without creating a roster.
+
+Captain rules:
+
+- Captain is optional and never blocks scheduling;
+- one Captain applies to the whole work-day crew in this release;
+- Crew Captain is annual scheduling context, not a permanent team;
+- once actual work exists for that crew, changing the Captain would rewrite history and is therefore blocked;
+- Production Crew reporting authority remains role-based and must not depend solely on Captain assignment.
+
+### Additive reusable Captain learning
+
+When a crew with Captain Tom is assigned a reusable task whose existing reusable Captains do not include Tom, the scheduler may prompt:
+
+> Tom is Captain of Crew A but is not currently a reusable Captain for this task. Add/promote Tom as a reusable task Captain?
+
+If confirmed:
+
+- add/promote Tom through the governed reusable Captain command;
+- do **not** delete, demote, or replace any existing Captain;
+- if Tom was already ALTERNATE or ADVISOR for that task, explicit confirmation may promote Tom to CAPTAIN;
+- if Tom is already CAPTAIN, no prompt is required.
+
+This is explicit additive institutional learning, not automatic overwrite.
+
 ## Shift-Level Crew Availability — Baby-Step Model
 
 A work-day crew is a temporary scheduling lane, not a roster.
@@ -217,7 +300,7 @@ The scheduler may capture these as **optional numeric planning estimates** at wo
 
 Do not schedule named volunteers in this release. Do not require person-to-crew membership, individual availability calendars, or automatic volunteer assignment.
 
-The original **Crew** finder dimension means task minimum crew size. When a shift-level planned headcount is known, the board may compare it to the task minimum and show a warning if the task appears understaffed. Missing planned headcount never blocks scheduling.
+The original **Crew** finder dimension means task minimum crew size. When a shift-level planned headcount is known, the board compares it to the task minimum and shows a prominent **SHORT CREW** warning if the task appears understaffed. This remains advisory and never becomes a hard scheduling prohibition. Missing planned headcount never blocks scheduling.
 
 Actual crew count is execution evidence and remains owned by Report Work.
 
@@ -550,22 +633,27 @@ Disposable acceptance must prove at minimum:
 1. active reusable tasks seed as reusable-origin annual snapshots, including reviewed physical effort;
 2. a season-only task can be created without creating a reusable Catalog row;
 3. annual dependencies can include a season-only task and reject cycles;
-4. Setup Day Number persists while DOW derives from the date;
+4. future unworked Setup Day Numbers resequence chronologically by work date while historical day identity remains fixed;
 5. each new work day begins with exactly one default Crew A;
-6. a Manager can add additional crews for that work day, including Crew E and beyond without a fixed four-crew ceiling;
+6. a Manager can add/remove empty crews and reuse the first available crew identity, including Crew E and beyond without a fixed four-crew ceiling;
 7. optional planned crew availability can differ between AM and PM for the same crew;
-8. multiple ordered tasks can occupy one crew/shift;
-9. the same annual task is planned only once on a work day; long work may continue across lunch/into PM without fabricating a duplicate schedule assignment;
-10. the operator-facing board uses AM/PM rather than a dedicated All Day column while preserving legacy All Day history;
-11. the work finder supports Task / Time / minimum Crew / Effort and separates available work from blocked/outstanding work;
-12. reusable readiness conditions seed annual READY / NOT_READY state correctly and a Manager can toggle annual readiness without changing the reusable condition text;
-13. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
-14. future unworked assignments can move/reorder/remove;
-15. actual/progress evidence locks historical assignment identity;
-16. unfinished work can receive a later continuation assignment;
-17. the Magic Igloo Work Order gate pattern can be represented;
-18. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
-19. a disposable next-season seed omits season-only work;
-20. the reusable Planning Summary remains reusable-only;
-21. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
-22. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
+8. a work-day crew may have one optional Captain, and Captain identity becomes historical once actual work exists;
+9. confirmed Crew Captain learning adds/promotes reusable Captain knowledge without deleting existing Captains;
+10. multiple ordered tasks can occupy one crew/shift;
+11. the same annual task is planned only once on a work day; long work may continue across lunch/into PM without fabricating a duplicate schedule assignment;
+12. the operator-facing board uses AM/PM rather than a dedicated All Day column while preserving legacy All Day history;
+13. the work finder supports Task / Time / minimum Crew / Effort and searches human Stage/Scene/readiness/resource/WO context;
+14. reusable readiness conditions seed annual READY / NOT_READY state correctly and a Manager can toggle annual readiness without changing the reusable condition text;
+15. browser fixtures preserve real readiness state rather than fabricating readiness;
+16. pre-execution **Edit Planning Info** can correct reusable + annual planning knowledge, but becomes locked once actual work exists;
+17. short crew is a prominent warning only, not a scheduling block;
+18. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
+19. future unworked assignments can move/reorder/remove;
+20. actual/progress evidence locks historical assignment identity;
+21. unfinished work can receive a later continuation assignment;
+22. the Magic Igloo Work Order gate pattern can be represented;
+23. linked Work Order completion can satisfy the annual gate without copying Work Order lifecycle;
+24. a disposable next-season seed omits season-only work;
+25. the reusable Planning Summary remains reusable-only;
+26. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
+27. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
