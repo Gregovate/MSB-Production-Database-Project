@@ -51,6 +51,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.compact-grid.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -135,6 +139,7 @@
 @media (max-width: 900px) {
   .compact-grid,
   .compact-grid.three,
+  .compact-grid.four,
   .procedure-production-grid {
     grid-template-columns: 1fr;
   }

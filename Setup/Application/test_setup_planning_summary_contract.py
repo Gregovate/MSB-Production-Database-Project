@@ -94,7 +94,7 @@ def test_catalog_exposes_contextual_stage_scene_and_broad_print_launchers() -> N
     production = read("production.html")
     js = read("setup_planning_summary.js")
 
-    assert 'setup_planning_summary.js?v=2026-09-15.2' in production
+    assert 'setup_planning_summary.js?v=2026-09-17.1' in production
     assert "Print Planning Summary…" in js
     assert "Print Stage" in js
     assert "Print Scene" in js
