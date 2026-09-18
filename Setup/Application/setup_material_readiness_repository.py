@@ -100,6 +100,11 @@ class SetupMaterialReadinessRepository:
                     tm.quantity_required,
                     tm.quantity_uom,
                     tm.quantity_qualifier,
+                    tm.size_text,
+                    tm.length_value,
+                    tm.length_unit,
+                    tm.color,
+                    tm.notes AS requirement_notes,
                     tm.verification_state AS requirement_verification_state,
                     src.setup_task_extra_material_source_id,
                     src.container_id,
@@ -375,6 +380,14 @@ class SetupMaterialReadinessRepository:
                     "extra_material_name": material_name,
                     "quantity_required": extra.get("quantity_required"),
                     "quantity_uom": extra.get("quantity_uom"),
+                    "quantity_qualifier": extra.get("quantity_qualifier"),
+                    "size_text": extra.get("size_text"),
+                    "length_value": extra.get("length_value"),
+                    "length_unit": extra.get("length_unit"),
+                    "color": extra.get("color"),
+                    "requirement_notes": extra.get("requirement_notes"),
+                    "source_expected_quantity": extra.get("expected_quantity"),
+                    "source_verification_state": extra.get("source_verification_state"),
                 })
                 if str(extra.get("source_verification_state") or "") != "VERIFIED":
                     unresolved.append({
@@ -425,7 +438,7 @@ class SetupMaterialReadinessRepository:
             observation = dict(state.get(key) or {})
             item["current_observation"] = observation or None
             if observation.get("last_movement_event_id") is not None:
-                item["location_evidence_status"] = "OBSERVED"
+                item["location_evidence_status"] = "HAS_SETUP_OBSERVATION"
             elif observation.get("current_stage_id") is not None or observation.get("current_location_note"):
                 item["location_evidence_status"] = "LOCATION_WITHOUT_EVENT"
             else:
