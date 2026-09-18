@@ -900,7 +900,7 @@ CREATE INDEX IF NOT EXISTS ix_setup_work_day_crew_day_order
 INSERT INTO ops.setup_work_day_crew(setup_work_day_id, crew_number, crew_code)
 SELECT wd.setup_work_day_id, 1, 'A'
 FROM ops.setup_work_day wd
-ON CONFLICT (setup_work_day_id, crew_number) DO NOTHING;
+ON CONFLICT ON CONSTRAINT uq_setup_work_day_crew_number DO NOTHING;
 
 INSERT INTO ops.setup_work_day_crew(setup_work_day_id, crew_number, crew_code)
 SELECT DISTINCT
@@ -920,7 +920,7 @@ SELECT DISTINCT
            ELSE 'A'
        END
 FROM ops.setup_work_day_task wdt
-ON CONFLICT (setup_work_day_id, crew_number) DO NOTHING;
+ON CONFLICT ON CONSTRAINT uq_setup_work_day_crew_number DO NOTHING;
 
 ALTER TABLE ops.setup_work_day_task
     ADD COLUMN IF NOT EXISTS setup_work_day_crew_id bigint;
@@ -1945,7 +1945,7 @@ BEGIN
 
     INSERT INTO ops.setup_work_day_crew(setup_work_day_id, crew_number, crew_code)
     VALUES (v_day_id, 1, 'A')
-    ON CONFLICT (setup_work_day_id, crew_number) DO NOTHING;
+    ON CONFLICT ON CONSTRAINT uq_setup_work_day_crew_number DO NOTHING;
 
     RETURN QUERY SELECT v_day_id, v_day_number, v_display_name;
 END;
