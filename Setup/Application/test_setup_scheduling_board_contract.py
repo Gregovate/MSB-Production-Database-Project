@@ -45,6 +45,8 @@ def test_205_annual_dependencies_can_include_season_only_tasks() -> None:
     assert "REUSABLE_BASELINE" in sql
     assert "ops.set_setup_session_task_dependency" in sql
     assert "Annual prerequisite would create a circular Setup dependency" in sql
+    assert "FROM chain c" in sql
+    assert "WHERE c.setup_session_task_id = p_setup_session_task_id" in sql
 
 
 def test_205_work_order_gate_is_a_real_relationship() -> None:
