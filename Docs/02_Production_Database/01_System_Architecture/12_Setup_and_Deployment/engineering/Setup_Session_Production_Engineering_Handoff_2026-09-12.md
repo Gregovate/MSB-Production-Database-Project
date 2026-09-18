@@ -4,9 +4,9 @@
 |---|---|
 | Document Type | Engineering Handoff |
 | System | Production Database — Setup Session |
-| Status | CURRENT HANDOFF — #204 expected-duration UI accepted in Production |
+| Status | CURRENT HANDOFF — V0.3.14 Scheduling Board accepted in Production |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-18 |
 
 ## Purpose
 
@@ -16,17 +16,47 @@ Preserve the current accepted Setup Session Production state and the remaining l
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 052d31dd4e68e13f2997f723778b88eddf9c53cf
-version = V0.3.13-assignment-layer
+live /opt/msb-setup SHA = 8161e91384cb13587fa0c92da2f80f6cf770592d
+version = V0.3.14-scheduling-board
 service = msb-setup.service
 listener = 192.168.5.9:8794
 2025 Setup Session = HISTORICAL_VERIFICATION / SANDBOX
 2026 Setup Sessions = 0
 physical inventory events = 0
-governed Setup fingerprint = 7dd32f21ca9a455329de54e8799f01b5
+governed post-050 Setup fingerprint = 4ccf5d7505c7ae58bc95a435742a0c6b
 ```
 
 Server/runtime authority remains `Gregovate/MSB-Server-Management`.
+
+## Accepted Scheduling Board / Readiness — #205
+
+Migration `050_add_setup_scheduling_board_foundation.sql` is installed and validated in Production. The accepted application is:
+
+```text
+8161e91384cb13587fa0c92da2f80f6cf770592d
+V0.3.14-scheduling-board
+```
+
+Accepted behavior includes dynamic work-day crews, AM/PM planned availability, Crew Captain context, selectable ≤ / ≥ Time and minimum-Crew filters, readiness separate from hard prerequisites, SHORT CREW confirmation, chronological Setup Day numbering, stable schedule-assignment identity, historical stickiness, season-only annual work, and Work Order gates.
+
+Protected Production browser validation confirms:
+
+```text
+Client V0.3.14
+2025 = HISTORICAL_VERIFICATION
+2026 = no Setup Session
+```
+
+### #145 final review posture
+
+The final Catalog review no longer needs to block on perfect Crew/time/readiness planning data. Validate task identity/scope and hard prerequisite correctness now. Crew, expected Time, Effort, Readiness, Weather, and Completion Point can be corrected from the Scheduling Board before actual work exists.
+
+Readiness conditions are not independent Setup tasks. Example:
+
+```text
+Task: Lay Cords/Network
+Readiness: Ensure grass cutting is complete before laying cords.
+```
 
 ## Accepted Assignment Layer
 
@@ -132,7 +162,7 @@ Procedure-derived reconstructed values remain reviewable. Do not convert an expe
 
 ## Preservation Baseline
 
-Preserve V0.3.7 dirty-edit/client-build protections, V0.3.8 compact task detail, V0.3.9 prerequisite behavior, V0.3.10 Resource Catalog behavior plus migration 031 repair, V0.3.11 active-task identity, V0.3.13 assignment behavior, the Stage/Scene resolver, current Display/Container authority, the #184 durable inventory contract, and the accepted #167 reconstructed data.
+Preserve V0.3.7 dirty-edit/client-build protections, V0.3.8 compact task detail, V0.3.9 prerequisite behavior, V0.3.10 Resource Catalog behavior plus migration 031 repair, V0.3.11 active-task identity, V0.3.13 assignment behavior, V0.3.14 Scheduling Board/readiness behavior, the Stage/Scene resolver, current Display/Container authority, the #184 durable inventory contract, and the accepted #167 reconstructed data.
 
 ## Remaining Pre-Launch Sequence
 
@@ -149,7 +179,7 @@ The controlling sequence is now:
 
 The accepted rollback archives above are governed database recovery points. Do not restore them merely to undo a UI/documentation problem or without reconciling legitimate post-deployment Production work.
 
-The live Setup checkout is pinned to `052d31dd4e68e13f2997f723778b88eddf9c53cf`. For this source-only change, rollback is the prior exact SHA `5040fa282410b729d93e58a8299e48e4ee214809` plus restart of only `msb-setup.service` under the Server Management runbook.
+The live Setup checkout is pinned to `8161e91384cb13587fa0c92da2f80f6cf770592d`. The immediate source-only rollback SHA for the V0.3.14 promotion is `052d31dd4e68e13f2997f723778b88eddf9c53cf`; database recovery around migration 050 is separately governed and must reconcile legitimate post-migration Production work.
 
 ## Engineering Resume
 
@@ -159,7 +189,7 @@ Before changing Setup:
 2. read Project Rules;
 3. read the Setup engineering README and this handoff;
 4. read the Supporting Information Contract;
-5. preserve V0.3.7 through V0.3.13 plus #184/#167 inventory behavior/data;
+5. preserve V0.3.7 through V0.3.14 plus #184/#167 inventory behavior/data;
 6. keep 2025 as the proving ground and create no real 2026 Setup Session until the remaining gates pass;
 7. continue `#145 FINAL -> #122`; and
 8. use Server Management for disposable acceptance, browser review, and Production deployment authority.
@@ -169,4 +199,5 @@ Before changing Setup:
 - `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`
 - `Setup/Acceptance/Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md`
 - `Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
+- `Setup/Acceptance/Setup_Scheduling_Board_V0314_Production_Acceptance_2026-09-18.md`
 - `Setup_Task_Supporting_Information_Contract_2026-09-11.md`

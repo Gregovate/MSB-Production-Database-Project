@@ -5,9 +5,9 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — #204 expected-duration UI accepted in Production; #145 Catalog review continues |
+| Status | CURRENT HANDOFF — V0.3.14 Scheduling Board accepted in Production; #145 Catalog review continues |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-18 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
@@ -15,18 +15,20 @@ Operator-facing instructions are separate under [`../operatorSOP/`](../operatorS
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 052d31dd4e68e13f2997f723778b88eddf9c53cf
-version = V0.3.13-assignment-layer
+live /opt/msb-setup SHA = 8161e91384cb13587fa0c92da2f80f6cf770592d
+version = V0.3.14-scheduling-board
 2025 Setup Session = HISTORICAL_VERIFICATION / SANDBOX
 2026 Setup Sessions = 0
 physical inventory events after reconstruction = 0
 ```
 
-Current governed Setup fingerprint captured immediately before/after the #204 source-only deployment:
+Current post-migration Setup fingerprint captured immediately before/after the #205 source-only recovery promotion:
 
 ```text
-7dd32f21ca9a455329de54e8799f01b5
+4ccf5d7505c7ae58bc95a435742a0c6b
 ```
+
+Migration 050 is installed and validated. The protected Production browser confirms `Client V0.3.14` and `2026 — no Setup Session`.
 
 ## Accepted Reusable Expected Duration UI — #204
 
@@ -35,6 +37,51 @@ Managers now enter reusable expected duration as **Expected hrs** plus **Expecte
 Stored total minutes are split for operator review and recombined on save through the existing governed reusable-task PATCH / `ref.update_setup_task` path. Both controls blank preserve NULL/missing. The minute control is a remainder, not a second total-duration field. Annual `actual_duration_minutes` and #132 progress-report semantics are unchanged.
 
 Accepted runtime candidate: `052d31dd4e68e13f2997f723778b88eddf9c53cf`.
+
+## Accepted Scheduling Board / Readiness — #205
+
+Production now includes the V0.3.14 rolling Scheduling Board foundation:
+
+- persisted chronological Setup Day Number with DOW derived from date;
+- dynamic per-work-day crews with AM/PM planned availability;
+- optional work-day Crew Captain;
+- Task / Time / minimum Crew / Effort finder with ≤ / ≥ comparators;
+- readiness state/note separate from hard prerequisites;
+- SHORT CREW deliberate confirmation;
+- stable assignment identity and historical stickiness;
+- season-only annual tasks and Work Order gates;
+- independent finder/board scrolling and responsive narrow-screen behavior.
+
+The protected Production route is live at the accepted SHA:
+
+```text
+8161e91384cb13587fa0c92da2f80f6cf770592d
+V0.3.14-scheduling-board
+```
+
+There is still **no real 2026 Setup Session**. The Scheduling Board is installed before annual launch so the Catalog can be finalized without seeding 2026 prematurely.
+
+### Final #145 review focus
+
+The final Catalog pass should validate **work steps and hard prerequisites**, not force every planning field to be perfect before verification.
+
+Validate now:
+
+- task represents real Setup work;
+- correct Park Infrastructure / Stage / real-Scene scope;
+- duplicate/obsolete/reconstruction-only or unnecessarily granular tasks removed/deactivated;
+- hard prerequisites correct.
+
+Planning details may be corrected before actual work from the Scheduling Board:
+
+- Crew guidance;
+- expected Time;
+- Effort;
+- Readiness;
+- Weather;
+- Completion Point.
+
+Conditions such as “Ensure grass cutting is complete before laying cords” belong in **Readiness**, not as synthetic tasks such as “City Approval to Lay Cords/Network.”
 
 ## Accepted Assignment / Kit Relationship Contract
 
@@ -166,7 +213,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The live application is pinned to the browser-accepted #204 candidate `052d31dd4e68e13f2997f723778b88eddf9c53cf`. The immediate source-only rollback point is `5040fa282410b729d93e58a8299e48e4ee214809`.
+The live application is pinned to the browser-accepted #205 candidate `8161e91384cb13587fa0c92da2f80f6cf770592d`. The immediate source-only rollback point for the V0.3.14 promotion is `052d31dd4e68e13f2997f723778b88eddf9c53cf`. Migration 050 rollback/recovery remains governed database work; do not casually restore the retained pre-050 archive while legitimate Production work continues.
 
 ## Resume Checklist
 
@@ -176,7 +223,7 @@ Before the next Setup change:
 2. read Project Rules and this engineering portal;
 3. read `Setup_Session_Production_Engineering_Handoff_2026-09-12.md`;
 4. read `Setup_Task_Supporting_Information_Contract_2026-09-11.md`;
-5. preserve accepted V0.3.7 through V0.3.13 plus #184/#167 inventory behavior/data;
+5. preserve accepted V0.3.7 through V0.3.14 plus #184/#167 inventory behavior/data;
 6. keep 2025 as the proving ground until the remaining launch gates pass;
 7. continue with `#145 FINAL -> #122`;
 8. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority; and
@@ -189,4 +236,7 @@ Before the next Setup change:
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Kit Inventory / T-Post Production Acceptance](../../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
 - [Setup Assignment Layer V0.3.13 Production Acceptance](../../../../../Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md)
-\n\n## #205 Scheduling Board\n\n- [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) — annual Day Number/DOW board, four crew lanes, season-only annual work, Work Order gates, historical assignment stickiness, and reusable-learning boundary.\n
+## #205 Scheduling Board
+
+- [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) — annual Day Number/DOW board, dynamic work-day crews, season-only annual work, Work Order gates, historical assignment stickiness, readiness, and reusable-learning boundary.
+- [Setup Scheduling Board V0.3.14 Production Acceptance — 2026-09-18](../../../../../Setup/Acceptance/Setup_Scheduling_Board_V0314_Production_Acceptance_2026-09-18.md)

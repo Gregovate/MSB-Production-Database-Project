@@ -103,3 +103,4 @@ Only after explicit operator acceptance switch to the Server Management `Product
 - `Setup_Extra_Material_Catalog_UOM_Production_Acceptance_2026-09-15.md` — #189 inline Extra Material catalog workflow plus #191 governed UOM catalog/migration 049.
 - `Setup_Extra_Material_Source_Containers_Production_Acceptance_2026-09-16.md` — #198 Manager expected-source Container maintenance, source-allocation audit, and Northern Lights 66-EA correction.
 - `Setup_Expected_Duration_Hours_Minutes_Production_Acceptance_2026-09-17.md` — #204 reusable expected duration Hours / Minutes UI with total-minute durable storage.
+- `Setup_Scheduling_Board_V0314_Production_Acceptance_2026-09-18.md` — #205 migration 050 + V0.3.14 rolling Scheduling Board/readiness Production acceptance and recovery closeout.
