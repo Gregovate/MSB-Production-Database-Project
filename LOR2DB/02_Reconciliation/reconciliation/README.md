@@ -11,8 +11,8 @@ installs objects, validates a change, or merely reports evidence.
 | Path | Contents | Execution rule |
 |---|---|---|
 | `current_procedures/` | Canonical standalone P1, P2, P3, and P4 definitions matching the latest accepted migration chain | Inspection or explicitly authorized repair only; these files do not call promotion |
-| `migrations/` | Immutable installation history `0011` through production `0041`; #186 adds candidate `0042` | Run only the specifically authorized next migration; never rerun the folder as a batch |
-| `validation/` | Production validation `10` through `36`; #186 adds candidate validation `37` | Follow each file's header; several are transaction-wrapped rollback tests |
+| `migrations/` | Immutable installation history `0011` through production `0042` | Run only the specifically authorized next migration; never rerun the folder as a batch |
+| `validation/` | Production validation `10` through `37` | Follow each file's header; several are transaction-wrapped rollback tests |
 | `acceptance/` | Feature-specific current-Production disposable-clone gates | Production database is `pg_dump + SELECT` only; all candidate writes occur in the disposable clone |
 | `operator_queries/preflight/` | Read-only latest-ingest reports `01` through `09` | Run individually; no operator-supplied `import_run_id` |
 | `incidents/` | Production incident report and its incident-specific forensic SQL | Historical evidence; not part of routine reconciliation |
@@ -92,7 +92,7 @@ is retained only as incident evidence. It is not step 8A of the normal workflow.
 
 ## Migration and validation status
 
-The **current Production-installed migration chain remains `0011` through `0041`**.
+The **current Production-installed migration chain is `0011` through `0042`**.
 
 Migration `0029` must be revision
 `2026-08-05-true-noop-reconciliation-writes-v4`; its corresponding validation
@@ -142,37 +142,46 @@ for the governed-root resolver. It grants `EXECUTE` only to `lor_preflight_app`,
 keeps `PUBLIC` revoked, and is paired with
 `validation/36_lor_preflight_governed_root_grant_validation.sql`, which exercises
 the actual Stage-review view under `SET LOCAL ROLE lor_preflight_app`.
+Migration `0042` decouples durable ingest provenance from disposable raw-snapshot
+lifetime and installs bounded retention planning, guarded administrative pruning,
+and fixed-policy automatic retention. It is paired with
+`validation/37_lor_snapshot_retention_validation.sql`. The default policy keeps
+the newest five completed snapshots plus every non-terminal reconciliation
+capture.
 
 Migrations 0039 through 0041 were production deployed and validated on 2026-08-30. See
 [Stage Root Authority and Path Synchronization](Stage_Root_Authority_and_Path_Synchronization.md)
 for the acceptance record, Run 18 recovery, and rollback artifacts.
 
-### Issue #186 candidate — not yet Production installed
+### Issue #186 bounded snapshot retention — Production installed
 
-Candidate migration
+Migration
 `migrations/0042_decouple_snapshot_provenance_and_add_retention.sql` separates
 logical ingest provenance from raw-snapshot lifetime and installs bounded
-retention planning/pruning objects. Installation does **not** prune data. It is
-paired with read-only
+retention planning/pruning objects. It is paired with
 `validation/37_lor_snapshot_retention_validation.sql`.
 
-Pre-Production destructive proof is owned by:
+The exact candidate `c536243f64ef17d37aadf56300a0932881cac579`
+passed current-Production disposable acceptance and browser review. The governed
+Production rollout completed on 2026-09-17: migration `0042` and validation `37`
+were installed, 54 historical raw snapshots were explicitly pruned, the retained
+working set became `{60,61,62,63,64}`, and logical dump size fell from
+`16737949` to `8061378` bytes (51.84% reduction). Backend V0.6.3, report
+framework V0.7.0, and browser frontend V0.5.4 were then activated and passed the
+public authenticated smoke check.
+
+Disposable proof remains owned by:
 
 ```text
 acceptance/run_lor_snapshot_retention_disposable_acceptance.ps1
 acceptance/lor_snapshot_retention_disposable_server.sh
 ```
 
-Those runners consume the `MSB-Server-Management` PostgreSQL Disposable
-Acceptance Standard: Production is `pg_dump + SELECT` only, and the migration,
-FK changes, destructive prune, stale-plan rejection, future-FK rejection,
-historical-report proof, idempotency, and dump-size comparison all execute only
-inside the isolated current-Production clone.
-
-The eventual Production procedure is
+The Production retention procedure and routine automatic-retention behavior are
+governed by
 [`../03_LOR_Snapshot_Retention_Runbook.md`](../03_LOR_Snapshot_Retention_Runbook.md).
-Do not call the Production prune procedure until #186 acceptance and the
-explicit Production deployment/rollback gate are complete.
+Implementation PR #203 merged as
+`0a8214a7cc03cb4ee018b719bba248a5c6ff573d`.
 
 Do not infer that a numbered validation is harmless from its filename alone.
 Read its header. In particular,
@@ -201,7 +210,7 @@ not an installation script.
 - Bounded snapshot retention must never advance provenance merely to make an old
   raw snapshot deletable.
 - Current-state and legacy-audit provenance values may intentionally outlive the
-  raw snapshot after #186 is accepted.
+  raw snapshot after it is pruned.
 - Snapshot pruning must use the reviewed retention plan + exact candidate array;
   an ad-hoc range delete is not an accepted retention procedure.
 - Numbered migrations are retained as audit history even when later migrations
