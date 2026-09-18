@@ -197,6 +197,10 @@ The system should not require operators to maintain a second independent physica
 
 Planning is expected to occur in advance, so the current Pick List should normally already represent the upcoming scheduled work.
 
+The preferred physical-readiness target is **the day before the scheduled work date**. For work scheduled on date D, #206 should normally derive a staged-by target of D-1 and distinguish whether the required material is merely picked, already in the park, or actually staged/ready for the work.
+
+This is an operational preference rather than a rigid calendar prohibition. Earlier staging is valid, later exceptions may be necessary, and schedule changes must never erase physical movement/staging facts that already occurred.
+
 ## Shift-Level Crew Availability — Baby-Step Model
 
 A work-day crew is a temporary scheduling lane, not a roster.
