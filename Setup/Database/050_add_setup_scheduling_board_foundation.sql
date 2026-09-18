@@ -758,7 +758,22 @@ BEGIN
     JOIN ops.setup_work_day wd
       ON wd.setup_work_day_id = wdt.setup_work_day_id
     WHERE wdt.setup_session_task_id = p_setup_session_task_id
-      AND wd.day_status <> 'CANCELLED';
+      AND wd.day_status <> 'CANCELLED'
+      AND wd.work_date >= current_date
+      AND wdt.actual_crew_count IS NULL
+      AND wdt.started_at IS NULL
+      AND wdt.completed_at IS NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM ops.setup_task_progress p
+          WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+             OR (
+                 p.setup_work_day_task_id IS NULL
+                 AND p.setup_work_day_id = wdt.setup_work_day_id
+                 AND p.setup_session_task_id = wdt.setup_session_task_id
+                 AND p.shift_code = wdt.shift_code
+             )
+      );
 
     UPDATE ops.setup_session_task st
        SET planned_date = v_next_date,
