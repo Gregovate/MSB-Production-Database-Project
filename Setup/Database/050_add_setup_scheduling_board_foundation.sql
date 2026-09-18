@@ -122,6 +122,7 @@ UPDATE ops.setup_session_task st
    SET annual_readiness_state = coalesce(
        st.annual_readiness_state,
        CASE
+           WHEN st.annual_task_action_type = 'GATE' THEN 'READY'
            WHEN nullif(btrim(st.annual_readiness_note), '') IS NULL THEN 'READY'
            WHEN st.execution_status = 'NOT_READY' THEN 'NOT_READY'
            ELSE 'READY'
@@ -263,6 +264,8 @@ BEGIN
         NEW.annual_readiness_state := coalesce(
             NEW.annual_readiness_state,
             CASE
+                WHEN coalesce(NEW.annual_task_action_type, v_task.task_action_type) = 'GATE'
+                    THEN 'READY'
                 WHEN nullif(btrim(coalesce(NEW.annual_readiness_note, v_task.readiness_note)), '') IS NULL
                     THEN 'READY'
                 ELSE 'NOT_READY'
@@ -275,6 +278,7 @@ BEGIN
         NEW.annual_readiness_state := coalesce(
             NEW.annual_readiness_state,
             CASE
+                WHEN NEW.annual_task_action_type = 'GATE' THEN 'READY'
                 WHEN nullif(btrim(NEW.annual_readiness_note), '') IS NULL THEN 'READY'
                 ELSE 'NOT_READY'
             END
