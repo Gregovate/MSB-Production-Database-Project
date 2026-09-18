@@ -31,6 +31,7 @@ DECLARE
     v_move_locked boolean := false;
     v_remove_locked boolean := false;
     v_day_number_conflict_blocked boolean := false;
+    v_am_plan_locked boolean := false;
     v_readiness_state text;
     v_season_name text := '[DISPOSABLE #205] Annual Work Order Gate';
     v_count integer;
@@ -511,6 +512,42 @@ BEGIN
           AND p.setup_work_day_task_id = v_a_morning
     ) THEN
         RAISE EXCEPTION 'Progress did not retain exact scheduled-assignment identity';
+    END IF;
+
+    /* AM actual work freezes the AM planned headcount, but PM remains editable
+       until PM actual work exists. */
+    PERFORM *
+    FROM ops.update_setup_work_day_crew(
+        v_admin_email,
+        v_day1_crew_a,
+        6,
+        5
+    );
+
+    IF NOT EXISTS (
+        SELECT 1 FROM ops.setup_work_day_crew
+        WHERE setup_work_day_crew_id = v_day1_crew_a
+          AND am_planned_crew_count = 6
+          AND pm_planned_crew_count = 5
+    ) THEN
+        RAISE EXCEPTION 'Future PM planned crew count did not remain editable after AM actual work';
+    END IF;
+
+    BEGIN
+        PERFORM *
+        FROM ops.update_setup_work_day_crew(
+            v_admin_email,
+            v_day1_crew_a,
+            7,
+            5
+        );
+    EXCEPTION
+        WHEN check_violation THEN
+            v_am_plan_locked := true;
+    END;
+
+    IF NOT v_am_plan_locked THEN
+        RAISE EXCEPTION 'AM planned crew count did not become historical after AM actual work';
     END IF;
 
     BEGIN
