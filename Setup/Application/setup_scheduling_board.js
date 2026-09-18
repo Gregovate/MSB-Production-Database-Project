@@ -662,15 +662,17 @@ function board205EndSort(dayId, shift, crewId) {
   return items.length ? Math.max(...items.map((item) => Number(item.sort_order) || 0)) + 10 : 10;
 }
 
+async 
 async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) {
   if (!dragged || !appState.access?.can_manage_setup) return;
   const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
   try {
     setBusy(true);
+    let task = null;
     if (dragged.kind === 'task') {
-      const task = board205Task(dragged.id);
+      task = board205Task(dragged.id);
       if (!task || task.effective_complete || task.task_action_type === 'GATE') return;
-      if (task.board_status === 'BLOCKED' && !window.confirm('This task has an incomplete annual prerequisite. Schedule it anyway?')) return;
+      if (task.board_status === 'BLOCKED' && !window.confirm(board205BlockedPrompt(task))) return;
       await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
         setup_work_day_id: dayId,
         setup_session_task_id: task.setup_session_task_id,
@@ -681,6 +683,8 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
     } else if (dragged.kind === 'assignment') {
       const item = board205Assignment(dragged.id);
       if (!item || item.historical_locked) return;
+      task = board205Task(item.setup_session_task_id);
+      if (task?.board_status === 'BLOCKED' && !window.confirm(board205BlockedPrompt(task))) return;
       await api(`api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`, commandOptions('PATCH', {
         setup_work_day_id: dayId,
         shift_code: shift,
@@ -688,6 +692,7 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
         sort_order: sortOrder
       }));
     }
+    if (task) await board205MaybeLearnCaptainForTask(task, crewId);
     await board205Load();
   } catch (error) {
     setAlert(error.message || error, 'error');
@@ -824,6 +829,7 @@ function board205OpenScheduleDialog(target) {
   dialog.showModal();
 }
 
+async 
 async function board205SubmitScheduleDialog(event) {
   event.preventDefault();
   const target = setupBoard205State.scheduleTarget;
@@ -836,7 +842,7 @@ async function board205SubmitScheduleDialog(event) {
   const task = target.kind === 'task'
     ? board205Task(target.id)
     : board205Task(board205Assignment(target.id)?.setup_session_task_id);
-  if (task?.board_status === 'BLOCKED' && !window.confirm('This task has an incomplete annual prerequisite. Schedule it anyway?')) return;
+  if (task?.board_status === 'BLOCKED' && !window.confirm(board205BlockedPrompt(task))) return;
 
   try {
     setBusy(true);
@@ -857,6 +863,7 @@ async function board205SubmitScheduleDialog(event) {
         sort_order: sortOrder
       }));
     }
+    if (task) await board205MaybeLearnCaptainForTask(task, crewId);
     document.getElementById('setup-board205-schedule-dialog').close();
     await board205Load();
   } catch (error) {
