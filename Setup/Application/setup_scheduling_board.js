@@ -182,6 +182,8 @@ function board205QueueTasks() {
           task.stage_key,
           task.stage_name,
           task.scene_name,
+          task.readiness_note,
+          task.resource_summary,
           task.linked_work_order_id ? `WO ${task.linked_work_order_id}` : ''
         ].filter(Boolean).join(' ').toLowerCase();
         if (!haystack.includes(search)) return false;
@@ -940,7 +942,7 @@ function board205InstallView() {
               <option value="COMPLETE">Complete</option>
               <option value="ALL">All annual work</option>
             </select></label>
-            <label class="setup-board205-search">Task<input id="setup-board205-task-search" type="search" placeholder="Name, Stage, Scene, WO"></label>
+            <label class="setup-board205-search">Task<input id="setup-board205-task-search" type="search" placeholder="Name, Stage, Scene, readiness, resource, WO"></label>
             <label>Time ≤ hrs<input id="setup-board205-time-filter" type="number" min="0" step="0.25" placeholder="Any"></label>
             <label>Min crew ≤<input id="setup-board205-crew-filter" type="number" min="1" step="1" placeholder="Any"></label>
             <label>Effort<select id="setup-board205-effort-filter">
