@@ -89,7 +89,7 @@
 
 .setup-board205-numeric-filter > span {
   display: grid;
-  grid-template-columns: 3.1rem minmax(5.5rem, 1fr);
+  grid-template-columns: 4.5rem minmax(5.5rem, 1fr);
   gap: 0.25rem;
 }
 
@@ -97,6 +97,12 @@
 .setup-board205-numeric-filter input {
   width: 100%;
   min-width: 0;
+}
+
+.setup-board205-numeric-filter select {
+  padding-left: 0.5rem;
+  padding-right: 1.5rem;
+  text-align: center;
 }
 
 .setup-board205-finder input,
