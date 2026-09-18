@@ -354,6 +354,7 @@ function board205AssignmentsFor(dayId, shift, crewId) {
 }
 
 
+
 function board205AssignmentCard(item) {
   const task = board205Task(item.setup_session_task_id) || item;
   const crew = board205CrewRow(item.setup_work_day_crew_id);
@@ -362,21 +363,24 @@ function board205AssignmentCard(item) {
   const planned = board205PlannedCrewForShift(crew, item.shift_code);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const understaffed = planned != null && minCrew != null && planned < minCrew;
+  const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
   return `
-    <article class="setup-board205-assignment ${locked ? 'locked' : ''}"
+    <article class="setup-board205-assignment ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
       data-assignment-id="${item.setup_work_day_task_id}"
       draggable="${canManage && !locked ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
         <span>${board205Esc(item.task_name)}</span>
         ${task.task_origin === 'SEASON_ONLY' ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
+        ${understaffed ? '<span class="setup-board205-badge short-crew-badge">SHORT CREW</span>' : ''}
         ${board205WorkOrderBadge(task)}
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
+      <div class="setup-board205-meta"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
-      ${understaffed ? `<div class="setup-board205-warning">⚠ Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} crew is ${board205Esc(planned)}; task minimum is ${board205Esc(minCrew)}.</div>` : ''}
+      ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? '<div class="setup-board205-warning">⚠ HEAVY work follows HEAVY work for this crew.</div>' : ''}
       ${locked ? '<div class="setup-board205-lock">Historical actual — locked</div>' : ''}
       ${canManage && !locked ? `
@@ -384,11 +388,11 @@ function board205AssignmentCard(item) {
           <button type="button" class="small secondary setup-board205-up">↑</button>
           <button type="button" class="small secondary setup-board205-down">↓</button>
           <button type="button" class="small secondary setup-board205-move">Move…</button>
+          ${!task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Info</button>' : ''}
           <button type="button" class="small secondary setup-board205-remove">Remove</button>
         </div>` : ''}
     </article>`;
 }
-
 
 function board205Cell(day, shift, crew) {
   const items = board205AssignmentsFor(day.setup_work_day_id, shift, crew.setup_work_day_crew_id);
