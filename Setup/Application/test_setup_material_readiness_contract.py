@@ -52,6 +52,7 @@ def test_readiness_keeps_unverified_or_unsourced_extra_material_visible() -> Non
     repo = read("setup_material_readiness_repository.py")
     assert "Required Extra Material has no active expected-source Container." in repo
     assert "Extra Material requirement is not VERIFIED for Pick List use." in repo
+    assert "Expected-source Container is not VERIFIED for Pick List use." in repo
 
 
 def test_projection_implements_d_minus_one_and_reason_preservation() -> None:
