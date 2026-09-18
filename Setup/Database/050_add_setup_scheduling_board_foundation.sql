@@ -129,7 +129,7 @@ UPDATE ops.setup_session_task st
    );
 
 ALTER TABLE ops.setup_session_task
-    ALTER COLUMN annual_readiness_state SET DEFAULT 'READY',
+    ALTER COLUMN annual_readiness_state DROP DEFAULT,
     ALTER COLUMN annual_readiness_state SET NOT NULL;
 
 ALTER TABLE ops.setup_session_task
