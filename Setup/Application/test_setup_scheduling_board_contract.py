@@ -6,6 +6,7 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 DB_DIR = SETUP_DIR / "Database"
+ACCEPTANCE_DIR = SETUP_DIR / "Acceptance"
 
 
 def read_app(name: str) -> str:
@@ -14,6 +15,10 @@ def read_app(name: str) -> str:
 
 def read_db(name: str) -> str:
     return (DB_DIR / name).read_text(encoding="utf-8")
+
+
+def read_acceptance(name: str) -> str:
+    return (ACCEPTANCE_DIR / name).read_text(encoding="utf-8")
 
 
 def test_205_migration_separates_reusable_and_season_only_annual_work() -> None:
@@ -99,6 +104,7 @@ def test_205_work_day_crews_are_dynamic_and_shift_specific() -> None:
         "crew_code text NOT NULL",
         "am_planned_crew_count integer",
         "pm_planned_crew_count integer",
+        "captain_person_id integer",
         "ops.add_setup_work_day_crew",
         "ops.update_setup_work_day_crew",
         "ops.remove_setup_work_day_crew",
@@ -116,6 +122,8 @@ def test_205_work_day_crews_are_dynamic_and_shift_specific() -> None:
     assert "+ Add Crew" in ui
     assert "am_planned_crew_count" in ui
     assert "pm_planned_crew_count" in ui
+    assert "setup-board205-crew-captain-select" in ui
+    assert "preserve the Crew Captain as history" in sql
     assert "preserve the planned AM crew count as history" in sql
     assert "preserve the planned PM crew count as history" in sql
 
@@ -132,6 +140,10 @@ def test_205_work_day_number_is_persisted_and_dow_is_derived() -> None:
     assert "Saturday · typically stronger volunteer turnout" in ui
     assert "Sunday · avoid scheduling unless deliberately needed" in ui
     assert "Setup Day %s is already assigned to %s" in sql
+    assert "CREATE OR REPLACE FUNCTION ops.resequence_setup_future_work_days" in sql
+    assert "ORDER BY wd.work_date, wd.setup_day_number" in repo
+    assert "setup-board205-day-number" not in ui
+    assert "Setup Day # is assigned automatically in chronological order." in ui
 
 
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
@@ -176,6 +188,7 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "task.effort_level" in ui
     assert "Available Now / Needs Continuation" in ui
     assert "Outstanding / Blocked" in ui
+    assert "task.stage_name" in ui
 
 
 def test_205_heavy_work_is_warning_not_prohibition() -> None:
@@ -209,6 +222,52 @@ def test_205_readiness_is_annual_state_separate_from_hard_predecessors() -> None
     assert "Mark Not Ready" in ui
     assert "Hard predecessor(s)" in ui
     assert "Readiness not met" in ui
+
+
+def test_205_crew_captain_is_optional_and_can_build_reusable_knowledge() -> None:
+    sql = read_db("050_add_setup_scheduling_board_foundation.sql")
+    repo = read_app("setup_scheduling_board_repository.py")
+    api = read_app("setup_scheduling_board_api.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "captain_person_id integer" in sql
+    assert "ops.add_setup_crew_captain_to_reusable_task" in sql
+    assert "ref.set_setup_task_captain" in sql
+    assert "ref.setup_captain_person_list()" in repo
+    assert '"captain_candidates": captain_candidates' in repo
+    assert "/crew-captain/" in api and "/promote" in api
+    assert "setup-board205-crew-captain-select" in ui
+    assert "Existing Captains will remain" in ui
+    assert "Crew Captain:" in ui
+
+
+def test_205_scheduler_can_correct_planning_info_before_execution() -> None:
+    sql = read_db("050_add_setup_scheduling_board_foundation.sql")
+    api = read_app("setup_scheduling_board_api.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "ops.update_setup_scheduling_task_planning_info" in sql
+    assert "Actual work exists for this annual task; planning information is historical" in sql
+    assert "/planning-info" in api
+    assert "Edit Planning Info" in ui
+    assert "Updates reusable task knowledge and refreshes this annual snapshot." in ui
+    assert "Readiness condition" in ui
+
+
+def test_205_short_crew_warning_is_prominent_but_not_blocking() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+    assert "SHORT CREW" in ui
+    assert "short by" in ui
+    assert "setup-board205-short-crew-warning" in ui
+    assert ".setup-board205-short-crew-warning" in css
+    assert "window.confirm('SHORT CREW" not in ui
+
+
+def test_205_browser_fixture_preserves_real_readiness_state() -> None:
+    fixture = read_acceptance("setup_205_scheduling_board_browser_fixture.sql")
+    assert "SET annual_readiness_state = 'READY'" not in fixture
+    assert "Preserve annual readiness exactly as seeded" in fixture
 
 
 def test_205_board_exposes_required_candidate_states() -> None:
@@ -248,6 +307,8 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
         "/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>",
         "/api/setup/scheduling-board/season-tasks",
         "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/readiness",
+        "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/planning-info",
+        "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/crew-captain/",
     ):
         assert route in api
     assert "require_reader()" in api
@@ -282,8 +343,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-18.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-18.1" in html
+    assert "setup_scheduling_board.css?v=2026-09-18.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-18.2" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
