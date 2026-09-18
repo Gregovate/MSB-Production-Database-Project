@@ -17,6 +17,14 @@ DECLARE
     v_day1 bigint;
     v_day2 bigint;
     v_day3 bigint;
+    v_day1_crew_a bigint;
+    v_day2_crew_a bigint;
+    v_day2_crew_b bigint;
+    v_day3_crew_a bigint;
+    v_day3_crew_b bigint;
+    v_day3_crew_c bigint;
+    v_day3_crew_d bigint;
+    v_day3_crew_e bigint;
     v_frame bigint;
     v_skins bigint;
     v_lights bigint;
@@ -119,6 +127,7 @@ BEGIN
         NULL,
         NULL,
         NULL,
+        NULL,
         'Work Order 372 completed before skins are installed.',
         'Repair stop after frame erection and before skins.',
         NULL,
@@ -137,6 +146,7 @@ BEGIN
         (SELECT annual_lor_scene_id FROM ops.setup_session_task WHERE setup_session_task_id = v_skins),
         'GATE',
         (SELECT planned_order + 1 FROM ops.setup_session_task WHERE setup_session_task_id = v_skins),
+        NULL,
         NULL,
         NULL,
         NULL,
@@ -211,7 +221,37 @@ BEGIN
         'Day 3 intentionally skips calendar dates; Day Number counts MSB Setup work days.'
     );
 
-    /* Stack three representative Locate tasks into Crew A / Morning. */
+    /* Each work day starts with Crew A. Add only the crews needed that day. */
+    SELECT setup_work_day_crew_id INTO v_day1_crew_a
+    FROM ops.setup_work_day_crew
+    WHERE setup_work_day_id = v_day1 AND crew_number = 1;
+
+    SELECT setup_work_day_crew_id INTO v_day2_crew_a
+    FROM ops.setup_work_day_crew
+    WHERE setup_work_day_id = v_day2 AND crew_number = 1;
+
+    SELECT setup_work_day_crew_id INTO v_day3_crew_a
+    FROM ops.setup_work_day_crew
+    WHERE setup_work_day_id = v_day3 AND crew_number = 1;
+
+    SELECT setup_work_day_crew_id INTO v_day2_crew_b
+    FROM ops.add_setup_work_day_crew(v_manager_email, v_day2);
+
+    SELECT setup_work_day_crew_id INTO v_day3_crew_b
+    FROM ops.add_setup_work_day_crew(v_manager_email, v_day3);
+    SELECT setup_work_day_crew_id INTO v_day3_crew_c
+    FROM ops.add_setup_work_day_crew(v_manager_email, v_day3);
+    SELECT setup_work_day_crew_id INTO v_day3_crew_d
+    FROM ops.add_setup_work_day_crew(v_manager_email, v_day3);
+    SELECT setup_work_day_crew_id INTO v_day3_crew_e
+    FROM ops.add_setup_work_day_crew(v_manager_email, v_day3);
+
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day1_crew_a, 6, 4);
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day2_crew_a, 4, 3);
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day2_crew_b, 3, 5);
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day3_crew_a, 6, 5);
+
+    /* Stack three representative Locate tasks into Day 1 Crew A / Morning. */
     FOR v_task IN
         SELECT st.setup_session_task_id
         FROM ops.setup_session_task st
@@ -228,14 +268,13 @@ BEGIN
             v_day1,
             v_task,
             'MORNING',
-            'A',
-            v_sort,
-            NULL
+            v_day1_crew_a,
+            v_sort
         );
         v_sort := v_sort + 10;
     END LOOP;
 
-    /* Put one additional task on Crew D to prove the fourth lane. */
+    /* Day 2 has two crews; place one task on Crew B / Afternoon. */
     SELECT st.setup_session_task_id
       INTO v_task
     FROM ops.setup_session_task st
@@ -257,11 +296,12 @@ BEGIN
             v_day2,
             v_task,
             'AFTERNOON',
-            'D',
-            10,
-            NULL
+            v_day2_crew_b,
+            10
         );
     END IF;
+
+    /* Day 3 intentionally has five available crew lanes but no obligation to use all of them. */
 
     RAISE NOTICE
         'DISPOSABLE #205 BROWSER FIXTURE READY session=% day1=% day2=% day3=% gate372=% gate156=%',
@@ -275,12 +315,15 @@ SELECT
     ss.session_status,
     count(DISTINCT st.setup_session_task_id) AS annual_tasks,
     count(DISTINCT wd.setup_work_day_id) AS work_days,
+    count(DISTINCT c.setup_work_day_crew_id) AS work_day_crews,
     count(DISTINCT wdt.setup_work_day_task_id) AS assignments
 FROM ops.setup_session ss
 LEFT JOIN ops.setup_session_task st
   ON st.setup_session_id = ss.setup_session_id
 LEFT JOIN ops.setup_work_day wd
   ON wd.setup_session_id = ss.setup_session_id
+LEFT JOIN ops.setup_work_day_crew c
+  ON c.setup_work_day_id = wd.setup_work_day_id
 LEFT JOIN ops.setup_work_day_task wdt
   ON wdt.setup_work_day_id = wd.setup_work_day_id
 WHERE ss.season_year = 2026
