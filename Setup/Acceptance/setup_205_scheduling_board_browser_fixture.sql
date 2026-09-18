@@ -33,7 +33,6 @@ DECLARE
     v_gate372 bigint;
     v_gate156 bigint;
     v_task bigint;
-    v_readiness_task bigint;
     v_stage_id integer;
     v_sort integer := 10;
 BEGIN
@@ -71,29 +70,8 @@ BEGIN
      WHERE st.setup_session_id = v_session_id
        AND st.execution_status = 'NOT_READY';
 
-    /* Disposable presentation state: most work is ready so the finder is useful,
-       but keep one real readiness-condition example blocked for operator review. */
-    UPDATE ops.setup_session_task st
-       SET annual_readiness_state = 'READY'
-     WHERE st.setup_session_id = v_session_id;
-
-    SELECT st.setup_session_task_id
-      INTO v_readiness_task
-    FROM ops.setup_session_task st
-    WHERE st.setup_session_id = v_session_id
-      AND nullif(btrim(st.annual_readiness_note), '') IS NOT NULL
-      AND st.task_origin = 'REUSABLE'
-    ORDER BY st.planned_order NULLS LAST, st.setup_session_task_id
-    LIMIT 1;
-
-    IF v_readiness_task IS NOT NULL THEN
-        PERFORM *
-        FROM ops.set_setup_annual_task_readiness(
-            v_manager_email,
-            v_readiness_task,
-            false
-        );
-    END IF;
+    /* Preserve annual readiness exactly as seeded from reusable readiness_note.
+       The browser fixture must not fabricate READY state for external conditions. */
 
     SELECT st.setup_session_task_id, st.annual_stage_id
       INTO v_frame, v_stage_id
