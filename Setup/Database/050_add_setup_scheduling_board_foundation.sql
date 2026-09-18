@@ -973,10 +973,27 @@ BEGIN
             MESSAGE = 'Setup work day was not found';
     END IF;
 
-    SELECT coalesce(max(c.crew_number), 0) + 1
+    SELECT candidate.crew_number
       INTO v_number
-    FROM ops.setup_work_day_crew c
-    WHERE c.setup_work_day_id = p_setup_work_day_id;
+    FROM generate_series(
+        1,
+        coalesce(
+            (
+                SELECT max(c.crew_number) + 1
+                FROM ops.setup_work_day_crew c
+                WHERE c.setup_work_day_id = p_setup_work_day_id
+            ),
+            1
+        )
+    ) AS candidate(crew_number)
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_work_day_crew existing
+        WHERE existing.setup_work_day_id = p_setup_work_day_id
+          AND existing.crew_number = candidate.crew_number
+    )
+    ORDER BY candidate.crew_number
+    LIMIT 1;
 
     v_code := ops.setup_crew_code(v_number);
     PERFORM pg_catalog.set_config('app.directus_user_uuid', v_directus_user_id::text, true);
