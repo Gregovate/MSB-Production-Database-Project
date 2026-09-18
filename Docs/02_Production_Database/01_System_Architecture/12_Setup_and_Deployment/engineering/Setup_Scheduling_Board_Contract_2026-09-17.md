@@ -557,7 +557,7 @@ Disposable acceptance must prove at minimum:
 10. the operator-facing board uses AM/PM rather than a dedicated All Day column while preserving legacy All Day history;
 11. the work finder supports Task / Time / minimum Crew / Effort and separates available work from blocked/outstanding work;
 12. reusable readiness conditions seed annual READY / NOT_READY state correctly and a Manager can toggle annual readiness without changing the reusable condition text;
-14. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
+13. same-crew HEAVY -> HEAVY is surfaced as an advisory warning only;
 14. future unworked assignments can move/reorder/remove;
 15. actual/progress evidence locks historical assignment identity;
 16. unfinished work can receive a later continuation assignment;
