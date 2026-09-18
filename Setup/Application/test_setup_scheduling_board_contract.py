@@ -27,6 +27,7 @@ def test_205_migration_separates_reusable_and_season_only_annual_work() -> None:
         "annual_lor_scene_id",
         "annual_expected_duration_minutes",
         "annual_effort_level",
+        "annual_readiness_state",
         "create_setup_season_task",
         "update_setup_annual_task_definition",
     ):
@@ -147,6 +148,24 @@ def test_205_heavy_work_is_warning_not_prohibition() -> None:
     assert "window.confirm('HEAVY" not in ui
 
 
+def test_205_readiness_is_annual_state_separate_from_hard_predecessors() -> None:
+    sql = read_db("050_add_setup_scheduling_board_foundation.sql")
+    repo = read_app("setup_scheduling_board_repository.py")
+    api = read_app("setup_scheduling_board_api.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "annual_readiness_state" in sql
+    assert "annual_readiness_state IN ('READY','NOT_READY')" in sql
+    assert "ops.set_setup_annual_task_readiness" in sql
+    assert "st.annual_readiness_state = 'NOT_READY'" in repo
+    assert "st.execution_status = 'NOT_READY'" not in repo.split("AS board_status", 1)[0]
+    assert "/readiness" in api
+    assert "Mark Ready" in ui
+    assert "Mark Not Ready" in ui
+    assert "Hard predecessor(s)" in ui
+    assert "Readiness not met" in ui
+
+
 def test_205_board_exposes_required_candidate_states() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
     ui = read_app("setup_scheduling_board.js")
@@ -182,6 +201,7 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
         "/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews",
         "/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>",
         "/api/setup/scheduling-board/season-tasks",
+        "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/readiness",
     ):
         assert route in api
     assert "require_reader()" in api
