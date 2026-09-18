@@ -1046,7 +1046,8 @@ ALTER TABLE ops.setup_work_day_task
     DROP CONSTRAINT IF EXISTS ck_setup_work_day_task_crew_lane;
 ALTER TABLE ops.setup_work_day_task
     ADD CONSTRAINT ck_setup_work_day_task_crew_lane CHECK (
-        crew_lane ~ '^[A-Z]+
+        crew_lane ~ '^[A-Z]+$'
+    );
 
 ALTER TABLE ops.setup_task_progress
     ADD COLUMN IF NOT EXISTS setup_work_day_task_id bigint;
