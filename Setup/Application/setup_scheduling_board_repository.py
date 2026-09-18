@@ -140,6 +140,7 @@ class SetupSchedulingBoardRepository:
                     st.annual_effort_level AS effort_level,
                     st.annual_completion_point AS completion_point,
                     st.annual_readiness_note AS readiness_note,
+                    st.annual_readiness_state AS readiness_state,
                     st.annual_weather_note AS weather_note,
                     rt.baseline_plan_order,
                     rt.active_flag AS reusable_active_flag,
@@ -180,12 +181,12 @@ class SetupSchedulingBoardRepository:
                             THEN 'DEFERRED'
                         WHEN coalesce(dep.prerequisites_complete, true) IS NOT TRUE
                             THEN 'BLOCKED'
+                        WHEN st.annual_readiness_state = 'NOT_READY'
+                            THEN 'BLOCKED'
                         WHEN st.linked_work_order_gate
                              AND st.linked_work_order_id IS NOT NULL
                              AND wo.date_completed IS NULL
                             THEN 'WAITING_ON_WORK_ORDER'
-                        WHEN st.execution_status = 'NOT_READY'
-                            THEN 'BLOCKED'
                         WHEN st.execution_status = 'IN_PROGRESS'
                              AND coalesce(sched.future_assignment_count, 0) = 0
                             THEN 'NEEDS_SCHEDULING_AGAIN'
@@ -722,6 +723,22 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Annual Setup task update returned no result")
+            conn.commit()
+            return result
+
+    def set_readiness(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+        ready: bool,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.set_setup_annual_task_readiness(%s,%s,%s)",
+                (email, session_task_id, ready),
+            )
+            result = self._one(cur, "Annual Setup readiness command returned no result")
             conn.commit()
             return result
 
