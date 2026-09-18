@@ -905,6 +905,65 @@ async function board205AddWorkDay(event) {
   }
 }
 
+
+function board205OpenPlanningInfoDialog(sessionTaskId) {
+  const task = board205Task(sessionTaskId);
+  const dialog = document.getElementById('setup-board205-planning-dialog');
+  const form = document.getElementById('setup-board205-planning-form');
+  if (!task || !dialog || !form) return;
+
+  setupBoard205State.editPlanningTaskId = sessionTaskId;
+  form.reset();
+  document.getElementById('setup-board205-planning-heading').textContent = `Edit Planning Info — ${task.task_name}`;
+  document.getElementById('setup-board205-planning-origin').textContent = task.task_origin === 'REUSABLE'
+    ? 'Updates reusable task knowledge and refreshes this annual snapshot.'
+    : 'Updates this season-only annual task only.';
+  document.getElementById('setup-board205-planning-crew-min').value = task.normal_crew_min ?? '';
+  document.getElementById('setup-board205-planning-crew-max').value = task.normal_crew_max ?? '';
+  const total = Number(task.expected_duration_minutes || 0);
+  document.getElementById('setup-board205-planning-hours').value = total ? Math.floor(total / 60) : '';
+  document.getElementById('setup-board205-planning-minutes').value = total ? total % 60 : '';
+  document.getElementById('setup-board205-planning-effort').value = task.effort_level || '';
+  document.getElementById('setup-board205-planning-readiness').value = task.readiness_note || '';
+  document.getElementById('setup-board205-planning-weather').value = task.weather_note || '';
+  document.getElementById('setup-board205-planning-completion').value = task.completion_point || '';
+  dialog.showModal();
+}
+
+function board205PlanningMinutes() {
+  const hours = nullableInteger(document.getElementById('setup-board205-planning-hours').value) || 0;
+  const minutes = nullableInteger(document.getElementById('setup-board205-planning-minutes').value) || 0;
+  const total = hours * 60 + minutes;
+  return total > 0 ? total : null;
+}
+
+async function board205SubmitPlanningInfo(event) {
+  event.preventDefault();
+  const sessionTaskId = setupBoard205State.editPlanningTaskId;
+  if (!sessionTaskId) return;
+
+  try {
+    setBusy(true);
+    await api(`api/setup/scheduling-board/season-tasks/${sessionTaskId}/planning-info`, commandOptions('PATCH', {
+      normal_crew_min: nullableInteger(document.getElementById('setup-board205-planning-crew-min').value),
+      normal_crew_max: nullableInteger(document.getElementById('setup-board205-planning-crew-max').value),
+      expected_duration_minutes: board205PlanningMinutes(),
+      effort_level: document.getElementById('setup-board205-planning-effort').value || null,
+      readiness_note: document.getElementById('setup-board205-planning-readiness').value.trim() || null,
+      weather_note: document.getElementById('setup-board205-planning-weather').value.trim() || null,
+      completion_point: document.getElementById('setup-board205-planning-completion').value.trim() || null
+    }));
+    document.getElementById('setup-board205-planning-dialog').close();
+    await board205Load();
+    setAlert('Scheduling planning information updated.', 'ok');
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 function board205OpenSeasonTaskDialog(sessionTaskId = null) {
   const dialog = document.getElementById('setup-board205-season-dialog');
   const form = document.getElementById('setup-board205-season-form');
