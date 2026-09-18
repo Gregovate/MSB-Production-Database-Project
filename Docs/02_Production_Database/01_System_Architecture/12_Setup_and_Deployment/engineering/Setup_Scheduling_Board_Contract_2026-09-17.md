@@ -112,10 +112,10 @@ The annual work finder must therefore support planning by:
 
 - **Task / Name**;
 - **Time** — expected duration/time requirement;
-- **Crew** — normal crew requirement/range; and
-- **Effort** — the governed Setup task effort measure.
+- **Crew** — minimum crew size (`normal_crew_min` / annual snapshot equivalent); and
+- **Effort** — physical effort level (`LIGHT`, `MODERATE`, or `HEAVY`).
 
-This is not merely a free-text task-name search. The scheduler must be able to sort/filter/select work using the available time, crew capacity, and effort characteristics of the task.
+This is not merely a free-text task-name search. The scheduler must be able to sort/filter/select work using the available time, **minimum crew size**, and physical-effort characteristics of the task. The full normal crew range may still be displayed as context, but the Crew selector itself is keyed to the minimum crew requirement.
 
 Stage/Scene and annual Work Order context may be exposed as supplemental search/filter context, but they do not replace the original Task / Time / Crew / Effort selector.
 
