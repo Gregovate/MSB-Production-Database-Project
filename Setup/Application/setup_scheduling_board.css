@@ -302,6 +302,19 @@
   font-weight: 750;
 }
 
+.setup-board205-readiness {
+  margin-top: 0.35rem;
+  padding: 0.38rem 0.48rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.setup-board205-readiness.not-ready {
+  font-weight: 800;
+  border-style: double;
+}
+
 .setup-board205-badge.effort-heavy {
   border-style: double;
 }
