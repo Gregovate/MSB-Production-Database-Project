@@ -249,10 +249,10 @@ BEGIN
     SELECT setup_work_day_crew_id INTO v_day3_crew_e
     FROM ops.add_setup_work_day_crew(v_manager_email, v_day3);
 
-    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day1_crew_a, 6, 4);
-    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day2_crew_a, 4, 3);
-    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day2_crew_b, 3, 5);
-    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day3_crew_a, 6, 5);
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day1_crew_a, 6, 4, NULL);
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day2_crew_a, 4, 3, NULL);
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day2_crew_b, 3, 5, NULL);
+    PERFORM * FROM ops.update_setup_work_day_crew(v_manager_email, v_day3_crew_a, 6, 5, NULL);
 
     /* Stack three representative Locate tasks into Day 1 Crew A / Morning. */
     FOR v_task IN
