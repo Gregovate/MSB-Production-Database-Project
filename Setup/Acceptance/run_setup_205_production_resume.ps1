@@ -67,7 +67,7 @@ try {
     New-Item -ItemType Directory -Path $localBundle -Force | Out-Null
 
     $serverText = [System.IO.File]::ReadAllText($ServerScript)
-    $serverText = $serverText.Replace([char]13 + [char]10, [char]10).Replace([char]13, [char]10)
+    $serverText = $serverText.Replace("`r`n", "`n").Replace("`r", "`n")
     $localServer = Join-Path $localBundle 'setup_205_production_resume_server.sh'
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
