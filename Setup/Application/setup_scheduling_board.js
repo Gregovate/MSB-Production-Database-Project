@@ -312,9 +312,11 @@ function board205TaskCard(task) {
 function board205QueueTasks() {
   const mode = document.getElementById('setup-board205-view-mode')?.value || 'AVAILABLE';
   const search = (document.getElementById('setup-board205-task-search')?.value || '').trim().toLowerCase();
-  const maxHours = Number(document.getElementById('setup-board205-time-filter')?.value || 0);
-  const maxMinutes = maxHours > 0 ? maxHours * 60 : null;
-  const maxCrew = Number(document.getElementById('setup-board205-crew-filter')?.value || 0);
+  const hoursValue = Number(document.getElementById('setup-board205-time-filter')?.value || 0);
+  const minutesValue = hoursValue > 0 ? hoursValue * 60 : null;
+  const timeOp = document.getElementById('setup-board205-time-op')?.value || 'LTE';
+  const crewValue = Number(document.getElementById('setup-board205-crew-filter')?.value || 0);
+  const crewOp = document.getElementById('setup-board205-crew-op')?.value || 'LTE';
   const effort = document.getElementById('setup-board205-effort-filter')?.value || '';
 
   const modes = {
@@ -341,11 +343,15 @@ function board205QueueTasks() {
         ].filter(Boolean).join(' ').toLowerCase();
         if (!haystack.includes(search)) return false;
       }
-      if (maxMinutes != null) {
-        if (task.expected_duration_minutes == null || Number(task.expected_duration_minutes) > maxMinutes) return false;
+      if (minutesValue != null) {
+        if (task.expected_duration_minutes == null) return false;
+        const duration = Number(task.expected_duration_minutes);
+        if (timeOp === 'GTE' ? duration < minutesValue : duration > minutesValue) return false;
       }
-      if (maxCrew > 0) {
-        if (task.normal_crew_min == null || Number(task.normal_crew_min) > maxCrew) return false;
+      if (crewValue > 0) {
+        if (task.normal_crew_min == null) return false;
+        const crewMin = Number(task.normal_crew_min);
+        if (crewOp === 'GTE' ? crewMin < crewValue : crewMin > crewValue) return false;
       }
       if (effort && String(task.effort_level || '').toUpperCase() !== effort) return false;
       return true;
@@ -1195,8 +1201,12 @@ function board205InstallView() {
               <option value="ALL">All annual work</option>
             </select></label>
             <label class="setup-board205-search">Task<input id="setup-board205-task-search" type="search" placeholder="Name, Stage, Scene, readiness, resource, WO"></label>
-            <label>Time ≤ hrs<input id="setup-board205-time-filter" type="number" min="0" step="0.25" placeholder="Any"></label>
-            <label>Min crew ≤<input id="setup-board205-crew-filter" type="number" min="1" step="1" placeholder="Any"></label>
+            <label class="setup-board205-numeric-filter">Time
+              <span><select id="setup-board205-time-op" aria-label="Time comparator"><option value="LTE">≤</option><option value="GTE">≥</option></select><input id="setup-board205-time-filter" type="number" min="0" step="0.25" placeholder="Any" aria-label="Time hours"></span>
+            </label>
+            <label class="setup-board205-numeric-filter">Min crew
+              <span><select id="setup-board205-crew-op" aria-label="Crew comparator"><option value="LTE">≤</option><option value="GTE">≥</option></select><input id="setup-board205-crew-filter" type="number" min="1" step="1" placeholder="Any" aria-label="Minimum crew"></span>
+            </label>
             <label>Effort<select id="setup-board205-effort-filter">
               <option value="">Any</option>
               <option value="LIGHT">Light</option>
