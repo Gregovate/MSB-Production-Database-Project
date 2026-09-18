@@ -142,10 +142,11 @@ function board205TaskCard(task) {
       <div class="setup-board205-meta">${board205Esc(board205Scope(task))}</div>
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
-      <div class="setup-board205-meta">${board205Esc(depText)}</div>
-      ${task.readiness_note ? `<div class="setup-board205-meta"><strong>Readiness:</strong> ${board205Esc(task.readiness_note)}</div>` : ''}
+      <div class="setup-board205-meta"><strong>Hard predecessor(s):</strong> ${board205Esc(depText)}</div>
+      ${task.readiness_note ? `<div class="setup-board205-readiness ${task.readiness_state === 'NOT_READY' ? 'not-ready' : 'ready'}"><strong>Readiness:</strong> ${board205Esc(task.readiness_note)} · <strong>${board205Esc(task.readiness_state || 'READY')}</strong></div>` : ''}
       <div class="setup-board205-card-actions">
         ${canSchedule ? '<button type="button" class="small setup-board205-schedule-task">Schedule…</button>' : ''}
+        ${canManage && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
         ${canManage && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
         ${canManage ? `
           <button type="button" class="small secondary setup-board205-plan-up">Plan ↑</button>
@@ -227,6 +228,9 @@ function board205RenderQueue() {
     card.querySelector('.setup-board205-schedule-task')?.addEventListener('click', () => {
       board205OpenScheduleDialog({ kind: 'task', id: taskId });
     });
+    card.querySelector('.setup-board205-toggle-readiness')?.addEventListener('click', () => {
+      board205SetReadiness(task);
+    });
     card.querySelector('.setup-board205-edit-season-task')?.addEventListener('click', () => {
       board205OpenSeasonTaskDialog(taskId);
     });
@@ -271,6 +275,7 @@ function board205AssignmentCard(item) {
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
+      ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning">⚠ Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} crew is ${board205Esc(planned)}; task minimum is ${board205Esc(minCrew)}.</div>` : ''}
       ${heavyWarning ? '<div class="setup-board205-warning">⚠ HEAVY work follows HEAVY work for this crew.</div>' : ''}
       ${locked ? '<div class="setup-board205-lock">Historical actual — locked</div>' : ''}
@@ -467,6 +472,24 @@ async function board205Load() {
    the global function at click time, so this keeps the accepted tab shell. */
 loadNextSchedule = board205Load;
 
+
+async function board205SetReadiness(task) {
+  if (!task || !appState.access?.can_manage_setup) return;
+  const ready = task.readiness_state === 'NOT_READY';
+  try {
+    setBusy(true);
+    await api(`api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/readiness`, commandOptions('PATCH', {
+      ready
+    }));
+    await board205Load();
+    setAlert(ready ? 'Annual readiness marked Ready.' : 'Annual readiness marked Not Ready.', 'ok');
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
 
 async function board205AddCrew(dayId) {
   try {
