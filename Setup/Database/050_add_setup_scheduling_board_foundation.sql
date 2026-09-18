@@ -187,6 +187,17 @@ ALTER TABLE ops.setup_session_task
         linked_work_order_gate IS NOT TRUE OR linked_work_order_id IS NOT NULL
     );
 
+/* Scheduling needs only Work Order identity/problem/completion state. Do not
+   grant fieldwiring_app broad SELECT on the authoritative Work Order table. */
+CREATE OR REPLACE VIEW ops.setup_scheduling_work_order_gate AS
+SELECT wo.work_order_id,
+       wo.problem,
+       wo.date_completed
+FROM ops.work_order wo;
+
+REVOKE ALL ON ops.setup_scheduling_work_order_gate FROM PUBLIC;
+GRANT SELECT ON ops.setup_scheduling_work_order_gate TO fieldwiring_app;
+
 CREATE OR REPLACE FUNCTION ops.populate_setup_session_task_snapshot()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1146,6 +1157,7 @@ DECLARE
     v_session_id bigint;
     v_day_id bigint;
     v_day_number integer;
+    v_conflict_date date;
     v_status text := upper(btrim(coalesce(p_day_status, 'PLANNED')));
 BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
@@ -1170,6 +1182,25 @@ BEGIN
     END IF;
     IF p_setup_day_number IS NOT NULL AND p_setup_day_number <= 0 THEN
         RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'Setup Day Number must be greater than zero';
+    END IF;
+
+    IF p_setup_day_number IS NOT NULL THEN
+        SELECT wd.work_date
+          INTO v_conflict_date
+        FROM ops.setup_work_day wd
+        WHERE wd.setup_session_id = v_session_id
+          AND wd.setup_day_number = p_setup_day_number
+          AND wd.work_date <> p_work_date
+        LIMIT 1;
+
+        IF v_conflict_date IS NOT NULL THEN
+            RAISE EXCEPTION USING ERRCODE = '22023',
+                MESSAGE = format(
+                    'Setup Day %s is already assigned to %s',
+                    p_setup_day_number,
+                    v_conflict_date
+                );
+        END IF;
     END IF;
 
     SELECT wd.setup_work_day_id, wd.setup_day_number
