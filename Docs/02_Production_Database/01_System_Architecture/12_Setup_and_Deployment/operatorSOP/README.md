@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-15 |
+| Last Reviewed | 2026-09-17 |
 
 Use this area for plain-English instructions for working in the Setup application. Engineering, database, service, permission, and deployment details belong in [`../engineering/`](../engineering/README.md).
 
@@ -25,6 +25,14 @@ The 2025 review uses real Production data.
 
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md)
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
+
+## Reusable Crew / Expected Duration
+
+In reusable task detail, enter the normal expected duration using **Expected hrs** and **Expected mins (0–59)**. The minute field is only the remainder, so use `1 hr / 30 mins`, not `0 hr / 90 mins`.
+
+Existing durations load into Hours / Minutes automatically. Saving keeps the same durable expected-duration value. Leave both fields blank when the normal duration is genuinely unknown.
+
+Do not use this reusable expected duration to record actual elapsed work for one season.
 
 ## Display / Container Material
 

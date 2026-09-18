@@ -7,7 +7,7 @@
 | Task | Review and correct the 2025 Setup history and reusable Setup knowledge |
 | Audience | Authorized Setup reviewers and managers |
 | Status | CURRENT |
-| Last Reviewed | 2026-09-12 |
+| Last Reviewed | 2026-09-17 |
 
 Use the real 2025 Setup Session to preserve/correct 2025 history while improving reusable Setup knowledge before the 2026 Setup Session is created.
 
@@ -35,7 +35,13 @@ Display Ownership does not change LOR membership or the Display's current Contai
 
 Use **Kit Boxes** when a reusable task requires a physical Kit Box. Search the existing physical Kit Box list, assign the appropriate box, review assigned names/IDs, and remove a wrong assignment directly. The same Kit Box may support multiple reusable tasks.
 
-Expected Kit contents, Extra Materials, quantities/specifications, and source tracking are not yet live operator workflows.
+Expected Kit contents, Extra Materials, quantities/specifications, and expected source Containers are now live review workflows. Keep task requirement, expected source, expected Kit contents, and physical on-hand as separate facts.
+
+## Reusable Expected Duration
+
+When normal reusable duration is supported by the evidence, enter it with **Expected hrs** and **Expected mins (0–59)**. Existing stored durations are displayed in Hours / Minutes automatically. Leave both fields blank when the normal reusable duration is still unknown.
+
+This field is the reusable planning estimate. Do not copy a one-off 2025 elapsed time into it unless the evidence supports that as the normal reusable expectation.
 
 ## Other Review Work
 

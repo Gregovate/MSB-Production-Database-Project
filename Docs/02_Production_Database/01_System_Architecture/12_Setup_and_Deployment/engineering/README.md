@@ -5,9 +5,9 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — #184 durable inventory + #167 one-time reconstruction accepted in Production |
+| Status | CURRENT HANDOFF — #204 expected-duration UI accepted in Production; #145 Catalog review continues |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-15 |
+| Last Reviewed | 2026-09-17 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
@@ -15,18 +15,26 @@ Operator-facing instructions are separate under [`../operatorSOP/`](../operatorS
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 1e0e2d2c3ffbcafc2ffef2bb4a98c81d600e8b1b
+live /opt/msb-setup SHA = 052d31dd4e68e13f2997f723778b88eddf9c53cf
 version = V0.3.13-assignment-layer
 2025 Setup Session = HISTORICAL_VERIFICATION / SANDBOX
 2026 Setup Sessions = 0
 physical inventory events after reconstruction = 0
 ```
 
-Current protected Setup core fingerprint after #167 Production acceptance:
+Current governed Setup fingerprint captured immediately before/after the #204 source-only deployment:
 
 ```text
-adc431f96b5622e125bf44d96e3d7807
+7dd32f21ca9a455329de54e8799f01b5
 ```
+
+## Accepted Reusable Expected Duration UI — #204
+
+Managers now enter reusable expected duration as **Expected hrs** plus **Expected mins (0–59)** while the durable field remains `expected_duration_minutes`.
+
+Stored total minutes are split for operator review and recombined on save through the existing governed reusable-task PATCH / `ref.update_setup_task` path. Both controls blank preserve NULL/missing. The minute control is a remainder, not a second total-duration field. Annual `actual_duration_minutes` and #132 progress-report semantics are unchanged.
+
+Accepted runtime candidate: `052d31dd4e68e13f2997f723778b88eddf9c53cf`.
 
 ## Accepted Assignment / Kit Relationship Contract
 
@@ -136,6 +144,7 @@ V0.3.11 persistent active-task identity
 V0.3.13 Display ownership + physical Kit Box assignment
 #184     durable Extra Material / Kit Inventory / T-Post subsystem
 #167     accepted one-time reconstructed data now resident in #184 structures
+#204     reusable expected duration entered as Hours / Minutes; stored as total minutes
 ```
 
 Also preserve the Stage/Scene resolver, 2025 historical/sandbox boundary, current Display/Container authority, narrow governed write commands, existing analytics integration/privacy boundary, and no real 2026 Session until launch gates pass.
@@ -157,7 +166,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The live application remains at accepted data candidate `1e0e2d2...`. Later branch commits contain deployment harness corrections and documentation closeout only.
+The live application is pinned to the browser-accepted #204 candidate `052d31dd4e68e13f2997f723778b88eddf9c53cf`. The immediate source-only rollback point is `5040fa282410b729d93e58a8299e48e4ee214809`.
 
 ## Resume Checklist
 
