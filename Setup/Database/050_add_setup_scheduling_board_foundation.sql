@@ -97,6 +97,7 @@ ALTER TABLE ops.setup_session_task
     ADD COLUMN IF NOT EXISTS annual_effort_level text,
     ADD COLUMN IF NOT EXISTS annual_completion_point text,
     ADD COLUMN IF NOT EXISTS annual_readiness_note text,
+    ADD COLUMN IF NOT EXISTS annual_readiness_state text,
     ADD COLUMN IF NOT EXISTS annual_weather_note text,
     ADD COLUMN IF NOT EXISTS linked_work_order_id bigint,
     ADD COLUMN IF NOT EXISTS linked_work_order_gate boolean NOT NULL DEFAULT false;
@@ -116,6 +117,27 @@ UPDATE ops.setup_session_task st
        annual_weather_note = coalesce(st.annual_weather_note, t.weather_note)
 FROM ref.setup_task t
 WHERE t.setup_task_id = st.setup_task_id;
+
+UPDATE ops.setup_session_task st
+   SET annual_readiness_state = coalesce(
+       st.annual_readiness_state,
+       CASE
+           WHEN nullif(btrim(st.annual_readiness_note), '') IS NULL THEN 'READY'
+           WHEN st.execution_status = 'NOT_READY' THEN 'NOT_READY'
+           ELSE 'READY'
+       END
+   );
+
+ALTER TABLE ops.setup_session_task
+    ALTER COLUMN annual_readiness_state SET DEFAULT 'READY',
+    ALTER COLUMN annual_readiness_state SET NOT NULL;
+
+ALTER TABLE ops.setup_session_task
+    DROP CONSTRAINT IF EXISTS ck_setup_session_task_annual_readiness_state;
+ALTER TABLE ops.setup_session_task
+    ADD CONSTRAINT ck_setup_session_task_annual_readiness_state CHECK (
+        annual_readiness_state IN ('READY','NOT_READY')
+    );
 
 ALTER TABLE ops.setup_session_task
     DROP CONSTRAINT IF EXISTS ck_setup_session_task_origin;
@@ -238,10 +260,25 @@ BEGIN
         NEW.annual_effort_level := coalesce(NEW.annual_effort_level, v_task.effort_level);
         NEW.annual_completion_point := coalesce(NEW.annual_completion_point, v_task.completion_point);
         NEW.annual_readiness_note := coalesce(NEW.annual_readiness_note, v_task.readiness_note);
+        NEW.annual_readiness_state := coalesce(
+            NEW.annual_readiness_state,
+            CASE
+                WHEN nullif(btrim(coalesce(NEW.annual_readiness_note, v_task.readiness_note)), '') IS NULL
+                    THEN 'READY'
+                ELSE 'NOT_READY'
+            END
+        );
         NEW.annual_weather_note := coalesce(NEW.annual_weather_note, v_task.weather_note);
     ELSE
         NEW.task_origin := 'SEASON_ONLY';
         NEW.annual_task_action_type := coalesce(NEW.annual_task_action_type, 'WORK');
+        NEW.annual_readiness_state := coalesce(
+            NEW.annual_readiness_state,
+            CASE
+                WHEN nullif(btrim(NEW.annual_readiness_note), '') IS NULL THEN 'READY'
+                ELSE 'NOT_READY'
+            END
+        );
     END IF;
 
     RETURN NEW;
@@ -635,6 +672,49 @@ GRANT EXECUTE ON FUNCTION ops.update_setup_annual_task_definition(
     text,bigint,text,integer,bigint,text,integer,integer,integer,text,
     text,text,text,bigint,boolean,text
 ) TO fieldwiring_app;
+
+CREATE OR REPLACE FUNCTION ops.set_setup_annual_task_readiness(
+    p_email text,
+    p_setup_session_task_id bigint,
+    p_ready boolean
+)
+RETURNS TABLE (
+    setup_session_task_id bigint,
+    annual_readiness_state text,
+    operator_display_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ops, ref
+AS $function$
+DECLARE
+    v_directus_user_id uuid;
+    v_person_id integer;
+    v_display_name text;
+    v_state text := CASE WHEN coalesce(p_ready, false) THEN 'READY' ELSE 'NOT_READY' END;
+BEGIN
+    SELECT a.directus_user_id, a.person_id, a.display_name
+      INTO v_directus_user_id, v_person_id, v_display_name
+    FROM ref.setup_management_actor(p_email, false) a;
+
+    PERFORM pg_catalog.set_config('app.directus_user_uuid', v_directus_user_id::text, true);
+
+    UPDATE ops.setup_session_task st
+       SET annual_readiness_state = v_state
+     WHERE st.setup_session_task_id = p_setup_session_task_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'Annual Setup task was not found';
+    END IF;
+
+    RETURN QUERY
+    SELECT p_setup_session_task_id, v_state, v_display_name;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION ops.set_setup_annual_task_readiness(text,bigint,boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.set_setup_annual_task_readiness(text,bigint,boolean) TO fieldwiring_app;
 
 CREATE OR REPLACE FUNCTION ops.set_setup_session_task_dependency(
     p_email text,
@@ -1999,4 +2079,6 @@ SELECT
           AND column_name='setup_work_day_task_id'
     ) AS assignment_identity_ready,
     to_regprocedure('ops.create_setup_season_task(text,integer,text,integer,bigint,text,integer,integer,integer,integer,text,text,text,text,bigint,boolean,text)') IS NOT NULL
-        AS season_task_command_ready;
+        AS season_task_command_ready,
+    to_regprocedure('ops.set_setup_annual_task_readiness(text,bigint,boolean)') IS NOT NULL
+        AS readiness_command_ready;
