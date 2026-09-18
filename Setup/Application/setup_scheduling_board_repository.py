@@ -197,19 +197,19 @@ class SetupSchedulingBoardRepository:
                             THEN 'COMPLETE'
                         WHEN st.execution_status = 'DEFERRED'
                             THEN 'DEFERRED'
-                        WHEN coalesce(dep.prerequisites_complete, true) IS NOT TRUE
-                            THEN 'BLOCKED'
-                        WHEN st.annual_readiness_state = 'NOT_READY'
-                            THEN 'BLOCKED'
                         WHEN st.linked_work_order_gate
                              AND st.linked_work_order_id IS NOT NULL
                              AND wo.date_completed IS NULL
                             THEN 'WAITING_ON_WORK_ORDER'
+                        WHEN coalesce(sched.future_assignment_count, 0) > 0
+                            THEN 'SCHEDULED'
                         WHEN st.execution_status = 'IN_PROGRESS'
                              AND coalesce(sched.future_assignment_count, 0) = 0
                             THEN 'NEEDS_SCHEDULING_AGAIN'
-                        WHEN coalesce(sched.future_assignment_count, 0) > 0
-                            THEN 'SCHEDULED'
+                        WHEN coalesce(dep.prerequisites_complete, true) IS NOT TRUE
+                            THEN 'BLOCKED'
+                        WHEN st.annual_readiness_state = 'NOT_READY'
+                            THEN 'BLOCKED'
                         ELSE 'READY_TO_SCHEDULE'
                     END AS board_status
                 FROM ops.setup_session_task st
