@@ -183,6 +183,10 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "setup-board205-time-filter" in ui
     assert "setup-board205-crew-filter" in ui
     assert "setup-board205-effort-filter" in ui
+    assert "setup-board205-time-op" in ui
+    assert "setup-board205-crew-op" in ui
+    assert 'option value="LTE"' in ui
+    assert 'option value="GTE"' in ui
     assert "task.normal_crew_min" in ui
     assert "task.expected_duration_minutes" in ui
     assert "task.effort_level" in ui
@@ -191,10 +195,12 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "task.stage_name" in ui
 
 
-def test_205_heavy_work_is_warning_not_prohibition() -> None:
+def test_205_heavy_work_is_captain_aware_warning_not_prohibition() -> None:
     ui = read_app("setup_scheduling_board.js")
+    assert "HEAVY work follows HEAVY work for Captain" in ui
     assert "HEAVY work follows HEAVY work for this crew" in ui
     assert "board205HeavyWarning" in ui
+    assert "captain_person_id" in ui
     assert "window.confirm('HEAVY" not in ui
 
 
@@ -254,20 +260,60 @@ def test_205_scheduler_can_correct_planning_info_before_execution() -> None:
     assert "Readiness condition" in ui
 
 
-def test_205_short_crew_warning_is_prominent_but_not_blocking() -> None:
+def test_205_short_crew_requires_deliberate_confirmation_but_is_not_prohibited() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
     assert "SHORT CREW" in ui
     assert "short by" in ui
     assert "setup-board205-short-crew-warning" in ui
     assert ".setup-board205-short-crew-warning" in css
-    assert "window.confirm('SHORT CREW" not in ui
+    assert "board205ConfirmPlacement" in ui
+    assert "Schedule this task anyway?" in ui
 
 
 def test_205_browser_fixture_preserves_real_readiness_state() -> None:
     fixture = read_acceptance("setup_205_scheduling_board_browser_fixture.sql")
     assert "SET annual_readiness_state = 'READY'" not in fixture
     assert "Preserve annual readiness exactly as seeded" in fixture
+
+
+def test_205_scheduled_work_uses_scheduled_bucket_even_when_readiness_is_blocked() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+    scheduled = repo.index("coalesce(sched.unworked_assignment_count, 0) > 0")
+    blocked_readiness = repo.index("st.annual_readiness_state = 'NOT_READY'")
+    blocked_prereq = repo.index("coalesce(dep.prerequisites_complete, true) IS NOT TRUE")
+    assert scheduled < blocked_readiness
+    assert scheduled < blocked_prereq
+    assert "unworked_assignment_count" in repo
+
+
+def test_205_rolling_board_hides_resolved_prior_days_by_default() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    assert "setup-board205-show-history" in ui
+    assert "Show prior / completed work days" in ui
+    assert "board205PastDayNeedsAttention" in ui
+    assert "board205VisibleDays" in ui
+    assert "item.historical_locked" in ui
+    assert "task.future_assignment_count" in ui
+
+
+def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+    assert "board205AutoScrollPane" in ui
+    assert "pane.scrollTop" in ui
+    assert ".setup-board205-backlog," in css
+    assert ".setup-board205-board {" in css
+    assert "overflow-y: auto" in css
+    assert "max-height: calc(100vh - 10.5rem)" in css
+    assert "overflow-y: visible" in css
+
+
+def test_205_captain_learning_cancel_wording_preserves_schedule_only() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    assert "Cancel = Keep the schedule only." in ui
+    assert "Cancel = Keep the Crew Captain assignment only." in ui
+    assert "Existing Captains will remain." in ui
 
 
 def test_205_board_exposes_required_candidate_states() -> None:
@@ -343,8 +389,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-18.2" in html
-    assert "setup_scheduling_board.js?v=2026-09-18.2" in html
+    assert "setup_scheduling_board.css?v=2026-09-18.3" in html
+    assert "setup_scheduling_board.js?v=2026-09-18.3" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
