@@ -79,20 +79,21 @@ Crew identity must be explicit at work-day scope rather than inferred only from 
 
 These are scheduling crews, not person groups.
 
-Work periods remain:
+The operator-facing work periods are:
 
 ```text
-MORNING
-AFTERNOON
-ALL_DAY
+AM
+PM
 ```
+
+MSB normally has a non-work lunch hour from **12:00–1:00**.
 
 A crew/work-period cell can contain multiple ordered annual tasks. This is required because real tasks often take less than one shift.
 
 Example:
 
 ```text
-Day 2 / Morning / Crew A
+Day 2 / AM / Crew A
     1. Locate Old Man Winter
     2. Locate Hwy 42
     3. Locate Front Entrance
@@ -100,9 +101,23 @@ Day 2 / Morning / Crew A
 
 The order inside the cell is planning/execution context worth preserving.
 
-Drag/drop is the preferred fast interaction, but non-drag Schedule / Move / Up / Down / Remove controls must remain available.
+Long work is scheduled once and consumes working-time capacity from the shift where it starts. If an AM task exceeds the remaining AM capacity, it continues after the 12–1 lunch gap and consumes the corresponding PM capacity.
 
-`ALL_DAY` is one semantic assignment. It must not be materialized as two independent Morning/Afternoon assignments merely for display.
+Conceptually:
+
+```text
+AM task duration
+  -> consume remaining AM work minutes
+  -> lunch 12–1 does not count as task duration
+  -> overflow continues in PM
+  -> remaining PM capacity is reduced
+```
+
+The board should not have a dedicated **All Day** column. A Church-scale task may visually continue across AM and PM while remaining one scheduled work item.
+
+Existing historical `ALL_DAY` rows may remain as compatibility/history evidence; the new scheduling UX should be shift/capacity based rather than create new work merely to fill a third All Day lane.
+
+Drag/drop is the preferred fast interaction, but non-drag Schedule / Move / Up / Down / Remove controls must remain available.
 
 ## Annual Work Finder / Selector
 
@@ -181,6 +196,20 @@ The Pick List must remain current with the schedule. Future schedule changes mus
 The system should not require operators to maintain a second independent physical-picking plan that can drift from the Scheduling Board.
 
 Planning is expected to occur in advance, so the current Pick List should normally already represent the upcoming scheduled work.
+
+## Shift Capacity / Spillover
+
+Expected duration is working time used for planning capacity.
+
+The scheduler should show when the ordered work for a crew fills the available AM or PM work minutes.
+
+A task may begin in AM and carry into PM. The same task's PM continuation is not a second independent task assignment and must not produce a false same-task HEAVY -> HEAVY fatigue warning.
+
+Lunch from 12:00–1:00 is a normal non-work gap and is not counted as task duration.
+
+If actual work remains incomplete after its planned duration or planned day, execution remains incomplete and a later continuation may be scheduled. Planned duration does not imply completion.
+
+The exact normal AM/PM work-minute capacities still require operator confirmation; the system must not invent work-day start/end times.
 
 ## Annual Candidate States
 
