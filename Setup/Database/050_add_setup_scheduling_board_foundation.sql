@@ -654,7 +654,9 @@ BEGIN
             FROM ops.setup_session_task_dependency d
             JOIN chain c ON d.setup_session_task_id = c.setup_session_task_id
         )
-        SELECT 1 FROM chain WHERE setup_session_task_id = p_setup_session_task_id
+        SELECT 1
+        FROM chain c
+        WHERE c.setup_session_task_id = p_setup_session_task_id
     ) THEN
         RAISE EXCEPTION USING ERRCODE = '23514',
             MESSAGE = 'Annual prerequisite would create a circular Setup dependency';
