@@ -99,6 +99,26 @@ Drag/drop is the preferred fast interaction, but non-drag Schedule / Move / Up /
 
 `ALL_DAY` is one semantic assignment. It must not be materialized as two independent Morning/Afternoon assignments merely for display.
 
+## Annual Work Finder / Selector
+
+The original operator sketch defines the primary planning dimensions for selecting work:
+
+```text
+Task List | Time | Crew | Effort
+Sort/Select by Name, Crew Effort
+```
+
+The annual work finder must therefore support planning by:
+
+- **Task / Name**;
+- **Time** — expected duration/time requirement;
+- **Crew** — normal crew requirement/range; and
+- **Effort** — the governed Setup task effort measure.
+
+This is not merely a free-text task-name search. The scheduler must be able to sort/filter/select work using the available time, crew capacity, and effort characteristics of the task.
+
+Stage/Scene and annual Work Order context may be exposed as supplemental search/filter context, but they do not replace the original Task / Time / Crew / Effort selector.
+
 ## Pick List Downstream Contract
 
 The Scheduling Board decides **what work is planned for which Setup work day / crew / work period**.
