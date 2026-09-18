@@ -376,6 +376,15 @@ class SetupMaterialReadinessRepository:
                     "quantity_required": extra.get("quantity_required"),
                     "quantity_uom": extra.get("quantity_uom"),
                 })
+                if str(extra.get("source_verification_state") or "") != "VERIFIED":
+                    unresolved.append({
+                        **self._demand_base(assignment),
+                        "requirement_type": "EXTRA_MATERIAL_SOURCE_VERIFICATION",
+                        "extra_material_id": extra.get("setup_extra_material_id"),
+                        "extra_material_name": material_name,
+                        "container_id": container_id,
+                        "message": "Expected-source Container is not VERIFIED for Pick List use.",
+                    })
 
             seen_requirements: set[int] = set()
             for extra in extra_by_task.get(int(task_id), []):
