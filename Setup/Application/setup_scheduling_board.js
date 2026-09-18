@@ -454,7 +454,7 @@ function board205Render() {
 async function board205Load() {
   try {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
-    setupBoard205State.board = payload.board || { session: null, work_days: [], tasks: [], assignments: [], dependencies: [] };
+    setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], tasks: [], assignments: [], dependencies: [] };
     board205Render();
   } catch (error) {
     setAlert(error.message || error, 'error');
