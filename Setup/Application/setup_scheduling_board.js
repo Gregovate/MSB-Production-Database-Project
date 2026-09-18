@@ -241,6 +241,7 @@ function board205TaskCard(task) {
       <div class="setup-board205-card-actions">
         ${canSchedule ? '<button type="button" class="small setup-board205-schedule-task">Schedule…</button>' : ''}
         ${canManage && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
+        ${canManage && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
         ${canManage ? `
           <button type="button" class="small secondary setup-board205-plan-up">Plan ↑</button>
@@ -326,6 +327,9 @@ function board205RenderQueue() {
     });
     card.querySelector('.setup-board205-toggle-readiness')?.addEventListener('click', () => {
       board205SetReadiness(task);
+    });
+    card.querySelector('.setup-board205-edit-planning-info')?.addEventListener('click', () => {
+      board205OpenPlanningInfoDialog(taskId);
     });
     card.querySelector('.setup-board205-edit-season-task')?.addEventListener('click', () => {
       board205OpenSeasonTaskDialog(taskId);
