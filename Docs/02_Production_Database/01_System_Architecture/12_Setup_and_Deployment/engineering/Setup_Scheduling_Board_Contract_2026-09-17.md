@@ -99,6 +99,41 @@ Drag/drop is the preferred fast interaction, but non-drag Schedule / Move / Up /
 
 `ALL_DAY` is one semantic assignment. It must not be materialized as two independent Morning/Afternoon assignments merely for display.
 
+## Pick List Downstream Contract
+
+The Scheduling Board decides **what work is planned for which Setup work day / crew / work period**.
+
+Physical fulfillment is downstream from that decision.
+
+The current schedule is the driver for the Pick List:
+
+```text
+scheduled annual work
+    + authoritative physical/logistics relationships
+    -> current Pick List
+```
+
+The Pick List resolves the physical requirements for scheduled work, including as applicable:
+
+- required Displays / LOR materials;
+- current Display -> Container relationships;
+- required KIT/support Containers;
+- Extra Materials;
+- T-Posts, spacers, and other governed Setup physical requirements.
+
+These relationships are not primarily Scheduling Board search criteria. They exist so that once work is scheduled, the operation knows what must be picked/staged for that scheduled work.
+
+The Pick List must remain current with the schedule. Future schedule changes must flow through without requiring a second manual planning step:
+
+- scheduling work adds its governed physical requirements to the applicable Pick List;
+- moving future work moves its Pick List demand with it;
+- removing/defering future work removes that demand from the current Pick List;
+- authoritative requirement changes are reflected by the current Pick List projection.
+
+The system should not require operators to maintain a second independent physical-picking plan that can drift from the Scheduling Board.
+
+Planning is expected to occur in advance, so the current Pick List should normally already represent the upcoming scheduled work.
+
 ## Annual Candidate States
 
 The board distinguishes at least:
