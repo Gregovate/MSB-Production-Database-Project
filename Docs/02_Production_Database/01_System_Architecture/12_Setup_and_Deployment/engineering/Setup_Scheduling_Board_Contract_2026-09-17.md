@@ -63,16 +63,21 @@ Rules:
 
 ## Rolling Board
 
-The first board has four temporary crew lanes:
+Each Setup work day has its own temporary crew lanes.
+
+A newly created work day starts with one default crew:
 
 ```text
 Crew A
-Crew B
-Crew C
-Crew D
 ```
 
-They are not person groups.
+The Manager may use **Add Crew** for that work day to create Crew B, Crew C, Crew D, Crew E, and additional crews as needed. Unused crews do not consume board space, and different work days may have different crew counts.
+
+There is no fixed four-crew business limit.
+
+Crew identity must be explicit at work-day scope rather than inferred only from scheduled assignments, because an empty newly-added crew must exist before work is assigned to it.
+
+These are scheduling crews, not person groups.
 
 Work periods remain:
 
