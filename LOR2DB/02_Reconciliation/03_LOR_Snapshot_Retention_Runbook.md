@@ -10,7 +10,7 @@
 | Disposable acceptance authority | `docs/server/PostgreSQL_Disposable_Acceptance_Standard.md` |
 | Production deployment authority | `docs/server/Production_Database_Change_Deployment_Runbook.md` |
 | Default retention | newest 5 completed snapshots + any non-terminal reconciliation capture |
-| Status | CANDIDATE — requires #186 disposable acceptance and explicit Production approval before first live prune |
+| Status | PRODUCTION — accepted and activated 2026-09-17; steady-state automatic retention is active |
 
 ## Purpose
 
@@ -21,10 +21,9 @@ The raw snapshot is intentionally **not** the permanent business-history archive
 Current-state provenance such as `ref.lor_scene.source_import_run_id` remains a
 useful identifier even after the corresponding raw snapshot is pruned.
 
-This runbook governs initial historical cleanup and steady-state automatic
-snapshot retention after migration
-`0042_decouple_snapshot_provenance_and_add_retention.sql` is accepted and
-installed.
+This runbook governs the completed initial historical cleanup and the active
+steady-state automatic snapshot-retention contract installed by
+`0042_decouple_snapshot_provenance_and_add_retention.sql`.
 
 ## Safety boundary
 
@@ -39,9 +38,10 @@ Retention has two operating modes:
    run is terminal, the LOR2DB backend invokes the fixed-policy automatic
    retention procedure.
 
-Do not let the initial historical cleanup occur implicitly through the
-application. Complete the reviewed first cleanup before activating backend
-V0.6.3 automatic retention.
+The initial historical cleanup completed on 2026-09-17 before backend V0.6.3
+automatic retention was activated. The initial-rollout gates below remain the
+governed deployment/recovery record; routine operation follows **Routine future
+use**.
 
 Migration `0042` itself does **not** delete snapshots. The automatic entry point
 is parameterless, always keeps the newest five completed snapshots, and aborts
@@ -169,10 +169,37 @@ lor_snap.dmx_channels
 lor_snap.scene_lor_props
 ```
 
+## Production acceptance and activation record
+
+Issue #186 completed its governed Production rollout on 2026-09-17.
+
+```text
+Accepted candidate SHA:  c536243f64ef17d37aadf56300a0932881cac579
+Migration / validation:  0042 / 37
+Initial prune:           54 raw snapshots deleted
+Retained working set:    {60,61,62,63,64}
+Raw snapshot rows:       252120 -> 26866
+Logical dump bytes:      16737949 -> 8061378 (51.84% reduction)
+Backend:                 V0.6.3
+Report framework:        V0.7.0
+Browser frontend:        V0.5.4 (preflight.js?v=0.5.4)
+Implementation PR:       #203
+Merge commit:            0a8214a7cc03cb4ee018b719bba248a5c6ff573d
+Public smoke:            PASS
+```
+
+The initial database contract installation, explicit 54-snapshot prune, backend
+activation, Synology frontend activation, and public authenticated smoke check
+all completed successfully. Durable reconciliation/current-state fingerprints
+were unchanged by the prune and backend activation. Rollback archives/backups
+were retained as recorded on Issue #186.
+
 ## Gate 1 — disposable current-Production acceptance
 
-Before Production installation, the exact candidate SHA must pass the reusable
-current-Production clone standard owned by `MSB-Server-Management`.
+The initial Production installation used the exact accepted candidate SHA and
+passed the reusable current-Production clone standard owned by
+`MSB-Server-Management`. Requalification of this contract must use the same
+standard.
 
 Production database access during this gate is strictly:
 
@@ -243,9 +270,9 @@ Follow that runbook exactly for the accepted candidate SHA. In particular:
 11. validate least privilege and Production invariants;
 12. retain the rollback archive and deployment report.
 
-**Do not deploy/restart backend V0.6.3, report publisher V0.7.0, or preflight.js
-V0.5.3 yet.** The first historical cleanup is intentionally performed under the
-reviewed manual gates below before automatic retention is activated.
+During the initial rollout, backend V0.6.3, report publisher V0.7.0, and
+preflight.js V0.5.4 were intentionally held until the reviewed historical cleanup
+completed. That sequencing completed successfully on 2026-09-17.
 
 ### Mandatory stop after installation
 
@@ -442,14 +469,14 @@ Deploy the accepted candidate's LOR2DB application/report unit together:
 ```text
 backend.py                               V0.6.3
 publish_lor_reconciliation_report.py     V0.7.0
-preflight.js                             V0.5.3
-index.html                               references preflight.js?v=0.5.3
+preflight.js                             V0.5.4
+index.html                               references preflight.js?v=0.5.4
 grant_lor_preflight_app.sql              V0.3.3
 ```
 
 Restart/validate the LOR preflight service using the normal Production
 application deployment authority. Confirm its health endpoint reports backend
-V0.6.3 and that the browser receives the current V0.5.3 script.
+V0.6.3 and that the browser receives the current V0.5.4 script.
 
 Steady-state sequence:
 
@@ -516,7 +543,7 @@ only if intervention is required.
 
 ## Routine future use
 
-After #186 Production acceptance, normal retention is automatic. The operator
+Production acceptance is complete. Normal retention is automatic; the operator
 does not need to remember a periodic cleanup task.
 
 ```text

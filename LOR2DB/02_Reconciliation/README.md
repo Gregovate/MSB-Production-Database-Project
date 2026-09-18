@@ -35,7 +35,7 @@ Normal production work should always follow the controlled reconciliation proced
 
 The current reconciliation engine, production procedures, migrations, validation scripts, and supporting engineering documentation are maintained under [reconciliation/README.md](reconciliation/README.md).
 
-Bounded `lor_snap` maintenance is separately governed by [03_LOR_Snapshot_Retention_Runbook.md](03_LOR_Snapshot_Retention_Runbook.md). Installation of the retention contract and the later destructive prune are separate inspected Production mutations; the runbook requires current-Production disposable-clone acceptance before any live prune.
+Bounded `lor_snap` maintenance is separately governed by [03_LOR_Snapshot_Retention_Runbook.md](03_LOR_Snapshot_Retention_Runbook.md). The #186 retention contract, initial governed historical prune, backend/report activation, and browser frontend activation completed in Production on 2026-09-17; steady-state retention is now automatic. Any future manual prune remains an inspected Production mutation and must follow the runbook.
 
 Current Stage/Sub-stage root-name and path synchronization behavior is documented separately in [Stage Root Authority and Path Synchronization](reconciliation/Stage_Root_Authority_and_Path_Synchronization.md). That contract records the production-deployed migration 0039 naming authority and migration 0040 existing-path synchronization rules.
 
