@@ -1033,15 +1033,69 @@ DECLARE
     v_directus_user_id uuid;
     v_person_id integer;
     v_display_name text;
+    v_current_am integer;
+    v_current_pm integer;
 BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
       INTO v_directus_user_id, v_person_id, v_display_name
     FROM ref.setup_management_actor(p_email, false) a;
 
-    IF p_am_planned_crew_count IS NOT NULL AND p_am_planned_crew_count < 0
-       OR p_pm_planned_crew_count IS NOT NULL AND p_pm_planned_crew_count < 0 THEN
+    IF (p_am_planned_crew_count IS NOT NULL AND p_am_planned_crew_count < 0)
+       OR (p_pm_planned_crew_count IS NOT NULL AND p_pm_planned_crew_count < 0) THEN
         RAISE EXCEPTION USING ERRCODE = '22023',
             MESSAGE = 'Planned shift crew count cannot be negative';
+    END IF;
+
+    SELECT c.am_planned_crew_count, c.pm_planned_crew_count
+      INTO v_current_am, v_current_pm
+    FROM ops.setup_work_day_crew c
+    WHERE c.setup_work_day_crew_id = p_setup_work_day_crew_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'Setup work-day crew was not found';
+    END IF;
+
+    IF p_am_planned_crew_count IS DISTINCT FROM v_current_am
+       AND EXISTS (
+           SELECT 1
+           FROM ops.setup_work_day_task wdt
+           WHERE wdt.setup_work_day_crew_id = p_setup_work_day_crew_id
+             AND wdt.shift_code IN ('MORNING','ALL_DAY')
+             AND (
+                 wdt.actual_crew_count IS NOT NULL
+                 OR wdt.started_at IS NOT NULL
+                 OR wdt.completed_at IS NOT NULL
+                 OR EXISTS (
+                     SELECT 1
+                     FROM ops.setup_task_progress p
+                     WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                 )
+             )
+       ) THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = 'Morning actual work exists for this crew; preserve the planned AM crew count as history';
+    END IF;
+
+    IF p_pm_planned_crew_count IS DISTINCT FROM v_current_pm
+       AND EXISTS (
+           SELECT 1
+           FROM ops.setup_work_day_task wdt
+           WHERE wdt.setup_work_day_crew_id = p_setup_work_day_crew_id
+             AND wdt.shift_code IN ('AFTERNOON','ALL_DAY')
+             AND (
+                 wdt.actual_crew_count IS NOT NULL
+                 OR wdt.started_at IS NOT NULL
+                 OR wdt.completed_at IS NOT NULL
+                 OR EXISTS (
+                     SELECT 1
+                     FROM ops.setup_task_progress p
+                     WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                 )
+             )
+       ) THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = 'Afternoon actual work exists for this crew; preserve the planned PM crew count as history';
     END IF;
 
     PERFORM pg_catalog.set_config('app.directus_user_uuid', v_directus_user_id::text, true);
@@ -1050,11 +1104,6 @@ BEGIN
        SET am_planned_crew_count = p_am_planned_crew_count,
            pm_planned_crew_count = p_pm_planned_crew_count
      WHERE c.setup_work_day_crew_id = p_setup_work_day_crew_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION USING ERRCODE = 'P0002',
-            MESSAGE = 'Setup work-day crew was not found';
-    END IF;
 
     RETURN QUERY
     SELECT c.setup_work_day_crew_id,
