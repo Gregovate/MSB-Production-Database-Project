@@ -13,15 +13,21 @@ DECLARE
     v_work_order_id bigint;
     v_day1 bigint;
     v_day2 bigint;
+    v_day1_crew_a bigint;
+    v_day2_crew_a bigint;
+    v_day2_crew_b bigint;
+    v_day2_crew_c bigint;
+    v_day2_crew_d bigint;
+    v_day2_crew_e bigint;
     v_day1_number integer;
     v_day2_number integer;
     v_a_morning bigint;
-    v_a_afternoon bigint;
     v_b_stack bigint;
     v_continuation bigint;
     v_progress_id bigint;
     v_cycle_blocked boolean := false;
-    v_bad_lane_blocked boolean := false;
+    v_duplicate_same_day_blocked boolean := false;
+    v_used_crew_remove_blocked boolean := false;
     v_move_locked boolean := false;
     v_remove_locked boolean := false;
     v_day_number_conflict_blocked boolean := false;
@@ -61,19 +67,31 @@ BEGIN
 
     IF NOT has_function_privilege(
         'fieldwiring_app',
-        'ops.create_setup_season_task(text,integer,text,integer,bigint,text,integer,integer,integer,integer,text,text,text,bigint,boolean,text)',
+        'ops.create_setup_season_task(text,integer,text,integer,bigint,text,integer,integer,integer,integer,text,text,text,text,bigint,boolean,text)',
         'EXECUTE'
     ) OR NOT has_function_privilege(
         'fieldwiring_app',
-        'ops.create_setup_work_day_assignment(text,bigint,bigint,text,text,integer,integer)',
+        'ops.create_setup_work_day_assignment(text,bigint,bigint,text,bigint,integer)',
         'EXECUTE'
     ) OR NOT has_function_privilege(
         'fieldwiring_app',
-        'ops.update_setup_work_day_assignment(text,bigint,bigint,text,text,integer,integer)',
+        'ops.update_setup_work_day_assignment(text,bigint,bigint,text,bigint,integer)',
         'EXECUTE'
     ) OR NOT has_function_privilege(
         'fieldwiring_app',
         'ops.remove_setup_work_day_assignment(text,bigint)',
+        'EXECUTE'
+    ) OR NOT has_function_privilege(
+        'fieldwiring_app',
+        'ops.add_setup_work_day_crew(text,bigint)',
+        'EXECUTE'
+    ) OR NOT has_function_privilege(
+        'fieldwiring_app',
+        'ops.update_setup_work_day_crew(text,bigint,integer,integer)',
+        'EXECUTE'
+    ) OR NOT has_function_privilege(
+        'fieldwiring_app',
+        'ops.remove_setup_work_day_crew(text,bigint)',
         'EXECUTE'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app lacks one or more governed #205 commands';
@@ -84,7 +102,10 @@ BEGIN
        OR has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'DELETE')
        OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task_dependency', 'INSERT')
        OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task_dependency', 'UPDATE')
-       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task_dependency', 'DELETE') THEN
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task_dependency', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_work_day_crew', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_work_day_crew', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_work_day_crew', 'DELETE') THEN
         RAISE EXCEPTION 'fieldwiring_app unexpectedly has broad #205 table DML';
     END IF;
 
@@ -138,6 +159,14 @@ BEGIN
               st.setup_task_id IS NULL
               OR nullif(btrim(st.annual_task_name), '') IS NULL
               OR st.annual_task_action_type IS NULL
+              OR (
+                  EXISTS (
+                      SELECT 1 FROM ref.setup_task rt
+                      WHERE rt.setup_task_id = st.setup_task_id
+                        AND rt.effort_level IS NOT NULL
+                  )
+                  AND st.annual_effort_level IS NULL
+              )
           )
     ) THEN
         RAISE EXCEPTION 'Reusable annual snapshot fields were not populated';
@@ -161,6 +190,7 @@ BEGIN
         NULL,
         'GATE',
         25,
+        NULL,
         NULL,
         NULL,
         NULL,
@@ -285,55 +315,94 @@ BEGIN
         RAISE EXCEPTION 'DOW derivation failed unexpectedly';
     END IF;
 
+    /* New work days begin with exactly one default Crew A. */
+    SELECT setup_work_day_crew_id INTO v_day1_crew_a
+    FROM ops.setup_work_day_crew
+    WHERE setup_work_day_id = v_day1 AND crew_number = 1;
+
+    SELECT setup_work_day_crew_id INTO v_day2_crew_a
+    FROM ops.setup_work_day_crew
+    WHERE setup_work_day_id = v_day2 AND crew_number = 1;
+
+    IF v_day1_crew_a IS NULL OR v_day2_crew_a IS NULL THEN
+        RAISE EXCEPTION 'Default Crew A was not created with the work day';
+    END IF;
+
+    IF (
+        SELECT count(*) FROM ops.setup_work_day_crew
+        WHERE setup_work_day_id = v_day1
+    ) <> 1 THEN
+        RAISE EXCEPTION 'New Setup work day did not begin with exactly one crew';
+    END IF;
+
+    /* Day 2 proves dynamic growth beyond the old four-crew ceiling. */
+    SELECT setup_work_day_crew_id INTO v_day2_crew_b
+    FROM ops.add_setup_work_day_crew(v_admin_email, v_day2);
+    SELECT setup_work_day_crew_id INTO v_day2_crew_c
+    FROM ops.add_setup_work_day_crew(v_admin_email, v_day2);
+    SELECT setup_work_day_crew_id INTO v_day2_crew_d
+    FROM ops.add_setup_work_day_crew(v_admin_email, v_day2);
+    SELECT setup_work_day_crew_id INTO v_day2_crew_e
+    FROM ops.add_setup_work_day_crew(v_admin_email, v_day2);
+
+    IF (
+        SELECT count(*) FROM ops.setup_work_day_crew
+        WHERE setup_work_day_id = v_day2
+    ) <> 5 OR (
+        SELECT crew_code FROM ops.setup_work_day_crew
+        WHERE setup_work_day_crew_id = v_day2_crew_e
+    ) <> 'E' THEN
+        RAISE EXCEPTION 'Dynamic work-day crews did not support Crew E';
+    END IF;
+
+    PERFORM *
+    FROM ops.update_setup_work_day_crew(v_admin_email, v_day1_crew_a, 6, 4);
+
+    IF NOT EXISTS (
+        SELECT 1 FROM ops.setup_work_day_crew
+        WHERE setup_work_day_crew_id = v_day1_crew_a
+          AND am_planned_crew_count = 6
+          AND pm_planned_crew_count = 4
+    ) THEN
+        RAISE EXCEPTION 'Shift-specific planned crew availability did not persist';
+    END IF;
+
     SELECT setup_work_day_task_id
       INTO v_a_morning
     FROM ops.create_setup_work_day_assignment(
-        v_admin_email, v_day1, v_task_a, 'MORNING', 'D', 10, 4
+        v_admin_email, v_day1, v_task_a, 'MORNING', v_day1_crew_a, 10
     );
 
-    SELECT setup_work_day_task_id
-      INTO v_a_afternoon
-    FROM ops.create_setup_work_day_assignment(
-        v_admin_email, v_day1, v_task_a, 'AFTERNOON', 'D', 10, 4
-    );
+    /* Same task is planned once per work day; a long task may carry into PM
+       without fabricating a second schedule assignment. */
+    BEGIN
+        PERFORM *
+        FROM ops.create_setup_work_day_assignment(
+            v_admin_email, v_day1, v_task_a, 'AFTERNOON', v_day1_crew_a, 20
+        );
+    EXCEPTION
+        WHEN unique_violation THEN
+            v_duplicate_same_day_blocked := true;
+    END;
+
+    IF NOT v_duplicate_same_day_blocked THEN
+        RAISE EXCEPTION 'Duplicate same-day task assignment was unexpectedly accepted';
+    END IF;
 
     SELECT setup_work_day_task_id
       INTO v_b_stack
     FROM ops.create_setup_work_day_assignment(
-        v_admin_email, v_day1, v_task_b, 'MORNING', 'D', 20, 3
+        v_admin_email, v_day1, v_task_b, 'MORNING', v_day1_crew_a, 20
     );
-
-    IF (
-        SELECT count(*)
-        FROM ops.setup_work_day_task wdt
-        WHERE wdt.setup_work_day_id = v_day1
-          AND wdt.setup_session_task_id = v_task_a
-    ) <> 2 THEN
-        RAISE EXCEPTION 'Same annual task could not occupy distinct Morning/Afternoon assignments';
-    END IF;
 
     IF (
         SELECT count(*)
         FROM ops.setup_work_day_task wdt
         WHERE wdt.setup_work_day_id = v_day1
           AND wdt.shift_code = 'MORNING'
-          AND wdt.crew_lane = 'D'
+          AND wdt.setup_work_day_crew_id = v_day1_crew_a
     ) < 2 THEN
         RAISE EXCEPTION 'Stacked tasks in one crew/shift were not preserved';
-    END IF;
-
-    BEGIN
-        PERFORM *
-        FROM ops.create_setup_work_day_assignment(
-            v_admin_email, v_day2, v_task_b, 'MORNING', 'E', 10, 3
-        );
-    EXCEPTION
-        WHEN invalid_parameter_value THEN
-            v_bad_lane_blocked := true;
-    END;
-
-    IF NOT v_bad_lane_blocked THEN
-        RAISE EXCEPTION 'Unsupported Crew E lane was unexpectedly accepted';
     END IF;
 
     PERFORM *
@@ -341,10 +410,9 @@ BEGIN
         v_admin_email,
         v_b_stack,
         v_day2,
-        'MORNING',
-        'C',
-        10,
-        3
+        'AFTERNOON',
+        v_day2_crew_e,
+        10
     );
 
     IF NOT EXISTS (
@@ -352,10 +420,22 @@ BEGIN
         FROM ops.setup_work_day_task
         WHERE setup_work_day_task_id = v_b_stack
           AND setup_work_day_id = v_day2
-          AND shift_code = 'MORNING'
-          AND crew_lane = 'C'
+          AND shift_code = 'AFTERNOON'
+          AND setup_work_day_crew_id = v_day2_crew_e
+          AND crew_lane = 'E'
     ) THEN
-        RAISE EXCEPTION 'Future unworked assignment did not move';
+        RAISE EXCEPTION 'Future unworked assignment did not move to dynamic Crew E';
+    END IF;
+
+    BEGIN
+        PERFORM * FROM ops.remove_setup_work_day_crew(v_admin_email, v_day2_crew_e);
+    EXCEPTION
+        WHEN check_violation THEN
+            v_used_crew_remove_blocked := true;
+    END;
+
+    IF NOT v_used_crew_remove_blocked THEN
+        RAISE EXCEPTION 'Crew with scheduled work was unexpectedly removable';
     END IF;
 
     PERFORM * FROM ops.remove_setup_work_day_assignment(v_admin_email, v_b_stack);
@@ -364,6 +444,16 @@ BEGIN
         SELECT 1 FROM ops.setup_work_day_task WHERE setup_work_day_task_id = v_b_stack
     ) THEN
         RAISE EXCEPTION 'Future unworked assignment did not remove';
+    END IF;
+
+    /* Once empty, a non-default crew may be removed. */
+    PERFORM * FROM ops.remove_setup_work_day_crew(v_admin_email, v_day2_crew_e);
+
+    IF EXISTS (
+        SELECT 1 FROM ops.setup_work_day_crew
+        WHERE setup_work_day_crew_id = v_day2_crew_e
+    ) THEN
+        RAISE EXCEPTION 'Empty non-default crew did not remove';
     END IF;
 
     SELECT setup_task_progress_id
@@ -396,9 +486,8 @@ BEGIN
             v_a_morning,
             v_day2,
             'MORNING',
-            'A',
-            10,
-            4
+            v_day2_crew_a,
+            10
         );
     EXCEPTION
         WHEN check_violation THEN
@@ -420,7 +509,7 @@ BEGIN
     SELECT setup_work_day_task_id
       INTO v_continuation
     FROM ops.create_setup_work_day_assignment(
-        v_admin_email, v_day2, v_task_a, 'AFTERNOON', 'B', 10, 4
+        v_admin_email, v_day2, v_task_a, 'AFTERNOON', v_day2_crew_b, 10
     );
 
     IF v_continuation IS NULL THEN
@@ -485,9 +574,15 @@ SELECT
     to_regclass('ops.setup_session_task_dependency') IS NOT NULL AS annual_dependency_table,
     has_function_privilege(
         'fieldwiring_app',
-        'ops.create_setup_work_day_assignment(text,bigint,bigint,text,text,integer,integer)',
+        'ops.create_setup_work_day_assignment(text,bigint,bigint,text,bigint,integer)',
         'EXECUTE'
     ) AS assignment_execute,
+    has_function_privilege(
+        'fieldwiring_app',
+        'ops.add_setup_work_day_crew(text,bigint)',
+        'EXECUTE'
+    ) AS add_crew_execute,
+    has_table_privilege('fieldwiring_app', 'ops.setup_work_day_crew', 'SELECT') AS crew_read,
     NOT has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'INSERT') AS no_broad_assignment_insert,
     NOT has_table_privilege('fieldwiring_app', 'ops.work_order', 'SELECT') AS no_broad_work_order_read,
     has_table_privilege(
