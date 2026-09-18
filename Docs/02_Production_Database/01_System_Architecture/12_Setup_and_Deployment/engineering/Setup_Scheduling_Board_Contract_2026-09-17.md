@@ -119,6 +119,29 @@ This is not merely a free-text task-name search. The scheduler must be able to s
 
 Stage/Scene and annual Work Order context may be exposed as supplemental search/filter context, but they do not replace the original Task / Time / Crew / Effort selector.
 
+## Crew Fatigue / Consecutive HEAVY Work
+
+Physical effort is reusable task knowledge:
+
+```text
+LIGHT
+MODERATE
+HEAVY
+```
+
+The scheduler should avoid assigning **HEAVY work back-to-back to the same work-day crew**.
+
+The rule is sequence- and crew-specific:
+
+- HEAVY -> HEAVY on the same crew should produce a visible planning warning;
+- HEAVY work on different crews does not conflict merely because it occurs on the same day or period;
+- consecutive HEAVY tasks stacked within one crew/period should also warn;
+- a HEAVY Morning assignment followed by HEAVY Afternoon work for the same crew should warn.
+
+This rule depends on explicit work-day crew identity. It is not enough to know that two HEAVY tasks occur on the same date.
+
+The warning should help the Manager choose LIGHT or MODERATE work after HEAVY work when practical. It is a scheduling avoidance/warning rule, not a database hard prohibition unless a later policy explicitly makes it one.
+
 ## Pick List Downstream Contract
 
 The Scheduling Board decides **what work is planned for which Setup work day / crew / work period**.
