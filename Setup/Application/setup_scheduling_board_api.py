@@ -254,6 +254,25 @@ def api_setup_scheduling_board_season_task_update(
 
 
 @setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/readiness"
+)
+def api_setup_scheduling_board_readiness(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    if "ready" not in payload:
+        raise SetupCommandError("ready is required")
+    result = repo().set_readiness(
+        email=email,
+        session_task_id=setup_session_task_id,
+        ready=bool(payload.get("ready")),
+    )
+    return jsonify(readiness=result)
+
+
+@setup_scheduling_board_api.patch(
     "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/dependencies/"
     "<int:prerequisite_setup_session_task_id>"
 )
