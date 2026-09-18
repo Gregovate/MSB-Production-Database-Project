@@ -24,6 +24,7 @@ DECLARE
     v_bad_lane_blocked boolean := false;
     v_move_locked boolean := false;
     v_remove_locked boolean := false;
+    v_day_number_conflict_blocked boolean := false;
     v_season_name text := '[DISPOSABLE #205] Annual Work Order Gate';
     v_count integer;
 BEGIN
@@ -86,6 +87,22 @@ BEGIN
        OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task_dependency', 'DELETE') THEN
         RAISE EXCEPTION 'fieldwiring_app unexpectedly has broad #205 table DML';
     END IF;
+
+    IF has_table_privilege('fieldwiring_app', 'ops.work_order', 'SELECT') THEN
+        RAISE EXCEPTION 'fieldwiring_app unexpectedly has broad Work Order SELECT';
+    END IF;
+
+    IF NOT has_table_privilege(
+        'fieldwiring_app',
+        'ops.setup_scheduling_work_order_gate',
+        'SELECT'
+    ) THEN
+        RAISE EXCEPTION 'fieldwiring_app lacks the narrow Setup scheduling Work Order projection';
+    END IF;
+
+    PERFORM work_order_id, problem, date_completed
+    FROM ops.setup_scheduling_work_order_gate
+    LIMIT 1;
 
     SELECT setup_session_id
       INTO v_session_id
@@ -239,6 +256,29 @@ BEGIN
 
     IF v_day1_number <> 1 OR v_day2_number <> 2 THEN
         RAISE EXCEPTION 'Setup Day Number did not persist';
+    END IF;
+
+    BEGIN
+        PERFORM *
+        FROM ops.upsert_setup_work_day(
+            v_admin_email,
+            v_year,
+            make_date(v_year, 10, 7),
+            1,
+            'PLANNED',
+            NULL,
+            'Must fail duplicate Setup Day number',
+            NULL
+        );
+    EXCEPTION
+        WHEN invalid_parameter_value THEN
+            IF SQLERRM LIKE 'Setup Day 1 is already assigned to %' THEN
+                v_day_number_conflict_blocked := true;
+            END IF;
+    END;
+
+    IF NOT v_day_number_conflict_blocked THEN
+        RAISE EXCEPTION 'Duplicate Setup Day Number did not fail with the operator-facing conflict message';
     END IF;
 
     IF upper(to_char(make_date(v_year, 10, 5), 'Dy')) IS NULL THEN
@@ -448,4 +488,10 @@ SELECT
         'ops.create_setup_work_day_assignment(text,bigint,bigint,text,text,integer,integer)',
         'EXECUTE'
     ) AS assignment_execute,
-    NOT has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'INSERT') AS no_broad_assignment_insert;
+    NOT has_table_privilege('fieldwiring_app', 'ops.setup_work_day_task', 'INSERT') AS no_broad_assignment_insert,
+    NOT has_table_privilege('fieldwiring_app', 'ops.work_order', 'SELECT') AS no_broad_work_order_read,
+    has_table_privilege(
+        'fieldwiring_app',
+        'ops.setup_scheduling_work_order_gate',
+        'SELECT'
+    ) AS narrow_work_order_gate_read;
