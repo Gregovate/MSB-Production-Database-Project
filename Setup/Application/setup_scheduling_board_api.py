@@ -87,6 +87,48 @@ def api_setup_scheduling_board_work_day() -> tuple[Response, int]:
     return jsonify(work_day=result), 201
 
 
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews")
+def api_setup_scheduling_board_crew_add(
+    setup_work_day_id: int,
+) -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().add_crew(email=email, work_day_id=setup_work_day_id)
+    return jsonify(crew=result), 201
+
+
+@setup_scheduling_board_api.patch("/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>")
+def api_setup_scheduling_board_crew_update(
+    setup_work_day_crew_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    result = repo().update_crew(
+        email=email,
+        crew_id=setup_work_day_crew_id,
+        am_planned_crew_count=nullable_int(
+            payload.get("am_planned_crew_count"),
+            "am_planned_crew_count",
+        ),
+        pm_planned_crew_count=nullable_int(
+            payload.get("pm_planned_crew_count"),
+            "pm_planned_crew_count",
+        ),
+    )
+    return jsonify(crew=result)
+
+
+@setup_scheduling_board_api.delete("/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>")
+def api_setup_scheduling_board_crew_remove(
+    setup_work_day_crew_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().remove_crew(email=email, crew_id=setup_work_day_crew_id)
+    return jsonify(crew=result)
+
+
 @setup_scheduling_board_api.post("/api/setup/scheduling-board/assignments")
 def api_setup_scheduling_board_assignment_create() -> tuple[Response, int]:
     require_setup_command()
@@ -97,10 +139,12 @@ def api_setup_scheduling_board_assignment_create() -> tuple[Response, int]:
         email=email,
         work_day_id=required_int(payload.get("setup_work_day_id"), "setup_work_day_id"),
         session_task_id=required_int(payload.get("setup_session_task_id"), "setup_session_task_id"),
-        shift=str(payload.get("shift_code") or "ALL_DAY"),
-        crew_lane=str(payload.get("crew_lane") or "A"),
+        shift=str(payload.get("shift_code") or "MORNING"),
+        crew_id=required_int(
+            payload.get("setup_work_day_crew_id"),
+            "setup_work_day_crew_id",
+        ),
         sort_order=nullable_int(payload.get("sort_order"), "sort_order") or 100,
-        planned_crew_count=nullable_int(payload.get("planned_crew_count"), "planned_crew_count"),
     )
     return jsonify(assignment=result), 201
 
@@ -119,10 +163,12 @@ def api_setup_scheduling_board_assignment_update(
         email=email,
         assignment_id=setup_work_day_task_id,
         work_day_id=required_int(payload.get("setup_work_day_id"), "setup_work_day_id"),
-        shift=str(payload.get("shift_code") or "ALL_DAY"),
-        crew_lane=str(payload.get("crew_lane") or "A"),
+        shift=str(payload.get("shift_code") or "MORNING"),
+        crew_id=required_int(
+            payload.get("setup_work_day_crew_id"),
+            "setup_work_day_crew_id",
+        ),
         sort_order=nullable_int(payload.get("sort_order"), "sort_order") or 100,
-        planned_crew_count=nullable_int(payload.get("planned_crew_count"), "planned_crew_count"),
     )
     return jsonify(assignment=result)
 
@@ -162,6 +208,7 @@ def api_setup_scheduling_board_season_task_create() -> tuple[Response, int]:
             payload.get("expected_duration_minutes"),
             "expected_duration_minutes",
         ),
+        effort_level=optional_text(payload.get("effort_level")),
         completion_point=optional_text(payload.get("completion_point")),
         readiness_note=optional_text(payload.get("readiness_note")),
         weather_note=optional_text(payload.get("weather_note")),
@@ -195,6 +242,7 @@ def api_setup_scheduling_board_season_task_update(
             payload.get("expected_duration_minutes"),
             "expected_duration_minutes",
         ),
+        effort_level=optional_text(payload.get("effort_level")),
         completion_point=optional_text(payload.get("completion_point")),
         readiness_note=optional_text(payload.get("readiness_note")),
         weather_note=optional_text(payload.get("weather_note")),
