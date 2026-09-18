@@ -181,7 +181,7 @@ class SetupSchedulingBoardRepository:
                   ON ls.lor_scene_id = st.annual_lor_scene_id
                 LEFT JOIN ref.person completed_by
                   ON completed_by.person_id = st.completed_by_person_id
-                LEFT JOIN ops.work_order wo
+                LEFT JOIN ops.setup_scheduling_work_order_gate wo
                   ON wo.work_order_id = st.linked_work_order_id
                 LEFT JOIN LATERAL (
                     SELECT
@@ -266,7 +266,7 @@ class SetupSchedulingBoardRepository:
                     FROM ops.setup_session_task_dependency d
                     JOIN ops.setup_session_task pst
                       ON pst.setup_session_task_id = d.prerequisite_setup_session_task_id
-                    LEFT JOIN ops.work_order pwo
+                    LEFT JOIN ops.setup_scheduling_work_order_gate pwo
                       ON pwo.work_order_id = pst.linked_work_order_id
                     WHERE d.setup_session_task_id = st.setup_session_task_id
                 ) dep ON true
@@ -389,7 +389,7 @@ class SetupSchedulingBoardRepository:
                   ON s.stage_id = st.annual_stage_id
                 LEFT JOIN ref.lor_scene ls
                   ON ls.lor_scene_id = st.annual_lor_scene_id
-                LEFT JOIN ops.work_order wo
+                LEFT JOIN ops.setup_scheduling_work_order_gate wo
                   ON wo.work_order_id = st.linked_work_order_id
                 WHERE wd.setup_session_id = %s
                 ORDER BY
@@ -432,7 +432,7 @@ class SetupSchedulingBoardRepository:
                   ON st.setup_session_task_id = d.setup_session_task_id
                 JOIN ops.setup_session_task pst
                   ON pst.setup_session_task_id = d.prerequisite_setup_session_task_id
-                LEFT JOIN ops.work_order pwo
+                LEFT JOIN ops.setup_scheduling_work_order_gate pwo
                   ON pwo.work_order_id = pst.linked_work_order_id
                 WHERE st.setup_session_id = %s
                 ORDER BY d.setup_session_task_id, d.sort_order,
