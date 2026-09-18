@@ -542,6 +542,9 @@ function board205RenderBoard() {
     card.querySelector('.setup-board205-move')?.addEventListener('click', () => {
       board205OpenScheduleDialog({ kind: 'assignment', id: assignmentId });
     });
+    card.querySelector('.setup-board205-edit-planning-info')?.addEventListener('click', () => {
+      board205OpenPlanningInfoDialog(item.setup_session_task_id);
+    });
     card.querySelector('.setup-board205-remove')?.addEventListener('click', () => board205RemoveAssignment(item));
   });
 }
