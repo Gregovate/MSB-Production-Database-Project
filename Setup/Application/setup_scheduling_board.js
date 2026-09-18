@@ -9,6 +9,8 @@ const setupBoard205State = {
   scheduleTarget: null
 };
 
+const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
+
 function board205Esc(value) {
   return escapeHtml(value == null ? '' : String(value));
 }
@@ -60,6 +62,19 @@ function board205CrewSequence(crewId) {
       || Number(a.sort_order) - Number(b.sort_order)
       || Number(a.setup_work_day_task_id) - Number(b.setup_work_day_task_id)
     ));
+}
+
+function board205AmCarryoverMinutes(crewId) {
+  const items = board205CrewSequence(crewId).filter((item) => item.shift_code === 'MORNING');
+  if (!items.length) return 0;
+  let total = 0;
+  for (const item of items) {
+    const task = board205Task(item.setup_session_task_id) || item;
+    const minutes = Number(task.expected_duration_minutes || 0);
+    if (minutes <= 0) return null;
+    total += minutes;
+  }
+  return Math.max(total - SETUP_BOARD205_TYPICAL_AM_MINUTES, 0);
 }
 
 function board205HeavyWarning(item) {
@@ -294,9 +309,16 @@ function board205AssignmentCard(item) {
 
 function board205Cell(day, shift, crew) {
   const items = board205AssignmentsFor(day.setup_work_day_id, shift, crew.setup_work_day_crew_id);
+  const carryover = shift === 'AFTERNOON'
+    ? board205AmCarryoverMinutes(crew.setup_work_day_crew_id)
+    : 0;
+  const carryoverNote = shift === 'AFTERNOON' && carryover > 0
+    ? `<div class="setup-board205-carryover">≈ ${board205Esc(board205Duration(carryover))} of AM work carries past lunch into PM.</div>`
+    : '';
   return `
     <div class="setup-board205-cell"
       data-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-crew-id="${crew.setup_work_day_crew_id}">
+      ${carryoverNote}
       ${items.length ? items.map(board205AssignmentCard).join('') : '<div class="setup-board205-cell-empty">Drop work here</div>'}
     </div>`;
 }
@@ -343,8 +365,8 @@ function board205Day(day) {
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
           <div class="setup-board205-grid-head">Crew / planned availability</div>
-          <div class="setup-board205-grid-head">AM</div>
-          <div class="setup-board205-grid-head">PM</div>
+          <div class="setup-board205-grid-head">AM <span class="setup-board205-shift-hint">≈ 9–12</span></div>
+          <div class="setup-board205-grid-head">PM <span class="setup-board205-shift-hint">after lunch ≈ 1 PM</span></div>
           ${crewRows}
         </div>
       </div>
