@@ -69,7 +69,8 @@ def test_205_assignment_identity_and_stickiness_are_database_authoritative() -> 
         "remove_setup_work_day_assignment",
         "Actual work exists for this assignment",
         "historical work cannot be removed",
-        "ADD COLUMN IF NOT EXISTS setup_work_day_task_id bigint",\n        "FOREIGN KEY (setup_work_day_task_id)",
+        "ADD COLUMN IF NOT EXISTS setup_work_day_task_id bigint",
+        "FOREIGN KEY (setup_work_day_task_id)",
     ):
         assert token in sql
 
