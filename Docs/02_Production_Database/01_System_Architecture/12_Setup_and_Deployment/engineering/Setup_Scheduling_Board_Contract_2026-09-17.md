@@ -237,7 +237,9 @@ Lunch from 12:00–1:00 is a normal non-work gap and is not counted as task dura
 
 If actual work remains incomplete after its planned duration or planned day, execution remains incomplete and a later continuation may be scheduled. Planned duration does not imply completion.
 
-The exact normal AM/PM work-minute capacities still require operator confirmation; the system must not invent work-day start/end times.
+Current 2026 planning communication gives a practical morning pattern: Production Team huddle at about 8:30, arrival/work start in the park around 8:45–9:00, lunch around noon, and PM work resuming around 1:00. The board may therefore use **about 3 working hours before lunch** as an advisory AM spillover cue.
+
+This is not a hard time-clock rule and does not establish a PM end time. The scheduler may show that known expected AM work extends past lunch into PM, but it must not block work or fabricate an exact end-of-day capacity.
 
 ## Annual Readiness Conditions
 
