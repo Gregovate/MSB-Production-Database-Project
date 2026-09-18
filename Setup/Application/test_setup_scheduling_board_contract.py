@@ -107,6 +107,8 @@ def test_205_work_day_crews_are_dynamic_and_shift_specific() -> None:
         assert token in sql
 
     assert "VALUES (v_day_id, 1, 'A')" in sql
+    assert "ON CONFLICT ON CONSTRAINT uq_setup_work_day_crew_number DO NOTHING" in sql
+    assert "ON CONFLICT (setup_work_day_id, crew_number) DO NOTHING" not in sql
     assert "crew_lane IN ('A','B','C','D')" not in sql
     assert "/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews" in api
     assert "/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>" in api
