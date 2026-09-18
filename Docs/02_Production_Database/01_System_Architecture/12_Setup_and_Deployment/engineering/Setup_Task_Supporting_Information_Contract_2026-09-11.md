@@ -4,9 +4,9 @@
 |---|---|
 | Document Type | Engineering Operating-Model Contract |
 | System | Production Database — Setup and Deployment |
-| Status | CURRENT CONTRACT — #141 assignment layer implemented; broader material model incomplete |
+| Status | CURRENT CONTRACT — V0.3.14 Scheduling Board/readiness implemented; 2026 Session not yet created |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-12 |
+| Last Reviewed | 2026-09-18 |
 | Related Work | #122, #132, #145, #167, #171, #172, #175 |
 
 ## Purpose
@@ -15,11 +15,10 @@ Preserve the operator-confirmed model for the information that must support reus
 
 ## Current Launch Control
 
-Issue #141 is accepted in Production as V0.3.13. The remaining pre-launch order is:
+V0.3.14 Scheduling Board/readiness is accepted in Production. #167/#184 material foundations are complete. The remaining pre-launch order is:
 
 ```text
-#167  Extra Materials / KIT contents / material sources
-  -> #145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
+#145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
   -> #122 real 2026 Setup Session + scheduling / Pick List launch gate
 ```
 
@@ -27,13 +26,32 @@ The 2025 Setup Session remains the historical/sandbox proving ground. Do not cre
 
 ## Preservation Rule
 
-Preserve accepted V0.3.7 through V0.3.13 behavior, the working Stage/Scene Display resolver, 2025 historical boundaries, current Display/Container authority, and the narrow governed write-command model.
+Preserve accepted V0.3.7 through V0.3.14 behavior, the working Stage/Scene Display resolver, 2025 historical boundaries, current Display/Container authority, and the narrow governed write-command model.
 
 ## Core Principle — Task Granularity
 
 A reusable Setup task is a meaningful operational control point, not a transcription of every procedure step.
 
 Keep detailed how-to steps in the Procedure unless the step needs independent planning/completion, a hard predecessor, meaningful handoff, independent progress/history, or materially different resource/material demand.
+
+## Task vs Readiness vs Prerequisite — V0.3.14
+
+A reusable Setup task is work MSB actually performs.
+
+A hard prerequisite is another Setup task that must be completed first.
+
+A readiness condition is a real-world condition that must be true before the task should be scheduled or started, but is not itself separate MSB work.
+
+Do not create an independent task merely to represent external readiness.
+
+Example:
+
+```text
+Task: Lay Cords/Network
+Readiness: Ensure grass cutting is complete before laying cords.
+```
+
+The V0.3.14 Scheduling Board lets Managers correct Crew guidance, expected Time, Effort, Readiness, Weather, and Completion Point before actual work exists. Those planning fields should remain evidence-based, but incomplete values do not require inventing fake tasks or delaying final validation of the task identity/scope/prerequisite graph.
 
 ## Display Ownership — Implemented #141 Contract
 
@@ -159,15 +177,15 @@ Concrete wrong/missing conditions that require later action may go to the existi
 
 Use the best available procedures, Production data, derived rules, Kit/source information, and verified field evidence. Keep uncertainty visible. Do not block useful 2026 operation on future 2027 detailed Kit inventory.
 
-Do not create the real 2026 Setup Session until #167 establishes the remaining material/source foundation, #145 final Catalog/disposable seed acceptance passes, and #122 is ready for the real scheduling launch.
+Do not create the real 2026 Setup Session until #145 final Catalog/disposable seed acceptance passes and #122 is ready for the real annual launch. Migration 050/V0.3.14 has installed the Scheduling Board ahead of that Session creation.
 
 ## Resume Development
 
 1. read Production Database Project Rules;
 2. refresh current `main` and read the current Setup engineering handoff/README;
-3. preserve accepted V0.3.7 through V0.3.13 behavior;
+3. preserve accepted V0.3.7 through V0.3.14 behavior;
 4. treat 2025 as the sandbox/historical proving ground;
-5. work the sequence `#167 -> #145 FINAL -> #122`;
+5. work the sequence `#145 FINAL -> #122`;
 6. inspect current Production schema/migrations before asking the operator to rediscover schema facts;
 7. use governed application commands rather than broad table DML; and
 8. update this contract and acceptance evidence whenever implementation establishes durable behavior.
