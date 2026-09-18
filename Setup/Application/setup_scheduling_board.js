@@ -53,11 +53,32 @@ function board205TaskHasReusableCaptain(task, personId) {
   );
 }
 
-function board205BlockedPrompt(task) {
-  if (task?.readiness_state === 'NOT_READY') {
-    return `Readiness is NOT READY${task.readiness_note ? `: ${task.readiness_note}` : ''}. Schedule it anyway?`;
+function board205PlacementWarnings(task, crewId, shift) {
+  const warnings = [];
+  if (!task) return warnings;
+
+  if (task.readiness_state === 'NOT_READY') {
+    warnings.push(`Readiness is NOT READY${task.readiness_note ? `: ${task.readiness_note}` : ''}.`);
   }
-  return 'This task has an incomplete hard predecessor. Schedule it anyway?';
+  if (task.prerequisites_complete === false) {
+    warnings.push('One or more hard predecessors are incomplete.');
+  }
+
+  const crew = board205CrewRow(crewId);
+  const planned = board205PlannedCrewForShift(crew, shift);
+  const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
+  if (planned != null && minCrew != null && planned < minCrew) {
+    const period = shift === 'MORNING' ? 'AM' : shift === 'AFTERNOON' ? 'PM' : 'selected';
+    warnings.push(`SHORT CREW: planned ${period} crew ${planned} / task minimum ${minCrew} — short by ${minCrew - planned}.`);
+  }
+
+  return warnings;
+}
+
+function board205ConfirmPlacement(task, crewId, shift) {
+  const warnings = board205PlacementWarnings(task, crewId, shift);
+  if (!warnings.length) return true;
+  return window.confirm(`${warnings.join('\n\n')}\n\nSchedule this task anyway?`);
 }
 
 async function board205MaybeLearnCaptainForTask(task, crewId, captainPersonId = null) {
@@ -70,7 +91,7 @@ async function board205MaybeLearnCaptainForTask(task, crewId, captainPersonId = 
   const name = person?.display_name || crew?.captain_display_name || `Person ${personId}`;
   const crewCode = crew?.crew_code || '';
   const confirmed = window.confirm(
-    `${name} is Captain of Crew ${crewCode || 'this crew'} but is not currently a reusable Captain for "${task.task_name}". Add/promote ${name} as a reusable task Captain? Existing Captains will remain.`
+    `${name} is Captain of Crew ${crewCode || 'this crew'} but is not currently a reusable Captain for "${task.task_name}".\n\nOK = Add/promote ${name} as a reusable task Captain.\nCancel = Keep the schedule only.\n\nExisting Captains will remain.`
   );
   if (!confirmed) return;
 
@@ -97,7 +118,7 @@ async function board205MaybeLearnCaptainForCrewAssignments(crewId, captainPerson
   if (!tasks.length) return;
 
   const confirmed = window.confirm(
-    `${name} is now Captain of Crew ${crew?.crew_code || ''}. Add/promote ${name} as a reusable Captain for ${tasks.length} reusable task${tasks.length === 1 ? '' : 's'} already assigned to this crew? Existing Captains will remain.`
+    `${name} is now Captain of Crew ${crew?.crew_code || ''}.\n\nOK = Add/promote ${name} as a reusable Captain for ${tasks.length} reusable task${tasks.length === 1 ? '' : 's'} already assigned to this crew.\nCancel = Keep the Crew Captain assignment only.\n\nExisting Captains will remain.`
   );
   if (!confirmed) return;
 
@@ -154,18 +175,55 @@ function board205AmCarryoverMinutes(crewId) {
   return Math.max(total - SETUP_BOARD205_TYPICAL_AM_MINUTES, 0);
 }
 
+function board205AssignmentSortKey(item) {
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+  );
+  const shiftRank = { MORNING: 1, AFTERNOON: 2, ALL_DAY: 3 };
+  return [
+    day?.work_date || item.work_date || '9999-12-31',
+    shiftRank[item.shift_code] || 9,
+    Number(item.sort_order) || 0,
+    Number(item.setup_work_day_task_id) || 0
+  ];
+}
+
+function board205CompareAssignmentOrder(a, b) {
+  const ak = board205AssignmentSortKey(a);
+  const bk = board205AssignmentSortKey(b);
+  return ak[0].localeCompare(bk[0]) || ak[1] - bk[1] || ak[2] - bk[2] || ak[3] - bk[3];
+}
+
 function board205HeavyWarning(item) {
   const task = board205Task(item?.setup_session_task_id) || item;
-  if (String(task?.effort_level || '').toUpperCase() !== 'HEAVY') return false;
-  const sequence = board205CrewSequence(item.setup_work_day_crew_id);
+  if (String(task?.effort_level || '').toUpperCase() !== 'HEAVY') return null;
+
+  const crew = board205CrewRow(item.setup_work_day_crew_id);
+  const captainId = crew?.captain_person_id == null ? null : Number(crew.captain_person_id);
+  let sequence;
+
+  if (captainId != null) {
+    sequence = (setupBoard205State.board.assignments || [])
+      .filter((row) => Number(board205CrewRow(row.setup_work_day_crew_id)?.captain_person_id) === captainId)
+      .sort(board205CompareAssignmentOrder);
+  } else {
+    sequence = board205CrewSequence(item.setup_work_day_crew_id);
+  }
+
   const index = sequence.findIndex(
     (row) => Number(row.setup_work_day_task_id) === Number(item.setup_work_day_task_id)
   );
-  if (index <= 0) return false;
+  if (index <= 0) return null;
+
   const previous = sequence[index - 1];
-  if (Number(previous.setup_session_task_id) === Number(item.setup_session_task_id)) return false;
+  if (Number(previous.setup_session_task_id) === Number(item.setup_session_task_id)) return null;
   const previousTask = board205Task(previous.setup_session_task_id) || previous;
-  return String(previousTask?.effort_level || '').toUpperCase() === 'HEAVY';
+  if (String(previousTask?.effort_level || '').toUpperCase() !== 'HEAVY') return null;
+
+  if (captainId != null) {
+    return `HEAVY work follows HEAVY work for Captain ${crew?.captain_display_name || 'this Captain'}.`;
+  }
+  return 'HEAVY work follows HEAVY work for this crew.';
 }
 
 function board205Scope(task) {
