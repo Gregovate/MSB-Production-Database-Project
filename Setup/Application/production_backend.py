@@ -24,12 +24,13 @@ from setup_display_ownership_api import setup_display_ownership_api
 from setup_assignment_api import setup_assignment_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_planning_summary_api import setup_planning_summary_api
+from setup_scheduling_board_api import setup_scheduling_board_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.13-assignment-layer"
+PRODUCTION_VERSION = "V0.3.14-scheduling-board-candidate"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -83,6 +84,8 @@ PRODUCTION_ASSETS = frozenset(
         "setup_extra_material_source_usability.js",
         "setup_uom_catalog.js",
         "setup_planning_summary.js",
+        "setup_scheduling_board.css",
+        "setup_scheduling_board.js",
     }
 )
 KIT_INVENTORY_ASSETS = frozenset(
@@ -132,6 +135,7 @@ app.register_blueprint(setup_display_ownership_api)
 app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 app.register_blueprint(setup_planning_summary_api)
+app.register_blueprint(setup_scheduling_board_api)
 
 
 def _no_store(response):
