@@ -7,7 +7,7 @@
 | Audience | Setup Managers, reviewers, and administrators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-15 |
+| Last Reviewed | 2026-09-17 |
 
 ## Purpose
 
@@ -47,6 +47,23 @@ Before changing reusable information, ask whether it is a normal rule to carry f
 Build reusable tasks at the practical work-package level used by crews. Do not create one task per Display merely to make inventory relationships easier.
 
 Reusable tasks can belong to Park Infrastructure / no LOR Stage, Stage-level / General, or a real Scene. Programming-only LOR groups are not separate Setup Scenes.
+
+## Reusable Crew / Expected Duration
+
+Use **Crew min** and **Crew max** for the normal reusable crew range.
+
+Enter normal expected duration with **Expected hrs** and **Expected mins (0–59)**. Examples:
+
+~~~text
+45 minutes  -> 0 hrs / 45 mins
+60 minutes  -> 1 hr  / 0 mins
+90 minutes  -> 1 hr  / 30 mins
+135 minutes -> 2 hrs / 15 mins
+~~~
+
+The application stores the reusable duration as one total-minute value and converts it back to Hours / Minutes when the task is opened. Both fields blank means the duration remains missing. Minutes greater than 59 are rejected.
+
+This expected duration is reusable planning knowledge. It is not the annual actual-duration/progress-reporting field.
 
 ## Display / Container Material
 
