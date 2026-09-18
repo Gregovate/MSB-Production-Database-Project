@@ -63,6 +63,7 @@ class SetupSchedulingBoardRepository:
                     "session": None,
                     "work_days": [],
                     "crews": [],
+                    "captain_candidates": [],
                     "tasks": [],
                     "assignments": [],
                     "dependencies": [],
@@ -83,7 +84,7 @@ class SetupSchedulingBoardRepository:
                     wd.notes
                 FROM ops.setup_work_day wd
                 WHERE wd.setup_session_id = %s
-                ORDER BY wd.setup_day_number, wd.work_date, wd.setup_work_day_id
+                ORDER BY wd.work_date, wd.setup_day_number, wd.setup_work_day_id
                 """,
                 (session["setup_session_id"],),
             )
@@ -97,16 +98,32 @@ class SetupSchedulingBoardRepository:
                     c.crew_number,
                     c.crew_code,
                     c.am_planned_crew_count,
-                    c.pm_planned_crew_count
+                    c.pm_planned_crew_count,
+                    c.captain_person_id,
+                    coalesce(
+                        nullif(btrim(pg_catalog.concat_ws(' ', cp.first_name, cp.last_name)), ''),
+                        nullif(btrim(cp.email), '')
+                    ) AS captain_display_name
                 FROM ops.setup_work_day_crew c
                 JOIN ops.setup_work_day wd
                   ON wd.setup_work_day_id = c.setup_work_day_id
+                LEFT JOIN ref.person cp
+                  ON cp.person_id = c.captain_person_id
                 WHERE wd.setup_session_id = %s
-                ORDER BY wd.setup_day_number, c.crew_number
+                ORDER BY wd.work_date, c.crew_number
                 """,
                 (session["setup_session_id"],),
             )
             crews = [dict(row) for row in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT person_id, display_name, email
+                FROM ref.setup_captain_person_list()
+                ORDER BY display_name, person_id
+                """
+            )
+            captain_candidates = [dict(row) for row in cur.fetchall()]
 
             cur.execute(
                 """
@@ -142,6 +159,7 @@ class SetupSchedulingBoardRepository:
                     st.annual_readiness_note AS readiness_note,
                     st.annual_readiness_state AS readiness_state,
                     st.annual_weather_note AS weather_note,
+                    coalesce(captains.captain_person_ids, ARRAY[]::integer[]) AS reusable_captain_person_ids,
                     rt.baseline_plan_order,
                     rt.active_flag AS reusable_active_flag,
                     coalesce(rt.requires_display_material, false) AS requires_display_material,
@@ -203,6 +221,12 @@ class SetupSchedulingBoardRepository:
                   ON ls.lor_scene_id = st.annual_lor_scene_id
                 LEFT JOIN ref.person completed_by
                   ON completed_by.person_id = st.completed_by_person_id
+                LEFT JOIN LATERAL (
+                    SELECT array_agg(c.person_id ORDER BY c.sort_order, c.person_id) AS captain_person_ids
+                    FROM ref.setup_task_captain c
+                    WHERE c.setup_task_id = st.setup_task_id
+                      AND c.captain_role = 'CAPTAIN'
+                ) captains ON true
                 LEFT JOIN ops.setup_scheduling_work_order_gate wo
                   ON wo.work_order_id = st.linked_work_order_id
                 LEFT JOIN LATERAL (
@@ -478,6 +502,7 @@ class SetupSchedulingBoardRepository:
             "session": dict(session),
             "work_days": work_days,
             "crews": crews,
+            "captain_candidates": captain_candidates,
             "tasks": tasks,
             "assignments": assignments,
             "dependencies": dependencies,
@@ -534,11 +559,18 @@ class SetupSchedulingBoardRepository:
         crew_id: int,
         am_planned_crew_count: int | None,
         pm_planned_crew_count: int | None,
+        captain_person_id: int | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s)",
-                (email, crew_id, am_planned_crew_count, pm_planned_crew_count),
+                "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s,%s)",
+                (
+                    email,
+                    crew_id,
+                    am_planned_crew_count,
+                    pm_planned_crew_count,
+                    captain_person_id,
+                ),
             )
             result = self._one(cur, "Update Setup work-day crew returned no result")
             conn.commit()
@@ -723,6 +755,58 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Annual Setup task update returned no result")
+            conn.commit()
+            return result
+
+    def update_planning_info(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+        crew_min: int | None,
+        crew_max: int | None,
+        expected_duration_minutes: int | None,
+        effort_level: str | None,
+        readiness_note: str | None,
+        weather_note: str | None,
+        completion_point: str | None,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT * FROM ops.update_setup_scheduling_task_planning_info(
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s
+                )
+                """,
+                (
+                    email,
+                    session_task_id,
+                    crew_min,
+                    crew_max,
+                    expected_duration_minutes,
+                    effort_level,
+                    readiness_note,
+                    weather_note,
+                    completion_point,
+                ),
+            )
+            result = self._one(cur, "Scheduling planning-info update returned no result")
+            conn.commit()
+            return result
+
+    def promote_crew_captain_to_task(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+        crew_id: int,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.add_setup_crew_captain_to_reusable_task(%s,%s,%s)",
+                (email, session_task_id, crew_id),
+            )
+            result = self._one(cur, "Crew Captain knowledge update returned no result")
             conn.commit()
             return result
 
