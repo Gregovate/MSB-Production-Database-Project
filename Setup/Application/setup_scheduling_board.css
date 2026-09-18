@@ -57,11 +57,23 @@
 }
 
 .setup-board205-filters label {
-  display: inline-flex;
-  gap: 0.3rem;
-  align-items: center;
+  display: inline-grid;
+  gap: 0.25rem;
   margin: 0;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
+}
+
+.setup-board205-finder {
+  align-items: end;
+}
+
+.setup-board205-finder .setup-board205-search {
+  flex: 1 1 12rem;
+}
+
+.setup-board205-finder input,
+.setup-board205-finder select {
+  min-height: 2.1rem;
 }
 
 .setup-board205-queue {
@@ -178,8 +190,8 @@
 
 .setup-board205-grid {
   display: grid;
-  grid-template-columns: 6rem repeat(3, minmax(13rem, 1fr));
-  min-width: 48rem;
+  grid-template-columns: minmax(10rem, 0.72fr) repeat(2, minmax(14rem, 1fr));
+  min-width: 44rem;
 }
 
 .setup-board205-grid-head,
@@ -200,6 +212,47 @@
 .setup-board205-crew-label {
   padding: 0.7rem 0.55rem;
   font-weight: 800;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-crew-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.setup-board205-crew-counts label {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.setup-board205-crew-counts input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.25rem 0.35rem;
+}
+
+.setup-board205-crew-actions,
+.setup-board205-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.4rem;
+}
+
+.setup-board205-legacy-label {
+  font-size: 0.76rem;
+}
+
+.setup-board205-legacy-all-day {
+  grid-column: span 2;
+  padding: 0.42rem;
+  border-right: 1px solid var(--border, #d9e0e8);
+  border-bottom: 1px solid var(--border, #d9e0e8);
   background: var(--soft, #f5f8fb);
 }
 
@@ -238,6 +291,19 @@
 .setup-board205-lock {
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.setup-board205-warning {
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.setup-board205-badge.effort-heavy {
+  border-style: double;
 }
 
 .setup-board205-card-actions {
