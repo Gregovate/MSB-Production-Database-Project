@@ -7,7 +7,7 @@
 | Audience | Setup Managers, reviewers, and administrators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-18 |
 
 ## Purpose
 
@@ -18,7 +18,7 @@ Use this guide for the live Setup application and the Production-backed **2025 H
 ```text
 https://my.sheboyganlights.org/setup/
 2025 — Historical Verification
-Client V0.3.13
+Client V0.3.14
 ```
 
 Refresh or reopen Setup if the client marker is stale or unexpected before making a governed change.
@@ -172,9 +172,22 @@ Use **Manage Resource Catalog** when the reusable catalog entry itself needs cor
 
 Keep hard predecessor, preferred order, and readiness condition separate.
 
+A **hard prerequisite** is another Setup task that must be completed first. A **readiness condition** is a real-world condition that must be true before the task should be scheduled or started but is not itself a separate MSB work step.
+
+Example:
+
+~~~text
+Task: Lay Cords/Network
+Readiness: Ensure grass cutting is complete before laying cords.
+~~~
+
+Do not create a separate task such as “City Approval to Lay Cords/Network” merely to represent that condition.
+
 For fast prerequisite entry, hold **Shift** before left-button-down on the dependent task, drag it onto the prerequisite, and release. Normal drag without Shift remains task movement/reorder.
 
 Task detail contains one canonical prerequisite list with Add / Up / Down / Remove controls. Circular dependencies are rejected.
+
+V0.3.14 Scheduling Board planning information can be corrected before actual work exists, including Crew guidance, expected Time, Effort, Readiness, Weather, and Completion Point. The final pre-2026 Catalog review should therefore prioritize whether the **task itself is real/correct**, its scope is correct, and its hard prerequisites are correct.
 
 ## Procedures
 
@@ -203,8 +216,8 @@ Production-operational now includes:
 Still incomplete/separate:
 
 - final reusable Catalog acceptance and disposable 2026 seed proof;
-- structured readiness gating;
-- Pick List generation and staged release scheduling;
+- real 2026 Setup Session creation;
+- Pick List generation / physical staging workflow;
 - Container/Display movement/scanning writes; and
 - park-location execution evidence.
 
