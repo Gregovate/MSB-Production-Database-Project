@@ -4,8 +4,8 @@
 |---|---|
 | Status | CANDIDATE — NOT DEPLOYED |
 | Owner | Labeling and Scanning / Site Infrastructure GIS |
-| Related issues | #113, #171, #206 |
-| Candidate route | `/scan/field-test` |
+| Related issues | #113, #171, #219 |
+| Candidate route | `/scan/field-test` on protected `my.sheboyganlights.org` origin only |
 | Production write behavior | None |
 
 ## Purpose
@@ -64,6 +64,8 @@ It does not:
 
 Test observations are stored only in browser `localStorage` and can be exported as JSON/CSV.
 
+The engineering route is served only when the request arrives through the protected `my.sheboyganlights.org` Scan origin. The public `db.sheboyganlights.org` compatibility origin used by existing physical labels receives `404 Not Found` for `/scan/field-test`, so the embedded reference-coordinate set is not exposed through that compatibility route.
+
 ## Reference Dataset
 
 Candidate reference source:
@@ -105,7 +107,9 @@ Each scan or GPS-only sample records:
 - optional altitude/altitude accuracy/heading/speed supplied by the browser;
 - elapsed time from starting GPS to the current fix;
 - five nearest embedded GPX references and distances;
-- expected reference rank and expected-reference distance.
+- expected reference rank and expected-reference distance;
+- the expected reference latitude/longitude used for the comparison;
+- the complete embedded 31-point reference snapshot in the JSON session evidence so the field result remains reproducible even if the GPX source later changes.
 
 The browser session also records the user agent and reference-source provenance.
 
@@ -127,7 +131,7 @@ Recommended first pass:
 10. Re-enable connectivity or move to a known Wi-Fi area and verify the retained local evidence remains intact.
 11. Use **Verify normal Scan route** separately after connectivity returns to confirm the captured identity resolves through the current accepted Scan path.
 12. Repeat at additional reference locations, including close-pair stress cases.
-13. Export JSON at the end of the session; CSV is available for quick inspection.
+13. Export JSON at the end of the session; CSV carries the scan/GPS/connectivity fields and all five ranked references for quick inspection.
 14. Preserve the exported evidence with the acceptance notes.
 
 High-value discrimination cases already identified from the current GPX include close pairs:
