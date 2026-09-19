@@ -1,0 +1,43 @@
+name: Scan field-test validation
+
+on:
+  push:
+    branches:
+      - agent/scan-gps-field-acceptance
+    paths:
+      - 'Scan/directus-extension-scan/**'
+      - '.github/workflows/scan-field-test-validation.yml'
+  pull_request:
+    paths:
+      - 'Scan/directus-extension-scan/**'
+      - '.github/workflows/scan-field-test-validation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Scan/directus-extension-scan
+
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run Scan extension tests
+        run: npm test
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/index.js
+          node --check dist/index.js
+
+      - name: Verify source and dist are identical
+        run: cmp --silent src/index.js dist/index.js
+
+      - name: Record candidate SHA-256
+        run: sha256sum dist/index.js
