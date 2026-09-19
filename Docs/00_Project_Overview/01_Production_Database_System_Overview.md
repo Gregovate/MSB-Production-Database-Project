@@ -7,8 +7,51 @@
 | Audience | Project contributors, managers, engineers |
 | Status | CURRENT |
 | Owner | MSB Database Administrator |
-| Last Reviewed | 2026-08-09 |
+| Last Reviewed | 2026-09-18 |
 | Keywords | production database, system overview, PostgreSQL, LOR, operations |
+
+## Organizational Mission and Design Objective
+
+The Production Database exists to support Making Spirits Bright as an organization and the people who carry out its work. It is not an end in itself and is not designed around one individual operator.
+
+The organization's 2016–2024 Annual Reports state:
+
+> **OUR MISSION:** To provide charitable and humanitarian services for the residents of Sheboygan County including the collection and distribution of food.
+
+They also state the Event Objective:
+
+> **Our Event Objective is twofold – to collect pantry items for the Sheboygan County Food Bank and to provide an exciting, affordable and quality event.**
+
+The Production Crew operates in support of that mission and objective with this purpose:
+
+> **Provide a dynamic environment of fun, respect, and personal growth utilizing our volunteers' creativity to construct a show supporting the Mission Statement and Objectives using the mantra, "If we can think it, we can build it".**
+
+The Production Database project therefore exists to help MSB preserve and transfer the operational knowledge required to build, maintain, deploy, operate, and improve the show across seasons and changes in personnel.
+
+The system should:
+
+- preserve durable institutional knowledge instead of depending on one person's memory;
+- make physical/logistical truth, relationships, history, and evidence discoverable by future volunteers;
+- reduce avoidable searching, rework, and field delay so volunteer time can be spent constructing, improving, and operating the show;
+- support volunteers with different experience levels through understandable task-focused workflows;
+- preserve specialized engineering tools where they remain appropriate while making their durable identities and relationships usable across the organization;
+- retain enough historical evidence for future crews to learn from prior seasons instead of repeatedly reconstructing the same knowledge;
+- support adaptation, creativity, and field judgment rather than forcing volunteers into a rigid process merely because the database can model one; and
+- remain maintainable and understandable enough to continue serving MSB independent of any one maintainer, administrator, or Production Crew member.
+
+### Design Decision Test
+
+When choosing between competing designs, shortcuts, or subsystem boundaries, prefer the approach that best supports the long-term organizational objective:
+
+```text
+Does this help MSB preserve knowledge,
+use volunteer time effectively,
+support creativity and safe field work,
+make operational truth understandable,
+and remain usable across future seasons and personnel changes?
+```
+
+A locally convenient solution that depends on undocumented personal knowledge is not complete merely because it works for the current operator.
 
 ## Purpose
 
