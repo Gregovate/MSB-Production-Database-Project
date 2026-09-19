@@ -426,6 +426,19 @@ export default {
     // query or write Production Database workflow state.
     // ============================================================
     router.get('/field-test', async (req, res) => {
+      // This engineering harness is intentionally available only through the
+      // Cloudflare-protected my.sheboyganlights.org Scan origin. Existing
+      // physical labels may still use the public db.sheboyganlights.org Scan
+      // compatibility origin, so fail closed there instead of exposing the
+      // embedded field-reference coordinates.
+      const hostHeader = req && req.headers ? req.headers.host : '';
+      const requestHost = String(hostHeader || '').split(':')[0].trim().toLowerCase();
+
+      if (requestHost !== 'my.sheboyganlights.org') {
+        res.status(404).send('Not Found');
+        return;
+      }
+
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader(
@@ -688,6 +701,9 @@ export default {
                 session_id: newId(),
                 started_at: new Date().toISOString(),
                 reference_source: SOURCE,
+                reference_points: referencePoints.map(function(point) {
+                  return { name: point.name, lat: point.lat, lon: point.lon };
+                }),
                 user_agent: navigator.userAgent,
                 observations: []
               };
@@ -860,10 +876,23 @@ export default {
 
             function expectedResult(ranked) {
               const name = expectedReference.value || null;
-              if (!name) return { name: null, rank: null, distance_ft: null };
+              if (!name) {
+                return {
+                  name: null,
+                  latitude: null,
+                  longitude: null,
+                  rank: null,
+                  distance_ft: null
+                };
+              }
+
+              const point = referencePoints.find(function(item) { return item.name === name; }) || null;
               const index = ranked.findIndex(function(item) { return item.name === name; });
+
               return {
                 name: name,
+                latitude: point ? point.lat : null,
+                longitude: point ? point.lon : null,
                 rank: index < 0 ? null : index + 1,
                 distance_ft: index < 0 ? null : ranked[index].distance_ft
               };
@@ -885,6 +914,8 @@ export default {
                 scan_type: parsed ? parsed.type : null,
                 scan_key: parsed ? parsed.key : null,
                 expected_reference: expected.name,
+                expected_reference_latitude: expected.latitude,
+                expected_reference_longitude: expected.longitude,
                 operator_location_comment: operatorLocationComment.value.trim() || null,
                 expected_rank: expected.rank,
                 expected_distance_ft: expected.distance_ft,
@@ -979,23 +1010,39 @@ export default {
 
             function exportSessionCsv() {
               const header = [
-                'observation_id','recorded_at','kind','input_method','scan_raw','scan_canonical',
-                'expected_reference','operator_location_comment','expected_rank','expected_distance_ft',
-                'latitude','longitude','accuracy_ft','fix_age_ms','browser_online','effective_type',
-                'nearest_1','nearest_1_distance_ft','nearest_2','nearest_2_distance_ft'
+                'observation_id','recorded_at','kind','input_method','scan_raw','scan_canonical','scan_type','scan_key',
+                'expected_reference','expected_reference_latitude','expected_reference_longitude',
+                'operator_location_comment','expected_rank','expected_distance_ft',
+                'latitude','longitude','accuracy_m','accuracy_ft','fix_timestamp','fix_age_ms','gps_acquisition_elapsed_ms',
+                'browser_online','effective_type','downlink_mbps','rtt_ms','save_data',
+                'nearest_1','nearest_1_distance_ft','nearest_2','nearest_2_distance_ft',
+                'nearest_3','nearest_3_distance_ft','nearest_4','nearest_4_distance_ft',
+                'nearest_5','nearest_5_distance_ft'
               ];
               const rows = [header.map(csvCell).join(',')];
               session.observations.forEach(function(obs) {
-                const first = obs.nearest_references && obs.nearest_references[0];
-                const second = obs.nearest_references && obs.nearest_references[1];
+                const nearest = obs.nearest_references || [];
+                const first = nearest[0];
+                const second = nearest[1];
+                const third = nearest[2];
+                const fourth = nearest[3];
+                const fifth = nearest[4];
                 const gps = obs.gps || {};
+                const connectivity = obs.connectivity || {};
                 rows.push([
                   obs.observation_id, obs.recorded_at, obs.kind, obs.input_method, obs.scan_raw, obs.scan_canonical,
-                  obs.expected_reference, obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
-                  gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_age_ms,
-                  obs.connectivity && obs.connectivity.browser_online,
-                  obs.connectivity && obs.connectivity.effective_type,
-                  first && first.name, first && first.distance_ft, second && second.name, second && second.distance_ft
+                  obs.scan_type, obs.scan_key,
+                  obs.expected_reference, obs.expected_reference_latitude, obs.expected_reference_longitude,
+                  obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
+                  gps.latitude, gps.longitude, gps.accuracy_m, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
+                  obs.gps_acquisition_elapsed_ms,
+                  connectivity.browser_online, connectivity.effective_type, connectivity.downlink_mbps,
+                  connectivity.rtt_ms, connectivity.save_data,
+                  first && first.name, first && first.distance_ft,
+                  second && second.name, second && second.distance_ft,
+                  third && third.name, third && third.distance_ft,
+                  fourth && fourth.name, fourth && fourth.distance_ft,
+                  fifth && fifth.name, fifth && fifth.distance_ft
                 ].map(csvCell).join(','));
               });
               exportFile(
@@ -1018,14 +1065,35 @@ export default {
               window.setTimeout(focusScanInput, 250);
             }
 
+            let operatorEditFocusTimer = null;
+            function scheduleFocusAfterOperatorEdit() {
+              if (operatorEditFocusTimer != null) {
+                window.clearTimeout(operatorEditFocusTimer);
+              }
+              operatorEditFocusTimer = window.setTimeout(function() {
+                if (document.activeElement === operatorLocationComment) {
+                  focusScanInput();
+                }
+              }, 2000);
+            }
+
             function isUnfocusedPageSurface(target) {
               return !target || target === document.body || target === document.documentElement;
             }
 
-            startGps.addEventListener('click', startGpsWatch);
+            startGps.addEventListener('click', function() {
+              startGpsWatch();
+              scheduleScanInputFocus();
+            });
             captureGps.addEventListener('click', function() {
               recordObservation('GPS_SAMPLE', null);
+              scheduleScanInputFocus();
             });
+            expectedReference.addEventListener('change', scheduleScanInputFocus);
+            inputMethod.addEventListener('change', scheduleScanInputFocus);
+            operatorLocationComment.addEventListener('input', scheduleFocusAfterOperatorEdit);
+            operatorLocationComment.addEventListener('blur', scheduleScanInputFocus);
+
             scanForm.addEventListener('submit', function(event) {
               event.preventDefault();
               const raw = scanInput.value.trim();
