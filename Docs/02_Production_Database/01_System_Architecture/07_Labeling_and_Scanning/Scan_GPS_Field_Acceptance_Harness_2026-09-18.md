@@ -16,12 +16,37 @@ The test must answer with evidence:
 
 1. Does Zebra HID input reach the protected Scan browser reliably without a preliminary tap?
 2. Does the rugged tablet return usable high-accuracy GPS observations in the actual park environment?
-3. When compared with current ExpertGPS reference points, which named locations are ranked nearest?
-4. Can the device distinguish intentionally close reference locations well enough for a useful operator workflow?
-5. Does the browser retain test evidence across an ordinary page reload / temporary connectivity interruption?
-6. Can the same scanned identity still be handed to the normal accepted Scan route independently of the test harness?
+3. Does GPS continue to produce usable observations when both cellular data and Wi-Fi are deliberately unavailable?
+4. When compared with current ExpertGPS reference points, which named locations are ranked nearest?
+5. Can the device distinguish intentionally close reference locations well enough for a useful operator workflow?
+6. Does the browser retain test evidence while disconnected and across browser backgrounding / reload where possible?
+7. Can the same scanned identity still be handed to the normal accepted Scan route independently of the test harness?
+8. What additional offline-app-shell behavior is required before a no-SIM tablet can recover from a reload/restart in a dead zone?
 
 This harness does **not** decide final GPS tolerances and does **not** prove that any GPX coordinate is authoritative merely because the tablet agrees with it.
+
+## Park Connectivity Assumption
+
+The production field fleet must not depend on cellular service.
+
+Current 2026 operating facts:
+
+- one rugged tablet currently has a SIM/cellular connection;
+- the other tablets do not;
+- seasonal SIM service is not expected to be purchased for every tablet;
+- park Wi-Fi exists only in limited/key locations and can be used as periodic synchronization points.
+
+The intended production model is therefore store-and-forward:
+
+```text
+scan + GPS + field context
+    -> commit locally on tablet
+    -> continue working without network
+    -> later reach Wi-Fi / connectivity
+    -> idempotently synchronize queued events
+```
+
+The SIM-equipped tablet is a useful acceptance device because the operator can deliberately disable cellular/Wi-Fi and compare connected versus disconnected behavior on the same hardware.
 
 ## Safety / Data Boundary
 
@@ -74,6 +99,7 @@ Each scan or GPS-only sample records:
 - parsed canonical `TYPE:key` when recognized;
 - latitude/longitude;
 - browser-reported horizontal accuracy;
+- browser online/offline state and available Network Information API hints;
 - GPS fix timestamp and age;
 - optional altitude/altitude accuracy/heading/speed supplied by the browser;
 - elapsed time from starting GPS to the current fix;
@@ -88,15 +114,20 @@ Do not try to prove the whole park in one pass. Collect repeatable evidence.
 
 Recommended first pass:
 
-1. Open the candidate page on the actual rugged tablet through the accepted HTTPS Scan origin.
+1. Open the candidate page on the actual rugged tablet through the accepted HTTPS Scan origin while connected.
 2. Select the named reference where you intentionally stand.
 3. Start high-accuracy GPS and wait until the displayed fix/accuracy stabilizes.
 4. Scan a real Display/Container/Controller label with the Zebra without first tapping the Scan field.
-5. Repeat at least three observations at the same point.
-6. Move to the next reference and repeat.
-7. Use **Verify normal Scan route** separately to confirm the captured identity still resolves through the current accepted Scan path.
-8. Export JSON at the end of the session; CSV is available for quick inspection.
-9. Preserve the exported evidence with the acceptance notes.
+5. Repeat at least three observations at the same point while connected.
+6. Deliberately disable both cellular data and Wi-Fi.
+7. Confirm the page shows OFFLINE, wait for fresh GPS fixes, and capture at least three additional scans/GPS samples.
+8. Background and restore the browser while still offline; verify locally retained observations remain present.
+9. If practical, reload/restart while still offline. Record whether the field-test page itself remains available. Failure here is evidence that an offline app shell/service-worker or equivalent is required; do not treat it as operator error.
+10. Re-enable connectivity or move to a known Wi-Fi area and verify the retained local evidence remains intact.
+11. Use **Verify normal Scan route** separately after connectivity returns to confirm the captured identity resolves through the current accepted Scan path.
+12. Repeat at additional reference locations, including close-pair stress cases.
+13. Export JSON at the end of the session; CSV is available for quick inspection.
+14. Preserve the exported evidence with the acceptance notes.
 
 High-value discrimination cases already identified from the current GPX include close pairs:
 
