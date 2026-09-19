@@ -558,6 +558,17 @@ export default {
               Select the place you believe you are standing at. The harness will still rank all nearby references independently.
               No automatic PASS/FAIL distance threshold is applied.
             </div>
+
+            <label for="operatorLocationComment" style="margin-top:14px;">Operator location comment</label>
+            <textarea
+              id="operatorLocationComment"
+              rows="3"
+              placeholder="Record where you believe this scan should resolve, or any field context you want preserved with the observation."
+              style="width:100%; box-sizing:border-box; padding:12px; font-size:16px; border-radius:8px; border:1px solid #4a5568; margin-bottom:10px;"
+            ></textarea>
+            <div class="muted small">
+              This is your field judgment. It is saved separately from the selected GPX reference and from the GPS-derived nearest-location ranking.
+            </div>
           </div>
 
           <div class="card">
@@ -612,6 +623,7 @@ export default {
                     <th>Time</th>
                     <th>Scan</th>
                     <th>Expected</th>
+                    <th>Operator comment</th>
                     <th>Nearest</th>
                     <th>Expected rank</th>
                     <th>GPS accuracy</th>
@@ -638,6 +650,7 @@ export default {
             };
 
             const expectedReference = document.getElementById('expectedReference');
+            const operatorLocationComment = document.getElementById('operatorLocationComment');
             const startGps = document.getElementById('startGps');
             const captureGps = document.getElementById('captureGps');
             const gpsError = document.getElementById('gpsError');
@@ -872,6 +885,7 @@ export default {
                 scan_type: parsed ? parsed.type : null,
                 scan_key: parsed ? parsed.key : null,
                 expected_reference: expected.name,
+                operator_location_comment: operatorLocationComment.value.trim() || null,
                 expected_rank: expected.rank,
                 expected_distance_ft: expected.distance_ft,
                 gps: gps,
@@ -917,6 +931,7 @@ export default {
                   '<td>' + escapeHtml(new Date(obs.recorded_at).toLocaleTimeString()) + '</td>' +
                   '<td>' + escapeHtml(obs.scan_canonical || (obs.kind === 'GPS_SAMPLE' ? 'GPS sample' : obs.scan_raw || '—')) + '</td>' +
                   '<td>' + escapeHtml(obs.expected_reference || '—') + '</td>' +
+                  '<td>' + escapeHtml(obs.operator_location_comment || '—') + '</td>' +
                   '<td>' + escapeHtml(nearest ? nearest.name + ' · ' + nearest.distance_ft.toFixed(1) + ' ft' : 'No GPS') + '</td>' +
                   '<td>' + escapeHtml(obs.expected_rank == null ? '—' : String(obs.expected_rank)) + '</td>' +
                   '<td>' + escapeHtml(obs.gps && obs.gps.accuracy_ft != null ? obs.gps.accuracy_ft.toFixed(1) + ' ft' : '—') + '</td>';
@@ -965,7 +980,7 @@ export default {
             function exportSessionCsv() {
               const header = [
                 'observation_id','recorded_at','kind','input_method','scan_raw','scan_canonical',
-                'expected_reference','expected_rank','expected_distance_ft',
+                'expected_reference','operator_location_comment','expected_rank','expected_distance_ft',
                 'latitude','longitude','accuracy_ft','fix_age_ms','browser_online','effective_type',
                 'nearest_1','nearest_1_distance_ft','nearest_2','nearest_2_distance_ft'
               ];
@@ -976,7 +991,7 @@ export default {
                 const gps = obs.gps || {};
                 rows.push([
                   obs.observation_id, obs.recorded_at, obs.kind, obs.input_method, obs.scan_raw, obs.scan_canonical,
-                  obs.expected_reference, obs.expected_rank, obs.expected_distance_ft,
+                  obs.expected_reference, obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
                   gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_age_ms,
                   obs.connectivity && obs.connectivity.browser_online,
                   obs.connectivity && obs.connectivity.effective_type,
