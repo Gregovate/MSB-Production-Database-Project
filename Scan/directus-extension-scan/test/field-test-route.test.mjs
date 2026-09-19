@@ -53,6 +53,9 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /navigator\.geolocation\.watchPosition/);
   assert.match(response.body, /enableHighAccuracy:\s*true/);
   assert.match(response.body, /localStorage\.setItem/);
+  assert.match(response.body, /navigator\.onLine/);
+  assert.match(response.body, /window\.addEventListener\('offline'/);
+  assert.match(response.body, /window\.addEventListener\('online'/);
   assert.match(response.body, /document\.addEventListener\('keydown'/);
   assert.match(response.body, /Verify normal Scan route/);
 });
