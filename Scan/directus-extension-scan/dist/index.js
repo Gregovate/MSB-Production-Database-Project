@@ -572,6 +572,7 @@ export default {
               <div><div class="muted">Reported accuracy</div><div id="gpsAccuracy" class="value">—</div></div>
               <div><div class="muted">Fix age</div><div id="gpsAge" class="value">—</div></div>
               <div><div class="muted">Nearest reference</div><div id="gpsNearest" class="value">—</div></div>
+              <div><div class="muted">Connectivity</div><div id="connectivityState" class="value">Checking…</div></div>
             </div>
             <div id="gpsCandidates" class="small muted"></div>
           </div>
@@ -645,6 +646,7 @@ export default {
             const gpsAge = document.getElementById('gpsAge');
             const gpsNearest = document.getElementById('gpsNearest');
             const gpsCandidates = document.getElementById('gpsCandidates');
+            const connectivityState = document.getElementById('connectivityState');
             const inputMethod = document.getElementById('inputMethod');
             const scanForm = document.getElementById('scanForm');
             const scanInput = document.getElementById('scanInput');
@@ -727,6 +729,28 @@ export default {
                   };
                 })
                 .sort(function(a, b) { return a.distance_ft - b.distance_ft; });
+            }
+
+            function connectivitySnapshot() {
+              const connection =
+                navigator.connection ||
+                navigator.mozConnection ||
+                navigator.webkitConnection ||
+                null;
+
+              return {
+                browser_online: navigator.onLine === true,
+                effective_type: connection && connection.effectiveType ? connection.effectiveType : null,
+                downlink_mbps: connection && typeof connection.downlink === 'number' ? connection.downlink : null,
+                rtt_ms: connection && typeof connection.rtt === 'number' ? connection.rtt : null,
+                save_data: connection && typeof connection.saveData === 'boolean' ? connection.saveData : null
+              };
+            }
+
+            function renderConnectivity() {
+              const state = connectivitySnapshot();
+              connectivityState.textContent = state.browser_online ? 'ONLINE' : 'OFFLINE';
+              connectivityState.className = 'value ' + (state.browser_online ? 'good' : 'bad');
             }
 
             function positionSnapshot(position) {
@@ -851,6 +875,7 @@ export default {
                 expected_rank: expected.rank,
                 expected_distance_ft: expected.distance_ft,
                 gps: gps,
+                connectivity: connectivitySnapshot(),
                 gps_acquisition_elapsed_ms: gpsStartedAt == null || !gps ? null : Number(latestPosition.timestamp) - gpsStartedAt,
                 nearest_references: ranked.slice(0, 5)
               };
@@ -899,11 +924,15 @@ export default {
               });
 
               const gpsCount = session.observations.filter(function(obs) { return !!obs.gps; }).length;
+              const offlineCount = session.observations.filter(function(obs) {
+                return obs.connectivity && obs.connectivity.browser_online === false;
+              }).length;
               const rankedCount = session.observations.filter(function(obs) { return obs.expected_rank != null; }).length;
               const nearestExpected = session.observations.filter(function(obs) { return obs.expected_rank === 1; }).length;
               sessionSummary.textContent =
                 session.observations.length + ' observations · ' +
                 gpsCount + ' with GPS · ' +
+                offlineCount + ' captured offline · ' +
                 (rankedCount ? nearestExpected + '/' + rankedCount + ' expected locations ranked #1' : 'no expected-location comparisons yet') +
                 ' · local session ' + session.session_id;
             }
@@ -937,7 +966,7 @@ export default {
               const header = [
                 'observation_id','recorded_at','kind','input_method','scan_raw','scan_canonical',
                 'expected_reference','expected_rank','expected_distance_ft',
-                'latitude','longitude','accuracy_ft','fix_age_ms',
+                'latitude','longitude','accuracy_ft','fix_age_ms','browser_online','effective_type',
                 'nearest_1','nearest_1_distance_ft','nearest_2','nearest_2_distance_ft'
               ];
               const rows = [header.map(csvCell).join(',')];
@@ -949,6 +978,8 @@ export default {
                   obs.observation_id, obs.recorded_at, obs.kind, obs.input_method, obs.scan_raw, obs.scan_canonical,
                   obs.expected_reference, obs.expected_rank, obs.expected_distance_ft,
                   gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_age_ms,
+                  obs.connectivity && obs.connectivity.browser_online,
+                  obs.connectivity && obs.connectivity.effective_type,
                   first && first.name, first && first.distance_ft, second && second.name, second && second.distance_ft
                 ].map(csvCell).join(','));
               });
@@ -1023,12 +1054,18 @@ export default {
             }, true);
 
             window.setInterval(renderGps, 1000);
-            window.addEventListener('pageshow', scheduleScanInputFocus);
+            window.addEventListener('online', renderConnectivity);
+            window.addEventListener('offline', renderConnectivity);
+            window.addEventListener('pageshow', function() {
+              renderConnectivity();
+              scheduleScanInputFocus();
+            });
             window.addEventListener('focus', scheduleScanInputFocus);
             document.addEventListener('visibilitychange', function() {
               if (document.visibilityState === 'visible') scheduleScanInputFocus();
             });
 
+            renderConnectivity();
             renderSession();
             scheduleScanInputFocus();
           </script>
