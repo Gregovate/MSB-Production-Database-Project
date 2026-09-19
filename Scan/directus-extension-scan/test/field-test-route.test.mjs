@@ -57,6 +57,8 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /window\.addEventListener\('offline'/);
   assert.match(response.body, /window\.addEventListener\('online'/);
   assert.match(response.body, /document\.addEventListener\('keydown'/);
+  assert.match(response.body, /Operator location comment/);
+  assert.match(response.body, /operator_location_comment/);
   assert.match(response.body, /Verify normal Scan route/);
 });
 
