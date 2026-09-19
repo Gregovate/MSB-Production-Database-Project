@@ -139,6 +139,66 @@ High-value discrimination cases already identified from the current GPX include 
 
 Also include at least one comparatively isolated location and the QV/Santa's Station area.
 
+## Minimal Park Test — SIM-Equipped HOTWAV R9
+
+This is the immediate acceptance test Greg can perform next week with a second/similar HOTWAV R9 that has cellular service.
+
+Required physical items:
+
+- one real Container label;
+- one real Display label;
+- the Zebra scanner used for the field workflow;
+- the SIM-equipped HOTWAV R9.
+
+The labels are test identities only. They may be carried to known reference points for this read-only test. The harness must not create movement/location history merely because the same label is scanned at several test points.
+
+### Connectivity setup
+
+Before beginning:
+
+1. turn **Wi-Fi OFF** on the tablet;
+2. leave **cellular data ON**;
+3. open the protected test route over cellular;
+4. verify the page reports `ONLINE`;
+5. start high-accuracy GPS.
+
+This proves the park test is not accidentally depending on local Wi-Fi while still allowing the protected browser route and evidence export to work.
+
+### Test at each chosen reference point
+
+At a known ExpertGPS location:
+
+1. select the expected named reference in the harness;
+2. wait for the GPS fix and reported accuracy to stabilize;
+3. scan the Container label with the Zebra;
+4. scan the Display label with the Zebra;
+5. repeat each scan at least twice;
+6. confirm the page retained the complete `CONT:<id>` / `DISP:<id>` value and Enter submission without first tapping the field;
+7. note the nearest reference, expected-reference rank, distance, and reported GPS accuracy;
+8. use **Verify normal Scan route** for each identity to prove current production routing still works over cellular.
+
+Recommended location coverage for the first trip:
+
+- one relatively isolated reference point to establish a simple baseline;
+- one close-pair area such as `03-Welcome Area-WA` / `03a-Mega Cube-MC` or `23-Peanuts-PN` / `24-Traditional Christmas-TC`;
+- optionally the Santa's Station/QV area to observe meaningful within-Stage location behavior.
+
+The same two physical labels can be used at every point because the harness is read-only.
+
+### Optional GPS-only offline check
+
+After the connected cellular scans are complete at one known point:
+
+1. leave the test page open;
+2. turn **cellular data OFF** as well as Wi-Fi;
+3. verify the page reports `OFFLINE`;
+4. wait for fresh GPS fixes;
+5. capture several GPS-only samples;
+6. optionally scan the two labels again and confirm the harness retains them locally;
+7. restore cellular service and export the session.
+
+This optional pass tests whether GNSS/scan capture continues without data service. It is not yet the production offline-cold-start acceptance.
+
 ## Acceptance Decision
 
 Do not set a universal acceptable-distance number before field evidence exists.
