@@ -94,6 +94,7 @@ Each scan or GPS-only sample records:
 - test-session UUID;
 - observation timestamp;
 - selected expected reference name, when supplied by the operator;
+- free-text operator location comment describing where the operator believes the scan should resolve or other field context;
 - input method selected by operator;
 - raw scanned value;
 - parsed canonical `TYPE:key` when recognized;
@@ -169,13 +170,14 @@ This proves the park test is not accidentally depending on local Wi-Fi while sti
 At a known ExpertGPS location:
 
 1. select the expected named reference in the harness;
-2. wait for the GPS fix and reported accuracy to stabilize;
-3. scan the Container label with the Zebra;
-4. scan the Display label with the Zebra;
-5. repeat each scan at least twice;
-6. confirm the page retained the complete `CONT:<id>` / `DISP:<id>` value and Enter submission without first tapping the field;
-7. note the nearest reference, expected-reference rank, distance, and reported GPS accuracy;
-8. use **Verify normal Scan route** for each identity to prove current production routing still works over cellular.
+2. enter an operator location comment when useful (for example, "standing at Santa's Station driveway entrance; expect Entrance");
+3. wait for the GPS fix and reported accuracy to stabilize;
+4. scan the Container label with the Zebra;
+5. scan the Display label with the Zebra;
+6. repeat each scan at least twice;
+7. confirm the page retained the complete `CONT:<id>` / `DISP:<id>` value and Enter submission without first tapping the field;
+8. note the nearest reference, expected-reference rank, distance, reported GPS accuracy, and preserved operator comment;
+9. use **Verify normal Scan route** for each identity to prove current production routing still works over cellular.
 
 Recommended location coverage for the first trip:
 
