@@ -144,8 +144,9 @@ def test_manager_browser_surface_is_exception_first_and_links_corrections() -> N
     assert "Open Kit Inventory" in js
     assert "Open Kit assignment" in js
     assert "view=review&setup_task_id=" in js
-    assert "correction=display-ownership" in js
-    assert "correction=kit-boxes" in js
+    assert "&correction=${encodeURIComponent(correction)}" in js
+    assert "setupTaskLink(row.correction_setup_task_id, 'Open Display Ownership', 'display-ownership')" in js
+    assert "setupTaskLink(firstActive || firstInactive, 'Open Kit assignment', 'kit-boxes')" in js
     assert "consumePendingCorrection('display-ownership')" in read_app("setup_display_ownership.js")
     assert "consumePendingCorrection('kit-boxes')" in read_app("setup_kit_box_assignment.js")
     assert "Mark reviewed shared/non-task" in js
