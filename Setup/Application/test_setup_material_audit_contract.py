@@ -121,6 +121,7 @@ def test_manager_browser_surface_is_exception_first_and_links_corrections() -> N
     assert "Open Display Ownership" in js
     assert "Open Kit Inventory" in js
     assert "Open Kit assignment" in js
+    assert "view=review&setup_task_id=" in js
     assert "correction=display-ownership" in js
     assert "correction=kit-boxes" in js
     assert "consumePendingCorrection('display-ownership')" in read_app("setup_display_ownership.js")
