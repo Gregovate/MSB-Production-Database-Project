@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import scanExtension from '../src/index.js';
 
-async function renderRoute(path) {
+async function renderRoute(path, host = 'my.sheboyganlights.org') {
   const routes = new Map();
   const router = {
     get(routePath, handler) {
@@ -15,7 +15,12 @@ async function renderRoute(path) {
   let databaseCalled = false;
   const response = {
     body: null,
+    statusCode: 200,
     headers: new Map(),
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
     setHeader(name, value) {
       this.headers.set(String(name).toLowerCase(), value);
     },
@@ -33,7 +38,7 @@ async function renderRoute(path) {
 
   const handler = routes.get(path);
   assert.ok(handler, 'expected route ' + path + ' to be registered');
-  await handler({}, response);
+  await handler({ headers: { host } }, response);
 
   return { response, databaseCalled };
 }
@@ -42,9 +47,19 @@ test('field acceptance route is read-only and contains no database dependency', 
   const { response, databaseCalled } = await renderRoute('/field-test');
 
   assert.equal(databaseCalled, false);
+  assert.equal(response.statusCode, 200);
   assert.match(response.body, /READ-ONLY ENGINEERING TEST/);
   assert.match(response.body, /does not change Setup movement state or write test observations to PostgreSQL/i);
   assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('field acceptance route fails closed outside the protected Scan origin', async () => {
+  const { response, databaseCalled } = await renderRoute('/field-test', 'db.sheboyganlights.org');
+
+  assert.equal(databaseCalled, false);
+  assert.equal(response.statusCode, 404);
+  assert.equal(response.body, 'Not Found');
+  assert.doesNotMatch(response.body, /03a-Mega Cube-MC/);
 });
 
 test('field acceptance route exercises real browser GPS and HID capture primitives', async () => {
@@ -59,6 +74,8 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /document\.addEventListener\('keydown'/);
   assert.match(response.body, /Operator location comment/);
   assert.match(response.body, /operator_location_comment/);
+  assert.match(response.body, /operatorLocationComment\.addEventListener\('input', scheduleFocusAfterOperatorEdit\)/);
+  assert.match(response.body, /expectedReference\.addEventListener\('change', scheduleScanInputFocus\)/);
   assert.match(response.body, /Verify normal Scan route/);
 });
 
@@ -67,6 +84,10 @@ test('field acceptance route preserves current GPX reference provenance and name
 
   assert.match(response.body, /2026_msb\.gpx/);
   assert.match(response.body, /ExpertGPS 9\.34 using Garmin GPSMAP 66sr/);
+  assert.match(response.body, /eff23e666e0c288b52741621c1450b5a95150b36394de38bfe50b307c311de74/);
+  assert.match(response.body, /source_waypoint_count:\s*519/);
+  assert.match(response.body, /selection_rule:\s*'type=Stage'/);
+  assert.match(response.body, /reference_points:\s*referencePoints\.map/);
   assert.match(response.body, /03a-Mega Cube-MC/);
   assert.match(response.body, /23-Peanuts-PN/);
   assert.match(response.body, /24-Traditional Christmas-TC/);
@@ -74,6 +95,21 @@ test('field acceptance route preserves current GPX reference provenance and name
 
   const referenceCount = (response.body.match(/"name":/g) || []).length;
   assert.equal(referenceCount, 31);
+});
+
+test('CSV export carries the complete field evidence needed for later comparison', async () => {
+  const { response } = await renderRoute('/field-test');
+
+  assert.match(response.body, /'reference_source_sha256'/);
+  assert.match(response.body, /'reference_selection_rule'/);
+  assert.match(response.body, /'fix_timestamp'/);
+  assert.match(response.body, /'gps_acquisition_elapsed_ms'/);
+  assert.match(response.body, /'expected_reference_latitude'/);
+  assert.match(response.body, /'expected_reference_longitude'/);
+  assert.match(response.body, /'nearest_5'/);
+  assert.match(response.body, /'nearest_5_distance_ft'/);
+  assert.match(response.body, /'browser_online'/);
+  assert.match(response.body, /'effective_type'/);
 });
 
 test('scan source and deployed dist candidate remain byte-identical', () => {

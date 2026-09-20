@@ -426,6 +426,12 @@ export default {
     // query or write Production Database workflow state.
     // ============================================================
     router.get('/field-test', async (req, res) => {
+      const requestHost = String(req.headers?.host ?? '').split(':')[0].toLowerCase();
+      if (requestHost !== 'my.sheboyganlights.org') {
+        res.status(404).send('Not Found');
+        return;
+      }
+
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader(
@@ -646,6 +652,10 @@ export default {
               file: '2026_msb.gpx',
               creator: 'ExpertGPS 9.34 using Garmin GPSMAP 66sr',
               modified_at: '2026-09-15T20:51:16.014Z',
+              sha256: 'eff23e666e0c288b52741621c1450b5a95150b36394de38bfe50b307c311de74',
+              source_waypoint_count: 519,
+              selection_rule: 'type=Stage',
+              selected_waypoint_count: referencePoints.length,
               reference_count: referencePoints.length
             };
 
@@ -674,6 +684,7 @@ export default {
             let watchId = null;
             let latestPosition = null;
             let gpsStartedAt = null;
+            let operatorFocusTimer = null;
 
             function newId() {
               if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -688,6 +699,9 @@ export default {
                 session_id: newId(),
                 started_at: new Date().toISOString(),
                 reference_source: SOURCE,
+                reference_points: referencePoints.map(function(point) {
+                  return { name: point.name, lat: point.lat, lon: point.lon };
+                }),
                 user_agent: navigator.userAgent,
                 observations: []
               };
@@ -860,10 +874,22 @@ export default {
 
             function expectedResult(ranked) {
               const name = expectedReference.value || null;
-              if (!name) return { name: null, rank: null, distance_ft: null };
+              if (!name) {
+                return {
+                  name: null,
+                  latitude: null,
+                  longitude: null,
+                  rank: null,
+                  distance_ft: null
+                };
+              }
+
+              const point = referencePoints.find(function(item) { return item.name === name; }) || null;
               const index = ranked.findIndex(function(item) { return item.name === name; });
               return {
                 name: name,
+                latitude: point ? point.lat : null,
+                longitude: point ? point.lon : null,
                 rank: index < 0 ? null : index + 1,
                 distance_ft: index < 0 ? null : ranked[index].distance_ft
               };
@@ -885,6 +911,8 @@ export default {
                 scan_type: parsed ? parsed.type : null,
                 scan_key: parsed ? parsed.key : null,
                 expected_reference: expected.name,
+                expected_reference_latitude: expected.latitude,
+                expected_reference_longitude: expected.longitude,
                 operator_location_comment: operatorLocationComment.value.trim() || null,
                 expected_rank: expected.rank,
                 expected_distance_ft: expected.distance_ft,
@@ -979,23 +1007,41 @@ export default {
 
             function exportSessionCsv() {
               const header = [
-                'observation_id','recorded_at','kind','input_method','scan_raw','scan_canonical',
-                'expected_reference','operator_location_comment','expected_rank','expected_distance_ft',
-                'latitude','longitude','accuracy_ft','fix_age_ms','browser_online','effective_type',
-                'nearest_1','nearest_1_distance_ft','nearest_2','nearest_2_distance_ft'
+                'observation_id','recorded_at','kind','input_method','scan_raw','scan_canonical','scan_type','scan_key',
+                'reference_source_sha256','reference_source_modified_at','reference_selection_rule',
+                'source_waypoint_count','selected_waypoint_count',
+                'expected_reference','expected_reference_latitude','expected_reference_longitude',
+                'operator_location_comment','expected_rank','expected_distance_ft',
+                'latitude','longitude','accuracy_ft','fix_timestamp','fix_age_ms','gps_acquisition_elapsed_ms',
+                'browser_online','effective_type','downlink_mbps','rtt_ms','save_data',
+                'nearest_1','nearest_1_distance_ft','nearest_2','nearest_2_distance_ft',
+                'nearest_3','nearest_3_distance_ft','nearest_4','nearest_4_distance_ft',
+                'nearest_5','nearest_5_distance_ft'
               ];
               const rows = [header.map(csvCell).join(',')];
               session.observations.forEach(function(obs) {
-                const first = obs.nearest_references && obs.nearest_references[0];
-                const second = obs.nearest_references && obs.nearest_references[1];
+                const ranked = obs.nearest_references || [];
                 const gps = obs.gps || {};
+                const connectivity = obs.connectivity || {};
                 rows.push([
                   obs.observation_id, obs.recorded_at, obs.kind, obs.input_method, obs.scan_raw, obs.scan_canonical,
-                  obs.expected_reference, obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
-                  gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_age_ms,
-                  obs.connectivity && obs.connectivity.browser_online,
-                  obs.connectivity && obs.connectivity.effective_type,
-                  first && first.name, first && first.distance_ft, second && second.name, second && second.distance_ft
+                  obs.scan_type, obs.scan_key,
+                  session.reference_source && session.reference_source.sha256,
+                  session.reference_source && session.reference_source.modified_at,
+                  session.reference_source && session.reference_source.selection_rule,
+                  session.reference_source && session.reference_source.source_waypoint_count,
+                  session.reference_source && session.reference_source.selected_waypoint_count,
+                  obs.expected_reference, obs.expected_reference_latitude, obs.expected_reference_longitude,
+                  obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
+                  gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
+                  obs.gps_acquisition_elapsed_ms,
+                  connectivity.browser_online, connectivity.effective_type, connectivity.downlink_mbps,
+                  connectivity.rtt_ms, connectivity.save_data,
+                  ranked[0] && ranked[0].name, ranked[0] && ranked[0].distance_ft,
+                  ranked[1] && ranked[1].name, ranked[1] && ranked[1].distance_ft,
+                  ranked[2] && ranked[2].name, ranked[2] && ranked[2].distance_ft,
+                  ranked[3] && ranked[3].name, ranked[3] && ranked[3].distance_ft,
+                  ranked[4] && ranked[4].name, ranked[4] && ranked[4].distance_ft
                 ].map(csvCell).join(','));
               });
               exportFile(
@@ -1018,14 +1064,33 @@ export default {
               window.setTimeout(focusScanInput, 250);
             }
 
+            function scheduleFocusAfterOperatorEdit() {
+              if (operatorFocusTimer != null) {
+                window.clearTimeout(operatorFocusTimer);
+              }
+              operatorFocusTimer = window.setTimeout(function() {
+                if (document.activeElement === operatorLocationComment) {
+                  focusScanInput();
+                }
+              }, 2000);
+            }
+
             function isUnfocusedPageSurface(target) {
               return !target || target === document.body || target === document.documentElement;
             }
 
-            startGps.addEventListener('click', startGpsWatch);
+            startGps.addEventListener('click', function() {
+              startGpsWatch();
+              scheduleScanInputFocus();
+            });
             captureGps.addEventListener('click', function() {
               recordObservation('GPS_SAMPLE', null);
+              scheduleScanInputFocus();
             });
+            expectedReference.addEventListener('change', scheduleScanInputFocus);
+            inputMethod.addEventListener('change', scheduleScanInputFocus);
+            operatorLocationComment.addEventListener('input', scheduleFocusAfterOperatorEdit);
+            operatorLocationComment.addEventListener('blur', scheduleScanInputFocus);
             scanForm.addEventListener('submit', function(event) {
               event.preventDefault();
               const raw = scanInput.value.trim();
