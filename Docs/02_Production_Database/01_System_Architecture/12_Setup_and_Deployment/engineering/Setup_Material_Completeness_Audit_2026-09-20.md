@@ -18,6 +18,34 @@ The candidate audits two existing authorities without replacing them:
 1. current LOR-resolved Display ownership from the accepted #141 assignment layer;
 2. physical Kit Box -> reusable task relationships from `ref.setup_task_container_support` / `relationship_type='KIT'`.
 
+## Future Session readiness
+
+The audit also reviews reusable-task activation before any new annual Setup Session is created.
+
+The installed annual Session command seeds reusable work using:
+
+```text
+ref.setup_task
+  -> WHERE active_flag
+  -> ops.setup_session_task
+```
+
+Therefore every inactive reusable task is shown to the Manager because it will be omitted from 2026 or any later Session unless reactivated.
+
+Inactive does not automatically mean wrong. Some rows are intentionally retired/obsolete. The audit is deliberately review-oriented and does not auto-reactivate, auto-delete, or create a second retirement authority.
+
+To make accidental deactivation easier to identify, each inactive row shows available evidence such as:
+
+- prior annual Session history;
+- Display / Container Material flag;
+- reusable Kit assignments;
+- active Extra Material requirements; and
+- active reusable tasks that still depend on the inactive task as a prerequisite.
+
+The Manager correction path is the existing reusable-task detail surface. This is the same class of defect found during #145 browser review when `Setup Frozen Panels` was unintentionally inactive and therefore disappeared from effective Stage-level material ownership until it was reactivated.
+
+This review remains relevant before every future Session creation, not only 2026.
+
 ## Display / LOR ownership
 
 The audit must reuse the installed #141 `field_context` / assignment resolver and emit each effective Stage/real-Scene material scope once.
