@@ -633,6 +633,7 @@ function applyRequestedRoute() {
   const params = new URLSearchParams(window.location.search);
   const requestedView = params.get('view');
   const requestedTaskId = Number(params.get('setup_task_id') || 0);
+  const requestedCorrection = params.get('correction');
 
   if (requestedView && ['review', 'library', 'extra-materials', 'movement'].includes(requestedView)) {
     showView(requestedView);
@@ -640,6 +641,16 @@ function applyRequestedRoute() {
   if (requestedTaskId && taskById(requestedTaskId)) {
     showView('library');
     selectTask(requestedTaskId);
+  }
+
+  // Audit correction links are one-shot. Existing correction dialogs may
+  // reselect the current task while closing/resetting; leaving this parameter
+  // in the URL would cause the wrapper to reopen the dialog immediately.
+  if (requestedCorrection) {
+    params.delete('correction');
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
+    window.history.replaceState({}, '', nextUrl);
   }
 }
 
