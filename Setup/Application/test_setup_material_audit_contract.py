@@ -45,6 +45,27 @@ def test_accepted_display_assignment_states_remain_the_audit_authority() -> None
         assert token in assignment
 
 
+def test_future_session_audit_exposes_inactive_tasks_that_will_not_seed() -> None:
+    repo = read_app("setup_material_audit_repository.py")
+    session_sql = read_db("003_create_setup_management_commands.sql")
+    html = read_app("material_audit.html")
+    js = read_app("setup_material_audit.js")
+
+    assert "WHERE t.active_flag" in session_sql
+    assert "INSERT INTO ops.setup_session_task" in session_sql
+    assert "def future_session_audit" in repo
+    assert "WHERE NOT t.active_flag" in repo
+    assert "annual_history_count" in repo
+    assert "kit_assignment_count" in repo
+    assert "extra_material_count" in repo
+    assert "active_dependent_count" in repo
+    assert '"future_session": self.future_session_audit()' in repo
+    assert "Future Session Readiness" in html
+    assert "will be omitted from the new Session" in html
+    assert "WILL NOT SEED" in js
+    assert "Open reusable task" in js
+
+
 def test_display_audit_reuses_accepted_assignment_resolver() -> None:
     repo = read_app("setup_material_audit_repository.py")
     assert "from setup_assignment_layer import _scope_key" in repo
@@ -119,6 +140,7 @@ def test_manager_browser_surface_is_exception_first_and_links_corrections() -> N
     assert "min-width: 1580px" in css
     assert "td:nth-child(11) .button" in css
     assert "Open Display Ownership" in js
+    assert "Open reusable task" in js
     assert "Open Kit Inventory" in js
     assert "Open Kit assignment" in js
     assert "view=review&setup_task_id=" in js
