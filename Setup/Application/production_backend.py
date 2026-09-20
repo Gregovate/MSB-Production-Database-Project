@@ -16,6 +16,7 @@ from setup_api import setup_api
 from setup_resource_api import setup_resource_api
 from setup_extra_material_api import setup_extra_material_api
 from setup_kit_inventory_api import setup_kit_inventory_api
+from setup_material_audit_api import setup_material_audit_api
 from setup_next_api import setup_next_api
 from setup_training_api import setup_training_api
 from setup_effort_api import setup_effort_api
@@ -30,7 +31,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.14-scheduling-board"
+PRODUCTION_VERSION = "V0.3.15-material-audit-candidate"
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -111,6 +112,12 @@ PLANNING_SUMMARY_ASSETS = frozenset(
         "setup_planning_summary.js",
     }
 )
+MATERIAL_AUDIT_ASSETS = frozenset(
+    {
+        "setup_material_audit.css",
+        "setup_material_audit.js",
+    }
+)
 
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
@@ -127,6 +134,7 @@ app.register_blueprint(setup_api)
 app.register_blueprint(setup_resource_api)
 app.register_blueprint(setup_extra_material_api)
 app.register_blueprint(setup_kit_inventory_api)
+app.register_blueprint(setup_material_audit_api)
 app.register_blueprint(setup_next_api)
 app.register_blueprint(setup_training_api)
 app.register_blueprint(setup_effort_api)
@@ -161,6 +169,21 @@ def planning_summary():
 @app.get("/planning-summary/assets/<path:name>")
 def planning_summary_asset(name: str):
     if name not in PLANNING_SUMMARY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/material-audit")
+@app.get("/material-audit/")
+def material_audit():
+    """Manager-facing reusable-Catalog Material Completeness Audit."""
+    return _no_store(send_from_directory(BASE_DIR, "material_audit.html"))
+
+
+@app.get("/material-audit/assets/<path:name>")
+def material_audit_asset(name: str):
+    if name not in MATERIAL_AUDIT_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
