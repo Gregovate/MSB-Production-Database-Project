@@ -91,3 +91,9 @@ th { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-s
   white-space: normal;
   line-height: 1.2;
 }
+
+.signal-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
