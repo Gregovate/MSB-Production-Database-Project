@@ -629,6 +629,20 @@ function chooseInitialSeason() {
   return appState.seasons.length ? Number(appState.seasons[0].season_year) : null;
 }
 
+function applyRequestedRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedView = params.get('view');
+  const requestedTaskId = Number(params.get('setup_task_id') || 0);
+
+  if (requestedView && ['review', 'library', 'extra-materials', 'movement'].includes(requestedView)) {
+    showView(requestedView);
+  }
+  if (requestedTaskId && taskById(requestedTaskId)) {
+    showView('library');
+    selectTask(requestedTaskId);
+  }
+}
+
 async function initialize() {
   try {
     setBusy(true);
@@ -655,6 +669,7 @@ async function initialize() {
       throw new Error('No Setup season is available.');
     }
     await loadSeason(appState.seasonYear);
+    applyRequestedRoute();
   } catch (error) {
     setAlert(error.message || error, 'error');
     el('access-badge').textContent = 'Setup access unavailable';
@@ -666,6 +681,7 @@ async function initialize() {
 document.querySelectorAll('.tab').forEach((button) => {
   button.addEventListener('click', () => showView(button.dataset.view));
 });
+el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
 el('season-select').addEventListener('change', () => loadSeason(el('season-select').value));
 el('review-status-filter').addEventListener('change', renderReviewList);
 el('save-reusable-task').addEventListener('click', saveReusableTask);
