@@ -113,6 +113,11 @@ def test_manager_browser_surface_is_exception_first_and_links_corrections() -> N
     js = read_app("setup_material_audit.js")
     assert "Material Completeness Audit" in html
     assert '<option value="exceptions">Exceptions only</option>' in html
+    assert 'class="display-audit-table"' in html
+    css = read_app("setup_material_audit.css")
+    assert ".display-audit-table" in css
+    assert "min-width: 1580px" in css
+    assert "td:nth-child(11) .button" in css
     assert "Open Display Ownership" in js
     assert "Open Kit Inventory" in js
     assert "Open Kit assignment" in js
