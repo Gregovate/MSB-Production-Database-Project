@@ -53,12 +53,61 @@ def classify_lor_group(scene_name: str | None) -> tuple[str, str, str]:
     return "SCENE", token, name
 
 
-def is_real_setup_scene(scene_name: str | None) -> bool:
+def is_setup_stage_root_alias(
+    scene_name: str | None,
+    *,
+    stage_name: str | None = None,
+    short_code: str | None = None,
+) -> bool:
+    """Recognize an exact owning-Stage root alias without changing Folder Alignment.
+
+    Folder Alignment intentionally classifies bare NN-Name as a Scene.
+    Setup has stronger Stage context available. If the governed Stage root is
+    NN-Name-XY and its authoritative short_code is XY, an exact LOR group named
+    NN-Name is the owning Stage root for Setup material scope.
+
+    This is deliberately exact; neighboring child Scenes remain Scenes.
+    """
+    raw_name = str(scene_name or "").strip()
+    governed_name = str(stage_name or "").strip()
+    governed_short_code = str(short_code or "").strip()
+    if not raw_name or not governed_name or not governed_short_code:
+        return False
+
+    suffix = f"-{governed_short_code}"
+    if not governed_name.casefold().endswith(suffix.casefold()):
+        return False
+
+    stage_stem = governed_name[: -len(suffix)].strip()
+    return bool(stage_stem) and raw_name.casefold() == stage_stem.casefold()
+
+
+def is_real_setup_scene(
+    scene_name: str | None,
+    *,
+    stage_name: str | None = None,
+    short_code: str | None = None,
+) -> bool:
+    if is_setup_stage_root_alias(
+        scene_name,
+        stage_name=stage_name,
+        short_code=short_code,
+    ):
+        return False
     return classify_lor_group(scene_name)[0] == "SCENE"
 
 
-def is_stage_level_lor_group(scene_name: str | None) -> bool:
-    return not is_real_setup_scene(scene_name)
+def is_stage_level_lor_group(
+    scene_name: str | None,
+    *,
+    stage_name: str | None = None,
+    short_code: str | None = None,
+) -> bool:
+    return not is_real_setup_scene(
+        scene_name,
+        stage_name=stage_name,
+        short_code=short_code,
+    )
 
 
 def _normalize_task_scope(item: dict[str, Any]) -> dict[str, Any]:
@@ -74,7 +123,11 @@ def _normalize_task_scope(item: dict[str, Any]) -> dict[str, Any]:
     raw_scene_id = normalized.get("lor_scene_id")
     normalized["source_lor_scene_id"] = raw_scene_id
 
-    if raw_scene_id is not None and not is_real_setup_scene(normalized.get("scene_name")):
+    if raw_scene_id is not None and not is_real_setup_scene(
+        normalized.get("scene_name"),
+        stage_name=normalized.get("stage_name"),
+        short_code=normalized.get("short_code"),
+    ):
         normalized["lor_scene_id"] = None
         normalized["scene_name"] = None
         if "scene_uuid" in normalized:
@@ -93,6 +146,8 @@ def _organization(self: SetupNextRepository) -> dict[str, list[dict[str, Any]]]:
                 ls.lor_scene_id,
                 ls.stage_id,
                 s.stage_key,
+                s.stage_name,
+                s.short_code,
                 ls.scene_name,
                 ls.scene_section,
                 ls.preview_uuid,
@@ -110,7 +165,11 @@ def _organization(self: SetupNextRepository) -> dict[str, list[dict[str, Any]]]:
         scenes = [
             dict(row)
             for row in cur.fetchall()
-            if is_real_setup_scene(row.get("scene_name"))
+            if is_real_setup_scene(
+                row.get("scene_name"),
+                stage_name=row.get("stage_name"),
+                short_code=row.get("short_code"),
+            )
         ]
 
         cur.execute(
@@ -118,10 +177,14 @@ def _organization(self: SetupNextRepository) -> dict[str, list[dict[str, Any]]]:
             SELECT
                 t.setup_task_id,
                 t.stage_id,
+                s.stage_name,
+                s.short_code,
                 t.lor_scene_id,
                 ls.scene_name,
                 t.baseline_plan_order
             FROM ref.setup_task AS t
+            LEFT JOIN ref.stage AS s
+              ON s.stage_id = t.stage_id
             LEFT JOIN ref.lor_scene AS ls
               ON ls.lor_scene_id = t.lor_scene_id
             ORDER BY t.setup_task_id
@@ -142,6 +205,7 @@ def _task_scope(self: SetupNextRepository, task_id: int) -> dict[str, Any]:
                 t.stage_id,
                 s.stage_key,
                 s.stage_name,
+                s.short_code,
                 t.lor_scene_id,
                 ls.scene_name,
                 ls.scene_uuid,
@@ -252,8 +316,12 @@ def _resolve_material_membership(
             SELECT
                 ls.lor_scene_id,
                 ls.scene_name,
+                s.stage_name,
+                s.short_code,
                 lsd.display_id
             FROM ref.lor_scene AS ls
+            JOIN ref.stage AS s
+              ON s.stage_id = ls.stage_id
             JOIN ref.lor_scene_display AS lsd
               ON lsd.lor_scene_id = ls.lor_scene_id
             WHERE ls.stage_id = %s
@@ -263,7 +331,11 @@ def _resolve_material_membership(
         )
         for row in cur.fetchall():
             group_name = row.get("scene_name")
-            if not is_stage_level_lor_group(group_name):
+            if not is_stage_level_lor_group(
+                group_name,
+                stage_name=row.get("stage_name"),
+                short_code=row.get("short_code"),
+            ):
                 continue
             _add_material_source(
                 material,
@@ -311,6 +383,8 @@ def _field_context(
                 t.setup_task_id,
                 t.stage_id,
                 s.stage_key,
+                s.stage_name,
+                s.short_code,
                 t.lor_scene_id,
                 ls.scene_name,
                 t.requires_display_material
@@ -329,7 +403,11 @@ def _field_context(
 
         raw_scene_id = task.get("lor_scene_id")
         raw_scene_name = task.get("scene_name")
-        real_scene_id = raw_scene_id if is_real_setup_scene(raw_scene_name) else None
+        real_scene_id = raw_scene_id if is_real_setup_scene(
+            raw_scene_name,
+            stage_name=task.get("stage_name"),
+            short_code=task.get("short_code"),
+        ) else None
         real_scene_name = raw_scene_name if real_scene_id is not None else None
 
         membership, mode, warning = _resolve_material_membership(
