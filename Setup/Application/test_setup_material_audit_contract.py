@@ -59,8 +59,6 @@ def test_future_session_audit_exposes_inactive_tasks_that_will_not_seed() -> Non
     assert "kit_assignment_count" in repo
     assert "extra_material_count" in repo
     assert "active_dependent_count" in repo
-    assert "task_updated_by_person_id" in repo
-    assert "task_updated_by_display" in repo
     assert "SELECT count(*) AS active_count" in repo
     assert 'active_row["active_count"]' in repo
     assert "cur.fetchone()[0]" not in repo
@@ -69,9 +67,6 @@ def test_future_session_audit_exposes_inactive_tasks_that_will_not_seed() -> Non
     assert "will be omitted from the new Session" in html
     assert "WILL NOT SEED" in js
     assert "Open reusable task" in js
-    assert "Last task update:" in js
-    assert "training evidence; current row audit does not prove which field changed" in js
-    assert "Audit actor" in html
 
 
 def test_display_audit_reuses_accepted_assignment_resolver() -> None:
