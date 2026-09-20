@@ -233,7 +233,11 @@ class SetupMaterialAuditRepository:
                     d.review_note AS disposition_note,
                     d.reviewed_at AS disposition_reviewed_at,
                     d.reviewed_by_person_id,
-                    p.person_name AS disposition_reviewed_by
+                    coalesce(
+                        nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), ''),
+                        nullif(btrim(p.email), ''),
+                        'Person ' || p.person_id::text
+                    ) AS disposition_reviewed_by
                 FROM ref.container AS c
                 LEFT JOIN ref.setup_kit_assignment_disposition AS d
                   ON d.container_id = c.container_id
