@@ -96,7 +96,7 @@
   function setupTaskLink(taskId, label) {
     if (!taskId) return '<span class="muted">No scoped task</span>';
     const correction = label === 'Open Display Ownership' ? '&correction=display-ownership' : '&correction=kit-boxes';
-    return `<a class="button secondary" href="../?view=library&setup_task_id=${encodeURIComponent(taskId)}${correction}">${esc(label)}</a>`;
+    return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}${correction}">${esc(label)}</a>`;
   }
 
   function renderDisplay() {
