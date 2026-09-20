@@ -154,12 +154,6 @@ class SetupMaterialAuditRepository:
                         nullif(btrim(t.updated_by), ''),
                         'Unknown actor'
                     ) AS task_updated_by_display,
-                    active_history.previous_active_flag AS last_active_previous_flag,
-                    active_history.active_flag AS last_active_flag,
-                    active_history.changed_at AS last_active_changed_at,
-                    active_history.changed_by AS last_active_changed_by,
-                    active_history.changed_by_person_id AS last_active_changed_by_person_id,
-                    active_history.changed_by_display AS last_active_changed_by_display,
                     (
                         SELECT count(*)
                         FROM ops.setup_session_task AS st
@@ -199,33 +193,6 @@ class SetupMaterialAuditRepository:
                   ON ls.lor_scene_id = t.lor_scene_id
                 LEFT JOIN ref.person AS updater
                   ON updater.person_id = t.updated_by_person_id
-                LEFT JOIN LATERAL (
-                    SELECT
-                        h.previous_active_flag,
-                        h.active_flag,
-                        h.changed_at,
-                        h.changed_by,
-                        h.changed_by_person_id,
-                        coalesce(
-                            nullif(btrim(pg_catalog.concat_ws(' ', hp.first_name, hp.last_name)), ''),
-                            nullif(btrim(hp.email), ''),
-                            CASE
-                                WHEN h.changed_by_person_id IS NOT NULL
-                                THEN 'Person ' || h.changed_by_person_id::text
-                                ELSE NULL
-                            END,
-                            nullif(btrim(h.changed_by), ''),
-                            'Unknown actor'
-                        ) AS changed_by_display
-                    FROM ref.setup_task_active_history AS h
-                    LEFT JOIN ref.person AS hp
-                      ON hp.person_id = h.changed_by_person_id
-                    WHERE h.setup_task_id = t.setup_task_id
-                    ORDER BY
-                        h.changed_at DESC,
-                        h.setup_task_active_history_id DESC
-                    LIMIT 1
-                ) AS active_history ON true
                 WHERE NOT t.active_flag
                 ORDER BY
                     s.park_order NULLS LAST,
@@ -253,10 +220,6 @@ class SetupMaterialAuditRepository:
             row["kit_assignment_count"] = int(row.get("kit_assignment_count") or 0)
             row["extra_material_count"] = int(row.get("extra_material_count") or 0)
             row["active_dependent_count"] = int(row.get("active_dependent_count") or 0)
-            row["activation_audit_exact"] = bool(
-                row.get("last_active_flag") is False
-                and row.get("last_active_changed_at") is not None
-            )
             row["impact_signals"] = [
                 label
                 for present, label in (
