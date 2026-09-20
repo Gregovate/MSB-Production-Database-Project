@@ -108,6 +108,15 @@ def test_display_write_api_stays_manager_only_and_uses_governed_command() -> Non
     assert "UPDATE ref.setup_task_display" not in assignment
 
 
+def test_audit_deep_link_does_not_reopen_dialog_after_close_reset() -> None:
+    client = read_app("setup_production.js")
+    large_scope = read_app("setup_display_ownership_large_scope_fix.js")
+    assert "dialog.addEventListener('close', () => resetDialogState(dialog))" in large_scope
+    assert "selectTask(taskId)" in large_scope
+    assert "params.delete('correction')" in client
+    assert "window.history.replaceState" in client
+
+
 def test_manager_board_supports_first_use_initialization_drag_multi_select_and_flag_sync() -> None:
     js = read_app("setup_display_ownership.js")
     css = read_app("setup_display_ownership.css")
