@@ -594,7 +594,8 @@
       state.draggedDisplayIds = [];
       state.selectedDisplayIds.clear();
       state.lastSelectedDisplayId = null;
-      requestAnimationFrame(() => loadOwnership(taskId));
+      const correction = new URLSearchParams(window.location.search).get('correction');
+      requestAnimationFrame(() => loadOwnership(taskId, { open: correction === 'display-ownership' }));
       return result;
     };
   }
