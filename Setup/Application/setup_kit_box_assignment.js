@@ -278,7 +278,12 @@
       state.searchQuery = '';
       requestAnimationFrame(() => {
         ensureControl();
-        loadKitBoxes(taskId).catch((error) => console.error(error));
+        const correction = new URLSearchParams(window.location.search).get('correction');
+        if (correction === 'kit-boxes') {
+          openDialog().catch((error) => console.error(error));
+        } else {
+          loadKitBoxes(taskId).catch((error) => console.error(error));
+        }
       });
       return result;
     };
