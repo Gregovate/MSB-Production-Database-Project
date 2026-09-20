@@ -70,7 +70,7 @@ It is not:
 - annual Setup state; or
 - #206 Pick List/movement state.
 
-The command requires existing Manager authority through `ref.setup_management_actor(..., false)`. It refuses to activate the disposition while any current task -> KIT relationship exists.
+The command requires existing Manager authority through `ref.setup_management_actor(..., false)`. An active disposition requires a nonblank Manager review reason, stamps Manager person identity and review time, and refuses to activate while any current task -> KIT relationship exists.
 
 If a task assignment is later created while an old disposition remains active, the audit surfaces a **disposition conflict** instead of inferring or silently correcting state.
 
