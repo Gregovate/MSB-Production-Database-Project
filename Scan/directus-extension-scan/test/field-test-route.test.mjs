@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import scanExtension from '../src/index.js';
 
-async function renderRoute(path, host = 'my.sheboyganlights.org') {
+async function renderRoute(path) {
   const routes = new Map();
   const router = {
     get(routePath, handler) {
@@ -15,12 +15,7 @@ async function renderRoute(path, host = 'my.sheboyganlights.org') {
   let databaseCalled = false;
   const response = {
     body: null,
-    statusCode: 200,
     headers: new Map(),
-    status(code) {
-      this.statusCode = code;
-      return this;
-    },
     setHeader(name, value) {
       this.headers.set(String(name).toLowerCase(), value);
     },
@@ -38,7 +33,7 @@ async function renderRoute(path, host = 'my.sheboyganlights.org') {
 
   const handler = routes.get(path);
   assert.ok(handler, 'expected route ' + path + ' to be registered');
-  await handler({ headers: { host } }, response);
+  await handler({}, response);
 
   return { response, databaseCalled };
 }
@@ -47,19 +42,9 @@ test('field acceptance route is read-only and contains no database dependency', 
   const { response, databaseCalled } = await renderRoute('/field-test');
 
   assert.equal(databaseCalled, false);
-  assert.equal(response.statusCode, 200);
   assert.match(response.body, /READ-ONLY ENGINEERING TEST/);
   assert.match(response.body, /does not change Setup movement state or write test observations to PostgreSQL/i);
   assert.equal(response.headers.get('cache-control'), 'no-store');
-});
-
-test('field acceptance route fails closed outside the protected Scan origin', async () => {
-  const { response, databaseCalled } = await renderRoute('/field-test', 'db.sheboyganlights.org');
-
-  assert.equal(databaseCalled, false);
-  assert.equal(response.statusCode, 404);
-  assert.equal(response.body, 'Not Found');
-  assert.doesNotMatch(response.body, /03a-Mega Cube-MC/);
 });
 
 test('field acceptance route exercises real browser GPS and HID capture primitives', async () => {
@@ -74,8 +59,9 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /document\.addEventListener\('keydown'/);
   assert.match(response.body, /Operator location comment/);
   assert.match(response.body, /operator_location_comment/);
-  assert.match(response.body, /operatorLocationComment\.addEventListener\('input', scheduleFocusAfterOperatorEdit\)/);
   assert.match(response.body, /expectedReference\.addEventListener\('change', scheduleScanInputFocus\)/);
+  assert.match(response.body, /inputMethod\.addEventListener\('change', scheduleScanInputFocus\)/);
+  assert.match(response.body, /operatorLocationComment\.addEventListener\('blur', scheduleScanInputFocus\)/);
   assert.match(response.body, /Verify normal Scan route/);
 });
 
@@ -110,6 +96,20 @@ test('CSV export carries the complete field evidence needed for later comparison
   assert.match(response.body, /'nearest_5_distance_ft'/);
   assert.match(response.body, /'browser_online'/);
   assert.match(response.body, /'effective_type'/);
+});
+
+
+test('harness documentation assigns #219/#122 ownership and defers offline architecture', () => {
+  const doc = fs.readFileSync(
+    new URL('../../../Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Scan_GPS_Field_Acceptance_Harness_2026-09-18.md', import.meta.url),
+    'utf8'
+  );
+
+  assert.match(doc, /Issue #219 — Scan \+ GPS acceptance harness; #122 governs Setup integration decisions/);
+  assert.match(doc, /#219 \(owner\), #122 \(governing Setup\)/);
+  assert.match(doc, /one hypothesis that this experiment may inform, not an accepted Production design/i);
+  assert.doesNotMatch(doc, /The intended production model is therefore store-and-forward/);
+  assert.doesNotMatch(doc, /compatibility origin.*404 Not Found/i);
 });
 
 test('scan source and deployed dist candidate remain byte-identical', () => {
