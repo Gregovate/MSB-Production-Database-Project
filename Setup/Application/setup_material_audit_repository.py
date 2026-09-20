@@ -119,6 +119,118 @@ class SetupMaterialAuditRepository:
             return f"Unscoped · Task {first.get('setup_task_id')}"
         return stage
 
+    def future_session_audit(self) -> dict[str, Any]:
+        """Show reusable tasks that future Session creation will omit.
+
+        ops.create_setup_session seeds only ref.setup_task rows with active_flag=true.
+        Inactive rows are therefore review items before creating a future Session,
+        even when some are intentionally retired.
+        """
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    t.setup_task_id,
+                    t.task_name,
+                    t.stage_id,
+                    s.stage_key,
+                    s.stage_name,
+                    t.lor_scene_id,
+                    ls.scene_name,
+                    t.display_order,
+                    t.task_action_type,
+                    t.requires_display_material,
+                    (
+                        SELECT count(*)
+                        FROM ops.setup_session_task AS st
+                        WHERE st.setup_task_id = t.setup_task_id
+                    ) AS annual_history_count,
+                    (
+                        SELECT max(ss.season_year)
+                        FROM ops.setup_session_task AS st
+                        JOIN ops.setup_session AS ss
+                          ON ss.setup_session_id = st.setup_session_id
+                        WHERE st.setup_task_id = t.setup_task_id
+                    ) AS latest_season_year,
+                    (
+                        SELECT count(*)
+                        FROM ref.setup_task_container_support AS tc
+                        WHERE tc.setup_task_id = t.setup_task_id
+                          AND tc.relationship_type = 'KIT'
+                    ) AS kit_assignment_count,
+                    (
+                        SELECT count(*)
+                        FROM ref.setup_task_extra_material AS tm
+                        WHERE tm.setup_task_id = t.setup_task_id
+                          AND tm.active_flag
+                    ) AS extra_material_count,
+                    (
+                        SELECT count(*)
+                        FROM ref.setup_task_dependency AS dep
+                        JOIN ref.setup_task AS dependent
+                          ON dependent.setup_task_id = dep.setup_task_id
+                        WHERE dep.prerequisite_setup_task_id = t.setup_task_id
+                          AND dependent.active_flag
+                    ) AS active_dependent_count
+                FROM ref.setup_task AS t
+                LEFT JOIN ref.stage AS s
+                  ON s.stage_id = t.stage_id
+                LEFT JOIN ref.lor_scene AS ls
+                  ON ls.lor_scene_id = t.lor_scene_id
+                WHERE NOT t.active_flag
+                ORDER BY
+                    s.park_order NULLS LAST,
+                    s.sub_order NULLS LAST,
+                    s.stage_key NULLS LAST,
+                    ls.scene_name NULLS LAST,
+                    t.display_order,
+                    t.setup_task_id
+                """
+            )
+            inactive = [dict(row) for row in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT count(*)
+                FROM ref.setup_task
+                WHERE active_flag
+                """
+            )
+            active_count = int(cur.fetchone()[0])
+
+        for row in inactive:
+            row["annual_history_count"] = int(row.get("annual_history_count") or 0)
+            row["kit_assignment_count"] = int(row.get("kit_assignment_count") or 0)
+            row["extra_material_count"] = int(row.get("extra_material_count") or 0)
+            row["active_dependent_count"] = int(row.get("active_dependent_count") or 0)
+            row["impact_signals"] = [
+                label
+                for present, label in (
+                    (row["annual_history_count"] > 0, "Prior annual history"),
+                    (bool(row.get("requires_display_material")), "Display material"),
+                    (row["kit_assignment_count"] > 0, "Kit assignment"),
+                    (row["extra_material_count"] > 0, "Extra material"),
+                    (row["active_dependent_count"] > 0, "Active task depends on it"),
+                )
+                if present
+            ]
+
+        summary = {
+            "active_will_seed": active_count,
+            "inactive_will_not_seed": len(inactive),
+            "inactive_with_history": sum(1 for row in inactive if row["annual_history_count"] > 0),
+            "inactive_with_material": sum(
+                1
+                for row in inactive
+                if bool(row.get("requires_display_material"))
+                or row["kit_assignment_count"] > 0
+                or row["extra_material_count"] > 0
+            ),
+            "inactive_prerequisites": sum(1 for row in inactive if row["active_dependent_count"] > 0),
+            "inactive_with_signals": sum(1 for row in inactive if row["impact_signals"]),
+        }
+        return {"summary": summary, "inactive_tasks": inactive}
+
     def display_audit(self) -> dict[str, Any]:
         task_rows = self._active_scope_tasks()
         grouped: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
@@ -331,6 +443,7 @@ class SetupMaterialAuditRepository:
 
     def audit(self) -> dict[str, Any]:
         return {
+            "future_session": self.future_session_audit(),
             "display": self.display_audit(),
             "kit": self.kit_audit(),
         }
