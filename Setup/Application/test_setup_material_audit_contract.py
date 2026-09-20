@@ -139,6 +139,9 @@ def test_production_host_registers_audit_without_exposing_source() -> None:
     assert "material-audit/" in client
     assert "URLSearchParams" in client
     assert "setup_task_id" in client
+    assert "requestedCorrection" in client
+    assert "params.delete('correction')" in client
+    assert "window.history.replaceState" in client
 
 
 def test_disposable_validation_proves_no_fake_assignment_or_annual_state() -> None:
