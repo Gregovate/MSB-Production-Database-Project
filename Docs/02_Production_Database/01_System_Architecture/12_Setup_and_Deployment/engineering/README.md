@@ -11,6 +11,12 @@
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
+## #145 Material Completeness Audit Candidate
+
+The authorized #145 feature branch adds a Manager-only whole-Catalog Display/LOR ownership audit, Kit assignment coverage audit, and one explicit reviewed shared/non-task Kit disposition. The candidate contract is documented in [Setup_Material_Completeness_Audit_2026-09-20.md](Setup_Material_Completeness_Audit_2026-09-20.md).
+
+This candidate is **not Production accepted**. Production migration/deployment and real 2026 Session creation remain forbidden until the required disposable/browser acceptance and #122 authorization gates are complete.
+
 ## Current Production State
 
 ```text
