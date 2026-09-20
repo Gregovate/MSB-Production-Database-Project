@@ -57,3 +57,37 @@ th { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-s
   .audit-header { align-items: flex-start; flex-direction: column; }
   .summary-grid { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
 }
+
+/* #145 browser-review correction: keep the wide Display completeness table
+   readable instead of squeezing the correction action into adjacent columns. */
+.display-audit-table {
+  min-width: 1580px;
+}
+.display-audit-table th:nth-child(1),
+.display-audit-table td:nth-child(1) { min-width: 220px; }
+.display-audit-table th:nth-child(2),
+.display-audit-table td:nth-child(2) { min-width: 280px; }
+.display-audit-table th:nth-child(3),
+.display-audit-table td:nth-child(3) { min-width: 280px; }
+.display-audit-table th:nth-child(4),
+.display-audit-table td:nth-child(4) { min-width: 95px; }
+.display-audit-table th:nth-child(5),
+.display-audit-table td:nth-child(5) { min-width: 185px; }
+.display-audit-table th:nth-child(n+6):nth-child(-n+10),
+.display-audit-table td:nth-child(n+6):nth-child(-n+10) {
+  min-width: 78px;
+}
+.display-audit-table th:nth-child(11),
+.display-audit-table td:nth-child(11) {
+  min-width: 150px;
+}
+.display-audit-table td:nth-child(11) .button {
+  display: inline-flex;
+  width: 100%;
+  min-width: 136px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.2;
+}
