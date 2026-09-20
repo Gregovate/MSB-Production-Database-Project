@@ -120,9 +120,7 @@
       const history = row.annual_history_count
         ? `${esc(row.annual_history_count)} annual row(s)${row.latest_season_year ? ` · latest ${esc(row.latest_season_year)}` : ''}`
         : 'None';
-      const actorEvidence = row.activation_audit_exact
-        ? `<strong>Deactivated by ${esc(row.last_active_changed_by_display || row.last_active_changed_by || 'Unknown actor')}</strong><div class="muted">${row.last_active_changed_at ? esc(new Date(row.last_active_changed_at).toLocaleString()) : ''} · exact active_flag transition</div>`
-        : `<strong>Last task update: ${esc(row.task_updated_by_display || row.task_updated_by || 'Unknown actor')}</strong><div class="muted">${row.task_updated_at ? esc(new Date(row.task_updated_at).toLocaleString()) : ''} · exact deactivation history not available for pre-audit changes</div>`;
+      const actorEvidence = `<strong>Last task update: ${esc(row.task_updated_by_display || row.task_updated_by || 'Unknown actor')}</strong><div class="muted">${row.task_updated_at ? esc(new Date(row.task_updated_at).toLocaleString()) : ''} · training evidence; current row audit does not prove which field changed</div>`;
       return `<tr>
         <td><strong>#${esc(row.setup_task_id)} · ${esc(row.task_name)}</strong><div class="muted">Order ${esc(row.display_order ?? '—')} · ${esc(row.task_action_type || 'WORK')}</div></td>
         <td>${esc(scope)}</td>
