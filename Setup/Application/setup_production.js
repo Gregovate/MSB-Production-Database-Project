@@ -7,7 +7,8 @@ const appState = {
   tasks: [],
   seasonYear: null,
   selectedTaskId: null,
-  movementSummary: null
+  movementSummary: null,
+  pendingCorrection: null
 };
 
 const el = (id) => document.getElementById(id);
@@ -629,11 +630,21 @@ function chooseInitialSeason() {
   return appState.seasons.length ? Number(appState.seasons[0].season_year) : null;
 }
 
+function consumePendingCorrection(name) {
+  if (appState.pendingCorrection !== name) return false;
+  appState.pendingCorrection = null;
+  return true;
+}
+
 function applyRequestedRoute() {
   const params = new URLSearchParams(window.location.search);
   const requestedView = params.get('view');
   const requestedTaskId = Number(params.get('setup_task_id') || 0);
   const requestedCorrection = params.get('correction');
+
+  if (requestedCorrection === 'display-ownership' || requestedCorrection === 'kit-boxes') {
+    appState.pendingCorrection = requestedCorrection;
+  }
 
   if (requestedView && ['review', 'library', 'extra-materials', 'movement'].includes(requestedView)) {
     showView(requestedView);
@@ -643,9 +654,10 @@ function applyRequestedRoute() {
     selectTask(requestedTaskId);
   }
 
-  // Audit correction links are one-shot. Existing correction dialogs may
-  // reselect the current task while closing/resetting; leaving this parameter
-  // in the URL would cause the wrapper to reopen the dialog immediately.
+  // The URL request is one-shot, but the pending correction state survives
+  // until the matching correction wrapper actually consumes it. This avoids
+  // both failure modes: removing the URL too early prevents opening, while
+  // leaving it in place causes dialog close/reset to reopen the correction.
   if (requestedCorrection) {
     params.delete('correction');
     const query = params.toString();
