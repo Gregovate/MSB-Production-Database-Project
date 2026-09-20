@@ -593,8 +593,13 @@ async function loadSeason(year) {
 
   try {
     setBusy(true);
+    const routeParams = new URLSearchParams(window.location.search);
+    const requestedTaskId = Number(routeParams.get('setup_task_id') || 0);
+    const includeRequestedTask = requestedTaskId > 0
+      ? `&include_setup_task_id=${encodeURIComponent(requestedTaskId)}`
+      : '';
     const [tasksPayload, movementPayload] = await Promise.all([
-      api(`api/setup/tasks?season_year=${encodeURIComponent(appState.seasonYear)}`),
+      api(`api/setup/tasks?season_year=${encodeURIComponent(appState.seasonYear)}${includeRequestedTask}`),
       api(`api/setup/movement-summary?season_year=${encodeURIComponent(appState.seasonYear)}`)
     ]);
     appState.tasks = tasksPayload.tasks || [];
