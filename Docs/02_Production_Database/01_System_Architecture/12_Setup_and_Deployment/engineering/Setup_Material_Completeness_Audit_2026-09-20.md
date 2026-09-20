@@ -40,10 +40,9 @@ To make accidental deactivation easier to identify, each inactive row shows avai
 - Display / Container Material flag;
 - reusable Kit assignments;
 - active Extra Material requirements; and
-- active reusable tasks that still depend on the inactive task as a prerequisite; and
-- the reusable task row's existing last-update actor and timestamp for training/review context.
+- active reusable tasks that still depend on the inactive task as a prerequisite.
 
-The actor/time evidence is intentionally labeled as the **last task update**, not as proof of the exact field changed. The current Setup schema does not retain field-by-field historical transitions for `active_flag`, and #145 does not add a new history subsystem solely for training.
+The current Setup row audit stamps only the latest row update. It does not retain field-level history proving who changed `active_flag`. #145 therefore keeps the Future Session audit attribution-neutral rather than presenting potentially misleading actor evidence.
 
 The Manager correction path is the existing reusable-task detail surface. This is the same class of defect found during #145 browser review when `Setup Frozen Panels` was unintentionally inactive and therefore disappeared from effective Stage-level material ownership until it was reactivated.
 
