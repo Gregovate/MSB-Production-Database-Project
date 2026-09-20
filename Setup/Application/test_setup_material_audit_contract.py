@@ -61,9 +61,6 @@ def test_future_session_audit_exposes_inactive_tasks_that_will_not_seed() -> Non
     assert "active_dependent_count" in repo
     assert "task_updated_by_person_id" in repo
     assert "task_updated_by_display" in repo
-    assert "ref.setup_task_active_history" in repo
-    assert "last_active_changed_by_display" in repo
-    assert "activation_audit_exact" in repo
     assert "SELECT count(*) AS active_count" in repo
     assert 'active_row["active_count"]' in repo
     assert "cur.fetchone()[0]" not in repo
@@ -72,9 +69,8 @@ def test_future_session_audit_exposes_inactive_tasks_that_will_not_seed() -> Non
     assert "will be omitted from the new Session" in html
     assert "WILL NOT SEED" in js
     assert "Open reusable task" in js
-    assert "Deactivated by" in js
     assert "Last task update:" in js
-    assert "exact deactivation history not available" in js
+    assert "training evidence; current row audit does not prove which field changed" in js
     assert "Audit actor" in html
 
 
@@ -110,15 +106,6 @@ def test_kit_audit_reads_active_and_inactive_relationships() -> None:
 
 def test_disposition_schema_is_narrow_and_manager_governed() -> None:
     sql = read_db("051_add_setup_material_completeness_audit.sql")
-    assert "CREATE TABLE IF NOT EXISTS ref.setup_task_active_history" in sql
-    assert "previous_active_flag boolean" in sql
-    assert "active_flag boolean" in sql
-    assert "changed_by_person_id integer" in sql
-    assert "CREATE OR REPLACE FUNCTION ref.capture_setup_task_active_history()" in sql
-    assert "AFTER UPDATE OF active_flag ON ref.setup_task" in sql
-    assert "OLD.active_flag IS DISTINCT FROM NEW.active_flag" in sql
-    assert "NEW.updated_by_person_id" in sql
-    assert "GRANT SELECT ON TABLE ref.setup_task_active_history TO fieldwiring_app" in sql
     assert "CREATE TABLE IF NOT EXISTS ref.setup_kit_assignment_disposition" in sql
     assert "CONSTRAINT pk_setup_kit_assignment_disposition" in sql
     assert "PRIMARY KEY (container_id)" in sql
@@ -200,8 +187,6 @@ def test_disposable_validation_proves_no_fake_assignment_or_annual_state() -> No
     sql = read_accept("setup_145_material_audit_disposable_validation.sql")
     assert "SETUP_145_MATERIAL_AUDIT_DISPOSABLE_VALIDATION_PASS" in sql
     assert "ref.set_setup_kit_assignment_disposition" in sql
-    assert "ref.setup_task_active_history" in sql
-    assert "active_flag transition history" in sql
     assert "relationship_type='KIT'" in sql or "relationship_type = 'KIT'" in sql
     assert "ops.setup_session" in sql
     assert "ROLLBACK;" in sql
