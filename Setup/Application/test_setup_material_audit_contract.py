@@ -78,6 +78,10 @@ def test_kit_audit_reads_active_and_inactive_relationships() -> None:
 def test_disposition_schema_is_narrow_and_manager_governed() -> None:
     sql = read_db("051_add_setup_material_completeness_audit.sql")
     assert "CREATE TABLE IF NOT EXISTS ref.setup_kit_assignment_disposition" in sql
+    assert "CONSTRAINT pk_setup_kit_assignment_disposition" in sql
+    assert "PRIMARY KEY (container_id)" in sql
+    assert "ON CONFLICT ON CONSTRAINT pk_setup_kit_assignment_disposition" in sql
+    assert "ON CONFLICT (container_id)" not in sql
     assert "CHECK (disposition = 'SHARED_NON_TASK')" in sql
     assert "reviewed_at timestamptz" in sql
     assert "reviewed_by_person_id integer" in sql
