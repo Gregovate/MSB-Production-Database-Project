@@ -29,6 +29,22 @@ def test_kit_classification_is_explicit_and_never_name_inferred() -> None:
     assert classify_kit_coverage(0, 0, False) == "UNASSIGNED_UNRESOLVED"
 
 
+def test_accepted_display_assignment_states_remain_the_audit_authority() -> None:
+    assignment = read_app("setup_assignment_layer.py")
+    assert 'ownership_mode = "IMPLICIT_SINGLE"' in assignment
+    assert 'coverage_status = "COMPLETE"' in assignment
+    assert 'ownership_mode = "EXPLICIT_MULTI"' in assignment
+    assert 'else "REVIEW_REQUIRED"' in assignment
+    for token in (
+        "missing_owner_count",
+        "invalid_owner_count",
+        "duplicate_owner_count",
+        "stale_owner_count",
+        "sole_implicit_owner_setup_task_id",
+    ):
+        assert token in assignment
+
+
 def test_display_audit_reuses_accepted_assignment_resolver() -> None:
     repo = read_app("setup_material_audit_repository.py")
     assert "from setup_assignment_layer import _scope_key" in repo
