@@ -29,12 +29,24 @@ DECLARE
     v_2026_before integer;
     v_2026_after integer;
     v_assignment_rejected boolean := false;
+    v_task_id bigint;
+    v_task_original_active boolean;
+    v_manager_directus_user_id uuid;
+    v_manager_person_id integer;
+    v_active_history_before bigint;
+    v_active_history_after bigint;
 BEGIN
     IF to_regclass('ref.setup_kit_assignment_disposition') IS NULL THEN
         RAISE EXCEPTION 'Kit assignment disposition table is missing';
     END IF;
     IF to_regprocedure('ref.set_setup_kit_assignment_disposition(text,integer,boolean,text)') IS NULL THEN
         RAISE EXCEPTION 'Kit assignment disposition Manager command is missing';
+    END IF;
+    IF to_regclass('ref.setup_task_active_history') IS NULL THEN
+        RAISE EXCEPTION 'Reusable task active_flag transition history table is missing';
+    END IF;
+    IF to_regprocedure('ref.capture_setup_task_active_history()') IS NULL THEN
+        RAISE EXCEPTION 'Reusable task active_flag transition trigger function is missing';
     END IF;
 
     SELECT lower(u.email)
@@ -50,6 +62,18 @@ BEGIN
 
     IF v_manager_email IS NULL THEN
         RAISE EXCEPTION 'No active mapped Setup Manager is available in the disposable clone';
+    END IF;
+
+    SELECT u.id, p.person_id
+      INTO v_manager_directus_user_id, v_manager_person_id
+    FROM public.directus_users AS u
+    JOIN ref.person AS p
+      ON p.directus_user_id = u.id
+    WHERE lower(u.email) = v_manager_email
+    LIMIT 1;
+
+    IF v_manager_directus_user_id IS NULL OR v_manager_person_id IS NULL THEN
+        RAISE EXCEPTION 'Disposable Manager identity is not mapped for actor-history proof';
     END IF;
 
     SELECT c.container_id, c.container_type_id
@@ -100,6 +124,58 @@ BEGIN
     SELECT count(*) INTO v_2026_before
     FROM ops.setup_session
     WHERE season_year = 2026;
+
+    SELECT t.setup_task_id, t.active_flag
+      INTO v_task_id, v_task_original_active
+    FROM ref.setup_task AS t
+    WHERE t.active_flag
+    ORDER BY t.setup_task_id
+    LIMIT 1;
+
+    IF v_task_id IS NULL THEN
+        RAISE EXCEPTION 'No active reusable Setup task is available for active_flag transition history proof';
+    END IF;
+
+    SELECT count(*) INTO v_active_history_before
+    FROM ref.setup_task_active_history
+    WHERE setup_task_id = v_task_id;
+
+    PERFORM pg_catalog.set_config(
+        'app.directus_user_uuid',
+        v_manager_directus_user_id::text,
+        true
+    );
+
+    UPDATE ref.setup_task
+       SET active_flag = false
+     WHERE setup_task_id = v_task_id;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ref.setup_task_active_history AS h
+        WHERE h.setup_task_id = v_task_id
+          AND h.previous_active_flag
+          AND NOT h.active_flag
+          AND h.changed_by_person_id = v_manager_person_id
+          AND h.changed_at IS NOT NULL
+    ) THEN
+        RAISE EXCEPTION 'Reusable task deactivation transition history did not capture Manager actor/time';
+    END IF;
+
+    UPDATE ref.setup_task
+       SET active_flag = v_task_original_active
+     WHERE setup_task_id = v_task_id;
+
+    SELECT count(*) INTO v_active_history_after
+    FROM ref.setup_task_active_history
+    WHERE setup_task_id = v_task_id;
+
+    IF v_active_history_after <> v_active_history_before + 2 THEN
+        RAISE EXCEPTION 'Reusable task active_flag transition history expected two disposable events; before %, after %',
+            v_active_history_before, v_active_history_after;
+    END IF;
+
+    RAISE NOTICE 'Setup #145 active_flag transition history proof passed for task %', v_task_id;
 
     PERFORM *
     FROM ref.set_setup_kit_assignment_disposition(
