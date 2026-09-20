@@ -69,6 +69,22 @@ def test_future_session_audit_exposes_inactive_tasks_that_will_not_seed() -> Non
     assert "Open reusable task" in js
 
 
+def test_future_session_correction_can_load_one_inactive_reusable_task() -> None:
+    repo = read_app("setup_repository.py")
+    api = read_app("setup_api.py")
+    client = read_app("setup_production.js")
+    audit_js = read_app("setup_material_audit.js")
+
+    assert "include_setup_task_id: int | None = None" in repo
+    assert "WHERE t.active_flag" in repo
+    assert "OR st.setup_session_task_id IS NOT NULL" in repo
+    assert "OR (%s IS NOT NULL AND t.setup_task_id = %s)" in repo
+    assert 'request.args.get("include_setup_task_id", "")' in api
+    assert "repo, _email, _access = require_manager()" in api
+    assert "include_setup_task_id=include_setup_task_id" in api
+    assert "include_setup_task_id=${encodeURIComponent(requestedTaskId)}" in client
+    assert "view=review&setup_task_id=" in audit_js
+
 def test_display_audit_reuses_accepted_assignment_resolver() -> None:
     repo = read_app("setup_material_audit_repository.py")
     assert "from setup_assignment_layer import _scope_key" in repo
