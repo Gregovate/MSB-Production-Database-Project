@@ -114,6 +114,7 @@ def test_audit_deep_link_opens_once_and_does_not_reopen_after_close_reset() -> N
     large_scope = read_app("setup_display_ownership_large_scope_fix.js")
     assert "appState.pendingCorrection = requestedCorrection" in client
     assert "function consumePendingCorrection(name)" in client
+    assert "showView('review')" in client
     assert "consumePendingCorrection('display-ownership')" in ownership
     assert "loadOwnership(taskId, { open: openFromAudit })" in ownership
     assert "dialog.addEventListener('close', () => resetDialogState(dialog))" in large_scope
