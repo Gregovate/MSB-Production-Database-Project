@@ -93,10 +93,42 @@
     return 'error';
   }
 
-  function setupTaskLink(taskId, label) {
+  function setupTaskLink(taskId, label, correction = null) {
     if (!taskId) return '<span class="muted">No scoped task</span>';
-    const correction = label === 'Open Display Ownership' ? '&correction=display-ownership' : '&correction=kit-boxes';
-    return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}${correction}">${esc(label)}</a>`;
+    const correctionQuery = correction ? `&correction=${encodeURIComponent(correction)}` : '';
+    return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}${correctionQuery}">${esc(label)}</a>`;
+  }
+
+  function renderFutureSession() {
+    const future = state.audit?.future_session || {};
+    const summary = future.summary || {};
+    el('future-session-summary').innerHTML = [
+      ['Active · will seed', summary.active_will_seed || 0],
+      ['Inactive · omitted', summary.inactive_will_not_seed || 0],
+      ['Inactive with history', summary.inactive_with_history || 0],
+      ['Inactive with material', summary.inactive_with_material || 0],
+      ['Active tasks depend on', summary.inactive_prerequisites || 0],
+      ['Inactive with signals', summary.inactive_with_signals || 0],
+    ].map(([label, value]) => summaryCard(label, value)).join('');
+
+    const rows = future.inactive_tasks || [];
+    el('future-session-audit-body').innerHTML = rows.map((row) => {
+      const scope = [row.stage_key, row.scene_name].filter(Boolean).join(' · ') || 'No Stage / site-wide';
+      const signals = row.impact_signals?.length
+        ? row.impact_signals.map((item) => `<span class="status warn">${esc(item)}</span>`).join(' ')
+        : '<span class="muted">No linked material/history/dependency signal; still omitted because inactive.</span>';
+      const history = row.annual_history_count
+        ? `${esc(row.annual_history_count)} annual row(s)${row.latest_season_year ? ` · latest ${esc(row.latest_season_year)}` : ''}`
+        : 'None';
+      return `<tr>
+        <td><strong>#${esc(row.setup_task_id)} · ${esc(row.task_name)}</strong><div class="muted">Order ${esc(row.display_order ?? '—')} · ${esc(row.task_action_type || 'WORK')}</div></td>
+        <td>${esc(scope)}</td>
+        <td><div class="signal-stack">${signals}</div></td>
+        <td>${esc(history)}</td>
+        <td><span class="status error">WILL NOT SEED</span><div class="muted">Review whether this is intentionally retired or should be reactivated before creating the next Session.</div></td>
+        <td>${setupTaskLink(row.setup_task_id, 'Open reusable task')}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">No inactive reusable tasks. Every reusable task is currently eligible for future Session seeding.</td></tr>';
   }
 
   function renderDisplay() {
@@ -124,7 +156,7 @@
       <td>${esc(row.duplicate_owner_count || 0)}</td>
       <td>${esc(row.stale_owner_count || 0)}</td>
       <td>${esc(row.uncontained_display_count || 0)}</td>
-      <td>${setupTaskLink(row.correction_setup_task_id, 'Open Display Ownership')}</td>
+      <td>${setupTaskLink(row.correction_setup_task_id, 'Open Display Ownership', 'display-ownership')}</td>
     </tr>`).join('') || '<tr><td colspan="11" class="muted">No Display/LOR rows match this filter.</td></tr>';
   }
 
@@ -180,7 +212,7 @@
       ];
       const firstActive = row.active_assignments?.[0]?.setup_task_id;
       const firstInactive = row.inactive_assignments?.[0]?.setup_task_id;
-      if (firstActive || firstInactive) actions.push(setupTaskLink(firstActive || firstInactive, 'Open Kit assignment'));
+      if (firstActive || firstInactive) actions.push(setupTaskLink(firstActive || firstInactive, 'Open Kit assignment', 'kit-boxes'));
       if (row.coverage_state === 'UNASSIGNED_UNRESOLVED' && !row.disposition_active) {
         actions.push(`<button type="button" data-disposition-set="${row.container_id}">Mark reviewed shared/non-task</button>`);
       }
@@ -206,6 +238,7 @@
   }
 
   function render() {
+    renderFutureSession();
     renderDisplay();
     renderKit();
   }
@@ -214,13 +247,15 @@
     const payload = await api('api/setup/material-audit');
     state.audit = payload.audit || {};
     render();
+    const fs = state.audit.future_session?.summary || {};
     const ds = state.audit.display?.summary || {};
     const ks = state.audit.kit?.summary || {};
-    const openCount = Number(ds.review_required || 0)
+    const openCount = Number(fs.inactive_will_not_seed || 0)
+      + Number(ds.review_required || 0)
       + Number(ks.inactive_obsolete_only || 0)
       + Number(ks.unresolved_unassigned || 0)
       + Number(ks.disposition_conflicts || 0);
-    setAlert(openCount ? `${openCount} material completeness exception group(s) require Manager review.` : 'Material completeness audit has no unresolved exceptions.', openCount ? 'error' : 'ok');
+    setAlert(openCount ? `${openCount} Setup readiness/material review item(s) require Manager attention.` : 'Material completeness audit has no unresolved exceptions.', openCount ? 'error' : 'ok');
   }
 
   async function initialize() {
