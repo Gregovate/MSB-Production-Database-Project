@@ -7,8 +7,6 @@ Revision: 2026-09-20 V0.1.0
 Purpose:
   - add one durable Manager-reviewed shared/non-task disposition for physical
     Kit-typed Containers;
-  - retain exact reusable-task active/inactive transitions for pre-Session
-    readiness review, using the existing actor-stamped Setup task audit fields;
   - preserve existing task -> KIT authority unchanged;
   - keep the Catalog Material Completeness Audit itself read-only;
   - do not create annual Setup state, inventory state, Extra Material source
@@ -23,10 +21,8 @@ DO $preflight$
 BEGIN
     IF to_regclass('ref.container') IS NULL
        OR to_regclass('ref.person') IS NULL
-       OR to_regclass('ref.setup_task') IS NULL
        OR to_regclass('ref.setup_task_container_support') IS NULL
-       OR to_regprocedure('ref.setup_management_actor(text,boolean)') IS NULL
-       OR to_regprocedure('ref.set_actor_on_update()') IS NULL THEN
+       OR to_regprocedure('ref.setup_management_actor(text,boolean)') IS NULL THEN
         RAISE EXCEPTION 'Accepted Setup Container/Kit Manager foundation is required before migration 051';
     END IF;
 
@@ -35,70 +31,6 @@ BEGIN
     END IF;
 END
 $preflight$;
-
-CREATE TABLE IF NOT EXISTS ref.setup_task_active_history (
-    setup_task_active_history_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    setup_task_id bigint NOT NULL
-        REFERENCES ref.setup_task(setup_task_id),
-    previous_active_flag boolean NOT NULL,
-    active_flag boolean NOT NULL,
-    changed_at timestamptz NOT NULL,
-    changed_by text NOT NULL,
-    changed_by_person_id integer
-        REFERENCES ref.person(person_id),
-
-    CONSTRAINT ck_setup_task_active_history_changed
-        CHECK (previous_active_flag IS DISTINCT FROM active_flag)
-);
-
-COMMENT ON TABLE ref.setup_task_active_history IS
-'Append-only Setup audit evidence for reusable-task active_flag transitions. Rows are captured after the standard setup_task actor trigger has stamped updated_at/updated_by/updated_by_person_id. Migration 051 does not infer or backfill historical transitions.';
-
-CREATE INDEX IF NOT EXISTS ix_setup_task_active_history_task_changed
-    ON ref.setup_task_active_history(
-        setup_task_id,
-        changed_at DESC,
-        setup_task_active_history_id DESC
-    );
-
-CREATE OR REPLACE FUNCTION ref.capture_setup_task_active_history()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog, ref
-AS $function$
-BEGIN
-    IF OLD.active_flag IS DISTINCT FROM NEW.active_flag THEN
-        INSERT INTO ref.setup_task_active_history(
-            setup_task_id,
-            previous_active_flag,
-            active_flag,
-            changed_at,
-            changed_by,
-            changed_by_person_id
-        )
-        VALUES (
-            NEW.setup_task_id,
-            OLD.active_flag,
-            NEW.active_flag,
-            NEW.updated_at,
-            coalesce(nullif(btrim(NEW.updated_by), ''), current_user),
-            NEW.updated_by_person_id
-        );
-    END IF;
-    RETURN NEW;
-END;
-$function$;
-
-REVOKE ALL ON FUNCTION ref.capture_setup_task_active_history() FROM PUBLIC;
-REVOKE ALL ON FUNCTION ref.capture_setup_task_active_history() FROM fieldwiring_app;
-
-DROP TRIGGER IF EXISTS trg_setup_task_active_history ON ref.setup_task;
-CREATE TRIGGER trg_setup_task_active_history
-AFTER UPDATE OF active_flag ON ref.setup_task
-FOR EACH ROW
-WHEN (OLD.active_flag IS DISTINCT FROM NEW.active_flag)
-EXECUTE FUNCTION ref.capture_setup_task_active_history();
 
 CREATE TABLE IF NOT EXISTS ref.setup_kit_assignment_disposition (
     container_id integer NOT NULL
@@ -263,10 +195,6 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON TABLE ref.setup_task_active_history FROM PUBLIC;
-REVOKE ALL ON TABLE ref.setup_task_active_history FROM fieldwiring_app;
-GRANT SELECT ON TABLE ref.setup_task_active_history TO fieldwiring_app;
-
 REVOKE ALL ON TABLE ref.setup_kit_assignment_disposition FROM PUBLIC;
 REVOKE ALL ON TABLE ref.setup_kit_assignment_disposition FROM fieldwiring_app;
 GRANT SELECT ON TABLE ref.setup_kit_assignment_disposition TO fieldwiring_app;
@@ -286,11 +214,6 @@ SELECT
         'ref.setup_kit_assignment_disposition',
         'SELECT'
     ) AS app_can_read_kit_disposition,
-    has_table_privilege(
-        'fieldwiring_app',
-        'ref.setup_task_active_history',
-        'SELECT'
-    ) AS app_can_read_task_active_history,
     has_function_privilege(
         'fieldwiring_app',
         'ref.set_setup_kit_assignment_disposition(text,integer,boolean,text)',
