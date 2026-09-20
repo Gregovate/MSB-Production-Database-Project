@@ -49,7 +49,9 @@ CREATE TABLE IF NOT EXISTS ref.setup_kit_assignment_disposition (
         REFERENCES ref.person(person_id),
 
     CONSTRAINT ck_setup_kit_assignment_disposition
-        CHECK (disposition = 'SHARED_NON_TASK')
+        CHECK (disposition = 'SHARED_NON_TASK'),
+    CONSTRAINT ck_setup_kit_assignment_disposition_active_note
+        CHECK (NOT active_flag OR nullif(btrim(review_note), '') IS NOT NULL)
 );
 
 COMMENT ON TABLE ref.setup_kit_assignment_disposition IS
@@ -113,6 +115,12 @@ BEGIN
         RAISE EXCEPTION USING
             ERRCODE = '23514',
             MESSAGE = 'Only container_type_id=2 Kit Boxes may receive a shared/non-task Setup disposition';
+    END IF;
+
+    IF v_reviewed AND v_note IS NULL THEN
+        RAISE EXCEPTION USING
+            ERRCODE = '22023',
+            MESSAGE = 'A Manager review reason is required for shared/non-task Kit disposition';
     END IF;
 
     IF v_reviewed AND EXISTS (
