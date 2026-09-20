@@ -13,7 +13,7 @@
     <div>
       <div class="eyebrow">Setup · Manager acceptance gate</div>
       <h1>Material Completeness Audit</h1>
-      <div class="muted">Whole-Catalog review of Display/LOR ownership and physical Kit assignment coverage.</div>
+      <div class="muted">Whole-Catalog review of future Session readiness, Display/LOR ownership, and physical Kit assignment coverage.</div>
     </div>
   </div>
   <div class="audit-header-actions">
@@ -36,6 +36,27 @@
     </label>
     <button id="audit-refresh" type="button">Rerun audit</button>
   </div>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">Before creating 2026 or any future Setup Session</div>
+        <h2>Future Session Readiness</h2>
+        <div class="hint">Session creation seeds active reusable tasks only. Every inactive reusable task is listed here for Manager review because it will be omitted from the new Session unless reactivated.</div>
+      </div>
+    </div>
+    <div id="future-session-summary" class="summary-grid"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Inactive reusable task</th><th>Scope</th><th>Why review it</th><th>Prior annual history</th><th>Future Session effect</th><th>Correction</th>
+          </tr>
+        </thead>
+        <tbody id="future-session-audit-body"></tbody>
+      </table>
+    </div>
+  </section>
 
   <section class="card">
     <div class="section-title">
@@ -82,6 +103,6 @@
   </section>
 </main>
 
-<script src="assets/setup_material_audit.js?v=2026-09-20.1"></script>
+<script src="assets/setup_material_audit.js?v=2026-09-20.2"></script>
 </body>
 </html>
