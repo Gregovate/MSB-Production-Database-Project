@@ -3,9 +3,9 @@
 | Document control | Value |
 |---|---|
 | Status | CANDIDATE — NOT DEPLOYED |
-| Owner | Labeling and Scanning / Site Infrastructure GIS |
-| Related issues | #113, #171, #219 |
-| Candidate route | `/scan/field-test` on protected `my.sheboyganlights.org` origin only |
+| Owner | Issue #219 — Scan + GPS acceptance harness; #122 governs Setup integration decisions |
+| Related issues | #219 (owner), #122 (governing Setup), #113, #171 |
+| Candidate route | `/scan/field-test` |
 | Production write behavior | None |
 
 ## Purpose
@@ -36,14 +36,16 @@ Current 2026 operating facts:
 - seasonal SIM service is not expected to be purchased for every tablet;
 - park Wi-Fi exists only in limited/key locations and can be used as periodic synchronization points.
 
-The intended production model is therefore store-and-forward:
+A store-and-forward workflow is one hypothesis that this experiment may inform, not an accepted Production design. Issue #219 is collecting evidence only; #122 will decide later whether and how disconnected work should synchronize after the field results are reviewed.
+
+The field test should therefore observe whether this sequence is technically viable without treating it as a committed architecture:
 
 ```text
 scan + GPS + field context
-    -> commit locally on tablet
-    -> continue working without network
-    -> later reach Wi-Fi / connectivity
-    -> idempotently synchronize queued events
+    -> retain test evidence locally while disconnected
+    -> continue testing without network
+    -> later regain connectivity
+    -> confirm retained evidence can still be exported and reviewed
 ```
 
 The SIM-equipped tablet is a useful acceptance device because the operator can deliberately disable cellular/Wi-Fi and compare connected versus disconnected behavior on the same hardware.
@@ -63,8 +65,6 @@ It does not:
 - alter physical QR/barcode payloads.
 
 Test observations are stored only in browser `localStorage` and can be exported as JSON/CSV.
-
-The engineering route is served only when the request arrives through the protected `my.sheboyganlights.org` Scan origin. The `db.sheboyganlights.org` compatibility origin used by existing physical labels receives `404 Not Found` for `/scan/field-test`.
 
 ## Reference Dataset
 
