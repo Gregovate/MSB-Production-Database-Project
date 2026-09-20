@@ -82,6 +82,8 @@ def test_disposition_schema_is_narrow_and_manager_governed() -> None:
     assert "reviewed_at timestamptz" in sql
     assert "reviewed_by_person_id integer" in sql
     assert "active_flag boolean" in sql
+    assert "ck_setup_kit_assignment_disposition_active_note" in sql
+    assert "A Manager review reason is required" in sql
     assert "ref.setup_management_actor(p_email, false)" in sql
     assert "container_type_id=2" in sql
     assert "relationship_type = 'KIT'" in sql
