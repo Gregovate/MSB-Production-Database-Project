@@ -108,9 +108,14 @@ def test_display_write_api_stays_manager_only_and_uses_governed_command() -> Non
     assert "UPDATE ref.setup_task_display" not in assignment
 
 
-def test_audit_deep_link_does_not_reopen_dialog_after_close_reset() -> None:
+def test_audit_deep_link_opens_once_and_does_not_reopen_after_close_reset() -> None:
     client = read_app("setup_production.js")
+    ownership = read_app("setup_display_ownership.js")
     large_scope = read_app("setup_display_ownership_large_scope_fix.js")
+    assert "appState.pendingCorrection = requestedCorrection" in client
+    assert "function consumePendingCorrection(name)" in client
+    assert "consumePendingCorrection('display-ownership')" in ownership
+    assert "loadOwnership(taskId, { open: openFromAudit })" in ownership
     assert "dialog.addEventListener('close', () => resetDialogState(dialog))" in large_scope
     assert "selectTask(taskId)" in large_scope
     assert "params.delete('correction')" in client
