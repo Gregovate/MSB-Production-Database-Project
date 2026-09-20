@@ -138,8 +138,12 @@
   async function setDisposition(containerId, reviewed) {
     let note = null;
     if (reviewed) {
-      note = window.prompt('Optional Manager note/reason for shared/non-task Kit disposition:', '') ?? null;
+      note = window.prompt('Manager reason for shared/non-task Kit disposition (required):', '') ?? null;
       if (note === null) return;
+      if (!String(note).trim()) {
+        setAlert('A Manager reason is required before marking a Kit reviewed shared/non-task.', 'error');
+        return;
+      }
     } else {
       const confirmed = window.confirm('Clear the current reviewed shared/non-task disposition for this Kit Box?');
       if (!confirmed) return;
