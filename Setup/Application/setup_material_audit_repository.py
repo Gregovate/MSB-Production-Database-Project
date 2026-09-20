@@ -140,20 +140,6 @@ class SetupMaterialAuditRepository:
                     t.display_order,
                     t.task_action_type,
                     t.requires_display_material,
-                    t.updated_at AS task_updated_at,
-                    t.updated_by AS task_updated_by,
-                    t.updated_by_person_id AS task_updated_by_person_id,
-                    coalesce(
-                        nullif(btrim(pg_catalog.concat_ws(' ', updater.first_name, updater.last_name)), ''),
-                        nullif(btrim(updater.email), ''),
-                        CASE
-                            WHEN t.updated_by_person_id IS NOT NULL
-                            THEN 'Person ' || t.updated_by_person_id::text
-                            ELSE NULL
-                        END,
-                        nullif(btrim(t.updated_by), ''),
-                        'Unknown actor'
-                    ) AS task_updated_by_display,
                     (
                         SELECT count(*)
                         FROM ops.setup_session_task AS st
@@ -191,8 +177,6 @@ class SetupMaterialAuditRepository:
                   ON s.stage_id = t.stage_id
                 LEFT JOIN ref.lor_scene AS ls
                   ON ls.lor_scene_id = t.lor_scene_id
-                LEFT JOIN ref.person AS updater
-                  ON updater.person_id = t.updated_by_person_id
                 WHERE NOT t.active_flag
                 ORDER BY
                     s.park_order NULLS LAST,
