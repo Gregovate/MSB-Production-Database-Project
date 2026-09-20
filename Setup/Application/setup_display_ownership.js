@@ -594,8 +594,9 @@
       state.draggedDisplayIds = [];
       state.selectedDisplayIds.clear();
       state.lastSelectedDisplayId = null;
-      const correction = new URLSearchParams(window.location.search).get('correction');
-      requestAnimationFrame(() => loadOwnership(taskId, { open: correction === 'display-ownership' }));
+      const openFromAudit = typeof consumePendingCorrection === 'function'
+        && consumePendingCorrection('display-ownership');
+      requestAnimationFrame(() => loadOwnership(taskId, { open: openFromAudit }));
       return result;
     };
   }
@@ -603,6 +604,10 @@
   window.addEventListener('load', () => {
     ensureControl();
     ensureDialog();
-    if (appState.selectedTaskId) loadOwnership(appState.selectedTaskId);
+    if (appState.selectedTaskId) {
+      const openFromAudit = typeof consumePendingCorrection === 'function'
+        && consumePendingCorrection('display-ownership');
+      loadOwnership(appState.selectedTaskId, { open: openFromAudit });
+    }
   });
 })();
