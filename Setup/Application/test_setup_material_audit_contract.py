@@ -131,7 +131,8 @@ def test_production_host_registers_audit_without_exposing_source() -> None:
     assert '@app.get("/material-audit")' in host
     assert '"setup_material_audit.js"' in host
     assert '"setup_material_audit.css"' in host
-    assert "material-audit/" in production
+    assert "material-audit-link" in production
+    assert "material-audit/" in client
     assert "URLSearchParams" in client
     assert "setup_task_id" in client
 
