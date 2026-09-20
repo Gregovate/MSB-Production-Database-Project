@@ -120,17 +120,15 @@
       const history = row.annual_history_count
         ? `${esc(row.annual_history_count)} annual row(s)${row.latest_season_year ? ` · latest ${esc(row.latest_season_year)}` : ''}`
         : 'None';
-      const actorEvidence = `<strong>Last task update: ${esc(row.task_updated_by_display || row.task_updated_by || 'Unknown actor')}</strong><div class="muted">${row.task_updated_at ? esc(new Date(row.task_updated_at).toLocaleString()) : ''} · training evidence; current row audit does not prove which field changed</div>`;
       return `<tr>
         <td><strong>#${esc(row.setup_task_id)} · ${esc(row.task_name)}</strong><div class="muted">Order ${esc(row.display_order ?? '—')} · ${esc(row.task_action_type || 'WORK')}</div></td>
         <td>${esc(scope)}</td>
         <td><div class="signal-stack">${signals}</div></td>
-        <td>${actorEvidence}</td>
         <td>${esc(history)}</td>
         <td><span class="status error">WILL NOT SEED</span><div class="muted">Review whether this is intentionally retired or should be reactivated before creating the next Session.</div></td>
         <td>${setupTaskLink(row.setup_task_id, 'Open reusable task')}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="7" class="muted">No inactive reusable tasks. Every reusable task is currently eligible for future Session seeding.</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="muted">No inactive reusable tasks. Every reusable task is currently eligible for future Session seeding.</td></tr>';
   }
 
   function renderDisplay() {
