@@ -33,7 +33,7 @@ END
 $preflight$;
 
 CREATE TABLE IF NOT EXISTS ref.setup_kit_assignment_disposition (
-    container_id integer PRIMARY KEY
+    container_id integer NOT NULL
         REFERENCES ref.container(container_id),
     disposition text NOT NULL DEFAULT 'SHARED_NON_TASK',
     active_flag boolean NOT NULL DEFAULT true,
@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS ref.setup_kit_assignment_disposition (
     updated_by_person_id integer NOT NULL
         REFERENCES ref.person(person_id),
 
+    CONSTRAINT pk_setup_kit_assignment_disposition
+        PRIMARY KEY (container_id),
     CONSTRAINT ck_setup_kit_assignment_disposition
         CHECK (disposition = 'SHARED_NON_TASK'),
     CONSTRAINT ck_setup_kit_assignment_disposition_active_note
@@ -161,7 +163,7 @@ BEGIN
             v_person_id,
             v_person_id
         )
-        ON CONFLICT (container_id)
+        ON CONFLICT ON CONSTRAINT pk_setup_kit_assignment_disposition
         DO UPDATE SET
             disposition = 'SHARED_NON_TASK',
             active_flag = true,
