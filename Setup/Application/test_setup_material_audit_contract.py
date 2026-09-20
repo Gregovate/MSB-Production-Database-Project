@@ -59,6 +59,9 @@ def test_future_session_audit_exposes_inactive_tasks_that_will_not_seed() -> Non
     assert "kit_assignment_count" in repo
     assert "extra_material_count" in repo
     assert "active_dependent_count" in repo
+    assert "SELECT count(*) AS active_count" in repo
+    assert 'active_row["active_count"]' in repo
+    assert "cur.fetchone()[0]" not in repo
     assert '"future_session": self.future_session_audit()' in repo
     assert "Future Session Readiness" in html
     assert "will be omitted from the new Session" in html
