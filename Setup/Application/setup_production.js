@@ -650,7 +650,9 @@ function applyRequestedRoute() {
     showView(requestedView);
   }
   if (requestedTaskId && taskById(requestedTaskId)) {
-    showView('library');
+    if (!requestedView || !['review', 'library'].includes(requestedView)) {
+      showView('review');
+    }
     selectTask(requestedTaskId);
   }
 
