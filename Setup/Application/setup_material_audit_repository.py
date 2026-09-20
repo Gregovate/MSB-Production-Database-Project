@@ -191,12 +191,13 @@ class SetupMaterialAuditRepository:
 
             cur.execute(
                 """
-                SELECT count(*)
+                SELECT count(*) AS active_count
                 FROM ref.setup_task
                 WHERE active_flag
                 """
             )
-            active_count = int(cur.fetchone()[0])
+            active_row = cur.fetchone()
+            active_count = int(active_row["active_count"] if active_row else 0)
 
         for row in inactive:
             row["annual_history_count"] = int(row.get("annual_history_count") or 0)
