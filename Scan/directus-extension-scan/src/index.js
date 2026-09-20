@@ -426,12 +426,6 @@ export default {
     // query or write Production Database workflow state.
     // ============================================================
     router.get('/field-test', async (req, res) => {
-      const requestHost = String(req.headers?.host ?? '').split(':')[0].toLowerCase();
-      if (requestHost !== 'my.sheboyganlights.org') {
-        res.status(404).send('Not Found');
-        return;
-      }
-
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader(
@@ -684,7 +678,6 @@ export default {
             let watchId = null;
             let latestPosition = null;
             let gpsStartedAt = null;
-            let operatorFocusTimer = null;
 
             function newId() {
               if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -1064,17 +1057,6 @@ export default {
               window.setTimeout(focusScanInput, 250);
             }
 
-            function scheduleFocusAfterOperatorEdit() {
-              if (operatorFocusTimer != null) {
-                window.clearTimeout(operatorFocusTimer);
-              }
-              operatorFocusTimer = window.setTimeout(function() {
-                if (document.activeElement === operatorLocationComment) {
-                  focusScanInput();
-                }
-              }, 2000);
-            }
-
             function isUnfocusedPageSurface(target) {
               return !target || target === document.body || target === document.documentElement;
             }
@@ -1089,7 +1071,6 @@ export default {
             });
             expectedReference.addEventListener('change', scheduleScanInputFocus);
             inputMethod.addEventListener('change', scheduleScanInputFocus);
-            operatorLocationComment.addEventListener('input', scheduleFocusAfterOperatorEdit);
             operatorLocationComment.addEventListener('blur', scheduleScanInputFocus);
             scanForm.addEventListener('submit', function(event) {
               event.preventDefault();
