@@ -483,7 +483,7 @@ export default {
               font-weight: bold;
               margin-bottom: 6px;
             }
-            input, select, button {
+            input, select, textarea, button {
               width: 100%;
               box-sizing: border-box;
               padding: 12px;
@@ -492,10 +492,22 @@ export default {
               border: 1px solid #4a5568;
               margin-bottom: 10px;
             }
-            input, select {
+            input, select, textarea {
               background: #fff;
               color: #111;
             }
+            .source-badge {
+              display: inline-block;
+              padding: 2px 6px;
+              margin-right: 4px;
+              border-radius: 999px;
+              font-size: 11px;
+              font-weight: bold;
+              background: #39435a;
+              color: #fff;
+            }
+            .source-badge.field { background: #285d3b; }
+            .source-badge.preview { background: #6b4d16; }
             button, .btn {
               display: block;
               background: #1f6feb;
@@ -589,7 +601,49 @@ export default {
           </div>
 
           <div class="card">
-            <h2>3. Scan while standing at the test point</h2>
+            <h2>3. Provisional field-reference observations</h2>
+            <div class="warning">
+              <strong>DISPOSABLE REFERENCE EVIDENCE.</strong>
+              These observations are raw field evidence only. They do not update the GPX file, Production GIS, Stage/Scene identity, or PostgreSQL.
+              Multiple observations with the same provisional name remain separate raw points; this page does not average them.
+            </div>
+            <div class="grid">
+              <div>
+                <label for="fieldReferenceName">Provisional reference name</label>
+                <input id="fieldReferenceName" autocomplete="off" placeholder="Example: Elf Choir east-side stake" />
+              </div>
+              <div>
+                <label for="fieldReferenceArea">Stage / area context (optional)</label>
+                <input id="fieldReferenceArea" autocomplete="off" placeholder="Example: 08-Elf Choir-EC" />
+              </div>
+              <div>
+                <label for="fieldReferenceEnvironment">Environment</label>
+                <select id="fieldReferenceEnvironment">
+                  <option value="">Not recorded</option>
+                  <option value="OPEN_SKY">Open sky</option>
+                  <option value="TREE_COVER">Tree cover</option>
+                  <option value="STRUCTURE_ADJACENT">Structure-adjacent</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+            </div>
+            <label for="fieldReferenceComment">Field-reference comment</label>
+            <textarea id="fieldReferenceComment" rows="2" placeholder="Describe the physical point or why this reference may be useful."></textarea>
+            <label for="fieldReferenceEnvironmentNote">Environment note (optional)</label>
+            <textarea id="fieldReferenceEnvironmentNote" rows="2" placeholder="Trees, trailer, structure, open area, or other conditions affecting GPS."></textarea>
+            <div class="grid">
+              <button id="captureFieldReference" type="button" disabled>Capture current GPS as field reference</button>
+              <button id="loadPreviewFix" type="button" class="secondary">Load controlled preview fix</button>
+            </div>
+            <div id="fieldReferenceStatus" class="muted small"></div>
+            <div class="muted small">
+              “Load controlled preview fix” is for pre-field UI acceptance only. Preview fixes are exported with
+              <code>fix_source=CONTROLLED_PREVIEW</code> and must not be treated as physical GPS evidence.
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>4. Scan while standing at the test point</h2>
             <div class="grid">
               <div>
                 <label for="inputMethod">Input method</label>
@@ -614,9 +668,26 @@ export default {
           </div>
 
           <div class="card">
-            <h2>4. Session evidence</h2>
+            <h2>5. Session evidence</h2>
             <div id="sessionSummary" class="muted">No observations yet.</div>
+            <div id="fieldReferenceSummary" class="muted small" style="margin-top:8px;">No field-reference observations yet.</div>
             <div style="overflow-x:auto; margin-top:12px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Field reference</th>
+                    <th>Source</th>
+                    <th>Area</th>
+                    <th>Environment</th>
+                    <th>GPS</th>
+                    <th>Accuracy</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="fieldReferenceRows"></tbody>
+              </table>
+            </div>
+            <div style="overflow-x:auto; margin-top:18px;">
               <table>
                 <thead>
                   <tr>
@@ -664,6 +735,16 @@ export default {
             const gpsNearest = document.getElementById('gpsNearest');
             const gpsCandidates = document.getElementById('gpsCandidates');
             const connectivityState = document.getElementById('connectivityState');
+            const fieldReferenceName = document.getElementById('fieldReferenceName');
+            const fieldReferenceArea = document.getElementById('fieldReferenceArea');
+            const fieldReferenceEnvironment = document.getElementById('fieldReferenceEnvironment');
+            const fieldReferenceComment = document.getElementById('fieldReferenceComment');
+            const fieldReferenceEnvironmentNote = document.getElementById('fieldReferenceEnvironmentNote');
+            const captureFieldReference = document.getElementById('captureFieldReference');
+            const loadPreviewFix = document.getElementById('loadPreviewFix');
+            const fieldReferenceStatus = document.getElementById('fieldReferenceStatus');
+            const fieldReferenceSummary = document.getElementById('fieldReferenceSummary');
+            const fieldReferenceRows = document.getElementById('fieldReferenceRows');
             const inputMethod = document.getElementById('inputMethod');
             const scanForm = document.getElementById('scanForm');
             const scanInput = document.getElementById('scanInput');
@@ -688,7 +769,7 @@ export default {
 
             function newSession() {
               return {
-                schema_version: 1,
+                schema_version: 2,
                 session_id: newId(),
                 started_at: new Date().toISOString(),
                 reference_source: SOURCE,
@@ -696,6 +777,7 @@ export default {
                   return { name: point.name, lat: point.lat, lon: point.lon };
                 }),
                 user_agent: navigator.userAgent,
+                field_reference_observations: [],
                 observations: []
               };
             }
@@ -706,6 +788,10 @@ export default {
                 if (!raw) return newSession();
                 const parsed = JSON.parse(raw);
                 if (!parsed || !Array.isArray(parsed.observations)) return newSession();
+                if (!Array.isArray(parsed.field_reference_observations)) {
+                  parsed.field_reference_observations = [];
+                }
+                parsed.schema_version = 2;
                 return parsed;
               } catch (err) {
                 return newSession();
@@ -714,15 +800,56 @@ export default {
 
             let session = loadSession();
 
-            referencePoints
-              .slice()
-              .sort(function(a, b) { return a.name.localeCompare(b.name); })
-              .forEach(function(point) {
-                const option = document.createElement('option');
-                option.value = point.name;
-                option.textContent = point.name;
-                expectedReference.appendChild(option);
+            function referenceCandidates() {
+              const seeds = referencePoints.map(function(point) {
+                return {
+                  reference_id: 'GPX:' + point.name,
+                  source_type: 'GPX_SEED',
+                  name: point.name,
+                  lat: point.lat,
+                  lon: point.lon,
+                  area_context: null,
+                  observation_recorded_at: null
+                };
               });
+              const field = session.field_reference_observations.map(function(obs) {
+                return {
+                  reference_id: 'FIELD:' + obs.field_reference_observation_id,
+                  source_type: 'FIELD_OBSERVATION',
+                  name: obs.provisional_name,
+                  lat: obs.gps.latitude,
+                  lon: obs.gps.longitude,
+                  area_context: obs.area_context,
+                  observation_recorded_at: obs.recorded_at
+                };
+              });
+              return seeds.concat(field);
+            }
+
+            function renderExpectedReferenceOptions() {
+              const selected = expectedReference.value;
+              expectedReference.innerHTML = '<option value="">Select expected reference (optional)</option>';
+              referenceCandidates()
+                .slice()
+                .sort(function(a, b) {
+                  if (a.source_type !== b.source_type) return a.source_type === 'GPX_SEED' ? -1 : 1;
+                  return a.name.localeCompare(b.name);
+                })
+                .forEach(function(point) {
+                  const option = document.createElement('option');
+                  option.value = point.reference_id;
+                  option.textContent =
+                    (point.source_type === 'GPX_SEED' ? '[GPX] ' : '[FIELD] ') +
+                    point.name +
+                    (point.area_context ? ' · ' + point.area_context : '');
+                  expectedReference.appendChild(option);
+                });
+              if (Array.from(expectedReference.options).some(function(option) { return option.value === selected; })) {
+                expectedReference.value = selected;
+              }
+            }
+
+            renderExpectedReferenceOptions();
 
             function toRadians(value) {
               return value * Math.PI / 180;
@@ -741,14 +868,25 @@ export default {
             }
 
             function rankedReferences(lat, lon) {
-              return referencePoints
+              return referenceCandidates()
                 .map(function(point) {
                   return {
+                    reference_id: point.reference_id,
+                    source_type: point.source_type,
                     name: point.name,
+                    latitude: point.lat,
+                    longitude: point.lon,
+                    area_context: point.area_context,
+                    observation_recorded_at: point.observation_recorded_at,
                     distance_ft: distanceFeet(lat, lon, point.lat, point.lon)
                   };
                 })
                 .sort(function(a, b) { return a.distance_ft - b.distance_ft; });
+            }
+
+            function referenceLabel(item) {
+              if (!item) return '—';
+              return (item.source_type === 'FIELD_OBSERVATION' ? '[FIELD] ' : '[GPX] ') + item.name;
             }
 
             function connectivitySnapshot() {
@@ -785,7 +923,8 @@ export default {
                 heading_deg: position.coords.heading,
                 speed_mps: position.coords.speed,
                 fix_timestamp: new Date(position.timestamp).toISOString(),
-                fix_age_ms: Math.max(0, Date.now() - Number(position.timestamp))
+                fix_age_ms: Math.max(0, Date.now() - Number(position.timestamp)),
+                fix_source: position._msbSource || 'BROWSER_GEOLOCATION'
               };
             }
 
@@ -796,11 +935,12 @@ export default {
               gpsLatLon.textContent = gps.latitude.toFixed(7) + ', ' + gps.longitude.toFixed(7);
               gpsAccuracy.textContent = gps.accuracy_ft == null ? 'Unknown' : gps.accuracy_ft.toFixed(1) + ' ft';
               gpsAge.textContent = (gps.fix_age_ms / 1000).toFixed(1) + ' sec';
-              gpsNearest.textContent = ranked[0].name + ' · ' + ranked[0].distance_ft.toFixed(1) + ' ft';
+              gpsNearest.textContent = referenceLabel(ranked[0]) + ' · ' + ranked[0].distance_ft.toFixed(1) + ' ft';
               gpsCandidates.textContent = 'Nearest 5: ' + ranked.slice(0, 5).map(function(item, index) {
-                return (index + 1) + '. ' + item.name + ' (' + item.distance_ft.toFixed(1) + ' ft)';
+                return (index + 1) + '. ' + referenceLabel(item) + ' (' + item.distance_ft.toFixed(1) + ' ft)';
               }).join(' · ');
               captureGps.disabled = false;
+              captureFieldReference.disabled = false;
             }
 
             function startGpsWatch() {
@@ -838,6 +978,76 @@ export default {
               );
             }
 
+            function persistSession() {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+            }
+
+            function loadControlledPreviewFix() {
+              const selected = referenceCandidates().find(function(item) {
+                return item.reference_id === expectedReference.value;
+              }) || referenceCandidates().find(function(item) {
+                return item.source_type === 'GPX_SEED';
+              });
+              if (!selected) return;
+              latestPosition = {
+                coords: {
+                  latitude: selected.lat,
+                  longitude: selected.lon,
+                  accuracy: 3,
+                  altitude: null,
+                  altitudeAccuracy: null,
+                  heading: null,
+                  speed: null
+                },
+                timestamp: Date.now(),
+                _msbSource: 'CONTROLLED_PREVIEW'
+              };
+              gpsStartedAt = Date.now();
+              renderGps();
+              fieldReferenceStatus.textContent =
+                'Controlled preview fix loaded from ' + referenceLabel(selected) +
+                '. This is UI test data, not physical GPS evidence.';
+            }
+
+            function captureFieldReferenceObservation() {
+              const gps = positionSnapshot(latestPosition);
+              const provisionalName = fieldReferenceName.value.trim();
+              if (!gps) {
+                fieldReferenceStatus.textContent = 'Start GPS or load a controlled preview fix first.';
+                return;
+              }
+              if (!provisionalName) {
+                fieldReferenceStatus.textContent = 'Enter a provisional field-reference name first.';
+                fieldReferenceName.focus();
+                return;
+              }
+
+              const observation = {
+                field_reference_observation_id: newId(),
+                provisional_name: provisionalName,
+                area_context: fieldReferenceArea.value.trim() || null,
+                operator_comment: fieldReferenceComment.value.trim() || null,
+                environment_context: fieldReferenceEnvironment.value || null,
+                environment_note: fieldReferenceEnvironmentNote.value.trim() || null,
+                recorded_at: new Date().toISOString(),
+                gps: gps,
+                gps_acquisition_elapsed_ms:
+                  gpsStartedAt == null ? null : Number(latestPosition.timestamp) - gpsStartedAt,
+                connectivity: connectivitySnapshot()
+              };
+
+              session.field_reference_observations.push(observation);
+              persistSession();
+              renderExpectedReferenceOptions();
+              renderFieldReferences();
+              renderGps();
+              renderSession();
+              fieldReferenceStatus.textContent =
+                'Recorded raw field-reference observation “' + provisionalName + '” (' +
+                gps.fix_source + '). Multiple observations with this name remain separate raw points.';
+              scheduleScanInputFocus();
+            }
+
             function canonicalScan(raw) {
               const value = String(raw || '').trim();
               if (!value) return null;
@@ -866,9 +1076,11 @@ export default {
             }
 
             function expectedResult(ranked) {
-              const name = expectedReference.value || null;
-              if (!name) {
+              const referenceId = expectedReference.value || null;
+              if (!referenceId) {
                 return {
+                  reference_id: null,
+                  source_type: null,
                   name: null,
                   latitude: null,
                   longitude: null,
@@ -877,10 +1089,16 @@ export default {
                 };
               }
 
-              const point = referencePoints.find(function(item) { return item.name === name; }) || null;
-              const index = ranked.findIndex(function(item) { return item.name === name; });
+              const point = referenceCandidates().find(function(item) {
+                return item.reference_id === referenceId;
+              }) || null;
+              const index = ranked.findIndex(function(item) {
+                return item.reference_id === referenceId;
+              });
               return {
-                name: name,
+                reference_id: point ? point.reference_id : referenceId,
+                source_type: point ? point.source_type : null,
+                name: point ? point.name : null,
                 latitude: point ? point.lat : null,
                 longitude: point ? point.lon : null,
                 rank: index < 0 ? null : index + 1,
@@ -903,6 +1121,8 @@ export default {
                 scan_canonical: parsed ? parsed.canonical : null,
                 scan_type: parsed ? parsed.type : null,
                 scan_key: parsed ? parsed.key : null,
+                expected_reference_id: expected.reference_id,
+                expected_reference_source_type: expected.source_type,
                 expected_reference: expected.name,
                 expected_reference_latitude: expected.latitude,
                 expected_reference_longitude: expected.longitude,
@@ -916,7 +1136,7 @@ export default {
               };
 
               session.observations.push(observation);
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+              persistSession();
               renderSession();
 
               if (kind === 'SCAN') {
@@ -943,6 +1163,40 @@ export default {
                 .replace(/'/g, '&#39;');
             }
 
+            function renderFieldReferences() {
+              fieldReferenceRows.innerHTML = '';
+              session.field_reference_observations.slice().reverse().forEach(function(obs) {
+                const tr = document.createElement('tr');
+                const gps = obs.gps || {};
+                const sourceClass = gps.fix_source === 'CONTROLLED_PREVIEW' ? 'preview' : 'field';
+                tr.innerHTML =
+                  '<td>' + escapeHtml(obs.provisional_name) + '</td>' +
+                  '<td><span class="source-badge ' + sourceClass + '">' +
+                    escapeHtml(gps.fix_source || 'BROWSER_GEOLOCATION') + '</span></td>' +
+                  '<td>' + escapeHtml(obs.area_context || '—') + '</td>' +
+                  '<td>' + escapeHtml(
+                    (obs.environment_context || '—') +
+                    (obs.environment_note ? ' · ' + obs.environment_note : '')
+                  ) + '</td>' +
+                  '<td>' + escapeHtml(
+                    gps.latitude == null ? '—' :
+                    Number(gps.latitude).toFixed(7) + ', ' + Number(gps.longitude).toFixed(7)
+                  ) + '</td>' +
+                  '<td>' + escapeHtml(
+                    gps.accuracy_ft == null ? '—' : Number(gps.accuracy_ft).toFixed(1) + ' ft'
+                  ) + '</td>' +
+                  '<td>' + escapeHtml(new Date(obs.recorded_at).toLocaleTimeString()) + '</td>';
+                fieldReferenceRows.appendChild(tr);
+              });
+              const physicalCount = session.field_reference_observations.filter(function(obs) {
+                return obs.gps && obs.gps.fix_source !== 'CONTROLLED_PREVIEW';
+              }).length;
+              const previewCount = session.field_reference_observations.length - physicalCount;
+              fieldReferenceSummary.textContent =
+                session.field_reference_observations.length + ' raw field-reference observations · ' +
+                physicalCount + ' browser-GPS · ' + previewCount + ' controlled preview · no averaging/promotion';
+            }
+
             function renderSession() {
               observationRows.innerHTML = '';
               session.observations.slice().reverse().forEach(function(obs) {
@@ -953,7 +1207,7 @@ export default {
                   '<td>' + escapeHtml(obs.scan_canonical || (obs.kind === 'GPS_SAMPLE' ? 'GPS sample' : obs.scan_raw || '—')) + '</td>' +
                   '<td>' + escapeHtml(obs.expected_reference || '—') + '</td>' +
                   '<td>' + escapeHtml(obs.operator_location_comment || '—') + '</td>' +
-                  '<td>' + escapeHtml(nearest ? nearest.name + ' · ' + nearest.distance_ft.toFixed(1) + ' ft' : 'No GPS') + '</td>' +
+                  '<td>' + escapeHtml(nearest ? referenceLabel(nearest) + ' · ' + nearest.distance_ft.toFixed(1) + ' ft' : 'No GPS') + '</td>' +
                   '<td>' + escapeHtml(obs.expected_rank == null ? '—' : String(obs.expected_rank)) + '</td>' +
                   '<td>' + escapeHtml(obs.gps && obs.gps.accuracy_ft != null ? obs.gps.accuracy_ft.toFixed(1) + ' ft' : '—') + '</td>';
                 observationRows.appendChild(tr);
@@ -967,6 +1221,7 @@ export default {
               const nearestExpected = session.observations.filter(function(obs) { return obs.expected_rank === 1; }).length;
               sessionSummary.textContent =
                 session.observations.length + ' observations · ' +
+                session.field_reference_observations.length + ' raw field references · ' +
                 gpsCount + ' with GPS · ' +
                 offlineCount + ' captured offline · ' +
                 (rankedCount ? nearestExpected + '/' + rankedCount + ' expected locations ranked #1' : 'no expected-location comparisons yet') +
@@ -1000,16 +1255,22 @@ export default {
 
             function exportSessionCsv() {
               const header = [
-                'observation_id','recorded_at','kind','input_method','scan_raw','scan_canonical','scan_type','scan_key',
+                'record_type','observation_id','field_reference_observation_id','recorded_at','kind','input_method',
+                'scan_raw','scan_canonical','scan_type','scan_key',
                 'reference_source_sha256','reference_source_modified_at','reference_selection_rule',
                 'source_waypoint_count','selected_waypoint_count',
-                'expected_reference','expected_reference_latitude','expected_reference_longitude',
+                'expected_reference_id','expected_reference_source_type','expected_reference',
+                'expected_reference_latitude','expected_reference_longitude',
+                'field_reference_name','field_reference_area_context','field_reference_operator_comment',
+                'field_reference_environment_context','field_reference_environment_note','gps_fix_source',
                 'operator_location_comment','expected_rank','expected_distance_ft',
                 'latitude','longitude','accuracy_ft','fix_timestamp','fix_age_ms','gps_acquisition_elapsed_ms',
                 'browser_online','effective_type','downlink_mbps','rtt_ms','save_data',
-                'nearest_1','nearest_1_distance_ft','nearest_2','nearest_2_distance_ft',
-                'nearest_3','nearest_3_distance_ft','nearest_4','nearest_4_distance_ft',
-                'nearest_5','nearest_5_distance_ft'
+                'nearest_1_source','nearest_1','nearest_1_distance_ft',
+                'nearest_2_source','nearest_2','nearest_2_distance_ft',
+                'nearest_3_source','nearest_3','nearest_3_distance_ft',
+                'nearest_4_source','nearest_4','nearest_4_distance_ft',
+                'nearest_5_source','nearest_5','nearest_5_distance_ft'
               ];
               const rows = [header.map(csvCell).join(',')];
               session.observations.forEach(function(obs) {
@@ -1017,24 +1278,48 @@ export default {
                 const gps = obs.gps || {};
                 const connectivity = obs.connectivity || {};
                 rows.push([
-                  obs.observation_id, obs.recorded_at, obs.kind, obs.input_method, obs.scan_raw, obs.scan_canonical,
-                  obs.scan_type, obs.scan_key,
+                  'OBSERVATION', obs.observation_id, null, obs.recorded_at, obs.kind, obs.input_method,
+                  obs.scan_raw, obs.scan_canonical, obs.scan_type, obs.scan_key,
                   session.reference_source && session.reference_source.sha256,
                   session.reference_source && session.reference_source.modified_at,
                   session.reference_source && session.reference_source.selection_rule,
                   session.reference_source && session.reference_source.source_waypoint_count,
                   session.reference_source && session.reference_source.selected_waypoint_count,
-                  obs.expected_reference, obs.expected_reference_latitude, obs.expected_reference_longitude,
+                  obs.expected_reference_id, obs.expected_reference_source_type, obs.expected_reference,
+                  obs.expected_reference_latitude, obs.expected_reference_longitude,
+                  null, null, null, null, null, gps.fix_source,
                   obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
                   gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
                   obs.gps_acquisition_elapsed_ms,
                   connectivity.browser_online, connectivity.effective_type, connectivity.downlink_mbps,
                   connectivity.rtt_ms, connectivity.save_data,
-                  ranked[0] && ranked[0].name, ranked[0] && ranked[0].distance_ft,
-                  ranked[1] && ranked[1].name, ranked[1] && ranked[1].distance_ft,
-                  ranked[2] && ranked[2].name, ranked[2] && ranked[2].distance_ft,
-                  ranked[3] && ranked[3].name, ranked[3] && ranked[3].distance_ft,
-                  ranked[4] && ranked[4].name, ranked[4] && ranked[4].distance_ft
+                  ranked[0] && ranked[0].source_type, ranked[0] && ranked[0].name, ranked[0] && ranked[0].distance_ft,
+                  ranked[1] && ranked[1].source_type, ranked[1] && ranked[1].name, ranked[1] && ranked[1].distance_ft,
+                  ranked[2] && ranked[2].source_type, ranked[2] && ranked[2].name, ranked[2] && ranked[2].distance_ft,
+                  ranked[3] && ranked[3].source_type, ranked[3] && ranked[3].name, ranked[3] && ranked[3].distance_ft,
+                  ranked[4] && ranked[4].source_type, ranked[4] && ranked[4].name, ranked[4] && ranked[4].distance_ft
+                ].map(csvCell).join(','));
+              });
+              session.field_reference_observations.forEach(function(obs) {
+                const gps = obs.gps || {};
+                const connectivity = obs.connectivity || {};
+                rows.push([
+                  'FIELD_REFERENCE_OBSERVATION', null, obs.field_reference_observation_id, obs.recorded_at,
+                  'FIELD_REFERENCE', null, null, null, null, null,
+                  session.reference_source && session.reference_source.sha256,
+                  session.reference_source && session.reference_source.modified_at,
+                  session.reference_source && session.reference_source.selection_rule,
+                  session.reference_source && session.reference_source.source_waypoint_count,
+                  session.reference_source && session.reference_source.selected_waypoint_count,
+                  null, null, null, null, null,
+                  obs.provisional_name, obs.area_context, obs.operator_comment,
+                  obs.environment_context, obs.environment_note, gps.fix_source,
+                  null, null, null,
+                  gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
+                  obs.gps_acquisition_elapsed_ms,
+                  connectivity.browser_online, connectivity.effective_type, connectivity.downlink_mbps,
+                  connectivity.rtt_ms, connectivity.save_data,
+                  null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
                 ].map(csvCell).join(','));
               });
               exportFile(
@@ -1069,9 +1354,23 @@ export default {
               recordObservation('GPS_SAMPLE', null);
               scheduleScanInputFocus();
             });
-            expectedReference.addEventListener('change', scheduleScanInputFocus);
+            captureFieldReference.addEventListener('click', captureFieldReferenceObservation);
+            loadPreviewFix.addEventListener('click', function() {
+              loadControlledPreviewFix();
+              scheduleScanInputFocus();
+            });
+            expectedReference.addEventListener('change', function() {
+              if (latestPosition && latestPosition._msbSource === 'CONTROLLED_PREVIEW') {
+                loadControlledPreviewFix();
+              }
+              scheduleScanInputFocus();
+            });
             inputMethod.addEventListener('change', scheduleScanInputFocus);
             operatorLocationComment.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceName.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceArea.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceComment.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceEnvironmentNote.addEventListener('blur', scheduleScanInputFocus);
             scanForm.addEventListener('submit', function(event) {
               event.preventDefault();
               const raw = scanInput.value.trim();
@@ -1084,6 +1383,10 @@ export default {
               if (!window.confirm('Clear all locally stored field-test observations on this browser?')) return;
               localStorage.removeItem(STORAGE_KEY);
               session = newSession();
+              fieldReferenceStatus.textContent = '';
+              renderExpectedReferenceOptions();
+              renderFieldReferences();
+              renderGps();
               renderSession();
             });
 
@@ -1127,6 +1430,8 @@ export default {
             });
 
             renderConnectivity();
+            renderExpectedReferenceOptions();
+            renderFieldReferences();
             renderSession();
             scheduleScanInputFocus();
           </script>
