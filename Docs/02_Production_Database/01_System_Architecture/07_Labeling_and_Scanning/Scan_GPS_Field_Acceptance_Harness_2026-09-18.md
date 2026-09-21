@@ -92,6 +92,67 @@ NAD83 HARN WISCRS Sheboygan County Feet (USft)
 
 and must explicitly transform/normalize device coordinates.
 
+## Disposable Field Reference Observations
+
+Issue #219 also uses the harness to collect better physical reference evidence where the frozen GPX Stage-center points are too coarse or where tree cover, structures, trailers, or similar conditions may degrade GPS quality.
+
+These **field reference observations are not authoritative GIS waypoints**.
+
+```text
+frozen GPX seed point
+    = pre-test reference / approximate known location
+
+field reference observation
+    = one raw browser-GPS observation captured at a physical point during #219
+
+#171 review later
+    = decides whether any observation should become authoritative GIS/reference data
+```
+
+For each provisional field reference, the operator may record:
+
+- provisional reference name;
+- optional Stage/area context;
+- operator comment describing the physical point;
+- simple environmental context such as open sky, tree cover, structure-adjacent, or another note;
+- current latitude/longitude;
+- browser-reported accuracy;
+- fix timestamp and age;
+- elapsed time from starting GPS to the captured fix;
+- connectivity evidence; and
+- whether the fix came from real browser geolocation or the explicitly marked controlled-preview path.
+
+Multiple observations with the same provisional name are preserved as separate **raw observations**. The harness must **not average** them, overwrite the embedded GPX seed coordinates, or silently choose one observation as the authoritative point.
+
+Each raw field observation participates independently in the local nearest-reference comparison and is labeled separately from the frozen GPX seeds:
+
+```text
+GPX_SEED
+FIELD_OBSERVATION
+```
+
+This makes repeatability/spread visible rather than hiding it behind a computed average.
+
+All provisional field-reference evidence remains disposable in **browser localStorage** and is included in the normal JSON/CSV export. Clearing local test data clears both scan/GPS observations and provisional field-reference observations.
+
+### Controlled preview fix
+
+Before spending time collecting data in the park, the harness includes a clearly marked controlled preview fix so the provisional-reference workflow can be exercised without pretending that a desktop/test location is physical park evidence.
+
+Controlled preview observations are exported with:
+
+```text
+fix_source = CONTROLLED_PREVIEW
+```
+
+They must remain distinguishable from:
+
+```text
+fix_source = BROWSER_GEOLOCATION
+```
+
+The preview path is for UI/runtime acceptance only and must not be promoted into GIS/reference authority.
+
 ## Evidence Captured Per Observation
 
 Each scan or GPS-only sample records:
@@ -134,9 +195,12 @@ Recommended first pass:
 9. If practical, reload/restart while still offline. Record whether the field-test page itself remains available. Failure here is evidence that an offline app shell/service-worker or equivalent is required; do not treat it as operator error.
 10. Re-enable connectivity or move to a known Wi-Fi area and verify the retained local evidence remains intact.
 11. Use **Verify normal Scan route** separately after connectivity returns to confirm the captured identity resolves through the current accepted Scan path.
-12. Repeat at additional reference locations, including close-pair stress cases.
-13. Export JSON at the end of the session; CSV carries the scan/GPS/connectivity fields, frozen-source identity, and all five ranked references for quick inspection.
-14. Preserve the exported evidence with the acceptance notes.
+12. At selected physical points, capture one or more provisional field-reference observations with a meaningful provisional name and environmental context.
+13. For at least one provisional reference, capture multiple raw observations so repeatability/spread can be reviewed later without averaging.
+14. Confirm locally captured field observations appear alongside frozen GPX seeds in the nearest-reference ranking with distinct provenance.
+15. Repeat at additional reference locations, including close-pair stress cases.
+16. Export JSON at the end of the session; CSV carries scan/GPS/connectivity fields, frozen-source identity, raw field-reference observations, provenance, and ranked references for quick inspection.
+17. Preserve the exported evidence with the acceptance notes.
 
 High-value discrimination cases already identified from the current GPX include close pairs:
 
@@ -223,7 +287,10 @@ After the first park session, review:
 - behavior near close Stage/Scene/significant-location pairs;
 - HID focus reliability;
 - browser/local-storage behavior when connectivity changes;
-- whether operators can understand the named-location result without raw-coordinate interpretation.
+- whether operators can understand the named-location result without raw-coordinate interpretation;
+- whether provisional physical reference observations are useful enough to justify later #171 review;
+- repeatability/spread of multiple raw observations for the same provisional physical point; and
+- how open-sky, tree-covered, and structure-adjacent observations compare.
 
 Those results determine whether Plan A (tablet GPS) is sufficient and what location-specific confidence/tolerance rules are justified.
 
