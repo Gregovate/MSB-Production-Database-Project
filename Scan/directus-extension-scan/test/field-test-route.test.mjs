@@ -59,7 +59,7 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /document\.addEventListener\('keydown'/);
   assert.match(response.body, /Operator location comment/);
   assert.match(response.body, /operator_location_comment/);
-  assert.match(response.body, /expectedReference\.addEventListener\('change', scheduleScanInputFocus\)/);
+  assert.match(response.body, /expectedReference\.addEventListener\('change', function\(\) \{\s+if \(latestPosition && latestPosition\._msbSource === 'CONTROLLED_PREVIEW'\) \{\s+loadControlledPreviewFix\(\);\s+\}\s+scheduleScanInputFocus\(\);\s+\}\);/);
   assert.match(response.body, /inputMethod\.addEventListener\('change', scheduleScanInputFocus\)/);
   assert.match(response.body, /operatorLocationComment\.addEventListener\('blur', scheduleScanInputFocus\)/);
   assert.match(response.body, /Verify normal Scan route/);
