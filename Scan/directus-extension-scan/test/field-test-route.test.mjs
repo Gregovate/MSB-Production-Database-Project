@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 
 import scanExtension from '../src/index.js';
 
@@ -63,6 +64,14 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /inputMethod\.addEventListener\('change', scheduleScanInputFocus\)/);
   assert.match(response.body, /operatorLocationComment\.addEventListener\('blur', scheduleScanInputFocus\)/);
   assert.match(response.body, /Verify normal Scan route/);
+});
+
+test('field acceptance route renders browser JavaScript with valid syntax', async () => {
+  const { response } = await renderRoute('/field-test');
+  const scriptMatch = response.body.match(/<script>([\\s\\S]*?)<\\/script>/);
+
+  assert.ok(scriptMatch, 'expected field-test inline browser script');
+  assert.doesNotThrow(() => new vm.Script(scriptMatch[1]));
 });
 
 test('field acceptance route preserves current GPX reference provenance and named candidates', async () => {
