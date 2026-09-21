@@ -105,7 +105,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.14-scheduling-board"
+    assert payload["version"] == "V0.3.15-material-audit-candidate"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -162,6 +162,8 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
         "/setup_display_ownership_api.py",
         "/setup_assignment_layer.py",
         "/setup_assignment_api.py",
+        "/setup_material_audit_api.py",
+        "/setup_material_audit_repository.py",
         "/setup_prerequisite_order_api.py",
         "/setup_prerequisite_order_repository.py",
         "/setup_operations_repository.py",
@@ -175,6 +177,14 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert client.get("/api/setup/resource-catalog").status_code == 401
     assert client.get("/api/setup/organization").status_code == 401
     assert client.get("/api/setup/dependencies/ordered").status_code == 401
+
+    audit_page = client.get("/material-audit/")
+    assert audit_page.status_code == 200
+    assert b"Material Completeness Audit" in audit_page.data
+    assert audit_page.headers["Cache-Control"] == "no-store, max-age=0"
+    assert client.get("/material-audit/assets/setup_material_audit.css").status_code == 200
+    assert client.get("/material-audit/assets/setup_material_audit.js").status_code == 200
+    assert client.get("/api/setup/material-audit").status_code == 401
 
 
 def test_production_entry_point_uses_distinct_flask_app() -> None:
@@ -217,5 +227,7 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>",
         "/api/setup/tasks/<int:setup_task_id>/kit-boxes",
         "/api/setup/tasks/<int:setup_task_id>/kit-boxes/<int:container_id>",
+        "/api/setup/material-audit",
+        "/api/setup/material-audit/kits/<int:container_id>/shared-non-task",
     ):
         assert expected in rules

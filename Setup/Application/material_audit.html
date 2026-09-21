@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Material Completeness Audit</title>
+  <link rel="stylesheet" href="assets/setup_material_audit.css?v=2026-09-20.2">
+</head>
+<body>
+<header class="audit-header">
+  <div class="audit-brand">
+    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <div>
+      <div class="eyebrow">Setup · Manager acceptance gate</div>
+      <h1>Material Completeness Audit</h1>
+      <div class="muted">Whole-Catalog review of future Session readiness, Display/LOR ownership, and physical Kit assignment coverage.</div>
+    </div>
+  </div>
+  <div class="audit-header-actions">
+    <span id="audit-access" class="access-badge">Checking Manager access…</span>
+    <a class="button secondary" href="../kit-inventory/">Kit Inventory</a>
+    <a class="button secondary" href="../">Back to Setup Session</a>
+    <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+  </div>
+</header>
+
+<main class="audit-main">
+  <section id="audit-alert" class="notice" aria-live="polite">Loading Material Completeness Audit…</section>
+
+  <div class="audit-toolbar">
+    <label>Show
+      <select id="audit-filter">
+        <option value="exceptions">Exceptions only</option>
+        <option value="all">All audited rows</option>
+      </select>
+    </label>
+    <button id="audit-refresh" type="button">Rerun audit</button>
+  </div>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">Before creating 2026 or any future Setup Session</div>
+        <h2>Future Session Readiness</h2>
+        <div class="hint">Session creation seeds active reusable tasks only. Every inactive reusable task is listed here for Manager review because it will be omitted from the new Session unless reactivated.</div>
+      </div>
+    </div>
+    <div id="future-session-summary" class="summary-grid"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Inactive reusable task</th><th>Scope</th><th>Why review it</th><th>Prior annual history</th><th>Future Session effect</th><th>Correction</th>
+          </tr>
+        </thead>
+        <tbody id="future-session-audit-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">Current LOR authority</div>
+        <h2>Display / LOR Ownership</h2>
+        <div class="hint">Implicit single-task ownership remains valid. Exceptions use the existing #141 Display Ownership correction surface.</div>
+      </div>
+    </div>
+    <div id="display-summary" class="summary-grid"></div>
+    <div class="table-wrap">
+      <table class="display-audit-table">
+        <thead>
+          <tr>
+            <th>Scope</th><th>Active reusable tasks</th><th>Material tasks</th><th>Source Displays</th>
+            <th>Mode / Status</th><th>Missing</th><th>Invalid</th><th>Duplicate</th><th>Stale</th><th>Uncontained</th><th>Correction</th>
+          </tr>
+        </thead>
+        <tbody id="display-audit-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <div class="eyebrow">Physical Kit Boxes</div>
+        <h2>Kit Assignment Coverage</h2>
+        <div class="hint">Shared/non-task disposition is explicit Manager-reviewed Setup state. It never creates a fake task assignment, inventory fact, or Extra Material source.</div>
+      </div>
+    </div>
+    <div id="kit-summary" class="summary-grid"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Kit</th><th>Coverage</th><th>Active task assignments</th><th>Inactive task assignments</th>
+            <th>Reviewed disposition</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="kit-audit-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="assets/setup_material_audit.js?v=2026-09-20.2"></script>
+</body>
+</html>

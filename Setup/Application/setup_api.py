@@ -128,11 +128,28 @@ def api_setup_stages() -> Response:
 
 @setup_api.get("/api/setup/tasks")
 def api_setup_tasks() -> Response:
-    repo, _email, _access = require_reader()
     raw_year = request.args.get("season_year", "").strip()
     if not raw_year.isdigit():
         raise SetupCommandError("season_year is required")
-    return jsonify(tasks=repo.tasks(int(raw_year)))
+
+    raw_include_task_id = request.args.get("include_setup_task_id", "").strip()
+    include_setup_task_id: int | None = None
+    if raw_include_task_id:
+        if not raw_include_task_id.isdigit():
+            raise SetupCommandError("include_setup_task_id must be a positive reusable task ID")
+        include_setup_task_id = int(raw_include_task_id)
+        if include_setup_task_id < 1:
+            raise SetupCommandError("include_setup_task_id must be a positive reusable task ID")
+        repo, _email, _access = require_manager()
+    else:
+        repo, _email, _access = require_reader()
+
+    return jsonify(
+        tasks=repo.tasks(
+            int(raw_year),
+            include_setup_task_id=include_setup_task_id,
+        )
+    )
 
 
 @setup_api.get("/api/setup/movement-summary")

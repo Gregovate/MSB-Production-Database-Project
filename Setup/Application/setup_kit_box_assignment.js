@@ -278,7 +278,13 @@
       state.searchQuery = '';
       requestAnimationFrame(() => {
         ensureControl();
-        loadKitBoxes(taskId).catch((error) => console.error(error));
+        const openFromAudit = typeof consumePendingCorrection === 'function'
+          && consumePendingCorrection('kit-boxes');
+        if (openFromAudit) {
+          openDialog().catch((error) => console.error(error));
+        } else {
+          loadKitBoxes(taskId).catch((error) => console.error(error));
+        }
       });
       return result;
     };
@@ -287,6 +293,14 @@
   window.addEventListener('load', () => {
     ensureControl();
     ensureDialog();
-    if (appState.selectedTaskId) loadKitBoxes(appState.selectedTaskId);
+    if (appState.selectedTaskId) {
+      const openFromAudit = typeof consumePendingCorrection === 'function'
+        && consumePendingCorrection('kit-boxes');
+      if (openFromAudit) {
+        openDialog().catch((error) => console.error(error));
+      } else {
+        loadKitBoxes(appState.selectedTaskId);
+      }
+    }
   });
 })();
