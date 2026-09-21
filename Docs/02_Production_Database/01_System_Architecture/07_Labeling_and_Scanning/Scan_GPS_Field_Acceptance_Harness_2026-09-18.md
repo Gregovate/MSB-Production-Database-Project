@@ -122,7 +122,7 @@ For each provisional field reference, the operator may record:
 - connectivity evidence; and
 - whether the fix came from real browser geolocation or the explicitly marked controlled-preview path.
 
-Multiple observations with the same provisional name are preserved as separate **raw observations**. The harness must **not average** them, overwrite the embedded GPX seed coordinates, or silently choose one observation as the authoritative point.
+Multiple observations with the same provisional name are preserved as separate **raw observations**. **Do not average** them, overwrite the embedded GPX seed coordinates, or silently choose one observation as the authoritative point.
 
 Each raw field observation participates independently in the local nearest-reference comparison and is labeled separately from the frozen GPX seeds:
 
