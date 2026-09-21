@@ -99,6 +99,60 @@ test('CSV export carries the complete field evidence needed for later comparison
 });
 
 
+test('field acceptance route captures disposable raw field-reference observations', async () => {
+  const { response, databaseCalled } = await renderRoute('/field-test');
+
+  assert.equal(databaseCalled, false);
+  assert.match(response.body, /Provisional field-reference observations/);
+  assert.match(response.body, /field_reference_observations:\s*\[\]/);
+  assert.match(response.body, /function captureFieldReferenceObservation\(\)/);
+  assert.match(response.body, /provisional_name:/);
+  assert.match(response.body, /area_context:/);
+  assert.match(response.body, /environment_context:/);
+  assert.match(response.body, /environment_note:/);
+  assert.match(response.body, /operator_comment:/);
+  assert.match(response.body, /gps_acquisition_elapsed_ms:/);
+  assert.match(response.body, /Multiple observations with this name remain separate raw points/);
+});
+
+test('field references remain provenance-distinct and participate in ranking without averaging', async () => {
+  const { response } = await renderRoute('/field-test');
+
+  assert.match(response.body, /source_type:\s*'GPX_SEED'/);
+  assert.match(response.body, /source_type:\s*'FIELD_OBSERVATION'/);
+  assert.match(response.body, /referenceCandidates\(\)/);
+  assert.match(response.body, /session\.field_reference_observations\.map/);
+  assert.match(response.body, /rankedReferences/);
+  assert.match(response.body, /\[FIELD\]/);
+  assert.match(response.body, /\[GPX\]/);
+  assert.match(response.body, /no averaging\/promotion/i);
+  assert.doesNotMatch(response.body, /averageFieldReference|averaged_coordinate|mean_latitude/i);
+});
+
+test('controlled preview fix is explicitly marked as non-physical evidence', async () => {
+  const { response } = await renderRoute('/field-test');
+
+  assert.match(response.body, /Load controlled preview fix/);
+  assert.match(response.body, /CONTROLLED_PREVIEW/);
+  assert.match(response.body, /UI test data, not physical GPS evidence/);
+  assert.match(response.body, /fix_source:/);
+});
+
+test('field-reference evidence survives JSON CSV export and clear-all flow', async () => {
+  const { response } = await renderRoute('/field-test');
+
+  assert.match(response.body, /FIELD_REFERENCE_OBSERVATION/);
+  assert.match(response.body, /'field_reference_observation_id'/);
+  assert.match(response.body, /'field_reference_name'/);
+  assert.match(response.body, /'field_reference_area_context'/);
+  assert.match(response.body, /'field_reference_environment_context'/);
+  assert.match(response.body, /'field_reference_environment_note'/);
+  assert.match(response.body, /'gps_fix_source'/);
+  assert.match(response.body, /'nearest_1_source'/);
+  assert.match(response.body, /localStorage\.removeItem\(STORAGE_KEY\)/);
+  assert.match(response.body, /renderFieldReferences\(\)/);
+});
+
 test('harness documentation assigns #219/#122 ownership and defers offline architecture', () => {
   const doc = fs.readFileSync(
     new URL('../../../Docs/02_Production_Database/01_System_Architecture/07_Labeling_and_Scanning/Scan_GPS_Field_Acceptance_Harness_2026-09-18.md', import.meta.url),
@@ -110,6 +164,11 @@ test('harness documentation assigns #219/#122 ownership and defers offline archi
   assert.match(doc, /one hypothesis that this experiment may inform, not an accepted Production design/i);
   assert.doesNotMatch(doc, /The intended production model is therefore store-and-forward/);
   assert.doesNotMatch(doc, /compatibility origin.*404 Not Found/i);
+  assert.match(doc, /field reference observations/i);
+  assert.match(doc, /not authoritative GIS waypoints/i);
+  assert.match(doc, /raw observations/i);
+  assert.match(doc, /do not average/i);
+  assert.match(doc, /browser localStorage/i);
 });
 
 test('scan source and deployed dist candidate remain byte-identical', () => {
