@@ -51,7 +51,7 @@ def test_corrected_assignment_layer_installs_after_existing_resolver_and_ownersh
     ownership_index = backend.index("install_setup_display_ownership()")
     correction_index = backend.index("install_setup_assignment_layer()")
     assert resolver_index < ownership_index < correction_index
-    assert "V0.3.14-scheduling-board" in backend
+    assert "V0.3.15-material-audit-candidate" in backend
     assert "app.register_blueprint(setup_display_ownership_api)" in backend
     assert "app.register_blueprint(setup_assignment_api)" in backend
 
@@ -106,6 +106,21 @@ def test_display_write_api_stays_manager_only_and_uses_governed_command() -> Non
     assert "FROM ref.set_setup_task_display_owner" in assignment
     assert "INSERT INTO ref.setup_task_display" not in assignment
     assert "UPDATE ref.setup_task_display" not in assignment
+
+
+def test_audit_deep_link_opens_once_and_does_not_reopen_after_close_reset() -> None:
+    client = read_app("setup_production.js")
+    ownership = read_app("setup_display_ownership.js")
+    large_scope = read_app("setup_display_ownership_large_scope_fix.js")
+    assert "appState.pendingCorrection = requestedCorrection" in client
+    assert "function consumePendingCorrection(name)" in client
+    assert "showView('review')" in client
+    assert "consumePendingCorrection('display-ownership')" in ownership
+    assert "loadOwnership(taskId, { open: openFromAudit })" in ownership
+    assert "dialog.addEventListener('close', () => resetDialogState(dialog))" in large_scope
+    assert "selectTask(taskId)" in large_scope
+    assert "params.delete('correction')" in client
+    assert "window.history.replaceState" in client
 
 
 def test_manager_board_supports_first_use_initialization_drag_multi_select_and_flag_sync() -> None:

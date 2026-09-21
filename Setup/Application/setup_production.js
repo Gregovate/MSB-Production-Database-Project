@@ -7,7 +7,8 @@ const appState = {
   tasks: [],
   seasonYear: null,
   selectedTaskId: null,
-  movementSummary: null
+  movementSummary: null,
+  pendingCorrection: null
 };
 
 const el = (id) => document.getElementById(id);
@@ -592,8 +593,13 @@ async function loadSeason(year) {
 
   try {
     setBusy(true);
+    const routeParams = new URLSearchParams(window.location.search);
+    const requestedTaskId = Number(routeParams.get('setup_task_id') || 0);
+    const includeRequestedTask = requestedTaskId > 0
+      ? `&include_setup_task_id=${encodeURIComponent(requestedTaskId)}`
+      : '';
     const [tasksPayload, movementPayload] = await Promise.all([
-      api(`api/setup/tasks?season_year=${encodeURIComponent(appState.seasonYear)}`),
+      api(`api/setup/tasks?season_year=${encodeURIComponent(appState.seasonYear)}${includeRequestedTask}`),
       api(`api/setup/movement-summary?season_year=${encodeURIComponent(appState.seasonYear)}`)
     ]);
     appState.tasks = tasksPayload.tasks || [];
@@ -629,6 +635,44 @@ function chooseInitialSeason() {
   return appState.seasons.length ? Number(appState.seasons[0].season_year) : null;
 }
 
+function consumePendingCorrection(name) {
+  if (appState.pendingCorrection !== name) return false;
+  appState.pendingCorrection = null;
+  return true;
+}
+
+function applyRequestedRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedView = params.get('view');
+  const requestedTaskId = Number(params.get('setup_task_id') || 0);
+  const requestedCorrection = params.get('correction');
+
+  if (requestedCorrection === 'display-ownership' || requestedCorrection === 'kit-boxes') {
+    appState.pendingCorrection = requestedCorrection;
+  }
+
+  if (requestedView && ['review', 'library', 'extra-materials', 'movement'].includes(requestedView)) {
+    showView(requestedView);
+  }
+  if (requestedTaskId && taskById(requestedTaskId)) {
+    if (!requestedView || !['review', 'library'].includes(requestedView)) {
+      showView('review');
+    }
+    selectTask(requestedTaskId);
+  }
+
+  // The URL request is one-shot, but the pending correction state survives
+  // until the matching correction wrapper actually consumes it. This avoids
+  // both failure modes: removing the URL too early prevents opening, while
+  // leaving it in place causes dialog close/reset to reopen the correction.
+  if (requestedCorrection) {
+    params.delete('correction');
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
+    window.history.replaceState({}, '', nextUrl);
+  }
+}
+
 async function initialize() {
   try {
     setBusy(true);
@@ -655,6 +699,7 @@ async function initialize() {
       throw new Error('No Setup season is available.');
     }
     await loadSeason(appState.seasonYear);
+    applyRequestedRoute();
   } catch (error) {
     setAlert(error.message || error, 'error');
     el('access-badge').textContent = 'Setup access unavailable';
@@ -666,6 +711,7 @@ async function initialize() {
 document.querySelectorAll('.tab').forEach((button) => {
   button.addEventListener('click', () => showView(button.dataset.view));
 });
+el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
 el('season-select').addEventListener('change', () => loadSeason(el('season-select').value));
 el('review-status-filter').addEventListener('change', renderReviewList);
 el('save-reusable-task').addEventListener('click', saveReusableTask);

@@ -135,7 +135,12 @@ class SetupRepository:
             )
             return [dict(row) for row in cur.fetchall()]
 
-    def tasks(self, season_year: int) -> list[dict[str, Any]]:
+    def tasks(
+        self,
+        season_year: int,
+        *,
+        include_setup_task_id: int | None = None,
+    ) -> list[dict[str, Any]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
@@ -194,7 +199,9 @@ class SetupRepository:
                       ON pt.setup_task_id = d.prerequisite_setup_task_id
                     WHERE d.setup_task_id = t.setup_task_id
                 ) dep ON true
-                WHERE t.active_flag OR st.setup_session_task_id IS NOT NULL
+                WHERE t.active_flag
+                   OR st.setup_session_task_id IS NOT NULL
+                   OR (%s IS NOT NULL AND t.setup_task_id = %s)
                 ORDER BY
                     st.planned_order NULLS LAST,
                     t.baseline_plan_order NULLS LAST,
@@ -204,7 +211,7 @@ class SetupRepository:
                     t.display_order,
                     t.setup_task_id
                 """,
-                (season_year,),
+                (season_year, include_setup_task_id, include_setup_task_id),
             )
             rows = []
             for row in cur.fetchall():
