@@ -1325,7 +1325,7 @@ export default {
               exportFile(
                 'msb-scan-gps-field-test-' + session.session_id + '.csv',
                 'text/csv',
-                rows.join('\n')
+                rows.join('\\n')
               );
             }
 
