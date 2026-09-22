@@ -206,25 +206,17 @@
     const effective = row.ownership_state === 'ASSIGNED' || row.ownership_state === 'IMPLICIT';
     const reviewClass = effective ? '' : ' review';
     const selectedClass = selected ? ' selected' : '';
-    const unassign = canManage && row.ownership_state === 'ASSIGNED' && row.owner_setup_task_id
-      ? `<button
-            type="button"
-            class="secondary setup-display-owner-unassign"
-            data-display-id="${escapeHtml(row.display_id)}"
-            data-owner-task-id="${escapeHtml(row.owner_setup_task_id)}"
-          >Unassign</button>`
-      : '';
     return `
       <div class="setup-display-owner-card${reviewClass}${selectedClass}"
            data-display-id="${row.display_id}"
            data-owner-task-id="${row.owner_setup_task_id ?? ''}"
+           data-ownership-state="${escapeHtml(row.ownership_state || '')}"
            draggable="${canManage ? 'true' : 'false'}"
-           ${canManage ? 'tabindex="0" role="option"' : ''}
+           ${canManage ? 'tabindex="0" role="option" title="Right-click an assigned Display to unassign it."' : ''}
            aria-selected="${selected ? 'true' : 'false'}">
         <strong>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.display_name || '')}</strong>
         <span>${escapeHtml(containerText)}</span>
         <span>${escapeHtml(ownerText)} · ${escapeHtml(stateLabel || 'ASSIGNED')}</span>
-        ${unassign}
       </div>
     `;
   }
@@ -370,15 +362,6 @@
     content.querySelector('#setup-display-ownership-sort')?.addEventListener('change', (event) => {
       state.sortMode = String(event.target.value || 'name');
       renderOwnershipBoard(state.context);
-    });
-    content.querySelectorAll('.setup-display-owner-unassign').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        clearOwnership(
-          Number(button.dataset.displayId || 0),
-          Number(button.dataset.ownerTaskId || 0)
-        );
-      });
     });
     content.querySelectorAll('.setup-display-stale-remove').forEach((button) => {
       button.addEventListener('click', () => {
@@ -583,6 +566,17 @@
   function moveDisplay(displayId, targetTaskId) {
     return moveDisplays([displayId], targetTaskId);
   }
+
+  document.addEventListener('contextmenu', (event) => {
+    const card = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-card');
+    if (!card || !appState.access?.can_manage_setup) return;
+    if (String(card.dataset.ownershipState || '') !== 'ASSIGNED') return;
+    const displayId = Number(card.dataset.displayId || 0);
+    const ownerTaskId = Number(card.dataset.ownerTaskId || 0);
+    if (!displayId || !ownerTaskId) return;
+    event.preventDefault();
+    clearOwnership(displayId, ownerTaskId);
+  });
 
   document.addEventListener('click', (event) => {
     const card = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-card[draggable="true"]');
