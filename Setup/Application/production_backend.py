@@ -26,6 +26,7 @@ from setup_assignment_api import setup_assignment_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_planning_summary_api import setup_planning_summary_api
 from setup_scheduling_board_api import setup_scheduling_board_api
+from setup_material_readiness_api import setup_material_readiness_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
@@ -144,6 +145,7 @@ app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
+app.register_blueprint(setup_material_readiness_api)
 
 
 def _no_store(response):
