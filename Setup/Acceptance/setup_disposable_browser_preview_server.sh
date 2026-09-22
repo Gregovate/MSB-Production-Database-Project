@@ -48,11 +48,9 @@ done < "$MANIFEST"
 : "${PREVIEW_PORT:?manifest preview_port is required}"
 : "${PREVIEW_EMAIL:?manifest preview_email is required}"
 
-if [[ -n "$CREW_PREVIEW_PORT" || -n "$CREW_PREVIEW_EMAIL" ]]; then
-    [[ -n "$CREW_PREVIEW_PORT" && -n "$CREW_PREVIEW_EMAIL" ]] || {
-        echo "FAIL: crew_preview_port and crew_preview_email must be supplied together"
-        exit 3
-    }
+if [[ -n "$CREW_PREVIEW_EMAIL" && -z "$CREW_PREVIEW_PORT" ]]; then
+    echo "FAIL: crew_preview_port is required when crew_preview_email is supplied"
+    exit 3
 fi
 
 for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
@@ -398,13 +396,44 @@ if [[ "$MANAGE_OK" != "t" ]]; then
     echo "FAIL: preview operator $PREVIEW_EMAIL lacks Setup Manager capability"
     exit 20
 fi
-if [[ -n "$CREW_PREVIEW_EMAIL" ]]; then
-    CREW_CAPS="$(psql_test -qAt -F '|' -c "SELECT can_read_setup, can_manage_setup FROM ref.setup_browser_capabilities('$CREW_PREVIEW_EMAIL');")"
-    if [[ "$CREW_CAPS" != "t|f" ]]; then
-        echo "FAIL: crew preview identity $CREW_PREVIEW_EMAIL must be a Setup reader without Manager capability; observed '$CREW_CAPS'"
+if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+    if [[ -z "$CREW_PREVIEW_EMAIL" ]]; then
+        CREW_PREVIEW_EMAIL="$(psql_test -qAt -c "
+            SELECT lower(u.email)
+            FROM public.directus_users u
+            JOIN LATERAL ref.setup_browser_capabilities(lower(u.email)) c ON true
+            WHERE u.status = 'active'
+              AND c.can_read_setup
+              AND NOT c.can_manage_setup
+              AND (
+                  c.role_name = 'Production Crew'
+                  OR 'Production Crew' = ANY(coalesce(c.policy_names, ARRAY[]::text[]))
+              )
+            ORDER BY lower(u.email)
+            LIMIT 1;
+        ")"
+        if [[ -z "$CREW_PREVIEW_EMAIL" ]]; then
+            echo "FAIL: no active Production Crew identity is available for the crew preview"
+            exit 20
+        fi
+        echo "Auto-selected Production Crew preview identity: $CREW_PREVIEW_EMAIL"
+    fi
+
+    CREW_CAPS="$(psql_test -qAt -F '|' -c "
+        SELECT can_read_setup,
+               can_manage_setup,
+               coalesce(
+                   role_name = 'Production Crew'
+                   OR 'Production Crew' = ANY(coalesce(policy_names, ARRAY[]::text[])),
+                   false
+               )
+        FROM ref.setup_browser_capabilities('$CREW_PREVIEW_EMAIL');
+    ")"
+    if [[ "$CREW_CAPS" != "t|f|t" ]]; then
+        echo "FAIL: crew preview identity $CREW_PREVIEW_EMAIL must be Production Crew with read=yes/manage=no; observed '$CREW_CAPS'"
         exit 20
     fi
-    echo "Crew preview authorization boundary: PASS (read=yes, manage=no)"
+    echo "Crew preview authorization boundary: PASS (Production Crew, read=yes, manage=no)"
 fi
 
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
