@@ -4,8 +4,8 @@ Issue: #145
 DISPOSABLE DATABASE ONLY.
 
 Purpose:
-  Prove the governed stale-row cleanup command removes exactly one expected
-  ownership row and rejects a stale concurrency token. This validation rolls
+  Prove the governed Display-owner clear command removes exactly one expected
+  ownership row and rejects a expected-owner concurrency token. This validation rolls
   back all clone changes.
 */
 
@@ -20,7 +20,7 @@ DECLARE
     v_other_task_id bigint;
     v_before integer;
 BEGIN
-    IF to_regprocedure('ref.clear_stale_setup_task_display_owner(text,bigint,bigint)') IS NULL THEN
+    IF to_regprocedure('ref.clear_setup_task_display_owner(text,bigint,bigint)') IS NULL THEN
         RAISE EXCEPTION 'Migration 052 command is missing';
     END IF;
 
@@ -61,7 +61,7 @@ BEGIN
 
     BEGIN
         PERFORM *
-        FROM ref.clear_stale_setup_task_display_owner(
+        FROM ref.clear_setup_task_display_owner(
             v_manager_email,
             v_display_id,
             v_other_task_id
@@ -78,11 +78,11 @@ BEGIN
         WHERE display_id = v_display_id
           AND setup_task_id = v_owner_task_id
     ) <> v_before THEN
-        RAISE EXCEPTION 'Rejected cleanup changed the ownership row';
+        RAISE EXCEPTION 'Rejected clear changed the ownership row';
     END IF;
 
     PERFORM *
-    FROM ref.clear_stale_setup_task_display_owner(
+    FROM ref.clear_setup_task_display_owner(
         v_manager_email,
         v_display_id,
         v_owner_task_id
@@ -93,7 +93,7 @@ BEGIN
         FROM ref.setup_task_display
         WHERE display_id = v_display_id
     ) THEN
-        RAISE EXCEPTION 'Expected ownership row was not removed';
+        RAISE EXCEPTION 'Expected ownership row was not cleared';
     END IF;
 END
 $validation$;
