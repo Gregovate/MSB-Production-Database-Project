@@ -62,7 +62,8 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /operator_location_comment/);
   assert.match(response.body, /function confirmLocation\(referenceId, method\)/);
   assert.match(response.body, /function isTextEntryTarget\(target\)/);
-  assert.match(response.body, /inputMethod\.addEventListener\('change', scheduleScanInputFocus\)/);
+  assert.match(response.body, /inputMethod\.addEventListener\('change', function\(\) \{/);
+  assert.match(response.body, /applyScanKeyboardMode\(\)/);
   assert.match(response.body, /operatorLocationComment\.addEventListener\('blur', scheduleScanInputFocus\)/);
   assert.match(response.body, /Verify normal Scan route/);
 });
