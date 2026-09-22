@@ -46,6 +46,8 @@ def test_175_captain_work_list_is_served_as_read_only_standalone_surface() -> No
         "Material summary",
         "Procedure",
         "Report Work",
+        "Report Problem / Suggest Change",
+        "report_problem=1",
         "mailto:",
     ):
         assert token in ui
