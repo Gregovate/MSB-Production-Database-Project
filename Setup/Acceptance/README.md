@@ -106,7 +106,7 @@ Example invocation shape:
   -CrewPreviewPort <crew-port> `
   -CandidateSha <exact-rehearsal-sha> `
   -TargetRef issue-122-2026-dress-rehearsal `
-  -ExpectedVersion V0.3.16-stale-ownership-cleanup `
+  -ExpectedVersion V0.3.17-2026-dress-rehearsal-candidate `
   -MigrationPaths @(
     'Setup/Database/053_add_production_crew_report_work_duration.sql',
     'Setup/Database/054_add_setup_context_work_order_intake.sql'
