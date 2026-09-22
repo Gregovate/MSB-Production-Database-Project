@@ -225,7 +225,7 @@ if [[ -n "$CREW_PREVIEW_PORT" ]]; then
         echo "FAIL: crew preview port must differ from Manager preview port"
         exit 8
     fi
-    if [[ ! "$CREW_PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
+    if [[ -n "$CREW_PREVIEW_EMAIL" && ! "$CREW_PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
         echo "FAIL: crew preview email is invalid"
         exit 8
     fi
