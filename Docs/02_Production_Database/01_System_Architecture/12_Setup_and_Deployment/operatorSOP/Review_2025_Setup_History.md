@@ -30,6 +30,10 @@ The 2025 review uses real Production data.
 
 Work through the list one task at a time.
 
+![Verification Queue showing the Unverified filter, a task that still needs review, and the Mark Verified button](../images/setup-verification-queue-unverified-mark-verified.png)
+
+*Use **Unverified** to find the remaining review work. After the task has been checked and corrected, use **Mark Verified**.*
+
 ## Before You Click Mark Verified
 
 Ask these questions:
@@ -48,6 +52,12 @@ Ask these questions:
 
 When the needed information is present and looks correct, click **Mark Verified**.
 
+### Active Reusable Task
+
+![Active Reusable Task checkbox in reusable task detail](../images/setup-active-reusable-task.png)
+
+*If normal yearly work should come back in future Setup seasons, **Active Reusable Task** must be checked. Leave a task inactive only when that is intentional.*
+
 ## Important Field Meanings
 
 - **Completion point** = **Done when.**
@@ -56,6 +66,10 @@ When the needed information is present and looks correct, click **Mark Verified*
 - **Reusable notes** = **Important setup notes** that should help future Captains and crews.
 
 Do not keep old copy/reconstruction history in Reusable notes when it no longer helps the crew.
+
+![Completion point, Readiness note, Weather note, and Reusable notes fields](../images/setup-task-planning-fields.png)
+
+*These four boxes are not interchangeable. **Readiness note** helps Scheduling know when work can start; **Weather note** records weather limits; **Completion point** says when the task is done; **Reusable notes** keeps important year-to-year crew knowledge.*
 
 ## Faster Ways to Work
 
@@ -93,6 +107,10 @@ Keep these ideas separate:
 - **Unverified Items / Remainders** = information that is still unclear.
 
 Do not guess to make a task look complete.
+
+![Extra Materials Required by This Task above Expected Source Containers](../images/setup-extra-materials-and-source-containers.png)
+
+*The top section answers **what the task needs**. The lower section answers **where the crew should expect to find it**.*
 
 ## If Mark Verified Is Not Available
 
