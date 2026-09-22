@@ -70,7 +70,7 @@ No physical QR redesign, second resolver, Procedure schema, alternate Google hie
     -> /fieldwiring/controllers?controller_id=<controller_id>
 ```
 
-The Controller page uses that parameter to populate/filter Search and open the exact detail panel. Manual production entry of both `CTRL:1014` and the full `https://db.sheboyganlights.org/scan/CTRL/1014` URL passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact `CTRL:1031` plus Enter routing. The tablet exposed a remaining Scan defect: the operator had to tap the entry field before the Zebra input was accepted. The phone operating system and useful scan distance were not recorded in that pass.
+The Controller page uses that parameter to populate/filter Search and open the exact detail panel. Manual production entry of both `CTRL:1014` and the full `https://db.sheboyganlights.org/scan/CTRL/1014` URL passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact `CTRL:1031` plus Enter routing. That physical test exposed an initial-focus defect: the operator had to tap the Scan entry field first. PR #121 (`2a0b65b02c610d6742198636abb1f9ab9bdcf421`, merged as `0540d3b702de68d10d78ff8e17e8bca317a9a51f`) repaired the landing-page HID focus behavior and is the source of the current deployed Scan artifact `c11e39e99b720f90ecd9a226c0358e3dbc1fa9d51e7a0490f9cc0cd4875474a9`. Repository tests cover startup focus, first-character retention, unfocused Enter submission, and non-hijack of another focused control. A post-deployment physical no-tap tablet acceptance is not present in the durable record, so that physical focus verification remains deferred. The phone operating system and useful scan distance from the earlier physical test were not recorded.
 
 The broader Setup/Deployment scan workflow remains separate engineering scope. High-volume Container and Storage Location scanning is expected during setup season, but the real pull/stage/load/delivery process must be reconstructed before broader scan-platform refactoring or transaction semantics are approved.
 
@@ -240,7 +240,7 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 ## Resume Development
 
-### Controller Scan Integration — physical routing accepted; tablet focus repair pending
+### Controller Scan Integration — physical routing accepted; focus repair deployed; physical no-tap retest pending
 
 Current production Controller Inventory owns Controller search, detail, assignments, planning, maintenance, and label-request actions. The deployed Scan handoff adds no competing Controller screen or database query.
 
@@ -256,7 +256,7 @@ Zebra/manual: CTRL:<controller_id>
 
 The Git-controlled `src/index.js` and deployed `dist/index.js` remain identical. The Controller browser initializes its existing Search control from the same `controller_id` parameter already used by FieldWiring cross-links and exact-detail loading.
 
-Production deployment passed at shared checkout `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` with live Scan SHA-256 `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`. Manual compact/full-URL inputs and a printed Controller `1031` label through phone-camera and Zebra paths passed. The current tablet still requires the operator to select the entry field before Zebra scanning. Repair and physically accept that initial-focus behavior, then record the tested camera operating systems and useful scan distance.
+The original CTRL deployment passed at shared checkout `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` with Scan SHA-256 `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`. Manual compact/full-URL inputs and the printed Controller `1031` label through phone-camera and Zebra paths passed at that stage, exposing the initial-focus defect. PR #121 then repaired the Scan landing-page focus behavior; merged commit `0540d3b702de68d10d78ff8e17e8bca317a9a51f` is now deployed with live Scan SHA-256 `c11e39e99b720f90ecd9a226c0358e3dbc1fa9d51e7a0490f9cc0cd4875474a9`. Treat the code repair as deployed, but keep physical no-tap tablet acceptance explicitly deferred until it is actually repeated and recorded. The tested camera operating systems and useful scan distance also remain to be recorded.
 
 ### Setup/Deployment operational scanning — separate project
 
