@@ -878,6 +878,7 @@ export default {
             let confirmedLocationMethod = null;
             let confirmedLocationAt = null;
             let saveFeedbackTimer = null;
+            let gpsWatchErrorActive = false;
 
             function newId() {
               if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -1016,9 +1017,35 @@ export default {
                 .sort(function(a, b) { return a.distance_ft - b.distance_ft; });
             }
 
+            function rankedMeaningfulLocations(lat, lon) {
+              const raw = rankedReferences(lat, lon);
+              const seen = new Set();
+              const grouped = [];
+              raw.forEach(function(item) {
+                const key = item.source_type === 'FIELD_OBSERVATION'
+                  ? 'FIELD_NAME:' + String(item.name || '').trim().toLowerCase()
+                  : item.reference_id;
+                if (seen.has(key)) return;
+                seen.add(key);
+                const supportCount = item.source_type === 'FIELD_OBSERVATION'
+                  ? session.field_reference_observations.filter(function(obs) {
+                      return String(obs.provisional_name || '').trim().toLowerCase() ===
+                        String(item.name || '').trim().toLowerCase();
+                    }).length
+                  : 1;
+                grouped.push(Object.assign({}, item, {
+                  supporting_observation_count: supportCount
+                }));
+              });
+              return grouped;
+            }
+
             function referenceLabel(item) {
               if (!item) return '—';
-              return (item.source_type === 'FIELD_OBSERVATION' ? '[FIELD] ' : '[GPX] ') + item.name;
+              const count = item.source_type === 'FIELD_OBSERVATION' && item.supporting_observation_count > 1
+                ? ' (' + item.supporting_observation_count + ' samples)'
+                : '';
+              return (item.source_type === 'FIELD_OBSERVATION' ? '[FIELD] ' : '[GPX] ') + item.name + count;
             }
 
             function connectivitySnapshot() {
@@ -1061,6 +1088,7 @@ export default {
             }
 
             function gpsStateSnapshot() {
+              if (gpsWatchErrorActive) return 'LOST';
               if (!latestPosition) return watchId != null ? 'WAITING' : 'NOT_STARTED';
               const gps = positionSnapshot(latestPosition);
               if (!gps) return 'NO_FIX';
@@ -1116,7 +1144,7 @@ export default {
               }
 
               const gps = positionSnapshot(latestPosition);
-              const ranked = rankedReferences(gps.latitude, gps.longitude);
+              const ranked = rankedMeaningfulLocations(gps.latitude, gps.longitude);
               const current = state === 'LIVE' || state === 'TEST';
 
               gpsLatLon.textContent = gps.latitude.toFixed(7) + ', ' + gps.longitude.toFixed(7);
@@ -1135,10 +1163,27 @@ export default {
               captureGps.disabled = !current;
               captureFieldReference.disabled = !current;
               addLocationFromCandidates.disabled = !current;
+
+              if (expectedReference.value) {
+                const rawRanked = rankedReferences(gps.latitude, gps.longitude);
+                const selectedIndex = rawRanked.findIndex(function(item) {
+                  return item.reference_id === expectedReference.value;
+                });
+                const selected = selectedIndex >= 0 ? rawRanked[selectedIndex] : null;
+                if (selected) {
+                  locationConfirmationStatus.textContent =
+                    'Confirmed for next scan: ' + referenceLabel(selected) +
+                    ' · currently #' + (selectedIndex + 1) +
+                    ' · ' + selected.distance_ft.toFixed(1) + ' ft';
+                  locationConfirmationStatus.className =
+                    (selectedIndex < 3 && current ? 'good small' : 'bad small');
+                }
+              }
             }
 
             function startGpsWatch() {
               gpsError.textContent = '';
+              gpsWatchErrorActive = false;
               if (!navigator.geolocation) {
                 gpsError.textContent = 'This browser does not expose geolocation.';
                 return;
@@ -1152,10 +1197,12 @@ export default {
               startGps.textContent = 'GPS running…';
               watchId = navigator.geolocation.watchPosition(
                 function(position) {
+                  gpsWatchErrorActive = false;
                   latestPosition = position;
                   renderGps();
                 },
                 function(error) {
+                  gpsWatchErrorActive = true;
                   gpsError.textContent = 'GPS error ' + error.code + ': ' + error.message;
                   renderGps();
                   startGps.disabled = false;
