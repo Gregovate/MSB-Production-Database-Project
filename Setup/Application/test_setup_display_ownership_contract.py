@@ -134,7 +134,10 @@ def test_display_ownership_can_be_unassigned_or_cleared_when_stale() -> None:
     assert "require_manager()" in api
     assert "expected_setup_task_id" in api
 
-    assert ">Unassign</button>" in ui
+    assert "contextmenu" in ui
+    assert "data-ownership-state" in ui
+    assert "Right-click an assigned Display to unassign it." in ui
+    assert "clearOwnership(displayId, ownerTaskId)" in ui
     assert "Remove stale ownership" in ui
     assert "commandOptions('DELETE'" in ui
     assert "expected_setup_task_id" in ui
