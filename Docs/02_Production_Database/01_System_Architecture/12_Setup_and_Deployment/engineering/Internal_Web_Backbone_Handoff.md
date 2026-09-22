@@ -5,7 +5,7 @@
 | Document Type | Internal Web Backbone Integration Handoff |
 | Source System | Production Database — Setup and Deployment |
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
-| Status | IMPLEMENTED — Backbone PR #11 merged; live publish/verification pending |
+| Status | VERIFIED — live Production portal and Setup documentation link confirmed 2026-09-22 |
 | Owner | MSB Production Database / Setup documentation owner |
 | Last Reviewed | 2026-09-22 |
 
@@ -59,7 +59,9 @@ These source documents are now on Production Database `main`.
 
 PR **#223** rewrote the Setup operator instructions in plain language using live Manager feedback. The canonical Setup README remains the documentation target for Backbone; do not create a second editable copy.
 
-Backbone issue **#10** records the current Production-page integration. Its source includes a **Setup Documentation — Review Guide & Procedures** destination that points to the canonical Setup README on Production Database `main`. The live Backbone publish/verification of that Production-page revision remains a separate Backbone responsibility.
+Backbone issue **#10** records the Production-page integration. Greg provided live browser evidence on 2026-09-22 showing **Production Portal v1.3 — Updated 2026-09-07** with the **Review 2025 Setup**, **Setup Documentation**, and **Procedures** actions visible. He also opened **Setup Documentation** from that portal and reached the current Setup README showing **Last Reviewed 2026-09-22**.
+
+That confirms the live portal is using the canonical Setup documentation path on Production Database `main`.
 
 ## Preferred Application Entry Point
 
@@ -219,7 +221,7 @@ Current Backbone issue #10 source direction includes three Setup-related destina
 
 Because the documentation destination points to the canonical README on `main`, future source-document improvements do not require a duplicate Backbone copy of the procedure.
 
-The Backbone issue still records controlled live publish/verification as pending. Do not claim the deployed Production page is current until that issue is verified.
+Live browser evidence supplied by Greg on 2026-09-22 confirms the Production portal is published and the Setup Documentation link reaches the current canonical README.
 
 ## Acceptance Criteria
 
@@ -237,10 +239,10 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 ## Backbone State
 
 ```text
-IMPLEMENTED IN SOURCE — canonical Setup docs current on Production Database main; Backbone live publish/verification pending under issue #10
+VERIFIED — Production Portal v1.3 visible live; Setup Documentation opens the current canonical Setup README on Production Database main
 ```
 
-After deployed intranet verification, change this state to `VERIFIED` and record the acceptance evidence.
+Live browser verification was supplied by Greg on 2026-09-22; Backbone issue #10 may be closed after recording that evidence.
 
 ## Related Documents
 
