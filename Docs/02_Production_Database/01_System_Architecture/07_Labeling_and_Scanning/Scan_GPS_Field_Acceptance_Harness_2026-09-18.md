@@ -303,3 +303,98 @@ This candidate is not deployed by this branch.
 Before installing it on the protected Scan origin, follow the current Server Management Scan extension deployment/recovery runbook and preserve rollback/runtime-hash evidence. Production deployment is additive and must not change accepted DISP/CONT/CTRL behavior.
 
 After field acceptance, this harness may remain as an engineering diagnostic route or be removed. It is not the final Setup movement user interface.
+
+
+## Field usability revision after first park run
+
+The first real park run proved the browser/Zebra/GPS evidence path but exposed field-use problems. The harness is therefore intentionally being refined without changing its read-only engineering boundary.
+
+### Scan-first operator layout
+
+The normal field workflow keeps these functions immediately visible:
+
+\`\`\`text
+GPS state / accuracy / connectivity
+live likely location
+up to three nearby location candidates
+Scan
+SAVED feedback
+\`\`\`
+
+Secondary functions are collapsible:
+
+\`\`\`text
+Known location / notes
+Add / Check a Location Point
+Session evidence / export
+Developer / Test Tools
+\`\`\`
+
+The controlled non-physical preview function is hidden under Developer / Test Tools and is labeled **Use test location**. It is not a normal park workflow action.
+
+### GPS state and scan evidence
+
+The harness distinguishes current-fix state rather than silently treating an old/no fix as current evidence:
+
+\`\`\`text
+LIVE
+STALE
+LOST
+WAITING / NOT STARTED
+TEST (controlled non-physical preview)
+\`\`\`
+
+A scan may still be preserved when no current GPS exists because loss-of-GPS is itself useful engineering evidence. The operator must receive prominent feedback such as:
+
+\`\`\`text
+SAVED — CONT:11 · GPS 9.8 ft
+SAVED — CONT:11 · NO CURRENT GPS
+\`\`\`
+
+When a scan is saved without current GPS, the latest prior fix may be retained separately as last-fix evidence; it must not be represented as the current scan position.
+
+### Live location-learning evidence
+
+The page continuously ranks nearby known/reference candidates while the operator moves. It presents no more than the three nearest meaningful candidates for quick confirmation.
+
+Operator confirmation remains distinct from the GPS calculation:
+
+\`\`\`text
+raw GPS + accuracy
+nearest candidates presented
+operator-confirmed/test location
+confirmation method/time
+\`\`\`
+
+This evidence is intended to help later #171/#206 work build a smarter operational location resolver. It does not automatically rewrite GPX/GIS reference geometry.
+
+Overlapping areas such as Peanuts / Traditional Christmas are expected to remain ambiguous in some positions. The nearest point is evidence, not automatic Stage/location authority.
+
+### Add / Check a Location Point
+
+Field reference collection is expressed in operator language and may intentionally collect multiple observations related to one larger area.
+
+A location sample may record:
+
+- location point name;
+- optional Stage/area context;
+- role such as Center, Start, End, Edge, Entrance, or Other;
+- operator comment;
+- one or more simultaneous environmental conditions;
+- raw browser GPS, accuracy, time, and connectivity.
+
+Environmental conditions are independent flags. Examples include:
+
+- Open sky;
+- Tree cover;
+- Inside vehicle / Toolcat cab;
+- Near structure;
+- Other.
+
+The first park run was performed largely inside a vehicle to approximate Toolcat use; that is representative field evidence rather than a defect in the test.
+
+The operator has an explicit **NEW / CLEAR** action so stale location-sample fields do not accidentally carry into later observations.
+
+### Scan focus
+
+Zebra HID capture remains the primary fast path. The page restores focus to Scan after completed secondary actions and also accepts HID characters while non-text controls such as buttons, checkboxes, and dropdowns hold focus. It does not hijack characters while the operator is actively typing in another text field or textarea.
