@@ -206,6 +206,14 @@
     const effective = row.ownership_state === 'ASSIGNED' || row.ownership_state === 'IMPLICIT';
     const reviewClass = effective ? '' : ' review';
     const selectedClass = selected ? ' selected' : '';
+    const unassign = canManage && row.ownership_state === 'ASSIGNED' && row.owner_setup_task_id
+      ? `<button
+            type="button"
+            class="secondary setup-display-owner-unassign"
+            data-display-id="${escapeHtml(row.display_id)}"
+            data-owner-task-id="${escapeHtml(row.owner_setup_task_id)}"
+          >Unassign</button>`
+      : '';
     return `
       <div class="setup-display-owner-card${reviewClass}${selectedClass}"
            data-display-id="${row.display_id}"
@@ -216,6 +224,7 @@
         <strong>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.display_name || '')}</strong>
         <span>${escapeHtml(containerText)}</span>
         <span>${escapeHtml(ownerText)} · ${escapeHtml(stateLabel || 'ASSIGNED')}</span>
+        ${unassign}
       </div>
     `;
   }
@@ -362,11 +371,21 @@
       state.sortMode = String(event.target.value || 'name');
       renderOwnershipBoard(state.context);
     });
-    content.querySelectorAll('.setup-display-stale-remove').forEach((button) => {
-      button.addEventListener('click', () => {
-        removeStaleOwnership(
+    content.querySelectorAll('.setup-display-owner-unassign').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        clearOwnership(
           Number(button.dataset.displayId || 0),
           Number(button.dataset.ownerTaskId || 0)
+        );
+      });
+    });
+    content.querySelectorAll('.setup-display-stale-remove').forEach((button) => {
+      button.addEventListener('click', () => {
+        clearOwnership(
+          Number(button.dataset.displayId || 0),
+          Number(button.dataset.ownerTaskId || 0),
+          { stale: true }
         );
       });
     });
@@ -476,17 +495,19 @@
     }
   }
 
-  async function removeStaleOwnership(displayId, expectedTaskId) {
+  async function clearOwnership(displayId, expectedTaskId, { stale = false } = {}) {
     const taskId = Number(appState.selectedTaskId || 0);
     if (!taskId || !displayId || !expectedTaskId || !appState.access?.can_manage_setup) return;
-    if (!window.confirm(
-      `Remove the stale Setup ownership row for Display ${displayId}?\n\nThis does not change LOR membership, Display status, or Container assignment.`
-    )) return;
+    const action = stale ? 'Remove the stale Setup ownership row' : 'Unassign this Display from its current Setup task';
+    const consequence = stale
+      ? 'This does not change LOR membership, Display status, or Container assignment.'
+      : 'The Display will remain in the current LOR source set and will be shown as Missing owner until you assign it again.';
+    if (!window.confirm(`${action} for Display ${displayId}?\n\n${consequence}`)) return;
 
     try {
       setBusy(true);
       const payload = await api(
-        `api/setup/tasks/${taskId}/display-ownership/${Number(displayId)}/stale`,
+        `api/setup/tasks/${taskId}/display-ownership/${Number(displayId)}`,
         commandOptions('DELETE', {
           season_year: Number(appState.seasonYear),
           expected_setup_task_id: Number(expectedTaskId)
@@ -498,7 +519,7 @@
       updateControl(state.context);
       updateMaterialCounts(state.context);
       renderOwnershipBoard(state.context);
-      setAlert(`Stale Display ${displayId} ownership removed.`, 'ok');
+      setAlert(stale ? `Stale Display ${displayId} ownership removed.` : `Display ${displayId} unassigned.`, 'ok');
     } catch (error) {
       await loadOwnership(taskId);
       setAlert(error.message || error, 'error');
