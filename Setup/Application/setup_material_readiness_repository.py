@@ -287,6 +287,14 @@ class SetupMaterialReadinessRepository:
             if task_id is None:
                 scheduled["material_resolution_status"] = "SEASON_ONLY_NO_REUSABLE_MATERIAL_AUTHORITY"
                 scheduled_work.append(scheduled)
+                unresolved.append({
+                    **self._demand_base(assignment),
+                    "requirement_type": "SEASON_ONLY_MATERIAL_AUTHORITY",
+                    "message": (
+                        "Season-only scheduled work has no reusable material authority. "
+                        "Review whether physical material is required before relying on the Pick List."
+                    ),
+                })
                 continue
 
             try:
