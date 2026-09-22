@@ -32,7 +32,7 @@ The schedule must be built in the browser because schedule creation and downstre
 
 ## Personas
 
-Use two browser identities against the same disposable PostgreSQL clone.
+Use two browser identities against the same disposable PostgreSQL clone. The launcher may auto-select an active Production Crew identity for the second browser when a Crew preview port is supplied without a Crew email.
 
 ### Manager browser
 
