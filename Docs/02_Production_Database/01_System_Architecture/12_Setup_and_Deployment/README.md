@@ -70,7 +70,7 @@ Use the **Verification Queue** and choose **Unverified** to find work that still
 Before clicking **Mark Verified**, ask:
 
 - Should this task exist every year?
-- Is **Active Reusable Task** correct?
+- Is **Active Reusable Task** correct? If normal yearly work is inactive, it will not be included when a future Setup Session is created.
 - Is the normal crew size entered?
 - Is the expected time entered?
 - Are the prerequisites correct?
@@ -81,6 +81,22 @@ Before clicking **Mark Verified**, ask:
 - Are the current Setup instructions still correct?
 
 If something is unknown, **do not guess**. Leave it for review or use **Unverified Items / Remainders** where that is the correct place.
+
+## Final Completeness Check — Material Audit
+
+Use **Material Audit** before the real 2026 Setup Session is created.
+
+It checks whether important Setup information is complete. It does **not** decide whether the work itself is correct.
+
+Pay special attention to:
+
+- **Future Session Readiness** — tasks that are not active will not be included in a future Setup Session.
+- **Display / LOR Ownership** — Displays that still need to be assigned to the correct Setup Task.
+- **Kit Assignment Coverage** — Kits or support Containers that still need a task assignment or a clear review reason, such as shared/bulk stock.
+
+Use the correction button in the audit to go back to the place that needs work.
+
+If the audit shows something that does not make sense, fix the real information. Do not enter a fake assignment just to clear the audit.
 
 ## Important Task Fields for Planning
 
