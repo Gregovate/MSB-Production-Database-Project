@@ -15,7 +15,7 @@ def test_setup_145_production_wrapper_is_repo_governed_and_pinned() -> None:
     assert "80f6ebbcbf2946eddb1b3fe04383a2d43f61b845" in wrapper
     assert "5fbe22f7af8218a0d9ca29ca25d7d53e389e7042" in wrapper
     assert "2fbdcaef96891192f2c2fb71f59de9c4602010e8" in wrapper
-    assert "git status --porcelain" in wrapper
+    assert "& git -C $RepoRoot status --porcelain" in wrapper
     assert "merge-base --is-ancestor" in wrapper
     assert "hash-object $ServerScript" in wrapper
     assert "scp -r $localBundle" in wrapper
