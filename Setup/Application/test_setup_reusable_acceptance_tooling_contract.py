@@ -102,12 +102,19 @@ def test_reusable_acceptance_cleanup_and_production_after_check_are_mandatory() 
 
 
 def test_windows_launchers_keep_interactive_ssh_in_foreground() -> None:
-    for name in (
-        "run_setup_disposable_acceptance.ps1",
-        "run_setup_disposable_browser_preview.ps1",
-    ):
-        launcher = read_acceptance(name)
-        assert "ssh -tt" in launcher
+    disposable = read_acceptance("run_setup_disposable_acceptance.ps1")
+    browser = read_acceptance("run_setup_disposable_browser_preview.ps1")
+
+    # The single-tunnel disposable launcher uses direct argv spelling.
+    assert "ssh -tt" in disposable
+
+    # The dual-persona browser launcher must build the same foreground SSH/TTY
+    # contract as an argument array so it can add a second -L tunnel safely.
+    assert "$sshArgs = @(" in browser
+    assert "'-tt'" in browser
+    assert "& ssh @sshArgs" in browser
+
+    for launcher in (disposable, browser):
         assert "ServerAliveInterval=15" in launcher
         assert "Start-Process" not in launcher
         assert "Tee-Object" not in launcher
