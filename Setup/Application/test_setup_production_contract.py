@@ -105,7 +105,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.15-material-audit-candidate"
+    assert payload["version"] == "V0.3.16-stale-ownership-cleanup"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -225,6 +225,7 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/tasks/<int:setup_task_id>/procedure/current",
         "/api/setup/tasks/<int:setup_task_id>/display-ownership/initialize",
         "/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>",
+        "/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>/stale",
         "/api/setup/tasks/<int:setup_task_id>/kit-boxes",
         "/api/setup/tasks/<int:setup_task_id>/kit-boxes/<int:container_id>",
         "/api/setup/material-audit",
