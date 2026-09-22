@@ -45,8 +45,13 @@ def test_122_rehearsal_supports_shared_clone_manager_and_crew_personas() -> None
     assert "crew_preview_email" in runner
     assert "CREW_PREVIEW_PORT" in server
     assert "CREW_PREVIEW_EMAIL" in server
+    assert "Auto-selected Production Crew preview identity" in server
+    assert "role_name = 'Production Crew'" in server
     assert "same disposable clone" in server
     assert "Production Crew scheduling negative path: PASS (403)" in server
+    for protected_port in ("8055", "8790", "8792", "8794", "8796"):
+        assert protected_port in runner
+        assert protected_port in server
 
 
 def test_122_rehearsal_composes_launch_spine_surfaces() -> None:
