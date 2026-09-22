@@ -912,6 +912,38 @@ reloadTasks = async function reloadTasksNextPass(selectTaskId = null) {
   if (setupNextState.scenes.length) renderLibrary();
 };
 
+const priorCaptainApplyRequestedRoute = applyRequestedRoute;
+applyRequestedRoute = function applyRequestedRouteCaptainDeepLink() {
+  const route = new URLSearchParams(window.location.search);
+  const requestedView = route.get('view');
+  const requestedSessionTaskId = Number(route.get('setup_session_task_id') || 0);
+
+  if (requestedView === 'perform' && requestedSessionTaskId > 0 && el('perform-view')) {
+    showView('perform');
+    loadNextExecution().then(() => {
+      let details = document.querySelector(
+        '.next-perform-task[data-session-task-id="' + requestedSessionTaskId + '"]'
+      );
+      if (!details) {
+        const filter = el('next-perform-filter');
+        if (filter) filter.value = 'ALL';
+        renderNextExecution();
+        details = document.querySelector(
+          '.next-perform-task[data-session-task-id="' + requestedSessionTaskId + '"]'
+        );
+      }
+      if (details) {
+        details.open = true;
+        details.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }).catch((error) => setAlert(error.message || error, 'error'));
+    return;
+  }
+
+  priorCaptainApplyRequestedRoute();
+};
+
+
 async function initializeNextPass() {
   installNextCopyDialog();
   installDependencyEditor();
