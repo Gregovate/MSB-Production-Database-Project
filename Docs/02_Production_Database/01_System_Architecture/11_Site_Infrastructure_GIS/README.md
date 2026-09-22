@@ -8,7 +8,13 @@ Substantial historical field/site information exists outside PostgreSQL, includi
 
 Field collection uses a Garmin GPSMAP 66sr. ExpertGPS and county aerial imagery are used for validation/refinement.
 
-Production PostgreSQL has PostGIS/geospatial capability available, but no accepted Setup/Deployment operational GIS workflow is currently using it. Before schema or application changes, verify the exact installed extension/version and existing geometry/geography objects rather than assuming how PostGIS is configured.
+Production PostgreSQL has PostGIS/geospatial capability available, but no accepted Setup/Deployment operational GIS workflow is currently using it.
+
+Read-only Issue #171 reconciliation on 2026-09-22 verified the current Production runtime as PostgreSQL 16.9 with PostGIS 3.5.2. The deployed Server Management image contract remains `postgis/postgis:16-3.5`.
+
+The same reconnaissance found no accepted MSB-specific Production geometry/geography model or spatial indexes. The only geometry-bearing catalog objects identified were PostGIS support composite types (`public.geometry_dump` and `public.valid_detail`) plus standard PostGIS catalog objects such as `public.spatial_ref_sys`, `geometry_columns`, and `geography_columns`.
+
+The safe current interpretation is therefore: **the spatial runtime was installed during the early 2026 Production build, but the MSB GIS application/domain schema was deliberately deferred while the Production Database core was built.**
 
 ## Coordinate-System Contract
 
@@ -16,9 +22,65 @@ The working coordinate reference is:
 
 `NAD83 HARN WISCRS Sheboygan County Feet (USft)`
 
-This contract must be preserved when historical or new field data is integrated.
+Current PostGIS `spatial_ref_sys` reconnaissance verifies the matching EPSG definition is present:
+
+`EPSG:8158 — NAD83(HARN) / WISCRS Kewaunee, Manitowoc and Sheboygan (ftUS)`
+
+This contract must be preserved when historical or new field data is integrated. The presence of newer NAD83(2011) WISCRS entries or ESRI alternatives in the installed spatial-reference catalog does not authorize silently substituting another realization.
 
 Browser/mobile device GPS normally arrives as latitude/longitude in a different coordinate reference. Any operational Setup workflow must explicitly transform/normalize that device input rather than silently mixing coordinate systems.
+
+## Current Development Boundary — Offline / Disposable First
+
+Issue #171 is intentionally establishing the durable GIS model before Production spatial data is created.
+
+Current engineering rule:
+
+```text
+SOURCE / REFERENCE
+    authoritative GPX / ExpertGPS
+    calibrated county aerial + sidecars
+        |
+        v
+OFFLINE / DISPOSABLE ENGINEERING
+    source inventory
+    GPX parsing/classification
+    raster conversion/tiling
+    browser map prototype
+    browser GPS + accuracy
+    transformation/proximity experiments
+        |
+        v
+REVIEW / ACCEPTANCE
+    identity model
+    provenance model
+    coordinate-transform contract
+    offline/cache model
+    observation semantics
+        |
+        v
+ONLY THEN
+    governed Production GIS schema/import/write design
+```
+
+Allowed now:
+
+- read-only Production PostGIS/catalog reconnaissance;
+- offline/local conversion of the authoritative aerial into disposable browser assets;
+- read-only GPX parsing and refreshable reference packages;
+- disposable/browser Locate/GIS prototypes;
+- current-GPS and accuracy visualization;
+- disposable/current-clone database experiments where later needed and explicitly authorized.
+
+Not yet authorized:
+
+- new Production GIS tables or geometry/geography columns;
+- Production spatial indexes;
+- GPX/reference-data imports into Production tables;
+- Production Container/Display movement/location writes from GIS experiments;
+- silent rewriting of ExpertGPS/GPX/reference geometry from tablet observations.
+
+The absence of an MSB-specific Production GIS schema is currently an intentional safety advantage: Issue #171 can establish one durable model instead of accumulating exploratory spatial objects.
 
 ## Design Intent
 
@@ -145,6 +207,45 @@ Issue #171 owns the independently actionable 2026 engineering work to inventory 
 
 Site Infrastructure / GIS owns the spatial reference/evidence and spatial calculation. Setup owns whether the resulting readiness condition permits planned work to proceed.
 
+## First Locate / GIS Implementation Slice
+
+The first operator-facing GIS implementation remains deliberately read-only with respect to Production movement/location state:
+
+```text
+separate Locate / GIS screen
+    + static 2019 calibrated aerial
+    + refreshable GPX reference overlays
+        HV*  = 120V power
+        NET* = network
+    + current browser/device GPS
+    + reported GPS accuracy
+    + Power / Network / Both controls
+```
+
+The aerial and GPX overlays have different lifecycle rules:
+
+```text
+STATIC / rarely changing
+- 2019 calibrated orthophoto
+- generated browser-friendly raster/tile derivative
+- cached locally/offline
+
+REFRESHABLE REFERENCE
+- GPX waypoints
+- HV* tracks
+- NET* tracks
+- source name/provenance/version/hash preserved
+
+DYNAMIC
+- current device GPS + reported accuracy
+- later actual Container observations
+- later independent Display observations
+```
+
+The Locate/GIS screen is separate from the normal Scan/movement screen. It may later render Setup-owned operational observations, but rendering must not become a second movement/location authority.
+
+Container/Display observation layers remain deferred until #206/#88 establish the durable write semantics. A Container observation may later support a derived effective Display location while the Display remains with that Container, but it must not fabricate duplicate Display GPS observations or pins.
+
 ## Field Correction / Continuous-Improvement Boundary
 
 Spatial reference data will not always be perfect. If Production Crew discover a missing/wrong buried route, layout track, waypoint, or risk area while doing real work, the finding must be preserved rather than becoming verbal/chat-only knowledge.
@@ -157,19 +258,34 @@ GIS should consume those common mechanisms rather than inventing an isolated cor
 
 ## PostgreSQL / PostGIS Engineering Gate
 
-Before implementing the park workflow:
+### Completed read-only runtime reconnaissance — 2026-09-22
 
-1. verify the production PostGIS extension/version;
-2. inventory current geometry/geography columns, spatial reference usage, indexes, and GIS-related tables/views if any;
-3. inventory current Storage Location tables separately;
-4. inventory GPX/ExpertGPS waypoint conventions and stable identifiers;
-5. reconcile useful site features to Production Database identities;
-6. define transformation from phone/tablet GPS coordinates to the working GIS coordinate contract;
-7. define whether application proximity checks should use geography, projected geometry, or another controlled calculation;
-8. define required device accuracy and location-specific tolerance rules;
-9. define which observations/history are worth preserving.
+Verified:
 
-Do not start by adding generic latitude/longitude columns throughout the Production Database.
+1. Production PostgreSQL = 16.9.
+2. PostGIS extension = 3.5.2.
+3. Server runtime image contract = `postgis/postgis:16-3.5`.
+4. EPSG:8158 is present in `spatial_ref_sys` and matches the accepted MSB HARN / WISCRS US-foot contract.
+5. No accepted MSB-specific geometry/geography columns or spatial indexes were identified.
+6. No existing MSB GIS table should be assumed merely because the PostGIS runtime exists.
+
+The Server Management repository owns these deployed-runtime facts and the Production mutation procedure. This repository owns the GIS/domain/schema contract.
+
+### Remaining design gates before Production GIS writes
+
+1. inventory and hash the authoritative TIFF/TFW/MAP source package;
+2. inventory/version the current GPX/ExpertGPS source set and preserve original names/provenance;
+3. inventory current Storage Location tables separately from park GIS identities;
+4. define durable GIS/reference feature identity without forcing waypoints into fake Stage ownership;
+5. reconcile useful site features to Production Database Stage/Scene/Display/Container/network identities through explicit relationships;
+6. define the transformation path from browser/device WGS84-style latitude/longitude to EPSG:8158;
+7. define whether proximity/risk calculations use projected geometry, geography, or another controlled method;
+8. define required device accuracy and location-specific tolerance/uncertainty rules from field evidence rather than a universal guessed threshold;
+9. define source reference, field observation, and derived operational-location persistence separately;
+10. define offline application-shell/reference-cache/synchronization behavior before Wi-Fi-only tablets depend on the workflow;
+11. prove the proposed schema/workflow in disposable/current-clone acceptance before any Production mutation.
+
+Do not start by adding generic latitude/longitude columns throughout the Production Database. Do not use the empty current GIS application schema as permission to improvise directly in Production.
 
 ## Current/Future Responsibilities
 
@@ -185,7 +301,7 @@ Do not start by adding generic latitude/longitude columns throughout the Product
 ## Known Open Work
 
 - inventory the existing GPX/ExpertGPS data and waypoint naming/identity rules;
-- verify production PostGIS configuration and current spatial objects;
+- reverify the documented Production PostGIS runtime baseline immediately before any future GIS Production mutation;
 - define durable park Setup destination identities;
 - reconcile park destinations with Stage/Scene/Display/Container relationships;
 - integrate placement tracks and buried network/power reference data for targeted Setup layout/ground-penetration decisions under Issue #171;
