@@ -65,6 +65,27 @@ def api_set_setup_display_owner(context_setup_task_id: int, display_id: int) -> 
     return jsonify(context=context)
 
 
+@setup_display_ownership_api.delete(
+    "/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>/stale"
+)
+def api_clear_stale_setup_display_owner(context_setup_task_id: int, display_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    expected_task_id = payload.get("expected_setup_task_id")
+    if isinstance(expected_task_id, bool) or not isinstance(expected_task_id, int):
+        raise SetupCommandError("expected_setup_task_id must be an integer")
+
+    context = repo().clear_stale_display_owner(
+        email=email,
+        context_task_id=context_setup_task_id,
+        display_id=display_id,
+        expected_setup_task_id=expected_task_id,
+        season_year=required_year(payload),
+    )
+    return jsonify(context=context)
+
+
 @setup_display_ownership_api.errorhandler(SetupAuthenticationError)
 def setup_display_ownership_authentication_error(
     exc: SetupAuthenticationError,
