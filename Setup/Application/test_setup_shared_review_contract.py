@@ -18,9 +18,9 @@ def test_shared_2025_review_is_explicitly_permanent_and_year_bounded() -> None:
 
     assert "this is real production data" in guide.lower()
     assert "2025 — Historical Verification" in guide
-    assert "Annual 2025 information describes what happened or was planned in 2025." in guide
-    assert "There is currently no 2026 Setup Session." in guide
-    assert "Do not force a reusable task into 2025" in guide
+    assert "If a reusable task was created after 2025" in guide
+    assert "do not invent 2025 history" in guide
+    assert "There is not yet a real 2026 Setup Session." in guide
 
 def test_production_preflight_blocks_cross_year_existing_data_and_2026_session() -> None:
     sql = (
