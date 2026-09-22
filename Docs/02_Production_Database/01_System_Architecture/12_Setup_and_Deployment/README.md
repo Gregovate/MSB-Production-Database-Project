@@ -4,77 +4,221 @@
 |---|---|
 | Document Type | Operator / User Portal |
 | System | Production Database — Setup and Deployment |
-| Audience | MSB volunteers, reviewers, managers, and Setup operators |
+| Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
-| Last Reviewed | 2026-09-17 |
+| Owner | MSB Production Database / Setup administrator |
+| Last Reviewed | 2026-09-22 |
+| Keywords | Setup, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
-Open the protected Setup application at:
+Use this page to decide **what you are trying to do in Setup** and where to go next.
+
+## Open Setup
 
 ```text
 https://my.sheboyganlights.org/setup/
 ```
 
-Current shared session and client:
+The current shared review is **2025 — Historical Verification** and uses real Production data.
 
-```text
-2025 — Historical Verification
-Client V0.3.13
-```
+There is not yet a real 2026 Setup Session. The work now is to clean up the reusable Setup tasks so the 2026 schedule starts with good information.
 
-The 2025 session uses real Production data. Start with [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md).
+## What Do You Need to Do?
 
-## Display / Container Material
+| I need to... | Start here |
+|---|---|
+| Finish reviewing tasks that still need work | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
+| Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
+| Review what should be in a Kit | Open **Kit Inventory** from Setup |
+| Count or correct T-Post stock | Open **T-Post Inventory** from Setup |
+| Review a current Setup procedure | Open the procedure shown for the selected task |
+| Change task order | Drag the task to where it belongs |
+| Add a prerequisite | Hold **Shift** and drag the later task onto the task that must happen first |
+| Assign many Displays to the correct task | Open **Display Ownership**, select several Displays, and move them together |
 
-Use **Uses Display / Container Material** only for reusable tasks that actually need current Displays for their Stage or real Scene. LOR remains authoritative for current Display membership.
+## Fast Things Worth Knowing
 
-If one material-bearing task owns the scope, material resolution remains automatic. If several material-bearing tasks share the same Stage/real-Scene scope, use **Display Ownership** so each resolved Display has one effective reusable task owner.
+### Reorder tasks by dragging
 
-For large scopes, select the Display(s), choose the destination under **Move selected to**, and click **Move selected** instead of dragging across the full board. **Coverage complete** means every current resolved Display has an effective owner.
+To change the normal task order, **drag the task to where it belongs**.
 
-Display Ownership does not change LOR membership or the Display's current Container.
+**Do not renumber every task by hand.**
 
-## Kit Boxes, Extra Materials, and Inventory
+Normal drag = move/reorder a task.
 
-Use **Kit Boxes** to assign existing physical Kit Box Containers to reusable tasks. The same Kit Box may support multiple tasks. Task-to-Kit assignment is logistics context; it does not define the Kit's contents.
+### Add a prerequisite with Shift-drag
 
-Reusable task detail now includes **Extra Materials Required by This Task**. Managers may maintain quantity, UOM, size/length/color, quantity qualifier, verification state, and notes. Expected source Containers are displayed separately from the task requirement.
+A prerequisite is work that must happen before another task can start.
 
-Use the standalone protected inventory pages for physical Kit and T-Post work:
+1. Hold **Shift** before pressing the mouse button.
+2. Start with the **later task**.
+3. Drag it onto the **task that must happen first**.
+4. Release.
+
+**Normal drag = move a task.**  
+**Shift-drag = add a prerequisite.**
+
+### Copy a similar task
+
+Use **Copy** / **Copy Task** when you need a new task that is similar to an existing one.
+
+A copied task is only a starting point. Open the new task and review its name, Stage/Scene, crew, time, readiness, weather, completion point, notes, resources, materials, and other details before treating it as finished.
+
+## Before You Mark a Task Verified
+
+Use the **Verification Queue** and choose **Unverified** to find work that still needs review.
+
+Before clicking **Mark Verified**, ask:
+
+- Should this task exist every year?
+- Is **Active Reusable Task** correct? If normal yearly work is inactive, it will not be included when a future Setup Session is created.
+- Is the normal crew size entered?
+- Is the expected time entered?
+- Are the prerequisites correct?
+- Are the needed Displays assigned to the correct task?
+- Are the needed Kit Boxes assigned?
+- Are Extra Materials and Equipment / Resources complete enough for planning?
+- Are the important Setup notes accurate?
+- Are the current Setup instructions still correct?
+
+If something is unknown, **do not guess**. Leave it for review or use **Unverified Items / Remainders** where that is the correct place.
+
+## Final Completeness Check — Material Audit
+
+Use **Material Audit** before the real 2026 Setup Session is created.
+
+It checks whether important Setup information is complete. It does **not** decide whether the work itself is correct.
+
+Pay special attention to:
+
+- **Future Session Readiness** — tasks that are not active will not be included in a future Setup Session.
+- **Display / LOR Ownership** — Displays that still need to be assigned to the correct Setup Task.
+- **Kit Assignment Coverage** — Kits or support Containers that still need a task assignment or a clear review reason, such as shared/bulk stock.
+
+Use the correction button in the audit to go back to the place that needs work.
+
+If the audit shows something that does not make sense, fix the real information. Do not enter a fake assignment just to clear the audit.
+
+## Important Task Fields for Planning
+
+The screen currently uses these field names:
+
+- **Completion point** — **Done when.** What must be true before the Captain can call the task finished?
+- **Readiness note** — **Can start when.** What must happen before this task can begin? This matters when work is scheduled.
+- **Weather note** — **Weather limits.** Enter weather conditions that can delay or stop the work.
+- **Reusable notes** — **Important setup notes.** Keep useful year-to-year warnings, gotchas, and crew knowledge here.
+
+Examples:
+
+- **Readiness note:** Wait until grass cutting is complete before laying cords.
+- **Weather note:** Do not use the high lift when wind is over 10 mph.
+- **Completion point:** Cords are plugged in and tested.
+- **Reusable notes:** Install the Racing Arch harness before the arches. Start with the Y at the outbound end.
+
+Old copy/reconstruction history is not useful Captain information. Clean it out when you know the durable instruction that should remain.
+
+## Display Ownership
+
+Use **Display Ownership** when the same Stage or Scene has more than one Setup Task that works with Displays.
+
+The question is simple:
+
+> Which Setup Task is responsible for each Display?
+
+If there is only one Setup Task using the Displays, you normally do not need to assign them one by one.
+
+To move several Displays at once:
+
+- Click one Display to select it.
+- Hold **Ctrl** on Windows or **Cmd** on a Mac and click to add/remove individual Displays.
+- Hold **Shift** and click to select a range in the same task column.
+- Drag any selected Display to the correct task. The selected group moves together.
+- For a large list, use **Move selected to** and **Move selected** instead of dragging a long distance.
+
+When the screen says **Coverage complete**, every Display in that review has a task.
+
+Display Ownership only says which Setup Task is responsible for the Display. It does not move the Display to another Container or change its LOR Stage/Scene.
+
+## Equipment / Resources vs Extra Materials
+
+Use **Equipment / Resources** for tools, equipment, vehicles, and other reusable things needed to do the work.
+
+Examples: pliers, adjustable wrenches, lifts, ToolCat.
+
+Use **Extra Materials Required by This Task** for materials the job needs.
+
+Examples: T-Posts, spacers, bungees, stakes, bases.
+
+### Where the material comes from
+
+**Expected Source Containers** tell the crew where the material should normally be found.
+
+That is different from the task requirement:
+
+- **Task Extra Material** = what the job needs.
+- **Expected Source Container** = where the crew should expect to find it.
+
+## Kit Boxes and Kit Inventory
+
+### Kit Boxes
+
+Use **Kit Boxes** on the task to choose the physical Kit that supports the work.
+
+A Kit may support more than one task.
+
+Do not assign the bulk T-Post or spacer stock Containers as Kits just because material comes from them.
+
+### Kit Inventory
+
+Open:
 
 ```text
 https://my.sheboyganlights.org/setup/kit-inventory/
+```
+
+Use Kit Inventory to review what should normally be in a physical Kit.
+
+Keep these two ideas separate:
+
+- **Expected** = what should normally be in the Kit.
+- **On Hand** = what somebody actually counted.
+
+**Do not enter an expected quantity as On Hand unless somebody physically counted it.**
+
+If an item is still unclear, leave or update it under **Unverified Items / Remainders** rather than guessing.
+
+The current goal is **review and correction**, not a complete warehouse inventory.
+
+## T-Post Inventory
+
+Open:
+
+```text
 https://my.sheboyganlights.org/setup/t-post-inventory/
 ```
 
-**Kit Inventory** shows expected Kit contents, physical on-hand counts, current reusable task assignments, current Displays stored in the Kit, and Unverified Items / Remainders. Expected quantity and physical on-hand are separate facts: editing expected contents never creates an inventory count, and recording inventory events never rewrites expected contents.
+T-Post Inventory is separate from Kit Inventory.
 
-**T-Post Inventory** records physical T-Posts by the Container where they are intentionally stored. Shared/bulk stock is grouped separately from T-Posts stored with Kits or Displays. Storage location does not assign T-Posts to Displays, panels, Stages, Scenes, or Setup tasks; reusable task requirements remain separate.
+The list separates shared/bulk T-Post stock from T-Posts intentionally stored with a Kit or Display.
 
-Reconstructed procedure-derived values are intentionally `UNVERIFIED` or `NEEDS_REVIEW` until reviewed. Do not copy an expected/planning quantity into physical on-hand unless the stock was actually counted.
+Use **Count physical stock** only when somebody is actually counting or adjusting physical stock.
 
-## Reusable Crew / Expected Duration
+A task can require T-Posts even when those posts come from shared stock instead of a Kit.
 
-Managers enter reusable expected duration as separate **Expected hrs** and **Expected mins (0–59)** fields. Existing total-minute values are converted automatically for review. Saving converts the two fields back to the existing total-minute value; leaving both blank keeps the duration missing.
+## Spacers
 
-This is reusable planning knowledge. It is separate from annual/actual elapsed work reporting.
+Shared/bulk spacer stock is separate from Kit contents.
 
-## Other Current Work
+Some Kits legitimately contain fitted/custom spacers for that work. Do not assume every spacer belongs in the bulk spacer Containers.
 
-Managers may maintain reusable tasks, resources, prerequisites, crew/time/readiness information, Setup procedure context, Extra Material requirements, Kit expected contents/Remainders, and stock definitions where their access allows. Authorized inventory operators may record append-only physical inventory events.
+## If Something Does Not Make Sense
 
-Shift-drag remains the fast prerequisite gesture; ordinary drag remains task movement/reorder. The sticky **ACTIVE TASK** identity remains visible while long task detail is scrolled.
+Do not work around bad information just to make the screen look complete.
 
-## Current Boundary
+If a task, Display assignment, Kit, material requirement, T-Post source, spacer source, or procedure clearly does not make sense, stop and flag it for review.
 
-There is no 2026 Setup Session yet. The durable Extra Material / Kit Inventory / T-Post foundation and the one-time reconstruction are live. Final reusable Catalog acceptance and disposable 2026 seed proof remain before the real 2026 Session.
+## More Help
 
-Pick List generation, staged release scheduling, Container/Display movement/scanning writes, and park-location execution evidence remain separate work.
-
-## Related Documents
-
-- [2025 review procedure](operatorSOP/Review_2025_Setup_History.md)
 - [Setup operator procedures](operatorSOP/README.md)
-- [Detailed Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
-- [Engineering handoff](engineering/README.md)
-- [Kit Inventory / T-Post Production Acceptance](../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
-- [Setup Assignment Layer V0.3.13 Production Acceptance](../../../../Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md)
+- [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md)
+- [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
+- [Engineering documentation](engineering/README.md) — for maintainers, not normal operator work

@@ -1,72 +1,56 @@
-# Setup Session Operator Procedures
+# Setup Operator Instructions
 
-This folder contains operator/Manager procedures for the live Setup Session application.
+| Document Control | Value |
+|---|---|
+| Document Type | Operator Portal |
+| System | Production Database — Setup Session |
+| Audience | Setup Managers, reviewers, and Setup operators |
+| Status | CURRENT |
+| Owner | MSB Production Database / Setup administrator |
+| Last Reviewed | 2026-09-22 |
+| Keywords | Setup, manager, verification, reusable tasks, Displays, Kits, materials |
 
-## Current State
+These are the plain-English instructions for using the live Setup application.
+
+Open Setup:
 
 ```text
 https://my.sheboyganlights.org/setup/
-2025 — Historical Verification
-Client V0.3.13
 ```
-
-The 2025 shared review uses real Production data. There is currently no 2026 Setup Session.
 
 ## Start Here
 
-- [Setup Session Manager Review Guide](Setup_Session_Manager_Review_Guide.md)
-- [Setup system/operator portal](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
+- [Setup and Deployment — What do you need to do?](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
+- [Review and Correct the 2025 Setup History](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
+- [Setup Manager Review Guide](Setup_Session_Manager_Review_Guide.md)
 
-## Material Applicability and Ownership
+## Most Important Shortcuts
 
-Reusable tasks use **Uses Display / Container Material** to participate in the LOR-derived material resolver.
+- **Reorder a task:** drag it. Do not renumber all the tasks by hand.
+- **Add a prerequisite:** hold **Shift** and drag the later task onto the task that must happen first.
+- **Select several Displays:** use **Ctrl/Cmd-click** for individual Displays or **Shift-click** for a range.
+- **Move selected Displays:** drag any selected Display, or use **Move selected to** for a large list.
+- **Create a similar task:** use **Copy** / **Copy Task**, then review the copied information.
 
-When one material-bearing task owns the scope, material resolution remains automatic. When several material-bearing tasks share the same Stage/real-Scene scope, use **Display Ownership** so each resolved Display has one effective reusable task owner.
+## Important Planning Fields
 
-For large scopes, use **Move selected to** when drag would require scrolling across a very tall board. Ownership does not change LOR membership or the Display's current Container.
+The screen labels and their plain-English meaning are:
 
-Use **Kit Boxes** separately to assign existing physical Kit Box Containers to reusable tasks. The same Kit Box may support multiple tasks.
+- **Completion point** — Done when
+- **Readiness note** — Can start when
+- **Weather note** — Weather limits
+- **Reusable notes** — Important setup notes
 
-## Extra Materials
+## Materials in One Minute
 
-Reusable task detail includes **Extra Materials Required by This Task**. The task requirement records what the work requires, including quantity/specification and review state where known. Expected source Containers are separate from that requirement.
+- **Extra Materials** = what the job needs.
+- **Equipment / Resources** = tools and equipment used to do the job.
+- **Kit Boxes** = which physical Kit supports the task.
+- **Expected Source Containers** = where material should normally be found.
+- **Expected** = what should normally be in a Kit.
+- **On Hand** = what somebody physically counted.
+- **Unverified Items / Remainders** = information that is still unclear.
 
-Migrated reconstruction rows are intentionally reviewable. `UNVERIFIED` and `NEEDS_REVIEW` mean the value is not yet accepted field truth.
+If you do not know, **do not guess**.
 
-## Kit Inventory
-
-Open:
-
-```text
-https://my.sheboyganlights.org/setup/kit-inventory/
-```
-
-Use Kit Inventory to review all physical Kit Boxes, including Assigned / Unassigned filters. Expected Kit contents, physical on-hand, task assignment context, current Displays stored in the Kit, and Remainders are shown separately.
-
-Expected contents are not counts. Physical on-hand changes only through inventory events. Remainders preserve unresolved items/questions and must not be treated as confirmed inventory without review.
-
-## T-Post Inventory
-
-Open:
-
-```text
-https://my.sheboyganlights.org/setup/t-post-inventory/
-```
-
-T-Post Inventory records physical T-Post stock by the Container where it is actually stored. Shared/bulk stock and T-Posts stored with Kits/Displays are separate groups. Planning/known quantity is not physical on-hand. Actual stock changes only through inventory events.
-
-Storage location does not assign T-Posts to a Setup task; reusable task requirements remain separate task/installation facts.
-
-## Session-Year Safety
-
-The selected annual Setup Session controls allowable operational dates. Audit timestamps remain real current timestamps.
-
-Only a Setup Administrator may create/manage an annual Setup Session or promote annual planned order into the reusable future baseline.
-
-There is currently no 2026 Setup Session.
-
-## Current Implementation Boundary
-
-Production-operational now includes 2025 historical review, reusable task maintenance, Stage/real-Scene organization, LOR-derived Display/Container resolution, Display Ownership, physical Kit Box assignment, structured task Extra Materials, expected Kit contents/Remainders, Kit Inventory, T-Post inventory, resource/effort/prerequisite maintenance, Procedure context, and protected browser access.
-
-Still incomplete/separate work includes final reusable Catalog acceptance/disposable 2026 seed proof, structured readiness gating, Pick List generation/staged release scheduling, Container/Display movement/scanning writes, and park-location execution evidence.
+The current goal is review and correction, not a complete warehouse inventory.
