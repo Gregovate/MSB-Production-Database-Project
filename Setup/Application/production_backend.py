@@ -119,6 +119,12 @@ MATERIAL_AUDIT_ASSETS = frozenset(
         "setup_material_audit.js",
     }
 )
+PICK_LIST_ASSETS = frozenset(
+    {
+        "setup_pick_list.css",
+        "setup_pick_list.js",
+    }
+)
 
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
@@ -171,6 +177,21 @@ def planning_summary():
 @app.get("/planning-summary/assets/<path:name>")
 def planning_summary_asset(name: str):
     if name not in PLANNING_SUMMARY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/pick-list")
+@app.get("/pick-list/")
+def pick_list():
+    """Read-only scheduled physical-demand Pick List."""
+    return _no_store(send_from_directory(BASE_DIR, "pick_list.html"))
+
+
+@app.get("/pick-list/assets/<path:name>")
+def pick_list_asset(name: str):
+    if name not in PICK_LIST_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
