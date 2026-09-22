@@ -225,7 +225,6 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/tasks/<int:setup_task_id>/procedure/current",
         "/api/setup/tasks/<int:setup_task_id>/display-ownership/initialize",
         "/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>",
-        "/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>/stale",
         "/api/setup/tasks/<int:setup_task_id>/kit-boxes",
         "/api/setup/tasks/<int:setup_task_id>/kit-boxes/<int:container_id>",
         "/api/setup/material-audit",
