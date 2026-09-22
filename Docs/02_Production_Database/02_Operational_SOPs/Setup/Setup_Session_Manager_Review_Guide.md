@@ -47,6 +47,10 @@ Before Mark Verified, check:
 
 If a reusable task was created after 2025 and is not part of the 2025 historical Session, review the reusable task but do not invent 2025 history just to make **Mark Verified** available.
 
+![Verification Queue showing the Unverified filter, a task needing review, and the Mark Verified button](../../01_System_Architecture/12_Setup_and_Deployment/images/setup-verification-queue-unverified-mark-verified.png)
+
+*Use the **Unverified** filter to find unfinished review work. The marked button is **Mark Verified**.*
+
 ## 2. Edit a Reusable Task
 
 A reusable task describes work that normally comes back in future Setup seasons.
@@ -72,6 +76,16 @@ Examples:
 - Reusable notes: `Install the Racing Arch harness before the arches. Start with the Y at the outbound end.`
 
 Old copy/reconstruction history is not useful Captain information. Clean it out when the lasting instruction is known.
+
+![Completion point, Readiness note, Weather note, and Reusable notes fields](../../01_System_Architecture/12_Setup_and_Deployment/images/setup-task-planning-fields.png)
+
+*The four planning/note fields have different jobs. In particular, **Readiness note** is used for planning when the task can start.*
+
+### Active Reusable Task
+
+![Active Reusable Task checkbox in reusable task detail](../../01_System_Architecture/12_Setup_and_Deployment/images/setup-active-reusable-task.png)
+
+*If this is normal yearly Setup work, **Active Reusable Task** must be checked so it can be included in a future Setup Session.*
 
 ## 3. Copy a Similar Task
 
@@ -181,6 +195,10 @@ Keep these separate:
 - **Expected Source Container** = where the crew should expect to find it.
 
 A task can require T-Posts even when the posts come from shared stock instead of a Kit.
+
+![Extra Materials Required by This Task and Expected Source Containers](../../01_System_Architecture/12_Setup_and_Deployment/images/setup-extra-materials-and-source-containers.png)
+
+*Think of these as two questions: **What does this task need?** and **Where should the crew expect to find it?***
 
 ## 9. Kit Boxes
 
