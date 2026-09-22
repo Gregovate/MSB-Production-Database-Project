@@ -711,6 +711,10 @@ async function initialize() {
 document.querySelectorAll('.tab').forEach((button) => {
   button.addEventListener('click', () => showView(button.dataset.view));
 });
+el('pick-list-link')?.addEventListener('click', () => {
+  const query = appState.seasonYear == null ? '' : '?season_year=' + encodeURIComponent(appState.seasonYear);
+  window.location.href = 'pick-list/' + query;
+});
 el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
 el('season-select').addEventListener('change', () => loadSeason(el('season-select').value));
 el('review-status-filter').addEventListener('change', renderReviewList);
