@@ -200,6 +200,15 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "task.stage_name" in ui
 
 
+def test_205_direct_search_spans_status_buckets_so_matching_work_does_not_disappear() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    assert "if (!search && statuses && !statuses.has(task.board_status)) return false;" in ui
+    assert "if (search) {" in ui
+    assert "task.stage_key" in ui
+    assert "task.stage_name" in ui
+    assert "task.scene_name" in ui
+
+
 def test_205_heavy_work_is_captain_aware_warning_not_prohibition() -> None:
     ui = read_app("setup_scheduling_board.js")
     assert "HEAVY work follows HEAVY work for Captain" in ui
