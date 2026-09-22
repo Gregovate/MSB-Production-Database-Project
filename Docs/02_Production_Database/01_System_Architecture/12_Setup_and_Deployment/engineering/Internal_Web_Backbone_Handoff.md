@@ -55,6 +55,14 @@ Detailed Manager guide:
 Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md
 ```
 
+Operator screenshot assets:
+
+```text
+Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/images/
+```
+
+The screenshots are source-owned documentation assets and are referenced with relative Markdown paths. Backbone should render them with the canonical documents rather than copying them into a second image library.
+
 These source documents are now on Production Database `main`.
 
 PR **#223** rewrote the Setup operator instructions in plain language using live Manager feedback. The canonical Setup README remains the documentation target for Backbone; do not create a second editable copy.
