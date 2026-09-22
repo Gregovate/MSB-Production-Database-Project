@@ -13,7 +13,7 @@ $AcceptedTargetSha = '1b08bdd26156b67ba89ea484fdc035b0b09ffc28'
 $MergedMainSha = '80f6ebbcbf2946eddb1b3fe04383a2d43f61b845'
 $MigrationPath = 'Setup/Database/052_add_stale_display_ownership_cleanup.sql'
 $AcceptedMigrationBlob = '5fbe22f7af8218a0d9ca29ca25d7d53e389e7042'
-$AcceptedServerRunnerBlob = 'e12e8f89a3f698e243ca061f02c185fa5c1d78ee'
+$AcceptedServerRunnerBlob = '2fbdcaef96891192f2c2fb71f59de9c4602010e8'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #145 Production deployment runner is missing: $ServerScript"
