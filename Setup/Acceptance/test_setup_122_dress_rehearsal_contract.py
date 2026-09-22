@@ -47,6 +47,7 @@ def test_122_rehearsal_supports_shared_clone_manager_and_crew_personas() -> None
     assert "CREW_PREVIEW_EMAIL" in server
     assert "Auto-selected Production Crew preview identity" in server
     assert "role_name = 'Production Crew'" in server
+    assert '[[ -n "$CREW_PREVIEW_EMAIL" && ! "$CREW_PREVIEW_EMAIL" =~' in server
     assert "same disposable clone" in server
     assert "Production Crew scheduling negative path: PASS (403)" in server
     for protected_port in ("8055", "8790", "8792", "8794", "8796"):
