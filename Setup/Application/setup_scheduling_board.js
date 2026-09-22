@@ -373,7 +373,11 @@ function board205QueueTasks() {
 
   return [...(setupBoard205State.board.tasks || [])]
     .filter((task) => {
-      if (statuses && !statuses.has(task.board_status)) return false;
+      /* A direct task/Stage/Scene search must not make matching annual work
+         appear nonexistent merely because it is in another status bucket.
+         When search text is present, search spans all annual statuses; the
+         card itself still shows the real READY/BLOCKED/WO/SCHEDULED state. */
+      if (!search && statuses && !statuses.has(task.board_status)) return false;
       if (search) {
         const haystack = [
           task.task_name,
