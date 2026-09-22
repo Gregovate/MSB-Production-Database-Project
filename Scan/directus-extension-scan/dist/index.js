@@ -665,7 +665,7 @@ export default {
               <div>
                 <label for="scanInput">Asset identity</label>
                 <form id="scanForm">
-                  <input id="scanInput" autocomplete="off" autofocus placeholder="Scan DISP:, CONT:, CTRL:, LOC: or full scan URL" />
+                  <input id="scanInput" autocomplete="off" autofocus inputmode="none" placeholder="Scan DISP:, CONT:, CTRL:, LOC: or full scan URL" />
                 </form>
                 <div id="scanFocusState" class="good small">SCAN READY</div>
               </div>
@@ -1719,7 +1719,20 @@ export default {
               }
               scheduleScanInputFocus();
             });
-            inputMethod.addEventListener('change', scheduleScanInputFocus);
+            function applyScanKeyboardMode() {
+              const useSoftKeyboard = inputMethod.value === 'MANUAL';
+              scanInput.setAttribute('inputmode', useSoftKeyboard ? 'text' : 'none');
+              scanInput.setAttribute('enterkeyhint', 'done');
+              scanFocusState.textContent = useSoftKeyboard
+                ? 'MANUAL ENTRY — on-screen keyboard enabled'
+                : 'SCAN READY — on-screen keyboard suppressed';
+              scanFocusState.className = useSoftKeyboard ? 'muted small' : 'good small';
+            }
+
+            inputMethod.addEventListener('change', function() {
+              applyScanKeyboardMode();
+              scheduleScanInputFocus();
+            });
             operatorLocationComment.addEventListener('blur', scheduleScanInputFocus);
             fieldReferenceName.addEventListener('blur', scheduleScanInputFocus);
             fieldReferenceArea.addEventListener('blur', scheduleScanInputFocus);
@@ -1801,6 +1814,7 @@ export default {
             renderConnectivity();
             renderExpectedReferenceOptions();
             renderReferenceAreaChoices();
+            applyScanKeyboardMode();
             renderGps();
             renderFieldReferences();
             renderSession();
