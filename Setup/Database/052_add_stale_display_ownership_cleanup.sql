@@ -1,15 +1,18 @@
 /* ============================================================================
-MSB Setup Session — #145 stale Display ownership cleanup
+MSB Setup Session — #145 Display ownership unassign / stale cleanup
 Issue: #145
 Revision: 2026-09-22 V0.1.0
 
 Purpose:
-  Add one narrow Manager command for removing an exact obsolete
-  ref.setup_task_display row after the application has re-resolved the current
-  LOR source set and classified that Display/owner pair as stale.
+  Add one narrow Manager command for removing one exact ref.setup_task_display ownership row after the application
+  has re-resolved the current scope. The application may use this command for:
+  - an explicitly owned current resolver Display that a Manager chooses to
+    unassign; or
+  - an ownership row classified as stale because the Display is no longer in
+    the current resolver source set.
 
 Safety:
-  - this command does not decide whether a row is stale;
+  - this command does not decide whether an unassign is contextually valid;
   - application resolver validation must happen immediately before invocation;
   - expected-current-owner provides a concurrency guard;
   - no LOR membership, Display status, Container assignment, task material
@@ -32,7 +35,7 @@ BEGIN
 END
 $preflight$;
 
-CREATE OR REPLACE FUNCTION ref.clear_stale_setup_task_display_owner(
+CREATE OR REPLACE FUNCTION ref.clear_setup_task_display_owner(
     p_email text,
     p_display_id bigint,
     p_expected_setup_task_id bigint
@@ -94,7 +97,7 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION USING
             ERRCODE = '23505',
-            MESSAGE = 'Display ownership changed during stale-row cleanup; refresh ownership';
+            MESSAGE = 'Display ownership changed during ownership cleanup; refresh ownership';
     END IF;
 
     RETURN QUERY
@@ -106,18 +109,18 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION ref.clear_stale_setup_task_display_owner(text,bigint,bigint)
+REVOKE ALL ON FUNCTION ref.clear_setup_task_display_owner(text,bigint,bigint)
     FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ref.clear_stale_setup_task_display_owner(text,bigint,bigint)
+GRANT EXECUTE ON FUNCTION ref.clear_setup_task_display_owner(text,bigint,bigint)
     TO fieldwiring_app;
 
 COMMIT;
 
 SELECT
-    '2026-09-22-setup-stale-display-ownership-cleanup-v0.1.0' AS applied_revision,
+    '2026-09-22-setup-display-ownership-clear-v0.1.0' AS applied_revision,
     current_user AS applied_by,
     has_function_privilege(
         'fieldwiring_app',
-        'ref.clear_stale_setup_task_display_owner(text,bigint,bigint)',
+        'ref.clear_setup_task_display_owner(text,bigint,bigint)',
         'EXECUTE'
     ) AS app_can_clear_stale_display_owner;
