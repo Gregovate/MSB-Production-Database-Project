@@ -26,6 +26,7 @@ from setup_assignment_api import setup_assignment_api
 from setup_prerequisite_order_api import setup_prerequisite_order_api
 from setup_planning_summary_api import setup_planning_summary_api
 from setup_scheduling_board_api import setup_scheduling_board_api
+from setup_material_readiness_api import setup_material_readiness_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
@@ -118,6 +119,12 @@ MATERIAL_AUDIT_ASSETS = frozenset(
         "setup_material_audit.js",
     }
 )
+CAPTAIN_WORK_LIST_ASSETS = frozenset(
+    {
+        "setup_captain_work_list.css",
+        "setup_captain_work_list.js",
+    }
+)
 
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
@@ -144,6 +151,7 @@ app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
+app.register_blueprint(setup_material_readiness_api)
 
 
 def _no_store(response):
@@ -169,6 +177,21 @@ def planning_summary():
 @app.get("/planning-summary/assets/<path:name>")
 def planning_summary_asset(name: str):
     if name not in PLANNING_SUMMARY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/captain-work-list")
+@app.get("/captain-work-list/")
+def captain_work_list():
+    """Read-only connected/printable Captain work list over the annual schedule."""
+    return _no_store(send_from_directory(BASE_DIR, "captain_work_list.html"))
+
+
+@app.get("/captain-work-list/assets/<path:name>")
+def captain_work_list_asset(name: str):
+    if name not in CAPTAIN_WORK_LIST_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
