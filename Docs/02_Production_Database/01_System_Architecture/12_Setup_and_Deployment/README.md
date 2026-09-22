@@ -80,6 +80,10 @@ Before clicking **Mark Verified**, ask:
 
 If something is unknown, **do not guess**. Leave it for review or use **Unverified Items / Remainders** where that is the correct place.
 
+![Verification Queue showing the Unverified filter and Mark Verified button](images/setup-verification-queue-unverified-mark-verified.png)
+
+*The **Unverified** filter is the fastest way to find review work that remains.*
+
 ## Final Completeness Check — Material Audit
 
 Use **Material Audit** before the real 2026 Setup Session is created.
@@ -113,6 +117,8 @@ Examples:
 - **Reusable notes:** Install the Racing Arch harness before the arches. Start with the Y at the outbound end.
 
 Old copy/reconstruction history is not useful Captain information. Clean it out when you know the durable instruction that should remain.
+
+![Completion point, Readiness note, Weather note, and Reusable notes fields](images/setup-task-planning-fields.png)
 
 ## Display Ownership
 
