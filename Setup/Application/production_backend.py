@@ -118,6 +118,12 @@ MATERIAL_AUDIT_ASSETS = frozenset(
         "setup_material_audit.js",
     }
 )
+CAPTAIN_WORK_LIST_ASSETS = frozenset(
+    {
+        "setup_captain_work_list.css",
+        "setup_captain_work_list.js",
+    }
+)
 
 # Accepted Setup material source resolution remains authoritative. The original
 # #141 ownership layer is installed first, then the corrected assignment layer
@@ -169,6 +175,21 @@ def planning_summary():
 @app.get("/planning-summary/assets/<path:name>")
 def planning_summary_asset(name: str):
     if name not in PLANNING_SUMMARY_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/captain-work-list")
+@app.get("/captain-work-list/")
+def captain_work_list():
+    """Read-only connected/printable Captain work list over the annual schedule."""
+    return _no_store(send_from_directory(BASE_DIR, "captain_work_list.html"))
+
+
+@app.get("/captain-work-list/assets/<path:name>")
+def captain_work_list_asset(name: str):
+    if name not in CAPTAIN_WORK_LIST_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
