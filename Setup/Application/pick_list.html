@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup Pick List</title>
+  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-22.1">
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <div class="eyebrow">2026 Setup dress rehearsal</div>
+    <h1>Pick List</h1>
+    <p id="status-line">Loading scheduled physical demand…</p>
+  </div>
+  <div class="controls no-print">
+    <label>Season <select id="season-select"></select></label>
+    <label>Needed for <select id="date-filter"><option value="">All scheduled dates</option></select></label>
+    <button id="print-button" type="button">Print</button>
+    <button id="back-button" type="button">Back to Setup</button>
+  </div>
+</header>
+<main>
+  <section class="summary" id="summary"></section>
+  <section id="unresolved-section" class="panel warning-panel" hidden>
+    <h2>Needs review before relying on this Pick List</h2>
+    <p>These scheduled requirements could not be resolved safely from current material authority.</p>
+    <div id="unresolved-list"></div>
+  </section>
+  <section class="panel">
+    <div class="section-heading">
+      <div><div class="eyebrow">Generated from the current schedule</div><h2>Physical items to pull / stage</h2></div>
+      <div id="generated-at" class="muted"></div>
+    </div>
+    <div id="pick-list"></div>
+  </section>
+</main>
+<footer class="no-print">
+  <p>Read-only view. Changing the schedule changes this list; it does not create movement history.</p>
+</footer>
+<script src="assets/setup_pick_list.js?v=2026-09-22.1"></script>
+</body>
+</html>
