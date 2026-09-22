@@ -64,6 +64,15 @@ def test_175_report_work_deep_link_preserves_season_and_annual_task_identity() -
 
     assert "season_year=" in captain_ui
     assert "view=perform&setup_session_task_id=" in captain_ui
+    for token in (
+        "setup_work_day_id=",
+        "setup_work_day_task_id=",
+        "shift_code=",
+        "crew_id=",
+        "crew_code=",
+        "work_date=",
+    ):
+        assert token in captain_ui
     assert "requestedYear" in production_ui
     assert "applyRequestedRouteCaptainDeepLink" in perform_ui
     assert "setup_session_task_id" in perform_ui
