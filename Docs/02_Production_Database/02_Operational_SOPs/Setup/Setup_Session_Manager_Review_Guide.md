@@ -18,9 +18,7 @@ It explains the normal, fastest way to do the work. You should not need engineer
 
 ## Open Setup
 
-```text
-https://my.sheboyganlights.org/setup/
-```
+[**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
 Choose **2025 — Historical Verification** for the current shared review.
 
@@ -196,9 +194,7 @@ Do not assign bulk T-Post or bulk spacer stock as a Kit just because material co
 
 Open:
 
-```text
-https://my.sheboyganlights.org/setup/kit-inventory/
-```
+[**Open Kit Inventory**](https://my.sheboyganlights.org/setup/kit-inventory/)
 
 Use Kit Inventory to review what should normally be in each physical Kit.
 
@@ -221,9 +217,7 @@ The current goal is **review and correction**, not a complete warehouse inventor
 
 Open:
 
-```text
-https://my.sheboyganlights.org/setup/t-post-inventory/
-```
+[**Open T-Post Inventory**](https://my.sheboyganlights.org/setup/t-post-inventory/)
 
 T-Post Inventory is separate from Kit Inventory.
 

@@ -15,9 +15,7 @@ Use the real 2025 Setup Session to finish reviewing the reusable Setup tasks bef
 
 Open:
 
-```text
-https://my.sheboyganlights.org/setup/
-```
+[**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
 Choose **2025 — Historical Verification**.
 

@@ -14,9 +14,7 @@ Use this page to decide **what you are trying to do in Setup** and where to go n
 
 ## Open Setup
 
-```text
-https://my.sheboyganlights.org/setup/
-```
+[**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
 The current shared review is **2025 — Historical Verification** and uses real Production data.
 
@@ -28,12 +26,12 @@ There is not yet a real 2026 Setup Session. The work now is to clean up the reus
 |---|---|
 | Finish reviewing tasks that still need work | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
 | Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
-| Review what should be in a Kit | Open **Kit Inventory** from Setup |
-| Count or correct T-Post stock | Open **T-Post Inventory** from Setup |
-| Review a current Setup procedure | Open the procedure shown for the selected task |
-| Change task order | Drag the task to where it belongs |
-| Add a prerequisite | Hold **Shift** and drag the later task onto the task that must happen first |
-| Assign many Displays to the correct task | Open **Display Ownership**, select several Displays, and move them together |
+| Review what should be in a Kit | [Open the Kit Inventory instructions](#kit-boxes-and-kit-inventory) |
+| Count or correct T-Post stock | [Open the T-Post Inventory instructions](#t-post-inventory) |
+| Review a current Setup procedure | [Open Setup / Takedown Procedures](https://my.sheboyganlights.org/procedures/) |
+| Change task order | [Reorder tasks by dragging](#reorder-tasks-by-dragging) |
+| Add a prerequisite | [Add a prerequisite with Shift-drag](#add-a-prerequisite-with-shift-drag) |
+| Assign many Displays to the correct task | [Use Display Ownership](#display-ownership) |
 
 ## Fast Things Worth Knowing
 
@@ -171,9 +169,7 @@ Do not assign the bulk T-Post or spacer stock Containers as Kits just because ma
 
 Open:
 
-```text
-https://my.sheboyganlights.org/setup/kit-inventory/
-```
+[**Open Kit Inventory**](https://my.sheboyganlights.org/setup/kit-inventory/)
 
 Use Kit Inventory to review what should normally be in a physical Kit.
 
@@ -192,9 +188,7 @@ The current goal is **review and correction**, not a complete warehouse inventor
 
 Open:
 
-```text
-https://my.sheboyganlights.org/setup/t-post-inventory/
-```
+[**Open T-Post Inventory**](https://my.sheboyganlights.org/setup/t-post-inventory/)
 
 T-Post Inventory is separate from Kit Inventory.
 

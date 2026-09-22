@@ -14,9 +14,7 @@ These are the plain-English instructions for using the live Setup application.
 
 Open Setup:
 
-```text
-https://my.sheboyganlights.org/setup/
-```
+[**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
 ## Start Here
 
@@ -54,3 +52,11 @@ The screen labels and their plain-English meaning are:
 If you do not know, **do not guess**.
 
 The current goal is review and correction, not a complete warehouse inventory.
+
+
+## Direct Links
+
+- [Open Setup](https://my.sheboyganlights.org/setup/)
+- [Open Kit Inventory](https://my.sheboyganlights.org/setup/kit-inventory/)
+- [Open T-Post Inventory](https://my.sheboyganlights.org/setup/t-post-inventory/)
+- [Open Setup / Takedown Procedures](https://my.sheboyganlights.org/procedures/)
