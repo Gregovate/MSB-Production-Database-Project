@@ -626,6 +626,12 @@ async function loadSeason(year) {
 }
 
 function chooseInitialSeason() {
+  const requestedYear = Number(new URLSearchParams(window.location.search).get('season_year') || 0);
+  const requestedSeason = requestedYear
+    ? appState.seasons.find((season) => Number(season.season_year) === requestedYear)
+    : null;
+  if (requestedSeason) return Number(requestedSeason.season_year);
+
   const historical = appState.seasons.find((season) => season.session_status === 'HISTORICAL_VERIFICATION');
   if (historical) return Number(historical.season_year);
   const activeWithSession = appState.seasons.find((season) => season.active_flag && season.setup_session_id);
@@ -710,6 +716,10 @@ async function initialize() {
 
 document.querySelectorAll('.tab').forEach((button) => {
   button.addEventListener('click', () => showView(button.dataset.view));
+});
+el('captain-work-list-link')?.addEventListener('click', () => {
+  const query = appState.seasonYear == null ? '' : '?season_year=' + encodeURIComponent(appState.seasonYear);
+  window.location.href = 'captain-work-list/' + query;
 });
 el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
 el('season-select').addEventListener('change', () => loadSeason(el('season-select').value));
