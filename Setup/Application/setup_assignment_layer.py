@@ -529,7 +529,7 @@ def _set_display_owner(
     return self.field_context(task_id=context_task_id, season_year=season_year)
 
 
-def _clear_stale_display_owner(
+def _clear_display_owner(
     self: SetupNextRepository,
     *,
     email: str,
@@ -540,7 +540,18 @@ def _clear_stale_display_owner(
 ) -> dict[str, Any]:
     preview = self.field_context(task_id=context_task_id, season_year=season_year)
     ownership = preview.get("display_ownership") or {}
-    stale = next(
+
+    current_assignment = next(
+        (
+            row
+            for row in ownership.get("assignments") or []
+            if int(row["display_id"]) == int(display_id)
+            and row.get("ownership_state") == "ASSIGNED"
+            and int(row.get("owner_setup_task_id") or 0) == int(expected_setup_task_id)
+        ),
+        None,
+    )
+    stale_assignment = next(
         (
             row
             for row in ownership.get("stale_assignments") or []
@@ -549,25 +560,25 @@ def _clear_stale_display_owner(
         ),
         None,
     )
-    if stale is None:
+
+    if current_assignment is None and stale_assignment is None:
         raise SetupNextRepositoryError(
-            "Display ownership row is no longer stale in the current resolver scope; refresh before removing"
+            "Display ownership row is no longer an explicit current assignment or stale row in this resolver scope; refresh before removing"
         )
 
     with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             """
             SELECT *
-            FROM ref.clear_stale_setup_task_display_owner(%s,%s,%s)
+            FROM ref.clear_setup_task_display_owner(%s,%s,%s)
             """,
             (email, int(display_id), int(expected_setup_task_id)),
         )
         if cur.fetchone() is None:
-            raise SetupNextRepositoryError("Stale Display ownership cleanup command returned no result")
+            raise SetupNextRepositoryError("Display ownership clear command returned no result")
         conn.commit()
 
     return self.field_context(task_id=context_task_id, season_year=season_year)
-
 
 def _kit_box_catalog(self: SetupNextRepository, *, task_id: int) -> list[dict[str, Any]]:
     with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -662,6 +673,6 @@ def install_setup_assignment_layer() -> None:
     SetupNextRepository.field_context = _field_context
     SetupNextRepository.initialize_display_ownership = _initialize_display_ownership
     SetupNextRepository.set_display_owner = _set_display_owner
-    SetupNextRepository.clear_stale_display_owner = _clear_stale_display_owner
+    SetupNextRepository.clear_display_owner = _clear_display_owner
     SetupNextRepository.kit_box_catalog = _kit_box_catalog
     SetupNextRepository.set_kit_box_assignment = _set_kit_box_assignment
